@@ -43,6 +43,15 @@ export interface CommandContext {
    */
   debug(line: Phrase): void;
   /**
+   * Prints a result line now, because it is final, such as a step's ✓ line
+   * while the run goes on (requirement `cli.print-ahead`). The command still
+   * returns every line in its result, with the lines printed ahead first and
+   * in the same words; `runCli` then prints only the rest. Through a pipe
+   * and in CI the line is printed too; with `--json` nothing is, since the
+   * document holds the result.
+   */
+  printAhead(line: Phrase): void;
+  /**
    * Asks the user a yes-or-no question with `[y/N]` on stderr and returns
    * whether they said yes (cli-output 1.7). Its `shownFirst` lines come
    * right before it, such as the trust check before "Trust Acme on this

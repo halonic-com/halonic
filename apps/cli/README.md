@@ -68,3 +68,9 @@ causes and its stack, for a bug report.
 A command that wants to tell an engineer something while it runs, such as a retry that may still
 work out, passes the line to `context.debug`. It shows on stderr only with `--debug`, with loaded
 secrets removed, and is never part of the result, so stdout and `--json` stay the same.
+
+A command returns all its lines at the end. A line that is already final, such as a step's ✓ line
+while a run goes on, it may also pass to `context.printAhead`: the CLI prints it at once (also
+through a pipe and in CI, not with `--json`) and leaves it out at the end. The lines printed ahead
+must be the first lines of the result, word for word; if they aren't, the CLI prints the whole
+result, and the CLI's tests fail (`src/test/print-ahead-check.ts` runs after every test).

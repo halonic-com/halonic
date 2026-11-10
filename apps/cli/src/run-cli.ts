@@ -184,6 +184,7 @@ async function runCommandLine(
       secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
       progress: (doing) => printer.progress(doing),
       debug: (line) => printer.debug(line),
+      printAhead: (line) => printer.ahead(line),
       ask: (question) => printer.ask(question, watch.signal),
       signal: watch.signal,
     };

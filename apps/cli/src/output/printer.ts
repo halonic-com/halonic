@@ -12,6 +12,7 @@ import {
 } from "../print-error.ts";
 import { jsonText, resultDocument, scrubbedDocument } from "./json.ts";
 import { type Paint, paintFor } from "./paint.ts";
+import { printedAhead } from "./printed-ahead.ts";
 import { type Clock, type Progress, startProgress } from "./progress.ts";
 import { type Asking, askYesNo, type Question } from "./question.ts";
 import type { SharedLine } from "./shared-line.ts";
@@ -27,7 +28,16 @@ import type { OutputStyle } from "./style.ts";
 export interface Printer {
   /** Lines that are the same with and without `--json`, such as the help, to stdout. */
   lines(lines: readonly Phrase[]): void;
-  /** What a command did: its lines, or with `--json` its document. */
+  /**
+   * A result line that is final, to stdout now, above the live line; with
+   * `--json`, nothing. Noted, so {@link Printer.result} doesn't print it again.
+   */
+  ahead(line: Phrase): void;
+  /**
+   * What a command did: its lines after those printed ahead, or with `--json`
+   * its document. When the lines printed ahead don't start the result, a bug,
+   * every line is printed.
+   */
   result(result: CommandResult): void;
   /**
    * An error, through `printError`: its lines to stderr, or with `--json` its
@@ -120,17 +130,26 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     ...(options.questions ?? nowhereToAsk),
     render: (line) => renderPhrase(line, errPaint),
   };
+  const ahead = printedAhead();
   const writeDocument = (result: CommandResult | StoppedResult) => {
     const scrub = (text: string) => options.scrubber.scrub(text);
     writeOut(jsonText(scrubbedDocument(resultDocument(result), scrub)));
   };
   return {
     lines: (lines) => printLines(out, lines),
+    ahead(line) {
+      ahead.note(line);
+      if (!options.json) {
+        out(line);
+      }
+    },
     result(result) {
+      // Also with `--json`, so a command's mismatch shows in its tests either way.
+      const rest = ahead.rest(result.lines);
       if (options.json) {
         writeDocument(result);
       } else {
-        printLines(out, result.lines);
+        printLines(out, rest);
       }
     },
     stopped(result = notSaid) {
