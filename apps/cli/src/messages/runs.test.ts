@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { dim, plainText } from "./phrase.ts";
-import { type NotWaiting, runsMessages, type ShownEnd } from "./runs.ts";
+import { type CancelledAt, type NotWaiting, runsMessages, type ShownEnd } from "./runs.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -52,6 +52,19 @@ describe("runs's sentences", () => {
     expect(words(runsMessages.showNoRunFix("./acme"))).toBe(
       "See recent runs with halonic runs --dir ./acme.",
     );
+  });
+
+  it("says where a run cancelled somewhere else stopped, with no line 2 (HAL-2745)", () => {
+    const cancelled = (at: CancelledAt) => words(runsMessages.showCancelled("Support reply", at));
+    expect([
+      cancelled({ kind: "in-step", step: "Classify" }),
+      cancelled({ kind: "before-step", step: "Classify" }),
+      cancelled({ kind: "before-start" }),
+    ]).toEqual([
+      "Support reply was cancelled in the step Classify. Nothing after it ran.",
+      "Support reply was cancelled before the step Classify. Nothing after it ran.",
+      "Support reply was cancelled before it started.",
+    ]);
   });
 
   it("has runs show's heading for every way a run can be", () => {

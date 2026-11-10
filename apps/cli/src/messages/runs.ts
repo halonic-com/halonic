@@ -3,6 +3,13 @@ import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
+/** Where a run was when someone cancelled it, for {@link runsMessages}' `showCancelled`. */
+export type CancelledAt =
+  | { readonly kind: "in-step"; readonly step: string }
+  /** Between steps: `step` is the next one, which never started. */
+  | { readonly kind: "before-step"; readonly step: string }
+  | { readonly kind: "before-start" };
+
 /**
  * Why a run can't take an event, by its status (cli-output 3.4, revision 31):
  * how long ago it ended, written as "2 min ago", or the step it's running.
@@ -110,6 +117,19 @@ export const runsMessages = defineMessages("runs", {
   showNoRun: (runId: string, workspace: string) => phrase`There's no run ${runId} in ${workspace}.`,
   /** Same shape as {@link notWaitingFix}: names the list, with the user's `--dir`. */
   showNoRunFix: (dir?: string) => phrase`See recent runs with ${suggestedCommand("runs", dir)}.`,
+  /**
+   * A run cancelled somewhere else, such as Studio or another shell, with no
+   * line 2 (HAL-2745). Ctrl C in this shell prints cli-output 1.5's "Stopped." line instead.
+   */
+  showCancelled: (title: string, at: CancelledAt) => {
+    if (at.kind === "in-step") {
+      return phrase`${title} was cancelled in the step ${at.step}. Nothing after it ran.`;
+    }
+    if (at.kind === "before-step") {
+      return phrase`${title} was cancelled before the step ${at.step}. Nothing after it ran.`;
+    }
+    return phrase`${title} was cancelled before it started.`;
+  },
 });
 
 function notWaitingInWords(why: NotWaiting): string {
