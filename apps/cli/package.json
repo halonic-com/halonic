@@ -15,11 +15,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/profile": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

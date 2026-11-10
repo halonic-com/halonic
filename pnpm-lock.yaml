@@ -259,16 +259,25 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/fs-node
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
+      '@halonicjs/profile':
+        specifier: workspace:*
+        version: link:../../packages/core/profile
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
     devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../packages/testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec
