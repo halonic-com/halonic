@@ -1,8 +1,8 @@
 # @halonicjs/adapter-fs-node
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
-`AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`
-and `BlobStore` ports on the local file system with Node: workspace files are
+`AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`,
+`BlobStore` and `FolderReader` ports on the local file system with Node: workspace files are
 plain files under a root folder, each run and each collection of records is a
 JSONL log, each trust record, each agent's "this computer" choice, each
 connector's "allow sending" setting and the yes to run without the sandbox is
@@ -224,6 +224,24 @@ yes. It passes the shared `UnfencedRunConsentStore` contract suite.
   a link or a file that isn't JSON makes `get` throw, without quoting the
   file, and `UnfencedRuns` in `core/app` asks the user again. `remove`
   deletes the file without reading it.
+
+## Every byte of a folder, for plugins
+
+`new FileSystemFolderReader(root)` lists and reads every entry under
+`root`, such as the profile's plugin folder, so the plugin service can
+fingerprint each plugin's files exactly. It passes the shared
+`FolderReader` contract suite.
+
+- **Nothing is hidden:** `.git`, `.env` and other names a workspace keeps
+  private are listed and read.
+- **Links:** every segment is looked at with `lstat`, so a symbolic link
+  or a Windows junction is listed as a link and never followed. Anything
+  else that isn't a file or a folder, such as a pipe, is listed as `other`
+  and never opened.
+- **Reads** open the file without following a link (`O_NOFOLLOW` where the
+  system has it) and check that the open handle is the same regular file
+  `lstat` saw, so a file swapped for a link or a pipe in between is refused.
+- **Order:** paths use `/` and are sorted by code unit on every system.
 
 ## Records in the profile
 
