@@ -25,7 +25,8 @@ const pa = runs.filter(w);
 
 - Write explicit steps. Check the unusual case first and return early, so the
   main path isn't nested.
-- No nested ternaries. Biome fails them.
+- No nested ternaries. Biome fails them. It also fails a function whose
+  cognitive complexity is over 15.
 - Don't build a long `.map().filter().reduce()` chain when a loop reads better.
 
 ```ts
@@ -149,7 +150,8 @@ every new command and screen against this rule.
 
 ## Documentation
 
-- **Every exported function, type and class has a doc comment.** Say what it
+- **Every exported function, type and class has a doc comment.** No check
+  enforces this yet, so reviewers do. Say what it
   does, then what its parameters mean, what errors it can give and, where it
   helps, a short example.
 
@@ -167,7 +169,8 @@ every new command and screen against this rule.
   ```
 
 - **Every package has a `README.md`** with its purpose, layer, owner, public API
-  and one runnable example. `pnpm new package` creates it.
+  and one runnable example. `pnpm new package` writes a starter README; the
+  `readme-examples` check holds the example's imports to the package's exports.
 - **Decisions are recorded** in [`docs/adr/`](../adr/README.md), one file each.
   Write one when you change how the repo is built: a layer rule, a port, a
   dependency of the core.

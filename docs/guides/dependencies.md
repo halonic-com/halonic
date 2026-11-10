@@ -8,7 +8,7 @@ Adding a dependency is a decision, not a side effect.
 2. **Outside-world libraries** (model providers, MCP, Google, the OS
    keychain, git, password hashing) live in exactly one adapter each.
 3. **React, Tauri, Vite and the approved UI libraries** live only in
-   `packages/studio/*`, `apps/studio` and `apps/docs`.
+   `packages/studio/*` and `apps/studio`.
 4. **Dev tooling** (compiler, test runner, linter, build cache) goes in
    `devDependencies` and never ships. A testing package that wraps it, such
    as `testing/spec` wrapping Vitest, also lists it in `peerDependencies`:
@@ -98,8 +98,9 @@ checked JSON. Passwords are checked with WebCrypto, not `@noble/hashes`.
 - **`minimumReleaseAge: 4320`**: a release must be 3 days old. For an
   urgent security fix, add the package to `minimumReleaseAgeExclude` in its
   own pull request and remove it again afterwards.
-- **`allowBuilds`**: install scripts run only for listed packages; an
-  unlisted one fails the install.
+- **`allowBuilds`**: install scripts run only for packages set to `true`
+  here; an unlisted one fails the install. Today every entry is `false`, so
+  none runs.
 - **`blockExoticSubdeps`**: no git or tarball URLs anywhere in the tree.
 - **`trustPolicy: no-downgrade`**: the install fails when a package loses
   its trusted-publisher status, a common sign of a hijack.

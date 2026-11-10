@@ -55,8 +55,10 @@ Check these on every pull request. The guides for
 - [ ] Input from outside (files, pull requests, model output, the network)
   is checked before it is used, and never run as a command.
 - [ ] A new dependency has an entry in `tooling/check/dependencies.json`.
-- [ ] A change to a package's `api-report.md` is meant, and the maintainer
-  reviews it.
+- [ ] A change to a package's public interface (what its `src/index.ts`
+  exports) is meant, and the maintainer reviews it. No generated
+  `api-report.md` exists yet; the reviewer reads the diff.
 - [ ] The docs change in the same pull request as the behaviour.
-- [ ] The title is `type(scope): summary`, and the change is under about
-  400 lines.
+- [ ] The title is `type(scope): summary` (the scope is optional, at most 100
+  characters; the `pr-title` check enforces it), and the change is under about
+  400 lines. No check counts lines, so the reviewer does.

@@ -37,6 +37,9 @@ that holds a term as `[withheld]`.
   and both allow lists from the base commit, so a pull request can't weaken
   the check it is judged by. It also checks the branch name, title and body
   of the pull request.
+- **Also in CI**, a separate `Secret scan (gitleaks)` job scans the commits of
+  every pull request, merge queue run and push to `main` with gitleaks, a
+  second opinion on secrets only. It also fails `ci-ok`.
 
 `pnpm install` installs the hooks. It points git's `core.hooksPath` at
 `tooling/check/hooks`, for this clone only. There is no hook framework.
