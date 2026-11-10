@@ -3,6 +3,7 @@ import type { Agent, Workflow } from "@halonicjs/format";
 import type { ChatResponse, Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
+import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
@@ -77,13 +78,15 @@ export interface RunsSetup {
   readonly clock?: Clock;
   /** The hub's agents; none when left out. */
   readonly agents?: Readonly<Record<string, Agent>>;
+  /** The ports for its agents' harness runs; none when left out. */
+  readonly harnesses?: HarnessRunsOptions;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
 export function runsOn<Runs extends KernelRuns = KernelRuns>(
   answers: (ChatResponse | Error)[],
   runs: Runs = new KernelRuns() as Runs,
-  { workflow = replyWorkflow, clock = steppingClock(), agents }: RunsSetup = {},
+  { workflow = replyWorkflow, clock = steppingClock(), agents, harnesses }: RunsSetup = {},
 ) {
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
@@ -99,6 +102,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       blobs: new KernelBlobs(),
       scheduler,
       ids: fixedIds(),
+      ...(harnesses === undefined ? {} : { harnesses }),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);
