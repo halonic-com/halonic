@@ -10,10 +10,11 @@
 // Prints "RESULT ..." lines and one JSON object on the last stdout line.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createServer as createTcpServer } from "node:net";
+import { connect as tcpConnect, createServer as createTcpServer } from "node:net";
 import { networkInterfaces, tmpdir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const { spawn: mxcSpawn, getPlatformSupport } = await import("@microsoft/mxc-sdk/v1");
 
@@ -282,10 +283,11 @@ async function dnsSideChannel(work, net, pname, boxOptions = {}) {
   // --noproxy: under a proxy policy MXC sets HTTP_PROXY, and curl would hand the name to the proxy
   // instead of looking it up itself.
   const r = await inBox(`internet ${pname} dns side channel`, `curl.exe -sS -m 5 --noproxy * http://${name}/`, { work, net, ...boxOptions });
+  // Only the box's own name: the host control below looks up "<label>-host-...", which shares the label.
+  r.hostCacheEntry = hostDnsCache(name);
   const host = spawnSync("curl.exe", ["-sS", "-m", "5", "-o", "NUL", "-w", "%{remote_ip}", `http://${label}-host-192-0-2-1.nip.io/`], { encoding: "utf8" });
   r.name = name;
   r.curlExit = r.exit;
-  r.hostCacheEntry = hostDnsCache(label);
   r.verdict = {
     resolvedInBox: r.exit === 7 || r.exit === 28,
     inHostDnsCache: Boolean(r.hostCacheEntry),
@@ -301,9 +303,9 @@ function uniqueLabel(tag) {
   return `mxc-${slug}-${process.pid}-${Date.now().toString(36)}`;
 }
 
-/** The host DNS client cache entries starting with `label`, as JSON, or null when there are none. */
-function hostDnsCache(label) {
-  const cache = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-DnsClientCache | Where-Object Entry -like '${label}*' | Select-Object Entry, Status, Data | ConvertTo-Json -Compress`], { encoding: "utf8" });
+/** The host DNS client cache entries for `name`, as JSON, or null when there are none. */
+function hostDnsCache(name) {
+  const cache = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-DnsClientCache | Where-Object Entry -eq '${name}' | Select-Object Entry, Status, Data | ConvertTo-Json -Compress`], { encoding: "utf8" });
   return cache.stdout.trim() || null;
 }
 
@@ -321,7 +323,7 @@ function hostDnsCache(label) {
 const FENCE = `import { lookup } from "node:dns/promises";
 import { readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
-import { connect } from "node:net";
+import { connect, createServer } from "node:net";
 const t = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const tcp = (host, port) => new Promise((done) => {
   const s = connect({ host, port, timeout: 5000 });
@@ -352,6 +354,14 @@ const out = {
   outboundIp: await tcp("1.1.1.1", 80),
   lookup: await attempt(async () => (await lookup(t.uniqueName)).address),
 };
+// Inbound: listen on every address, tell the host the port, count who gets in within 8 seconds.
+out.inbound = await new Promise((done) => {
+  let accepted = 0;
+  const server = createServer((s) => { accepted += 1; s.end(); });
+  server.on("error", (e) => done(e.code ?? e.message));
+  server.listen(0, "0.0.0.0", () => writeFileSync(t.listenPortFile, String(server.address().port)));
+  setTimeout(() => { server.close(); done({ accepted }); }, 8000);
+});
 console.log("FENCE " + JSON.stringify(out));
 `;
 
@@ -360,6 +370,36 @@ async function listen(host) {
   const server = createTcpServer((socket) => socket.end("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"));
   await new Promise((done, fail) => server.once("error", fail).listen(0, host, done));
   return server;
+}
+
+/** One TCP connection attempt from the host: "connected" or the error code. */
+function tcpFromHost(host, port) {
+  return new Promise((done) => {
+    const socket = tcpConnect({ host, port, timeout: 3000 });
+    socket.on("connect", () => {
+      socket.destroy();
+      done("connected");
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      done("timeout");
+    });
+    socket.on("error", (error) => done(error.code ?? error.message));
+  });
+}
+
+/** Waits for the fence script's listener, then tries to connect to it from the host, vNIC first. */
+async function knockFromHost(portFile, hosts) {
+  for (let i = 0; i < 300; i++) {
+    const port = existsSync(portFile) ? Number(readFileSync(portFile, "utf8")) : 0;
+    if (port > 0) {
+      const result = { port };
+      for (const host of hosts) result[host] = await tcpFromHost(host, port);
+      return result;
+    }
+    await sleep(100);
+  }
+  return { port: null };
 }
 
 /** The host's first non-loopback, non-link-local IPv4 address (the runner's vNIC). */
@@ -383,6 +423,11 @@ function dnsVariants(loopbackPort, vnic, vnicPort) {
       bridge: ["127.0.0.1", loopbackPort],
       net: { egress: { default: "deny" }, ingress: { default: "allow", hostLoopback: "allow" }, runtimeConfig: proxy },
     },
+    // The same proxy without the private-network capability (ingress default deny), against the guide.
+    "1c proxy, no peer identity, private network off": {
+      bridge: ["127.0.0.1", loopbackPort],
+      net: { egress: { default: "deny" }, ingress: { default: "deny", hostLoopback: "allow" }, runtimeConfig: proxy },
+    },
     // allowedProxyPeer names a package family or AppContainer profile. Our bridge has neither, so a
     // made-up profile shows whether MXC checks the name or opens the endpoint anyway.
     "1b proxy, allowedProxyPeer": {
@@ -391,6 +436,8 @@ function dnsVariants(loopbackPort, vnic, vnicPort) {
       containmentConfig: { network: { allowedProxyPeer: "halonic.bridge.probe" } },
     },
   };
+  // No proxy, no rules, host loopback on: does the loopback grant alone let names out?
+  variants["3 host loopback on, no rules"] = { bridge: ["127.0.0.1", loopbackPort], net: { egress: { default: "deny" }, ingress: { default: "deny", hostLoopback: "allow" } } };
   if (vnic) {
     variants["2a vNIC allow rule"] = { bridge: [vnic, vnicPort], net: onVnic("deny") };
     variants["2b vNIC allow rule, private network on"] = { bridge: [vnic, vnicPort], net: onVnic("allow") };
@@ -428,14 +475,19 @@ async function dnsMode() {
       deniedFile,
       writeOutside: join(outsideDir, `${label}.txt`),
       uniqueName: `${label}-192-0-2-1.nip.io`,
+      listenPortFile: join(work, `listen-${label}.txt`),
     };
     const targetsFile = join(work, `targets-${label}.json`);
     writeFileSync(targetsFile, JSON.stringify(targets));
     const boxOptions = { net: v.net, containmentConfig: v.containmentConfig, read: [dirname(nodeExe), allowedDir], denied: [deniedFile] };
-    const run = await inBox(`dns ${name} fence`, `${q(nodeExe)} ${q(fence)} ${q(targetsFile)}`, { work, ...boxOptions });
+    const [run, knock] = await Promise.all([
+      inBox(`dns ${name} fence`, `${q(nodeExe)} ${q(fence)} ${q(targetsFile)}`, { work, ...boxOptions }),
+      knockFromHost(targets.listenPortFile, [vnic, "127.0.0.1"].filter(Boolean)),
+    ]);
+    run.knock = knock;
     const line = run.stdout?.split(/\r?\n/).find((l) => l.startsWith("FENCE "));
     run.fence = line ? JSON.parse(line.slice("FENCE ".length)) : null;
-    run.lookupInHostCache = hostDnsCache(label);
+    run.lookupInHostCache = hostDnsCache(targets.uniqueName);
     run.wroteOutside = existsSync(targets.writeOutside);
     const curl = await dnsSideChannel(work, v.net, name, { containmentConfig: v.containmentConfig });
     out.cases[name] = { fence: run, curl };
@@ -460,6 +512,7 @@ function dnsVerdict(run, curl) {
     deniedFile: unreadable(f.deniedFile),
     writeOutside: f.writeOutside !== "ok" && !run.wroteOutside,
     outboundIp: refused(f.outboundIp),
+    inboundBlocked: f.inbound?.accepted === 0,
   };
   return {
     started: true,
@@ -468,7 +521,7 @@ function dnsVerdict(run, curl) {
     dns: { nodeLookup: f.lookup, nodeLookupInHostCache: Boolean(run.lookupInHostCache), curlExit: curl.curlExit, curlInHostCache: curl.verdict.inHostDnsCache },
     otherProbesPass: Object.values(fence).every(Boolean),
     fence,
-    raw: { bridge: f.bridge, otherPortLoopback: f.otherPortLoopback, otherPortBridgeAddress: f.otherPortBridgeAddress, outboundIp: f.outboundIp, httpProxyEnv: f.httpProxyEnv },
+    raw: { bridge: f.bridge, otherPortLoopback: f.otherPortLoopback, otherPortBridgeAddress: f.otherPortBridgeAddress, outboundIp: f.outboundIp, httpProxyEnv: f.httpProxyEnv, inbound: f.inbound, knock: run.knock },
   };
 }
 

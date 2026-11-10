@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# write, internet, dns or all (see probe5.mjs). The write and internet probes passed on 0c77d943;
+# this round reruns only the DNS variants, which repeat the fence probes per policy.
+env:
+  PROBE5_MODE: dns
+
 jobs:
   isolation:
     name: MXC write and internet probes on windows-11-arm
@@ -37,7 +42,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Probes as the runner user (admin)
         working-directory: spikes/mxc
-        run: node probe5.mjs all
+        run: node probe5.mjs $env:PROBE5_MODE
         continue-on-error: true
         timeout-minutes: 20
       # A throwaway standard user (not in Administrators) with a random password made here and never
@@ -58,7 +63,7 @@ jobs:
           icacls $root /grant "${user}:(OI)(CI)M" /T /Q | Out-Null
           $node = (Get-Command node).Source
           $cred = [System.Management.Automation.PSCredential]::new($user, $secure)
-          $p = Start-Process -FilePath $node -ArgumentList "probe5.mjs", "all", "$root\data" -WorkingDirectory "$root\spike" `
+          $p = Start-Process -FilePath $node -ArgumentList "probe5.mjs", $env:PROBE5_MODE, "$root\data" -WorkingDirectory "$root\spike" `
             -Credential $cred -LoadUserProfile -UseNewEnvironment -NoNewWindow -Wait -PassThru `
             -RedirectStandardOutput "$root\out.txt" -RedirectStandardError "$root\err.txt"
           "exit: $($p.ExitCode)"
