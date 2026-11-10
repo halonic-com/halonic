@@ -247,8 +247,14 @@ verifies("sandbox-srt.session", () => {
 
   describe("the program environment", () => {
     it("is the profile's variables and the temp folder, and nothing of the host", () => {
-      const env = programEnv(profile({ env: { HOME: "/h", FOO: "1" } }));
+      const env = programEnv(profile({ env: { HOME: "/h", FOO: "1" } }), { SECRET: "x" });
       expect(env).toEqual({ TMPDIR: join(base, "temp"), HOME: "/h", FOO: "1" });
+    });
+
+    it("gets the host's safe PATH unless the profile sets one", () => {
+      const host = { PATH: ["/usr/bin", "bin"].join(delimiter) };
+      expect(programEnv(profile(), host)["PATH"]).toBe("/usr/bin");
+      expect(programEnv(profile({ env: { PATH: "/opt/bin" } }), host)["PATH"]).toBe("/opt/bin");
     });
 
     it("never carries a proxy variable, so srt finds no parent proxy to trust", () => {
@@ -258,7 +264,7 @@ verifies("sandbox-srt.session", () => {
           "http://10.0.0.9:3128",
         ]),
       );
-      const env = programEnv(profile({ env: { HOME: "/h", ...proxies } }));
+      const env = programEnv(profile({ env: { HOME: "/h", ...proxies } }), proxies);
       expect(Object.keys(env).sort()).toEqual(["HOME", "TMPDIR"]);
     });
   });

@@ -27,38 +27,47 @@ const proxyVariables = new Set(
 );
 
 /**
- * The environment of the launcher, which runs outside the fence: the host's
- * `PATH` without relative entries and without entries the program can write,
- * and the session's temp folder. Nothing from the profile, so nothing the
- * program influences (a planted `bwrap` on the path, `NODE_OPTIONS`,
- * `LD_PRELOAD`) runs before the fence exists.
+ * The host's `PATH` without relative entries and without entries the program
+ * can write.
+ */
+function safePath(profile: SandboxProfile, hostPath: string): string {
+  const writable = [resolve(profile.workingFolder), resolve(profile.tempFolder)];
+  return hostPath
+    .split(delimiter)
+    .filter(
+      (entry) => isAbsolute(entry) && !writable.some((folder) => isInside(folder, resolve(entry))),
+    )
+    .join(delimiter);
+}
+
+/**
+ * The environment of the launcher, which runs outside the fence: the safe
+ * host `PATH` and the session's temp folder. Nothing from the profile, so
+ * nothing the program influences (a planted `bwrap` on the path,
+ * `NODE_OPTIONS`, `LD_PRELOAD`) runs before the fence exists.
  */
 export function launcherEnv(
   profile: SandboxProfile,
-  { PATH: hostPath }: Record<string, string | undefined> = process.env,
+  hostEnv: Record<string, string | undefined> = process.env,
 ): Record<string, string> {
   const env: Record<string, string> = {};
-  if (hostPath !== undefined) {
-    const writable = [resolve(profile.workingFolder), resolve(profile.tempFolder)];
-    env["PATH"] = hostPath
-      .split(delimiter)
-      .filter(
-        (entry) =>
-          isAbsolute(entry) && !writable.some((folder) => isInside(folder, resolve(entry))),
-      )
-      .join(delimiter);
-  }
+  const hostPath = hostEnv["PATH"];
+  if (hostPath !== undefined) env["PATH"] = safePath(profile, hostPath);
   env["TMPDIR"] = profile.tempFolder;
   return env;
 }
 
 /**
- * The environment of the program, set inside the fence: the profile's
- * variables and the session's temp folder. Never the host's own environment,
- * and never a proxy variable.
+ * The environment of the program, set inside the fence: the safe host `PATH`
+ * when the profile has none, the session's temp folder and the profile's
+ * variables. Never the rest of the host's environment, and never a proxy
+ * variable.
  */
-export function programEnv(profile: SandboxProfile): Record<string, string> {
-  const env: Record<string, string> = { TMPDIR: profile.tempFolder };
+export function programEnv(
+  profile: SandboxProfile,
+  hostEnv: Record<string, string | undefined> = process.env,
+): Record<string, string> {
+  const env = launcherEnv(profile, hostEnv);
   for (const [name, value] of Object.entries(profile.env)) {
     if (!proxyVariables.has(name)) env[name] = value;
   }
