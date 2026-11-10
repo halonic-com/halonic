@@ -41,6 +41,9 @@ tauri = { version = "=2.12.5", features = [] }
 # rustls-tls: no system proxy and no cookie store.
 tauri-plugin-http = { version = "=2.8.3", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-opener = "=2.7.2"
+# The native folder picker for trusting a workspace (HAL-2612, plan 7.2).
+# Nothing registers it or grants it a capability yet.
+tauri-plugin-dialog = "=2.8.4"
 
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
