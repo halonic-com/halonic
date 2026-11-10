@@ -30,6 +30,7 @@ gh workflow run mutation.yml --ref <branch> -f packages=packages/core/yaml
 
 `packages` takes one or more target folders separated by spaces; leave it out
 for every target. The table lands in the run's job summary.
+
 A package is skipped ("no code yet") until it has a source file other than its
 tests and `src/index.ts`. A package with a floor fails the run when its score
 is under it, and so does a Stryker run that breaks. The floors live in
