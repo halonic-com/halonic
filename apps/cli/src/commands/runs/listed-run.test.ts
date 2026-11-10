@@ -55,8 +55,9 @@ function runOf(bodies: readonly RunEventBody[], startedAt: string, stepMs = 1000
   return summary;
 }
 
-function row(summary: RunSummary) {
-  const listed = listedRun(summary, findWorkflow, clock);
+/** The row as plain text; `madeToolCalls` only matters for a completed run. */
+function row(summary: RunSummary, madeToolCalls = true) {
+  const listed = listedRun({ summary, madeToolCalls }, findWorkflow, clock);
   return {
     runId: listed.runId,
     status: listed.status,
@@ -217,10 +218,45 @@ describe("listedRun", () => {
     });
   });
 
-  it("leaves the What column empty for a completed run without a priced call", () => {
+  it("says a completed run without a tool call sent nothing, with its cost", () => {
+    const summary = runOf(
+      [
+        started,
+        {
+          type: "llm.response",
+          agent: "writer",
+          provider: "anthropic",
+          model: "smart",
+          usage: { inputTokens: 10, outputTokens: 10 },
+          latencyMs: 900,
+          text: "Hello",
+          cost: 0.02,
+        },
+        { type: "run.completed", state: "draft", context: {} },
+      ],
+      today,
+    );
+
+    expect(row(summary, false).what).toBe("Sent nothing · estimated cost €0.02");
+  });
+
+  it("says just Sent nothing for a run on the test model without a tool call", () => {
     const summary = runOf([started, { type: "run.completed", state: "draft", context: {} }], today);
 
-    expect(row(summary).what).toBe("");
+    expect(row(summary, false).what).toBe("Sent nothing");
+  });
+
+  it("names the step a completed run finished in when it had tool calls but no priced call", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "draft" },
+        { type: "run.completed", state: "draft", context: {} },
+      ],
+      today,
+    );
+
+    expect(row(summary, true).what).toBe("Finished in Draft a reply");
   });
 
   it("shows a run stopped at its budget as Stopped, in the step it reached", () => {

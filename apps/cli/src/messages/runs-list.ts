@@ -140,8 +140,19 @@ export const runsListMessages = defineMessages("runsList", {
   waitingForChildRun: (runId: string) => phrase`Waiting for child run ${runId}`,
   /** What: a waiting run with no approval, child run, event or timer to wait for. */
   waitingIn: (step: string) => phrase`Waiting in ${step}`,
-  /** What: a completed run's estimated cost. Left out when the run made no priced call. */
+  /**
+   * What: a completed run without a tool call (revision 32), then its
+   * estimated cost when it made a priced call: "Sent nothing · estimated
+   * cost €0.02". On the test model just "Sent nothing".
+   */
+  sentNothing: (money?: string) =>
+    money === undefined
+      ? phrase`Sent nothing`
+      : phrase`Sent nothing ${markPart("separator")} estimated cost ${money}`,
+  /** What: a completed run with tool calls and a priced call. */
   estimatedCost: (money: string) => phrase`Estimated cost ${money}`,
+  /** What: a completed run with tool calls but no priced call, by the step it finished in. */
+  finishedIn: (step: string) => phrase`Finished in ${step}`,
   /** What: a run stopped at its budget. */
   budgetReached: (step: string) => phrase`Budget reached in ${step}`,
   /** What: a run cancelled with Ctrl C or SIGTERM. */

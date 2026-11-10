@@ -26,6 +26,17 @@ export type WorkflowDefinition = KindValues["workflow"];
  */
 export type FindWorkflow = (hubId: string, workflowId: string) => WorkflowDefinition | undefined;
 
+/** What the list reads to show one run. */
+export interface RunToList {
+  readonly summary: RunSummary;
+  /**
+   * Whether the run's log has a tool call, as `sendsOf` in `@halonicjs/events`
+   * works it out. The summary doesn't say, and a run "sent nothing" only when
+   * it made none (cli-output 3.4, revision 32).
+   */
+  readonly madeToolCalls: boolean;
+}
+
 /** One run, as its row in the list shows it. */
 export interface ListedRun {
   readonly status: ListedStatus;
@@ -33,7 +44,7 @@ export interface ListedRun {
   readonly runId: string;
   /** The workflow's title, or its id when it's no longer in the workspace. */
   readonly workflow: string;
-  /** One short sentence by status; empty for a completed run with no priced call. */
+  /** One short sentence by status; never empty. */
   readonly what: Phrase;
   readonly when: Phrase;
 }
@@ -50,20 +61,17 @@ export interface ListClock {
  * The row of one run.
  *
  * @example
- * listedRun(summary, findWorkflow, { now: new Date() });
- * // { status: "done", runId: "01JD8Q", workflow: "Support reply", what: […"Estimated cost €0.004"], when: […"10:31 · took 18 s"] }
+ * listedRun({ summary, madeToolCalls: true }, findWorkflow, { now: new Date() });
+ * // { status: "done", runId: "01jd8q", workflow: "Support reply", what: […"Estimated cost €0.004"], when: […"10:31 · took 18 s"] }
  */
-export function listedRun(
-  summary: RunSummary,
-  findWorkflow: FindWorkflow,
-  clock: ListClock,
-): ListedRun {
+export function listedRun(run: RunToList, findWorkflow: FindWorkflow, clock: ListClock): ListedRun {
+  const { summary } = run;
   const workflow = findWorkflow(summary.hubId, summary.workflowId);
   return {
     status: listedStatus(summary),
     runId: shortRunId(summary.id),
     workflow: workflow?.name ?? summary.workflowId,
-    what: whatColumn(summary, workflow, clock),
+    what: whatColumn(run, workflow, clock),
     when: whenColumn(summary, clock),
   };
 }
@@ -115,10 +123,11 @@ function isStopped(summary: RunSummary): boolean {
 }
 
 function whatColumn(
-  summary: RunSummary,
+  run: RunToList,
   workflow: WorkflowDefinition | undefined,
   clock: ListClock,
 ): Phrase {
+  const { summary } = run;
   const step = currentStepName(summary, workflow);
   switch (listedStatus(summary)) {
     case "running":
@@ -129,12 +138,28 @@ function whatColumn(
     case "waiting":
       return waitingWhat(summary, step, clock);
     case "done":
-      return summary.cost > 0 ? runsListMessages.estimatedCost(money(summary.cost)).phrase : [];
+      return doneWhat(run, step);
     case "stopped":
       return summary.reason === "budget"
         ? runsListMessages.budgetReached(step).phrase
         : runsListMessages.cancelledIn(step).phrase;
   }
+}
+
+/**
+ * A completed run, never an empty column (cli-output 3.4, revision 32). The
+ * log doesn't record what a tool sent yet, so "Sent nothing" only for a run
+ * without a tool call. Otherwise its estimated cost, or for a run that had
+ * no priced call (a subscription), the step it finished in.
+ */
+function doneWhat(run: RunToList, step: string): Phrase {
+  const cost = run.summary.cost > 0 ? money(run.summary.cost) : undefined;
+  if (!run.madeToolCalls) {
+    return runsListMessages.sentNothing(cost).phrase;
+  }
+  return cost === undefined
+    ? runsListMessages.finishedIn(step).phrase
+    : runsListMessages.estimatedCost(cost).phrase;
 }
 
 /**

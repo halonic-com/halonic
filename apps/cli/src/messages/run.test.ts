@@ -60,12 +60,15 @@ describe("run's sentences", () => {
     expect(words(runMessages.answerHere("01JD8Q", ["approve", "reject"]))).toBe(
       "Answer in Studio's Inbox, or here: halonic runs send 01JD8Q approve  (or reject)",
     );
+    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject", "hold", "skip"]))).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject, hold or skip)",
+    );
     expect(words(runMessages.answerHere("01JD8Q", ["done"], "./acme"))).toBe(
       "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01JD8Q done",
     );
   });
 
-  it("leaves out what doesn't apply in the receipt, but always says what was sent", () => {
+  it("leaves out what doesn't apply in the receipt, and says sent nothing only without a tool call", () => {
     expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 1 }))).toBe(
       "Sent nothing · asked you once",
     );
@@ -74,6 +77,20 @@ describe("run's sentences", () => {
         runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedCost: "€0.03" }),
       ),
     ).toBe("Changed 2 files · sent nothing · asked you twice · estimated cost €0.03");
+    // Tool calls whose log doesn't say what they sent: no sent part, never a guess.
+    expect(
+      words(runMessages.receipt({ changedFiles: 1, askedYou: 0, estimatedCost: "€0.004" })),
+    ).toBe("Changed 1 file · estimated cost €0.004");
+    expect(words(runMessages.receipt({ changedFiles: 0, askedYou: 0 }))).toBe("");
+    expect(
+      words(
+        runMessages.receipt({
+          changedFiles: 0,
+          sent: ["1 email", "2 messages", "3 files"],
+          askedYou: 0,
+        }),
+      ),
+    ).toBe("Sent 1 email, 2 messages and 3 files");
   });
 
   it("has the line for an agent that runs without the sandbox", () => {
@@ -98,7 +115,9 @@ describe("run's sentences", () => {
       words(runMessages.startOllamaFix()),
       words(runMessages.checkConnectionFix()),
       words(runMessages.modelMissingFix("llama3.2", "fast")),
+      words(runMessages.modelMissingOnServerFix("llama3.2", "LM Studio", "fast")),
       words(runMessages.budgetFix("1 Dec")),
+      words(runMessages.runBudgetFix()),
       words(runMessages.turnLimitFix("Sorter", "01JD8Q", "sorter.agent.yaml")),
       words(runMessages.localOnlyFix("Sorter", "smart")),
       words(runMessages.blockedSiteFix("api.example.net", "Reporter")),
@@ -110,7 +129,9 @@ describe("run's sentences", () => {
       "Start Ollama, then run again.",
       "Check your internet connection, then run again.",
       "Run ollama pull llama3.2, or point the model alias fast at another model in models.yaml.",
+      "Download llama3.2 in LM Studio, or point the model alias fast at another model in models.yaml.",
       "Raise the budget in models.yaml, or wait until it resets on 1 Dec.",
+      "Raise the budget in models.yaml.",
       "See what Sorter did with halonic runs show 01JD8Q. Raise its turn limit in sorter.agent.yaml if it needs more turns.",
       "Point Sorter's model alias smart at a local model in models.yaml.",
       "Add api.example.net to Reporter's allowed sites, if Reporter should reach it.",

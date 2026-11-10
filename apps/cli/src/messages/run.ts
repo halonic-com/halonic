@@ -2,12 +2,18 @@ import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
+import { wordList } from "./word-list.ts";
 
 /** What a finished run did, for its receipt line. Only the parts that apply are shown. */
 export interface RunReceipt {
   readonly changedFiles: number;
-  /** What it sent, each already counted, such as "1 email"; empty when it sent nothing. */
-  readonly sent: readonly string[];
+  /**
+   * What it sent, each already counted, such as "1 email". Empty only when
+   * the run made no tool call, which reads "sent nothing". Left out when it
+   * made tool calls whose log doesn't say what they sent: the receipt then
+   * has no sent part rather than a guess (cli-output 3.4, revision 32).
+   */
+  readonly sent?: readonly string[];
   readonly askedYou: number;
   /** The estimated cost as the output writes money, such as "€0.004"; left out for a run on the test model. */
   readonly estimatedCost?: string;
@@ -53,7 +59,10 @@ export const runMessages = defineMessages("run", {
 
   /** "Support reply finished in 18 s.", with the duration as the output writes it. */
   finished: (title: string, duration: string) => phrase`${title} finished in ${duration}.`,
-  /** The receipt (glossary): changed, sent, asked and cost, in that order. */
+  /**
+   * The receipt (glossary): changed, sent, asked and cost, in that order.
+   * Empty when every part is left out; the run's output then has no middle line.
+   */
   receipt: (receipt: RunReceipt) => receiptLine(receipt),
   runLog: (runId: string, dir?: string) =>
     phrase`Run log: ${suggestedCommand("runs show", dir, runId)}`,
@@ -82,11 +91,20 @@ export const runMessages = defineMessages("run", {
   startOllamaFix: () => phrase`Start Ollama, then run again.`,
   /** `model-unreachable` for a cloud provider. */
   checkConnectionFix: () => phrase`Check your internet connection, then run again.`,
+  /** `model-missing` on Ollama. */
   modelMissingFix: (model: string, alias: string) =>
     phrase`Run ollama pull ${model}, or point the model alias ${alias} at another model in models.yaml.`,
-  /** `budget`, with the reset date as the output writes it, such as "1 Dec". */
+  /**
+   * `model-missing` on another local server, such as LM Studio, because
+   * `ollama pull` only works for Ollama (revision 25).
+   */
+  modelMissingOnServerFix: (model: string, server: string, alias: string) =>
+    phrase`Download ${model} in ${server}, or point the model alias ${alias} at another model in models.yaml.`,
+  /** `budget` for a monthly budget, with the reset date as the output writes it, such as "1 Dec". */
   budgetFix: (resetsOn: string) =>
     phrase`Raise the budget in models.yaml, or wait until it resets on ${resetsOn}.`,
+  /** `budget` for a run's own budget, which doesn't reset. */
+  runBudgetFix: () => phrase`Raise the budget in models.yaml.`,
   turnLimitFix: (agent: string, runId: string, agentFile: string, dir?: string) =>
     phrase`See what ${agent} did with ${suggestedCommand("runs show", dir, runId)}. Raise its turn limit in ${agentFile} if it needs more turns.`,
   /** `blocked` because the workspace is local only. */
@@ -114,7 +132,10 @@ function joinedFacts(facts: readonly string[]): Phrase {
   );
 }
 
-/** "Answer in Studio's Inbox, or here: halonic runs send 01JD8Q approve  (or reject)". */
+/**
+ * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject)".
+ * Three or more events read "(or reject, hold or skip)" (revision 37).
+ */
 function answerLine(runId: string, events: readonly string[], dir?: string): Phrase {
   const [first = "", ...others] = events;
   const command = `${suggestedCommand("runs send", dir, runId)} ${first}`;
@@ -122,7 +143,7 @@ function answerLine(runId: string, events: readonly string[], dir?: string): Phr
   if (others.length === 0) {
     return line;
   }
-  return phrase`${line}  ${dim(`(or ${others.join(" or ")})`)}`;
+  return phrase`${line}  ${dim(`(or ${wordList(others, "or")})`)}`;
 }
 
 /** "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004". */
@@ -131,15 +152,22 @@ function receiptLine(receipt: RunReceipt): Phrase {
   if (receipt.changedFiles > 0) {
     parts.push(`changed ${counted(receipt.changedFiles, "file", "files")}`);
   }
-  // "Sent nothing" is always there, because that's what people check.
-  parts.push(receipt.sent.length === 0 ? "sent nothing" : `sent ${receipt.sent.join(", ")}`);
+  // "Sent nothing" is what people check, so it's there whenever it's known.
+  if (receipt.sent !== undefined) {
+    parts.push(
+      receipt.sent.length === 0 ? "sent nothing" : `sent ${wordList(receipt.sent, "and")}`,
+    );
+  }
   if (receipt.askedYou > 0) {
     parts.push(`asked you ${timesInWords(receipt.askedYou)}`);
   }
   if (receipt.estimatedCost !== undefined) {
     parts.push(`estimated cost ${receipt.estimatedCost}`);
   }
-  const [first = "", ...rest] = parts;
+  const [first, ...rest] = parts;
+  if (first === undefined) {
+    return [];
+  }
   return joinedFacts([first.charAt(0).toUpperCase() + first.slice(1), ...rest]);
 }
 

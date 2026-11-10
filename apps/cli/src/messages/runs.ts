@@ -63,7 +63,8 @@ export const runsMessages = defineMessages("runs", {
 
   /**
    * `runs show` with a short id that two runs end in (`invalid_input`), the
-   * error's whole line 1. `shortId` as the user typed it.
+   * error's whole line 1. `shortId` as stored, as the list printed it,
+   * whatever case the user typed (revision 37).
    */
   showSeveralRuns: (shortId: string, workspace: string) =>
     phrase`Two runs in ${workspace} end in ${shortId}.`,
@@ -75,8 +76,8 @@ export const runsMessages = defineMessages("runs", {
     phrase`Use the full id, as ${suggestedCommand("runs", dir, "--json")} shows it.`,
 
   /**
-   * "Support reply in acme · run 01JD8Q · started 14:01, finished 14:02", or
-   * "… · test run 01JD8Q · started 10:40, waiting for you since 10:41".
+   * "Support reply in acme · run 01jd8q · started 14:01, finished 14:02", or
+   * "… · test run 01jd8q · started 10:40, waiting for you since 10:41".
    */
   showHeading: (
     title: string,

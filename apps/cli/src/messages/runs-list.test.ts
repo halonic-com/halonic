@@ -45,6 +45,22 @@ verifies("cli.messages", () => {
     ]);
   });
 
+  it("never leaves a Done row's What column empty (revision 32)", () => {
+    expect(
+      [
+        list.sentNothing("€0.02"),
+        list.sentNothing(),
+        list.estimatedCost("€0.004"),
+        list.finishedIn("Send reply"),
+      ].map((message) => plainText(message.phrase)),
+    ).toEqual([
+      "Sent nothing · estimated cost €0.02",
+      "Sent nothing",
+      "Estimated cost €0.004",
+      "Finished in Send reply",
+    ]);
+  });
+
   it("has the line for runs that --limit leaves out, with the user's filters", () => {
     expect(list.leftOut(20, 47, { status: "failed" }).phrase).toEqual([
       dim(
