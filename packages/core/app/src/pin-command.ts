@@ -15,10 +15,11 @@ export const packageOptions = new Set(["-p", "--package", "--from", "--with", "-
 
 /**
  * Package options after which the runner starts its command word as a
- * program, found among the fetched packages or on `PATH`. With one of them,
- * a pinned runner may only start the pin's own program.
+ * program, found among the fetched packages or on `PATH`; `pipx run --spec`
+ * finds it in a venv that also holds `python`. With one of them, a pinned
+ * runner may only start the pin's own program.
  */
-const commandOptions = new Set(["-p", "--package", "--from", "--with"]);
+const commandOptions = new Set(["-p", "--package", "--from", "--with", "--spec"]);
 
 /**
  * With a package option such as `npx -p <pin> sh`, the runner starts its

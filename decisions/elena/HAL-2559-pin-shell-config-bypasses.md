@@ -23,10 +23,17 @@ transport with a `pin`, `checkPackageRunnerLaunch` now also refuses:
 - **Variables that move the config home or program lookup:** `HOME`, `USERPROFILE`, `APPDATA`,
   `LOCALAPPDATA`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `PATH`, `PATHEXT`, `COMSPEC`, as a fifth
   group with its own reason.
-- **Another program:** with `-p`, `--package`, `--from` or `--with`, the runner starts its command
-  word as a program, from the fetched packages or from `PATH`. That word must be the pin's package
-  name, with or without its npm scope, so `npx -p <pin> sh …` is refused, and so is a package
-  option with no command word.
+- **Another program:** with `-p`, `--package`, `--from`, `--with` or `--spec`, the runner starts
+  its command word as a program, from the fetched packages or from `PATH`. That word must be the
+  pin's package name, with or without its npm scope, so `npx -p <pin> sh …` is refused, and so is
+  a package option with no command word.
+
+- **Any program that isn't a package runner** (added in the maintainer's review of halonic#749): a
+  `pin` on `env`, `node`, `wsl`, `busybox` or a shell not on the list above, such as `dash`, `fish`
+  or `ksh`. A longer shell list can't close this, so the check is turned around: with a pin, only a
+  package runner passes.
+- **`pipx run --spec`** (same review): it gets the command-word check of `-p` and `--from`,
+  because pipx's venv also holds `python`.
 
 ## Tests that changed
 

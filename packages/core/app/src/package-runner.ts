@@ -102,12 +102,14 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
  * in any case, that could move the registry, send it through a proxy, trust
  * another certificate, load code before the package or move the config home
  * or program lookup. A pin behind a shell is refused outright: word
- * inspection can't make a shell safe. A pinned runner may not take an option
+ * inspection can't make a shell safe. So is a pin on any other program that
+ * isn't a package runner, such as `env` or `node`, because the pin only
+ * means something to a runner. A pinned runner may not take an option
  * that runs a shell command or fetches from another registry, index,
  * folder, config or cache, must name the pin's package, and every package it
  * names, as an argument or as the value of a package option, must be the
  * pin's package at no version or the pin's version. With `-p`, `--package`,
- * `--from` or `--with`, the program it runs must be the pin's own.
+ * `--from`, `--with` or `--spec`, the program it runs must be the pin's own.
  *
  * @returns the pin to start, `null` for a transport without one, or the
  *   reason to refuse
@@ -138,7 +140,12 @@ export function checkPackageRunnerLaunch(
     return err(`the command starts the shell "${program}", which ${shellReason}`);
   }
   const words = runnerWords(command, args);
-  return words === undefined ? pinned : checkRunnerWords(pin, program, words);
+  if (words === undefined) {
+    return err(
+      `the command starts "${program}", which isn't a package runner, so a pin can't be checked`,
+    );
+  }
+  return checkRunnerWords(pin, program, words);
 }
 
 /** Checks the words a pinned runner reads after its program name. */

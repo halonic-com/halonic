@@ -51,6 +51,24 @@ verifies("app.package-runner-launch", () => {
     }
   });
 
+  it("refuses a pin on any program that isn't a package runner", () => {
+    const args = ["NPM_CONFIG_REGISTRY=https://evil.test", "npx", "-y", "@acme/mail-mcp"];
+    expect(refused(stdio({ pin, command: "env", args }))).toBe(
+      "the command starts \"env\", which isn't a package runner, so a pin can't be checked",
+    );
+    const others: [string, string[]][] = [
+      ["dash", ["-c", "npx -y @acme/mail-mcp"]],
+      ["fish", ["-c", "npx -y @acme/mail-mcp"]],
+      ["ksh", ["-c", "npx -y @acme/mail-mcp"]],
+      ["busybox", ["sh", "-c", "npx -y @acme/mail-mcp"]],
+      ["wsl", ["npx", "-y", "@acme/mail-mcp"]],
+      ["node", ["evil.js"]],
+    ];
+    for (const [command, args] of others) {
+      expect(refused(stdio({ pin, command, args })), command).toContain("isn't a package runner");
+    }
+  });
+
   it("refuses a pinned npm or pnpm runner whose -c or --call runs a shell command", () => {
     expect(refused(stdio({ pin, args: ["-p", "@acme/mail-mcp", "-c", "mail-mcp"] }))).toBe(
       "the command sets -c, which runs a shell command that can change the registry, config or package before the runner starts, so a pin can't be checked",
@@ -112,7 +130,7 @@ verifies("app.package-runner-launch", () => {
     }
   });
 
-  it("refuses a pinned runner whose -p, --package, --from or --with runs another program", () => {
+  it("refuses a pinned runner whose -p, --package, --from, --with or --spec runs another program", () => {
     expect(
       refused(stdio({ pin, args: ["-y", "-p", "@acme/mail-mcp@2.3.1", "sh", "./evil.sh"] })),
     ).toBe(
@@ -126,9 +144,11 @@ verifies("app.package-runner-launch", () => {
       ["npm", ["exec", "--package", "@acme/mail-mcp", "--", "node", "evil.js"]],
       ["uvx", ["--from", "mail-mcp==2.3.1", "python", "./evil.py"]],
       ["uvx", ["--with", "mail-mcp", "other-tool"]],
+      ["pipx", ["run", "--spec", "mail-mcp==2.3.1", "python", "./evil.py"]],
     ];
     for (const [command, args] of refusedArgs) {
-      const transport = stdio({ pin: command === "uvx" ? pypiPin : pin, command, args });
+      const pypi = command === "uvx" || command === "pipx";
+      const transport = stdio({ pin: pypi ? pypiPin : pin, command, args });
       expect(refused(transport), `${command} ${args.join(" ")}`).toContain("may only run");
     }
   });
@@ -147,5 +167,12 @@ verifies("app.package-runner-launch", () => {
         value: pin,
       });
     }
+    const pypiPin: ConnectorPin = { ...pin, registry: "pypi", package: "mail-mcp" };
+    const pipx = stdio({
+      pin: pypiPin,
+      command: "pipx",
+      args: ["run", "--spec", "mail-mcp==2.3.1", "mail-mcp"],
+    });
+    expect(checkPackageRunnerLaunch(pipx)).toEqual({ ok: true, value: pypiPin });
   });
 });
