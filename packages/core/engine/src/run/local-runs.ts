@@ -11,10 +11,9 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
-import { encodeUtf8, type StopSignal } from "@halonicjs/std";
+import { encodeUtf8 } from "@halonicjs/std";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
-import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-call.ts";
-import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";
+import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
 import type {
   AnswerHarnessEffect,
@@ -26,17 +25,12 @@ import type {
   ToolResult,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
-import {
-  keepDefinitions,
-  missingDefinitionsError,
-  readDefinitions,
-} from "../kernel/kept-definitions.ts";
+import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import { callOf, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
-import { HarnessAnswers } from "./harness-answers.ts";
-import { LiveHarnessCalls } from "./live-harness-calls.ts";
+import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
 import { providerTextOf } from "./provider-text-of.ts";
 import { RunConnectorCallRunner } from "./run-connector-call-runner.ts";
@@ -99,8 +93,7 @@ export class LocalRuns {
   readonly #budget: BudgetCheck | undefined;
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
-  readonly #harnessCalls = new LiveHarnessCalls();
-  readonly #harnessAnswers = new HarnessAnswers();
+  readonly #harnessCalls: LocalHarnessCalls;
   #started: Promise<void> | undefined;
   /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
   #closed = false;
@@ -118,6 +111,14 @@ export class LocalRuns {
     this.#callModel = callModel;
     this.#feed = new RunFeed(options.store);
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
+    this.#harnessCalls = new LocalHarnessCalls({
+      store: options.store,
+      blobs: options.blobs,
+      harnesses: options.harnesses,
+      startDeadlines: this.#startDeadlines,
+      clock,
+      record: (runId, input) => this.#record(runId, input),
+    });
     this.#builtEffects = builtEffectsOf(options);
     this.#budget = budgetCheckOf(options);
     this.#connectorCalls = new RunConnectorCallRunner({
@@ -288,7 +289,7 @@ export class LocalRuns {
       const result =
         kind === "model"
           ? await this.#callModel(run, call)
-          : { type: "harness" as const, output: await this.#runHarness(run, call, waitedOn) };
+          : { type: "harness" as const, output: await this.#harnessCalls.run(run, call, waitedOn) };
       return { type: "effect-done", at: this.#now(), callId: waitedOn.callId, result };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -306,88 +307,13 @@ export class LocalRuns {
   }
 
   /**
-   * Runs the agent of a harness call in its harness. The harness comes from
-   * the agent's file in the run's kept definitions, the same file `decide`
-   * read when it asked for the run. Each time a person answers an approval
-   * the harness asked for, `waitedOn` moves on to the call id the run then
-   * waits on.
-   *
-   * @throws when the executor has no `harnesses`, the definitions are gone,
-   *   the agent names no harness, the harness run fails, or the engine stops it
-   */
-  async #runHarness(run: RunState, call: PendingCall, waitedOn: WaitedOnCall): Promise<unknown> {
-    const harnesses = this.#options.harnesses;
-    if (harnesses === undefined) {
-      throw new Error(
-        "The local executor can't carry out a run-harness effect: it has no harnesses.",
-      );
-    }
-    const definitions = await readDefinitions(this.#options.blobs, run.definitionsVersion);
-    if (definitions === null) throw new Error(missingDefinitionsError(run.definitionsVersion));
-    const agents = definitions.agents ?? {};
-    const agent = Object.hasOwn(agents, call.agent) ? agents[call.agent] : undefined;
-    const harness = agent?.harness;
-    if (agent === undefined || harness === undefined || harness === "halonic") {
-      throw new Error(
-        `Agent "${call.agent}" names no harness in the definitions this run started with.`,
-      );
-    }
-    const effect = { ...call, harness };
-    const { runId, hubId, lastSeq } = run;
-    const item = run.foreach?.running.find((running) => running.call.callId === call.callId);
-    const log = new SerialRunLog(
-      this.#options.store,
-      runId,
-      waitedOn,
-      lastSeq,
-      this.#clock,
-      item?.item ?? null,
-    );
-    const limits = this.#startDeadlines.of(runId, call.callId);
-    return this.#harnessCalls.run((stop) => {
-      const approvals = this.#approvalsOf(runId, waitedOn, stop);
-      return runHarnessCall(
-        harnesses,
-        { effect, runId, hubId, agent },
-        log,
-        approvals,
-        limits,
-        stop,
-      );
-    });
-  }
-
-  /**
-   * How a harness call of the run asks for a person's OK: the run records
-   * the question under the call it waits on, and waits for `approve` or
-   * `reject`. The answer moves `waitedOn` on to the call that goes on.
-   */
-  #approvalsOf(runId: string, waitedOn: WaitedOnCall, stop: StopSignal): HarnessApprovals {
-    return {
-      ask: async ({ tool, args }) => {
-        const answer = await this.#harnessAnswers.waitFor(runId, stop, () =>
-          this.#record(runId, {
-            type: "harness-asked",
-            at: this.#now(),
-            callId: waitedOn.callId,
-            tool,
-            args,
-          }),
-        );
-        waitedOn.callId = answer.callId;
-        return answer;
-      },
-    };
-  }
-
-  /**
    * Hands a person's answer to the harness call that asked, which still
    * runs. When no call of this engine waits for it, as after a restart, the
    * run ends as interrupted: the harness's program is gone and can't go on,
    * and the agent never falls back to a model call.
    */
   async #answerHarness(runId: string, effect: AnswerHarnessEffect): Promise<void> {
-    if (this.#harnessAnswers.give(runId, effect)) return;
+    if (this.#harnessCalls.answer(runId, effect)) return;
     await this.#recordIfTaken(runId, {
       type: "effect-failed",
       at: this.#now(),
