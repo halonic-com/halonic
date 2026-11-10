@@ -1,4 +1,6 @@
 import { type ReactNode, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { ItemGone } from "../page/item-gone.tsx";
+import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import { focusPageHeading } from "./history-moves.ts";
 import { mountedTabIds } from "./mounted-tabs.ts";
 import {
@@ -15,6 +17,20 @@ export interface TabPagesProps {
   readonly tabs: TabSet;
   /** Draws the page for the place a tab shows. */
   readonly renderPage: (location: TabLocation, tab: WindowTab) => ReactNode;
+  /**
+   * Whether the item at `location` isn't in the workspace any more, and if so, what it was. Home,
+   * places and items that are still there give `undefined`. Pass a new function when the
+   * workspace's items change, so an open tab whose item goes away shows that it has.
+   */
+  readonly goneItem?: (location: TabLocation) => GoneItem | undefined;
+}
+
+/** An item a tab shows that isn't in the workspace any more. */
+export interface GoneItem {
+  /** Its kind, as a word in a sentence: "agent", "workflow", "run". */
+  readonly kindName: string;
+  /** The place that lists that kind, such as Agents, which **Go to** opens in the tab. */
+  readonly place: TabLocation;
 }
 
 /** What a tab's page had when the user left it, so switching back can give it back. */
@@ -35,12 +51,16 @@ interface PageMemory {
  * is in the tab strip it stays there, as in any tab list. A tab whose place changes draws a fresh
  * page.
  *
+ * A page that throws while it draws stops alone, as "This page stopped working" in its own area
+ * (`PageErrorBoundary`). A tab whose item isn't in the workspace any more shows `ItemGone`, whose
+ * **Go to** opens the place that lists its kind in that tab.
+ *
  * @example
  * <ShellFrame …>
  *   <TabPages tabs={workspace.tabs} renderPage={(location) => <PageFor location={location} />} />
  * </ShellFrame>
  */
-export function TabPages({ tabs, renderPage }: TabPagesProps) {
+export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
   const state = useSyncExternalStore(
     (listener) => tabs.subscribe(listener),
     () => tabs.state,
@@ -93,6 +113,7 @@ export function TabPages({ tabs, renderPage }: TabPagesProps) {
     .map((tab) => {
       const shown = tab.id === state.activeId;
       const location = currentLocation(tab);
+      const gone = goneItem?.(location);
       return (
         // biome-ignore lint/a11y/noStaticElementInteractions: it only notes where focus and scroll are; the page's own controls are what you use
         <div
@@ -111,15 +132,22 @@ export function TabPages({ tabs, renderPage }: TabPagesProps) {
           onFocus={(event) => remember(tab, { focus: event.target })}
           onScroll={(event) => remember(tab, { scrollTop: event.currentTarget.scrollTop })}
         >
-          <PageContent key={location.key}>{renderPage(location, tab)}</PageContent>
+          {gone === undefined ? (
+            // Keyed by the place, so a tab that moves on to another place draws a fresh page.
+            <PageErrorBoundary pageKey={location.key} pageName={location.title}>
+              {renderPage(location, tab)}
+            </PageErrorBoundary>
+          ) : (
+            <ItemGone
+              key={location.key}
+              kindName={gone.kindName}
+              place={gone.place.title}
+              onGoTo={() => tabs.openHere(gone.place)}
+            />
+          )}
         </div>
       );
     });
-}
-
-/** Keyed by the place, so a tab that moves on to another place draws a fresh page. */
-function PageContent({ children }: { readonly children: ReactNode }) {
-  return children;
 }
 
 /** The active tab and the place it shows, which the page on screen draws. */

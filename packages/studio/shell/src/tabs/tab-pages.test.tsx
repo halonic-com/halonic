@@ -2,16 +2,19 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { focusPageHeading } from "./history-moves.ts";
-import { TabPages } from "./tab-pages.tsx";
-import { type TabLocation, TabSet } from "./tab-set.ts";
+import { TabPages, type TabPagesProps } from "./tab-pages.tsx";
+import { currentLocation, type TabLocation, TabSet } from "./tab-set.ts";
 
 const agents: TabLocation = { key: "agents", title: "Agents" };
 const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "agent" };
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  vi.restoreAllMocks();
+});
 
 /** A page with its title as the `h1`, one field to type into and a `tablist` of its own. */
 function Page({ location }: { readonly location: TabLocation }) {
@@ -28,8 +31,11 @@ function Page({ location }: { readonly location: TabLocation }) {
   );
 }
 
-/** Tabs on Agents and Sorter, Agents active, with their pages in `main` and a tab strip stand-in. */
-function renderPages() {
+/**
+ * Tabs on Agents and Sorter, Agents active, with their pages in `main` and a tab strip stand-in.
+ * `pages` can change how a page draws and which items are gone.
+ */
+function renderPages(pages: Partial<Pick<TabPagesProps, "renderPage" | "goneItem">> = {}) {
   const tabs = new TabSet();
   tabs.openHere(agents);
   tabs.openInNewTab(sorter);
@@ -41,7 +47,7 @@ function renderPages() {
         </button>
       </div>
       <main>
-        <TabPages tabs={tabs} renderPage={(location) => <Page location={location} />} />
+        <TabPages tabs={tabs} renderPage={(location) => <Page location={location} />} {...pages} />
       </main>
     </>,
   );
@@ -146,3 +152,57 @@ verifies("shell.tab-pages", () => {
     expect(document.activeElement?.textContent).toBe("Sorter");
   });
 });
+
+verifies("shell.page-stopped", () => {
+  it("stops only the page that throws, and draws the next place in its tab afresh", () => {
+    // React logs every error a boundary catches; here the failure is the point.
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { tabs, first, second, page } = renderPages({
+      renderPage: (location) => <BrokenOn location={location} broken={sorter.key} />,
+    });
+
+    act(() => tabs.activate(second));
+    expect(page(second)?.querySelector("h2")?.textContent).toBe("This page stopped working");
+    expect(page(second)?.textContent).toContain("Halonic ran into a problem showing Sorter.");
+
+    act(() => tabs.activate(first));
+    expect(page(first)?.querySelector("h1")?.textContent).toBe("Agents");
+
+    act(() => tabs.activate(second));
+    act(() => tabs.openHere({ key: "routines", title: "Routines" }));
+    expect(page(second)?.querySelector("h1")?.textContent).toBe("Routines");
+  });
+});
+
+verifies("shell.item-gone", () => {
+  it("shows that a tab's item is gone, and Go to opens the place that lists its kind", () => {
+    const { tabs, second, page } = renderPages({
+      goneItem: (location) =>
+        location.key === sorter.key ? { kindName: "agent", place: agents } : undefined,
+    });
+
+    act(() => tabs.activate(second));
+    const title = page(second)?.querySelector("h2");
+    expect(title?.textContent).toBe("This agent isn't in this workspace any more.");
+    expect(document.activeElement).toBe(title);
+
+    const goTo = page(second)?.querySelector("button") as HTMLButtonElement;
+    expect(goTo.textContent).toBe("Go to Agents");
+    act(() => goTo.click());
+    expect(currentLocation(tabs.active).key).toBe(agents.key);
+  });
+});
+
+/** A {@link Page} that throws while it draws when it shows the place `broken`. */
+function BrokenOn({
+  location,
+  broken,
+}: {
+  readonly location: TabLocation;
+  readonly broken: string;
+}) {
+  if (location.key === broken) {
+    throw new TypeError("steps is undefined");
+  }
+  return <Page location={location} />;
+}
