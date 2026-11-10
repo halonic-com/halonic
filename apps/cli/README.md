@@ -45,6 +45,12 @@ never change meaning once released. `halonic --help` lists them too.
    before every typecheck, test and build. No shared file changes, and the help is made from each
    command's `usage`, `summary` and `options`.
 
+A command with subcommands, such as `runs show` and `runs send`, keeps them in its own folder and
+lists them in its `subcommands` field, each a `CliCommand` named by its own word. The CLI hands
+`halonic runs show <run-id>` to `show`, lists the subcommands in `halonic runs --help` and gives
+the usage error for a word that isn't one of them, so the command never switches on its first
+argument. A command that only hands off, such as `plugin`, leaves out `run`.
+
 A command prints through the `CliIo` it is given, never `console`, and throws `UsageError` for a
 wrong command line. It never prints an error itself: it throws a `KindedError` (with a `fix` when
 there is a next step to suggest), and `printError` prints it and ends the command with the exit code

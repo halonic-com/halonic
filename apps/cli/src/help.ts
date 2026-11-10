@@ -1,4 +1,4 @@
-import type { CliCommand, CliOption } from "./command.ts";
+import type { CliCommand, CliOption, CommandPath } from "./command.ts";
 import { exitCodeMeanings, stoppedMeaning } from "./exit-code.ts";
 import { globalOptionFlags } from "./global-options.ts";
 
@@ -10,14 +10,12 @@ const helpWidth = 80;
  * summary, the options every command takes, then the exit codes.
  */
 export function overallHelp(commands: readonly CliCommand[]): string[] {
-  const width = Math.max(0, ...commands.map((command) => command.name.length));
   return [
     "Run and check Halonic workspaces from the command line.",
     "",
     "Usage: halonic <command> [arguments]",
     "",
-    "Commands:",
-    ...commands.map((command) => `  ${command.name.padEnd(width)}  ${command.summary}`),
+    ...commandList(commands),
     "",
     `Options for every command: ${globalOptionFlags.join(", ")}`,
     "",
@@ -27,9 +25,17 @@ export function overallHelp(commands: readonly CliCommand[]): string[] {
   ];
 }
 
-/** The help for one command: its usage line, its summary and its options. */
-export function commandHelp(command: CliCommand): string[] {
-  const lines = [usageLine(command), "", command.summary];
+/**
+ * The help for one command: its usage line, its summary, its subcommands and
+ * its options. A command with subcommands ends with where to find theirs.
+ */
+export function commandHelp(path: CommandPath): string[] {
+  const command = lastOf(path);
+  const lines = [usageLine(path), "", command.summary];
+  const subcommands = command.subcommands ?? [];
+  if (subcommands.length > 0) {
+    lines.push("", ...commandList(subcommands));
+  }
   const options = Object.entries(command.options).map(([name, option]) => [
     optionLabel(name, option),
     option.description,
@@ -42,12 +48,38 @@ export function commandHelp(command: CliCommand): string[] {
       ...options.map(([label = "", text]) => `  ${label.padEnd(width)}  ${text}`),
     );
   }
+  if (subcommands.length > 0) {
+    lines.push(
+      "",
+      `Run halonic ${commandWords(path)} <command> --help for a command's arguments and options.`,
+    );
+  }
   return lines;
 }
 
-/** `Usage: halonic <name> <arguments>`, the line printed with a usage error. */
-export function usageLine(command: CliCommand): string {
-  return `Usage: halonic ${command.name}${command.usage === "" ? "" : ` ${command.usage}`}`;
+/** `Usage: halonic <words> <arguments>`, the line printed with a usage error. */
+export function usageLine(path: CommandPath): string {
+  const { usage } = lastOf(path);
+  return `Usage: halonic ${commandWords(path)}${usage === "" ? "" : ` ${usage}`}`;
+}
+
+/** The words that name a command after `halonic`, such as `runs show`. */
+export function commandWords(path: CommandPath): string {
+  return path.map((command) => command.name).join(" ");
+}
+
+/** The command that runs: the last word of the path. */
+export function lastOf(path: CommandPath): CliCommand {
+  return path[path.length - 1] ?? path[0];
+}
+
+/** "Commands:" and one line per command with its summary, the names in one column. */
+function commandList(commands: readonly CliCommand[]): string[] {
+  const width = Math.max(0, ...commands.map((command) => command.name.length));
+  return [
+    "Commands:",
+    ...commands.map((command) => `  ${command.name.padEnd(width)}  ${command.summary}`),
+  ];
 }
 
 /**
