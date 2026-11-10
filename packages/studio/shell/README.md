@@ -22,6 +22,7 @@ look up services its feature lists in `needs`.
 | `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry`  |
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
 | `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
+| `ShellFrame`                    | the window's frame: layers, live regions, Esc              | `shell.frame`             |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
@@ -51,6 +52,25 @@ its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T)
 last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab.
 
 The strip reads `tabs.state` and `subscribe`s; every change makes a new state.
+
+## The frame
+
+`ShellFrame` is the Studio window, in React. On the desktop it draws the three layers of design
+direction 2: the 40px title bar on the halo, the panel with the toolbar as its first row and the
+sidebar beside the page under it, and the 24px status bar. Below `PHONE_MAX_WIDTH` it shows the
+page only (the phone's own bars come later) and switches as soon as the window crosses that width.
+The parts inside read the layout with the kit's `usePresentation()`.
+
+The frame also does the window-wide wiring once: it sets `<html lang>` (the Tabs hyphenate), mounts
+the announcer's two live regions, routes every kit Dialog's regions to the announcer, tells the
+announcer when the window has focus, and passes Esc to the close stack. An Esc inside an open
+`<dialog>` is left to the dialog, which cancels itself, so one press never closes two layers.
+
+```tsx
+<ShellFrame announcer={shell.announcer} closeStack={shell.closeStack} language="en">
+  <HomePage />
+</ShellFrame>;
+```
 
 ## Announcements
 

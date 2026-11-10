@@ -1292,6 +1292,12 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../kit
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*
@@ -1302,6 +1308,18 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.3
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

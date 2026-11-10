@@ -1,5 +1,14 @@
 {
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "//": "Tests run in Node, the frame's with jsdom, so they need Node's types and the DOM's, and JSX.",
+  "compilerOptions": {
+    "lib": [
+      "es2024",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx"
+  },
   "include": [
     "src",
     "examples",
