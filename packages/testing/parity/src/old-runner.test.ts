@@ -108,8 +108,8 @@ verifies("parity.runner-traces-old-loader", () => {
       { id: "flat", files: { "workspace.yaml": "id: acme\n" } },
     ]);
     expect(result?.validate.exitCode).toBe(1);
-    expect(result?.validate.stdout).toMatch(/^checked \/.*\/flat\n$/);
-    expect(result?.validate.stderr).toBe("1 problem\n");
+    expect(result?.validate.stdout).toMatch(/^checked .*flat\r?\n$/);
+    expect(result?.validate.stderr).toMatch(/^1 problem\r?\n$/);
   });
 
   it("maps grouped and legacy-grouped files to the loader's flat paths", async () => {

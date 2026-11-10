@@ -1,6 +1,5 @@
 import { cpSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { CliCall } from "./cli-calls.ts";
 import { fixedTestTime, oldEnvironment, runOldTsx } from "./old-repo.ts";
 import type { OldCliRun } from "./recording.ts";
@@ -28,7 +27,8 @@ function runOnce(oldRoot: string, home: string, dir: string, call: CliCall): Old
   cpSync(dir, copy, { recursive: true });
   const root = realpathSync(copy);
   try {
-    const preload = fileURLToPath(new URL("./old-cli-preload.ts", import.meta.url));
+    // A file URL, because Node on Windows takes no drive path after --import.
+    const preload = new URL("./old-cli-preload.ts", import.meta.url).href;
     const args = call.args.map((arg) => (arg === "<workspace>" ? root : arg));
     const result = runOldTsx(oldRoot, ["--import", preload, "apps/cli/src/main.ts", ...args], {
       cwd: oldRoot,

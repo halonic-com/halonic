@@ -245,7 +245,7 @@ const tsxBatch = [
   'if "%~1"=="--import" goto run',
   'if not "%~1"=="apps/cli/src/main.ts" goto run',
   "echo checked %~3",
-  "echo 1 problem 1>&2",
+  ">&2 echo 1 problem",
   "exit /b 1",
   ":run",
   "node %*",

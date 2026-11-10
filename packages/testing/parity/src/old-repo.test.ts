@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
+import { basename } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
-import { cloneProblems, oldEnvironment } from "./old-repo.ts";
+import { cloneProblems, oldEnvironment, oldTsx } from "./old-repo.ts";
 import { TestFolders } from "./test-folders.ts";
 
 // The tests start git and Node processes, which can take longer than 5 s on a busy machine.
@@ -31,7 +32,7 @@ function clone(withTsx: boolean): { folder: string; head: string } {
   git(folder, "init", "-q");
   folders.write(folder, { "a.txt": "a\n", ".gitignore": "node_modules\n" });
   if (withTsx) {
-    folders.write(folder, { "node_modules/.bin/tsx": "" });
+    folders.write(folder, { [`node_modules/.bin/${basename(oldTsx(folder))}`]: "" });
   }
   git(folder, "add", ".");
   git(folder, "commit", "-q", "-m", "one");
