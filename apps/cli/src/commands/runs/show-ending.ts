@@ -153,7 +153,12 @@ function waitingEnding(
           stepName(summary.state, definitions.workflow?.states[summary.state]?.description),
         )
       : runMessages.waitingForYou(description);
-  const answer = runMessages.answerHere(shortRunId(summary.id), summary.accepts, dir);
+  const answer = runMessages.answerHere(
+    shortRunId(summary.id),
+    summary.accepts,
+    dir,
+    summary.answerLabels,
+  );
   return [[], phrase`${markPart("needsYou")} ${waiting.phrase}`, phrase`  ${answer.phrase}`];
 }
 

@@ -173,6 +173,30 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("writes the author's label after each answer that has one", async () => {
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "review" }],
+          [
+            today("10:41:00"),
+            {
+              type: "run.waiting",
+              state: "review",
+              events: ["approve", "reject"],
+              labels: { approve: "Send reply", reject: "Discard" },
+            },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.at(-1)).toBe(
+        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send reply)  (or reject (Discard))",
+      );
+    });
+
     it("ends a running run with the step it is in", async () => {
       await storeRuns(triaged("run_mfx3k2a1_0a0b0d", []));
 

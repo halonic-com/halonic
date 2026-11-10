@@ -68,6 +68,18 @@ describe("run's sentences", () => {
     );
   });
 
+  it("writes the author's label after an event that has one, and keeps the event to type", () => {
+    const labels = { approve: "Send reply", hold: "Ask me later" };
+    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (Send reply)  (or reject)",
+    );
+    expect(
+      words(runMessages.answerHere("01jd8q", ["reject", "approve", "hold"], "./acme", labels)),
+    ).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01jd8q reject  (or approve (Send reply) or hold (Ask me later))",
+    );
+  });
+
   it("leaves out what doesn't apply in the receipt, and says sent nothing only without a tool call", () => {
     expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 1 }))).toBe(
       "Sent nothing · asked you once",
