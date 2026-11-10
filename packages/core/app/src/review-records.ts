@@ -1,6 +1,7 @@
 // Keeps the review records in the workspace's own `DefinitionStore`, so they
 // work the same in a folder, in memory and in the desktop app's store.
 
+import { isReservedPath } from "@halonicjs/format";
 import type { DefinitionStore } from "@halonicjs/ports";
 import {
   parseReviewRecord,
@@ -80,11 +81,26 @@ export class ReviewRecords {
    * left alone.
    */
   async all(): Promise<ReviewRecordList> {
-    const records: ReviewRecord[] = [];
-    const dropped: DroppedReviewRecord[] = [];
+    const paths: string[] = [];
     for (const recordPath of await this.store.list(reviewRecordFolder)) {
       const path = reviewedPath(recordPath);
-      if (path === null) {
+      if (path !== null) {
+        paths.push(path);
+      }
+    }
+    return this.some(paths);
+  }
+
+  /**
+   * The records of these files, sorted by path, as {@link all} gives them.
+   * A file without a record, or inside a reserved `.halonic/` folder, is
+   * left out.
+   */
+  async some(paths: readonly string[]): Promise<ReviewRecordList> {
+    const records: ReviewRecord[] = [];
+    const dropped: DroppedReviewRecord[] = [];
+    for (const path of [...new Set(paths)].sort()) {
+      if (isReservedPath(path)) {
         continue;
       }
       const read = await this.read(path);

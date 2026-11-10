@@ -107,6 +107,21 @@ verifies("app.review-record", () => {
       expect(store.files.has(recordFile)).toBe(false);
       expect(store.files.has(".halonic/review/files/README")).toBe(true);
     });
+
+    it("is removed too when only some files are read, which skips files without a record", async () => {
+      const store = new TestDefinitionStore({ [recordFile]: '{"format":1,' });
+      const listed = await new ReviewRecords(store).some([
+        "agents/none.agent.yaml",
+        clerk.path,
+        clerk.path,
+        ".halonic/review/files/x.json",
+      ]);
+      expect(listed).toEqual({
+        records: [],
+        dropped: [{ path: clerk.path, reason: "it isn't valid JSON" }],
+      });
+      expect(store.files.has(recordFile)).toBe(false);
+    });
   });
 
   describe("record paths", () => {
