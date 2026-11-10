@@ -65,7 +65,8 @@ export class RunFollowStopped extends Error {
   readonly events: readonly RunEvent[];
   /**
    * Whether the executor cancelled the run. False when it has no `cancel`,
-   * so the run goes on, or when the cancel failed.
+   * so the run goes on, when the cancel failed, or when the run had already
+   * ended by the time the cancel came.
    */
   readonly cancelled: boolean;
   /** Why the cancel failed, when it did; `undefined` otherwise. */
@@ -278,8 +279,10 @@ class RunFollow {
   async #cancel(): Promise<CancelOutcome> {
     if (this.#executor.cancel === undefined) return { cancelled: false };
     try {
-      await this.#executor.cancel(this.#runId);
-      return { cancelled: true };
+      // A run that ended just before the cancel is left as it is, and its
+      // summary says so: only a run that failed as cancelled was cancelled.
+      const summary = await this.#executor.cancel(this.#runId);
+      return { cancelled: summary.status === "failed" && summary.reason === "cancelled" };
     } catch (error) {
       return { cancelled: false, error };
     }

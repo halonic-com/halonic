@@ -321,6 +321,23 @@ verifies("app.run-cancel-on-abort", () => {
     expect((error as RunFollowStopped).cancelError).toBe(refused);
   });
 
+  it("says it wasn't cancelled when the run had already ended by the cancel", async () => {
+    const executor = new StreamingExecutor();
+    const runs = new WorkflowRuns(executor);
+    const { id } = await executor.start({ hubId: "support", workflowId: "x", input: {} });
+    executor.append(id, completed);
+
+    const error: unknown = await runs
+      .follow(id, { signal: AbortSignal.abort() })
+      .catch((thrown: unknown) => thrown);
+
+    expect(executor.cancels).toEqual([id]);
+    expect(error).toBeInstanceOf(RunFollowStopped);
+    expect((error as RunFollowStopped).cancelled).toBe(false);
+    expect((error as RunFollowStopped).cancelError).toBeUndefined();
+    expect(executor.summary(id).status).toBe("completed");
+  });
+
   it("only stops following when the executor can't cancel", async () => {
     const executor = new StreamingExecutor();
     const runs = new WorkflowRuns({

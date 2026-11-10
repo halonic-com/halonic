@@ -60,9 +60,13 @@ export class StreamingExecutor implements Pick<RunExecutor, "start" | "subscribe
     };
   }
 
-  /** As the port's `cancel`, for the tests of an executor that has one: it records the run's end. */
+  /**
+   * As the port's `cancel`, for the tests of an executor that has one: it
+   * records the run's end, and leaves a run that has already ended as it is.
+   */
   readonly cancel = async (runId: string): Promise<RunSummary> => {
     this.cancels.push(runId);
+    if (this.summary(runId).endedAt !== null) return this.summary(runId);
     this.append(runId, {
       type: "run.failed",
       state: "review",
