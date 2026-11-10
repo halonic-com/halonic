@@ -253,6 +253,35 @@ verifies("kit.colour-popover", () => {
     expect(isOpen(popover)).toBe(false);
   });
 
+  it("stays open on a touch tap on its button, where the release comes before focus moves", async () => {
+    const { opener, popover } = await openField();
+    pressOn(opener);
+    act(() => {
+      opener.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    });
+    act(() => {
+      opener.focus();
+    });
+    expect(isOpen(popover)).toBe(true);
+    await click(opener);
+    expect(isOpen(popover)).toBe(false);
+  });
+
+  it("closes on Shift+Tab onto its button after a press dragged off it", async () => {
+    const { opener, popover, hex } = await openField();
+    act(() => {
+      hex.focus();
+    });
+    pressOn(opener);
+    act(() => {
+      hex.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true }),
+      );
+      opener.focus();
+    });
+    expect(isOpen(popover)).toBe(false);
+  });
+
   it("takes two presets of the same colour, keyed by place", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { container } = render(

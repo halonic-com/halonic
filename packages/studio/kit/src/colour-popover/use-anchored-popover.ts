@@ -58,18 +58,23 @@ export function useAnchoredPopover(
         latestClose.current();
       }
     };
+    // Not on `pointerup`: on a touch tap it comes before the compatibility `mousedown` that moves
+    // focus. A key press clears it too, so a press dragged off the opener doesn't let a later
+    // Shift+Tab onto it through.
     const release = () => {
       pressingOpener.current = false;
     };
     document.addEventListener("pointerdown", press, true);
-    document.addEventListener("pointerup", release, true);
+    document.addEventListener("click", release, true);
     document.addEventListener("pointercancel", release, true);
+    document.addEventListener("keydown", release, true);
     addEventListener("resize", place);
     addEventListener("scroll", place, { capture: true, passive: true });
     return () => {
       document.removeEventListener("pointerdown", press, true);
-      document.removeEventListener("pointerup", release, true);
+      document.removeEventListener("click", release, true);
       document.removeEventListener("pointercancel", release, true);
+      document.removeEventListener("keydown", release, true);
       pressingOpener.current = false;
       removeEventListener("resize", place);
       removeEventListener("scroll", place, { capture: true });

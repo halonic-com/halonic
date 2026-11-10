@@ -22,7 +22,9 @@ Nothing else in the requirement changes.
 - The opener was exempt so that a press on it wouldn't close the popover and let the click open
   it again. That exemption also covered Shift+Tab, so the popover stayed open with focus on the
   button (Liam). The anchoring hook already sees the press, so the opener is now exempt only
-  while a press on it is under way.
+  while a press on it is under way: from its `pointerdown` to the next `click`, `pointercancel`
+  or key press. Not until `pointerup`, because on a touch tap that comes before focus moves
+  (Liam).
 - In a dark scheme `surface` and `surface-raised` differ, so the ring showed a band of another
   colour inside the popover (Liam, Noah). The ring's accent still grows to 3px with more
   contrast, as `--focus-ring` does.
@@ -30,8 +32,8 @@ Nothing else in the requirement changes.
   They're keyed by place now (Liam).
 
 No test was weakened or removed: the theme build test now checks the `surface-raised` ring and
-its more-contrast width, and new tests cover Shift+Tab onto the button, a press on it, and a
-repeated preset.
+its more-contrast width, and new tests cover Shift+Tab onto the button, a mouse press and a touch tap on it, a press
+dragged off it, and a repeated preset.
 
 ## Covers
 
