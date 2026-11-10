@@ -52,6 +52,8 @@ Device-wide settings such as the theme live outside any scope.
 | `checkPackageRunnerLaunch`  | refuses an inexact pin, a pin on a shell or other non-runner, and a pinned launch whose args or `env` could change what runs   | `app.package-runner-launch`      |
 | `revertParts`               | sets some parts of an item's YAML back to a reference (latest version, assistant's baseline or run's base), keeping the rest   | `app.revert-parts`               |
 | `describeWorkflowChange`    | one line per changed step or workflow field, each with the parts to undo it and the lines that can't be undone before it       | `app.change-line-parts`          |
+| `describeAgentChange`       | one line per changed agent field or method, each with its part; instructions, access and sandbox marked important              | `app.change-line-important`      |
+| `describeRoutineChange`     | one line per changed routine field, each with its part; what it runs marked important                                          | `app.change-line-important`      |
 
 ## Example
 

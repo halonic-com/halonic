@@ -24,6 +24,8 @@ export {
   type WaitingTool,
 } from "./approve-listed-tools.ts";
 export { joinLinesThatNeedEachOther } from "./changes/change-needs.ts";
+export { describeAgentChange } from "./changes/describe-agent.ts";
+export { describeRoutineChange } from "./changes/describe-routine.ts";
 export { describeWorkflowChange } from "./changes/describe-workflow.ts";
 export {
   type ChangeLine,

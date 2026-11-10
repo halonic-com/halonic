@@ -1,6 +1,7 @@
 import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { deepEqual } from "@halonicjs/std";
 import { joinLinesThatNeedEachOther } from "./change-needs.ts";
+import { keysInOrder, nameFromId, wholeItemLine } from "./describe-fields.ts";
 import type { ChangeLine, ItemPath } from "./revert-parts.ts";
 
 /**
@@ -108,13 +109,6 @@ export function describeWorkflowChange(
   return joinLinesThatNeedEachOther(withNeeds);
 }
 
-function wholeItemLine(before: Workflow | undefined, after: Workflow | undefined): ChangeLine[] {
-  if (before === undefined && after === undefined) {
-    return [];
-  }
-  return [{ id: "item", sentence: before === undefined ? "New" : "Deleted", parts: [] }];
-}
-
 function fieldLine(
   field: string,
   label: string,
@@ -137,23 +131,12 @@ function fieldSentence(field: string, label: string, was: unknown, is: unknown):
     return `${label} removed`;
   }
   if (field === "initial") {
-    return `${label}: ${stepName(String(was))} → ${stepName(String(is))}`;
+    return `${label}: ${nameFromId(String(was))} → ${nameFromId(String(is))}`;
   }
   if (field === "name" || field === "version" || field === "id") {
     return `${label}: ${String(was)} → ${String(is)}`;
   }
   return `${label} edited`;
-}
-
-/** The keys of both versions: the labelled ones in their listed order, then any others. */
-function keysInOrder(labels: Readonly<Record<string, string>>, ...versions: object[]): string[] {
-  const keys = new Set(Object.keys(labels));
-  for (const version of versions) {
-    for (const key of Object.keys(version)) {
-      keys.add(key);
-    }
-  }
-  return [...keys];
 }
 
 /** Every step id, in the after version's order, with removed steps where they were. */
@@ -179,7 +162,7 @@ function stepLine(stepId: string, before: Workflow, after: Workflow): ChangeLine
     parts.push(["layout", stepId]);
   }
   const id = `step:${stepId}`;
-  const name = stepName(stepId);
+  const name = nameFromId(stepId);
   if (was === undefined) {
     return { id, sentence: `Step added: ${name}`, parts };
   }
@@ -312,10 +295,4 @@ function stringsIn(value: unknown): string[] {
     return Object.values(value).flatMap(stringsIn);
   }
   return [];
-}
-
-/** A step's id as a name: "page-oncall" → "Page oncall". */
-function stepName(stepId: string): string {
-  const words = stepId.replace(/[-_]+/g, " ").trim();
-  return words.charAt(0).toUpperCase() + words.slice(1);
 }
