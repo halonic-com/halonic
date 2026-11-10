@@ -4,6 +4,7 @@ import { act, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { deleteDialog, fakeDialogPage, restoreDialogPage } from "../test/dialogs.tsx";
 import { render, unmountAll } from "../test/render.tsx";
+import { Dialog } from "./dialog.tsx";
 import { type ModalLiveRegions, ModalRegionsProvider } from "./modal-regions.tsx";
 
 beforeEach(() => {
@@ -35,8 +36,8 @@ function withAnnouncer(push: (regions: ModalLiveRegions) => () => void, children
 
 function regionsOf(dialog: Element | null) {
   return {
-    polite: dialog?.querySelector('[aria-live="polite"]') as HTMLElement,
-    assertive: dialog?.querySelector('[aria-live="assertive"]') as HTMLElement,
+    polite: dialog?.querySelector(':scope > [aria-live="polite"]') as HTMLElement,
+    assertive: dialog?.querySelector(':scope > [aria-live="assertive"]') as HTMLElement,
   };
 }
 
@@ -109,6 +110,41 @@ verifies("kit.dialog-live-regions", () => {
     rerender(withAnnouncer(announcer.push, null));
     act(() => vi.advanceTimersToNextFrame());
     expect(polite.textContent).toBe("");
+  });
+
+  it("keeps a text waiting for its frame when the shell re-renders with a new push", () => {
+    const announcer = fakeAnnouncer();
+    const inline = () => (regions: ModalLiveRegions) => announcer.push(regions);
+    const { container, rerender } = render(withAnnouncer(inline(), deleteDialog()));
+    const { polite } = regionsOf(container.querySelector("dialog"));
+    act(() => announcer.stack[0]?.polite.say("Removed trust from inbox-helper"));
+    rerender(withAnnouncer(inline(), deleteDialog()));
+    act(() => vi.advanceTimersToNextFrame());
+    expect(announcer.stack).toHaveLength(1);
+    expect(polite.textContent).toBe("Removed trust from inbox-helper");
+  });
+
+  it("keeps a confirmation opened inside Settings on top when the shell re-renders", () => {
+    const announcer = fakeAnnouncer();
+    const inline = () => (regions: ModalLiveRegions) => announcer.push(regions);
+    const settings = (body: ReactNode) => (
+      <Dialog
+        title="Settings"
+        confirm={{ label: "Save" }}
+        onConfirm={() => undefined}
+        onCancel={() => undefined}
+      >
+        {body}
+      </Dialog>
+    );
+    const { container, rerender } = render(withAnnouncer(inline(), settings(null)));
+    rerender(withAnnouncer(inline(), settings(deleteDialog())));
+    rerender(withAnnouncer(inline(), settings(deleteDialog())));
+    const [outer, inner] = container.querySelectorAll("dialog");
+    act(() => announcer.stack.at(-1)?.polite.say("Saved"));
+    act(() => vi.advanceTimersToNextFrame());
+    expect(regionsOf(inner ?? null).polite.textContent).toBe("Saved");
+    expect(regionsOf(outer ?? null).polite.textContent).toBe("");
   });
 
   it("works without an announcer, its regions staying empty", () => {

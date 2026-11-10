@@ -4,7 +4,9 @@ import {
   type RefObject,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 
 /** One `aria-live` region that a modal hands to the shell's announcer. */
@@ -46,7 +48,17 @@ export interface ModalRegionsProviderProps {
  * </ModalRegionsProvider>
  */
 export function ModalRegionsProvider({ pushModalRegions, children }: ModalRegionsProviderProps) {
-  return <ModalRegionsContext value={pushModalRegions}>{children}</ModalRegionsContext>;
+  // A new `pushModalRegions` on every render (an inline arrow) must not re-push open Dialogs:
+  // that would drop a text waiting for its frame and re-push children before their parents.
+  const latest = useRef(pushModalRegions);
+  useLayoutEffect(() => {
+    latest.current = pushModalRegions;
+  });
+  const [stablePush] = useState(() => {
+    const push: PushModalRegions = (regions) => latest.current(regions);
+    return push;
+  });
+  return <ModalRegionsContext value={stablePush}>{children}</ModalRegionsContext>;
 }
 
 /**
