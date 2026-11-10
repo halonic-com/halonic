@@ -64,11 +64,12 @@ impl Sha256 {
     pub fn update(mut self, bytes: &[u8]) -> Self {
         self.total_bytes = self.total_bytes.wrapping_add(bytes.len() as u64);
         self.pending.extend_from_slice(bytes);
-        let full_blocks = self.pending.len() / BLOCK_BYTES * BLOCK_BYTES;
-        for block in self.pending[..full_blocks].chunks_exact(BLOCK_BYTES) {
+        let (blocks, rest) = self.pending.as_chunks::<BLOCK_BYTES>();
+        for block in blocks {
             compress(&mut self.state, block);
         }
-        self.pending.drain(..full_blocks);
+        // What doesn't fill a block waits for the next bytes.
+        self.pending = rest.to_vec();
         self
     }
 
@@ -88,13 +89,15 @@ impl Sha256 {
         let mut state = self.state;
         let mut tail = self.pending;
         tail.extend_from_slice(&padding);
-        for block in tail.chunks_exact(BLOCK_BYTES) {
+        // The padding makes the tail whole blocks, so nothing is left over.
+        let (blocks, _) = tail.as_chunks::<BLOCK_BYTES>();
+        for block in blocks {
             compress(&mut state, block);
         }
 
         let mut digest = [0_u8; 32];
-        for (bytes, word) in digest.chunks_exact_mut(4).zip(state) {
-            bytes.copy_from_slice(&word.to_be_bytes());
+        for (bytes, word) in digest.as_chunks_mut::<4>().0.iter_mut().zip(state) {
+            *bytes = word.to_be_bytes();
         }
         Digest(digest)
     }
@@ -114,12 +117,10 @@ pub fn sha256(bytes: &[u8]) -> Digest {
 }
 
 /// Mixes one 64-byte block into the state (FIPS 180-4 section 6.2.2).
-fn compress(state: &mut [u32; 8], block: &[u8]) {
+fn compress(state: &mut [u32; 8], block: &[u8; BLOCK_BYTES]) {
     // The block's 16 words, then 48 more worked out from the earlier ones.
-    let mut schedule: Vec<u32> = block
-        .chunks_exact(4)
-        .map(|bytes| u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-        .collect();
+    let (words, _) = block.as_chunks::<4>();
+    let mut schedule: Vec<u32> = words.iter().copied().map(u32::from_be_bytes).collect();
     while schedule.len() < 64 {
         let round = schedule.len();
         let earlier = schedule[round - 15];
