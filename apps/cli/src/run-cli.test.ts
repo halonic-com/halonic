@@ -287,6 +287,14 @@ verifies("cli.help", () => {
     await runCli(["gerte"], io, commands);
     expect(io.stderr[0]).toBe('✕ There\'s no command "gerte". Did you mean greet?');
   });
+
+  it("keeps every help line within 80 columns", async () => {
+    const io = captureIo("/work");
+    await runCli(["--help"], io, commands);
+    for (const line of io.stdout) {
+      expect(line.length).toBeLessThanOrEqual(80);
+    }
+  });
 });
 
 verifies("cli.help-exit-codes", () => {
