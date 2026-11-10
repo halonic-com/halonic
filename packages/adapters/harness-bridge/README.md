@@ -2,11 +2,12 @@
 
 The Halonic bridge for harness runs. Each run gets its own server on a free
 port of `127.0.0.1`, which answers only requests that carry the run's token in
-the `x-halonic-run-token` header. It passes the program's Anthropic model
-requests (`POST /v1/messages`) on to `https://api.anthropic.com`, so keys,
-integrations and approvals stay outside the sandbox. Serving Halonic's tools
-over MCP and an OpenAI route come with later steps of the build plan; the
-bridge doesn't serve them yet.
+the `x-halonic-run-token` header. It passes the program's model
+requests on to the provider's one fixed host: Anthropic's (`POST
+/v1/messages`) to `https://api.anthropic.com` and OpenAI's (`POST
+/v1/responses`) to `https://api.openai.com`, so keys, integrations and
+approvals stay outside the sandbox. Serving Halonic's tools over MCP comes
+with a later step of the build plan; the bridge doesn't serve it yet.
 
 - **Layer:** adapters
 - **Owner:** owen
@@ -44,12 +45,18 @@ try {
   tools and `mcp_servers` from the request. A content block with a URL
   `source` is refused with kind `denied`. Error messages name a key's secret,
   never its value.
+- **Subscription sign-in.** For an agent that signs in with a subscription,
+  the program's own `authorization` goes on to the provider unchanged, in
+  place of a key. The bridge adds nothing, never logs or keeps the sign-in,
+  and records the call's tokens at a cost of 0, paid by the subscription.
+  The run token is read only from `x-halonic-run-token`, never from
+  `authorization`.
 - **Closing.** `close()` refuses new requests, aborts the ones in flight and
   resolves once they have ended or the close time limit has passed. Closing
   twice is safe.
 
-The rules are in `requirements/`: `server.md`, `pass-through.md` and
-`anthropic.md`.
+The rules are in `requirements/`: `server.md`, `pass-through.md`,
+`anthropic.md`, `openai.md`, `sign-in.md` and `spend.md`.
 
 ## Options
 

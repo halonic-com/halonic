@@ -2,7 +2,7 @@ import type { Secrets } from "@halonicjs/ports";
 import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
-import { providerKey } from "./provider-key.ts";
+import { providerAuthorization } from "./provider-key.ts";
 import { type ProviderReach, parseModelRequest, withoutProviderReach } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
@@ -41,8 +41,10 @@ export interface AnthropicRouteDependencies {
 /**
  * `POST /v1/messages`, as Claude Code sends it, passed on to
  * `api.anthropic.com` with the agent's key in place of the program's
- * (requirement `harness-bridge.anthropic`). Streaming replies stream through
- * unchanged. Anthropic's web tools and MCP servers are removed first; image
+ * (requirement `harness-bridge.anthropic`), or with the program's own
+ * sign-in for an agent on a subscription (requirement
+ * `harness-bridge.sign-in`). Streaming replies stream through unchanged.
+ * Anthropic's web tools and MCP servers are removed first; image
  * and PDF blocks go on as they are, and one with a URL source is refused.
  * Each call is recorded with its usage and cost (requirement
  * `harness-bridge.spend`).
@@ -52,7 +54,12 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
     method: "POST",
     path: "/v1/messages",
     handle: async (context) => {
-      const key = await providerKey(context.run, dependencies.secrets, "anthropic");
+      const authorization = await providerAuthorization(
+        context,
+        dependencies.secrets,
+        "anthropic",
+        (key) => ({ "x-api-key": key }),
+      );
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
@@ -68,7 +75,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
           {
             provider: "Anthropic",
             url: new URL(`/v1/messages${search}`, anthropicOrigin),
-            headers: { ...headers, "x-api-key": key },
+            headers: { ...headers, ...authorization },
             body,
             replyHeader: isForwardedReplyHeader,
             watch: reply,
