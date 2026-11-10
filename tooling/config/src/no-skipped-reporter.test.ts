@@ -3,11 +3,20 @@ import type { TestModule } from "vitest/node";
 import { NoSkippedTestsReporter, skippedTestNames } from "./no-skipped-reporter.ts";
 
 /** A test file as the run reports it at the end, with each test's name and state. */
-function testFile(moduleId: string, tests: Record<string, string>): TestModule {
+function testFile(
+  moduleId: string,
+  tests: Record<string, string>,
+  todos: ReadonlyArray<string> = [],
+): TestModule {
   const children = {
     *allTests() {
       for (const [fullName, state] of Object.entries(tests)) {
-        yield { fullName, name: fullName.split(" > ").pop(), result: () => ({ state }) };
+        yield {
+          fullName,
+          name: fullName.split(" > ").pop(),
+          options: { mode: todos.includes(fullName) ? "todo" : "run" },
+          result: () => ({ state }),
+        };
       }
     },
   };
@@ -63,12 +72,12 @@ describe("NoSkippedTestsReporter", () => {
   });
 
   describe("platform skips", () => {
-    function run(tests: Record<string, string>) {
+    function run(tests: Record<string, string>, todos: ReadonlyArray<string> = []) {
       vi.restoreAllMocks();
       const log = vi.spyOn(console, "log").mockImplementation(() => {});
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
       process.exitCode = undefined;
-      new NoSkippedTestsReporter().onTestRunEnd([testFile("/pkg/src/a.test.ts", tests)]);
+      new NoSkippedTestsReporter().onTestRunEnd([testFile("/pkg/src/a.test.ts", tests, todos)]);
       return { log, error };
     }
 
@@ -97,6 +106,17 @@ describe("NoSkippedTestsReporter", () => {
       const { log, error } = run({ "[platform:beos] no such thing": "skipped" });
       expect(process.exitCode).toBe(1);
       expect(error).toHaveBeenCalledOnce();
+      expect(log).not.toHaveBeenCalled();
+    });
+
+    it("fails a todo named like a platform skip", () => {
+      const name = "[platform:linux] later";
+      const { log, error } = run({ [name]: "skipped" }, [name]);
+      expect(process.exitCode).toBe(1);
+      expect(error.mock.calls[0]?.[0]).toBe(
+        "1 test(s) were skipped or are todo. Run them or delete them:\n" +
+          "  - /pkg/src/a.test.ts: [platform:linux] later",
+      );
       expect(log).not.toHaveBeenCalled();
     });
 

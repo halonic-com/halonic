@@ -37,7 +37,7 @@ export interface SkippedTest {
  * `ctx.skip()` and a skip hidden behind a `biome-ignore`. Vitest reports every
  * spelling as `skipped`, so this catches what the lint rule can't. A skip is
  * a `platform` skip when the test's own name starts with `[platform:<os>] `
- * and a reason.
+ * and a reason. A todo is never a platform skip, whatever its name.
  */
 export function skippedTests(modules: ReadonlyArray<TestModule>): SkippedTest[] {
   return modules.flatMap((module) =>
@@ -45,7 +45,7 @@ export function skippedTests(modules: ReadonlyArray<TestModule>): SkippedTest[] 
       .filter((test) => test.result().state === "skipped")
       .map((test) => ({
         name: `${module.moduleId}: ${test.fullName}`,
-        platform: isPlatformSkip(test.name),
+        platform: test.options.mode !== "todo" && isPlatformSkip(test.name),
       })),
   );
 }
