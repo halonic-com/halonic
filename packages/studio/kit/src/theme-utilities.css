@@ -48,6 +48,14 @@
   }
 }
 
+/*
+ * bg-inverse: a solid fg fill (the Tooltip, component specs 14). fg carries an alpha (88% light,
+ * 90% dark), so bg-fg lets a coloured background show through; the gradient lays fg over surface.
+ */
+@utility bg-inverse {
+  background: linear-gradient(var(--color-fg), var(--color-fg)), var(--color-surface);
+}
+
 /* ---------------------------------------------------------------- The halo, as four utilities */
 
 /* The window frame: the halo over the canvas. */

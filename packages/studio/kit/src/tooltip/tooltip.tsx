@@ -38,12 +38,12 @@ export interface TooltipProps {
 const CONTROL_GAP = 4;
 
 /**
- * Inverted: an `fg` fill with `surface` text, so it turns light in dark mode. The see-through
+ * Inverted: a solid `fg` fill with `surface` text, so it turns light in dark mode. The see-through
  * edge keeps its shape in high contrast, which drops the fill. It never takes the pointer.
  */
 const tooltipClasses = [
   "pointer-events-none m-0 inset-auto max-w-60 rounded-xs border border-transparent px-2 py-1",
-  "bg-fg text-caption text-surface",
+  "bg-inverse text-caption text-surface",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");
 

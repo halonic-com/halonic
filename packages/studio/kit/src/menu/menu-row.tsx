@@ -5,11 +5,13 @@ import type { MenuItem } from "./menu.tsx";
 /**
  * 32px on desktop, 48px on a phone and under a coarse pointer (component specs 14, 23.5). The
  * active item is the focused one, and its fill is the only sign: no ring. In high contrast,
- * which drops the fill, the see-through outline shows instead.
+ * which drops the fill, the see-through outline shows instead; under more contrast it shows as an
+ * edge as well.
  */
 const rowClasses = [
   "flex w-full min-h-control-md items-center gap-2 rounded-sm px-2 text-left text-body",
   "outline-2 -outline-offset-2 outline-transparent focus:outline-solid",
+  "contrast-more:focus:outline-border-control",
   "phone:min-h-touch touch:min-h-touch",
 ].join(" ");
 
@@ -58,10 +60,14 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       onClick={onPick}
       onFocus={onFocus}
       onBlur={onBlur}
-      // The pointer and the keyboard share one active item: the one under the pointer.
+      // The pointer and the keyboard share one active item: the one under the pointer. Over a
+      // disabled item the menu itself takes focus, so no other item keeps the fill (specs 14, C24).
       onPointerMove={(event) => {
-        if (!disabled && document.activeElement !== event.currentTarget) {
-          event.currentTarget.focus();
+        const target = disabled
+          ? event.currentTarget.closest<HTMLElement>("[role=menu]")
+          : event.currentTarget;
+        if (target !== null && document.activeElement !== target) {
+          target.focus();
         }
       }}
     >

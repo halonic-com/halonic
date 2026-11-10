@@ -159,6 +159,16 @@ verifies("kit.menu", () => {
     expect(document.activeElement).toBe(items[4]);
   });
 
+  it("clears the fill when the pointer moves onto a disabled item", async () => {
+    const { trigger, menu, items } = renderMenu();
+    await openMenu(trigger, "mouse");
+    await pointer(items[1] as HTMLElement, "pointermove");
+    expect(filled(items)).toEqual([items[1]]);
+    await pointer(items[2] as HTMLElement, "pointermove");
+    expect(document.activeElement).toBe(menu);
+    expect(filled(items)).toEqual([]);
+  });
+
   it("moves with the arrows, Home and End, skipping a disabled item and wrapping round", async () => {
     const { trigger, items } = renderMenu();
     await openMenu(trigger);
