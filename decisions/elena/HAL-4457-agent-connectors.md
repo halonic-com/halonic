@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4457](/HAL/issues/HAL-4457); the package owner approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MfK+3LXk9BRVPEzznL6/rzdUa1yIYWaPf2ddaG9Uwsx2OnV/fMMCW4clOgSmBFBF4LrWmRd6fV1fkhwHmwBJAw==
 - Task: HAL-4457
 
 ## What changes
