@@ -29,6 +29,11 @@ turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, `Emitter` is a
 small typed event emitter, and `KeyedQueue` runs async work one at a time
 per key, such as the appends to one run's log.
+`diffLines` gives the changed lines between two texts in memory, and `applyLineChanges`
+applies only some of them, which is how one part of a diff is taken or dropped. `mergeLines`
+merges two texts that started from the same base, as git's merge does, and marks a conflict
+where both changed the same or touching lines; `mergedText` settles each conflict by taking
+one side. They serve Compare's "Combine both" and the assistant's changes to review.
 `readVersion`, `compareVersions` and `isAtLeast` read and order semver
 versions, pre-releases included, such as the version a harness's program
 prints (`0.169.0-alpha.6` comes before `0.169.0`).

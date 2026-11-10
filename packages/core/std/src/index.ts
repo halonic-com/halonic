@@ -18,6 +18,8 @@ export {
 export { bytesToHex } from "./hex.ts";
 export { fixedIds, type IdGenerator, type RandomBytes, randomIds } from "./ids.ts";
 export { KeyedQueue } from "./keyed-queue.ts";
+export { applyLineChanges, diffLines, type LineChange, splitLines } from "./line-diff.ts";
+export { hasConflicts, type MergeRegion, mergedText, mergeLines } from "./line-merge.ts";
 export { describeObject, isPlainObject, keyPath } from "./plain-data.ts";
 export { posixPath } from "./posix-path.ts";
 export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./result.ts";
