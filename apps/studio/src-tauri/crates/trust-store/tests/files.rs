@@ -7,7 +7,7 @@ mod support;
 use std::fs;
 use std::path::Path;
 
-use halonic_trust_store::{FileTrustStore, TrustError};
+use halonic_trust_store::TrustError;
 use serde_json::Value;
 use support::{Scratch, file_for, grant, locations, record};
 
@@ -117,6 +117,8 @@ fn trust_files_name_the_file_when_its_location_cant_be_read() {
 #[test]
 fn trust_files_are_readable_by_their_owner_only() {
     use std::os::unix::fs::PermissionsExt;
+
+    use halonic_trust_store::FileTrustStore;
 
     let scratch = Scratch::new("modes");
     let root = scratch.path().join("trust");
