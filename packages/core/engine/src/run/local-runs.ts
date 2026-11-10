@@ -211,17 +211,26 @@ export class LocalRuns {
    * when it last stopped. A failure is tried again on the next call.
    */
   #ready(): Promise<void> {
-    this.#started ??= endInterruptedRuns(this.#options.store, this.#clock).then(
-      async (ended) => {
-        for (const runId of ended) this.#feed.notify(runId);
-        for (const runId of ended) await this.#tellParentOf(runId);
-      },
-      (error: unknown) => {
-        this.#started = undefined;
-        throw error;
-      },
-    );
+    this.#started ??= this.#endInterruptedRuns().catch((error: unknown) => {
+      this.#started = undefined;
+      throw error;
+    });
     return this.#started;
+  }
+
+  /**
+   * Their parents hear from them on a `child:` timer, not in this call: a
+   * failure to tell one would otherwise be lost, because a retry no longer
+   * finds the runs it ended.
+   */
+  async #endInterruptedRuns(): Promise<void> {
+    const ended = await endInterruptedRuns(this.#options.store, this.#clock);
+    for (const runId of ended) this.#feed.notify(runId);
+    for (const runId of ended) {
+      const parent = (await readRun(this.#options.store, runId))?.parent;
+      if (parent == null) continue;
+      await this.#options.scheduler.schedule(parent.runId, `${childTimer}${runId}`, this.#now());
+    }
   }
 
   async #carryOutCall(runId: string, callId: string, kind: CallKind): Promise<void> {
@@ -343,7 +352,10 @@ export class LocalRuns {
     }
   }
 
-  /** Starts a child run; one that can't start fails its parent with the reason. */
+  /**
+   * Starts a child run; one that can't start fails its parent with the
+   * reason. An error after the child's start is recorded goes to the caller.
+   */
   async #startChild(parent: RunState, effect: StartChildEffect): Promise<void> {
     try {
       const start = await childStart(this.#options.blobs, parent, effect, this.#now());
@@ -351,6 +363,8 @@ export class LocalRuns {
     } catch (error) {
       // The child was already started, by a start asked for twice.
       if (error instanceof InputRefused && error.code === "engine.run-exists") return;
+      // A child whose start is recorded runs: the error came after its start.
+      if ((await this.#options.store.get(effect.childRunId)) !== null) throw error;
       const message = error instanceof Error ? error.message : String(error);
       await this.#recordIfTaken(parent.runId, {
         type: "child",

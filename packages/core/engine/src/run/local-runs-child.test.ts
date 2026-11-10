@@ -170,12 +170,50 @@ verifies("engine.local-child-runs", () => {
     const setup = { workflow: onboard("review"), workflows, blobs: before.blobs };
     const after = runsOn([], before.runs, setup);
     await after.executor.start({ ...start, runId: "run_9" });
+    await after.scheduler.runDue();
 
     expect(await before.runs.get("run_1.2")).toMatchObject({ reason: "interrupted" });
     expect(await before.runs.get("run_1")).toMatchObject({
       status: "failed",
       error: expect.stringContaining('Workflow "review" failed: The engine stopped'),
     });
+  });
+
+  it("isn't stuck when it can't set the timer that tells a parent its child was interrupted", async () => {
+    const before = childRuns("review");
+    await before.executor.start(start);
+    await before.executor.send("run_1", "approve");
+    const setup = { workflow: onboard("review"), workflows, blobs: before.blobs };
+    const after = runsOn([], before.runs, setup);
+    const schedule = after.scheduler.schedule.bind(after.scheduler);
+    let down = true;
+    after.scheduler.schedule = async (key, timerId, at) => {
+      if (down) throw new Error("The scheduler is down.");
+      return schedule(key, timerId, at);
+    };
+
+    await expect(after.executor.start({ ...start, runId: "run_9" })).rejects.toThrow(
+      "The scheduler is down.",
+    );
+    down = false;
+
+    expect(await after.executor.start({ ...start, runId: "run_9" })).toMatchObject({
+      status: "waiting",
+    });
+  });
+
+  it("lets an error after the child started through, and doesn't fail the parent with it", async () => {
+    const { executor, runs, scheduler } = childRuns("reply");
+    const schedule = scheduler.schedule.bind(scheduler);
+    scheduler.schedule = async (key, timerId, at) => {
+      if (key === "run_1.2") throw new Error("The scheduler is down.");
+      return schedule(key, timerId, at);
+    };
+
+    await expect(executor.start(start)).rejects.toThrow("The scheduler is down.");
+
+    expect(await runs.get("run_1.2")).toMatchObject({ status: "running" });
+    expect(await runs.get("run_1")).not.toMatchObject({ status: "failed" });
   });
 });
 
