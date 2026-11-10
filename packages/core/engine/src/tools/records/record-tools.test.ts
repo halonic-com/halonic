@@ -3,7 +3,8 @@ import type { RecordChange, RecordStore } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { HalonicTool } from "../../agent/turn-tools.ts";
+import { checkRunToolCall } from "../../agent/check-run-tool-call.ts";
+import type { HalonicTool, TurnTool } from "../../agent/turn-tools.ts";
 import { recordTools } from "./record-tools.ts";
 import { invoices } from "./records-test-kit.test-helper.ts";
 
@@ -84,6 +85,26 @@ verifies("engine.record-tools", () => {
         required: ["supplier", "amount"],
       });
       expect(add?.definition.parameters["properties"]).not.toHaveProperty("share");
+    });
+
+    it.each([
+      [
+        "find",
+        { where: { status: "open", amount: { gte: 10 }, due: null }, view: "open", limit: 5 },
+      ],
+      ["add", { id: "inv-2", supplier: "sup-2", amount: 1, status: "paid" }],
+      ["update", { id: "inv-1", values: { status: "paid", note: "done" } }],
+    ] as const)("lets a run's call check through a %s with %j", (toolName, args) => {
+      const tool = toolsFor(new MemoryRecords())[toolName];
+      const turnTool: TurnTool = {
+        kind: "halonic",
+        source: "halonic",
+        definition: tool.definition,
+        tool,
+      };
+      const call = { id: "c-1", name: tool.definition.name, arguments: args };
+
+      expect(checkRunToolCall(turnTool, call)).toEqual({ kind: "run" });
     });
 
     it("gives no tools for a collection id that is only an inherited object key", () => {

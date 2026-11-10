@@ -62,7 +62,12 @@ function findTool(name: string, collection: Collection, records: CollectionRecor
       parameters: {
         type: "object",
         properties: {
-          where: { type: "object", description: "Filter by field values." },
+          where: {
+            type: "object",
+            description: "Filter by field values.",
+            // Any field name: the filter checks the names, and a run's call check reads every level.
+            additionalProperties: true,
+          },
           ...(views.length > 0 ? { view: { type: "string", enum: views } } : {}),
           limit: { type: "integer", minimum: 1, maximum: defaultFindLimit },
         },
