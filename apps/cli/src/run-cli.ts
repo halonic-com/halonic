@@ -195,14 +195,20 @@ async function runCommandLine(
  * Watches for Ctrl C and SIGTERM while the command runs (cli-output 1.5).
  * The first aborts the command's signal. A second doesn't wait for the
  * command: it prints only "Stopped." and ends the process with its own code.
+ * While the process still waits to hand on its output, a third one asks
+ * `exitNow` again, and "Stopped." isn't printed twice.
  */
 function watchFor(setup: CliSetup, printer: Printer): StopWatch {
   if (setup.stop === undefined) {
     return { signal: new AbortController().signal, stoppedBy: () => undefined, dispose() {} };
   }
   const { signals, exitNow } = setup.stop;
+  let saidStopped = false;
   return watchForStop(signals, (code) => {
-    printer.stopped();
+    if (!saidStopped) {
+      saidStopped = true;
+      printer.stopped();
+    }
     exitNow(code);
   });
 }

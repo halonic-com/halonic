@@ -63,3 +63,42 @@ export function watchForStop(source: SignalSource, exitNow: (code: number) => vo
     },
   };
 }
+
+/** An output stream that may still hold text it hasn't handed on: `process.stdout` or `process.stderr`. */
+export interface PendingOutput {
+  /** How much written text still waits to go out, as on a pipe nobody has read yet. */
+  readonly writableLength: number;
+  /** Calls `written` once everything written before has gone out. */
+  write(text: "", written: () => void): unknown;
+}
+
+/**
+ * Wraps `exit`, as `process.exit`, so it first lets the streams hand on what
+ * they still hold. Through a pipe, `process.exit` would otherwise drop text
+ * the reader hasn't taken yet, and cut a `--json` document short. A further
+ * call while it waits exits at once, so a reader that never reads can't keep
+ * the process open after another Ctrl C.
+ */
+export function exitOnceWritten(
+  streams: readonly PendingOutput[],
+  exit: (code: number) => void,
+): (code: number) => void {
+  let waiting = false;
+  return (code) => {
+    const pending = streams.filter((stream) => stream.writableLength > 0);
+    if (waiting || pending.length === 0) {
+      exit(code);
+      return;
+    }
+    waiting = true;
+    let left = pending.length;
+    for (const stream of pending) {
+      stream.write("", () => {
+        left -= 1;
+        if (left === 0) {
+          exit(code);
+        }
+      });
+    }
+  };
+}

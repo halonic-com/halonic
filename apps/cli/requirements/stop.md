@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2184; the CLI output design on HAL-1981 (cli-output sections 1.5 and 2, and the checklist item "Progress" in section 5), approved by the board on HAL-2123
 
-While a `halonic` command runs, the first Ctrl C or SIGTERM shall ask the command to stop cleanly, and the command shall end with "Stopped." and what stopping meant, and exit with 130 for Ctrl C or 143 for SIGTERM. The stop line shall go to stderr, after the live line is cleared. With `--json`, stderr shall stay empty and stdout shall hold the command's one document, with `"ok": false`. A second Ctrl C or SIGTERM shall end the command at once, without waiting for it to stop: it shall clear the live line, print only "Stopped." and exit with that second signal's code. When the first Ctrl C or SIGTERM comes while a yes-or-no question waits for its answer, the CLI shall stop reading the answer and end the question's line, so "Stopped." starts a line of its own.
+While a `halonic` command runs, the first Ctrl C or SIGTERM shall ask the command to stop cleanly, and the command shall end with "Stopped." and what stopping meant, and exit with 130 for Ctrl C or 143 for SIGTERM. The stop line shall go to stderr, after the live line is cleared. With `--json`, stderr shall stay empty and stdout shall hold the command's one document, with `"ok": false`. A second Ctrl C or SIGTERM shall end the command at once, without waiting for it to stop: it shall clear the live line, print only "Stopped." and exit with that second signal's code. When the first Ctrl C or SIGTERM comes while a yes-or-no question waits for its answer, the CLI shall stop reading the answer and end the question's line, so "Stopped." starts a line of its own. When a command finishes its work after the first Ctrl C or SIGTERM and returns a normal result rather than that it stopped, the CLI shall print that result and exit with the command's own code, because the work did finish. When a command returns that it stopped although no Ctrl C or SIGTERM came, the CLI shall print the stop line and exit with 130. Before a second Ctrl C or SIGTERM ends the process, the CLI shall wait until stdout and stderr have handed on what they still hold, so a reader at the other end of a pipe gets the whole `--json` document; a third one shall end the process without waiting.
 
 ## Examples
 
@@ -26,6 +26,15 @@ While a `halonic` command runs, the first Ctrl C or SIGTERM shall ask the comman
 - Given `halonic run support-reply --json`,
   when Ctrl C stops it,
   then stderr stays empty and stdout holds one JSON document with `"ok": false`.
+- Given a command that doesn't watch for stopping and finishes with code 0,
+  when Ctrl C came while it ran,
+  then it prints its result and ends with code 0.
+- Given a command that says it stopped on its own, with no signal,
+  when it ends,
+  then it prints the stop line and ends with code 130.
+- Given `halonic run support-reply --json | jq`, already stopping after Ctrl C,
+  when Ctrl C comes again while `jq` hasn't read all of stdout yet,
+  then the process ends only after stdout is handed on, so `jq` reads one whole document.
 - Given a run cancelled after the step Classify,
   when its stop line is made,
   then it reads "Stopped. The run 01JD8Q was cancelled after the step Classify. Nothing after it ran."

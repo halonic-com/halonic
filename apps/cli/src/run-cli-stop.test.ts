@@ -161,6 +161,58 @@ verifies("cli.stop", () => {
     expect(io.stderr).toEqual(["Stopped."]);
   });
 
+  it("prints only one Stopped. when a third signal comes while the process waits to exit", async () => {
+    const io = captureIo("/work");
+    const signals = fakeSignals();
+    const exits: number[] = [];
+    let release = () => {};
+    const hanging = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const setup: CliSetup = { stop: { signals, exitNow: (code) => exits.push(code) } };
+    const running = runCli(["wait"], io, [waitCommand("returns", hanging)], setup);
+    signals.send("SIGINT");
+    signals.send("SIGINT");
+    signals.send("SIGTERM");
+    expect(exits).toEqual([130, 143]);
+    expect(io.stderr).toEqual(["Stopped."]);
+    release();
+    await running;
+  });
+
+  it("keeps the command's own result and code when it finishes its work after Ctrl C", async () => {
+    const io = captureIo("/work");
+    const signals = fakeSignals();
+    const finishing: CliCommand = {
+      ...waitCommand("returns"),
+      async run(_input, context) {
+        // Doesn't stop early: it waits for the signal only so the test knows Ctrl C came first.
+        await new Promise((resolve) => context.signal.addEventListener("abort", resolve));
+        return { exitCode: exitCode.ok, lines: [waitMessages.goOn().phrase], json: {} };
+      },
+    };
+    const running = runCli(["wait"], io, [finishing], { stop: { signals, exitNow: () => {} } });
+    signals.send("SIGINT");
+    expect(await running).toBe(0);
+    expect(io.stdout).toEqual(["Go on?"]);
+    expect(io.stderr).toEqual([]);
+  });
+
+  it("ends with 130 when a command says it stopped although no signal came", async () => {
+    const io = captureIo("/work");
+    const stoppedOnItsOwn: CliCommand = {
+      ...waitCommand("returns"),
+      run: async () => ({ stopped: true, meaning: waitMessages.cancelled().phrase, json: {} }),
+    };
+    const code = await runCli(["wait"], io, [stoppedOnItsOwn], {
+      stop: { signals: fakeSignals(), exitNow: () => {} },
+    });
+    expect(code).toBe(130);
+    expect(io.stderr).toEqual([
+      "Stopped. The run 01JD8Q was cancelled after the step Classify. Nothing after it ran.",
+    ]);
+  });
+
   it("runs a command to its end when no signal comes", async () => {
     const io = captureIo("/work");
     const done: CliCommand = {

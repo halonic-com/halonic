@@ -1,5 +1,6 @@
 import { commands } from "./generated/commands.ts";
 import { LineReader } from "./output/line-reader.ts";
+import { exitOnceWritten } from "./output/stop.ts";
 import { runCli } from "./run-cli.ts";
 
 // The `halonic` program: the real process's arguments, folder and output streams.
@@ -23,7 +24,10 @@ process.exitCode = await runCli(
       },
       ...(process.stdin.isTTY === true ? { questions: stdinQuestions() } : {}),
     },
-    stop: { signals: process, exitNow: (code) => process.exit(code) },
+    stop: {
+      signals: process,
+      exitNow: exitOnceWritten([process.stdout, process.stderr], (code) => process.exit(code)),
+    },
   },
 );
 
