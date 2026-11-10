@@ -31,6 +31,18 @@ verifies("sandbox-srt.check", () => {
       });
     });
 
+    it("says `other` instead of throwing when the machine can't be examined", async () => {
+      const broken = machine({
+        insideContainer: async () => {
+          throw new Error("boom");
+        },
+      });
+      const check = await new SrtSandbox(broken).check();
+      expect(check.ok).toBe(false);
+      expect(check.reason).toBe("other");
+      expect(check.missing).toHaveLength(1);
+    });
+
     it.each([
       ["windows", { platform: "win32" as const }],
       ["container", { insideContainer: async () => true }],

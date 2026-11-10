@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { systemMachine } from "./machine.ts";
@@ -18,6 +19,19 @@ verifies("sandbox-srt.check", () => {
         "boolean",
       ]);
     });
+
+    it.skipIf(process.platform !== "linux")(
+      "agrees with unshare -U about user namespaces when bubblewrap is there",
+      async (context) => {
+        if (!(await systemMachine.hasBubblewrap())) context.skip();
+        const allowed = await new Promise<boolean>((resolve) => {
+          execFile("unshare", ["-U", "true"], { timeout: 5000 }, (error) =>
+            resolve(error === null),
+          );
+        });
+        expect(await systemMachine.userNamespacesRestricted()).toBe(!allowed);
+      },
+    );
 
     it("names the platform Node runs on", () => {
       expect(systemMachine.platform).toBe(process.platform);

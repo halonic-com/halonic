@@ -53,19 +53,28 @@ export function cgroupNamesContainer(cgroup: string): boolean {
   return /\/(docker|containerd|kubepods|libpod|lxc)\b/.test(cgroup);
 }
 
+/** Asked once: whether the machine has bubblewrap does not change while we run. */
+let bubblewrapProbe: Promise<boolean> | undefined;
+function bubblewrapStarts(): Promise<boolean> {
+  bubblewrapProbe ??= succeeds("bwrap", ["--version"]);
+  return bubblewrapProbe;
+}
+
 /** The machine this process runs on. */
 export const systemMachine: Machine = {
   platform: process.platform,
   async insideContainer() {
-    if (await exists("/.dockerenv")) return true;
+    if ((await exists("/.dockerenv")) || (await exists("/run/.containerenv"))) return true;
     return cgroupNamesContainer(await readOrEmpty("/proc/1/cgroup"));
   },
-  hasBubblewrap: () => succeeds("bwrap", ["--version"]),
+  hasBubblewrap: bubblewrapStarts,
   async userNamespacesRestricted() {
-    if ((await readOrEmpty(restrictSetting)).trim() === "1") return true;
-    // The setting is not the whole story (other policies refuse too), so try one.
-    const bubblewrapIsThere = await succeeds("bwrap", ["--version"]);
-    return bubblewrapIsThere && !(await succeeds("bwrap", ["--unshare-user", "--", "true"]));
+    // With bubblewrap there, ask it: it knows better than the setting (Ubuntu 24.04
+    // lets bubblewrap through its own profile). Its new root is empty, so give it ours.
+    if (await bubblewrapStarts()) {
+      return !(await succeeds("bwrap", ["--ro-bind", "/", "/", "--unshare-user", "--", "true"]));
+    }
+    return (await readOrEmpty(restrictSetting)).trim() === "1";
   },
   hasSeatbelt: () => exists("/usr/bin/sandbox-exec"),
 };

@@ -26,7 +26,12 @@ export class SrtSandbox implements Sandbox {
   }
 
   async check(): Promise<SandboxCheck> {
-    const unavailable = await this.#firstUnavailable();
+    let unavailable: Unavailable | null;
+    try {
+      unavailable = await this.#firstUnavailable();
+    } catch {
+      unavailable = { reason: "other", missing: "the machine could not be examined" };
+    }
     if (unavailable === null) return { ok: true, reason: null, missing: [] };
     return { ok: false, reason: unavailable.reason, missing: [unavailable.missing] };
   }
