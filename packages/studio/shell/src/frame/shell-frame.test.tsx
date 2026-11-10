@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { Dialog, usePresentation } from "@halonicjs/studio-kit";
+import { createToastStore, Dialog, usePresentation } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -36,10 +36,12 @@ function renderFrame(page = <ShowPresentation />) {
   const timers = new FakeTimers();
   const announcer = createAnnouncer({ timers });
   const closeStack = createCloseStack();
+  const toasts = createToastStore();
   const container = render(
     <ShellFrame
       announcer={announcer}
       closeStack={closeStack}
+      toasts={toasts}
       language="en"
       toolbar={<button type="button">Back</button>}
       statusBar="1 error"
@@ -47,7 +49,7 @@ function renderFrame(page = <ShowPresentation />) {
       {page}
     </ShellFrame>,
   );
-  return { container, timers, announcer, closeStack };
+  return { container, timers, announcer, closeStack, toasts };
 }
 
 function pressEscape(target: Element): KeyboardEvent {
@@ -291,5 +293,30 @@ verifies("shell.frame", () => {
     });
     await nextFrame();
     expect(polite?.textContent).toBe("fin@acme.example is signed in.");
+  });
+
+  it("shows the window's toasts once, over the sidebar and the page, never over the status bar", () => {
+    const { container, toasts } = renderFrame();
+    act(() => {
+      toasts.show({ tone: "success", title: "Saved key for Anthropic" });
+    });
+    const regions = container.querySelectorAll('section[aria-label="Notifications"]');
+    expect(regions).toHaveLength(1);
+    const region = regions[0] as HTMLElement;
+    expect(region.textContent).toContain("Saved key for Anthropic");
+    expect(region.parentElement?.className).toContain("relative");
+    expect(region.parentElement?.querySelector("main")).not.toBeNull();
+    expect(region.closest("footer")).toBeNull();
+  });
+
+  it("keeps the toasts on a phone, over the page", () => {
+    const { container, toasts } = renderFrame();
+    act(() => media.resize(400));
+    act(() => {
+      toasts.show({ tone: "info", title: "This was removed on your computer." });
+    });
+    const region = container.querySelector('section[aria-label="Notifications"]');
+    expect(region?.textContent).toContain("This was removed on your computer.");
+    expect(region?.parentElement?.querySelector("main")).not.toBeNull();
   });
 });

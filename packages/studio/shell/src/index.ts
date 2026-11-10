@@ -48,6 +48,11 @@ export {
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export { phoneQuery, usePresentationFromWidth } from "./frame/frame-effects.ts";
 export { ShellFrame, type ShellFrameProps } from "./frame/shell-frame.tsx";
+export {
+  type StatusBarItemProps,
+  StatusBarItems,
+  type StatusBarItemsProps,
+} from "./frame/status-bar.tsx";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {

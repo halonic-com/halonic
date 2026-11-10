@@ -23,7 +23,8 @@ look up services its feature lists in `needs`.
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
 | `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
 | `WindowTabStrip`                | the window tabs in the title bar, one Tab stop             | `shell.window-tab-strip`  |
-| `ShellFrame`                    | the window's frame: layers, live regions, Esc              | `shell.frame`             |
+| `ShellFrame`                    | the window's frame: layers, live regions, Esc, toasts      | `shell.frame`             |
+| `StatusBarItems`                | the status bar's items, state only                         | `shell.status-bar`        |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `Toolbar`                       | Back and Forward, the path, the badges and the save state  | `shell.toolbar`           |
@@ -90,11 +91,17 @@ The parts inside read the layout with the kit's `usePresentation()`.
 
 The frame also does the window-wide wiring once: it sets `<html lang>` (the Tabs hyphenate), mounts
 the announcer's two live regions, routes every kit Dialog's regions to the announcer, tells the
-announcer when the window has focus, and passes Esc to the close stack. An Esc inside an open
+announcer when the window has focus, passes Esc to the close stack, and shows `shell.toasts` in
+one `ToastRegion` over the sidebar and the page, so a toast never covers the status bar. An Esc inside an open
 `<dialog>` is left to the dialog, which cancels itself, so one press never closes two layers.
 
 ```tsx
-<ShellFrame announcer={shell.announcer} closeStack={shell.closeStack} language="en">
+<ShellFrame
+  announcer={shell.announcer}
+  closeStack={shell.closeStack}
+  toasts={shell.toasts}
+  language="en"
+>
   <HomePage />
 </ShellFrame>;
 ```
@@ -113,6 +120,22 @@ itself, the window-wide Back and Forward keys and the path's tooltips come in la
 
 ```tsx
 <ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
+```
+
+## Status bar and toasts
+
+The status bar shows state only: spend, the branch, the problems count. `StatusBarItems` draws the
+items features added with `statusBar.add`, in their order, and goes in the frame's `statusBar`
+slot. It isn't a live region: an item whose change matters announces it once through the
+announcer. A result ("Saved key for Anthropic") or a failed command ("Couldn't remove _Classify_:
+…") is a toast in `shell.toasts`, never a status bar message (microcopy 1.3).
+
+```tsx
+<ShellFrame
+  toasts={shell.toasts}
+  statusBar={<StatusBarItems items={shell.contributions.statusBar.list()} contextFor={contextFor} />}
+  …
+>
 ```
 
 ## Announcements

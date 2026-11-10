@@ -2,6 +2,9 @@ import {
   ModalRegionsProvider,
   type Presentation,
   PresentationProvider,
+  ToastRegion,
+  type ToastStore,
+  ToastStoreProvider,
 } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
@@ -20,6 +23,8 @@ export interface ShellFrameProps {
   readonly announcer: Announcer;
   /** The window's one close stack; the frame passes Esc to it. */
   readonly closeStack: CloseStack;
+  /** The window's toasts; the frame shows them once, at the bottom right of the content area. */
+  readonly toasts: ToastStore;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
   /** The title bar's content on the desktop: the logo, the window tabs, +. */
@@ -41,15 +46,17 @@ export interface ShellFrameProps {
  * shows the page only, with no window tabs and no status bar; the phone's own bars come later.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and every kit
- * Dialog sends its announcements through the window's announcer.
+ * Dialog sends its announcements through the window's announcer. The window's one `ToastRegion`
+ * sits over the sidebar and the page (on a phone, the page), so a toast never covers the status
+ * bar, and kit parts that confirm with a toast find the store through `ToastStoreProvider`.
  *
  * @example
- * <ShellFrame announcer={shell.announcer} closeStack={shell.closeStack} language="en">
+ * <ShellFrame announcer={shell.announcer} closeStack={shell.closeStack} toasts={shell.toasts} language="en">
  *   <HomePage />
  * </ShellFrame>
  */
 export function ShellFrame(props: ShellFrameProps) {
-  const { announcer, closeStack, language } = props;
+  const { announcer, closeStack, toasts, language } = props;
   const presentation = usePresentationFromWidth();
   useDocumentLanguage(language);
   useEscapeClosesTopLayer(closeStack);
@@ -58,8 +65,10 @@ export function ShellFrame(props: ShellFrameProps) {
   return (
     <PresentationProvider presentation={presentation}>
       <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
-        <FrameLayers presentation={presentation} {...props} />
-        <FrameRegions announcer={announcer} />
+        <ToastStoreProvider store={toasts}>
+          <FrameLayers presentation={presentation} {...props} />
+          <FrameRegions announcer={announcer} />
+        </ToastStoreProvider>
       </ModalRegionsProvider>
     </PresentationProvider>
   );
@@ -90,9 +99,10 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
             {props.toolbar}
           </div>
         ) : null}
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
           {desktop ? props.sidebar : null}
           <main className="min-w-0 flex-1 overflow-auto">{props.children}</main>
+          <ToastRegion store={props.toasts} />
         </div>
         {desktop ? (
           <footer className="flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">

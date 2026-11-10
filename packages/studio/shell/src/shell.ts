@@ -1,3 +1,4 @@
+import { createToastStore, type ToastStore } from "@halonicjs/studio-kit";
 import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
 import { type AnnouncerTimers, systemTimers } from "./announcer/timers.ts";
 import { type CloseStack, createCloseStack } from "./close-stack/close-stack.ts";
@@ -59,6 +60,8 @@ export interface Shell {
   readonly closeStack: CloseStack;
   /** The engine connection and the engine's start, sent as `engine.connection`. */
   readonly engine: ShellEngine;
+  /** The window's toasts, for results and failed commands; the frame shows them. */
+  readonly toasts: ToastStore;
   /** Everything the features contributed, for the shell's layout. */
   readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
 }
@@ -91,6 +94,7 @@ export function createShell(options: ShellOptions): Shell {
     announcer,
     closeStack: createCloseStack(),
     engine: createShellEngine(announcer, options.timers ?? systemTimers),
+    toasts: createToastStore(),
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
       contextFor: (featureId, target) => ({
