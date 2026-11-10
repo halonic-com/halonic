@@ -12,7 +12,9 @@ The requirement grows; nothing it promised before is taken away, and no test was
   had no `.git` at session start, which the fence can't deny (HAL-3568): the program could write
   `docs/.git` with a `core.fsmonitor` setting and the user's next `git status` would run it.
   Gitlinks are recorded at start, so one still counts when the program takes it out of the index.
-  One example is added.
+  The gitlinks of a split index's shared index count too, and an index or shared index that
+  can't be read is reported, so a program can't hide a gitlink by splitting the index. A working
+  folder whose `.git` is a file is not checked. Two examples are added.
 
 A session that leaves git alone behaves as before.
 

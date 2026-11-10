@@ -1,6 +1,6 @@
 import { lstat, readFile, rename } from "node:fs/promises";
 import { isAbsolute, join, normalize, sep } from "node:path";
-import { gitlinkPaths } from "./git-index.ts";
+import { gitlinkPaths, parseIndex } from "./git-index.ts";
 
 /** What a gitlink's `.git` was at session start: absent, a folder, a link or a file and its text. */
 type DotGit = string;
@@ -12,11 +12,20 @@ export interface NestedGitSnapshot {
 }
 
 /**
- * Records each gitlink in `<workingFolder>/.git/index` and what its `.git` is.
- * Nothing is recorded when `.git` is not a real folder or has no index.
+ * Records each gitlink in `<workingFolder>/.git/index` (and its shared index,
+ * when the index is split) and what its `.git` is. Nothing is recorded when
+ * `.git` is not a real folder (a linked worktree or a submodule) or has no index.
+ *
+ * @throws when the index can't be read, since its gitlinks can't be checked then.
  */
 export async function snapshotNestedGit(workingFolder: string): Promise<NestedGitSnapshot | null> {
-  const paths = await gitlinks(workingFolder);
+  const paths = await gitlinks(workingFolder).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `can't read the git index in ${workingFolder} (${reason}), so its submodules can't be ` +
+        "checked at session end. Run `git status` there to check the index, then open the session again.",
+    );
+  });
   if (paths === null) return null;
   const dotGits = new Map<string, DotGit>();
   for (const path of paths) dotGits.set(path, await describe(workingFolder, path));
@@ -67,11 +76,27 @@ export async function undoNestedGit(
 async function gitlinks(workingFolder: string): Promise<string[] | null> {
   const gitFolder = join(workingFolder, ".git");
   if ((await lstat(gitFolder).catch(() => null))?.isDirectory() !== true) return null;
-  const index = await readFile(join(gitFolder, "index")).catch(() => null);
+  const index = await readPlainFile(join(gitFolder, "index"));
   if (index === null) return [];
   const config = await readFile(join(gitFolder, "config"), "utf8").catch(() => "");
   const hashLength = /^\s*objectformat\s*=\s*sha256\s*$/im.test(config) ? 32 : 20;
-  return gitlinkPaths(index, hashLength);
+  const parsed = parseIndex(index, hashLength);
+  if (parsed.sharedIndex === null) return gitlinkPaths(parsed, null);
+  // A split index keeps most entries, gitlinks too, in the shared index it links to.
+  const shared = await readPlainFile(join(gitFolder, parsed.sharedIndex));
+  if (shared === null) throw new Error(`the shared index ${parsed.sharedIndex} is missing`);
+  return gitlinkPaths(parsed, parseIndex(shared, hashLength));
+}
+
+/**
+ * The bytes of a file the program could have replaced, or null when there is
+ * none. Never reads anything but a plain file, so a pipe can't hold up `close()`.
+ */
+async function readPlainFile(path: string): Promise<Buffer | null> {
+  const stat = await lstat(path).catch(() => null);
+  if (stat === null) return null;
+  if (!stat.isFile()) throw new Error(`${path} is not a plain file`);
+  return readFile(path);
 }
 
 async function describe(workingFolder: string, path: string): Promise<DotGit> {
