@@ -64,6 +64,13 @@ function takeItemResult(context: StateContext, input: EffectDoneInput): StateSte
       `Agent "${running.call.agent}" stopped for an approval of "${result.tool}" in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't wait for one.`,
     );
   }
+  // A run records one connector call that can change things at a time, so an
+  // item can't stop at that boundary while the others go on.
+  if (result.type === "effect") {
+    return failed(
+      `Agent "${running.call.agent}" stopped before a call to tool "${result.tool}" that can change things in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't make one.`,
+    );
+  }
   if (result.type === "tool") {
     return nothing;
   }

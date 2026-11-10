@@ -188,6 +188,28 @@ verifies("engine.foreach-state", () => {
     });
   });
 
+  it("fails the run when an item's agent stops before a connector call that can change things", () => {
+    const stopped: DecideInput = {
+      type: "effect-done",
+      at: start.at,
+      callId: "call-1",
+      result: {
+        type: "effect",
+        connector: "mail",
+        tool: "send_mail",
+        args: {},
+        resume: { messages: [], calls: [], step: 1 },
+      },
+    };
+    const { log, run } = play(triageWorkflow(), [start, stopped]);
+    expect(log.at(-1)).toMatchObject({
+      type: "run.failed",
+      error:
+        'Agent "labeler" stopped before a call to tool "send_mail" that can change things in item 0 of for-each state "triage"; an item\'s agent can\'t make one.',
+    });
+    expect(run).toMatchObject({ status: "failed", foreach: null, effect: null });
+  });
+
   it.each([
     ["names no items", triageWorkflow({}, ["items"]), 'For-each state "triage" names no items.'],
     [
