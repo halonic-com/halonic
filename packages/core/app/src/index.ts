@@ -267,6 +267,12 @@ export {
 } from "./unfenced-runs.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ActiveRun, type Wait, waitsInProgress } from "./waits-in-progress.ts";
+export {
+  type FollowOptions,
+  RunFollowStopped,
+  type StartedRun,
+  WorkflowRuns,
+} from "./workflow-runs.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
 export {
   placedRoutines,
