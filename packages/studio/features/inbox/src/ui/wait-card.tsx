@@ -43,9 +43,23 @@ export function answerLabel(event: string, own?: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-function busyLabel(event: string): string {
-  if (event === "approve") return "Approving…";
-  if (event === "reject") return "Rejecting…";
+/**
+ * The step's own label for an answer, or `undefined` without one. Events come from the user's
+ * workflow, so one named `constructor` must not find an `Object.prototype` member.
+ */
+function ownLabel(labels: Readonly<Record<string, string>>, event: string): string | undefined {
+  return Object.hasOwn(labels, event) ? labels[event] : undefined;
+}
+
+/**
+ * An answer's busy label: "Approving…" and "Rejecting…" only beside the built-in "Approve" and
+ * "Reject", else the neutral "Working…", so it never names the answer with another word.
+ */
+function busyLabel(event: string, own?: string): string {
+  if (answerLabel(event, own) === answerLabel(event)) {
+    if (event === "approve") return "Approving…";
+    if (event === "reject") return "Rejecting…";
+  }
   return "Working…";
 }
 
@@ -125,7 +139,7 @@ export function WaitCard(props: WaitCardProps) {
       </div>
       {state.kind === "answered" ? (
         <DecidedBar
-          text={answeredText(state.event, state.at, item.answerLabels[state.event])}
+          text={answeredText(state.event, state.at, ownLabel(item.answerLabels, state.event))}
           next={next}
           back={back}
           callout={answered}
@@ -165,10 +179,10 @@ function AnswerBar({ accepts, labels, state, guard, onAnswer }: AnswerBarProps) 
       variant={primary ? "primary" : "secondary"}
       block
       busy={state.kind === "answering" && state.event === event}
-      busyLabel={busyLabel(event)}
+      busyLabel={busyLabel(event, ownLabel(labels, event))}
       onClick={() => onAnswer(event)}
     >
-      {answerLabel(event, labels[event])}
+      {answerLabel(event, ownLabel(labels, event))}
     </Button>
   );
   return (

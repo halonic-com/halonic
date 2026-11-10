@@ -231,6 +231,28 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).toContain("Approved by you at 10:44. The run continues.");
     });
 
+    it("says Working… while sending an answer the step labels itself, never another word", () => {
+      const { root } = openCard({
+        item: { ...reviewItem(), answerLabels: { approve: "Send reply" } },
+      });
+      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(labels).toEqual(["Open run", "Send replyWorking…", "RejectRejecting…"]);
+    });
+
+    it("takes an answer named like a built-in object key", async () => {
+      const item: WaitItem = {
+        ...reviewItem({ accepts: ["constructor", "toString"] }),
+        answerLabels: { toString: "Show text" },
+      };
+      const { root, sent, later } = openCard({ item });
+      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(labels).toEqual(["Open run", "ConstructorWorking…", "Show textWorking…"]);
+      later(61);
+      await press(button(root, "Constructor"));
+      expect(sent).toEqual(["constructor"]);
+      expect(root.textContent).toContain("You chose Constructor at 10:44.");
+    });
+
     it("opens the run", async () => {
       const onOpenRun = vi.fn();
       const { root } = openCard({ onOpenRun });
