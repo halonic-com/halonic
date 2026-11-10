@@ -1,15 +1,17 @@
 # When main is broken
 
 Two CI jobs run on the merge base (the commit on `main` a pull request
-branched from): `Merge base's tests` and the merge-base `guard`. Both install
-with `pnpm install --frozen-lockfile`. If `main`'s own lockfile doesn't
+branched from): `Merge base's tests (no cache)` and the guard job
+`Requirements and the requirement guard (merge base's copy)`. Both run on
+pull requests only, not in the merge queue, and both are skipped for a
+docs-only pull request. Both install with `pnpm install --frozen-lockfile`. If `main`'s own lockfile doesn't
 install, or its own tests fail, every pull request would fail there,
 including the one that repairs it.
 
 ## When main's lockfile doesn't install
 
 Only when the install fails with a pnpm lockfile error
-(`ERR_PNPM_*LOCKFILE*` or `OUTDATED_LOCKFILE`), `Merge base's tests` walks back
+(`ERR_PNPM_*LOCKFILE*` or `OUTDATED_LOCKFILE`), `Merge base's tests (no cache)` walks back
 along `main`'s first-parent history, one commit at a time, to the newest
 commit that installs. It stops after 20 commits and fails. That commit is the
 baseline: its tests run, and the guard installs and compares against exactly
@@ -35,7 +37,7 @@ repair.
 
 If the merge base installs but its own tests fail, `main` is red. CI on the
 push to `main` already fails and reports it. In a pull request,
-`Merge base's tests` then walks back along `main`'s first-parent history to
+`Merge base's tests (no cache)` then walks back along `main`'s first-parent history to
 the newest commit whose `push` CI run passed, at most 20 commits back from the
 merge base. That commit is the baseline: it's installed and its tests run
 without a cache, and the guard installs and compares against exactly that

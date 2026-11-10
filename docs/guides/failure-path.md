@@ -71,7 +71,8 @@ held by another process, an approval, a timer.
   and records in the log how to go back.
 - **Update checks are optional.** Blocked or offline update checks never stop
   Studio from working.
-- **Test it in the update test**: the 0.1.0 to 0.1.1 test also checks that a
+- **Test it in the update test** (not written yet: `main` has no updater or
+  update test, only the release workflow): the 0.1.0 to 0.1.1 test also checks that a
   workspace, a run log and the settings are byte-for-byte the same afterwards,
   and that a new version that fails to start leaves 0.1.0 working.
 
@@ -94,8 +95,9 @@ held by another process, an approval, a timer.
 ## 4. Errors are translated before they reach the user
 
 - **Every error that leaves a package has a kind**, from our one short list
-  of error kinds (HAL-1663), such as `not_found`, `conflict`,
-  `invalid_input`, `unavailable`, `denied` and `internal`.
+  of error kinds (HAL-1663): `invalid_input`, `not_found`, `conflict`,
+  `unauthenticated`, `denied`, `limit_reached`, `unavailable` and `internal`.
+  The list lives in `packages/core/std` (`requirements/error-kind.md`).
 - **Each surface translates in exactly one function**: the HTTP API to a
   status, the CLI to an exit code and a line, Studio to a message. No surface
   shows an error it hasn't translated.
