@@ -5,14 +5,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RunHistory } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import type { SandboxCheck } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
-import { sandboxStarts, testRunSetup, trustWorkspace } from "../../test/run-setup.ts";
+import { testRunSetup } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
 import { runCommandWith } from "../run/command.ts";
 import { runsCommandWith } from "./command.ts";
@@ -43,12 +42,9 @@ afterEach(async () => {
 });
 
 /** Runs a `halonic` command in the Acme copy, with `run` and `runs` on the test setup. */
-async function halonic(
-  args: readonly string[],
-  sandbox: SandboxCheck = sandboxStarts,
-): Promise<{ code: number; io: CapturedIo }> {
+async function halonic(args: readonly string[]): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(acme);
-  const setup = testRunSetup(folder, profile, sandbox);
+  const setup = testRunSetup(folder, profile);
   const code = await runCli(args, io, [runCommandWith(setup), runsCommandWith(setup)]);
   return { code, io };
 }
@@ -120,22 +116,6 @@ verifies("cli.commands.runs.send", () => {
       expect(code).toBe(exitCode.notTrusted);
       expect(io.stderr).toContain(
         "✕ Couldn't send approve to run 01jd8q: Acme isn't trusted on this computer yet. Nothing was sent.",
-      );
-      expect(await eventsOfTheRun()).toEqual(before);
-    });
-
-    it("exits 9 and sends nothing when the sandbox can't start", async () => {
-      await startWaitingRun();
-      const before = await eventsOfTheRun();
-      await addOllama();
-      await trustWorkspace(folder, acme);
-      const container: SandboxCheck = { ok: false, reason: "container", missing: ["a container"] };
-
-      const { code, io } = await halonic(["runs", "send", "01jd8q", "approve"], container);
-
-      expect(code).toBe(exitCode.unavailable);
-      expect(io.stderr[0]).toBe(
-        "✕ Couldn't send approve to run 01jd8q: the sandbox can't start on this computer. Nothing was sent.",
       );
       expect(await eventsOfTheRun()).toEqual(before);
     });

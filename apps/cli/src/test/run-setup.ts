@@ -4,8 +4,6 @@ import type { IdGenerator } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import type { RunSetup } from "../commands/run/run.ts";
-import { openWorkspaceDir } from "../workspace-dir.ts";
-import { cliTrustService, readWorkspaceTrust } from "../workspace-trust.ts";
 
 /** 10 Nov 2026, 14:01 UTC: when the engine's fixed clock starts. */
 export const engineStart = Date.UTC(2026, 10, 10, 14, 1);
@@ -37,13 +35,4 @@ export function testRunSetup(folder: string, profile: ProfileEnvironment): RunSe
     profile,
     engine: { clock: fixedClock(engineStart, 0), ids: fixedIds() },
   };
-}
-
-/** Trusts the workspace in `root` as it is now, in the trust records {@link testRunSetup} reads. */
-export async function trustWorkspace(folder: string, root: string): Promise<void> {
-  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: root });
-  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
-  const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
-  const check = await trust.check(subject);
-  await trust.grant(subject, check.fingerprint, "cli");
 }

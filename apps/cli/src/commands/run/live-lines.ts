@@ -30,6 +30,11 @@ export interface LiveLinesFacts {
   readonly workspaceName: string;
   /** The clock the result's step lines are written with too, so both say the same. */
   readonly clock: RunClock;
+  /**
+   * Whether to print the heading at the run's first event; yes by default.
+   * `halonic runs send` prints its own line instead.
+   */
+  readonly heading?: boolean;
 }
 
 /** Draws a run while `halonic run` follows it; see {@link liveLines}. */
@@ -95,17 +100,8 @@ export function liveLines(
 
   return {
     onEvent(event, events) {
-      if (known === undefined) {
-        const summary = summarize(events);
-        if (summary === null) return;
-        const definitions = runViewDefinitions(facts.workspace, summary);
-        known = {
-          definitions,
-          widths: stepColumns(definitions),
-          models: workspaceModelsOf(facts.workspace, summary.hubId),
-        };
-        context.printAhead(runHeading(summary, definitions, facts.workspaceName));
-      }
+      known ??= knowRun(context, facts, events);
+      if (known === undefined) return;
       switch (event.type) {
         case "state.entered":
           if (event.branch !== undefined || event.item !== undefined) break;
@@ -136,6 +132,28 @@ export function liveLines(
       }
     },
     end: endProgress,
+  };
+}
+
+/**
+ * What the live lines need to know about the run, once its first event has
+ * named its workflow; then prints the heading, unless `facts` leaves it out.
+ */
+function knowRun(
+  context: Pick<CommandContext, "printAhead">,
+  facts: LiveLinesFacts,
+  events: readonly RunEvent[],
+): KnownRun | undefined {
+  const summary = summarize(events);
+  if (summary === null) return undefined;
+  const definitions = runViewDefinitions(facts.workspace, summary);
+  if (facts.heading !== false) {
+    context.printAhead(runHeading(summary, definitions, facts.workspaceName));
+  }
+  return {
+    definitions,
+    widths: stepColumns(definitions),
+    models: workspaceModelsOf(facts.workspace, summary.hubId),
   };
 }
 

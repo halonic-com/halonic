@@ -16,7 +16,7 @@ import type { RunClock } from "../../run-times.ts";
 import { manualClock } from "../../test/manual-clock.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { liveLines } from "./live-lines.ts";
-import { runResult } from "./result.ts";
+import { runProgress, runResult } from "./result.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 
@@ -155,6 +155,18 @@ verifies("cli.run-live", () => {
       expect(lines.filter((line) => line.startsWith("✓ Read the email"))).toHaveLength(1);
       expect(lines.at(-1)).toMatch(/^! Approve this reply\? {3}you approved at \d\d:\d\d$/);
       expect(lines).toHaveLength(6);
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4406: leaves the heading out for runs send, and prints the lines its result goes on with",
+    () => {
+      const context = recordedContext();
+      follow(liveLines(context, { ...facts(), heading: false }).onEvent, approved.events);
+      const progress = runProgress(approved, { ...facts(), dir: undefined });
+      const lines = printed(context.seen);
+      expect(lines).toHaveLength(5);
+      expect(lines).toEqual(progress.lines.slice(0, lines.length).map(plainText));
     },
   );
 

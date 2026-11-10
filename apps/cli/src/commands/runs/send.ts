@@ -45,6 +45,7 @@ import { endedAt, type RunClock } from "../../run-times.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
+import { liveLines } from "../run/live-lines.ts";
 import { runProgress } from "../run/result.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
@@ -70,8 +71,6 @@ interface SendArguments {
  * @throws NoWorkspaceError when the folder holds no workspace
  * @throws NotTrustedError when the run could reach more than the test model
  *   and the workspace isn't trusted here; nothing was sent (exit 3)
- * @throws SandboxUnavailableError when the run could reach more than the test
- *   model and the sandbox can't start here; nothing was sent (exit 9)
  */
 export async function sendToRun(
   input: CommandInput,
@@ -98,49 +97,51 @@ export async function sendToRun(
   const { summary } = lookup.run;
   const loaded = await loadWorkspace(workspace.store);
   const workflow = workflowOf(loaded, summary);
+  // One clock for the lines printed while the run goes and the result that repeats them.
+  const facts = {
+    workspace: loaded,
+    workspaceName: printable(workspace.name),
+    dir,
+    clock: setup.clock(),
+  };
   const engine = new EngineOnSend(context, setup, workspace, loaded, dir);
+  // After 3.4's line, the steps as `halonic run` prints them while it goes; no heading.
+  const live = liveLines(context, { ...facts, heading: false });
   try {
     let run: RunSummary;
     try {
       run = await new RunEvents(engine, runs).sendEvent(summary.id, event);
     } catch (error) {
       if (!(error instanceof RunEventRefused)) throw error;
-      const refused = { event, typed, workspace, dir, workflow, clock: setup.clock() };
+      const refused = { event, typed, workspace, dir, workflow, clock: facts.clock };
       throw refusedError(error.refusal, refused);
     }
+    const sent = phrase`${markPart("done")} ${runsMessages.sent(event, shortRunId(run.id), workflow?.name ?? run.workflowId).phrase}`;
+    context.printAhead(sent);
     const opened = engine.opened();
     const followed = await followUntilStopped(opened, loaded, (signal) =>
-      new WorkflowRuns(opened.executor).follow(run.id, { after: summary.lastSeq, signal }),
+      new WorkflowRuns(opened.executor).follow(run.id, {
+        after: summary.lastSeq,
+        signal,
+        onEvent: live.onEvent,
+      }),
     );
     if ("stopped" in followed) {
       return followed;
     }
-    const id = shortRunId(run.id);
-    const title = workflow?.name ?? run.workflowId;
-    const facts = {
-      workspace: loaded,
-      workspaceName: printable(workspace.name),
-      dir,
-      clock: setup.clock(),
-    };
     const progress = runProgress(followed, facts);
-    return {
-      ...progress,
-      lines: [
-        phrase`${markPart("done")} ${runsMessages.sent(event, id, title).phrase}`,
-        ...progress.lines,
-      ],
-    };
+    return { ...progress, lines: [sent, ...progress.lines] };
   } finally {
+    live.end();
     await engine.close();
   }
 }
 
 /**
  * The engine a send lets the run go on in, opened only once `RunEvents`
- * knows the run waits for the event, so a refused send checks neither trust
- * nor the sandbox. Trust and the sandbox are checked as `halonic run` checks
- * them before it starts a run, with "Nothing was sent." as line 1's end.
+ * knows the run waits for the event, so a refused send doesn't check trust.
+ * Trust is checked as `halonic run` checks it before it starts a run, with
+ * "Nothing was sent." as line 1's end.
  */
 class EngineOnSend implements Pick<RunExecutor, "send"> {
   private readonly context: CommandContext;
@@ -166,12 +167,11 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
   }
 
   async send(runId: string, event: string): Promise<RunSummary> {
-    const nothingDone = sandboxMessages.nothingSent();
-    await checkRunTrust(this.dir, this.workspace, this.setup.trust(), this.typedDir, nothingDone);
+    const nothingSent = sandboxMessages.nothingSent();
+    await checkRunTrust(this.dir, this.workspace, this.setup.trust(), this.typedDir, nothingSent);
     this.engine = await openWorkspaceEngine(this.context, this.setup, {
       dir: this.dir,
       workspace: this.workspace,
-      nothingDone,
     });
     return this.engine.executor.send(runId, event);
   }
