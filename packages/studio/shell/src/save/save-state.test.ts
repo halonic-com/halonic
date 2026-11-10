@@ -82,6 +82,39 @@ verifies("shell.save-state", () => {
     expect(write).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores an older write that fails after a newer one of the same item started", async () => {
+    const older = pendingWrite();
+    const newer = pendingWrite();
+    const olderSaved = saving.save(supportReply, older.write);
+    const newerSaved = saving.save(supportReply, newer.write);
+
+    older.fail(writeError("ENOSPC"));
+    expect(await olderSaved).toBe(false);
+    newer.finish();
+    expect(await newerSaved).toBe(true);
+
+    expect(saving.note).toEqual({ kind: "saved" });
+    expect(toasts.list()).toEqual([]);
+  });
+
+  it("keeps a newer write's failure when an older write saves after it", async () => {
+    const older = pendingWrite();
+    const newerWrite = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(writeError("EBUSY"))
+      .mockResolvedValue(undefined);
+    const olderSaved = saving.save(supportReply, older.write);
+    expect(await saving.save(supportReply, newerWrite)).toBe(false);
+
+    older.finish();
+    expect(await olderSaved).toBe(true);
+    expect(saving.note).toEqual({ kind: "failed" });
+
+    saving.tryAgain();
+    await vi.waitFor(() => expect(saving.note).toEqual({ kind: "saved" }));
+    expect(newerWrite).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps Couldn't save above every other note while any item failed", async () => {
     await saving.save(supportReply, () => Promise.reject(writeError("EACCES")));
     saving.setFieldsNotSaved(sorter, 1);
@@ -122,6 +155,22 @@ verifies("shell.save-state", () => {
     saving.releaseHold(sorter.key);
     saving.releaseHold(supportReply.key);
     expect(saving.note).toEqual({ kind: "fields-not-saved", count: 1 });
+  });
+
+  it("opens the newest Compare for an item held again, keeping its place", () => {
+    const compareAgain = vi.fn();
+    saving.holdForOutsideChange(sorter, () => {});
+    saving.holdForOutsideChange(supportReply, () => {});
+    saving.holdForOutsideChange(sorter, compareAgain);
+
+    expect(saving.note).toEqual({ kind: "items-not-saved", count: 2, first: sorter });
+    saving.compare();
+    expect(compareAgain).toHaveBeenCalledOnce();
+  });
+
+  it.each([-1, 1.5, Number.NaN])("refuses %d as a count of fields not saved", (count) => {
+    expect(() => saving.setFieldsNotSaved(supportReply, count)).toThrow(RangeError);
+    expect(saving.note).toEqual({ kind: "saved" });
   });
 
   it("uses an item's new name after a rename", async () => {

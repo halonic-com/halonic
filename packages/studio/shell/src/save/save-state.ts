@@ -32,6 +32,8 @@ interface ItemRecord {
   item: SavingItem;
   /** Writes started and not yet finished. */
   writing: number;
+  /** How many writes were ever started; the newest is the only one whose failure counts. */
+  attempts: number;
   failed?: FailedWrite | undefined;
   /** Fields of this item that aren't saved because of a mistake. */
   fieldsNotSaved: number;
@@ -93,19 +95,26 @@ export class SaveState {
   /**
    * Runs `write` for `item`, showing "Saving…" while it runs. A new save of an item clears its
    * last failure and that failure's toast. If `write` fails, the note says "Couldn't save" and an
-   * error toast names the item and the reason; **Try again** runs the same write again. Resolves
-   * to whether the item was saved, and never rejects.
+   * error toast names the item and the reason; **Try again** runs the same write again. When
+   * writes of one item overlap, only the newest one's failure counts: an older write holds older
+   * content, so trying it again would overwrite the newer save. Resolves to whether the item was
+   * saved, and never rejects.
    */
   async save(item: SavingItem, write: () => Promise<void>): Promise<boolean> {
     const record = this.recordFor(item);
     this.clearFailure(record);
+    record.attempts += 1;
+    const attempt = record.attempts;
     record.writing += 1;
     this.update();
     try {
       await write();
       return true;
     } catch (error) {
-      this.fail(record, saveFailureFor(error), () => void this.save(record.item, write));
+      const isNewest = attempt === record.attempts;
+      if (isNewest) {
+        this.fail(record, saveFailureFor(error), () => void this.save(record.item, write));
+      }
       return false;
     } finally {
       record.writing -= 1;
@@ -116,8 +125,14 @@ export class SaveState {
   /**
    * Says how many fields of `item` aren't saved because of a mistake; 0 when they're all fixed.
    * Each such field keeps its own error line; the note counts them all ("2 fields not saved").
+   * A count that isn't a whole number from 0 throws a `RangeError`, as it would break the total.
    */
   setFieldsNotSaved(item: SavingItem, count: number): void {
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError(
+        `A count of fields not saved must be a whole number from 0, not ${count}.`,
+      );
+    }
     const record = this.recordFor(item);
     record.fieldsNotSaved = count;
     this.update();
@@ -125,13 +140,13 @@ export class SaveState {
 
   /**
    * Holds `item` back: it changed outside Halonic while it had changes of the user's (save model
-   * 6.3), so its saving pauses until they compare. `compare` opens its Compare.
+   * 6.3), so its saving pauses until they compare. `compare` opens its Compare. Holding an item
+   * again keeps its place in the queue and uses the newest `compare`.
    */
   holdForOutsideChange(item: SavingItem, compare: () => void): void {
     this.recordFor(item);
-    if (!this.held.has(item.key)) {
-      this.held.set(item.key, compare);
-    }
+    // `Map.set` on a key it has keeps the key's place, so "held longest first" still holds.
+    this.held.set(item.key, compare);
     this.update();
   }
 
@@ -178,7 +193,7 @@ export class SaveState {
       known.item = item;
       return known;
     }
-    const record: ItemRecord = { item, writing: 0, fieldsNotSaved: 0 };
+    const record: ItemRecord = { item, writing: 0, attempts: 0, fieldsNotSaved: 0 };
     this.items.set(item.key, record);
     return record;
   }
