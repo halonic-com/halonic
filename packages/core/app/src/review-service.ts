@@ -343,7 +343,7 @@ export class ReviewService {
 }
 
 /** Whether the target covers the file of `record`. */
-function covers(target: ReviewTarget, record: ReviewRecord): boolean {
+function covers(target: FilesTarget, record: ReviewRecord): boolean {
   switch (target.kind) {
     case "file":
       return record.path === target.path;

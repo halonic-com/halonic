@@ -177,9 +177,13 @@ verifies("app.review-accept-reject-file", () => {
   it("doesn't bring an accepted record back over a file that changed since", async () => {
     const { store, review, records } = setUp();
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
-    const { step } = await review.accept({ kind: "file", path: clerk });
+    const { step } = done(await review.accept({ kind: "file", path: clerk }));
     store.files.set(clerk, "typed since\n");
-    expect(await review.restore(step, "before")).toEqual({ step: { files: [] }, held: [clerk] });
+    expect(await review.restore(step, "before")).toEqual({
+      status: "done",
+      step: { files: [] },
+      held: [clerk],
+    });
     expect(await records.read(clerk)).toEqual({ status: "none" });
   });
 
@@ -259,7 +263,7 @@ verifies("app.review-accept-reject-all", () => {
     });
     const [rejected, written] = await Promise.all([rejecting, writing]);
     expect(written.status).toBe("written");
-    expect(rejected).toEqual({ step: { files: [] }, held: [] });
+    expect(rejected).toEqual({ status: "done", step: { files: [] }, held: [] });
     expect(store.files.get(clerk)).toBe("x\n");
     const read = await records.read(clerk);
     expect(read.status === "found" && read.record.card).toEqual(k7);
