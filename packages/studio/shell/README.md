@@ -304,11 +304,13 @@ no unsaved edits; a file's own **Keep mine / Load theirs** wins over this messag
 
 The states every page shares, so no feature words them on its own:
 
-- **A page that stops working.** Put each page inside `<PageErrorBoundary pageName="Support reply">`.
-  If the page throws while it draws, only its area shows "This page stopped working" with the reason
-  naming the page, **Reload page** and the link **Copy details** (microcopy 22 F14); the sidebar and
-  the other tabs keep working. Focus goes to the title only if it was lost, and to the page's `h1`
-  after a Reload page that works. The error's message goes only into Copy details.
+- **A page that stops working.** Put each page inside
+  `<PageErrorBoundary pageKey={item.id} pageName="Support reply">`. If the page throws while it
+  draws, only its area shows "This page stopped working" with the reason naming the page, **Reload
+  page** and the link **Copy details** (microcopy 22 F14); the sidebar and the other tabs keep
+  working. Focus goes to the title only if it was lost, and to this page's own `h1` after a Reload
+  page that works. The error's message goes only into Copy details. When `pageKey` changes, such as
+  when the tab opens another item, the boundary starts fresh.
 - **Copy details.** `useCopyDetails()` copies `detailsOf(what, error)` through the frame's
   clipboard and says "Copied. Paste it into a bug report." or "Couldn't copy." in a toast (22 F13b).
   **Report a problem ›** waits until the Studio has a place it opens.

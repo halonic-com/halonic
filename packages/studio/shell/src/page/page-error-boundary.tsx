@@ -1,7 +1,7 @@
 import { EmptyState } from "@halonicjs/studio-kit";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { copyDetailsWords, detailsOf } from "../errors/copy-details-words.ts";
-import { usePageHeadingFocus } from "../tabs/history-moves.ts";
+import { focusPageHeading } from "../tabs/history-moves.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import { useCopyDetails } from "./copy-details.ts";
 
@@ -15,6 +15,12 @@ export const pageStoppedWords = {
 
 /** Props for {@link PageErrorBoundary}. */
 export interface PageErrorBoundaryProps {
+  /**
+   * Which page this is, such as the item's id or the list's place. When it changes, the boundary
+   * starts fresh: a page that stopped working doesn't carry over to the next page shown in the
+   * same tab. Not the page's name, since two items can share a title.
+   */
+  readonly pageKey: string;
   /** What the page shows: the item's title, such as "Support reply", or the list's, "Agents". */
   readonly pageName: string;
   readonly children: ReactNode;
@@ -26,28 +32,51 @@ export interface PageErrorBoundaryProps {
  * Empty state "This page stopped working", the reason naming the page, **Reload page** and the
  * link **Copy details**.
  *
- * **Reload page** draws the page again from the start; when it works, focus goes to the page's
- * `h1`. The error's own message never shows: it goes only into Copy details.
+ * **Reload page** draws the page again from the start; when it works, focus goes to this page's
+ * own `h1`, never to a heading elsewhere in the window. The error's own message never shows: it
+ * goes only into Copy details.
  *
  * @example
- * <PageErrorBoundary pageName="Support reply"><WorkflowPage item={item} /></PageErrorBoundary>
+ * <PageErrorBoundary pageKey={item.id} pageName={item.title}>
+ *   <WorkflowPage item={item} />
+ * </PageErrorBoundary>
  */
-export function PageErrorBoundary({ pageName, children }: PageErrorBoundaryProps) {
+export function PageErrorBoundary({ pageKey, ...page }: PageErrorBoundaryProps) {
+  // A new page starts a new area, which forgets the error and the count of reloads.
+  return <PageArea key={pageKey} {...page} />;
+}
+
+function PageArea({ pageName, children }: Omit<PageErrorBoundaryProps, "pageKey">) {
   const [attempt, setAttempt] = useState(0);
-  const focusPageHeading = usePageHeadingFocus();
-  const reload = () => {
-    setAttempt((count) => count + 1);
-    focusPageHeading();
-  };
+  const areaRef = useRef<HTMLDivElement>(null);
+  const reload = () => setAttempt((count) => count + 1);
   return (
-    <ViewErrorBoundary
-      // A new attempt starts a new boundary, which forgets the error and draws the page again.
-      key={attempt}
-      fallback={(error) => <PageStopped pageName={pageName} error={error} onReload={reload} />}
-    >
-      {children}
-    </ViewErrorBoundary>
+    <div ref={areaRef} className="contents">
+      <ViewErrorBoundary
+        // A new attempt starts a new boundary, which forgets the error and draws the page again.
+        key={attempt}
+        fallback={(error) => <PageStopped pageName={pageName} error={error} onReload={reload} />}
+      >
+        {children}
+        {/* Commits only when the page drew, so a Reload page that fails again moves no focus. */}
+        {attempt > 0 && <FocusPageHeadingOnMount area={areaRef} />}
+      </ViewErrorBoundary>
+    </div>
   );
+}
+
+/** Moves focus to the `h1` inside `area` when it mounts, after a Reload page that worked. */
+function FocusPageHeadingOnMount({
+  area,
+}: {
+  readonly area: { readonly current: HTMLElement | null };
+}): null {
+  useLayoutEffect(() => {
+    if (area.current !== null) {
+      focusPageHeading(area.current);
+    }
+  }, [area]);
+  return null;
 }
 
 function PageStopped({

@@ -41,7 +41,10 @@ function WorkflowPage() {
   );
 }
 
-/** The page next to a sidebar button, inside the frame's clipboard and toasts. */
+/**
+ * The page next to a sidebar button and another pane's page heading, inside the frame's clipboard
+ * and toasts.
+ */
 function renderPage(): HTMLElement {
   return render(
     <ClipboardProvider writeClipboard={writeClipboard}>
@@ -49,7 +52,10 @@ function renderPage(): HTMLElement {
         <nav>
           <button type="button">Inbox</button>
         </nav>
-        <PageErrorBoundary pageName="Support reply">
+        <main>
+          <h1>Home</h1>
+        </main>
+        <PageErrorBoundary pageKey="workflow-1" pageName="Support reply">
           <WorkflowPage />
         </PageErrorBoundary>
       </ToastStoreProvider>
@@ -108,7 +114,7 @@ verifies("shell.page-stopped", () => {
     const container = render(
       <>
         <button type="button">Inbox</button>
-        <PageErrorBoundary pageName="Agents">
+        <PageErrorBoundary pageKey="agents" pageName="Agents">
           <AgentsPage />
         </PageErrorBoundary>
       </>,
@@ -125,7 +131,7 @@ verifies("shell.page-stopped", () => {
     const container = renderPage();
     page.broken = false;
     await press(button(container, "Reload page"));
-    const heading = container.querySelector("main h1") as HTMLElement;
+    const heading = [...container.querySelectorAll("main h1")].at(-1) as HTMLElement;
     expect(heading.textContent).toBe("Support reply");
     expect(document.activeElement).toBe(heading);
   });
@@ -134,6 +140,23 @@ verifies("shell.page-stopped", () => {
     const container = renderPage();
     await press(button(container, "Reload page"));
     expect(document.activeElement?.textContent).toBe("This page stopped working");
+  });
+
+  it("starts fresh when the tab shows another page", () => {
+    let open = (_key: string) => {};
+    function Tab() {
+      const [key, setKey] = useState("workflow-1");
+      open = setKey;
+      return (
+        <PageErrorBoundary pageKey={key} pageName="Support reply">
+          {key === "workflow-1" ? <WorkflowPage /> : <p>Second reply</p>}
+        </PageErrorBoundary>
+      );
+    }
+    const container = render(<Tab />);
+    expect(container.textContent).toContain("This page stopped working");
+    act(() => open("workflow-2"));
+    expect(container.textContent).toBe("Second reply");
   });
 
   it("copies the page and the error, then says so in a toast", async () => {
