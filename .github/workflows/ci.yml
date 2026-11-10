@@ -42,6 +42,7 @@ jobs:
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
       workflows: ${{ steps.diff.outputs.workflows }}
+      code: ${{ steps.diff.outputs.code }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -82,6 +83,17 @@ jobs:
               by_area=true
             fi
             echo "::notice title=Changed areas::Filtered by area: $by_area ($(grep -c . <<< "$changed") files)"
+          fi
+          # Pull requests that change only docs, decisions, READMEs and
+          # repo metadata have no code to test, so the merge base's tests
+          # and the requirement guard skip them. The merge queue and main
+          # still run everything. Requirement files stay "code": the guard
+          # reads them. An empty or unreadable diff counts as code.
+          docs_only='^(docs/|decisions/|\.changeset/.*\.md$|\.github/(ISSUE_TEMPLATE/|CODEOWNERS$|pull_request_template\.md$))|(^|/)(README|AGENTS|CHANGELOG)\.md$'
+          if [ "$EVENT" = "pull_request" ] && [ -n "$changed" ] && ! grep -qvE "$docs_only" <<< "$changed"; then
+            echo "code=false" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "code=true" | tee -a "$GITHUB_OUTPUT"
           fi
           for area in "${areas[@]}"; do
             name="${area%%=*}"
@@ -398,10 +410,11 @@ jobs:
   # store nor Turbo's cache is restored (a pull request's runs can write both).
   # Pull requests only, like the guard job it feeds: the queue holds the
   # same change, and its base is main or the entry ahead, whose own run
-  # tests it.
+  # tests it. Skipped for docs-only pull requests (the changes job's code output).
   base-tests:
     name: Merge base's tests (no cache)
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -537,8 +550,8 @@ jobs:
   # the merge queue the build job runs trace itself, as on main.
   guard:
     name: Requirements and the requirement guard (merge base's copy)
-    needs: [build, base-tests]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs: [changes, build, base-tests]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
