@@ -105,11 +105,9 @@ function Swatches({ presets, value, label, onPick }: SwatchesProps) {
         aria-labelledby={headingId}
         className="grid grid-cols-[repeat(4,auto)] justify-between gap-y-2 phone:gap-y-0"
       >
-        {presets.map((preset) => (
-          <label
-            key={preset.value}
-            className="relative grid size-6 place-items-center phone:size-12"
-          >
+        {presets.map((preset, index) => (
+          // By place: the presets come from the screen, and two may name the same colour.
+          <label key={index} className="relative grid size-6 place-items-center phone:size-12">
             <input
               type="radio"
               name={name}
@@ -192,9 +190,15 @@ function HexField({ fresh, value, onChange, label, error }: HexFieldProps) {
 
 /**
  * How the popover closes besides a press outside (which the anchoring hook sees): Escape, which
- * gives focus back to its button, and focus moving out of it, as Tab past the hex field does.
+ * gives focus back to its button, and focus moving out of it, as Tab past the hex field or
+ * Shift+Tab onto the button does. Focus moving to the button under a press doesn't close it: the
+ * button's own click does, and closing first would let that click open it again.
  */
-function closeHandlers(opener: RefObject<HTMLElement | null>, onClose: () => void) {
+function closeHandlers(
+  opener: RefObject<HTMLElement | null>,
+  pressingOpener: RefObject<boolean>,
+  onClose: () => void,
+) {
   return {
     onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
       if (event.key === "Escape") {
@@ -205,7 +209,10 @@ function closeHandlers(opener: RefObject<HTMLElement | null>, onClose: () => voi
     },
     onBlur: (event: FocusEvent<HTMLDivElement>) => {
       const next = event.relatedTarget as Node | null;
-      if (next !== null && !event.currentTarget.contains(next) && !opener.current?.contains(next)) {
+      if (next === null || event.currentTarget.contains(next)) {
+        return;
+      }
+      if (!(pressingOpener.current && opener.current?.contains(next))) {
         onClose();
       }
     },
@@ -231,7 +238,7 @@ export function ColourPopover(props: ColourPopoverProps) {
   const popover = useRef<HTMLDivElement>(null);
   /** Bumped on each opening and each pick, so the hex field starts again from `value`. */
   const [fresh, setFresh] = useState(0);
-  useAnchoredPopover(popover, opener, open, onClose);
+  const pressingOpener = useAnchoredPopover(popover, opener, open, onClose);
 
   // Each opening starts from the last good colour, with focus on its preset (or the first).
   useEffect(() => {
@@ -251,7 +258,7 @@ export function ColourPopover(props: ColourPopoverProps) {
       role="dialog"
       aria-label={label}
       className={popoverClasses}
-      {...closeHandlers(opener, onClose)}
+      {...closeHandlers(opener, pressingOpener, onClose)}
     >
       <Swatches
         presets={props.presets}

@@ -4,8 +4,8 @@
  * stands for, which the component sets as `--swatch`. A 1px `border-control` edge, so a colour
  * close to the popover's fill still has an outline; `fg-muted` under the pointer. The picked one
  * has a 2px `accent` ring with a 2px gap, and its check comes from the component, so the pick
- * shows in shape as well as colour. Keyboard focus is the standard ring. It sits next to the
- * popover so theme.css stays under the size limit; theme.css imports it.
+ * shows in shape as well as colour. Keyboard focus is the standard ring on `surface-raised`.
+ * It sits next to the popover so theme.css stays under the size limit; theme.css imports it.
  */
 @utility swatch {
   appearance: none;
@@ -32,8 +32,24 @@
       0 0 0 4px var(--color-accent);
   }
 
+  /*
+   * The standard ring, with its 2px gap in the popover's `surface-raised` rather than the page's
+   * `surface`, so no band of another colour shows inside it in a dark scheme. It replaces the
+   * pick's ring on a focused, picked swatch; the check still shows the pick.
+   */
   @variant focus-visible {
-    box-shadow: var(--focus-ring);
+    box-shadow:
+      0 0 0 2px var(--color-surface-raised),
+      0 0 0 4px var(--color-accent);
+  }
+
+  /* More contrast: the ring's accent grows to 3px, as `--focus-ring` does. */
+  @media (prefers-contrast: more) {
+    @variant focus-visible {
+      box-shadow:
+        0 0 0 2px var(--color-surface-raised),
+        0 0 0 5px var(--color-accent);
+    }
   }
 
   /*

@@ -193,7 +193,7 @@ describe("theme.css built by Tailwind: the Slider", () => {
 });
 
 describe("theme.css built by Tailwind: the colour popover's swatch", () => {
-  it("draws a 24px square in its colour with a control edge, a 2px accent ring when picked and the focus ring", async () => {
+  it("draws a 24px square in its colour with a control edge, a 2px accent ring when picked and the focus ring on surface-raised", async () => {
     const css = await buildCss(["swatch"]);
     const swatch = css.slice(
       css.indexOf(".swatch {"),
@@ -208,7 +208,13 @@ describe("theme.css built by Tailwind: the colour popover's swatch", () => {
     expect(swatch).toMatch(
       /&:checked \{\s*box-shadow: 0 0 0 2px var\(--color-surface-raised\), 0 0 0 4px var\(--color-accent\);/,
     );
-    expect(swatch).toMatch(/&:focus-visible \{\s*box-shadow: var\(--focus-ring\);/);
+    // The ring's gap is the popover's `surface-raised`, and its accent grows to 3px with more contrast.
+    expect(swatch).toMatch(
+      /&:focus-visible \{\s*box-shadow: 0 0 0 2px var\(--color-surface-raised\), 0 0 0 4px var\(--color-accent\);/,
+    );
+    expect(swatch).toMatch(
+      /@media \(prefers-contrast: more\) \{\s*&:focus-visible \{\s*box-shadow: 0 0 0 2px var\(--color-surface-raised\), 0 0 0 5px var\(--color-accent\);/,
+    );
   });
 
   it("keeps its colour and an edge in high contrast, with the pick and the focus in Highlight", async () => {

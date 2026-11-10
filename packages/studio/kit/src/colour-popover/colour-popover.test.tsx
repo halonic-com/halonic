@@ -230,6 +230,55 @@ verifies("kit.colour-popover", () => {
     expect(isOpen(popover)).toBe(false);
   });
 
+  it("closes when Shift+Tab moves focus back onto its button", async () => {
+    const { opener, popover } = await openField();
+    act(() => {
+      opener.focus();
+    });
+    expect(isOpen(popover)).toBe(false);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("stays open while a press on its button takes focus, so the button's click decides", async () => {
+    const { opener, popover } = await openField();
+    pressOn(opener);
+    act(() => {
+      opener.focus();
+    });
+    expect(isOpen(popover)).toBe(true);
+    act(() => {
+      document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    });
+    await click(opener);
+    expect(isOpen(popover)).toBe(false);
+  });
+
+  it("takes two presets of the same colour, keyed by place", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { container } = render(
+      <ColourPopover
+        id="twice"
+        open={false}
+        opener={{ current: null }}
+        onClose={() => {}}
+        label="Choose a colour"
+        presets={[
+          PRESETS[0] as ColourPreset,
+          { value: "#3b8bff", name: "Sky" },
+          PRESETS[0] as ColourPreset,
+        ]}
+        value="#3B8BFF"
+        onChange={() => {}}
+        presetsLabel="Presets"
+        hexLabel="Hex colour"
+        hexError="Use six digits, like #3B8BFF."
+      />,
+    );
+    expect(container.querySelectorAll('[type="radio"]')).toHaveLength(3);
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
   it("starts each opening from the last good colour, without the last one's error", async () => {
     const { opener, popover, hex } = await openField();
     type(hex, "nope");

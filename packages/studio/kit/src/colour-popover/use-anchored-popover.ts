@@ -15,7 +15,8 @@ function anchorOf(opener: HTMLElement): Element {
 /**
  * Shows and hides a `popover="manual"` element as `open` says, places it under its opener's box,
  * and keeps it there while the window changes size or something scrolls. While it's open, a
- * press outside it and outside the opener calls `onClose`.
+ * press outside it and outside the opener calls `onClose`. It gives back whether a press on the
+ * opener is under way, so focus moving to the opener closes the popover only from the keyboard.
  *
  * Manual rather than `auto`: the browser's light dismiss would close it on the press that starts
  * a click on the opener, and the click would open it again. Here the opener's own click decides.
@@ -25,8 +26,9 @@ export function useAnchoredPopover(
   opener: RefObject<HTMLElement | null>,
   open: boolean,
   onClose: () => void,
-): void {
+): RefObject<boolean> {
   const shown = useRef(false);
+  const pressingOpener = useRef(false);
   const latestClose = useRef(onClose);
   latestClose.current = onClose;
 
@@ -49,19 +51,29 @@ export function useAnchoredPopover(
     }
     const place = () => placePopover(element, anchorOf(button), { gap: FIELD_GAP, align: "start" });
     place();
-    const pressOutside = (event: PointerEvent) => {
+    const press = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!element.contains(target) && !button.contains(target)) {
+      pressingOpener.current = button.contains(target);
+      if (!element.contains(target) && !pressingOpener.current) {
         latestClose.current();
       }
     };
-    document.addEventListener("pointerdown", pressOutside, true);
+    const release = () => {
+      pressingOpener.current = false;
+    };
+    document.addEventListener("pointerdown", press, true);
+    document.addEventListener("pointerup", release, true);
+    document.addEventListener("pointercancel", release, true);
     addEventListener("resize", place);
     addEventListener("scroll", place, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", pressOutside, true);
+      document.removeEventListener("pointerdown", press, true);
+      document.removeEventListener("pointerup", release, true);
+      document.removeEventListener("pointercancel", release, true);
+      pressingOpener.current = false;
       removeEventListener("resize", place);
       removeEventListener("scroll", place, { capture: true });
     };
   }, [open, popover, opener]);
+  return pressingOpener;
 }
