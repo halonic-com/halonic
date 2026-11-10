@@ -832,6 +832,43 @@ hidden from them.
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
 
+## FormRows
+
+Side-label rows for a wide item page (a Skill or a Connector): the label in a 168px column on the
+left, the value 16px after it, a 1px `border` line between rows. Every Field inside `FormRows`
+takes `layout="side"` from it, so a screen never writes the prop.
+
+```tsx
+<FormRows>
+  <Field label="Name" hint="Shown in the sidebar." error={nameError} required>
+    <Input value={name} onChange={(event) => setName(event.target.value)} />
+  </Field>
+  <Field label="Instructions" wide>
+    <TextArea value={instructions} onChange={(event) => setInstructions(event.target.value)} />
+  </Field>
+  <Field label="Used by" align="text">
+    <p>Support bot, Inbox triage</p>
+  </Field>
+</FormRows>;
+```
+
+| Prop                | What it is                                                                   |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `inCard` (FormRows) | A routine card's rows: a 120px label column, 12px gaps and no lines          |
+| `layout` (Field)    | `"side"` for one side-label Field outside FormRows; `"stack"` to opt one out |
+| `align` (Field)     | `"text"` when the value is text, not a control: the label isn't moved down   |
+| `wide` (Field)      | Drops the value column's 560px limit, for long text such as Instructions     |
+
+The label is `text-small`, weight 500, `fg-muted`, 6px down so it sits on a 32px control's text
+line. The hint or error sits under the value, not under the label, and an error never colours the
+label or the row. A Switch or a RadioGroup goes in the value column; the label is the setting's or
+the group's name.
+
+**When it falls back:** each Field is its own container query. Side by side only while the row is
+at least 46.5rem wide (28rem in a card); narrower, and always on a phone, every Field is label over
+value, as above. The limit is in `rem`, so larger text falls back too. Nothing reads the window
+width.
+
 ## Input
 
 A one-line text field.

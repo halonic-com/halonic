@@ -5,6 +5,7 @@ import { checkboxSection } from "./checkbox.tsx";
 import { copyButtonSection } from "./copy-button.tsx";
 import { externalLinkSection } from "./external-link.tsx";
 import { fieldSection } from "./field.tsx";
+import { formRowsSection } from "./form-rows.tsx";
 import { iconTileSection } from "./icon-tile.tsx";
 import { kbdSection } from "./kbd.tsx";
 import { listSection } from "./list.tsx";
@@ -25,6 +26,7 @@ export const SECTIONS: readonly PartSection[] = [
   statusChipSection,
   checkboxSection,
   kbdSection,
+  formRowsSection,
   copyButtonSection,
   externalLinkSection,
   windowSection,

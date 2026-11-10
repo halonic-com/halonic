@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useId } from "react";
 import { AlertIcon } from "../icons/alert-icon.tsx";
+import { type FormRowsKind, useFormRows } from "./form-rows.tsx";
 
 /** What a Field tells the control inside it, so screens never wire ids by hand. */
 export interface FieldControl {
@@ -33,6 +34,18 @@ export interface FieldProps {
   readonly error?: string | null;
   /** Adds the word "Required" after the label. No asterisk. */
   readonly required?: boolean;
+  /**
+   * `"side"` puts the label in a column on the left (specs 19.2). Inside FormRows every Field is
+   * `"side"` without the prop. Narrower than 46.5rem it falls back to label over value.
+   */
+  readonly layout?: "stack" | "side";
+  /**
+   * Side layout only. `"text"` when the value is text, not a control (a read-only value, a list
+   * of files), so the label isn't moved down to a 32px control's text line.
+   */
+  readonly align?: "control" | "text";
+  /** Side layout only. Drops the value column's 560px limit, for long text (Instructions). */
+  readonly wide?: boolean;
   /** One kit control: an Input, a TextArea or a Select. */
   readonly children: ReactNode;
 }
@@ -52,8 +65,12 @@ export function Field({
   hint,
   error,
   required = false,
+  layout,
+  align = "control",
+  wide = false,
   children,
 }: FieldProps) {
+  const rows = useFormRows();
   const id = useId();
   const controlId = `${id}-control`;
   const lineId = `${id}-line`;
@@ -67,22 +84,110 @@ export function Field({
     required,
   };
 
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={controlId} className={hideLabel ? "sr-only" : "text-caption text-fg-muted"}>
-        {label}
-        {/* Hidden from screen readers, which already hear "required" from aria-required. */}
-        {required ? (
-          <span className="text-fg-subtle" aria-hidden="true">
-            {" "}
-            Required
-          </span>
-        ) : null}
-      </label>
+  const side = (layout ?? (rows === undefined ? "stack" : "side")) === "side";
+  const look = side ? SIDE[rows ?? "sheet"] : undefined;
+  const fieldLabel = (
+    <label htmlFor={controlId} className={labelClass(hideLabel, look, align)}>
+      {label}
+      {/* Hidden from screen readers, which already hear "required" from aria-required. */}
+      {required ? (
+        <span className="text-fg-subtle" aria-hidden="true">
+          {" "}
+          Required
+        </span>
+      ) : null}
+    </label>
+  );
+  const value = (
+    <>
       <FieldControlContext value={control}>{children}</FieldControlContext>
       <FieldLine id={lineId} hint={hint} error={error} />
+    </>
+  );
+
+  if (look === undefined) {
+    return (
+      <div className="flex flex-col gap-1">
+        {fieldLabel}
+        {value}
+      </div>
+    );
+  }
+  return <SideRow look={look} wide={wide} label={fieldLabel} value={value} />;
+}
+
+/**
+ * A side-label row. The outer div is the container the row measures, so a Field sizes itself to
+ * its own width and nothing reads the window's.
+ */
+function SideRow({
+  look,
+  wide,
+  label,
+  value,
+}: {
+  look: SideLook;
+  wide: boolean;
+  label: ReactNode;
+  value: ReactNode;
+}) {
+  return (
+    <div className="@container">
+      <div className={`flex flex-col gap-1 ${look.row}`}>
+        {label}
+        <div className={wide ? VALUE : `${VALUE} ${look.value}`.trimEnd()}>{value}</div>
+      </div>
     </div>
   );
+}
+
+/** The value column: the control with its hint or error under it, never under the label. */
+const VALUE = "flex min-w-0 flex-1 flex-col gap-1";
+
+/** One side layout's classes: the row, the label column, the label's nudge, the value column. */
+interface SideLook {
+  readonly row: string;
+  readonly label: string;
+  readonly nudge: string;
+  readonly value: string;
+}
+
+/**
+ * The side layout's classes, written out in full so Tailwind finds them. A sheet goes side by
+ * side from 46.5rem (168 + 16 + 560px at normal text); a Card's rows from 28rem, so a phone's
+ * card still stacks. Under the limit the label is the stacked Field's own.
+ */
+const SIDE: Record<FormRowsKind, SideLook> = {
+  sheet: {
+    row: "@min-[46.5rem]:flex-row @min-[46.5rem]:gap-4",
+    label:
+      "@min-[46.5rem]:w-42 @min-[46.5rem]:shrink-0 @min-[46.5rem]:text-small @min-[46.5rem]:font-medium",
+    nudge: "@min-[46.5rem]:pt-1.5",
+    value: "@min-[46.5rem]:max-w-140",
+  },
+  card: {
+    row: "@min-[28rem]:flex-row @min-[28rem]:gap-3",
+    label:
+      "@min-[28rem]:w-30 @min-[28rem]:shrink-0 @min-[28rem]:text-small @min-[28rem]:font-medium",
+    nudge: "@min-[28rem]:pt-1.5",
+    value: "",
+  },
+};
+
+/** The label's classes: hidden, the stacked caption, or the side column's from the query up. */
+function labelClass(
+  hideLabel: boolean,
+  look: SideLook | undefined,
+  align: "control" | "text",
+): string {
+  if (hideLabel) {
+    return "sr-only";
+  }
+  if (look === undefined) {
+    return "text-caption text-fg-muted";
+  }
+  const nudge = align === "control" ? ` ${look.nudge}` : "";
+  return `text-caption text-fg-muted ${look.label}${nudge}`;
 }
 
 /** The line under the control: the error with its icon, else the hint, else nothing. */

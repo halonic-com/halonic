@@ -56,6 +56,7 @@ export {
   type FieldProps,
   useFieldControl,
 } from "./field/field.tsx";
+export { FormRows, type FormRowsProps } from "./field/form-rows.tsx";
 export {
   type GridCellProps,
   type GridNavigation,
