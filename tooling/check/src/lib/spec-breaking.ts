@@ -37,18 +37,12 @@ function sameJson(a: unknown, b: unknown): boolean {
  * (not, for example, `pattern` or `minimum`), and alternatives are matched
  * one at a time, so several released ones merged into one current one are
  * still reported. The added-`type` check also fires when an existing `enum` or
- * `const` already implies that type.
+ * `const` already implies that type. Removing a whole `anyOf` or `oneOf` is
+ * reported although it widens what is accepted.
  */
-export function breakingChanges(
-  released: Schema,
-  current: Schema,
-  path = "$",
-): string[] {
+export function breakingChanges(released: Schema, current: Schema, path = "$"): string[] {
   const changes: string[] = [];
-  if (
-    "type" in released &&
-    !typeStillAllowed(released["type"], current["type"])
-  ) {
+  if ("type" in released && !typeStillAllowed(released["type"], current["type"])) {
     changes.push(
       `${path}: "type" changed from ${JSON.stringify(released["type"])} to ${JSON.stringify(current["type"])}.`,
     );
@@ -66,9 +60,7 @@ export function breakingChanges(
   const values = listOf(current["enum"]);
   for (const value of listOf(released["enum"])) {
     if (!values.some((kept) => sameJson(kept, value))) {
-      changes.push(
-        `${path}: the enum value ${JSON.stringify(value)} was removed.`,
-      );
+      changes.push(`${path}: the enum value ${JSON.stringify(value)} was removed.`);
     }
   }
   const wasRequired = listOf(released["required"]);
@@ -88,42 +80,24 @@ function typeStillAllowed(before: unknown, after: unknown): boolean {
   }
   const allowed = listOf(Array.isArray(after) ? after : [after]);
   return listOf(Array.isArray(before) ? before : [before]).every(
-    (type) =>
-      allowed.includes(type) ||
-      (type === "integer" && allowed.includes("number")),
+    (type) => allowed.includes(type) || (type === "integer" && allowed.includes("number")),
   );
 }
 
 /** The changes inside the sub-schemas: properties, definitions, items and alternatives. */
-function breakingChangesBelow(
-  released: Schema,
-  current: Schema,
-  path: string,
-): string[] {
+function breakingChangesBelow(released: Schema, current: Schema, path: string): string[] {
   const changes = [
-    ...breakingChangesInGroup(
-      released,
-      current,
-      path,
-      "properties",
-      "property",
-    ),
+    ...breakingChangesInGroup(released, current, path, "properties", "property"),
     ...breakingChangesInGroup(released, current, path, "$defs", "definition"),
   ];
   if (isSchema(released["items"])) {
     changes.push(
-      ...breakingChanges(
-        released["items"],
-        schemasOf(current["items"]),
-        `${path}.items`,
-      ),
+      ...breakingChanges(released["items"], schemasOf(current["items"]), `${path}.items`),
     );
   }
   changes.push(...breakingChangesInAllOf(released, current, path));
   for (const group of ["anyOf", "oneOf"]) {
-    changes.push(
-      ...breakingChangesInAlternatives(released, current, path, group),
-    );
+    changes.push(...breakingChangesInAlternatives(released, current, path, group));
   }
   return changes;
 }
@@ -160,17 +134,13 @@ function breakingChangesInGroup(
  * position. More parts accept fewer files, so a longer list is breaking and a
  * shorter one is not.
  */
-function breakingChangesInAllOf(
-  released: Schema,
-  current: Schema,
-  path: string,
-): string[] {
+function breakingChangesInAllOf(released: Schema, current: Schema, path: string): string[] {
   const before = listOf(released["allOf"]);
   const after = listOf(current["allOf"]);
   const changes: string[] = [];
   if (before.length === 0 && after.length > 0) {
     changes.push(
-      `${path}: "allOf" with ${after.length} parts was added, which narrows what is accepted.`,
+      `${path}: "allOf" with ${after.length} ${after.length === 1 ? "part" : "parts"} was added, which narrows what is accepted.`,
     );
   } else if (after.length > before.length) {
     changes.push(
@@ -179,11 +149,7 @@ function breakingChangesInAllOf(
   }
   before.slice(0, after.length).forEach((part, index) => {
     changes.push(
-      ...breakingChanges(
-        schemasOf(part),
-        schemasOf(after[index]),
-        `${path}.allOf[${index}]`,
-      ),
+      ...breakingChanges(schemasOf(part), schemasOf(after[index]), `${path}.allOf[${index}]`),
     );
   });
   return changes;
@@ -206,7 +172,7 @@ function breakingChangesInAlternatives(
   const after = listOf(current[group]);
   if (before.length === 0 && after.length > 0) {
     return [
-      `${path}: "${group}" with ${after.length} alternatives was added, which narrows what is accepted.`,
+      `${path}: "${group}" with ${after.length} ${after.length === 1 ? "alternative" : "alternatives"} was added, which narrows what is accepted.`,
     ];
   }
   if (after.length < before.length) {
@@ -216,11 +182,7 @@ function breakingChangesInAlternatives(
   }
   return before.flatMap((alternative, index) => {
     const options = after.map((candidate) =>
-      breakingChanges(
-        schemasOf(alternative),
-        schemasOf(candidate),
-        `${path}.${group}[${index}]`,
-      ),
+      breakingChanges(schemasOf(alternative), schemasOf(candidate), `${path}.${group}[${index}]`),
     );
     if (options.some((changes) => changes.length === 0)) {
       return [];

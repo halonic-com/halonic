@@ -38,9 +38,9 @@ verifies("check.api-specs-breaking", () => {
   });
 
   test("names a newly required key", () => {
-    expect(
-      breakingChanges(released, { ...released, required: ["id", "note"] }),
-    ).toEqual(['$: "note" is newly required.']);
+    expect(breakingChanges(released, { ...released, required: ["id", "note"] })).toEqual([
+      '$: "note" is newly required.',
+    ]);
   });
 
   test("names a removed enum value, a changed type and a changed const", () => {
@@ -86,9 +86,9 @@ verifies("check.api-specs-breaking", () => {
       '$.$defs.id: "type" changed from "string" to "number".',
       '$.anyOf[1]: "const" changed from 1 to 2.',
     ]);
-    expect(
-      breakingChanges(before, { ...after, anyOf: [{ type: "string" }] }),
-    ).toContain('$: the number of "anyOf" alternatives changed from 2 to 1.');
+    expect(breakingChanges(before, { ...after, anyOf: [{ type: "string" }] })).toContain(
+      '$: the number of "anyOf" alternatives changed from 2 to 1.',
+    );
   });
 
   test("accepts changes that widen the schema", () => {
@@ -103,22 +103,16 @@ verifies("check.api-specs-breaking", () => {
       }),
     ).toEqual([]);
     const widened = (id: object) => ({ ...before, properties: { id } });
-    expect(
-      breakingChanges(before, widened({ type: ["string", "null"] })),
-    ).toEqual([]);
+    expect(breakingChanges(before, widened({ type: ["string", "null"] }))).toEqual([]);
     expect(breakingChanges(before, widened({}))).toEqual([]);
-    expect(breakingChanges({ type: "integer" }, { type: "number" })).toEqual(
-      [],
-    );
+    expect(breakingChanges({ type: "integer" }, { type: "number" })).toEqual([]);
   });
 
   test("names a narrowed type, a removed oneOf alternative and an added allOf one", () => {
-    expect(
-      breakingChanges({ type: ["string", "null"] }, { type: "string" }),
-    ).toEqual(['$: "type" changed from ["string","null"] to "string".']);
-    expect(
-      breakingChanges({ type: "number" }, { type: "integer" }),
-    ).toHaveLength(1);
+    expect(breakingChanges({ type: ["string", "null"] }, { type: "string" })).toEqual([
+      '$: "type" changed from ["string","null"] to "string".',
+    ]);
+    expect(breakingChanges({ type: "number" }, { type: "integer" })).toHaveLength(1);
     expect(breakingChanges({ oneOf: [{}, {}] }, { oneOf: [{}] })).toEqual([
       '$: the number of "oneOf" alternatives changed from 2 to 1.',
     ]);
@@ -130,10 +124,7 @@ verifies("check.api-specs-breaking", () => {
 
   test("still compares the alternatives both lists have", () => {
     expect(
-      breakingChanges(
-        { anyOf: [{ const: 1 }] },
-        { anyOf: [{ const: 2 }, { const: 3 }] },
-      ),
+      breakingChanges({ anyOf: [{ const: 1 }] }, { anyOf: [{ const: 2 }, { const: 3 }] }),
     ).toEqual(['$.anyOf[0]: "const" changed from 1 to 2.']);
   });
 
@@ -169,15 +160,13 @@ verifies("check.api-specs-breaking", () => {
 
   test("names an allOf, anyOf or oneOf added where there was none", () => {
     expect(breakingChanges({}, { allOf: [{ type: "string" }] })).toEqual([
-      '$: "allOf" with 1 parts was added, which narrows what is accepted.',
+      '$: "allOf" with 1 part was added, which narrows what is accepted.',
     ]);
-    expect(
-      breakingChanges({}, { anyOf: [{ type: "string" }, { type: "number" }] }),
-    ).toEqual([
+    expect(breakingChanges({}, { anyOf: [{ type: "string" }, { type: "number" }] })).toEqual([
       '$: "anyOf" with 2 alternatives was added, which narrows what is accepted.',
     ]);
     expect(breakingChanges({}, { oneOf: [{ type: "string" }] })).toEqual([
-      '$: "oneOf" with 1 alternatives was added, which narrows what is accepted.',
+      '$: "oneOf" with 1 alternative was added, which narrows what is accepted.',
     ]);
   });
 });
