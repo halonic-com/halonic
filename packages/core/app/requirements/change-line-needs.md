@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3278; HAL-3267 engine answer 5; Changes design 3 ("Undo this change can't go alone")
 
-Where undoing one line of a workflow change alone would leave the workflow pointing at a step that isn't there, the describer shall list in that line's `needs` the lines it depends on, and shall join lines that need each other into one line.
+Where undoing one line of a workflow change alone would leave the workflow pointing at a step that isn't there, the describer shall list that line in the `needs` of each line that points there, so it can't be undone before them, and shall join lines that need each other into one line.
 
 ## Examples
 

@@ -1,4 +1,4 @@
-import { parseFile, type Workflow } from "@halonicjs/format";
+import { parseFile, type Workflow, type WorkflowState } from "@halonicjs/format";
 import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -54,6 +54,11 @@ const withPageOncall = lines(
   "    type: final",
 );
 
+const withEscalate = lastVersion.replace(
+  "    on: [{ to: notify }]",
+  "    on: [{ to: notify }, { to: escalate, event: urgent }]\n  escalate:\n    type: final",
+);
+
 function described(before: string, after: string) {
   return describeWorkflowChange(workflow(before), workflow(after));
 }
@@ -107,12 +112,17 @@ verifies("app.change-line-parts", () => {
   });
 
   it("takes out exactly one line when that line's parts are reverted", () => {
+    const before = `${withEscalate}layout:\n  escalate: { x: 5, y: 6 }\n`;
     const after = `${withPageOncall.replace("name: Support", "name: Support triage")}layout:\n  page-oncall: { x: 1, y: 2 }\n`;
-    const all = described(lastVersion, after);
-    expect(all.length).toBeGreaterThan(2);
+    const all = described(before, after);
+    expect(all.map((line) => line.id)).toContain("step:escalate");
+    expect(all.find((line) => line.id === "step:escalate")?.parts).toContainEqual([
+      "layout",
+      "escalate",
+    ]);
     for (const line of all) {
-      const undone = unwrap(revertParts(after, lastVersion, line.parts));
-      const left = described(lastVersion, undone).map((other) => other.id);
+      const undone = unwrap(revertParts(after, before, line.parts));
+      const left = described(before, undone).map((other) => other.id);
       expect(left).toEqual(all.filter((other) => other.id !== line.id).map((other) => other.id));
     }
   });
@@ -123,6 +133,24 @@ verifies("app.change-line-parts", () => {
     ]);
     expect(describeWorkflowChange(workflow(lastVersion), undefined)).toEqual([
       { id: "item", sentence: "Deleted", parts: [] },
+    ]);
+  });
+
+  it("gives a field the tables don't name a line under its key", () => {
+    const was = workflow(lastVersion);
+    const step = was.states["notify"] as WorkflowState;
+    const is = {
+      ...was,
+      owner: "support",
+      states: { ...was.states, notify: { ...step, retries: 2 } },
+    } as Workflow;
+    expect(describeWorkflowChange(was, is)).toEqual([
+      { id: "field:owner", sentence: "owner added", parts: [["owner"]] },
+      {
+        id: "step:notify",
+        sentence: "Step changed: Notify (retries)",
+        parts: [["states", "notify"]],
+      },
     ]);
   });
 
@@ -145,16 +173,12 @@ verifies("app.change-line-needs", () => {
   });
 
   it("makes a removed step need the change that stopped going to it", () => {
-    const withEscalate = lastVersion.replace(
-      "    on: [{ to: notify }]",
-      "    on: [{ to: notify }, { to: escalate, event: urgent }]\n  escalate:\n    type: final",
-    );
-    const lines = described(withEscalate, lastVersion);
-    expect(lines.find((line) => line.id === "step:escalate")).toMatchObject({
+    const all = described(withEscalate, lastVersion);
+    expect(all.find((line) => line.id === "step:escalate")).toMatchObject({
       sentence: "Step removed: Escalate",
       needs: ["step:classify"],
     });
-    expect(lines.find((line) => line.id === "step:classify")?.needs).toBeUndefined();
+    expect(all.find((line) => line.id === "step:classify")?.needs).toBeUndefined();
   });
 
   it("makes Starts at need the added step it starts at", () => {

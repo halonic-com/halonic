@@ -3,7 +3,11 @@ import { deepEqual } from "@halonicjs/std";
 import { joinLinesThatNeedEachOther } from "./change-needs.ts";
 import type { ChangeLine, ItemPath } from "./revert-parts.ts";
 
-/** The workflow's own fields, in the order their lines are listed. `states` and `layout` have their own lines. */
+/**
+ * The workflow's own fields, in the order their lines are listed. A field not
+ * listed here gets a line too, after these, under its key. `states` and
+ * `layout` have their own lines.
+ */
 const WORKFLOW_FIELDS: Readonly<Record<string, string>> = {
   name: "Name",
   description: "Description",
@@ -14,7 +18,7 @@ const WORKFLOW_FIELDS: Readonly<Record<string, string>> = {
   id: "Id",
 };
 
-/** How a step's fields are named in "Step changed: Notify (agent, next steps)". */
+/** How a step's fields are named in "Step changed: Notify (agent, next steps)". A field not listed here is named by its key. */
 const STEP_FIELDS: Readonly<Record<string, string>> = {
   type: "type",
   description: "description",
@@ -45,11 +49,13 @@ const CONTEXT_KEY = /\bcontext\.([A-Za-z0-9_-]+)/g;
  * step added, removed or changed and one per workflow field, each with the
  * parts it covers. A step's line also covers its place in `layout`.
  *
- * A line needs another when undoing it alone would leave the workflow
- * pointing at a step that isn't there: a step changed to go to, or read the
- * output of, a step that was added; a step removed that another step went to
- * or read from before that step changed; and "Starts at" with the step it
- * starts at. Lines that need each other are joined into one.
+ * A line needs another when undoing the other alone would leave the workflow
+ * pointing at a step that isn't there, so the other can't be undone before
+ * this line: a step changed to go to, or read the output of, a step that was
+ * added needs that step's line; a step removed that another step went to or
+ * read from needs the line of the step that stopped; and "Starts at" needs
+ * the line of the added step it starts at. Lines that need each other are
+ * joined into one.
  *
  * A workflow that is new or deleted as a whole gets one line, "New" or
  * "Deleted", with no parts: undoing it is undoing the file.
@@ -71,8 +77,11 @@ export function describeWorkflowChange(
   }
 
   const lines: ChangeLine[] = [];
-  for (const [field, label] of Object.entries(WORKFLOW_FIELDS)) {
-    const line = fieldLine(field, label, before, after);
+  const fields = keysInOrder(WORKFLOW_FIELDS, before, after).filter(
+    (field) => field !== "states" && field !== "layout",
+  );
+  for (const field of fields) {
+    const line = fieldLine(field, WORKFLOW_FIELDS[field] ?? field, before, after);
     if (line !== undefined) {
       lines.push(line);
     }
@@ -136,6 +145,17 @@ function fieldSentence(field: string, label: string, was: unknown, is: unknown):
   return `${label} edited`;
 }
 
+/** The keys of both versions: the labelled ones in their listed order, then any others. */
+function keysInOrder(labels: Readonly<Record<string, string>>, ...versions: object[]): string[] {
+  const keys = new Set(Object.keys(labels));
+  for (const version of versions) {
+    for (const key of Object.keys(version)) {
+      keys.add(key);
+    }
+  }
+  return [...keys];
+}
+
 /** Every step id, in the after version's order, with removed steps where they were. */
 function stepIdsInOrder(before: Workflow, after: Workflow): string[] {
   const ids = Object.keys(after.states);
@@ -166,12 +186,12 @@ function stepLine(stepId: string, before: Workflow, after: Workflow): ChangeLine
   if (is === undefined) {
     return { id, sentence: `Step removed: ${name}`, parts };
   }
-  const changed = Object.keys(STEP_FIELDS).filter(
+  const changed = keysInOrder(STEP_FIELDS, was, is).filter(
     (field) =>
       !deepEqual((was as Record<string, unknown>)[field], (is as Record<string, unknown>)[field]),
   );
   if (changed.length > 0) {
-    const fields = changed.map((field) => STEP_FIELDS[field]).join(", ");
+    const fields = changed.map((field) => STEP_FIELDS[field] ?? field).join(", ");
     return { id, sentence: `Step changed: ${name} (${fields})`, parts };
   }
   if (layoutChanged) {
