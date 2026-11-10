@@ -94,6 +94,28 @@ fn repo_config_makes_the_repositorys_merge_drivers_report_a_conflict() {
 }
 
 #[test]
+fn repo_config_sends_the_repositorys_remote_programs_back_to_gits_defaults() {
+    let entries = [
+        entry("local", "remote.origin.uploadPack", "touch owned"),
+        entry("local", "remote.origin.uploadpack", "touch owned again"),
+        entry("worktree", "remote.acme.v2.receivepack", "touch owned"),
+        entry(
+            "local",
+            "remote.origin.url",
+            "https://git.acme.example/acme.git",
+        ),
+        entry("global", "remote.mine.uploadpack", "my-upload-pack"),
+    ];
+    assert_eq!(
+        pairs(&neutralise_programs(&entries)),
+        [
+            ("remote.origin.uploadpack", "git-upload-pack"),
+            ("remote.acme.v2.receivepack", "git-receive-pack"),
+        ]
+    );
+}
+
+#[test]
 fn repo_config_keeps_only_the_users_credential_helpers() {
     let entries = [
         entry("global", "credential.helper", "osxkeychain"),

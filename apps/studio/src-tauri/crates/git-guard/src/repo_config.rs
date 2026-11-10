@@ -9,7 +9,7 @@
 //! what it names: filters are blanked, merge drivers report a conflict, and
 //! the ssh and signing programs go back to the user's own or git's default.
 //! The rest is neutralised on every call (see `runner.rs`): hooks, pagers,
-//! editors, diff drivers, signing, upload-pack, receive-pack and transports.
+//! editors, diff drivers, signing and transports.
 //! Only a key no override reaches makes the runner refuse the repository.
 
 use crate::error::GitError;
@@ -27,6 +27,16 @@ const PROGRAM_KEYS: &[(&str, &str)] = &[
     ("gpg.x509.program", "gpgsm"),
     ("gpg.ssh.program", "ssh-keygen"),
     ("gpg.ssh.defaultkeycommand", ""),
+];
+
+/// Programs a remote names for the other end of a fetch or push, with
+/// git's default. A partial clone fetches missing objects on its own during
+/// `diff`, `log`, `checkout`, `switch` and `reset`, and that fetch runs the
+/// promisor remote's `uploadpack`, so the flags on `pull` and `push` alone
+/// don't cover them.
+const REMOTE_PROGRAM_KEYS: &[(&str, &str)] = &[
+    ("uploadpack", "git-upload-pack"),
+    ("receivepack", "git-receive-pack"),
 ];
 
 /// A merge driver that always reports a conflict, so the user resolves it.
@@ -171,8 +181,8 @@ pub(crate) fn blank_filters(names: &[String]) -> Vec<(String, String)> {
 }
 
 /// The config that neutralises every other program the repository's own
-/// config names: its merge drivers, its credential helpers, and the keys in
-/// [`PROGRAM_KEYS`].
+/// config names: its merge drivers, its remotes' programs, its credential
+/// helpers, and the keys in [`PROGRAM_KEYS`].
 pub(crate) fn neutralise_programs(entries: &[ConfigEntry]) -> Vec<(String, String)> {
     let repository = || entries.iter().filter(|entry| entry.is_from_repository());
     let mut overrides: Vec<(String, String)> = Vec::new();
@@ -182,6 +192,13 @@ pub(crate) fn neutralise_programs(entries: &[ConfigEntry]) -> Vec<(String, Strin
             if !overrides.iter().any(|(known, _)| *known == key) {
                 overrides.push((key, CONFLICT_MERGE_DRIVER.to_owned()));
             }
+        }
+    }
+    for entry in repository() {
+        if let Some(reset) = remote_program_default(&entry.key)
+            && !overrides.contains(&reset)
+        {
+            overrides.push(reset);
         }
     }
     for (key, default) in PROGRAM_KEYS {
@@ -206,6 +223,16 @@ pub(crate) fn neutralise_programs(entries: &[ConfigEntry]) -> Vec<(String, Strin
         }
     }
     overrides
+}
+
+/// For `remote.<name>.uploadpack` or `receivepack`, the same key with git's
+/// default program.
+fn remote_program_default(key: &str) -> Option<(String, String)> {
+    let (name, program) = subsection_key(key, "remote")?;
+    let (program, default) = REMOTE_PROGRAM_KEYS
+        .iter()
+        .find(|(known, _)| program.eq_ignore_ascii_case(known))?;
+    Some((format!("remote.{name}.{program}"), (*default).to_owned()))
 }
 
 /// `credential.helper` and `credential.<url>.helper`.
