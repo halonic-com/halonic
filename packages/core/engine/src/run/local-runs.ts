@@ -19,6 +19,7 @@ import { encodeUtf8 } from "@halonicjs/std";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
+import { checkStartTimeouts } from "../harness/start-limits.ts";
 import type {
   DecideInput,
   Effect,
@@ -108,7 +109,9 @@ export class LocalRuns {
   readonly #calling = new Set<string>();
   #started: Promise<void> | undefined;
 
+  /** @throws RangeError when a start limit in `harnesses` isn't a whole number of milliseconds of 1 or more */
   constructor(options: LocalRunsOptions, clock: Clock, callModel: CallModel) {
+    checkStartTimeouts(options.harnesses?.startTimeoutsMs);
     this.#options = options;
     this.#clock = clock;
     this.#callModel = callModel;

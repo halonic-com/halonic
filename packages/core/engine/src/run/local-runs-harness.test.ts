@@ -113,6 +113,22 @@ verifies("engine.run-harness-failures", () => {
 });
 
 verifies("engine.harness-start-limits", () => {
+  it.each([
+    ["sandbox", -1],
+    ["sandbox", 0],
+    ["harness", 1.5],
+    ["harness", Number.NaN],
+  ])("refuses a %s start limit of %s when the executor is created", (phase, timeoutMs) => {
+    const ports = harnessPorts();
+    const harnesses = { ...ports.options, startTimeoutsMs: { [phase]: timeoutMs } };
+
+    expect(() => runsOn([], new KernelRuns(), { agents, harnesses })).toThrow(
+      new RangeError(
+        `startTimeoutsMs.${phase} must be a whole number of milliseconds of 1 or more, not ${timeoutMs}.`,
+      ),
+    );
+  });
+
   it("fails the run with harness-start-failed when the start limit's timer arrives first", async () => {
     const ports = harnessPorts();
     ports.harness.silent = true;

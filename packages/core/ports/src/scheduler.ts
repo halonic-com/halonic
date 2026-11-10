@@ -23,6 +23,12 @@ export interface ScheduledTimer {
  * **Timers can arrive late or twice**. The listener
  * ignores a timer it has already handled or cancelled.
  *
+ * **A timer that comes due is delivered even while `onTimer` is still
+ * running for another timer.** The engine relies on this: a harness call's
+ * start limit is a timer that has to arrive while the call's own timer is
+ * still being handled. A scheduler doesn't wait for one call to end before
+ * it delivers the next timer.
+ *
  * If `onTimer` rejects, the scheduler delivers the timer again later, waiting
  * longer each time: at least 1 second after the first failure, doubling, and
  * at most 15 minutes between tries. It never drops the timer, so a listener

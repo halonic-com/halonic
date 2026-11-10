@@ -19,6 +19,26 @@ export const defaultStartTimeoutsMs: Readonly<Record<StartPhase, number>> = {
   harness: harnessStartTimeoutMs,
 };
 
+/**
+ * Checks the limits a host set: each is a whole number of milliseconds of
+ * 1 or more. A bad one would otherwise surface only as a start that fails
+ * at once, with a reason that doesn't say why.
+ *
+ * @throws RangeError naming the start whose limit isn't
+ */
+export function checkStartTimeouts(
+  timeoutsMs: Readonly<Partial<Record<StartPhase, number>>> | undefined,
+): void {
+  for (const phase of Object.keys(defaultStartTimeoutsMs) as StartPhase[]) {
+    const timeoutMs = timeoutsMs?.[phase];
+    if (timeoutMs !== undefined && !(Number.isInteger(timeoutMs) && timeoutMs >= 1)) {
+      throw new RangeError(
+        `startTimeoutsMs.${phase} must be a whole number of milliseconds of 1 or more, not ${timeoutMs}.`,
+      );
+    }
+  }
+}
+
 /** One start to wait for, with what happens when its time is up. */
 export interface StartLimit<T> {
   readonly phase: StartPhase;

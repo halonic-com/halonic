@@ -76,7 +76,10 @@ export class LocalExecutor implements RunExecutor {
   private readonly maxRounds: number;
   private readonly runs: LocalRuns | undefined;
 
-  /** @throws RangeError when `maxRounds` is less than 1 or not a whole number */
+  /**
+   * @throws RangeError when `maxRounds` is less than 1 or not a whole number, or a start
+   *   limit in `runs.harnesses` isn't a whole number of milliseconds of 1 or more
+   */
   constructor(options: LocalExecutorOptions) {
     const maxRounds = options.maxRounds ?? defaultMaxRounds;
     if (!Number.isInteger(maxRounds) || maxRounds < 1) {

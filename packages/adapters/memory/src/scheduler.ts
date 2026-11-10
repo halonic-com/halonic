@@ -37,6 +37,8 @@ interface StoredTimer {
  */
 export class MemoryScheduler implements Scheduler {
   readonly #timers = new Map<string, StoredTimer>();
+  /** The timers whose `onTimer` call is running now, by slot. */
+  readonly #delivering = new Set<string>();
   readonly #listener: SchedulerListener;
   readonly #clock: Clock;
   readonly #duplicates: boolean;
@@ -82,11 +84,15 @@ export class MemoryScheduler implements Scheduler {
    * Delivers every timer due by the clock now, earliest first and one at a
    * time, then the routine tick when a minute has passed since the last one.
    * A timer set during this call to a time already past waits for the next call.
+   *
+   * It may be called again while an earlier call still waits on a slow
+   * `onTimer`, as time passes: that call delivers the other due timers and
+   * skips the ones still being delivered, as the port asks.
    */
   async runDue(): Promise<void> {
     const now = this.#clock.now().getTime();
     const due = [...this.#timers.entries()]
-      .filter(([, stored]) => stored.dueAt <= now)
+      .filter(([id, stored]) => stored.dueAt <= now && !this.#delivering.has(id))
       .sort(([, a], [, b]) => a.dueAt - b.dueAt);
     for (const [id, stored] of due) {
       if (this.#timers.get(id)?.version === stored.version) {
@@ -100,6 +106,16 @@ export class MemoryScheduler implements Scheduler {
   }
 
   async #deliver(id: string, stored: StoredTimer): Promise<void> {
+    this.#delivering.add(id);
+    try {
+      await this.#callListener(id, stored);
+    } finally {
+      this.#delivering.delete(id);
+    }
+  }
+
+  /** Calls the listener, then removes the timer, or sets its retry when the call rejects. */
+  async #callListener(id: string, stored: StoredTimer): Promise<void> {
     try {
       await this.#listener.onTimer({ ...stored.timer });
     } catch {

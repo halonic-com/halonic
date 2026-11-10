@@ -1,6 +1,6 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type MakeScheduler, startScheduler } from "./scheduler-harness.ts";
 
 const second = 1000;
@@ -169,6 +169,25 @@ function retryCases(make: MakeScheduler): void {
 }
 
 function duringCallCases(make: MakeScheduler): void {
+  it("delivers a timer that comes due while another timer's call is still running", async () => {
+    const s = await startScheduler(make);
+    const release = Promise.withResolvers<void>();
+    s.listener.behaviour = async (timer) => {
+      if (timer.timerId === "harness-call") await release.promise;
+    };
+    await s.scheduler.schedule("run_1", "harness-call", s.inMs(0));
+    await s.scheduler.schedule("run_1", "start-limit", s.inMs(30 * second));
+
+    const calling = s.wait(0);
+    await vi.waitFor(() => expect(delivered(s).map((timer) => timer.timerId)).toHaveLength(1));
+    const limited = s.wait(30 * second);
+    await vi.waitFor(() =>
+      expect(delivered(s).map((timer) => timer.timerId)).toEqual(["harness-call", "start-limit"]),
+    );
+    release.resolve();
+    await Promise.all([calling, limited]);
+  });
+
   it("keeps a timer that the listener set again while it ran, when the call resolves", async () => {
     const s = await startScheduler(make);
     const first = s.inMs(0);
