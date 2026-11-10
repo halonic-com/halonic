@@ -225,6 +225,85 @@ verifies("harness-bridge.openai", () => {
       expect(openai.calls).toHaveLength(0);
     });
 
+    /** `codexRequest` with one more input item. */
+    function withItem(item: object) {
+      return { ...codexRequest, input: [...codexRequest.input, item] };
+    }
+
+    const urlInputs: [string, object, string][] = [
+      [
+        "an image",
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: "What is this?" },
+            { type: "input_image", image_url: "https://example.test/a.png" },
+          ],
+        },
+        "The input_image part at input[2].content[1]",
+      ],
+      [
+        "a file",
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_file", file_url: "https://example.test/a.pdf" }],
+        },
+        "The input_file part at input[2].content[0]",
+      ],
+      [
+        "an image in a tool call's output",
+        {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: [{ type: "input_image", image_url: "HTTP://example.test/a.png" }],
+        },
+        "The input_image part at input[2].output[0]",
+      ],
+    ];
+    for (const [what, item, named] of urlInputs) {
+      it(`refuses ${what} that OpenAI would fetch from a URL, naming the part`, async () => {
+        const openai = fakeProvider(() => new Response("{}"));
+        const { bridge, recorded } = await open(openai.fetch);
+        const reply = await programRequest(bridge, withItem(item));
+        expect(reply.status).toBe(403);
+        expect(await reply.json()).toMatchObject({
+          error: { type: "denied", message: expect.stringContaining(named) },
+        });
+        expect(openai.calls).toHaveLength(0);
+        expect(recorded).toEqual([]);
+      });
+    }
+
+    it("passes on an image or file sent as data, by id, or in a tool call's text output", async () => {
+      const openai = fakeProvider(() => new Response("{}", { status: 200 }));
+      const { bridge } = await open(openai.fetch);
+      const request = {
+        ...codexRequest,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_image", image_url: "data:image/png;base64,iVBORw0K", detail: "auto" },
+              { type: "input_image", file_id: "file-placeholder" },
+              {
+                type: "input_file",
+                filename: "a.pdf",
+                file_data: "data:application/pdf;base64,JVBE",
+              },
+            ],
+          },
+          { type: "function_call_output", call_id: "call_1", output: "See https://example.test" },
+        ],
+        stream: false,
+      };
+      const sent = JSON.stringify(request);
+      const reply = await programRequest(bridge, sent);
+      expect(reply.status).toBe(200);
+      expect(openai.calls).toHaveLength(1);
+      expect(openai.calls[0]?.body).toBe(sent);
+    });
+
     it("answers 404 for any other OpenAI path", async () => {
       const openai = fakeProvider(() => new Response("{}"));
       const { bridge } = await open(openai.fetch);
