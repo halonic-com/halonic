@@ -40,6 +40,8 @@ Device-wide settings such as the theme live outside any scope.
 | `lookUpWorkflow`            | the workflow a typed id or `hub/id` points to; none, or several hubs with that id                                               | `app.workflow-lookup`            |
 | `WorkflowRuns.startRun`     | starts the workflow a typed id or `hub/id` points to and follows the run; none or several start nothing                         | `app.run-start`                  |
 | `WorkflowRuns.follow`       | a run's whole log until it ends or waits after a `seq`, missing no event; a signal stops following                              | `app.run-follow`                 |
+|                             | subscribes again after the last event when the stream breaks, at most 3 times in a row without a new event                      | `app.run-follow-resubscribe`     |
+|                             | an aborted signal also cancels the run, when the executor can; `RunFollowStopped` says whether it did                           | `app.run-cancel-on-abort`        |
 | `FollowOptions.onEvent`     | each event as the follow reads it, oldest first, so a surface can draw while the run goes                                       | `app.run-follow-events`          |
 | `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only             | `app.connection-settings`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals    | `ports.untrusted-tool-listings`  |

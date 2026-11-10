@@ -5,7 +5,7 @@
 // service only follows the run again afterwards.
 
 import { type RunEvent, summarize } from "@halonicjs/events";
-import type { RunExecutor } from "@halonicjs/ports";
+import type { RunExecutor, RunSubscription } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { hubWorkflows, lookUpWorkflow, type WorkflowLookup } from "./hub-workflows.ts";
@@ -29,9 +29,9 @@ export interface FollowOptions {
    */
   readonly after?: number;
   /**
-   * Stops following, as Ctrl C does: the follow rejects with
-   * {@link RunFollowStopped}. The run itself goes on, because the
-   * `RunExecutor` port can't cancel a run yet.
+   * Stops following, as Ctrl C does, and cancels the run when the executor
+   * can: the follow rejects with {@link RunFollowStopped}. With an executor
+   * that has no `cancel`, the run itself goes on.
    */
   readonly signal?: AbortSignal;
   /**
@@ -51,6 +51,9 @@ export interface FollowOptions {
   readonly onEvent?: (event: RunEvent, events: readonly RunEvent[]) => void;
 }
 
+/** The executor calls {@link WorkflowRuns} makes; `cancel` is optional, as on the port. */
+export type WorkflowRunsExecutor = Pick<RunExecutor, "start" | "subscribe" | "cancel">;
+
 /**
  * The follow of `runId` was stopped through its signal before the run ended
  * or waited. `events` are the ones seen until then, oldest first, so a
@@ -60,12 +63,32 @@ export class RunFollowStopped extends Error {
   override readonly name = "RunFollowStopped";
   readonly runId: string;
   readonly events: readonly RunEvent[];
+  /**
+   * Whether the executor cancelled the run. False when it has no `cancel`,
+   * so the run goes on, or when the cancel failed.
+   */
+  readonly cancelled: boolean;
+  /** Why the cancel failed, when it did; `undefined` otherwise. */
+  readonly cancelError: unknown;
 
-  constructor(runId: string, events: readonly RunEvent[], cause: unknown) {
+  constructor(
+    runId: string,
+    events: readonly RunEvent[],
+    cause: unknown,
+    cancel: { readonly cancelled: boolean; readonly error?: unknown },
+  ) {
     super(`Stopped following run "${runId}".`, { cause });
     this.runId = runId;
     this.events = events;
+    this.cancelled = cancel.cancelled;
+    this.cancelError = cancel.error;
   }
+}
+
+/** What asking the executor to cancel a run gave. */
+interface CancelOutcome {
+  readonly cancelled: boolean;
+  readonly error?: unknown;
 }
 
 /** Events after which a run goes no further without someone: it ended, or it waits. */
@@ -75,11 +98,19 @@ const stopEvents: ReadonlySet<RunEvent["type"]> = new Set([
   "run.waiting",
 ]);
 
+/**
+ * How often in a row a follow subscribes again to a stream that broke
+ * without bringing a new event. A new event starts the count again, so a
+ * long follow survives many dropped connections, but a host that is gone
+ * fails the follow after a few tries.
+ */
+export const maxResubscribes = 3;
+
 /** Starts a workspace's workflow runs and follows them, through its {@link RunExecutor}. */
 export class WorkflowRuns {
-  readonly #executor: Pick<RunExecutor, "start" | "subscribe">;
+  readonly #executor: WorkflowRunsExecutor;
 
-  constructor(executor: Pick<RunExecutor, "start" | "subscribe">) {
+  constructor(executor: WorkflowRunsExecutor) {
     this.#executor = executor;
   }
 
@@ -92,7 +123,7 @@ export class WorkflowRuns {
    * @param workspace - a workspace the person trusts
    * @param typed - the workflow as typed, looked up as `lookUpWorkflow` does
    * @param input - the run's input
-   * @param options - `signal` stops following; aborted before the start, nothing starts.
+   * @param options - `signal` stops following and cancels the run; aborted before the start, nothing starts.
    *   `onEvent` sees each event while the run goes, as for {@link WorkflowRuns.follow}
    * @throws what the executor's `start` throws, such as for a refused input
    * @throws RunFollowStopped when `options.signal` stops the follow
@@ -125,9 +156,16 @@ export class WorkflowRuns {
    * its whole log with the summary worked out from it (requirement
    * `app.run-follow`). The log is read from its first event, so an event
    * recorded before the follow began, even the run's end, is never missed.
+   * When the stream breaks after the follow has seen an event, it subscribes
+   * again after the last one, at most {@link maxResubscribes} times in a row
+   * without a new event (requirement `app.run-follow-resubscribe`).
+   *
+   * When `options.signal` aborts, the follow closes the stream, asks the
+   * executor to cancel the run if it can, and then rejects (requirement
+   * `app.run-cancel-on-abort`).
    *
    * @throws the error the executor's stream ends with, such as for an
-   *   unknown run; the caller may follow again
+   *   unknown run, once it may not subscribe again; the caller may follow again
    * @throws RunFollowStopped when `options.signal` stops the follow
    * @throws what `options.onEvent` throws
    *
@@ -138,64 +176,119 @@ export class WorkflowRuns {
    * // { summary: { status: "completed", … }, events: [run.started, …, run.completed] }
    */
   follow(runId: string, options: FollowOptions = {}): Promise<RunDetail> {
-    const { after = 0, signal, onEvent } = options;
-    return new Promise((resolve, reject) => {
-      const events: RunEvent[] = [];
-      let settled = false;
+    return new RunFollow(this.#executor, runId, options).done;
+  }
+}
 
-      const finish = (outcome: () => void) => {
-        if (settled) return;
-        settled = true;
-        subscription.close();
-        signal?.removeEventListener("abort", onAbort);
-        outcome();
-      };
-      const finishWithLog = () => {
-        finish(() => {
-          const summary = summarize(events);
-          if (summary === null) {
-            reject(new KindedError("not_found", `Run "${runId}" has no events.`));
-            return;
-          }
-          resolve({ summary, events });
-        });
-      };
-      const onAbort = () => {
-        finish(() => reject(new RunFollowStopped(runId, [...events], signal?.reason)));
-      };
+/** One follow of one run: its stream, the events it saw, and how it ends. */
+class RunFollow {
+  readonly done: Promise<RunDetail>;
+  readonly #executor: WorkflowRunsExecutor;
+  readonly #runId: string;
+  readonly #after: number;
+  readonly #signal: AbortSignal | undefined;
+  readonly #onEventOption: FollowOptions["onEvent"];
+  readonly #events: RunEvent[] = [];
+  readonly #outcome = Promise.withResolvers<RunDetail>();
+  #subscription: RunSubscription | undefined;
+  #settled = false;
+  /** Breaks in a row with no new event since the last subscribe. */
+  #breaks = 0;
 
-      // From seq 0: the stored events come first, then the new ones.
-      const subscription = this.#executor.subscribe(runId, 0, {
-        onEvent: (event) => {
-          if (settled) return;
-          events.push(event);
-          try {
-            onEvent?.(event, events);
-          } catch (error) {
-            finish(() => reject(error));
-            return;
-          }
-          // `onEvent` may have stopped the follow, through the signal.
-          if (settled) return;
-          if (event.seq > after && stopEvents.has(event.type)) {
-            finishWithLog();
-          }
-        },
-        onClose: (error) => {
-          if (error === undefined) {
-            finishWithLog();
-          } else {
-            finish(() => reject(error));
-          }
-        },
-      });
-      // The port never calls the listener before `subscribe` returns, so
-      // `subscription` is set before anything above can use it.
-      if (signal?.aborted) {
-        onAbort();
-      } else {
-        signal?.addEventListener("abort", onAbort, { once: true });
-      }
+  constructor(executor: WorkflowRunsExecutor, runId: string, options: FollowOptions) {
+    this.#executor = executor;
+    this.#runId = runId;
+    this.#after = options.after ?? 0;
+    this.#signal = options.signal;
+    this.#onEventOption = options.onEvent;
+    this.done = this.#outcome.promise;
+    // From seq 0: the stored events come first, then the new ones.
+    this.#subscribe(0);
+    if (this.#signal?.aborted) {
+      this.#stop();
+    } else {
+      this.#signal?.addEventListener("abort", this.#stop, { once: true });
+    }
+  }
+
+  #subscribe(afterSeq: number): void {
+    // The port never calls the listener before `subscribe` returns, so
+    // `#subscription` is set before `#end` can close it.
+    this.#subscription = this.#executor.subscribe(this.#runId, afterSeq, {
+      onEvent: (event) => this.#onEvent(event),
+      onClose: (error) => this.#onClose(error),
     });
+  }
+
+  #onEvent(event: RunEvent): void {
+    if (this.#settled) return;
+    this.#events.push(event);
+    this.#breaks = 0;
+    try {
+      this.#onEventOption?.(event, this.#events);
+    } catch (error) {
+      this.#end();
+      this.#outcome.reject(error);
+      return;
+    }
+    // `onEvent` may have stopped the follow, through the signal.
+    if (this.#settled) return;
+    if (event.seq > this.#after && stopEvents.has(event.type)) {
+      this.#finishWithLog();
+    }
+  }
+
+  #onClose(error: Error | undefined): void {
+    if (this.#settled) return;
+    if (error === undefined) {
+      this.#finishWithLog();
+      return;
+    }
+    const lastSeen = this.#events.at(-1);
+    if (lastSeen === undefined || this.#breaks >= maxResubscribes) {
+      this.#end();
+      this.#outcome.reject(error);
+      return;
+    }
+    this.#breaks += 1;
+    this.#subscribe(lastSeen.seq);
+  }
+
+  #finishWithLog(): void {
+    this.#end();
+    const summary = summarize(this.#events);
+    if (summary === null) {
+      this.#outcome.reject(new KindedError("not_found", `Run "${this.#runId}" has no events.`));
+      return;
+    }
+    this.#outcome.resolve({ summary, events: this.#events });
+  }
+
+  /** The signal aborted: stop following, cancel the run if the executor can, then reject. */
+  readonly #stop = (): void => {
+    if (this.#settled) return;
+    this.#end();
+    const events = [...this.#events];
+    const reason: unknown = this.#signal?.reason;
+    void this.#cancel().then((cancel) => {
+      this.#outcome.reject(new RunFollowStopped(this.#runId, events, reason, cancel));
+    });
+  };
+
+  async #cancel(): Promise<CancelOutcome> {
+    if (this.#executor.cancel === undefined) return { cancelled: false };
+    try {
+      await this.#executor.cancel(this.#runId);
+      return { cancelled: true };
+    } catch (error) {
+      return { cancelled: false, error };
+    }
+  }
+
+  /** Settles the follow's stream: closes it and stops listening to the signal. */
+  #end(): void {
+    this.#settled = true;
+    this.#subscription?.close();
+    this.#signal?.removeEventListener("abort", this.#stop);
   }
 }

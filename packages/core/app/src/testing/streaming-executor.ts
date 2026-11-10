@@ -23,6 +23,7 @@ const started: RunEventBody = {
  */
 export class StreamingExecutor implements Pick<RunExecutor, "start" | "subscribe"> {
   readonly starts: StartRunRequest[] = [];
+  readonly cancels: string[] = [];
   readonly subscribed: { runId: string; afterSeq: number }[] = [];
   /** Recorded by `start` after `run.started`, before it returns. */
   onStart: readonly RunEventBody[] = [];
@@ -58,6 +59,18 @@ export class StreamingExecutor implements Pick<RunExecutor, "start" | "subscribe
       },
     };
   }
+
+  /** As the port's `cancel`, for the tests of an executor that has one: it records the run's end. */
+  readonly cancel = async (runId: string): Promise<RunSummary> => {
+    this.cancels.push(runId);
+    this.append(runId, {
+      type: "run.failed",
+      state: "review",
+      error: "cancelled",
+      reason: "cancelled",
+    });
+    return this.summary(runId);
+  };
 
   /** Records events in a run's log and hands them to its open streams. */
   append(runId: string, ...bodies: readonly RunEventBody[]): void {
