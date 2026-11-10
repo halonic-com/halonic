@@ -1,7 +1,7 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { type DefinitionStore, isPrivateWorkspacePath } from "@halonicjs/ports";
+import { type DefinitionStore, isPrivateWorkspacePath, type VcsWorktree } from "@halonicjs/ports";
 import {
   initRepository,
   plainGit,
@@ -50,8 +50,8 @@ export interface GitVcsFolder {
   vcs: GitVcs;
   files: FolderDefinitionStore;
   plant: Plant;
-  worktreeFiles(): DefinitionStore;
-  writePrivate(): Promise<void>;
+  worktreeFiles(worktree: VcsWorktree): DefinitionStore;
+  writePrivate(worktree: VcsWorktree, path: string, content: string): Promise<void>;
   commitPrivate(path: string, content: string): Promise<void>;
   readPrivate(path: string): Promise<string | null>;
   nonCommitIds(commit: string): Promise<string[]>;
@@ -70,11 +70,6 @@ export interface MakeGitVcs {
   clones(files: Files): Promise<[GitVcsFolder, GitVcsFolder]>;
 }
 
-/** `GitVcs` has no worktrees yet (HAL-3245, git PR 4); no contract case asks for one before it does. */
-function noWorktreesYet(): never {
-  throw new Error("The git Vcs has no worktrees yet.");
-}
-
 /** The contract's folders, on real git, each in a new scratch folder. */
 export function gitVcsHarness(
   scratch: Scratch,
@@ -82,11 +77,16 @@ export function gitVcsHarness(
   plantedHooks: readonly string[],
 ): MakeGitVcs {
   const harnessAt = async (folder: string): Promise<GitVcsFolder> => ({
-    vcs: new GitVcs(folder, { runner: await runner(), author: testAuthor }),
+    vcs: new GitVcs(folder, {
+      runner: await runner(),
+      author: testAuthor,
+      // Outside the workspace, as the app's data folder is.
+      worktrees: join(await scratch.folder(), "worktrees"),
+    }),
     files: new FolderDefinitionStore(folder),
     plant: plantIn(folder, await scratch.folder(), plantedHooks),
-    worktreeFiles: noWorktreesYet,
-    writePrivate: async () => noWorktreesYet(),
+    worktreeFiles: (worktree) => new FolderDefinitionStore(worktree.path),
+    writePrivate: (worktree, path, content) => writeFiles(worktree.path, { [path]: content }),
     async commitPrivate(path, content) {
       await writeFiles(folder, { [path]: content });
       // `--force`, since a repository may ignore it; plain git, since the port refuses to stage it.

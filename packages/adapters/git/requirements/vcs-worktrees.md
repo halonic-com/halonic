@@ -1,6 +1,6 @@
 # git.vcs-worktrees
 
-- Status: active
+- Status: retired
 - Since: 0.1.0
 - Source: HAL-3245 (`Vcs` port v2, git part 4 to come); the memory Vcs's `memory.vcs-worktrees`
 

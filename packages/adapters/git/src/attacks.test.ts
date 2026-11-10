@@ -238,7 +238,7 @@ verifies("git.repo-leaks", () => {
         ["mergetool"],
         ["rebase", "--exec=planted", "HEAD"],
         ["am"],
-        ["apply", "planted.patch"],
+        ["notes", "add", "--message=planted", "HEAD"],
         ["archive", "--remote=ext::planted", "HEAD"],
         ["grep", "--open-files-in-pager=planted", "a"],
         ["credential", "fill"],
@@ -271,6 +271,9 @@ verifies("git.repo-leaks", () => {
         ["commit", "--allow-empty", `--templ=${outside}`],
         ["add", `--pathspec-from-file=${outside}`],
         ["cat-file", "--textconv", "HEAD:a.yaml"],
+        // The adapter applies patches, but never outside the working tree.
+        ["apply", "--unsafe-paths", "planted.patch"],
+        ["apply", `--build-fake-anc=${outside}`, "planted.patch"],
       ];
       for (const args of refused) {
         await expect(repository.run({ args }), args.join(" ")).rejects.toThrow(

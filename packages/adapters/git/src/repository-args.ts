@@ -15,8 +15,10 @@ const showsDiffs = new Set(["diff", "log", "show", "whatchanged"]);
 const allowedSubcommands = new Set([
   ...showsDiffs,
   "add",
+  "apply",
   "cat-file",
   "checkout",
+  "checkout-index",
   "clean",
   "commit",
   "commit-tree",
@@ -27,6 +29,7 @@ const allowedSubcommands = new Set([
   "mv",
   "pull",
   "push",
+  "read-tree",
   "remote",
   "reset",
   "rev-parse",
@@ -35,6 +38,7 @@ const allowedSubcommands = new Set([
   "status",
   "switch",
   "symbolic-ref",
+  "worktree",
   "write-tree",
 ]);
 
@@ -64,6 +68,8 @@ const fileOptions = ["output", "file", "pathspec-from-file", "template"];
 const refusedLongOptions: Readonly<Record<string, readonly string[]>> = {
   // `add --force` records an ignored nested repository, which the checks don't list.
   add: [...fileOptions, "force", "patch", "interactive", "edit"],
+  // `apply --unsafe-paths` writes outside the working tree, `--build-fake-ancestor` a file it names.
+  apply: [...fileOptions, "unsafe-paths", "build-fake-ancestor"],
   // `cat-file --textconv` and `--filters` run the drivers the attributes name, with no `--no-textconv` to beat them.
   "cat-file": [...fileOptions, "textconv", "filters"],
   checkout: [...fileOptions, "patch"],

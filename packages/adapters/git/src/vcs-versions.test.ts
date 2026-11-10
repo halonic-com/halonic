@@ -4,6 +4,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import {
+  plainGit,
   repositoryWith,
   Scratch,
   testAuthor,
@@ -11,6 +12,7 @@ import {
   writeFiles,
 } from "./fixtures.test-helper.ts";
 import type { GitRunner } from "./git-runner.ts";
+import { gitVcsHarness } from "./harness.test-helper.ts";
 import { GitVcs } from "./vcs.ts";
 
 // Ported from the memory Vcs's `vcs-versions.test.ts` (HAL-3245), so both
@@ -201,6 +203,23 @@ verifies("git.vcs-versions", () => {
     it("refuses a private path", async () => {
       const { vcs } = await repoWith({ "a.yaml": "1\n" });
       await expect(vcs.rename("a.yaml", ".env")).rejects.toThrow(RangeError);
+    });
+  });
+
+  describe("the contract harness", () => {
+    // The contract's case for a full id that names a tree or a file passes
+    // on an empty list, so it counts on the harness giving git's ids (HAL-3265).
+    it("gives a commit's tree id and a blob id as its ids that aren't commits", async () => {
+      const harness = await gitVcsHarness(scratch, runner, []).repo({ "a.yaml": "1\n" });
+      const [head] = await harness.vcs.log(1);
+      const ids = await harness.nonCommitIds(String(head?.hash));
+      const types = [];
+      for (const id of ids) {
+        types.push((await plainGit(harness.files.location, ["cat-file", "-t", id])).trim());
+      }
+      expect(types).toEqual(["tree", "blob"]);
+      for (const id of ids)
+        await expect(harness.vcs.readAt(id, "a.yaml")).rejects.toThrow(RangeError);
     });
   });
 });

@@ -33,6 +33,20 @@ export interface RepositoryCall {
   network?: boolean;
   /** An absolute index file to use in place of the repository's own. */
   indexFile?: string;
+  /** A worktree to run in, in place of the workspace; see {@link WorktreeLocation}. */
+  worktree?: WorktreeLocation;
+}
+
+/**
+ * Where a worktree's git files and files are. The caller checks both: git
+ * gets them explicitly, so it never reads the `.git` file in the worktree's
+ * folder, which whatever ran there could have rewritten (HAL-3188).
+ */
+export interface WorktreeLocation {
+  /** Git's record of the worktree, `.git/worktrees/<id>` in the repository. */
+  gitDir: string;
+  /** The worktree's folder. */
+  folder: string;
 }
 
 /**
@@ -87,14 +101,12 @@ export class Repository {
     if (neutralising === null) {
       throw new Error(`The folder ${this.#top} is no longer a git repository.`);
     }
+    const gitDir = call.worktree?.gitDir ?? this.#gitDir;
+    const workTree = call.worktree?.folder ?? this.#top;
     return this.#runner.run({
-      cwd: this.#top,
+      cwd: workTree,
       // Given explicitly, so a link swapped in after the checks can't move the call.
-      args: [
-        `--git-dir=${this.#gitDir}`,
-        `--work-tree=${this.#top}`,
-        ...withoutDiffPrograms(call.args),
-      ],
+      args: [`--git-dir=${gitDir}`, `--work-tree=${workTree}`, ...withoutDiffPrograms(call.args)],
       config: [...neutralising, ...(call.config ?? [])],
       network: call.network === true,
       ...(call.indexFile === undefined ? {} : { indexFile: call.indexFile }),

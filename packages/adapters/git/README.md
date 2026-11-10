@@ -16,6 +16,8 @@ const runner = await GitRunner.create();
 const vcs = new GitVcs("/srv/workspaces/acme", {
   runner,
   author: { name: "Acme Studio", email: "studio@acme.example" },
+  // In the app's data folder, never inside the workspace.
+  worktrees: "/srv/halonic-data/worktrees",
 });
 console.log(await vcs.status());
 ```
@@ -42,10 +44,16 @@ Private files (`.studio`, `.env`, `.envrc`, `.env.*`) never show in `status`, as
 
 A version is a full commit id (port v2). `snapshot` commits the public files on disk through a copy of the index in `.git`, so the person's branch, index and working tree don't change and the commit is on no branch; `.env` and the other private entries stay out even when `.gitignore` lets them in. `readAt` and `listAt` read a commit's regular files with `ls-tree` and `cat-file blob`, never the working tree, and run no filter. `rename` uses `git mv` for what the repository tracks, so the history follows the file.
 
+## Worktrees and patches
+
+`addWorktree` checks a commit out, detached, into a folder of its own inside the `worktrees` folder the `GitVcs` was given, which can't be inside the workspace or hold it; without one, it refuses. The folder's name is the worktree's id, so git's record of it is `.git/worktrees/<id>`. The private entries the commit has stay out of the folder. Every call in a worktree names that record and the folder to git, after checking the record points back at the folder and still shares the workspace's repository, so the `.git` file in the folder, which whatever ran there can rewrite, is never read (HAL-3188). `removeWorktree` deletes the folder and the record without git.
+
+`diffBetween` works on a copy of the worktree's index in its record, so nothing changes, and gives one diff per public file, with `a/` and `b/` prefixes and no renames whatever the repository's config says. `applyPatch` runs `git apply` on the working tree only. First it checks every path twice, as the patch's headers write it and as `git apply --numstat` reads it, and refuses a patch that does more than change a plain file's lines.
+
 The desktop's `git-guard` crate does the same in Rust.
 
 ## Not yet
 
 - **Pushing to a remote that needs a password.** No credential helper runs, the user's included. Halonic's own helper comes with the keychain work.
 - **The repository's own config, through `GitRunner` alone.** The runner on its own doesn't stop programs the repository's config or `.gitattributes` names, such as a filter or an external diff; only the repository checks do, and `GitVcs` runs every call through them. On a workspace you don't trust, use `GitVcs`, not `GitRunner` directly.
-- **Worktrees and patches.** The rest of port v2 (`addWorktree`, `diffBetween`, `applyPatch` and the others in the ADR) comes when the port adds them.
+- **Create version and proposal refs.** `commitVersion`, `commitWorktreeTo`, `readRef` and `deleteRef` refuse until git part 5 of HAL-3245.

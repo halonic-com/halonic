@@ -135,7 +135,8 @@ async function realAlternate(top: string, alternate: string): Promise<string> {
   }
 }
 
-function isInside(folder: string, path: string): boolean {
+/** Whether `path` is `folder` or inside it; both absolute and real. */
+export function isInside(folder: string, path: string): boolean {
   const fromFolder = relative(folder, path);
   return fromFolder === "" || (!fromFolder.startsWith("..") && !isAbsolute(fromFolder));
 }

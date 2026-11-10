@@ -23,8 +23,10 @@ import type { GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
 import { gitError, Repository } from "./repository.ts";
 import { checkBranchNameShape, checkNoFolders, checkVcsPaths } from "./vcs-input.ts";
+import { applyToWorkingTree } from "./vcs-patch.ts";
 import { pullFastForward, pushToUpstream } from "./vcs-remote.ts";
 import { listAtCommit, readAtCommit, snapshotCommit } from "./vcs-versions.ts";
+import { GitWorktrees } from "./vcs-worktrees.ts";
 
 /** Who commits: git reads no user config, so the caller says. */
 export interface GitAuthor {
@@ -38,6 +40,12 @@ export interface GitVcsOptions {
   runner: GitRunner;
   /** The author and committer of every commit. */
   author: GitAuthor;
+  /**
+   * The folder that holds the worktrees, in the app's data folder: never
+   * inside the workspace folder, nor holding it. Without one, `addWorktree`
+   * refuses and there are no worktrees.
+   */
+  worktrees?: string;
 }
 
 /**
@@ -51,12 +59,14 @@ export class GitVcs implements Vcs {
   readonly #folder: string;
   readonly #runner: GitRunner;
   readonly #author: GitAuthor;
+  readonly #worktrees: GitWorktrees;
 
   /** @param folder - the workspace folder, which need not be a repository yet */
   constructor(folder: string, options: GitVcsOptions) {
     this.#folder = folder;
     this.#runner = options.runner;
     this.#author = options.author;
+    this.#worktrees = new GitWorktrees(options.worktrees);
   }
 
   async status(): Promise<VcsStatus> {
@@ -181,24 +191,24 @@ export class GitVcs implements Vcs {
     else await move(source, target);
   }
 
-  async addWorktree(_version: string): Promise<VcsWorktree> {
-    throw notOnGitYet("addWorktree");
+  async addWorktree(version: string): Promise<VcsWorktree> {
+    return this.#worktrees.add(await this.#repository(), version);
   }
 
-  async removeWorktree(_id: string): Promise<void> {
-    throw notOnGitYet("removeWorktree");
+  async removeWorktree(id: string): Promise<void> {
+    await this.#worktrees.remove(await this.#repository(), id);
   }
 
   async listWorktrees(): Promise<VcsWorktree[]> {
-    throw notOnGitYet("listWorktrees");
+    return this.#worktrees.list(await this.#repository());
   }
 
-  async diffBetween(_version: string, _worktreeId: string): Promise<VcsFileDiff[]> {
-    throw notOnGitYet("diffBetween");
+  async diffBetween(version: string, worktreeId: string): Promise<VcsFileDiff[]> {
+    return this.#worktrees.diff(await this.#repository(), version, worktreeId);
   }
 
-  async applyPatch(_patch: string, _options?: VcsApplyOptions): Promise<void> {
-    throw notOnGitYet("applyPatch");
+  async applyPatch(patch: string, options?: VcsApplyOptions): Promise<void> {
+    await applyToWorkingTree(await this.#repository(), patch, options?.reverse === true);
   }
 
   async commitVersion(_options: VcsCommitVersionOptions): Promise<string> {
@@ -288,11 +298,9 @@ export class GitVcs implements Vcs {
 }
 
 /**
- * The error of a port v2 method git doesn't have yet. Worktrees,
- * `diffBetween` and `applyPatch` come with the `.git`-file rule in part 4 of
- * HAL-3245, and Create version and proposal refs in part 5; until then they
- * refuse, rather than half work. Nothing outside this package builds a
- * `GitVcs` yet.
+ * The error of a port v2 method git doesn't have yet: Create version and
+ * proposal refs come in part 5 of HAL-3245; until then they refuse, rather
+ * than half work. Nothing outside this package builds a `GitVcs` yet.
  */
 function notOnGitYet(method: string): Error {
   return new Error(`The git Vcs can't ${method} yet (HAL-3245).`);

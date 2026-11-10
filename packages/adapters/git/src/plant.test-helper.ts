@@ -62,9 +62,13 @@ export function plantIn(folder: string, outside: string, hooks: readonly string[
       }
       await plainGit(folder, ["remote", "set-url", "origin", remote]);
     },
-    async worktreeGitFile() {
-      // `GitVcs` has no worktrees yet (HAL-3245, git PR 4), so there is no `.git` file to rewrite.
-      throw new Error("The git Vcs has no worktrees yet.");
+    async worktreeGitFile(worktree) {
+      await ready;
+      // A repository outside the workspace whose fsmonitor leaves the mark, as HAL-3188 plants it.
+      const planted = join(outside, "planted-worktree");
+      await plainGit(outside, ["init", "--quiet", "--template=", planted]);
+      await plainGit(planted, ["config", "--local", "core.fsmonitor", program]);
+      await writeFile(join(worktree.path, ".git"), `gitdir: ${join(planted, ".git")}\n`);
     },
     async ran() {
       try {

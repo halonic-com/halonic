@@ -109,7 +109,13 @@ async function filesAt(
   return files;
 }
 
-async function checkKnownVersion(repository: Repository, version: string): Promise<void> {
+/**
+ * Refuses a version the repository doesn't have, and a full id that names
+ * something other than a commit. Run it after `checkCommitId`.
+ *
+ * @throws as {@link readAtCommit}
+ */
+export async function checkKnownVersion(repository: Repository, version: string): Promise<void> {
   const found = await repository.run({ args: ["cat-file", "-t", version] });
   if (found.code !== 0) throw new Error(`Unknown version ${version}`);
   // A full id may name a tree, a file or a tag; only a commit is a version.
@@ -123,7 +129,8 @@ async function currentCommit(repository: Repository): Promise<string | null> {
   return result.code === 0 ? text(result.stdout) : null;
 }
 
-function nulSeparated(output: Buffer): string[] {
+/** The entries of `-z` output, such as paths. */
+export function nulSeparated(output: Buffer): string[] {
   return output
     .toString("utf8")
     .split("\0")
