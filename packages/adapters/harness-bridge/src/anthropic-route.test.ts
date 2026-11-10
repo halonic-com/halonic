@@ -35,6 +35,7 @@ async function open(fetch: Fetch, anthropic: BridgeProviderAccess | null = keyed
   const run = { ...fakeRun(), providers: anthropic === null ? {} : { anthropic } };
   const bridge = await openBridge(run, {
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
+    closeTimeoutMs: 1_000,
     routes: [route],
   });
   closers.push(bridge.close);

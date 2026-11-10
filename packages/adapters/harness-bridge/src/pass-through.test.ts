@@ -50,6 +50,7 @@ function open(fetch: Fetch) {
 async function openWith(route: BridgeRoute) {
   const bridge = await openBridge(fakeRun(), {
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
+    closeTimeoutMs: 1_000,
     routes: [route],
   });
   closers.push(bridge.close);

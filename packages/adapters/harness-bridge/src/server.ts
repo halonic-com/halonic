@@ -25,6 +25,13 @@ export const defaultUpstreamLimits: Readonly<UpstreamLimits> = Object.freeze({
   idleTimeoutMs: 2 * 60_000,
 });
 
+/**
+ * How long `close()` waits for requests still being handled unless it is
+ * given another time. Recording a call's spend takes a moment; a handler
+ * stuck for longer than this mustn't hold up the end of the run.
+ */
+export const defaultCloseTimeoutMs = 5_000;
+
 /** How to set up {@link NodeHarnessBridgeServer}. */
 export interface NodeHarnessBridgeServerOptions {
   /** Where the bridge reads the provider keys an agent's `providers` name. */
@@ -35,6 +42,8 @@ export interface NodeHarnessBridgeServerOptions {
   upstreamLimits?: Partial<UpstreamLimits>;
   /** Calls the providers; Node's own `fetch` unless a test gives another. */
   fetch?: Fetch;
+  /** How long `close()` waits for requests still being handled, in milliseconds. */
+  closeTimeoutMs?: number;
 }
 
 /**
@@ -54,9 +63,11 @@ export interface NodeHarnessBridgeServerOptions {
 export class NodeHarnessBridgeServer implements HarnessBridgeServer {
   readonly #limits: BodyLimits;
   readonly #routes: readonly BridgeRoute[];
+  readonly #closeTimeoutMs: number;
 
   constructor(options: NodeHarnessBridgeServerOptions) {
     this.#limits = { ...defaultBridgeLimits, ...options.limits };
+    this.#closeTimeoutMs = options.closeTimeoutMs ?? defaultCloseTimeoutMs;
     const upstream = {
       fetch: options.fetch ?? globalThis.fetch,
       limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
@@ -67,6 +78,10 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
 
   /** Starts serving one run. */
   open(options: HarnessBridgeOptions): Promise<OpenHarnessBridge> {
-    return openBridge(options, { limits: this.#limits, routes: this.#routes });
+    return openBridge(options, {
+      limits: this.#limits,
+      routes: this.#routes,
+      closeTimeoutMs: this.#closeTimeoutMs,
+    });
   }
 }

@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
+  type BridgeRecorder,
   type HarnessBridgeOptions,
   harnessBridgeTokenHeader,
   type OpenHarnessBridge,
@@ -17,6 +18,12 @@ const loopbackHost = "127.0.0.1";
 export interface BridgeSettings {
   limits: BodyLimits;
   routes: readonly BridgeRoute[];
+  /**
+   * How long `close()` waits for the routes still handling a request, such
+   * as one recording its spend, once their requests are aborted, in
+   * milliseconds.
+   */
+  closeTimeoutMs: number;
 }
 
 /**
@@ -30,14 +37,33 @@ export async function openBridge(
 ): Promise<OpenHarnessBridge> {
   const token = randomRunToken();
   const closing = new AbortController();
+  const handlers = new Set<Promise<void>>();
+  let closeEnded = false;
+  const recorder: BridgeRecorder = {
+    record: async (event) => {
+      // The engine counts the run as finished once `close()` resolves: nothing may land after that.
+      if (closeEnded) {
+        throw new KindedError("conflict", "The bridge has closed, so it records nothing more.");
+      }
+      await run.recorder.record(event);
+    },
+  };
+  const context = { run: { ...run, recorder }, settings, token, closing: closing.signal };
   const server = createServer((request, response) => {
-    void serve({ run, settings, token, closing: closing.signal }, request, response);
+    const handler = serve(context, request, response);
+    handlers.add(handler);
+    void handler.finally(() => handlers.delete(handler));
   });
   const port = await listenOnLoopback(server);
 
   let closed: Promise<void> | undefined;
   const close = (): Promise<void> => {
-    closed ??= stopServer(server, closing);
+    closed ??= Promise.all([
+      stopServer(server, closing),
+      settled(handlers, settings.closeTimeoutMs),
+    ]).then(() => {
+      closeEnded = true;
+    });
     return closed;
   };
   const onRunAborted = () => void close();
@@ -138,4 +164,20 @@ function stopServer(server: Server, closing: AbortController): Promise<void> {
     server.close(() => resolve());
     server.closeAllConnections();
   });
+}
+
+/**
+ * Waits until every handler still running has settled, or until `timeoutMs`
+ * has passed, so a stuck handler can't hold up the end of the run.
+ */
+async function settled(handlers: ReadonlySet<Promise<void>>, timeoutMs: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeUp = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, timeoutMs);
+  });
+  try {
+    await Promise.race([Promise.allSettled(handlers), timeUp]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
