@@ -1,3 +1,4 @@
+import type { RunFailureReason } from "@halonicjs/events";
 import type { Agent, StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import type { Scope } from "@halonicjs/workflow";
 import type { DecidedEvent, DecideInput, Effect } from "./decide-types.ts";
@@ -30,12 +31,13 @@ export interface StateContext {
  * How a state's work ended, if it did: `finish` takes the first transition
  * for an event whose guard passes, `take` moves to the state the handler
  * picked itself (a timer transition, or one whose guard read the event's
- * payload), and `fail` fails the run.
+ * payload), and `fail` fails the run, with the reason `error` unless it names
+ * another.
  */
 export type StateOutcome =
   | { readonly type: "finish"; readonly event: string }
   | { readonly type: "take"; readonly event: string; readonly to: string }
-  | { readonly type: "fail"; readonly error: string };
+  | { readonly type: "fail"; readonly error: string; readonly reason?: RunFailureReason };
 
 /** What a handler decided: events to append, effects to carry out, and how its work ended. */
 export interface StateStep {

@@ -1,3 +1,4 @@
+import type { RunFailureReason } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
 import { getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
@@ -195,8 +196,13 @@ function emit(draft: Draft, event: DecidedEvent): void {
   });
 }
 
-function fail(draft: Draft, state: string | null, error: string): void {
-  emit(draft, { type: "run.failed", state, error, reason: "error" });
+function fail(
+  draft: Draft,
+  state: string | null,
+  error: string,
+  reason: RunFailureReason = "error",
+): void {
+  emit(draft, { type: "run.failed", state, error, reason });
 }
 
 function enter(draft: Draft, stateId: string): void {
@@ -214,7 +220,7 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
   }
   draft.effects.push(...step.effects);
   if (step.outcome?.type === "fail") {
-    fail(draft, stateId, step.outcome.error);
+    fail(draft, stateId, step.outcome.error, step.outcome.reason);
   }
   if (step.outcome?.type === "finish") {
     follow(draft, stateId, step.outcome.event);

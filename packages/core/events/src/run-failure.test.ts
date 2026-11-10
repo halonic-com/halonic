@@ -28,6 +28,7 @@ verifies("events.run-failed-reason", () => {
       | "key-refused"
       | "out-of-credit"
       | "provider-busy"
+      | "answer-not-an-option"
     >();
     expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
   });
@@ -100,6 +101,12 @@ verifies("events.run-failed-out-of-credit", () => {
 verifies("events.run-failed-provider-busy", () => {
   typeTest("has a reason for a provider that was busy", () => {
     expectTypeOf<IsReason<"provider-busy">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-answer-not-an-option", () => {
+  typeTest("has a reason for an answer that isn't one of the agent's options", () => {
+    expectTypeOf<IsReason<"answer-not-an-option">>().toEqualTypeOf<true>();
   });
 });
 

@@ -102,6 +102,8 @@ export interface ToolNoun {
  * - `out-of-credit`: the account at the model's provider has no credit left or reached its limit.
  *   This is never the Halonic budget, which is `budget`.
  * - `provider-busy`: the model's provider was overloaded or asked Halonic to slow down.
+ * - `answer-not-an-option`: the agent's output is a `choice`, and its answer wasn't one of the
+ *   options.
  */
 export type RunFailureReason =
   | "budget"
@@ -117,7 +119,8 @@ export type RunFailureReason =
   | "harness-start-failed"
   | "key-refused"
   | "out-of-credit"
-  | "provider-busy";
+  | "provider-busy"
+  | "answer-not-an-option";
 
 /** Why a model was skipped before it was called: its provider's key isn't set. */
 export type ModelSkipReason = "no-key";

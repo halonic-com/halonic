@@ -19,10 +19,12 @@ import { answerApproval, askForApproval } from "./approval.ts";
  * A plain `task` state runs its agent once on entry: it asks for one model
  * call with the state's prompt, or, when the agent's file names a harness
  * other than Halonic's own loop, for one harness run. It finishes with
- * `done` when the answer comes back. When the agent stops at a tool call
- * that needs a person's OK, the state waits for `approve` or `reject`, then
- * the agent goes on with the answer. Methods, conversations, artifacts and
- * signals join with the agent loop (step 4).
+ * `done` when the answer comes back. When the agent's output is a `choice`,
+ * an answer that isn't one of its options fails the run with
+ * `answer-not-an-option`. When the agent stops at a tool call that needs a
+ * person's OK, the state waits for `approve` or `reject`, then the agent goes
+ * on with the answer. Methods, conversations, artifacts and signals join with
+ * the agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
@@ -89,10 +91,20 @@ function takeCallResult(context: StateContext, input: DecideInput): StateStep {
 }
 
 function finishAgent(
-  { stateId, state }: StateContext,
+  { stateId, state, agents }: StateContext,
   pending: PendingCall,
-  output: unknown,
+  answer: unknown,
 ): StateStep {
+  let output = answer;
+  const options = choiceOptionsOf(agents, pending.agent);
+  if (options !== null) {
+    const option = optionOf(options, output);
+    if (option === null) {
+      const error = notAnOptionError(pending.agent, options, output);
+      return { ...nothing, outcome: { type: "fail", error, reason: "answer-not-an-option" } };
+    }
+    output = option;
+  }
   const events: DecidedEvent[] = [
     { type: "agent.finished", state: stateId, agent: pending.agent, output },
   ];
@@ -100,4 +112,37 @@ function finishAgent(
     events.push({ type: "context.updated", key: state.output, value: output });
   }
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
+}
+
+/** The options of an agent whose output is a `choice`, or `null` for any other agent. */
+function choiceOptionsOf(
+  agents: Readonly<Record<string, Agent>>,
+  agentId: string,
+): readonly string[] | null {
+  const output = Object.hasOwn(agents, agentId) ? agents[agentId]?.output : undefined;
+  return output?.type === "choice" ? output.options : null;
+}
+
+/**
+ * The option the answer is, with the whitespace around it trimmed, or `null`
+ * when it is none of them. The match is exact and case-sensitive, and the
+ * engine never guesses the closest option.
+ */
+function optionOf(options: readonly string[], answer: unknown): string | null {
+  if (typeof answer !== "string") return null;
+  const trimmed = answer.trim();
+  return options.find((option) => option === trimmed) ?? null;
+}
+
+/** The longest part of an answer `run.failed` quotes, in characters. */
+const maxQuotedAnswer = 120;
+
+function notAnOptionError(agentId: string, options: readonly string[], answer: unknown): string {
+  const text = typeof answer === "string" ? answer : (JSON.stringify(answer) ?? String(answer));
+  const quoted = text.length > maxQuotedAnswer ? `${text.slice(0, maxQuotedAnswer)}…` : text;
+  const listed = options.map((option) => JSON.stringify(option)).join(", ");
+  return (
+    `Agent "${agentId}" answered ${JSON.stringify(quoted)}, which isn't one of its options: ${listed}. ` +
+    "Tighten the agent's instructions or use a larger model."
+  );
 }

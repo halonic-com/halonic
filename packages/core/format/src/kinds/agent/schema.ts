@@ -8,7 +8,11 @@ export const AgentOutput = s.discriminatedUnion("type", [
   s
     .object({
       type: s.literal("choice"),
-      /** The reply must be exactly one of these values. */
+      /**
+       * The reply must be exactly one of these values, case-sensitively, once
+       * the whitespace around it is trimmed. Any other reply fails the step
+       * with `answer-not-an-option`.
+       */
       options: s.array(s.string()).min(1),
     })
     .strict(),
