@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { MemoryDefinitionStore } from "./definition-store.ts";
 import { DryRunVcs } from "./dry-run-vcs.ts";
+import { unifiedDiff } from "./line-diff.ts";
 import { MemoryVcs } from "./vcs.ts";
 
 /** A repository with one commit holding `a.yaml`, and an unstaged change to it. */
@@ -131,6 +132,58 @@ verifies("memory.dry-run-vcs-versions", () => {
     const snapshot = await dryRun.snapshot();
     expect(await dryRun.readAt(snapshot, "a.yaml")).toBe("2\n");
     expect(await dryRun.listAt(snapshot)).toEqual(["a.yaml"]);
+    expect(dryRun.changes()).toEqual([]);
+  });
+});
+
+verifies("memory.dry-run-vcs-worktrees", () => {
+  it("records worktrees and patches, and changes nothing", async () => {
+    const { real, files } = await changedRepository();
+    const dryRun = new DryRunVcs(real);
+    const snapshot = await dryRun.snapshot();
+    const patch = unifiedDiff("a.yaml", "2\n", "3\n");
+
+    const worktree = await dryRun.addWorktree(snapshot);
+    await dryRun.applyPatch(patch, { reverse: true });
+    await dryRun.applyPatch(patch);
+    await dryRun.removeWorktree(worktree.id);
+
+    expect(worktree).toEqual({
+      id: "dry-run:worktree-1",
+      path: "dry-run:worktree-1",
+      version: snapshot,
+    });
+    expect(dryRun.changes()).toEqual([
+      { kind: "addWorktree", version: snapshot },
+      { kind: "applyPatch", patch, reverse: true },
+      { kind: "applyPatch", patch, reverse: false },
+      { kind: "removeWorktree", id: "dry-run:worktree-1" },
+    ]);
+    expect(await dryRun.listWorktrees()).toEqual([]);
+    expect(await files.read("a.yaml")).toBe("2\n");
+  });
+
+  it("reads a real worktree's changes through", async () => {
+    const { real } = await changedRepository();
+    const snapshot = await real.snapshot();
+    const worktree = await real.addWorktree(snapshot);
+    await real.worktreeFiles(worktree.id).write("a.yaml", "3\n");
+    const dryRun = new DryRunVcs(real);
+    expect(await dryRun.listWorktrees()).toEqual([worktree]);
+    expect(await dryRun.diffBetween(snapshot, worktree.id)).toEqual(
+      await real.diffBetween(snapshot, worktree.id),
+    );
+  });
+
+  it("refuses an unknown version and a patch to a private path, recording nothing", async () => {
+    const { real } = await changedRepository();
+    const dryRun = new DryRunVcs(real);
+    await expect(dryRun.addWorktree("HEAD")).rejects.toThrow(RangeError);
+    await expect(dryRun.addWorktree("0".repeat(40))).rejects.toThrow("Unknown version");
+    await expect(dryRun.applyPatch(unifiedDiff(".env", null, "KEY=x\n"))).rejects.toThrow(
+      RangeError,
+    );
+    await expect(dryRun.applyPatch("not a patch")).rejects.toThrow("can't be read");
     expect(dryRun.changes()).toEqual([]);
   });
 });

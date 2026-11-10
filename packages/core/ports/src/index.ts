@@ -232,9 +232,13 @@ export {
 export {
   checkCommitId,
   type Vcs,
+  type VcsApplyOptions,
   type VcsChange,
   type VcsCommit,
+  type VcsDiffStatus,
+  type VcsFileDiff,
   type VcsFileStatus,
   type VcsStatus,
+  type VcsWorktree,
   vcsVersion,
 } from "./vcs.ts";
