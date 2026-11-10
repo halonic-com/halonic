@@ -12,6 +12,7 @@ import {
 import { jsonText, resultDocument, scrubbedDocument } from "./json.ts";
 import { type Paint, paintFor } from "./paint.ts";
 import { type Clock, type Progress, startProgress } from "./progress.ts";
+import { type Asking, askYesNo, type Question } from "./question.ts";
 import type { SharedLine } from "./shared-line.ts";
 import type { OutputStyle } from "./style.ts";
 
@@ -42,6 +43,14 @@ export interface Printer {
   progress(doing: Phrase): Progress;
   /** Takes the live line away for good, when the command has ended. */
   close(): void;
+  /**
+   * Asks a yes-or-no question on stderr, in its style, after the lines the
+   * question shows first, and returns whether the answer was yes (see
+   * `askYesNo`). A live line is taken away first, so the question and the
+   * answer typed after it have the line to themselves. It may be asked again
+   * for a second question.
+   */
+  ask(question: Question): Promise<boolean>;
 }
 
 export interface PrinterOptions {
@@ -61,7 +70,15 @@ export interface PrinterOptions {
   readonly liveLine?: SharedLine;
   /** The clock the live line counts on; the computer's own when left out. */
   readonly clock?: Clock;
+  /** Where questions are asked and whether they may be; without it, every question refuses. */
+  readonly questions?: Omit<Asking, "render">;
 }
+
+/** Where questions go when there's nowhere to ask them: nothing is written or read. */
+const nowhereToAsk: Omit<Asking, "render"> = {
+  canAsk: false,
+  terminal: { write: () => undefined, readLine: async () => undefined },
+};
 
 /** The {@link Printer} that writes through `io`. */
 export function printerFor(io: CliIo, options: PrinterOptions): Printer {
@@ -78,7 +95,12 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
   const writeOut = aroundLine(io.out);
   const writeErr = aroundLine(io.err);
   const out = writerFor(writeOut, paintFor(options.out));
-  const err = writerFor(writeErr, paintFor(options.err));
+  const errPaint = paintFor(options.err);
+  const err = writerFor(writeErr, errPaint);
+  const asking: Asking = {
+    ...(options.questions ?? nowhereToAsk),
+    render: (line) => renderPhrase(line, errPaint),
+  };
   return {
     lines: (lines) => printLines(out, lines),
     result(result) {
@@ -114,6 +136,10 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       });
     },
     close: () => liveLine?.close(),
+    ask(question) {
+      liveLine?.clear();
+      return askYesNo(question, asking);
+    },
   };
 }
 

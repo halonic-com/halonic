@@ -6,6 +6,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createProgramProbe } from "./program-probe.ts";
 
+const onWindows = process.platform === "win32";
+const skipOnWindows = "[platform:win32] needs /bin/sh scripts: ";
+
 // Hostile inputs for the Node ProgramProbe (HAL-2650): odd names and PATH
 // lists, secrets in the launcher's environment, and programs that misbehave.
 // Every answer must be `missing`, `failed` or `ran`; `ask` never throws.
@@ -79,9 +82,9 @@ afterAll(async () => {
 });
 
 verifies("sandbox-host.program-probe-node", () => {
-  describe.skipIf(process.platform === "win32")("attacks on a POSIX system", () => {
+  describe("attacks on a POSIX system", () => {
     describe("lookup", () => {
-      it.each([
+      it.skipIf(onWindows).each([
         ["a relative path", "./hello"],
         ["a parent path", "../bin/hello"],
         ["an absolute path", "/bin/sh"],
@@ -89,11 +92,11 @@ verifies("sandbox-host.program-probe-node", () => {
         ["a UNC path", "\\\\server\\share\\hello"],
         ["a drive path with a backslash", "C:\\hello"], // leak-guard: allow absolute-path a hostile program name, not a real path
         ["a drive path with a slash", "C:/hello"],
-      ])("is missing for a name with %s", async (_, name) => {
+      ])(`${skipOnWindows}is missing for a name with %s`, async (_, name) => {
         expect(await probe(withBin()).ask(name, [])).toEqual({ status: "missing" });
       });
 
-      it.each([
+      it.skipIf(onWindows).each([
         ["a dot", "."],
         ["two dots", ".."],
         ["a NUL byte", "hello\0"],
@@ -108,18 +111,18 @@ verifies("sandbox-host.program-probe-node", () => {
         ["a folder on PATH", "adir"],
         ["a dangling symlink", "dangling"],
         ["a symlink loop", "loop"],
-      ])("is missing for a name with %s", async (_, name) => {
+      ])(`${skipOnWindows}is missing for a name with %s`, async (_, name) => {
         expect(await probe(withBin()).ask(name, [])).toEqual({ status: "missing" });
       });
 
-      it.each(["cd", "exit", "echo", "exec", "eval"])(
-        "is missing for the shell builtin %s when no PATH folder holds it",
+      it.skipIf(onWindows).each(["cd", "exit", "echo", "exec", "eval"])(
+        `${skipOnWindows}is missing for the shell builtin %s when no PATH folder holds it`,
         async (name) => {
           expect(await probe(bin).ask(name, ["/tmp"])).toEqual({ status: "missing" });
         },
       );
 
-      it.each([
+      it.skipIf(onWindows).each([
         ["no PATH", undefined],
         ["an empty PATH", ""],
         ["only empty entries", ":::"],
@@ -128,22 +131,25 @@ verifies("sandbox-host.program-probe-node", () => {
         ["a symlink loop as the entry", join(dir, "looping")],
         ["a NUL byte in the entry", `${bin}\0`],
         ["a very long entry", `/${"d".repeat(10_000)}`],
-      ])("is missing with %s", async (_, path) => {
+      ])(`${skipOnWindows}is missing with %s`, async (_, path) => {
         const env = path === undefined ? {} : { PATH: path };
         expect(await createProgramProbe({ env }).ask("hello", [])).toEqual({ status: "missing" });
       });
 
-      it("skips empty, relative and broken entries and finds the program after them", async () => {
-        const path = ["", ".", "bin", join(bin, "hello"), join(dir, "looping"), bin].join(":");
-        expect(await probe(path).ask("hello", [])).toMatchObject({
-          status: "ran",
-          path: join(bin, "hello"),
-        });
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}skips empty, relative and broken entries and finds the program after them`,
+        async () => {
+          const path = ["", ".", "bin", join(bin, "hello"), join(dir, "looping"), bin].join(":");
+          expect(await probe(path).ask("hello", [])).toMatchObject({
+            status: "ran",
+            path: join(bin, "hello"),
+          });
+        },
+      );
 
       const driveEntries = ["C:/bin", "C:\\bin"]; // leak-guard: allow absolute-path a hostile PATH entry, not a real path
-      it.each(driveEntries)(
-        "finds nothing through the drive-style entry %s, which POSIX splits at the colon",
+      it.skipIf(onWindows).each(driveEntries)(
+        `${skipOnWindows}finds nothing through the drive-style entry %s, which POSIX splits at the colon`,
         async (entry) => {
           const planted = join(dir, entry);
           await mkdir(planted, { recursive: true });
@@ -158,71 +164,93 @@ verifies("sandbox-host.program-probe-node", () => {
         },
       );
 
-      it("runs a duplicated entry once, from its first place", async () => {
-        const answer = await probe(`${bin}:${bin}:${bin}`).ask("hello", []);
-        expect(answer).toEqual({
-          status: "ran",
-          path: join(bin, "hello"),
-          code: 0,
-          stdout: "hello 1.2.3\n",
-          stderr: "",
-        });
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}runs a duplicated entry once, from its first place`,
+        async () => {
+          const answer = await probe(`${bin}:${bin}:${bin}`).ask("hello", []);
+          expect(answer).toEqual({
+            status: "ran",
+            path: join(bin, "hello"),
+            code: 0,
+            stdout: "hello 1.2.3\n",
+            stderr: "",
+          });
+        },
+      );
 
-      it("follows a symlink on PATH but reports the path it found", async () => {
-        expect(await probe(bin).ask("linked", [])).toMatchObject({
-          status: "ran",
-          path: join(bin, "linked"),
-          stdout: "hello 1.2.3\n",
-        });
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}follows a symlink on PATH but reports the path it found`,
+        async () => {
+          expect(await probe(bin).ask("linked", [])).toMatchObject({
+            status: "ran",
+            path: join(bin, "linked"),
+            stdout: "hello 1.2.3\n",
+          });
+        },
+      );
 
-      it("refuses a file under a skill's scripts/ folder and starts nothing (HAL-188)", async () => {
-        const scripts = join(dir, "library", "skills", "mail", "scripts");
-        const marker = join(dir, "skill-script-ran");
-        await mkdir(scripts, { recursive: true });
-        await writeFile(join(scripts, "send"), `#!/bin/sh\ntouch ${marker}\n`, { mode: 0o755 });
-        const names = [join(scripts, "send"), "library/skills/mail/scripts/send", "./scripts/send"];
-        const before = process.cwd();
-        process.chdir(join(dir, "library", "skills", "mail"));
-        try {
-          for (const name of names) {
-            expect(await probe(withBin()).ask(name, [])).toEqual({
-              status: "missing",
-            });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}refuses a file under a skill's scripts/ folder and starts nothing (HAL-188)`,
+        async () => {
+          const scripts = join(dir, "library", "skills", "mail", "scripts");
+          const marker = join(dir, "skill-script-ran");
+          await mkdir(scripts, { recursive: true });
+          await writeFile(join(scripts, "send"), `#!/bin/sh\ntouch ${marker}\n`, { mode: 0o755 });
+          const names = [
+            join(scripts, "send"),
+            "library/skills/mail/scripts/send",
+            "./scripts/send",
+          ];
+          const before = process.cwd();
+          process.chdir(join(dir, "library", "skills", "mail"));
+          try {
+            for (const name of names) {
+              expect(await probe(withBin()).ask(name, [])).toEqual({
+                status: "missing",
+              });
+            }
+          } finally {
+            process.chdir(before);
           }
-        } finally {
-          process.chdir(before);
-        }
-        expect(await readdir(dir)).not.toContain("skill-script-ran");
-      });
+          expect(await readdir(dir)).not.toContain("skill-script-ran");
+        },
+      );
     });
 
     describe("no shell", () => {
-      it("passes shell syntax in the arguments on as plain text", async () => {
-        const marker = join(dir, "pwned");
-        const args = [
-          `$(touch ${marker}1)`,
-          `\`touch ${marker}2\``,
-          `; touch ${marker}3`,
-          `| touch ${marker}4`,
-          `&& touch ${marker}5`,
-          `> ${marker}6`,
-          "*",
-          "$HOME",
-        ];
-        expect(stdoutOf(await probe(withBin()).ask("args", args))).toBe(`${args.join("\n")}\n`);
-        expect((await readdir(dir)).filter((name) => name.startsWith("pwned"))).toEqual([]);
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}passes shell syntax in the arguments on as plain text`,
+        async () => {
+          const marker = join(dir, "pwned");
+          const args = [
+            `$(touch ${marker}1)`,
+            `\`touch ${marker}2\``,
+            `; touch ${marker}3`,
+            `| touch ${marker}4`,
+            `&& touch ${marker}5`,
+            `> ${marker}6`,
+            "*",
+            "$HOME",
+          ];
+          expect(stdoutOf(await probe(withBin()).ask("args", args))).toBe(`${args.join("\n")}\n`);
+          expect((await readdir(dir)).filter((name) => name.startsWith("pwned"))).toEqual([]);
+        },
+      );
 
-      it("fails, without throwing, on a NUL byte in an argument", async () => {
-        expect(await probe(withBin()).ask("hello", ["a\0b"])).toMatchObject({ status: "failed" });
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}fails, without throwing, on a NUL byte in an argument`,
+        async () => {
+          expect(await probe(withBin()).ask("hello", ["a\0b"])).toMatchObject({ status: "failed" });
+        },
+      );
 
-      it("fails, without throwing, on a NUL byte in a passed-on variable", async () => {
-        const answer = await probe(withBin(), { HOME: "/users/x\0y" }).ask("hello", []);
-        expect(answer).toMatchObject({ status: "failed" });
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}fails, without throwing, on a NUL byte in a passed-on variable`,
+        async () => {
+          const answer = await probe(withBin(), { HOME: "/users/x\0y" }).ask("hello", []);
+          expect(answer).toMatchObject({ status: "failed" });
+        },
+      );
     });
 
     describe("environment", () => {
@@ -252,103 +280,131 @@ verifies("sandbox-host.program-probe-node", () => {
           .map((line) => line.slice(0, line.indexOf("=")));
       }
 
-      it("passes none of the launcher's secrets or loader variables on", async () => {
-        const dump = stdoutOf(await probe(withBin(), secrets).ask("envdump", []));
-        expect(dump).not.toContain("leak-canary");
-        expect(names(dump).filter((name) => !allowed.test(name))).toEqual([]);
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}passes none of the launcher's secrets or loader variables on`,
+        async () => {
+          const dump = stdoutOf(await probe(withBin(), secrets).ask("envdump", []));
+          expect(dump).not.toContain("leak-canary");
+          expect(names(dump).filter((name) => !allowed.test(name))).toEqual([]);
+        },
+      );
 
-      it("passes none of them on from process.env when no env is given", async () => {
-        for (const [name, value] of Object.entries(secrets)) vi.stubEnv(name, value);
-        vi.stubEnv("PATH", withBin());
-        const dump = stdoutOf(await createProgramProbe().ask("envdump", []));
-        expect(dump).not.toContain("leak-canary");
-        expect(names(dump).filter((name) => !allowed.test(name))).toEqual([]);
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}passes none of them on from process.env when no env is given`,
+        async () => {
+          for (const [name, value] of Object.entries(secrets)) vi.stubEnv(name, value);
+          vi.stubEnv("PATH", withBin());
+          const dump = stdoutOf(await createProgramProbe().ask("envdump", []));
+          expect(dump).not.toContain("leak-canary");
+          expect(names(dump).filter((name) => !allowed.test(name))).toEqual([]);
+        },
+      );
 
-      it("passes PATH, HOME and the locale on unchanged", async () => {
-        const env = {
-          HOME: "/users/x",
-          LANG: "C.UTF-8",
-          LC_ALL: "C",
-          LC_CTYPE: "C",
-          LC_MESSAGES: "C",
-        };
-        const dump = stdoutOf(await probe(withBin(), env).ask("envdump", []));
-        for (const [name, value] of Object.entries({ ...env, PATH: withBin() })) {
-          expect(dump.split("\n")).toContain(`${name}=${value}`);
-        }
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}passes PATH, HOME and the locale on unchanged`,
+        async () => {
+          const env = {
+            HOME: "/users/x",
+            LANG: "C.UTF-8",
+            LC_ALL: "C",
+            LC_CTYPE: "C",
+            LC_MESSAGES: "C",
+          };
+          const dump = stdoutOf(await probe(withBin(), env).ask("envdump", []));
+          for (const [name, value] of Object.entries({ ...env, PATH: withBin() })) {
+            expect(dump.split("\n")).toContain(`${name}=${value}`);
+          }
+        },
+      );
     });
 
     describe("limits", () => {
-      it("stops a program that never ends after 5 seconds by default", async () => {
-        const started = Date.now();
-        const answer = await createProgramProbe({ env: { PATH: withBin() } }).ask("forever", []);
-        const took = Date.now() - started;
-        expect(answer).toEqual({
-          status: "failed",
-          path: join(bin, "forever"),
-          error: "forever didn't finish in time and was stopped.",
-        });
-        expect(took).toBeGreaterThanOrEqual(4_900);
-        expect(took).toBeLessThan(8_000);
-      }, 15_000);
-
-      it("cuts flooded stdout and stderr at 4 KB each", async () => {
-        const answer = await probe(withBin()).ask("flood", []);
-        expect(answer).toEqual({
-          status: "ran",
-          path: join(bin, "flood"),
-          code: 0,
-          stdout: "o".repeat(4_096),
-          stderr: "e".repeat(4_096),
-        });
-      });
-
-      it("stops a program that floods both streams without end", async () => {
-        try {
-          const answer = await probe(withBin(), {}, 300).ask("floodforever", []);
+      it.skipIf(onWindows)(
+        `${skipOnWindows}stops a program that never ends after 5 seconds by default`,
+        async () => {
+          const started = Date.now();
+          const answer = await createProgramProbe({ env: { PATH: withBin() } }).ask("forever", []);
+          const took = Date.now() - started;
           expect(answer).toEqual({
             status: "failed",
-            path: join(bin, "floodforever"),
-            error: "floodforever didn't finish in time and was stopped.",
+            path: join(bin, "forever"),
+            error: "forever didn't finish in time and was stopped.",
           });
-        } finally {
-          // Both `yes` outlive the stopped script until HAL-2662 kills the group.
-          await killListed(join(dir, "flood.pids"));
-        }
-      });
+          expect(took).toBeGreaterThanOrEqual(4_900);
+          expect(took).toBeLessThan(8_000);
+        },
+        15_000,
+      );
 
-      it("keeps a cut multi-byte character to one replacement character", async () => {
-        // 4,096 bytes of three-byte characters ends one byte into a character.
-        await script(
-          "euro",
-          "i=0; while [ $i -lt 2000 ]; do printf '\\342\\202\\254'; i=$((i+1)); done",
-        );
-        const out = stdoutOf(await probe(withBin()).ask("euro", []));
-        expect(out).toBe(`${"€".repeat(1_365)}\uFFFD`);
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}cuts flooded stdout and stderr at 4 KB each`,
+        async () => {
+          const answer = await probe(withBin()).ask("flood", []);
+          expect(answer).toEqual({
+            status: "ran",
+            path: join(bin, "flood"),
+            code: 0,
+            stdout: "o".repeat(4_096),
+            stderr: "e".repeat(4_096),
+          });
+        },
+      );
 
-      it("reports a program that killed itself as ran, with no exit code", async () => {
-        expect(await probe(withBin()).ask("selfkill", [])).toMatchObject({
-          status: "ran",
-          code: null,
-        });
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}stops a program that floods both streams without end`,
+        async () => {
+          try {
+            const answer = await probe(withBin(), {}, 300).ask("floodforever", []);
+            expect(answer).toEqual({
+              status: "failed",
+              path: join(bin, "floodforever"),
+              error: "floodforever didn't finish in time and was stopped.",
+            });
+          } finally {
+            // Both `yes` outlive the stopped script until HAL-2662 kills the group.
+            await killListed(join(dir, "flood.pids"));
+          }
+        },
+      );
 
-      it("answers in time when the program leaves a child holding its output open", async () => {
-        const pidFile = join(dir, "holder.pid");
-        await script("holder", `sleep 30 & echo $! > ${pidFile}; exit 0`);
-        try {
-          const started = Date.now();
-          const answer = await probe(withBin(), {}, 300).ask("holder", []);
-          expect(Date.now() - started).toBeLessThan(3_000);
-          expect(answer.status === "failed" || answer.status === "ran").toBe(true);
-        } finally {
-          await killListed(pidFile);
-        }
-      });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}keeps a cut multi-byte character to one replacement character`,
+        async () => {
+          // 4,096 bytes of three-byte characters ends one byte into a character.
+          await script(
+            "euro",
+            "i=0; while [ $i -lt 2000 ]; do printf '\\342\\202\\254'; i=$((i+1)); done",
+          );
+          const out = stdoutOf(await probe(withBin()).ask("euro", []));
+          expect(out).toBe(`${"€".repeat(1_365)}\uFFFD`);
+        },
+      );
+
+      it.skipIf(onWindows)(
+        `${skipOnWindows}reports a program that killed itself as ran, with no exit code`,
+        async () => {
+          expect(await probe(withBin()).ask("selfkill", [])).toMatchObject({
+            status: "ran",
+            code: null,
+          });
+        },
+      );
+
+      it.skipIf(onWindows)(
+        `${skipOnWindows}answers in time when the program leaves a child holding its output open`,
+        async () => {
+          const pidFile = join(dir, "holder.pid");
+          await script("holder", `sleep 30 & echo $! > ${pidFile}; exit 0`);
+          try {
+            const started = Date.now();
+            const answer = await probe(withBin(), {}, 300).ask("holder", []);
+            expect(Date.now() - started).toBeLessThan(3_000);
+            expect(answer.status === "failed" || answer.status === "ran").toBe(true);
+          } finally {
+            await killListed(pidFile);
+          }
+        },
+      );
     });
   });
 });

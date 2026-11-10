@@ -862,9 +862,6 @@ jobs:
     # failure, never a silent pass. Turbo runs with its loose environment
     # here: with the strict one, Windows PowerShell (which the process-table
     # tests start) gets too few variables and hangs until it is stopped.
-    # sandbox-host is left out on Windows: its tests drive `#!/bin/sh`
-    # scripts, so every one skips there and the coverage floor can't be met.
-    # It needs Windows tests of its own before it joins this job.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
@@ -876,8 +873,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: macOS, os: macos-15, skip: "" }
-          - { name: Windows, os: windows-2025, skip: "--filter=!@halonicjs/adapter-sandbox-host" }
+          - { name: macOS, os: macos-15 }
+          - { name: Windows, os: windows-2025 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -887,13 +884,10 @@ jobs:
           cache: ${{ runner.os != 'Windows' }}
       - name: Typecheck and test
         shell: bash
-        env:
-          SKIP_FILTER: ${{ matrix.skip }}
         run: >
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
-          $SKIP_FILTER
 
   agent-host:
     # The agent host as one executable, built with Node's single-executable

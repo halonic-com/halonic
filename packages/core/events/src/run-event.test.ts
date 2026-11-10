@@ -281,6 +281,8 @@ verifies("events.run-log-contract", () => {
       at: string;
       messageId?: string;
       signalId?: string;
+      // Added after the reference by events.trigger-catch-up (HAL-2524).
+      catchUp?: { skipped: number; countIsMinimum?: true };
     }>();
     expectTypeOf<RunParent>().toEqualTypeOf<{ runId: string; state: string; depth: number }>();
     expectTypeOf<AgentResume>().toEqualTypeOf<{

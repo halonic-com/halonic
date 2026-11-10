@@ -153,3 +153,14 @@ describe("theme.css built by Tailwind: the Radio", () => {
     expect(forced).toMatch(/:disabled \{\s*border-color: GrayText;/);
   });
 });
+
+describe("theme.css built by Tailwind: the start screen and canvas utilities", () => {
+  it("writes the halo spot, the halo glow and the canvas grid as the theme gives them", async () => {
+    const css = await buildCss(["bg-halo-spot", "shadow-halo-glow", "bg-canvas-grid"]);
+    expect(css).toMatch(
+      /\.bg-halo-spot \{\s*background: linear-gradient\(90deg, var\(--halo-tint-blue\)/,
+    );
+    expect(css).toMatch(/\.shadow-halo-glow \{\s*box-shadow: -6px 0 16px light-dark\(/);
+    expect(css).toMatch(/\.bg-canvas-grid \{\s*background-color: var\(--color-surface-subtle\);/);
+  });
+});

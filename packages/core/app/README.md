@@ -21,6 +21,7 @@ Device-wide settings such as the theme live outside any scope.
 | `openWorkspace`             | a scope with the files service and `workspace.save`, `undo`, `redo`                                                          | `app.workspace-save`             |
 | `RoutineScheduler`          | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                                                | `app.routine-scheduler`          |
 | `RoutineOverlap`            | what a routine does with a due time while its run is going: skip, queue or allow                                             | `app.routine-overlap`            |
+| `QueuedTimes`               | a routine's queued due times (count, first, last), read with `RoutineScheduler.queuedTimes()` without a tick                 | `app.scheduler-reads-queue`      |
 | `workspaceRoutineScheduler` | a `RoutineScheduler` on the real routines tick, filling `{{trigger.at}}` and `{{trigger.lastRun}}`                           | `app.workspace-routines`         |
 | `placedRoutines`            | every routine file of a loaded workspace with its hub, for the routine scheduler's `routines`                                | `app.placed-routines`            |
 | `ChatService`               | chat outside a run: model turns through `RunExecutor.chatTurn`, the chat's tools run here, results fed back                  | `app.chat-turn-loop`             |
@@ -48,6 +49,7 @@ Device-wide settings such as the theme live outside any scope.
 | `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source              | `app.connector-pin-spec`         |
 | `isPackageRunner`           | whether a command starts `npx`, `uvx` or another runner, any folder, case and ending, or via a shell; 10c's `unpinned` too   | `app.package-runner-launch`      |
 | `checkPackageRunnerLaunch`  | refuses an inexact pin, a pin on a shell or other non-runner, and a pinned launch whose args or `env` could change what runs | `app.package-runner-launch`      |
+| `revertParts`               | sets some parts of an item's YAML back to a reference (latest version, assistant's baseline or run's base), keeping the rest | `app.revert-parts`               |
 
 ## Example
 
@@ -56,7 +58,7 @@ edit. This example is [`examples/edit-save-undo.ts`](examples/edit-save-undo.ts)
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, WriteResult } from "@halonicjs/ports";
 import { openWorkspace, workspaceFilesKey } from "@halonicjs/app";
 
 const agentPath = "hubs/acme/agents/clerk.agent.yaml";
@@ -84,9 +86,11 @@ class MapStore implements DefinitionStore {
   async version(): Promise<string> {
     return `v${this.writes}`;
   }
-  async write(path: string, content: string): Promise<void> {
+  // The example saves without `expected`, so this store always writes.
+  async write(path: string, content: string): Promise<WriteResult> {
     this.files.set(path, content);
     this.writes++;
+    return { status: "written" };
   }
   async remove(path: string): Promise<void> {
     this.files.delete(path);

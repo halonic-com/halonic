@@ -12,6 +12,7 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
+import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import {
   type Runner,
@@ -170,6 +171,7 @@ export class SrtSession implements SandboxSession {
   readonly #listeners = new Set<SandboxBlockListener>();
   readonly #timer: NodeJS.Timeout;
   readonly #detach: () => void;
+  readonly #gitFolder: GitFolderSnapshot | null;
   #fence: SandboxFence;
   #closing: Promise<void> | null = null;
   #timedOut = false;
@@ -181,17 +183,20 @@ export class SrtSession implements SandboxSession {
     settingsPath: string,
     fence: SandboxFence,
     signal: AbortSignal | undefined,
+    gitFolder: GitFolderSnapshot | null,
   ) {
     this.profile = profile;
     this.#runner = runner;
     this.#folder = folder;
     this.#settingsPath = settingsPath;
     this.#fence = fence;
+    this.#gitFolder = gitFolder;
     this.#launcherEnv = launcherEnv(profile, process.env, folder);
     this.#programEnv = programEnv(profile, process.env, folder);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
     this.#timer.unref();
-    const abort = () => void this.close();
+    // Nobody awaits the abort handler, so a failed undo has no caller to reach there: `close()` reports it.
+    const abort = () => void this.close().catch(() => undefined);
     signal?.addEventListener("abort", abort, { once: true });
     this.#detach = () => signal?.removeEventListener("abort", abort);
     if (signal?.aborted) abort();
@@ -210,6 +215,7 @@ export class SrtSession implements SandboxSession {
     const startedAt = Date.now();
     assertVariableNames(profile);
     await mkdir(profile.tempFolder, { recursive: true });
+    const gitFolder = await snapshotGitFolder(profile.workingFolder);
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     try {
       const settingsPath = join(folder, "settings.json");
@@ -236,6 +242,7 @@ export class SrtSession implements SandboxSession {
         settingsPath,
         fence,
         options.signal,
+        gitFolder,
       );
       return session;
     } catch (error) {
@@ -303,16 +310,37 @@ export class SrtSession implements SandboxSession {
   async #expire(): Promise<void> {
     this.#timedOut ||= this.#closing === null;
     this.#closing ??= this.#shutDown(true);
-    await this.#closing;
+    // Nobody awaits the timer, so a failed undo has no caller to reach there: `close()` reports it.
+    await this.#closing.catch(() => undefined);
   }
 
   async #shutDown(timedOut: boolean): Promise<void> {
     clearTimeout(this.#timer);
     this.#detach();
     await Promise.all([...this.#started].map((started) => this.#stop(started, timedOut)));
+    const failed = await this.#checkGitFolder();
     this.#fence = { state: "stopped" };
     this.#listeners.clear();
     await rm(this.#folder, { recursive: true, force: true });
+    if (failed.length > 0) {
+      throw new Error(`Could not undo a change to the git folder: ${failed.join(", ")}`);
+    }
+  }
+
+  /**
+   * Undoes a `commondir` file the program added or changed in the working
+   * folder's git folder, once nothing it started is left to change it again,
+   * and reports each one as a refused write.
+   *
+   * @returns the paths it could not undo, so `close()` can reject with them.
+   */
+  async #checkGitFolder(): Promise<string[]> {
+    if (this.#gitFolder === null) return [];
+    const { undone, failed } = await restoreGitFolder(this.#gitFolder);
+    for (const path of [...undone, ...failed]) {
+      for (const listener of this.#listeners) listener({ kind: "file", path, access: "write" });
+    }
+    return failed;
   }
 
   async #stop(started: Started, timedOut = false): Promise<void> {

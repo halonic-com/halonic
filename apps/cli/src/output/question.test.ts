@@ -1,12 +1,20 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { defineMessages, type Message } from "../messages/define.ts";
-import { bold, phrase, plainText } from "../messages/phrase.ts";
-import { type AskInputs, askYesNo, canAsk, type QuestionTerminal } from "./question.ts";
+import { defineMessages } from "../messages/define.ts";
+import { bold, markPart, phrase, plainText } from "../messages/phrase.ts";
+import {
+  type AskInputs,
+  askYesNo,
+  canAsk,
+  type Question,
+  type QuestionTerminal,
+} from "./question.ts";
 
 const trust = defineMessages("test", {
   question: () => phrase`Trust ${bold("Acme")} on this computer?`,
+  heading: () => phrase`Trust check for ${bold("Acme")} (./acme)`,
+  unpinned: () => phrase`${markPart("needsYou")} mail-mcp isn't pinned to a version.`,
 });
 
 /** A terminal where the user types `answers`, one line each, then stdin ends. */
@@ -25,15 +33,20 @@ const noTerminal = () =>
     "Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
   );
 
-function ask(terminal: QuestionTerminal, allowed = true, yes = false): Promise<boolean> {
-  return askYesNo(trust.question(), {
-    yes,
-    canAsk: allowed,
-    terminal,
-    render: (message: Message) => plainText(message.phrase),
-    refusal: noTerminal,
-  });
+function ask(
+  terminal: QuestionTerminal,
+  allowed = true,
+  yes = false,
+  extra: Partial<Question> = {},
+): Promise<boolean> {
+  return askYesNo(
+    { question: trust.question(), yes, refusal: noTerminal, ...extra },
+    { canAsk: allowed, terminal, render: plainText },
+  );
 }
+
+/** The trust check's lines, as a command shows them before its question. */
+const check = [trust.heading().phrase, trust.unpinned().phrase];
 
 /** A terminal on stdin, outside CI, without `--json`, changed by `overrides`. */
 function inputs(overrides: Partial<AskInputs> = {}): AskInputs {
@@ -82,6 +95,27 @@ verifies("cli.questions", () => {
     const terminal = typing("y");
     await expect(ask(terminal, false)).rejects.toThrow("there's no terminal to ask you");
     expect(terminal.written).toEqual([]);
+  });
+
+  describe("with lines shown first", () => {
+    it("writes them, a line each, right before the question", async () => {
+      const terminal = typing("y");
+      expect(await ask(terminal, true, false, { shownFirst: check })).toBe(true);
+      expect(terminal.written).toEqual([
+        "Trust check for Acme (./acme)\n",
+        "! mail-mcp isn't pinned to a version.\n",
+        "Trust Acme on this computer? [y/N] ",
+      ]);
+    });
+
+    it("writes none of them when it refuses or --yes answers", async () => {
+      const terminal = typing("y");
+      await expect(ask(terminal, false, false, { shownFirst: check })).rejects.toThrow(
+        "there's no terminal to ask you",
+      );
+      expect(await ask(terminal, true, true, { shownFirst: check })).toBe(true);
+      expect(terminal.written).toEqual([]);
+    });
   });
 
   describe("with --yes", () => {

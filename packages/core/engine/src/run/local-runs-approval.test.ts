@@ -8,7 +8,7 @@ import { InputRefused } from "../kernel/input-refused.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import type { PendingCall } from "../kernel/run-state.ts";
 import { type CallModel, LocalRuns } from "./local-runs.ts";
-import { replyStart, runsOn, TestScheduler, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { replyStart, TestScheduler, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 const resume: AgentResume = {
   messages: [{ role: "user", content: "Reply to support" }],
@@ -75,35 +75,5 @@ verifies("engine.task-approvals", () => {
       "event.received",
       "approval.resolved",
     ]);
-  });
-
-  it("fails a run whose agent would go on after an approval, while runs offer no tools", async () => {
-    const { executor, runs, scheduler } = runsOn([]);
-    await executor.start(replyStart);
-    scheduler.timers.clear();
-    const at = "2026-11-09T09:00:05.000Z";
-    await runs.append("run_1", 3, [
-      {
-        runId: "run_1",
-        seq: 4,
-        at,
-        type: "approval.requested",
-        state: "draft",
-        agent: "writer",
-        tool: "send_mail",
-        args: {},
-        callId: "call-2",
-        resume,
-      },
-      { runId: "run_1", seq: 5, at, type: "run.waiting", state: "draft", events: ["approve"] },
-    ]);
-
-    await executor.send("run_1", "approve");
-    await scheduler.runDue();
-
-    expect(await runs.get("run_1")).toMatchObject({
-      status: "failed",
-      error: "A run's agent can't go on after an approval until runs offer it tools.",
-    });
   });
 });

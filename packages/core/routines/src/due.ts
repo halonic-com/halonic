@@ -52,11 +52,16 @@ export interface DueRun {
   /** When the run was due, not when the tick fired. */
   at: Date;
   trigger: "schedule" | "every";
+  /**
+   * Set by `dueWithSkips` when the run is more than the grace late: what the
+   * routine's catch-up rule dropped on this tick, on its oldest late run only.
+   */
+  catchUp?: { skipped: number; countIsMinimum?: true };
 }
 
 // No walk through a window lists more times than this, whatever the grace
 // period or catch-up cap; times past it are dropped, not caught up next tick.
-const WINDOW_LIMIT = 10_000;
+export const WINDOW_LIMIT = 10_000;
 
 /** The id a routine goes by in a due run. */
 export function routineKey(placed: PlacedRoutine): string {
@@ -98,12 +103,14 @@ function compare(a: string, b: string): number {
 type ScheduleTrigger = Extract<RoutineTrigger, { schedule: string }>;
 
 /** The times a clock trigger fires, in a window after `from` up to and including `to`. */
-interface Clock {
+export interface Clock {
   kind: DueRun["trigger"];
   /** The oldest times in the window, at most `limit` of them. */
   times(from: Date, to: Date, limit: number): Date[];
   /** The newest time in the window, found without walking through the older ones. */
   newest(from: Date, to: Date): Date | null;
+  /** How many times are in the window; a cron stops counting at `WINDOW_LIMIT`. */
+  count(from: Date, to: Date): { count: number; isMinimum: boolean };
 }
 
 function dueTimes(
@@ -112,23 +119,30 @@ function dueTimes(
   now: Date,
   policy: TickPolicy,
 ): Array<[Date, DueRun["trigger"]]> {
-  let clock: Clock | null;
-  try {
-    clock = clockFor(routine.trigger, policy);
-  } catch (error) {
-    if (error instanceof CronError) return [];
-    throw error;
-  }
+  const clock = clockOf(routine, policy);
   if (!clock) return [];
   const kind = clock.kind;
   return allowedTimes(clock, routine.catchUp, lastTick, now, policy).map((at) => [at, kind]);
 }
 
 /**
+ * The clock of a routine's trigger, or null when it has none or it doesn't
+ * parse, so one broken routine never stops the others.
+ */
+export function clockOf(routine: Routine, policy: TickPolicy): Clock | null {
+  try {
+    return clockFor(routine.trigger, policy);
+  } catch (error) {
+    if (error instanceof CronError) return null;
+    throw error;
+  }
+}
+
+/**
  * Only the part of the window a `catchUp` setting keeps is searched, so a
  * long window, after the machine slept for days, costs no more than a short one.
  */
-function allowedTimes(
+export function allowedTimes(
   clock: Clock,
   catchUp: Routine["catchUp"],
   tickStart: Date,
@@ -187,6 +201,12 @@ function scheduleClock(trigger: ScheduleTrigger & { timezone: string }): Clock {
     kind: "schedule",
     times: (from, to, limit) => occurrences(trigger, from, to, limit),
     newest: (from, to) => newestCronTime(cron, trigger.timezone, from, to),
+    count(from, to) {
+      // A cron has no step, so counting walks; it stops at the limit.
+      const walked = occurrences(trigger, from, to, WINDOW_LIMIT + 1);
+      const isMinimum = walked.length > WINDOW_LIMIT;
+      return { count: isMinimum ? WINDOW_LIMIT : walked.length, isMinimum };
+    },
   };
 }
 
@@ -206,6 +226,11 @@ function intervalClock(intervalMs: number): Clock {
     newest(from, to) {
       const newest = slotAtOrBefore(intervalMs, to.getTime());
       return newest > from.getTime() ? new Date(newest) : null;
+    },
+    count(from, to) {
+      const first = slotAfter(intervalMs, from.getTime());
+      const last = slotAtOrBefore(intervalMs, to.getTime());
+      return { count: last < first ? 0 : (last - first) / intervalMs + 1, isMinimum: false };
     },
   };
 }

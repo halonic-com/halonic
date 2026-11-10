@@ -40,6 +40,9 @@
     ],
     "@halonicjs/testing-contracts": [
       "./node"
+    ],
+    "@halonicjs/testing-spec": [
+      "./node"
     ]
   },
   "cloudRuntimes": {

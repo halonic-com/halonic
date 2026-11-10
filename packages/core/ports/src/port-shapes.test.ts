@@ -42,7 +42,7 @@ const definitions: DefinitionStore = {
   list: async () => ["workspace.yaml"],
   read: async () => "id: acme\n",
   version: async () => "v1",
-  write: async () => {},
+  write: async () => ({ status: "written" }),
   remove: async () => {},
 };
 

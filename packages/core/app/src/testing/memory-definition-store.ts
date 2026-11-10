@@ -1,4 +1,5 @@
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, WriteOptions, WriteResult } from "@halonicjs/ports";
+import { KeyedQueue, matchesExpected, type Sha256 } from "@halonicjs/std";
 
 /**
  * A small in-memory `DefinitionStore` for the kernel's own tests, with a
@@ -16,9 +17,18 @@ export class TestDefinitionStore implements DefinitionStore {
   /** A write or remove of this path throws. */
   failOn: string | null = null;
   private saves = 0;
+  private readonly digest: Sha256 | null;
+  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  private readonly writes = new KeyedQueue();
 
-  constructor(files: Record<string, string> = {}) {
+  /**
+   * @param files - the files to start with, by relative path
+   * @param digest - hashes text for a write with `expected`; core has no hash
+   *   of its own, so a test that writes with `expected` passes one in
+   */
+  constructor(files: Record<string, string> = {}, digest: Sha256 | null = null) {
     this.files = new Map(Object.entries(files));
+    this.digest = digest;
   }
 
   async list(dir?: string): Promise<string[]> {
@@ -40,11 +50,24 @@ export class TestDefinitionStore implements DefinitionStore {
     return `v${this.saves}`;
   }
 
-  async write(path: string, content: string): Promise<void> {
+  async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     this.check(path);
-    this.log.push(`write ${path}`);
-    this.files.set(path, content);
-    this.saves++;
+    const { expected } = options;
+    if (expected !== undefined && this.digest === null) {
+      throw new Error("TestDefinitionStore needs a digest to write with `expected`.");
+    }
+    return await this.writes.run(path, async () => {
+      if (expected !== undefined && this.digest !== null) {
+        const current = this.files.get(path) ?? null;
+        if (!(await matchesExpected(current, expected, this.digest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
+      this.log.push(`write ${path}`);
+      this.files.set(path, content);
+      this.saves++;
+      return { status: "written" };
+    });
   }
 
   async remove(path: string): Promise<void> {

@@ -75,11 +75,41 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | `--spacing-control-*`, `-titlebar`, `-statusbar`, others | `h-control-md`, `h-statusbar`, `w-sidebar`        |
 | `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
 | the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
+| the halo on a start screen                               | `bg-halo-spot`, `shadow-halo-glow`                |
+| the workflow canvas                                      | `bg-canvas-grid`                                  |
 | the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
 | a selected row's mark                                    | `selected-bar`, `selected-forced`                 |
 | Windows high-contrast mode only                          | `text-forced-disabled`                            |
 | `--breakpoint-wide`                                      | `wide:`, `max-wide:` (compact)                    |
 | `--duration-*`, `--layer-*` (plain variables)            | `duration-(--duration-base)`, `z-(--layer-toast)` |
+
+## The halo on a start screen
+
+The desktop start screen and Welcome on a computer put one `aria-hidden` element with
+`bg-halo-spot` behind their heading and box: the halo tints, fading out from the middle, so text on
+it keeps 4.5:1. `shadow-halo-glow` is the app's one glow. Put it on a `rounded-lg` wrapper round
+the composer, never on the box itself, whose focus look is a box shadow too. It's a utility, not a
+`--shadow-*` token, so it can't turn up elsewhere. A frame colour preset (Settings) sets only
+`--halo-blue` and `--halo-violet`; the tints are `color-mix()` of those two, so all six halo
+utilities follow. The four presets keep every text colour at 4.5:1 on the spot and the frame.
+
+## Agent pages: the orb, stacked cards and the canvas
+
+`theme-agent-pages.css` holds plain variables, so Tailwind makes no classes from them:
+
+| Variable                             | What it's for                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `--character-1a` … `--character-5b`  | The agent orb's five colour pairs (halo, lagoon, ember, moss, orchid)      |
+| `--stack-peek`, `--stack-inset`      | Each stacked card behind sits 10px higher and 12px narrower on each side   |
+| `--stack-shade-1`, `--stack-shade-2` | The fill of the card one behind, and of the cards two or more behind       |
+| `--stack-scrim`                      | Over the view under a stack of full cards; lighter than a dialog's overlay |
+| `--canvas-grid-dot`                  | The canvas's dots, only through `bg-canvas-grid`                           |
+
+Only the orb reads the character colours: an agent's pair comes from its `character.colors`, or is
+picked from its id. They're the same in light and dark and don't follow a frame colour preset. Each
+orb edge (`b`) keeps 3:1 on every surface and both stack shades. Each step back in a stack is one
+shade darker, and every text colour keeps 4.5:1 on both shades. Text never sits straight on the
+canvas's dots: put it on a step card or a `surface-subtle` label plate.
 
 The theme starts from `--*: initial`, so Tailwind's own palette and scales don't exist:
 `bg-red-500`, `rounded-3xl`, `text-sm` and `shadow-lg` produce no CSS. Two things still compile and
@@ -111,6 +141,10 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
   in both modes, with see-through colours (status chips) blended over each surface they can sit on;
 - the radius, spacing, shadow, animation, breakpoint, layer and duration tokens are exactly the
   agreed set, and the shell's layout sizes keep their values, so a change is visible in review;
+- the halo utilities are exactly six, hold no hard-coded colour, and keep text at 4.5:1 with each
+  of the four frame colour presets;
+- the agent orb's edges keep 3:1 and text keeps 4.5:1 on the stack shades, and each shade is darker
+  than the card in front;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;
 - the more-contrast block raises exactly its six tokens, and the raised text colours gain contrast
   on every surface;
@@ -935,6 +969,28 @@ names the shortcut instead, from the same keys: `keyShortcutsLabel(["Ctrl", "T"]
 </button>;
 ```
 
+## ViewOnlyLine and LineFrame
+
+`ViewOnlyLine` is the one line that says a page can't be changed on a phone: a 16px eye in
+`fg-muted`, then the page's own sentence in `text-small` `fg-muted`. Put it first in the page's
+content, under the tabs or the top bar, at most once per page, and not again in the sheets the page
+opens. The sentence is the screen's and is never shortened; it wraps. It has no action, isn't
+dismissible and isn't live: a calm fact, read in order. The rest of the page shows its values as
+text, with no greyed-out controls.
+
+```tsx
+<ViewOnlyLine>View only on a phone. Edit this workflow on a computer.</ViewOnlyLine>;
+```
+
+It's drawn on `LineFrame`, the frame of a plain line at the top of a page: padding 8px 16px, at
+least 48px high, a 1px `border` line below, no fill, and a 16px icon top-aligned with the first line
+of `text-small` text. A feature's own line (the Changes feature's sharing strip) uses the frame
+with its own icon; `muted` puts the icon and the text in `fg-muted`.
+
+```tsx
+<LineFrame icon={<ShareIcon />}>Shared with your team.</LineFrame>;
+```
+
 ## Menu
 
 A short list of actions that opens from a button: a row's ⋮ More button, the title bar, a sidebar
@@ -1145,6 +1201,47 @@ line-height token for an engine without that unit.
 
 **On a phone** it's at least 48px high, with 16px text. Long text on a phone page (Instructions,
 Description) opens the text sheet instead; that comes with the Sheet.
+
+## Select
+
+Pick one value from a list: a model, a hub. On desktop it's the native `<select>`, so the keyboard
+and screen readers work as they do everywhere, in the Input's box with a chevron at the end.
+Options use the system's list. Put it in a Field, which names it and puts its hint or error under
+it.
+
+```tsx
+<Field label="Model" error={modelError}>
+  <Select options={models} value={model} onChange={setModel} placeholder="Choose a model" />
+</Field>;
+```
+
+| Prop          | What it is                                                                      |
+| ------------- | ------------------------------------------------------------------------------- |
+| `options`     | `{ value, label, disabled? }` in list order. A `disabled` one is listed, greyed |
+| `value`       | The picked value                                                                |
+| `onChange`    | Called with the new value as soon as the user picks it                          |
+| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked    |
+| `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen   |
+| `ref`         | The control you focus: the `<select>`, or the picker button on a phone          |
+
+| State    | What shows                                                                               |
+| -------- | ---------------------------------------------------------------------------------------- |
+| Default  | The Input's box, the value in `fg`, a 16px `fg-muted` chevron with 32px of room          |
+| Hover    | The edge turns `fg-muted`                                                                |
+| Focus    | An `accent` edge and a 3px `accent-soft` ring (`focus-field`)                            |
+| Disabled | `surface-subtle` fill, a `border` edge, the value in `fg-disabled`, cursor `not-allowed` |
+| Error    | A `danger` edge; typically the placeholder in `fg-subtle`, for a value that's gone       |
+
+There's no read-only Select: a native select has none, and a view-only page shows the value as
+text. A list with icons, descriptions or search is a different component, not a Select.
+
+**On a phone** (the `phone` presentation) the Select is a **picker button** instead, never the
+browser's menu: 48px high with 16px text and the chevron, like the phone Input. It's named by the
+Field's label and then the value, so a screen reader hears "Model, Sonnet", and the label points at
+it. Only that one control is rendered for the keyboard and screen readers. Until the kit's picker
+sheet exists (it comes with the Sheet), the button opens the system's picker from a native select
+hidden under it; a picked value is saved at once and focus goes back to the button. With the
+sheet, the button will open it instead, and say so with `aria-haspopup="dialog"`.
 
 ## CopyButton
 

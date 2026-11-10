@@ -22,7 +22,23 @@ describe("contrastRatio", () => {
     });
   });
 
+  it("reads color-mix() with transparent as the colour at that alpha", () => {
+    const halfBlack = parseColour("color-mix(in srgb, #000000 50%, transparent)");
+    expect(blend(halfBlack, parseColour("#ffffff"))).toEqual({
+      red: 127.5,
+      green: 127.5,
+      blue: 127.5,
+      alpha: 1,
+    });
+  });
+
   it("refuses colour forms the theme doesn't use", () => {
     expect(() => parseColour("red")).toThrow(/Can't read the colour/);
+    expect(() => parseColour("color-mix(in srgb, #000000 50%, #ffffff)")).toThrow(
+      /Can't read the colour/,
+    );
+    expect(() => parseColour("color-mix(in oklch, #000000 50%, transparent)")).toThrow(
+      /Can't read the colour/,
+    );
   });
 });

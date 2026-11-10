@@ -580,6 +580,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std
@@ -912,6 +915,9 @@ importers:
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../workspace
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../yaml
     devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*

@@ -9,15 +9,16 @@ import type {
 } from "@halonicjs/ports";
 import type { DueRun, PlacedRoutine, TickPolicy } from "@halonicjs/routines";
 import type { EventBus } from "./event-bus.ts";
-import {
-  lastTickKey,
-  queueKey,
-  routineRunId,
-  routineRunPrefix,
-  utf8Length,
-} from "./routine-ids.ts";
+import { lastTickKey, queueKey, routineRunId, routineRunPrefix } from "./routine-ids.ts";
 import { LastRuns, type StoredLastRun } from "./routine-last-runs.ts";
 import { applyOverlap, type OverlapDecision, type RoutineOverlap } from "./routine-overlap.ts";
+import {
+  fitQueue,
+  type QueuedTimes,
+  readQueue,
+  summarizeQueue,
+  writeQueue,
+} from "./routine-queue.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
 /**
@@ -214,6 +215,17 @@ export class RoutineScheduler<
   }
 
   /**
+   * Each routine's queued due times (`overlap: queue`): how many, the oldest
+   * and the newest, ordered by routine key. Read from the stored queue as the
+   * last tick left it, without a tick, so a host can show them while a
+   * routine waits and after a restart; a routine with none is left out. A
+   * stored queue that can't be read counts as empty, as it does for a tick.
+   */
+  async queuedTimes(): Promise<QueuedTimes[]> {
+    return summarizeQueue(readQueue(await this.options.coordination.read(this.queueKey)));
+  }
+
+  /**
    * Stops reacting to ticks, and resolves once a tick in progress has
    * settled, so the executor isn't disposed under it. That tick starts no
    * more runs. If it left due runs unstarted, it doesn't store the last
@@ -404,12 +416,6 @@ function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-/** The most UTF-8 bytes of the stored queue: under the 64 KiB a `Coordination` value may hold. */
-const maxQueueBytes = 60_000;
-
-/** The least one queued time adds to the stored queue: an ISO time in quotes, and a comma. */
-const minQueuedTimeBytes = 27;
-
 function oldestFirst(a: ScheduledRun, b: ScheduledRun): number {
   return a.at.getTime() - b.at.getTime() || compare(a.key, b.key);
 }
@@ -421,67 +427,6 @@ function compare(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
-/**
- * Moves the newest queued runs to the skipped ones until the stored queue
- * fits in a `Coordination` value, so a long queue can never make the ticks
- * fail. Takes a queue sorted oldest first.
- */
-function fitQueue<Run extends ScheduledRun>(plan: OverlapDecision<Run>): void {
-  let excess = utf8Length(writeQueue(plan.queue) ?? "") - maxQueueBytes;
-  while (excess > 0) {
-    const dropped = plan.queue.splice(-Math.ceil(excess / minQueuedTimeBytes));
-    plan.skip.push(...dropped);
-    excess = utf8Length(writeQueue(plan.queue) ?? "") - maxQueueBytes;
-  }
-}
-
 function timeOf(run: ScheduledRun): RoutineTime {
   return { key: run.key, at: run.at.toISOString() };
-}
-
-/**
- * The queue as kept in `Coordination`: JSON of routine key to ISO due times,
- * or `null` when nothing is queued.
- */
-function writeQueue(runs: readonly ScheduledRun[]): string | null {
-  if (runs.length === 0) {
-    return null;
-  }
-  const queue: Record<string, string[]> = {};
-  for (const run of runs) {
-    queue[run.key] = [...(queue[run.key] ?? []), run.at.toISOString()];
-  }
-  return JSON.stringify(queue);
-}
-
-/**
- * Reads what {@link writeQueue} wrote. Only this scheduler writes the key,
- * so anything else (a hand edit, a damaged store) counts as no queue rather
- * than stopping every routine of the workspace.
- */
-function readQueue(text: string | null): Map<string, Date[]> {
-  const queue = new Map<string, Date[]>();
-  if (text === null) {
-    return queue;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return queue;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return queue;
-  }
-  for (const [key, times] of Object.entries(parsed)) {
-    if (!Array.isArray(times)) {
-      continue;
-    }
-    const dates = times
-      .filter((time): time is string => typeof time === "string")
-      .map((time) => new Date(time))
-      .filter((date) => !Number.isNaN(date.getTime()));
-    queue.set(key, dates);
-  }
-  return queue;
 }

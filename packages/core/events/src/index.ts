@@ -3,6 +3,7 @@ export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
 export type {
   ApprovalResolver,
   ModelSkipReason,
+  RunCatchUp,
   RunFailureReason,
   RunKind,
   RunParent,

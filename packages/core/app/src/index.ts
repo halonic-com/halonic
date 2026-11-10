@@ -24,6 +24,12 @@ export {
   type WaitingTool,
 } from "./approve-listed-tools.ts";
 export {
+  type ChangeLine,
+  type ItemPath,
+  type RevertPartsProblem,
+  revertParts,
+} from "./changes/revert-parts.ts";
+export {
   type ChatAnswer,
   type ChatAnswerEnd,
   type ChatAnswerListener,
@@ -149,6 +155,7 @@ export {
 } from "./resource-report.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
 export type { RoutineOverlap } from "./routine-overlap.ts";
+export type { QueuedTimes } from "./routine-queue.ts";
 export {
   type DueFunction,
   type RoutineFailure,

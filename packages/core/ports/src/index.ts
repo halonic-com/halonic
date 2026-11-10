@@ -48,8 +48,11 @@ export {
   type DefinitionSource,
   type DefinitionStore,
   definitionStoreVersion,
+  type ExpectedContent,
   isPrivateWorkspacePath,
   segmentAsOpened,
+  type WriteOptions,
+  type WriteResult,
 } from "./definition-store.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {

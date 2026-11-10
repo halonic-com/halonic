@@ -1,5 +1,5 @@
 /** Version of the {@link DefinitionStore} and {@link DefinitionSource} ports. A breaking change bumps it and comes with an ADR. */
-export const definitionStoreVersion = 1;
+export const definitionStoreVersion = 2;
 
 /**
  * Read access to the workspace files (agents, workflows, hubs …), wherever
@@ -55,10 +55,46 @@ export interface DefinitionSource {
   version(): Promise<string>;
 }
 
+/**
+ * What a caller expects a file to hold before it writes: the digest of the
+ * text it last read, or `"absent"` for a file that should not exist yet. The
+ * digest is `sha256:` and the 64 lowercase hex characters of the SHA-256 of
+ * the text's UTF-8 bytes: a fixed format, not one each store picks, so a
+ * caller can work it out from text it got elsewhere (a proposal's snapshot)
+ * and a watcher can recognise its own write. `contentDigest` and
+ * `matchesExpected` in `@halonicjs/std` work it out and compare it, so every
+ * store does both the same way.
+ */
+export type ExpectedContent = `sha256:${string}` | "absent";
+
+/** Options for {@link DefinitionStore.write}. */
+export interface WriteOptions {
+  /**
+   * Write only if the file still holds this (save model 1.7). Leave it out
+   * to replace the file whatever it holds, as setting up a new workspace or
+   * checking out a version does. The Studio's saves always pass it.
+   */
+  readonly expected?: ExpectedContent;
+}
+
+/**
+ * What {@link DefinitionStore.write} did. `changed-on-disk` means the file
+ * no longer held what the caller expected, so nothing was written; `current`
+ * is its text now, or `null` when it is gone, so the Studio can show
+ * Compare without reading it again.
+ */
+export type WriteResult =
+  | { readonly status: "written" }
+  | { readonly status: "changed-on-disk"; readonly current: string | null };
+
 /** A {@link DefinitionSource} that can also change the files: the Studio's editors and `halonic serve` use it. */
 export interface DefinitionStore extends DefinitionSource {
-  /** Creates or replaces a file, creating folders as needed. */
-  write(path: string, content: string): Promise<void>;
+  /**
+   * Creates or replaces a file, creating folders as needed. With
+   * `expected`, it first checks the file still holds what the caller last
+   * read and, if not, writes nothing and returns `changed-on-disk`.
+   */
+  write(path: string, content: string, options?: WriteOptions): Promise<WriteResult>;
   /** Deletes a file. Deleting a file that isn't there is not an error. */
   remove(path: string): Promise<void>;
 }

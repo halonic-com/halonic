@@ -5,6 +5,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createProgramProbe } from "./program-probe.ts";
 
+const onWindows = process.platform === "win32";
+const skipOnWindows = "[platform:win32] needs /bin/sh scripts: ";
+
 // Holes found by the attack tests (HAL-2650): the time limit stops only the
 // program, not the children it started. Both tests fail on the probe as it is.
 
@@ -43,32 +46,38 @@ afterAll(async () => {
 });
 
 verifies("sandbox-host.program-probe-node", () => {
-  describe.skipIf(process.platform === "win32")("holes on a POSIX system", () => {
-    it("stops a child that the stopped program left running", async () => {
-      const pidFile = join(dir, "forker.pid");
-      await script("forker", `sleep 30 & echo $! > ${pidFile}; sleep 30`);
-      const answer = await createProgramProbe({
-        env: { PATH: `${dir}:/usr/bin:/bin` },
-        timeoutMs: 300,
-      }).ask("forker", []);
-      expect(answer).toMatchObject({ status: "failed" });
-      const pid = Number(await readFile(pidFile, "utf8"));
-      const gone = await waitUntilGone(pid, 1_000);
-      if (!gone) process.kill(pid, "SIGKILL");
-      expect(gone).toBe(true);
-    });
+  describe("holes on a POSIX system", () => {
+    it.skipIf(onWindows)(
+      `${skipOnWindows}stops a child that the stopped program left running`,
+      async () => {
+        const pidFile = join(dir, "forker.pid");
+        await script("forker", `sleep 30 & echo $! > ${pidFile}; sleep 30`);
+        const answer = await createProgramProbe({
+          env: { PATH: `${dir}:/usr/bin:/bin` },
+          timeoutMs: 300,
+        }).ask("forker", []);
+        expect(answer).toMatchObject({ status: "failed" });
+        const pid = Number(await readFile(pidFile, "utf8"));
+        const gone = await waitUntilGone(pid, 1_000);
+        if (!gone) process.kill(pid, "SIGKILL");
+        expect(gone).toBe(true);
+      },
+    );
 
-    it("stops a child that holds the program's output open after it exits", async () => {
-      const pidFile = join(dir, "holder.pid");
-      await script("holder", `sleep 30 & echo $! > ${pidFile}; exit 0`);
-      await createProgramProbe({ env: { PATH: `${dir}:/usr/bin:/bin` }, timeoutMs: 300 }).ask(
-        "holder",
-        [],
-      );
-      const pid = Number(await readFile(pidFile, "utf8"));
-      const gone = await waitUntilGone(pid, 1_000);
-      if (!gone) process.kill(pid, "SIGKILL");
-      expect(gone).toBe(true);
-    });
+    it.skipIf(onWindows)(
+      `${skipOnWindows}stops a child that holds the program's output open after it exits`,
+      async () => {
+        const pidFile = join(dir, "holder.pid");
+        await script("holder", `sleep 30 & echo $! > ${pidFile}; exit 0`);
+        await createProgramProbe({ env: { PATH: `${dir}:/usr/bin:/bin` }, timeoutMs: 300 }).ask(
+          "holder",
+          [],
+        );
+        const pid = Number(await readFile(pidFile, "utf8"));
+        const gone = await waitUntilGone(pid, 1_000);
+        if (!gone) process.kill(pid, "SIGKILL");
+        expect(gone).toBe(true);
+      },
+    );
   });
 });

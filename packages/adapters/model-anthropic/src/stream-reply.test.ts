@@ -150,8 +150,12 @@ verifies("model-anthropic.stream", () => {
       },
       { type: "message_stop" },
     ]);
-    // The cache counts aren't read into our usage yet; this keeps passing once they are.
-    expect(reader.finish().usage).toMatchObject({ inputTokens: 25, outputTokens: 9 });
+    expect(reader.finish().usage).toEqual({
+      inputTokens: 25,
+      outputTokens: 9,
+      cacheReadTokens: 40,
+      cacheWriteTokens: 12,
+    });
   });
 
   it("gives text a block starts with, and no piece for empty text", () => {

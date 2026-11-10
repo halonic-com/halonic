@@ -12,6 +12,12 @@ export {
   routineKey,
   type TickPolicy,
 } from "./due.ts";
+export {
+  type DueTick,
+  dueWithSkips,
+  type SkippedRange,
+  type SkipReason,
+} from "./due-with-skips.ts";
 export { MAIL_OVERLAP_MS, mailCheckDue, mailQuery } from "./mail-trigger.ts";
 export { nextCronTime } from "./next-cron-time.ts";
 export { nextRun } from "./next-run.ts";

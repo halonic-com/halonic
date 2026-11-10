@@ -3,7 +3,7 @@
 // assistant's read tools never see the baselines, and an Accept, which
 // changes only a record, doesn't change the workspace's version.
 
-import type { DefinitionStore, Digest } from "@halonicjs/ports";
+import type { DefinitionStore, Digest, WriteOptions, WriteResult } from "@halonicjs/ports";
 import { bytesToHex, encodeUtf8 } from "@halonicjs/std";
 import { reviewFolder } from "./review-record.ts";
 
@@ -86,9 +86,9 @@ export class ReviewingDefinitionStore implements DefinitionStore {
     return this.inner.read(path);
   }
 
-  async write(path: string, content: string): Promise<void> {
+  async write(path: string, content: string, options?: WriteOptions): Promise<WriteResult> {
     refuseReviewPath(path);
-    await this.inner.write(path, content);
+    return this.inner.write(path, content, options);
   }
 
   async remove(path: string): Promise<void> {

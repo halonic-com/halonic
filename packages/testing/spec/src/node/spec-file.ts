@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import type { JsonSchema } from "@halonicjs/schema-kit";
 import { expect } from "vitest";
 
 // A spec file is the committed JSON Schema of a public API. It is what
@@ -10,7 +9,7 @@ import { expect } from "vitest";
 const writeSpecFiles = process.env["SPEC_WRITE"] === "1" && process.env["CI"] === undefined;
 
 /** The text of a spec file: pretty-printed JSON with a final newline. */
-function specText(schema: JsonSchema): string {
+function specText(schema: object): string {
   return `${JSON.stringify(schema, null, 2)}\n`;
 }
 
@@ -23,7 +22,7 @@ function specText(schema: JsonSchema): string {
  */
 export function expectSpecFile(
   path: string,
-  schema: JsonSchema,
+  schema: object,
   { write = writeSpecFiles }: { readonly write?: boolean } = {},
 ): void {
   const expected = specText(schema);

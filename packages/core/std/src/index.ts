@@ -5,6 +5,7 @@ export { decodeBase64url, encodeBase64url } from "./base64url.ts";
 export { canonicalJson } from "./canonical-json.ts";
 export { type Clock, fixedClock, fixedClockStart, systemClock } from "./clock.ts";
 export { constantTimeEqual } from "./constant-time.ts";
+export { contentDigest, matchesExpected, type Sha256 } from "./content-digest.ts";
 export { deepClone } from "./deep-clone.ts";
 export { deepEqual } from "./deep-equal.ts";
 export { Emitter, type Listener } from "./emitter.ts";

@@ -1,5 +1,6 @@
 import type { Secrets } from "@halonicjs/ports";
 import { OpenAiReplyReader } from "./openai-reply.ts";
+import { refuseUrlInputs } from "./openai-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { providerKey } from "./provider-key.ts";
 import { type ProviderReach, parseModelRequest, withoutProviderReach } from "./provider-reach.ts";
@@ -46,8 +47,9 @@ export interface OpenAiRouteDependencies {
  * `POST /v1/responses`, as Codex sends it, passed on to `api.openai.com`
  * with the agent's key in place of the program's (requirement
  * `harness-bridge.openai`). Streaming replies stream through unchanged.
- * OpenAI's web search and MCP tools are removed first. Each call is
- * recorded with its usage and cost (requirement `harness-bridge.spend`).
+ * OpenAI's web search and MCP tools are removed first, and an image or file
+ * that OpenAI would fetch from a URL is refused. Each call is recorded
+ * with its usage and cost (requirement `harness-bridge.spend`).
  */
 export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute {
   return {
@@ -57,6 +59,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       const key = await providerKey(context.run, dependencies.secrets, "openai");
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
+      refuseUrlInputs(request);
       const call = readModelCall("openai", request, "input");
       const body = withoutProviderReach(sent, request, openAiReach);
       const { search } = new URL(context.request.url ?? "", openAiOrigin);

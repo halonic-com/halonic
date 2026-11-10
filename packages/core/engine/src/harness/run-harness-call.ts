@@ -2,7 +2,8 @@
 // the run's bridge and sandbox, starts the harness in them and writes what
 // the harness reports to the run's log. It gives back the agent's result;
 // `decide` writes the task's own `agent.finished` from it, as it does for a
-// model's answer. Whatever the harness started is stopped before it returns.
+// model's answer. Whatever the harness started is stopped before it returns,
+// and also when the engine stops it on the way.
 
 import { type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
@@ -15,9 +16,11 @@ import {
   type Sandbox,
   type SandboxSession,
 } from "@halonicjs/ports";
+import type { StopSignal } from "@halonicjs/std";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import type { HarnessAgent, HarnessRunsOptions } from "./harness-host.ts";
 import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
+import { unlessStopped } from "./unless-stopped.ts";
 
 /** Where a harness call writes its events: the run's log, one event after the other. */
 export interface HarnessEventLog {
@@ -42,7 +45,9 @@ export interface HarnessCall {
  * It never runs a harness without its sandbox: when the sandbox for the
  * agent's placement isn't ready, the call fails before anything starts.
  * Neither start waits for ever: `limits` ends the sandbox's opening and the
- * wait for the harness's first event when their time is up.
+ * wait for the harness's first event when their time is up. When `stop` is
+ * told to stop, as it is when the engine stops, the call stops the harness run,
+ * closes the session and the bridge, and throws.
  *
  * It returns, or throws, only once the harness run, the session and the
  * bridge have stopped, in that order, and every event they reported is in
@@ -52,6 +57,7 @@ export interface HarnessCall {
  * @throws RunFailureError `sandbox-start-failed` when the sandbox doesn't open in time, or
  *   `harness-start-failed` when the host has no such harness, or it fails or sends nothing
  *   before its first event is due
+ * @throws `stop.reason` when `stop` is told to stop
  * @throws when the sandbox isn't ready, the harness asks for an approval, or it ends without a result
  */
 export async function runHarnessCall(
@@ -59,6 +65,7 @@ export async function runHarnessCall(
   call: HarnessCall,
   log: HarnessEventLog,
   limits: StartLimits,
+  stop: StopSignal,
 ): Promise<unknown> {
   const { effect } = call;
   const harness = options.harnesses[effect.harness];
@@ -76,10 +83,12 @@ export async function runHarnessCall(
       `The sandbox isn't ready (${check.reason}), so agent "${effect.agent}" didn't start. Halonic never runs it without one.`,
     );
   }
-  const started: StartedCall = { options, call, harness, log, limits };
+  const started: StartedCall = { options, call, harness, log, limits, stop };
   // The bridge's events (model and tool calls) carry no state.
   const recorder = { record: (event: RunEventBody) => log.append(event) };
-  const bridge = await options.bridges.open(agent, recorder);
+  const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
+    late.close(),
+  );
   try {
     const session = await openSandbox(started, sandbox, bridge);
     try {
@@ -126,6 +135,7 @@ interface StartedCall {
   readonly harness: Harness;
   readonly log: HarnessEventLog;
   readonly limits: StartLimits;
+  readonly stop: StopSignal;
 }
 
 /** The limit of one start, from the host's options or the default. */
@@ -139,26 +149,29 @@ function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): number 
  * was up is closed as soon as it arrives.
  */
 async function openSandbox(
-  { options, call, harness, log, limits }: StartedCall,
+  { options, call, harness, log, limits, stop }: StartedCall,
   sandbox: Sandbox,
   bridge: OpenHarnessBridge,
 ): Promise<SandboxSession> {
+  stop.throwIfStopped();
   const { state, agent } = call.effect;
   const subject = { runId: call.runId, hubId: call.hubId, agentId: agent };
   const { profile, deniedGroups } = await options.profiles.profileOf(subject, bridge);
   const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});
   const timeoutMs = startTimeoutOf(options, "sandbox");
   await log.append({ type: "sandbox.started", state, agent, timeoutMs });
+  const open = () => unlessStopped(stop, sandbox.open({ ...profile, env }), (late) => late.close());
   let session: SandboxSession;
   try {
     session = await limits.within({
       phase: "sandbox",
       timeoutMs,
-      start: () => sandbox.open({ ...profile, env }),
+      start: open,
       timedOut: () => new Error(`It didn't open within ${seconds(timeoutMs)}.`),
       late: (lateSession) => lateSession.close(),
     });
   } catch (error) {
+    stop.throwIfStopped();
     throw new RunFailureError(
       "sandbox-start-failed",
       `The sandbox for agent "${agent}" didn't open.`,
@@ -183,8 +196,8 @@ async function openSandbox(
 /**
  * Writes what the harness reports until the agent's own `agent.finished`,
  * and gives back its output. A stream that fails, or sends nothing, before
- * its first event is due means the program didn't start; the caller's
- * `cancel()` then ends the wait for it.
+ * its first event is due means the program didn't start. The caller's
+ * `cancel()` ends a wait that the time limit or `stop` gave up on.
  *
  * The agent's own `agent.started` and `agent.finished` never reach the log:
  * `decide` writes both for the state, and the run reads a top-level one as
@@ -192,7 +205,7 @@ async function openSandbox(
  * a call that no longer exists.
  */
 async function followRun(
-  { harness, call, log, limits }: StartedCall,
+  { harness, call, log, limits, stop }: StartedCall,
   events: AsyncIterator<HarnessEvent>,
   timeoutMs: number,
 ): Promise<unknown> {
@@ -201,15 +214,16 @@ async function followRun(
     next = await limits.within({
       phase: "harness",
       timeoutMs,
-      start: () => events.next(),
+      start: () => unlessStopped(stop, events.next()),
       timedOut: () => new Error(`It sent nothing within ${seconds(timeoutMs)}.`),
     });
   } catch (error) {
+    stop.throwIfStopped();
     throw new RunFailureError("harness-start-failed", `${harness.name} didn't start.`, {
       cause: error,
     });
   }
-  for (; !next.done; next = await events.next()) {
+  for (; !next.done; next = await unlessStopped(stop, events.next())) {
     const event = next.value;
     if (event.type === "agent.finished" && event.parent === undefined) {
       return event.output;

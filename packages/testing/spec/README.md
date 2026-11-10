@@ -1,10 +1,10 @@
 # @halonicjs/testing-spec
 
-Links tests to requirement IDs with verifies(), and records which requirements ran and passed.
+Links tests to requirement IDs with verifies(), records which requirements ran and passed, and pins committed spec files to the code with expectSpecFile().
 
 - **Layer:** testing
 - **Owner:** julian
-- **Public API:** `verifies`, `requirementIdPattern`
+- **Public API:** `verifies`, `requirementIdPattern`, `typeTest`; `expectSpecFile` from `@halonicjs/testing-spec/node` (it needs Node)
 
 `verifies(id, body)` is `describe` with the requirement ID as its title. It
 also tags every test inside with the ID, and Vitest writes that tag into its
@@ -14,6 +14,8 @@ ran and passed. Use one `verifies` per requirement; they don't nest.
 The requirement itself lives in a file next to the code, for example
 `packages/core/workflow/requirements/timer-fires-after-delay.md` for the ID
 `workflow.timer-fires-after-delay`.
+
+`expectSpecFile(path, schema)` expects the committed spec file (the JSON Schema of a public API) at `path` to hold exactly `schema`. Run the test with `SPEC_WRITE=1`, outside CI, to write the file on purpose.
 
 ## Example
 
