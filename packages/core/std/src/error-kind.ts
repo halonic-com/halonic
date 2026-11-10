@@ -1,8 +1,9 @@
 /**
  * Every kind of error a surface (HTTP, CLI, Studio, MCP) can respond to, in a
  * fixed order for exhaustive tests and docs. Each surface turns a kind into
- * its response in one `switch` that ends in `assertNever`, so a new kind
- * fails the typecheck until every surface handles it.
+ * its response in one `switch` that ends in
+ * `assertNever(kind, "error kind")`, so a new kind fails the typecheck until
+ * every surface handles it.
  *
  * - `invalid_input`: the request or file is wrong; the caller fixes the input.
  * - `not_found`: the thing asked for doesn't exist.
