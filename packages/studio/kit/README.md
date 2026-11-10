@@ -679,6 +679,55 @@ the grey fill is dropped.
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
 
+## SidePanel
+
+The frame every side panel shares: step details, the assistant, the list of changes. The shell
+decides where panels open and how many, applies `w-panel` (360px), maximise and any resizing; the
+panel fills what it's given and never sets its own width.
+
+```tsx
+<div className="w-panel">
+  <SidePanel
+    title="Sort the inbox"
+    actions={<PanelButtons />}
+    footer={<Button size="sm">Run step</Button>}
+    onClose={close}
+  >
+    <StepDetails step={step} />
+  </SidePanel>
+</div>;
+```
+
+| Prop           | What it is                                                                       |
+| -------------- | -------------------------------------------------------------------------------- |
+| `title`        | The heading, `text-section`; focus goes here when the panel opens                |
+| `label`        | The region's name when the title changes (the Assistant passes "Assistant")      |
+| `actions`      | The header's right side, filled by the shell: maximise when allowed, then close  |
+| `footer`       | Actions under a divider, right-aligned `sm` buttons                              |
+| `loading`      | What screen readers hear ("Loading Sort the inbox"); the body shows still lines  |
+| `halo`         | The halo wash at the top of the body. The Assistant only                         |
+| `facing`       | The side facing the main view, which gets the 1px line: `start` (default), `end` |
+| `floating`     | A line all round and a 12px radius, when it floats in the window frame           |
+| `initialFocus` | A field to focus instead of the title, for a panel you open to type in           |
+| `onClose`      | The phone's Back. On desktop, close is in `actions` and the shell binds Escape   |
+
+| State   | What happens                                                                             |
+| ------- | ---------------------------------------------------------------------------------------- |
+| Default | 48px header with a divider, a body that scrolls on its own (12px 16px), optional footer  |
+| Hover   | Belongs to the header buttons                                                            |
+| Focus   | Title on open, or `initialFocus` when it's there; back to the opener on close, else `h1` |
+| Error   | The body holds an `EmptyState` with `tone="error"`; the header keeps working             |
+| Loading | Still skeleton lines (`SkeletonBar`), the body `aria-busy`, a status line says why       |
+
+It's a `complementary` region (`<aside>`) named by its title, or by `label`. It opens and closes
+without motion; the main view reflows once.
+
+**On a phone** it reads the presentation and becomes a panel sheet: the whole screen, its header
+the phone top bar (`--spacing-phone-bar` and the top safe area) with a 48px **Back** at the top
+left, the title in `text-heading` on one line, then the actions slot. The footer is a bottom bar
+with the bottom safe area. `initialFocus` is ignored there: it would open the keyboard over a
+screen you haven't seen yet.
+
 ## Checkbox
 
 A choice that is on or off. It's a native checkbox with its own look, so the browser keeps the

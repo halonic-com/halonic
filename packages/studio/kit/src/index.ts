@@ -82,6 +82,7 @@ export {
   usePresentation,
 } from "./presentation/presentation.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
+export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
 export {
   SkeletonBar,
   type SkeletonBarKind,
