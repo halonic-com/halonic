@@ -3,7 +3,8 @@
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`
-//! commands (capabilities/desktop-trust.json); the Studio it then opens is
+//! commands (capabilities/desktop-trust.json) and the `run_*` commands
+//! (capabilities/desktop-runs.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -11,6 +12,8 @@ mod connect;
 mod git;
 mod native_dialogs;
 mod navigation;
+mod profile;
+mod runs;
 mod secrets;
 mod trust;
 
@@ -33,6 +36,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(git::GitState::default())
         .manage(secrets::SecretsState::default())
         .manage(halonic_trust_grant::TrustState::default())
+        .manage(runs::RunState::default())
         // The opener is used only from Rust: the navigation guard hands
         // outside links to the browser with it. Its click script stays off.
         // That script would run in every page, the served Studio too, and
@@ -55,6 +59,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             trust::trust_list,
             trust::trust_grant,
             trust::trust_revoke,
+            runs::run_append,
+            runs::run_events,
+            runs::run_snapshot,
+            runs::run_logs,
         ])
 }
 

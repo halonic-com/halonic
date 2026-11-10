@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use halonic_run_store::{RunFolders, ThisComputer};
+use halonic_run_store::{AppendOutcome, RunFolders, RunStoreError, ThisComputer};
 
 pub const THIS_HOST: &str = "this-computer";
 
@@ -92,4 +92,13 @@ pub fn lines(run_id: &str, from: u64, to: u64) -> String {
     (from..=to)
         .map(|seq| format!("{{\"runId\":\"{run_id}\",\"seq\":{seq},\"type\":\"state.entered\"}}\n"))
         .collect()
+}
+
+/// What an append that stored its lines and wrote any snapshot gives.
+pub fn appended(last_seq: u64) -> Result<AppendOutcome, RunStoreError> {
+    Ok(AppendOutcome::Appended {
+        last_seq,
+        snapshot_error: None,
+        release_error: None,
+    })
 }

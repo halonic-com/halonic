@@ -1,0 +1,19 @@
+{
+  "identifier": "desktop-runs",
+  "description": "On desktop, the app's own page may keep a workspace's runs in the profile through the run_* commands, in the same files and under the same lock as the CLI (crates/run-store). The page names a workspace the person opened, never a path. It is local only, so the Studio the computer serves gets no runs.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-run-append",
+    "allow-run-events",
+    "allow-run-snapshot",
+    "allow-run-logs"
+  ]
+}

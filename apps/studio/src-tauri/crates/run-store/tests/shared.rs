@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use halonic_run_lock::{STALE_AFTER_MS, record_text};
 use halonic_run_store::{AppendOutcome, RunFolders};
-use support::{FakeComputer, Scratch, THIS_HOST, folders, lines};
+use support::{FakeComputer, Scratch, THIS_HOST, appended, folders, lines};
 
 /// A process id that doesn't run on the fake computer.
 const GONE_PID: u32 = 4_000_000;
@@ -26,14 +26,15 @@ fn now_ms() -> i64 {
 fn run_store_lets_exactly_one_of_two_stores_win_each_round() {
     let scratch = Scratch::new("shared-race");
     let (cli, desktop) = (folders(), folders());
-    cli.folder(scratch.runs())
+    cli.folder(&scratch.runs())
+        .unwrap()
         .append("r1", 0, &lines("r1", 1, 1), None)
         .unwrap();
 
     const ROUNDS: u64 = 10;
     let start = Barrier::new(2);
     let race = |folders: &RunFolders<FakeComputer>| {
-        let runs = folders.folder(scratch.runs());
+        let runs = folders.folder(&scratch.runs()).unwrap();
         (1..=ROUNDS)
             .map(|round| {
                 start.wait();
@@ -51,10 +52,7 @@ fn run_store_lets_exactly_one_of_two_stores_win_each_round() {
     });
 
     for (round, outcomes) in (1..=ROUNDS).zip(cli_outcomes.iter().zip(&desktop_outcomes)) {
-        let won = AppendOutcome::Appended {
-            last_seq: round + 1,
-            snapshot_error: None,
-        };
+        let won = appended(round + 1).unwrap();
         let lost = AppendOutcome::Conflict {
             last_seq: round + 1,
         };
@@ -63,7 +61,7 @@ fn run_store_lets_exactly_one_of_two_stores_win_each_round() {
             "round {round}: {outcomes:?}"
         );
     }
-    let log = cli.folder(scratch.runs()).events("r1").unwrap();
+    let log = cli.folder(&scratch.runs()).unwrap().events("r1").unwrap();
     assert_eq!(log, lines("r1", 1, ROUNDS + 1));
 }
 
@@ -74,26 +72,17 @@ fn run_store_removes_a_lock_whose_process_no_longer_runs() {
     scratch.plant("r1.lock", record_text(GONE_PID, THIS_HOST, now_ms()));
     let (cli, desktop) = (folders(), folders());
 
-    let appended = cli
-        .folder(scratch.runs())
+    let outcome = cli
+        .folder(&scratch.runs())
+        .unwrap()
         .append("r1", 1, &lines("r1", 2, 2), None);
-    assert_eq!(
-        appended,
-        Ok(AppendOutcome::Appended {
-            last_seq: 2,
-            snapshot_error: None,
-        })
-    );
-    let appended = desktop
-        .folder(scratch.runs())
-        .append("r1", 2, &lines("r1", 3, 3), None);
-    assert_eq!(
-        appended,
-        Ok(AppendOutcome::Appended {
-            last_seq: 3,
-            snapshot_error: None,
-        })
-    );
+    assert_eq!(outcome, appended(2));
+    let outcome =
+        desktop
+            .folder(&scratch.runs())
+            .unwrap()
+            .append("r1", 2, &lines("r1", 3, 3), None);
+    assert_eq!(outcome, appended(3));
     assert_eq!(scratch.names(), ["r1.jsonl"]);
 }
 
@@ -108,15 +97,11 @@ fn run_store_removes_another_computer_s_lock_once_it_is_too_old() {
     );
 
     let folders = folders();
-    let appended = folders
-        .folder(scratch.runs())
-        .append("r1", 1, &lines("r1", 2, 2), None);
-    assert_eq!(
-        appended,
-        Ok(AppendOutcome::Appended {
-            last_seq: 2,
-            snapshot_error: None,
-        })
-    );
+    let outcome =
+        folders
+            .folder(&scratch.runs())
+            .unwrap()
+            .append("r1", 1, &lines("r1", 2, 2), None);
+    assert_eq!(outcome, appended(2));
     assert_eq!(scratch.names(), ["r1.jsonl"]);
 }

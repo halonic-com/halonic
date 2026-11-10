@@ -17,6 +17,10 @@ fn main() {
         "trust_list",
         "trust_grant",
         "trust_revoke",
+        "run_append",
+        "run_events",
+        "run_snapshot",
+        "run_logs",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

@@ -39,9 +39,16 @@ pub enum AppendOutcome {
     /// When a snapshot was given but couldn't be written, `snapshot_error`
     /// says why: the append still succeeded, since the snapshot is only a
     /// cache, so the shell logs it as a warning.
+    ///
+    /// When the run's lock couldn't be released afterwards, `release_error`
+    /// says why. The lines are stored all the same, so the append must not
+    /// fail: a caller that tried it again would get `Conflict` with its own
+    /// events in the log. The lock left behind is stale after
+    /// `halonic_run_lock::STALE_AFTER_MS`, and the next writer removes it.
     Appended {
         last_seq: u64,
         snapshot_error: Option<RunStoreError>,
+        release_error: Option<RunStoreError>,
     },
     /// The log's last event isn't `expectedSeq`; nothing was stored.
     Conflict { last_seq: u64 },
@@ -82,12 +89,16 @@ impl<C: ThisComputer> RunFolders<C> {
         }
     }
 
-    /// The run folder `root`, which is created on the first append.
-    pub fn folder(&self, root: PathBuf) -> RunFolder<'_, C> {
-        RunFolder {
-            root,
+    /// The run folder `root`, which is created on the first append. A
+    /// relative `root` is made absolute against the current folder now, as
+    /// `resolve(root)` in `fs-node`, so the folder stays the same when the
+    /// current folder changes later and each run takes its turns under one
+    /// lock file name.
+    pub fn folder(&self, root: &Path) -> Result<RunFolder<'_, C>, RunStoreError> {
+        Ok(RunFolder {
+            root: std::path::absolute(root)?,
             folders: self,
-        }
+        })
     }
 }
 
@@ -99,6 +110,11 @@ pub struct RunFolder<'a, C> {
 }
 
 impl<C: ThisComputer> RunFolder<'_, C> {
+    /// Where the run folder is, always an absolute path.
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
     /// Appends `lines`, one event per line, when the log's last event is
     /// `expected_seq`; otherwise stores nothing and gives the conflict. A
     /// new run (`expected_seq` 0) drops a snapshot left from a deleted log
@@ -118,9 +134,19 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         let lock_file = self.file(run_id, LOCK_SUFFIX);
         self.take_turn(&lock_file, || -> Result<AppendOutcome, RunStoreError> {
             fs::create_dir_all(&self.root)?;
-            with_run_lock(&lock_file, &self.folders.computer, || {
-                self.append_locked(run_id, expected_seq, lines, snapshot)
-            })?
+            let mut outcome = None;
+            let released = with_run_lock(&lock_file, &self.folders.computer, || {
+                outcome = Some(self.append_locked(run_id, expected_seq, lines, snapshot));
+            });
+            match (outcome, released) {
+                (Some(outcome), Ok(())) => outcome,
+                (Some(outcome), Err(release)) => with_release_error(outcome, release.into()),
+                // The lock couldn't be taken, so nothing ran.
+                (None, Err(error)) => Err(error.into()),
+                (None, Ok(())) => {
+                    unreachable!("with_run_lock runs the work once it holds the lock")
+                }
+            }
         })
     }
 
@@ -209,6 +235,7 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         Ok(AppendOutcome::Appended {
             last_seq: expected_seq + count_lines(lines),
             snapshot_error,
+            release_error: None,
         })
     }
 
@@ -239,9 +266,35 @@ impl<C: ThisComputer> RunFolder<'_, C> {
     }
 }
 
+/// What an append gives when the run's lock couldn't be released: stored
+/// lines stay `Appended`, with the error for the shell to log; anything else
+/// stored nothing, so the error is the answer.
+fn with_release_error(
+    outcome: Result<AppendOutcome, RunStoreError>,
+    release: RunStoreError,
+) -> Result<AppendOutcome, RunStoreError> {
+    match outcome {
+        Ok(AppendOutcome::Appended {
+            last_seq,
+            snapshot_error,
+            ..
+        }) => Ok(AppendOutcome::Appended {
+            last_seq,
+            snapshot_error,
+            release_error: Some(release),
+        }),
+        Err(error) => Err(error),
+        Ok(AppendOutcome::Conflict { .. }) => Err(release),
+    }
+}
+
 fn remove_if_there(file: &Path) -> std::io::Result<()> {
     match fs::remove_file(file) {
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
         removed => removed,
     }
 }
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

@@ -2,7 +2,7 @@
 
 The run folders the Studio shell writes (HAL-2701), in the same files as `FolderRunStore` in `fs-node`, so a CLI and the desktop app can write one run folder. Plain Rust with no Tauri types; the shell's `run_*` commands wrap it.
 
-- `<runId>.jsonl` holds the run's events, one JSON line each, and only ever grows. Whatever follows the last line break is a line a crash cut off: it is left out, and cut off before the next append.
+- `<runId>.jsonl` holds the run's events, one JSON line each, and only ever grows. Whatever follows the last line break is a line a crash cut off: it is left out, and cut off before the next append. Only an append that goes ahead cuts it: a conflict leaves the log as it is.
 - `<runId>.snapshot.json` caches the engine's state. It is replaced through a temporary file and a rename, and a new run (`expectedSeq` 0) drops one left from a deleted log.
 - `<runId>.lock` is held while an append checks `expectedSeq` and writes, with `halonic-run-lock`, so of two writers with the same `expectedSeq` exactly one wins.
 
@@ -17,8 +17,8 @@ This crate does only the file work. The page keeps everything else in TypeScript
 ## API
 
 - `RunFolders::new(computer)`: what every lock is judged against, and one turn at a time per run inside the shell, as `KeyedQueue` gives `fs-node`. The shell keeps one.
-- `folder(root)`: one run folder, `<profile>/workspaces/<key>/runs` or a deployment's. The shell works the path out; the page never names one.
-- `append(runId, expectedSeq, lines, snapshot)`: `Appended { lastSeq }` or `Conflict { lastSeq }`. A snapshot that can't be written doesn't fail the append; the error comes back for the shell to log.
+- `folder(root)`: one run folder, `<profile>/workspaces/<key>/runs` or a deployment's. The shell works the path out; the page never names one. A relative `root` is made absolute against the current folder, as `resolve(root)` in `fs-node`.
+- `append(runId, expectedSeq, lines, snapshot)`: `Appended { lastSeq }` or `Conflict { lastSeq }`. A snapshot that can't be written doesn't fail the append; the error comes back for the shell to log. Nor does a lock that can't be released once the lines are stored: a retry would get `Conflict` with its own events in the log. That error comes back too, and the lock left behind goes stale after 10 seconds.
 - `events(runId)`: the log's whole lines, empty for a run with no log.
 - `snapshot(runId)`: the snapshot's text and how many events the log holds, so the page drops a snapshot ahead of the log.
 - `logs()`: every run's lines, sorted by run id, for the page's `list`.

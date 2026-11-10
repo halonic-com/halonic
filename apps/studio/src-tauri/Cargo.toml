@@ -32,7 +32,9 @@ tauri-build = { version = "=2.7.4", features = [] }
 halonic-connect = { path = "crates/connect" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-keychain = { path = "crates/keychain" }
+halonic-process-probe = { path = "crates/process-probe" }
 halonic-profile = { path = "crates/profile" }
+halonic-run-store = { path = "crates/run-store" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-trust-grant = { path = "crates/trust-grant" }
 halonic-trust-store = { path = "crates/trust-store" }

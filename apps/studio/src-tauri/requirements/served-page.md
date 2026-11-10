@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-196 section 3, HAL-1375, HAL-192, HAL-2612
+- Source: HAL-196 section 3, HAL-1375, HAL-192, HAL-2612, HAL-2701
 
-The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_set`, `secret_delete`, `pick_folder`, `trust_get`, `trust_list`, `trust_grant` and `trust_revoke`. The Studio the computer serves shall get no native access.
+The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_set`, `secret_delete`, `pick_folder`, `trust_get`, `trust_list`, `trust_grant`, `trust_revoke`, `run_append`, `run_events`, `run_snapshot` and `run_logs`. The Studio the computer serves shall get no native access.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The shell shall refuse every app and plugin command to a request from any addres
 - Given a request from the connect page on desktop,
   when it invokes `trust_grant` for a folder that doesn't exist,
   then the call reaches the command and is refused as `folder_unreadable`.
+- Given a request from the connect page on desktop, with no folder opened,
+  when it invokes `run_logs` for the workspace `.`,
+  then the call reaches the command and is refused as `folder_not_open`.
