@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -64,6 +64,14 @@ describe.skipIf(process.platform === "win32")("a login shell's PATH", () => {
     it("never runs a shell under a skill's scripts/ folder", async () => {
       const shell = await fakeShell(join(folder, "skills", "acme", "scripts", "zsh"));
       expect(await readLoginShellPath({ SHELL: shell, HOME: folder })).toBeUndefined();
+      expect(existsSync(join(folder, "ran"))).toBe(false);
+    });
+
+    it("never runs a shell whose link leads into a skill's scripts/ folder", async () => {
+      await fakeShell(join(folder, "skills", "acme", "scripts", "zsh"));
+      await symlink(join(folder, "skills", "acme", "scripts"), join(folder, "innocent"));
+      const linked = join(folder, "innocent", "zsh");
+      expect(await readLoginShellPath({ SHELL: linked, HOME: folder })).toBeUndefined();
       expect(existsSync(join(folder, "ran"))).toBe(false);
     });
   });
