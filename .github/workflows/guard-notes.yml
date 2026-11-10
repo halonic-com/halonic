@@ -1,13 +1,19 @@
 name: Guard notes
 
 # The decision-note check, in a workflow a pull request can't change or
-# switch off (HAL-1337). On pull_request_target and in the merge queue,
-# GitHub runs this file from the base branch, and the job runs only the
-# base's code: the pull request's head is fetched as git objects and only
-# read. No install, no cache, no secret, a read-only token. It checks that
-# a change to the guard's own paths has a signed user-visible note, and that
-# any note's signature verifies against the base's approvers.json. The
-# test-result comparison stays in ci.yml's guard job.
+# switch off (HAL-1337). On pull_request_target, GitHub runs this file from
+# the base branch, and the job runs only the base's code: the pull request's
+# head is fetched as git objects and only read. No install, no cache, no
+# secret, a read-only token. It checks that a change to the guard's own
+# paths has a signed user-visible note, and that any note's signature
+# verifies against the base's approvers.json. The test-result comparison
+# stays in ci.yml's guard job.
+#
+# On merge_group, GitHub runs this file from the merge group's commit, which
+# includes the pull request's changes, so a pull request that edits this
+# file runs its own copy in the queue. Only the pull_request_target run is
+# out of the pull request's reach: that is the run to make required, and it
+# fails such an edit because .github/ is a guarded path.
 on:
   # zizmor: ignore[dangerous-triggers] runs only the base branch's code; the pull request is read as data
   pull_request_target:
@@ -22,7 +28,7 @@ concurrency:
 
 jobs:
   guard-notes:
-    name: Decision note and the guard's own paths (base branch's copy)
+    name: Decision note and the guard's own paths
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

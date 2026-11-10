@@ -227,9 +227,9 @@ key is loaded. Read the note with `git show <pull request head>:decisions/<branc
 and sign exactly the text above.
 
 **The note check runs in its own workflow**, `.github/workflows/guard-notes.yml`,
-on `pull_request_target` and in the merge queue. GitHub runs that file
-from the base branch, so a pull request can't edit or remove it, and the
-job runs only the base's code: the pull request's head is fetched as git
+on `pull_request_target` and in the merge queue. On `pull_request_target`
+GitHub runs that file from the base branch, so a pull request can't edit or
+remove it, and the job runs only the base's code: the pull request's head is fetched as git
 objects and only read, with no install, cache or secret. It fails a change
 under the guard's own paths (`.github/`, `tooling/check/` with its
 `approvers.json`, `packages/testing/spec/`,
@@ -238,7 +238,13 @@ under the guard's own paths (`.github/`, `tooling/check/` with its
 `user-visible`, lists that path as written here and its signature verifies.
 So an agent key alone can't loosen the guard or add a signer. It also
 checks any note's signature again in the merge queue, against the queue
-base's `approvers.json`. It only reports until user-visible approvals exist.
+base's `approvers.json`. The merge queue is different: there GitHub runs
+the file from the merge group's commit, which holds the pull request's own
+changes, so a pull request that edits the workflow runs its own copy in the
+queue. That is why the `pull_request_target` run is the one that must be
+required: it fails any change under `.github/` without a signed note before
+the pull request can reach the queue. It only reports until user-visible
+approvals exist.
 
 **CI runs the guard and `trace` from the merge base's copy** of
 `tooling/check`, not the pull request's, so a pull request can't weaken
