@@ -1,8 +1,11 @@
 # @halonicjs/adapter-mcp
 
 Our own MCP client for programs on the person's computer. `src/protocol/` holds the MCP session:
-the `initialize` handshake, paged `tools/list` and `tools/call`, over any `McpTransport`. The stdio
-connector that starts a trusted local program comes next (HAL-230).
+the `initialize` handshake, paged `tools/list` and `tools/call`, over any `McpTransport`.
+`src/stdio/` holds `StdioTransport`, MCP over a local program's standard input and output, with a
+timeout on every request, a size limit on every message, and a stop that closes the program's input,
+then asks it to end, then forces it. The connector that starts a trusted local program comes next
+(HAL-230).
 
 - **Layer:** adapters
 - **Owner:** tomas
