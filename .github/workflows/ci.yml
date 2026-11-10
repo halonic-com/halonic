@@ -882,8 +882,52 @@ jobs:
           restore-keys: rust-tauri-${{ runner.os }}-
       - name: Lints (clippy)
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      # B6 (HAL-3747): the Windows folder key cases need 8.3 short names,
+      # which runner volumes often have off. Use the temporary folder's
+      # volume if it makes them; otherwise a small VHD formatted here with
+      # them on. HALONIC_FOLDER_KEYS_ROOT makes the 8.3 cases required, so
+      # they can't pass by being left out.
+      - name: A folder with 8.3 short names for the folder keys
+        run: |
+          fsutil 8dot3name query
+          $probe = Join-Path $env:RUNNER_TEMP 'Short Name Probe'
+          New-Item -ItemType Directory -Force $probe | Out-Null
+          $short = (New-Object -ComObject Scripting.FileSystemObject).GetFolder($probe).ShortPath
+          Remove-Item $probe
+          if ($short -match '~') {
+            Write-Output "8.3 short names are on for $env:RUNNER_TEMP"
+            $root = Join-Path $env:RUNNER_TEMP 'folder-keys'
+          } else {
+            Write-Output "8.3 short names are off for $env:RUNNER_TEMP ($short), so a VHD with them on"
+            fsutil 8dot3name set 2
+            $vhd = Join-Path $env:RUNNER_TEMP 'folder-keys.vhdx'
+            $commands = Join-Path $env:RUNNER_TEMP 'folder-keys.diskpart'
+            Set-Content $commands @(
+              "create vdisk file=`"$vhd`" maximum=64 type=expandable",
+              "select vdisk file=`"$vhd`"",
+              'attach vdisk',
+              'create partition primary',
+              'format fs=ntfs quick label=FolderKeys',
+              'assign letter=K'
+            )
+            diskpart /s $commands
+            if ($LASTEXITCODE -ne 0) { throw 'diskpart could not make the volume' }
+            $drive = 'K:'
+            fsutil 8dot3name set $drive 0
+            fsutil 8dot3name query $drive
+            $root = Join-Path $drive 'folder-keys'
+          }
+          New-Item -ItemType Directory -Force $root | Out-Null
+          Add-Content $env:GITHUB_ENV "HALONIC_FOLDER_KEYS_ROOT=$root"
       - name: Tests
         run: cargo test --locked --workspace
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      # The CLI's side of the folder keys: Node's realpath on the same golden
+      # cases the shell's test checked above.
+      - name: Folder keys, the CLI's side
+        run: node crates/trust-grant/tests/windows-folder-keys.mjs
       - name: Save the Rust cache
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

@@ -1,0 +1,14 @@
+{
+  "about": "B6 (HAL-2612, HAL-3747): on Windows the CLI (Node's realpath) and the shell (canonicalize, then plain_path) must key a folder alike, whatever case or 8.3 short name it was given in. Each case names a folder under a fresh root that holds only the folders below; key is the folder's location relative to the root's own key. In a fresh folder Windows gives the first long name starting with HALONI the short name HALONI~1, and so on. Checked by tests/windows_folder_keys.rs (the shell) and tests/windows-folder-keys.mjs (the CLI's realpath) in the tauri-windows CI job, on a volume with 8.3 names on.",
+  "folders": ["Halonic Work\\Acme Hubs"],
+  "cases": [
+    { "name": "as created", "given": "Halonic Work\\Acme Hubs", "key": "Halonic Work\\Acme Hubs" },
+    { "name": "lower case", "given": "halonic work\\acme hubs", "key": "Halonic Work\\Acme Hubs" },
+    { "name": "upper case", "given": "HALONIC WORK", "key": "Halonic Work" },
+    { "name": "mixed case", "given": "hALONIC wORK\\Acme HUBS", "key": "Halonic Work\\Acme Hubs" },
+    { "name": "8.3 short name", "given": "HALONI~1", "key": "Halonic Work", "shortName": true },
+    { "name": "8.3 short names nested", "given": "HALONI~1\\ACMEHU~1", "key": "Halonic Work\\Acme Hubs", "shortName": true },
+    { "name": "8.3 short name in lower case", "given": "haloni~1\\Acme Hubs", "key": "Halonic Work\\Acme Hubs", "shortName": true },
+    { "name": "8.3 short name below a long one", "given": "Halonic Work\\ACMEHU~1", "key": "Halonic Work\\Acme Hubs", "shortName": true }
+  ]
+}
