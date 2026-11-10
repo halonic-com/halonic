@@ -277,6 +277,21 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
+      '@halonicjs/adapter-harness-claude-code':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-sandbox-host':
+        specifier: workspace:*
+        version: link:../../packages/adapters/sandbox-host
+      '@halonicjs/adapter-sandbox-srt':
+        specifier: workspace:*
+        version: link:../../packages/adapters/sandbox-srt
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/system-node
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app

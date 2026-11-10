@@ -16,6 +16,11 @@
   },
   "dependencies": {
     "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-harness-claude-code": "workspace:*",
+    "@halonicjs/adapter-harness-codex": "workspace:*",
+    "@halonicjs/adapter-sandbox-host": "workspace:*",
+    "@halonicjs/adapter-sandbox-srt": "workspace:*",
+    "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
