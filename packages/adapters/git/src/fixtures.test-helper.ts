@@ -1,11 +1,9 @@
-import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { promisify } from "node:util";
+import { findGit } from "./find-git.ts";
 import { GitRunner } from "./git-runner.ts";
-
-const run = promisify(execFile);
+import { runProcess } from "./node/run-process.ts";
 
 /** The author of every commit in the tests; invented. */
 export const testAuthor = { name: "Acme Tester", email: "tester@acme.example" };
@@ -41,19 +39,33 @@ export async function writeFiles(
   }
 }
 
-/** Runs git with none of the adapter's hardening, to set a test up. */
+/**
+ * Runs git with none of the adapter's hardening, to set a test up. It goes
+ * through `runProcess` too, so the package has one file that starts a
+ * process (HAL-188's `process-starts` check).
+ *
+ * @throws Error when git fails, with its error output
+ */
 export async function plainGit(cwd: string, args: readonly string[]): Promise<string> {
-  const environment: Record<string, string | undefined> = {};
+  const environment: Record<string, string> = {};
   for (const [name, value] of Object.entries(process.env)) {
-    if (!name.toUpperCase().startsWith("GIT_")) environment[name] = value;
+    if (value !== undefined && !name.toUpperCase().startsWith("GIT_")) environment[name] = value;
   }
   const identity = [`user.name=${testAuthor.name}`, `user.email=${testAuthor.email}`];
   const config = [...identity, "init.defaultBranch=main", "protocol.file.allow=always"];
-  const { stdout } = await run("git", [...config.flatMap((entry) => ["-c", entry]), ...args], {
+  const fullArgs = [...config.flatMap((entry) => ["-c", entry]), ...args];
+  const result = await runProcess({
+    program: await findGit(),
+    args: fullArgs,
     cwd,
     env: { ...environment, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" },
+    timeoutMs: 60_000,
+    maxOutputBytes: 64 * 1024 * 1024,
   });
-  return stdout;
+  if (result.code !== 0) {
+    throw new Error(`git ${args.join(" ")} failed (${result.code}): ${result.stderr}`);
+  }
+  return result.stdout.toString("utf8");
 }
 
 /** Makes `folder` a repository on `main` with `files` in one commit, with plain git. */

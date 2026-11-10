@@ -1,6 +1,6 @@
 # @halonicjs/adapter-git
 
-The `Vcs` port on the real `git` program, for one workspace folder. git always runs hardened, whether the workspace is trusted or not (plan section 11): nothing the workspace's files say can make git start another program.
+The `Vcs` port on the real `git` program, for one workspace folder. git always runs hardened, whether the workspace is trusted or not (plan section 11).
 
 - **Layer:** adapters
 - **Owner:** tomas
@@ -36,4 +36,5 @@ The desktop's `git-guard` crate does the same in Rust.
 
 ## Not yet
 
-- **Process allow-list.** `src/node/run-process.ts` is the only file that starts a process. It needs an entry in `tooling/check/process-starters.json` once HAL-188's check lands.
+- **The repository's own config.** The runner alone doesn't stop programs the repository's config or `.gitattributes` names, such as a filter or an external diff. The repository checks, which come next, close those. Until then, don't run `GitRunner` on a workspace you don't trust.
+- **Process allow-list.** `src/node/run-process.ts` is the only file that starts a process. It needs an entry in `tooling/check/process-starters.json` once HAL-188's check lands, with `src/skill-scripts.test.ts` as its `scriptsTest`.

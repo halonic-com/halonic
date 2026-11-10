@@ -6,6 +6,11 @@ import { findGit, gitCandidates } from "./find-git.ts";
 import { Scratch } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
 
+// The PATH-order and relative-folder cases are ported from the desktop's
+// git-guard, `limited_run_tests.rs`
+// (`git_process_finds_git_only_in_absolute_folders`); its `find_git.rs` has
+// no tests of its own. The Windows cases are new.
+
 const scratch = new Scratch();
 afterAll(() => scratch.remove());
 

@@ -6,6 +6,15 @@ import { repositoryWith, Scratch, testRunner } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
 import { hardenedEnvironment } from "./hardening.ts";
 
+// "The environment" is ported from the desktop's git-guard, `runner_tests.rs`
+// (`git_hardening_removes_inherited_git_variables`,
+// `git_hardening_sets_a_safe_environment` and
+// `git_hardening_gives_its_config_in_the_environment_not_as_arguments`).
+// Its cases for submodules, maintenance, bundles and the alternate refs
+// command only repeat entries of the config list, so they aren't ported:
+// `hardeningConfig` is that same list. "The runner" cases are new: they
+// run real git.
+
 const scratch = new Scratch();
 afterAll(() => scratch.remove());
 
