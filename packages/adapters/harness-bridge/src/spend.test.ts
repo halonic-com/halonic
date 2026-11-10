@@ -13,8 +13,17 @@ afterEach(async () => {
   await Promise.all(closers.splice(0).map((close) => close()));
 });
 
-/** The price the test's `models.yaml` gives: only `claude-sonnet-5-5` has one. */
-const sonnetPrice: ModelPrice = { input: 3, output: 15 };
+/**
+ * The price the test's `models.yaml` gives: only `claude-sonnet-5-5` has
+ * one. Its cache prices are 0.05×, 1.25× and 2× the input price.
+ */
+const sonnetPrice: ModelPrice = {
+  input: 3,
+  output: 15,
+  cacheRead: 0.15,
+  cacheWrite: 3.75,
+  cacheWrite1h: 6,
+};
 
 /**
  * Opens a bridge with the Anthropic route for an agent with a key, and keeps
@@ -125,11 +134,11 @@ verifies("harness-bridge.spend", () => {
         agent: "writer",
         provider: "anthropic",
         model: "claude-sonnet-5-5",
-        // The prompt cache's tokens count as input, as the Anthropic model adapter counts them.
-        usage: { inputTokens: 125, outputTokens: 42 },
+        // The prompt cache's tokens are counted apart from input, as the Anthropic model adapter counts them.
+        usage: { inputTokens: 100, outputTokens: 42, cacheReadTokens: 20, cacheWriteTokens: 5 },
         latencyMs: expect.any(Number),
         text: "Hello",
-        cost: (125 * 3 + 42 * 15) / 1_000_000,
+        cost: (100 * 3 + 42 * 15 + 20 * 0.15 + 5 * 3.75) / 1_000_000,
       });
     });
 
@@ -194,6 +203,72 @@ verifies("harness-bridge.spend", () => {
       usage: { inputTokens: 10, outputTokens: 3 },
       text: "Hi there",
       cost: (10 * 3 + 3 * 15) / 1_000_000,
+    });
+  });
+
+  describe("the prompt cache", () => {
+    /** Records one reply that isn't streamed with `usage`, and returns its `llm.response`. */
+    async function recordUsage(usage: Record<string, unknown>) {
+      const message = { type: "message", content: [{ type: "text", text: "Hi" }], usage };
+      const anthropic = fakeProvider(() => Response.json(message));
+      const { bridge, recorded } = await open(anthropic.fetch);
+      await (await programRequest(bridge)).text();
+      await vi.waitFor(() => expect(recorded).toHaveLength(2));
+      return recorded[1];
+    }
+
+    it("splits the cache writes into 5-minute and 1-hour writes, each at its own price", async () => {
+      const response = await recordUsage({
+        input_tokens: 10,
+        output_tokens: 3,
+        cache_creation_input_tokens: 300,
+        cache_creation: { ephemeral_5m_input_tokens: 100, ephemeral_1h_input_tokens: 200 },
+      });
+
+      expect(response).toMatchObject({
+        usage: { inputTokens: 10, outputTokens: 3, cacheWriteTokens: 100, cacheWrite1hTokens: 200 },
+        cost: (10 * 3 + 3 * 15 + 100 * 3.75 + 200 * 6) / 1_000_000,
+      });
+    });
+
+    it("counts every cache write as a 5-minute write when the reply doesn't split them", async () => {
+      const response = await recordUsage({
+        input_tokens: 10,
+        output_tokens: 3,
+        cache_creation_input_tokens: 300,
+      });
+
+      expect(response).toMatchObject({
+        usage: { inputTokens: 10, outputTokens: 3, cacheWriteTokens: 300 },
+      });
+    });
+
+    it("leaves out the cache counts that are 0", async () => {
+      const response = await recordUsage({
+        input_tokens: 10,
+        output_tokens: 3,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+        cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 0 },
+      });
+
+      expect(response).toMatchObject({ usage: { inputTokens: 10, outputTokens: 3 } });
+      expect(Object.keys((response as { usage: object }).usage)).toEqual([
+        "inputTokens",
+        "outputTokens",
+      ]);
+    });
+
+    it("costs a cache-heavy call less than the same tokens counted as plain input", async () => {
+      const response = await recordUsage({
+        input_tokens: 50,
+        output_tokens: 200,
+        cache_read_input_tokens: 90_000,
+        cache_creation_input_tokens: 2_000,
+      });
+
+      const asPlainInput = ((50 + 90_000 + 2_000) * 3 + 200 * 15) / 1_000_000;
+      expect((response as { cost: number }).cost).toBeLessThan(asPlainInput / 5);
     });
   });
 
