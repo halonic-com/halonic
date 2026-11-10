@@ -55,10 +55,11 @@ const connectorSeparator = "__";
  * What waits for you in these runs, newest first: one item for each tool
  * call waiting for your OK, and one for each run at a `wait` step. A run
  * that waits on its child run has no item of its own; the child's item is
- * the one to answer. Test runs (Try it) never ask, so they have none.
+ * the one to answer. A `wait` step that only has timers takes no answer, so
+ * it has none either. Test runs (Try it) never ask, so they have none.
  *
  * @example
- * inboxItems(await runs.list({ status: ["waiting"] }));
+ * inboxItems(await store.list({ status: ["waiting"] }));
  */
 export function inboxItems(runs: readonly RunSummary[]): InboxItem[] {
   const items: InboxItem[] = [];
@@ -66,7 +67,7 @@ export function inboxItems(runs: readonly RunSummary[]): InboxItem[] {
     if (run.status !== "waiting" || run.kind === "test") continue;
     if (run.approvals.length > 0) {
       for (const approval of run.approvals) items.push(approvalItem(run.id, approval));
-    } else if (run.waitingOn === null && run.state !== null) {
+    } else if (run.waitingOn === null && run.state !== null && run.accepts.length > 0) {
       items.push(waitItem(run, run.state));
     }
   }
@@ -74,16 +75,17 @@ export function inboxItems(runs: readonly RunSummary[]): InboxItem[] {
 }
 
 function approvalItem(runId: string, approval: RunSummary["approvals"][number]): ApprovalItem {
+  // A name that starts with the separator has no connector before it.
   const separator = approval.tool.indexOf(connectorSeparator);
+  const hasConnector = separator > 0;
   return {
     kind: "approval",
     key: `${runId}:${approval.callId}`,
     runId,
     callId: approval.callId,
     agent: approval.agent,
-    tool:
-      separator === -1 ? approval.tool : approval.tool.slice(separator + connectorSeparator.length),
-    connector: separator === -1 ? null : approval.tool.slice(0, separator),
+    tool: hasConnector ? approval.tool.slice(separator + connectorSeparator.length) : approval.tool,
+    connector: hasConnector ? approval.tool.slice(0, separator) : null,
     rawTool: approval.tool,
     args: approval.args,
     since: approval.at,
@@ -111,5 +113,7 @@ function waitItem(run: RunSummary, state: string): WaitItem {
 
 function newestFirst(a: InboxItem, b: InboxItem): number {
   if (a.since !== b.since) return a.since < b.since ? 1 : -1;
-  return a.key.localeCompare(b.key);
+  // A plain comparison, so the order doesn't depend on the locale.
+  if (a.key === b.key) return 0;
+  return a.key < b.key ? -1 : 1;
 }

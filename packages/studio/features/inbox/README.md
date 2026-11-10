@@ -17,3 +17,5 @@ await inboxDecisions(executor).approve(items[0]); // sends approve with the item
 ```
 
 The item's `body` and a tool call's `args` can hold model output. Show them as plain text, never as Markdown or HTML.
+
+The screens show those values through `src/plain/`: arguments as readable fields, hidden characters as `⟦U+202E⟧` markers, and long text folded with "Show 38 more lines" (requirements `inbox.plain-values`, `inbox.argument-fields`, `inbox.waiting-time` and `inbox.approval-title`).

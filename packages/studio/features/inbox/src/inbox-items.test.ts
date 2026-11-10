@@ -36,6 +36,8 @@ verifies("inbox.items", () => {
   it("gives a built-in tool no connector", () => {
     const run = waitingRun("r1", { approvals: [pendingApproval("call-1", "search", "T1")] });
     expect(inboxItems([run])[0]).toMatchObject({ tool: "search", connector: null });
+    const leading = waitingRun("r1", { approvals: [pendingApproval("call-1", "__search", "T1")] });
+    expect(inboxItems([leading])[0]).toMatchObject({ tool: "__search", connector: null });
   });
 
   it("lists a run at a wait step with the description core filled in", () => {
@@ -68,6 +70,7 @@ verifies("inbox.items", () => {
       waitingRun("parent", { waitingOn: "child" }),
       waitingRun("running", { status: "running" }),
       waitingRun("done", { status: "completed" }),
+      waitingRun("timer-only", { accepts: [], nextTimer: "2026-11-12T10:40:00.000Z" }),
       waitingRun("try-it", {
         kind: "test",
         approvals: [pendingApproval("call-1", "search", "T1")],
@@ -85,5 +88,15 @@ verifies("inbox.items", () => {
       }),
     ]);
     expect(items.map((item) => item.runId)).toEqual(["new", "tool", "old"]);
+  });
+
+  it("breaks a tie in time by key, the same in every locale", () => {
+    const at = "2026-11-10T10:00:00.000Z";
+    const items = inboxItems([
+      waitingRun("b", { lastWaitingAt: at }),
+      waitingRun("B", { lastWaitingAt: at }),
+      waitingRun("a", { lastWaitingAt: at }),
+    ]);
+    expect(items.map((item) => item.runId)).toEqual(["B", "a", "b"]);
   });
 });
