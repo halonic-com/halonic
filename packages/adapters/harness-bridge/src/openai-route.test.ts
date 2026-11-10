@@ -191,6 +191,51 @@ verifies("harness-bridge.openai", () => {
     expect(forwarded.input).toEqual(codexRequest.input);
   });
 
+  describe("a tool_choice that forces a removed tool", () => {
+    const tools = [
+      { type: "web_search_preview" },
+      { type: "mcp", server_label: "outside", server_url: "https://mcp.example.test" },
+      { type: "function", name: "shell", parameters: { type: "object" } },
+    ];
+    const choices: [string, unknown, unknown][] = [
+      ["a web search tool", { type: "web_search_preview" }, "auto"],
+      ["an MCP tool", { type: "mcp", server_label: "outside" }, "auto"],
+      [
+        "a list of allowed tools with one removed",
+        {
+          type: "allowed_tools",
+          mode: "required",
+          tools: [{ type: "mcp" }, { type: "function", name: "shell" }],
+        },
+        { type: "allowed_tools", mode: "required", tools: [{ type: "function", name: "shell" }] },
+      ],
+      [
+        "a list of allowed tools that are all removed",
+        { type: "allowed_tools", mode: "auto", tools: [{ type: "web_search" }] },
+        "auto",
+      ],
+    ];
+    for (const [what, sent, forwarded] of choices) {
+      it(`becomes ${JSON.stringify(forwarded)} for ${what}`, async () => {
+        const openai = fakeProvider(() => new Response("{}"));
+        const { bridge } = await open(openai.fetch);
+        await programRequest(bridge, { ...codexRequest, tools, tool_choice: sent });
+        expect(JSON.parse(openai.calls[0]?.body ?? "").tool_choice).toEqual(forwarded);
+      });
+    }
+
+    it("stays as it is when it forces a kept tool", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge } = await open(openai.fetch);
+      const sent = JSON.stringify({
+        ...codexRequest,
+        tool_choice: { type: "function", name: "shell" },
+      });
+      await programRequest(bridge, sent);
+      expect(openai.calls[0]?.body).toBe(sent);
+    });
+  });
+
   describe("refusing", () => {
     const cases: [string, BridgeProviderAccess | null, string, number][] = [
       ["an agent that doesn't use OpenAI", null, "denied", 403],
@@ -274,6 +319,31 @@ verifies("harness-bridge.openai", () => {
         expect(recorded).toEqual([]);
       });
     }
+
+    it("refuses a stored prompt, which can bring tools the bridge can't see", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge, recorded } = await open(openai.fetch);
+      const prompt = { id: "pmpt_placeholder", version: "2", variables: { city: "Utrecht" } };
+      const reply = await programRequest(bridge, { ...codexRequest, prompt });
+      expect(reply.status).toBe(403);
+      expect(await reply.json()).toMatchObject({
+        error: {
+          type: "denied",
+          message: expect.stringContaining("prompt stored in the OpenAI project"),
+        },
+      });
+      expect(openai.calls).toHaveLength(0);
+      expect(recorded).toEqual([]);
+    });
+
+    it("passes on a request whose prompt is null", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge } = await open(openai.fetch);
+      const sent = JSON.stringify({ ...codexRequest, prompt: null });
+      const reply = await programRequest(bridge, sent);
+      expect(reply.status).toBe(200);
+      expect(openai.calls[0]?.body).toBe(sent);
+    });
 
     it("passes on an image or file sent as data, by id, or in a tool call's text output", async () => {
       const openai = fakeProvider(() => new Response("{}", { status: 200 }));

@@ -10,6 +10,19 @@ export interface ProviderReach {
   isRemovedTool(type: string): boolean;
   /** Top-level fields that make the provider call other servers, such as Anthropic's `mcp_servers`. */
   removedFields: readonly string[];
+  /**
+   * The request's `tool_choice` once the removed tools are gone. A choice
+   * that forces a removed tool becomes `auto`, because the provider answers
+   * 400 to a choice naming a tool the request doesn't have. Any other choice
+   * comes back as the same value.
+   */
+  keptToolChoice(choice: unknown, tools: ToolsAfterRemoval): unknown;
+}
+
+/** A request's tools, split into the ones the bridge removed and the ones it kept. */
+export interface ToolsAfterRemoval {
+  removed: readonly Record<string, unknown>[];
+  kept: readonly unknown[];
 }
 
 /**
@@ -28,7 +41,8 @@ export function parseModelRequest(body: Uint8Array): unknown {
 /**
  * Removes the fields and the tools that `reach` names from a model request.
  * The match on a tool is on its `type`, never on its `name`, so a renamed web
- * tool still goes.
+ * tool still goes. A `tool_choice` that forces a removed tool is set back to
+ * `auto` by `reach.keptToolChoice`.
  *
  * `request` is `body` already parsed. A request with nothing to remove goes on
  * byte for byte, unchanged.
@@ -48,21 +62,40 @@ export function withoutProviderReach(
       removed = true;
     }
   }
-  const tools = kept["tools"];
-  if (Array.isArray(tools)) {
-    const keptTools = tools.filter(
-      (tool) => !(isPlainObject(tool) && removedType(tool, reach.isRemovedTool)),
-    );
-    if (keptTools.length !== tools.length) {
-      kept["tools"] = keptTools;
+  const tools = splitTools(kept["tools"], reach);
+  if (tools.removed.length > 0) {
+    kept["tools"] = tools.kept;
+    removed = true;
+  }
+  if (Object.hasOwn(kept, "tool_choice")) {
+    const choice = reach.keptToolChoice(kept["tool_choice"], tools);
+    if (choice !== kept["tool_choice"]) {
+      kept["tool_choice"] = choice;
       removed = true;
     }
   }
   return removed ? encodeUtf8(JSON.stringify(kept)) : body;
 }
 
-/** True for a tool whose `type` the predicate names. */
-function removedType(tool: Record<string, unknown>, isRemoved: (type: string) => boolean): boolean {
+/** Splits a request's `tools` by whether `reach` removes them. Anything but a list has no tools. */
+function splitTools(tools: unknown, reach: ProviderReach): ToolsAfterRemoval {
+  const split: { removed: Record<string, unknown>[]; kept: unknown[] } = { removed: [], kept: [] };
+  if (!Array.isArray(tools)) return split;
+  for (const tool of tools) {
+    if (isPlainObject(tool) && hasRemovedType(tool, reach.isRemovedTool)) {
+      split.removed.push(tool);
+    } else {
+      split.kept.push(tool);
+    }
+  }
+  return split;
+}
+
+/** True for a tool, or a tool choice, whose `type` the predicate names. */
+export function hasRemovedType(
+  tool: Record<string, unknown>,
+  isRemoved: (type: string) => boolean,
+): boolean {
   const type = tool["type"];
   return typeof type === "string" && isRemoved(type);
 }

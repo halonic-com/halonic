@@ -25,6 +25,24 @@ export function refuseUrlInputs(request: unknown): void {
   });
 }
 
+/**
+ * Refuses an OpenAI Responses request with a top-level `prompt`: a reusable
+ * prompt stored in the OpenAI project. A stored prompt can bring its own
+ * tools, such as web search, which OpenAI adds on its side, so the bridge
+ * can't see or remove them (HAL-2076). A `prompt` of `null` is no prompt.
+ *
+ * @throws KindedError `denied` when the request has a stored prompt
+ */
+export function refuseStoredPrompt(request: unknown): void {
+  if (!isPlainObject(request)) return;
+  const prompt = request["prompt"];
+  if (prompt === undefined || prompt === null) return;
+  throw new KindedError(
+    "denied",
+    "The request uses a prompt stored in the OpenAI project, which can bring tools Halonic can't see, such as web search. Send the instructions and tools in the request instead.",
+  );
+}
+
 /** Checks a list of input parts at `path`. */
 function checkParts(parts: unknown, path: string): void {
   if (!Array.isArray(parts)) return;

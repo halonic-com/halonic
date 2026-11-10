@@ -161,6 +161,51 @@ verifies("harness-bridge.anthropic", () => {
     expect(forwarded.messages).toEqual(withPdfAndImage.messages);
   });
 
+  describe("a tool_choice that forces a removed tool", () => {
+    const tools = [
+      { type: "web_search_20250305", name: "web_search" },
+      { name: "read_file", description: "The program's own tool", input_schema: {} },
+    ];
+
+    it("becomes auto, keeping its other fields", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const tool_choice = { type: "tool", name: "web_search", disable_parallel_tool_use: true };
+      await programRequest(await open(anthropic.fetch), { ...withPdfAndImage, tools, tool_choice });
+
+      const forwarded = JSON.parse(anthropic.calls[0]?.body ?? "");
+      expect(forwarded.tool_choice).toEqual({ type: "auto", disable_parallel_tool_use: true });
+      expect(forwarded.tools).toEqual([tools[1]]);
+    });
+
+    it("stays as it is when a kept tool has the same name", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const ownWebSearch = {
+        name: "web_search",
+        description: "The program's own tool",
+        input_schema: {},
+      };
+      const tool_choice = { type: "tool", name: "web_search" };
+      await programRequest(await open(anthropic.fetch), {
+        ...withPdfAndImage,
+        tools: [tools[0], ownWebSearch],
+        tool_choice,
+      });
+
+      expect(JSON.parse(anthropic.calls[0]?.body ?? "").tool_choice).toEqual(tool_choice);
+    });
+
+    it("stays as it is when it forces a kept tool", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const sent = JSON.stringify({
+        ...withPdfAndImage,
+        tools: [tools[1]],
+        tool_choice: { type: "tool", name: "read_file" },
+      });
+      await programRequest(await open(anthropic.fetch), sent);
+      expect(anthropic.calls[0]?.body).toBe(sent);
+    });
+  });
+
   it("removes the MCP connector's servers, and keeps the rest of the request", async () => {
     const anthropic = fakeProvider(() => new Response("{}"));
     const mcp_servers = [{ type: "url", url: "https://mcp.example.test/sse", name: "outside" }];

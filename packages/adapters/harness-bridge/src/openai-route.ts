@@ -1,9 +1,15 @@
 import type { Secrets } from "@halonicjs/ports";
+import { isPlainObject } from "@halonicjs/std";
 import { OpenAiReplyReader } from "./openai-reply.ts";
-import { refuseUrlInputs } from "./openai-sources.ts";
+import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { providerAuthorization } from "./provider-key.ts";
-import { type ProviderReach, parseModelRequest, withoutProviderReach } from "./provider-reach.ts";
+import {
+  hasRemovedType,
+  type ProviderReach,
+  parseModelRequest,
+  withoutProviderReach,
+} from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
 
@@ -26,14 +32,39 @@ function isForwardedReplyHeader(name: string): boolean {
   );
 }
 
+/** OpenAI's web search tools, such as `web_search` and `web_search_preview`, and its `mcp` tool. */
+function isOpenAiRemovedTool(type: string): boolean {
+  return type.startsWith("web_search") || type === "mcp";
+}
+
+/**
+ * A `tool_choice` once the removed tools are gone. OpenAI names a forced
+ * tool by its `type`, as in `{ "type": "web_search_preview" }` or
+ * `{ "type": "mcp", "server_label": "…" }`, so a choice of a removed type
+ * becomes `auto`. An `allowed_tools` choice loses the removed tools from its
+ * list, and becomes `auto` when none are left.
+ */
+function openAiToolChoice(choice: unknown): unknown {
+  if (!isPlainObject(choice)) return choice;
+  if (hasRemovedType(choice, isOpenAiRemovedTool)) return "auto";
+  const allowed = choice["tools"];
+  if (choice["type"] !== "allowed_tools" || !Array.isArray(allowed)) return choice;
+  const kept = allowed.filter(
+    (tool) => !(isPlainObject(tool) && hasRemovedType(tool, isOpenAiRemovedTool)),
+  );
+  if (kept.length === allowed.length) return choice;
+  return kept.length === 0 ? "auto" : { ...choice, tools: kept };
+}
+
 /**
  * What an OpenAI request may not ask OpenAI to reach on its own: the web
- * search tools, such as `web_search` and `web_search_preview`, and the `mcp`
- * tool, which calls a remote MCP server from OpenAI's side.
+ * search tools and the `mcp` tool, which calls a remote MCP server from
+ * OpenAI's side.
  */
 const openAiReach: ProviderReach = {
-  isRemovedTool: (type) => type.startsWith("web_search") || type === "mcp",
+  isRemovedTool: isOpenAiRemovedTool,
   removedFields: [],
+  keptToolChoice: openAiToolChoice,
 };
 
 /** What the OpenAI route needs from outside the bridge. */
@@ -49,8 +80,9 @@ export interface OpenAiRouteDependencies {
  * `harness-bridge.openai`), or with the program's own sign-in for an agent
  * on a subscription (requirement `harness-bridge.sign-in`). Streaming
  * replies stream through unchanged.
- * OpenAI's web search and MCP tools are removed first, and an image or file
- * that OpenAI would fetch from a URL is refused. Each call is recorded
+ * OpenAI's web search and MCP tools are removed first, and a `tool_choice`
+ * that forces one becomes `auto`. An image or file that OpenAI would fetch
+ * from a URL, and a stored prompt, are refused. Each call is recorded
  * with its usage and cost (requirement `harness-bridge.spend`).
  */
 export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute {
@@ -66,6 +98,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       );
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
+      refuseStoredPrompt(request);
       refuseUrlInputs(request);
       const call = readModelCall("openai", request, "input");
       const body = withoutProviderReach(sent, request, openAiReach);
