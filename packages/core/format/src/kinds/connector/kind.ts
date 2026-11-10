@@ -16,19 +16,20 @@ export const connectorKind: FileKind<Connector> = {
   idFromPlace: "fallback",
   check: (connector) => [
     ...checkSecretNames(connector),
+    ...checkGoogleValues(connector),
     ...checkPastedKeys(connector),
     ...checkApprovedTools(connector),
   ],
 };
 
 /**
- * Every value the connector gives as a secret's name: its own `secret`
- * (the HTTP bearer token or the Google refresh token) and, for a local
- * program, each `secretEnv` value.
+ * Every value the connector gives as a secret's name: its own `secret` (the
+ * HTTP bearer token) and, for a local program, each `secretEnv` value. A
+ * Google connector names no secret: see {@link checkGoogleValues}.
  */
 function secretNames(connector: Connector): Array<readonly [string, Path]> {
   const names: Array<readonly [string, Path]> = [];
-  if (connector.secret !== undefined) {
+  if (connector.secret !== undefined && !("google" in connector.transport)) {
     names.push([connector.secret, ["secret"]]);
   }
   if ("stdio" in connector.transport) {
@@ -41,23 +42,27 @@ function secretNames(connector: Connector): Array<readonly [string, Path]> {
 
 /** The secrets are named in the file, so a bad name or a pasted key is caught here, not at run time. */
 function checkSecretNames(connector: Connector): KindCheckProblem[] {
-  const problems = secretNames(connector).flatMap(
-    ([name, path]) => checkSecretName(name, path) ?? [],
-  );
-  const clientProblem = checkGoogleClient(connector);
-  return clientProblem === undefined ? problems : [...problems, clientProblem];
+  return secretNames(connector).flatMap(([name, path]) => checkSecretName(name, path) ?? []);
 }
 
 /**
- * A Google connector's `client` names no secret: the OAuth client's ID and
- * secret come from the account's Google setup (`google-setup.store-names`).
- * Only a pasted key is refused, since the file may be committed or shared.
+ * A Google connector's `client` and `secret` name no secret. The account's
+ * Google setup decides which OAuth client a sign-in uses and keeps the
+ * refresh token as `google-account-<accountRef>` (`google-setup.store-names`).
+ * Both stay so older files still read, and both are refused only when they
+ * hold a pasted key, since the file may be committed or shared.
  */
-function checkGoogleClient(connector: Connector): KindCheckProblem | undefined {
-  if (!("google" in connector.transport) || !looksLikeKey(connector.transport.google.client)) {
-    return undefined;
+function checkGoogleValues(connector: Connector): KindCheckProblem[] {
+  if (!("google" in connector.transport)) {
+    return [];
   }
-  return checkSecretName(connector.transport.google.client, ["transport", "google", "client"]);
+  const values: Array<readonly [string | undefined, Path]> = [
+    [connector.transport.google.client, ["transport", "google", "client"]],
+    [connector.secret, ["secret"]],
+  ];
+  return values.flatMap(([value, path]) =>
+    value !== undefined && looksLikeKey(value) ? (checkSecretName(value, path) ?? []) : [],
+  );
 }
 
 /**
