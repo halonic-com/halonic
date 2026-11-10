@@ -40,6 +40,7 @@ afterEach(() => {
 const hub = "hubs/support/hub.yaml";
 const writer = "hubs/support/agents/writer.agent.yaml";
 const writerFile = "id: writer\nname: Writer\ninstructions: Write.\nharness: claude-code\n";
+const supportReply = { hubId: "support", workflowId: "support-reply" };
 
 /** A one-step workflow whose step runs `agent`. */
 function oneStep(id: string, agent: string): string {
@@ -146,7 +147,7 @@ verifies("cli.sandbox-gate", () => {
         "hubs/support/workflows/fix-it.workflow.yaml": oneStep("fix-it", "coder"),
       });
 
-      const agents = programAgentsOf(workspace, "support", "support-reply");
+      const agents = programAgentsOf(workspace, supportReply);
 
       expect(agents.map((agent) => agent.value.id)).toEqual(["writer", "coder"]);
     });
@@ -158,7 +159,34 @@ verifies("cli.sandbox-gate", () => {
       });
       const { machine } = machineWith(bubblewrapMissing);
 
-      expect(await checkRunSandbox(workspace, "support", "sort", machine)).toEqual([]);
+      expect(
+        await checkRunSandbox(workspace, { hubId: "support", workflowId: "sort" }, machine),
+      ).toEqual([]);
+      expect(machine.checks).toBe(0);
+    });
+  });
+
+  describe("the run's harness, in place of each agent's own (Liam, HAL-4305)", () => {
+    it("checks for an agent with no harness of its own when the run names claude-code", async () => {
+      const workspace = await workspaceOf({
+        [writer]: "id: writer\nname: Writer\ninstructions: Write.\n",
+      });
+      const { machine } = machineWith(bubblewrapMissing);
+
+      const error = await refusal(
+        checkRunSandbox(workspace, { ...supportReply, harness: "claude-code" }, machine),
+      );
+
+      expect(exitCodeOfError(error)).toBe(9);
+    });
+
+    it("doesn't check for a claude-code agent when the run names halonic", async () => {
+      const workspace = await workspaceOf();
+      const { machine } = machineWith(bubblewrapMissing);
+
+      expect(
+        await checkRunSandbox(workspace, { ...supportReply, harness: "halonic" }, machine),
+      ).toEqual([]);
       expect(machine.checks).toBe(0);
     });
   });
@@ -168,7 +196,7 @@ verifies("cli.sandbox-gate", () => {
       const workspace = await workspaceOf();
       const { machine } = machineWith(bubblewrapMissing);
 
-      const error = await refusal(checkRunSandbox(workspace, "support", "support-reply", machine));
+      const error = await refusal(checkRunSandbox(workspace, supportReply, machine));
 
       expect(errorKindOf(error)).toBe("unavailable");
       expect(exitCodeOfError(error)).toBe(9);
@@ -184,13 +212,7 @@ verifies("cli.sandbox-gate", () => {
       const { machine } = machineWith(bubblewrapMissing);
 
       const error = await refusal(
-        checkRunSandbox(
-          workspace,
-          "support",
-          "support-reply",
-          machine,
-          sandboxMessages.nothingSent(),
-        ),
+        checkRunSandbox(workspace, supportReply, machine, sandboxMessages.nothingSent()),
       );
 
       expect(error.message).toBe("the sandbox can't start on this computer. Nothing was sent.");
@@ -207,9 +229,7 @@ verifies("cli.sandbox-gate", () => {
           missing: [sentence],
         });
 
-        const error = await refusal(
-          checkRunSandbox(workspace, "support", "support-reply", machine),
-        );
+        const error = await refusal(checkRunSandbox(workspace, supportReply, machine));
 
         expect(error.fix).toBe(plainText(sandboxMessages.refusedFix(code).phrase));
         expect(error.code).toBe(code);
@@ -225,7 +245,7 @@ verifies("cli.sandbox-gate", () => {
       const { machine, placement } = machineWith(bubblewrapMissing);
       await chooseThisComputer(placement);
 
-      const unsandboxed = await checkRunSandbox(workspace, "support", "support-reply", machine);
+      const unsandboxed = await checkRunSandbox(workspace, supportReply, machine);
 
       expect(machine.checks).toBe(0);
       expect(unsandboxed.map((agent) => plainText(unsandboxedLine(agent).phrase))).toEqual([
@@ -239,7 +259,7 @@ verifies("cli.sandbox-gate", () => {
       await chooseThisComputer(placement);
       const pulled = await workspaceOf({ [writer]: `${writerFile}workingFolder: files/out\n` });
 
-      await refusal(checkRunSandbox(pulled, "support", "support-reply", machine));
+      await refusal(checkRunSandbox(pulled, supportReply, machine));
       expect(machine.checks).toBe(1);
     });
 
@@ -249,7 +269,7 @@ verifies("cli.sandbox-gate", () => {
       await chooseThisComputer(elsewhere.placement);
       const here = machineWith(bubblewrapMissing);
 
-      await refusal(checkRunSandbox(workspace, "support", "support-reply", here.machine));
+      await refusal(checkRunSandbox(workspace, supportReply, here.machine));
     });
   });
 });

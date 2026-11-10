@@ -6,6 +6,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import type { CommandContext } from "./command.ts";
+import { runMessages } from "./messages/run.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -29,6 +30,10 @@ function setup(): WorkspaceEngineSetup {
   return {
     http: { fetch: () => Promise.reject(new TypeError("no server")) },
     profile: { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "home") } },
+    sandboxGate: () => ({
+      sandbox: { check: () => Promise.reject(new Error("Acme's agents need no sandbox.")) },
+      placement: { where: () => Promise.reject(new Error("Acme's agents need no placement.")) },
+    }),
   };
 }
 
@@ -43,7 +48,11 @@ const context = (signal: AbortSignal): CommandContext =>
 async function open(signal: AbortSignal) {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const workspace = await loadWorkspace(dir.store);
-  return openWorkspaceEngine(context(signal), setup(), { dir, workspace });
+  return openWorkspaceEngine(context(signal), setup(), {
+    dir,
+    workspace,
+    run: { hubId: "support", workflowId: "support-reply", ending: runMessages.nothingRan() },
+  });
 }
 
 verifies("cli.run", () => {
