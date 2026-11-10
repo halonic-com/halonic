@@ -128,7 +128,7 @@ The curves and durations stay in the file for later.
 When macOS or Linux asks for more contrast (`prefers-contrast: more`), colours aren't forced, so
 `theme.css` raises its own tokens (component specs 23.5): `fg-muted` and `fg-subtle` darken,
 `border`, `border-strong` and the shadows' edge take the 3:1 `border-control`, and the focus ring's
-accent grows from 2px to 3px. A focused field's soft ring becomes a 1px ring in its edge colour,
+accent grows from 2px to 3px, the inset ring's too. A focused field's soft ring becomes a 1px ring in its edge colour,
 and `selected-forced` outlines a selected tab or row in `border-control`. Fills and status colours
 don't change. A part adds the rest with `contrast-more:` classes: chips' edges in their own colour,
 and 60% instead of 45% for a waiting button. Windows high-contrast mode wins where both apply.
@@ -677,7 +677,8 @@ The row is at least 48px, padded 0 16px, with a 20px chevron in `fg-subtle` at t
 when closed, up when open, flipped with no animation. Hover is `surface-subtle` and focus is the
 inset ring. A `label` is shown above the row and hidden from screen readers, which hear it inside
 the row instead: "What's in it, 3 items, collapsed". The Disclosure draws no lines of its own; in
-a flush List it takes the List's line like any row.
+a flush List it takes the List's line like any row. In forced colours the row keeps the text colour,
+not the link colour some browsers give a summary.
 
 ## List
 

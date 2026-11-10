@@ -267,8 +267,9 @@
 /*
  * More contrast (macOS and Linux, component specs 23.5). Colours aren't forced there, so the theme
  * raises its own: muted and subtle text darken, every edge and divider takes the 3:1 control edge,
- * and the focus ring's accent grows from 2px to 3px. Fills and status colours stay as they are.
- * The chips' edges and the 60% of waiting controls are contrast-more: classes in the parts.
+ * and the focus ring's accent grows from 2px to 3px, the inset ring's too. Fills and status
+ * colours stay as they are. The chips' edges and the 60% of waiting controls are contrast-more:
+ * classes in the parts.
  */
 @media (prefers-contrast: more) {
   :root {
@@ -278,5 +279,6 @@
     --color-border-strong: var(--color-border-control);
     --shade-edge: var(--color-border-control);
     --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px var(--color-accent);
+    --focus-ring-inset: inset 0 0 0 3px var(--color-accent);
   }
 }

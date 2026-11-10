@@ -118,6 +118,11 @@ verifies("kit.disclosure", () => {
     );
   });
 
+  it("keeps the row in the text colour in forced colours, not the link colour", async () => {
+    const css = await buildCss(["summary-plain"]);
+    expect(css).toMatch(/@media \(forced-colors: active\)\s*\{\s*color:\s*CanvasText;/);
+  });
+
   it("treats an empty label as none", () => {
     const { container } = render(
       <Disclosure label="" summary="Budget">

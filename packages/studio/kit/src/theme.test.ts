@@ -235,6 +235,10 @@ describe("theme.css with more contrast", () => {
     );
   });
 
+  it("widens the inset ring of rows from 2px to 3px too", () => {
+    expect(moreContrast.get("--focus-ring-inset")).toBe("inset 0 0 0 3px var(--color-accent)");
+  });
+
   it("raises nothing else", () => {
     expect([...moreContrast.keys()]).toEqual([
       "--color-fg-muted",
@@ -243,6 +247,7 @@ describe("theme.css with more contrast", () => {
       "--color-border-strong",
       "--shade-edge",
       "--focus-ring",
+      "--focus-ring-inset",
     ]);
   });
 
