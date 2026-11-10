@@ -55,7 +55,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "Halonic is running inside a container, and the sandbox can't start there.",
-        "Fix: run Halonic directly on the computer, not inside a container. Then run halonic doctor again.",
+        "Fix: run Halonic on the runner or computer itself, not in a container. Then run halonic doctor again. halonic validate and halonic test work in a container.",
       ],
       [
         "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",

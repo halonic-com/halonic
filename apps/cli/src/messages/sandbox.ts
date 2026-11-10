@@ -32,10 +32,14 @@ const reasons: Readonly<Record<SandboxUnavailableReason, string>> = {
   other: "Halonic can't tell what the sandbox is missing.",
 };
 
-/** sandbox-screens 3.1's fix, by code, with a small first letter so it can follow "Fix: ". */
+/**
+ * sandbox-screens 3.1's fix, by code, with a small first letter so it can
+ * follow "Fix: ". `container` takes 3.8's fix instead, because `doctor` runs
+ * in CI too (cli-output 3.7, revision 24).
+ */
 const fixes: Readonly<Record<SandboxUnavailableReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
-  container: "run Halonic directly on the computer, not inside a container.",
+  container: "run Halonic on the runner or computer itself, not in a container.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
   "bubblewrap-missing": "install it, for example with sudo apt install bubblewrap.",
@@ -60,8 +64,8 @@ export const sandboxMessages = defineMessages("sandbox", {
 
   /** `halonic doctor`'s line under "can't start on this computer": what's wrong. */
   reason: (code: string) => phrase`${reasons[known(code)]}`,
-  /** `halonic doctor`'s fix under the reason, ending with `doctor` itself. */
-  doctorFix: (code: string) => doctorFix(fixes[known(code)]),
+  /** `halonic doctor`'s fix under the reason, with "Then run halonic doctor again." after it. */
+  doctorFix: (code: string) => doctorFix(fixes[known(code)], afterDoctorAgain[known(code)]),
 });
 
 /** A code from the port, or `other` for one this version doesn't know. */
@@ -69,7 +73,17 @@ function known(code: string): SandboxUnavailableReason {
   return Object.hasOwn(reasons, code) ? (code as SandboxUnavailableReason) : "other";
 }
 
+/**
+ * A note that ends `doctor`'s fix, after "Then run halonic doctor again.",
+ * because it says what works where the sandbox doesn't, not what to do.
+ */
+const afterDoctorAgain: Readonly<Partial<Record<SandboxUnavailableReason, string>>> = {
+  container: "halonic validate and halonic test work in a container.",
+};
+
 /** "Fix: install it, for example with sudo apt install bubblewrap. Then run halonic doctor again." */
-function doctorFix(fix: string): Phrase {
-  return phrase`Fix: ${fix} Then run halonic doctor again.`;
+function doctorFix(fix: string, note?: string): Phrase {
+  return note === undefined
+    ? phrase`Fix: ${fix} Then run halonic doctor again.`
+    : phrase`Fix: ${fix} Then run halonic doctor again. ${note}`;
 }

@@ -13,7 +13,7 @@ export interface DataUse {
 
 /**
  * The sentences of `halonic doctor` (cli-output 1.9 and 3.7, with the team's
- * calls of revision 20). One line per check after its label, then the
+ * calls of revisions 20 and 24). One line per check after its label, then the
  * summary. A Sandbox line that can't start takes its reason and fix from
  * `sandboxMessages`, and `More:` from the error sentences. There's no Engine
  * line and no Halonic sandbox setup command in 0.1.
@@ -75,6 +75,15 @@ export const doctorMessages = defineMessages("doctor", {
   noProblems: () => phrase`No problems.`,
   problems: (count: number) => phrase`${counted(count, "problem", "problems")}.`,
   warnings: (count: number) => phrase`${counted(count, "warning", "warnings")}.`,
+  /**
+   * After the count, what each ✕ line stops, in the lines' order: Models
+   * before Sandbox (cli-output 3.7, revision 24). The count is of ✕ lines, so
+   * a Models line with two servers is one problem. Warnings come last.
+   */
+  modelsStop: (servers: readonly string[]) =>
+    servers.length === 1
+      ? phrase`Agents that use ${listed(servers, "or")} won't run until it answers.`
+      : phrase`Agents that use ${listed(servers, "or")} won't run until they answer.`,
   /** After the count, when the sandbox can't start: what that stops. */
   sandboxStops: () => phrase`Agents set to run in a sandbox won't start until it's fixed.`,
 });
@@ -84,8 +93,8 @@ function halonicUses(use: DataUse): string {
   return `Halonic uses ${amount} (run logs ${use.runLogs})`;
 }
 
-/** "smart", "smart and writer", "smart, writer and fast". */
-function listed(names: readonly string[]): string {
+/** "smart", "smart and writer", "smart, writer and fast"; or "Ollama or LM Studio". */
+function listed(names: readonly string[], conjunction: "and" | "or" = "and"): string {
   const last = names.at(-1) ?? "";
-  return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} and ${last}`;
+  return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} ${conjunction} ${last}`;
 }

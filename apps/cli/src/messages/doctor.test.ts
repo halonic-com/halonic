@@ -98,4 +98,29 @@ describe("doctor's sentences", () => {
     expect(words(doctorMessages.warnings(1))).toBe("1 warning.");
     expect(words(doctorMessages.warnings(3))).toBe("3 warnings.");
   });
+
+  it("says what a Models ✕ stops, before the sandbox and the warnings", () => {
+    const summary = (...parts: Message[]) => parts.map(words).join(" ");
+    expect([
+      summary(doctorMessages.problems(1), doctorMessages.modelsStop(["Ollama"])),
+      summary(doctorMessages.problems(1), doctorMessages.modelsStop(["Ollama", "LM Studio"])),
+      summary(
+        doctorMessages.problems(2),
+        doctorMessages.modelsStop(["Ollama"]),
+        doctorMessages.sandboxStops(),
+      ),
+      summary(
+        doctorMessages.problems(1),
+        doctorMessages.sandboxStops(),
+        doctorMessages.warnings(1),
+      ),
+      summary(doctorMessages.noProblems(), doctorMessages.warnings(1)),
+    ]).toEqual([
+      "1 problem. Agents that use Ollama won't run until it answers.",
+      "1 problem. Agents that use Ollama or LM Studio won't run until they answer.",
+      "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until it's fixed.",
+      "1 problem. Agents set to run in a sandbox won't start until it's fixed. 1 warning.",
+      "No problems. 1 warning.",
+    ]);
+  });
 });
