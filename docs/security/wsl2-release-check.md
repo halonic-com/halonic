@@ -61,5 +61,5 @@ Output, interop off:
 
 - [ ] All probes pass with interop on: no change to the start-up check.
 - [ ] A probe leaks with interop on: the start-up check requires interop off
-      (follow-up task: ______). The interop-off run must then pass.
+  (follow-up task: ______). The interop-off run must then pass.
 - [ ] Inconclusive: fix the control and run again.
