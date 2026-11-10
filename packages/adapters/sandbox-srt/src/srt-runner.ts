@@ -42,19 +42,39 @@ export interface RunRequest {
    * When true, the program gets none of what srt sets inside the fence, only
    * `programEnv`: for a session that reaches no network, where srt's proxy
    * variables lead nowhere. On Windows, where nothing can empty the
-   * environment, the proxy variables are removed.
+   * environment, {@link srtNetworkVariables} are removed.
    */
   withoutSrtEnv: boolean;
 }
 
-/** The proxy variables srt sets inside the fence, which a program without network must not get. */
-export const srtProxyVariables: readonly string[] = [
+/**
+ * Every variable srt sets inside the fence to lead a program to its proxy:
+ * the usual proxy variables, the ones for git, Docker, rsync and the Google
+ * Cloud SDK, and on Windows the one that makes Node read them. A program
+ * without network must get none of them. Windows reads names ignoring case,
+ * so one spelling each is enough there. A test checks this list against what
+ * srt itself generates, so an srt update that adds one fails it.
+ */
+export const srtNetworkVariables: readonly string[] = [
   "http_proxy",
   "https_proxy",
   "all_proxy",
   "no_proxy",
   "grpc_proxy",
-].flatMap((name) => [name, name.toUpperCase()]);
+  "ftp_proxy",
+  "RSYNC_PROXY",
+  "DOCKER_HTTP_PROXY",
+  "DOCKER_HTTPS_PROXY",
+  "CLOUDSDK_PROXY_TYPE",
+  "CLOUDSDK_PROXY_ADDRESS",
+  "CLOUDSDK_PROXY_PORT",
+  "CLOUDSDK_PROXY_USERNAME",
+  "CLOUDSDK_PROXY_PASSWORD",
+  "GIT_SSH_COMMAND",
+  "SRT_SSH_PROXY_COMMAND",
+  "GIT_CONFIG_PARAMETERS",
+  "NODE_USE_ENV_PROXY",
+];
 
 /**
  * Starts programs inside the fence. A test hands the session a fake one;
@@ -99,7 +119,7 @@ function quoteForCmd(value: string): string {
 export function windowsCommandLine(request: RunRequest): string {
   // `set "NAME="` removes a variable in cmd.exe.
   const removes = request.withoutSrtEnv
-    ? srtProxyVariables.map((name) => `set ${quoteForCmd(`${name}=`)}`)
+    ? srtNetworkVariables.map((name) => `set ${quoteForCmd(`${name}=`)}`)
     : [];
   const sets = Object.entries(request.programEnv).map(([name, value]) => {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {

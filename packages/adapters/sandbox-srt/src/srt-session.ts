@@ -23,14 +23,19 @@ import {
 } from "./git-folder-check.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
-import { nodePaths, type Runner, type RunningProgram, srtProxyVariables } from "./srt-runner.ts";
+import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
 
 /**
  * Variables sandbox-runtime reads from its own environment to find a parent
  * proxy. For that traffic it skips the check against private and loopback
  * addresses, so the launcher never gets them, whoever set them.
  */
-const proxyVariables = new Set(srtProxyVariables);
+const proxyVariables = new Set(
+  ["http_proxy", "https_proxy", "all_proxy", "no_proxy", "grpc_proxy"].flatMap((name) => [
+    name,
+    name.toUpperCase(),
+  ]),
+);
 
 /**
  * What a variable name may be. `env` runs without `-i`, so a name that starts

@@ -9,8 +9,10 @@
 `sandbox-srt.session` gains one promise and one example: when a profile reaches no network (no
 bridge and no allowed site), the program and the fence probe start with none of what
 sandbox-runtime sets inside the fence, only the session's own variables. On Linux and macOS the
-runner uses `env -i`; on Windows, where nothing empties the environment, it removes srt's proxy
-variables with `set "NAME="`. With a bridge or an allowed site nothing changes.
+runner uses `env -i`; on Windows, where nothing empties the environment, it removes every variable srt
+sets to lead a program to its proxy (curl's, git's, Docker's, rsync's, the Google Cloud SDK's and
+Node's) with `set "NAME="`. A unit test checks that list against what srt itself generates, so
+an srt update that adds one fails it. With a bridge or an allowed site nothing changes.
 
 Every existing promise and example stays as it was. No example was removed or weakened.
 
