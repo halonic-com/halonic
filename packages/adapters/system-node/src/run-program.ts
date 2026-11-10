@@ -26,4 +26,7 @@ export const systemRunProgram: RunProgram = (program, args) =>
         reject(new Error(`Couldn't read the process table with ${program}.`, { cause: error }));
       },
     );
+    // Windows PowerShell waits for its input to end while stdin is an open
+    // pipe, so the table read hangs until the timeout (seen on the Windows runner).
+    child.stdin?.end();
   });
