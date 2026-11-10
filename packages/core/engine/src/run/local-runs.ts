@@ -63,7 +63,7 @@ export const harnessGoneError =
   "The engine stopped while the harness waited for an answer, so the harness can't go on.";
 
 /** The `error` of a run someone cancelled; screens word the reason themselves. */
-export const cancelledError = "Someone cancelled the run.";
+export const cancelledError = "The run was cancelled.";
 
 /** The longest run id, in UTF-8 bytes, because it is a `Scheduler` key. */
 const maxRunIdBytes = 256;
@@ -212,7 +212,8 @@ export class LocalRuns {
   async cancel(runId: string): Promise<RunSummary> {
     await this.#ready();
     const runs = await runAndChildren(this.#options.store, runId);
-    if (runs.length === 0) throw new InputRefused("engine.run-unknown", `No run "${runId}".`);
+    if (runs.length === 0)
+      throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
     for (const id of runs) {
       await this.#fail(id, cancelledError, "cancelled");
       await this.#harnessCalls.stop(id);

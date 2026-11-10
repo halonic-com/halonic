@@ -81,7 +81,10 @@ verifies("engine.local-run-cancel", () => {
   it("refuses a run that doesn't exist", async () => {
     const { executor } = runsOn([]);
 
-    await expect(executor.cancel("run_9")).rejects.toMatchObject({ code: "engine.run-unknown" });
+    await expect(executor.cancel("run_9")).rejects.toMatchObject({
+      code: "engine.run-unknown",
+      message: 'There\'s no run "run_9".',
+    });
   });
 
   it("stops the run's harness call and everything it opened", async () => {

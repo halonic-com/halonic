@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3963 (the maintainer's decision on HAL-3961, the review of #1209: an optional `RunExecutor.cancel`)
 
-When someone cancels a run that hasn't ended, the local executor shall end it with `run.failed`, `reason: "cancelled"` and the state it was in, whether it was running or waiting, and it shall end the child run the run waits on, all the way down, the same way, the run first. It shall stop the harness calls of the runs it ends, with everything they opened. A model or connector call going on finishes, and the run records nothing it gives. A run that has already ended shall stay as it is, and the cancel gives its summary. A cancel of a run that doesn't exist shall be refused with `engine.run-unknown`.
+When someone cancels a run that hasn't ended, the local executor shall end it with `run.failed`, `reason: "cancelled"` and the state it was in, whether it was running or waiting, and it shall end the child run the run waits on, all the way down, the same way, the run first, with the error "The run was cancelled." It shall stop the harness calls of the runs it ends, with everything they opened, and each stops with the error "The run was cancelled while the agent was working." A model or connector call going on finishes, and the run records nothing it gives. A run that has already ended shall stay as it is, and the cancel gives its summary. A cancel of a run that doesn't exist shall be refused with `engine.run-unknown` and the message `There's no run "<id>".`
 
 ## Examples
 

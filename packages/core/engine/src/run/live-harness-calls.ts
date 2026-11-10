@@ -8,7 +8,7 @@ import { type StopSignal, StopSource } from "@halonicjs/std";
 export const engineStoppedMessage = "The engine stopped while the harness ran.";
 
 /** The `error` a harness call stops with when its run is cancelled while it runs. */
-export const runCancelledMessage = "The run was cancelled while the harness ran.";
+export const runCancelledMessage = "The run was cancelled while the agent was working.";
 
 /** One harness call going on now. */
 interface LiveCall {
