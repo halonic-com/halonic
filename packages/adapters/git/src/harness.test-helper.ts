@@ -55,6 +55,8 @@ export interface GitVcsFolder {
   commitPrivate(path: string, content: string): Promise<void>;
   readPrivate(path: string): Promise<string | null>;
   nonCommitIds(commit: string): Promise<string[]>;
+  parentsOf(commit: string): Promise<string[]>;
+  privateAt(commit: string): Promise<string[]>;
 }
 
 type Files = Readonly<Record<string, string>>;
@@ -97,6 +99,18 @@ export function gitVcsHarness(
       const blobs = await plainGit(folder, ["ls-tree", "-r", "--object-only", commit]);
       const [blob] = blobs.split("\n");
       return blob ? [tree.trim(), blob] : [tree.trim()];
+    },
+    async parentsOf(commit) {
+      // The commit's own id comes first, then its parents.
+      const [, ...parents] = (await plainGit(folder, ["rev-list", "--parents", "-n", "1", commit]))
+        .trim()
+        .split(" ");
+      return parents;
+    },
+    async privateAt(commit) {
+      // `-z`, so git gives every path as it is, never quoted.
+      const paths = await plainGit(folder, ["ls-tree", "-r", "-z", "--name-only", commit]);
+      return paths.split("\0").filter(isPrivateWorkspacePath).sort();
     },
   });
 
