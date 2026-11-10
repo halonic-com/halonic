@@ -56,6 +56,14 @@ verifies("engine.subagent-tools", () => {
       ]);
     });
 
+    it("leaves out a subagent whose id is only an inherited object key", () => {
+      const agent = { id: "reviewer", subagents: ["constructor", "toString", "checker"] };
+
+      const tools = subagentTools(options({ agent }));
+
+      expect(tools.map((tool) => tool.definition.name)).toEqual(["delegate_checker"]);
+    });
+
     it("hands the task over, logs the subagent's start and end, and answers with its answer", async () => {
       const log = new MemoryTurnLog();
       const tasks: DelegatedTask[] = [];
@@ -99,6 +107,21 @@ verifies("engine.subagent-tools", () => {
           output: "Totals add up",
         },
       ]);
+    });
+
+    it("fails with the subagent's error and leaves its agent.started open", async () => {
+      const log = new MemoryTurnLog();
+      const [tool] = subagentTools(
+        options({
+          log,
+          runSubagent: async () => {
+            throw new Error("checker has no model");
+          },
+        }),
+      );
+
+      await expect(tool?.run({ task: "Check INV-7" })).rejects.toThrow("checker has no model");
+      expect(log.events.map((event) => event.type)).toEqual(["agent.started"]);
     });
 
     it("answers with JSON when the subagent's answer isn't text", async () => {

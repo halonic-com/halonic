@@ -63,7 +63,10 @@ export function subagentTools(options: SubagentToolsOptions): HalonicTool[] {
   }
   const tools: HalonicTool[] = [];
   for (const subagentId of options.agent.subagents) {
-    const subagent = options.hubAgents[subagentId];
+    // An own key only: an id such as `constructor` must not find Object.prototype's.
+    const subagent = Object.hasOwn(options.hubAgents, subagentId)
+      ? options.hubAgents[subagentId]
+      : undefined;
     if (subagent !== undefined && subagentId !== options.agent.id) {
       tools.push(delegateTool(options, subagent));
     }
