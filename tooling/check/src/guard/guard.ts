@@ -6,6 +6,7 @@ import { type DecisionNote, decisionNoteFile, parseDecisionNote } from "./decisi
 import type { GuardCheck, GuardFinding } from "./finding.ts";
 import { checkGoldenFiles } from "./golden-files.ts";
 import { checkMocks } from "./mocks.ts";
+import { checkReleasedSpecs } from "./released-specs.ts";
 import { checkRequirementChanges } from "./requirement-changes.ts";
 import { checkSkips } from "./skips.ts";
 import { checkTestRuns } from "./test-runs.ts";
@@ -17,6 +18,7 @@ export const guardChecks: readonly GuardCheck[] = [
   checkSkips,
   checkMocks,
   checkGoldenFiles,
+  checkReleasedSpecs,
   checkCoverage,
 ];
 

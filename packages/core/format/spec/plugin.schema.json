@@ -356,6 +356,24 @@
                   "send"
                 ]
               },
+              "noun": {
+                "type": "object",
+                "properties": {
+                  "one": {
+                    "type": "string",
+                    "pattern": "^[a-z]+(?: [a-z]+)*$"
+                  },
+                  "many": {
+                    "type": "string",
+                    "pattern": "^[a-z]+(?: [a-z]+)*$"
+                  }
+                },
+                "required": [
+                  "one",
+                  "many"
+                ],
+                "additionalProperties": false
+              },
               "untrusted": {
                 "type": "boolean"
               }
@@ -693,6 +711,24 @@
                     "write",
                     "send"
                   ]
+                },
+                "noun": {
+                  "type": "object",
+                  "properties": {
+                    "one": {
+                      "type": "string",
+                      "pattern": "^[a-z]+(?: [a-z]+)*$"
+                    },
+                    "many": {
+                      "type": "string",
+                      "pattern": "^[a-z]+(?: [a-z]+)*$"
+                    }
+                  },
+                  "required": [
+                    "one",
+                    "many"
+                  ],
+                  "additionalProperties": false
                 },
                 "untrusted": {
                   "type": "boolean"

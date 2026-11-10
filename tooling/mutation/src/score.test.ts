@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { type MutationReport, scoreOf, summaryTable } from "./score.ts";
+import { belowFloor, type MutationReport, mutationFloors, scoreOf, summaryTable } from "./score.ts";
 
 function report(...statuses: string[]): MutationReport {
   return { files: { "src/a.ts": { mutants: statuses.map((status) => ({ status })) } } };
@@ -56,11 +56,43 @@ verifies("mutation.score-per-package", () => {
       .filter((line) => line.startsWith("|"))
       .slice(2);
     expect(rows).toEqual([
-      "| yaml | 80.0% | 4 | 1 | 0 | 0 |",
-      "| schema-kit | no mutants | 0 | 0 | 0 | 1 |",
-      "| workflow | no code yet | | | | |",
-      "| routines | failed: Stryker exited with 1 | | | | |",
+      "| yaml | 80.0% | none | 4 | 1 | 0 | 0 |",
+      "| schema-kit | no mutants | none | 0 | 0 | 0 | 1 |",
+      "| workflow | no code yet | | | | | |",
+      "| routines | failed: Stryker exited with 1 | | | | | |",
     ]);
-    expect(table).toContain("Report only");
+  });
+});
+
+verifies("mutation.floor-per-package", () => {
+  test("floors core/yaml at 85", () => {
+    expect(mutationFloors["packages/core/yaml"]).toBe(85);
+  });
+
+  test("is under the floor when the score is lower", () => {
+    expect(
+      belowFloor(scoreOf(report(...Array(84).fill("Killed"), ...Array(16).fill("Survived"))), 85),
+    ).toBe(true);
+  });
+
+  test("is not under the floor when the score meets it", () => {
+    expect(
+      belowFloor(scoreOf(report(...Array(85).fill("Killed"), ...Array(15).fill("Survived"))), 85),
+    ).toBe(false);
+  });
+
+  test("is under the floor when there was nothing to score", () => {
+    expect(belowFloor(scoreOf({ files: {} }), 85)).toBe(true);
+  });
+
+  test("never fails a package without a floor", () => {
+    expect(belowFloor(scoreOf(report("Survived")), undefined)).toBe(false);
+  });
+
+  test("marks a package under its floor in the job summary", () => {
+    const table = summaryTable([
+      { name: "yaml", kind: "scored", score: scoreOf(report("Killed", "Survived")), floor: 85 },
+    ]);
+    expect(table).toContain("| yaml | 50.0% (under the floor) | 85% | 1 | 1 | 0 | 0 |");
   });
 });

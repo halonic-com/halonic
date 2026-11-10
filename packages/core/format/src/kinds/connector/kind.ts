@@ -1,7 +1,7 @@
 import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
-import { checkSecretName } from "../../shared/secret-name.ts";
-import { Connector, googleClientSecretNames } from "./schema.ts";
+import { checkSecretName, looksLikeKey } from "../../shared/secret-name.ts";
+import { Connector } from "./schema.ts";
 
 /** `library/connectors/<id>.connector.yaml`, shared at the root or a hub's own. */
 export const connectorKind: FileKind<Connector> = {
@@ -44,24 +44,15 @@ function checkSecretNames(connector: Connector): KindCheckProblem[] {
 }
 
 /**
- * A Google connector's `client` isn't a secret's name itself, but every name
- * it forms is one. Each formed name is checked, and the first problem is
- * reported once, at `client`: the names share the `client` part, so one bad
- * `client` would otherwise give the same problem twice. The longest name
- * also catches a `client` that fits 128 characters only on its own.
+ * A Google connector's `client` names no secret: the OAuth client's ID and
+ * secret come from the account's Google setup (`google-setup.store-names`).
+ * Only a pasted key is refused, since the file may be committed or shared.
  */
 function checkGoogleClient(connector: Connector): KindCheckProblem | undefined {
-  if (!("google" in connector.transport)) {
+  if (!("google" in connector.transport) || !looksLikeKey(connector.transport.google.client)) {
     return undefined;
   }
-  const path: Path = ["transport", "google", "client"];
-  for (const name of googleClientSecretNames(connector.transport.google.client)) {
-    const problem = checkSecretName(name, path);
-    if (problem !== undefined) {
-      return problem;
-    }
-  }
-  return undefined;
+  return checkSecretName(connector.transport.google.client, ["transport", "google", "client"]);
 }
 
 /** A tool that needs approval but isn't in `tools.allow` is never offered, so say so. */

@@ -4,10 +4,11 @@
   "type": "module",
   "description": "One contract suite per port. Every adapter for a port runs its suite, so all adapters behave the same (plan 4.3).",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./node": "./src/node/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run"
   },

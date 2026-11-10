@@ -251,6 +251,9 @@ e-mail address or a client ID.
 | `google-client-<clientRef>-staged` | a new client secret until Google accepts it |
 | `google-account-<accountRef>`      | one Google account's refresh token          |
 
+These are the only names of a Google client secret. A connector file's `client` names no secret
+(`format.secret-names`): the setup record decides which client a sign-in uses.
+
 The refresh token's name is set by plan D2. It can't clash with an integration's own tokens, which
 the host stores as `i<n>_<integration>_<token>`. A ref that breaks the rule throws a `RangeError`
 with a fixed message: the message never repeats the ref, because with swapped arguments it could

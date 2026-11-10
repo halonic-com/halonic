@@ -1,0 +1,84 @@
+# A title, body or label change on a pull request. CI (ci.yml) doesn't start
+# on these: a new CI run would cancel the one in progress and build
+# everything again. This workflow checks the new title instead and, when one
+# of CI's title, leak or coverage-floor jobs failed, re-runs CI's failed jobs.
+# Those jobs read the pull request's current text and labels, so a fixed title
+# or an added `coverage-floor-lowered` label turns `ci-ok` green. The merge
+# queue checks the title and runs the leak guard again before anything merges.
+
+name: PR details
+
+on:
+  pull_request:
+    types: [edited, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: pr-details-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  details:
+    name: Pull request details
+    runs-on: ubuntu-24.04
+    # Waits for the CI run to end: its slowest jobs allow 40 minutes, plus queue time.
+    timeout-minutes: 75
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: New base
+        if: github.event.changes.base
+        run: echo "::notice title=New base::CI ran against the old base. Push a commit to run it against the new one; the merge queue checks against main either way."
+      # The base's title check, not the pull request's own: this job holds a token
+      # that can re-run workflows.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: tooling/check
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      # Reads the title from $GITHUB_EVENT_PATH: an `env:` block is printed in the log.
+      - name: Pull request title
+        run: node tooling/check/src/cli/pr-title.ts
+      - name: Re-run CI's failed jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=$(gh run list --workflow ci.yml --commit "$HEAD_SHA" --event pull_request --limit 1 \
+            --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run" ]; then
+            echo "No CI run for this commit yet; it will read the current details."
+            exit 0
+          fi
+          details='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down"]'
+          # A job that is running may have read the old details, so wait for all
+          # three to end (or the whole run, if one of them never starts).
+          while [ "$(gh run view "$run" --json status,jobs --jq "
+            .status != \"completed\" and
+            ([.jobs[] | select((.name | IN($details[])) and .status != \"completed\")] | length > 0)
+          ")" = "true" ]; do
+            sleep 30
+          done
+          failed=$(gh run view "$run" --json jobs \
+            --jq "[.jobs[] | select(.conclusion == \"failure\" and (.name | IN($details[])))] | length")
+          if [ "$failed" = "0" ]; then
+            echo "No title, leak or coverage-floor job failed in CI run $run: nothing to re-run."
+            exit 0
+          fi
+          # A run can only be re-run once it has ended.
+          while [ "$(gh run view "$run" --json status --jq .status)" != "completed" ]; do
+            sleep 30
+          done
+          if [ "$(gh run view "$run" --json conclusion --jq .conclusion)" = "cancelled" ]; then
+            echo "CI run $run was cancelled by a newer push; that run reads the current details."
+            exit 0
+          fi
+          echo "Re-running the failed jobs of CI run $run."
+          gh run rerun "$run" --failed

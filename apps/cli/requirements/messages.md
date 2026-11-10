@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703 (HAL-2676)
+- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676)
 
 The `halonic` command shall take every sentence it shows the user from the CLI's message catalogue, where the sentence has a key made of its area and its name, such as `usage.unknownCommand`. A sentence shall have the same words in a terminal, through a pipe and in `--json`: colour, bold, dim and the marks' plain-text stand-ins shall be the only difference.
 
@@ -35,6 +35,15 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given a trust check where the only differences are two rows marked Changed,
   when its summary is made,
   then it reads "2 changed programs." and never names a count of 0 (cli-output 3.5).
+- Given a run refused because bubblewrap isn't installed,
+  when its line 2 is made,
+  then it reads "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.", and a reason code Halonic doesn't know gets the `other` line, never the check's own sentence (cli-output 3.8).
+- Given `halonic doctor` on a computer whose sandbox can't start,
+  when its summary is made,
+  then it reads "1 problem. Agents set to run in a sandbox won't start until it's fixed." (cli-output 3.7).
+- Given `halonic doctor` with a Models ✕ for Ollama and a Sandbox ✕,
+  when its summary line is made,
+  then it reads "2 problems. Agents that use Ollama won't run until it answers. Agents set to run in a sandbox won't start until it's fixed." (cli-output 3.7).
 - Given the code of every command under `src/commands` and of `printError`,
   when its strings and template texts are read, comments left out,
   then none holds two words with a space between them: every sentence comes from `src/messages` (Liam on HAL-2194).

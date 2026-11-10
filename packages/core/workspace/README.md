@@ -83,7 +83,8 @@ export async function runExample(): Promise<{
 with a `/` names them directly (`ollama/llama3`); any other name is an alias, the hub's own in its
 `hub.yaml` over the one in `models.yaml`. The result has the alias's params and price and the
 targets of its `fallback` entries, one level deep, as the engine tries them. An alias the hub
-doesn't have gives `undefined`.
+doesn't have gives `undefined`. `modelAliases(workspace, hubId)` gives the aliases a hub can use, by
+name, which is what `resolveModel` looks them up in.
 
 `definitionsOf(workspace, hubId)` gives everything a run in that hub reads, as plain data: the
 workspace settings, `hub.yaml`, the default model, the hub's own workflows and agents, every alias
@@ -109,8 +110,18 @@ empty. Any other store is left alone and `initWorkspace` returns `{ kind: "not_e
 `workspace.yaml` is written last; if that write fails, the `.gitignore` is removed again, so the
 store is empty once more and `initWorkspace` can simply run again.
 
+`gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
+workspace's own settings live (`workspace.yaml`).
+
 Checking a workspace needs no service of its own: `loadWorkspace` gives every issue with its
 severity, file and line, and the caller counts the errors.
+
+The types in the API go with these functions: `LoadedWorkspace`, `LoadedFile`, `LoadedFileOf` and
+`WorkspaceIssue` for `loadWorkspace` and `filesOf`; `PlaceMatch` for `placeOf`; `ModelTarget` and
+`ResolvedModelTarget` for model aliases; `HubDefinitions` for `definitionsOf`; `InitWorkspaceOptions`,
+`InitializedWorkspace` and `InitWorkspaceError` for `initWorkspace`; and the trust types listed below
+(`TrustContent`, `TrustContentInput`, `ConnectorTrustContent`, `RefusedConnector`, `AgentTrustContent`,
+`TrustUrl`, `TrustChanges`, `ItemChanges`, `ChangedItem`, `ChangedConnector` and `ChangedAgent`).
 
 ## Trust content
 
@@ -124,17 +135,26 @@ only (`‹secret NAME›`), and `${HOME}` stays `${HOME}`. Only a connector's na
 left out.
 
 A URL with user info (`https://ops:pw@…`), a backslash before its query
-(`https://evil.test\@mcp.acme.test/` connects to `evil.test`) or no `//` after `http:` is refused, not
+(`https://evil.test\@mcp.acme.test/` connects to `evil.test`) or no `//` after `http:` or `https:` is refused, not
 normalised: the connector goes in `refused` with the reason, and `trustFingerprint` won't fingerprint
 content that has any, so nothing in that workspace can be trusted or started until the file is fixed.
 
 `trustFingerprint` hashes that content through the `Digest` port: `hfp1:` and the SHA-256 of its
-canonical JSON, so key order doesn't count and `["a b"]` never matches `["a", "b"]`. Each behaviour
-has a requirement in [`requirements/`](requirements/).
+canonical JSON, so key order doesn't count and `["a b"]` never matches `["a", "b"]`;
+`trustFingerprintPrefix` is that `hfp1:` prefix. `trustUrl` is the URL step on its own: it gives the
+normalised URL or the reason it refuses one, and `secretReference` writes a secret's name the way the
+content shows it. Each behaviour has a requirement in [`requirements/`](requirements/).
+
+Agents that run on another harness than Halonic's own loop are part of the trust content too.
+`agentsTrustContent` lists each of them, sorted by id, with its harness, its allowed sites (lowercase,
+Punycode, each once, sorted) and its working folder when that isn't `files/agents/<id>`. Agents with no
+harness or with `halonic` add nothing, so a workspace without harness agents keeps the same content and
+fingerprint as before.
 
 When the fingerprint no longer matches, `trustChanges` compares the trusted content with the current
-one and lists the new, changed and removed connectors, so the prompt can show New and Changed first.
-Only removing whole connectors lets the record shrink without asking (HAL-65 decision 9). Any change
+one and lists the new, changed and removed connectors and harness agents, so the prompt can show New
+and Changed first. Only removing whole connectors or whole harness agents lets the record shrink
+without asking (HAL-65 decision 9). Any change
 inside a connector asks again, even one that takes something out of the file, because dropping a
 tool from `approve`, the `allow` list or a variable can let the connector do more.
 

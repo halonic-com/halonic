@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
 import { defineMessages } from "./messages/define.ts";
-import { bold, phrase } from "./messages/phrase.ts";
+import { bold, markPart, phrase } from "./messages/phrase.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 
@@ -36,7 +36,7 @@ const greetCommand: CliCommand = {
     loud: { type: "boolean", description: greetMessages.loud() },
     from: { type: "string", valueName: "who", description: greetMessages.from() },
   },
-  async run(input, io) {
+  async run(input) {
     const [name] = input.positionals;
     if (name === undefined) {
       throw new UsageError(greetMessages.whoToGreet());
@@ -50,8 +50,13 @@ const greetCommand: CliCommand = {
     if (name === "the moon") {
       throw new NotHereError("The moon isn't here.");
     }
-    io.out(input.options["loud"] === true ? `HELLO ${name.toUpperCase()}` : `Hello ${name}`);
-    return exitCode.ok;
+    const greeting =
+      input.options["loud"] === true ? `HELLO ${name.toUpperCase()}` : `Hello ${name}`;
+    return {
+      exitCode: exitCode.ok,
+      lines: [phrase`${markPart("done")} ${greeting}`],
+      json: { name },
+    };
   },
 };
 
@@ -60,7 +65,7 @@ const trustCommand: CliCommand = {
   usage: "",
   summary: greetMessages.refuse(),
   options: {},
-  run: async () => exitCode.notTrusted,
+  run: async () => ({ exitCode: exitCode.notTrusted, lines: [], json: {} }),
 };
 
 const commands = [greetCommand, trustCommand];
@@ -83,7 +88,7 @@ describe("runCli", () => {
   it("runs the named command with its arguments and options", async () => {
     const io = captureIo("/work");
     expect(await runCli(["greet", "Ada", "--loud"], io, commands)).toBe(exitCode.ok);
-    expect(io.stdout).toEqual(["HELLO ADA"]);
+    expect(io.stdout).toEqual(["✓ HELLO ADA"]);
     expect(io.stderr).toEqual([]);
   });
 
@@ -99,18 +104,18 @@ describe("runCli", () => {
   it("takes the global options anywhere on the command line", async () => {
     for (const args of [
       ["--verbose", "greet", "Ada"],
-      ["greet", "Ada", "--debug", "--json"],
+      ["greet", "Ada", "--debug", "--no-color"],
     ]) {
       const io = captureIo("/work");
       expect(await runCli(args, io, commands)).toBe(exitCode.ok);
-      expect(io.stdout).toEqual(["Hello Ada"]);
+      expect(io.stdout).toEqual(["✓ Hello Ada"]);
     }
   });
 
   it("treats a global option after -- as an argument", async () => {
     const io = captureIo("/work");
     await runCli(["greet", "--", "--json"], io, commands);
-    expect(io.stdout).toEqual(["Hello --json"]);
+    expect(io.stdout).toEqual(["✓ Hello --json"]);
   });
 });
 
@@ -202,7 +207,7 @@ verifies("cli.exit-codes", () => {
   it("gives a command --debug as an argument after --", async () => {
     const io = captureIo("/work");
     expect(await runCli(["greet", "--", "--debug"], io, commands)).toBe(exitCode.ok);
-    expect(io.stdout).toEqual(["Hello --debug"]);
+    expect(io.stdout).toEqual(["✓ Hello --debug"]);
   });
 
   it("passes on the code a command returns, such as 3 for an untrusted workspace", async () => {
@@ -319,7 +324,7 @@ verifies("cli.print-error", () => {
     usage: "",
     summary: greetMessages.call(),
     options: {},
-    async run(_input, _io, context) {
+    async run(_input, context) {
       const key = await context.secrets.get("provider-key");
       const failure = new KindedError("unavailable", `The provider refused ${key}.`, {
         fix: `Check ${encodeURIComponent(key ?? "")}, then run again.`,

@@ -23,9 +23,13 @@ verifies("engine.kept-definitions", () => {
       expect(await readDefinitions(blobs, version)).toEqual({ workflow: replyWorkflow });
     });
 
-    it("reads back the agents a run started with", async () => {
+    it("reads back the agents and workflows a run started with", async () => {
       const blobs = new KernelBlobs();
-      const definitions = { workflow: replyWorkflow, agents: { writer: writerAgent("codex") } };
+      const definitions = {
+        workflow: replyWorkflow,
+        agents: { writer: writerAgent("codex") },
+        workflows: { reply: replyWorkflow },
+      };
 
       const version = await keepDefinitions(blobs, definitions);
 
@@ -37,6 +41,7 @@ verifies("engine.kept-definitions", () => {
       ["not JSON", "{"],
       ["JSON without a workflow", '{"agents":{}}'],
       ["a workflow with agents that aren't an object", '{"workflow":{},"agents":[]}'],
+      ["a workflow with workflows that aren't an object", '{"workflow":{},"workflows":[]}'],
     ])("reads a blob that is %s as no definitions", async (_name, text) => {
       const blobs = new KernelBlobs();
       if (text !== null) {

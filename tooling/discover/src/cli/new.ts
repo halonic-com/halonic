@@ -171,7 +171,7 @@ function main(argv: readonly string[]): number {
     `Created ${spec.name} in ${spec.directory} (layer ${spec.layer}${where}, owner ${spec.owner}).`,
   );
   console.log(
-    "Next: pnpm install, then fill in README.md and the purpose line of AGENTS.md (if you left it out), then run pnpm verify.",
+    "Next: pnpm install, then fill in README.md and the purpose line of AGENTS.md (if you left it out), then run pnpm exec turbo run typecheck lint test --filter=...[origin/main] --concurrency=2 (never plain pnpm verify locally).",
   );
   return 0;
 }

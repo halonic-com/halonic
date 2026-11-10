@@ -36,12 +36,12 @@ verifies("kit.side-panel", () => {
     const { aside, title, header, body } = parts(container);
     expect(aside.getAttribute("aria-labelledby")).toBe(title.id);
     expect(aside.className).toContain("flex h-full min-h-0 flex-col bg-surface");
-    expect(aside.className).toContain("border-s");
+    expect(aside.className).toContain("border-s border-border");
     expect(aside.className).not.toContain("w-");
     expect(aside.className).not.toMatch(/rounded|shadow/);
     expect(header?.className).toContain("h-12");
     expect(header?.className).toContain("pr-2.5 pl-4");
-    expect(header?.className).toContain("border-b");
+    expect(header?.className).toContain("border-b border-border");
     expect(title.className).toContain("truncate");
     expect(title.className).toContain("text-section");
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -55,7 +55,7 @@ verifies("kit.side-panel", () => {
     const { aside, body } = parts(container);
     expect(aside.getAttribute("aria-label")).toBe("Assistant");
     expect(aside.hasAttribute("aria-labelledby")).toBe(false);
-    expect(aside.className).toContain("border-e");
+    expect(aside.className).toContain("border-e border-border");
     expect(body?.className).toContain("bg-halo-wash");
   });
 
@@ -68,7 +68,9 @@ verifies("kit.side-panel", () => {
     );
     const { header, footer } = parts(container);
     expect(header?.lastElementChild?.textContent).toBe("Close Sort the inbox");
-    expect(footer?.className).toContain("flex items-center justify-end gap-2 border-t px-4 py-2.5");
+    expect(footer?.className).toContain(
+      "flex h-12 items-center justify-end gap-2 border-t border-border px-4",
+    );
     expect(footer?.textContent).toBe("Run step");
   });
 

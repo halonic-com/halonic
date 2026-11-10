@@ -1,9 +1,10 @@
+import type { TauriIpc } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type PageWindow, releasePage, type TauriInternals, tauriBridge } from "./tauri-bridge.ts";
+import { type PageWindow, releasePage, tauriBridge } from "./tauri-bridge.ts";
 
 /** Records each call into the shell and answers it with `answer`. */
-class FakeInternals implements TauriInternals {
+class FakeInternals implements TauriIpc {
   readonly calls: { command: string; args: Record<string, unknown> | undefined }[] = [];
   private readonly answer: unknown;
 

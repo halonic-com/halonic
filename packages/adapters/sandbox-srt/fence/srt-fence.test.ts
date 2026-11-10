@@ -98,10 +98,20 @@ describe("SrtSandbox with the real fence", () => {
     const ticks = join(base, "temp", "ticks");
     const started = await session.start({
       program: "sh",
-      args: ["-c", `while true; do date +%s%N > ${ticks}; sleep 0.1; done & wait`],
+      args: [
+        "-c",
+        `while true; do date +%s%N > ${ticks}.new && mv ${ticks}.new ${ticks}; sleep 0.1; done & wait`,
+      ],
     });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const before = await readFile(ticks, "utf8");
+    // The loop swaps each tick in with a rename, so a read never sees the file
+    // half written (`>` truncates it first). Wait for the first tick instead of
+    // sleeping a fixed time, which is too short on a loaded runner.
+    const deadline = Date.now() + 15_000;
+    let before = await readFile(ticks, "utf8").catch(() => "");
+    while (before === "" && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      before = await readFile(ticks, "utf8").catch(() => "");
+    }
     expect(before).not.toBe("");
     await started.kill();
     expect((await started.exited).reason).toBe("stopped");

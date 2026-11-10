@@ -31,6 +31,17 @@ workflow file of what it is about, such as `states.start.on.0.to`. The rules are
 `reject` event means for a tool call that waits for a person, and hold the
 texts the agent reads when a call is rejected or needs changes.
 
+Around these sit the smaller pieces. `getPath` reads a dotted path from a scope
+(own properties and list indexes only, so `constructor` gives `undefined`), and
+`getState` gives a state by its id or throws an error that names the workflow
+and the state. `Scope` is what a guard or template can read (`input`, `context`
+and the current `event`), `StateInput` is the type of a state's `input`, and
+`StateTimer` and `TimerTransition` describe a wait state's timers. The
+`ValidateOptions`, `WorkflowIssue`, `WorkflowIssueCode` and `Severity` types
+belong to `validateWorkflow`. `APPROVAL_EVENTS` lists the two approval events
+(`approve`, `reject`), and `REJECTED_TOOL_RESULT` is the text the agent reads
+after a plain rejection. `packageName` is a placeholder export.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example

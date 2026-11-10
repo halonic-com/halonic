@@ -6,10 +6,11 @@
 name: CI
 
 on:
-  # "edited" re-runs the terms guard and the title check when a title or
-  # body changes; "labeled" and "unlabeled" re-run the coverage-floor check.
+  # Not "edited", "labeled" or "unlabeled": each would cancel the run in
+  # progress and start every job again. pr-details.yml handles those: it
+  # re-runs the title, leak and coverage-floor jobs here when they failed.
   pull_request:
-    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
   merge_group:
   push:
     branches: [main]
@@ -40,6 +41,7 @@ jobs:
       agent_host: ${{ steps.diff.outputs.agent_host }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
+      workflows: ${{ steps.diff.outputs.workflows }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,25 +63,25 @@ jobs:
             "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
+            "workflows=^\.github/"
           )
-          # Docs and tests: Markdown, the docs folders, test and spec files,
-          # Rust test files, and test, fixture and snapshot folders.
-          docs_or_tests='(\.md$|^docs/|^apps/docs/|\.(test|spec)\.[cm]?tsx?$|\.test-helper\.ts$|\.test\.(json|yaml)$|_tests\.rs$|/(test|tests|__tests__|fixtures|__snapshots__)/)'
           changed=""
           by_area=false
           if [ "$EVENT" = "pull_request" ]; then
             changed=$(git diff --name-only "$BASE...HEAD")
             by_area=true
           elif [ "$EVENT" = "merge_group" ]; then
-            # The whole group against the main commit it is built on, never
-            # one pull request. Only a group that changes docs and tests and
-            # nothing else is filtered by area. Anything else, an empty diff
-            # or a diff that can't be read runs every job.
-            if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ] &&
-              ! grep -qvE "$docs_or_tests" <<< "$changed"; then
+            # The group against the commit it is built on: main, or the head
+            # of the entry ahead of it in the queue. That diff is exactly
+            # what this group adds, so it is filtered by area the same way
+            # as a pull request. Each entry ahead checks its own areas before
+            # it can merge, and every push to main runs every job, so a gap
+            # in the area rules still shows on main. An empty diff or a diff
+            # that can't be read runs every job.
+            if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ]; then
               by_area=true
             fi
-            echo "::notice title=Changed areas::Docs- or tests-only group: $by_area ($(grep -c . <<< "$changed") files)"
+            echo "::notice title=Changed areas::Filtered by area: $by_area ($(grep -c . <<< "$changed") files)"
           fi
           for area in "${areas[@]}"; do
             name="${area%%=*}"
@@ -96,6 +98,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      pull-requests: read
     steps:
       # The whole history (without file contents), so the DCO rule can
       # read every commit of the pull request.
@@ -105,10 +108,15 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - uses: $/.github/actions/setup
-      # Reads the title from $GITHUB_EVENT_PATH: an `env:` block is printed in the log.
+      - id: pr
+        uses: $/.github/actions/pull-request
+      # Reads the title from a file: an `env:` block is printed in the log.
+      # The merge queue checks it again, as the title may have changed since.
       - name: Pull request title
-        if: github.event_name == 'pull_request'
-        run: pnpm check:pr-title
+        if: steps.pr.outputs.event-path != ''
+        env:
+          PR_EVENT: ${{ steps.pr.outputs.event-path }}
+        run: GITHUB_EVENT_PATH="$PR_EVENT" pnpm check:pr-title
       # Plain check leaves out trace; the build job runs it after the tests.
       # The DCO rule checks the pull request's own commits. A merge queue
       # or a push to main only holds commits that passed it here.
@@ -126,6 +134,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
+      - name: Infra tests (spend guard, turbo-cache)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -145,6 +155,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -154,8 +165,12 @@ jobs:
         with:
           node-version: "26"
           package-manager-cache: false
+      # The title, body and branch as they are now, also in the merge queue.
+      - id: pr
+        uses: $/.github/actions/pull-request
       - name: Scan the change
         env:
+          PR_EVENT: ${{ steps.pr.outputs.event-path }}
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
           HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && github.event.pull_request.head.repo.fork != true && github.event.pull_request.user.login != 'dependabot[bot]' && 'true' || 'false' }}
           EVENT: ${{ github.event_name }}
@@ -183,7 +198,7 @@ jobs:
             else
               guard="$PWD"
             fi
-            node "$guard/tooling/check/src/cli/leaks.ts" \
+            GITHUB_EVENT_PATH="$PR_EVENT" node "$guard/tooling/check/src/cli/leaks.ts" \
               --allowed-phrases "$guard/tooling/check/terms-allowed-phrases.txt" \
               --allow-file "$guard/tooling/check/leak-allow.txt" \
               --range "$BASE..$HEAD"
@@ -201,6 +216,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -210,8 +226,12 @@ jobs:
         with:
           node-version: "26"
           package-manager-cache: false
+      # The labels as they are now, so a re-run sees a label added since.
+      - id: pr
+        uses: $/.github/actions/pull-request
       - name: Compare floors with the base
         env:
+          PR_EVENT: ${{ steps.pr.outputs.event-path }}
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -219,9 +239,9 @@ jobs:
           script=tooling/check/src/cli/coverage-floors.ts
           # The pull request that adds this script has no base copy to run.
           if [ -f "$RUNNER_TEMP/base/$script" ]; then
-            node "$RUNNER_TEMP/base/$script" "$BASE" "$HEAD"
+            GITHUB_EVENT_PATH="$PR_EVENT" node "$RUNNER_TEMP/base/$script" "$BASE" "$HEAD"
           else
-            node "$script" "$BASE" "$HEAD"
+            GITHUB_EVENT_PATH="$PR_EVENT" node "$script" "$BASE" "$HEAD"
           fi
 
   gitleaks:
@@ -246,7 +266,12 @@ jobs:
           log-opts: ${{ github.event_name == 'push' && github.sha || format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) }}
 
   zizmor:
+    # Every pull request: its online audits (pinned actions, advisories) can
+    # change without a file changing. The merge queue reruns it only when
+    # the group changes `.github/`.
     name: Workflow lint (zizmor)
+    needs: changes
+    if: github.event_name != 'merge_group' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -309,22 +334,23 @@ jobs:
             cache=local:rw,remote:rw
           fi
           pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize --cache="$cache"
-      # On main, main checks itself: it reads the result files the tests
-      # just wrote, even when a task failed (a missing result file fails the
-      # check anyway). On a pull request, the guard job runs trace from the
-      # merge base's copy instead.
+      # On main and in the merge queue, the change checks itself: it reads
+      # the result files the tests just wrote, even when a task failed (a
+      # missing result file fails the check anyway). A queued change already
+      # passed the merge base's copy on its pull request, and was reviewed. On
+      # a pull request, the guard job runs trace from the merge base's copy.
       - name: Requirements and their tests (trace)
-        if: always() && github.event_name == 'push'
+        if: always() && github.event_name != 'pull_request'
         run: pnpm check trace --report
       # The guard job reads these. They come from the pull request's own
       # code, so they are only ever compared, never trusted to judge.
       - name: Pack the test results for the guard job
-        if: always() && github.event_name != 'push'
+        if: always() && github.event_name == 'pull_request'
         run: |
           find . -name node_modules -prune -o -path '*/test-results/vitest.json' -type f -print \
             | sed 's|^\./||' | sort | tar -cf "$RUNNER_TEMP/test-results.tar" -T -
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && github.event_name != 'push'
+        if: always() && github.event_name == 'pull_request'
         with:
           name: pull-request-test-results
           path: ${{ runner.temp }}/test-results.tar
@@ -358,9 +384,12 @@ jobs:
   # job where no pull-request code runs and no cache is read: the checkout
   # switches to the merge base before anything runs, and neither the pnpm
   # store nor Turbo's cache is restored (a pull request's runs can write both).
+  # Pull requests only, like the guard job it feeds: the queue holds the
+  # same change, and its base is main or the entry ahead, whose own run
+  # tests it.
   base-tests:
     name: Merge base's tests (no cache)
-    if: github.event_name != 'push'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -492,17 +521,16 @@ jobs:
   # Trace and the requirement guard, run from the merge base's copy of
   # tooling/check. No pull-request code runs here: the pull
   # request's checkout is only read, only the merge base's dependencies are
-  # installed, and Node comes from the merge base.
+  # installed, and Node comes from the merge base. Pull requests only: in
+  # the merge queue the build job runs trace itself, as on main.
   guard:
     name: Requirements and the requirement guard (merge base's copy)
     needs: [build, base-tests]
-    if: ${{ !cancelled() && github.event_name != 'push' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
-      # The requirement guard looks up the branch of a merge-queue entry.
-      pull-requests: read
     env:
       HEAD_DIR: ${{ github.workspace }}/head
       BASE_DIR: ${{ github.workspace }}/base
@@ -599,12 +627,8 @@ jobs:
         continue-on-error: true
         working-directory: head
         env:
-          EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
-          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
-          REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           guard="tooling/check/src/cli/requirement-guard.ts"
           [ -n "$BASE_SHA" ] || exit 1
@@ -613,13 +637,7 @@ jobs:
             echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
             exit 0
           fi
-          branch="$HEAD_BRANCH"
-          if [ "$EVENT" = "merge_group" ]; then
-            # gh-readonly-queue/<base>/pr-<number>-<sha>: the note is named after the pull request's branch.
-            number=$(sed -E 's|.*/pr-([0-9]+)-[0-9a-f]+$|\1|' <<< "$QUEUE_REF")
-            branch=$(gh api "repos/$REPO/pulls/$number" --jq .head.ref)
-          fi
-          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$branch"; then
+          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH"; then
             echo "::warning title=requirement-guard::The requirement guard found errors (see this step's log). It reports and doesn't block until the approval lookup is live."
             exit 1
           fi

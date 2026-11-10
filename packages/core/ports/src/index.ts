@@ -217,11 +217,18 @@ export {
 } from "./secrets.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {
+  isUnreadableToolApprovalError,
+  type ListedToolFingerprint,
+  type ListedToolText,
+  maxWaitingVersions,
   type ToolApproval,
   type ToolApprovalKey,
   type ToolApprovalStore,
   type ToolServer,
   toolApprovalStoreVersion,
+  UnreadableToolApprovalError,
+  type WaitingVersion,
+  type WrittenDigest,
 } from "./tool-approval-store.ts";
 export {
   type TrustOrigin,

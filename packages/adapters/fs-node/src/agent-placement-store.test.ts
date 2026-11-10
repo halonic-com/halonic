@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
-import { chmod, lstat, mkdir, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  link,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import type { AgentPlacementKey } from "@halonicjs/ports";
 import { agentPlacement, agentPlacementStoreContract } from "@halonicjs/testing-contracts";
@@ -209,6 +219,14 @@ verifies("fs-node.agent-placement-store-files", () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { recursive: true });
         await symlink(await outsideChoice(), fileFor(root, coder));
+
+        await expect(new FileAgentPlacementStore(root).get(coder)).rejects.toThrow('"coder"');
+      });
+
+      it("refuses a choice that is a hard link to a file outside the folder", async () => {
+        const root = join(await tempFolder(), "placements");
+        await mkdir(root, { recursive: true });
+        await link(await outsideChoice(), fileFor(root, coder));
 
         await expect(new FileAgentPlacementStore(root).get(coder)).rejects.toThrow('"coder"');
       });

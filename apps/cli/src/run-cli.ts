@@ -12,12 +12,12 @@ import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeFor } from "./exit-code-for.ts";
 import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
+import type { Message } from "./messages/define.ts";
 import { usageMessages } from "./messages/general.ts";
-import { type Phrase, renderPhrase } from "./messages/phrase.ts";
+import type { Phrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
-import { paintFor } from "./output/paint.ts";
+import { type Printer, printerFor } from "./output/printer.ts";
 import { decideStyle, type Environment } from "./output/style.ts";
-import { printError } from "./print-error.ts";
 import { readInput } from "./read-input.ts";
 import { noSecrets, rememberedSecrets } from "./remembered-secrets.ts";
 
@@ -52,15 +52,12 @@ export interface CliSetup {
   readonly secrets?: Secrets;
 }
 
-/** Where the CLI writes phrases: results to stdout, everything else to stderr (cli-output section 2). */
-interface Streams {
-  out(line: Phrase): void;
-  err(line: Phrase): void;
-}
-
 /**
  * Runs one `halonic` command line and returns the exit code. Output goes
  * through `io`, so tests run the CLI in-process and read what it printed.
+ * With `--json` anywhere before a `--`, stdout gets one JSON document, also
+ * for a wrong command line or no command at all (cli-output 1.8); the exit
+ * code is the same. Help that was asked for stays text.
  *
  * @param args - the command line after `halonic`, with global options such
  *   as `--debug` anywhere in it
@@ -74,45 +71,83 @@ export async function runCli(
   setup: CliSetup = {},
 ): Promise<ExitCode> {
   const { options, args: commandLine } = readGlobalOptions(args);
-  const streams = streamsFor(io, setup.terminal ?? pipes, options);
+  // Made before the printer, so the printer removes every secret a command loads.
+  const scrubber = new SecretScrubber();
+  const printer = printerFor(io, {
+    json: options.json,
+    ...stylesFor(setup.terminal ?? pipes, options),
+    scrubber,
+  });
   const [name, ...commandArgs] = commandLine;
+  if (name === undefined && !options.help) {
+    return noCommandToRun(printer, options, overallHelp(commands), usageMessages.seeEveryCommand());
+  }
   if (name === undefined || name === "help") {
-    printLines(streams.out, overallHelp(commands));
-    return name === undefined && !options.help ? exitCode.usage : exitCode.ok;
+    // Help that was asked for stays text, also with `--json`.
+    printer.lines(overallHelp(commands));
+    return exitCode.ok;
   }
   const command = commands.find((candidate) => candidate.name === name);
   if (command === undefined) {
-    const near = nearMatch(
-      name,
-      commands.map((candidate) => candidate.name),
-    );
-    const problem =
-      near === undefined
-        ? usageMessages.unknownCommand(name)
-        : usageMessages.unknownCommandNear(name, near);
-    printError(new UsageError(problem, usageMessages.seeEveryCommand()), streams.err);
+    printer.error(unknownCommand(commands, name), {});
     return exitCode.usage;
   }
   const found = findSubcommand([command], commandArgs);
   if (found instanceof UsageError) {
-    printError(found, streams.err);
+    printer.error(found, {});
     return exitCode.usage;
   }
   const { path, args: pathArgs } = found;
   if (options.help) {
-    printLines(streams.out, commandHelp(path));
+    printer.lines(commandHelp(path));
     return exitCode.ok;
   }
   if (lastOf(path).run === undefined) {
-    // A command that only hands off, such as `halonic plugin` on its own: show what it hands off to.
-    printLines(streams.out, commandHelp(path));
-    return exitCode.usage;
+    // A command that only hands off, such as `halonic plugin` on its own.
+    return noCommandToRun(
+      printer,
+      options,
+      commandHelp(path),
+      usageMessages.seeSubcommands(commandWords(path)),
+    );
   }
-  const scrubber = new SecretScrubber();
   const context: CommandContext = {
+    cwd: io.cwd,
     secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
   };
-  return runCommand(path, pathArgs, io, context, streams, options, scrubber);
+  return runCommand(path, pathArgs, context, printer, options);
+}
+
+/**
+ * A command line that names no command to run, such as `halonic` or `halonic
+ * plugin` on its own: the help, so a person sees what to choose from, or with
+ * `--json` a usage error, because a script can't read help. Exits with 2.
+ */
+function noCommandToRun(
+  printer: Printer,
+  options: GlobalOptions,
+  help: readonly Phrase[],
+  fix: Message,
+): ExitCode {
+  if (options.json) {
+    printer.error(new UsageError(usageMessages.noCommand(), fix), {});
+  } else {
+    printer.lines(help);
+  }
+  return exitCode.usage;
+}
+
+/** The usage error for a first word that isn't a command, with the close one when there is one. */
+function unknownCommand(commands: readonly CliCommand[], name: string): UsageError {
+  const near = nearMatch(
+    name,
+    commands.map((candidate) => candidate.name),
+  );
+  const problem =
+    near === undefined
+      ? usageMessages.unknownCommand(name)
+      : usageMessages.unknownCommandNear(name, near);
+  return new UsageError(problem, usageMessages.seeEveryCommand());
 }
 
 /** A command line read down to the command that runs. */
@@ -145,11 +180,9 @@ function findSubcommand(path: CommandPath, args: readonly string[]): FoundComman
 async function runCommand(
   path: CommandPath,
   args: readonly string[],
-  io: CliIo,
   context: CommandContext,
-  streams: Streams,
+  printer: Printer,
   options: GlobalOptions,
-  scrubber: SecretScrubber,
 ): Promise<ExitCode> {
   const command = lastOf(path);
   let input: CommandInput | undefined;
@@ -160,23 +193,27 @@ async function runCommand(
     if (command.subcommands !== undefined && word !== undefined) {
       throw wordAfterOptions(path, word);
     }
-    return await (command.run?.(input, io, context) ?? exitCode.usage);
+    if (command.run === undefined) {
+      return exitCode.usage;
+    }
+    const result = await command.run(input, context);
+    printer.result(result);
+    return result.exitCode;
   } catch (error) {
     // The CLI's one top-level catch: every error a command throws ends here.
-    printError(error, streams.err, {
+    printer.error(error, {
       usage: usageLine(path),
       ...(input !== undefined && command.action !== undefined
         ? { action: command.action(input) }
         : {}),
       debug: options.debug,
-      scrubber,
     });
     return exitCodeFor(errorKindOf(error));
   }
 }
 
-/** Each stream with its own style: stdout may be a pipe while stderr is still a terminal. */
-function streamsFor(io: CliIo, terminal: Terminal, options: GlobalOptions): Streams {
+/** Each stream's style: stdout may be a pipe while stderr is still a terminal. */
+function stylesFor(terminal: Terminal, options: GlobalOptions) {
   const styleFor = (isTerminal: boolean) =>
     decideStyle({
       env: terminal.env,
@@ -185,12 +222,7 @@ function streamsFor(io: CliIo, terminal: Terminal, options: GlobalOptions): Stre
       noColor: options.noColor,
       json: options.json,
     });
-  const outPaint = paintFor(styleFor(terminal.stdoutIsTerminal));
-  const errPaint = paintFor(styleFor(terminal.stderrIsTerminal));
-  return {
-    out: (line) => io.out(renderPhrase(line, outPaint)),
-    err: (line) => io.err(renderPhrase(line, errPaint)),
-  };
+  return { out: styleFor(terminal.stdoutIsTerminal), err: styleFor(terminal.stderrIsTerminal) };
 }
 
 /**
@@ -216,8 +248,9 @@ function unknownSubcommand(path: CommandPath, word: string): UsageError {
  * The usage error for a word that comes after a command's options. A real
  * subcommand there is only in the wrong place, so the error says where it
  * goes instead of claiming it doesn't exist: `halonic runs --limit 5 show
- * 01JD8Q` gets "Put show right after runs." with the usage line of
- * `runs show` as its fix. Any other word gets {@link unknownSubcommand}.
+ * 01JD8Q` gets "show goes right after runs, before any options." with the
+ * usage line of `runs show` as its fix (cli-output 1.3: line 1 says what's
+ * wrong, line 2 is the fix). Any other word gets {@link unknownSubcommand}.
  */
 function wordAfterOptions(path: CommandPath, word: string): UsageError {
   const subcommand = (lastOf(path).subcommands ?? []).find((candidate) => candidate.name === word);
@@ -228,10 +261,4 @@ function wordAfterOptions(path: CommandPath, word: string): UsageError {
     usageMessages.subcommandPlacement(word, commandWords(path)),
     usageLine([...path, subcommand]),
   );
-}
-
-function printLines(print: (line: Phrase) => void, lines: readonly Phrase[]): void {
-  for (const line of lines) {
-    print(line);
-  }
 }

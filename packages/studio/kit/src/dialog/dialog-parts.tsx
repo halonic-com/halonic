@@ -23,7 +23,9 @@ export function DialogHeader({
   const { busy = false } = props;
   const showClose = closeButton && props.closeButton !== false;
   return (
-    <header className={`flex items-start gap-2 px-6 pt-5 pb-1${props.flush ? " border-b" : ""}`}>
+    <header
+      className={`flex items-start gap-2 px-6 pt-5 pb-1${props.flush ? " border-b border-border" : ""}`}
+    >
       <h2 id={titleId} className="min-w-0 flex-1 text-heading wrap-break-word">
         {props.title}
       </h2>

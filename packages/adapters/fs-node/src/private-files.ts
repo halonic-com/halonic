@@ -1,4 +1,4 @@
-import { constants } from "node:fs";
+import { constants, type Stats } from "node:fs";
 import { chmod, type FileHandle, lstat, mkdir, open } from "node:fs/promises";
 
 /**
@@ -22,17 +22,30 @@ export async function makePrivateFolder(folder: string): Promise<void> {
  * Windows junction, and opens with `O_NOFOLLOW` where the system has it, so
  * a link put there in between is refused too.
  *
+ * Only a plain file with one name is read. A hard link is a second name for
+ * a file that may sit in a workspace, so it is refused like a symbolic link;
+ * a store writes through a rename, so its own files always have one name.
+ * Anything else, such as a folder or a named pipe, is refused too, and the
+ * file is opened with `O_NONBLOCK` so a named pipe can't hang the open
+ * (Liam, HAL-2985). Both checks run again on the open file, in case the
+ * file was swapped in between.
+ *
+ * Only the file itself is checked: a link in the folders above it is
+ * followed. A store's folder must therefore sit in the user's profile.
+ *
  * @throws the file system's error when the file can't be read, with code
  *   `ENOENT` when there is none
- * @throws RangeError when the file is a link
+ * @throws RangeError when the file is a link or not a plain file
  */
 export async function readUnlinkedFile(file: string): Promise<string> {
-  if ((await lstat(file)).isSymbolicLink()) {
+  const entry = await lstat(file);
+  if (entry.isSymbolicLink()) {
     throw linked(file);
   }
+  refuseUnlessPlain(file, entry);
   let handle: FileHandle;
   try {
-    handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    handle = await open(file, readFlags);
   } catch (error) {
     if ((error as { code?: unknown } | null)?.code === "ELOOP") {
       throw linked(file);
@@ -40,9 +53,27 @@ export async function readUnlinkedFile(file: string): Promise<string> {
     throw error;
   }
   try {
+    refuseUnlessPlain(file, await handle.stat());
     return await handle.readFile("utf8");
   } finally {
     await handle.close();
+  }
+}
+
+/** Read only, without following a link or waiting on a named pipe, where the system has those flags. */
+const readFlags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
+
+/** Throws unless `entry` is a plain file with no other name. */
+function refuseUnlessPlain(file: string, entry: Stats): void {
+  if (!entry.isFile()) {
+    throw new RangeError(
+      `${JSON.stringify(file)} isn't a plain file: the store reads only plain files.`,
+    );
+  }
+  if (entry.nlink !== 1) {
+    throw new RangeError(
+      `${JSON.stringify(file)} is a hard link: the store doesn't read a file with another name.`,
+    );
   }
 }
 

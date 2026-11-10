@@ -16,14 +16,14 @@ on:
 permissions: {}
 
 concurrency:
-  group: mutation-${{ github.ref }}
+  group: mutation-${{ github.ref }}-${{ inputs.packages }}
   cancel-in-progress: true
 
 jobs:
   mutation:
-    # Report only, like the nightly run: the score per package goes into the
-    # job summary. Only a broken Stryker run, or a folder that isn't a mutation
-    # target, fails.
+    # Like the nightly run: the score per package goes into the job summary.
+    # A package under its floor, a broken Stryker run, or a folder that isn't a
+    # mutation target, fails.
     name: Mutation testing (report only)
     runs-on: ubuntu-24.04
     timeout-minutes: 60

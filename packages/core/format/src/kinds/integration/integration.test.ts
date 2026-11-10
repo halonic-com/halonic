@@ -20,7 +20,8 @@ function guideExample(): string {
 
 /**
  * Sheets from halonic-com/integrations, copied as they are: the Google ones
- * at ac597f7, the others at 2eda45e.
+ * at ac597f7, the others at 2eda45e. The Google ones carry each send
+ * tool's `noun` ahead of the integrations repo (HAL-2836).
  */
 function fixture(name: string): string {
   return readFileSync(join(import.meta.dirname, "fixtures", `${name}.yaml`), "utf8");
@@ -191,6 +192,55 @@ verifies("format.integration-file", () => {
       "tools.0.risk invalid_value 7",
       "tools.1.untrusted invalid_type 8",
       "tools.2.risk invalid_value 9",
+    ]);
+  });
+
+  it("reads a send tool's noun, in the singular and the plural", () => {
+    const sheet = parsedValue("integration", fixture("tool-google-drive"));
+    const nouns = sheet.tools.filter((tool) => tool.risk === "send").map((tool) => tool.noun);
+    expect(nouns).toEqual([
+      { one: "file", many: "files" },
+      { one: "file update", many: "file updates" },
+      { one: "folder", many: "folders" },
+      { one: "file", many: "files" },
+    ]);
+  });
+
+  it("lets a tool leave its noun out", () => {
+    const text = yaml(
+      ...base,
+      "tools:",
+      "  - { name: forecast, description: Forecast., risk: send, untrusted: false }",
+    );
+    expect(parsedValue("integration", text).tools[0]?.noun).toBeUndefined();
+  });
+
+  it("refuses a noun that isn't lower-case words or misses a form", () => {
+    const text = yaml(
+      ...base,
+      "tools:",
+      "  - name: forecast",
+      "    description: Forecast.",
+      "    risk: send",
+      "    noun: { one: Email, many: '' }",
+      "    untrusted: false",
+      "  - name: alerts",
+      "    description: Alerts.",
+      "    risk: send",
+      "    noun: { one: alert }",
+      "    untrusted: false",
+      "  - name: radar",
+      "    description: Radar.",
+      "    risk: send",
+      "    noun: { one: 'file 2', many: maps, few: maps }",
+      "    untrusted: false",
+    );
+    expect(summary(problemsOf("integration", text))).toEqual([
+      "tools.0.noun.one invalid_format 10",
+      "tools.0.noun.many invalid_format 10",
+      "tools.1.noun.many invalid_type 15",
+      "tools.2.noun.one invalid_format 20",
+      "tools.2.noun unrecognized_keys 20",
     ]);
   });
 

@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { checkCoverage } from "../guard/coverage.ts";
 import { checkGoldenFiles } from "../guard/golden-files.ts";
+import { checkReleasedSpecs } from "../guard/released-specs.ts";
 import { type GuardCase, noteCovering, runGuard, workflowDirectory } from "./guard-fixture.ts";
 
 async function errorsOf(guardCase: GuardCase): Promise<string[]> {
@@ -147,5 +148,29 @@ verifies("check.guard-coverage", () => {
       `${workflowDirectory}/vitest.config.ts: ${workflowDirectory}/vitest.config.ts changes the coverage settings.`,
     ]);
     expect(await errorsOf({ base: config(""), head: config(""), checks })).toEqual([]);
+  });
+});
+
+verifies("check.guard-released-specs", () => {
+  const checks = [checkReleasedSpecs];
+  const released = "spec/released/0.4.0/agent.schema.json";
+  const releasedPath = `${workflowDirectory}/${released}`;
+
+  test.each([
+    ["changed", { [released]: "{}\n" }, { [released]: '{"a":1}\n' }],
+    ["deleted", { [released]: "{}\n" }, {}],
+  ])(
+    "fails when a released spec is %s, even with a note that covers it",
+    async (change, base, head) => {
+      const note = noteCovering(releasedPath);
+      const message = `${releasedPath}: The released spec ${releasedPath} was ${change}. A released spec never changes; release the change under a new version.`;
+      expect(await errorsOf({ base, head, checks })).toEqual([message]);
+      expect(await errorsOf({ base, head, checks, note })).toEqual([message]);
+    },
+  );
+
+  test("allows a new released spec and an unchanged one", async () => {
+    const head = { [released]: "{}\n", "spec/released/0.5.0/agent.schema.json": "{}\n" };
+    expect(await errorsOf({ base: { [released]: "{}\n" }, head, checks })).toEqual([]);
   });
 });

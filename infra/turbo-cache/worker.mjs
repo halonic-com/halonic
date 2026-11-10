@@ -1,4 +1,7 @@
 // Minimal Turborepo remote cache: R2 storage, two bearer tokens (read, write). Single team, keyed by artifact hash.
+// Refuses with 503 when the Cloudflare spend switch is off (turbo then builds without the cache).
+import { checkSpend, spendOffResponse } from "../spend-guard/src/check-spend.mjs";
+
 const HASH = /^[A-Za-z0-9_-]{8,128}$/;
 const ARTIFACT_PATH = /^\/v8\/artifacts\/([^/]+)$/;
 const json = (body, status = 200) =>
@@ -92,6 +95,8 @@ async function route(request, env, role) {
 // biome-ignore lint/style/noDefaultExport: required by the Workers runtime
 export default {
   async fetch(request, env) {
+    // Spend check first: when paused, nothing else (auth, R2) runs.
+    if (!(await checkSpend(env, "turbo-cache"))) return spendOffResponse();
     const role = await roleOf(request, env);
     if (!role) return json({ error: "unauthorized" }, 401);
     return route(request, env, role);

@@ -49,6 +49,19 @@ verifies("cli.commands.schema.write-every-kind", () => {
     }).toEqual(golden);
   });
 
+  it("gives the folder, the files and their count with --json", async () => {
+    const io = captureIo(folder);
+    expect(await runCli(["schema", "--json"], io, [schemaCommand])).toBe(exitCode.ok);
+    expect(JSON.parse(io.stdout.join("\n"))).toEqual({
+      outputVersion: 1,
+      ok: true,
+      folder: `.${sep}schemas`,
+      files: kindNames().map(schemaFileName),
+      count: kindNames().length,
+    });
+    expect(io.stderr).toEqual([]);
+  });
+
   it("refuses more than one folder", async () => {
     const io = captureIo(folder);
     expect(await runCli(["schema", "a", "b"], io, [schemaCommand])).toBe(exitCode.usage);

@@ -44,6 +44,10 @@ interface ButtonBase {
   /** For a nearby control that points at this one, such as a Dialog's Cancel while it's busy. */
   readonly id?: string;
   readonly ref?: Ref<HTMLButtonElement>;
+  /** Set by a Menu on the button that opens it, through the props its `trigger` gets. */
+  readonly popoverTarget?: string;
+  readonly "aria-haspopup"?: "menu";
+  readonly "aria-expanded"?: boolean;
 }
 
 /** A button with words: "New agent", "Delete agent". Never "OK". */
@@ -206,6 +210,9 @@ export function Button(props: ButtonProps) {
       aria-busy={busy || undefined}
       aria-disabled={unavailable === undefined ? undefined : true}
       aria-describedby={unavailable?.reason}
+      aria-haspopup={props["aria-haspopup"]}
+      aria-expanded={props["aria-expanded"]}
+      popoverTarget={props.popoverTarget}
       tabIndex={props.tabIndex}
       onClick={handleClick}
       onFocus={props.onFocus}

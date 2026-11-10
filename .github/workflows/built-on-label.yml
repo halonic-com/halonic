@@ -1,0 +1,43 @@
+# Fails a pull request that has no `built-on:*` label (`built-on:paperclip`
+# or `built-on:halonic`), so we can see which tool built each change. It
+# re-runs when a label is added or removed. It only reads the labels in the
+# event, so it needs no token and checks out nothing. In the merge queue
+# there is no pull request in the event, so it passes: the label was
+# already checked on the pull request.
+
+name: Built-on label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+  merge_group:
+
+permissions: {}
+
+concurrency:
+  group: built-on-label-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  built-on-label:
+    name: built-on-label
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require a built-on label
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
+            echo "Merge queue: the label was checked on the pull request."
+            exit 0
+          fi
+          case ",$LABELS," in
+            *,built-on:paperclip,*|*,built-on:halonic,*)
+              echo "Found a built-on label."
+              ;;
+            *)
+              echo "::error::Add the label built-on:paperclip or built-on:halonic to this pull request."
+              exit 1
+              ;;
+          esac

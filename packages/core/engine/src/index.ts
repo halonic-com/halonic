@@ -7,10 +7,12 @@ export {
 export { RunStoreTurnLog } from "./agent/run-store-turn-log.ts";
 export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
-export { decide, InputRefused, type RefusalCode } from "./kernel/decide.ts";
+export { decide } from "./kernel/decide.ts";
 export type {
   CallModelEffect,
   CallToolEffect,
+  ChildInput,
+  ChildRunNow,
   Decide,
   DecidedEvent,
   DecideInput,
@@ -31,6 +33,7 @@ export type {
   TimerInput,
   ToolResult,
 } from "./kernel/decide-types.ts";
+export { InputRefused, type RefusalCode } from "./kernel/input-refused.ts";
 export { keepDefinitions, readDefinitions } from "./kernel/kept-definitions.ts";
 export type {
   BuiltStateType,
@@ -40,7 +43,13 @@ export type {
   StateRegistry,
   StateStep,
 } from "./kernel/registry.ts";
-export { evolve, foldRun, type PendingCall, type RunState } from "./kernel/run-state.ts";
+export {
+  type ChildRun,
+  evolve,
+  foldRun,
+  type PendingCall,
+  type RunState,
+} from "./kernel/run-state.ts";
 export {
   maxStepAttempts,
   readRun,

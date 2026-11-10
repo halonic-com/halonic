@@ -10,7 +10,9 @@
     "test": "vitest run",
     "build": "vite build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@halonicjs/studio-services": "workspace:*"
+  },
   "devDependencies": {
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",

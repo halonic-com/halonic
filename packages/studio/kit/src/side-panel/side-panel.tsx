@@ -82,8 +82,8 @@ export function SidePanel(props: SidePanelProps) {
         <footer
           className={
             sheet
-              ? "flex flex-wrap gap-2 border-t px-4 pt-3 pb-safe"
-              : "flex items-center justify-end gap-2 border-t px-4 py-2.5"
+              ? "flex flex-wrap gap-2 border-t border-border px-4 pt-3 pb-safe"
+              : "flex h-12 items-center justify-end gap-2 border-t border-border px-4"
           }
         >
           {props.footer}
@@ -106,8 +106,8 @@ function PanelHeader({ props, sheet, titleId, title }: PanelHeaderProps) {
     <header
       className={
         sheet
-          ? "flex min-h-phone-bar items-center gap-1 border-b px-1 pt-safe"
-          : "flex h-12 items-center gap-2 border-b pr-2.5 pl-4"
+          ? "flex min-h-phone-bar items-center gap-1 border-b border-border px-1 pt-safe"
+          : "flex h-12 items-center gap-2 border-b border-border pr-2.5 pl-4"
       }
     >
       {sheet ? (
@@ -138,7 +138,7 @@ function edge(props: SidePanelProps, sheet: boolean): string {
   if (sheet) {
     return "";
   }
-  return props.facing === "end" ? "border-e" : "border-s";
+  return props.facing === "end" ? "border-e border-border" : "border-s border-border";
 }
 
 /** Still skeleton lines, the same bars as a List's skeleton rows: a title bar over a meta bar. */

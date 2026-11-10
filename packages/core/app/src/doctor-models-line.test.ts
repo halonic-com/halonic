@@ -92,6 +92,14 @@ verifies("app.doctor-models", () => {
     expect(line?.problems.map((problem) => problem.problem)).toEqual(["unreachable", "no-key"]);
   });
 
+  it("neither lists nor warns about a provider that needs no key", () => {
+    const mock: ModelProviderState = { provider: "mock", name: "Mock", runs: "without-a-key" };
+
+    const line = modelsLine([mock], [{ alias: "test", provider: "mock" }]);
+
+    expect(line).toEqual({ check: "models", status: "ok", ready: [], problems: [] });
+  });
+
   it("has no line when the workspace has no model aliases", () => {
     expect(modelsLine([], [])).toBeUndefined();
   });

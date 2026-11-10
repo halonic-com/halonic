@@ -24,12 +24,20 @@ impl OpenedFolders {
     /// Records a folder the user opened. The folder is canonicalised now,
     /// so a later rename of a link in its path changes nothing.
     pub fn open(&self, folder: &Path) -> Result<(), GitError> {
-        let folder = canonical(folder)?;
+        self.open_canonical(canonical(folder)?);
+        Ok(())
+    }
+
+    /// Records a folder the caller has already canonicalised and checked,
+    /// as it is, without canonicalising it again. A link swapped into its
+    /// path since the check then can't change which folder opens: the entry
+    /// stays the path that was checked, and [`Self::check`] canonicalises
+    /// every folder git is asked about, so the link's target stays refused.
+    pub fn open_canonical(&self, folder: PathBuf) {
         let mut folders = self.folders.lock().unwrap_or_else(PoisonError::into_inner);
         if !folders.contains(&folder) {
             folders.push(folder);
         }
-        Ok(())
     }
 
     /// Takes a folder off the list, as revoking its trust does, so git
@@ -44,9 +52,15 @@ impl OpenedFolders {
         // A folder that can't be canonicalised any more is closed by the
         // path given; there is nothing else to report.
         let canonical = std::fs::canonicalize(folder);
-        let folder = canonical.unwrap_or_else(|_| folder.to_owned());
+        self.close_canonical(&canonical.unwrap_or_else(|_| folder.to_owned()));
+    }
+
+    /// Takes the exact entry [`Self::open_canonical`] recorded off the list,
+    /// without canonicalising it again, so a link swapped in since can't
+    /// make it close another folder and leave this one open.
+    pub fn close_canonical(&self, folder: &Path) {
         let mut folders = self.folders.lock().unwrap_or_else(PoisonError::into_inner);
-        folders.retain(|opened| *opened != folder);
+        folders.retain(|opened| opened != folder);
     }
 
     /// Checks that `folder` is an opened folder or inside one, and returns
@@ -80,15 +94,17 @@ pub(crate) fn canonical(folder: &Path) -> Result<PathBuf, GitError> {
     Ok(canonical)
 }
 
-/// A canonical path in the form to give git.
+/// A canonical path in the form other programs give and take: git, and
+/// Node's `realpath`, which the CLI's trust records are keyed by.
 ///
 /// On Windows, canonicalising adds the long-path prefix, `\\?\` before a
 /// drive path and `\\?\UNC\` before a network path. git can't resolve a
-/// relative alternate against a git folder written that way, so the prefix
-/// comes off. It stays when a part ends in `.` or a space, or is a device
-/// name such as `NUL`: without the prefix, Windows would drop the dot or the
-/// space, or name the device, and so name something other than the folder.
-pub(crate) fn for_git(path: &Path) -> OsString {
+/// relative alternate against a git folder written that way, and Node never
+/// writes it, so the prefix comes off. It stays when a part ends in `.` or a
+/// space, or is a device name such as `NUL`: without the prefix, Windows
+/// would drop the dot or the space, or name the device, and so name
+/// something other than the folder.
+pub fn plain_path(path: &Path) -> OsString {
     if cfg!(windows)
         && let Some(plain) = path.to_str().and_then(without_long_path_prefix)
     {

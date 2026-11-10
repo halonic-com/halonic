@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-harness-codex",
+  "private": true,
+  "type": "module",
+  "description": "Runs Codex as an agent's harness: finds it, checks its version and sign-in, and points it at the Halonic bridge.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "runtime": "node"
+  }
+}

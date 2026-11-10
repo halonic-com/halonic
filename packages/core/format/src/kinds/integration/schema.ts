@@ -70,6 +70,22 @@ export type IntegrationSecret = Infer<typeof Secret>;
 
 const Token = s.object({ name, purpose: s.string().min(1) }).strict();
 
+/**
+ * A plain noun in lower case: letters, with single spaces between words. No
+ * digits or other marks, so it can't carry a secret or an argument value.
+ */
+const TOOL_NOUN_PATTERN = /^[a-z]+(?: [a-z]+)*$/;
+
+const nounWord = s
+  .string()
+  .regex(TOOL_NOUN_PATTERN, "use a lower-case noun of letters and spaces, such as 'email'");
+
+/**
+ * What one call of a tool sends, in the singular and the plural, so a run can
+ * say "Sent 1 email" or "Sent 3 emails".
+ */
+const ToolNoun = s.object({ one: nounWord, many: nounWord }).strict();
+
 /** A tool as a sheet declares it; a plugin's local tools declare theirs the same way. */
 export const IntegrationTool = s
   .object({
@@ -80,6 +96,8 @@ export const IntegrationTool = s
     arguments: s.record(s.string().min(1), s.string().min(1)).optional(),
     /** `read` changes nothing, `write` changes data, `send` reaches people outside. */
     risk: s.enum(["read", "write", "send"]),
+    /** What a `send` tool sends, such as `{ one: email, many: emails }`. */
+    noun: ToolNoun.optional(),
     /** Whether the result carries outside content, such as mail. Always stated. */
     untrusted: s.boolean(),
   })

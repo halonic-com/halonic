@@ -48,7 +48,9 @@ The interface is decided in
    less than the code. Once the engine checks tool calls (HAL-998), every
    risk above `read` needs a person's OK before the tool runs; only `read`
    runs at once. Set `untrusted: true` on a tool whose result carries
-   outside content, such as mail or web pages.
+   outside content, such as mail or web pages. Give a `send` tool a `noun`
+   in the sheet, such as `{ one: email, many: emails }`, so a run can say
+   "Sent 1 email". Use lower-case words only, never a value from the call.
 5. **Don't pass a provider's error body on.** Throw an error with the status
    and what failed; the body may hold personal data or echo a key. You may
    include the provider's short error code (such as `rate_limit_error` or

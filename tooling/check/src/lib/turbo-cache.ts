@@ -1,5 +1,17 @@
-import { readdirSync, rmSync, statSync } from "node:fs";
+import { readdirSync, rmSync, type Stats, statSync } from "node:fs";
 import { join } from "node:path";
+
+/** Another turbo run can remove a file after the listing; that is not an error. */
+function statIfPresent(path: string): Stats | undefined {
+  try {
+    return statSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return undefined;
+    }
+    throw error;
+  }
+}
 
 /**
  * Turbo's local cache keeps each entry as a few files that share the hash as
@@ -34,7 +46,10 @@ export function pruneTurboCache(
     if (hash === undefined) {
       continue;
     }
-    const stats = statSync(join(directory, name));
+    const stats = statIfPresent(join(directory, name));
+    if (stats === undefined) {
+      continue;
+    }
     const entry = entries.get(hash) ?? { lastUsed: 0, bytes: 0, files: [] };
     entry.lastUsed = Math.max(entry.lastUsed, stats.atimeMs, stats.mtimeMs);
     entry.bytes += stats.size;

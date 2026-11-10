@@ -1,0 +1,28 @@
+{
+  "name": "@halonicjs/tooling-metrics",
+  "private": true,
+  "type": "module",
+  "description": "Read-only scripts that collect the team's quality and flow numbers, starting with review findings per pull request.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "julian",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}

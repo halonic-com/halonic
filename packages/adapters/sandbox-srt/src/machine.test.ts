@@ -1,8 +1,13 @@
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { systemMachine } from "./machine.ts";
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:child_process")>();
+  return { ...real, execFile: vi.fn(real.execFile) };
+});
 
 /** Runs a program and says whether it exited with code 0. */
 function succeeds(file: string, args: string[]): Promise<boolean> {
@@ -50,6 +55,25 @@ verifies("sandbox-srt.check", () => {
 
     it("names the platform Node runs on", () => {
       expect(systemMachine.platform).toBe(process.platform);
+    });
+  });
+
+  describe("the programs it starts", () => {
+    it("starts only bwrap, with fixed arguments and no input from a caller", async () => {
+      const started = vi.mocked(execFile);
+      started.mockClear();
+      await systemMachine.hasBubblewrap();
+      await systemMachine.userNamespacesRestricted();
+      // The runner is not exported: only the fixed probes above can start a program.
+      const programs = started.mock.calls.map(([file, args]) => [file, args]);
+      for (const [file, args] of programs) {
+        expect(file).toBe("bwrap");
+        expect(["--version", "--ro-bind"]).toContain((args as string[])[0]);
+      }
+      expect(Object.keys(await import("./machine.ts")).sort()).toEqual([
+        "cgroupNamesContainer",
+        "systemMachine",
+      ]);
     });
   });
 });

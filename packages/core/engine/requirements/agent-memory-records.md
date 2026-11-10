@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1534, plan HAL-186 ("Agent memory as runtime data")
+- Source: HAL-1534, HAL-3079, plan HAL-186 ("Agent memory as runtime data")
 
-The engine shall keep an agent's memory as notes in the `RecordStore` collection `agent-memory/<agentId>`, never in workspace files. A note has a title and a text and is found by its title, ignoring case and the spaces around it: saving a title again replaces that note, and forgetting a title removes it. Each change shall carry the clock's time and name the agent, and the run when there is one. A title that is empty or longer than 120 characters, or a text longer than 16,000 characters, shall be refused with a `RangeError`, and nothing written. Listing the notes shall give them by title and leave out a record that isn't a note.
+The engine shall keep an agent's memory as notes in the `RecordStore` collection `agent-memory/<agentId>`, never in workspace files. A note has a title and a text and is found by its title, ignoring case and the spaces around it: saving a title again replaces that note, and forgetting a title removes it. Each change shall carry the clock's time and name the agent, and the run when there is one. A title that is empty or longer than 120 characters, or a text longer than 16,000 characters, shall be refused with a `RangeError`, and nothing written. An agent shall keep at most 100 notes, and its note texts together at most 64,000 characters: saving a new title past 100 notes, or a text that would take the total past 64,000, shall be refused with a `RangeError` whose message tells the model to forget, shorten or replace a note, and nothing written. Replacing a note under its title stays allowed at 100 notes. Forgetting a note shall give its title as saved. Listing the notes shall give them ordered by title by Unicode code point, the same on every host, and leave out a record that isn't a note.
 
 ## Examples
 
@@ -20,3 +20,10 @@ The engine shall keep an agent's memory as notes in the `RecordStore` collection
 - Given a title of 121 characters,
   when the agent saves it,
   then it gets a `RangeError` and nothing is written.
+- Given agent `clerk` with 100 notes,
+  when it saves a new title,
+  then it gets a `RangeError` saying to forget or replace a note, and nothing is written;
+  and when it saves one of the 100 titles again, the note is replaced.
+- Given agent `clerk` with notes whose texts hold 60,000 characters,
+  when it saves a new note of 5,000 characters,
+  then it gets a `RangeError` saying to shorten or forget notes, and nothing is written.

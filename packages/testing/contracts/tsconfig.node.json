@@ -1,0 +1,11 @@
+{
+  "//": "The Node preset, for src/node/ only: helpers for bindings whose tests run in Node. The rest of the package stays on the host preset (tsconfig.json).",
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "include": [
+    "src/node"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
+}

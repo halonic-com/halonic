@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
@@ -317,6 +317,48 @@ verifies("sandbox-srt.session", () => {
         /working folder/,
       );
       await expect(session.start({ ...command, cwd: "/etc" })).rejects.toThrow(/working folder/);
+      await session.close();
+    });
+
+    it("refuses a program that is a skill's script, before the fence starts it", async () => {
+      const { runner, runs } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile());
+      const before = runs.length;
+      for (const program of [
+        "skills/x/scripts/run.sh",
+        "./.claude/skills/x/scripts/run.sh",
+        join(base, "work", "skills", "x", "scripts", "nested", "run.py"),
+        "../work/skills/x/scripts/run.sh",
+      ]) {
+        await expect(session.start({ program, args: [] })).rejects.toThrow(
+          /doesn't start a skill's scripts/,
+        );
+      }
+      expect(runs).toHaveLength(before);
+      await session.close();
+    });
+
+    it("refuses a link that leads into a skill's scripts folder", async () => {
+      const { runner, runs } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile());
+      const scripts = join(base, "work", "skills", "x", "scripts");
+      await mkdir(scripts, { recursive: true });
+      await writeFile(join(scripts, "run.sh"), "#!/bin/sh\n");
+      await symlink(join(scripts, "run.sh"), join(base, "work", "innocent"));
+      await expect(session.start({ program: "./innocent", args: [] })).rejects.toThrow(
+        /doesn't start a skill's scripts/,
+      );
+      expect(runs).toHaveLength(0);
+      await session.close();
+    });
+
+    it("still starts bare names and other programs with a path", async () => {
+      const { runner, runs } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile());
+      await session.start({ program: "scripts", args: [] });
+      await session.start({ program: "./tools/scripts/run.sh", args: [] });
+      await session.start({ program: "skills/x/SKILL.md", args: [] });
+      expect(runs).toHaveLength(3);
       await session.close();
     });
 

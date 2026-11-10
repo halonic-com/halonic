@@ -37,6 +37,9 @@
     ],
     "@halonicjs/std": [
       "./error-kind"
+    ],
+    "@halonicjs/testing-contracts": [
+      "./node"
     ]
   },
   "cloudRuntimes": {

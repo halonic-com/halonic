@@ -149,6 +149,23 @@ version at 1:
 - **`Digest`:** `sha256` over bytes, from the platform's WebCrypto. The
   core needs SHA-256 for the approval hash and can't call WebCrypto itself.
 
+_2026-11-09, signed off on HAL-850, built in HAL-2210._ `ToolApprovalStore`
+changes before any adapter is written against it, so it stays at version 1
+(see "The freeze"):
+
+- An approval now holds the tool as `readToolListing` gives it back
+  (`ListedToolText`) and its `fingerprint`, instead of the raw listing and
+  a `hash`, because the board chose to fingerprint what the model sees.
+  The server's address moves out of the hashed material into its own
+  `server` field, and an integration's address is its id and version only.
+- **`noteWaiting(key, version)`**, a fifth method: it notes a waiting
+  version of a tool and returns the versions noted, at most
+  `maxWaitingVersions`. The host needs it, across runs, to stop asking
+  about a tool its server keeps changing (more than 3 versions in a day).
+  It only stores; `approveListedTools` in `core/app` counts and decides.
+- The host no longer revokes the approval of a tool the listing stops
+  returning, so the tool is on again if it comes back unchanged.
+
 _2026-11-09, decided on HAL-1515, built in HAL-1521._ Approvals are routed
 by `callId` (HAL-186, E5). An executor must honor it, so it goes into
 version 1 now. `RunExecutor` stays at 1:

@@ -31,6 +31,7 @@ import {
   vcsContract,
   vcsHardenedCases,
 } from "@halonicjs/testing-contracts";
+import { refuseRealConnections } from "@halonicjs/testing-contracts/node";
 import { trustContent, trustFingerprint } from "@halonicjs/workspace";
 import { describe, it } from "vitest";
 import {
@@ -55,6 +56,10 @@ import {
   MemoryVcs,
   ScriptedLlmProvider,
 } from "./index.ts";
+
+// No case may open a TCP connection to another machine: a binding answers
+// every outside call from recorded or scripted data.
+refuseRealConnections();
 
 // The old memory.test.ts ran the old contracts against these adapters; this file does the same.
 definitionStoreContract("memory", async (files) => new MemoryDefinitionStore(files));

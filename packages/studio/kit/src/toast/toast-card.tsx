@@ -112,7 +112,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
           </button>
         )}
       </div>
-      <div className="-mt-1 -mr-1 phone:-mt-3 phone:-mr-3">
+      <div className="flex -my-1 -mr-1 touch:-mt-2.5 touch:-mr-2.5 touch:-mb-2.5 phone:-mt-3 phone:-mr-3 phone:mb-0">
         <Button
           variant="ghost"
           size="sm"

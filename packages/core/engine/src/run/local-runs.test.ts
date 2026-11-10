@@ -110,7 +110,7 @@ verifies("engine.local-runs", () => {
     await executor.start(replyStart);
 
     await expect(executor.send("run_1", "approve", { ok: true })).rejects.toThrow(
-      "doesn't accept a send input",
+      `doesn't take "approve" in state "draft" now`,
     );
     await expect(executor.send("r-missing", "approve")).rejects.toThrow("has not started");
     await executor.onTimer({ key: "run_1", timerId: "timer:wait", at: "" });

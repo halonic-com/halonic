@@ -73,6 +73,13 @@ export {
   type ProviderReport,
 } from "./doctor-models-line.ts";
 export {
+  type DoctorProvider,
+  type DoctorReport,
+  DoctorService,
+  type DoctorServiceOptions,
+  type DoctorWorkspace,
+} from "./doctor-service.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,

@@ -9,4 +9,3 @@ export {
 } from "./detect.ts";
 export { type ClaudeCodeFolders, claudeCodeEnvironment } from "./environment.ts";
 export { findSignInProblem, SignInError, type SignInProblem } from "./sign-in.ts";
-export type { ProgramVersion } from "./version.ts";

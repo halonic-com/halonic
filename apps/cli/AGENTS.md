@@ -11,10 +11,14 @@ everything else is internal.
 
 ## Commands
 
-| Command                                | What it does                                                                         |
-| -------------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm verify`                          | checks every package your change affects, including the ones that depend on this one |
-| `pnpm turbo run test --filter=halonic` | runs only this package's tests (and the codegen they need)                           |
+| Command                                                                                | What it does                                                               |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `pnpm exec turbo run test --filter=halonic -- --maxWorkers=2`                          | runs this package's tests (and the codegen they need)                      |
+| `pnpm exec turbo run lint --filter=...[origin/main] --concurrency=2`                   | lints the packages your change touches and the ones that depend on them    |
+| `pnpm exec turbo run test --filter=...[origin/main] --concurrency=2 -- --maxWorkers=2` | tests the packages your change touches and the ones that depend on them    |
+| `pnpm exec turbo run typecheck --concurrency=2`                                        | typechecks all packages (HAL-2950); unchanged ones come from Turbo's cache |
+
+Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 
 ## Local rules
 
@@ -28,8 +32,9 @@ everything else is internal.
   (`invalid_input`), 3 the workspace isn't trusted, then the error kinds: 4 `not_found`,
   5 `conflict`, 6 `unauthenticated`, 7 `denied`, 8 `limit_reached`, 9 `unavailable`. Never
   renumber one; a new code takes the next free number. `exitCodeFor` is the only place that turns
-  an error kind into an exit code. Commands write through `CliIo`, never to `process.stdout`
-  directly.
+  an error kind into an exit code. A command prints nothing: it returns a `CommandResult` (exit
+  code, its lines as catalogue phrases, its `--json` fields), and `runCli` prints it through
+  `CliIo`, never to `process.stdout` directly.
 - Only `printError` (`src/print-error.ts`) writes an error: the ✕ line, the fix line, `More:` and
   the code. Commands throw or return errors and never print them. The fix comes from the error's
   own `fix` field; with no `fix` there is no fix line, and a command never makes one up.

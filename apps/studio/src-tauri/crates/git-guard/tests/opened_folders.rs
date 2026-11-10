@@ -289,3 +289,21 @@ fn opened_folders_allows_links_in_the_git_folder_that_stay_inside() {
     let log = sandbox.git_ok_in(&work, "log --format=%s");
     assert_eq!(log, "shared\n");
 }
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_opens_a_checked_path_even_if_a_link_is_swapped_in() {
+    let temporary = TemporaryFolder::new();
+    let acme = temporary.folder("acme");
+    let home = temporary.folder("home");
+    let checked = std::fs::canonicalize(&acme).expect("acme canonicalises");
+
+    // Between the check and the opening, acme becomes a link to home.
+    std::fs::remove_dir(&acme).expect("acme is removed");
+    std::os::unix::fs::symlink(&home, &acme).expect("the link is made");
+    let folders = OpenedFolders::new();
+    folders.open_canonical(checked);
+
+    assert_eq!(folders.check(&home), Err(GitError::FolderNotOpened));
+    assert_eq!(folders.check(&acme), Err(GitError::FolderNotOpened));
+}

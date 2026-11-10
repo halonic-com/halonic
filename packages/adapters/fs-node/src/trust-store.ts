@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { TrustRecord, TrustStore } from "@halonicjs/ports";
 import { isMissing } from "./links.ts";
-import { makePrivateFolder } from "./private-files.ts";
+import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
 
 /** A record's file name: the SHA-256 of its location's UTF-16 code units in lower-case hex, then `.json`. */
 const recordFile = /^[0-9a-f]{64}\.json$/u;
@@ -21,7 +21,14 @@ const leadingLocation = /^\s*\{\s*"location"\s*:\s*("(?:[^"\\\n]|\\.)*")/u;
  * Each file starts with its location, so a damaged record can still be named
  * in the error. A grant writes a temporary file and renames it over the
  * record, so a reader sees the old record or the new one, never half of one.
- * The folder must never be inside a workspace.
+ * The folder must never be inside a workspace: an agent that edits the
+ * workspace must not be able to trust it. For the same reason a record that
+ * is a link, such as one to a file in a workspace, can't be read: `get`
+ * throws naming the location and `list` throws naming the file, as for a
+ * damaged record (HAL-2978). The same goes for a hard link or anything that
+ * isn't a plain file, such as a named pipe. Only the files are checked, not
+ * the folder: a folder that is itself a link is followed, which is safe only
+ * because the folder lives in the profile.
  */
 export class FileTrustStore implements TrustStore {
   readonly #root: string;
@@ -35,7 +42,7 @@ export class FileTrustStore implements TrustStore {
     const file = this.#file(location);
     let text: string;
     try {
-      text = await readFile(file, "utf8");
+      text = await readUnlinkedFile(file);
     } catch (error) {
       if (isMissing(error)) return null;
       throw unreadable(location, file, error);
@@ -105,10 +112,10 @@ function hashLocation(location: string): string {
   return createHash("sha256").update(location, "utf16le").digest("hex");
 }
 
-/** A file's text, or `undefined` when it is gone. */
+/** A file's text, or `undefined` when it is gone. A link is refused, see `readUnlinkedFile`. */
 async function readText(file: string): Promise<string | undefined> {
   try {
-    return await readFile(file, "utf8");
+    return await readUnlinkedFile(file);
   } catch (error) {
     if (isMissing(error)) return undefined;
     throw error;

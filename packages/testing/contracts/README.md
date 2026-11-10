@@ -4,13 +4,13 @@ One contract suite per port. Every adapter for a port runs its suite, so all ada
 
 - **Layer:** testing
 - **Owner:** julian
-- **Public API:** `@halonicjs/testing-contracts`
+- **Public API:** `@halonicjs/testing-contracts`, and `@halonicjs/testing-contracts/node` for bindings whose tests run in Node
 
 ## Rules for the suites
 
 - A suite tests only what the port's doc comments promise. Something only one adapter does is tested in that adapter's package.
 - Fixtures, the clock and outbound HTTP are passed in through the suite's `make` function, so the same suite runs in Node and later in `workerd` (plan 4.4).
-- No `node:*` imports outside `src/node/`. The package type-checks with the host preset (Web globals only), which makes a Node API a compile error.
+- No `node:*` imports outside `src/node/`. The package type-checks with the host preset (Web globals only), which makes a Node API a compile error. `src/node/` type-checks with the Node preset (`tsconfig.node.json`).
 - Each suite runs inside `verifies()` with its requirement ID, such as `contracts.blob-store`, so the trace check sees which adapters prove it. The requirements are in `requirements/`.
 
 ## Example
@@ -42,5 +42,21 @@ export function runExample(): string[] {
 
 An adapter package registers its suites the same way from a `*.test.ts` file, for example
 `definitionStoreContract("memory", async (files) => new MemoryDefinitionStore(files))`.
+
+## Node bindings: no real connections
+
+A binding whose tests run in Node calls `refuseRealConnections()` from
+`@halonicjs/testing-contracts/node` at the top of its test file, next to its suites. Any case that
+then opens a TCP connection to another machine fails, also when the binding catches the error. The
+trap sits on `net.Socket.prototype.connect`, so it also sees `https.get`, Node's `fetch` and vendor
+SDKs. Connections to `localhost`, `127.x.x.x`, `::1` and local socket paths go through, so a
+binding can still start a local test server.
+
+```ts
+import { refuseRealConnections } from "@halonicjs/testing-contracts/node";
+
+refuseRealConnections();
+connectorClientContract("google", "google", makeGoogleConnector);
+```
 
 A read-only adapter, such as a deployed snapshot, runs `definitionSourceContract` instead of `definitionStoreContract`.
