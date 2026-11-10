@@ -163,11 +163,12 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * Stops the engine's work in this process, and resolves once nothing it
-   * started is left running: every harness run is stopped with its session
-   * and bridge. Runs that were going end as `interrupted` when an engine
-   * next starts on the same store. Timers delivered after this change
-   * nothing. The host calls it before it exits.
+   * Stops the engine's work in this process. It stops every harness run,
+   * then its sandbox session, then its bridge, and resolves once all three
+   * have stopped; a session that opens after that is closed as it opens.
+   * Harness runs that were going end as `interrupted` when an engine next
+   * starts on the same store. Timers delivered after this change nothing.
+   * `localEngine`'s `close` calls it before it closes the scheduler.
    */
   async close(): Promise<void> {
     await this.runs?.close();

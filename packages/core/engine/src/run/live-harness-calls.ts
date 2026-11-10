@@ -4,7 +4,7 @@
 import { type StopSignal, StopSource } from "@halonicjs/std";
 
 /** The `error` a harness call stops with when the engine stops while it runs. */
-export const engineStoppedError = "The engine stopped while the harness ran.";
+export const engineStoppedMessage = "The engine stopped while the harness ran.";
 
 /** One harness call going on now. */
 interface LiveCall {
@@ -25,7 +25,7 @@ export class LiveHarnessCalls {
    * @throws what the call throws
    */
   async run<T>(call: (stop: StopSignal) => Promise<T>): Promise<T> {
-    if (this.#stopped) throw new Error(engineStoppedError);
+    if (this.#stopped) throw new Error(engineStoppedMessage);
     const source = new StopSource();
     const result = call(source.signal);
     const live: LiveCall = {
@@ -51,7 +51,7 @@ export class LiveHarnessCalls {
     this.#stopped = true;
     const calls = [...this.#calls];
     for (const call of calls) {
-      call.source.stop(new Error(engineStoppedError));
+      call.source.stop(new Error(engineStoppedMessage));
     }
     await Promise.all(calls.map((call) => call.done));
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { engineStoppedError, LiveHarnessCalls } from "./live-harness-calls.ts";
+import { engineStoppedMessage, LiveHarnessCalls } from "./live-harness-calls.ts";
 
 describe("LiveHarnessCalls", () => {
   it("tells every call going on to stop, and resolves once each has finished", async () => {
@@ -15,7 +15,7 @@ describe("LiveHarnessCalls", () => {
     await calls.stopAll();
 
     expect(finished).toEqual(["call"]);
-    await expect(call).rejects.toThrow(engineStoppedError);
+    await expect(call).rejects.toThrow(engineStoppedMessage);
   });
 
   it("refuses a call after it stopped them all, before the call starts anything", async () => {
@@ -27,7 +27,7 @@ describe("LiveHarnessCalls", () => {
       calls.run(async () => {
         started = true;
       }),
-    ).rejects.toThrow(engineStoppedError);
+    ).rejects.toThrow(engineStoppedMessage);
     expect(started).toBe(false);
   });
 });

@@ -37,9 +37,12 @@ export interface LocalEngine<S extends LocalEngineScheduler> {
   readonly scheduler: S;
   readonly routines: RoutineScheduler;
   /**
-   * Stops starting routine runs, waits for a tick in progress, then closes
-   * the scheduler if it can be closed. Runs that are going stay in the run
-   * store, and the next engine moves them on from their timers.
+   * Stops starting routine runs and waits for a tick in progress, then
+   * closes the executor, then the scheduler if it can be closed. Closing the
+   * executor stops every harness run with its session and bridge, so the
+   * scheduler isn't left waiting for a delivery that never ends. Other runs
+   * that are going stay in the run store, and the next engine moves them on
+   * from their timers; the stopped harness runs end as `interrupted`.
    */
   close(): Promise<void>;
 }
@@ -87,6 +90,9 @@ export function localEngine<S extends LocalEngineScheduler>(
     ...built,
     close: async () => {
       await built.routines.dispose();
+      // Before the scheduler: its close waits for the deliveries in progress,
+      // and a harness run's delivery ends only once the harness run stops.
+      await built.executor.close();
       await built.scheduler.close?.();
     },
   };
