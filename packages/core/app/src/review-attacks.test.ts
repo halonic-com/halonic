@@ -56,7 +56,7 @@ verifies("app.assistant-no-git-or-halonic", () => {
     ".halonic /x",
     "hubs/h/.Halonic/x",
     "Hubs/h/.halonic/x",
-    ".halonic‌/x",
+    ".halonic\u200C/x",
     "HALONI~1/x",
   ];
   const gitPaths = [
