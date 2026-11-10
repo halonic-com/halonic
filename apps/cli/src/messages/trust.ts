@@ -44,8 +44,17 @@ export interface TrustCounts {
  */
 export const trustMessages = defineMessages("trust", {
   summary: () => phrase`Review what a workspace or plugin can start, and trust it on this computer`,
-  /** What `trust` was doing, for "✕ Couldn't trust Acme: …". */
-  action: (name: string) => phrase`trust ${name}`,
+  /**
+   * What `trust` was doing, for "✕ Couldn't trust Acme: …": the workspace's
+   * name, or the folder as typed before the workspace was read.
+   */
+  action: (name?: string) => phrase`trust ${name ?? "this folder"}`,
+
+  /** The options in `halonic trust --help` (team, HAL-188 4c). */
+  listOption: () => phrase`List the workspaces trusted on this computer.`,
+  removeOption: () => phrase`Remove the trust, so the workspace's programs don't start.`,
+  yesOption: () => phrase`Trust without asking. Needs --fingerprint.`,
+  fingerprintOption: () => phrase`The fingerprint from the check you reviewed.`,
 
   heading: (name: string, folder: string) => phrase`Trust check for ${name} (${folder})`,
   intro: (name: string) =>

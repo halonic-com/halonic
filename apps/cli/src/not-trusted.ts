@@ -14,6 +14,14 @@ export interface NotTrustedDetails {
    * sees what they would trust. Empty when the command shows no check.
    */
   readonly check: readonly Phrase[];
+  /**
+   * What line 1 says it couldn't do, before the problem. Left out, it's the
+   * command's own action ("✕ Couldn't run support-reply: …"). `trust` names
+   * the workspace instead ("✕ Couldn't trust Acme: …"), and passes `null`
+   * when the problem is line 1 on its own, as its no-terminal refusal
+   * (cli-output 1.7).
+   */
+  readonly action?: Message | null;
 }
 
 /**
@@ -43,6 +51,7 @@ export class NotTrustedError extends Error {
   readonly fixMessage: Message;
   readonly fingerprint: string;
   readonly check: readonly Phrase[];
+  readonly action: Message | null | undefined;
 
   constructor(details: NotTrustedDetails) {
     super(plainText(details.problem.phrase));
@@ -50,5 +59,6 @@ export class NotTrustedError extends Error {
     this.fixMessage = details.fix;
     this.fingerprint = details.fingerprint;
     this.check = details.check;
+    this.action = details.action;
   }
 }

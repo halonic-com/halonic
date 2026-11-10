@@ -5,6 +5,7 @@
 import type { AliasProvider, DoctorProvider, DoctorWorkspace } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
 import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
+import { trustSubjectOf } from "./workspace-trust.ts";
 
 /**
  * Where a model server on this computer answers when its provider file
@@ -31,9 +32,8 @@ export interface DoctorWorkspaceInput {
 /**
  * The workspace as the doctor service checks it.
  *
- * - **Trust:** every connector and agent, of the root and of every hub, as
- *   the trust check fingerprints them. No local integrations yet: the
- *   workspace doesn't load them.
+ * - **Trust:** what {@link trustSubjectOf} reads, the same for every command
+ *   that checks trust.
  * - **Aliases:** those of `models.yaml` in its order, then each hub's own
  *   that point somewhere new, so a hub's alias without a key is warned
  *   about too.
@@ -54,16 +54,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
   const listed = new Set(providers.map((provider) => provider.provider));
   return {
     name: settings?.name ?? input.fallbackName,
-    trust: {
-      location: input.location,
-      connectors: filesOf(workspace, "connector").map((file) => file.value),
-      commandPaths: input.commandPaths,
-      agents: filesOf(workspace, "agent").map((file) => file.value),
-      // A workspace doesn't load its local integrations yet; when it does,
-      // they go here with their settings, so `doctor` checks the same
-      // fingerprint as the trust check.
-      integrations: [],
-    },
+    trust: trustSubjectOf(input),
     aliases: allAliases.filter((alias) => listed.has(alias.provider)),
     providers,
   };

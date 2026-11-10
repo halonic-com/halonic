@@ -17,7 +17,6 @@ import {
   type DoctorServiceOptions,
   type DoctorWorkspace,
   ResourceReport,
-  TrustService,
 } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
 import type {
@@ -31,8 +30,8 @@ import type {
 import { type ProfileFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { localLoadedModels } from "./local-model-servers.ts";
-import { halonicVersion } from "./version.ts";
-import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
+import { nodeProfileEnvironment } from "./workspace-runs.ts";
+import { cliTrustService } from "./workspace-trust.ts";
 
 /** What `doctor` asks on this computer. */
 export interface DoctorMachine {
@@ -119,12 +118,7 @@ export async function doctorService(
     dataFolders: await runDataFolders(machine.profile),
     modelSources: modelServers(workspace).map((server) => localLoadedModels(server, machine.http)),
   });
-  const trust = new TrustService({
-    store: machine.trustStore,
-    digest: webCryptoDigest,
-    clock: systemClock,
-    appVersion: halonicVersion,
-  });
+  const trust = cliTrustService(machine.trustStore, systemClock);
   return new DoctorService({
     trust,
     sandbox: machine.sandbox,

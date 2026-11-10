@@ -143,10 +143,11 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
   }
   if (error instanceof NotTrustedError) {
     const reason = scrubPhrase(error.problem.phrase, scrub);
+    const action = error.action === undefined ? context.action : (error.action ?? undefined);
     return {
       kind: error.kind,
       reason,
-      firstLine: withAction(reason, context),
+      firstLine: withAction(reason, action === undefined ? {} : { action }),
       fix: scrubPhrase(error.fixMessage.phrase, scrub),
       docs: undefined,
       code: error.code,
