@@ -367,7 +367,11 @@ console.log("FENCE " + JSON.stringify(out));
 
 /** A tiny stand-in for the bridge: answers any HTTP request with 200 "ok". */
 async function listen(host) {
-  const server = createTcpServer((socket) => socket.end("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"));
+  const server = createTcpServer((socket) => {
+    // A box that is cut off mid-connection resets it; that is a result, not a reason to crash.
+    socket.on("error", () => {});
+    socket.end("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+  });
   await new Promise((done, fail) => server.once("error", fail).listen(0, host, done));
   return server;
 }
