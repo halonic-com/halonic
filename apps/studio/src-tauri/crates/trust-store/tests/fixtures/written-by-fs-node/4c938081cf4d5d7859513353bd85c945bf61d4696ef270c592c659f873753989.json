@@ -1,0 +1,27 @@
+{
+  "location": "/workspaces/acme",
+  "fingerprint": "hfp1:acme",
+  "content": {
+    "programs": [
+      {
+        "connector": "mail",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@acme/mail-mcp"
+        ]
+      }
+    ]
+  },
+  "grantedAt": "2026-11-10T10:00:00.000Z",
+  "appVersion": "0.1.0",
+  "pins": {
+    "mail": {
+      "registry": "npm",
+      "registryUrl": "https://registry.npmjs.org",
+      "package": "@acme/mail-mcp",
+      "version": "2.3.1"
+    }
+  },
+  "origin": "cli"
+}

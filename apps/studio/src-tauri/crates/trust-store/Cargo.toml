@@ -1,0 +1,15 @@
+[package]
+name = "halonic-trust-store"
+description = "The trust records the Studio shell keeps in the profile, in the same files as the CLI's FileTrustStore."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+halonic-sha256 = { path = "../sha256" }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true
