@@ -61,3 +61,39 @@ verifies("engine.turn-tool-call-as-text", () => {
     );
   });
 });
+
+verifies("engine.turn-tool-call-tag-as-text", () => {
+  it("marks a tool call written in a <tool_call> tag, and never runs it", async () => {
+    const text = `<tool_call>\n${writtenCall}\n</tool_call>`;
+    const { mail, result, response } = await answerWith(text);
+
+    expect(response).toMatchObject({ toolCallAsText: true });
+    expect(mail.calls).toEqual([]);
+    expect(result.content).toBe(text);
+  });
+
+  it.each([
+    [
+      "several tags",
+      `<tool_call>${writtenCall}</tool_call>\n<tool_call>${writtenCall}</tool_call>`,
+    ],
+    ["a last tag without its closing tag", `<tool_call>\n${writtenCall}`],
+  ])("marks %s", async (_what, text) => {
+    const { response } = await answerWith(text);
+    expect(response).toMatchObject({ toolCallAsText: true });
+  });
+
+  it.each([
+    ["has text before the tag", `I'll search. <tool_call>${writtenCall}</tool_call>`],
+    ["has text after the tag", `<tool_call>${writtenCall}</tool_call> Done.`],
+    ["has an empty tag", "<tool_call></tool_call>"],
+    [
+      "has one tag naming a tool that wasn't offered",
+      `<tool_call>${writtenCall}</tool_call><tool_call>{"name": "delete", "arguments": {}}</tool_call>`,
+    ],
+    ["holds text that isn't JSON", "<tool_call>lookup acme</tool_call>"],
+  ])("leaves an answer unmarked that %s", async (_why, text) => {
+    const { response } = await answerWith(text);
+    expect(response).not.toHaveProperty("toolCallAsText");
+  });
+});
