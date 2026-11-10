@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { sandboxJournalFolder } from "./profile-folder.ts";
 
 const drive = (text: string) => text.replaceAll("<drive>", "D:");
 
-describe("sandboxJournalFolder", () => {
+verifies("profile.profile-folder", () => {
   it("is sandbox-journals in the profile folder, joined the profile's way", () => {
     expect(
       sandboxJournalFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" }),
