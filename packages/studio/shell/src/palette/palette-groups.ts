@@ -48,6 +48,11 @@ export interface PaletteContent {
   readonly groups: readonly PaletteGroup[];
   /** Words are typed and no place or item matches them, so the "Nothing matches" line shows. */
   readonly nothingFound: boolean;
+  /**
+   * Words are typed, no place or item matches them and a search provider failed, so the palette
+   * says "Couldn't search" (T2-F25) in place of "Nothing matches".
+   */
+  readonly couldNotSearch: boolean;
 }
 
 /** What the palette ranks and groups. */
@@ -60,6 +65,8 @@ export interface PaletteSources {
   readonly recent: readonly TabLocation[];
   /** What the search providers found for the words, in provider order. */
   readonly found: readonly SearchResult[];
+  /** Whether a search provider failed (`FoundItems.failed`). */
+  readonly searchFailed: boolean;
   /** The commands people can run. */
   readonly actions: readonly Pick<CommandContribution, "id" | "title">[];
 }
@@ -79,7 +86,9 @@ export function itemLocationKey(item: ItemRef): string {
  * In a group the whole name comes first, then names that start with the words, then a word that
  * starts with them, then names that only contain them; among equal matches the more recently
  * opened comes first. Each group keeps its best 5 rows. A source that isn't built yet adds
- * nothing, so it never shows an error or a stand-in.
+ * nothing, so it never shows an error or a stand-in. When nothing matches because a provider
+ * failed, the palette says it couldn't search rather than that nothing matches; when other
+ * providers found something, it shows that.
  */
 export function paletteGroups(sources: PaletteSources): PaletteContent {
   const openKeys = new Set(sources.openTabs.map((location) => location.key));
@@ -98,6 +107,7 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
         group("recent", recent.map(placeRow)),
       ]),
       nothingFound: false,
+      couldNotSearch: false,
     };
   }
 
@@ -128,7 +138,8 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
   );
   return {
     groups: nonEmpty([group("items", items), group("actions", actions)]),
-    nothingFound: items.length === 0,
+    nothingFound: items.length === 0 && !sources.searchFailed,
+    couldNotSearch: items.length === 0 && sources.searchFailed,
   };
 }
 

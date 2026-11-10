@@ -15,7 +15,8 @@ export interface FoundItems {
  * waits for all of them. A provider that fails doesn't hide what the others found. With nothing
  * typed, or no provider yet, nothing is asked and nothing is found.
  *
- * @param contextFor the workspace context for a feature, such as `shell.services.contextFor`
+ * @param contextFor the workspace context for a feature, for the target the palette searches:
+ *   `(featureId) => shell.services.contextFor(featureId, target)`
  */
 export async function searchProviders(
   words: string,

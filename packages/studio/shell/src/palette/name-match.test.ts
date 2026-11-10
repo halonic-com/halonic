@@ -46,4 +46,20 @@ verifies("shell.palette-groups", () => {
       expect(read(special, "plain")).toBeUndefined();
     }
   });
+
+  it("reads a letter outside the BMP as a letter, not a break between words", () => {
+    expect(read("x", "𝐀x")).toBe("contains: x");
+    expect(read("x", "𝐀 x")).toBe("word-starts-with: x");
+  });
+
+  it("finds Greek words whatever form of sigma they end in", () => {
+    expect(read("οδοσ", "Οδος")).toBe("exact: Οδος");
+    expect(read("σ", "οδος")).toBe("contains: ς");
+  });
+
+  it("matches a run of spaces in the name with one typed space", () => {
+    expect(read("support reply", "Support  reply")).toBe("exact: Support  reply");
+    expect(read("t r", "Support \t reply")).toBe("contains: t \t r");
+    expect(read("reply", "Support   reply")).toBe("word-starts-with: reply");
+  });
 });
