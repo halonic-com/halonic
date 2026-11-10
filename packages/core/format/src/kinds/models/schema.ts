@@ -6,6 +6,10 @@ export const ModelPrice = s
   .object({
     input: s.number().min(0),
     output: s.number().min(0),
+    /** Input tokens read from the provider's prompt cache. Without it they cost `input`. */
+    cacheRead: s.number().min(0).optional(),
+    /** Input tokens written to the provider's prompt cache. Without it they cost `input`. */
+    cacheWrite: s.number().min(0).optional(),
   })
   .strict();
 

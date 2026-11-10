@@ -1,3 +1,4 @@
+import { addUsage } from "./add-usage.ts";
 import type { Usage } from "./run-basics.ts";
 import type { RunEvent } from "./run-event.ts";
 import type { PendingApproval, RunSummary } from "./run-summary.ts";
@@ -143,8 +144,7 @@ function addModelCall(
   summary: RunSummary,
   call: { usage: Usage; cost?: number; paidBy?: "subscription" },
 ): void {
-  summary.usage.inputTokens += call.usage.inputTokens;
-  summary.usage.outputTokens += call.usage.outputTokens;
+  summary.usage = addUsage(summary.usage, call.usage);
   if (call.paidBy === "subscription") summary.subscriptionCalls++;
   else if (call.cost === undefined) summary.unpricedCalls++;
   else summary.cost += call.cost;

@@ -103,6 +103,14 @@
               "output": {
                 "type": "number",
                 "minimum": 0
+              },
+              "cacheRead": {
+                "type": "number",
+                "minimum": 0
+              },
+              "cacheWrite": {
+                "type": "number",
+                "minimum": 0
               }
             },
             "required": [

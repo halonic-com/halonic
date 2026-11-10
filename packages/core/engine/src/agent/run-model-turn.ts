@@ -3,7 +3,7 @@
 // them. Everything with side effects goes through ports, so tests run it
 // on a scripted model with a fixed clock.
 
-import type { Usage } from "@halonicjs/events";
+import { addUsage, type Usage } from "@halonicjs/events";
 import type {
   ChatMessage,
   ChatParams,
@@ -183,12 +183,5 @@ function assistantMessage(response: ChatResponse, toolCalls: ToolCall[]): ChatMe
     content: response.content,
     ...(toolCalls.length === 0 ? {} : { toolCalls }),
     ...(response.replay === undefined ? {} : { replay: response.replay }),
-  };
-}
-
-function addUsage(total: Usage, more: Usage): Usage {
-  return {
-    inputTokens: total.inputTokens + more.inputTokens,
-    outputTokens: total.outputTokens + more.outputTokens,
   };
 }

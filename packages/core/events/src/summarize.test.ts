@@ -177,6 +177,28 @@ verifies("events.summary-cost", () => {
     expect(summary.unpricedCalls).toBe(1);
   });
 
+  it("adds up cache tokens apart from the input tokens", () => {
+    const summary = summaryOf(
+      {
+        ...response,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 900 },
+        cost: 0.25,
+      },
+      {
+        ...response,
+        usage: { inputTokens: 20, outputTokens: 7, cacheWriteTokens: 300 },
+        cost: 0.5,
+      },
+      { ...response, usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 100 }, cost: 0 },
+    );
+    expect(summary.usage).toEqual({
+      inputTokens: 31,
+      outputTokens: 13,
+      cacheReadTokens: 1_000,
+      cacheWriteTokens: 300,
+    });
+  });
+
   typeTest("marks a subscription call, and is absent otherwise", () => {
     type Response = Extract<RunEventBody, { type: "llm.response" }>;
     expectTypeOf<Response["paidBy"]>().toEqualTypeOf<"subscription" | undefined>();

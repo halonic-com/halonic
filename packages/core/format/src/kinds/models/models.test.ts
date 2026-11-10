@@ -25,6 +25,18 @@ verifies("format.models-file", () => {
     expect(alias?.params).toEqual({ temperature: 0.2, reasoningEffort: "high" });
   });
 
+  it("keeps the prompt cache prices, which are optional", () => {
+    const text = yaml(
+      "aliases:",
+      "  smart:",
+      "    provider: anthropic",
+      "    model: claude-sonnet",
+      "    price: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 }",
+    );
+    const alias = parsedValue("models", text).aliases["smart"];
+    expect(alias?.price).toEqual({ input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 });
+  });
+
   it("refuses a temperature above 2 and a negative price", () => {
     const text = yaml(
       "aliases:",

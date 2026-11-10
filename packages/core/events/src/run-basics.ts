@@ -4,10 +4,19 @@ export type RunKind = "run" | "test";
 /** Where a run is: still going, waiting for an event or a timer, or ended. */
 export type RunStatus = "running" | "waiting" | "completed" | "failed";
 
-/** Tokens one model call used, or the sum over a run. */
+/**
+ * Tokens one model call used, or the sum over a run. Providers with a prompt
+ * cache charge the tokens read from it and written to it at their own rates,
+ * so those are counted apart and are not in `inputTokens`.
+ */
 export interface Usage {
+  /** Input tokens the cache didn't serve or store. */
   inputTokens: number;
   outputTokens: number;
+  /** Input tokens read from the provider's prompt cache. Absent when there were none. */
+  cacheReadTokens?: number;
+  /** Input tokens written to the provider's prompt cache. Absent when there were none. */
+  cacheWriteTokens?: number;
 }
 
 /** What started a run. Absent for runs started by hand from a workflow. */

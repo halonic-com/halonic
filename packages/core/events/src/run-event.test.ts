@@ -258,7 +258,12 @@ verifies("events.run-log-contract", () => {
 
   typeTest("keeps the shared types the events use", () => {
     expectTypeOf<RunKind>().toEqualTypeOf<"run" | "test">();
-    expectTypeOf<Usage>().toEqualTypeOf<{ inputTokens: number; outputTokens: number }>();
+    expectTypeOf<Usage>().toEqualTypeOf<{
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+    }>();
     expectTypeOf<RunTrigger>().toEqualTypeOf<{
       type: "manual" | "schedule" | "every" | "mail" | "signal";
       routineId?: string;
