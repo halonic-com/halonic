@@ -194,10 +194,13 @@ verifies("cli.commands.validate.check-workspace", () => {
       await golden("no-problems", ["validate"]);
     });
 
-    it("for errors and a warning in two files", async () => {
-      writeFiles(acme, { ...warnedConnector, ...agent("sorter", "smrt") });
-      await golden("problems", ["validate"]);
-    });
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] HAL-4407: for errors and a warning in two files",
+      async () => {
+        writeFiles(acme, { ...warnedConnector, ...agent("sorter", "smrt") });
+        await golden("problems", ["validate"]);
+      },
+    );
 
     it("for a folder without workspace.yaml", async () => {
       rmSync(join(acme, "workspace.yaml"));

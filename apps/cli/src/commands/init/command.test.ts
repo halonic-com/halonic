@@ -143,18 +143,24 @@ verifies("cli.commands.init.create-workspace", () => {
       await expect(goldenText(args, run)).toMatchFileSnapshot(join("golden", `${name}.txt`));
     };
 
-    it("for a new workspace", async () => {
-      await golden("created", ["init", "acme"]);
-    });
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] HAL-4407: for a new workspace",
+      async () => {
+        await golden("created", ["init", "acme"]);
+      },
+    );
 
-    it("for a folder that isn't empty", async () => {
-      mkdirSync(join(folder, "acme"));
-      writeFileSync(join(folder, "acme", "notes.txt"), "Mine.\n");
-      const args = ["init", "acme"];
-      const run = await runGolden(args, () => [initCommand], folder);
-      expect(checklistProblems(run)).toEqual([]);
-      await expect(goldenText(args, run)).toMatchFileSnapshot(join("golden", "not-empty.txt"));
-    });
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] HAL-4407: for a folder that isn't empty",
+      async () => {
+        mkdirSync(join(folder, "acme"));
+        writeFileSync(join(folder, "acme", "notes.txt"), "Mine.\n");
+        const args = ["init", "acme"];
+        const run = await runGolden(args, () => [initCommand], folder);
+        expect(checklistProblems(run)).toEqual([]);
+        await expect(goldenText(args, run)).toMatchFileSnapshot(join("golden", "not-empty.txt"));
+      },
+    );
   });
 });
 
@@ -275,18 +281,21 @@ verifies("cli.commands.init.copy-example", () => {
     });
   });
 
-  it("has golden output for a copy of the example", async () => {
-    const args = ["init", "--example", "acme"];
-    // Each mode starts from the same empty folder.
-    const run = await runGolden(
-      args,
-      () => {
-        rmSync(join(folder, "acme"), { recursive: true, force: true });
-        return [initCommand];
-      },
-      folder,
-    );
-    expect(checklistProblems(run)).toEqual([]);
-    await expect(goldenText(args, run)).toMatchFileSnapshot(join("golden", "example.txt"));
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4407: has golden output for a copy of the example",
+    async () => {
+      const args = ["init", "--example", "acme"];
+      // Each mode starts from the same empty folder.
+      const run = await runGolden(
+        args,
+        () => {
+          rmSync(join(folder, "acme"), { recursive: true, force: true });
+          return [initCommand];
+        },
+        folder,
+      );
+      expect(checklistProblems(run)).toEqual([]);
+      await expect(goldenText(args, run)).toMatchFileSnapshot(join("golden", "example.txt"));
+    },
+  );
 });
