@@ -3,7 +3,7 @@ import type { ConnectorConfig, ConnectorFactoryContext } from "@halonicjs/ports"
 import { contractGrant, type ReachedCall } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { contractServer, FakeStarter } from "./fake-program.spec.ts";
+import { contractServer, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { McpStdioConnectorFactory } from "./stdio-connector.ts";
 
 const config: ConnectorConfig = {
@@ -23,6 +23,7 @@ function setUp(secrets = new MemorySecrets({ "notes-token": "value-from-secrets"
   const starter = new FakeStarter(contractServer(reached));
   const factory = new McpStdioConnectorFactory({
     starter,
+    folders: unusedFolders,
     inheritedEnv: { PATH: "/usr/bin", UNSET: undefined },
     clientInfo: { name: "halonic", version: "0.1.0" },
   });
@@ -49,12 +50,18 @@ verifies("mcp.stdio-connector", () => {
       expect(starter.counts().started).toBe(0);
     });
 
-    it("refuses a package runner, which starts through the pinned launcher", async () => {
+    it("starts a package runner without a pin as configured, in its cwd, like any trusted program", async () => {
       const { starter, factory, context } = setUp();
       const npx = { ...config.transport, command: "npx", args: ["-y", "@acme/notes-mcp"] };
       const client = factory.create({ ...config, transport: npx }, context);
-      await expect(client.listTools()).rejects.toThrow("package runner");
-      expect(starter.counts().started).toBe(0);
+      await client.listTools();
+      expect(starter.counts().started).toBe(1);
+      expect(starter.programs[0]?.launch).toMatchObject({
+        program: "npx",
+        args: ["-y", "@acme/notes-mcp"],
+        cwd: "/workspaces/acme/tools",
+      });
+      await client.close();
     });
 
     it("refuses a secret that isn't set, by name, and tries again on the next call", async () => {
@@ -119,6 +126,7 @@ verifies("mcp.stdio-connector", () => {
       });
       const factory = new McpStdioConnectorFactory({
         starter,
+        folders: unusedFolders,
         inheritedEnv: {},
         clientInfo: { name: "halonic", version: "0.1.0" },
       });

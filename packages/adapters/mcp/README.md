@@ -6,13 +6,33 @@ Our own MCP client for programs on the person's computer.
   `tools/call`, over any `McpTransport`.
 - `src/stdio/` holds `McpStdioConnectorFactory`, the `ConnectorFactory` for `stdio` connectors. It
   starts the program of a trusted workspace on the first call and talks MCP over its standard input
-  and output. Package runners (`npx`, `uvx` …) start through the pinned launcher, which comes next
-  (HAL-2544); until then they are refused.
-- `src/pinned/` holds `findRunner`, which finds a pinned connector's runner and its Node from the
+  and output.
+- `src/pinned/` holds the pinned launcher for package runners (`npx`, `uvx` …) with a `pin`.
+  It also holds `findRunner`, which finds a pinned connector's runner and its Node from the
   app's own environment (its `PATH`, on macOS the login shell's, then the usual install folders)
   and refuses a relative path. The login shell runs without `-i` and for 5 seconds at most, so a
   runner that only `.zshrc` puts on the `PATH` (nvm, fnm) may not be found; the refusal then asks for
   the runner's full path. It isn't wired into the launcher yet.
+
+## How a pinned package starts
+
+A connector with a `pin` (from the trust record, never from the workspace) starts like this, and
+any failed step refuses the start before a secret is read or a folder is created:
+
+1. `checkPackageRunnerLaunch` from `@halonicjs/app` checks the command and the connector's `env`,
+   counting the variables `secretEnv` sets. The refusal lists live there, not here.
+2. The pin's `registryUrl`, and only it, is asked which package and version it lists (npm's
+   package document, PyPI's JSON API), with a 15-second limit. `checkResolvedVersion` refuses any
+   other package or version.
+3. The runner starts with the pin's version added to its arguments (`pinnedRunnerArgs`), in a new
+   empty folder in the system's temporary folder. `HOME`, the config, cache and temporary folder
+   variables point at it, so no `.npmrc`, `uv.toml` or cache of the person's or the workspace's is
+   read, and each launch downloads the package afresh.
+4. Inherited package-manager and language variables are dropped and the registry is set from
+   `registryUrl`. An inherited proxy, certificate or preload stays: that's the person's machine.
+5. The folder is deleted when the connector closes.
+
+A package runner without a pin starts as configured, like any program the person trusted.
 
 ## How a program is started and stopped
 

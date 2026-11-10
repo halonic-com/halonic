@@ -1,7 +1,7 @@
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { connectorClientContract, type ReachedCall } from "@halonicjs/testing-contracts";
 import { refuseRealConnections } from "@halonicjs/testing-contracts/node";
-import { contractServer, FakeStarter } from "./fake-program.spec.ts";
+import { contractServer, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { McpStdioConnectorFactory } from "./stdio-connector.ts";
 
 refuseRealConnections();
@@ -12,6 +12,7 @@ connectorClientContract("mcp-stdio", "stdio", async () => {
   return {
     factory: new McpStdioConnectorFactory({
       starter,
+      folders: unusedFolders,
       inheritedEnv: { PATH: "/usr/bin" },
       clientInfo: { name: "halonic", version: "0.1.0" },
     }),

@@ -4,6 +4,7 @@ import {
   contractServerTools,
   type ReachedCall,
 } from "@halonicjs/testing-contracts";
+import type { LaunchFolders } from "../pinned/launch-folders.ts";
 import type { ProgramExit, ProgramLaunch, ProgramStarter, RunningProgram } from "./program.ts";
 
 /** A one-way byte stream a test writes into and the transport reads. */
@@ -200,3 +201,31 @@ function callContractTool(
     call.name === brokenToolName ? "it broke" : contractServerAnswer(call.name, call.arguments);
   reply.answer({ content: [{ type: "text", text }], isError: call.name === brokenToolName });
 }
+
+/** Launch folders that exist only as names, remembering which are still there. */
+export class FakeFolders implements LaunchFolders {
+  readonly #present = new Set<string>();
+  #created = 0;
+
+  async create(): Promise<string> {
+    this.#created += 1;
+    const folder = `/acme/launch/halonic-connector-${this.#created}`;
+    this.#present.add(folder);
+    return folder;
+  }
+
+  async remove(folder: string): Promise<void> {
+    this.#present.delete(folder);
+  }
+
+  /** The folders created and not yet removed. */
+  present(): string[] {
+    return [...this.#present];
+  }
+}
+
+/** Launch folders for a connector that must never create one: it starts no pinned program. */
+export const unusedFolders: LaunchFolders = {
+  create: () => Promise.reject(new Error("this test starts no pinned program")),
+  remove: () => Promise.reject(new Error("this test starts no pinned program")),
+};
