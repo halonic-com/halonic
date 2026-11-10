@@ -107,6 +107,22 @@ export async function snapshotGitFolder(workingFolder: string): Promise<GitFolde
   return { gitFolder, originals, folders };
 }
 
+/** Puts one `commondir` file back. Throws, writing nothing, when a folder above it is no longer a real folder. */
+async function restoreFile(snapshot: GitFolderSnapshot, path: string): Promise<boolean> {
+  const original = snapshot.originals.get(path) ?? ({ kind: "absent" } as const);
+  if (!(await parentsAreReal(snapshot.gitFolder, path)))
+    throw new Error(`${path} is behind a link`);
+  if (same(original, await read(path))) return false;
+  await rm(path, { recursive: true, force: true });
+  if (original.kind === "file") {
+    await mkdir(join(path, ".."), { recursive: true });
+    await writeFile(path, original.data, { mode: original.mode });
+  } else if (original.kind === "link") {
+    await symlink(original.target, path);
+  }
+  return true;
+}
+
 /**
  * Puts every `commondir` file back as the snapshot has it: one the program
  * added is deleted, one it changed or deleted is restored.
@@ -150,21 +166,8 @@ export async function restoreGitFolder(
     ...(await commondirPaths(snapshot.gitFolder)),
   ]);
   for (const path of paths) {
-    const original = snapshot.originals.get(path) ?? ({ kind: "absent" } as const);
     try {
-      if (!(await parentsAreReal(snapshot.gitFolder, path))) {
-        failed.push(path);
-        continue;
-      }
-      if (same(original, await read(path))) continue;
-      await rm(path, { recursive: true, force: true });
-      if (original.kind === "file") {
-        await mkdir(join(path, ".."), { recursive: true });
-        await writeFile(path, original.data, { mode: original.mode });
-      } else if (original.kind === "link") {
-        await symlink(original.target, path);
-      }
-      undone.push(path);
+      if (await restoreFile(snapshot, path)) undone.push(path);
     } catch {
       failed.push(path);
     }
