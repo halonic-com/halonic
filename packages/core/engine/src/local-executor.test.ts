@@ -119,6 +119,21 @@ verifies("engine.local-chat-turn", () => {
   });
 });
 
+verifies("engine.agent-knowledge", () => {
+  it("offers a chat turn's agent the knowledge tools, and none without an agent", async () => {
+    const model = new ScriptedModel([textAnswer("Hello"), textAnswer("Hi")]);
+    const { options } = fakeKnowledge([new FakeSource("wiki", [])], [sourceFile("wiki")]);
+    const { executor } = executorOn(model, { knowledge: options });
+
+    await executor.chatTurn({ ...request, agentId: "clerk" });
+    await executor.chatTurn(request);
+
+    const names = model.requests.map((each) => (each.tools ?? []).map((tool) => tool.name));
+    expect(names[0]).toEqual(expect.arrayContaining(["knowledge_search", "knowledge_read"]));
+    expect(names[1]).not.toContain("knowledge_search");
+  });
+});
+
 verifies("engine.knowledge-auto", () => {
   it("adds an auto source's passages to a chat turn's agent's last message, and none without an agent", async () => {
     const model = new ScriptedModel([textAnswer("Hello"), textAnswer("Hi")]);

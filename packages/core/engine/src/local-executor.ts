@@ -38,6 +38,7 @@ import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
+import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
 import type { DelegatedTask } from "./tools/subagents/subagent-tools.ts";
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
@@ -219,9 +220,10 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * Runs one chat turn with the caller's tools, Halonic's tools and the
-   * connected servers' tools. It keeps no run log, because a chat turn
-   * belongs to no run: the models it skipped are in `skipped` instead.
+   * Runs one chat turn with the caller's tools, Halonic's tools, the agent's
+   * knowledge tools and the connected servers' tools. It keeps no run log,
+   * because a chat turn belongs to no run: the models it skipped are in
+   * `skipped` instead.
    *
    * @throws when no model fits the request
    * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
@@ -233,7 +235,7 @@ export class LocalExecutor implements RunExecutor {
       secrets: this.options.secrets,
       messages: request.messages,
       callerTools: request.tools,
-      halonicTools: this.halonicToolsOf(request.agentId),
+      halonicTools: [...this.halonicToolsOf(request.agentId), ...knowledgeTools(knowledge.sources)],
       connectors: this.options.connectors,
       ...(request.params === undefined ? {} : { params: request.params }),
       maxRounds: this.maxRounds,
@@ -272,8 +274,9 @@ export class LocalExecutor implements RunExecutor {
 
   /**
    * Halonic's tools for a turn: the agent's memory tools come last, when
-   * there is an agent and a store. A chat turn gets these only; a run's
-   * agent also gets what its file grants ({@link LocalExecutor.runToolsOf}).
+   * there is an agent and a store. A chat turn adds the agent's knowledge
+   * tools; a run's agent also gets those and what its file grants
+   * ({@link LocalExecutor.runToolsOf}).
    *
    * @param runId - the run the turn is in, which the agent's notes name; absent in a chat
    */
@@ -292,12 +295,21 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * The tools of an agent in a run: Halonic's tools and its memory tools,
-   * then the run-log, records and subagent tools its kept file grants. An
-   * agent the definitions have no file for gets the first two only.
+   * The tools of an agent in a run: Halonic's tools, its memory tools and
+   * its knowledge tools, then the run-log, records and subagent tools its
+   * kept file grants. An agent the definitions have no file for gets the
+   * first two only, because its knowledge comes from that file too.
    */
-  private runToolsOf(turn: RunTurn, agentId: string, depth: number): readonly HalonicTool[] {
-    const own = this.halonicToolsOf(agentId, turn.run.runId);
+  private runToolsOf(
+    turn: RunTurn,
+    agentId: string,
+    depth: number,
+    knowledge: AgentKnowledge,
+  ): readonly HalonicTool[] {
+    const own = [
+      ...this.halonicToolsOf(agentId, turn.run.runId),
+      ...knowledgeTools(knowledge.sources),
+    ];
     const agent = agentIn(turn.definitions, agentId);
     if (agent === undefined || this.options.runs === undefined) {
       return own;
@@ -333,25 +345,26 @@ export class LocalExecutor implements RunExecutor {
       messages,
       tools: [],
     });
+    const knowledge = this.runKnowledgeOf(turn, task.agent);
     const result = await runModelTurn({
       model,
       secrets: this.options.secrets,
       messages,
       callerTools: [],
-      halonicTools: this.runToolsOf(turn, task.agent, task.depth),
+      halonicTools: this.runToolsOf(turn, task.agent, task.depth, knowledge),
       connectors: [],
       maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
       agent: task.agent,
       clock: this.options.clock,
       checkCall: checkSubagentToolCall,
-      autoKnowledge: this.runKnowledgeOf(turn, task.agent).auto,
+      autoKnowledge: knowledge.auto,
     });
     return result.content;
   }
 
   /**
    * A run's model call: the state's prompt to its agent's model, with
-   * Halonic's tools, the agent's memory tools, the tools its file grants
+   * Halonic's tools, the agent's memory and knowledge tools, the tools its file grants
    * ({@link LocalExecutor.runToolsOf}) and, with `runs.connectorCalls`, the
    * connected servers' tools, through the same turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first ({@link checkRunToolCall}),
@@ -386,18 +399,20 @@ export class LocalExecutor implements RunExecutor {
     const connectors = inBranch
       ? this.options.connectors.map(readToolsOf)
       : this.options.connectors;
+    // Built on a resumed call too: the model can still search after the OK.
+    const knowledge = this.runKnowledgeOf(turn, call.agent);
     const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
       messages,
-      halonicTools: this.runToolsOf(turn, call.agent, 0),
+      halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
       connectors: connectorCalls === undefined ? [] : connectors,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
       maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
       clock: this.options.clock,
       checkCall: checkRunToolCall,
-      autoKnowledge: this.runKnowledgeOf(turn, call.agent).auto,
+      autoKnowledge: knowledge.auto,
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
     });
     return outcome.kind === "stopped"

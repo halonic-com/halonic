@@ -18,6 +18,11 @@ function writerWith(knowledge: string[]): Agent {
   return { ...writerAgent(), knowledge };
 }
 
+/** The names of the tools a model request offered. */
+function offered(request: { tools?: readonly { name: string }[] } | undefined): string[] {
+  return (request?.tools ?? []).map((tool) => tool.name);
+}
+
 /** Runs the reply workflow on the given answers, with the writer's knowledge set up. */
 async function runReply(answers: Parameters<typeof runsOn>[0], setup: RunsSetup) {
   const started = runsOn(answers, new KernelRuns(), setup);
@@ -52,6 +57,53 @@ verifies("engine.agent-knowledge", () => {
 
     expect(built).toEqual([]);
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("offers a run's agent knowledge_search and knowledge_read over its sources", async () => {
+    const handbook = new FakeSource("handbook", [hit("refunds.md", "Refund within 30 days")]);
+    const { options } = fakeKnowledge([handbook]);
+    const search = call("s-1", "knowledge_search", { source: "handbook", query: "refunds" });
+
+    const { model } = await runReply([callAnswer(search), textAnswer("Dear support")], {
+      agents: { writer: writerWith(["handbook"]) },
+      knowledge: { handbook: sourceFile("handbook") },
+      knowledgeOptions: options,
+    });
+
+    const tools = model.requests[0]?.tools ?? [];
+    expect(offered(model.requests[0])).toEqual(["knowledge_search", "knowledge_read"]);
+    expect(tools[0]?.parameters).toMatchObject({ properties: { source: { enum: ["handbook"] } } });
+    expect(handbook.queries).toEqual([{ query: "refunds", limit: 5 }]);
+    expect(model.requests[1]?.messages.at(-1)?.content).toContain(
+      fenceUntrusted("Refund within 30 days"),
+    );
+  });
+
+  it("offers no knowledge tools to an agent without sources", async () => {
+    const { model } = await runReply([textAnswer("Dear support")], {
+      agents: { writer: writerWith([]) },
+      knowledge: { handbook: sourceFile("handbook") },
+      knowledgeOptions: fakeKnowledge([new FakeSource("handbook", [])]).options,
+    });
+
+    expect(offered(model.requests[0])).toEqual([]);
+  });
+
+  it("offers the knowledge tools again when the turn goes on after a person's OK", async () => {
+    const { options } = fakeKnowledge([new FakeSource("handbook", [])]);
+    const publish = { ...halonicTool("publish", async () => "published"), risk: "write" as const };
+    const setup = await runReply([callAnswer(call("p-1", "publish")), textAnswer("Posted")], {
+      agents: { writer: writerWith(["handbook"]) },
+      knowledge: { handbook: sourceFile("handbook") },
+      knowledgeOptions: options,
+      halonicTools: [publish],
+    });
+
+    await setup.executor.send("run_1", "approve", undefined, { callId: "call-2" });
+    await setup.scheduler.runDue();
+
+    expect(offered(setup.model.requests[1])).toEqual(offered(setup.model.requests[0]));
+    expect(offered(setup.model.requests[1])).toContain("knowledge_search");
   });
 
   it("fails the run's call when no factory builds a source's type", async () => {
