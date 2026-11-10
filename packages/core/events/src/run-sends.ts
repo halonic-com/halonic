@@ -25,6 +25,7 @@ export interface RunSends {
   /**
    * Whether the run made a tool call at all. A run "sent nothing" only when
    * it made none: a call whose log doesn't say what it can do may have sent.
+   * Starting a child run counts as a call, because the child may have sent.
    */
   madeToolCalls: boolean;
 }
@@ -49,7 +50,7 @@ export interface RunSends {
 export function sendsOf(events: readonly RunEvent[]): RunSends {
   const sends: RunSends = { sent: [], maySend: [], madeToolCalls: false };
   for (const event of events) {
-    if (event.type !== "tool.called" && event.type !== "tool.result") continue;
+    if (!couldSend(event)) continue;
     sends.madeToolCalls = true;
     if (event.type !== "tool.result" || event.risk !== "send" || event.noun === undefined) {
       continue;
@@ -59,6 +60,18 @@ export function sendsOf(events: readonly RunEvent[]): RunSends {
     if (event.outcome === "unknown") addCall(sends.maySend, verb, event.noun);
   }
   return sends;
+}
+
+/**
+ * Whether the event is a call that could have sent something: a tool call, or
+ * a child run started, whose own log holds what it sent.
+ */
+function couldSend(event: RunEvent): boolean {
+  return (
+    event.type === "tool.called" ||
+    event.type === "tool.result" ||
+    event.type === "workflow.started"
+  );
 }
 
 /** Count one call in its verb's group, adding the group or the noun at the end when new. */

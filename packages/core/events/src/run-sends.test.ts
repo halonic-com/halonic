@@ -103,6 +103,13 @@ verifies("events.summary-sends", () => {
     expect(sends.madeToolCalls).toBe(true);
   });
 
+  it("counts starting a child run as a call, because the child may have sent", () => {
+    const sends = sendsOf(
+      runLog({ type: "workflow.started", state: "send", workflow: "mail", childRunId: "c" }),
+    );
+    expect(sends).toStrictEqual({ sent: [], maySend: [], madeToolCalls: true });
+  });
+
   it("keeps the counts apart from the log's nouns", () => {
     const noun = { one: "email", many: "emails" };
     const sends = sendsOf(runLog(sent(noun)));
