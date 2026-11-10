@@ -5,6 +5,8 @@ export {
   type MemoryConnectorCall,
   MemoryConnectorFactory,
   type MemoryConnectorKind,
+  type MemoryConnectorLaunch,
+  type MemoryConnectorOptions,
   type MemoryConnectorServer,
 } from "./connector-client.ts";
 export { MemoryCoordination } from "./coordination.ts";

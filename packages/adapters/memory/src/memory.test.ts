@@ -273,8 +273,8 @@ function connectorContracts(): void {
       };
     });
   }
-  connectorPinContract("memory", async () => {
-    const factory = new MemoryConnectorFactory("stdio", contractServer);
+  connectorPinContract("memory", async ({ inheritedEnv }) => {
+    const factory = new MemoryConnectorFactory("stdio", contractServer, { inheritedEnv });
     return {
       factory,
       context: {

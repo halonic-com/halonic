@@ -7,7 +7,7 @@ import type {
   ConnectorPin,
   ConnectorTool,
 } from "@halonicjs/ports";
-import { checkPinnedLaunch } from "./connector-pin.ts";
+import { checkPinnedLaunch, spawnFor } from "./connector-pin.ts";
 import { copyJson } from "./copy.ts";
 
 /** The transport kinds a {@link MemoryConnectorFactory} can stand in for. */
@@ -28,10 +28,23 @@ export interface MemoryConnectorCall {
   args: Record<string, unknown>;
 }
 
-/** A program a `stdio` connector started: its pin, or `null`, and the folder it started in. */
+/**
+ * A program a `stdio` connector started: its pin, or `null`, the folder it
+ * started in, and the command, arguments and whole environment a real
+ * launcher would spawn it with.
+ */
 export interface MemoryConnectorLaunch {
   pin: ConnectorPin | null;
   folder: string;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+/** How a {@link MemoryConnectorFactory} is set up beyond its server. */
+export interface MemoryConnectorOptions {
+  /** The environment its programs inherit, standing in for the process's own. */
+  inheritedEnv?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -46,18 +59,26 @@ export interface MemoryConnectorLaunch {
  * (`contracts.connector-pin`): the launch must pass
  * `app.package-runner-launch`, and the pin's registry, asked through the
  * context's `http` at `registryUrl` only, must list the pinned version. It
- * then starts in a new folder of its own under `/memory/connector-folders`.
+ * then starts in a new folder of its own under `/memory/connector-folders`,
+ * at the pin's version, with the pin's registry set and no inherited
+ * variable that could move it.
  */
 export class MemoryConnectorFactory implements ConnectorFactory {
   readonly transport: MemoryConnectorKind;
   readonly #server: MemoryConnectorServer;
   readonly #reached: MemoryConnectorCall[] = [];
   readonly #launches: MemoryConnectorLaunch[] = [];
+  readonly #inheritedEnv: Readonly<Record<string, string>>;
   #running = 0;
 
-  constructor(transport: MemoryConnectorKind, server: MemoryConnectorServer) {
+  constructor(
+    transport: MemoryConnectorKind,
+    server: MemoryConnectorServer,
+    options: MemoryConnectorOptions = {},
+  ) {
     this.transport = transport;
     this.#server = { tools: copyJson(server.tools), answer: server.answer };
+    this.#inheritedEnv = { ...options.inheritedEnv };
   }
 
   create(config: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
@@ -72,6 +93,7 @@ export class MemoryConnectorFactory implements ConnectorFactory {
   #link(): ServerLink {
     return {
       kind: this.transport,
+      inheritedEnv: this.#inheritedEnv,
       listed: () => copyJson([...this.#server.tools]),
       reach: (name, args) => {
         const call = copyJson({ name, args });
@@ -108,6 +130,8 @@ export class MemoryConnectorFactory implements ConnectorFactory {
 /** What a client may do with its factory's server and counters. */
 interface ServerLink {
   readonly kind: MemoryConnectorKind;
+  /** The environment a started program inherits. */
+  readonly inheritedEnv: Readonly<Record<string, string>>;
   /** Tools as the server lists them, as a fresh copy. */
   listed(): ConnectorTool[];
   /** Hands a call to the server and records that it reached it. */
@@ -190,7 +214,7 @@ class MemoryConnectorClient implements ConnectorClient {
         ? (transport.cwd ?? this.#context.workspaceRoot ?? "")
         : this.#server.newFolder();
     this.#running = true;
-    this.#server.start({ pin, folder });
+    this.#server.start({ pin, folder, ...spawnFor(transport, pin, this.#server.inheritedEnv) });
   }
 
   #mayCall(tool: ConnectorTool): boolean {

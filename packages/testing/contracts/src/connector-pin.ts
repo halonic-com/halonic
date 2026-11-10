@@ -8,6 +8,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { contractGrant, contractServerTools } from "./connector-client.ts";
 import {
+  type ConnectorLaunch,
+  contractInheritedEnv,
+  expectOutside,
+  expectSpawnedPinned,
+} from "./connector-pin-launch.ts";
+import {
   npmMirrorUrl,
   npmPackage,
   npmRegistryUrl,
@@ -18,16 +24,6 @@ import {
   RecordedRegistryClient,
 } from "./recorded-registry.ts";
 
-/**
- * A program a `stdio` connector started, as its adapter asked for it: the
- * pin it started (`null` for a program without one) and the folder it
- * started in.
- */
-export interface ConnectorLaunch {
-  pin: ConnectorPin | null;
-  folder: string;
-}
-
 /** One `stdio` connector factory under test, before the suite creates a client. */
 export interface PinnedConnectorHarness {
   /**
@@ -37,12 +33,18 @@ export interface PinnedConnectorHarness {
   factory: ConnectorFactory;
   /** What the factory is given, except `trust` and `http`, which the suite sets. */
   context: Omit<ConnectorFactoryContext, "trust" | "http"> & { workspaceRoot: string };
-  /** Every program started so far, in order. */
+  /** Every program started so far, in order, as it was spawned. */
   launches(): readonly ConnectorLaunch[];
 }
 
-/** Creates a fresh `stdio` factory under test, with nothing started. */
-export type MakePinnedConnector = () => Promise<PinnedConnectorHarness>;
+/**
+ * Creates a fresh `stdio` factory under test, with nothing started. The
+ * factory takes `inheritedEnv` as its own process's environment, the one a
+ * program inherits.
+ */
+export type MakePinnedConnector = (options: {
+  inheritedEnv: Readonly<Record<string, string>>;
+}) => Promise<PinnedConnectorHarness>;
 
 const npmPin: ConnectorPin = {
   registry: "npm",
@@ -63,10 +65,18 @@ function stdio(
   args: string[],
   pin?: ConnectorPin,
   env: Record<string, string> = {},
+  cwd?: string,
 ): ConnectorConfig {
   return {
     id: "mail",
-    transport: { kind: "stdio", command, args, env, ...(pin === undefined ? {} : { pin }) },
+    transport: {
+      kind: "stdio",
+      command,
+      args,
+      env,
+      ...(cwd === undefined ? {} : { cwd }),
+      ...(pin === undefined ? {} : { pin }),
+    },
     secretEnv: {},
   };
 }
@@ -88,7 +98,7 @@ async function start(
   config: ConnectorConfig,
   options: { trusted?: boolean; registryDown?: boolean } = {},
 ): Promise<Started> {
-  const harness = await make();
+  const harness = await make({ inheritedEnv: contractInheritedEnv });
   const registry = new RecordedRegistryClient({ down: options.registryDown ?? false });
   const trust = (options.trusted ?? true) ? contractGrant : null;
   let outcome: Started["outcome"];
@@ -111,22 +121,20 @@ function expectRefused({ harness, outcome }: Started): void {
   expect(harness.launches()).toEqual([]);
 }
 
-/** Expects one program, started with `pin`, in a folder of its own. */
-function expectStartedWith({ harness, outcome }: Started, pin: ConnectorPin): void {
+/**
+ * Expects one program, spawned as `pin` asks, in a folder of its own: not
+ * the workspace, not inside it, not around it.
+ */
+function expectStartedWith({ harness, outcome }: Started, pin: ConnectorPin): ConnectorLaunch {
   expect(outcome).toEqual({ listed: contractServerTools });
   const launches = harness.launches();
   expect(launches).toHaveLength(1);
-  expect(launches[0]?.pin).toEqual(pin);
-  const folder = slashes(launches[0]?.folder ?? "");
-  const root = slashes(harness.context.workspaceRoot);
-  expect(folder).not.toBe(root);
-  expect(folder.startsWith(`${root}/`)).toBe(false);
-  expect(root.startsWith(`${folder}/`)).toBe(false);
-}
-
-/** A path with Windows backslashes written as slashes, so one comparison serves every platform. */
-function slashes(path: string): string {
-  return path.replaceAll("\\", "/");
+  const [launch] = launches;
+  if (launch === undefined) throw new Error("no program started");
+  expect(launch.pin).toEqual(pin);
+  expectSpawnedPinned(launch, pin);
+  expectOutside(launch.folder, harness.context.workspaceRoot);
+  return launch;
 }
 
 /** Expects every registry address asked for to lie under `registryUrl`. */
@@ -171,8 +179,16 @@ function startCases(make: MakePinnedConnector): void {
     expectStartedWith(started, npmPin);
   });
 
+  it("starts a pinned connector given a cwd in a folder of its own, not in that cwd", async () => {
+    const harness = await make({ inheritedEnv: contractInheritedEnv });
+    const cwd = `${harness.context.workspaceRoot}/tools/mail`;
+    const config = stdio("npx", ["-y", npmPackage.name], npmPin, {}, cwd);
+    const launch = expectStartedWith(await start(async () => harness, config), npmPin);
+    expectOutside(launch.folder, cwd);
+  });
+
   it("gives each client's program its own folder", async () => {
-    const harness = await make();
+    const harness = await make({ inheritedEnv: contractInheritedEnv });
     for (let round = 0; round < 2; round += 1) {
       const registry = new RecordedRegistryClient();
       const client = harness.factory.create(npx(npmPin), {
@@ -187,10 +203,13 @@ function startCases(make: MakePinnedConnector): void {
     expect(first?.folder).not.toBe(second?.folder);
   });
 
-  it("starts an unpinned package runner once trusted, with no pin and no registry lookup", async () => {
+  it("starts an unpinned package runner once trusted, as configured, with no registry lookup", async () => {
     const started = await start(make, npx());
     expect(started.outcome).toEqual({ listed: contractServerTools });
-    expect(started.harness.launches().map((launch) => launch.pin)).toEqual([null]);
+    const launches = started.harness.launches();
+    expect(launches.map(({ pin, args }) => ({ pin, args }))).toEqual([
+      { pin: null, args: ["-y", npmPackage.name] },
+    ]);
     expect(started.registry.asked()).toEqual([]);
   });
 }

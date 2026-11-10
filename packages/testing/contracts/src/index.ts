@@ -18,11 +18,11 @@ export {
   type ReachedCall,
 } from "./connector-client.ts";
 export {
-  type ConnectorLaunch,
   connectorPinContract,
   type MakePinnedConnector,
   type PinnedConnectorHarness,
 } from "./connector-pin.ts";
+export { type ConnectorLaunch, contractInheritedEnv } from "./connector-pin-launch.ts";
 export { coordinationContract } from "./coordination.ts";
 export {
   type CoordinationHarness,
