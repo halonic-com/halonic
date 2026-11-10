@@ -1,0 +1,146 @@
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
+import { findRunner, type RunnerSearch } from "./find-runner.ts";
+
+/** A computer that holds exactly `files`, all of them programs except npm's CLI scripts. */
+function computer(
+  files: readonly string[],
+  sources: Partial<RunnerSearch> & Pick<RunnerSearch, "platform" | "path">,
+): RunnerSearch {
+  const present = new Set(
+    files.map((file) => (sources.platform === "win32" ? file.toLowerCase() : file)),
+  );
+  const has = (path: string) =>
+    present.has(sources.platform === "win32" ? path.toLowerCase() : path);
+  return {
+    home: undefined,
+    loginShellPath: async () => undefined,
+    isProgram: async (path) => has(path) && !path.endsWith(".js"),
+    isFile: async (path) => has(path),
+    ...sources,
+  };
+}
+
+/** A made-up Windows path on `drive`, built from its parts, so no real local path is written here. */
+function windowsPath(drive: string, ...parts: string[]): string {
+  return [`${drive}:`, ...parts].join("\\");
+}
+
+verifies("mcp.runner-lookup", () => {
+  describe("on macOS and Linux", () => {
+    it("finds the runner and node in the app's PATH, skipping relative entries", async () => {
+      const search = computer(["./npx", "/acme/node/bin/npx", "/acme/node/bin/node"], {
+        platform: "linux",
+        path: ".::/usr/bin:/acme/node/bin",
+      });
+      expect(await findRunner("npx", "npm", search)).toEqual({
+        found: { program: "/acme/node/bin/npx", leadingArgs: [], pathFolders: ["/acme/node/bin"] },
+      });
+    });
+
+    it("on macOS, looks in the login shell's PATH after the short one a desktop app inherits", async () => {
+      const files = ["/acme/.volta/bin/npx", "/acme/.volta/bin/node", "/opt/homebrew/bin/npx"];
+      const search = computer(files, {
+        platform: "darwin",
+        path: "/usr/bin:/bin",
+        loginShellPath: async () => "/acme/.volta/bin:/usr/bin",
+      });
+      expect(await findRunner("npx", "npm", search)).toMatchObject({
+        found: { program: "/acme/.volta/bin/npx" },
+      });
+    });
+
+    it("then in the usual install folders, and puts node's own folder on PATH too", async () => {
+      const search = computer(["/opt/homebrew/bin/npx", "/acme/home/.local/bin/node"], {
+        platform: "darwin",
+        path: "/usr/bin",
+        home: "/acme/home",
+      });
+      expect(await findRunner("npx", "npm", search)).toEqual({
+        found: {
+          program: "/opt/homebrew/bin/npx",
+          leadingArgs: [],
+          pathFolders: ["/opt/homebrew/bin", "/acme/home/.local/bin"],
+        },
+      });
+    });
+
+    it("finds a Python runner without looking for node, and takes a command with a folder as written", async () => {
+      const search = computer(["/acme/home/.local/bin/uvx", "/acme/tools/uvx"], {
+        platform: "linux",
+        path: "",
+        home: "/acme/home",
+      });
+      expect(await findRunner("uvx", "pypi", search)).toMatchObject({
+        found: { program: "/acme/home/.local/bin/uvx", pathFolders: ["/acme/home/.local/bin"] },
+      });
+      expect(await findRunner("/acme/tools/uvx", "pypi", search)).toMatchObject({
+        found: { program: "/acme/tools/uvx" },
+      });
+    });
+
+    it("refuses, by name, a runner or a node it can't find", async () => {
+      const none = computer([], { platform: "linux", path: "/usr/bin" });
+      expect(await findRunner("npx", "npm", none)).toEqual({
+        refused: 'couldn\'t find "npx" on this computer',
+      });
+      const noNode = computer(["/usr/bin/npx"], { platform: "linux", path: "/usr/bin" });
+      expect(await findRunner("npx", "npm", noNode)).toEqual({
+        refused: 'couldn\'t find "node" on this computer, which "npx" needs',
+      });
+    });
+  });
+
+  describe("on Windows", () => {
+    const nodejs = windowsPath("C", "Program Files", "nodejs");
+
+    it("starts npm's npx.cmd as node.exe with npm's own CLI script, without a shell", async () => {
+      const search = computer(
+        [
+          `${nodejs}\\npx.cmd`,
+          `${nodejs}\\node.exe`,
+          `${nodejs}\\node_modules\\npm\\bin\\npx-cli.js`,
+        ],
+        {
+          platform: "win32",
+          path: `${windowsPath("C", "Windows")};${nodejs}`,
+          pathExt: ".COM;.EXE;.BAT;.CMD",
+        },
+      );
+      expect(await findRunner("npx", "npm", search)).toEqual({
+        found: {
+          program: `${nodejs}\\node.exe`,
+          leadingArgs: [`${nodejs}\\node_modules\\npm\\bin\\npx-cli.js`],
+          pathFolders: [nodejs],
+        },
+      });
+    });
+
+    it("refuses any other .cmd runner, which only a shell can start", async () => {
+      const search = computer([`${nodejs}\\pnpm.cmd`, `${nodejs}\\node.exe`], {
+        platform: "win32",
+        path: nodejs,
+      });
+      expect(await findRunner("pnpm", "npm", search)).toEqual({
+        refused:
+          '"pnpm.cmd" starts only through a shell, which Halonic doesn\'t use for a pinned connector',
+      });
+    });
+
+    it("starts uvx.exe directly, found in a folder under the home folder, in any letter case", async () => {
+      const search = computer([windowsPath("D", "Acme", ".local", "bin", "UVX.EXE")], {
+        platform: "win32",
+        path: "",
+        home: windowsPath("D", "acme"),
+        pathExt: ".EXE;.CMD;.PS1",
+      });
+      expect(await findRunner("uvx", "pypi", search)).toEqual({
+        found: {
+          program: windowsPath("D", "acme", ".local", "bin", "uvx.exe"),
+          leadingArgs: [],
+          pathFolders: [windowsPath("D", "acme", ".local", "bin")],
+        },
+      });
+    });
+  });
+});
