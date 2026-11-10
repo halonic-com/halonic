@@ -1,10 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { join, resolve } from "node:path";
 import { jsonSchemaOf, kindNames } from "@halonicjs/format";
 import { type CliCommand, UsageError } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { markPart, phrase, plainText } from "../../messages/phrase.ts";
 import { schemaMessages } from "../../messages/schema.ts";
+import { shownPath } from "../../shown-path.ts";
 
 /** The folder `halonic schema` writes to when none is given. */
 export const defaultSchemaFolder = "schemas";
@@ -44,21 +45,4 @@ export function schemaFileName(kind: string): string {
 /** A name from the command line, in quotes when it's empty or holds a space or a comma, so `""` stays visible in a list. */
 function shownName(name: string): string {
   return name === "" || /[\s,]/.test(name) ? `"${name}"` : name;
-}
-
-/**
- * A folder as the user would type it from where they are (cli-output 1.2):
- * `./schemas` for a folder below, `../out` for one above, and the full path
- * when it's on another drive. The separator is the system's, so `.\schemas`
- * on Windows.
- */
-export function shownPath(cwd: string, target: string): string {
-  const path = relative(cwd, target);
-  if (path === "") {
-    return ".";
-  }
-  if (isAbsolute(path) || path === ".." || path.startsWith(`..${sep}`)) {
-    return path;
-  }
-  return `.${sep}${path}`;
 }

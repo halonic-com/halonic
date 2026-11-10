@@ -19,7 +19,8 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-contracts": "workspace:*",
