@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
+import { createRef } from "react";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
 import { ListHeading } from "./list-heading.tsx";
@@ -53,6 +54,17 @@ verifies("kit.list-heading", () => {
     expect(heading.textContent).not.toContain("·");
     expect(detail.className).toBe("min-w-0 wrap-break-word");
     expect(spokenText(heading)).toBe("Acme, Workspace settings");
+  });
+
+  it("can be focused from code only, with no ring, when it has a ref", () => {
+    const ref = createRef<HTMLHeadingElement>();
+    const { container } = render(<ListHeading name="Needs you" headingRef={ref} />);
+    const heading = container.querySelector("h2") as HTMLElement;
+    expect(ref.current).toBe(heading);
+    expect(heading.tabIndex).toBe(-1);
+    expect(heading.className).toContain("outline-none");
+    const plain = render(<ListHeading name="Agents" />).container.querySelector("h2");
+    expect(plain?.hasAttribute("tabindex")).toBe(false);
   });
 
   it("leaves out an empty detail", () => {

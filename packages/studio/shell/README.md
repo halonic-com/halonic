@@ -43,7 +43,10 @@ Home's sections come from features the same way, through `home.addCard`, naming 
 sections (`homeSections`: Get set up, Needs you, Recent runs). The shell shows them in that order
 under the `h1` "Home", each a region named by its heading from `homeSectionTitles`, and leaves out a
 section no feature added. A card's view is a named export that gets `HomeCardProps`: the context of
-the feature that added it (`shell.home-sections`).
+the feature that added it (`shell.home-sections`). Each section loads and fails on its own: a card's
+view suspends while it loads (as with React's `use`) and throws when it fails. The shell shows the
+skeleton (none for Get set up), says "Loading Home" once for the page, and puts the section's
+"Couldn't load" error with Try again in place of its rows (`shell.home-states`).
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds

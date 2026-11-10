@@ -1,3 +1,5 @@
+import type { Ref } from "react";
+
 /**
  * `inline` puts the detail after the name ("ACME · WORKSPACE SETTINGS") and moves it onto its own
  * line when the two don't fit; a detail too long even for its own line wraps, and is never cut.
@@ -15,6 +17,12 @@ export interface ListHeadingProps {
   /** So a list that isn't a kit List can point `aria-labelledby` at the heading. */
   readonly id?: string;
   readonly layout?: ListHeadingLayout;
+  /**
+   * For a heading that takes focus from code, as Home's section heading after Try again works
+   * (a11y 1.4). With it the heading gets `tabindex="-1"`, so only code can focus it, and no ring:
+   * it isn't a control.
+   */
+  readonly headingRef?: Ref<HTMLHeadingElement>;
 }
 
 const shared = "px-4 pt-4 pb-1 text-caption uppercase tracking-label text-fg-muted";
@@ -37,12 +45,18 @@ export function ListHeading({
   headingLevel = 2,
   id,
   layout = "inline",
+  headingRef,
 }: ListHeadingProps) {
   const Heading = `h${headingLevel}` as const;
   const hasDetail = detail !== undefined && detail !== "";
 
   return (
-    <Heading id={id} className={`${shared} ${layoutClasses[layout]}`}>
+    <Heading
+      ref={headingRef}
+      id={id}
+      tabIndex={headingRef === undefined ? undefined : -1}
+      className={`${shared} ${layoutClasses[layout]}${headingRef === undefined ? "" : " outline-none"}`}
+    >
       <span className="min-w-0 truncate">{name}</span>
       {hasDetail ? (
         <span className="min-w-0 wrap-break-word">
