@@ -12,6 +12,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     hasBubblewrap: async () => true,
     userNamespacesRestricted: async () => false,
     hasSeatbelt: async () => true,
+    hasWindowsSandbox: async () => false,
     ...overrides,
   };
 }
@@ -69,7 +70,17 @@ verifies("sandbox-srt.check", () => {
       expect(check.ok).toBe(true);
     });
 
-    it("opens nothing on plain Windows", async () => {
+    it("starts on Windows only when srt's Windows install is there", async () => {
+      const windows = { platform: "win32" as const };
+      expect(
+        await new SrtSandbox(machine({ ...windows, hasWindowsSandbox: async () => true })).check(),
+      ).toEqual({ ok: true, reason: null, missing: [] });
+      const missing = await new SrtSandbox(machine(windows)).check();
+      expect(missing).toMatchObject({ ok: false, reason: "windows" });
+      expect(missing.missing[0]).toContain("windows-install");
+    });
+
+    it("opens nothing on Windows without srt's install", async () => {
       const sandbox = new SrtSandbox(machine({ platform: "win32" }));
       const profile = {
         workingFolder: "/contract/work",
@@ -81,7 +92,7 @@ verifies("sandbox-srt.check", () => {
         network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
         timeLimitMs: 1000,
       };
-      await expect(sandbox.open(profile)).rejects.toThrow("plain Windows");
+      await expect(sandbox.open(profile)).rejects.toThrow("windows-install");
     });
 
     it("says files are shared and the fence is the operating system's", () => {

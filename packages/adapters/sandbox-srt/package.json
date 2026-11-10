@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "test:fence": "vitest run --config vitest.fence.config.ts"
+    "test:fence": "vitest run --config vitest.fence.config.ts",
+    "test:fence:windows": "vitest run --config vitest.fence-windows.config.ts"
   },
   "devDependencies": {
     "@halonicjs/testing-contracts": "workspace:*",

@@ -1,6 +1,6 @@
 # @halonicjs/adapter-sandbox-srt
 
-The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-runtime) (srt): bubblewrap on Linux, Seatbelt on macOS, and no sandbox on plain Windows yet (WSL2 works).
+The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-runtime) (srt): bubblewrap on Linux, Seatbelt on macOS, and on Windows a sandbox user account with network filters (srt's alpha Windows mode, only when its install is there; WSL2 also works).
 
 - **Layer:** adapters
 - **Owner:** mateo
@@ -8,13 +8,19 @@ The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-ru
 - **Public API:** `@halonicjs/adapter-sandbox-srt`
 
 `SrtSandbox` is the whole adapter. `check()` says whether the sandbox can start on this machine and
-gives the first reason when it can't: plain Windows, inside a container (Docker or Podman), user
+gives the first reason when it can't: Windows without srt's install (`srt windows-install`, once, as an administrator), inside a container (Docker or Podman), user
 namespaces refused, or bubblewrap missing. `open()` checks first, refuses a bridge that isn't a
 loopback address, then opens a session that proves its fence (a canary file the fence hides and a
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and
 never run a file under a skill's `scripts/` folder. When a session ends, it undoes any `commondir`
 file the program changed in the working folder's git folders and moves aside any `.git` the program
 planted at a gitlink, reporting each as a refused write.
+
+On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
+(the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
+program, argument or variable with a double quote, a percent sign or a line break is refused rather
+than quoted wrongly. The `sandbox-windows` CI job runs the fence through a session
+(`pnpm test:fence:windows`).
 
 ## Exports
 

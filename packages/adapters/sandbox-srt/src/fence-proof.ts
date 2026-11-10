@@ -17,7 +17,7 @@ const probeTimeoutMs = 15_000;
 const probeScript = `
 const fs = require("node:fs");
 const net = require("node:net");
-const [control, canary, port] = process.argv.slice(1);
+const [control, canary, port] = process.argv.slice(2);
 const result = {};
 try { fs.readFileSync(control); result.control = "readable"; } catch { result.control = "hidden"; }
 try { fs.readFileSync(canary); result.canary = "readable"; } catch { result.canary = "hidden"; }
@@ -31,6 +31,9 @@ socket.on("connect", () => finish("connected"));
 socket.on("error", () => finish("blocked"));
 setTimeout(() => finish("blocked"), 3000);
 `;
+
+/** The name the probe file starts with in the session's temp folder. */
+export const probeFilePrefix = ".halonic-fence-probe-";
 
 /** What a session needs to prove its fence. */
 export interface FenceProofInput {
@@ -85,24 +88,32 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
     input.tempFolder,
     `.halonic-fence-control-${randomBytes(4).toString("hex")}`,
   );
+  const probeFile = join(
+    input.tempFolder,
+    `${probeFilePrefix}${randomBytes(4).toString("hex")}.cjs`,
+  );
   const canaryFile = join(input.canaryFolder, "canary.txt");
   const canaryPort = await listenOnCanaryPort();
   try {
     await mkdir(input.canaryFolder, { recursive: true });
     await writeFile(canaryFile, randomBytes(16).toString("hex"));
     await writeFile(controlFile, "control");
-    return await runProbe(input, controlFile, canaryFile, canaryPort);
+    // A file, not `node -e`: the script has quotes and line breaks, which cmd.exe can't be given on Windows.
+    await writeFile(probeFile, probeScript);
+    return await runProbe(input, probeFile, controlFile, canaryFile, canaryPort);
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
     return { state: "not-fenced", reason: `the fence probe could not run: ${why}` };
   } finally {
     canaryPort.server.close();
     await rm(controlFile, { force: true });
+    await rm(probeFile, { force: true });
   }
 }
 
 async function runProbe(
   input: FenceProofInput,
+  probeFile: string,
   controlFile: string,
   canaryFile: string,
   canaryPort: { port: number; reached: () => boolean },
@@ -110,7 +121,7 @@ async function runProbe(
   const probe = await input.runner.run({
     settingsPath: input.settingsPath,
     program: process.execPath,
-    args: ["-e", probeScript, controlFile, canaryFile, String(canaryPort.port)],
+    args: [probeFile, controlFile, canaryFile, String(canaryPort.port)],
     cwd: input.workingFolder,
     launcherEnv: input.launcherEnv,
     programEnv: input.programEnv,

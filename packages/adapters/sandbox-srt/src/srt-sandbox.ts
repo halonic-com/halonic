@@ -19,7 +19,9 @@ interface Unavailable {
 
 /**
  * The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on
- * macOS. Plain Windows is refused here until its mode is reviewed.
+ * macOS, a sandbox user account and network filters on Windows. Windows is
+ * refused unless srt's Windows install is there (it is alpha, and needs an
+ * administrator once), so `check()` fails closed.
  */
 export class SrtSandbox implements Sandbox {
   readonly #machine: Machine;
@@ -79,7 +81,13 @@ export class SrtSandbox implements Sandbox {
   async #firstUnavailable(): Promise<Unavailable | null> {
     const machine = this.#machine;
     if (machine.platform === "win32") {
-      return { reason: "windows", missing: "plain Windows has no sandbox yet; WSL2 does" };
+      return (await machine.hasWindowsSandbox())
+        ? null
+        : {
+            reason: "windows",
+            missing:
+              "srt's Windows install is missing; run `srt windows-install` once as an administrator",
+          };
     }
     if (machine.platform === "darwin") {
       return (await machine.hasSeatbelt())

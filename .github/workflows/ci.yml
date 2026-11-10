@@ -1050,6 +1050,14 @@ jobs:
             node scripts/windows-fence-probe.mjs || rc=$?
           fi
           exit "$rc"
+      # The same fence through SandboxSession (HAL-4347): the session must say
+      # `fenced`, and a program it starts must see the hidden file, the blocked
+      # port and its own variables as the profile says, and kill must end its
+      # process tree. Runs after the canary probes, which stay the plain proof.
+      - name: Fence test through SandboxSession
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: pnpm test:fence:windows
 
   agent-host:
     # The agent host as one executable, built with Node's single-executable

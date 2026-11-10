@@ -57,6 +57,48 @@ function srtCliPath(): string {
   return createRequire(import.meta.url).resolve("@anthropic-ai/sandbox-runtime/dist/cli.js");
 }
 
+/**
+ * What `cmd.exe` reads inside double quotes as more than text: a quote ends the
+ * quoting, `%` starts a variable and a line break ends the command. Nothing
+ * escapes them reliably, so a value with one is refused rather than guessed at.
+ */
+const unquotableOnWindows = /["%\r\n\0]/;
+
+/** `value` as one `cmd.exe` word: in double quotes, with trailing backslashes doubled so they can't escape the closing quote. @throws when the value can't be quoted safely. */
+function quoteForCmd(value: string): string {
+  if (unquotableOnWindows.test(value)) {
+    throw new Error(
+      "on Windows, a program, argument or variable can't contain a double quote, a percent sign or a line break",
+    );
+  }
+  return `"${value.replace(/\\+$/, (slashes) => slashes + slashes)}"`;
+}
+
+/**
+ * The command line srt runs through `cmd.exe` on Windows: the program's
+ * variables set first, then the program. There is no `env` or `sh` there, and
+ * srt's own argument quoting is for POSIX shells, so the line is built here.
+ * The variables are set inside the fence, so none of them reaches the launcher.
+ */
+export function windowsCommandLine(request: RunRequest): string {
+  const sets = Object.entries(request.programEnv).map(([name, value]) => {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      throw new Error(`a variable name that is not plain: ${name}`);
+    }
+    return `set ${quoteForCmd(`${name}=${value}`)}`;
+  });
+  const program = [request.program, ...request.args].map(quoteForCmd).join(" ");
+  return [...sets, program].join(" && ");
+}
+
+/** Ends `pid` and everything under it. Windows has no process groups and no SIGTERM: `taskkill /T /F` is the only way, so there is no grace period. */
+function killWindowsTree(pid: number | undefined): void {
+  if (pid === undefined) return;
+  execFile("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
+    // Already gone, or the program inside the fence has ended with its job.
+  });
+}
+
 /** Resolves once the child has started, and rejects when it can't be launched. */
 function launched(child: ChildProcess): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -68,7 +110,7 @@ function launched(child: ChildProcess): Promise<void> {
 /**
  * One `srt` process per program. Each has its own proxy and its own settings,
  * so sessions never share state, and ending the program is ending a process
- * group. It refuses a skill's `scripts/` files before anything starts. The program is passed as separate arguments; srt quotes them for the
+ * group (on Windows, a process tree, which srt's job object holds). It refuses a skill's `scripts/` files before anything starts. The program is passed as separate arguments; srt quotes them for the
  * shell it runs inside the fence.
  */
 export const srtRunner: Runner = {
@@ -77,28 +119,30 @@ export const srtRunner: Runner = {
     if (await touchesSkillScripts(request, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
+    const windows = process.platform === "win32";
     const marker = `HALONIC_SRT_RUN=${randomUUID()}`;
+    const command = windows
+      ? ["-c", windowsCommandLine(request)]
+      : [
+          "--",
+          // `env` sets the program's variables inside the fence, so none of them reaches the launcher.
+          // It keeps what srt sets there (the proxy variables the program reaches the network by).
+          "env",
+          ...Object.entries(request.programEnv).map(([name, value]) => `${name}=${value}`),
+          marker,
+          request.program,
+          ...request.args,
+        ];
     const child = spawn(
       process.execPath,
-      [
-        srtCliPath(),
-        "--settings",
-        request.settingsPath,
-        "--",
-        // `env` sets the program's variables inside the fence, so none of them reaches the launcher.
-        // It keeps what srt sets there (the proxy variables the program reaches the network by).
-        "env",
-        ...Object.entries(request.programEnv).map(([name, value]) => `${name}=${value}`),
-        marker,
-        request.program,
-        ...request.args,
-      ],
+      [srtCliPath(), "--settings", request.settingsPath, ...command],
       {
         cwd: request.cwd,
         env: request.launcherEnv,
         stdio: ["pipe", "pipe", "pipe"],
-        // Its own process group, so one signal reaches srt and everything under it.
-        detached: true,
+        // Its own process group, so one signal reaches srt and everything under it. Windows has none.
+        detached: !windows,
+        windowsHide: true,
       },
     );
     await launched(child);
@@ -110,7 +154,7 @@ export const srtRunner: Runner = {
         // Whatever the program left behind in the group goes with it.
         gone = true;
         clearTimeout(forceTimer);
-        killGroup(pid, "SIGKILL");
+        if (!windows) killGroup(pid, "SIGKILL");
         void killMarked(marker).then(() => resolve({ code, signal }));
       });
     });
@@ -121,6 +165,7 @@ export const srtRunner: Runner = {
       ended,
       killTree: () => {
         if (gone) return;
+        if (windows) return killWindowsTree(pid);
         forceTimer ??= stopGroup(pid, terminationGraceMs, () => void killMarked(marker));
       },
     };

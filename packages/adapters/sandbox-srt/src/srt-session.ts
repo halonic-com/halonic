@@ -111,6 +111,32 @@ export function launcherEnv(
   hostEnv: Record<string, string | undefined> = process.env,
   privateFolder?: string,
 ): Record<string, string> {
+  const env = baseEnv(profile, hostEnv, privateFolder);
+  if (process.platform === "win32") {
+    // Node and srt don't start without the system folder, and cmd.exe needs ComSpec and PATHEXT.
+    // Windows reads names without regard to case, so find them that way.
+    for (const wanted of windowsLauncherVariables) {
+      const found = Object.keys(hostEnv).find(
+        (name) => name.toUpperCase() === wanted.toUpperCase(),
+      );
+      const value = found === undefined ? undefined : hostEnv[found];
+      if (value !== undefined) env[wanted] = value;
+    }
+    env["TEMP"] = profile.tempFolder;
+    env["TMP"] = profile.tempFolder;
+  }
+  return env;
+}
+
+/** What the launcher needs from the host on Windows: where the system is, never anything the program can influence. */
+const windowsLauncherVariables = ["SystemRoot", "SystemDrive", "windir", "ComSpec", "PATHEXT"];
+
+/** The host's safe `PATH` and the session's temp folder, for the launcher and the program alike. */
+function baseEnv(
+  profile: SandboxProfile,
+  hostEnv: Record<string, string | undefined>,
+  privateFolder?: string,
+): Record<string, string> {
   const env: Record<string, string> = {};
   const hostPath = hostEnv["PATH"];
   if (hostPath !== undefined) env["PATH"] = safePath(profile, hostPath, privateFolder);
@@ -133,7 +159,12 @@ export function programEnv(
   privateFolder?: string,
 ): Record<string, string> {
   assertVariableNames(profile);
-  const env = launcherEnv(profile, hostEnv, privateFolder);
+  // Not the launcher's: on Windows its system variables would replace the sandbox account's own.
+  const env = baseEnv(profile, hostEnv, privateFolder);
+  if (process.platform === "win32") {
+    env["TEMP"] = profile.tempFolder;
+    env["TMP"] = profile.tempFolder;
+  }
   for (const [name, value] of Object.entries(profile.env)) {
     if (proxyVariables.has(name)) continue;
     env[name] = name === "PATH" ? withoutPrivateFolder(value, privateFolder) : value;
@@ -251,7 +282,7 @@ export class SrtSession implements SandboxSession {
         workingFolder: profile.workingFolder,
         launcherEnv: launcherEnv(profile, process.env, folder),
         // The probe gets none of the profile's variables: it proves the fence, not the program's setup.
-        programEnv: launcherEnv(profile, process.env, folder),
+        programEnv: baseEnv(profile, process.env, folder),
       });
       const remaining = {
         ...profile,

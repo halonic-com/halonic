@@ -19,6 +19,8 @@ export interface Machine {
   userNamespacesRestricted(): Promise<boolean>;
   /** Whether Apple's `sandbox-exec` is there. */
   hasSeatbelt(): Promise<boolean>;
+  /** Whether srt's Windows install is there and usable: the sandbox account, its network filters and a matching setup version. */
+  hasWindowsSandbox(): Promise<boolean>;
 }
 
 /** The sysctl that restricts user namespaces on Ubuntu 24.04 and later. */
@@ -77,4 +79,18 @@ export const systemMachine: Machine = {
     return (await readOrEmpty(restrictSetting)).trim() === "1";
   },
   hasSeatbelt: () => exists("/usr/bin/sandbox-exec"),
+  async hasWindowsSandbox() {
+    if (process.platform !== "win32") return false;
+    try {
+      const { checkWindowsDependenciesAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
+        "@anthropic-ai/sandbox-runtime"
+      );
+      const check = await checkWindowsDependenciesAsync({
+        srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+      });
+      return check.errors.length === 0;
+    } catch {
+      return false; // No srt-win, or it did not answer: not installed, as far as we can tell.
+    }
+  },
 };

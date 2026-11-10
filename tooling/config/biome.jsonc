@@ -90,6 +90,7 @@
       "includes": [
         "**/vitest.config.ts",
         "**/vitest.fence.config.ts",
+        "**/vitest.fence-windows.config.ts",
         "**/vite.config.ts",
         "**/playwright.config.ts",
         "**/astro.config.mjs"

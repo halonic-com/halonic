@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { stopGroup } from "./srt-runner.ts";
+import { type RunRequest, stopGroup, windowsCommandLine } from "./srt-runner.ts";
 
 /** A detached node process that ends on SIGTERM, or ignores it. */
 function start(ignoreTerm: boolean) {
@@ -34,5 +34,35 @@ describe("stopGroup", () => {
     await up;
     stopGroup(child.pid, 200);
     expect(await ended).toBe("SIGKILL");
+  });
+});
+
+describe("windowsCommandLine", () => {
+  const request = (overrides: Partial<RunRequest> = {}): RunRequest => ({
+    settingsPath: "tools\\s.json",
+    program: "tools\\Program Files\\nodejs\\node.exe",
+    args: ["tools\\work\\a b.cjs", "x&y", "dir\\"],
+    cwd: "tools\\work",
+    launcherEnv: {},
+    programEnv: { PATH: "tools\\bin;tools\\Program Files (x86)\\t", NAME: "a value" },
+    ...overrides,
+  });
+
+  it("sets the variables, then runs the quoted program, with no env or sh", () => {
+    expect(windowsCommandLine(request())).toBe(
+      'set "PATH=tools\\bin;tools\\Program Files (x86)\\t" && set "NAME=a value" && ' +
+        '"tools\\Program Files\\nodejs\\node.exe" "tools\\work\\a b.cjs" "x&y" "dir\\\\"',
+    );
+  });
+
+  it.each([
+    ["a quote in an argument", { args: ['a"b'] }],
+    ["a percent sign in an argument", { args: ["%PATH%"] }],
+    ["a line break in an argument", { args: ["a\nb"] }],
+    ["a quote in the program", { program: 'a"b' }],
+    ["a percent sign in a variable", { programEnv: { A: "100%" } }],
+    ["a variable name that is not plain", { programEnv: { "A&B": "1" } }],
+  ])("refuses %s instead of guessing at the quoting", (_name, overrides) => {
+    expect(() => windowsCommandLine(request(overrides))).toThrow();
   });
 });

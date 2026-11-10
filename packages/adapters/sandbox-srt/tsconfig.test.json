@@ -4,6 +4,7 @@
     "src",
     "vitest.config.ts",
     "fence",
-    "vitest.fence.config.ts"
+    "vitest.fence.config.ts",
+    "vitest.fence-windows.config.ts"
   ]
 }

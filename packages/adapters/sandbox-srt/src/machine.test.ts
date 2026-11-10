@@ -24,8 +24,10 @@ verifies("sandbox-srt.check", () => {
         await systemMachine.hasBubblewrap(),
         await systemMachine.userNamespacesRestricted(),
         await systemMachine.hasSeatbelt(),
+        await systemMachine.hasWindowsSandbox(),
       ];
       expect(answers.map((answer) => typeof answer)).toEqual([
+        "boolean",
         "boolean",
         "boolean",
         "boolean",

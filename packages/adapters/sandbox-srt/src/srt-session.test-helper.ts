@@ -1,6 +1,7 @@
 import { connect } from "node:net";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
+import { probeFilePrefix } from "./fence-proof.ts";
 import type { Runner, RunningProgram, RunRequest } from "./srt-runner.ts";
 
 export const linux = {
@@ -9,6 +10,7 @@ export const linux = {
   hasBubblewrap: async () => true,
   userNamespacesRestricted: async () => false,
   hasSeatbelt: async () => true,
+  hasWindowsSandbox: async () => false,
 };
 
 type Exit = { code: number | null; signal: string | null };
@@ -50,11 +52,11 @@ export function fakeRunner(probe: Probe = fenced) {
   const probes: RunRequest[] = [];
   const runner: Runner = {
     async run(request) {
-      if (request.args[0] === "-e") {
+      if (basename(request.args[0] ?? "").startsWith(probeFilePrefix)) {
         probes.push(request);
         if (probe.launchFails) throw new Error("spawn bwrap ENOENT");
         if (probe.leak) {
-          const port = Number(request.args[4]);
+          const port = Number(request.args[3]);
           await new Promise<void>((resolve) => {
             // The canary server hangs up on whoever it reaches, so waiting for
             // the close means it has already seen this connection.

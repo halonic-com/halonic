@@ -20,6 +20,7 @@ verifies("sandbox-srt.check", () => {
       await systemMachine.hasBubblewrap();
       await systemMachine.userNamespacesRestricted();
       await systemMachine.hasSeatbelt();
+      await systemMachine.hasWindowsSandbox(); // starts srt-win only on Windows
       expect(started).toEqual([
         { file: "bwrap", args: ["--version"] },
         { file: "bwrap", args: ["--ro-bind", "/", "/", "--unshare-user", "--", "true"] },
