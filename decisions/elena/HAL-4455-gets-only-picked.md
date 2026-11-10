@@ -3,6 +3,7 @@
 - Approval: found while porting the old gets tests on [HAL-4448](/HAL/issues/HAL-4448) and
   fixed on [HAL-4455](/HAL/issues/HAL-4455); the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GSM8chUSTiQvXlm3xRNS9DmFxaJiKhCeIg0XdSAbcZPW3rCiIoPX5VPIF38Two49aZZGYyTjSdsEZelSe3RSDg==
 - Task: HAL-4455
 
 ## What changes
