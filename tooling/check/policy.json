@@ -31,6 +31,9 @@
     "@halonicjs/adapter-integration-kit": [
       "./integration"
     ],
+    "@halonicjs/adapter-mcp": [
+      "./protocol"
+    ],
     "@halonicjs/format": [
       "./integration",
       "./recording"

@@ -1,26 +1,25 @@
 // The public API of @halonicjs/adapter-mcp. Internal code imports by relative path.
+// The protocol is also its own entry, `./protocol`, which integrations import instead.
 
-export { McpError, type McpErrorCode } from "./protocol/errors.ts";
-export type {
-  JsonRpcNotification,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  OutgoingMessage,
-} from "./protocol/json-rpc.ts";
 export {
+  type AbortSignalLike,
+  type ClientInfo,
+  type JsonRpcNotification,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
   type McpContent,
+  McpError,
+  type McpErrorCode,
+  McpSession,
+  type McpSessionOptions,
   type McpTool,
   type McpToolResult,
+  type McpTransport,
+  maxToolPages,
+  maxTools,
+  type OutgoingMessage,
+  type ServerAgreement,
   supportedProtocolVersions,
   toolMetaKeys,
   toolNamePattern,
-} from "./protocol/protocol.ts";
-export {
-  type ClientInfo,
-  McpSession,
-  type McpSessionOptions,
-  maxToolPages,
-  maxTools,
-  type ServerAgreement,
-} from "./protocol/session.ts";
-export type { AbortSignalLike, McpTransport } from "./protocol/transport.ts";
+} from "./protocol/index.ts";

@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Our own MCP client for local programs: the MCP protocol session and the stdio connector that starts a trusted program.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./protocol": "./src/protocol/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

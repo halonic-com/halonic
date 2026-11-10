@@ -32,8 +32,8 @@ export const toolNamePattern = /^[A-Za-z0-9_.-]{1,128}$/;
  * they are the server's claim: the host decides what to trust.
  */
 export const toolMetaKeys = {
-  risk: "halonic.com/risk",
-  untrusted: "halonic.com/untrusted",
+  risk: "com.halonic/risk",
+  untrusted: "com.halonic/untrusted",
 } as const;
 
 /** One tool in a `tools/list` page. */

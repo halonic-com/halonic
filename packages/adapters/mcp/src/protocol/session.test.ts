@@ -102,15 +102,15 @@ verifies("mcp.protocol-session", () => {
     it("keeps the risk and untrusted a server writes in _meta, and drops other keys", async () => {
       const described = {
         ...tool("send_note"),
-        _meta: { "halonic.com/risk": "send", "halonic.com/untrusted": true, "acme/other": 1 },
+        _meta: { "com.halonic/risk": "send", "com.halonic/untrusted": true, "acme/other": 1 },
       };
       const { session } = await connected([result({ tools: [described] })]);
       const [listed] = await session.listTools();
-      expect(listed?._meta).toEqual({ "halonic.com/risk": "send", "halonic.com/untrusted": true });
+      expect(listed?._meta).toEqual({ "com.halonic/risk": "send", "com.halonic/untrusted": true });
     });
 
     it("refuses a risk in _meta that isn't one of ours", async () => {
-      const described = { ...tool("send_note"), _meta: { "halonic.com/risk": "harmless" } };
+      const described = { ...tool("send_note"), _meta: { "com.halonic/risk": "harmless" } };
       const { session } = await connected([result({ tools: [described] })]);
       await expect(session.listTools()).rejects.toMatchObject({ code: "unexpected-response" });
     });
