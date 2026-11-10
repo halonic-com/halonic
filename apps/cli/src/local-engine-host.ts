@@ -25,7 +25,7 @@ import {
   type SetTimer,
   systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
-import { LocalExecutor, type RunDefinitions } from "@halonicjs/engine";
+import { LocalExecutor } from "@halonicjs/engine";
 import type { Clock, HttpClient, IdGenerator, RunStore, Secrets } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
@@ -34,7 +34,7 @@ import {
   workspaceFolders,
 } from "@halonicjs/profile";
 import { KindedError, randomIds, systemClock } from "@halonicjs/std";
-import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { workspaceModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
@@ -214,34 +214,4 @@ async function holdEngineLock(
       cause: error,
     });
   }
-}
-
-/**
- * The definitions a new run of `workflowId` in `hubId` starts with, as the
- * workspace has them now: the workflow, and the hub's agents, workflows,
- * collections and knowledge sources.
- *
- * @throws RangeError when the workspace has no such hub, or the hub no such workflow
- *
- * @example
- * runDefinitionsOf(workspace, "support", "support-reply");
- * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {} }
- */
-export function runDefinitionsOf(
-  workspace: LoadedWorkspace,
-  hubId: string,
-  workflowId: string,
-): RunDefinitions {
-  const hub = definitionsOf(workspace, hubId);
-  const workflow = Object.hasOwn(hub.workflows, workflowId) ? hub.workflows[workflowId] : undefined;
-  if (workflow === undefined) {
-    throw new RangeError(`The hub "${hubId}" has no workflow "${workflowId}".`);
-  }
-  return {
-    workflow,
-    agents: hub.agents,
-    workflows: hub.workflows,
-    collections: hub.collections,
-    knowledge: hub.knowledge,
-  };
 }

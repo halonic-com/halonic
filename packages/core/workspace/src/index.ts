@@ -5,7 +5,13 @@ export {
   type CopyWorkspaceError,
   copyWorkspace,
 } from "./copy-workspace.ts";
-export { definitionsOf, definitionsVersion, type HubDefinitions } from "./definitions.ts";
+export {
+  definitionsOf,
+  definitionsVersion,
+  type HubDefinitions,
+  type RunStartDefinitions,
+  runDefinitionsOf,
+} from "./definitions.ts";
 export {
   gitIgnoreLines,
   gitIgnorePath,

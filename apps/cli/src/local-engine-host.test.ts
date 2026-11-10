@@ -11,12 +11,7 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  engineLockFile,
-  type LocalEngine,
-  openLocalEngine,
-  runDefinitionsOf,
-} from "./local-engine-host.ts";
+import { engineLockFile, type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
@@ -131,22 +126,6 @@ verifies("cli.local-engine", () => {
 
     expect(finished.summary).toMatchObject({ status: "completed", state: "replied" });
     expect(schedulerErrors).toEqual([]);
-  });
-
-  it("starts a run with the hub's workflow, agents, workflows, collections and knowledge", () => {
-    const definitions = runDefinitionsOf(workspace, "support", "support-reply");
-
-    expect(definitions.workflow.id).toBe("support-reply");
-    expect(Object.keys(definitions.agents ?? {}).sort()).toEqual(["sorter", "writer"]);
-    expect(Object.keys(definitions.workflows ?? {})).toEqual(["support-reply"]);
-    expect(definitions.collections).toEqual({});
-    expect(definitions.knowledge).toEqual({});
-  });
-
-  it("refuses a workflow the hub doesn't have, naming the hub and the workflow", () => {
-    expect(() => runDefinitionsOf(workspace, "support", "weekly-report")).toThrow(
-      new RangeError('The hub "support" has no workflow "weekly-report".'),
-    );
   });
 });
 

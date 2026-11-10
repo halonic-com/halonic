@@ -2,7 +2,7 @@ import type { Digest } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { definitionsOf, definitionsVersion, loadWorkspace } from "./index.ts";
+import { definitionsOf, definitionsVersion, loadWorkspace, runDefinitionsOf } from "./index.ts";
 import { MemorySource } from "./test/memory-source.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
@@ -109,5 +109,28 @@ verifies("workspace.definitions", () => {
   it("refuses a hub the workspace doesn't have", async () => {
     const workspace = await load();
     expect(() => definitionsOf(workspace, "nowhere")).toThrow(RangeError);
+  });
+});
+
+verifies("workspace.run-definitions", () => {
+  it("starts a run with the workflow and the hub's agents, workflows, collections and knowledge", async () => {
+    const definitions = runDefinitionsOf(await load(), "billing", "invoice");
+    expect(definitions.workflow.id).toBe("invoice");
+    expect(Object.keys(definitions.agents)).toEqual(["clerk"]);
+    expect(Object.keys(definitions.workflows)).toEqual(["invoice"]);
+    expect(definitions.collections).toEqual({});
+    expect(definitions.knowledge).toEqual({});
+  });
+
+  it("refuses a workflow the hub doesn't have, naming the hub and the workflow", async () => {
+    const workspace = await load();
+    expect(() => runDefinitionsOf(workspace, "billing", "tidy")).toThrow(
+      new RangeError('The hub "billing" has no workflow "tidy".'),
+    );
+  });
+
+  it("refuses a hub the workspace doesn't have", async () => {
+    const workspace = await load();
+    expect(() => runDefinitionsOf(workspace, "nowhere", "invoice")).toThrow(RangeError);
   });
 });

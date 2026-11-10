@@ -86,6 +86,53 @@ export function definitionsOf(workspace: LoadedWorkspace, hubId: string): HubDef
 }
 
 /**
+ * What a new run starts with: the workflow it runs, and the hub's agents,
+ * workflows, collections and knowledge sources. It has the shape of the
+ * engine's `RunDefinitions`, built here so the CLI and the test runner
+ * build it the same way.
+ */
+export interface RunStartDefinitions {
+  readonly workflow: KindValues["workflow"];
+  readonly agents: ById<"agent">;
+  readonly workflows: ById<"workflow">;
+  readonly collections: ById<"collection">;
+  readonly knowledge: ById<"knowledge">;
+}
+
+/**
+ * The definitions a new run of `workflowId` in `hubId` starts with, as the
+ * workspace has them now: the workflow, and the hub's agents, workflows,
+ * collections and knowledge sources.
+ *
+ * @param workspace - the loaded workspace
+ * @param hubId - the hub the run is in
+ * @param workflowId - the workflow the run runs
+ * @throws RangeError when the workspace has no such hub, or the hub no such workflow
+ *
+ * @example
+ * runDefinitionsOf(workspace, "support", "support-reply");
+ * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {} }
+ */
+export function runDefinitionsOf(
+  workspace: LoadedWorkspace,
+  hubId: string,
+  workflowId: string,
+): RunStartDefinitions {
+  const hub = definitionsOf(workspace, hubId);
+  const workflow = Object.hasOwn(hub.workflows, workflowId) ? hub.workflows[workflowId] : undefined;
+  if (workflow === undefined) {
+    throw new RangeError(`The hub "${hubId}" has no workflow "${workflowId}".`);
+  }
+  return {
+    workflow,
+    agents: hub.agents,
+    workflows: hub.workflows,
+    collections: hub.collections,
+    knowledge: hub.knowledge,
+  };
+}
+
+/**
  * The version of a hub's definitions: the SHA-256, in lowercase hex, of
  * their canonical JSON. It is the hash the blob store gives the same JSON,
  * so a run's `definitionsVersion` names the blob that keeps them. Equal
