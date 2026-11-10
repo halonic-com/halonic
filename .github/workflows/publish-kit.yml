@@ -18,6 +18,11 @@
 # repeated after a partial failure, and a push that changes no version
 # publishes nothing.
 #
+# The trusted publisher on npm allows `npm stage publish` only, so a run puts
+# the version in npm's staging area. It is not public until a person approves
+# it on npmjs.com (2FA). A staged version does not show in `npm view`, so
+# repeating a run stages it again; approve one and reject the other.
+#
 # So merging a pull request that changes either package's `package.json` is
 # a release, and so is a run by hand with `dry_run` off. Releases need the
 # board's yes: ask through a task for Chief, and merge or run only once the
@@ -121,7 +126,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # Trusted publishing needs npm 11.5.1 or newer, which comes with Node.
+      # Staged publishing needs npm 11.15.0 or newer, which comes with Node.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
@@ -131,8 +136,8 @@ jobs:
         run: |
           version=$(npm --version)
           echo "npm $version"
-          if [ "$(printf '%s\n' 11.5.1 "$version" | sort -V | head -n1)" != "11.5.1" ]; then
-            echo "::error::npm $version is too old for trusted publishing (needs 11.5.1 or newer)."
+          if [ "$(printf '%s\n' 11.15.0 "$version" | sort -V | head -n1)" != "11.15.0" ]; then
+            echo "::error::npm $version is too old for staged publishing (needs 11.15.0 or newer)."
             exit 1
           fi
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -153,9 +158,9 @@ jobs:
               continue
             fi
             if [ "$DRY_RUN" = "true" ]; then
-              echo "Dry run: would publish $name@$version"
-              npm publish "$tarball" --dry-run --access public --provenance
+              echo "Dry run: would stage $name@$version"
+              npm stage publish "$tarball" --dry-run --access public --provenance
             else
-              npm publish "$tarball" --access public --provenance
+              npm stage publish "$tarball" --access public --provenance
             fi
           done
