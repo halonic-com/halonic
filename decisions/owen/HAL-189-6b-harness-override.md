@@ -5,6 +5,7 @@
 - Task: HAL-189, step 6b (the engine side of `halonic run --harness`)
 - Approval: Liam's decision on HAL-3789 asks for this field; the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gHITuPl09wLCZnA0PoXi+J8obaMAFYLK4ZYX5rRtl19P+KENUdmx7HSeCA+lSPQ+iM+jtN5jYkV+Oo4eUPVjBw==
 
 ## What changes
 
