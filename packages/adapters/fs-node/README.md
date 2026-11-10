@@ -38,8 +38,6 @@ and passes the shared `DefinitionStore` contract suite.
   moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
   again five times over about a third of a second before the write fails.
   A file it replaces keeps its permissions, such as a script's execute bit.
-  Windows has no execute bit (its modes only say read-only or not), so
-  there a file keeps the mode it had, and a test checks that on Windows too.
 - **Write if unchanged:** `write(path, content, { expected })` writes only
   when the file is still what `expected` says, and otherwise returns
   `changed-on-disk` with the current file. Writes to one path run one after
