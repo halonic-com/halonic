@@ -19,3 +19,5 @@ await inboxDecisions(executor).approve(items[0]); // sends approve with the item
 The item's `body` and a tool call's `args` can hold model output. Show them as plain text, never as Markdown or HTML.
 
 The screens show those values through `src/plain/`: arguments as readable fields, hidden characters as `⟦U+202E⟧` markers, and long text folded with "Show 38 more lines" (requirements `inbox.plain-values`, `inbox.argument-fields`, `inbox.waiting-time` and `inbox.approval-title`).
+
+The cards live in `src/ui/`: `ApprovalCard` for a tool call, with its Ask for changes dialog, and `WaitCard` for a `wait` step, which has a button for each answer the step takes (requirements `inbox.approval-card` and `inbox.wait-card`). Both report your decision, never what the run did next.

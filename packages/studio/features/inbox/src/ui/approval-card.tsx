@@ -1,29 +1,21 @@
-import { Button, Callout, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
-import { type RefObject, useEffect, useId, useRef, useState } from "react";
+import { Button, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
+import { useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
 import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
 import { ArgumentList } from "./argument-list.tsx";
+import { AskForChangesDialog } from "./ask-for-changes-dialog.tsx";
+import { CardHeader, DecidedBar, FailedLine, failedText, type NextItem } from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
-
-/** The item after this one, for the decided card's **Next** (flow-inbox 5.3). */
-export interface NextItem {
-  readonly title: string;
-  /** Items still waiting, this one not counted. */
-  readonly left: number;
-  readonly open: () => void;
-}
 
 export interface ApprovalCardProps {
   readonly item: ApprovalItem;
   /** The agent's name as the workspace shows it. */
   readonly agentName: string;
-  readonly decisions: Pick<InboxDecisions, "approve" | "reject">;
+  readonly decisions: Pick<InboxDecisions, "approve" | "reject" | "askForChanges">;
   readonly onOpenRun: (runId: string) => void;
-  /** Opens the note form; the card doesn't hold the note. */
-  readonly onAskForChanges: () => void;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** The clock, so a test can set it. */
@@ -31,19 +23,35 @@ export interface ApprovalCardProps {
 }
 
 type Decision = "approve" | "reject";
+/** What was decided: Approve, Reject, or a note sent with Ask for changes. */
+export type Decided =
+  | { readonly kind: Decision }
+  | { readonly kind: "note"; readonly note: string };
 type CardState =
   | { readonly kind: "open"; readonly failed: Decision | null }
   | { readonly kind: "deciding"; readonly decision: Decision }
-  | { readonly kind: "decided"; readonly decision: Decision; readonly at: Date };
+  | { readonly kind: "decided"; readonly decided: Decided; readonly at: Date };
+
+/** The note form while it's open: the card keeps the note until the item is decided. */
+interface NoteForm {
+  readonly open: boolean;
+  readonly busy: boolean;
+  readonly failed: boolean;
+}
 
 const busyLabels: Record<Decision, string> = { approve: "Approving…", reject: "Rejecting…" };
 
 /** The decided Callout's text (mc 10.2, ux-checklists-approvals D3). */
-export function decidedText(decision: Decision, at: Date): string {
+export function decidedText(decided: Decided, at: Date): string {
   const time = decidedAt(at);
-  return decision === "approve"
-    ? `Approved by you at ${time}. The run continues.`
-    : `Rejected by you at ${time}. This tool call didn't run. The agent is told, and the run continues.`;
+  switch (decided.kind) {
+    case "approve":
+      return `Approved by you at ${time}. The run continues.`;
+    case "reject":
+      return `Rejected by you at ${time}. This tool call didn't run. The agent is told, and the run continues.`;
+    case "note":
+      return `Note sent to the agent at ${time}: ${decided.note}`;
+  }
 }
 
 /**
@@ -60,6 +68,8 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const decided = useRef<CalloutHandle>(null);
   const [state, setState] = useState<CardState>({ kind: "open", failed: null });
+  const [note, setNote] = useState("");
+  const [form, setForm] = useState<NoteForm>({ open: false, busy: false, failed: false });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
 
@@ -73,74 +83,60 @@ export function ApprovalCard(props: ApprovalCardProps) {
     setState({ kind: "deciding", decision });
     try {
       await (decision === "approve" ? decisions.approve(item) : decisions.reject(item));
-      setState({ kind: "decided", decision, at: now() });
+      setState({ kind: "decided", decided: { kind: decision }, at: now() });
     } catch {
       setState({ kind: "open", failed: decision });
+    }
+  }
+
+  async function sendNote(text: string) {
+    if (form.busy || state.kind !== "open") return;
+    setForm({ open: true, busy: true, failed: false });
+    try {
+      await decisions.askForChanges(item, text);
+      setForm({ open: false, busy: false, failed: false });
+      setState({ kind: "decided", decided: { kind: "note", note: text }, at: now() });
+    } catch {
+      // The dialog stays open with the note, and says so in its alert slot (flow-inbox 5.4).
+      setForm({ open: true, busy: false, failed: true });
     }
   }
 
   return (
     <section aria-labelledby={titleId} className="flex min-h-0 flex-col">
       <div className="flex flex-col gap-4 overflow-y-auto p-4">
-        <header className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h2
-              id={titleId}
-              ref={heading}
-              tabIndex={-1}
-              className="focus-ring text-title text-fg wrap-break-word"
-            >
-              {title}
-            </h2>
-            <p className="text-small text-fg-muted">{waitingSince(new Date(item.since), now())}</p>
-          </div>
-          <Button size="sm" onClick={() => props.onOpenRun(item.runId)}>
-            Open run
-          </Button>
-        </header>
+        <CardHeader
+          titleId={titleId}
+          title={title}
+          heading={heading}
+          since={waitingSince(new Date(item.since), now())}
+          onOpenRun={() => props.onOpenRun(item.runId)}
+        />
         {state.kind === "decided" ? <DecidedAction item={item} /> : <Action item={item} />}
       </div>
       {state.kind === "decided" ? (
-        <DecidedBar text={decidedText(state.decision, state.at)} next={next} callout={decided} />
+        <DecidedBar text={decidedText(state.decided, state.at)} next={next} callout={decided} />
       ) : (
         <DecisionBar
           state={state}
           guard={guard}
           onDecide={decide}
           onAskForChanges={() => {
-            if (guard.allows() && state.kind === "open") props.onAskForChanges();
+            if (guard.allows() && state.kind === "open") setForm({ ...form, open: true });
           }}
         />
       )}
+      {form.open ? (
+        <AskForChangesDialog
+          note={note}
+          onNoteChange={setNote}
+          busy={form.busy}
+          error={form.failed ? failedText : undefined}
+          onSend={sendNote}
+          onCancel={() => setForm({ open: false, busy: false, failed: false })}
+        />
+      ) : null}
     </section>
-  );
-}
-
-interface DecidedBarProps {
-  readonly text: string;
-  readonly next: NextItem | null;
-  readonly callout: RefObject<CalloutHandle | null>;
-}
-
-/** The bar once decided: the decided Callout, which takes focus, then **Next** (flow-inbox 5.3). */
-function DecidedBar({ text, next, callout }: DecidedBarProps) {
-  return (
-    <div className="flex flex-col gap-3 border-t border-border p-4">
-      <Callout tone="info" announce="focus" ref={callout}>
-        {text}
-      </Callout>
-      <div className="flex justify-end">
-        {next === null ? (
-          <p className="text-small text-fg-muted">Nothing else is waiting for you.</p>
-        ) : (
-          <Button variant="primary" onClick={next.open}>
-            {`Next: ${next.title}`}
-            <span aria-hidden="true">{` · ${next.left} left`}</span>
-            <span className="sr-only">{`, ${next.left} left`}</span>
-          </Button>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -192,16 +188,7 @@ function DecisionBar({ state, guard, onDecide, onAskForChanges }: DecisionBarPro
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
     >
-      <div role="alert" className="text-small text-fg">
-        {failed === null ? null : (
-          <span className="flex flex-wrap items-center gap-2">
-            Couldn't record your decision.
-            <Button variant="ghost" size="sm" onClick={() => onDecide(failed)}>
-              Try again
-            </Button>
-          </span>
-        )}
-      </div>
+      <FailedLine onRetry={failed === null ? null : () => onDecide(failed)} />
       <div className="flex flex-wrap justify-end gap-2">
         <Button
           busy={busy("reject")}

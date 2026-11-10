@@ -65,4 +65,13 @@ verifies("inbox.decisions", () => {
       { runId: "r2", event: "reject", payload: undefined, options: undefined },
     ]);
   });
+
+  it("sends any other answer a wait step takes by its event name", async () => {
+    const executor = recordingExecutor();
+    if (review === undefined || review.kind !== "wait") throw new Error("expected a wait item");
+    await inboxDecisions(executor).answer(review, "escalate");
+    expect(executor.sent).toEqual([
+      { runId: "r2", event: "escalate", payload: undefined, options: undefined },
+    ]);
+  });
 });

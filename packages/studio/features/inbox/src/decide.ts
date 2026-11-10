@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
-import type { InboxItem } from "./inbox-items.ts";
+import type { InboxItem, WaitItem } from "./inbox-items.ts";
 
 /** Your answers to the Inbox's items, sent to the runs that wait for them. */
 export interface InboxDecisions {
@@ -10,6 +10,8 @@ export interface InboxDecisions {
   reject(item: InboxItem): Promise<RunSummary>;
   /** Reject a tool call with a note for the agent, so it can try again differently. */
   askForChanges(item: InboxItem, note: string): Promise<RunSummary>;
+  /** Any answer a `wait` step takes, by its event name, such as `escalate`. */
+  answer(item: WaitItem, event: string): Promise<RunSummary>;
 }
 
 /**
@@ -33,5 +35,6 @@ export function inboxDecisions(executor: Pick<RunExecutor, "send">): InboxDecisi
     approve: (item) => send(item, "approve"),
     reject: (item) => send(item, "reject"),
     askForChanges: (item, note) => send(item, "reject", { comment: note }),
+    answer: (item, event) => send(item, event),
   };
 }
