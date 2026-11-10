@@ -3,6 +3,7 @@ export {
   type AgentPlacementRecord,
   type AgentPlacementStore,
   agentPlacementStoreVersion,
+  isAgentPlacementFor,
 } from "./agent-placement-store.ts";
 export { type BlobRef, type BlobStore, blobStoreVersion } from "./blob-store.ts";
 export type {

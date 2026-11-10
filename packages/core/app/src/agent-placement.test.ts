@@ -194,8 +194,7 @@ verifies("app.agent-placement", () => {
 });
 
 // A store that hands back a damaged or borrowed choice must never end in
-// "this computer" (Julian, HAL-2927). A case marked `it.fails` is a gap
-// `where` has today: it goes back to `it` with the fix.
+// "this computer" (Julian, HAL-2927).
 verifies("app.agent-placement", () => {
   /** An `AgentPlacement` over a store whose `get` gives whatever `read` gives. */
   function over(read: () => Promise<unknown>): AgentPlacement {
@@ -238,10 +237,9 @@ verifies("app.agent-placement", () => {
     });
   });
 
-  // Gap: `where` checks only the fingerprint, so a record that says
-  // "sandbox", or one the store hands back for another agent, still lets the
-  // agent out.
-  it.fails.each([
+  // Not only the fingerprint: a record that says "sandbox", or one the store
+  // hands back for another agent, must not let the agent out either.
+  it.each([
     ["a choice other than this computer", { runsOn: "sandbox" }],
     ["another agent's key", { agent: "writer" }],
     ["another workspace's key", { location: "/workspaces/other" }],

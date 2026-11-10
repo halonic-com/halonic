@@ -85,6 +85,17 @@ verifies("fs-node.trust-store-files", () => {
       },
     );
 
+    it.skipIf(process.platform === "win32")(
+      "makes a folder that was already there private on grant",
+      async () => {
+        const root = join(await tempFolder(), "trust");
+        await mkdir(root);
+        await chmod(root, 0o777);
+        await new FileTrustStore(root).grant(trustRecord("/workspaces/acme"));
+        expect((await stat(root)).mode & 0o777).toBe(0o700);
+      },
+    );
+
     it("reads a folder that isn't there yet as empty", async () => {
       const store = new FileTrustStore(join(await tempFolder(), "trust"));
       expect(await store.get("/workspaces/acme")).toBeNull();

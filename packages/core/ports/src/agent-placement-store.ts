@@ -62,3 +62,37 @@ export interface AgentPlacementStore {
    */
   remove(key: AgentPlacementKey): Promise<void>;
 }
+
+/** Every field of an {@link AgentPlacementRecord}, and no other. */
+const placementFields = ["location", "agent", "runsOn", "agentFingerprint", "chosenAt"] as const;
+
+/**
+ * Whether `value`, as read back from a store, is a valid choice for `key`:
+ * exactly the fields of an {@link AgentPlacementRecord}, each text, with
+ * `runsOn: "this-computer"` and the key asked for. Anything else is a
+ * damaged or borrowed choice, such as a hand edit or a file copied from
+ * another agent, and must never take an agent out of its sandbox. Every
+ * adapter checks what it reads with this, and `AgentPlacement` in
+ * `core/app` checks what an adapter gives back with it again.
+ *
+ * @example
+ * isAgentPlacementFor(key, JSON.parse(text)); // false for `{ ...record, sandbox: false }`
+ */
+export function isAgentPlacementFor(
+  key: AgentPlacementKey,
+  value: unknown,
+): value is AgentPlacementRecord {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as { readonly [field in (typeof placementFields)[number]]?: unknown };
+  return (
+    Object.keys(record).length === placementFields.length &&
+    placementFields.every(
+      (field) => Object.hasOwn(record, field) && typeof record[field] === "string",
+    ) &&
+    record.runsOn === "this-computer" &&
+    record.location === key.location &&
+    record.agent === key.agent
+  );
+}

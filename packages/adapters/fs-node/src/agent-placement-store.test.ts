@@ -123,8 +123,7 @@ verifies("fs-node.agent-placement-store-files", () => {
   });
 });
 
-// Attacks on the files (Julian, HAL-2927). A case marked `it.fails` is a gap
-// the store has today: it goes back to `it` with the fix.
+// Attacks on the files (Julian, HAL-2927).
 verifies("fs-node.agent-placement-store-files", () => {
   describe("attacks on the placement files", () => {
     /** A store with `coder`'s choice saved, and the root it lives in. */
@@ -169,9 +168,8 @@ verifies("fs-node.agent-placement-store-files", () => {
       await expect(store.get(coder)).rejects.toThrow('the agent "coder" in "/workspaces/acme"');
     });
 
-    // Gap: only `location` and `agent` are checked, so any other shape is
-    // handed to the caller as a placement.
-    it.fails.each([
+    // Not only `location` and `agent`: any other shape is damaged too.
+    it.each([
       ["a choice other than this computer", { runsOn: "sandbox" }],
       ["a fingerprint that isn't text", { agentFingerprint: 42 }],
       ["no fingerprint", { agentFingerprint: undefined }],
@@ -205,9 +203,9 @@ verifies("fs-node.agent-placement-store-files", () => {
         return outside;
       }
 
-      // Gap: `readFile` follows the link, so a choice can live in a file an
-      // agent may edit, such as one inside its workspace.
-      it.fails("refuses a choice that is a link to a file outside the folder", async () => {
+      // A link could put the choice in a file an agent may edit, such as one
+      // inside its workspace.
+      it("refuses a choice that is a link to a file outside the folder", async () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { recursive: true });
         await symlink(await outsideChoice(), fileFor(root, coder));
@@ -250,9 +248,9 @@ verifies("fs-node.agent-placement-store-files", () => {
         expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
       });
 
-      // Gap: `mkdir` sets the mode only on a folder it creates, so a folder
-      // made earlier by something else keeps its permissions.
-      it.fails("makes a folder that was already there private on save", async () => {
+      // `mkdir` sets the mode only on a folder it creates, so a folder made
+      // earlier by something else needs a `chmod`.
+      it("makes a folder that was already there private on save", async () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { mode: 0o777 });
         await chmod(root, 0o777);

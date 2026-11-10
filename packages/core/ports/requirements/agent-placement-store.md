@@ -8,6 +8,8 @@ The ports package shall have an `AgentPlacementStore` port (version 1) that gets
 
 The port's documentation shall state that placements live in the user's profile and never in a workspace, that a placement that can't be read makes `get` throw with its key, and that `remove` still deletes it.
 
+The ports package shall export `isAgentPlacementFor(key, value)`, which is true only for a value with exactly the fields of a placement, each text, with `runsOn: "this-computer"` and the given key. Adapters check what they read with it, and `AgentPlacement` checks what a store gives back with it (Julian, HAL-2927).
+
 ## Examples
 
 - Given the `AgentPlacementStore` port,
@@ -19,3 +21,9 @@ The port's documentation shall state that placements live in the user's profile 
 - Given an `AgentPlacementRecord` without `agentFingerprint` or without an agent id,
   when it is compiled,
   then it doesn't compile.
+- Given a value with every field of a placement for the key and also `sandbox: false`,
+  when `isAgentPlacementFor` checks it,
+  then it is false: a placement holds no other field.
+- Given a placement for `coder` in `/workspaces/acme`,
+  when `isAgentPlacementFor` checks it against `coder` in `/workspaces/other`,
+  then it is false.

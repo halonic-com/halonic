@@ -1,7 +1,8 @@
-import type {
-  AgentPlacementKey,
-  AgentPlacementRecord,
-  AgentPlacementStore,
+import {
+  type AgentPlacementKey,
+  type AgentPlacementRecord,
+  type AgentPlacementStore,
+  isAgentPlacementFor,
 } from "@halonicjs/ports";
 
 /**
@@ -51,10 +52,16 @@ function describeKey(key: AgentPlacementKey): string {
   return `the agent ${JSON.stringify(key.agent)} in ${JSON.stringify(key.location)}`;
 }
 
+/** Reads a placement, and refuses one that isn't exactly a placement for this key. */
 function parsePlacement(key: AgentPlacementKey, text: string): AgentPlacementRecord {
+  let placement: unknown;
   try {
-    return JSON.parse(text) as AgentPlacementRecord;
+    placement = JSON.parse(text);
   } catch (error) {
     throw new Error(`The placement for ${describeKey(key)} can't be read.`, { cause: error });
   }
+  if (!isAgentPlacementFor(key, placement)) {
+    throw new Error(`The placement for ${describeKey(key)} isn't a valid placement.`);
+  }
+  return placement;
 }

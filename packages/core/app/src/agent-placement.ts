@@ -3,12 +3,12 @@
 // person chose that for the agent's file as it is now. A choice made for an
 // earlier version of the file counts as no choice (Julian, HAL-1709).
 
-import type {
-  AgentPlacementKey,
-  AgentPlacementRecord,
-  AgentPlacementStore,
-  Clock,
-  Digest,
+import {
+  type AgentPlacementKey,
+  type AgentPlacementStore,
+  type Clock,
+  type Digest,
+  isAgentPlacementFor,
 } from "@halonicjs/ports";
 import { bytesToHex, err, ok, type Result } from "@halonicjs/std";
 
@@ -115,18 +115,28 @@ export class AgentPlacement implements PlacementReader {
    * Where the agent's harness runs. It runs on this computer only when a
    * person chose that for the file as it is now. Without a choice, with a
    * choice for another version of the file, or with one that can't be read,
-   * it runs in a sandbox, and the answer says which.
+   * it runs in a sandbox, and the answer says which. A record the store
+   * gives back that isn't exactly a choice for this agent counts as one that
+   * can't be read, so a store with a bug can't let the agent out either
+   * (Julian, HAL-2927).
    */
   async where(subject: PlacementSubject): Promise<PlacementAnswer> {
     const fingerprint = await agentFingerprint(subject.file, this.digest);
-    let record: AgentPlacementRecord | null;
+    const key = keyOf(subject);
+    let record: unknown;
     try {
-      record = await this.store.get(keyOf(subject));
+      record = await this.store.get(key);
     } catch (error) {
       return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "unreadable", error };
     }
     if (record === null) {
       return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "not-chosen" };
+    }
+    if (!isAgentPlacementFor(key, record)) {
+      const error = new Error(
+        `The placement store gave back something that isn't a valid placement for the agent ${JSON.stringify(key.agent)} in ${JSON.stringify(key.location)}.`,
+      );
+      return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "unreadable", error };
     }
     if (record.agentFingerprint !== fingerprint) {
       return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "file-changed" };

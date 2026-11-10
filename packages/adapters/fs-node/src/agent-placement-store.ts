@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type {
-  AgentPlacementKey,
-  AgentPlacementRecord,
-  AgentPlacementStore,
+import {
+  type AgentPlacementKey,
+  type AgentPlacementRecord,
+  type AgentPlacementStore,
+  isAgentPlacementFor,
 } from "@halonicjs/ports";
 import { isMissing } from "./links.ts";
+import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
 
 /**
  * Each agent's "this computer" choice as a file in one folder of the user's
@@ -18,7 +20,9 @@ import { isMissing } from "./links.ts";
  * A save writes a temporary file and renames it over the choice, so a reader
  * sees the old choice or the new one, never half of one. The folder must
  * never be inside a workspace: an agent that edits the workspace must not be
- * able to take itself out of its sandbox.
+ * able to take itself out of its sandbox. For the same reason a choice that
+ * is a link, such as one to a file in a workspace, can't be read, and a
+ * save makes the folder private even when it was already there.
  */
 export class FileAgentPlacementStore implements AgentPlacementStore {
   readonly #root: string;
@@ -32,7 +36,7 @@ export class FileAgentPlacementStore implements AgentPlacementStore {
     const file = this.#file(key);
     let text: string;
     try {
-      text = await readFile(file, "utf8");
+      text = await readUnlinkedFile(file);
     } catch (error) {
       if (isMissing(error)) return null;
       throw unreadable(key, file, error);
@@ -41,12 +45,14 @@ export class FileAgentPlacementStore implements AgentPlacementStore {
   }
 
   async save(placement: AgentPlacementRecord): Promise<void> {
-    const { location, agent, ...rest } = placement;
+    const { location, agent, runsOn, agentFingerprint, chosenAt } = placement;
     // The key goes first, so a person who opens the file sees whose it is.
-    const text = `${JSON.stringify({ location, agent, ...rest }, null, 2)}\n`;
+    // Only the fields of a placement are written, so `get` can read it back.
+    const record = { location, agent, runsOn, agentFingerprint, chosenAt };
+    const text = `${JSON.stringify(record, null, 2)}\n`;
     const file = this.#file(placement);
     const temporary = `${file}.${randomUUID()}.tmp`;
-    await mkdir(this.#root, { recursive: true, mode: 0o700 });
+    await makePrivateFolder(this.#root);
     try {
       await writeFile(temporary, text, { encoding: "utf8", mode: 0o600 });
       await rename(temporary, file);
@@ -78,9 +84,9 @@ function hashKey(key: AgentPlacementKey): string {
 }
 
 /**
- * Reads a choice, and refuses one that isn't for this key, such as a file
- * copied over another agent's: it would let one agent borrow another's
- * choice.
+ * Reads a choice, and refuses one that isn't exactly a placement for this
+ * key: a file copied over another agent's would let one agent borrow
+ * another's choice, and a hand edit could add fields a harness reads.
  */
 function parsePlacement(key: AgentPlacementKey, file: string, text: string): AgentPlacementRecord {
   let placement: unknown;
@@ -89,15 +95,10 @@ function parsePlacement(key: AgentPlacementKey, file: string, text: string): Age
   } catch (error) {
     throw unreadable(key, file, error);
   }
-  if (
-    typeof placement !== "object" ||
-    placement === null ||
-    (placement as { location?: unknown }).location !== key.location ||
-    (placement as { agent?: unknown }).agent !== key.agent
-  ) {
-    throw unreadable(key, file, new Error("It isn't the placement for this agent."));
+  if (!isAgentPlacementFor(key, placement)) {
+    throw unreadable(key, file, new Error("It isn't a valid placement for this agent."));
   }
-  return placement as AgentPlacementRecord;
+  return placement;
 }
 
 function unreadable(key: AgentPlacementKey, file: string, cause: unknown): Error {
