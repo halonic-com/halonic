@@ -6,8 +6,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
+import { shownPath } from "../../shown-path.ts";
 import { captureIo } from "../../test/capture-io.ts";
-import { schemaCommand, schemaFileName, shownPath } from "./command.ts";
+import { schemaCommand, schemaFileName } from "./command.ts";
 
 const golden = JSON.parse(
   readFileSync(join(import.meta.dirname, "golden", "schema-output.json"), "utf8"),
