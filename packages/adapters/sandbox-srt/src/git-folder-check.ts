@@ -8,25 +8,28 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 /** What one `commondir` file was when the session started: its content, its link target, or nothing. */
 type Original =
   | { kind: "file"; data: Buffer; mode: number }
   | { kind: "link"; target: string }
+  | { kind: "other" }
   | { kind: "absent" };
 
 /** The `commondir` files of a working folder's git folder, as they were at session start. */
 export interface GitFolderSnapshot {
   readonly gitFolder: string;
   readonly originals: ReadonlyMap<string, Original>;
+  /** The git folder, its `worktrees` folder and each worktree folder that were real folders at session start. */
+  readonly folders: ReadonlySet<string>;
 }
 
 /** Git reads config and hooks from the folder a `commondir` file names, so the program must not change one. */
 async function commondirPaths(gitFolder: string): Promise<string[]> {
   const paths = [join(gitFolder, "commondir")];
   const worktrees = join(gitFolder, "worktrees");
-  const names = await readdir(worktrees).catch(() => [] as string[]);
+  const names = (await isRealFolder(worktrees)) ? await readdir(worktrees).catch(() => []) : [];
   for (const name of names) paths.push(join(worktrees, name, "commondir"));
   return paths;
 }
@@ -36,14 +39,36 @@ async function read(path: string): Promise<Original> {
   if (stat === null) return { kind: "absent" };
   if (stat.isSymbolicLink()) return { kind: "link", target: await readlink(path) };
   if (stat.isFile()) return { kind: "file", data: await readFile(path), mode: stat.mode & 0o777 };
-  // A folder or something else where a file belongs: undone like any other change.
-  return { kind: "absent" };
+  // A folder, a FIFO or something else where a file belongs. It has its own kind so
+  // it always counts as a change: a FIFO there would hang the next git command.
+  return { kind: "other" };
 }
 
 function same(a: Original, b: Original): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === "file" && b.kind === "file") return a.data.equals(b.data);
   if (a.kind === "link" && b.kind === "link") return a.target === b.target;
+  return true;
+}
+
+/** Whether `path` is a real folder, not a link to one. */
+async function isRealFolder(path: string): Promise<boolean> {
+  return (await lstat(path).catch(() => null))?.isDirectory() ?? false;
+}
+
+/**
+ * Makes `path` a real folder again if the program swapped it for a link or a
+ * file: the link itself is removed (never followed), and the folder is
+ * recreated when it existed at session start.
+ *
+ * @returns true when it had to change `path`.
+ */
+async function fixFolder(path: string, existed: boolean): Promise<boolean> {
+  const stat = await lstat(path).catch(() => null);
+  if (stat?.isDirectory()) return false;
+  if (stat === null && !existed) return false;
+  if (stat !== null) await rm(path, { force: true });
+  if (existed) await mkdir(path);
   return true;
 }
 
@@ -57,8 +82,13 @@ export async function snapshotGitFolder(workingFolder: string): Promise<GitFolde
   const stat = await lstat(gitFolder).catch(() => null);
   if (stat === null || !stat.isDirectory()) return null;
   const originals = new Map<string, Original>();
-  for (const path of await commondirPaths(gitFolder)) originals.set(path, await read(path));
-  return { gitFolder, originals };
+  const folders = new Set([gitFolder]);
+  if (await isRealFolder(join(gitFolder, "worktrees"))) folders.add(join(gitFolder, "worktrees"));
+  for (const path of await commondirPaths(gitFolder)) {
+    originals.set(path, await read(path));
+    if (await isRealFolder(dirname(path))) folders.add(dirname(path));
+  }
+  return { gitFolder, originals, folders };
 }
 
 /**
@@ -72,6 +102,24 @@ export async function restoreGitFolder(
 ): Promise<{ undone: string[]; failed: string[] }> {
   const undone: string[] = [];
   const failed: string[] = [];
+  // `.git`, `.git/worktrees` and each worktree folder are writable in the fence, so the
+  // program may have swapped one for a link to a folder outside the working folder.
+  // Fix those first, so nothing below is written or deleted through a link.
+  const worktrees = join(snapshot.gitFolder, "worktrees");
+  const fixed = async (path: string): Promise<void> => {
+    try {
+      if (await fixFolder(path, snapshot.folders.has(path))) undone.push(path);
+    } catch {
+      failed.push(path);
+    }
+  };
+  await fixed(snapshot.gitFolder);
+  await fixed(worktrees);
+  const current = (await isRealFolder(worktrees)) ? await readdir(worktrees).catch(() => []) : [];
+  const known = [...snapshot.folders].filter((f) => dirname(f) === worktrees);
+  for (const name of new Set([...known.map((f) => f.slice(worktrees.length + 1)), ...current])) {
+    await fixed(join(worktrees, name));
+  }
   const paths = new Set([
     ...snapshot.originals.keys(),
     ...(await commondirPaths(snapshot.gitFolder)),
@@ -92,5 +140,6 @@ export async function restoreGitFolder(
       failed.push(path);
     }
   }
+  // `failed` is reported to the session like `undone`: either way the program touched the file.
   return { undone, failed };
 }

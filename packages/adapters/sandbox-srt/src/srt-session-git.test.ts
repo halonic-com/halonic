@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxBlock } from "@halonicjs/ports";
@@ -61,6 +61,44 @@ verifies("sandbox-srt.session", () => {
       await writeFile(join(made, "commondir"), "../elsewhere\n");
       await session.close();
       expect(existsSync(join(made, "commondir"))).toBe(false);
+    });
+
+    it("does not follow a worktree folder the program swapped for a link", async () => {
+      const outside = join(base, "outside");
+      await mkdir(outside);
+      await writeFile(join(outside, "commondir"), "keep\n");
+      await writeFile(join(git, "worktrees", "feature", "commondir"), "../..\n");
+      const { session, blocks } = await open();
+      await rm(join(git, "worktrees", "feature"), { recursive: true });
+      await symlink(outside, join(git, "worktrees", "feature"));
+      await session.close();
+      expect(readdirSync(outside)).toEqual(["commondir"]);
+      expect(readFileSync(join(outside, "commondir"), "utf8")).toBe("keep\n");
+      const folder = join(git, "worktrees", "feature");
+      expect(lstatSync(folder).isDirectory()).toBe(true);
+      expect(readFileSync(join(folder, "commondir"), "utf8")).toBe("../..\n");
+      expect(blocks).toContainEqual({ kind: "file", path: folder, access: "write" });
+    });
+
+    it("does not follow the worktrees folder swapped for a link", async () => {
+      const outside = join(base, "outside");
+      await mkdir(join(outside, "x"), { recursive: true });
+      await writeFile(join(outside, "x", "commondir"), "keep\n");
+      const { session } = await open();
+      await rm(join(git, "worktrees"), { recursive: true });
+      await symlink(outside, join(git, "worktrees"));
+      await session.close();
+      expect(readFileSync(join(outside, "x", "commondir"), "utf8")).toBe("keep\n");
+      expect(lstatSync(join(git, "worktrees")).isDirectory()).toBe(true);
+    });
+
+    it("removes a folder named commondir the program planted", async () => {
+      const { session, blocks } = await open();
+      const planted = join(git, "commondir");
+      await mkdir(planted);
+      await session.close();
+      expect(existsSync(planted)).toBe(false);
+      expect(blocks).toEqual([{ kind: "file", path: planted, access: "write" }]);
     });
 
     it("leaves an unchanged commondir alone and says nothing", async () => {
