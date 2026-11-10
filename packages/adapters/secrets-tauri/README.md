@@ -89,7 +89,12 @@ keychain and the Android Keystore (HAL-1211) never disagree:
 
 No error holds a value. A failure that isn't the shell's own refusal (a missing capability, a
 broken IPC call) keeps neither its text nor the original error, because the adapter can't vouch
-for them.
+for them. Only a plain object counts as the shell's refusal, as Tauri's IPC delivers it, and a
+refusal whose message repeats the value being set loses its message.
+
+The adapter doesn't take a reply on trust either. An answer that the shell never gives is a
+`backend` refusal: `""` or anything else that isn't a value or `null` from `secret_get`, and
+anything but `null` from `secret_set` or `secret_delete`.
 
 ## Limits
 

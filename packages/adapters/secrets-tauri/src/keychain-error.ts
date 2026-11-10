@@ -47,16 +47,28 @@ export class KeychainError extends Error {
  * Anything that isn't the shell's refusal shape (a missing capability, a
  * broken IPC call) becomes a `backend` refusal. Its text is dropped, because
  * the adapter can't vouch that it holds no value.
+ *
+ * @param reason - what the command rejected with
+ * @param value - the value sent with `secret_set`; a refusal whose message
+ *   holds it keeps its kind but loses its message
  */
-export function keychainFailure(reason: unknown): Error {
+export function keychainFailure(reason: unknown, value?: string): Error {
   if (!isShellRefusal(reason)) {
     return new KeychainError("backend", "the shell gave no answer");
   }
+  const message = holdsValue(reason.message, value) ? withheldMessage : reason.message;
   switch (reason.kind) {
     case "invalid_name":
     case "invalid_value":
-      return new RangeError(`The keychain refused the call (${reason.kind}): ${reason.message}`);
+      return new RangeError(`The keychain refused the call (${reason.kind}): ${message}`);
     default:
-      return new KeychainError(reason.kind, reason.message);
+      return new KeychainError(reason.kind, message);
   }
+}
+
+/** What a refusal says in place of a message that held the value. */
+const withheldMessage = "the shell's message is withheld";
+
+function holdsValue(message: string, value: string | undefined): boolean {
+  return value !== undefined && value !== "" && message.includes(value);
 }

@@ -35,7 +35,8 @@ export class TauriSecrets implements Secrets, TokenStore {
   async get(name: string): Promise<string | null> {
     checkName(name);
     const answer = await this.#call(secretCommands.get, { name });
-    if (answer === null || typeof answer === "string") {
+    // The shell never stores an empty value, so "" is as malformed as a number.
+    if (answer === null || (typeof answer === "string" && answer !== "")) {
       return answer;
     }
     throw new KeychainError("backend", "the shell's answer is not a value");
@@ -49,7 +50,7 @@ export class TauriSecrets implements Secrets, TokenStore {
    */
   async set(name: string, value: string): Promise<void> {
     checkName(name);
-    await this.#call(secretCommands.set, { name, value });
+    expectNothing(await this.#call(secretCommands.set, { name, value }, value));
   }
 
   /**
@@ -60,15 +61,19 @@ export class TauriSecrets implements Secrets, TokenStore {
    */
   async remove(name: string): Promise<void> {
     checkName(name);
-    await this.#call(secretCommands.delete, { name });
+    expectNothing(await this.#call(secretCommands.delete, { name }));
   }
 
-  /** Runs one command, turning a refusal into a `RangeError` or a {@link KeychainError}. */
-  async #call(command: string, args: Record<string, unknown>): Promise<unknown> {
+  /**
+   * Runs one command, turning a refusal into a `RangeError` or a {@link KeychainError}.
+   *
+   * @param value - the value being set, so a refusal that repeats it loses its message
+   */
+  async #call(command: string, args: Record<string, unknown>, value?: string): Promise<unknown> {
     try {
       return await this.#shell.invoke(command, args);
     } catch (reason) {
-      throw keychainFailure(reason);
+      throw keychainFailure(reason, value);
     }
   }
 }
@@ -80,4 +85,15 @@ export class TauriSecrets implements Secrets, TokenStore {
  */
 function checkName(name: string): void {
   secretKey(name);
+}
+
+/**
+ * `secret_set` and `secret_delete` return Rust's `()`, which reaches the page
+ * as `null`. Any other answer means the call may not have done what it says,
+ * so it is refused rather than taken for success.
+ */
+function expectNothing(answer: unknown): void {
+  if (answer !== null) {
+    throw new KeychainError("backend", "the shell's answer is not empty");
+  }
 }

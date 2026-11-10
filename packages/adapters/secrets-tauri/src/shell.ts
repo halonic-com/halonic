@@ -1,3 +1,5 @@
+import { isPlainObject } from "@halonicjs/std";
+
 /**
  * The part of Tauri's IPC this adapter needs. The shell puts `invoke` on the
  * app's own page (`window.__TAURI_INTERNALS__`), and the `desktop-secrets`
@@ -44,11 +46,16 @@ export interface ShellRefusal {
   readonly message: string;
 }
 
-/** Whether a rejection is the shell's refusal shape, as opposed to an IPC or permission failure. */
+/**
+ * Whether a rejection is the shell's refusal shape, as opposed to an IPC or
+ * permission failure. Tauri's IPC hands the page the refusal as parsed JSON,
+ * so only a plain object counts: an `Error` that happens to carry a `kind` is
+ * a failure on the page's side, and its text is not the shell's.
+ */
 export function isShellRefusal(reason: unknown): reason is ShellRefusal {
-  if (typeof reason !== "object" || reason === null) {
+  if (!isPlainObject(reason)) {
     return false;
   }
-  const { kind, message } = reason as Record<string, unknown>;
+  const { kind, message } = reason;
   return refusalKinds.some((known) => known === kind) && typeof message === "string";
 }
