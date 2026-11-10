@@ -5,6 +5,7 @@ import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import { outputVersion } from "./output/json.ts";
+import type { TrustChangesDocument } from "./output/trust-changes-json.ts";
 
 /** How deep `--debug` follows `cause`, so a cause that points back at itself still ends. */
 const maxCauses = 10;
@@ -75,6 +76,8 @@ export interface ErrorDocument {
     readonly fix?: string;
     /** For `not_trusted` only: the full fingerprint `trust --fingerprint` takes, never shortened. */
     readonly fingerprint?: string;
+    /** For `not_trusted` only: what changed since the workspace was trusted, left out when it never was. */
+    readonly changes?: TrustChangesDocument;
   };
 }
 
@@ -93,8 +96,16 @@ export function errorDocument(error: unknown, context: PrintErrorContext = {}): 
       ...(report.code === undefined ? {} : { code: report.code }),
       message: plainText(report.reason),
       ...(report.fix === undefined ? {} : { fix: plainText(report.fix) }),
-      ...(error instanceof NotTrustedError ? { fingerprint: error.fingerprint } : {}),
+      ...(error instanceof NotTrustedError ? notTrustedFields(error) : {}),
     },
+  };
+}
+
+/** The fingerprint `trust --fingerprint` takes and, when the workspace was trusted before, what changed. */
+function notTrustedFields(error: NotTrustedError) {
+  return {
+    fingerprint: error.fingerprint,
+    ...(error.changes === undefined ? {} : { changes: error.changes }),
   };
 }
 

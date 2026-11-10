@@ -20,6 +20,10 @@ import type { Message } from "../../messages/define.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { NotTrustedError } from "../../not-trusted.ts";
+import {
+  type TrustChangesDocument,
+  trustChangesDocument,
+} from "../../output/trust-changes-json.ts";
 import { shownDate, trustCheckLines } from "../../output/trust-check.ts";
 import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
@@ -116,8 +120,10 @@ async function reviewAndTrust(
   const check = await trust.check(workspace.subject);
   const facts = { name: workspace.name, folder: opened.shown };
   const lines = trustCheckLines(check, facts);
+  const changes =
+    check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
   if (fingerprint !== undefined && fingerprint !== check.fingerprint) {
-    throw fingerprintChanged(workspace.name, check, lines, dir);
+    throw fingerprintChanged({ name: workspace.name, check, lines, dir, changes });
   }
   if (check.status === "trusted") {
     return {
@@ -133,6 +139,7 @@ async function reviewAndTrust(
     lines,
     yes: input.options["yes"] === true,
     dir,
+    changes,
   });
   if (!trusted) {
     return { exitCode: exitCode.notTrusted, lines: [trustMessages.notTrusted().phrase], json: {} };
@@ -141,24 +148,35 @@ async function reviewAndTrust(
   const granted = await trust.grant(workspace.subject, check.fingerprint, "cli");
   if (!granted.ok) {
     // The files changed between the check and the answer.
-    throw fingerprintChanged(workspace.name, check, [], dir);
+    throw fingerprintChanged({ name: workspace.name, check, lines: [], dir, changes });
   }
   return {
     exitCode: exitCode.ok,
     lines: [marked(trustMessages.trusted(workspace.name))],
-    json: { ...facts, status: "trusted", fingerprint: check.fingerprint },
+    json: {
+      ...facts,
+      status: "trusted",
+      fingerprint: check.fingerprint,
+      ...(changes === undefined ? {} : { changes }),
+    },
   };
 }
 
-/** What {@link askToTrust} asks about. */
-interface TrustQuestion {
+/** What a refusal of `trust` shows: the check, and what changed since it was trusted. */
+interface TrustRefusalFacts {
   readonly name: string;
   readonly check: TrustCheck;
   /** The check's lines, shown before the first question and in the refusal. */
   readonly lines: readonly Phrase[];
+  readonly dir: string | undefined;
+  /** What changed since it was trusted, for `--json`; left out when it never was. */
+  readonly changes: TrustChangesDocument | undefined;
+}
+
+/** What {@link askToTrust} asks about. */
+interface TrustQuestion extends TrustRefusalFacts {
   /** `--yes` with a `--fingerprint` that matched. */
   readonly yes: boolean;
-  readonly dir: string | undefined;
 }
 
 /**
@@ -170,7 +188,7 @@ interface TrustQuestion {
  * @throws NotTrustedError when nobody can answer and `--yes` wasn't given
  */
 async function askToTrust(context: CommandContext, about: TrustQuestion): Promise<boolean> {
-  const { name, check, lines, yes, dir } = about;
+  const { name, check, lines, yes, dir, changes } = about;
   const refusal = () =>
     new NotTrustedError({
       problem: trustMessages.noTerminal(name),
@@ -178,6 +196,7 @@ async function askToTrust(context: CommandContext, about: TrustQuestion): Promis
       fingerprint: check.fingerprint,
       check: lines,
       action: null,
+      changes,
     });
   const first = await context.ask({
     question: trustMessages.question(name),
@@ -192,18 +211,14 @@ async function askToTrust(context: CommandContext, about: TrustQuestion): Promis
 }
 
 /** "✕ Couldn't trust Acme: it changed since that fingerprint was made.", with the check on stderr. */
-function fingerprintChanged(
-  name: string,
-  check: TrustCheck,
-  lines: readonly Phrase[],
-  dir: string | undefined,
-): NotTrustedError {
+function fingerprintChanged(facts: TrustRefusalFacts): NotTrustedError {
   return new NotTrustedError({
     problem: trustMessages.fingerprintChanged(),
-    fix: trustMessages.fingerprintChangedFix(dir),
-    fingerprint: check.fingerprint,
-    check: lines,
-    action: trustMessages.action(name),
+    fix: trustMessages.fingerprintChangedFix(facts.dir),
+    fingerprint: facts.check.fingerprint,
+    check: facts.lines,
+    action: trustMessages.action(facts.name),
+    changes: facts.changes,
   });
 }
 

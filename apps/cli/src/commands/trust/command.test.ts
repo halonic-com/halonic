@@ -234,3 +234,67 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(io.stdout[0]).toContain("Removed trust for ./acme.");
   });
 });
+
+/** Trusts Acme as {@link writeAcme} writes it, then adds the connector `notes` and changes `mail`'s args. */
+async function trustAcmeThenChangeIt(): Promise<void> {
+  writeAcme();
+  const fingerprint = await fingerprintOfAcme();
+  await runCli(
+    ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint],
+    captureIo(folder),
+    commands(),
+  );
+  writeAcme({
+    "library/connectors/mail.connector.yaml":
+      "name: Mail\ntransport:\n  stdio:\n    command: npx\n    args: ['@acme/mail-mcp', '--all']\ntools:\n  approve: []\n",
+    "library/connectors/notes.connector.yaml":
+      "name: Notes\ntransport:\n  stdio:\n    command: notes-server\ntools:\n  approve: []\n",
+  });
+}
+
+verifies("cli.commands.trust.changes-json", () => {
+  it("refuses a changed workspace with what changed in error.changes, by id and field", async () => {
+    await trustAcmeThenChangeIt();
+    const io = captureIo(folder);
+
+    const code = await runCli(["trust", "--dir", "acme", "--json"], io, commands());
+
+    expect(code).toBe(exitCode.notTrusted);
+    const { error } = JSON.parse(io.stdout.join("\n"));
+    expect(error.kind).toBe("not_trusted");
+    expect(error.changes).toEqual({
+      trustedAt: "2026-11-03T12:00:00.000Z",
+      connectors: {
+        added: ["notes"],
+        changed: [{ id: "mail", fields: ["settings"] }],
+        removed: [],
+      },
+      agents: { added: [], changed: [], removed: [] },
+      integrations: { added: [], changed: [], removed: [] },
+    });
+    expect(JSON.stringify(error.changes)).not.toContain("--all");
+  });
+
+  it("gives the changes with the trust when --yes --fingerprint trusts the changed workspace", async () => {
+    await trustAcmeThenChangeIt();
+    const fingerprint = await fingerprintOfAcme();
+    const io = captureIo(folder);
+
+    const args = ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint, "--json"];
+    const code = await runCli(args, io, commands());
+
+    expect(code).toBe(exitCode.ok);
+    const document = JSON.parse(io.stdout.join("\n"));
+    expect(document.status).toBe("trusted");
+    expect(document.changes.connectors.added).toEqual(["notes"]);
+  });
+
+  it("has no changes for a workspace that was never trusted", async () => {
+    writeAcme();
+    const io = captureIo(folder);
+
+    await runCli(["trust", "--dir", "acme", "--json"], io, commands());
+
+    expect(JSON.parse(io.stdout.join("\n")).error).not.toHaveProperty("changes");
+  });
+});

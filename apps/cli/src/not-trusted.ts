@@ -1,5 +1,6 @@
 import type { Message } from "./messages/define.ts";
 import { type Phrase, plainText } from "./messages/phrase.ts";
+import type { TrustChangesDocument } from "./output/trust-changes-json.ts";
 
 /** What a {@link NotTrustedError} says and shows. */
 export interface NotTrustedDetails {
@@ -22,6 +23,11 @@ export interface NotTrustedDetails {
    * (cli-output 1.7).
    */
   readonly action?: Message | null;
+  /**
+   * What changed since the workspace was trusted, for `--json`'s
+   * `error.changes`. Left out when it was never trusted (HAL-188 item 10b).
+   */
+  readonly changes?: TrustChangesDocument | undefined;
 }
 
 /**
@@ -52,6 +58,7 @@ export class NotTrustedError extends Error {
   readonly fingerprint: string;
   readonly check: readonly Phrase[];
   readonly action: Message | null | undefined;
+  readonly changes: TrustChangesDocument | undefined;
 
   constructor(details: NotTrustedDetails) {
     super(plainText(details.problem.phrase));
@@ -60,5 +67,6 @@ export class NotTrustedError extends Error {
     this.fingerprint = details.fingerprint;
     this.check = details.check;
     this.action = details.action;
+    this.changes = details.changes;
   }
 }

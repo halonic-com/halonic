@@ -10,10 +10,10 @@ lives in its own folder.
 
 ## Commands
 
-| Command                   | What it does                                                                                                                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `halonic schema [outDir]` | writes the JSON Schema of every file kind to `outDir` (default `schemas`)                                                                                           |
-| `halonic trust`           | shows what a workspace can start and asks to trust it on this computer; `--yes --fingerprint <fingerprint>` without a question, `--list`, `--remove` (exit 3 on No) |
+| Command                   | What it does                                                                                                                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `halonic schema [outDir]` | writes the JSON Schema of every file kind to `outDir` (default `schemas`)                                                                                                                                             |
+| `halonic trust`           | shows what a workspace can start and asks to trust it on this computer; `--yes --fingerprint <fingerprint>` without a question, `--list`, `--remove` (exit 3 on No); `--json` lists what changed since it was trusted |
 
 `validate`, `test`, `run`, `init`, `extract` and `routines` follow in HAL-187 as the workspace
 loader and the engine land. `halonic --help` lists the commands and the options every command
