@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { type Box, placePopoverBy } from "../popover/place-popover.ts";
+import { usePointerPress } from "../popover/pointer-press.ts";
 import type { MenuEntry } from "./menu.tsx";
 import { focusFirstItem, MenuList } from "./menu-list.tsx";
 
@@ -36,7 +37,8 @@ const ELEMENT_GAP = 4;
  * The Menu for a right-click, Shift F10 or the Menu key on something that isn't a button, such as
  * a window tab (component specs 14). It has the Menu's look, items and keys; only the opening
  * differs. The owner listens for the right-click and the keys and sets `target`; the menu opens
- * at the pointer, or below the element with the focus on its first item. Escape and Tab give the
+ * at the pointer, after the button's release, or below the element with the focus on its first
+ * item. Escape and Tab give the
  * focus back to the element; a pick gives it back before `onSelect` runs, so an item that removes
  * the element can move the focus on. The browser's own context menu never shows over it.
  *
@@ -50,6 +52,7 @@ export function ContextMenu({ label, entries, target, onClose }: ContextMenuProp
   const menuRef = useRef<HTMLDivElement>(null);
   /** Whether the menu is open as far as this component knows: it opened it and hasn't closed it. */
   const shown = useRef(false);
+  const press = usePointerPress();
   const latest = useRef({ entries, onClose });
   latest.current = { entries, onClose };
 
@@ -86,32 +89,43 @@ export function ContextMenu({ label, entries, target, onClose }: ContextMenuProp
       hide(menu);
       return;
     }
-    if (!shown.current) {
-      shown.current = true;
-      menu.showPopover();
+    const { at } = target;
+    if (at !== undefined) {
+      // A right-click opens on the press on macOS and Linux, and the release of that press would
+      // light-dismiss the menu, so it opens after the release. A right-click on another element
+      // while the menu is open hides it until then, without calling `onClose`.
+      if (press.held()) {
+        hide(menu);
+      }
+      return press.afterRelease(() => {
+        show(menu);
+        placePopoverBy(menu, pointAt(at), { gap: 0, align: "start" });
+        menu.focus();
+      });
     }
+    show(menu);
     const place = () =>
-      placePopoverBy(menu, boxOf(target), {
-        gap: target.at === undefined ? ELEMENT_GAP : 0,
+      placePopoverBy(menu, target.element.getBoundingClientRect(), {
+        gap: ELEMENT_GAP,
         align: "start",
       });
     place();
-    if (target.at === undefined) {
-      focusFirstItem(menu, latest.current.entries);
-    } else {
-      menu.focus();
-    }
+    focusFirstItem(menu, latest.current.entries);
     // While open, the menu follows the element when the window changes size or something scrolls.
-    if (target.at !== undefined) {
-      return;
-    }
     addEventListener("resize", place);
     addEventListener("scroll", place, { capture: true, passive: true });
     return () => {
       removeEventListener("resize", place);
       removeEventListener("scroll", place, { capture: true });
     };
-  }, [target]);
+  }, [target, press]);
+
+  function show(menu: HTMLElement): void {
+    if (!shown.current) {
+      shown.current = true;
+      menu.showPopover();
+    }
+  }
 
   function hide(menu: HTMLElement): void {
     if (shown.current) {
@@ -136,11 +150,7 @@ export function ContextMenu({ label, entries, target, onClose }: ContextMenuProp
   );
 }
 
-/** The element's box, or the right-click's point as a box with no size. */
-function boxOf(target: ContextMenuTarget): Box {
-  const { at } = target;
-  if (at === undefined) {
-    return target.element.getBoundingClientRect();
-  }
+/** The right-click's point as a box with no size. */
+function pointAt(at: { readonly x: number; readonly y: number }): Box {
   return { top: at.y, right: at.x, bottom: at.y, left: at.x };
 }
