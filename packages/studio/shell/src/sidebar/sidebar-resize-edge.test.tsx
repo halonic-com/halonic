@@ -169,6 +169,16 @@ verifies("shell.sidebar-resize", () => {
     expect(saved).toEqual([264]);
   });
 
+  it("saves nothing on a double-click when the sidebar is already 264px", () => {
+    const { edge, saved } = renderEdge(264);
+
+    act(() => {
+      edge.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    expect(edge.getAttribute("aria-valuenow")).toBe("264");
+    expect(saved).toEqual([]);
+  });
+
   it("draws its accent line only on hover, keyboard focus and while dragging", () => {
     const { edge } = renderEdge();
     const line = edge.firstElementChild as HTMLElement;

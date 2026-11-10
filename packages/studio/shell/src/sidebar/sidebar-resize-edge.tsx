@@ -33,8 +33,8 @@ interface Drag {
  * It's a window splitter for the keyboard too: a focusable `separator` named "Resize sidebar",
  * whose value a screen reader reads ("264 pixels"), so nothing goes through the announcer. ← and →
  * move it by 16px, Home and End go to 180px and 640px, Enter and a double-click go back to 264px.
- * The width is saved when the key or the pointer is released. The narrow window and the phone
- * show no edge.
+ * The width is saved when the key or the pointer is released, only when it changed. The narrow
+ * window and the phone show no edge.
  *
  * @example
  * <nav id="sidebar" style={{ width }}>…</nav>
@@ -110,7 +110,11 @@ export function SidebarResizeEdge({
     }
   };
 
+  // Like Enter: a sidebar already at 264px has nothing to change or save.
   const onDoubleClick = () => {
+    if (latestWidth.current === SIDEBAR_DEFAULT_WIDTH) {
+      return;
+    }
     resize(SIDEBAR_DEFAULT_WIDTH);
     onResizeEnd(SIDEBAR_DEFAULT_WIDTH);
   };

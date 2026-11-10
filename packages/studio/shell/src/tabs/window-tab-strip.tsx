@@ -217,10 +217,12 @@ type StripKey = "previous" | "next" | "activate" | "close" | "move-left" | "move
 
 function stripKey(event: KeyboardEvent): StripKey | undefined {
   const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
-  if (event.ctrlKey && event.shiftKey && event.key === "PageUp") {
+  // Only Ctrl Shift moves a tab: with Alt or Meta as well, the key is the window's.
+  const ctrlShift = event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey;
+  if (ctrlShift && event.key === "PageUp") {
     return "move-left";
   }
-  if (event.ctrlKey && event.shiftKey && event.key === "PageDown") {
+  if (ctrlShift && event.key === "PageDown") {
     return "move-right";
   }
   if (!plain) {

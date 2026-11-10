@@ -196,6 +196,18 @@ verifies("shell.window-tab-strip", () => {
       expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
     });
 
+    it("leaves Ctrl Shift PageUp and PageDown with Alt or Meta to the window", () => {
+      const { tabs, container } = renderStrip();
+      const second = tabElements(container)[1] as HTMLElement;
+      act(() => second.focus());
+      for (const extra of [{ altKey: true }, { metaKey: true }]) {
+        const modifiers = { ctrlKey: true, shiftKey: true, ...extra };
+        expect(press(second, "PageDown", modifiers).defaultPrevented).toBe(false);
+        expect(press(second, "PageUp", modifiers).defaultPrevented).toBe(false);
+      }
+      expect(titles(tabs)).toEqual(["Agents", "Sorter", "Support reply"]);
+    });
+
     it("leaves other keys and modified arrows to the window", () => {
       const { container } = renderStrip();
       const second = tabElements(container)[1] as HTMLElement;
