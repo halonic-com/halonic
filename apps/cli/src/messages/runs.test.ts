@@ -48,10 +48,25 @@ describe("runs's sentences", () => {
     expect(words(runsMessages.showNoRunFix())).toBe("See recent runs in Studio's Runs page.");
   });
 
-  it("has runs show's heading and the answered wait step", () => {
+  it("has runs show's heading", () => {
     expect(
       words(runsMessages.showHeading("Support reply", "acme", "01JD8Q", "14:01", "14:02")),
     ).toBe("Support reply in acme · run 01JD8Q · started 14:01, finished 14:02");
-    expect(words(runsMessages.youApproved("14:02"))).toBe("you approved at 14:02");
+  });
+
+  it("says what the user answered at the wait step, guessing no verb", () => {
+    const answered = (event: string) => words(runsMessages.youAnswered(event, "14:02"));
+    expect([
+      answered("approve"),
+      answered("reject"),
+      answered("hold"),
+      answered("Approve"),
+    ]).toEqual([
+      "you approved at 14:02",
+      "you rejected at 14:02",
+      "you answered hold at 14:02",
+      "you answered Approve at 14:02",
+    ]);
+    expect(words(runsMessages.waitingSince("14:02"))).toBe("waiting for you since 14:02");
   });
 });

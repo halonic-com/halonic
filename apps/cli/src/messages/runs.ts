@@ -39,8 +39,23 @@ export const runsMessages = defineMessages("runs", {
     finished: string,
   ) =>
     phrase`${title} in ${workspace} ${markPart("separator")} run ${runId} ${markPart("separator")} started ${started}, finished ${finished}`,
-  /** After the wait step's name, in place of a time: "you approved at 14:02". */
-  youApproved: (time: string) => phrase`you approved at ${time}`,
+  /**
+   * After the wait step's name, in place of a time, with a ! (cli-output 3.4,
+   * revision 24). Only the exact events `approve` and `reject` get their own
+   * verb; any other reads "you answered hold at 14:02", as written in the
+   * workflow, so Halonic never guesses what an event means.
+   */
+  youAnswered: (event: string, time: string) => {
+    if (event === "approve") {
+      return phrase`you approved at ${time}`;
+    }
+    if (event === "reject") {
+      return phrase`you rejected at ${time}`;
+    }
+    return phrase`you answered ${event} at ${time}`;
+  },
+  /** The same place, while the run is still waiting for the answer. */
+  waitingSince: (time: string) => phrase`waiting for you since ${time}`,
   /** `runs show` with an unknown id (`not_found`), the error's whole line 1. */
   showNoRun: (runId: string, workspace: string) => phrase`There's no run ${runId} in ${workspace}.`,
   showNoRunFix: () => phrase`See recent runs in Studio's Runs page.`,
