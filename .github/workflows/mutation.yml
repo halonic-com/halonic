@@ -16,7 +16,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: mutation-${{ github.ref }}
+  group: mutation-${{ github.ref }}-${{ inputs.packages }}
   cancel-in-progress: true
 
 jobs:
