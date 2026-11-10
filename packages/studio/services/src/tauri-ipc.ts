@@ -3,6 +3,7 @@
  * shell's capabilities decide which commands the page may call.
  */
 export interface TauriIpc {
+  /** Calls a shell command with its arguments; rejects with whatever the shell refuses with. */
   invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
 }
 

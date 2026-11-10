@@ -78,6 +78,10 @@ not a public API, so only `tauriIpc` (`src/tauri-ipc.ts`) reads it, and the rest
 including the Android connect page, asks `tauriIpc`. If a Tauri upgrade moves it, `tauriIpc` throws
 an error naming itself instead of running as if outside the shell, and the fix is one line there.
 
+`provideShellSecrets(services, page)` returns whether the page is in the shell, and throws a
+`ServiceError` when `secretsKey` or `tokenStoreKey` is already provided. `tauriIpc(page)` gives a
+`TauriIpc` (just `invoke`), or `undefined` outside the shell.
+
 ## Limits
 
 - Outside the shell `provideShellSecrets` provides nothing and returns `false`. The browser and

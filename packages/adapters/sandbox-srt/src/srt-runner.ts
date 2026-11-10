@@ -9,8 +9,11 @@ import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halo
 
 /** A program running inside the fence, as the session sees it. */
 export interface RunningProgram {
+  /** What the program reads. */
   stdin: WritableStream<Uint8Array>;
+  /** What the program writes. */
   stdout: ReadableStream<Uint8Array>;
+  /** What the program writes as errors. */
   stderr: ReadableStream<Uint8Array>;
   /** Settles when the program and everything it started has ended. Never rejects. */
   ended: Promise<{ code: number | null; signal: string | null }>;
@@ -22,8 +25,11 @@ export interface RunningProgram {
 export interface RunRequest {
   /** The sandbox-runtime settings file for the session. */
   settingsPath: string;
+  /** The program, by name or path. */
   program: string;
+  /** Its arguments, passed as they are. */
   args: string[];
+  /** The folder it starts in. */
   cwd: string;
   /**
    * The whole environment of the launcher, which runs outside the fence: only

@@ -25,6 +25,7 @@ const errorKinds: Readonly<Record<KeychainRefusalKind, ErrorKind>> = {
  */
 export class KeychainError extends Error {
   override readonly name = "KeychainError";
+  /** The shell's own kind of refusal. */
   readonly refusal: KeychainRefusalKind;
 
   /**
@@ -36,6 +37,7 @@ export class KeychainError extends Error {
     this.refusal = refusal;
   }
 
+  /** How a surface should respond: `unavailable`, `denied` or `unauthenticated`. */
   get kind(): ErrorKind {
     return errorKinds[this.refusal];
   }

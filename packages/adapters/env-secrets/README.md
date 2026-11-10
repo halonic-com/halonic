@@ -25,6 +25,10 @@ gives `null`.
 such as `OPENAI_API_KEY`: a key reaches Halonic only when someone configured it for Halonic. To use
 a key you already have, set `HALONIC_SECRET_OPENAI` to it.
 
+`secretVariableName(name)` gives the variable for a name (with the same `RangeError`), and
+`secretVariablePrefix` is `HALONIC_SECRET_`. `EnvSecrets` takes an `Environment`, a read-only record
+of variable names to `string | undefined`, which `process.env` fits.
+
 The environment is passed in (the CLI passes `process.env`), so the adapter has no Node APIs and
 tests never touch the real environment. It reads the variables live, so it sees a variable set after
 it was made.
@@ -74,7 +78,8 @@ secret.
 
 ## Limits
 
-- **Values never appear in errors or logs.** Errors name the secret, and the package doesn't log.
+- **Values never appear in errors or logs.** An error names the secret only when the port allows it (a short printable name, never something that
+  may be a value passed by mistake), and the package doesn't log.
   Whoever calls `get` must keep it that way.
 - **Exact upper case.** On Linux and macOS variable names are case-sensitive, so
   `halonic_secret_openai` is not read.

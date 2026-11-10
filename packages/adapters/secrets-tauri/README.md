@@ -87,6 +87,10 @@ keychain and the Android Keystore (HAL-1211) never disagree:
 
   An unreadable value is never `null`, so it never looks like "not set".
 
+`KeychainRefusalKind` is the four refusals in the table; `RefusalKind` adds the shell's `invalid_name`
+and `invalid_value`, which become a `RangeError`. `refusalKinds` lists all six, and `secretCommands`
+names the three commands (`get`, `set`, `delete`).
+
 No error holds a value. A failure that isn't the shell's own refusal (a missing capability, a
 broken IPC call) keeps neither its text nor the original error, because the adapter can't vouch
 for them. Only a plain object counts as the shell's refusal, as Tauri's IPC delivers it, and a

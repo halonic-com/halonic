@@ -7,6 +7,7 @@ import { isPlainObject } from "@halonicjs/std";
  * tests use a fake shell and the adapter needs no Tauri library.
  */
 export interface TauriShell {
+  /** Calls a shell command with its arguments; rejects with the shell's refusal, or with the IPC's own failure. */
   invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
 }
 

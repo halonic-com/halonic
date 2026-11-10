@@ -41,6 +41,7 @@ export class SrtSandbox implements Sandbox {
     this.#journalFolder = journalFolder;
   }
 
+  /** Whether the sandbox can start here; when it can't, the first reason and one sentence on what is missing. Never throws. */
   async check(): Promise<SandboxCheck> {
     let unavailable: Unavailable | null;
     try {
@@ -52,10 +53,16 @@ export class SrtSandbox implements Sandbox {
     return { ok: false, reason: unavailable.reason, missing: [unavailable.missing] };
   }
 
+  /** Programs share the working folder, and the fence is the operating system's. */
   capabilities(): SandboxCapabilities {
     return { files: "shared", strength: "os" };
   }
 
+  /**
+   * Opens a session whose fence is proven before it returns.
+   *
+   * @throws when {@link SrtSandbox.check} isn't `ok`, or the profile's bridge isn't a loopback address
+   */
   async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
     const check = await this.check();
     if (!check.ok) throw new Error(`the sandbox can't start: ${check.missing.join("; ")}`);
