@@ -93,8 +93,8 @@ is `agents.explorer.filter-by-hub`.
 ## Requirement guard: nothing that works may break
 
 The requirement guard compares a pull request with its merge
-base (in the merge queue, the queue's base), including both sides' test
-results. It fails on any of these, unless the branch's decision note
+base, including both sides' test results. It runs on pull requests only:
+the merge queue holds the same change, so it would give the same verdict. It fails on any of these, unless the branch's decision note
 covers it:
 
 | Change                                                                                                                           | The note lists       |
@@ -429,28 +429,35 @@ changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
 On a pull request, the `Changed areas` job decides which of those jobs run
-from the pull request's diff. In the merge queue it reads the whole
-group's diff against the `main` commit the group is built on. If that diff
-holds only docs and tests (Markdown, `docs/`, `apps/docs/`, test and spec
-files, Rust `_tests.rs` files, and `test`, `tests`, `fixtures` and
-snapshot folders), the same area rules apply as on a pull request, so a
-README-only group skips Tauri, Android and Playwright. Any other file, an
-empty diff or a diff that can't be read runs every job. On `main` every
-job runs.
+from the pull request's diff. In the merge queue it reads the group's diff
+against the commit the group is built on (`main`, or the entry ahead of it
+in the queue) and applies the same area rules, so a group that doesn't
+touch `apps/studio/src-tauri` skips Tauri and Android. Each entry ahead
+checks its own areas before it merges. An empty diff or a diff that can't
+be read runs every job. On `main` every job runs, so a gap in the area
+rules still shows there ([broken-main.md](broken-main.md)).
 
-| Job                          | What                                                                                                                                                      |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                   |
-| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                     |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                             |
-| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                                        |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` it then runs `trace`; on a pull request it hands its test results to the guard job |
-| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                              |
-| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results   |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                        |
-| Tauri shell (Rust checks)    | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny`                        |
-| Tauri shell on Windows       | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths                                              |
-| End-to-end, docs             | stubs that run only when their area changes; real once the Studio and `apps/docs` exist                                                                   |
+The merge queue reruns what a newer base can break: the fast gates, the
+leak guard and secret scan, the build with `trace` (from the queued
+change's own copy, as on `main`) and the area jobs. It leaves out what
+depends only on the pull request itself and already passed on it: the
+title and coverage-floor checks, the merge base's tests and the
+requirement guard, and the workflow lint unless the group changes
+`.github/`.
+
+| Job                          | What                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                 |
+| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                   |
+| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                           |
+| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes                     |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does      |
+| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                            |
+| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                      |
+| Tauri shell (Rust checks)    | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny`                      |
+| Tauri shell on Windows       | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths                                            |
+| End-to-end, docs             | stubs that run only when their area changes; real once the Studio and `apps/docs` exist                                                                 |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history
