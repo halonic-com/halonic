@@ -37,7 +37,9 @@ export default {
       await Promise.all(
         hashes.map(async (h) => {
           const o = await env.R2_STORE.head(h);
-          out[h] = o ? { size: o.size, taggedAt: o.uploaded.getTime(), tag: o.customMetadata?.tag } : null;
+          out[h] = o
+            ? { size: o.size, taggedAt: o.uploaded.getTime(), tag: o.customMetadata?.tag }
+            : null;
         }),
       );
       return json(out);
@@ -51,14 +53,18 @@ export default {
       if (!request.body) return json({ error: "empty body" }, 400);
       const tag = request.headers.get("x-artifact-tag") || undefined;
       const length = Number(request.headers.get("content-length"));
-      const body = Number.isFinite(length) && length > 0 ? request.body : await request.arrayBuffer();
+      const body =
+        Number.isFinite(length) && length > 0 ? request.body : await request.arrayBuffer();
       await env.R2_STORE.put(key, body, { customMetadata: tag ? { tag } : undefined });
       return json({ urls: [`${new URL(request.url).origin}/v8/artifacts/${key}`] }, 202);
     }
     if (method === "GET" || method === "HEAD") {
       const o = method === "GET" ? await env.R2_STORE.get(key) : await env.R2_STORE.head(key);
       if (!o) return json({ error: "not found" }, 404);
-      const headers = { "content-type": "application/octet-stream", "content-length": String(o.size) };
+      const headers = {
+        "content-type": "application/octet-stream",
+        "content-length": String(o.size),
+      };
       if (o.customMetadata?.tag) headers["x-artifact-tag"] = o.customMetadata.tag;
       return new Response(method === "GET" ? o.body : null, { headers });
     }

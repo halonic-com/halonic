@@ -12,11 +12,11 @@ network, no spend). Nothing here is a pnpm package; it is deployed through the C
 KV namespace **`halonic-spend-guard`**, ID **`646a6e2ba633475da4ecf9502cd8ce25`** (account
 `346227c5febeb134aaf2cee24096499b`).
 
-| Key | Value | Meaning |
-|---|---|---|
-| `spend_ok` | `on` / `off` | Account-wide switch |
-| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`) |
-| `state` | JSON | Month, estimated cost per product and service, last good read, who turned it off (`auto` or `manual`) |
+| Key                  | Value        | Meaning                                                                                               |
+| -------------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| `spend_ok`           | `on` / `off` | Account-wide switch                                                                                   |
+| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`)                                                          |
+| `state`              | JSON         | Month, estimated cost per product and service, last good read, who turned it off (`auto` or `manual`) |
 
 Anything other than the exact string `on` counts as off: a missing key, a KV error, a missing binding.
 
@@ -60,14 +60,14 @@ if (!(await checkSpend(env, "render"))) return spendOffResponse(); // 503
 
 No new Cloudflare product goes live before it is on this list and priced in `src/pricing.mjs` and `src/usage.mjs`.
 
-| Product | In use | Read from | Notes |
-|---|---|---|---|
-| Workers (requests, CPU) | yes | `workersInvocationsAdaptive` | plan fee $5 included |
-| R2 (storage, Class A/B) | yes | `r2StorageAdaptiveGroups`, `r2OperationsAdaptiveGroups` | storage = peak size × elapsed part of month (high estimate) |
-| KV | yes | `kvOperationsAdaptiveGroups`, `kvStorageAdaptiveGroups` | |
-| Workers AI | no | `aiInferenceAdaptiveGroups` | read anyway |
-| Durable Objects | no, with HAL-3083 | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | reader written; `live: false` until it ships |
-| Containers | no, with HAL-3083 | `containersUsageAdaptiveGroups` | `live: false`. CPU is read; memory and disk units must be checked against real data before they are priced. Until then the render sub-budget is the cap |
+| Product                 | In use            | Read from                                                                 | Notes                                                                                                                                                   |
+| ----------------------- | ----------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workers (requests, CPU) | yes               | `workersInvocationsAdaptive`                                              | plan fee $5 included                                                                                                                                    |
+| R2 (storage, Class A/B) | yes               | `r2StorageAdaptiveGroups`, `r2OperationsAdaptiveGroups`                   | storage = peak size × elapsed part of month (high estimate)                                                                                             |
+| KV                      | yes               | `kvOperationsAdaptiveGroups`, `kvStorageAdaptiveGroups`                   |                                                                                                                                                         |
+| Workers AI              | no                | `aiInferenceAdaptiveGroups`                                               | read anyway                                                                                                                                             |
+| Durable Objects         | no, with HAL-3083 | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | reader written; `live: false` until it ships                                                                                                            |
+| Containers              | no, with HAL-3083 | `containersUsageAdaptiveGroups`                                           | `live: false`. CPU is read; memory and disk units must be checked against real data before they are priced. Until then the render sub-budget is the cap |
 
 Flip `live` in `src/usage.mjs` in the same pull request that ships the product. Any product not on the list (Queues, D1, Vectorize, Images, Stream, Browser Rendering...) is not covered.
 
@@ -92,16 +92,17 @@ account's billing cycle starts on another day, the estimate can be high or low b
 
 Measured on 10 Nov 2026 by sending requests to `halonic-turbo-cache` and polling GraphQL (`workersInvocationsAdaptive`, per-minute rows):
 
-| Sent | First visible in GraphQL |
-|---|---|
-| 3 requests at 09:19:41 | within 61 s (not yet at 22 s) |
-| 1 request at 09:20:49 | between 33 s and 125 s (not yet at 33 s, present at 125 s) |
+| Sent                   | First visible in GraphQL                                   |
+| ---------------------- | ---------------------------------------------------------- |
+| 3 requests at 09:19:41 | within 61 s (not yet at 22 s)                              |
+| 1 request at 09:20:49  | between 33 s and 125 s (not yet at 33 s, present at 125 s) |
 
 So analytics lag is **about 1 to 2 minutes**. Billing-side lag (invoices, the dashboard's billing page) can be hours, which is why the guard prices
 analytics quantities itself instead of waiting for billed amounts. KV propagation to the edge adds up to 60 s (cache TTL).
 
 Worst case past the trip is the spend rate times the gap between real spend and the switch reaching every Worker:
 15 min cron + about 2 min analytics lag + 1 min KV = **about 18 minutes**.
+
 - Today's services at their own limits (turbo-cache $5/month cap; render, max 2 containers, roughly $0.15/hour): **cents**.
 - A flood against a public Worker (no Cloudflare-side cap exists): 10,000 requests/s is 36M requests/hour, about $11/hour at $0.30/M, so **about $3** in 18 minutes.
 

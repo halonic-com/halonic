@@ -18,7 +18,8 @@ const fakeKv = (initial = {}) => {
     },
   };
 };
-const freshKv = () => fakeKv({ spend_ok: "on", "spend_ok:render": "on", "spend_ok:turbo-cache": "on" });
+const freshKv = () =>
+  fakeKv({ spend_ok: "on", "spend_ok:render": "on", "spend_ok:turbo-cache": "on" });
 const at = (iso) => new Date(iso);
 const harness = (kv, env = {}) => {
   const sent = [];
@@ -41,12 +42,29 @@ const usage = (totalUsd, services = {}) => ({ totalUsd, services });
 
 test("checkSpend: only 'on' counts as on; everything else is off", async () => {
   assert.equal(await checkSpend({ SPEND_KV: freshKv() }, "render"), true);
-  assert.equal(await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "off", "spend_ok:render": "on" }) }, "render"), false);
-  assert.equal(await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "on", "spend_ok:render": "off" }) }, "render"), false);
-  assert.equal(await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "on" }) }, "render"), false, "missing service key");
-  assert.equal(await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "ON", "spend_ok:render": "on" }) }, "render"), false);
+  assert.equal(
+    await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "off", "spend_ok:render": "on" }) }, "render"),
+    false,
+  );
+  assert.equal(
+    await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "on", "spend_ok:render": "off" }) }, "render"),
+    false,
+  );
+  assert.equal(
+    await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "on" }) }, "render"),
+    false,
+    "missing service key",
+  );
+  assert.equal(
+    await checkSpend({ SPEND_KV: fakeKv({ spend_ok: "ON", "spend_ok:render": "on" }) }, "render"),
+    false,
+  );
   assert.equal(await checkSpend({}, "render"), false, "no binding");
-  const broken = { get: async () => { throw new Error("kv down"); } };
+  const broken = {
+    get: async () => {
+      throw new Error("kv down");
+    },
+  };
   assert.equal(await checkSpend({ SPEND_KV: broken }, "render"), false, "KV error");
   assert.equal(spendOffResponse().status, 503);
 });
@@ -137,7 +155,11 @@ test("no usage data: alert at once, switch off after 3 hours, back on when reada
 test("an unset or failing Telegram never blocks the stop", async () => {
   const kv = freshKv();
   const h = harness(kv, { THRESHOLD_OVERRIDE: "0.01" });
-  await runGuard(h.env, { now: at("2026-11-10T10:00:00Z"), readUsage: async () => usage(5), notify: async () => false });
+  await runGuard(h.env, {
+    now: at("2026-11-10T10:00:00Z"),
+    readUsage: async () => usage(5),
+    notify: async () => false,
+  });
   assert.equal(kv.m.get("spend_ok"), "off");
 });
 

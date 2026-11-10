@@ -23,7 +23,8 @@ export function monthWindow(now) {
     since: start.toISOString(),
     until: now.toISOString(),
     daysElapsed: Math.max(1, Math.ceil((now - start) / dayMs)),
-    monthFraction: (now - start) / (new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)) - start),
+    monthFraction:
+      (now - start) / (new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)) - start),
   };
 }
 
@@ -31,7 +32,10 @@ async function gql(env, query, variables) {
   if (!env.CLOUDFLARE_SPEND_GUARD_TOKEN) throw new Error("CLOUDFLARE_SPEND_GUARD_TOKEN is not set");
   const res = await fetch(ENDPOINT, {
     method: "POST",
-    headers: { authorization: `Bearer ${env.CLOUDFLARE_SPEND_GUARD_TOKEN}`, "content-type": "application/json" },
+    headers: {
+      authorization: `Bearer ${env.CLOUDFLARE_SPEND_GUARD_TOKEN}`,
+      "content-type": "application/json",
+    },
     body: JSON.stringify({ query, variables }),
   });
   if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}`);
@@ -48,7 +52,9 @@ const GB = 1e9;
 // Each reader returns a usage record for the filter it is given.
 export const READERS = {
   async workers(env, w, { scripts } = {}) {
-    const filter = scripts ? "datetime_geq:$since, datetime_leq:$until, scriptName_in:$scripts" : "datetime_geq:$since, datetime_leq:$until";
+    const filter = scripts
+      ? "datetime_geq:$since, datetime_leq:$until, scriptName_in:$scripts"
+      : "datetime_geq:$since, datetime_leq:$until";
     const a = await gql(
       env,
       `query($tag:String!,$since:Time!,$until:Time!${scripts ? ",$scripts:[string!]" : ""}){viewer{accounts(filter:{accountTag:$tag}){
@@ -63,7 +69,12 @@ export const READERS = {
 
   async r2(env, w, { buckets } = {}) {
     const bf = buckets?.length ? ", bucketName_in:$buckets" : "";
-    const vars = { tag: env.ACCOUNT_ID, since: w.since, until: w.until, ...(buckets?.length ? { buckets } : {}) };
+    const vars = {
+      tag: env.ACCOUNT_ID,
+      since: w.since,
+      until: w.until,
+      ...(buckets?.length ? { buckets } : {}),
+    };
     const decl = buckets?.length ? ",$buckets:[string!]" : "";
     const a = await gql(
       env,
@@ -73,8 +84,32 @@ export const READERS = {
       vars,
     );
     // Class A: writes, lists, multipart. Class B: reads and heads. Deletes are free.
-    const classA = new Set(["ListBuckets", "PutBucket", "ListObjects", "PutObject", "CopyObject", "CompleteMultipartUpload", "CreateMultipartUpload", "ListMultipartUploads", "UploadPart", "UploadPartCopy", "ListParts", "PutBucketEncryption", "PutBucketCors", "PutBucketLifecycleConfiguration"]);
-    const classB = new Set(["HeadBucket", "HeadObject", "GetObject", "UsageSummary", "GetBucketEncryption", "GetBucketLocation", "GetBucketCors", "GetBucketLifecycleConfiguration"]);
+    const classA = new Set([
+      "ListBuckets",
+      "PutBucket",
+      "ListObjects",
+      "PutObject",
+      "CopyObject",
+      "CompleteMultipartUpload",
+      "CreateMultipartUpload",
+      "ListMultipartUploads",
+      "UploadPart",
+      "UploadPartCopy",
+      "ListParts",
+      "PutBucketEncryption",
+      "PutBucketCors",
+      "PutBucketLifecycleConfiguration",
+    ]);
+    const classB = new Set([
+      "HeadBucket",
+      "HeadObject",
+      "GetObject",
+      "UsageSummary",
+      "GetBucketEncryption",
+      "GetBucketLocation",
+      "GetBucketCors",
+      "GetBucketLifecycleConfiguration",
+    ]);
     let ca = 0;
     let cb = 0;
     for (const row of a.ops ?? []) {
@@ -84,7 +119,10 @@ export const READERS = {
       else if (!/^Delete|^Abort/.test(t)) ca += row.sum.requests; // unknown type: price it as the dearer class
     }
     // Upper bound: each bucket's largest size this month, held for the elapsed part of the month.
-    const peak = (a.storage ?? []).reduce((t, r) => t + (r.max.payloadSize + r.max.metadataSize) / GB, 0);
+    const peak = (a.storage ?? []).reduce(
+      (t, r) => t + (r.max.payloadSize + r.max.metadataSize) / GB,
+      0,
+    );
     return { r2ClassA: ca, r2ClassB: cb, r2StorageGbMonth: peak * w.monthFraction };
   },
 

@@ -3,7 +3,12 @@
 
 export const RATES = {
   workersPaidPlanUsd: 5,
-  workers: { includedRequests: 10e6, perMillionRequests: 0.3, includedCpuMs: 30e6, perMillionCpuMs: 0.02 },
+  workers: {
+    includedRequests: 10e6,
+    perMillionRequests: 0.3,
+    includedCpuMs: 30e6,
+    perMillionCpuMs: 0.02,
+  },
   r2: {
     freeGb: 10,
     perGbMonth: 0.015,
@@ -49,23 +54,37 @@ export function price(usage, { allowances = true, daysElapsed = 1 } = {}) {
   const f = allowances ? 1 : 0;
   const R = RATES;
   const lines = {
-    workersRequests: (over(usage.workersRequests, R.workers.includedRequests * f) / 1e6) * R.workers.perMillionRequests,
-    workersCpu: (over(usage.workersCpuMs, R.workers.includedCpuMs * f) / 1e6) * R.workers.perMillionCpuMs,
+    workersRequests:
+      (over(usage.workersRequests, R.workers.includedRequests * f) / 1e6) *
+      R.workers.perMillionRequests,
+    workersCpu:
+      (over(usage.workersCpuMs, R.workers.includedCpuMs * f) / 1e6) * R.workers.perMillionCpuMs,
     r2Storage: over(usage.r2StorageGbMonth, R.r2.freeGb * f) * R.r2.perGbMonth,
     r2ClassA: (over(usage.r2ClassA, R.r2.freeClassA * f) / 1e6) * R.r2.perMillionClassA,
     r2ClassB: (over(usage.r2ClassB, R.r2.freeClassB * f) / 1e6) * R.r2.perMillionClassB,
     kvReads: (over(usage.kvReads, R.kv.freeReads * f) / 1e6) * R.kv.perMillionReads,
     kvWrites: (over(usage.kvWrites, R.kv.freeWrites * f) / 1e6) * R.kv.perMillionWrites,
     kvStorage: over(usage.kvStorageGbMonth, R.kv.freeGb * f) * R.kv.perGbMonth,
-    doRequests: (over(usage.doRequests, R.durableObjects.includedRequests * f) / 1e6) * R.durableObjects.perMillionRequests,
+    doRequests:
+      (over(usage.doRequests, R.durableObjects.includedRequests * f) / 1e6) *
+      R.durableObjects.perMillionRequests,
     doDuration:
-      (over(usage.doGbSeconds, R.durableObjects.includedGbSeconds * f) / 1e6) * R.durableObjects.perMillionGbSeconds,
+      (over(usage.doGbSeconds, R.durableObjects.includedGbSeconds * f) / 1e6) *
+      R.durableObjects.perMillionGbSeconds,
     workersAi:
-      (over(usage.aiNeurons, R.workersAi.freeNeuronsPerDay * daysElapsed * f) / 1000) * R.workersAi.perThousandNeurons,
-    containerMemory: over(usage.containerMemGibSeconds, R.containers.includedMemGibSeconds * f) * R.containers.perGibSecond,
-    containerCpu: over(usage.containerVcpuSeconds, R.containers.includedVcpuSeconds * f) * R.containers.perVcpuSecond,
-    containerDisk: over(usage.containerDiskGbSeconds, R.containers.includedDiskGbSeconds * f) * R.containers.perDiskGbSecond,
+      (over(usage.aiNeurons, R.workersAi.freeNeuronsPerDay * daysElapsed * f) / 1000) *
+      R.workersAi.perThousandNeurons,
+    containerMemory:
+      over(usage.containerMemGibSeconds, R.containers.includedMemGibSeconds * f) *
+      R.containers.perGibSecond,
+    containerCpu:
+      over(usage.containerVcpuSeconds, R.containers.includedVcpuSeconds * f) *
+      R.containers.perVcpuSecond,
+    containerDisk:
+      over(usage.containerDiskGbSeconds, R.containers.includedDiskGbSeconds * f) *
+      R.containers.perDiskGbSecond,
   };
-  const total = Object.values(lines).reduce((a, b) => a + b, 0) + (allowances ? R.workersPaidPlanUsd : 0);
+  const total =
+    Object.values(lines).reduce((a, b) => a + b, 0) + (allowances ? R.workersPaidPlanUsd : 0);
   return { lines, total };
 }
