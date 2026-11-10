@@ -3,7 +3,7 @@ import { listInWords } from "./counts.ts";
 
 describe("listInWords", () => {
   it.each([
-    [[], ""],
+    [[], "nothing"],
     [["approve"], "approve"],
     [["approve", "reject"], "approve or reject"],
     [["go", "wait", "stop"], "go, wait or stop"],
