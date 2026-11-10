@@ -67,10 +67,10 @@ function takeItemResult(context: StateContext, input: EffectDoneInput): StateSte
   if (result.type === "tool") {
     return nothing;
   }
-  return finishItem(context, running, result.output);
+  return takeItemOutput(context, running, result.output);
 }
 
-function finishItem(context: StateContext, running: RunningItem, output: unknown): StateStep {
+function takeItemOutput(context: StateContext, running: RunningItem, output: unknown): StateStep {
   const list = itemsOf(context);
   if ("error" in list) {
     return failed(list.error);
@@ -108,14 +108,14 @@ function startMore(
   const started = [...events];
   for (let index = first; index < items.length && index < first + free; index += 1) {
     const callId = `call-${run.calls + effects.length + 1}`;
-    const { event, effect } = startItem(context, agent, items[index], index, callId);
+    const { event, effect } = startItemCall(context, agent, items[index], index, callId);
     started.push(event);
     effects.push(effect);
   }
   return { events: started, effects };
 }
 
-function startItem(
+function startItemCall(
   { run, stateId, state, scope, agents }: StateContext,
   agent: string,
   item: unknown,

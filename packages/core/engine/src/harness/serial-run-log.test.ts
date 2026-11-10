@@ -79,6 +79,15 @@ describe("SerialRunLog", () => {
     expect(runs.logs.get("r-acme")).toHaveLength(ended ?? 0);
   });
 
+  it("tags every event with the foreach item the call runs", async () => {
+    const runs = new KernelRuns();
+    const log = new SerialRunLog(runs, "run_1", "call-1", 0, steppingClock(), 2);
+
+    await log.append({ type: "state.entered", state: "a" });
+
+    expect(runs.logs.get("run_1")).toMatchObject([{ seq: 1, item: 2 }]);
+  });
+
   it("settles once every append given so far is stored", async () => {
     const runs = new KernelRuns();
     const log = new SerialRunLog(runs, "run_1", "call-1", 0, steppingClock());

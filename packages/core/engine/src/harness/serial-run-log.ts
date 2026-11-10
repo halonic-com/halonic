@@ -1,5 +1,6 @@
 import type { RunEvent, RunEventBody } from "@halonicjs/events";
 import type { Clock, RunStore } from "@halonicjs/ports";
+import { callOf } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
 import type { HarnessEventLog } from "./run-harness-call.ts";
 
@@ -23,6 +24,7 @@ export class SerialRunLog implements HarnessEventLog {
   readonly #runId: string;
   readonly #callId: string;
   readonly #clock: Clock;
+  readonly #item: number | null;
   #seq: number;
   /** The last append, which the next one waits for. */
   #tail: Promise<void> = Promise.resolve();
@@ -30,6 +32,7 @@ export class SerialRunLog implements HarnessEventLog {
   /**
    * @param callId - the harness call that writes, which the run must still wait on
    * @param lastSeq - the `seq` of the run's last stored event, which the first event follows
+   * @param item - the `foreach` item the call runs, which every event then carries; `null` for a task state's call
    */
   constructor(
     store: Pick<RunStore, "append" | "events" | "snapshot">,
@@ -37,12 +40,14 @@ export class SerialRunLog implements HarnessEventLog {
     callId: string,
     lastSeq: number,
     clock: Clock,
+    item: number | null = null,
   ) {
     this.#store = store;
     this.#runId = runId;
     this.#callId = callId;
     this.#seq = lastSeq;
     this.#clock = clock;
+    this.#item = item;
   }
 
   /**
@@ -68,6 +73,7 @@ export class SerialRunLog implements HarnessEventLog {
     for (let attempt = 1; attempt <= maxAppendAttempts; attempt += 1) {
       const stored: RunEvent = {
         ...event,
+        ...(this.#item === null ? {} : { item: this.#item }),
         runId: this.#runId,
         seq: this.#seq + 1,
         at: this.#clock.now().toISOString(),
@@ -91,7 +97,7 @@ export class SerialRunLog implements HarnessEventLog {
    */
   async #catchUp(): Promise<void> {
     const run = await readRun(this.#store, this.#runId);
-    if (run?.pendingCall?.callId !== this.#callId) {
+    if (run === null || callOf(run, this.#callId) === null) {
       throw new Error(
         `Run ${this.#runId} moved on from call ${this.#callId} while its harness wrote to the log.`,
       );

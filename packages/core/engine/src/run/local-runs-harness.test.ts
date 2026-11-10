@@ -1,3 +1,4 @@
+import type { Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { finished, harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
@@ -222,5 +223,57 @@ verifies("engine.harness-stops-with-engine", () => {
     await next.executor.start({ ...replyStart, runId: "run_2" });
 
     expect(await runs.get("run_1")).toMatchObject({ status: "failed", reason: "interrupted" });
+  });
+});
+
+/** Labels each email of the run's input with the harness agent `writer`, two at a time. */
+const triageWorkflow: Workflow = {
+  version: 1,
+  id: "reply",
+  name: "Triage the inbox",
+  initial: "triage",
+  context: {},
+  states: {
+    triage: {
+      type: "foreach",
+      agent: "writer",
+      items: "{{input.emails}}",
+      as: "email",
+      concurrency: 2,
+      input: "Label {{email.subject}}",
+      output: "labels",
+      on: [{ to: "filed", event: "done" }],
+    },
+    filed: { type: "final", on: [] },
+  },
+  layout: {},
+};
+
+verifies("engine.foreach-state", () => {
+  it("runs two harness items at once, each writing to the log while the other does", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("billing")];
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      workflow: triageWorkflow,
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start({
+      ...replyStart,
+      input: { emails: [{ subject: "Refund" }, { subject: "Invoice" }] },
+    });
+    await Promise.all([
+      scheduler.deliver("run_1", "harness:call-1"),
+      scheduler.deliver("run_1", "harness:call-2"),
+    ]);
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { labels: ["billing", "billing"] },
+    });
+    expect(ports.harness.tasks).toHaveLength(2);
+    const harnessStarts = runs.logs.get("run_1")?.filter(({ type }) => type === "harness.started");
+    expect(harnessStarts?.map(({ item }) => item).sort()).toEqual([0, 1]);
   });
 });
