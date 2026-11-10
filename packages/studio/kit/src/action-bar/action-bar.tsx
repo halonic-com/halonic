@@ -5,8 +5,11 @@ import { Button, type ButtonUnavailable } from "../button/button.tsx";
 export interface ActionBarButton {
   /** The label: a verb that says what happens. "Approve", "Send note to the agent". */
   readonly label: string;
-  /** `primary` for the one decision, at most once and first. Everything else is `secondary`. */
-  readonly variant?: "primary" | "secondary";
+  /**
+   * `primary` for the one decision, or `danger` when that decision deletes or removes something:
+   * one of them at most once, and first. Everything else is `secondary`.
+   */
+  readonly variant?: "primary" | "danger" | "secondary";
   /** An optional 16px icon on the left: the chat icon on Try it. */
   readonly icon?: ReactNode;
   /** The label while busy: "Approving…". */
@@ -35,7 +38,10 @@ export type ActionBarRow = readonly [ActionBarButton] | readonly [ActionBarButto
 export type ActionBarNoteTone = "muted" | "warning" | "danger";
 
 export interface ActionBarProps {
-  /** The rows, top to bottom. The `primary` button, if any, is the first of the first row. */
+  /**
+   * The rows, top to bottom. The `primary` or `danger` button, if any, is the first of the first
+   * row.
+   */
   readonly rows: readonly ActionBarRow[];
   /**
    * An optional line above the buttons, never shortened: "Sending is off until you connect
@@ -63,7 +69,8 @@ const noteTones: Record<ActionBarNoteTone, string> = {
  * fill with a `border` line on top, padding 12px 16px and the safe area at the bottom; it grows
  * with its content. Its buttons are 48px and full width: two in a row share it with 8px between
  * them, and stack, in the same order, when either label doesn't fit its half. At most one
- * `primary`, and it comes first. When the action can't happen at all, don't show the bar.
+ * `primary` or `danger`, and it comes first. When the action can't happen at all, don't show the
+ * bar.
  *
  * @example
  * <ActionBar
@@ -136,12 +143,17 @@ function idOf(button: ActionBarButton, busyButton: ActionBarButton | undefined, 
   return button.id === undefined ? {} : { id: button.id };
 }
 
-/** At most one `primary`, and it's the first button: a mistake here is the screen's, not the user's. */
+/**
+ * At most one `primary` or `danger`, and it's the first button: a mistake here is the screen's,
+ * not the user's.
+ */
 function checkPrimary(rows: readonly ActionBarRow[]): void {
-  const primaries = rows
+  const decisions = rows
     .flat()
-    .flatMap((button, index) => (button.variant === "primary" ? [index] : []));
-  if (primaries.length > 1 || (primaries.length === 1 && primaries[0] !== 0)) {
-    throw new Error("An ActionBar has at most one primary button, and it comes first.");
+    .flatMap((button, index) =>
+      button.variant === "primary" || button.variant === "danger" ? [index] : [],
+    );
+  if (decisions.length > 1 || (decisions.length === 1 && decisions[0] !== 0)) {
+    throw new Error("An ActionBar has at most one primary or danger button, and it comes first.");
   }
 }

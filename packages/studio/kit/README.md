@@ -178,8 +178,9 @@ behind it and no screen pads its content. A `surface` fill, a `border` line on t
 - Every button is `size="touch"` (48px) and full width. Two in a row share it equally with 8px
   between them, and **stack** in the same order when either label doesn't fit its half (at 320px,
   "Ask for changes" doesn't).
-- **At most one `primary`, and it comes first.** The bar throws otherwise: it's the screen's
-  mistake, not the user's. Reject is `secondary`, not red: it's a decision.
+- **At most one `primary` or `danger`, and it comes first.** The bar throws otherwise: it's the
+  screen's mistake, not the user's. `danger` is for a decision that deletes or removes something
+  (a form sheet's "Delete agent"). Reject is `secondary`, not red: it's a decision, not a removal.
 - `note` is a line above the buttons in `text-small`, in its tone (`muted`, `warning`, `danger`),
   never shortened: "Sending is off until you connect Gmail."
 - While one button is `busy`, the others are unavailable, with the busy one as their reason.
@@ -377,10 +378,11 @@ moves in the order you see.
 **A `form` Dialog on a phone is a form sheet** (component specs 15.3): the same `<dialog>` and
 props, drawn full screen. Close sits at the top left (it cancels and asks nothing) and the title
 takes focus. The fields are padded 12px 16px and 16px apart in a body that scrolls. The confirming
-button is full width and 48px in an `ActionBar` at the bottom, riding on the keyboard, and it
+button keeps its `confirm.variant` (`primary` or `danger`) and is full width and 48px in an
+`ActionBar` at the bottom, riding on the keyboard, and it
 submits the one form, so Enter in a field confirms too. There's no Cancel button: Close is
 Cancel. While `busy`, Close is unavailable with the busy button as its reason. A failed submit's
-Callout is the last thing in the body, above the bar. Parts inside can ask `useInFormSheet()`, so a
+Callout is the last thing in the body, above the bar and 16px under the last field. Parts inside can ask `useInFormSheet()`, so a
 long field stays a textarea there instead of folding into a text sheet.
 
 ## EmptyState

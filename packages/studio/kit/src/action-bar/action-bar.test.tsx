@@ -173,6 +173,33 @@ verifies("kit.action-bar", () => {
     ).toThrow("at most one primary");
     quiet.mockRestore();
   });
+
+  it("draws a danger decision first, and counts it as the one decision", () => {
+    const { container } = render(
+      <ActionBar rows={[[{ label: "Delete agent", variant: "danger" }, { label: "Keep it" }]]} />,
+    );
+    const [remove, keep] = [...container.querySelectorAll("button")];
+    expect(remove?.className).toContain("bg-danger");
+    expect(keep?.className).toContain("bg-surface");
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() =>
+      render(
+        <ActionBar rows={[[{ label: "Keep it" }, { label: "Delete agent", variant: "danger" }]]} />,
+      ),
+    ).toThrow("at most one primary or danger");
+    expect(() =>
+      render(
+        <ActionBar
+          rows={[
+            [{ label: "Delete agent", variant: "danger" }],
+            [{ label: "Approve", variant: "primary" }],
+          ]}
+        />,
+      ),
+    ).toThrow("at most one primary or danger");
+    quiet.mockRestore();
+  });
+
   it("is hidden only by the kit's text fields, which carry data-text-entry", () => {
     const { container } = render(
       <>

@@ -8,7 +8,8 @@ import type { DialogProps } from "./dialog-props.ts";
 /**
  * A `form` Dialog on a phone (component specs 8 and 15.3): a full-screen sheet with Close at the
  * top left, the fields padded 12px 16px and 16px apart in a body that scrolls, and the confirming
- * button full width at the bottom in an ActionBar that rides on the keyboard. Still a `<dialog>`
+ * button full width at the bottom, in its own `primary` or `danger`, in an ActionBar that rides on
+ * the keyboard. Still a `<dialog>`
  * with `showModal()`, so focus, inertness and the toast rule don't change. Close cancels and asks
  * nothing; a failed submit's Callout is the last thing in the body, above the bar.
  */
@@ -47,7 +48,7 @@ export function FormSheet(props: DialogProps) {
               {
                 id: confirmId,
                 label: props.confirm.label,
-                variant: "primary",
+                variant: props.confirm.variant ?? "primary",
                 type: "submit",
                 busy,
                 busyLabel: props.confirm.busyLabel,
@@ -60,7 +61,9 @@ export function FormSheet(props: DialogProps) {
       {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}
     >
       <InFormSheetContext value={true}>
-        <div className="flex flex-col gap-4 px-4 py-3">{props.children}</div>
+        <div className="flex flex-col gap-4 px-4 pt-3">{props.children}</div>
+        {/* The fields have no bottom padding: the slot's own 12px ends the body, and an error's
+            16px above its Callout is then the only gap between it and the last field. */}
         <div className="px-4 pb-3">
           <AlertSlot error={props.error} attempt={attempt} waiting={busy} />
         </div>

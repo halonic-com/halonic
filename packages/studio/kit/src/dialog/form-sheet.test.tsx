@@ -57,8 +57,24 @@ verifies("kit.dialog-form-sheet", () => {
     const { container } = onPhone();
     const field = container.querySelector("input") as HTMLInputElement;
     const fields = field.closest(".gap-4") as HTMLElement;
-    expect(fields.className).toContain("flex flex-col gap-4 px-4 py-3");
+    expect(fields.className).toContain("flex flex-col gap-4 px-4 pt-3");
     expect((fields.parentElement as HTMLElement).className).toContain("overflow-y-auto");
+  });
+
+  it("ends the body 12px under the last field, and puts an error's Callout 16px under it", () => {
+    function slotBoxOf(container: HTMLElement) {
+      const fields = (container.querySelector("input") as HTMLInputElement).closest(
+        ".gap-4",
+      ) as HTMLElement;
+      expect(fields.className).not.toMatch(/\b(py|pb)-/);
+      const slotBox = fields.nextElementSibling as HTMLElement;
+      expect(slotBox.className).toBe("px-4 pb-3");
+      expect(slotBox.nextElementSibling).toBeNull();
+      return slotBox.querySelector('[role="alert"]') as HTMLElement;
+    }
+    expect(slotBoxOf(onPhone().container).childElementCount).toBe(0);
+    const failed = slotBoxOf(onPhone({ error: "Couldn't create the agent." }).container);
+    expect((failed.firstElementChild as HTMLElement).className).toBe("pt-4");
   });
 
   it("puts the confirming button full width and 48px in an ActionBar under the body", () => {
@@ -72,6 +88,16 @@ verifies("kit.dialog-form-sheet", () => {
     expect(bar.getAttribute("data-while-typing")).toBe("ride");
     const form = container.querySelector("form") as HTMLFormElement;
     expect(form.lastElementChild).toBe(bar);
+  });
+
+  it("draws a danger confirming button in danger", () => {
+    const { container } = onPhone({
+      confirm: { label: "Delete agent", variant: "danger", busyLabel: "Deleting…" },
+    });
+    const remove = buttonNamed(container, "Delete agent");
+    expect(remove.className).toContain("bg-danger");
+    expect(remove.className).not.toContain("bg-primary");
+    expect(remove.closest(".action-bar")).not.toBeNull();
   });
 
   it("confirms on the button and on Enter in a field: one form", async () => {
