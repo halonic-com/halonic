@@ -101,7 +101,8 @@ limits: # optional; the defaults suit a short JSON API
 The kit waits up to 30 seconds for the response headers, then up to 60
 seconds for each next piece of the body, so a long streamed answer keeps
 going as long as data arrives. Raise `limits` for a long model answer or a
-large file export.
+large file export: `timeoutMs` for the whole request, `headersTimeoutMs` and
+`idleTimeoutMs` for the two waits above, and `maxResponseBytes` for the size.
 
 The schema is `IntegrationSheet` in `@halonicjs/format`: its JSON Schema is
 `jsonSchemaOf("integration")`, and `parseFile("integration", text)` checks a

@@ -27,8 +27,8 @@ community files and doc comments. Read it before you write or change a page.
 
 ## Where a page goes
 
-The docs site (`apps/docs`) has four sections. Pick one per page; don't mix
-them.
+The docs site (`apps/docs`, not built yet: CI's `docs` job is a placeholder)
+has four sections. Pick one per page; don't mix them.
 
 | Section       | Answers                                                  | Example                   |
 | ------------- | -------------------------------------------------------- | ------------------------- |
@@ -78,7 +78,7 @@ Architecture decisions live in `docs/adr/`, one file each, named
   local paths, and blocks the pull request if it finds one.
 - Example code in a package README is copied from the package's `examples/`
   folder, where it is type-checked and tested. Edit the example, not the README
-  copy.
+  copy: the `readme-examples` check fails when the copy differs from the file.
 
 ## Glossary
 
