@@ -1,8 +1,9 @@
-import { lstat, readFile, rename } from "node:fs/promises";
+import { lstat, readFile, readlink, rename } from "node:fs/promises";
 import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { gitlinkPaths, parseIndex } from "./git-index.ts";
+import { linkedGitFolder } from "./git-link.ts";
 
-/** What a gitlink's `.git` was at session start: absent, a folder, a link or a file and its text. */
+/** What a gitlink's `.git` was at session start: absent, a folder, a file and its text, or a link and its target. */
 type DotGit = string;
 
 /** A repository whose index `git status` in the working folder reads. */
@@ -57,7 +58,7 @@ export async function snapshotNestedGit(workingFolder: string): Promise<NestedGi
       const checkout = join(repository.checkout, path);
       const dotGit = await describe(workingFolder, checkout);
       dotGits.set(checkout, dotGit);
-      const gitFolder = submoduleGitFolder(join(workingFolder, checkout), dotGit);
+      const gitFolder = await submoduleGitFolder(workingFolder, checkout, dotGit);
       if (gitFolder !== null) queue.push({ checkout, gitFolder });
     }
   }
@@ -113,12 +114,21 @@ export async function undoNestedGit(
 
 /**
  * The git folder of a checked-out submodule, from what its `.git` was at
- * session start: the folder itself, or the one a `gitdir:` file names
- * (usually `.git/modules/<name>` of the repository above). Null when it is
- * not checked out.
+ * session start: the folder itself, the one a `gitdir:` file names
+ * (usually `.git/modules/<name>` of the repository above), or the one a link
+ * leads to inside the working folder. Null when it is not checked out.
+ *
+ * @throws when a link leads anywhere else (see `linkedGitFolder`).
  */
-function submoduleGitFolder(checkout: string, dotGit: DotGit): string | null {
+async function submoduleGitFolder(
+  workingFolder: string,
+  path: string,
+  dotGit: DotGit,
+): Promise<string | null> {
+  const checkout = join(workingFolder, path);
   if (dotGit === "folder") return join(checkout, ".git");
+  if (dotGit.startsWith("link:"))
+    return join(workingFolder, await linkedGitFolder(workingFolder, path));
   const gitdir = /^file:gitdir: ([^\n]+)/.exec(dotGit)?.[1]?.replace(/\r$/, "");
   return gitdir === undefined ? null : resolve(checkout, gitdir);
 }
@@ -155,6 +165,8 @@ async function describe(workingFolder: string, path: string): Promise<DotGit> {
   const stat = await lstat(dotGit).catch(() => null);
   if (stat === null) return "absent";
   if (stat.isDirectory()) return "folder";
+  // Its target counts, so a link the program points elsewhere is a change.
+  if (stat.isSymbolicLink()) return `link:${await readlink(dotGit)}`;
   if (!stat.isFile()) return "other";
   return `file:${await readFile(dotGit, "utf8")}`;
 }

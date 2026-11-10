@@ -1,5 +1,6 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { linkedGitFolder } from "./git-link.ts";
 
 /**
  * How deep the search goes before it stops. It counts a level for each folder
@@ -19,7 +20,9 @@ const maxModuleDepth = 8;
  *   points git at another git folder, which the program could make its own.
  * - The `.git` of each submodule checkout listed in `.gitmodules`, nested ones
  *   too: `git status` in the repository runs it in each submodule. When it is a
- *   folder rather than a file, its `config` and `hooks` as well.
+ *   folder rather than a file, its `config` and `hooks` as well. When it is a
+ *   link, those of the git folder it leads to instead (see `linkedGitFolder`),
+ *   and the session-end check moves the link aside if the program changes it.
  * - `config.worktree` of the repository and of each linked worktree: git reads
  *   it once `extensions.worktreeConfig` is on (`git sparse-checkout` turns it on).
  * - `config`, `config.worktree` and `hooks` of each submodule under
@@ -54,6 +57,10 @@ async function checkoutPaths(root: string, checkout: string, depth: number): Pro
   } else if (kind.isDirectory()) {
     if (checkout !== "") paths.push(join(dotGit, "config"), join(dotGit, "hooks"));
     paths.push(...(await gitFolderPaths(root, dotGit)));
+  } else if (kind.isSymbolicLink() && checkout !== "") {
+    const gitFolder = await linkedGitFolder(root, checkout);
+    paths.push(join(gitFolder, "config"), join(gitFolder, "hooks"));
+    paths.push(...(await gitFolderPaths(root, gitFolder)));
   } else {
     return [];
   }

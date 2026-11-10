@@ -103,6 +103,34 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       }
     });
 
+    it("hold the config and hooks of the git folder a submodule's .git link leads to, not the link", async () => {
+      await gitFolder(".git");
+      await writeFile(join(work, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+      await gitFolder(join(".store", "docs"));
+      await mkdir(join(work, "docs"));
+      await symlink(join("..", ".store", "docs"), join(work, "docs", ".git"));
+      const paths = await gitPathsToDeny(work);
+      for (const file of ["config", "hooks", "config.worktree"]) {
+        expect(paths).toContain(join(".store", "docs", file));
+      }
+      expect(paths).not.toContain(join("docs", ".git"));
+    });
+
+    it("refuse a submodule's .git link that leads outside the working folder", async () => {
+      const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
+      try {
+        await gitFolder(".git");
+        await writeFile(join(work, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+        await mkdir(join(work, "docs"));
+        await symlink(outside, join(work, "docs", ".git"));
+        await expect(gitPathsToDeny(work)).rejects.toThrow(
+          `the .git in ${join(work, "docs")} is a link that doesn't lead to a git folder inside the working folder`,
+        );
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
+    });
+
     it("leave out a submodule whose .git is not there, as git breaks on the empty file srt puts there", async () => {
       await gitFolder(".git");
       await writeFile(join(work, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
