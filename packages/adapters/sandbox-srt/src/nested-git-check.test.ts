@@ -4,52 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fileMode, gitlinkMode, index } from "./git-index.test-helper.ts";
 import { gitlinkPaths } from "./git-index.ts";
 import { snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
-
-const fileMode = 0o100644;
-const gitlinkMode = 0o160000;
-
-/** A git index the way git writes one, with entries in the given order. */
-function index(
-  entries: { path: string; mode: number; extended?: boolean }[],
-  version: 2 | 3 | 4 = 2,
-  hashLength = 20,
-): Uint8Array {
-  const parts: number[] = [
-    ...new TextEncoder().encode("DIRC"),
-    ...u32(version),
-    ...u32(entries.length),
-  ];
-  let previous = "";
-  for (const entry of entries) {
-    const start = parts.length;
-    parts.push(...new Array(24).fill(0), ...u32(entry.mode), ...new Array(12).fill(0));
-    parts.push(...new Array(hashLength).fill(7));
-    const name = new TextEncoder().encode(entry.path);
-    const flags = Math.min(name.byteLength, 0xfff) | (entry.extended ? 0x4000 : 0);
-    parts.push(flags >> 8, flags & 0xff);
-    if (entry.extended) parts.push(0x20, 0);
-    if (version === 4) {
-      let shared = 0;
-      while (shared < previous.length && previous[shared] === entry.path[shared]) shared++;
-      parts.push(
-        previous.length - shared,
-        ...new TextEncoder().encode(entry.path.slice(shared)),
-        0,
-      );
-    } else {
-      parts.push(...name, 0);
-      while ((parts.length - start) % 8 !== 0) parts.push(0);
-    }
-    previous = entry.path;
-  }
-  return new Uint8Array(parts);
-}
-
-function u32(value: number): number[] {
-  return [value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
-}
 
 let work: string;
 
@@ -110,7 +67,7 @@ verifies("sandbox-srt.session", () => {
       await plantRepository("sub");
       await writeIndex(["sub"]);
       if (snapshot === null) throw new Error("no snapshot");
-      expect(await undoNestedGit(snapshot)).toEqual({ undone: ["sub"], failed: [] });
+      expect(await undoNestedGit(snapshot)).toEqual({ undone: [join("sub", ".git")], failed: [] });
       expect(existsSync(join(work, "sub", ".git"))).toBe(false);
       expect(await readFile(join(work, "sub", ".git.halonic-blocked", "config"), "utf8")).toContain(
         "fsmonitor",
@@ -124,7 +81,7 @@ verifies("sandbox-srt.session", () => {
       const snapshot = await snapshotNestedGit(work);
       await writeFile(join(work, "docs", ".git"), "gitdir: ../evil\n");
       if (snapshot === null) throw new Error("no snapshot");
-      expect(await undoNestedGit(snapshot)).toEqual({ undone: ["docs"], failed: [] });
+      expect(await undoNestedGit(snapshot)).toEqual({ undone: [join("docs", ".git")], failed: [] });
       expect(await readFile(join(work, "docs", ".git.halonic-blocked"), "utf8")).toBe(
         "gitdir: ../evil\n",
       );
@@ -149,7 +106,10 @@ verifies("sandbox-srt.session", () => {
         await symlink(outside, join(work, "libs"));
         await writeIndex(["libs/sub"]);
         if (snapshot === null) throw new Error("no snapshot");
-        expect(await undoNestedGit(snapshot)).toEqual({ undone: [], failed: ["libs/sub"] });
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [],
+          failed: [join("libs/sub", ".git")],
+        });
         expect(existsSync(join(outside, "sub", ".git"))).toBe(true);
       } finally {
         await rm(outside, { recursive: true, force: true });
@@ -161,7 +121,10 @@ verifies("sandbox-srt.session", () => {
       const snapshot = await snapshotNestedGit(work);
       await writeIndex(["../elsewhere"]);
       if (snapshot === null) throw new Error("no snapshot");
-      expect(await undoNestedGit(snapshot)).toEqual({ undone: [], failed: ["../elsewhere"] });
+      expect(await undoNestedGit(snapshot)).toEqual({
+        undone: [],
+        failed: [join("../elsewhere", ".git")],
+      });
     });
 
     it("reports the index when the program left one that can't be read", async () => {
@@ -172,6 +135,60 @@ verifies("sandbox-srt.session", () => {
       expect(await undoNestedGit(snapshot)).toEqual({
         undone: [],
         failed: [join(".git", "index")],
+      });
+    });
+
+    describe("in a submodule that is not checked out at session start", () => {
+      beforeEach(async () => {
+        await mkdir(join(work, "docs"));
+        await writeIndex(["docs"]);
+      });
+
+      it("moves aside a .git file the program wrote there", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await writeFile(join(work, "docs", ".git"), "gitdir: .\n");
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", ".git")],
+          failed: [],
+        });
+        expect(existsSync(join(work, "docs", ".git"))).toBe(false);
+        expect(await readFile(join(work, "docs", ".git.halonic-blocked"), "utf8")).toBe(
+          "gitdir: .\n",
+        );
+      });
+
+      it("moves aside a .git folder the program made there", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository("docs");
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", ".git")],
+          failed: [],
+        });
+        expect(existsSync(join(work, "docs", ".git"))).toBe(false);
+      });
+
+      it("still moves it aside when the program also took the gitlink out of the index", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository("docs");
+        await writeIndex([]);
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", ".git")],
+          failed: [],
+        });
+      });
+
+      it("still moves it aside when the program also broke the index", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository("docs");
+        await writeFile(join(work, ".git", "index"), "garbage");
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", ".git")],
+          failed: [join(".git", "index")],
+        });
       });
     });
 

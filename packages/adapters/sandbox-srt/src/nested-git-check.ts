@@ -31,26 +31,34 @@ export async function snapshotNestedGit(workingFolder: string): Promise<NestedGi
  * user's next `git status`. Moved aside to `.git.halonic-blocked`, nothing of
  * the program's work is lost, and the folder is a plain folder to git.
  *
- * @returns the gitlink paths it moved aside and those it could not, relative to the working folder.
+ * This covers a submodule that is not checked out at session start too: its
+ * `.git` can't be denied (git refuses the empty file the fence would put
+ * there), so one the program writes is undone here. The gitlinks recorded at
+ * start count even when the program took them out of the index or broke it,
+ * since restoring the index would bring them back.
+ *
+ * @returns the `.git` paths it moved aside and those it could not (or the
+ *   index, when it can't be read), relative to the working folder.
  */
 export async function undoNestedGit(
   snapshot: NestedGitSnapshot,
 ): Promise<{ undone: string[]; failed: string[] }> {
   const undone: string[] = [];
   const failed: string[] = [];
-  const paths = await gitlinks(snapshot.workingFolder).catch(() => null);
+  const now = await gitlinks(snapshot.workingFolder).catch(() => null);
   // An index this reader can't read any more is itself a change it can't vouch for.
-  if (paths === null) return { undone, failed: [join(".git", "index")] };
+  if (now === null) failed.push(join(".git", "index"));
+  const paths = new Set([...snapshot.dotGits.keys(), ...(now ?? [])]);
   for (const path of paths) {
-    const now = await describe(snapshot.workingFolder, path);
-    if (now === "absent" || now === snapshot.dotGits.get(path)) continue;
+    const current = await describe(snapshot.workingFolder, path);
+    if (current === "absent" || current === snapshot.dotGits.get(path)) continue;
     try {
       if (!(await insideWithoutLinks(snapshot.workingFolder, path))) throw new Error("unsafe path");
       const dotGit = join(snapshot.workingFolder, path, ".git");
       await rename(dotGit, await freeName(`${dotGit}.halonic-blocked`));
-      undone.push(path);
+      undone.push(join(path, ".git"));
     } catch {
-      failed.push(path);
+      failed.push(join(path, ".git"));
     }
   }
   return { undone, failed };

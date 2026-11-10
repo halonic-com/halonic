@@ -13,6 +13,7 @@ import type {
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
 import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
+import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import {
   type Runner,
@@ -172,6 +173,7 @@ export class SrtSession implements SandboxSession {
   readonly #timer: NodeJS.Timeout;
   readonly #detach: () => void;
   readonly #gitFolder: GitFolderSnapshot | null;
+  readonly #nestedGit: NestedGitSnapshot | null;
   #fence: SandboxFence;
   #closing: Promise<void> | null = null;
   #timedOut = false;
@@ -183,14 +185,15 @@ export class SrtSession implements SandboxSession {
     settingsPath: string,
     fence: SandboxFence,
     signal: AbortSignal | undefined,
-    gitFolder: GitFolderSnapshot | null,
+    git: { folder: GitFolderSnapshot | null; nested: NestedGitSnapshot | null },
   ) {
     this.profile = profile;
     this.#runner = runner;
     this.#folder = folder;
     this.#settingsPath = settingsPath;
     this.#fence = fence;
-    this.#gitFolder = gitFolder;
+    this.#gitFolder = git.folder;
+    this.#nestedGit = git.nested;
     this.#launcherEnv = launcherEnv(profile, process.env, folder);
     this.#programEnv = programEnv(profile, process.env, folder);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
@@ -215,7 +218,10 @@ export class SrtSession implements SandboxSession {
     const startedAt = Date.now();
     assertVariableNames(profile);
     await mkdir(profile.tempFolder, { recursive: true });
-    const gitFolder = await snapshotGitFolder(profile.workingFolder);
+    const git = {
+      folder: await snapshotGitFolder(profile.workingFolder),
+      nested: await snapshotNestedGit(profile.workingFolder),
+    };
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     try {
       const settingsPath = join(folder, "settings.json");
@@ -242,7 +248,7 @@ export class SrtSession implements SandboxSession {
         settingsPath,
         fence,
         options.signal,
-        gitFolder,
+        git,
       );
       return session;
     } catch (error) {
@@ -328,19 +334,41 @@ export class SrtSession implements SandboxSession {
   }
 
   /**
-   * Undoes a `commondir` file the program added or changed in the working
-   * folder's git folder, once nothing it started is left to change it again,
-   * and reports each one as a refused write.
+   * Undoes what the program did to the working folder's git setup, once
+   * nothing it started is left to change it again, and reports each one as a
+   * refused write.
    *
    * @returns the paths it could not undo, so `close()` can reject with them.
    */
   async #checkGitFolder(): Promise<string[]> {
-    if (this.#gitFolder === null) return [];
-    const { undone, failed } = await restoreGitFolder(this.#gitFolder);
+    const { undone, failed } = await this.#undoGitChanges();
     for (const path of [...undone, ...failed]) {
       for (const listener of this.#listeners) listener({ kind: "file", path, access: "write" });
     }
     return failed;
+  }
+
+  /**
+   * Both git checks: the `commondir` files, and the `.git` of each gitlink
+   * the program planted or changed (also in a submodule that was not checked
+   * out at start, whose `.git` the fence can't deny).
+   */
+  async #undoGitChanges(): Promise<{ undone: string[]; failed: string[] }> {
+    const undone: string[] = [];
+    const failed: string[] = [];
+    if (this.#gitFolder !== null) {
+      const folder = await restoreGitFolder(this.#gitFolder);
+      undone.push(...folder.undone);
+      failed.push(...folder.failed);
+    }
+    const nestedGit = this.#nestedGit;
+    if (nestedGit !== null) {
+      const nested = await undoNestedGit(nestedGit);
+      const inFolder = (path: string) => join(nestedGit.workingFolder, path);
+      undone.push(...nested.undone.map(inFolder));
+      failed.push(...nested.failed.map(inFolder));
+    }
+    return { undone, failed };
   }
 
   async #stop(started: Started, timedOut = false): Promise<void> {
