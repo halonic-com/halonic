@@ -29,9 +29,10 @@ answers for the cases in `src/golden/profile-folders.json`.
 
 Inside the profile folder, each workspace has `workspaces/<key>/`, where `<key>` is the first 32 hex
 characters of the SHA-256 of the workspace's real path. The key is internal: always ask
-`workspaceFolders`, never build the path. It throws a `RangeError` for a path that isn't absolute and
-for a deployment id that isn't 1 to 64 lowercase letters, digits, `-` or `_` starting with a letter
-or digit, or that is a Windows device name (`con`, `nul`, `com1`, …).
+`workspaceFolders`, never build the path. `workspaceFolders` throws a `RangeError` for a path that isn't
+absolute. `runsFolder(deploymentId)` throws one for a deployment id that isn't 1 to 64 lowercase
+letters, digits, `-` or `_` starting with a letter or digit, or that is a Windows device name
+(`con`, `nul`, `com1`, …).
 
 | Folder                   | Holds                                   |
 | ------------------------ | --------------------------------------- |
