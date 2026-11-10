@@ -1126,7 +1126,15 @@ with its own icon; `muted` puts the icon and the text in `fg-muted`.
 
 ```tsx
 <LineFrame icon={<ShareIcon />}>Shared with your team.</LineFrame>;
+<LineFrame icon={<LinkIcon />} action={{ label: "Turn on", onClick: turnOn }}>
+  Sharing is off for this workspace.
+</LineFrame>;
 ```
+
+An `action` (`{ label, onClick }`) is a text button at the right of the line: `accent-text`,
+weight 500, no padding, underlined on hover, with a 48px hit area. The text and the action wrap as
+one group, so at 200% text the action goes under the text, starting where the text starts. The
+line keeps its frame.
 
 ## LongText and TextSheet
 

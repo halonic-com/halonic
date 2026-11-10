@@ -13,6 +13,7 @@ import { formRowsSection } from "./form-rows.tsx";
 import { iconTileSection } from "./icon-tile.tsx";
 import { inputLeadingSection } from "./input-leading.tsx";
 import { kbdSection } from "./kbd.tsx";
+import { lineFrameSection } from "./line-frame.tsx";
 import { listSection } from "./list.tsx";
 import { menuSection } from "./menu.tsx";
 import { radioSection } from "./radio.tsx";
@@ -43,6 +44,7 @@ export const SECTIONS: readonly PartSection[] = [
   kbdSection,
   disclosureSection,
   viewOnlyLineSection,
+  lineFrameSection,
   actionBarSection,
   menuSection,
   tooltipSection,
