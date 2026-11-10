@@ -1,13 +1,7 @@
+import { tauriIpc } from "@halonicjs/studio-services";
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { startConnectPage } from "./connect-page.ts";
-import { type TauriInternals, tauriBridge } from "./tauri-bridge.ts";
-
-declare global {
-  interface Window {
-    /** Set by the Android shell; missing when the page opens in a browser. */
-    readonly __TAURI_INTERNALS__?: TauriInternals;
-  }
-}
+import { tauriBridge } from "./tauri-bridge.ts";
 
 /**
  * Outside the app, for example while working on the page in a browser,
@@ -20,7 +14,8 @@ const outsideTheApp: ConnectBridge = {
   openReleasePage: () => Promise.resolve(),
 };
 
-const internals = window.__TAURI_INTERNALS__;
+// Set by the Android shell; missing when the page opens in a browser.
+const internals = tauriIpc(window);
 
 void startConnectPage({
   document,
