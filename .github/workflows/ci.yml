@@ -1068,7 +1068,9 @@ jobs:
         env:
           FILTERS: ${{ steps.select.outputs.filters }}
           HALONIC_TEST_TIMEOUT: "30000"
-        run: pnpm exec turbo run test --continue --env-mode=loose --output-logs=new-only --summarize $FILTERS
+        # No coverage here: the floors are checked on Linux, and the tests
+        # skipped on Windows would only lower the numbers.
+        run: pnpm exec turbo run test --continue --env-mode=loose --output-logs=new-only --summarize $FILTERS -- --coverage.enabled=false
       # Per package test time, from the Turbo run summary, so the numbers in
       # the windows-coverage document come from real runs.
       - name: Test time per package
