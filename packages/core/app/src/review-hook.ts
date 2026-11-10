@@ -87,7 +87,12 @@ export class ReviewWriteHook implements FileWriter {
       // Compare (AI changes 1.10).
       return;
     }
-    await this.files.keep(await this.moved(record, before, after));
+    const moved = await this.moved(record, before, after);
+    if (moved === null) {
+      await this.files.putRecord(path, null);
+    } else {
+      await this.files.keep(moved);
+    }
     this.files.changed([path]);
   }
 
@@ -101,18 +106,25 @@ export class ReviewWriteHook implements FileWriter {
    * deletes the whole file, or edits a file the assistant created, is the
    * person's decision on all of it, so the baseline becomes the file and the
    * record goes.
+   *
+   * @returns the moved record, or `null` when the record goes for good:
+   *   emptying a file the assistant created takes its change back out, and
+   *   the empty file is the person's own (HAL-3850)
    */
   private async moved(
     record: ReviewRecord,
     before: string | null,
     after: string | null,
-  ): Promise<ReviewRecord> {
+  ): Promise<ReviewRecord | null> {
     if (before === null || after === null) {
       return this.files.seeing({ ...record, baseline: after }, after);
     }
     if (record.baseline === null) {
-      // A write that changes nothing or empties the file leaves it new.
-      const baseline = after === before || after === "" ? null : after;
+      if (after === "") {
+        return null;
+      }
+      // A write that changes nothing leaves the file new.
+      const baseline = after === before ? null : after;
       return this.files.seeing({ ...record, baseline }, after);
     }
     const regions = mergeLines(before, record.baseline, after, { touchingConflicts: false });

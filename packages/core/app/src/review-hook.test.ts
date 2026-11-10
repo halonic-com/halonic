@@ -103,6 +103,22 @@ verifies("app.review-other-writes-merge", () => {
     expect(await review.itemsWithChangesToReview()).toEqual([]);
   });
 
+  it("drops the record when the person empties a file the assistant created", async () => {
+    const inner = new TestDefinitionStore({}, digest);
+    const recordStore = new TestDefinitionStore({}, digest);
+    const review = new ReviewService({
+      store: inner,
+      records: recordStore,
+      digest,
+      isTrusted: () => true,
+    });
+    const store = new ReviewingDefinitionStore(inner, review.writer);
+    await review.propose({ path, content: "name: Triage\n", expected: "absent", card: k1 });
+    await store.write(path, "");
+    expect(await review.itemsWithChangesToReview()).toEqual([]);
+    expect(inner.files.get(path)).toBe("");
+  });
+
   it("leaves the record alone when the write doesn't happen", async () => {
     const { store, baseline } = await withAssistantChange();
     const result = await store.write(path, "other\n", {
