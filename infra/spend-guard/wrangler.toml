@@ -1,0 +1,18 @@
+# Deployed through the Cloudflare connection (see README), not from a laptop.
+# This file documents the bindings and keeps `wrangler deploy` working for anyone with access.
+name = "halonic-spend-guard"
+main = "src/index.mjs"
+compatibility_date = "2026-11-01"
+workers_dev = false
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+ACCOUNT_ID = "346227c5febeb134aaf2cee24096499b"
+
+[[kv_namespaces]]
+binding = "SPEND_KV"
+id = "646a6e2ba633475da4ecf9502cd8ce25"
+
+# Secrets (never in this file): CLOUDFLARE_SPEND_GUARD_TOKEN, TELEGRAM_NEWS_TOKEN, TELEGRAM_NEWS_CHAT_ID
