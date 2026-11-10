@@ -863,7 +863,8 @@ group and its hint or error sits under it.
 
 An option's **`note`** is a line under its label in `fg-subtle`: what it means, or why it can't be
 picked. An **`unavailable`** option needs one. Its **`field`** shows under its label, 24px in, only
-while it's picked; the screen keeps what was typed in the others.
+while it's picked; the screen keeps what was typed in the others. A radio is named by its label's
+words alone and described by its note, so a screen reader reads the note once.
 
 | State         | What shows                                                                                               |
 | ------------- | -------------------------------------------------------------------------------------------------------- |

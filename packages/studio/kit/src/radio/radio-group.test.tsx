@@ -111,6 +111,9 @@ verifies("kit.radio", () => {
     expect(docker.disabled).toBe(true);
     const note = document.getElementById(docker.getAttribute("aria-describedby") ?? "");
     expect(note?.textContent).toBe("Needs Docker.");
+    // Named by its words alone, so the note is read once, as its description.
+    const name = document.getElementById(docker.getAttribute("aria-labelledby") ?? "");
+    expect(name?.textContent).toBe("Docker image");
     expect(note?.className).not.toContain("opacity");
     expect(docker.className).toContain("opacity-45 contrast-more:opacity-60");
     expect(docker.className).not.toContain("hover:");

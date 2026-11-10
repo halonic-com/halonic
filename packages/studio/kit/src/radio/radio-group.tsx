@@ -144,6 +144,7 @@ function RadioRow<Value extends string>({
   invalid,
   onPick,
 }: RadioRowProps<Value>) {
+  const labelId = useId();
   const noteId = useId();
   const unavailable = option.unavailable === true;
   const hasNote = option.note !== undefined && option.note !== null;
@@ -168,12 +169,17 @@ function RadioRow<Value extends string>({
           // An option that can't be picked is native `disabled`, so the arrow keys skip it
           // (component specs 19.1). Its reason is the note next to it, which describes it.
           disabled={unavailable}
+          // Named by its words alone: the note sits in the label too, but it is the description,
+          // so a screen reader reads it once.
+          aria-labelledby={labelId}
           aria-describedby={hasNote ? noteId : undefined}
           className={`${circleShared} ${circleStateClasses[state]} ${unavailable ? unavailableFade : ""}`}
           onChange={onPick}
         />
         <span className="min-w-0">
-          <span className={unavailable ? unavailableFade : undefined}>{option.label}</span>
+          <span id={labelId} className={unavailable ? unavailableFade : undefined}>
+            {option.label}
+          </span>
           {hasNote ? (
             <span id={noteId} className="block text-small text-fg-subtle">
               {option.note}
