@@ -1,7 +1,7 @@
 import type { Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
+import { KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
 import { runsOn } from "./local-runs-test-kit.test-helper.ts";
 
@@ -54,6 +54,49 @@ verifies("engine.foreach-state", () => {
     expect(await runs.get("run_1")).toMatchObject({
       status: "completed",
       context: { labels: ["refunds", "billing", "other"] },
+    });
+  });
+});
+
+verifies("engine.foreach-workflow-items", () => {
+  it("runs a child run per item, each to its end, then completes with their contexts", async () => {
+    const greet: Workflow = {
+      ...triage,
+      id: "greet",
+      states: {
+        ...triage.states,
+        triage: {
+          type: "foreach",
+          workflow: "reply",
+          items: "{{input.customers}}",
+          as: "from",
+          concurrency: 2,
+          output: "replies",
+          on: [{ to: "filed", event: "done" }],
+        },
+      },
+    };
+    const answers = [textAnswer("Hi Acme"), textAnswer("Hi Globex")];
+    const { executor, model, runs, scheduler } = runsOn(answers, new KernelRuns(), {
+      workflow: greet,
+      workflows: { reply: replyWorkflow },
+    });
+
+    await executor.start({
+      hubId: "acme",
+      workflowId: "greet",
+      input: { customers: ["Acme", "Globex"] },
+    });
+    await scheduler.runDue();
+
+    expect(model.requests.map((request) => request.messages[0]?.content)).toEqual([
+      "Reply to Acme",
+      "Reply to Globex",
+    ]);
+    expect(await runs.get("run_1.2.1")).toMatchObject({ status: "completed" });
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { replies: [{ reply: "Hi Acme" }, { reply: "Hi Globex" }] },
     });
   });
 });

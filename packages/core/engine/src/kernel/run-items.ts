@@ -1,15 +1,16 @@
 import type { PendingCall } from "./run-state.ts";
 
-/** One item of a `foreach` state that has started and not ended: the call its agent waits on. */
-export interface RunningItem {
-  /** The item's place in the list, 0-based. */
-  readonly item: number;
-  readonly call: PendingCall;
-}
+/**
+ * One item of a `foreach` state that has started and not ended: the call
+ * its agent waits on, or the child run of the workflow it runs.
+ */
+export type RunningItem =
+  | { readonly item: number; readonly call: PendingCall }
+  | { readonly item: number; readonly childRunId: string; readonly workflow: string };
 
 /**
- * The items of the `foreach` state the run is in, from its first
- * `agent.started` with an `item` until the run leaves the state.
+ * The items of the `foreach` state the run is in, from its first item's
+ * `agent.started` or `workflow.started` until the run leaves the state.
  */
 export interface ForeachItems {
   readonly state: string;
@@ -21,22 +22,22 @@ export interface ForeachItems {
   readonly results: readonly unknown[];
 }
 
-/** An item's agent was asked for its call: it runs until its `agent.finished`. */
+/** An item started, in state `stateId`: it runs until its `agent.finished` or `workflow.finished`. */
 export function startItem(
   items: ForeachItems | null,
-  item: number,
-  call: PendingCall,
+  stateId: string,
+  running: RunningItem,
 ): ForeachItems {
-  const now = items?.state === call.state ? items : null;
+  const now = items?.state === stateId ? items : null;
   return {
-    state: call.state,
-    started: Math.max(now?.started ?? 0, item + 1),
-    running: [...(now?.running ?? []), { item, call }],
+    state: stateId,
+    started: Math.max(now?.started ?? 0, running.item + 1),
+    running: [...(now?.running ?? []), running],
     results: now?.results ?? [],
   };
 }
 
-/** An item's agent finished with `output`; an item that isn't running changes nothing. */
+/** An item ended and gave `output`; an item that isn't running changes nothing. */
 export function finishItem(
   items: ForeachItems | null,
   stateId: string,
@@ -54,4 +55,12 @@ export function finishItem(
     running: items.running.filter((running) => running.item !== item),
     results,
   };
+}
+
+/** The call an item's agent waits on with this id, or `null` when no item does. */
+export function itemCallOf(items: ForeachItems | null, callId: string): PendingCall | null {
+  for (const running of items?.running ?? []) {
+    if ("call" in running && running.call.callId === callId) return running.call;
+  }
+  return null;
 }

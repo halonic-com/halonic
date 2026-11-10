@@ -70,7 +70,9 @@ export class LocalHarnessCalls {
     }
     const effect = { ...call, harness };
     const { runId, hubId, lastSeq } = run;
-    const item = run.foreach?.running.find((running) => running.call.callId === call.callId);
+    const item = run.foreach?.running.find(
+      (running) => "call" in running && running.call.callId === call.callId,
+    );
     const log = new SerialRunLog(store, runId, waitedOn, lastSeq, clock, item?.item ?? null);
     const limits = startDeadlines.of(runId, call.callId);
     return this.#live.run((stop) => {

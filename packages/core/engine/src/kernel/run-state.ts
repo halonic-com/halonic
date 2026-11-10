@@ -13,7 +13,7 @@ import {
   type ParallelBranches,
   startBranch,
 } from "./run-branches.ts";
-import { type ForeachItems, finishItem, startItem } from "./run-items.ts";
+import { type ForeachItems, finishItem, itemCallOf, startItem } from "./run-items.ts";
 
 /**
  * The model call a task state waits on: the one its `agent.started` asked
@@ -154,11 +154,7 @@ export function callOf(state: RunState, callId: string): PendingCall | null {
   if (state.pendingCall?.callId === callId) {
     return state.pendingCall;
   }
-  return (
-    branchOfCall(state.parallel, callId)?.call ??
-    state.foreach?.running.find((running) => running.call.callId === callId)?.call ??
-    null
-  );
+  return branchOfCall(state.parallel, callId)?.call ?? itemCallOf(state.foreach, callId);
 }
 
 function startedState(event: RunEvent): RunState {
@@ -229,12 +225,9 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "timer.fired":
       return { ...state, status: "running", accepts: [] };
     case "workflow.started":
-      return {
-        ...state,
-        child: { runId: event.childRunId, state: event.state, workflow: event.workflow },
-      };
+      return startChild(state, event);
     case "workflow.finished":
-      return { ...state, status: "running", accepts: [], child: null };
+      return finishChild(state, event);
     case "approval.requested":
       return requestApproval(state, event);
     case "approval.resolved":
@@ -269,7 +262,7 @@ function startCall(state: RunState, event: Extract<RunEvent, { type: "agent.star
     return { ...state, calls, parallel: startBranch(state.parallel, branch, call) };
   }
   if (item !== undefined) {
-    return { ...state, calls, foreach: startItem(state.foreach, item, call) };
+    return { ...state, calls, foreach: startItem(state.foreach, stateId, { item, call }) };
   }
   return { ...state, calls, pendingCall: call };
 }
@@ -302,6 +295,33 @@ function branchEndOf(event: Extract<RunEvent, { type: "agent.finished" }>): Bran
     return { output: event.output };
   }
   return { error: event.error, reason: event.reason ?? "error" };
+}
+
+/**
+ * A `workflow` state's child run, which the run waits on, or one item's of
+ * a `foreach` state, which runs alongside the others.
+ */
+function startChild(
+  state: RunState,
+  event: Extract<RunEvent, { type: "workflow.started" }>,
+): RunState {
+  const { childRunId, state: stateId, workflow, item } = event;
+  if (item !== undefined) {
+    const running = { item, childRunId, workflow };
+    return { ...state, foreach: startItem(state.foreach, stateId, running) };
+  }
+  return { ...state, child: { runId: childRunId, state: stateId, workflow } };
+}
+
+function finishChild(
+  state: RunState,
+  event: Extract<RunEvent, { type: "workflow.finished" }>,
+): RunState {
+  if (event.item !== undefined) {
+    const output = event.context ?? null;
+    return { ...state, foreach: finishItem(state.foreach, event.state, event.item, output) };
+  }
+  return { ...state, status: "running", accepts: [], child: null };
 }
 
 /**

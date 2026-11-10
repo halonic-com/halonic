@@ -1,6 +1,10 @@
-import { promptFor, render, withGets } from "@halonicjs/workflow";
-import { agentCallEffect } from "../../kernel/agent-call.ts";
-import type { DecidedEvent, Effect, EffectDoneInput } from "../../kernel/decide-types.ts";
+import { render } from "@halonicjs/workflow";
+import type {
+  ChildInput,
+  DecidedEvent,
+  Effect,
+  EffectDoneInput,
+} from "../../kernel/decide-types.ts";
 import {
   nothing,
   type StateContext,
@@ -8,25 +12,24 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import type { RunningItem } from "../../kernel/run-items.ts";
-
-/** The name an item has in templates when the state gives no `as`. */
-export const defaultItemName = "item";
+import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
 
 /**
- * A `foreach` state runs its agent once for each item of a list: `items`,
- * rendered against the scope. Each item is named by `as` (default `item`)
- * in templates, with `index` its 0-based place. At most `concurrency` items
- * run at once (default 1), and they start in list order. Each item's events
- * carry `item`. Once every item has ended, the results go to `output` as a
- * list in item order and the state finishes with `done`. The first item
- * that fails fails the run, and an item agent can't pause for an approval.
- * Items that run a workflow join with the second part of step 5(c).
+ * A `foreach` state runs its agent, or a child run of its workflow, once
+ * for each item of a list: `items`, rendered against the scope. Each item is
+ * named by `as` (default `item`) in templates, with `index` its 0-based
+ * place. At most `concurrency` items run at once (default 1), and they start
+ * in list order. Each item's events carry `item`. Once every item has ended,
+ * the results go to `output` as a list in item order and the state finishes
+ * with `done`. The first item that fails fails the run. An item's agent
+ * can't pause for an approval, and an item's child run can't wait.
  */
 export const foreachState: StateHandler<"foreach"> = {
   type: "foreach",
   enter: startItems,
   onInput: (context, input) => {
-    if (input.type === "effect-done") return takeItemResult(context, input);
+    if (input.type === "effect-done") return takeCallResult(context, input);
+    if (input.type === "child") return takeChildNews(context, input);
     return nothing;
   },
 };
@@ -35,12 +38,9 @@ export const foreachState: StateHandler<"foreach"> = {
 type ItemList = { readonly items: readonly unknown[] } | { readonly error: string };
 
 function startItems(context: StateContext): StateStep {
-  const { stateId, state } = context;
-  if (state.workflow !== undefined) {
-    return failed(`The engine can't run for-each items of a workflow yet (state "${stateId}").`);
-  }
-  if (state.agent === undefined) {
-    return failed(`For-each state "${stateId}" names no agent or workflow.`);
+  const work = itemWorkOf(context);
+  if (typeof work === "string") {
+    return failed(work);
   }
   const list = itemsOf(context);
   if ("error" in list) {
@@ -49,47 +49,91 @@ function startItems(context: StateContext): StateStep {
   if (list.items.length === 0) {
     return finishState(context, 0, null, null, []);
   }
-  return startMore(context, state.agent, list.items, 0, []);
+  return startMore(context, work, list.items, 0, []);
 }
 
 /** Only the result of an item's call counts; any other result changes nothing. */
-function takeItemResult(context: StateContext, input: EffectDoneInput): StateStep {
-  const running = context.run.foreach?.running.find((item) => item.call.callId === input.callId);
-  if (running === undefined || running.call.state !== context.stateId) {
+function takeCallResult(context: StateContext, input: EffectDoneInput): StateStep {
+  const running = runningItem(
+    context,
+    (item) => "call" in item && item.call.callId === input.callId,
+  );
+  if (running === undefined || !("call" in running)) {
     return nothing;
   }
+  const { agent } = running.call;
   const result = input.result;
   if (result.type === "approval") {
     return failed(
-      `Agent "${running.call.agent}" stopped for an approval of "${result.tool}" in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't wait for one.`,
+      `Agent "${agent}" stopped for an approval of "${result.tool}" in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't wait for one.`,
     );
   }
   // A run records one connector call that can change things at a time, so an
   // item can't stop at that boundary while the others go on.
   if (result.type === "effect") {
     return failed(
-      `Agent "${running.call.agent}" stopped before a call to tool "${result.tool}" that can change things in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't make one.`,
+      `Agent "${agent}" stopped before a call to tool "${result.tool}" that can change things in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't make one.`,
     );
   }
   if (result.type === "tool") {
     return nothing;
   }
-  return takeItemOutput(context, running, result.output);
+  const output = result.output;
+  const finished: DecidedEvent = {
+    type: "agent.finished",
+    state: context.stateId,
+    agent,
+    output,
+    item: running.item,
+  };
+  return finishItem(context, { agent }, running, output, finished);
 }
 
-function takeItemOutput(context: StateContext, running: RunningItem, output: unknown): StateStep {
+/** Only news of an item's child run counts; news of any other run changes nothing. */
+function takeChildNews(context: StateContext, input: ChildInput): StateStep {
+  const running = runningItem(
+    context,
+    (item) => "childRunId" in item && item.childRunId === input.childRunId,
+  );
+  if (running === undefined || !("childRunId" in running)) {
+    return nothing;
+  }
+  const { item, childRunId, workflow } = running;
+  const where = `item ${item} of for-each state "${context.stateId}"`;
+  if (input.status === "waiting") {
+    return failed(
+      `Workflow "${workflow}" in ${where} waits for ${input.events.join(", ")}; an item's child run must finish without waiting.`,
+    );
+  }
+  const base = {
+    type: "workflow.finished" as const,
+    state: context.stateId,
+    workflow,
+    childRunId,
+    item,
+  };
+  if (input.status === "failed") {
+    const finished: DecidedEvent = { ...base, status: "failed", error: input.error };
+    const error = `Workflow "${workflow}" failed in ${where}: ${input.error}`;
+    return { events: [finished], effects: [], outcome: { type: "fail", error } };
+  }
+  const finished: DecidedEvent = { ...base, status: "completed", context: input.context };
+  return finishItem(context, { workflow }, running, input.context, finished);
+}
+
+/** An item ended with `output`: start the next ones, or finish the state once none is left. */
+function finishItem(
+  context: StateContext,
+  work: ItemWork,
+  running: RunningItem,
+  output: unknown,
+  finished: DecidedEvent,
+): StateStep {
   const list = itemsOf(context);
   if ("error" in list) {
     return failed(list.error);
   }
-  const finished: DecidedEvent = {
-    type: "agent.finished",
-    state: context.stateId,
-    agent: running.call.agent,
-    output,
-    item: running.item,
-  };
-  const step = startMore(context, running.call.agent, list.items, 1, [finished]);
+  const step = startMore(context, work, list.items, 1, [finished]);
   if (step.effects.length > 0 || stillRunning(context) > 1) {
     return step;
   }
@@ -102,7 +146,7 @@ function takeItemOutput(context: StateContext, running: RunningItem, output: unk
  */
 function startMore(
   context: StateContext,
-  agent: string,
+  work: ItemWork,
   items: readonly unknown[],
   finished: number,
   events: readonly DecidedEvent[],
@@ -115,29 +159,11 @@ function startMore(
   const started = [...events];
   for (let index = first; index < items.length && index < first + free; index += 1) {
     const callId = `call-${run.calls + effects.length + 1}`;
-    const { event, effect } = startItemCall(context, agent, items[index], index, callId);
+    const { event, effect } = startItem(context, work, items[index], index, callId);
     started.push(event);
     effects.push(effect);
   }
   return { events: started, effects };
-}
-
-function startItemCall(
-  { run, stateId, state, scope, agents }: StateContext,
-  agent: string,
-  item: unknown,
-  index: number,
-  callId: string,
-): { event: DecidedEvent; effect: Effect } {
-  const itemScope = { ...scope, [state.as ?? defaultItemName]: item, index };
-  const prompt =
-    state.input === undefined
-      ? asText(item)
-      : withGets(promptFor(state.input, itemScope, run.input), state.gets, itemScope);
-  return {
-    event: { type: "agent.started", state: stateId, agent, prompt, item: index },
-    effect: agentCallEffect(agents, { callId, state: stateId, agent, prompt }),
-  };
 }
 
 /** Every item has ended: the results go to `output`, in item order, and the state is done. */
@@ -163,6 +189,13 @@ function finishState(
   };
 }
 
+function runningItem(
+  { run, stateId }: StateContext,
+  matches: (item: RunningItem) => boolean,
+): RunningItem | undefined {
+  return run.foreach?.state === stateId ? run.foreach.running.find(matches) : undefined;
+}
+
 function stillRunning({ run, stateId }: StateContext): number {
   return run.foreach?.state === stateId ? run.foreach.running.length : 0;
 }
@@ -184,11 +217,6 @@ function kindOf(value: unknown): string {
   if (value === undefined || value === null) return "nothing";
   if (typeof value === "string") return "a text";
   return typeof value === "object" ? "an object" : `a ${typeof value}`;
-}
-
-/** An item as the agent gets it with no `input`: a text as it is, anything else as JSON. */
-function asText(item: unknown): string {
-  return typeof item === "string" ? item : (JSON.stringify(item) ?? "null");
 }
 
 function failed(error: string): StateStep {
