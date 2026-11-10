@@ -4,7 +4,7 @@ import { programCandidates } from "@halonicjs/adapter-system-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import { findGit } from "./find-git.ts";
-import { Scratch } from "./fixtures.test-helper.ts";
+import { Scratch, testGit } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
 
 // The PATH-order and relative-folder cases are ported from the desktop's
@@ -71,7 +71,11 @@ verifies("git.find-git", () => {
       "looks for git in the Path of the environment it is given, in any case",
       async () => {
         const folder = await scratch.folder();
-        await writeFile(join(folder, "git"), "#!/bin/sh\necho acme-git\n");
+        // It answers the runner's check that the hardening reaches git, as git would.
+        await writeFile(
+          join(folder, "git"),
+          '#!/bin/sh\nif [ "$2" = config ]; then printf "%s\\n" "$GIT_CONFIG_VALUE_0"; else echo acme-git; fi\n',
+        );
         await chmod(join(folder, "git"), 0o755);
         const runner = await GitRunner.create({
           environment: { Path: folder },
@@ -79,6 +83,24 @@ verifies("git.find-git", () => {
         });
         const result = await runner.run({ cwd: folder, args: ["--version"] });
         expect(result.stdout.toString().trim()).toBe("acme-git");
+      },
+    );
+
+    // HAL-4373: an agent runner's launcher on the PATH did this, and every
+    // planted hook and program ran.
+    it.runIf(process.platform !== "win32")(
+      "refuses a git wrapper that drops the hardening config",
+      async () => {
+        const folder = await scratch.folder();
+        const wrapper = join(folder, "git");
+        await writeFile(
+          wrapper,
+          `#!/bin/sh\nunset GIT_CONFIG_COUNT\nexec '${await testGit()}' "$@"\n`,
+        );
+        await chmod(wrapper, 0o755);
+        await expect(
+          GitRunner.create({ git: wrapper, hooksFolder: await scratch.folder() }),
+        ).rejects.toThrow("doesn't pass Halonic's git settings on to git");
       },
     );
   });

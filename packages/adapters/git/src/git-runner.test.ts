@@ -2,7 +2,7 @@ import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
-import { repositoryWith, Scratch, testRunner } from "./fixtures.test-helper.ts";
+import { repositoryWith, Scratch, testGit, testRunner } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
 import { hardenedEnvironment } from "./hardening.ts";
 
@@ -120,12 +120,14 @@ verifies("git.hardened", () => {
 
     it("refuses to run while its hooks folder has a file in it", async () => {
       const hooksFolder = await scratch.folder();
-      const runner = await GitRunner.create({ hooksFolder });
+      const runner = await GitRunner.create({ git: await testGit(), hooksFolder });
       await writeFile(join(hooksFolder, "pre-commit"), "");
       await expect(runner.run({ cwd: hooksFolder, args: ["--version"] })).rejects.toThrow(
         "has files in it",
       );
-      await expect(GitRunner.create({ hooksFolder })).rejects.toThrow("has files in it");
+      await expect(GitRunner.create({ git: await testGit(), hooksFolder })).rejects.toThrow(
+        "has files in it",
+      );
     });
 
     it("reads no ignore or attributes file from the user's config folder", async () => {
@@ -151,7 +153,7 @@ verifies("git.hardened", () => {
 verifies("git.runner-close", () => {
   describe("closing the runner", () => {
     it("removes the hooks folder it made, and refuses calls afterwards", async () => {
-      const runner = await GitRunner.create();
+      const runner = await GitRunner.create({ git: await testGit() });
       const folder = await repositoryWith(scratch);
       const hooksFolder = await gitSays(runner, folder, ["config", "--get", "core.hooksPath"]);
       expect((await stat(hooksFolder)).isDirectory()).toBe(true);
@@ -163,7 +165,7 @@ verifies("git.runner-close", () => {
 
     it("keeps a hooks folder it was given", async () => {
       const hooksFolder = await scratch.folder();
-      const runner = await GitRunner.create({ hooksFolder });
+      const runner = await GitRunner.create({ git: await testGit(), hooksFolder });
       await runner.close();
       expect((await stat(hooksFolder)).isDirectory()).toBe(true);
     });

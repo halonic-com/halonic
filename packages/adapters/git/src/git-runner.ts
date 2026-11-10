@@ -79,7 +79,7 @@ export class GitRunner {
   /**
    * A runner for the git program at `options.git`, or the one on the `PATH`.
    *
-   * @throws Error when git isn't found, the path isn't absolute, or the hooks folder isn't empty
+   * @throws Error when git isn't found, the path isn't absolute, the hooks folder isn't empty, or the program drops the hardening
    */
   static async create(options: GitRunnerOptions = {}): Promise<GitRunner> {
     const git = options.git ?? (await findGit(searchPathOf(options)));
@@ -88,6 +88,7 @@ export class GitRunner {
       options.hooksFolder ?? (await mkdtemp(join(tmpdir(), "halonic-git-hooks-")));
     const runner = new GitRunner(git, hooksFolder, options);
     await runner.#checkHooksFolderIsEmpty();
+    await runner.#checkHardeningReachesGit();
     return runner;
   }
 
@@ -142,6 +143,26 @@ export class GitRunner {
     if (entries.length > 0) {
       throw new Error(
         `The empty hooks folder ${this.#hooksFolder} has files in it, so git won't run. Empty it and try again.`,
+      );
+    }
+  }
+
+  /**
+   * Checks once that the hardening config reaches git (HAL-4373). A
+   * wrapper script found as `git` on the `PATH` can drop the
+   * `GIT_CONFIG_*` variables before it starts git itself, and then every
+   * call would run the repository's hooks and programs. git answers with
+   * the hooks folder only if the config arrived. It runs in the hooks
+   * folder, which is no repository, so nothing else is read.
+   */
+  async #checkHardeningReachesGit(): Promise<void> {
+    const result = await this.run({
+      cwd: this.#hooksFolder,
+      args: ["config", "--get", "core.hooksPath"],
+    });
+    if (result.stdout.toString("utf8").trim() !== this.#hooksFolder) {
+      throw new Error(
+        `The program at ${this.#git} doesn't pass Halonic's git settings on to git, so it can't run safely. It may be a wrapper script; give Halonic the path of git itself.`,
       );
     }
   }
