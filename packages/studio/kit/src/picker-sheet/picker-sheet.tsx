@@ -38,7 +38,7 @@ export interface PickerSheetProps<Value extends string = string> {
   readonly returnFocus?: () => HTMLElement | null;
 }
 
-/** With more options than this, the sheet shows a search field. */
+/** From this many options, the sheet shows a search field. */
 export const PICKER_SEARCH_FROM = 11;
 
 const arrowKeys = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
@@ -62,7 +62,6 @@ export function PickerSheet<Value extends string>(props: PickerSheetProps<Value>
   const groupLabel = useId();
   const [checked, setChecked] = useState(props.value);
   const [search, setSearch] = useState("");
-  const list = useRef<HTMLDivElement>(null);
   // Native radios fire `click` when an arrow key moves the check, so a click in the same task
   // as an arrow key is a move, not a pick.
   const arrowing = useRef(false);
@@ -120,7 +119,7 @@ export function PickerSheet<Value extends string>(props: PickerSheetProps<Value>
       {props.options.length === 0 ? (
         <p className="px-4 py-3 text-body text-fg-muted">{props.empty}</p>
       ) : (
-        <div ref={list} role="radiogroup" aria-labelledby={groupLabel}>
+        <div role="radiogroup" aria-labelledby={groupLabel}>
           <span id={groupLabel} hidden>
             {props.title}
           </span>
