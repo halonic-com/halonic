@@ -62,6 +62,33 @@ function click(target: Element | null | undefined): void {
   });
 }
 
+/** Lays the tabs out as jsdom can't: 200px each, from x = 0, in the DOM's order. */
+function layOut(container: HTMLElement): void {
+  tabElements(container).forEach((tab) => {
+    tab.getBoundingClientRect = () => {
+      const left = tabElements(container).indexOf(tab) * 200;
+      return { left, width: 200 } as DOMRect;
+    };
+  });
+}
+
+/** Presses `button` on `target` at `fromX`, moves the pointer to each of `toX`, and lets go. */
+function drag(target: Element, fromX: number, toX: readonly number[], button = 0): void {
+  const pointer = (type: string, clientX: number) =>
+    new MouseEvent(type, { bubbles: true, cancelable: true, button, clientX });
+  act(() => {
+    target.dispatchEvent(pointer("pointerdown", fromX));
+  });
+  for (const x of toX) {
+    act(() => {
+      window.dispatchEvent(pointer("pointermove", x));
+    });
+  }
+  act(() => {
+    window.dispatchEvent(pointer("pointerup", toX.at(-1) ?? fromX));
+  });
+}
+
 verifies("shell.window-tab-strip", () => {
   describe("WindowTabStrip", () => {
     it("is a tablist named Open tabs, each tab named by its place and kind", () => {
@@ -200,6 +227,29 @@ verifies("shell.window-tab-strip", () => {
       const { container } = renderStrip({ needsYou: () => true });
       const classes = [...container.querySelectorAll("*")].map((element) => element.className);
       expect(classes.filter((name) => String(name).includes("fg-subtle"))).toEqual([]);
+    });
+
+    it("moves a dragged tab as the pointer crosses a neighbour's middle, and stops on release", () => {
+      const { tabs, container } = renderStrip();
+      layOut(container);
+      const [first] = tabElements(container);
+      drag(first as HTMLElement, 100, [290, 310]);
+      expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
+      layOut(container);
+      drag(first as HTMLElement, 100, []);
+      act(() => {
+        window.dispatchEvent(new MouseEvent("pointermove", { clientX: 590 }));
+      });
+      expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
+    });
+
+    it("leaves a press that hardly moves to the click, and a middle-button drag alone", () => {
+      const { tabs, container } = renderStrip();
+      layOut(container);
+      const [first] = tabElements(container);
+      drag(first as HTMLElement, 100, [103]);
+      drag(first as HTMLElement, 100, [590], 1);
+      expect(titles(tabs)).toEqual(["Agents", "Sorter", "Support reply"]);
     });
   });
 });

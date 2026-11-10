@@ -2,12 +2,15 @@ import { Button, CloseIcon, PlusIcon } from "@halonicjs/studio-kit";
 import {
   type FocusEvent,
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
+  type RefObject,
   useEffect,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import { dragTargetIndex, TAB_DRAG_THRESHOLD, type TabSpan } from "./tab-drag.ts";
 import { currentLocation, type TabLocation, type TabSet, type WindowTab } from "./tab-set.ts";
 
 /** Props for {@link WindowTabStrip}. */
@@ -25,7 +28,8 @@ export interface WindowTabStripProps {
 /**
  * The window tabs in the title bar (component specs 24.5): one `tablist` named "Open tabs" and one
  * Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes it, and
- * Ctrl Shift PageUp and PageDown move it. Tabs are 200px, shrink together to 96px, and then the
+ * Ctrl Shift PageUp and PageDown move it. Dragging a tab moves it too, with no motion: it jumps
+ * to its new place as the pointer crosses a neighbour's middle. Tabs are 200px, shrink together to 96px, and then the
  * strip scrolls sideways with the active tab kept in view. **+** after the last tab opens a new
  * tab on Home.
  *
@@ -44,6 +48,7 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
   // has closed, the active tab is the Tab stop, even when it changed from outside (the sidebar).
   const [focusedId, setFocusedId] = useState<string | undefined>(undefined);
   const rovingId = state.tabs.find((tab) => tab.id === focusedId)?.id ?? state.activeId;
+  const startDrag = useTabDrag(tabs, elements);
 
   useEffect(() => {
     elements.current.get(state.activeId)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
@@ -97,6 +102,7 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
               }
             }}
             onFocus={() => setFocusedId(tab.id)}
+            onPointerDown={(event) => startDrag(tab.id, event)}
             onActivate={() => tabs.activate(tab.id)}
             onClose={() => tabs.close(tab.id)}
           />
@@ -125,6 +131,48 @@ const stripClasses = [
   "-mx-2 -mb-px flex min-w-0 items-end self-end overflow-x-auto px-2 pb-px",
   "[scrollbar-width:none]",
 ].join(" ");
+
+/**
+ * Dragging a tab by its pointer: a press that moves more than `TAB_DRAG_THRESHOLD` moves the tab
+ * as the pointer crosses its neighbours' middles, until the pointer is released. The window
+ * follows the pointer, not the tab, because moving the tab in the DOM would drop a pointer capture.
+ * Only the main button drags; a middle-click is left alone.
+ */
+function useTabDrag(
+  tabs: TabSet,
+  elements: RefObject<Map<string, HTMLDivElement>>,
+): (tabId: string, event: PointerEvent) => void {
+  return (tabId, event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const startX = event.clientX;
+    let dragging = false;
+    const onMove = (move: globalThis.PointerEvent) => {
+      dragging ||= Math.abs(move.clientX - startX) >= TAB_DRAG_THRESHOLD;
+      if (!dragging) {
+        return;
+      }
+      const order = tabs.state.tabs;
+      const spans = order.map((tab) => spanOf(elements.current.get(tab.id)));
+      const from = order.findIndex((tab) => tab.id === tabId);
+      tabs.move(tabId, dragTargetIndex(move.clientX, spans, from));
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  };
+}
+
+function spanOf(element: HTMLElement | undefined): TabSpan {
+  const box = element?.getBoundingClientRect();
+  return { left: box?.left ?? 0, width: box?.width ?? 0 };
+}
 
 /** What a key does in the strip, or `undefined` when the strip leaves it alone. */
 type StripKey = "previous" | "next" | "activate" | "close" | "move-left" | "move-right";
@@ -186,6 +234,7 @@ interface WindowTabViewProps {
   readonly needsYou: boolean;
   readonly elementRef: (element: HTMLDivElement | null) => void;
   readonly onFocus: () => void;
+  readonly onPointerDown: (event: PointerEvent) => void;
   readonly onActivate: () => void;
   readonly onClose: () => void;
 }
@@ -199,7 +248,7 @@ interface WindowTabViewProps {
  */
 const tabClasses = {
   common: [
-    "group relative flex w-50 min-w-24 shrink cursor-default items-center gap-2 rounded-t-sm",
+    "group relative flex w-50 min-w-24 shrink cursor-default select-none items-center gap-2 rounded-t-sm",
     "ps-3 pe-1.5 text-small outline-none focus-ring-inset",
   ].join(" "),
   inactive: [
@@ -239,6 +288,7 @@ function WindowTabView(props: WindowTabViewProps) {
       data-tab-id={tab.id}
       className={`${tabClasses.common} ${active ? tabClasses.active : tabClasses.inactive}`}
       onFocus={props.onFocus}
+      onPointerDown={props.onPointerDown}
       onClick={props.onActivate}
     >
       {active ? (

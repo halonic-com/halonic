@@ -73,8 +73,9 @@ it, and Ctrl Shift PageUp and PageDown move it. A tab is named "Support reply, w
 and shrink together to 96px, then the strip scrolls with the active tab kept in view. The ✕ keeps
 its place on every tab and shows on the active one, on hover and on keyboard focus. **+** opens a
 new tab on Home and calls `onNewTab`, so the frame can open Ctrl K there. Nothing on a tab is
-`fg-subtle`. The window-wide keys (Ctrl T, Ctrl W, Ctrl Tab, …), dragging, the tab menu and the
-tooltips come in later pull requests.
+`fg-subtle`. Dragging a tab moves it, with no motion: it jumps to its new place as the pointer
+crosses a neighbour's middle. The window-wide keys (Ctrl T, Ctrl W, Ctrl Tab, …), the tab menu and
+the tooltips come in later pull requests.
 
 ```tsx
 <ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
