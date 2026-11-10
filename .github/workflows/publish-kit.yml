@@ -12,7 +12,7 @@
 #
 # It runs on every push to `main` that changes either package's
 # `package.json`, but it only publishes a package whose `version` field
-# differs from the parent commit's. A push that changes dependencies, exports
+# differs from the one before the push. A push that changes dependencies, exports
 # or the description stops in the `pack` job, before any build, and stages
 # nothing. It can also be run by hand from the Actions tab, on `main`, where
 # `dry_run` is on by default: it builds and checks the tarballs and stops
@@ -72,21 +72,25 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
-      # A push changes a version only if `version` differs from the parent
-      # commit's. A run by hand has no such comparison and always continues.
+      # A push changes a version only if `version` differs from where `main`
+      # was before the push. The merge queue can land several commits in one
+      # push, so this compares with the push's `before`, not the parent commit.
+      # A run by hand has no such comparison and always continues.
       - name: Did a version change?
         id: version
         env:
           EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
           if [ "$EVENT" != "push" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          git fetch --no-tags --depth=1 origin "$BEFORE" || true
           changed=false
           for file in packages/adapters/integration-kit/package.json packages/testing/integration/package.json; do
             now=$(node -p 'require("./" + process.argv[1]).version' "$file")
-            before=$(git show "HEAD^:$file" 2>/dev/null | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version' 2>/dev/null || echo none)
+            before=$(git show "$BEFORE:$file" 2>/dev/null | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version' 2>/dev/null || echo none)
             echo "$file: $before -> $now"
             if [ "$before" != "$now" ]; then
               changed=true
@@ -202,7 +206,7 @@ jobs:
               # npm answers 409. That means it is already staged: skip it.
               if ! npm stage publish "$tarball" --access public --provenance 2> stage-error.txt; then
                 cat stage-error.txt >&2
-                if grep -qE '409|Cannot stage previously published version' stage-error.txt; then
+                if grep -qE 'E409|Cannot stage previously published version' stage-error.txt; then
                   echo "$name@$version is already staged, skipping."
                   continue
                 fi
