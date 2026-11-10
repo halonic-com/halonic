@@ -10,8 +10,9 @@ each test's result as data: passed or failed, why it failed, and the runs it mad
 The runner has no adapters, files or network of its own. The caller passes everything in
 (`TestDeps`): the scripted model each case talks to, fresh stores for each case, the clock each
 case's test clock starts from, and, when it has any, Halonic's own tools the runs offer
-(`halonicTools`, such as knowledge search). `halonic test` passes the mock model and in-memory stores; the parity
-checks pass a fixed clock.
+(`halonicTools`) and the knowledge factories that build the sources an agent's `knowledge:` lists,
+with what each source is built with (`knowledge`). `halonic test` passes the mock model and
+in-memory stores; the parity checks pass a fixed clock.
 
 A result never holds printed text. Each failure (`TestFailure`) carries what the CLI needs for its
 "Expected …, but …" sentence: the expected and actual step, steps, status or value, and the case's

@@ -7,6 +7,7 @@ export type {
   TestDeps,
   TestFilter,
   TestInput,
+  TestKnowledge,
   TestStores,
 } from "./test-deps.ts";
 export type {

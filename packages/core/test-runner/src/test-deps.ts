@@ -1,7 +1,7 @@
 // What the test runner is given. It has no adapters of its own: the caller
 // passes the scripted model, the stores and the clock.
 
-import type { HalonicTool } from "@halonicjs/engine";
+import type { AgentKnowledgeOptions, HalonicTool } from "@halonicjs/engine";
 import type { WorkflowTestCase } from "@halonicjs/format";
 import type { BlobStore, Clock, LlmProvider, RunStore } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -35,7 +35,19 @@ export interface TestDeps {
   stores(): TestStores;
   /** Halonic's own tools the runs offer, such as knowledge search. None when left out. */
   readonly halonicTools?: readonly HalonicTool[];
+  /**
+   * Builds the knowledge sources an agent's `knowledge:` lists, such as the
+   * `files` type, so it gets `knowledge_search`, `knowledge_read` and its
+   * `mode: auto` passages as in a real run. None when left out.
+   */
+  readonly knowledge?: TestKnowledge;
 }
+
+/**
+ * The factories that build agents' knowledge sources, and what each one is
+ * built with. A test has no chat turns, so it needs no chat sources.
+ */
+export type TestKnowledge = Pick<AgentKnowledgeOptions, "factories" | "contextOf">;
 
 /**
  * Which tests to run. The runner keeps a case only when every part that is

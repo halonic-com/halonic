@@ -2,12 +2,12 @@
 // case's events and timers, and goes as far as it goes. What it did comes
 // back for the expectations to check.
 
-import { InputRefused, LocalExecutor } from "@halonicjs/engine";
+import { type AgentKnowledgeOptions, InputRefused, LocalExecutor } from "@halonicjs/engine";
 import type { WorkflowTestCase } from "@halonicjs/format";
 import type { IdGenerator, RunStore, Secrets } from "@halonicjs/ports";
 import { parseDuration } from "@halonicjs/workflow";
 import { filesOf, type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
-import type { ScriptedModel, TestDeps } from "../test-deps.ts";
+import type { ScriptedModel, TestDeps, TestKnowledge } from "../test-deps.ts";
 import type { TestFailure, TestRun } from "../test-result.ts";
 import { ScriptedTools } from "./scripted-tools.ts";
 import { TestClock, TestScheduler } from "./test-time.ts";
@@ -50,6 +50,7 @@ export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun
   const executor = new LocalExecutor({
     resolveModel: async () => ({ provider: model.provider, model: "test", local: true }),
     halonicTools: deps.halonicTools ?? [],
+    ...(deps.knowledge === undefined ? {} : { knowledge: knowledgeOf(deps.knowledge) }),
     connectors: tools.clients(connectorsOf(toRun.workspace)),
     secrets: noSecrets,
     clock,
@@ -219,6 +220,15 @@ function testIds(): IdGenerator {
       count += 1;
       return `${prefix}_test_${count}`;
     },
+  };
+}
+
+/** The engine's knowledge options from the caller's: a test has no chat turn, so no chat sources. */
+function knowledgeOf(knowledge: TestKnowledge): AgentKnowledgeOptions {
+  return {
+    factories: knowledge.factories,
+    contextOf: (hubId, source) => knowledge.contextOf(hubId, source),
+    chatSourcesOf: async () => [],
   };
 }
 
