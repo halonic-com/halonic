@@ -31,32 +31,58 @@ export function splitLines(text: string): string[] {
 }
 
 /**
+ * The most lines `diffLines` compares pair by pair: the changed lines before
+ * times the changed lines after. Its table takes 4 bytes a pair, so this is
+ * about 16 MB. Above it, the changed middle is one change.
+ */
+export const MAX_COMPARED_LINE_PAIRS = 4_000_000;
+
+/** Options for `diffLines`. */
+export interface DiffLinesOptions {
+  /** The most line pairs to compare; `MAX_COMPARED_LINE_PAIRS` when left out. */
+  readonly maxComparedLinePairs?: number;
+}
+
+/**
  * The changes that turn `before` into `after`, line by line, in order and
  * never touching each other: two changes always have at least one unchanged
  * line between them.
  *
  * The diff keeps the longest run of common lines (a longest common
  * subsequence). It skips the lines both texts start and end with first, so
- * the usual edit of a few lines in a long file stays cheap; the rest takes
- * time and memory in proportion to the two changed middles multiplied.
+ * the usual edit of a few lines in a long file stays cheap. The changed
+ * middles are then compared pair by pair, which takes time and memory in
+ * proportion to their line counts multiplied. When that is more than
+ * `MAX_COMPARED_LINE_PAIRS` (a rewrite of a generated file or a lockfile),
+ * the whole middle is one change instead: still a correct diff, just a
+ * coarse one, which shows a big rewrite as one part to take or drop.
  *
  * @param before - the text as it was
  * @param after - the text as it is now
+ * @param options - the limit on pairs compared, for tests
  * @returns the changes, empty when the texts are the same
  *
  * @example
  * diffLines("a\nb\nc\n", "a\nB\nc\n");
  * // [{ beforeStart: 1, beforeEnd: 2, afterStart: 1, removed: ["b\n"], added: ["B\n"] }]
  */
-export function diffLines(before: string, after: string): LineChange[] {
+export function diffLines(
+  before: string,
+  after: string,
+  options: DiffLinesOptions = {},
+): LineChange[] {
   const beforeLines = splitLines(before);
   const afterLines = splitLines(after);
   const prefix = commonPrefixLength(beforeLines, afterLines);
   const suffix = commonSuffixLength(beforeLines, afterLines, prefix);
-  const middle = matchLines(
-    beforeLines.slice(prefix, beforeLines.length - suffix),
-    afterLines.slice(prefix, afterLines.length - suffix),
-  );
+  const middleBefore = beforeLines.slice(prefix, beforeLines.length - suffix);
+  const middleAfter = afterLines.slice(prefix, afterLines.length - suffix);
+  const maxPairs = options.maxComparedLinePairs ?? MAX_COMPARED_LINE_PAIRS;
+  // No matches makes the whole middle one change.
+  const middle =
+    middleBefore.length * middleAfter.length > maxPairs
+      ? []
+      : matchLines(middleBefore, middleAfter);
   return collectChanges(middle, beforeLines, afterLines, prefix, suffix);
 }
 
@@ -73,7 +99,9 @@ export function diffLines(before: string, after: string): LineChange[] {
  * @param before - the same text the changes were worked out from
  * @param changes - some of those changes, in any order
  * @returns the text with those changes applied
- * @throws Error when two changes overlap or one reaches past the end of `before`
+ * @throws Error when two changes overlap, or a change's `removed` lines aren't
+ *   the lines of `before` at its place (it comes from another text, or the
+ *   text changed since)
  */
 export function applyLineChanges(before: string, changes: readonly LineChange[]): string {
   const beforeLines = splitLines(before);
@@ -81,9 +109,17 @@ export function applyLineChanges(before: string, changes: readonly LineChange[])
   const out: string[] = [];
   let next = 0;
   for (const change of ordered) {
-    if (change.beforeStart < next || change.beforeEnd > beforeLines.length) {
+    if (change.beforeStart < next) {
       throw new Error(
-        `applyLineChanges: the change at line ${change.beforeStart + 1} overlaps another or isn't from this text.`,
+        `applyLineChanges: the change at line ${change.beforeStart + 1} overlaps another.`,
+      );
+    }
+    if (
+      change.beforeEnd > beforeLines.length ||
+      !sameLines(beforeLines.slice(change.beforeStart, change.beforeEnd), change.removed)
+    ) {
+      throw new Error(
+        `applyLineChanges: the change at line ${change.beforeStart + 1} isn't from this text.`,
       );
     }
     out.push(...beforeLines.slice(next, change.beforeStart), ...change.added);
@@ -91,6 +127,11 @@ export function applyLineChanges(before: string, changes: readonly LineChange[])
   }
   out.push(...beforeLines.slice(next));
   return out.join("");
+}
+
+/** Whether two lists have the same lines in the same order. */
+export function sameLines(first: readonly string[], second: readonly string[]): boolean {
+  return first.length === second.length && first.every((line, index) => line === second[index]);
 }
 
 /** How many lines both lists start with. */

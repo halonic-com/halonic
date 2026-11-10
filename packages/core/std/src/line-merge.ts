@@ -1,4 +1,4 @@
-import { diffLines, type LineChange, splitLines } from "./line-diff.ts";
+import { diffLines, type LineChange, sameLines, splitLines } from "./line-diff.ts";
 
 /**
  * One stretch of a three-way merge. `resolved` lines are settled: both sides
@@ -15,6 +15,12 @@ export type MergeRegion =
       readonly theirs: readonly string[];
     };
 
+/** Options for `mergeLines`. */
+export interface MergeLinesOptions {
+  /** Whether changes that touch but don't overlap are a conflict; `true` when left out, as git. */
+  readonly touchingConflicts?: boolean;
+}
+
 /**
  * Merges two texts that each started from `base`, line by line, as git's
  * merge does. A change only one side made is taken. The same change on both
@@ -23,18 +29,34 @@ export type MergeRegion =
  * lines at the same place), the result has a conflict for the caller to
  * settle, with `mergedText` or by asking the person.
  *
+ * With `touchingConflicts: false`, changes that only touch are both taken,
+ * because there is just one way to put them together. Only changes that
+ * overlap, or lines both sides add at the same place (where their order is
+ * unclear), are a conflict. The assistant's baseline uses this, so typing on
+ * the line after one of the assistant's changes keeps that change to review.
+ *
  * @param base - the text both sides started from
  * @param ours - our side
  * @param theirs - their side
+ * @param options - whether changes that touch are a conflict (`true`, as git, when left out)
  * @returns the merged text as regions in order, with resolved lines next to each other joined
  *
  * @example
  * mergeLines("a\nb\nc\n", "A\nb\nc\n", "a\nb\nC\n");
  * // [{ kind: "resolved", lines: ["A\n", "b\n", "C\n"] }]
  */
-export function mergeLines(base: string, ours: string, theirs: string): MergeRegion[] {
+export function mergeLines(
+  base: string,
+  ours: string,
+  theirs: string,
+  options: MergeLinesOptions = {},
+): MergeRegion[] {
   const baseLines = splitLines(base);
-  const groups = groupChanges(diffLines(base, ours), diffLines(base, theirs));
+  const groups = groupChanges(
+    diffLines(base, ours),
+    diffLines(base, theirs),
+    options.touchingConflicts ?? true,
+  );
 
   const regions: MergeRegion[] = [];
   let next = 0;
@@ -85,7 +107,7 @@ export function hasConflicts(regions: readonly MergeRegion[]): boolean {
   return regions.some((region) => region.kind === "conflict");
 }
 
-/** Changes from both sides that overlap or touch, over the base lines `start` up to `end`. */
+/** Changes from both sides that are settled together, over the base lines `start` up to `end`. */
 interface ChangeGroup {
   start: number;
   end: number;
@@ -94,21 +116,33 @@ interface ChangeGroup {
 }
 
 /**
- * Puts the changes of both sides in order and groups the ones that overlap
- * or touch, so each group is settled on its own. Changes from one side never
- * touch each other (`diffLines` leaves a kept line between them), so a group
- * only grows past one change when the other side bridges it.
+ * Puts the changes of both sides in order and groups the ones that overlap,
+ * or touch when `touchingConflicts` is set, so each group is settled on its
+ * own. Changes from one side never touch each other (`diffLines` leaves a
+ * kept line between them), so a group only grows past one change when the
+ * other side bridges it.
+ *
+ * Changes at the same line come insertions first, so lines added just before
+ * lines the other side changed stay before them when the two aren't grouped.
  */
-function groupChanges(ours: readonly LineChange[], theirs: readonly LineChange[]): ChangeGroup[] {
+function groupChanges(
+  ours: readonly LineChange[],
+  theirs: readonly LineChange[],
+  touchingConflicts: boolean,
+): ChangeGroup[] {
   const tagged = [
     ...ours.map((change) => ({ change, side: "ours" as const })),
     ...theirs.map((change) => ({ change, side: "theirs" as const })),
-  ].sort((first, second) => first.change.beforeStart - second.change.beforeStart);
+  ].sort(
+    (first, second) =>
+      first.change.beforeStart - second.change.beforeStart ||
+      first.change.beforeEnd - second.change.beforeEnd,
+  );
 
   const groups: ChangeGroup[] = [];
   let current: ChangeGroup | undefined;
   for (const { change, side } of tagged) {
-    if (current === undefined || change.beforeStart > current.end) {
+    if (current === undefined || !joinsGroup(current, change, touchingConflicts)) {
       current = { start: change.beforeStart, end: change.beforeEnd, ours: [], theirs: [] };
       groups.push(current);
     }
@@ -116,6 +150,16 @@ function groupChanges(ours: readonly LineChange[], theirs: readonly LineChange[]
     current[side].push(change);
   }
   return groups;
+}
+
+/** Whether a change is settled together with the group before it in order. */
+function joinsGroup(group: ChangeGroup, change: LineChange, touchingConflicts: boolean): boolean {
+  if (touchingConflicts) return change.beforeStart <= group.end;
+  if (change.beforeStart < group.end) return true;
+  // Lines both sides add at the same place: which go first is unclear.
+  const groupIsInsertion = group.start === group.end;
+  const changeIsInsertion = change.beforeStart === change.beforeEnd;
+  return groupIsInsertion && changeIsInsertion && change.beforeStart === group.start;
 }
 
 /** One side's lines for a group: the base slice (starting at base line `start`) with that side's changes in it. */
@@ -143,8 +187,4 @@ function addResolved(regions: MergeRegion[], lines: readonly string[]): void {
     return;
   }
   regions.push({ kind: "resolved", lines });
-}
-
-function sameLines(first: readonly string[], second: readonly string[]): boolean {
-  return first.length === second.length && first.every((line, index) => line === second[index]);
 }

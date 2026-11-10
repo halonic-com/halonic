@@ -71,10 +71,51 @@ verifies("std.line-merge-conflict", () => {
   });
 });
 
+// The option the assistant's baseline uses: changes that only touch are no conflict.
+verifies("std.line-merge-conflict", () => {
+  it("takes changes on both sides that only touch", () => {
+    const regions = mergeLines("a\nb\nc\n", "A\nb\nc\n", "a\nB\nc\n", {
+      touchingConflicts: false,
+    });
+    expect(regions).toEqual([{ kind: "resolved", lines: ["A\n", "B\n", "c\n"] }]);
+    const after = mergeLines("a\nb\nc\n", "a\nB\nc\n", "a\nb\nnew\nc\n", {
+      touchingConflicts: false,
+    });
+    expect(after).toEqual([{ kind: "resolved", lines: ["a\n", "B\n", "new\n", "c\n"] }]);
+  });
+
+  it("puts lines one side adds before lines the other side changed right after them", () => {
+    const regions = mergeLines("a\nb\n", "a\nnew\nb\n", "a\nB\n", { touchingConflicts: false });
+    expect(mergedText(regions, "ours")).toBe("a\nnew\nB\n");
+    expect(hasConflicts(regions)).toBe(false);
+    const swapped = mergeLines("a\nb\n", "a\nB\n", "a\nnew\nb\n", { touchingConflicts: false });
+    expect(mergedText(swapped, "ours")).toBe("a\nnew\nB\n");
+  });
+
+  it("still marks overlapping changes and lines both add at the same place as conflicts", () => {
+    const options = { touchingConflicts: false };
+    expect(hasConflicts(mergeLines("a\nb\nc\n", "a\nX\nc\n", "a\nY\nc\n", options))).toBe(true);
+    expect(hasConflicts(mergeLines("a\n", "a\nx\n", "a\ny\n", options))).toBe(true);
+    expect(hasConflicts(mergeLines("a\nb\nc\n", "a\nc\n", "a\nb\nnew\nc\n", options))).toBe(false);
+  });
+});
+
 describe("mergeLines for the assistant's baseline (HAL-3267, engine answer 1)", () => {
   // base = the file before a person's write, ours = the baseline, theirs = the file after the write.
   const beforeWrite = "name: Triage\nmodel: small\nsteps: 2\nnotes: none\n";
   const baseline = "name: Triage\nmodel: large\nsteps: 2\nnotes: none\n";
+
+  it("keeps the assistant's change to review when the person types on the line after it", () => {
+    // The assistant changed model: large to small; the person adds a line right after it.
+    const afterWrite = "name: Triage\nmodel: small\ntemperature: 0\nsteps: 2\nnotes: none\n";
+    const merged = mergeLines(beforeWrite, baseline, afterWrite, { touchingConflicts: false });
+    expect(hasConflicts(merged)).toBe(false);
+    expect(mergedText(merged, "theirs")).toBe(
+      "name: Triage\nmodel: large\ntemperature: 0\nsteps: 2\nnotes: none\n",
+    );
+    // As git does it, the change is taken into the baseline, so nothing is left to review.
+    expect(mergedText(mergeLines(beforeWrite, baseline, afterWrite), "theirs")).toBe(afterWrite);
+  });
 
   it("carries an edit away from the assistant's change into the baseline", () => {
     const afterWrite = "name: Triage\nmodel: small\nsteps: 2\nnotes: see wiki\n";
@@ -86,5 +127,7 @@ describe("mergeLines for the assistant's baseline (HAL-3267, engine answer 1)", 
   it("gives the person's text where they edit inside the assistant's change", () => {
     const afterWrite = "name: Triage\nmodel: medium\nsteps: 2\nnotes: none\n";
     expect(mergedText(mergeLines(beforeWrite, baseline, afterWrite), "theirs")).toBe(afterWrite);
+    const loose = mergeLines(beforeWrite, baseline, afterWrite, { touchingConflicts: false });
+    expect(mergedText(loose, "theirs")).toBe(afterWrite);
   });
 });
