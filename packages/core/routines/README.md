@@ -50,6 +50,13 @@ routine goes by in a run. A caller that starts one run per key and time starts
 each once, even when ticks arrive late or twice. A trigger or zone that doesn't
 parse is skipped, and the other routines still run.
 
+`dueWithSkips` gives the same runs as `due`, and also every due time the
+tick drops, as ranges with a reason: `missed` (catch-up is off), `latest`
+("run once" kept only the newest), `cap` (past `maxCatchUp`) or `window`
+(older than `maxCatchUpAgeMs`). A run more than the grace late carries
+`catchUp`, with the number of dropped times on the routine's oldest late run.
+Counting a cron's times stops at 10,000 and is then marked as a minimum.
+
 `routineStart` fills in `{{trigger.at}}`, `{{trigger.lastRun}}` and
 `{{trigger.message}}` and returns what to run: a workflow with its hub, id and
 input, or an agent with its hub, id and prompt. `mailCheckDue` says whether a
