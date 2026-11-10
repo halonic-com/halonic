@@ -39,12 +39,18 @@ export type ActionBarNoteTone = "muted" | "warning" | "danger";
 
 export interface ActionBarProps {
   /**
+   * An optional row on top of everything else in the bar, drawn as it's given: the review row
+   * (component specs 15.4, rev. 47), with ‹ and › and "The assistant changed 3 things here". The
+   * page draws the row; the bar keeps it in the same box, so it's one bar, not two (0.2).
+   */
+  readonly lead?: ReactNode;
+  /**
    * The rows, top to bottom. The `primary` or `danger` button, if any, is the first of the first
    * row.
    */
   readonly rows: readonly ActionBarRow[];
   /**
-   * An optional line above the buttons, never shortened: "Sending is off until you connect
+   * An optional line right above the buttons, under `lead`, never shortened: "Sending is off until you connect
    * Gmail." in `warning`.
    */
   readonly note?: { readonly text: string; readonly tone?: ActionBarNoteTone };
@@ -69,7 +75,8 @@ const noteTones: Record<ActionBarNoteTone, string> = {
  * fill with a `border` line on top, padding 12px 16px and the safe area at the bottom; it grows
  * with its content. Its buttons are 48px and full width: two in a row share it with 8px between
  * them, and stack, in the same order, when either label doesn't fit its half. At most one
- * `primary` or `danger`, and it comes first. When the action can't happen at all, don't show the
+ * `primary` or `danger`, and it comes first. A `lead` row, such as the review row, goes on top,
+ * then the note, then the buttons, 8px apart. When the action can't happen at all, don't show the
  * bar.
  *
  * @example
@@ -80,7 +87,7 @@ const noteTones: Record<ActionBarNoteTone, string> = {
  *   ]}
  * />
  */
-export function ActionBar({ rows, note, whileTyping = "ride" }: ActionBarProps) {
+export function ActionBar({ lead, rows, note, whileTyping = "ride" }: ActionBarProps) {
   checkPrimary(rows);
   const ownBusyId = useId();
   const busyButton = rows.flat().find((button) => button.busy === true);
@@ -90,6 +97,7 @@ export function ActionBar({ rows, note, whileTyping = "ride" }: ActionBarProps) 
       data-while-typing={whileTyping}
       className="action-bar flex flex-col gap-2 border-t border-border bg-surface px-4 pt-3 pb-safe"
     >
+      {lead === undefined ? null : <div>{lead}</div>}
       {note === undefined ? null : (
         <p className={`text-small wrap-break-word ${noteTones[note.tone ?? "muted"]}`}>
           {note.text}

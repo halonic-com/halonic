@@ -74,6 +74,26 @@ verifies("kit.action-bar", () => {
     expect(note.className).toContain("text-warning");
   });
 
+  it("draws a lead row on top, then the note, then the buttons, all in the one bar", () => {
+    const { container } = render(
+      <ActionBar
+        lead={<p>The assistant changed 3 things here</p>}
+        note={{ text: "Sending is off until you connect Gmail.", tone: "warning" }}
+        rows={[[{ label: "Accept all", variant: "primary" }]]}
+      />,
+    );
+    expect(container.children).toHaveLength(1);
+    const [lead, note, row] = [...(container.firstElementChild as HTMLElement).children];
+    expect(lead?.textContent).toBe("The assistant changed 3 things here");
+    expect(note?.textContent).toBe("Sending is off until you connect Gmail.");
+    expect(row?.querySelector("button")?.textContent).toBe("Accept all");
+  });
+
+  it("draws nothing extra without a lead", () => {
+    const { container } = render(<ActionBar rows={[[{ label: "Try it" }]]} />);
+    expect((container.firstElementChild as HTMLElement).children).toHaveLength(1);
+  });
+
   it("calls a button's onClick", async () => {
     const onReject = vi.fn();
     const { container } = render(

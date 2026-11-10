@@ -183,6 +183,10 @@ behind it and no screen pads its content. A `surface` fill, a `border` line on t
   (a form sheet's "Delete agent"). Reject is `secondary`, not red: it's a decision, not a removal.
 - `note` is a line above the buttons in `text-small`, in its tone (`muted`, `warning`, `danger`),
   never shortened: "Sending is off until you connect Gmail."
+- `lead` is an optional row on top, above the note and the buttons, in the same bar: the review
+  row while the assistant has changes to review (‹, "The assistant changed 3 things here" with the
+  Important chip, ›). The page draws the row, since only it knows the count and where ‹ and › go;
+  the bar keeps it inside, so it's one bar, not two.
 - While one button is `busy`, the others are unavailable, with the busy one as their reason.
 - **When the action can't happen at all, don't render the bar.** A disabled bar looks broken.
 - `whileTyping`: `"ride"` (the default) stays on the keyboard, for a bar that confirms what you
