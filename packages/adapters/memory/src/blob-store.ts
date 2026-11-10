@@ -16,7 +16,8 @@ export class MemoryBlobStore implements BlobStore {
         `Media type ${JSON.stringify(mediaType)} is not type/subtype without parameters.`,
       );
     }
-    const copy = data.slice();
+    // Not `slice()`: on a Node `Buffer` it gives a view on the caller's memory, not a copy.
+    const copy = new Uint8Array(data);
     const hash = await sha256Hex(copy);
     if (!this.#blobs.has(hash)) {
       this.#blobs.set(hash, copy);
@@ -28,6 +29,7 @@ export class MemoryBlobStore implements BlobStore {
     if (!hashPattern.test(hash)) {
       return null;
     }
-    return this.#blobs.get(hash)?.slice() ?? null;
+    const stored = this.#blobs.get(hash);
+    return stored === undefined ? null : new Uint8Array(stored);
   }
 }

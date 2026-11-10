@@ -17,6 +17,13 @@ const text = (data: Uint8Array | null): string => {
   return new TextDecoder().decode(data);
 };
 
+/** A `Uint8Array` whose `slice` shares memory, as Node's `Buffer` does, so `slice()` is no copy. */
+class SharedSliceBytes extends Uint8Array {
+  override slice(start?: number, end?: number): Uint8Array<ArrayBuffer> {
+    return this.subarray(start, end) as Uint8Array<ArrayBuffer>;
+  }
+}
+
 /** Media types `put` must refuse: not `type/subtype` of HTTP token characters. */
 const badMediaTypes: readonly string[] = [
   "",
@@ -95,6 +102,16 @@ function storingCases(make: MakeBlobStore): void {
     assert(read !== null, "no blob under this hash");
     expect(text(read)).toBe("hello");
     read[0] = 0;
+    expect(text(await store.get(helloHash))).toBe("hello");
+  });
+
+  it("keeps its own copy of a Buffer-like array whose slice shares memory", async () => {
+    const store = await make();
+    const data = SharedSliceBytes.from(bytes("hello"));
+    const pending = store.put(data, "text/plain");
+    data[1] = 0;
+    expect((await pending).hash).toBe(helloHash);
+    data[0] = 0;
     expect(text(await store.get(helloHash))).toBe("hello");
   });
 }
