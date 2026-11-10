@@ -12,6 +12,7 @@ When a `plugin.yaml` passes its schema, every `ui` command and card shall name a
 - Given a command that names a backend tool with `risk: send`, when the plugin is parsed, then there is one `tool-not-read` problem whose message names the command, its id, the tool and `sends`.
 - Given a card that names a local tool with `risk: write`, when the plugin is parsed, then there is one `tool-not-read` problem for the card, with `writes`.
 - Given a command that names a tool that doesn't exist, when the plugin is parsed, then there is only the `tool-not-found` problem, none about its risk.
+- Given two commands and a card that each name a tool that writes or sends, when the plugin is parsed, then there are three `tool-not-read` problems, one for each, not just the first.
 
 ## Deliberate limits in v0.1
 

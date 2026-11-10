@@ -348,4 +348,18 @@ verifies("format.plugin-ui-read-tools", () => {
     const problems = withUi("  commands: [{ id: tell, title: T, tool: shout }]");
     expect(problems.map(({ code }) => code)).toEqual(["tool-not-found"]);
   });
+
+  it("reports every command and card that uses a tool that doesn't only read", () => {
+    const problems = withUi(
+      "  commands:",
+      "    - { id: tell, title: T, tool: notify }",
+      "    - { id: keep, title: K, tool: save-image }",
+      "  cards: [{ id: now, title: N, tool: save-image }]",
+    );
+    expect(problems.map(({ path, code }) => `${path.join(".")} ${code}`)).toEqual([
+      "ui.commands.0.tool tool-not-read",
+      "ui.commands.1.tool tool-not-read",
+      "ui.cards.0.tool tool-not-read",
+    ]);
+  });
 });
