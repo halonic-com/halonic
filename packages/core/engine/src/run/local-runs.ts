@@ -332,8 +332,13 @@ export class LocalRuns {
     }
   }
 
-  /** Steps the run with the input, tells the subscribers, and carries out or schedules the effects. */
-  async #record(runId: string, input: DecideInput): Promise<void> {
+  /**
+   * Steps the run with the input, tells the subscribers, and carries out or
+   * schedules the effects.
+   *
+   * @returns the events the step stored; none when the input changed nothing
+   */
+  async #record(runId: string, input: DecideInput): Promise<readonly RunEvent[]> {
     const { store, blobs } = this.#options;
     const ports = {
       runs: store,
@@ -348,11 +353,12 @@ export class LocalRuns {
       // timer to move it on. Until the agent loop (4a) carries these out,
       // the run fails and none of its effects are scheduled.
       await this.#fail(runId, `The local executor can't carry out a ${unbuilt.type} effect yet.`);
-      return;
+      return events;
     }
     for (const effect of effects) {
       await this.#carryOut(run, effect);
     }
+    return events;
   }
 
   /**

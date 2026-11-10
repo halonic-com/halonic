@@ -426,4 +426,25 @@ verifies("engine.harness-approvals", () => {
     expect(nextPorts.steps).toEqual([]);
     expect(next.model.requests).toEqual([]);
   });
+
+  it("fails a for-each item's harness call that asks, instead of waiting for an answer", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_7"), finished("billing")];
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      workflow: triageWorkflow,
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start({ ...replyStart, input: { emails: [{ subject: "Refund" }] } });
+    await scheduler.deliver("run_1", "harness:call-1");
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      error:
+        'Agent "writer" asked for an approval of "Bash" where its run can\'t wait for one, as in an item of a for-each state.',
+    });
+    expect(ports.harness.sent).toEqual([]);
+    expect(stillOpen(ports.steps)).toBe(0);
+  });
 });
