@@ -102,6 +102,18 @@ export {
   strictCanonicalJson,
   writtenDigest,
 } from "./listed-tool-fingerprint.ts";
+export {
+  approveNamedTool,
+  type HiddenChange,
+  type ListedToolChange,
+  type ListedToolReview,
+  listedToolChanges,
+  type NamedToolApproval,
+  type RefusedListedTool,
+  type ReviewedTool,
+  reviewListedTools,
+  type WaitingState,
+} from "./listed-tool-review.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export {
