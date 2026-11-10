@@ -15,7 +15,12 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const { spawn: mxcSpawn, getPlatformSupport } = await import("@microsoft/mxc-sdk/v1");
+const { spawn: mxcSpawn, getPlatformSupport, getAvailableBackends } = await import("@microsoft/mxc-sdk/v1");
+
+// Make a silent exit visible: something ended the denials run with exit 1 and no output.
+process.on("exit", (code) => console.error(`probe exit code ${code}`));
+process.on("uncaughtException", (error) => console.error(`uncaught: ${error?.stack ?? error}`));
+process.on("unhandledRejection", (error) => console.error(`unhandled rejection: ${error?.stack ?? error}`));
 
 const drive = `${process.env.SystemDrive ?? "C:"}\\`;
 const sysRoot = process.env.SystemRoot;
@@ -401,8 +406,9 @@ async function networkMode() {
 async function streamsAndKill(work, net) {
   const nodeExe = process.execPath;
   const heartbeat = (name) => join(work, `hb-${name}.txt`);
-  const beatScript = (name) =>
-    `import{writeFileSync}from"node:fs";setInterval(()=>writeFileSync(${JSON.stringify(heartbeat(name))},String(Date.now())),100);`;
+  // The heartbeat line expects writeFileSync in scope; the parent script imports it itself.
+  const beatLine = (name) => `setInterval(()=>writeFileSync(${JSON.stringify(heartbeat(name))},String(Date.now())),100);`;
+  const beatScript = (name) => `import{writeFileSync}from"node:fs";${beatLine(name)}`;
   writeFileSync(join(work, "beat-child.mjs"), beatScript("child"));
   writeFileSync(join(work, "beat-grandchild.mjs"), beatScript("grandchild"));
   writeFileSync(
@@ -415,7 +421,7 @@ const child = spawn(node, ["--preserve-symlinks", "--preserve-symlinks-main", ${
 const grandchild = spawn(node, ["--preserve-symlinks", "--preserve-symlinks-main", ${JSON.stringify(join(work, "beat-grandchild.mjs"))}], { stdio: "ignore", detached: true });
 grandchild.unref();
 writeFileSync(${JSON.stringify(join(work, "pids.json"))}, JSON.stringify({ parent: process.pid, child: child.pid, grandchild: grandchild.pid }));
-${beatScript("parent")}
+${beatLine("parent")}
 let n = 0;
 setInterval(() => console.log("tick " + ++n), 200);
 console.log("ready");
@@ -487,6 +493,12 @@ createInterface({ input: process.stdin }).on("line", (l) => console.log("echo:" 
 // ---- Mode: denials ----------------------------------------------------------------------------
 
 async function denialsMode() {
+  // Round 1 of this mode died with exit 1 and no output at all; log each step so the next run shows where.
+  try {
+    console.error(`denials: backends ${JSON.stringify(getAvailableBackends())}`);
+  } catch (error) {
+    console.error(`denials: getAvailableBackends failed: ${error?.message ?? error}`);
+  }
   const work = mkdtempSync(join(base, "den-"));
   const hidden = mkdtempSync(join(base, "hidden-"));
   const canary = join(hidden, "canary.txt");
@@ -526,6 +538,7 @@ await new Promise((done) => { const s = connect({ host: "127.0.0.1", port: ${oth
   };
   for (const [name, c] of Object.entries(cases)) {
     const before = other.connections;
+    console.error(`denials ${name}: starting`);
     const r = await inBox(`denials ${name}`, c.cmd, { work, read: c.read, net, containmentConfig: c.config, timeoutMs: 120_000 });
     r.otherPortConnections = other.connections - before;
     r.report = readReport(r);
