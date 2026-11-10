@@ -10,6 +10,7 @@ import type {
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { HalonicTools } from "./halonic-tools.ts";
 import { rpcErrorCodes } from "./json-rpc.ts";
 import { McpToolServer } from "./mcp-tool-server.ts";
 
@@ -55,7 +56,9 @@ function serverWith(fake: FakeTools = {}) {
       return fake.decide?.(request) ?? { approved: true };
     },
   };
-  const server = new McpToolServer({ agent: "writer", tools, recorder, approvals });
+  const server = new McpToolServer(
+    new HalonicTools({ agent: "writer", tools, recorder, approvals }),
+  );
   const ask = (message: unknown) =>
     server.answerBytes(encodeUtf8(JSON.stringify(message)), {
       signal: new AbortController().signal,

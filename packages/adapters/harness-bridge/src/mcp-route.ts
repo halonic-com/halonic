@@ -1,36 +1,54 @@
+import type { HarnessBridgeOptions } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { HalonicTools } from "./halonic-tools.ts";
 import { McpToolServer, supportedMcpVersions } from "./mcp-tool-server.ts";
+import type { McpToolSet } from "./mcp-tool-set.ts";
+import { PermissionPromptTool } from "./permission-prompt.ts";
 import type { BridgeRequestContext, BridgeRoute } from "./route.ts";
 
 /** Where the program reaches Halonic's tools. */
-const mcpPath = "/mcp";
+export const mcpPath = "/mcp";
+
+/** Where Claude Code reaches `approve_permission`, its `--permission-prompt-tool`. */
+export const permissionPromptPath = "/mcp/permission-prompt";
 
 /** The header a client sends its MCP version in once it has initialized. */
 const versionHeader = "mcp-protocol-version";
 
 /**
  * The routes of MCP's streamable HTTP transport (requirement
- * `harness-bridge.mcp`): `POST /mcp` answers one JSON-RPC message with one
- * JSON reply, and `GET /mcp` gets a 405, because the bridge sends nothing the
- * client didn't ask for. The bridge has checked the run token already, so
- * there is no MCP session id to check: the run is the session.
+ * `harness-bridge.mcp`), for two MCP servers: Halonic's tools at
+ * {@link mcpPath}, and Claude Code's permission prompt at
+ * {@link permissionPromptPath}. A `POST` answers one JSON-RPC message with
+ * one JSON reply, and a `GET` gets a 405, because the bridge sends nothing
+ * the client didn't ask for. The bridge has checked the run token already,
+ * so there is no MCP session id to check: the run is the session.
  */
 export function mcpRoutes(): BridgeRoute[] {
   return [
-    { method: "POST", path: mcpPath, handle: answerMcpMessage },
-    { method: "GET", path: mcpPath, handle: refuseEventStream },
+    ...mcpServerRoutes(mcpPath, (run) => {
+      const { agentId: agent, tools, recorder, approvals } = run;
+      return new HalonicTools({ agent, tools, recorder, approvals });
+    }),
+    ...mcpServerRoutes(permissionPromptPath, (run) => new PermissionPromptTool(run.approvals)),
   ];
 }
 
-async function answerMcpMessage(context: BridgeRequestContext): Promise<void> {
-  const { run, request, response, signal } = context;
+/** The `POST` and `GET` routes of one MCP server, whose tools come from the run. */
+function mcpServerRoutes(
+  path: string,
+  toolsOf: (run: HarnessBridgeOptions) => McpToolSet,
+): BridgeRoute[] {
+  return [
+    { method: "POST", path, handle: (context) => answerMcpMessage(context, toolsOf(context.run)) },
+    { method: "GET", path, handle: refuseEventStream },
+  ];
+}
+
+async function answerMcpMessage(context: BridgeRequestContext, tools: McpToolSet): Promise<void> {
+  const { request, response, signal } = context;
   checkVersionHeader(request.headers[versionHeader]);
-  const server = new McpToolServer({
-    agent: run.agentId,
-    tools: run.tools,
-    recorder: run.recorder,
-    approvals: run.approvals,
-  });
+  const server = new McpToolServer(tools);
   const reply = await server.answerBytes(await context.readBody(), { signal });
   if (reply === null) {
     // A notification or a response gets no reply (streamable HTTP, "sending messages").

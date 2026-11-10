@@ -57,8 +57,9 @@ async function post(
   bridge: OpenHarnessBridge,
   message: unknown,
   headers: Record<string, string> = {},
+  path = "/mcp",
 ) {
-  const response = await fetch(`${bridge.url}/mcp`, {
+  const response = await fetch(`${bridge.url}${path}`, {
     method: "POST",
     headers: {
       [harnessBridgeTokenHeader]: bridge.token,
@@ -188,5 +189,37 @@ verifies("harness-bridge.approvals", () => {
     await called;
     expect(ran).toEqual([]);
     expect(recorded).toEqual([]);
+  });
+
+  it("serves approve_permission at its own path, and not among Halonic's tools", async () => {
+    const { bridge } = await openWithTools({
+      approvals: { request: async () => ({ approved: false, comment: "no" }) },
+    });
+    const promptPath = "/mcp/permission-prompt";
+    const listed = await post(
+      bridge,
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      {},
+      promptPath,
+    );
+    expect(JSON.parse(listed.text)).toMatchObject({
+      result: { tools: [{ name: "approve_permission" }] },
+    });
+    const halonic = await post(bridge, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+    expect(halonic.text).not.toContain("approve_permission");
+
+    const asked = await post(
+      bridge,
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "approve_permission", arguments: { tool_name: "Bash", input: {} } },
+      },
+      {},
+      promptPath,
+    );
+    const { result } = JSON.parse(asked.text);
+    expect(JSON.parse(result.content[0].text)).toMatchObject({ behavior: "deny" });
   });
 });

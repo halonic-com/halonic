@@ -1,12 +1,4 @@
-import type {
-  BridgeApprovals,
-  BridgeRecorder,
-  BridgeToolResult,
-  BridgeTools,
-  ToolDefinition,
-} from "@halonicjs/ports";
 import { decodeUtf8, isPlainObject } from "@halonicjs/std";
-import { askForApproval, refusalReason } from "./approval.ts";
 import {
   type RequestId,
   type RpcMessage,
@@ -17,6 +9,7 @@ import {
   rpcErrorCodes,
   rpcResult,
 } from "./json-rpc.ts";
+import type { McpToolCallResult, McpToolSet } from "./mcp-tool-set.ts";
 
 /**
  * The MCP versions the bridge speaks, newest first. They differ in nothing
@@ -30,40 +23,23 @@ export const supportedMcpVersions = ["2025-11-25", "2025-06-18", "2025-03-26"] a
  */
 const internalMessage = "Something went wrong in Halonic while answering this request.";
 
-/** What an {@link McpToolServer} serves, and where it records the calls. */
-export interface McpToolServerOptions {
-  /** The agent the recorded events name. */
-  agent: string;
-  tools: BridgeTools;
-  recorder: BridgeRecorder;
-  /** Where a call that needs a person's OK asks for it. */
-  approvals: BridgeApprovals;
-}
-
 /**
- * Halonic's tools for one agent as an MCP server, without a transport: it
- * answers one JSON-RPC message at a time (requirement `harness-bridge.mcp`).
- * The bridge's `POST /mcp` serves it over HTTP; a command that serves it
+ * A set of tools as an MCP server, without a transport: it answers one
+ * JSON-RPC message at a time (requirement `harness-bridge.mcp`). The tool
+ * set decides what the tools are and what a call does; the server speaks
+ * the protocol. The bridge serves it over HTTP; a command that serves it
  * over stdio can use it as it is.
  *
- * Every call is checked by {@link BridgeTools.check} first, so the agent's
- * `allow` and `approve` lists, "allow sending" and the workspace's trust
- * apply as in the built-in loop. A call that needs a person's OK waits for
- * it through the run's approvals. A refused call, or one a person rejected
- * or that got no answer, doesn't run and isn't recorded; the program gets
- * the reason as the call's error result. A call that runs is recorded as
- * `tool.called` and `tool.result`.
- *
  * @example
- * const server = new McpToolServer({ agent, tools, recorder, approvals });
- * const reply = await server.answerText(line, { signal });
+ * const server = new McpToolServer(new HalonicTools({ agent, tools, recorder, approvals }));
+ * const reply = await server.answerBytes(body, { signal });
  * if (reply !== null) write(JSON.stringify(reply));
  */
 export class McpToolServer {
-  readonly #options: McpToolServerOptions;
+  readonly #tools: McpToolSet;
 
-  constructor(options: McpToolServerOptions) {
-    this.#options = options;
+  constructor(tools: McpToolSet) {
+    this.#tools = tools;
   }
 
   /**
@@ -110,10 +86,8 @@ export class McpToolServer {
         return rpcResult(id, initializeResult(params["protocolVersion"]));
       case "ping":
         return rpcResult(id, {});
-      case "tools/list": {
-        const tools = await this.#options.tools.list();
-        return rpcResult(id, { tools: tools.map(mcpTool) });
-      }
+      case "tools/list":
+        return rpcResult(id, { tools: await this.#tools.list() });
       case "tools/call":
         return this.#callTool(id, params, signal);
       default:
@@ -134,49 +108,7 @@ export class McpToolServer {
     if (!isPlainObject(args)) {
       return rpcError(id, rpcErrorCodes.invalidParams, "A tool's arguments must be an object.");
     }
-    const check = await this.#options.tools.check(name, args);
-    if (check.kind === "refused") {
-      return rpcResult(id, toolCallResult(`Refused: ${check.reason}`, true));
-    }
-    if (check.kind === "ask") {
-      const answer = await askForApproval(this.#options.approvals, { tool: name, args }, signal);
-      if (answer.kind !== "approved") {
-        return rpcResult(id, toolCallResult(`Refused: ${refusalReason(answer)}`, true));
-      }
-    }
-    const { result, outcome } = await this.#runTool(name, args, signal);
-    return rpcResult(id, toolCallResult(result, outcome !== "ok"));
-  }
-
-  /** Runs a call the check let through, recording it before and after. */
-  async #runTool(
-    name: string,
-    args: Record<string, unknown>,
-    signal: AbortSignal,
-  ): Promise<BridgeToolResult> {
-    const { agent, tools, recorder } = this.#options;
-    await recorder.record({ type: "tool.called", agent, tool: name, args });
-    const ended = await callOrBreakOff(tools, name, args, signal);
-    await recorder.record({ type: "tool.result", agent, tool: name, ...ended });
-    return ended;
-  }
-}
-
-/**
- * How a call ended. A tool that fails answers with `outcome: "error"`, so a
- * call that throws instead broke off, for instance because the program went
- * away: whether it did its work is `unknown`.
- */
-async function callOrBreakOff(
-  tools: BridgeTools,
-  name: string,
-  args: Record<string, unknown>,
-  signal: AbortSignal,
-): Promise<BridgeToolResult> {
-  try {
-    return await tools.call(name, args, { signal });
-  } catch {
-    return { result: `The tool ${name} broke off without an answer.`, outcome: "unknown" };
+    return rpcResult(id, toolCallResult(await this.#tools.call(name, args, signal)));
   }
 }
 
@@ -193,15 +125,6 @@ function initializeResult(asked: unknown): Record<string, unknown> {
   };
 }
 
-/** A tool as `tools/list` names it. MCP needs an object schema, so one without a type gets it. */
-function mcpTool(tool: ToolDefinition): Record<string, unknown> {
-  return {
-    name: tool.name,
-    description: tool.description,
-    inputSchema: { type: "object", ...tool.parameters },
-  };
-}
-
-function toolCallResult(text: string, isError: boolean): Record<string, unknown> {
+function toolCallResult({ text, isError }: McpToolCallResult): Record<string, unknown> {
   return { content: [{ type: "text", text }], isError };
 }
