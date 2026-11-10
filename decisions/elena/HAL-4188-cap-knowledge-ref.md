@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4188](/HAL/issues/HAL-4188)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KG5jFGj+OLziwzC8jKBtBc2p/DMLdL7+ex7KOeStiAL1Pc18YrueKue4bpAMLBDkOEsFLH+8OxqyVARvf3o+CQ==
 
 Liam's review of PR #1324 (HAL-4185) found that the ref of a knowledge hit
 or document reaches the model unfenced, because the model sends it back to
