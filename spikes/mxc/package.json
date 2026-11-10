@@ -1,0 +1,8 @@
+{
+  "name": "mxc-spike",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@microsoft/mxc-sdk": "1.0.1"
+  }
+}

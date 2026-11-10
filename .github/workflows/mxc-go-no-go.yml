@@ -1,0 +1,74 @@
+# THROWAWAY (HAL-3303): MXC go/no-go checks on the Windows 11 runner (BaseContainer).
+# Draft pull request only; closed once the report is written. Never merges.
+name: MXC go/no-go
+
+on:
+  pull_request:
+    paths:
+      - spikes/mxc/**
+      - .github/workflows/mxc-go-no-go.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mxc:
+    name: MXC go/no-go on windows-11-arm
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+      - name: Host facts and pnpm
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String
+          node --version
+          npm install -g pnpm@10 2>&1 | Select-Object -Last 2
+          (Get-Command pnpm).Source
+          (Get-Command git).Source
+      # No pnpm workspace: the spike is a standalone folder, so no lockfile change.
+      - name: Install the MXC SDK
+        working-directory: spikes/mxc
+        run: npm install --no-audit --no-fund
+      # The Windows builds we plan to ship: the native claude.exe and codex.exe from the npm packages.
+      - name: Install the harnesses (outside the box)
+        run: |
+          $dir = "$env:SystemDrive\mxc-spike-data\harnesses"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          npm install --prefix $dir --no-audit --no-fund @anthropic-ai/claude-code @openai/codex 2>&1 | Select-Object -Last 3
+          Get-ChildItem $dir\node_modules\@anthropic-ai, $dir\node_modules\@openai -Recurse -Include claude.exe, codex.exe | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 200
+          & "$dir\node_modules\.bin\claude.cmd" --version
+          & "$dir\node_modules\.bin\codex.cmd" --version
+        continue-on-error: true
+        timeout-minutes: 10
+      - name: 1. Harnesses inside the box
+        working-directory: spikes/mxc
+        run: node probe4.mjs harness
+        continue-on-error: true
+        timeout-minutes: 15
+      - name: 2. Only the bridge port, streams and kill
+        working-directory: spikes/mxc
+        run: node probe4.mjs network
+        continue-on-error: true
+        timeout-minutes: 10
+      - name: 3. Denial capture
+        working-directory: spikes/mxc
+        run: node probe4.mjs denials
+        continue-on-error: true
+        timeout-minutes: 10
+      - name: 4. pnpm fix attempt (temp in work, enumerate-only drive root)
+        working-directory: spikes/mxc
+        run: node probe4.mjs pnpm
+        continue-on-error: true
+        timeout-minutes: 20
+      - name: Stray processes after the probes
+        run: Get-Process node, claude, codex, curl -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, StartTime | Format-Table | Out-String
+        continue-on-error: true
