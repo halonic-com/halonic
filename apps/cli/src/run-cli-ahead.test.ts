@@ -8,7 +8,7 @@ import { takePrintAheadMismatches } from "./output/printed-ahead.ts";
 import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { manualClock } from "./test/manual-clock.ts";
-import { failOnPrintAheadMismatch } from "./test/print-ahead-check.ts";
+import { failOnPrintAheadMismatch } from "./test/print-ahead-check.spec.ts";
 
 const stepMessages = defineMessages("steps", {
   summary: () => phrase`Run three steps`,

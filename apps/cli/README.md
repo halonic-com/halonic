@@ -73,4 +73,4 @@ A command returns all its lines at the end. A line that is already final, such a
 while a run goes on, it may also pass to `context.printAhead`: the CLI prints it at once (also
 through a pipe and in CI, not with `--json`) and leaves it out at the end. The lines printed ahead
 must be the first lines of the result, word for word; if they aren't, the CLI prints the whole
-result, and the CLI's tests fail (`src/test/print-ahead-check.ts` runs after every test).
+result, and the CLI's tests fail (`src/test/print-ahead-check.spec.ts` runs after every test).
