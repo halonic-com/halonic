@@ -734,6 +734,45 @@ high, words included. A box without words takes taps in a 48px square round it (
 as a heading, and the box takes the Field's error or hint line. A box without words takes the
 Field's label as its name.
 
+## Switch
+
+A setting that is on or off and applies at once. It's a native checkbox with `role="switch"`, so
+the browser keeps the keyboard and screen reader behaviour. Give it its sentence, which is part of
+its target, or a `label` when it stands without words.
+
+```tsx
+<Switch checked={summary} onChange={setSummary}>
+  Send a summary every morning
+</Switch>;
+<Switch label="Turn on Sorter" checked={on} onChange={setOn} />;
+```
+
+| Prop          | What it is                                                                   |
+| ------------- | ---------------------------------------------------------------------------- |
+| `checked`     | On or off                                                                    |
+| `onChange`    | Called with the new value on a click or Space. Not while `unavailable`       |
+| `unavailable` | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop |
+| `children`    | Its sentence: "Send a summary every morning". Or `label`, its name           |
+
+| State         | What shows                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| Off           | A 32×18 `surface-muted` track with a `border-control` edge, a 14px `on-primary` thumb at the start |
+| On            | A `primary` track, the thumb at the end. It jumps; it doesn't slide                                |
+| Hover         | An off track's edge turns `fg-muted`, an on track `primary-hover`, over the switch or its sentence |
+| Focus         | The standard ring round the track                                                                  |
+| Unavailable   | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value               |
+| Error         | In a Field with an error: the Field's error line under it, which describes it                      |
+| High contrast | A `CanvasText` thumb; an on track fills `Highlight` with a `HighlightText` thumb (`switch-forced`) |
+
+**The row.** The sentence comes first and the switch sits at the end of a row of at most 360px, so
+it stays near its words. On a phone the row is the full width, and on a phone or a touch screen
+it's at least 48px high, sentence included. A switch without words takes taps in a 48px square
+round it (`hit-touch`).
+
+**A failed save** puts the old value back. Outside a modal Dialog the screen says so with a toast;
+inside one (Settings), where toasts wait, the Switch sits in a Field and the screen sets the
+Field's `error` until the next change, and announces it.
+
 ## Kbd
 
 A keyboard shortcut in a menu, the command palette or a tooltip: one box per key.

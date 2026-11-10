@@ -109,3 +109,23 @@ describe("theme.css built by Tailwind: the Checkbox in high contrast", () => {
     expect(forced).toMatch(/\[aria-disabled="true"\] \{\s*border-color: GrayText;/);
   });
 });
+
+describe("theme.css built by Tailwind: the Switch", () => {
+  it("draws the 32×18 track, the 14px thumb and the 360px row from the 4px spacing", async () => {
+    const css = await buildCss(["h-4.5", "w-8", "size-3.5", "left-4", "max-w-90"]);
+    expect(css).toMatch(/\.h-4\\\.5 \{\s*height: calc\(var\(--spacing\) \* 4\.5\);/);
+    expect(css).toMatch(/\.size-3\\\.5 \{\s*width: calc\(var\(--spacing\) \* 3\.5\);/);
+    expect(css).toMatch(/\.max-w-90 \{\s*max-width: calc\(var\(--spacing\) \* 90\);/);
+  });
+
+  it("draws the thumb CanvasText and an on track Highlight in high contrast, and an unavailable one GrayText", async () => {
+    const css = await buildCss(["switch-forced"]);
+    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(forced).toMatch(/\+ \* \{\s*forced-color-adjust: none;\s*background-color: CanvasText;/);
+    expect(forced).toMatch(
+      /:checked \{\s*forced-color-adjust: none;\s*border-color: Highlight;\s*background-color: Highlight;/,
+    );
+    expect(forced).toMatch(/:checked \+ \* \{\s*background-color: HighlightText;/);
+    expect(forced).toMatch(/\[aria-disabled="true"\] \+ \* \{\s*background-color: GrayText;/);
+  });
+});

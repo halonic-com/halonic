@@ -1,0 +1,40 @@
+/*
+ * A Switch's track in Windows high-contrast mode, which drops fills: the thumb (the next element)
+ * is drawn in CanvasText, and an on track fills with Highlight under a HighlightText thumb, so the
+ * switch itself shows on and off. An unavailable switch greys to GrayText, its on track included.
+ * It sits next to the Switch so theme.css stays under the size limit; theme.css imports it.
+ */
+@utility switch-forced {
+  @media (forced-colors: active) {
+    & + * {
+      forced-color-adjust: none;
+      background-color: CanvasText;
+    }
+
+    &:checked {
+      forced-color-adjust: none;
+      border-color: Highlight;
+      background-color: Highlight;
+    }
+
+    &:checked + * {
+      background-color: HighlightText;
+    }
+
+    &[aria-disabled="true"] {
+      border-color: GrayText;
+    }
+
+    &[aria-disabled="true"] + * {
+      background-color: GrayText;
+    }
+
+    &[aria-disabled="true"]:checked {
+      background-color: GrayText;
+    }
+
+    &[aria-disabled="true"]:checked + * {
+      background-color: Canvas;
+    }
+  }
+}

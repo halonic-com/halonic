@@ -100,6 +100,7 @@ export {
   type StatusChipProps,
   type StatusChipTone,
 } from "./status-chip/status-chip.tsx";
+export { Switch, type SwitchProps, type SwitchUnavailable } from "./switch/switch.tsx";
 export { type Tab, type TabCount, Tabs, type TabsProps } from "./tabs/tabs.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,

@@ -32,6 +32,7 @@
    colours) live in their own file. */
 @import "./theme-selection.css";
 @import "./checkbox/checkbox.css";
+@import "./switch/switch.css";
 
 :root {
   color-scheme: light dark;

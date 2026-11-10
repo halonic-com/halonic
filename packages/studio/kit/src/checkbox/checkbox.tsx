@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { assignRef, describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 
 /** Why a checkbox can't be used right now, written as visible text near it. */
@@ -170,20 +171,6 @@ export function Checkbox(props: CheckboxProps) {
       {props.children}
     </label>
   );
-}
-
-function assignRef<T>(ref: Ref<T> | undefined, value: T | null): void {
-  if (typeof ref === "function") {
-    ref(value);
-  } else if (ref !== undefined && ref !== null) {
-    ref.current = value;
-  }
-}
-
-/** The unavailable reason and the Field's line, both read with the box. */
-function describedBy(...ids: readonly (string | undefined)[]): string | undefined {
-  const present = ids.filter((id) => id !== undefined);
-  return present.length === 0 ? undefined : present.join(" ");
 }
 
 function CheckMark() {
