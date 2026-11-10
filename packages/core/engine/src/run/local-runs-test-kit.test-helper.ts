@@ -1,4 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
+import type { Agent } from "@halonicjs/format";
 import type { ChatResponse, ScheduledTimer, Scheduler } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
@@ -68,10 +69,14 @@ export class HeldRuns extends KernelRuns {
   }
 }
 
-/** A local executor with runs on memory ports, a scripted model and the reply workflow. */
+/**
+ * A local executor with runs on memory ports, a scripted model and the reply
+ * workflow, with `agents` as the hub's agents when given.
+ */
 export function runsOn<Runs extends KernelRuns = KernelRuns>(
   answers: (ChatResponse | Error)[],
   runs: Runs = new KernelRuns() as Runs,
+  agents?: Readonly<Record<string, Agent>>,
 ) {
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
@@ -90,7 +95,9 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== replyWorkflow.id) throw new Error(`No workflow "${workflowId}".`);
-        return { workflow: replyWorkflow };
+        return agents === undefined
+          ? { workflow: replyWorkflow }
+          : { workflow: replyWorkflow, agents };
       },
     },
   });

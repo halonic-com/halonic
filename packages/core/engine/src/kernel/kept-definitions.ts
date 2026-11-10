@@ -44,7 +44,9 @@ export async function readDefinitions(
   } catch {
     return null;
   }
-  return isPlainObject(parsed) && isPlainObject(parsed["workflow"])
+  return isPlainObject(parsed) &&
+    isPlainObject(parsed["workflow"]) &&
+    (parsed["agents"] === undefined || isPlainObject(parsed["agents"]))
     ? (parsed as unknown as RunDefinitions)
     : null;
 }

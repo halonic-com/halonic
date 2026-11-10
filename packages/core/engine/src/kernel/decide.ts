@@ -1,4 +1,4 @@
-import type { Workflow } from "@halonicjs/format";
+import type { Agent, Workflow } from "@halonicjs/format";
 import { getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
 import type {
@@ -41,6 +41,7 @@ interface Draft {
   readonly effects: Effect[];
   readonly at: string;
   readonly workflow: Workflow;
+  readonly agents: Readonly<Record<string, Agent>>;
 }
 
 /**
@@ -56,7 +57,7 @@ export function decide(
 ): Decision {
   checkRunTakes(run, input);
   if (input.type === "start") {
-    return start(input, definitions.workflow);
+    return start(input, definitions);
   }
   if (run === null) {
     throw new InputRefused("engine.run-unknown", "The run has not started.");
@@ -77,6 +78,7 @@ export function decide(
     effects: [],
     at: input.at,
     workflow: definitions.workflow,
+    agents: definitions.agents ?? {},
   };
   const stateId = run.state;
   const handler = handlerFor(draft, stateId);
@@ -109,7 +111,8 @@ export function checkRunTakes(run: RunState | null, input: DecideInput): void {
   }
 }
 
-function start(input: StartInput, workflow: Workflow): Decision {
+function start(input: StartInput, definitions: RunDefinitions): Decision {
+  const workflow = definitions.workflow;
   const { type: _type, at, runId, trigger, parent, ...fields } = input;
   const started: DecidedEvent = {
     type: "run.started",
@@ -123,6 +126,7 @@ function start(input: StartInput, workflow: Workflow): Decision {
     effects: [],
     at,
     workflow,
+    agents: definitions.agents ?? {},
   };
   enter(draft, workflow.initial);
   return { events: draft.events, effects: draft.effects };
@@ -228,6 +232,7 @@ function contextOf(draft: Draft, stateId: string): StateContext {
     stateId,
     state: getState(draft.workflow, stateId),
     workflow: draft.workflow,
+    agents: draft.agents,
     scope: scopeOf(draft),
     at: draft.at,
   };

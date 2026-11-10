@@ -7,7 +7,7 @@ import type {
   RunTrigger,
   ToolOutcome,
 } from "@halonicjs/events";
-import type { Workflow } from "@halonicjs/format";
+import type { Agent, Workflow } from "@halonicjs/format";
 import type { RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
@@ -56,6 +56,12 @@ export interface ModelResult {
   readonly output: unknown;
 }
 
+/** What a harness run gave as its result: the `output` of its own `agent.finished`. */
+export interface HarnessResult {
+  readonly type: "harness";
+  readonly output: unknown;
+}
+
 /** What a tool call returned, and how it ended. */
 export interface ToolResult {
   readonly type: "tool";
@@ -68,7 +74,7 @@ export interface EffectDoneInput extends InputBase {
   readonly type: "effect-done";
   /** The `callId` of the effect that finished. */
   readonly callId: string;
-  readonly result: ModelResult | ToolResult;
+  readonly result: ModelResult | HarnessResult | ToolResult;
 }
 
 /**
@@ -94,6 +100,24 @@ export interface CallModelEffect {
   readonly callId: string;
   readonly state: string;
   readonly agent: string;
+  readonly prompt: string;
+}
+
+/** The harnesses that start a program for the agent: every harness but Halonic's own loop. */
+export type ProgramHarness = Exclude<NonNullable<Agent["harness"]>, "halonic">;
+
+/**
+ * Run a state's agent in the harness its file names, instead of a model
+ * call. The effect runner opens the sandbox and the bridge, starts the
+ * harness and writes the events it reports; the run waits on `callId` as it
+ * waits on a model call.
+ */
+export interface RunHarnessEffect {
+  readonly type: "run-harness";
+  readonly callId: string;
+  readonly state: string;
+  readonly agent: string;
+  readonly harness: ProgramHarness;
   readonly prompt: string;
 }
 
@@ -135,6 +159,7 @@ export interface SetTimerEffect {
 /** Work with side effects that `step` carries out through the ports after appending. */
 export type Effect =
   | CallModelEffect
+  | RunHarnessEffect
   | CallToolEffect
   | StartChildEffect
   | TellParentEffect
@@ -152,9 +177,15 @@ export interface Decision {
   readonly effects: readonly Effect[];
 }
 
-/** The definitions a run started with. Agents and the hub's other files join with 1(c). */
+/** The definitions a run started with. The hub's other files join with 1(c). */
 export interface RunDefinitions {
   readonly workflow: Workflow;
+  /**
+   * The hub's agents by id, for what their files decide, such as the
+   * harness. Runs kept before agents joined have none, and their agents
+   * run in Halonic's own loop, as they did when they started.
+   */
+  readonly agents?: Readonly<Record<string, Agent>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */

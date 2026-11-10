@@ -1,5 +1,5 @@
 import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
-import type { Workflow } from "@halonicjs/format";
+import type { Agent, Workflow } from "@halonicjs/format";
 import {
   type AppendOptions,
   type AppendResult,
@@ -126,5 +126,26 @@ export function answer(callId: string, output: unknown): DecideInput {
     at: "2026-11-09T09:00:05.000Z",
     callId,
     result: { type: "model", output },
+  };
+}
+
+/** The reply workflow's `writer` agent, with every default filled in, in `harness` when given. */
+export function writerAgent(harness?: Agent["harness"]): Agent {
+  return {
+    version: 1,
+    id: "writer",
+    name: "Writer",
+    params: {},
+    instructions: "",
+    skills: [],
+    knowledge: [],
+    connectors: [],
+    runLogs: false,
+    collections: [],
+    subagents: [],
+    methods: {},
+    output: { type: "text" },
+    maxSteps: 6,
+    ...(harness === undefined ? {} : { harness }),
   };
 }

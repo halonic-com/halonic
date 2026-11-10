@@ -8,6 +8,7 @@ import {
   KernelRuns,
   replyWorkflow,
   startInput,
+  writerAgent,
 } from "./kernel-test-kit.test-helper.ts";
 import { step } from "./step.ts";
 
@@ -22,10 +23,20 @@ verifies("engine.kept-definitions", () => {
       expect(await readDefinitions(blobs, version)).toEqual({ workflow: replyWorkflow });
     });
 
+    it("reads back the agents a run started with", async () => {
+      const blobs = new KernelBlobs();
+      const definitions = { workflow: replyWorkflow, agents: { writer: writerAgent("codex") } };
+
+      const version = await keepDefinitions(blobs, definitions);
+
+      expect(await readDefinitions(blobs, version)).toEqual(definitions);
+    });
+
     it.each([
       ["missing", null],
       ["not JSON", "{"],
       ["JSON without a workflow", '{"agents":{}}'],
+      ["a workflow with agents that aren't an object", '{"workflow":{},"agents":[]}'],
     ])("reads a blob that is %s as no definitions", async (_name, text) => {
       const blobs = new KernelBlobs();
       if (text !== null) {

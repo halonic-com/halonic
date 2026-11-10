@@ -1,10 +1,11 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Workflow, WorkflowState } from "@halonicjs/format";
+import type { Agent, Workflow, WorkflowState } from "@halonicjs/format";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { states } from "../generated/states.ts";
 import { decide, InputRefused } from "./decide.ts";
 import type { DecideInput, Decision, RunDefinitions, StartInput } from "./decide-types.ts";
+import { writerAgent } from "./kernel-test-kit.test-helper.ts";
 import type { StateHandler, StateRegistry } from "./registry.ts";
 import { foldRun, type RunState } from "./run-state.ts";
 
@@ -51,8 +52,12 @@ const answer = (callId: string, output: unknown): DecideInput => ({
  * Plays inputs through `decide` the way `step` will: each decision's events
  * are stamped and appended, and the next input is decided on the folded log.
  */
-function play(workflow: Workflow, inputs: readonly DecideInput[]) {
-  const definitions: RunDefinitions = { workflow };
+function play(
+  workflow: Workflow,
+  inputs: readonly DecideInput[],
+  agents?: Readonly<Record<string, Agent>>,
+) {
+  const definitions: RunDefinitions = agents === undefined ? { workflow } : { workflow, agents };
   const log: RunEvent[] = [];
   const decisions: Decision[] = [];
   let run: RunState | null = null;
@@ -154,6 +159,55 @@ verifies("engine.task-state", () => {
       type: "run.failed",
       error: 'Task state "draft" names no agent.',
     });
+  });
+});
+
+verifies("engine.task-state-harness", () => {
+  const harnessAnswer = (callId: string, output: unknown): DecideInput => ({
+    type: "effect-done",
+    at: "2026-11-09T09:00:05.000Z",
+    callId,
+    result: { type: "harness", output },
+  });
+
+  it("asks for a harness run instead of a model call when the agent's file names one", () => {
+    const { decisions } = play(reply, [startInput], { writer: writerAgent("claude-code") });
+    expect(decisions[0]?.events.at(-1)).toEqual({
+      type: "agent.started",
+      state: "draft",
+      agent: "writer",
+      prompt: "Reply to support",
+    });
+    expect(decisions[0]?.effects).toEqual([
+      {
+        type: "run-harness",
+        callId: "call-1",
+        state: "draft",
+        agent: "writer",
+        harness: "claude-code",
+        prompt: "Reply to support",
+      },
+    ]);
+  });
+
+  it("finishes on the harness's result as it does on a model's answer", () => {
+    const agents = { writer: writerAgent("codex") };
+    const { decisions } = play(reply, [startInput, harnessAnswer("call-1", "On its way")], agents);
+    expect(decisions[1]?.events.slice(0, 3)).toEqual([
+      { type: "agent.finished", state: "draft", agent: "writer", output: "On its way" },
+      { type: "context.updated", key: "reply", value: "On its way" },
+      { type: "transition", from: "draft", to: "sent", event: "done" },
+    ]);
+  });
+
+  it.each([
+    ["names Halonic's own loop", { writer: writerAgent("halonic") }],
+    ["names no harness", { writer: writerAgent() }],
+    ["isn't among the run's agents", { other: writerAgent("claude-code") }],
+    ["was kept without agents", undefined],
+  ])("keeps the model call when the agent %s", (_case, agents) => {
+    const { decisions } = play(reply, [startInput], agents);
+    expect(decisions[0]?.effects).toMatchObject([{ type: "call-model", callId: "call-1" }]);
   });
 });
 

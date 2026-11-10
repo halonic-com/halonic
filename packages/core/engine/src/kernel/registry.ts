@@ -1,4 +1,4 @@
-import type { StateType, Workflow, WorkflowState } from "@halonicjs/format";
+import type { Agent, StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import type { Scope } from "@halonicjs/workflow";
 import type { DecidedEvent, DecideInput, Effect } from "./decide-types.ts";
 import type { RunState } from "./run-state.ts";
@@ -17,6 +17,8 @@ export interface StateContext {
   readonly stateId: string;
   readonly state: WorkflowState;
   readonly workflow: Workflow;
+  /** The hub's agents by id, as the run started with them; empty for runs kept without agents. */
+  readonly agents: Readonly<Record<string, Agent>>;
   /** The run's input and context (the workflow's initial context, with what the run wrote over it). */
   readonly scope: Scope;
   /** ISO time of the input being decided. */
