@@ -46,8 +46,6 @@ export const pluginMessages = defineMessages("plugin", {
     phrase`Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.`,
 
   added: (name: string, version: string) => phrase`Added ${name} ${version}. It's on.`,
-  /** Indented under {@link added}. */
-  addedHint: (id: string) => phrase`A workspace uses it once it lists ${id} in workspace.yaml.`,
   /** Answer No, or Enter, with a !: added but off, exit 3 (Studio's Not now, D4). */
   addedButOff: (name: string, id: string) =>
     phrase`${name} is added but off. Nothing from it runs until you trust it: halonic trust --plugin ${id}`,
