@@ -21,6 +21,10 @@
       "reason": "Probes whether bubblewrap starts and may create user namespaces. It runs only bwrap with fixed arguments.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/machine.starts.test.ts"
     },
+    "packages/adapters/sandbox-srt/scripts/windows-fence-probe.mjs": {
+      "reason": "CI tooling for the Windows fence proof (HAL-1919), run by hand and by the report-only sandbox-windows job, never shipped. It starts only Node with the srt CLI from this package's node_modules and a child script it writes to a temporary folder, both with fixed arguments. It never loads a skill.",
+      "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
+    },
     "packages/adapters/sandbox-srt/src/srt-runner.ts": {
       "reason": "Starts sandbox-runtime's srt with Node to run a session's program inside the fence. srtRunner.run itself refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts, so no caller gets round it.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
