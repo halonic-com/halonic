@@ -225,6 +225,25 @@ export function startedInWords(started: StartedAt): string {
   }
 }
 
+/**
+ * When something happened in a run, as a sentence ends with it: "at 14:02",
+ * "yesterday at 16:40", "on 3 Nov at 09:12" or "on 3 Mar 2025". The When
+ * column's words, made to read after a verb ("you approved at 14:02"); team
+ * wording on HAL-2742, as HAL-2282 allows.
+ */
+export function happenedInWords(at: StartedAt): string {
+  switch (at.day) {
+    case "today":
+      return `at ${at.time}`;
+    case "yesterday":
+      return `yesterday at ${at.time}`;
+    case "thisYear":
+      return `on ${dayInWords(at.date)} at ${at.time}`;
+    case "earlier":
+      return `on ${dayInWords(at.date)} ${at.year}`;
+  }
+}
+
 function dueInWords(due: DueAt): string {
   switch (due.day) {
     case "today":

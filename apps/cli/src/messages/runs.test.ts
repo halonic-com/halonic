@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { dim, plainText } from "./phrase.ts";
 import { type CancelledAt, type NotWaiting, runsMessages, type ShownEnd } from "./runs.ts";
+import type { StartedAt } from "./runs-list.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -148,7 +149,8 @@ describe("runs's sentences", () => {
   });
 
   it("says what the user answered at the wait step, guessing no verb", () => {
-    const answered = (event: string) => words(runsMessages.youAnswered(event, "14:02"));
+    const answered = (event: string) =>
+      words(runsMessages.youAnswered(event, { day: "today", time: "14:02" }));
     expect([
       answered("approve"),
       answered("reject"),
@@ -159,6 +161,16 @@ describe("runs's sentences", () => {
       "you rejected at 14:02",
       "you answered hold at 14:02",
       "you answered Approve at 14:02",
+    ]);
+    const approvedOn = (at: StartedAt) => words(runsMessages.youAnswered("approve", at));
+    expect([
+      approvedOn({ day: "yesterday", time: "16:40" }),
+      approvedOn({ day: "thisYear", date: { day: 3, month: 11 }, time: "09:12" }),
+      approvedOn({ day: "earlier", date: { day: 3, month: 3 }, year: 2025 }),
+    ]).toEqual([
+      "you approved yesterday at 16:40",
+      "you approved on 3 Nov at 09:12",
+      "you approved on 3 Mar 2025",
     ]);
     expect(words(runsMessages.waitingSince("14:02"))).toBe("waiting for you since 14:02");
   });

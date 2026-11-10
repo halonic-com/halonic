@@ -1,5 +1,11 @@
 import type { WorkflowDefinition } from "@halonicjs/app";
-import { type RunEvent, type RunEventBody, type RunSummary, summarize } from "@halonicjs/events";
+import {
+  type RunEvent,
+  type RunEventBase,
+  type RunEventBody,
+  type RunSummary,
+  summarize,
+} from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
@@ -20,6 +26,7 @@ const supportReply = {
     classify: { type: "task", agent: "sorter", description: "Classify it" },
     draft: { type: "task", agent: "writer", description: "Draft a reply" },
     review: { type: "wait", description: "Approve this reply?\n{{context.reply}}" },
+    checks: { type: "parallel", description: "Run the checks" },
     done: { type: "final" },
   },
 } as unknown as WorkflowDefinition;
@@ -77,6 +84,12 @@ function receiptText(events: readonly RunEvent[], cost = 0): string {
 }
 
 const entered = (state: string): RunEventBody => ({ type: "state.entered", state });
+/** The run's end, as the engine logs it: it enters the end state, which completes the run. */
+const finishedAt = (time: string) =>
+  [
+    [time, entered("done")],
+    [time, { type: "run.completed", state: "done", context: {} }],
+  ] as const;
 const agentStarted = (state: string, agent: string): RunEventBody => ({
   type: "agent.started",
   state,
@@ -89,6 +102,24 @@ const waiting: RunEventBody = {
   events: ["approve", "reject"],
   title: "Approve this reply?",
 };
+
+/** An event of one branch of a parallel state. */
+const inBranch = (
+  branch: string,
+  body: RunEventBody,
+): RunEventBody & Pick<RunEventBase, "branch"> => ({ ...body, branch });
+
+/** The `approval.requested` of a tool call the agent of `state` makes. */
+const approvalRequested = (state: string, callId: string): RunEventBody =>
+  ({
+    type: "approval.requested",
+    state,
+    agent: "writer",
+    tool: "gmail_send",
+    args: {},
+    callId,
+    resume: { messages: [], step: 0 },
+  }) as unknown as RunEventBody;
 
 /** Acme's run up to the wait step: read, then draft, then waiting at 14:02:10. */
 const upToTheWait = [
@@ -104,18 +135,7 @@ const upToTheWait = [
 const draftAsksApproval: readonly (readonly [string, RunEventBody])[] = [
   ["14:00:00", entered("draft")],
   ["14:00:00", agentStarted("draft", "writer")],
-  [
-    "14:00:05",
-    {
-      type: "approval.requested",
-      state: "draft",
-      agent: "writer",
-      tool: "gmail_send",
-      args: {},
-      callId: "call-1",
-      resume: { messages: [], step: 0 },
-    } as unknown as RunEventBody,
-  ],
+  ["14:00:05", approvalRequested("draft", "call-1")],
   ["14:00:05", { type: "run.waiting", state: "draft", events: ["approve", "reject"] }],
 ];
 
@@ -124,8 +144,7 @@ verifies("cli.run-view", () => {
     const events = logOf([
       ...upToTheWait,
       ["14:02:30", { type: "event.received", event: "approve" }],
-      ["14:02:30", entered("done")],
-      ["14:02:30", { type: "run.completed", state: "done", context: {} }],
+      ...finishedAt("14:02:30"),
     ]);
     expect(linesOf(events)).toEqual([
       "✓ Read the email Writer · smart 1 s",
@@ -138,7 +157,7 @@ verifies("cli.run-view", () => {
     const events = logOf([
       ...upToTheWait,
       ["14:02:30", { type: "event.received", event: "hold" }],
-      ["14:02:30", { type: "run.completed", state: "review", context: {} }],
+      ...finishedAt("14:02:30"),
     ]);
     const summary = summarizeOrThrow(events);
     expect(stepLines(events, summary, definitions, clock).map((line) => plainText(line))).toEqual([
@@ -204,10 +223,42 @@ verifies("cli.run-view", () => {
         },
       ],
       ["14:00:20", { type: "event.received", event: "approve" }],
-      ["14:00:30", { type: "run.completed", state: "draft", context: {} }],
+      ...finishedAt("14:00:30"),
     ]);
     expect(linesOf(events)).toEqual(["✓ Draft a reply Writer · smart 30 s"]);
     expect(receiptOf(events, summarizeOrThrow(events)).askedYou).toBe(1);
+  });
+
+  it("marks a parallel step with a !, when a branch waits for the user's OK on a tool call", () => {
+    const events = logOf([
+      ["14:00:00", entered("checks")],
+      ["14:00:00", inBranch("left", entered("draft"))],
+      ["14:00:00", inBranch("right", entered("draft"))],
+      ["14:00:05", inBranch("left", approvalRequested("draft", "call-1"))],
+      ["14:00:06", inBranch("right", approvalRequested("draft", "call-2"))],
+      [
+        "14:00:20",
+        inBranch("right", {
+          type: "approval.resolved",
+          state: "draft",
+          agent: "writer",
+          tool: "gmail_send",
+          callId: "call-2",
+          approved: true,
+        }),
+      ],
+      ["14:00:20", inBranch("left", { type: "run.waiting", state: "draft", events: ["approve"] })],
+    ]);
+    expect(linesOf(events)).toEqual(["! Run the checks"]);
+  });
+
+  it("marks a parallel step with a !, when a branch's wait step waits for the user", () => {
+    const events = logOf([
+      ["14:00:00", entered("checks")],
+      ["14:00:00", inBranch("left", entered("review"))],
+      ["14:02:10", inBranch("left", waiting)],
+    ]);
+    expect(linesOf(events)).toEqual(["! Run the checks waiting for you since 14:02"]);
   });
 
   it("names a step's agent by the model alias of the method it calls", () => {
@@ -222,7 +273,7 @@ verifies("cli.run-view", () => {
     const events = logOf([
       ["14:00:00", entered("read")],
       ["14:00:00", agentStarted("read", "writer")],
-      ["14:00:01", { type: "run.completed", state: "read", context: {} }],
+      ...finishedAt("14:00:01"),
     ]);
     const summary = summarizeOrThrow(events);
     const lines = stepLines(events, summary, { workflow: withMethod, agent: () => writer }, clock);
@@ -231,11 +282,11 @@ verifies("cli.run-view", () => {
     ]);
   });
 
-  it("names an agent that's no longer in the workspace by its id", () => {
+  it("names an agent that's no longer in the workspace by its id, and gives the end state no line", () => {
     const events = logOf([
       ["14:00:00", entered("read")],
       ["14:00:00", agentStarted("read", "writer")],
-      ["14:00:01", { type: "run.completed", state: "read", context: {} }],
+      ...finishedAt("14:00:01"),
     ]);
     const summary = summarizeOrThrow(events);
     const lines = stepLines(
@@ -253,7 +304,7 @@ verifies("cli.run-view", () => {
     const events = logOf([
       ...upToTheWait,
       ["14:02:30", { type: "event.received", event: "approve" }],
-      ["14:02:30", { type: "run.completed", state: "review", context: {} }],
+      ...finishedAt("14:02:30"),
     ]);
     expect(receiptText(events, 0.004)).toBe(
       "Sent nothing · asked you once · estimated cost €0.004",
@@ -264,7 +315,7 @@ verifies("cli.run-view", () => {
     const events = logOf([
       ["14:00:00", entered("read")],
       ["14:00:01", { type: "tool.called", agent: "writer", tool: "gmail_read", args: {} }],
-      ["14:00:02", { type: "run.completed", state: "read", context: {} }],
+      ...finishedAt("14:00:02"),
     ]);
     expect(receiptOf(events, summarizeOrThrow(events))).toEqual({
       changedFiles: 0,

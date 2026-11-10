@@ -35,7 +35,7 @@ export interface RunDefinitions {
  * ran it ("Writer · smart"), then how long it took. A wait step says what
  * the user answered instead of a time; the step that's running or waiting
  * says since when. Steps the run didn't reach get no line, and neither does
- * the workflow's end state, which does nothing a person sees.
+ * the end state the run finished in (see `runSteps`).
  *
  * @example
  * stepLines(events, summary, definitions, { now: new Date() }).map(plainText);
@@ -48,9 +48,7 @@ export function stepLines(
   definitions: RunDefinitions,
   clock: RunClock,
 ): Phrase[] {
-  const rows = runSteps(events, summary)
-    .filter((step) => definitions.workflow?.states[step.stateId]?.type !== "final")
-    .map((step) => stepRow(step, definitions, clock));
+  const rows = runSteps(events, summary).map((step) => stepRow(step, definitions, clock));
   return columns(rows);
 }
 
@@ -96,7 +94,7 @@ function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): P
     case "failed":
       return [name, runMessages.stepFacts(facts).phrase, [duration(end.tookMs)]];
     case "answered":
-      return [name, runsMessages.youAnswered(end.event, at(end.at)).phrase];
+      return [name, runsMessages.youAnswered(end.event, startedAt(new Date(end.at), clock)).phrase];
     case "waitingForYou":
       return [name, runsMessages.waitingSince(at(end.since)).phrase];
     case "waitingUntil":
@@ -104,7 +102,8 @@ function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): P
     case "waitingForChildRun":
       return [name, runsListMessages.waitingForChildRun(shortRunId(end.childRunId)).phrase];
     case "waitingForApproval":
-      return [name, runMessages.stepFacts(facts).phrase];
+      // A parallel step has no agent of its own, and so nothing after its name.
+      return facts.length === 0 ? [name] : [name, runMessages.stepFacts(facts).phrase];
     case "running":
       return [name, runsMessages.runningSince(facts, at(end.since)).phrase];
   }

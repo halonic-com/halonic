@@ -3,6 +3,7 @@ import { countInWords, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
 import { runMessages } from "./run.ts";
+import { happenedInWords, type StartedAt } from "./runs-list.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** Where a run was when someone cancelled it, for {@link runsMessages}' `showCancelled`. */
@@ -107,16 +108,18 @@ export const runsMessages = defineMessages("runs", {
    * After the wait step's name, in place of a time, with a ! (cli-output 3.4,
    * revision 24). Only the exact events `approve` and `reject` get their own
    * verb; any other reads "you answered hold at 14:02", as written in the
-   * workflow, so Halonic never guesses what an event means.
+   * workflow, so Halonic never guesses what an event means. An answer from
+   * an earlier day says which: "you approved yesterday at 16:40".
    */
-  youAnswered: (event: string, time: string) => {
+  youAnswered: (event: string, at: StartedAt) => {
+    const when = happenedInWords(at);
     if (event === "approve") {
-      return phrase`you approved at ${time}`;
+      return phrase`you approved ${when}`;
     }
     if (event === "reject") {
-      return phrase`you rejected at ${time}`;
+      return phrase`you rejected ${when}`;
     }
-    return phrase`you answered ${event} at ${time}`;
+    return phrase`you answered ${event} ${when}`;
   },
   /** The same place, while the run is still waiting for the answer. */
   waitingSince: (time: string) => phrase`waiting for you since ${time}`,

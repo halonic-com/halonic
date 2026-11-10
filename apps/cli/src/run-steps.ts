@@ -32,8 +32,11 @@ interface OpenStep {
   readonly stateId: string;
   readonly enteredAt: string;
   agentId: string | undefined;
-  /** Whether the step's agent asked for the user's OK on a tool call, not answered yet. */
-  askingApproval: boolean;
+  /**
+   * The tool calls the step's agents asked the user's OK for and haven't
+   * had it yet, by call id. Parallel branches can each ask at once.
+   */
+  readonly askingApproval: Set<string>;
   /** The wait step's wait that hasn't been answered yet, from its `run.waiting`. */
   waiting: Extract<RunEvent, { type: "run.waiting" }> | undefined;
   /** The event the user sent to the wait step. */
@@ -44,7 +47,8 @@ interface OpenStep {
  * The steps of a run, in order: each `state.entered` of the workflow itself
  * starts one, and the next step, the run's end or its current status ends
  * it. Events of a parallel branch or a for-each item belong to their step
- * and don't start one.
+ * and don't start one. The end state the run finished in isn't a step: it
+ * does nothing a person sees, so the step `run.completed` names is dropped.
  *
  * @example
  * runSteps(events, summary);
@@ -56,8 +60,10 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
   let open: OpenStep | undefined;
   for (const event of events) {
     const ending = howTheStepEnds(event);
-    if (open !== undefined && ending !== undefined) {
+    if (open !== undefined && ending !== undefined && !isTheEndState(open, event)) {
       steps.push(closed(open, event.at, ending));
+    }
+    if (ending !== undefined) {
       open = undefined;
     }
     if (startsAStep(event)) {
@@ -65,7 +71,7 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
         stateId: event.state,
         enteredAt: event.at,
         agentId: undefined,
-        askingApproval: false,
+        askingApproval: new Set(),
         waiting: undefined,
         answer: undefined,
       };
@@ -92,6 +98,11 @@ function howTheStepEnds(event: RunEvent): "done" | "failed" | undefined {
   return startsAStep(event) || event.type === "run.completed" ? "done" : undefined;
 }
 
+/** Whether the event is the run's completion in the end state `step` entered. */
+function isTheEndState(step: OpenStep, event: RunEvent): boolean {
+  return event.type === "run.completed" && event.state === step.stateId;
+}
+
 /** What an event inside a step says about it: the agent it ran, its approvals, and its wait and answer. */
 function readInStep(step: OpenStep, event: RunEvent): void {
   switch (event.type) {
@@ -101,14 +112,14 @@ function readInStep(step: OpenStep, event: RunEvent): void {
       }
       break;
     case "approval.requested":
-      step.askingApproval = true;
+      step.askingApproval.add(event.callId);
       break;
     case "approval.resolved":
-      step.askingApproval = false;
+      step.askingApproval.delete(event.callId);
       break;
     case "run.waiting":
       // An approval's wait belongs to the agent step; only a wait step's is answered.
-      if (!step.askingApproval) {
+      if (step.askingApproval.size === 0) {
         step.waiting = event;
       }
       break;
@@ -137,14 +148,13 @@ function closed(step: OpenStep, at: string, how: "done" | "failed"): RunStep {
  * Where the last step is when the log hasn't ended it: waiting for the
  * user's OK on a tool call or for their answer, for a child run or a time,
  * or running. The order is the list's (cli-output 3.4, revision 31):
- * approvals, child run, events, then time.
+ * approvals, child run, events, then time. Only the last step is open, so
+ * every approval the run waits on is its own, even one a parallel branch's
+ * inner state asked for.
  */
 function stillOpen(step: OpenStep, summary: RunSummary): StepEnd {
   const waiting = step.waiting;
-  if (
-    summary.status === "waiting" &&
-    summary.approvals.some((each) => each.state === step.stateId)
-  ) {
+  if (summary.status === "waiting" && summary.approvals.length > 0) {
     return { kind: "waitingForApproval" };
   }
   if (summary.status !== "waiting" || waiting === undefined) {
