@@ -1,8 +1,57 @@
 /** Whether a run is a real run or part of a workflow test. */
 export type RunKind = "run" | "test";
 
-/** Where a run is: still going, waiting for an event or a timer, or ended. */
-export type RunStatus = "running" | "waiting" | "completed" | "failed";
+/**
+ * Where a run is: still going, waiting for an event or a timer, or ended.
+ * `cant-try` is a Try it or Test run that ended at a step it couldn't try,
+ * because the step needs a change left out of it (see {@link CantTryStep}).
+ * It never counts as `completed`, and a real failure in the same run makes
+ * it `failed` instead.
+ */
+export type RunStatus = "running" | "waiting" | "completed" | "failed" | "cant-try";
+
+/**
+ * Why one change to review is left out of Try it and Test. A file has
+ * exactly one reason: `before-trust` wins over the others.
+ *
+ * - `before-trust`: written before the workspace was trusted; the whole file stays at its baseline.
+ * - `permissions`: the tool list, `tools.approve`, the step limit or the budget.
+ * - `trust-and-sandbox`: the network allowlist or folders.
+ * - `connections`: which ones, a connector or MCP definition, or a secret mapping.
+ * - `models`: `models.yaml`, a provider address, headers, a key mapping or new aliases.
+ */
+export type LeftOutReason =
+  | "before-trust"
+  | "permissions"
+  | "trust-and-sandbox"
+  | "connections"
+  | "models";
+
+/**
+ * Why a step can't be tried:
+ *
+ * - `needs-left-out-change`: it uses a change left out of the run, such as a
+ *   new alias or connection; `path` is the file of that change.
+ * - `invalid-without-change`: the item doesn't load with the baseline value of
+ *   the file at `path`; `message` says why, for "Details" only.
+ */
+export type CantTryReason =
+  | { kind: "needs-left-out-change"; path: string; leftOut: LeftOutReason }
+  | { kind: "invalid-without-change"; path: string; message: string };
+
+/**
+ * A step a Try it or Test run didn't run, because leaving a change out
+ * breaks it, instead of quietly using the change (requirement
+ * `events.run-cant-try`). It ends its branch the way a failed step does.
+ */
+export interface CantTryStep {
+  status: "cant-try";
+  /** The path of the item being tried. */
+  item: string;
+  /** The step's id, or `null` when the whole item can't be tried. */
+  step: string | null;
+  reason: CantTryReason;
+}
 
 /**
  * Tokens one model call used, or the sum over a run. Providers with a prompt

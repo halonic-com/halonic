@@ -81,6 +81,7 @@ stdout:
       "lastWaitingAt": "2026-11-10T14:01:00.000Z",
       "approvals": [],
       "signals": [],
+      "cantTry": [],
       "lastSeq": 18,
       "updatedAt": "2026-11-10T14:01:00.000Z"
     },

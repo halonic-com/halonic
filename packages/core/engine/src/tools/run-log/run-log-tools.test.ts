@@ -117,7 +117,7 @@ verifies("engine.run-log-tools", () => {
       [{ limit: 201 }, '"limit" must be from 1 to 200 (got 201)'],
       [
         { status: "lost" },
-        '"status" must be one of completed, failed, waiting, running (got "lost")',
+        '"status" must be one of completed, failed, cant-try, waiting, running (got "lost")',
       ],
       [{ workflow: 7 }, '"workflow" must be a string (got 7)'],
     ])("refuses %j, naming the argument", async (args, message) => {

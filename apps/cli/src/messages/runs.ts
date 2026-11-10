@@ -26,7 +26,7 @@ export type NotWaiting =
  * when, with times already written by the list's When rule.
  */
 export type ShownEnd =
-  | { readonly status: "finished" | "failed" | "stopped"; readonly at: string }
+  | { readonly status: "finished" | "failed" | "stopped" | "couldntTry"; readonly at: string }
   | { readonly status: "waiting"; readonly since: string }
   | { readonly status: "running" };
 
@@ -57,6 +57,16 @@ export const runsMessages = defineMessages("runs", {
   followIt: (runId: string, dir?: string) => [
     dim(`Follow it: ${suggestedCommand("runs show", dir, runId)}`),
   ],
+  /**
+   * A Try it or Test run that ended at steps it couldn't try, because they
+   * need changes left out of it (HAL-4285): "! Support reply couldn't try everything."
+   */
+  showCantTry: (title: string) => phrase`${title} couldn't try everything.`,
+  /** Indented under {@link showCantTry}: the steps it didn't run, by name; none when it ran no step. */
+  cantTrySteps: (steps: readonly string[]) =>
+    steps.length === 0
+      ? phrase`It needs changes you haven't accepted yet.`
+      : phrase`It didn't run ${listInWords(steps)}: they need changes you haven't accepted yet.`,
   /** The run isn't waiting (`conflict`): when it ended, or the step it's running. */
   notWaiting: (why: NotWaiting) => phrase`it isn't waiting for you. ${notWaitingInWords(why)}`,
   notWaitingFix: (runId: string, dir?: string) =>
@@ -181,6 +191,8 @@ function shownEndInWords(end: ShownEnd): string {
     case "failed":
     case "stopped":
       return `${end.status} ${end.at}`;
+    case "couldntTry":
+      return `ended ${end.at}, couldn't try everything`;
     case "waiting":
       return `waiting for you since ${end.since}`;
     case "running":

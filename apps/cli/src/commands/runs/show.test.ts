@@ -313,6 +313,31 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("ends a run that couldn't try every step with the steps it didn't run (HAL-4285)", async () => {
+      const cantTry = {
+        status: "cant-try",
+        item: "hubs/support/workflows/mail-triage.workflow.yaml",
+        step: "read",
+        reason: { kind: "needs-left-out-change", path: "models.yaml", leftOut: "models" },
+      } as const;
+      await storeRuns(
+        triage("run_mfx3k2a1_0f0f03", [
+          [today("10:20:00"), { type: "state.entered", state: "read" }],
+          [today("10:20:00"), { type: "run.cant-try", state: "read", cantTry: [cantTry] }],
+        ]),
+      );
+
+      const { code, io } = await showIn(acme, "0f0f03");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout[0]).toMatch(/started 10:20, ended 10:20, couldn't try everything$/);
+      expect(io.stdout.slice(-3)).toEqual([
+        "! Mail triage couldn't try everything.",
+        "  It didn't run Read the email: they need changes you haven't accepted yet.",
+        "  Sent nothing",
+      ]);
+    });
+
     it("gives a reason it can't name the general lines, with the engine's message", async () => {
       await storeRuns(
         triage("run_mfx3k2a1_0f0f02", [

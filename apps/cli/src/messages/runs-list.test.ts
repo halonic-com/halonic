@@ -89,10 +89,18 @@ verifies("cli.messages", () => {
 describe("the runs list's sentences", () => {
   it("names every status with its mark", () => {
     expect(
-      (["running", "needsYou", "waiting", "done", "failed", "stopped"] as const).map((status) =>
-        words(list.status(status)),
+      (["running", "needsYou", "waiting", "done", "failed", "stopped", "couldntTry"] as const).map(
+        (status) => words(list.status(status)),
       ),
-    ).toEqual(["◌ Running", "! Needs you", "◌ Waiting", "✓ Done", "✕ Failed", "✕ Stopped"]);
+    ).toEqual([
+      "◌ Running",
+      "! Needs you",
+      "◌ Waiting",
+      "✓ Done",
+      "✕ Failed",
+      "✕ Stopped",
+      "! Couldn't try",
+    ]);
   });
 
   it("says what each kind of run is doing or did", () => {

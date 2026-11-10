@@ -40,6 +40,8 @@ export function showEnding(
       return finishedEnding(run, title);
     case "failed":
       return failedEnding(run, title, definitions, models, dir);
+    case "cant-try":
+      return cantTryEnding(run, title, definitions);
     case "waiting":
       return waitingEnding(run.summary, definitions);
     case "running":
@@ -83,6 +85,25 @@ function failedEnding(
     [],
     phrase`${markPart("failed")} ${first}`,
     ...rest,
+    ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
+  ];
+}
+
+/**
+ * A Try it or Test run that ended at steps it couldn't try: neither done nor
+ * failed, so it gets the ! mark, the steps it didn't run by name, then the
+ * receipt.
+ */
+function cantTryEnding(run: RunDetail, title: string, definitions: RunDefinitions): Phrase[] {
+  const states = definitions.workflow?.states ?? {};
+  const steps = run.summary.cantTry.flatMap(({ step }) =>
+    step === null ? [] : [stepName(step, states[step]?.description)],
+  );
+  const receipt = runMessages.receipt(receiptOf(run.events, run.summary)).phrase;
+  return [
+    [],
+    phrase`${markPart("needsYou")} ${runsMessages.showCantTry(title).phrase}`,
+    phrase`  ${runsMessages.cantTrySteps([...new Set(steps)]).phrase}`,
     ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
   ];
 }

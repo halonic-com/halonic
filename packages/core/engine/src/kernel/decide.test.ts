@@ -7,7 +7,7 @@ import type { DecideInput, StartInput } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import { play, writerAgent } from "./kernel-test-kit.test-helper.ts";
 import type { StateHandler, StateRegistry } from "./registry.ts";
-import type { RunState } from "./run-state.ts";
+import { evolve, type RunState } from "./run-state.ts";
 
 function task(fields: Partial<WorkflowState> = {}): WorkflowState {
   return { type: "task", agent: "writer", on: [], ...fields };
@@ -296,6 +296,10 @@ verifies("engine.state-registry", () => {
   });
 });
 
+/** The base of a `run.cant-try` folded right after the run's last event. */
+const endedAt = (run: RunState) =>
+  ({ runId: run.runId, seq: run.lastSeq + 1, at: startInput.at, type: "run.cant-try" }) as const;
+
 verifies("engine.decide-refusals", () => {
   const refusal = (run: RunState | null, input: DecideInput) => {
     try {
@@ -318,6 +322,10 @@ verifies("engine.decide-refusals", () => {
     expect(refusal(running, startInput)).toBe("engine.run-exists");
     expect(refusal(null, answer("call-1", "ok"))).toBe("engine.run-unknown");
     expect(refusal(completed, answer("call-1", "ok"))).toBe("engine.run-ended");
+    // A run that ended at a step it couldn't try has ended too (HAL-4285).
+    const cantTry =
+      running && evolve(running, { ...endedAt(running), state: "draft", cantTry: [] });
+    expect(refusal(cantTry, answer("call-1", "ok"))).toBe("engine.run-ended");
     expect(refusal(running, { type: "send", at: startInput.at, event: "approve" })).toBe(
       "engine.input-not-accepted",
     );

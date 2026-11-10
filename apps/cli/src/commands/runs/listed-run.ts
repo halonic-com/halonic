@@ -88,6 +88,8 @@ export function listedStatus(summary: RunSummary): ListedStatus {
       return "done";
     case "failed":
       return isStopped(summary) ? "stopped" : "failed";
+    case "cant-try":
+      return "couldntTry";
   }
 }
 
@@ -129,6 +131,7 @@ function whatColumn(
   switch (listedStatus(summary)) {
     case "running":
     case "failed":
+    case "couldntTry":
       return runsListMessages.inStep(step).phrase;
     case "needsYou":
       return needsYouWhat(summary, workflow, step);

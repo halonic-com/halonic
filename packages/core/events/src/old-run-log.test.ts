@@ -78,6 +78,7 @@ verifies("events.upgrade-old-run-logs", () => {
       lastWaitingAt: "2026-11-05T07:00:05.000Z",
       approvals: [],
       signals: [],
+      cantTry: [],
       lastSeq: 14,
       updatedAt: "2026-11-05T08:00:02.000Z",
     });

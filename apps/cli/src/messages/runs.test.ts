@@ -90,6 +90,7 @@ describe("runs's sentences", () => {
       heading("10:40", { status: "waiting", since: "10:41" }),
       heading("10:53", { status: "running" }),
       heading("14:01", { status: "finished", at: "14:02" }, true),
+      heading("14:01", { status: "couldntTry", at: "14:02" }, true),
     ]).toEqual([
       "Support reply in acme · run 01JD8Q · started 14:01, finished 14:02",
       "Support reply in acme · run 01JD8Q · started yesterday 16:40, failed yesterday 16:41",
@@ -97,11 +98,22 @@ describe("runs's sentences", () => {
       "Support reply in acme · run 01JD8Q · started 10:40, waiting for you since 10:41",
       "Support reply in acme · run 01JD8Q · started 10:53, still running",
       "Support reply in acme · test run 01JD8Q · started 14:01, finished 14:02",
+      "Support reply in acme · test run 01JD8Q · started 14:01, ended 14:02, couldn't try everything",
     ]);
     expect(words(runsMessages.runningSince(["Writer", "smart"], "10:53"))).toBe(
       "Writer · smart · running since 10:53",
     );
     expect(words(runsMessages.runningSince([], "10:53"))).toBe("running since 10:53");
+  });
+
+  it("says a run couldn't try everything, and which steps it didn't run (HAL-4285)", () => {
+    expect(words(runsMessages.showCantTry("Support reply"))).toBe(
+      "Support reply couldn't try everything.",
+    );
+    expect(words(runsMessages.cantTrySteps(["Draft a reply", "Send it"]))).toBe(
+      "It didn't run Draft a reply and Send it: they need changes you haven't accepted yet.",
+    );
+    expect(words(runsMessages.cantTrySteps([]))).toBe("It needs changes you haven't accepted yet.");
   });
 
   it("says why a run that isn't waiting can't take the event, by its status", () => {

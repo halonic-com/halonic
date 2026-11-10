@@ -45,6 +45,8 @@ function eventLine(event: RunEvent): string | null {
       return "completed";
     case "run.failed":
       return `failed: ${event.error}`;
+    case "run.cant-try":
+      return `couldn't try: ${event.cantTry.map((found) => found.step ?? found.item).join(", ")}`;
     default:
       return null;
   }

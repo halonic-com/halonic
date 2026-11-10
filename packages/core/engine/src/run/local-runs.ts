@@ -32,7 +32,7 @@ import type {
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
-import { callOf, type PendingCall, type RunState } from "../kernel/run-state.ts";
+import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf, runAndChildren } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
@@ -471,7 +471,7 @@ export class LocalRuns {
     const store = this.#options.store;
     for (;;) {
       const summary = summarize(await store.events(runId));
-      if (summary === null || summary.status === "completed" || summary.status === "failed") return;
+      if (summary === null || hasEnded(summary.status)) return;
       const failed: RunEvent = {
         runId,
         seq: summary.lastSeq + 1,

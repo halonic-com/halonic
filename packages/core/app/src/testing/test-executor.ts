@@ -177,6 +177,7 @@ function testSummary(
     lastWaitingAt: null,
     approvals: [],
     signals: [],
+    cantTry: [],
     lastSeq: 1,
     updatedAt: trigger?.at ?? "",
   };
