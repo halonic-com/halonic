@@ -18,6 +18,9 @@ const stateWords: Readonly<Record<PluginState, string>> = {
  */
 export const pluginMessages = defineMessages("plugin", {
   summary: () => phrase`Add, list or remove plugins`,
+  listSummary: () => phrase`List the plugins and whether each is on`,
+  /** What `plugin list` was doing, for "✕ Couldn't list the plugins: …". */
+  listAction: () => phrase`list the plugins`,
   /** What `plugin add` was doing, for "✕ Couldn't add the plugin: …". */
   addAction: () => phrase`add the plugin`,
 
@@ -67,6 +70,8 @@ export const pluginMessages = defineMessages("plugin", {
   /** After a state that needs trust: "! not trusted yet · halonic trust --plugin tides". */
   stateWithFix: (state: Exclude<PluginState, "on">, id: string) =>
     phrase`${stateWords[state]} ${markPart("separator")} halonic trust --plugin ${id}`,
+  /** A folder in the plugins folder that can't be read or checked, with a ✕. */
+  broken: () => phrase`can't be read or checked`,
   noPlugins: () => phrase`No plugins yet. Add one with halonic plugin add <folder or git address>.`,
 
   /** `remove`'s question, framed with [y/N]; a plugin without secrets has the shorter one. */
