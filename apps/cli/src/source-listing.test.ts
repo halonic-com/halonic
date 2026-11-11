@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
@@ -117,7 +117,7 @@ async function acmeNotes() {
     const check = await service.check(subject);
     expect((await service.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
   };
-  return { target: { dir, typedDir: undefined, connector: connector.value }, trust };
+  return { target: { dir, typedDir: undefined, connector: connector.value, workspace }, trust };
 }
 
 verifies("cli.source-listing", () => {
@@ -136,7 +136,21 @@ verifies("cli.source-listing", () => {
       ]);
       expect(servers.started.map((launch) => launch.program)).toEqual(["acme-notes-server"]);
       expect(servers.started[0]?.cwd).toBe(target.dir.root);
+      expect(servers.started[0]?.workingFolders).toBeUndefined();
       expect(servers.running).toBe(0);
+    });
+
+    it("gives the program's starter every harness agent's working folder, as a real path", async () => {
+      const acme = join(folder, "acme");
+      await mkdir(join(acme, "agents"));
+      await writeFile(join(acme, "agents", "coder.agent.yaml"), "name: Coder\nharness: codex\n");
+      const { target, trust } = await acmeNotes();
+      await trust();
+      await readSourceListing(target, machine, new MemorySecrets(), runMessages.nothingRan());
+      expect(servers.started[0]?.workingFolders).toEqual({
+        workspaceRoot: target.dir.root,
+        folders: [join(await realpath(acme), "files", "agents", "coder")],
+      });
     });
 
     it("starts nothing for an untrusted workspace, and exits with code 3", async () => {

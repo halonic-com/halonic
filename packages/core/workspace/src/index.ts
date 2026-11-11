@@ -26,6 +26,7 @@ export {
   type ExtractSettings,
   planHubExtract,
 } from "./extract-plan.ts";
+export { harnessWorkingFolders } from "./harness-working-folders.ts";
 export {
   gitIgnoreLines,
   gitIgnorePath,
