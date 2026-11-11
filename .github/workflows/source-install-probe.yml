@@ -1,0 +1,77 @@
+# Scratch, report-only probe for HAL-6000 (never merged): what the README's
+# source install does on Windows. PowerShell is run with the Windows 11
+# client default policy, Restricted; the runner itself is Windows Server.
+name: Source install probe (HAL-6000)
+
+on:
+  push:
+    branches: [mateo/HAL-6000-probe-windows]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          cache: "false"
+      - name: Probe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          function Say($t) { Write-Output $t; Add-Content $env:GITHUB_STEP_SUMMARY $t }
+          function Run($label, $exe, [string[]]$argv) {
+            Say "### $label"
+            Say '```'
+            $out = & $exe @argv 2>&1 | Out-String
+            Say ($out.Trim())
+            Say "exit: $LASTEXITCODE"
+            Say '```'
+          }
+          Say "## Runner"
+          Say ('```' + "`n" + (Get-ExecutionPolicy -List | Out-String).Trim() + "`n" + '```')
+          Say "PNPM_HOME from setup: '$env:PNPM_HOME'"
+          Say "pnpm: $(pnpm --version), node: $(node --version)"
+
+          # (b) A user with no pnpm global bin folder: drop what action-setup set.
+          $setupHome = $env:PNPM_HOME
+          if ($setupHome) {
+            $env:Path = (($env:Path -split ';') | Where-Object { $_ -and -not $_.StartsWith($setupHome) }) -join ';'
+          }
+          Remove-Item Env:PNPM_HOME -ErrorAction SilentlyContinue
+          [Environment]::SetEnvironmentVariable('PNPM_HOME', $null, 'User')
+          Say "## (b) pnpm setup"
+          Run 'pnpm add -g before pnpm setup' 'pnpm' @('add', '-g', './apps/cli')
+          Run 'pnpm setup' 'pnpm' @('setup')
+          $userHome = [Environment]::GetEnvironmentVariable('PNPM_HOME', 'User')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          Say "User PNPM_HOME after setup: '$userHome'"
+          Say "User Path has it: $([bool](($userPath -split ';') | Where-Object { $_ -and $_.StartsWith($userHome) }))"
+          Say "This terminal's PNPM_HOME: '$env:PNPM_HOME'"
+          Say "This terminal's Path has it: $([bool](($env:Path -split ';') | Where-Object { $userHome -and $_.StartsWith($userHome) }))"
+          Run 'pnpm add -g in the same terminal, right after pnpm setup' 'pnpm' @('add', '-g', './apps/cli')
+          Run 'halonic in the same terminal' 'pwsh' @('-NoProfile', '-Command', 'halonic --version')
+
+          # A new terminal reads PNPM_HOME and Path from the registry.
+          $env:PNPM_HOME = $userHome
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $userPath
+          Say "## New terminal (environment read again from the registry)"
+          Run 'pnpm add -g ./apps/cli' 'pnpm' @('add', '-g', './apps/cli')
+
+          Say "## (a) The shims pnpm wrote"
+          Say ('```' + "`n" + (Get-ChildItem -Recurse -Depth 1 $userHome -Include 'halonic*' | ForEach-Object { $_.FullName } | Out-String).Trim() + "`n" + '```')
+          $ps1 = Get-ChildItem -Recurse -Depth 1 $userHome -Filter 'halonic.ps1' | Select-Object -First 1
+          if ($ps1) { Say ('```' + "`n" + (Get-Content $ps1.FullName -Raw).Trim() + "`n" + '```') }
+          Run 'Windows PowerShell 5.1, policy Restricted: halonic --version' 'powershell' @('-NoProfile', '-ExecutionPolicy', 'Restricted', '-Command', 'halonic --version')
+          Run 'PowerShell 7, policy Restricted: halonic --version' 'pwsh' @('-NoProfile', '-ExecutionPolicy', 'Restricted', '-Command', 'halonic --version')
+          Run 'Windows PowerShell 5.1, policy Restricted: halonic.cmd --version' 'powershell' @('-NoProfile', '-ExecutionPolicy', 'Restricted', '-Command', 'halonic.cmd --version')
+          Run 'Windows PowerShell 5.1, policy RemoteSigned: halonic --version' 'powershell' @('-NoProfile', '-ExecutionPolicy', 'RemoteSigned', '-Command', 'halonic --version')
+          Run 'cmd.exe: halonic --version' 'cmd' @('/c', 'halonic --version')
+          Run 'Get-Command halonic (what PowerShell picks)' 'powershell' @('-NoProfile', '-Command', 'Get-Command halonic -All | Format-Table -AutoSize CommandType, Name, Source | Out-String -Width 200')
+          exit 0
