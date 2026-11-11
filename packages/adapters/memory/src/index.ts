@@ -22,6 +22,7 @@ export { MemoryFolderReader } from "./folder-reader.ts";
 export { fixedIds } from "./ids.ts";
 export { type MemoryKnowledgeOptions, MemoryKnowledgeProvider } from "./knowledge-provider.ts";
 export { ScriptedLlmProvider, type ScriptedLlmProviderOptions } from "./llm-provider.ts";
+export { MemoryPluginFolder } from "./plugin-folder.ts";
 export { MemoryRecordStore } from "./record-store.ts";
 export { MemoryResourceProbe, type MemoryResourceProbeOptions } from "./resource-probe.ts";
 export { MemoryRunStore } from "./run-store.ts";

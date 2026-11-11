@@ -86,6 +86,11 @@ export {
   llmProviderContract,
   type MakeLlmProvider,
 } from "./llm-provider.ts";
+export {
+  type MakePluginFolderWriter,
+  type PluginFolderUnderTest,
+  pluginFolderWriterContract,
+} from "./plugin-folder-writer.ts";
 export { type MakeRecordStore, recordStoreContract } from "./record-store.ts";
 export {
   npmMirrorUrl,

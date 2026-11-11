@@ -16,6 +16,7 @@ import { knowledgeProviderVersion } from "./knowledge-provider.ts";
 import { llmCacheVersion } from "./llm-cache.ts";
 import { llmProviderVersion } from "./llm-provider.ts";
 import { passwordHasherVersion } from "./password-hasher.ts";
+import { pluginFolderWriterVersion } from "./plugin-folder-writer.ts";
 import { programProbeVersion } from "./program-probe.ts";
 import { recordStoreVersion } from "./record-store.ts";
 import { resourceProbeVersion } from "./resource-probe.ts";
@@ -57,6 +58,7 @@ export const portVersions = {
   LlmCache: llmCacheVersion,
   LlmProvider: llmProviderVersion,
   PasswordHasher: passwordHasherVersion,
+  PluginFolderWriter: pluginFolderWriterVersion,
   ProgramProbe: programProbeVersion,
   RecordStore: recordStoreVersion,
   ResourceProbe: resourceProbeVersion,

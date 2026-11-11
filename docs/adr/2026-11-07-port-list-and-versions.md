@@ -226,6 +226,23 @@ One new port, at version 1:
   reads and a "show everything" mode to `DefinitionSource` instead would
   mix two opposite rules on one port.
 
+_2026-11-11, proposed on HAL-1736 for installing plugins (plugins P3); Liam reviews it._
+One new port, at version 1:
+
+- **`PluginFolderWriter`:** `place` a plugin's files as the folder named
+  by its id in the profile's plugins folder, and `remove` one entry there
+  (`ports.plugin-folder-writer`). Installing needs to write, and
+  `FolderReader` only reads; a general file writer would let a caller
+  write anywhere in the profile. So the port writes whole plugin folders
+  and nothing else: `place` writes beside the plugins folder and moves the
+  result in, so `PluginService.load()` never lists a half-written plugin,
+  and an id already there in any case is `taken` unless the caller
+  replaces a real folder with exactly that id. Nothing is written or
+  deleted through a link, so removing a link entry leaves what it points
+  to alone. The plugin service writes the bytes it hashed, so what is
+  trusted is what was placed; reading the source and checking it stay in
+  `core/app`.
+
 ## Additive after the freeze: optional hints
 
 _2026-11-10, decided by Liam on HAL-3756, built in HAL-1532 (HAL-186 step 4c, part 4)._
