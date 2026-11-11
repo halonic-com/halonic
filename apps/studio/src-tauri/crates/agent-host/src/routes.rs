@@ -1,7 +1,8 @@
 //! The agent host's routes a page may call through the shell, by name
 //! (`"POST /v1/sandbox/sessions/open"`), never by URL. The names match
 //! `agentHostRequestRoutes` and `agentHostStreamRoutes` in
-//! `packages/adapters/agent-host-client`.
+//! `packages/adapters/agent-host-client`, and its `shell-routes.test.ts` fails
+//! when the two drift apart.
 
 /// How a route is called.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

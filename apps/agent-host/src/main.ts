@@ -116,7 +116,12 @@ export function claimPayload(folder: string, pid: number = process.pid): () => v
   const claims = claimsFolder(folder);
   mkdirSync(claims, { recursive: true });
   const claim = join(claims, String(pid));
-  writeFileSync(claim, basename(folder));
+  // Written under another name, then renamed, so a clean-up running at the
+  // same moment never reads the claim empty. It skips the temporary name,
+  // which isn't a process id.
+  const writing = `${claim}.writing`;
+  writeFileSync(writing, basename(folder));
+  renameSync(writing, claim);
   return () => rmSync(claim, { force: true });
 }
 

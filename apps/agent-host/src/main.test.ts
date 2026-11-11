@@ -208,8 +208,18 @@ describe("removeOldPayloads", () => {
     expect(readdirSync(inAgentHost("running"))).toEqual([]);
   });
 
+  it("skips a claim still being written, rather than read it empty", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    mkdirSync(inAgentHost("running"));
+    writeFileSync(inAgentHost("running/222.writing"), "");
+
+    expect(removeOldPayloads(folder(), () => true)).toEqual([]);
+    expect(readdirSync(inAgentHost("running"))).toEqual(["222.writing"]);
+  });
+
   it("gives up a claim when the host exits", () => {
     const giveUp = claimPayload(folder(), 333);
+    expect(readdirSync(inAgentHost("running"))).toEqual(["333"]);
     expect(readFileSync(inAgentHost("running/333"), "utf8")).toBe("1.2.3-0123456789abcdef");
 
     giveUp();

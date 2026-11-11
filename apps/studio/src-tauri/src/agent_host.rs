@@ -168,7 +168,7 @@ impl HostRefusal {
 }
 
 /// The host's answer to a JSON route: its status and body (`null` when the
-/// body isn't JSON).
+/// body is empty; a body that isn't JSON is refused, see `read_answer`).
 #[derive(Debug, Serialize)]
 pub struct HostAnswer {
     status: u16,
