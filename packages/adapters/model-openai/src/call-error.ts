@@ -1,4 +1,4 @@
-import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
+import { isModelOutOfMemory, ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
 import type { CallTimeoutError } from "./call-timer.ts";
 import type { BodyTooLargeError } from "./read-body.ts";
@@ -54,8 +54,9 @@ const flexTierFull = 498;
  * {@link isOutOfCredit}), `key-refused` for 401 and for a 403 that doesn't
  * name a country, region, moderation or the model, `model-missing` for 404,
  * `model-no-tools` when the server says so about a call that offered tools,
- * `provider-busy` for any other 429, Groq's 498 and a 5xx, and `refused` for
- * anything else.
+ * `out-of-memory` for a 5xx whose text says the model doesn't fit in memory
+ * (Ollama answers 500 then, see {@link isModelOutOfMemory}), `provider-busy`
+ * for any other 429, Groq's 498 and a 5xx, and `refused` for anything else.
  *
  * The vendor's own text goes on the error's `cause`, shortened, except when
  * the key is refused (OpenAI repeats part of a wrong key there), when a 401
@@ -97,6 +98,13 @@ export function errorForStatus(
     return new ModelCallError(
       "model-no-tools",
       `"${call.model}" on ${call.providerId} can't use tools, and this call offered tools (${http})`,
+      options,
+    );
+  }
+  if (status >= 500 && isModelOutOfMemory(vendor.message)) {
+    return new ModelCallError(
+      "out-of-memory",
+      `The model "${call.model}" doesn't fit in the memory of the machine that runs ${call.providerId} (${http})`,
       options,
     );
   }

@@ -192,6 +192,8 @@ export function isVendorErrorText(value: unknown): value is VendorErrorText {
 // messages they pass on. Lower case, matched anywhere in the text.
 const outOfMemoryPhrases = [
   "out of memory",
+  // Ollama's llama-server loader: "llama-server reported out-of-memory during startup: …".
+  "out-of-memory",
   "requires more system memory",
   "insufficient memory",
   "not enough memory",

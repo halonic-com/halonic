@@ -122,6 +122,7 @@ verifies("ports.model-out-of-memory-text", () => {
       "failed to allocate compute buffers",
       "unable to allocate CPU buffer",
       "Not enough memory to load the model",
+      "llama-server reported out-of-memory during startup: allocation failed",
     ])("%s", (text) => {
       expect(isModelOutOfMemory(text)).toBe(true);
     });

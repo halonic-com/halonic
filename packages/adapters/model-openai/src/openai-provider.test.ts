@@ -202,6 +202,38 @@ verifies("model-openai.call-errors", () => {
       '{"detail":"busy"}',
     ],
     [
+      // Ollama's body when the model is larger than the memory it has free.
+      "a model that doesn't fit in memory",
+      (v) =>
+        v.replyNext(500, {
+          error: "model requires more system memory (12.0 GiB) than is available (7.6 GiB)",
+        }),
+      "out-of-memory",
+      /^The model "acme-small" doesn't fit in the memory of the machine that runs acme \(HTTP 500\)$/,
+      "model requires more system memory (12.0 GiB) than is available (7.6 GiB)",
+    ],
+    [
+      // The same through Ollama's OpenAI-compatible endpoint, from its llama-server loader.
+      "a model that runs out of memory while it loads",
+      (v) =>
+        v.replyNext(500, {
+          error: {
+            message: "llama-server reported out-of-memory during startup: allocation failed",
+            type: "api_error",
+          },
+        }),
+      "out-of-memory",
+      /\(HTTP 500\)$/,
+      "llama-server reported out-of-memory during startup: allocation failed",
+    ],
+    [
+      "a 429 that names memory",
+      (v) => v.replyNext(429, { error: { message: "Not enough memory in the queue, slow down" } }),
+      "provider-busy",
+      /\(HTTP 429\)$/,
+      "Not enough memory in the queue, slow down",
+    ],
+    [
       "a key in the vendor's text",
       (v) => v.replyNext(500, { error: "bad key sk-Abcdefghijklmnop1234" }),
       "provider-busy",

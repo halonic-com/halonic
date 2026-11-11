@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2284; `ModelCallError` reasons in the `LlmProvider` port v1; `key-refused`, `out-of-credit` and `provider-busy` added on HAL-3008, from the provider fact sheet on HAL-3058
+- Source: HAL-2284; `ModelCallError` reasons in the `LlmProvider` port v1; `key-refused`, `out-of-credit` and `provider-busy` added on HAL-3008, from the provider fact sheet on HAL-3058; `out-of-memory` added on HAL-6452
 
-The OpenAI-compatible provider shall fail with `out-of-credit` on HTTP 402 and on any error whose type or code says the credit or a spend limit is used up (`insufficient_quota`, `credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded`, `organization_usage_limit_exceeded`), `key-refused` on 401 and on a 403 whose text doesn't name a country, region, moderation or the model, `model-missing` on 404, `model-no-tools` when the request offered tools and the server says the model doesn't support them, `provider-busy` on any other 429, Groq's 498 and any 5xx, `offline` when the server can't be reached, and `refused` on any other error, on an error the server sends inside a stream after it took the call, and on a reply it can't read, including a stream without chunks. The message shall end in the HTTP status, or say the server stopped the answer, and hold none of the server's own error text, which Studio and the command line don't show (microcopy 1.4). The error's `cause` shall keep that text, shortened, except when the key is refused and whenever it holds something shaped like a key. Every failed call shall be closed. A call stopped while the error text is read shall fail with the abort's reason.
+The OpenAI-compatible provider shall fail with `out-of-credit` on HTTP 402 and on any error whose type or code says the credit or a spend limit is used up (`insufficient_quota`, `credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded`, `organization_usage_limit_exceeded`), `key-refused` on 401 and on a 403 whose text doesn't name a country, region, moderation or the model, `model-missing` on 404, `model-no-tools` when the request offered tools and the server says the model doesn't support them, `out-of-memory` on a 5xx whose text says the model doesn't fit in memory (`ports.model-out-of-memory-text`), `provider-busy` on any other 429, Groq's 498 and any 5xx, `offline` when the server can't be reached, and `refused` on any other error, on an error the server sends inside a stream after it took the call, and on a reply it can't read, including a stream without chunks. The message shall end in the HTTP status, or say the server stopped the answer, and hold none of the server's own error text, which Studio and the command line don't show (microcopy 1.4). The error's `cause` shall keep that text, shortened, except when the key is refused and whenever it holds something shaped like a key. Every failed call shall be closed. A call stopped while the error text is read shall fail with the abort's reason.
 
 ## Examples
 
@@ -14,6 +14,9 @@ The OpenAI-compatible provider shall fail with `out-of-credit` on HTTP 402 and o
 - Given Ollama answers 400 with "does not support tools" to a request without tools,
   when `chat` fails,
   then the error says `refused`.
+- Given Ollama answers 500 with "model requires more system memory (12.0 GiB) than is available (7.6 GiB)",
+  when `chat` fails,
+  then the error says `out-of-memory`, not `provider-busy`.
 - Given OpenAI answers 403 that its country or region isn't supported,
   when `chat` fails,
   then the error says `refused`, not `key-refused`.
