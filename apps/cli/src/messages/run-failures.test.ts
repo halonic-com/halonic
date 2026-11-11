@@ -204,7 +204,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     };
     expect(lines(localOnly, "Classify")).toEqual([
       "Support reply failed in the step Classify: Acme is local only, so Halonic sent nothing to OpenAI.",
-      "Point Sorter's model alias smart at a local model in models.yaml.",
+      "Point Sorter's model alias smart at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.",
     ]);
     expect(
       lines({ reason: "site-blocked", agent: "Reporter", site: "api.example.net" }, "Build report"),

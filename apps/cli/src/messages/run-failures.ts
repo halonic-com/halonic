@@ -272,7 +272,7 @@ const lineTwo = {
     phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its turn limit in ${failure.agentFile} if it needs more turns.`,
   "tool-timeout": () => tryLater(),
   "local-only": (_run, failure) =>
-    phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml.`,
+    phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml, or set privacy.localOnly: false in workspace.yaml.`,
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,
   "sandbox-not-ready": (_run, failure) => sandboxMessages.refusedFix(failure.code).phrase,
