@@ -49,7 +49,7 @@ const hourly = [
 /**
  * How long a wait for the watch's next line may take. The first watch in the
  * file opens the engine and its run store from cold imports, which took
- * longer than `vi.waitFor`'s 1 s on the Windows runner (HAL-5244).
+ * longer than `vi.waitUntil`'s 1 s on the Windows runner (HAL-5244).
  */
 const slowWatch = { timeout: 10_000 };
 
@@ -113,7 +113,7 @@ function fakeTime(start: number): FakeTime {
 }
 
 /**
- * Calls the scheduler's wake-ups, for a `vi.waitFor` check: the scheduler
+ * Calls the scheduler's wake-ups, for a `vi.waitUntil` check: the scheduler
  * sets its first one once it has read its timers, so each try wakes it again.
  */
 function wokenUp(time: FakeTime): true {
@@ -153,19 +153,13 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time);
-    await vi.waitFor(
-      () => expect(io.stdout).toEqual(["Watching 1 routine in acme. Stop with Ctrl C."]),
-      slowWatch,
-    );
+    await vi.waitUntil(() => io.stdout.length > 0, slowWatch);
+    expect(io.stdout).toEqual(["Watching 1 routine in acme. Stop with Ctrl C."]);
 
     // The next tick after 15:00 starts the run due at 15:00.
     time.set("2026-11-10T15:00:10.000Z");
-    await vi.waitFor(
-      () =>
-        wokenUp(time) &&
-        expect(io.stdout[1]).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
-      slowWatch,
-    );
+    await vi.waitUntil(() => wokenUp(time) && io.stdout.length > 1, slowWatch);
+    expect(io.stdout[1]).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u);
     const [started] = await storedRuns();
     expect(started).toMatchObject({
       status: "waiting",
@@ -175,10 +169,12 @@ verifies("cli.commands.routines.watch", () => {
 
     // Five minutes on, its timer moves it on by itself.
     time.set("2026-11-10T15:05:30.000Z");
-    await vi.waitFor(
-      async () => wokenUp(time) && expect((await storedRuns())[0]?.status).toBe("completed"),
+    await vi.waitUntil(
+      async () => wokenUp(time) && (await storedRuns())[0]?.status === "completed",
       slowWatch,
     );
+    const [completed] = await storedRuns();
+    expect(completed?.status).toBe("completed");
     const events = await (await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile)).events(
       started?.id ?? "",
     );
@@ -200,17 +196,12 @@ verifies("cli.commands.routines.watch", () => {
     });
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time, "--debug");
-    await vi.waitFor(() => expect(io.stdout).toHaveLength(1), slowWatch);
+    await vi.waitUntil(() => io.stdout.length > 0, slowWatch);
+    expect(io.stdout).toHaveLength(1);
 
     time.set("2026-11-10T15:00:10.000Z");
-    await vi.waitFor(
-      () =>
-        wokenUp(time) &&
-        expect(io.stdout[1]).toBe(
-          "✕ Hourly follow-up didn't start · due 15:00 · see why with --debug",
-        ),
-      slowWatch,
-    );
+    await vi.waitUntil(() => wokenUp(time) && io.stdout.length > 1, slowWatch);
+    expect(io.stdout[1]).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("Routine support/hourly-follow-up didn't start:");
     expect(await storedRuns()).toEqual([]);
 
@@ -220,7 +211,8 @@ verifies("cli.commands.routines.watch", () => {
 
   it("ends with 143 at SIGTERM", { timeout: watchTestTimeout }, async () => {
     const { io, signals, watching } = startWatch(fakeTime(engineStart));
-    await vi.waitFor(() => expect(io.stdout).toHaveLength(1), slowWatch);
+    await vi.waitUntil(() => io.stdout.length > 0, slowWatch);
+    expect(io.stdout).toHaveLength(1);
 
     signals.send("SIGTERM");
 
