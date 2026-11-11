@@ -30,6 +30,15 @@ verifies("workflow.guard", () => {
     expect(evaluateGuard({ notEquals: ["{{context.text}}", "Hello World "] }, scope)).toBe(false);
   });
 
+  it("lets a missing value equal nothing, not even another missing value", () => {
+    expect(evaluateGuard({ equals: ["{{context.nope}}", "{{context.gone}}"] }, scope)).toBe(false);
+    expect(evaluateGuard({ equals: ["{{context.nope}}", "{{context.nope}}"] }, scope)).toBe(false);
+    expect(evaluateGuard({ equals: ["{{context.nope}}", "yes"] }, scope)).toBe(false);
+    expect(evaluateGuard({ notEquals: ["{{context.nope}}", "{{context.gone}}"] }, scope)).toBe(
+      true,
+    );
+  });
+
   it("finds a value in a list by the same rule, and nothing in other values", () => {
     expect(evaluateGuard({ contains: ["{{context.tags}}", " a "] }, scope)).toBe(true);
     expect(evaluateGuard({ contains: ["{{context.tags}}", "A"] }, scope)).toBe(false);

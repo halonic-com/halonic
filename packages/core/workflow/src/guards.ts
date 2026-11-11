@@ -14,7 +14,9 @@ type NumberGuard = Extract<
  * templates; they are rendered first.
  *
  * - `equals` and `notEquals` compare the two values. Texts are compared
- *   without the spaces around them; anything else by its JSON.
+ *   without the spaces around them; anything else by its JSON. A missing
+ *   value equals nothing, so `equals` fails and `notEquals` passes when a side
+ *   is missing, even when both are.
  * - `contains` looks for a text inside a text, ignoring case, or for a value
  *   in a list. Anything else contains nothing.
  * - `exists` passes when the path holds a value other than `undefined`,
@@ -80,8 +82,15 @@ function numberOperands(guard: NumberGuard): ["gt" | "gte" | "lt" | "lte", [unkn
   return ["lte", guard.lte];
 }
 
-/** Two texts are the same without the spaces around them; other values when their JSON is. */
+/**
+ * Two texts are the same without the spaces around them; other values when
+ * their JSON is. A missing value is the same as nothing, not even as another
+ * missing value.
+ */
 function sameValue(a: unknown, b: unknown): boolean {
+  if (a === undefined || b === undefined) {
+    return false;
+  }
   if (typeof a === "string" && typeof b === "string") {
     return a.trim() === b.trim();
   }

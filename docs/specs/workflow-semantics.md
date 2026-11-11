@@ -54,6 +54,9 @@ decides whether it passes.
 
 - **Same value.** Two texts are the same without the spaces around them.
   Other values are the same when their JSON is. So `1` and `"1"` differ.
+  A missing value (a placeholder whose path holds nothing) is the same as
+  nothing, not even as another missing value: `equals` fails and `notEquals`
+  passes when a side is missing.
 - **`exists`** takes a path such as `context.reply`. Written as a placeholder,
   `{{context.reply}}`, it means the same.
 - **Numbers** are read as people and models write them: `1,200.50`,
