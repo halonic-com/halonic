@@ -2,6 +2,7 @@
 
 - Approval: the maintainer approves this change in review of HAL-5821
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MtDl8B9yyap3HkX26x97TLrr44rbPh26rVv1AOt8n0VjNsNOKyMILjTHQFDvEa5zY6aVddujS87NMalIspBCAQ==
 
 The requirement grows; nothing it promised before is taken away, and no test was weakened.
 
