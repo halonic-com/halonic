@@ -38,10 +38,11 @@ verifies("integration-runner.start", () => {
         { input: fake.runnerInput, output: fake.runnerOutput },
         (url) => import(url),
       );
-      await connectRunner(bridgeOptions(fake));
+      const connecting = connectRunner(bridgeOptions(fake));
       await expect(running).rejects.toThrow();
       await expect(readFile(marker, "utf8")).rejects.toThrow();
       fake.exit(1);
+      await expect(connecting).rejects.toMatchObject({ stop: { reason: "exited" } });
     });
 
     it("starts Node without a flag that lets it start a process or a thread", () => {

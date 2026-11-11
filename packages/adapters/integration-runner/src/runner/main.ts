@@ -56,7 +56,12 @@ export async function runRunner(
     nonce: args.nonce,
     connect: async (host) => {
       const module = await load(pathToFileURL(args.entryFile).href);
-      return integrationIn(module, args.exportName).connect({ ...host, tokens: noTokens });
+      const integration = integrationIn(module, args.exportName);
+      const { name, version, tools } = integration;
+      return {
+        declaration: { name, version, tools },
+        connection: integration.connect({ ...host, tokens: noTokens }),
+      };
     },
   });
 }

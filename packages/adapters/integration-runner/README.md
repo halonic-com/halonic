@@ -12,9 +12,11 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
 - **Frames:** one JSON frame per line, at most 1 MiB (`maxFrameBytes`) with its newline. Bytes
   travel as base64.
 - **Halonic's side, `connectRunner`:** it takes a runner that has already been started, as a `SandboxProcess`. It waits for
-  `ready` with this start's nonce (10 seconds, `readyTimeoutMs`), sends `start` with the settings
-  and tool names, and returns a `RunnerConnection`: an `IntegrationConnection` with `stopped`, a
-  promise that settles with the reason the runner ended. Each request the runner asks for goes through the kit's client for
+  `ready` with this start's nonce, sends `start` with the settings and tool names, and waits for
+  `declared`: the name, version and tools the integration's code declares (10 seconds for both,
+  `readyTimeoutMs`). It returns a `RunnerConnection`: an `IntegrationConnection` with
+  `declaration`, frozen plain data the caller checks against the permission sheet, and `stopped`,
+  a promise that settles with the reason the runner ended. Each request the runner asks for goes through the kit's client for
   this integration, and a body is read one piece per `pull`.
   - Anything outside the protocol stops the runner and is reported through `onBlocked`. A kit
     refusal on the kit's leak list is reported there too.
@@ -54,7 +56,8 @@ must be stopped with exactly one block, or answered without stopping, and never 
   block, and the session closes when the runner stops for any reason.
 - **The runner process, `src/runner/main.ts`:** `node --permission … <runner> <nonce> <folder>
   <entry file> <export>`. The console goes to stderr, so stdout carries only frames. It loads the
-  integration after `start`, and gives it a token store that refuses every call.
+  integration after `start`, sends its declaration with only the fields the protocol knows, and
+  gives it a token store that refuses every call.
 - **The module hook, `src/runner/module-fence.ts`:** before the integration loads, the runner
   registers a hook that lets an import or require through only when it names a file, or `zod`,
   and resolves to a file inside the integration's folder. Node's own modules by any name

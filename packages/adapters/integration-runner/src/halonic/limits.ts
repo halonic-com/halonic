@@ -21,7 +21,7 @@ export interface RunnerLimits {
   pongTimeoutMs: number;
   /** How long the runner may sit with no call before it is stopped (2 minutes). */
   idleStopMs: number;
-  /** How long the runner has to send `ready` after it starts (10 s). */
+  /** How long the runner has after it starts to send `ready` and, once it has `start`, `declared` (10 s). */
   readyTimeoutMs: number;
   /** stderr kept per call (1 MiB); the rest is dropped and counted (A21). */
   maxStderrBytesPerCall: number;

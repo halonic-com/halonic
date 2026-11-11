@@ -95,6 +95,7 @@ export async function startRunner(options: StartRunnerOptions): Promise<StartedR
   sessionClosed.catch(() => {});
   return {
     fence,
+    declaration: connection.declaration,
     stopped: connection.stopped,
     callTool: (name, args, callSignal) => connection.callTool(name, args, callSignal),
     close: async () => {

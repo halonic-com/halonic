@@ -3,7 +3,12 @@
 
 import type { IntegrationHttpClient, IntegrationRequestInit } from "@halonicjs/ports";
 import { connectRunner } from "./halonic/connect-runner.ts";
-import { bridgeOptions, fakeRunnerProcess, testNonce } from "./pipes.test-helper.ts";
+import {
+  bridgeOptions,
+  fakeRunnerProcess,
+  testDeclaration,
+  testNonce,
+} from "./pipes.test-helper.ts";
 import { type RunnerHost, serveRunner } from "./runner/serve-runner.ts";
 
 /** What the fake integration's one tool does with its host. */
@@ -17,9 +22,12 @@ export async function bridged(tool: Tool, kit: IntegrationHttpClient) {
     input: fake.runnerInput,
     output: fake.runnerOutput,
     nonce: testNonce,
-    connect: (host) => ({
-      callTool: (_name, _args, signal) => tool(host, signal ?? new AbortController().signal),
-      close: async () => undefined,
+    connect: async (host) => ({
+      declaration: testDeclaration,
+      connection: {
+        callTool: (_name, _args, signal) => tool(host, signal ?? new AbortController().signal),
+        close: async () => undefined,
+      },
     }),
   });
   const connection = await connectRunner(options);

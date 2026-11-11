@@ -1,5 +1,6 @@
 // The runner's side of the bridge: it says `ready`, waits for `start`, gives
-// the integration its host, and runs the tool calls Halonic sends. Halonic is
+// the integration its host, says what the integration declares, and runs the
+// tool calls Halonic sends. Halonic is
 // the trusted side, so a frame from it that breaks the protocol ends the
 // runner with an error rather than being worked around.
 
@@ -8,7 +9,12 @@ import { integrationWait } from "@halonicjs/adapter-integration-kit";
 import type { IntegrationConnection, IntegrationHost } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import { FrameLineWriter, FrameTooLargeError, readFrameLines } from "../frame-lines.ts";
-import { type HalonicFrame, halonicFrame, type RunnerFrame } from "../frames.ts";
+import {
+  type HalonicFrame,
+  halonicFrame,
+  type IntegrationDeclaration,
+  type RunnerFrame,
+} from "../frames.ts";
 import { BridgedHttp } from "./bridged-http.ts";
 
 /**
@@ -17,6 +23,13 @@ import { BridgedHttp } from "./bridged-http.ts";
  * section 3.5). The loader refuses a sheet that declares tokens.
  */
 export type RunnerHost = Omit<IntegrationHost, "tokens">;
+
+/** The integration connected to its host, and what its code declares. */
+export interface ConnectedIntegration {
+  /** Its name, version and tools, which Halonic checks against the permission sheet. */
+  declaration: IntegrationDeclaration;
+  connection: IntegrationConnection;
+}
 
 /** What {@link serveRunner} needs. */
 export interface ServeRunnerOptions {
@@ -27,7 +40,7 @@ export interface ServeRunnerOptions {
   /** The nonce Halonic gave this start, sent back in `ready`. */
   nonce: string;
   /** Connects the integration to its host, once `start` has arrived. */
-  connect(host: RunnerHost): IntegrationConnection | Promise<IntegrationConnection>;
+  connect(host: RunnerHost): Promise<ConnectedIntegration>;
 }
 
 /** Halonic sent something the runner can't follow. The runner ends. */
@@ -55,11 +68,12 @@ export async function serveRunner(options: ServeRunnerOptions): Promise<void> {
     throw new RunnerProtocolError("the first frame from Halonic was not start");
   const calls = new CallRunner(send);
   const http = new BridgedHttp(send, () => calls.current());
-  const connection = await options.connect({
+  const { declaration, connection } = await options.connect({
     http,
     settings: Object.freeze({ ...start.settings }),
     wait: integrationWait,
   });
+  sendDeclaration(send, declaration);
   try {
     for (
       let frame = await nextFrame(frames);
@@ -90,6 +104,33 @@ export async function serveRunner(options: ServeRunnerOptions): Promise<void> {
   }
   // Only on a normal end: after a protocol error Halonic may no longer read, and the close would wait for it.
   await writer.close();
+}
+
+/**
+ * Sends `declared` with only the fields the protocol knows, so a tool with an
+ * extra field of its own still declares. Halonic checks each value.
+ *
+ * @throws {Error} when the declaration doesn't fit in one frame
+ */
+function sendDeclaration(
+  send: (frame: RunnerFrame) => void,
+  declaration: IntegrationDeclaration,
+): void {
+  const tools = declaration.tools.map(({ name, description, parameters, risk, untrusted }) => ({
+    name,
+    description,
+    parameters,
+    risk,
+    ...(untrusted === undefined ? {} : { untrusted }),
+  }));
+  try {
+    send({ type: "declared", name: declaration.name, version: declaration.version, tools });
+  } catch (error) {
+    if (!(error instanceof FrameTooLargeError)) throw error;
+    throw new Error("the integration's tools are too large to declare in one frame", {
+      cause: error,
+    });
+  }
 }
 
 async function nextFrame(frames: AsyncIterator<unknown>): Promise<HalonicFrame | undefined> {

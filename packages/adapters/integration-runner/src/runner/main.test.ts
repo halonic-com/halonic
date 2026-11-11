@@ -29,6 +29,7 @@ verifies("integration-runner.start", () => {
         },
       );
       const connection = await connectRunner(bridgeOptions(fake));
+      expect(connection.declaration).toEqual({ name: "weather", version: "1.0.0", tools: [] });
       expect(await connection.callTool("forecast", {})).toBe("forecast in https://api.example.com");
       expect(imported).toEqual(["file:///work/weather/index.js"]);
       await connection.close();
@@ -45,7 +46,9 @@ verifies("integration-runner.start", () => {
       const connecting = connectRunner(bridgeOptions(fake));
       await expect(running).rejects.toThrow(/no integration named "forecast"/);
       fake.exit(1);
-      await expect(connecting).resolves.toBeDefined();
+      await expect(connecting).rejects.toMatchObject({
+        stop: { reason: "exited", exit: { code: 1 } },
+      });
     });
 
     it("gives the integration a token store that holds nothing", async () => {

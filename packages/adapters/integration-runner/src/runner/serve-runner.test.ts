@@ -14,7 +14,10 @@ function servedRunner(callTool: () => Promise<string>) {
     input: toRunner.readable,
     output: fromRunner.writable,
     nonce: "nonce-for-this-start",
-    connect: () => ({ callTool, close: async () => undefined }),
+    connect: async () => ({
+      declaration: { name: "example", version: "1.0.0", tools: [runTool] },
+      connection: { callTool, close: async () => undefined },
+    }),
   });
   serving.catch(() => undefined);
   const writer = toRunner.writable.getWriter();
@@ -26,12 +29,21 @@ function servedRunner(callTool: () => Promise<string>) {
 
 const start = { type: "start", settings: {}, tools: ["run"] };
 
+/** The integration's one tool. */
+const runTool = {
+  name: "run",
+  description: "Runs.",
+  parameters: { type: "object", properties: {} },
+  risk: "read" as const,
+};
+
 verifies("integration-runner.frames", () => {
   describe("the runner's side", () => {
     it("says ready with its nonce first", async () => {
       const { next, halonic, closeInput, serving } = servedRunner(async () => "");
       expect(await next()).toEqual({ type: "ready", nonce: "nonce-for-this-start" });
       await halonic(start);
+      await next();
       await closeInput();
       await serving;
     });
@@ -55,6 +67,7 @@ verifies("integration-runner.frames", () => {
       );
       await next();
       await halonic(start);
+      await next();
       await halonic({ type: "call", call: 0, name: "run", args: {} });
       expect(await next()).toEqual({
         type: "result",
@@ -69,6 +82,7 @@ verifies("integration-runner.frames", () => {
       const { next, halonic, closeInput, serving } = servedRunner(async () => "");
       await next();
       await halonic(start);
+      await next();
       await halonic({ type: "ping", n: 7 });
       expect(await next()).toEqual({ type: "pong", n: 7 });
       await closeInput();

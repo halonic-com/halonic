@@ -15,7 +15,13 @@ import {
   FrameTooLargeError,
   readFrameLines,
 } from "../frame-lines.ts";
-import { type HalonicFrame, type RunnerFrame, runnerFrame } from "../frames.ts";
+import {
+  type DeclaredFrame,
+  type HalonicFrame,
+  type IntegrationDeclaration,
+  type RunnerFrame,
+  runnerFrame,
+} from "../frames.ts";
 import { CallTable } from "./calls.ts";
 import { Heartbeat } from "./heartbeat.ts";
 import {
@@ -53,6 +59,12 @@ export interface ConnectRunnerOptions {
 /** A connection to one runner. */
 export interface RunnerConnection extends IntegrationConnection {
   /**
+   * What the integration's code declared after `start`: its name, version
+   * and tools, as plain data. The caller checks it against the permission
+   * sheet before offering a tool.
+   */
+  readonly declaration: IntegrationDeclaration;
+  /**
    * Settles when the runner has stopped and ended, with the reason. Every
    * call still running fails with a {@link RunnerStoppedError} first.
    */
@@ -60,15 +72,17 @@ export interface RunnerConnection extends IntegrationConnection {
 }
 
 /**
- * Waits for the runner's `ready`, sends `start`, and returns the connection.
- * From then on, anything the runner sends outside the protocol stops it.
+ * Waits for the runner's `ready`, sends `start`, waits for the integration's
+ * `declared`, and returns the connection. From then on, anything the runner
+ * sends outside the protocol stops it.
  *
- * @throws {RunnerStoppedError} when the runner stops before it is ready, such as on a wrong nonce
+ * @throws {RunnerStoppedError} when the runner stops before it has declared, such as on a wrong nonce
  */
 export async function connectRunner(options: ConnectRunnerOptions): Promise<RunnerConnection> {
   const bridge = new RunnerBridge(options);
-  await bridge.ready;
+  const declaration = await bridge.ready;
   return {
+    declaration,
     callTool: (name, args, signal) => bridge.callTool(name, args, signal),
     close: () => bridge.close(),
     stopped: bridge.stopped,
@@ -76,7 +90,7 @@ export async function connectRunner(options: ConnectRunnerOptions): Promise<Runn
 }
 
 class RunnerBridge {
-  readonly ready: Promise<void>;
+  readonly ready: Promise<IntegrationDeclaration>;
   readonly stopped: Promise<RunnerStop>;
   readonly #options: ConnectRunnerOptions;
   readonly #writer: FrameLineWriter;
@@ -85,9 +99,9 @@ class RunnerBridge {
   readonly #heartbeat: Heartbeat;
   readonly #stderr: StderrLog;
   readonly #maxQueuedWriteBytes: number;
-  #state: "waiting" | "started" | "stopped" = "waiting";
+  #state: "waiting" | "declaring" | "started" | "stopped" = "waiting";
   #stop: RunnerStop | undefined;
-  #markReady: () => void = () => undefined;
+  #markReady: (declaration: IntegrationDeclaration) => void = () => undefined;
   #failReady: (error: Error) => void = () => undefined;
   #markStopped: (stop: RunnerStop) => void = () => undefined;
   #readyTimer: ReturnType<typeof setTimeout>;
@@ -177,6 +191,8 @@ class RunnerBridge {
       this.#violation("a frame outside the protocol");
     } else if (this.#state === "waiting") {
       this.#takeReady(parsed.value);
+    } else if (this.#state === "declaring") {
+      this.#takeDeclared(parsed.value);
     } else {
       this.#dispatch(parsed.value);
     }
@@ -186,6 +202,9 @@ class RunnerBridge {
     switch (frame.type) {
       case "ready":
         this.#violation("a second ready");
+        break;
+      case "declared":
+        this.#violation("a second declared");
         break;
       case "pong":
         if (this.#heartbeat.pong(frame.n)) {
@@ -226,8 +245,7 @@ class RunnerBridge {
       this.#violation("ready with the wrong nonce");
       return;
     }
-    clearTimeout(this.#readyTimer);
-    this.#state = "started";
+    this.#state = "declaring";
     try {
       this.#send({
         type: "start",
@@ -237,10 +255,23 @@ class RunnerBridge {
     } catch (error) {
       if (!(error instanceof FrameTooLargeError)) throw error;
       this.#halt({ reason: "start-too-large" });
+    }
+  }
+
+  /**
+   * After `start`, the runner loads the integration and says what it
+   * declares. Until then it has no other frame to send. The time limit for
+   * `ready` covers this too, so a slow import can't keep a start waiting.
+   */
+  #takeDeclared(frame: RunnerFrame): void {
+    if (frame.type !== "declared") {
+      this.#violation("a frame before declared");
       return;
     }
+    clearTimeout(this.#readyTimer);
+    this.#state = "started";
     this.#heartbeat.betweenCalls();
-    this.#markReady();
+    this.#markReady(declarationOf(frame));
   }
 
   /**
@@ -278,4 +309,12 @@ class RunnerBridge {
     const markStopped = () => this.#markStopped(stop);
     void this.#options.process.kill().then(markStopped, markStopped);
   }
+}
+
+/** The declaration as the port's types hold it, frozen, so no caller can change what was checked. */
+function declarationOf(frame: DeclaredFrame): IntegrationDeclaration {
+  const tools = frame.tools.map(({ untrusted, ...tool }) =>
+    Object.freeze({ ...tool, ...(untrusted === undefined ? {} : { untrusted }) }),
+  );
+  return Object.freeze({ name: frame.name, version: frame.version, tools: Object.freeze(tools) });
 }

@@ -9,7 +9,7 @@ import type {
   SandboxProcess,
 } from "@halonicjs/ports";
 import { readFrameLines } from "./frame-lines.ts";
-import type { HalonicFrame } from "./frames.ts";
+import type { HalonicFrame, IntegrationDeclaration } from "./frames.ts";
 import type { ConnectRunnerOptions } from "./halonic/connect-runner.ts";
 import type { RunnerBlock } from "./halonic/limits.ts";
 
@@ -18,6 +18,18 @@ export const fakeSecret = "sk-fake-0123456789";
 
 /** The nonce the tests' runners are started with. */
 export const testNonce = "nonce-for-this-start";
+
+/** What the tests' integration declares: the two tools {@link bridgeOptions} lists, and `run`. */
+export const testDeclaration: IntegrationDeclaration = {
+  name: "weather",
+  version: "1.0.0",
+  tools: ["forecast", "echo", "run"].map((name) => ({
+    name,
+    description: `The ${name} tool.`,
+    parameters: { type: "object", properties: {} },
+    risk: "read",
+  })),
+};
 
 /** A runner process whose streams the test holds the other ends of. */
 export interface FakeRunnerProcess {
@@ -100,10 +112,12 @@ export class HandDrivenRunner {
     return next.value as HalonicFrame;
   }
 
-  /** Says `ready` and takes the `start` frame. */
+  /** Says `ready`, takes the `start` frame and, when it is one, declares {@link testDeclaration}. */
   async start(nonce = testNonce): Promise<HalonicFrame> {
     await this.send({ type: "ready", nonce });
-    return this.next();
+    const start = await this.next();
+    if (start.type === "start") await this.send({ type: "declared", ...testDeclaration });
+    return start;
   }
 }
 

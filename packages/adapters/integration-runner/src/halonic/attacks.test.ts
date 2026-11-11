@@ -12,6 +12,7 @@ import {
   fakeKitClient,
   fakeRunnerProcess,
   HandDrivenRunner,
+  testDeclaration,
   testNonce,
 } from "../pipes.test-helper.ts";
 import {
@@ -95,8 +96,9 @@ verifies("integration-runner.strict-protocol", () => {
       const runner = new HandDrivenRunner(fake);
       const connecting = connectRunner(options);
       await runner.send(`\uFEFF{"type":"ready","nonce":"wrong","nonce":"${testNonce}"}\r\n`);
-      const connection = await connecting;
       expect(await runner.next()).toMatchObject({ type: "start" });
+      await runner.send({ type: "declared", ...testDeclaration });
+      const connection = await connecting;
       await connection.close();
       expect(options.blocks).toEqual([]);
     });

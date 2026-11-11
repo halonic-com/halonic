@@ -3,6 +3,7 @@
 // shapes and stops the runner on anything else, so the shapes are strict:
 // unknown keys and unknown types are refused, not dropped.
 
+import type { Integration } from "@halonicjs/ports";
 import { type Infer, s } from "@halonicjs/schema-kit";
 
 /**
@@ -51,9 +52,32 @@ export type FrameBody = Infer<typeof requestBody>;
  */
 const errorCode = s.string().min(1).max(64);
 
+/**
+ * One tool as the integration's code declares it. Halonic checks it against
+ * the permission sheet before the first call, so a tool that differs from
+ * what the user approved is never offered.
+ */
+const declaredTool = s
+  .object({
+    name: s.string(),
+    description: s.string(),
+    parameters: s.record(s.string(), s.unknown()),
+    risk: s.enum(["read", "write", "send"]),
+    untrusted: s.boolean().optional(),
+  })
+  .strict();
+
 /** Every frame the runner sends to Halonic. */
 export const runnerFrame = s.discriminatedUnion("type", [
   s.object({ type: s.literal("ready"), nonce: s.string() }).strict(),
+  s
+    .object({
+      type: s.literal("declared"),
+      name: s.string(),
+      version: s.string(),
+      tools: s.array(declaredTool),
+    })
+    .strict(),
   s.object({ type: s.literal("pong"), n: frameId }).strict(),
   s
     .object({
@@ -128,6 +152,15 @@ export type HalonicFrame = Infer<typeof halonicFrame>;
 
 /** The `error` frame Halonic sends for a request or a body read. */
 export type ErrorFrame = Extract<HalonicFrame, { type: "error" }>;
+
+/**
+ * What the integration's code says it is, as the runner sends it after
+ * `start`: its name, its version and its tools.
+ */
+export type IntegrationDeclaration = Pick<Integration, "name" | "version" | "tools">;
+
+/** The `declared` frame the runner sends. */
+export type DeclaredFrame = Extract<RunnerFrame, { type: "declared" }>;
 
 /** The `fetch` frame the runner sends. */
 export type FetchFrame = Extract<RunnerFrame, { type: "fetch" }>;
