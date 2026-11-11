@@ -12,6 +12,10 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*"
+  },
   "devDependencies": {
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
