@@ -153,28 +153,46 @@ export class CommandStores {
     };
   }
 
-  /** The commands the sources give now, leaving out those they may not give and every one of a source that throws. */
+  /**
+   * The commands the sources give now, leaving out those they may not give or that can't be read,
+   * and every one of a source that throws or doesn't give a list.
+   */
   private sourceCommands(): Registered<CommandContribution>[] {
     return this.sources.all().flatMap((source) => {
-      let given: readonly CommandContribution[];
       try {
-        given = source.commands();
+        const given: unknown = source.commands();
+        if (!Array.isArray(given)) {
+          return [];
+        }
+        const seen = new Set<string>();
+        return given.flatMap((command: CommandContribution) => {
+          // The copy reads every field once, so a getter that throws only drops its own command.
+          let copy: Registered<CommandContribution>;
+          try {
+            copy = registered("commands.addSource", source.featureId, command);
+          } catch {
+            return [];
+          }
+          const {
+            id,
+            title,
+            source: from,
+          }: { id: unknown; title: unknown; source?: unknown } = copy;
+          if (
+            !isContributionId(id) ||
+            !id.startsWith(`${source.id}.`) ||
+            seen.has(id) ||
+            typeof title !== "string" ||
+            (from !== undefined && typeof from !== "string")
+          ) {
+            return [];
+          }
+          seen.add(id);
+          return [copy];
+        });
       } catch {
         return [];
       }
-      const seen = new Set<string>();
-      return given.flatMap((command) => {
-        const id: unknown = command?.id;
-        if (!isContributionId(id) || !id.startsWith(`${source.id}.`) || seen.has(id)) {
-          return [];
-        }
-        seen.add(id);
-        try {
-          return [registered("commands.addSource", source.featureId, command)];
-        } catch {
-          return [];
-        }
-      });
     });
   }
 }

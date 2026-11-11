@@ -173,6 +173,41 @@ verifies("shell.command-sources", () => {
     expect(shell.contributions.commands.get("agents.new")).toBeUndefined();
   });
 
+  it("leaves out a source that doesn't give a list, and a command that can't be read or has no title", () => {
+    const unreadable = {
+      get id(): string {
+        throw new Error("the plugin is gone");
+      },
+      title: "Unreadable",
+      run: () => {},
+    };
+    const shell = createShell({
+      features: [
+        feature("plugins", (studio) => {
+          studio.commands.addSource({
+            id: "plugins.commands",
+            commands: () => [
+              unreadable,
+              { ...forecast, id: "plugins.commands.untitled", title: undefined as never },
+              { ...forecast, id: "plugins.commands.odd", source: 3 as never },
+              null as never,
+              forecast,
+            ],
+          });
+          studio.commands.addSource({ id: "plugins.none", commands: () => undefined as never });
+          studio.commands.addSource({ id: "plugins.object", commands: () => ({}) as never });
+        }),
+        feature("agents", (studio) =>
+          studio.commands.add({ id: "agents.new", title: "New agent", run: () => {} }),
+        ),
+      ],
+    });
+    const { commands } = shell.contributions;
+    expect(commands.list().map((command) => command.id)).toEqual(["agents.new", forecast.id]);
+    expect(commands.get("agents.new")).toMatchObject({ title: "New agent" });
+    expect(commands.get("plugins.commands.untitled")).toBeUndefined();
+  });
+
   it("refuses an id under a source from a command or another source, naming both", () => {
     const create = (register: (studio: Studio) => void) => () =>
       createShell({
