@@ -105,6 +105,11 @@ Var FolderErrorLabel
 Var SandboxCheckbox
 Var ShortcutCheckbox
 Var StartCheckbox
+; The run-again page (flow 2.5)
+Var RunAgain
+Var SkipCopy
+Var SandboxReady
+Var RepairCheckbox
 
 Name "${PRODUCTNAME}"
 BrandingText "${COPYRIGHT}"
@@ -196,8 +201,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 
 ; Halonic change (HAL-1202, flow 2.2): one page instead of Tauri's welcome,
 ; licence, install mode, folder and Start menu pages. The Start menu entry is
-; always added, in the "Halonic" folder. The reinstall page below is still
-; Tauri's until the "run again" page (flow 2.5) lands.
+; always added, in the "Halonic" folder. The reinstall page below is
+; Tauri's for passive and update installs, and our run-again page otherwise.
 !define MUI_ABORTWARNING
 !define MUI_ABORTWARNING_TEXT "Cancel installing ${PRODUCTNAME}?"
 !define MUI_ABORTWARNING_CANCEL_DEFAULT
@@ -295,6 +300,19 @@ Function PageReinstall
     Abort
   ${EndIf}
 
+  ; Halonic change (HAL-1202, flow 2.5): with pages, the same version gets our
+  ; run-again page, and a newer one goes to page 1 and installs over the old
+  ; one, as an update does. An older one never gets here (.onInit stops it).
+  ${If} $PassiveMode <> 1
+  ${AndIf} $UpdateMode <> 1
+  ${AndIf} $WixMode <> 1
+    ${If} $R0 = 0
+      Call PageRunAgain
+      Return
+    ${EndIf}
+    Abort
+  ${EndIf}
+
   ; Skip showing the page if passive
   ;
   ; Note that we don't call this earlier at the beginning
@@ -345,6 +363,12 @@ Function PageReinstallUpdateSelection
   ${EndIf}
 FunctionEnd
 Function PageLeaveReinstall
+  ; Halonic change (HAL-1202, flow 2.5): our run-again page uninstalls nothing.
+  ${If} $RunAgain = 1
+    Call PageRunAgainLeave
+    Return
+  ${EndIf}
+
   ${NSD_GetState} $R2 $R1
 
   ; If migrating from Wix, always uninstall
@@ -757,14 +781,20 @@ SectionEnd
 Section Install
   SetOutPath $INSTDIR
   ; The three lines are on the page at once (flow 2.3); the sandbox ones only
-  ; when the box is ticked.
-  !insertmacro PrintStep $LineCopy "◌ Copying Halonic…"
+  ; when the box is ticked. Run again without Repair copies nothing, so it has
+  ; no copy line (flow 2.5).
+  ${If} $SkipCopy <> 1
+    !insertmacro PrintStep $LineCopy "◌ Copying Halonic…"
+  ${EndIf}
   !ifdef SANDBOX_STEP
     ${If} $SandboxState == ${BST_CHECKED}
       !insertmacro PrintStep $LineSetup "○ Setting up the agent sandbox"
       !insertmacro PrintStep $LineCheck "○ Checking the agent sandbox"
     ${EndIf}
   !endif
+  ${If} $SkipCopy = 1
+    Goto copy_done
+  ${EndIf}
 
   !ifmacrodef NSIS_HOOK_PREINSTALL
     !insertmacro NSIS_HOOK_PREINSTALL
@@ -874,6 +904,7 @@ Section Install
 
   SetDetailsPrint both
   !insertmacro SetStep $LineCopy "✓ Copied Halonic"
+  copy_done:
 
   ; Auto close this page for passive mode
   ${If} $PassiveMode = 1
@@ -897,11 +928,8 @@ Section SandboxStep
       ${If} ${Silent}
         StrCpy $0 "-NoElevate"
       ${EndIf}
-      StrCpy $1 "$LOCALAPPDATA\halonic"
-      ReadEnvStr $2 "HALONIC_HOME"
-      ${If} $2 != ""
-        StrCpy $1 $2
-      ${EndIf}
+      Call ProfileFolder
+      Pop $1
       nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1" $0'
       Pop $2
       Pop $SandboxReason
@@ -1259,10 +1287,108 @@ Function WaitUntilHalonicIsClosed
   Pop $0
 FunctionEnd
 
+; Halonic's profile folder, as the agent host finds it, on the stack.
+Function ProfileFolder
+  Push $0
+  Push $1
+  StrCpy $1 "$LOCALAPPDATA\halonic"
+  ReadEnvStr $0 "HALONIC_HOME"
+  ${IfThen} $0 != "" ${|} StrCpy $1 $0 ${|}
+  Exch $1
+  Exch
+  Pop $0
+FunctionEnd
+
+; Sets $SandboxReady to 1 when the installed Halonic's sandbox passes the
+; check Settings uses, else 0. Asked when the run-again page opens.
+Function CheckInstalledSandbox
+  StrCpy $SandboxReady 0
+  !ifdef SANDBOX_STEP
+    ${If} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
+      Call ProfileFolder
+      Pop $1
+      nsExec::ExecToStack /TIMEOUT=60000 '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-check'
+      Pop $0
+      Pop $1
+      ${IfThen} $0 == "0" ${|} StrCpy $SandboxReady 1 ${|}
+    ${EndIf}
+  !endif
+FunctionEnd
+
+; The run-again page (flow 2.5): two boxes, never a lone radio button (V2).
+; Called from PageReinstall, so it is that page's content.
+Function PageRunAgain
+  StrCpy $RunAgain 1
+  StrCpy $SandboxCheckbox 0
+  Call CheckInstalledSandbox
+  !insertmacro MUI_HEADER_TEXT "${PRODUCTNAME} ${VERSION} is installed on this computer" ""
+  nsDialogs::Create 1018
+  Pop $0
+
+  StrCpy $2 0
+  !ifdef SANDBOX_STEP
+    ${If} $SandboxReady = 1
+      ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is set up."
+      Pop $0
+    ${Else}
+      ${NSD_CreateCheckbox} 0 0 100% 10u "Set up the agent sandbox (recommended)"
+      Pop $SandboxCheckbox
+      ${NSD_Check} $SandboxCheckbox
+      ${NSD_OnClick} $SandboxCheckbox PageRunAgainUpdate
+      ${NSD_CreateLabel} 12u 12u 96% 10u "Windows asks for administrator rights once for this step."
+      Pop $0
+    ${EndIf}
+    StrCpy $2 32
+  !endif
+  ${NSD_CreateCheckbox} 0 $2u 100% 10u "Repair ${PRODUCTNAME}"
+  Pop $RepairCheckbox
+  ${NSD_OnClick} $RepairCheckbox PageRunAgainUpdate
+  IntOp $2 $2 + 12
+  ${NSD_CreateLabel} 12u $2u 96% 20u "Copies ${PRODUCTNAME}'s files again. Your workspaces and settings stay."
+  Pop $0
+
+  GetDlgItem $0 $HWNDPARENT 1
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Continue"
+  GetDlgItem $0 $HWNDPARENT 3
+  ShowWindow $0 ${SW_HIDE}
+  Push 0
+  Call PageRunAgainUpdate
+  nsDialogs::Show
+FunctionEnd
+
+; Continue only while a box is ticked.
+Function PageRunAgainUpdate
+  Pop $0 ; the clicked box, from NSD_OnClick, or the 0 PageRunAgain pushes
+  StrCpy $1 ${BST_UNCHECKED}
+  ${If} $SandboxCheckbox <> 0
+    ${NSD_GetState} $SandboxCheckbox $1
+  ${EndIf}
+  ${NSD_GetState} $RepairCheckbox $0
+  GetDlgItem $3 $HWNDPARENT 1
+  ${If} $0 == ${BST_CHECKED}
+  ${OrIf} $1 == ${BST_CHECKED}
+    EnableWindow $3 1
+  ${Else}
+    EnableWindow $3 0
+  ${EndIf}
+FunctionEnd
+
+Function PageRunAgainLeave
+  StrCpy $SandboxState ${BST_UNCHECKED}
+  ${If} $SandboxCheckbox <> 0
+    ${NSD_GetState} $SandboxCheckbox $SandboxState
+  ${EndIf}
+  ${NSD_GetState} $RepairCheckbox $0
+  ${IfThen} $0 <> ${BST_CHECKED} ${|} StrCpy $SkipCopy 1 ${|}
+  ; Repair keeps the shortcuts as they are.
+  StrCpy $ShortcutState ${BST_UNCHECKED}
+FunctionEnd
+
 Function PageInstall
-  ; Silent and passive installs have no pages.
+  ; Silent and passive installs have no pages, and run again has its own.
   ${If} $PassiveMode = 1
   ${OrIf} $UpdateMode = 1
+  ${OrIf} $RunAgain = 1
     Abort
   ${EndIf}
   !insertmacro MUI_HEADER_TEXT "Install ${PRODUCTNAME} ${VERSION}" ""
