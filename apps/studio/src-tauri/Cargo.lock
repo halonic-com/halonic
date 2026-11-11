@@ -1509,6 +1509,13 @@ name = "halonic-git-guard"
 version = "0.1.0"
 
 [[package]]
+name = "halonic-host-settings"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "halonic-keychain"
 version = "0.1.0"
 dependencies = [
