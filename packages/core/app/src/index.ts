@@ -241,6 +241,11 @@ export {
   pluginTrustFingerprint,
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
+export {
+  ProgramCopies,
+  ProgramCopyUnavailableError,
+  type ProgramCopyVcs,
+} from "./program-copies.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
 export {
   type DataFolder,
