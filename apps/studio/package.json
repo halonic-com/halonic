@@ -3,18 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The Studio app: wires the Studio packages and features together. The Tauri shell and its Android project live in src-tauri; Vite builds only the Android app's own page (connect.html).",
+  "description": "The Studio app: wires the Studio packages and features together. The Tauri shell and its Android project live in src-tauri; Vite builds the Studio page (studio.html) and, apart from it, the Android app's own page (connect.html).",
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
     "lint": "biome check .",
     "test": "vitest run",
-    "build": "vite build"
+    "build": "vite build && vite build --mode studio",
+    "studio": "vite --mode studio"
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-plugins": "workspace:*",
-    "@halonicjs/studio-services": "workspace:*"
+    "@halonicjs/studio-services": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/adapter-fs-node": "workspace:*",
@@ -27,9 +30,11 @@
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
     "@tauri-apps/cli": "catalog:",
     "@types/node": "catalog:",
     "jsdom": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

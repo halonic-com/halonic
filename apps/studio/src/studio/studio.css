@@ -1,0 +1,2 @@
+/* The Studio page's CSS: the shell's entry (its "style" export) sets up Tailwind and the kit's tokens. */
+@import "@halonicjs/studio-shell";

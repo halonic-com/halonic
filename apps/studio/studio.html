@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  The Studio itself, for the desktop app and the served Studio. Vite builds it
+  apart from the Android app's connect page (vite build --mode studio), so the
+  Android app still ships none of the Studio.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Halonic</title>
+    <link rel="stylesheet" href="./src/studio/studio.css" />
+    <script type="module" src="./src/studio/main.ts"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

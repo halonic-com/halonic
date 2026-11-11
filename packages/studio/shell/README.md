@@ -931,6 +931,19 @@ const workspace = new StudioWorkspace({ toasts: shell.toasts, services: registry
 <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />;
 ```
 
+`mountStudioWindow` draws that window into an element of the page and returns `unmount()`
+(`shell.studio-mount`). The app's entry uses it, so React stays inside the Studio packages and
+`apps/studio` only starts the window. The window's CSS entry, `src/studio.css` (Tailwind, the kit's
+tokens and the `@source` over `packages/studio`), is the package's `style` export, so the page's CSS
+is one line, `@import "@halonicjs/studio-shell";`:
+
+```ts
+const studio = mountStudioWindow(root, { shell, workspace, host: "served", platform, language: "en" });
+// when the workspace closes:
+studio.unmount();
+workspace.dispose();
+```
+
 ## Other exports
 
 The rest of `src/index.ts`, by area; the types are what the parts above take and return.

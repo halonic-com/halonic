@@ -1,0 +1,14 @@
+/*
+ * The Studio window's CSS entry, for the app's Studio page: Tailwind once, then the kit's tokens
+ * (see the kit's README). It lives here, next to the window, so the app imports one file and holds
+ * no Tailwind set-up of its own.
+ */
+
+@import "tailwindcss";
+@import "@halonicjs/studio-kit";
+
+/* Required, not optional: the kit and the Studio packages reach the app through node_modules
+   links, and Tailwind skips node_modules. The paths are relative to this file. */
+@source "../..";
+/* READMEs and AGENTS.md files mention classes too, including "not allowed" examples. */
+@source not "../../**/*.md";

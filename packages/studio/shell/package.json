@@ -4,7 +4,10 @@
   "type": "module",
   "description": "The Studio's feature registry and the contribution points features plug into.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "style": "./src/studio.css",
+      "default": "./src/index.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
@@ -16,7 +19,8 @@
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
-    "react": "catalog:"
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
@@ -27,7 +31,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "jsdom": "catalog:",
-    "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
