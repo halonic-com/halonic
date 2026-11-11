@@ -317,7 +317,8 @@ Mod K, in the desktop app and served alike, but not over a modal dialog.
 const [paletteOpen, setPaletteOpen] = useState(false);
 usePaletteKey(platform, () => setPaletteOpen(true));
 
-{paletteOpen ? (
+if (!paletteOpen) return null;
+return (
   <ShellPalette
     tabs={workspace.tabs}
     recent={workspace.recent}
@@ -331,7 +332,7 @@ usePaletteKey(platform, () => setPaletteOpen(true));
     platform={platform}
     onClose={() => setPaletteOpen(false)}
   />
-) : null}
+);
 ```
 
 ## Status bar and toasts
