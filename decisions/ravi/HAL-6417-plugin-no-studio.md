@@ -4,6 +4,7 @@
   [HAL-6183](/HAL/issues/HAL-6183) that 0.1 output sends no one to Studio; the wording is checked
   by Sofia, and Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:H+Ew4GD/TDNQve7dOvb7L7e0WnPytqfIjttR1MLizTks1VuNcHyu/4lXMK4cfHN+6ygF0Lnd6kw8Qhu4cgDeAA==
 - Task: HAL-6417
 
 ## What changes
