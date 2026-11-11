@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1738 plan, rules 9 and 10; the plugins ADR (`docs/adr/2026-11-09-plugins.md`), sections 1.2 and 4
 
-The app shall run each local tool of a trusted plugin through a connector that opens a sandbox session of its own on its first call, with the profile and config the host prepared and the plugin's trust grant, and that creates the local tool's connector only through the factory it was given, with that session. When the session has ended, the app shall fail the call that found it ended, close that session and its connector, and open a new session on the next call. Where the host has no sandbox, the plugin shall still load, and each of its local tools shall report the load state `needs-desktop-app` instead of starting. Where the host's sandbox can't start on this machine, each local tool shall report `sandbox-unavailable` with the sandbox's reason. It shall report codes, never sentences.
+The app shall run each local tool of a trusted plugin through a connector that opens a sandbox session of its own on its first call, with the profile and config the host prepared and the plugin's trust grant, and that creates the local tool's connector only through the factory it was given, with that session. When the session's fence proof is not `fenced` (it is `off`, as for the launcher, or `not-fenced`), the app shall close the session, create no connector, and fail the call with the state `sandbox-not-fenced`, because local tools run only fenced. When the session has ended, the app shall fail the call that found it ended, close that session and its connector, and open a new session on the next call. Where the host has no sandbox, the plugin shall still load, and each of its local tools shall report the load state `needs-desktop-app` instead of starting. Where the host's sandbox can't start on this machine, each local tool shall report `sandbox-unavailable` with the sandbox's reason. It shall report codes, never sentences.
 
 ## Examples
 
@@ -14,6 +14,9 @@ The app shall run each local tool of a trusted plugin through a connector that o
 - Given a sandbox that reports `bubblewrap-missing`,
   when a local tool is called,
   then the call fails in the state `sandbox-unavailable` with that reason, and no connector is created.
+- Given a sandbox whose session opens with the fence `off` or `not-fenced`,
+  when a local tool is called,
+  then the call fails in the state `sandbox-not-fenced`, the session is closed, and no connector is created.
 - Given a working sandbox,
   when a local tool is called twice,
   then one session is opened, with the plugin's grant, and both calls go to it.

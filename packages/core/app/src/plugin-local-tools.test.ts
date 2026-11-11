@@ -5,6 +5,7 @@ import type {
   ConnectorFactoryContext,
   Sandbox,
   SandboxCheck,
+  SandboxFence,
   SandboxProfile,
 } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
@@ -58,6 +59,8 @@ const ok: SandboxCheck = { ok: true, reason: null, missing: [] };
 class TestSandbox implements Pick<Sandbox, "check" | "open"> {
   readonly sessions: FakeSandboxSession[] = [];
   checkResult: SandboxCheck = ok;
+  /** The fence proof each new session reports. */
+  fence: SandboxFence = { state: "fenced" };
 
   async check(): Promise<SandboxCheck> {
     return this.checkResult;
@@ -65,7 +68,7 @@ class TestSandbox implements Pick<Sandbox, "check" | "open"> {
 
   async open(profile: SandboxProfile): Promise<FakeSandboxSession> {
     if (!this.checkResult.ok) throw new Error("bubblewrap is not installed");
-    const session = new FakeSandboxSession({ profile, program: idleProgram });
+    const session = new FakeSandboxSession({ profile, program: idleProgram, fence: this.fence });
     this.sessions.push(session);
     return session;
   }
@@ -150,6 +153,26 @@ verifies("app.plugin-local-tools", () => {
     });
     expect(factory.contexts).toEqual([]);
   });
+
+  it.each([
+    { fence: { state: "off" }, code: "off" },
+    { fence: { state: "not-fenced", reason: "a probe got through" }, code: "not-fenced" },
+  ] as const)(
+    "refuses a session whose fence is $code: closes it and creates no connector",
+    async ({ fence, code }) => {
+      const sandbox = new TestSandbox();
+      sandbox.fence = fence;
+      const { local, factory } = setUp(sandbox);
+      const refused = local.connector(lister).callTool("list-files", {});
+      await expect(refused).rejects.toThrow(LocalToolUnavailableError);
+      await expect(refused).rejects.toMatchObject({
+        state: { kind: "sandbox-not-fenced", fence: code },
+      });
+      expect(factory.contexts).toEqual([]);
+      expect(sandbox.sessions).toHaveLength(1);
+      expect(sandbox.sessions[0]?.fence).toEqual({ state: "stopped" });
+    },
+  );
 
   it("opens one session on the first call, with the plugin's grant, and keeps it", async () => {
     const { local, factory, sandbox } = setUp();

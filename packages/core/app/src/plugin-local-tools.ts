@@ -36,6 +36,19 @@ export type LocalToolState =
   | { readonly kind: "needs-desktop-app" }
   | { readonly kind: "sandbox-unavailable"; readonly reason: SandboxUnavailableReason };
 
+/**
+ * Why a local tool can't run: a load state other than `ready`, or
+ * `sandbox-not-fenced` when the session opened without a proven fence.
+ * Local tools run only fenced (plugins ADR, sections 4 and 6), so a session
+ * whose fence is `off` (the launcher, which has none) or `not-fenced` is
+ * closed before any program starts. Only a call finds this out, because the
+ * fence is proven when a session opens, so {@link PluginLocalTools.state} never
+ * reports it.
+ */
+export type LocalToolUnavailable =
+  | Exclude<LocalToolState, { kind: "ready" }>
+  | { readonly kind: "sandbox-not-fenced"; readonly fence: "off" | "not-fenced" };
+
 /** What the host built for one local tool, before its session opens. */
 export interface LocalToolOpening {
   /** The connector's config, with the id {@link localToolConnectorId} gives. */
@@ -62,9 +75,9 @@ export interface PluginLocalToolsOptions {
 /** A local tool can't run on this computer. `state` says why, for Studio and the CLI to word. */
 export class LocalToolUnavailableError extends Error {
   override readonly name = "LocalToolUnavailableError";
-  readonly state: Exclude<LocalToolState, { kind: "ready" }>;
+  readonly state: LocalToolUnavailable;
 
-  constructor(connectorId: string, state: Exclude<LocalToolState, { kind: "ready" }>) {
+  constructor(connectorId: string, state: LocalToolUnavailable) {
     super(`Local tool "${connectorId}" can't run on this computer: ${describe(state)}.`);
     this.state = state;
   }
@@ -236,6 +249,11 @@ class SessionConnector implements ConnectorClient {
       await session.close();
       throw new Error(`Local tool "${this.id}" was closed while its session opened.`);
     }
+    const fence = session.fence.state;
+    if (fence === "off" || fence === "not-fenced") {
+      await session.close();
+      throw new LocalToolUnavailableError(this.id, { kind: "sandbox-not-fenced", fence });
+    }
     try {
       const client = this.#options.factory.create(config, {
         ...this.#options.context,
@@ -275,8 +293,13 @@ async function closeBoth(opened: Opened): Promise<void> {
   await opened.session.close();
 }
 
-function describe(state: Exclude<LocalToolState, { kind: "ready" }>): string {
-  return state.kind === "needs-desktop-app"
-    ? "it needs the desktop app, because this one has no sandbox"
-    : `its sandbox can't start here (${state.reason})`;
+function describe(state: LocalToolUnavailable): string {
+  switch (state.kind) {
+    case "needs-desktop-app":
+      return "it needs the desktop app, because this one has no sandbox";
+    case "sandbox-unavailable":
+      return `its sandbox can't start here (${state.reason})`;
+    case "sandbox-not-fenced":
+      return `its sandbox session has no proven fence (${state.fence})`;
+  }
 }

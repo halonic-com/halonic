@@ -190,6 +190,7 @@ export {
   type LocalToolOpening,
   type LocalToolSet,
   type LocalToolState,
+  type LocalToolUnavailable,
   LocalToolUnavailableError,
   localToolConnectorId,
   PluginLocalTools,
