@@ -32,21 +32,21 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   container:
     "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
   "not-supported":
-    "This version or edition of the operating system can't run the sandbox. Update it, or use Halonic on another computer.",
+    "This version or edition of the operating system can't run the sandbox. Update it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "blocked-by-policy":
-    "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
+    "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "virtualisation-off":
-    "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI), or turn on nested virtualisation in a virtual machine, then run it again.",
+    "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI), then run it again. In a virtual machine, turn on nested virtualisation.",
   "wsl-missing":
-    "WSL isn't installed, and the sandbox needs it. Install it with wsl --install in a terminal run as administrator, restart Windows, then run it again.",
+    "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
   "restart-needed":
     "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
   "distro-missing":
     "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, then run it again.",
   "setup-conflict":
-    "The sandbox's setup on this computer belongs to another program, or is set up another way. Use Halonic inside WSL 2 on this computer.",
+    "Another program set up the sandbox on this computer, in a way Halonic can't use. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox.",
   "setup-needed":
-    "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, or set up the sandbox in Halonic Studio, under Settings > Sandbox.",
+    "The sandbox's one-time setup isn't done for this version of Halonic. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there.",
   "user-namespaces-restricted":
     "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
   "bubblewrap-missing":
@@ -73,7 +73,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   "restart-needed": "Windows needs to restart to finish setting up WSL.",
   "distro-missing": "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
   "setup-conflict":
-    "The sandbox's setup on this computer belongs to another program, or is set up another way.",
+    "Another program set up the sandbox on this computer, in a way Halonic can't use.",
   "setup-needed": "The sandbox's one-time setup isn't done for this version of Halonic.",
   "user-namespaces-restricted": "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
   "bubblewrap-missing": "bubblewrap isn't installed, and the sandbox needs it.",
@@ -92,17 +92,19 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
   [windowsNodeInWsl]: "install Node.js inside WSL and open a WSL terminal.",
   container: "run Halonic on the computer itself, not in a container.",
-  "not-supported": "update the operating system, or use Halonic on another computer.",
-  "blocked-by-policy": "ask whoever manages this computer to allow it.",
+  "not-supported":
+    "update the operating system, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+  "blocked-by-policy":
+    "ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "virtualisation-off":
-    "turn it on in the computer's firmware settings (BIOS or UEFI), or turn on nested virtualisation in a virtual machine.",
+    "turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation.",
   "wsl-missing":
-    "install it with wsl --install in a terminal run as administrator, then restart Windows.",
+    "install it with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
   "restart-needed": "restart Windows.",
   "distro-missing": "set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox.",
-  "setup-conflict": "use Halonic inside WSL 2 on this computer.",
+  "setup-conflict": "set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox.",
   "setup-needed":
-    "use Halonic inside WSL 2 on this computer, or set up the sandbox in Halonic Studio, under Settings > Sandbox.",
+    "set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
   "bubblewrap-missing":

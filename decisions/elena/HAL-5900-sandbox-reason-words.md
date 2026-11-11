@@ -17,7 +17,7 @@ Port version 6 (HAL-5389) added `not-supported`, `blocked-by-policy`, `virtualis
   this change removes; no expectation is weakened. A code this version doesn't know still reads
   as `other`, and that test stays.
 - `cli.sandbox-gate` gains an example: Windows without the sandbox's one-time setup
-  (`setup-needed`) gets the WSL 2 fix, not the generic `other` text. That was the visible gap
+  (`setup-needed`) gets the WSL fix, not the generic `other` text. That was the visible gap
   Liam named.
 
 ## Where the words come from
@@ -25,14 +25,20 @@ Port version 6 (HAL-5389) added `not-supported`, `blocked-by-policy`, `virtualis
 The onboarding wording (HAL-3778 section 4, approved) has two of the reasons:
 "Hardware virtualisation is turned off on this computer." and "Windows needs to restart to
 finish setting up WSL." The other seven, and every fix, are the team's call, a small wording
-decision on an approved screen (board, HAL-2282), checked with Sofia on HAL-5900. They follow
-the meanings in the design (HAL-3779 section 2.5) and two rules from it:
+decision on an approved screen (board, HAL-2282), confirmed by Sofia on HAL-5917. They follow
+the meanings in the design (HAL-3779 section 2.5) and these rules:
 
-- On Windows the fix leads with WSL 2, since native srt is experimental and the WSL path is
-  recommended (HAL-3779 section 3). `setup-needed` and `setup-conflict` both point there:
-  Halonic never changes a machine-wide setup that belongs to another program.
+- On Windows the fix leads with WSL, since native srt is experimental and the WSL path is
+  recommended (HAL-3779 section 3). `setup-needed` and `setup-conflict` both point to "Set up the
+  sandbox with WSL", the name of the approved button, not "use Halonic inside WSL 2", which reads
+  as installing the CLI inside Linux. Halonic never changes a machine-wide setup that belongs to
+  another program.
 - The CLI has no setup command in 0.1, so a fix that needs Halonic's own setup points to
   Studio's Settings > Sandbox (HAL-3778 section 7, built in HAL-5405).
+- `not-supported` and `blocked-by-policy` offer another sandbox there, since one often works
+  where another can't (onboarding's "You can use another option instead").
+- `wsl-missing` says `wsl --install --no-distribution`: plain `wsl --install` also installs
+  Ubuntu and asks for a Linux user, which Halonic's own Linux system doesn't need.
 
 ## `runnerFence` on Windows keeps `windows`
 

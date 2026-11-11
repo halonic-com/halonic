@@ -248,7 +248,7 @@ verifies("cli.sandbox-gate", () => {
       ]);
     });
 
-    it("tells someone on Windows without the sandbox's one-time setup to use WSL 2", async () => {
+    it("tells someone on Windows without the sandbox's one-time setup to set it up with WSL", async () => {
       const workspace = await workspaceOf();
       const { machine } = machineWith({
         ok: false,
@@ -261,7 +261,7 @@ verifies("cli.sandbox-gate", () => {
       expect(exitCodeOfError(error)).toBe(9);
       expect(printed(error)).toEqual([
         "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
-        "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, or set up the sandbox in Halonic Studio, under Settings > Sandbox.",
+        "  The sandbox's one-time setup isn't done for this version of Halonic. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there.",
         "  More: https://docs.halonic.com/sandbox (setup-needed)",
       ]);
     });
