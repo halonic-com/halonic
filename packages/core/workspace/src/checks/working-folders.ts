@@ -126,7 +126,7 @@ function loadFolders(path: string): string[] {
  */
 function startParts(connector: Connector): StartPart[] {
   if (!("stdio" in connector.transport)) return [];
-  const { cwd = ".", command, args, env } = connector.transport.stdio;
+  const { cwd = ".", command, args, env = {} } = connector.transport.stdio;
   const named = pathsNamedBy({ cwd, program: command, args, env });
   return [
     { path: cwd, shown: cwd },
