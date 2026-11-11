@@ -6,6 +6,7 @@ export {
   copyWorkspace,
 } from "./copy-workspace.ts";
 export {
+  connectorToolsOf,
   definitionsOf,
   definitionsVersion,
   type HubDefinitions,

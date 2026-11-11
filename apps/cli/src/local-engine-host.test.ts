@@ -1,11 +1,26 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore, heldLockRenewEveryMs } from "@halonicjs/adapter-fs-node";
 import { RunHistory, WorkflowRuns } from "@halonicjs/app";
-import { type HttpClient, runLockFormat, type Secrets } from "@halonicjs/ports";
+import {
+  type ConnectorClient,
+  type HttpClient,
+  runLockFormat,
+  type Secrets,
+} from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -276,5 +291,81 @@ describe("the engine lock under attack", () => {
       [new Error(`The lock ${lock} was taken over by another process.`), "engine-lock"],
     ]);
     expect(await readFile(lock, "utf8")).toBe(taker);
+  });
+
+  describe("a chat turn", () => {
+    /** A mail connector whose file puts `lookup` under `approve`, and an agent that lists it. */
+    async function mailWorkspace(): Promise<void> {
+      await mkdir(join(acme, "library/connectors"), { recursive: true });
+      await writeFile(
+        join(acme, "library/connectors/mail.connector.yaml"),
+        [
+          "id: mail",
+          "name: Mail",
+          "transport:",
+          "  http:",
+          "    url: https://mail.example.com/mcp",
+          "tools:",
+          "  allow: [lookup]",
+          "  approve: [lookup]",
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+      await writeFile(
+        join(acme, "hubs/support/agents/clerk.agent.yaml"),
+        "id: clerk\nname: Clerk\nconnectors: [mail]\ninstructions: Look things up.\n",
+        "utf8",
+      );
+      await writeFile(
+        join(acme, "providers/mock.yaml"),
+        'id: mock\nname: Test model\ntype: mock\nlocal: true\noptions:\n  script:\n    clerk: ["tool:lookup {}", "Done"]\n',
+        "utf8",
+      );
+      workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+    }
+
+    it("refuses a read tool that its connector file puts under approve", async () => {
+      await mailWorkspace();
+      const calls: string[] = [];
+      const mail: ConnectorClient = {
+        id: "mail",
+        listTools: async () => [
+          {
+            name: "lookup",
+            description: "Looks a message up",
+            risk: "read",
+            parameters: { type: "object", properties: {} },
+          },
+        ],
+        callTool: async (name) => {
+          calls.push(name);
+          return "found";
+        },
+        close: async () => {},
+      };
+      const engine = await openLocalEngine({
+        workspace,
+        workspaceRoot: acme,
+        secrets,
+        http,
+        environment: profile,
+        connectors: [mail],
+        reportError: (error) => schedulerErrors.push(error),
+      });
+      opened.push(engine);
+
+      const response = await engine.executor.chatTurn({
+        hubId: "support",
+        agentId: "clerk",
+        messages: [{ role: "user", content: "Find the refund mail." }],
+        tools: [],
+      });
+
+      expect(calls).toEqual([]);
+      expect(response.refusals).toEqual([
+        expect.objectContaining({ source: "mail", name: "lookup", refused: "call" }),
+      ]);
+    });
   });
 });

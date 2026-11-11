@@ -135,11 +135,26 @@ export function runDefinitionsOf(
     workflows: hub.workflows,
     collections: hub.collections,
     knowledge: hub.knowledge,
-    // `fromEntries` defines each key, so a connector named "__proto__" stays one.
-    connectorTools: Object.fromEntries(
-      Object.entries(hub.connectors).map(([id, connector]) => [id, connector.tools]),
-    ),
+    connectorTools: connectorToolsOf(hub),
   };
+}
+
+/**
+ * The `tools` lists of the hub's connectors by id, and nothing else of their
+ * files. A run starts with them, and a chat turn reads them as the
+ * workspace has them now.
+ *
+ * @example
+ * connectorToolsOf(definitionsOf(workspace, "support"));
+ * // { mail: { allow: ["search"], approve: [] } }
+ */
+export function connectorToolsOf(
+  hub: HubDefinitions,
+): Readonly<Record<string, Connector["tools"]>> {
+  // `fromEntries` defines each key, so a connector named "__proto__" stays one.
+  return Object.fromEntries(
+    Object.entries(hub.connectors).map(([id, connector]) => [id, connector.tools]),
+  );
 }
 
 /**

@@ -5,8 +5,9 @@
 // reads the CLI's printer, argv or `process`, so it can move into a package
 // the Studio shares once the Studio starts runs.
 //
-// In 0.1 it has no Halonic tools, no connectors and no harnesses: a run whose
-// agent names a harness fails at that step with the engine's own error.
+// In 0.1 it has no Halonic tools and no harnesses (a run whose agent names a
+// harness fails at that step with the engine's own error), and it has the
+// connectors it is given, none by default.
 
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -28,8 +29,11 @@ import {
   systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
 import { LocalExecutor } from "@halonicjs/engine";
+import type { Agent } from "@halonicjs/format";
 import type {
+  ChatTurnRequest,
   Clock,
+  ConnectorClient,
   Coordination,
   HttpClient,
   IdGenerator,
@@ -44,7 +48,12 @@ import {
   workspaceFolders,
 } from "@halonicjs/profile";
 import { KindedError, randomIds, systemClock } from "@halonicjs/std";
-import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import {
+  connectorToolsOf,
+  definitionsOf,
+  type LoadedWorkspace,
+  runDefinitionsOf,
+} from "@halonicjs/workspace";
 import { workspaceModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
@@ -86,6 +95,8 @@ export interface LocalEngineInput {
    * `routines watch` gave up on and couldn't cancel (HAL-5294).
    */
   holdsTimer?(timer: ScheduledTimer): boolean;
+  /** The connected servers of the workspace's connector files; none by default. */
+  readonly connectors?: readonly ConnectorClient[];
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
   /** The time; the computer's clock by default. */
@@ -217,9 +228,14 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
   executor = new LocalExecutor({
     resolveModel: workspaceModelResolver(input),
     halonicTools: [],
-    connectors: [],
+    connectors: input.connectors ?? [],
     secrets: input.secrets,
     clock,
+    // A chat turn reads the workspace's files as a run does: its agent's file,
+    // and its connector files' `allow` and `approve` lists (HAL-5645).
+    chatAgentOf: async (request) => chatAgentOf(input.workspace, request),
+    chatConnectorToolsOf: async (request) =>
+      connectorToolsOf(definitionsOf(input.workspace, request.hubId)),
     runs: {
       store: runs,
       blobs: new FolderBlobStore(folders.blobsFolder()),
@@ -262,6 +278,14 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
       return closing;
     },
   };
+}
+
+/** The file of the agent a chat turn names, or `undefined` when the hub has none by that id. */
+function chatAgentOf(workspace: LoadedWorkspace, request: ChatTurnRequest): Agent | undefined {
+  const { agents } = definitionsOf(workspace, request.hubId);
+  return request.agentId !== undefined && Object.hasOwn(agents, request.agentId)
+    ? agents[request.agentId]
+    : undefined;
 }
 
 /**
