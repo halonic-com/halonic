@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { requirementIdPattern, verifies } from "./verifies.ts";
 
 let nestedError: unknown;
@@ -71,5 +71,46 @@ verifies("spec.verifies-counts-assertions", () => {
       expect(countOf("global expect")).toBe(3);
       expect(countOf("the test's own expect")).toBe(1);
     });
+  });
+});
+
+const vitestWaitFor = vi.waitFor;
+
+verifies("spec.verifies-counts-passing-wait-for", () => {
+  // The last test reads the tags of the two before it, so they keep their order.
+  describe("in order", { shuffle: false }, () => {
+    test("global expect in vi.waitFor that retries", async () => {
+      let attempt = 0;
+      await vi.waitFor(() => {
+        attempt += 1;
+        expect(attempt).toBe(3);
+      });
+      await vi.waitFor(async () => {
+        attempt += 1;
+        await Promise.resolve();
+        expect(attempt).toBe(5);
+      });
+    });
+
+    test("the test's own expect in vi.waitFor that retries", async ({ expect: own }) => {
+      let attempt = 0;
+      await vi.waitFor(() => {
+        attempt += 1;
+        own(attempt).toBe(2);
+      });
+    });
+
+    test("counts only the passing attempt of each vi.waitFor", ({ task }) => {
+      const countOf = (name: string): number | undefined =>
+        task.suite?.tasks.find((sibling) => sibling.name === name)?.meta.assertions;
+      expect(countOf("global expect in vi.waitFor that retries")).toBe(2);
+      expect(countOf("the test's own expect in vi.waitFor that retries")).toBe(1);
+    });
+  });
+});
+
+describe("outside verifies()", () => {
+  test("vi.waitFor is Vitest's own again", () => {
+    expect(vi.waitFor).toBe(vitestWaitFor);
   });
 });
