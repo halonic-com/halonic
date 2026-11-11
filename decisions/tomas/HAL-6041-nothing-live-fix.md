@@ -2,6 +2,7 @@
 
 - Approval: wording decided by Sofia (designer) on [HAL-6041](/HAL/issues/HAL-6041) (team decision under HAL-2282, no card); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:34dUrLi6xy8n+8J4N+PIIjw1mht/VmklgANjxb7A+1uKX9HTjcfyjxNF6nboNUoE8MJXyJpgrCNnPuSOVUKMAg==
 - Task: HAL-6041, found on HAL-6038 while reading website #153
 
 ## What changes
