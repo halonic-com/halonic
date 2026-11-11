@@ -1,6 +1,6 @@
 import { appendFile, cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -99,7 +99,7 @@ verifies("cli.commands.test.run-tests", () => {
       expect(code).toBe(exitCode.usage);
       expect(io.stderr.slice(0, 2)).toEqual([
         '✕ No tests match "refnd".',
-        "  Run halonic test --dir ./acme --list to see them all.",
+        `  Run halonic test --dir .${sep}acme --list to see them all.`,
       ]);
     });
 
