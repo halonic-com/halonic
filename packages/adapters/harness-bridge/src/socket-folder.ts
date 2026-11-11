@@ -30,9 +30,12 @@ export interface RunSocketFolder {
  *
  * It never reuses a path: the folder must not exist yet, and once made it
  * must be a real folder, not a link, owned by this user, with mode 0700.
+ * `parent` must be a real folder of this user's that nobody else can write
+ * to, or someone else could swap the run folder after the check and be
+ * handed the run's token.
  *
  * @throws KindedError `invalid_input` when `parent` isn't absolute, or the socket's path would be too long
- * @throws KindedError `unavailable` when the folder can't be created or isn't private
+ * @throws KindedError `unavailable` when the folder can't be created, or it or `parent` isn't private
  */
 export async function makeRunSocketFolder(
   parent: string,
@@ -52,6 +55,14 @@ export async function makeRunSocketFolder(
   }
   try {
     await mkdir(parent, { recursive: true, mode: privateMode });
+  } catch (cause) {
+    throw new KindedError("unavailable", "Halonic couldn't create the bridge's socket folder.", {
+      cause,
+    });
+  }
+  // An existing parent isn't changed by `mkdir`, so it is checked here.
+  await checkOwnFolder(parent, isWritableByUsAlone);
+  try {
     // Not recursive: it fails when the path already exists, so nothing is reused.
     await mkdir(folder, { mode: privateMode });
   } catch (cause) {
@@ -59,7 +70,7 @@ export async function makeRunSocketFolder(
       cause,
     });
   }
-  await checkPrivate(folder);
+  await checkOwnFolder(folder, isPrivate);
   return { folder, socketPath };
 }
 
@@ -73,19 +84,31 @@ export async function removeRunSocketFolder({ folder, socketPath }: RunSocketFol
   await rmdir(folder);
 }
 
+/** Whether only the owner may open the folder: mode 0700. */
+function isPrivate(mode: number): boolean {
+  return (mode & 0o777) === privateMode;
+}
+
+/** Whether nobody but the owner may add, remove or rename entries in the folder. */
+function isWritableByUsAlone(mode: number): boolean {
+  return (mode & 0o022) === 0;
+}
+
 /**
  * Leaves a folder that fails the check where it is: something other than
  * the bridge may have put it there, so the bridge doesn't remove it.
  *
- * @throws KindedError `unavailable` when `folder` isn't a real folder of this user's with mode 0700
+ * @throws KindedError `unavailable` when `folder` isn't a real folder of this user's whose mode passes `modeIsSafe`
  */
-async function checkPrivate(folder: string): Promise<void> {
+async function checkOwnFolder(
+  folder: string,
+  modeIsSafe: (mode: number) => boolean,
+): Promise<void> {
   const stats = await lstat(folder);
   const ownedByUs = process.getuid === undefined || stats.uid === process.getuid();
-  const isPrivate = (stats.mode & 0o777) === privateMode;
-  if (stats.isDirectory() && ownedByUs && isPrivate) return;
+  if (stats.isDirectory() && ownedByUs && modeIsSafe(stats.mode)) return;
   throw new KindedError(
     "unavailable",
-    "The bridge's socket folder isn't private to this user, so Halonic didn't use it.",
+    `The bridge's socket folder ${folder} isn't private to this user, so Halonic didn't use it.`,
   );
 }

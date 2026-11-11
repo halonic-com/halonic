@@ -55,9 +55,13 @@ export function connectRefusalOf(
   return undefined;
 }
 
-/** Whether a request target is a path, or an absolute `http:` URL whose host names the bridge. */
+/**
+ * Whether a request target is a path, or an absolute `http:` URL whose host
+ * names the bridge. A target starting with `//` names a host of its own, as a
+ * URL does, so it isn't taken as a path.
+ */
 function targetNamesBridge(target: string, hosts: ReadonlySet<string>): boolean {
-  if (target.startsWith("/")) return true;
+  if (target.startsWith("/") && !target.startsWith("//")) return true;
   if (!URL.canParse(target)) return false;
   // `URL` drops port 80 and lowers the case, as the `Host` values are written.
   const url = new URL(target);

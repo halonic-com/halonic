@@ -17,6 +17,12 @@ export function serveTunnels(
   tunnelTarget: string,
 ): void {
   server.on("connect", (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    // Node takes its own error listener off the socket before it emits
+    // `connect`. Without this one, a program that hangs up before our answer
+    // is written (EPIPE, ECONNRESET) would throw an uncaught error and take the
+    // whole agent host down. A connection the program dropped has nothing left
+    // to answer, so closing it is all there is to do.
+    socket.on("error", () => socket.destroy());
     const refusal = connectRefusalOf(request, hosts, tunnelTarget);
     if (refusal !== undefined) {
       socket.end(rawRefusal(refusal));

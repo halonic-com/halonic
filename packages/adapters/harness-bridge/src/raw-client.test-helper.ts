@@ -111,6 +111,21 @@ export function sendPipelined(to: string | NetConnectOpts, text: string): Promis
   });
 }
 
+/**
+ * Writes `text` to a new connection to the socket at `socketPath` and hangs
+ * up at once, without waiting for an answer, as a program that gives up would.
+ * Resolves once the connection is closed.
+ */
+export function sendAndHangUp(socketPath: string, text: string): Promise<void> {
+  const connection = connect(socketPath);
+  return new Promise((resolve) => {
+    connection.on("close", () => resolve());
+    // The bridge may still be writing when the connection goes; that error is expected here.
+    connection.on("error", () => undefined);
+    connection.write(text, () => connection.destroy());
+  });
+}
+
 /** One request as HTTP/1.1 text, for {@link sendPipelined}. */
 export function requestText(request: RawRequest): string {
   const body = request.body ?? "";

@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { HarnessBridgeOptions, OpenHarnessBridge } from "@halonicjs/ports";
@@ -10,6 +10,7 @@ import {
   openTunnel,
   type RawRequest,
   requestText,
+  sendAndHangUp,
   sendOver,
   sendPipelined,
   sendToSocket,
@@ -115,6 +116,23 @@ verifies("harness-bridge.socket", () => {
       expect((await lstat(taken)).isDirectory()).toBe(true);
       expect((await lstat(join(parent, "link"))).isSymbolicLink()).toBe(true);
     });
+
+    it("refuses a parent folder others can write to, or a link, and creates nothing in it", async () => {
+      const shared = join(parent, "shared");
+      await mkdir(shared);
+      await chmod(shared, 0o777);
+      const elsewhere = join(parent, "elsewhere");
+      await mkdir(elsewhere, { mode: 0o700 });
+      await symlink(elsewhere, join(parent, "linked"));
+
+      for (const folder of [shared, join(parent, "linked")]) {
+        await expect(makeRunSocketFolder(folder, "run")).rejects.toThrow(
+          "isn't private to this user",
+        );
+      }
+      expect(await readdir(shared)).toEqual([]);
+      expect(await readdir(elsewhere)).toEqual([]);
+    });
   });
 
   describe("who it serves", () => {
@@ -140,6 +158,7 @@ verifies("harness-bridge.socket", () => {
         { host: "other.example" },
         { target: "http://other.example/echo" },
         { target: `https://${name}/echo` },
+        { target: "//other.example/echo" },
         { target: `http://${name}/echo`, host: "other.example" },
       ];
       for (const overrides of wrong) {
@@ -197,6 +216,28 @@ verifies("harness-bridge.socket", () => {
         expect(answer.status, target).toBe(421);
         expect(answer.connection.readableEnded, target).toBe(true);
       }
+    });
+
+    it("stays up when a program sends a refused CONNECT and hangs up at once", async () => {
+      const { bridge, socketPath } = await open();
+      const uncaught: unknown[] = [];
+      const record = (error: unknown) => uncaught.push(error);
+      process.on("uncaughtException", record);
+      try {
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+          await sendAndHangUp(
+            socketPath,
+            "CONNECT other.example:443 HTTP/1.1\r\nhost: other.example:443\r\n\r\n",
+          );
+        }
+        // Give a late write error on the last connections a turn to surface.
+        await new Promise((resolve) => setImmediate(resolve));
+      } finally {
+        process.off("uncaughtException", record);
+      }
+
+      expect(uncaught).toEqual([]);
+      expect((await sendToSocket(socketPath, toEcho(bridge))).status).toBe(200);
     });
 
     it("answers 421 to a CONNECT elsewhere sent inside a tunnel", async () => {
