@@ -2,7 +2,7 @@ import { type RunEvent, type RunEventBody, type RunSummary, summarize } from "@h
 import type { AppendResult, RunFilter, RunSnapshot, RunStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { endInterruptedRuns, interruptedError } from "./end-interrupted-runs.ts";
+import { endInterruptedRuns, interruptedError, parentEndedError } from "./end-interrupted-runs.ts";
 
 const now = new Date("2026-11-09T14:00:00.000Z");
 const clock = { now: () => new Date(now) };
@@ -143,5 +143,70 @@ verifies("engine.end-interrupted-runs", () => {
 
     expect(await endInterruptedRuns(store, clock)).toEqual([]);
     expect(store.logs.get("run_alive")?.at(-1)?.type).toBe("transition");
+  });
+});
+
+/** A child run of `parentRunId` that waits for `approved`. */
+function waitingChild(parentRunId: string): RunEventBody[] {
+  return [
+    {
+      type: "run.started",
+      hubId: "acme",
+      workflowId: "approve",
+      input: {},
+      kind: "run",
+      definitionsVersion: "v1",
+      parent: { runId: parentRunId, state: "check", depth: 1 },
+    },
+    { type: "state.entered", state: "approve" },
+    { type: "run.waiting", state: "approve", events: ["approved"] },
+  ];
+}
+
+/** A run that waits on its child run in the state `check`. */
+const waitingParent: RunEventBody[] = [
+  started,
+  { type: "state.entered", state: "check" },
+  { type: "run.waiting", state: "check", events: [] },
+];
+
+verifies("engine.end-orphaned-child-runs", () => {
+  it("cancels a waiting child run whose parent has ended, and leaves one whose parent waits", async () => {
+    const store = new MemoryRuns();
+    store.add("run_1", [...waitingParent, { type: "run.failed", state: "check", error: "Stop." }]);
+    store.add("run_1.2", waitingChild("run_1"));
+    store.add("run_5", waitingParent);
+    store.add("run_5.2", waitingChild("run_5"));
+
+    expect(await endInterruptedRuns(store, clock)).toEqual(["run_1.2"]);
+
+    expect(store.logs.get("run_1.2")?.at(-1)).toEqual({
+      runId: "run_1.2",
+      seq: 4,
+      at: now.toISOString(),
+      type: "run.failed",
+      state: "approve",
+      error: parentEndedError,
+      reason: "cancelled",
+    });
+    expect((await store.get("run_5.2"))?.status).toBe("waiting");
+  });
+
+  it("cancels a waiting grandchild run once its parent is cancelled, whatever the list's order", async () => {
+    const store = new MemoryRuns();
+    store.add("run_1.2.2", waitingChild("run_1.2"));
+    store.add("run_1.2", waitingChild("run_1"));
+    store.add("run_1", [...waitingParent, { type: "run.failed", state: "check", error: "Stop." }]);
+
+    expect(await endInterruptedRuns(store, clock)).toEqual(["run_1.2", "run_1.2.2"]);
+    expect((await store.get("run_1.2.2"))?.reason).toBe("cancelled");
+  });
+
+  it("leaves a waiting child run whose parent has no log", async () => {
+    const store = new MemoryRuns();
+    store.add("run_1.2", waitingChild("run_1"));
+
+    expect(await endInterruptedRuns(store, clock)).toEqual([]);
+    expect((await store.get("run_1.2"))?.status).toBe("waiting");
   });
 });

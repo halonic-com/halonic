@@ -11,6 +11,7 @@ import {
 } from "../kernel/kernel-test-kit.test-helper.ts";
 import { readRun } from "../kernel/step.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
+import { appendFailed } from "./append-failed.ts";
 import { childStart, receiverOf } from "./child-runs.ts";
 import { runsOn } from "./local-runs-test-kit.test-helper.ts";
 import type { RunProposalFolders } from "./proposal-folders.ts";
@@ -193,6 +194,22 @@ verifies("engine.local-child-runs", () => {
       status: "failed",
       error: expect.stringContaining('Workflow "review" failed: The engine stopped'),
     });
+  });
+
+  it("cancels a waiting child run when the engine stopped after its parent ended", async () => {
+    const before = childRuns("approval");
+    await before.executor.start(start);
+    // The parent's end is written; the engine stops before it cancels the child.
+    await appendFailed(before.runs, "run_1", "Stop.", "error", () => "2026-11-11T12:00:00.000Z");
+
+    const setup = { workflow: onboard("approval"), workflows, blobs: before.blobs };
+    await runsOn([], before.runs, setup).executor.start({ ...start, runId: "run_9" });
+
+    expect(await before.runs.get("run_1.2")).toMatchObject({
+      status: "failed",
+      reason: "cancelled",
+    });
+    expect(await before.runs.get("run_1")).toMatchObject({ error: "Stop." });
   });
 
   it("isn't stuck when it can't set the timer that tells a parent its child was interrupted", async () => {
