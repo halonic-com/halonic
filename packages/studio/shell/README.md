@@ -563,8 +563,34 @@ so the page's `h1` is for screen readers only.
 />;
 ```
 
-Not yet: Settings joins the list when T11 adds it with its icon, and Android's back (through the
-close stack, then `goBackOnPhone`) comes next.
+Not yet: Settings joins the list when T11 adds it with its icon.
+
+### Joined, and Android's back
+
+`usePhonePlaces()` keeps the place stacks and gives what the bars need (`shell.phone-back`): the
+top bar's title and Back (only under a place's top), the bottom navigation's props (or `undefined`
+on an opened item, where it hides), and `open`, `openPlace`, `openIn` and `back`. Every move that
+changes the page takes focus to the new page's `h1`, as on the desktop.
+
+`usePhoneBackButton(enabled, closeStack, back)` handles Android's back, and the browser's when the
+Studio is served on a phone. The press arrives as a step back in the page's history, so the shell
+keeps one entry of its own on top and puts it back after each press. `pressPhoneBack` decides what
+a press does: an open modal dialog cancels first, then the close stack's first layer closes, and
+only then the app goes back. At the top of Home it lets the press through, and the Studio is left.
+
+```tsx
+const places = usePhonePlaces();
+usePhoneBackButton(presentation === "phone", shell.closeStack, places.back);
+
+<ShellFrame
+  phoneTopBar={<PhoneTopBar {...places.topBar} />}
+  phoneNavigation={
+    places.navigation && <BottomNavigation places={shownPlaces} {...places.navigation} />
+  }
+>
+  {places.page.location.key === "more" ? <MorePage onOpen={places.openPlace} /> : page}
+</ShellFrame>;
+```
 
 ## Item page
 

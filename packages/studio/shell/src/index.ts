@@ -139,6 +139,7 @@ export {
   type BottomNavigationProps,
 } from "./phone/bottom-navigation.tsx";
 export { MorePage, type MorePageProps, moreRows } from "./phone/more-page.tsx";
+export { type PhoneBackResult, pressPhoneBack, usePhoneBackButton } from "./phone/phone-back.ts";
 export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
   currentPhonePage,
@@ -158,6 +159,7 @@ export {
   startPlaceStacks,
   switchPhonePlace,
 } from "./phone/place-stacks.ts";
+export { type PhonePlaces, usePhonePlaces } from "./phone/use-phone-places.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
   CommandContribution,
