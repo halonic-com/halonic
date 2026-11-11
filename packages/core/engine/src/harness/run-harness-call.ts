@@ -11,6 +11,7 @@ import { type DeniedPathGroup, type RunEventBody, sandboxOpenedView } from "@hal
 import type { Agent } from "@halonicjs/format";
 import {
   addHarnessEnvironment,
+  type BridgeRecorder,
   type Harness,
   type HarnessEvent,
   type HarnessRun,
@@ -19,7 +20,8 @@ import {
   type Sandbox,
   type SandboxSession,
 } from "@halonicjs/ports";
-import type { StopSignal } from "@halonicjs/std";
+import { KindedError, type StopSignal, StopSource } from "@halonicjs/std";
+import { BudgetReachedError, type CallBudget, noCallBudget } from "../budget/call-budget.ts";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
@@ -76,6 +78,8 @@ export interface HarnessCall {
   readonly agent: Agent;
   /** Where the agent writes workspace files, as {@link HarnessAgent.filesFolder} says. */
   readonly filesFolder: string | null;
+  /** What the call's model calls keep to; a call without it has no budget. */
+  readonly budget?: CallBudget;
 }
 
 /**
@@ -93,6 +97,10 @@ export interface HarnessCall {
  * id, which never leaves the call. While the run waits for the person,
  * nothing times out, as for the built-in loop.
  *
+ * Before each model call the bridge passes on, the call asks its `budget`.
+ * Once the budget is reached, the bridge refuses that model call and the
+ * call stops the harness run, as it does for `stop`, and throws.
+ *
  * Each access the sandbox refuses is counted, and written to the log as
  * `sandbox.blocked`: a target's first block at once, and its total when the
  * session has closed, unless the engine stopped the call.
@@ -106,6 +114,7 @@ export interface HarnessCall {
  *   `harness-start-failed` when the host has no such harness, or it fails or sends nothing
  *   before its first event is due
  * @throws `stop.reason` when `stop` is told to stop
+ * @throws BudgetReachedError when the budget refused a model call
  * @throws SandboxNotReadyError when the sandbox check fails, before anything starts
  * @throws when the run doesn't take an approval it asks for, or it ends without a result
  */
@@ -137,9 +146,67 @@ export async function runHarnessCall(
   if (!check.ok) {
     throw new SandboxNotReadyError(check.reason, effect.agent);
   }
-  const started: StartedCall = { options, call, harness, log, approvals, limits, stop };
-  // The bridge's events (model and tool calls) carry no state.
-  const recorder = { record: (event: RunEventBody) => log.append(event) };
+  // What stops the call from here on: the engine, or the budget once it refused a model call.
+  const callStop = new StopSource();
+  const stopWithEngine = stop.onStop(() => {
+    if (stop.reason !== undefined) callStop.stop(stop.reason);
+  });
+  try {
+    const started: StartedCall = {
+      options,
+      call,
+      harness,
+      log,
+      approvals,
+      limits,
+      stop: callStop.signal,
+    };
+    const recorder = bridgeRecorderOf(log, call.budget ?? noCallBudget, callStop);
+    return await runInBridge(started, agent, placement, sandbox, recorder, stop);
+  } finally {
+    stopWithEngine();
+  }
+}
+
+/**
+ * Where the bridge writes its events (model and tool calls), which carry no
+ * state. It records a model call's `llm.request` before the call goes out,
+ * so a call the budget refuses is never logged, and stops the harness call.
+ */
+function bridgeRecorderOf(log: HarnessEventLog, budget: CallBudget, callStop: StopSource) {
+  return {
+    record: async (event: RunEventBody) => {
+      if (event.type === "llm.request") {
+        try {
+          await budget.keep();
+        } catch (error) {
+          if (error instanceof KindedError && error.kind === "limit_reached") {
+            callStop.stop(new BudgetReachedError(error.message));
+          }
+          throw error;
+        }
+      }
+      await log.append(event);
+    },
+  };
+}
+
+/**
+ * Opens the call's bridge and sandbox, runs the harness in them, and closes
+ * everything again, as {@link runHarnessCall} says.
+ *
+ * @param engineStop - the engine's own stop, without the budget's: only that one keeps the totals of blocked accesses out of the log
+ */
+async function runInBridge(
+  started: StartedCall,
+  agent: HarnessAgent,
+  placement: PlacementAnswer,
+  sandbox: Sandbox,
+  recorder: BridgeRecorder,
+  engineStop: StopSignal,
+): Promise<unknown> {
+  const { options, call, harness, log, stop } = started;
+  const { effect } = call;
   const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
     late.close(),
   );
@@ -183,7 +250,7 @@ export async function runHarnessCall(
       await session.close();
       stopReports();
       // The step ends here. When the engine stopped it, the run records nothing more.
-      if (!stop.stopped) await blocked.writeTotals();
+      if (!engineStop.stopped) await blocked.writeTotals();
     }
   } finally {
     await bridge.close();
@@ -199,6 +266,7 @@ interface StartedCall {
   readonly log: HarnessEventLog;
   readonly approvals: HarnessApprovals;
   readonly limits: StartLimits;
+  /** The engine's stop, or the budget's once it refused a model call. */
   readonly stop: StopSignal;
 }
 

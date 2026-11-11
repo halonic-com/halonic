@@ -121,6 +121,38 @@ verifies("cli.run-live-version", () => {
   );
 
   it(
+    "says uncommitted changes to a definition file aren't used, before the heading",
+    async () => {
+      await makeLive();
+      await saveNewName("Saved reply");
+
+      const { stdout } = await run();
+
+      expect(stdout.slice(0, 2)).toEqual([
+        "Your uncommitted changes aren't used. Commit them to run them.",
+        expect.stringContaining("Running Support reply in acme"),
+      ]);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "says nothing about changes when nothing changed, or only a file no kind places",
+    async () => {
+      await makeLive();
+      const untouched = await run();
+      await writeFile(join(acme, "examples/refund-question.json"), '{"mail": "Changed"}');
+      await writeFile(join(acme, "notes.txt"), "Not committed.");
+      const inputOnly = await run();
+
+      for (const { stdout } of [untouched, inputOnly]) {
+        expect(stdout.join("\n")).not.toContain("uncommitted");
+      }
+    },
+    gitTimeout,
+  );
+
+  it(
     "loads the live version with its commit as the workspace's version",
     async () => {
       const commit = await makeLive();
@@ -130,6 +162,7 @@ verifies("cli.run-live-version", () => {
       expect(await loadRunWorkspace(dirOf(), history)).toMatchObject({
         found: "loaded",
         workspace: { version: commit },
+        changesNotLive: true,
       });
     },
     gitTimeout,

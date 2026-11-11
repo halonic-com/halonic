@@ -83,7 +83,7 @@ export { HomeSectionEmpty } from "./home/home-section.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
 export { ItemPage, type ItemPageChat, type ItemPageProps } from "./item-page/item-page.tsx";
 export { useRememberedView } from "./item-page/remembered-view.ts";
-export { useCopyDetails } from "./page/copy-details.ts";
+export { copyDetails, useCopyDetails } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
 export {
   PageErrorBoundary,
@@ -341,6 +341,13 @@ export {
   type ToolbarSaveNoteProps,
 } from "./toolbar/toolbar-save-note.tsx";
 export { loadView, type ViewRef } from "./view.ts";
+export {
+  cantOpenProblem,
+  cantOpenWords,
+  type WelcomeOpenProblem,
+} from "./welcome/cant-open.ts";
+export { Welcome, type WelcomeProps } from "./welcome/welcome.tsx";
+export { WelcomeWindow, type WelcomeWindowProps } from "./welcome/welcome-window.tsx";
 export {
   type MountedStudioWindow,
   mountStudioWindow,

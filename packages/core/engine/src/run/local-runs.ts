@@ -120,6 +120,8 @@ export class LocalRuns {
     this.#feed = new RunFeed(options.store);
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
     this.#folders = new RunsProposalFolders(options.store, options.proposalFolders);
+    this.#builtEffects = builtEffectsOf(options);
+    this.#budget = budgetCheckOf(options);
     this.#harnessCalls = new LocalHarnessCalls({
       store: options.store,
       blobs: options.blobs,
@@ -127,10 +129,9 @@ export class LocalRuns {
       folders: this.#folders,
       startDeadlines: this.#startDeadlines,
       clock,
+      ...(this.#budget === undefined ? {} : { budget: this.#budget }),
       record: (runId, input) => this.#record(runId, input),
     });
-    this.#builtEffects = builtEffectsOf(options);
-    this.#budget = budgetCheckOf(options);
     this.#connectorCalls = new RunConnectorCallRunner({
       store: options.store,
       deadlines: this.#startDeadlines,

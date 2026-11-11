@@ -76,6 +76,35 @@ verifies("shell.home-sections", () => {
     expect(sections.map((section) => section.querySelector("h2")?.textContent)).toEqual(names);
   });
 
+  it("shows a card's count after its heading, follows it, and shows none at zero", async () => {
+    let waiting = 1;
+    const listeners = new Set<() => void>();
+    const container = await renderHome([
+      {
+        ...card("needs-you", "Inbox rows"),
+        signal: () => ({ mark: "count", value: waiting, spoken: `${waiting} waiting` }),
+        subscribeSignal: (_context, listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+    ]);
+    const heard = () => {
+      const heading = container.querySelector("h2")?.cloneNode(true) as Element;
+      for (const hidden of heading.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+      return heading.textContent;
+    };
+    expect(heard()).toBe("Needs you, 1 waiting");
+    expect(listeners.size).toBe(1);
+
+    waiting = 0;
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+    expect(heard()).toBe("Needs you");
+    expect(listeners.size).toBe(1);
+  });
+
   it("draws each card's view with the context of the feature that added it", async () => {
     const container = await renderHome([card("needs-you", "Inbox rows")]);
     expect(container.querySelector("section p")?.textContent).toBe(

@@ -1,4 +1,4 @@
-import { useToastStore, useWriteClipboard } from "@halonicjs/studio-kit";
+import { copyText, type ToastStore, useToastStore, useWriteClipboard } from "@halonicjs/studio-kit";
 import { useCallback } from "react";
 import { copyDetailsWords } from "../errors/copy-details-words.ts";
 
@@ -14,14 +14,27 @@ export function useCopyDetails(): (details: string) => Promise<void> {
   const writeClipboard = useWriteClipboard();
   const toasts = useToastStore();
   return useCallback(
-    async (details: string) => {
-      const copied = await writeClipboard(details);
-      toasts?.show(
-        copied
-          ? { tone: "info", title: copyDetailsWords.copied }
-          : { tone: "danger", title: copyDetailsWords.couldNotCopy },
-      );
-    },
+    (details: string) => copyDetails(details, toasts, writeClipboard),
     [writeClipboard, toasts],
+  );
+}
+
+/**
+ * Copy details outside a React tree, such as a toast's action: as {@link useCopyDetails}, with the
+ * toasts and the clipboard passed in.
+ *
+ * @example
+ * await copyDetails(detailsOf("Can't open /work/old", error), shell.toasts);
+ */
+export async function copyDetails(
+  details: string,
+  toasts: ToastStore | null,
+  writeClipboard: (text: string) => Promise<boolean> = copyText,
+): Promise<void> {
+  const copied = await writeClipboard(details);
+  toasts?.show(
+    copied
+      ? { tone: "info", title: copyDetailsWords.copied }
+      : { tone: "danger", title: copyDetailsWords.couldNotCopy },
   );
 }

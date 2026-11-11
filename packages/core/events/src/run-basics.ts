@@ -171,6 +171,13 @@ export interface ToolNoun {
 }
 
 /**
+ * What one call of a sending tool did to its noun, in the past tense, as
+ * its integration's sheet says: "saved" reads "Saved 1 file". A closed list,
+ * so a sheet can't word a send as something milder; absent means "sent".
+ */
+export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved";
+
+/**
  * Why a run failed. Each reason has its own requirement in `requirements/`.
  *
  * - `budget`: a run or monthly budget stopped it.

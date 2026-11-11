@@ -1,0 +1,21 @@
+[package]
+name = "halonic-workspace-files"
+description = "The workspace's files for the Studio shell's fs_* commands: the DefinitionStore's paths checked as the port checks them, never through a link."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The digest `expected` names (`sha256:` and the hex SHA-256 of the text).
+# The same exception as in trust-store and profile (Liam, HAL-2652): the
+# shell already builds it, and it is pinned to the version in Cargo.lock, so
+# this adds no crate for cargo-deny to audit.
+sha2 = { version = "=0.10.9", default-features = false }
+
+[dev-dependencies]
+serde_json = { version = "1", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

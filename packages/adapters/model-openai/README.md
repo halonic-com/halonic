@@ -65,7 +65,7 @@ for await (const event of model.stream({
 
 ## Replies
 
-A reply gives the first choice's text, tool calls and usage, plus the reasoning a server sends as `reasoning_content` or `reasoning`. A server that says `stop` on an answer with tool calls still finishes with `tool_calls`. Tool call arguments that aren't a JSON object come back as `{ input: <the text> }`.
+A reply gives the first choice's text, tool calls and usage, plus the reasoning a server sends as `reasoning_content` or `reasoning`. A server that says `stop` on an answer with tool calls still finishes with `tool_calls`. Tool call arguments that aren't a JSON object come back as `{ input: <the text> }`. Prompt tokens read from the cache (`prompt_tokens_details.cached_tokens`) come back as `cacheReadTokens` and are left out of `inputTokens`, as the harness bridge counts them.
 
 ## Errors
 

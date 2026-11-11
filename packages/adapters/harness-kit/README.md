@@ -3,7 +3,8 @@
 What the harness adapters (`harness-claude-code`, `harness-codex`) share, so
 each keeps the `Harness` port's promises in the same way: reading a
 program's output line by line, the filter every event passes through on
-its way out, and writing the agent's settings folder.
+its way out, writing the agent's settings folder and building each harness
+call's sandbox profile.
 
 - **Layer:** adapters
 - **Owner:** owen
@@ -62,6 +63,23 @@ refuses a folder that is the profile or overlaps Halonic's data folder. A data
 folder that doesn't exist yet is compared at its real place, so a program at
 the target of a junction that leads into where it will be is refused too.
 Tests pass a `RealPath` that resolves links without a disk.
+
+## The sandbox profile
+
+`HarnessProfiles` is the engine's `HarnessProfileBuilder`. For each harness
+call it builds the sandbox profile from the trusted workspace, Halonic's data
+folder and the person's home folder (`HarnessProfilesOptions`), on real paths,
+with every link resolved. The working folder is the one the agent's file
+names, or `files/agents/<agent id>`, inside the run's proposal folder when it
+has one and inside the workspace otherwise; one that leaves that folder or is
+in `.git`, a definition folder or Halonic's data is refused. The definition
+files at the top are read-only. The profile denies the person's SSH keys,
+cloud sign-ins, browser data, password stores and own Claude Code and Codex
+settings, and all of Halonic's data folder except the run's own folders
+(requirement `harness-kit.harness-profile`). The host gives the agent's file
+(`HarnessAgentFile`), the temp folder and the settings folder through
+`HarnessProfileHost`. `profileDiskOnThisComputer` is the `ProfileDisk` it uses
+by default.
 
 ## Example
 

@@ -1,0 +1,174 @@
+#!/bin/sh
+# Halonic's runtime updater inside the distro (HAL-3779 section 5.3, HAL-5396).
+# Studio runs it as root from Windows:
+#   %SystemRoot%\System32\wsl.exe -d halonic -u root --exec /usr/local/sbin/halonic-runtime <command> ...
+#
+#   install <version> <sha256>  reads the runtime archive (.tar.gz) on standard input,
+#                               puts it in /opt/halonic/<version> and points `current` at it
+#   rollback                    points `current` back at the version before it
+#   security-update             Debian security updates, at most once a day
+#   status                      prints {"current":...,"previous":...}
+#
+# It runs as root, so it never runs or sources a file the halonic user can write
+# (security review W2): it lives in the image, root-owned, reads nothing from
+# /home, and every runtime folder it makes is root-owned and not writable by
+# anyone else. Studio checks the archive's SHA-256 on Windows before it sends it;
+# this script checks it again before unpacking.
+#
+# Exit codes: 0 done, 2 wrong use, 3 busy (a sandbox session runs), 4 checksum
+# differs, 5 archive refused, 6 nothing to roll back to, 1 anything else.
+set -eu
+umask 022
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+LC_ALL=C
+export PATH LC_ALL
+cd /
+
+slot=/opt/halonic
+state=/var/lib/halonic
+
+fail() { echo "halonic-runtime: $2" >&2; exit "$1"; }
+
+need_root() {
+  [ "$(id -u)" -eq 0 ] || fail 2 "run as root"
+  [ -d "$slot" ] && [ ! -L "$slot" ] || fail 1 "$slot is missing"
+  [ "$(stat -c %u "$slot")" -eq 0 ] || fail 1 "$slot is not owned by root"
+  chmod 0755 "$slot"
+  install -d -o root -g root -m 0700 "$state"
+}
+
+# The version a link in the slot points at, or nothing.
+target() {
+  if [ -L "$slot/$1" ]; then readlink "$slot/$1"; fi
+}
+
+# Points the link $1 at $2 with one rename, so `current` is never missing.
+point() {
+  ln -sfn "$2" "$slot/.$1.new"
+  mv -T "$slot/.$1.new" "$slot/$1"
+}
+
+valid_version() {
+  case "$1" in
+    "" | current | previous | .* | *[!0-9A-Za-z.+_-]*) return 1 ;;
+  esac
+  [ "${#1}" -le 64 ]
+}
+
+# Updates while a sandboxed agent runs could change tools under it.
+not_busy() {
+  for comm in /proc/[0-9]*/comm; do
+    if [ "$(cat "$comm" 2>/dev/null)" = bwrap ]; then fail 3 "a sandbox session is running"; fi
+  done
+}
+
+do_install() {
+  [ $# -eq 2 ] || fail 2 "usage: install <version> <sha256>"
+  version="$1"
+  sum="$2"
+  valid_version "$version" || fail 2 "not a version: $version"
+  case "$sum" in
+    *[!0-9a-f]*) fail 2 "not a SHA-256: $sum" ;;
+  esac
+  [ "${#sum}" -eq 64 ] || fail 2 "not a SHA-256: $sum"
+  [ "$(target current)" != "$version" ] || fail 2 "$version is already the current version"
+
+  work="$(mktemp -d "$state/install.XXXXXX")"
+  trap 'rm -rf "$work"' EXIT
+  cat > "$work/runtime.tar.gz"
+  echo "$sum  $work/runtime.tar.gz" | sha256sum --check --status ||
+    fail 4 "the archive's SHA-256 differs from $sum"
+
+  unpack="$slot/.incoming-$version"
+  rm -rf "$unpack"
+  mkdir -m 0755 "$unpack"
+  # As root, without the archive's owners: every file becomes root's.
+  if ! tar -xzf "$work/runtime.tar.gz" -C "$unpack" --no-same-owner --no-overwrite-dir; then
+    rm -rf "$unpack"
+    fail 5 "the archive could not be unpacked"
+  fi
+  if [ -n "$(find "$unpack" \( -type b -o -type c -o -type p -o -type s \) -print -quit)" ]; then
+    rm -rf "$unpack"
+    fail 5 "the archive holds device, pipe or socket files"
+  fi
+  if [ ! -d "$unpack/bin" ] || [ -L "$unpack/bin" ]; then
+    rm -rf "$unpack"
+    fail 5 "the archive has no bin folder"
+  fi
+  chown -R -h root:root "$unpack"
+  find "$unpack" ! -type l -exec chmod go-w,ug-s {} +
+
+  rm -rf "${slot:?}/$version"
+  mv -T "$unpack" "$slot/$version"
+  old="$(target current)"
+  point current "$version"
+  if [ -n "$old" ]; then point previous "$old"; fi
+  prune
+  echo "installed $version"
+}
+
+do_rollback() {
+  [ $# -eq 0 ] || fail 2 "usage: rollback"
+  now="$(target current)"
+  before="$(target previous)"
+  [ -n "$before" ] && [ -d "$slot/$before" ] || fail 6 "there is no earlier version"
+  point current "$before"
+  if [ -n "$now" ]; then point previous "$now"; fi
+  echo "rolled back to $before"
+}
+
+# Keeps the current and previous versions, removes every other one.
+prune() {
+  keep_current="$(target current)"
+  keep_previous="$(target previous)"
+  for folder in "$slot"/* "$slot"/.incoming-*; do
+    [ -d "$folder" ] && [ ! -L "$folder" ] || continue
+    name="${folder##*/}"
+    if [ "$name" != "$keep_current" ] && [ "$name" != "$keep_previous" ]; then rm -rf "$folder"; fi
+  done
+}
+
+do_security_update() {
+  [ $# -eq 0 ] || fail 2 "usage: security-update"
+  stamp="$state/security-update.stamp"
+  if [ -n "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
+    echo "skipped: security updates ran in the last 24 hours"
+    return 0
+  fi
+  not_busy
+  lists="$(mktemp -d "$state/apt.XXXXXX")"
+  trap 'rm -rf "$lists"' EXIT
+  mkdir "$lists/partial"
+  suite="$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release)"
+  cat > "$lists/security.sources" <<SRC
+Types: deb
+URIs: https://security.debian.org/debian-security
+Suites: $suite-security
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+SRC
+  # Debian's security archive only, whatever else is in sources.list.d.
+  set -- -o Dir::Etc::SourceList=/dev/null -o "Dir::Etc::SourceParts=$lists" \
+    -o "Dir::State::Lists=$lists" -o Dpkg::Options::=--force-confold
+  DEBIAN_FRONTEND=noninteractive
+  export DEBIAN_FRONTEND
+  apt-get "$@" -q update
+  apt-get "$@" -q -y upgrade
+  apt-get clean
+  touch "$stamp"
+  echo "security updates installed"
+}
+
+do_status() {
+  printf '{"current":"%s","previous":"%s"}\n' "$(target current)" "$(target previous)"
+}
+
+command="${1:-}"
+[ $# -eq 0 ] || shift
+case "$command" in
+  install) need_root; do_install "$@" ;;
+  rollback) need_root; do_rollback "$@" ;;
+  security-update) need_root; do_security_update "$@" ;;
+  status) do_status ;;
+  *) fail 2 "usage: halonic-runtime install <version> <sha256> | rollback | security-update | status" ;;
+esac

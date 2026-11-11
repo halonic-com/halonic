@@ -1,5 +1,11 @@
 import { keyShortcutsLabel } from "../../src/kbd/kbd.tsx";
-import { dividerClasses, type MenuEntry, menuClasses } from "../../src/menu/menu.tsx";
+import {
+  dividerClasses,
+  isMenuItem,
+  type MenuEntry,
+  menuClasses,
+  menuHeadingClasses,
+} from "../../src/menu/menu.tsx";
 import { MenuRow } from "../../src/menu/menu-row.tsx";
 import { FlowIcon } from "../icons.tsx";
 import type { PartSection } from "../state-table.tsx";
@@ -29,10 +35,18 @@ function StaticMenu({
 }) {
   return (
     <div role="menu" aria-label="Static copy of a menu" className={`${menuClasses} w-56`}>
-      {entries.map((entry, position) =>
-        entry === "divider" ? (
-          <hr key={`divider-${position}`} className={dividerClasses} />
-        ) : (
+      {entries.map((entry, position) => {
+        if (entry === "divider") {
+          return <hr key={`divider-${position}`} className={dividerClasses} />;
+        }
+        if (!isMenuItem(entry)) {
+          return (
+            <div key={`heading-${position}`} role="presentation" className={menuHeadingClasses}>
+              {entry.heading}
+            </div>
+          );
+        }
+        return (
           <MenuRow
             key={entry.id}
             item={entry}
@@ -42,8 +56,8 @@ function StaticMenu({
             onBlur={nothing}
             onPick={nothing}
           />
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -83,6 +97,20 @@ export const menuSection: PartSection = {
               unavailable: { reason: "Finish getting updates first." },
               onSelect: nothing,
             },
+          ]}
+        />
+      ),
+    },
+    {
+      name: "Heading and detail",
+      copies: () => (
+        <StaticMenu
+          entries={[
+            { heading: "Recent" },
+            { id: "acme", label: "Acme", detail: "~/Work/acme", checked: true, onSelect: nothing },
+            { id: "beta", label: "Beta", detail: "~/Work/beta", checked: false, onSelect: nothing },
+            "divider",
+            rename,
           ]}
         />
       ),

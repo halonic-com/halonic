@@ -14,6 +14,7 @@ import type {
   ToolNoun,
   ToolOutcome,
   ToolRisk,
+  ToolVerb,
   Usage,
 } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
@@ -236,6 +237,8 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.tool-result-risk (HAL-2831).
       risk?: ToolRisk;
       noun?: ToolNoun;
+      // Added after the reference by events.tool-result-risk (HAL-2868).
+      verb?: ToolVerb;
       // Added after the reference by events.tool-result-blob (HAL-1533).
       resultBlob?: StoredBlob;
     }>();

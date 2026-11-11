@@ -1,0 +1,186 @@
+{
+  "paths": [
+    {
+      "path": "hubs/a/hub.yaml",
+      "verdict": "public"
+    },
+    {
+      "path": "agents/review.yaml",
+      "verdict": "public"
+    },
+    {
+      "path": ".environment/a.yaml",
+      "verdict": "public"
+    },
+    {
+      "path": ".gitignore",
+      "verdict": "public"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "verdict": "public"
+    },
+    {
+      "path": ".studios/a.yaml",
+      "verdict": "public"
+    },
+    {
+      "path": "notes~/a.md",
+      "verdict": "public"
+    },
+    {
+      "path": "a~b1.yaml",
+      "verdict": "public"
+    },
+    {
+      "path": "caf\u00e9/\ud83d\ude00.yaml",
+      "verdict": "public"
+    },
+    {
+      "path": "hubs/../x.yaml",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "/etc/passwd",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "a\\b.yaml",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "a\u0000b",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "a//b",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "./a",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "a/.",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "a/",
+      "verdict": "unsafe"
+    },
+    {
+      "path": "..",
+      "verdict": "unsafe"
+    },
+    {
+      "path": ".git",
+      "verdict": "private"
+    },
+    {
+      "path": ".git/config",
+      "verdict": "private"
+    },
+    {
+      "path": "hubs/.GIT/config",
+      "verdict": "private"
+    },
+    {
+      "path": "hubs/.git. /config",
+      "verdict": "private"
+    },
+    {
+      "path": ".g\u200cit/config",
+      "verdict": "private"
+    },
+    {
+      "path": ".\ufeffgit/HEAD",
+      "verdict": "private"
+    },
+    {
+      "path": ".studio/trust.json",
+      "verdict": "private"
+    },
+    {
+      "path": ".\u017ftudio/trust.json",
+      "verdict": "private"
+    },
+    {
+      "path": ".STUDIO.../x",
+      "verdict": "private"
+    },
+    {
+      "path": ".env",
+      "verdict": "private"
+    },
+    {
+      "path": ".env.local",
+      "verdict": "private"
+    },
+    {
+      "path": "hubs/.Env.Production",
+      "verdict": "private"
+    },
+    {
+      "path": ".envrc",
+      "verdict": "private"
+    },
+    {
+      "path": ".ENVRC ",
+      "verdict": "private"
+    },
+    {
+      "path": "GIT~1/config",
+      "verdict": "private"
+    },
+    {
+      "path": "hubs/PROGRA~2",
+      "verdict": "private"
+    },
+    {
+      "path": ".env::$DATA",
+      "verdict": "private"
+    },
+    {
+      "path": "hubs/a.yaml:secret",
+      "verdict": "private"
+    }
+  ],
+  "segments": [
+    {
+      "segment": ".Halonic",
+      "opened": ".halonic"
+    },
+    {
+      "segment": ".halonic. .",
+      "opened": ".halonic"
+    },
+    {
+      "segment": ".hal\u200conic",
+      "opened": ".halonic"
+    },
+    {
+      "segment": ".\u017ftudio",
+      "opened": ".studio"
+    },
+    {
+      "segment": "\ufb06uff",
+      "opened": "stuff"
+    },
+    {
+      "segment": "\u0131ndex",
+      "opened": "index"
+    },
+    {
+      "segment": "Stra\u00dfe",
+      "opened": "strasse"
+    },
+    {
+      "segment": "review",
+      "opened": "review"
+    }
+  ]
+}

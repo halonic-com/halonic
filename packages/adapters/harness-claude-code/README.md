@@ -39,8 +39,9 @@ session's own temp folder) and `HALONIC_RUN_TOKEN`. It throws when the profile
 has no settings folder. The run token is removed from every event and error.
 
 Studio runs harnesses in the agent host but computes the environment on its
-own page, so the function is also its own entry point,
-`@halonicjs/adapter-harness-claude-code/environment`. That entry imports only
+own page, so `claudeCodeEnvironment`, its `ClaudeCodeFolders` type and
+`claudeCodeRunTokenVariable` (`HALONIC_RUN_TOKEN`) are also their own entry
+point, `@halonicjs/adapter-harness-claude-code/environment`. That entry imports only
 `@halonicjs/ports`, never Node, so a page can load it.
 
 `claudeCodeSignIn` (also `harness.signIn`) is Claude Code's own sign-in for

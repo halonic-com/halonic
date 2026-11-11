@@ -16,7 +16,9 @@ another), one record per key and timer id, with its set time, failure count
 and next try. The package holds no file code: the store decides where the
 records go. Every change is written to the store before the scheduler's
 memory changes, one change at a time, so a restart never loses a timer a
-caller was told is set. A delivery that a restart cuts off is delivered
+caller was told is set. The one exception: when the store fails to record a
+delivery, the timer's retry wait is kept in memory only, and the store keeps
+the earlier try. A delivery that a restart cuts off is delivered
 again, which the port allows (timers can arrive twice).
 
 The clock and the timer function are passed in, so tests run on fake time.

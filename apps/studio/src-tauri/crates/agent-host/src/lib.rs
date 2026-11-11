@@ -7,6 +7,7 @@
 
 mod handshake;
 mod routes;
+mod wsl;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -16,6 +17,10 @@ use std::time::{Duration, Instant};
 
 pub use handshake::{Handshake, read_handshake};
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
+pub use wsl::{
+    DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, RUNTIME_UPDATER, RuntimeStep, WslError,
+    distro_host_command, file_sha256, install_runtime, run_runtime_step, runtime_command, wsl_exe,
+};
 
 /// The host's executable name, without the `.exe` Windows adds.
 pub const EXECUTABLE_NAME: &str = "halonic-agent-host";
@@ -119,11 +124,7 @@ impl AgentHost {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            command.creation_flags(CREATE_NO_WINDOW);
-        }
+        without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
             AgentHostError::Start(format!("The agent host could not start: {error}."))
         })?;
@@ -233,6 +234,17 @@ fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<FirstLi
         let _ = std::io::copy(&mut reader, &mut std::io::sink());
     });
     receiver
+}
+
+/// On Windows, starts `command` without a console window of its own.
+fn without_console_window(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    #[cfg(not(windows))]
+    let _ = command;
 }
 
 fn kill(child: &mut Child) {

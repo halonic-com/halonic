@@ -28,7 +28,8 @@ export interface ApprovalCardProps {
    */
   readonly subagentName: string | null;
   readonly decisions: Pick<InboxDecisions, "approve" | "reject" | "askForChanges">;
-  readonly onOpenRun: (runId: string) => void;
+  /** Opens the run; without it the card has no **Open run**. */
+  readonly onOpenRun?: ((runId: string) => void) | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
@@ -131,7 +132,9 @@ export function ApprovalCard(props: ApprovalCardProps) {
           title={title}
           heading={heading}
           since={state.kind === "decided" ? null : waitingSince(new Date(item.since), now())}
-          onOpenRun={() => props.onOpenRun(item.runId)}
+          onOpenRun={
+            props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
+          }
         />
         {state.kind === "decided" ? <DecidedAction item={item} /> : <Action item={item} />}
       </div>

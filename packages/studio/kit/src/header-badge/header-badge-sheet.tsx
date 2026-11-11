@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
-import type { MenuEntry, MenuItem } from "../menu/menu.tsx";
+import { isMenuItem, type MenuEntry, type MenuItem } from "../menu/menu.tsx";
 import { SidePanel } from "../side-panel/side-panel.tsx";
 
 /** Props of the kit's `HeaderBadgeSheet`. */
@@ -36,7 +36,7 @@ const rowClasses = [
  * <HeaderBadgeSheet title="Sample · test model" description={costLine} entries={sampleEntries} onClose={back} />
  */
 export function HeaderBadgeSheet({ title, description, entries, onClose }: HeaderBadgeSheetProps) {
-  const items = entries.filter((entry): entry is MenuItem => entry !== "divider");
+  const items = entries.filter(isMenuItem);
   const ordered = [
     ...items.filter((item) => item.danger !== true),
     ...items.filter((item) => item.danger === true),

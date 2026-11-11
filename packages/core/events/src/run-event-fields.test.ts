@@ -8,6 +8,7 @@ import type {
   ToolNoun,
   ToolOutcome,
   ToolRisk,
+  ToolVerb,
 } from "./run-basics.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
 import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
@@ -36,7 +37,12 @@ verifies("events.tool-result-risk", () => {
     expectTypeOf<EventOf<"tool.result">["noun"]>().toEqualTypeOf<ToolNoun | undefined>();
   });
 
-  typeTest("takes a sending call with its noun, and a call without either field", () => {
+  typeTest("says what one call did to its noun: sent, saved, created, updated or moved", () => {
+    expectTypeOf<ToolVerb>().toEqualTypeOf<"sent" | "saved" | "created" | "updated" | "moved">();
+    expectTypeOf<EventOf<"tool.result">["verb"]>().toEqualTypeOf<ToolVerb | undefined>();
+  });
+
+  typeTest("takes a sending call with its noun and verb, and a call without them", () => {
     expectTypeOf({
       type: "tool.result",
       agent: "writer",
@@ -45,6 +51,16 @@ verifies("events.tool-result-risk", () => {
       outcome: "ok",
       risk: "send",
       noun: { one: "email", many: "emails" },
+    } as const).toExtend<EventOf<"tool.result">>();
+    expectTypeOf({
+      type: "tool.result",
+      agent: "writer",
+      tool: "drive_create_file",
+      result: "saved",
+      outcome: "ok",
+      risk: "send",
+      noun: { one: "file", many: "files" },
+      verb: "saved",
     } as const).toExtend<EventOf<"tool.result">>();
     expectTypeOf({
       type: "tool.result",

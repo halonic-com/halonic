@@ -11,7 +11,7 @@ import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git
 import { type LiveVersionReader, liveVersionOf, runSourceFor } from "@halonicjs/app";
 import type { Vcs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { type LoadedWorkspace, loadWorkspace, placeOf } from "@halonicjs/workspace";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
@@ -32,12 +32,21 @@ export interface OpenedHistory {
 
 /**
  * The workspace a run reads:
- * - `loaded`: the live version, or the saved files with history off;
+ * - `loaded`: the live version, or the saved files with history off.
+ *   `changesNotLive` says a definition file differs from the live version
+ *   and the run won't use it (HAL-6007): changed, added, removed or renamed
+ *   since the last commit, staged or not. Other files, such as a
+ *   connector's script, aren't counted: a live run's programs read them as
+ *   saved;
  * - `nothing-live`: the workspace has history but no version yet, so there
  *   is nothing to run.
  */
 export type RunWorkspace =
-  | { readonly found: "loaded"; readonly workspace: LoadedWorkspace }
+  | {
+      readonly found: "loaded";
+      readonly workspace: LoadedWorkspace;
+      readonly changesNotLive: boolean;
+    }
   | { readonly found: "nothing-live" };
 
 /**
@@ -78,7 +87,10 @@ export async function loadRunWorkspace(
       return { found: "nothing-live" };
     }
     // Loaded before the history closes: a loaded workspace holds its files' contents.
-    return { found: "loaded", workspace: await loadWorkspace(picked.source) };
+    const workspace = await loadWorkspace(picked.source);
+    const changesNotLive =
+      vcs !== null && picked.reads === "live-version" && (await definitionsChanged(vcs));
+    return { found: "loaded", workspace, changesNotLive };
   } finally {
     await history?.close();
   }
@@ -98,6 +110,15 @@ export async function loadSendWorkspace(
 ): Promise<LoadedWorkspace> {
   const run = await loadRunWorkspace(dir, openHistory, sandboxMessages.nothingSent());
   return run.found === "loaded" ? run.workspace : await loadWorkspace(dir.store);
+}
+
+/** Whether a definition file has changes that aren't committed, so aren't in the live version. */
+async function definitionsChanged(vcs: WorkspaceHistory): Promise<boolean> {
+  const { changes } = await vcs.status();
+  return changes.some(
+    ({ path, from }) =>
+      placeOf(path) !== undefined || (from !== undefined && placeOf(from) !== undefined),
+  );
 }
 
 /** Opens the history with `openHistory`, or refuses the run when it can't. */

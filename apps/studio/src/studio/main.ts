@@ -5,4 +5,4 @@ const element = document.getElementById("root");
 if (element === null) {
   throw new Error("The Studio page needs its #root element (studio.html).");
 }
-startStudio({ element, window, userAgent: navigator.userAgent });
+startStudio({ element, window, userAgent: navigator.userAgent, storage: localStorage });

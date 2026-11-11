@@ -154,8 +154,10 @@ Three optional agent fields say how an agent runs in another program
   `.claude`, `.vscode`: tools run hooks and tasks from there), `hubs`, a kind's folder
   or a kind file in the root fail, in any case and in fullwidth forms. Names
   Windows would read as another name (a trailing `.` or space, `:`, `GIT~1`)
-  fail too.
-  The sandbox profile builder also resolves symlinks before it uses the path.
+  fail too. `workingFolderProblem(path)` gives the reason a path fails, or
+  `null`, and `PROTECTED_TOP_NAMES` lists the top names a working folder can't
+  start with. The sandbox profile builder (`@halonicjs/adapter-harness-kit`)
+  checks the path again with them after it resolves symlinks.
 - `allowedSites`: at most 50 host names or `*.` plus a domain of two or more
   labels. Addresses in any notation and local names (`.local`, `.internal`,
   `.arpa` and the like) fail. `asciiAllowedSites(sites)` gives the stored form: lowercase,

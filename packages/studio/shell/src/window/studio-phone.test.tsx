@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defineFeature } from "../feature.ts";
+import type { HomeCardProps } from "../home/home-page.tsx";
 import { serviceKey } from "../service-key.ts";
 import { createShell } from "../shell.ts";
 import { currentLocation } from "../tabs/tab-set.ts";
@@ -92,6 +93,27 @@ const brokenAgentsFeature = defineFeature({
   },
 });
 
+/** Home's Needs you, as a button that opens the Inbox through its context. */
+function OpenInboxCard({ context }: HomeCardProps) {
+  return (
+    <button type="button" className="open-inbox" onClick={() => context.openPlace?.("inbox")}>
+      Open the Inbox
+    </button>
+  );
+}
+
+const openerFeature = defineFeature({
+  id: "opener",
+  title: "Opener",
+  register(studio) {
+    studio.home.addCard({
+      id: "needs-you",
+      view: "OpenInboxCard",
+      load: async () => ({ OpenInboxCard }),
+    });
+  },
+});
+
 function renderPhoneWindow(features = [inboxFeature, agentsFeature]) {
   const shell = createShell({ features, timers: new FakeTimers() });
   const services = new MapTarget();
@@ -158,6 +180,19 @@ verifies("shell.studio-phone", () => {
 
     expect(title()).toBe("Inbox");
     expect(container.querySelector("main h1.inbox-view")?.textContent).toBe("Inbox");
+  });
+
+  it("lets a view open a place as its list, as tapping it does", async () => {
+    const { container, title } = renderPhoneWindow([inboxFeature, agentsFeature, openerFeature]);
+    await settle();
+
+    act(() => container.querySelector<HTMLButtonElement>("button.open-inbox")?.click());
+    await settle();
+
+    expect(title()).toBe("Inbox");
+    expect(container.querySelector("main h1.inbox-view")?.textContent).toBe("Inbox");
+    const inbox = container.querySelector('nav[aria-label="Places"] a[aria-label^="Inbox"]');
+    expect(inbox?.getAttribute("aria-current")).toBe("page");
   });
 
   it("opens a place under More with Back, and Back goes back to the More page", async () => {

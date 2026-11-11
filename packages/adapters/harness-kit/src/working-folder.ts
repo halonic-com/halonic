@@ -32,7 +32,9 @@ export const profileDiskOnThisComputer: ProfileDisk = {
 /**
  * The real place of an agent's working folder in `root`, made when it isn't
  * there yet. Each missing part is made inside the real place of the part
- * before it, so a link on the way can't send the new folders anywhere else.
+ * before it, and only once that part's real place passed the same checks as
+ * the working folder, so a link on the way can't send the new folders
+ * anywhere else, nor into `.git` or a definition folder.
  *
  * @param root - the real path of the folder the agent works in: the workspace, or its run's proposal folder
  * @param workingFolder - the folder as the agent's file names it, relative to `root`, with `/`
@@ -55,20 +57,38 @@ export async function realWorkingFolder(
   let current = root;
   for (const part of workingFolder.split("/")) {
     current = await realOrMade(join(current, part), workingFolder, disk);
-    if (!isInsideOrSame(current, root)) {
-      throw new Error(
-        `The agent's working folder '${workingFolder}' leads out of ${root}, to ${current}.`,
-      );
-    }
+    // Checked before the next part is made, so a link on the way into `.git`
+    // or a definition folder is refused before anything is made in there.
+    refuseRealPlace(root, current, workingFolder, { atEnd: false });
+  }
+  refuseRealPlace(root, current, workingFolder, { atEnd: true });
+  return current;
+}
+
+/**
+ * Throws when `current`, the real place of a part of the working folder,
+ * isn't one the agent may write in or on the way to. On the way, a part may
+ * be `root` itself (a link back to it); the working folder at the end may not.
+ */
+function refuseRealPlace(
+  root: string,
+  current: string,
+  workingFolder: string,
+  { atEnd }: { readonly atEnd: boolean },
+): void {
+  if (!isInsideOrSame(current, root)) {
+    throw new Error(
+      `The agent's working folder '${workingFolder}' leads out of ${root}, to ${current}.`,
+    );
   }
   const way = relative(root, current).split(sep).join("/");
+  if (way === "" && !atEnd) return;
   const realProblem = way === "" ? `it is ${root} itself` : workingFolderProblem(way);
   if (realProblem !== null) {
     throw new Error(
       `The agent's working folder '${workingFolder}' is really ${current}, where it can't work: ${realProblem}`,
     );
   }
-  return current;
 }
 
 /**

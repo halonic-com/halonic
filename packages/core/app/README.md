@@ -82,7 +82,7 @@ Device-wide settings such as the theme live outside any scope.
 | `readToolListing` | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
 | `readListedTool` | one listed tool checked and rebuilt, with its texts marked untrusted, or why it is refused; for a caller that keeps the server's names | `ports.untrusted-tool-listings` |
 | `toolForModel` | the tool definition the model gets, with every text a server wrote inside the untrusted fence | `ports.untrusted-tool-listings` |
-| `listedToolsNotice` | the fixed system prompt line saying an outside server wrote the fenced tool texts, when a listed tool is offered | `ports.untrusted-tool-listings` |
+| `fencedTextsNotice` | the fixed system prompt line saying who wrote the fenced texts (tool descriptions, tool results, passages), when a model request holds any | `ports.untrusted-tool-listings` |
 | `checkToolCall` | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs | `ports.untrusted-tool-listings` |
 | `checkOutsideRunCall` | a connector call from chat runs only if the lists allow it, sending is on for `send`, and `checkToolCall` wouldn't ask | `app.outside-run-connector-gate` |
 | `refusalStatusLine` | one line of plain text for a refusal in the integration status, never for the model | `ports.untrusted-tool-listings` |

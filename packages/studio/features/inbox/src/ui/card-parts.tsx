@@ -45,7 +45,8 @@ interface CardHeaderProps {
   readonly heading: RefObject<HTMLHeadingElement | null>;
   /** "Waiting since 10:42 (1 min)", or `null` once decided: the card no longer waits. */
   readonly since: string | null;
-  readonly onOpenRun: () => void;
+  /** Opens the run; leave it out while the Studio has no run page, and the button isn't shown. */
+  readonly onOpenRun?: (() => void) | undefined;
 }
 
 /**
@@ -78,9 +79,11 @@ export function CardHeader({ titleId, title, heading, since, onOpenRun }: CardHe
         </h2>
         {since === null ? null : <p className="text-small text-fg-muted">{since}</p>}
       </div>
-      <Button size="sm" onClick={onOpenRun}>
-        Open run
-      </Button>
+      {onOpenRun === undefined ? null : (
+        <Button size="sm" onClick={onOpenRun}>
+          Open run
+        </Button>
+      )}
     </header>
   );
 }

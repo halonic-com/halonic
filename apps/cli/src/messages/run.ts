@@ -56,6 +56,12 @@ export const runMessages = defineMessages("run", {
   /** Its fix. The CLI has no make-live command yet; once it has, this names it. */
   nothingLiveFix: () => phrase`Make the workspace live in the Studio, then run again.`,
   /**
+   * A dimmed line before the run's heading when a definition file has
+   * uncommitted changes: the run starts the live version, the latest commit,
+   * without them (HAL-6007).
+   */
+  changesNotLive: () => [dim("Your uncommitted changes aren't used. Commit them to run them.")],
+  /**
    * The reason after "Couldn't run support-reply:" when the workspace is a
    * git folder but git can't start, so the live version can't be read:
    * `unavailable`, exit 9. As the sandbox's refusal, it ends with "Nothing

@@ -61,6 +61,16 @@ optional and come with a requirement.
   `others` blocks and no named site isn't listed. Data only; a screen
   words it and shows each host with `siteName` from std (requirement
   `blocked-sites`).
+- `tool.result.risk`, `noun` and `verb`: what the tool can do (`ToolRisk`),
+  what one call of a sending tool sends (`ToolNoun`), and what the call did to
+  it (`ToolVerb`: `sent`, `saved`, `created`, `updated` or `moved`; a missing
+  verb means `sent`). All three are copied from the tool's sheet when the call
+  ends (requirement `tool-result-risk`).
+- `sendsOf(events)`: what a run sent (`RunSends`). The calls that sent and the
+  calls that may have sent, each as one `SendGroup` per verb with one
+  `SendCount` per noun, both in call order, and `madeToolCalls`: a run "sent
+  nothing" only when it made no tool call, and starting a child run counts as
+  one (requirement `summary-sends`).
 
 ## Example
 

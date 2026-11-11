@@ -39,11 +39,12 @@ try {
   path.
 - **Token.** Any request without the run's exact token gets a 401, whatever its
   path. A path the bridge doesn't serve gets a 404.
-- **Pass-through.** The bridge sends the request's bytes to the provider and
+- **Pass-through.** The bridge sends the request's bytes to the provider,
+  without following a redirect, so the key only goes to the route's address, and
   copies the status, the allowed reply headers and the body back as they
   arrive, error replies included. Streams reach the program event by event.
-  A provider that can't be reached or is too slow to start gets a 503 of kind
-  `unavailable`.
+  A provider that can't be reached, answers with a redirect or is too slow to
+  start gets a 503 of kind `unavailable`.
 - **Anthropic.** Only the `accept`, `anthropic-beta`, `anthropic-version` and
   `content-type` headers go on, with the agent's own key as `x-api-key` in
   place of the program's. The bridge removes `web_search_*` and `web_fetch_*`

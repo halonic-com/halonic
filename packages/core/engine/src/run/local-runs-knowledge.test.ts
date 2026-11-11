@@ -130,10 +130,13 @@ verifies("engine.knowledge-auto", () => {
       knowledgeOptions: options,
     });
 
-    const prompt = model.requests[0]?.messages[0]?.content ?? "";
+    // The fenced passages give the request the system line about fenced texts, in front.
+    const [notice, task] = model.requests[0]?.messages ?? [];
+    const prompt = task?.content ?? "";
     expect(handbook.queries).toHaveLength(1);
     expect(handbook.queries[0]?.query).toBe(prompt.split("\n\n")[0]);
     expect(prompt).toContain(fenceUntrusted("Refund within 30 days"));
+    expect(notice?.content).toContain("passages from outside sources");
   });
 
   it("searches nothing before the first call for a source in `tools` mode", async () => {

@@ -52,6 +52,7 @@ export {
   type WriteClipboard,
 } from "./copy-button/clipboard.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
+export { copyText } from "./copy-button/copy-text.ts";
 export { Dialog } from "./dialog/dialog.tsx";
 export type {
   ConfirmingDialogProps,
@@ -79,7 +80,11 @@ export {
   type EmptyStateProps,
   type EmptyStateTone,
 } from "./empty-state/empty-state.tsx";
-export { ExternalLink, type ExternalLinkProps } from "./external-link/external-link.tsx";
+export {
+  ExternalLink,
+  type ExternalLinkProps,
+  inlineLinkClasses,
+} from "./external-link/external-link.tsx";
 export {
   type ExternalAddress,
   type OpenExternal,
@@ -177,8 +182,10 @@ export {
   type ContextMenuTarget,
 } from "./menu/context-menu.tsx";
 export {
+  isMenuItem,
   Menu,
   type MenuEntry,
+  type MenuHeading,
   type MenuItem,
   type MenuProps,
   type MenuTriggerProps,
