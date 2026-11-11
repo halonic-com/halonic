@@ -70,9 +70,14 @@ must be stopped with exactly one block, or answered without stopping, and never 
   besides the integration's folder. The build fails if that file would import anything but Node's
   own modules. esbuild does the build and never ships.
 
-Not done yet: starting through `sandbox-host` on the confirmed path without the fence. Whether a
-runner may start at all, and fenced or not, is decided before `startRunner` by the start gate in
-`core/app`.
+- **Starting it without the fence:** `startRunner` also takes the launcher's `Sandbox`
+  (`sandbox-host`) for the path the user confirmed without the fence. The start is the same:
+  the untrusted profile, Node with `--permission` reading only the runner and the integration's
+  folder, and a fresh nonce. Node's permission model is then the only layer, so `fence` is
+  `{ state: "off" }`, never `fenced` (requirement `integration-runner.start-without-fence`).
+
+Whether a runner may start at all, and fenced or not, is decided before `startRunner` by the start
+gate in `core/app`.
 
 ## Example
 
@@ -102,5 +107,5 @@ const runner = await startRunner({
   secrets,
   onBlocked,
 });
-runner.fence; // { state: "fenced" }
+runner.fence; // { state: "fenced" }, or { state: "off" } through sandbox-host
 ```
