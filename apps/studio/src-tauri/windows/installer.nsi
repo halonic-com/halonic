@@ -1196,7 +1196,7 @@ Function PageInstall
   ${NSD_CreateButton} 80% 9u 20% 14u "C&hange…"
   Pop $0
   ${NSD_OnClick} $0 PageInstallChange
-  ${NSD_CreateLabel} 0 26u 100% 10u "Installs for you only. No administrator rights needed."
+  ${NSD_CreateLabel} 0 26u 100% 10u "Installs for you only. Administrator rights are needed only for the sandbox step."
   Pop $0
   ${NSD_CreateLabel} 0 38u 100% 10u ""
   Pop $FolderErrorLabel
