@@ -136,8 +136,8 @@ Three optional agent fields say how an agent runs in another program
   the format**: add its value to `AgentHarness` with a requirement.
 - `workingFolder`: the one workspace folder the agent writes to;
   `defaultWorkingFolder(id)` gives `files/agents/<id>`. Paths that leave the
-  workspace or point into a top folder starting with `.` (`.git`, `.claude`,
-  `.vscode`: tools run hooks and tasks from there), `hubs`, a kind's folder
+  workspace or go through a folder starting with `.` at any depth (`.git`,
+  `.claude`, `.vscode`: tools run hooks and tasks from there), `hubs`, a kind's folder
   or a kind file in the root fail, in any case and in fullwidth forms. Names
   Windows would read as another name (a trailing `.` or space, `:`, `GIT~1`)
   fail too.

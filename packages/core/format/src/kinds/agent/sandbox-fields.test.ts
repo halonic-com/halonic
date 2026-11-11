@@ -69,11 +69,10 @@ verifies("format.agent-sandbox-fields", () => {
       "files/agents/writer",
       "out",
       "notes/2026",
-      "files/.gitkeep-dir",
       "files/models.yaml-notes",
       "Bücher/2026",
       "files/~draft",
-      "files/.notes",
+      "files/agents/notes.d",
     ])("accepts %s", (path) => {
       expect(workingFolderProblem(path)).toBeNull();
     });
@@ -134,8 +133,20 @@ verifies("format.agent-sandbox-fields", () => {
       ["files/x：s", "a fullwidth ':'"],
       ["files/．．/..", "fullwidth dots that leave the workspace"],
       ["GIT～１/hooks", "a fullwidth 8.3 short name"],
+      ["vendor/lib/.git/hooks", "a nested clone's hooks"],
+      ["vendor/lib/.git", "a nested clone's git folder"],
+      ["vendor/lib/.GIT/hooks", "a nested git folder in capitals"],
+      ["vendor/lib/．git/hooks", "a nested git folder with a fullwidth dot"],
+      ["sites/blog/.claude/commands", "a nested Claude Code folder"],
+      ["sites/blog/.codex", "a nested Codex folder"],
+      ["sites/blog/.vscode", "a nested editor folder"],
+      ["files/.notes", "a dot-folder further down"],
     ])("refuses %s (%s)", (path) => {
       expect(workingFolderProblem(path)).not.toBeNull();
+    });
+
+    it("names the dot-folder it refuses, as written", () => {
+      expect(workingFolderProblem("vendor/Lib/.Git/hooks")).toContain("'vendor/Lib/.Git'");
     });
 
     it("protects the folder of every file kind, and the file of a kind in the root", () => {

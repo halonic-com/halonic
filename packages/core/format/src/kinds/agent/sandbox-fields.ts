@@ -56,12 +56,14 @@ export function defaultWorkingFolder(agentId: string): string {
  * Why a working folder can't be used, or `null` when it can. It must be a
  * path relative to the workspace with `/` between its parts, that stays in
  * the workspace and doesn't point into a {@link PROTECTED_TOP_NAMES} entry
- * or a top folder whose name starts with `.`: tools such as git, Claude
- * Code, Codex and editors read hooks, commands and tasks from those
+ * or, at any depth, a folder whose name starts with `.`: tools such as git,
+ * Claude Code, Codex and editors read hooks, commands and tasks from those
  * (`.git`, `.claude`, `.codex`, `.vscode`), and would run them outside the
- * sandbox. Parts that Windows or macOS would read as another name are refused
- * too, in fullwidth forms as well (see {@link relativePathProblem}). Symlinks
- * are resolved later, when the sandbox profile is built.
+ * sandbox. Any depth, because a nested clone such as `vendor/lib` has a
+ * `.git` of its own (HAL-5951). Parts that Windows or macOS would read as
+ * another name are refused too, in fullwidth forms as well (see
+ * {@link relativePathProblem}). Symlinks are resolved later, when the
+ * sandbox profile is built.
  *
  * @param path - the `workingFolder` value
  * @returns a message, or `null`
@@ -69,12 +71,14 @@ export function defaultWorkingFolder(agentId: string): string {
 export function workingFolderProblem(path: string): string | null {
   const pathProblem = relativePathProblem(path, { root: "the workspace", part: "folder name" });
   if (pathProblem !== null) return pathProblem;
-  const shown = path.split("/")[0] ?? "";
-  const top = foldName(path).split("/")[0] ?? "";
-  if (PROTECTED_TOP_NAMES.includes(top)) {
-    return `The agent can't write in '${shown}': it holds definitions or Halonic's own data`;
+  const shownParts = path.split("/");
+  const parts = foldName(path).split("/");
+  if (PROTECTED_TOP_NAMES.includes(parts[0] ?? "")) {
+    return `The agent can't write in '${shownParts[0]}': it holds definitions or Halonic's own data`;
   }
-  if (top.startsWith(".")) {
+  const dotPart = parts.findIndex((part) => part.startsWith("."));
+  if (dotPart !== -1) {
+    const shown = shownParts.slice(0, dotPart + 1).join("/");
     return `The agent can't write in '${shown}': tools read settings and hooks from folders that start with '.'`;
   }
   return null;
