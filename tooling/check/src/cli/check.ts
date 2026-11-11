@@ -26,16 +26,27 @@ import { dcoRange } from "../rules/dco.ts";
  * test-results/requirements.md. The personal-terms guard has its own
  * command, `pnpm check:leaks`, because CI runs it with a secret.
  */
-function main(argv: readonly string[]): number {
+function parseArguments(
+  argv: readonly string[],
+): { selected: string[]; listsRoot?: string } | undefined {
   const listsAt = argv.indexOf("--lists-from");
   const listsRoot = listsAt === -1 ? undefined : argv[listsAt + 1];
   if (listsAt !== -1 && (listsRoot === undefined || listsRoot.startsWith("-"))) {
     console.error("check: --lists-from needs a folder.");
-    return 2;
+    return undefined;
   }
   const selected = argv.filter(
     (argument, index) => !argument.startsWith("-") && !(listsAt !== -1 && index === listsAt + 1),
   );
+  return listsRoot === undefined ? { selected } : { selected, listsRoot };
+}
+
+function main(argv: readonly string[]): number {
+  const parsed = parseArguments(argv);
+  if (parsed === undefined) {
+    return 2;
+  }
+  const { selected, listsRoot } = parsed;
   const unknown = selected.filter((name) => !Object.hasOwn(rules, name));
   if (unknown.length > 0) {
     console.error(`Unknown rule: ${unknown.join(", ")}. Rules: ${Object.keys(rules).join(", ")}.`);
