@@ -1,6 +1,6 @@
 # @halonicjs/adapter-agent-host-client
 
-The engine's `Sandbox` and `Harness` as stand-ins that call the agent host (`apps/agent-host`), which runs the real ones. In Studio the engine runs in the page, which has no Node, so the sandbox, the bridge and the harnesses run in the host instead. Integrations, secrets and approvals stay in Studio.
+The engine's `Sandbox`, bridge host and `Harness` as stand-ins that call the agent host (`apps/agent-host`), which runs the real ones. In Studio the engine runs in the page, which has no Node, so the sandbox, the bridge and the harnesses run in the host instead. Integrations, secrets and approvals stay in Studio.
 
 - **Layer:** adapters
 - **Owner:** owen
@@ -14,6 +14,10 @@ The stand-ins call the host through an `AgentHostTransport`. It names a route fr
 ## The sandbox
 
 `AgentHostSandbox.connect(transport)` reads the host's capabilities once, because the port answers them without waiting. `check` and `open` call the host. An `AgentHostSession` has the host's id for it (`hostId`) and its fence proof. Its blocked accesses come from the host's stream and go to its listeners until it closes. It can't start a program itself: its programs start in the host, through a harness the host runs. Closing it twice closes it once, and a session the host already closed at its time limit counts as closed.
+
+## The bridge
+
+`AgentHostBridges` is the engine's bridge host. `open(agent, recorder)` opens the agent's bridge in the host, next to the sandbox whose program calls it, with the providers and prices Studio gives for that agent (`servicesFor`). The engine gets the bridge's url and token; `idOf(bridge)` gives the host's id for it, which a harness run names. The recorder, tools, approvals and keys stay in Studio: the host calls them over the bridge's stream, and the stand-in answers each call with `POST /v1/bridge/answer`, side by side, so a quick call doesn't wait behind an approval. A `cancel` aborts that call's signal. An answer over 1 MiB in UTF-8 isn't sent: the call gets an error instead, also when the host answers 413, so it never waits for an answer that can't arrive (HAL-4730). Closing asks the host to close the bridge and waits until it has recorded its last events.
 
 ## The harnesses
 

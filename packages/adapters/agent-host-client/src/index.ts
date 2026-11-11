@@ -1,3 +1,12 @@
+export type { BridgeCallServices } from "./bridge-calls.ts";
+export {
+  AgentHostBridges,
+  type AgentHostBridgesOptions,
+  type BridgeAgent,
+  type BridgeServices,
+  bridgeAnswerLimitBytes,
+  fitsAnswerLimit,
+} from "./bridges.ts";
 export {
   AgentHostHarness,
   type AgentHostHarnessOptions,
