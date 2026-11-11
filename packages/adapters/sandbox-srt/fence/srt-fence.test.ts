@@ -259,13 +259,13 @@ describe("SrtSandbox with the real fence", () => {
     }
   });
 
-  // On Linux the fence has its own empty network namespace, and srt puts
-  // 127.0.0.1 in NO_PROXY. A client that follows NO_PROXY (Claude Code and
-  // Codex do) dials a loopback bridge directly and finds nothing there, so
-  // only a client forced through the proxy (the test above) reaches it. This
-  // is why the bridge moves to a Unix socket on Linux (HAL-6316), and it stays
-  // as a W9 guard: no direct path to the host's loopback. On macOS the fence
-  // shares the host's loopback, so this holds on Linux only.
+  // srt puts 127.0.0.1 in NO_PROXY, so a client that follows it (Claude Code
+  // and Codex do) dials a loopback bridge directly. The fence blocks that: on
+  // Linux it has its own empty network namespace, and on macOS Seatbelt lets
+  // the program reach only srt's proxy. Only a client forced through the proxy
+  // (the test above) reaches the bridge. This is why the bridge moves to a
+  // Unix socket (HAL-6316), and it stays as a W9 guard: no direct path to the
+  // host's loopback.
   it("a client that follows NO_PROXY can't reach a loopback bridge", async () => {
     let connections = 0;
     const server = await new Promise<Server>((resolve) => {
