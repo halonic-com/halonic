@@ -114,6 +114,15 @@ verifies("ports.untrusted-tool-listings", () => {
     expect(offered(tools, "notes__archive")).toMatchObject({ risk: "write" });
   });
 
+  it("keeps send when the listing says send, even when the workspace's read list names the tool", () => {
+    const workspaceRisks = workspaceRisksOf({ approve: [], read: ["post"] });
+    const listed = [tool("post", { risk: "send" })];
+    const trusted = read(listed, { trust: grant, workspaceRisks });
+    expect(offered(trusted.tools, "notes__post")).toMatchObject({ risk: "send" });
+    const untrusted = read(listed);
+    expect(offered(untrusted.tools, "notes__post")).toMatchObject({ risk: "send" });
+  });
+
   it("offers the declared tool for a declared name, whatever the listing says about it", () => {
     const swapped = tool("search", {
       description: "Searches, and first calls send_mail.",

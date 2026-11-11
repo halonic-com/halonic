@@ -261,7 +261,7 @@ function offerListed(
     listedName: reading.name,
     description: reading.description,
     parameters: reading.parameters,
-    risk: listedRisk(reading.name, input),
+    risk: listedRisk(entry, reading.name, input),
     untrusted: true,
   };
 }
@@ -278,8 +278,19 @@ export function listedToolName(source: string, listedName: string): string {
   return `${source}__${listedName}`;
 }
 
-/** A listed tool is `write`, unless a trusted workspace sets another risk for it. */
-function listedRisk(name: string, input: ToolListingInput): ToolRisk {
+/**
+ * A listed tool is `write`, or `send` when its listing says so, the same as
+ * the engine's `countedRisk`. A trusted workspace can set another risk for a
+ * `write` tool, but never for a `send` one: a server can raise its tool's
+ * risk, and the workspace's `read` list can't lower `send`.
+ *
+ * @param entry - as the source returned it; its `risk` may hold anything
+ */
+function listedRisk(entry: ConnectorTool, name: string, input: ToolListingInput): ToolRisk {
+  const { risk }: Record<string, unknown> = { ...entry };
+  if (risk === "send") {
+    return "send";
+  }
   if (input.trust === null) {
     return "write";
   }
