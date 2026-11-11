@@ -91,7 +91,7 @@ export async function runWorkflow(
   const dir = await openWorkspaceDir(input, context);
   const workspaceName = printable(dir.name);
   const typedDir = givenDir(input, dir);
-  const workspace = await liveWorkspace(dir, setup.history);
+  const { workspace, changesNotLive } = await liveWorkspace(dir, setup.history);
   const harness = await runHarnessOf(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),
@@ -113,7 +113,10 @@ export async function runWorkflow(
     throw error;
   }
   // Before the run's heading, and again first in the result, as print-ahead lines are.
-  const warnings: Phrase[] = engine.unsandboxed.map(unsandboxedWarning);
+  const warnings: Phrase[] = [
+    ...(changesNotLive ? [runMessages.changesNotLive().phrase] : []),
+    ...engine.unsandboxed.map(unsandboxedWarning),
+  ];
   for (const line of warnings) context.printAhead(line);
   // One clock for the lines printed while the run goes and the result that repeats them.
   const clock = setup.clock();
@@ -255,19 +258,19 @@ function noWorkflow(workspace: LoadedWorkspace, typed: string, name: string): Ow
 
 /**
  * The workspace the run starts: the live version, or the saved files with
- * history off.
+ * history off, and whether saved definition changes aren't in it.
  *
  * @throws OwnLineError `conflict` when nothing is live yet
  */
 async function liveWorkspace(
   dir: OpenWorkspaceDir,
   history: OpenWorkspaceHistory | undefined,
-): Promise<LoadedWorkspace> {
+): Promise<{ workspace: LoadedWorkspace; changesNotLive: boolean }> {
   const run = await loadRunWorkspace(dir, history);
   if (run.found === "nothing-live") {
     throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
   }
-  return run.workspace;
+  return run;
 }
 
 /** The one argument, the workflow as typed; else the usage error with the usage line. */
