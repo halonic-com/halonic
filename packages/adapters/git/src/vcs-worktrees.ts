@@ -116,13 +116,27 @@ export class GitWorktrees {
     try {
       await onCopy(["read-tree", version]);
       await onCopy(["add", "--all", "--", "."]);
-      const changed = parseNameStatus(await onCopy([...diffArgs, "--name-status", version]));
-      const patches = splitPatches(await onCopy([...diffArgs, version]), changed);
-      const diffs: VcsFileDiff[] = [];
-      changed.forEach(({ path, status }, at) => {
-        if (!isPrivateWorkspacePath(path))
-          diffs.push({ path, status, diff: patches[at] as string });
-      });
+      // Only public paths go to the diff, so a private file's content never
+      // comes out of git into this process.
+      const changed = parseNameStatus(await onCopy([...diffArgs, "--name-status", version])).filter(
+        ({ path }) => !isPrivateWorkspacePath(path),
+      );
+      const patches = (
+        await inPathBatches(
+          changed.map(({ path }) => path),
+          async (batch) => {
+            const paths = new Set(batch);
+            const inBatch = changed.filter(({ path }) => paths.has(path));
+            const output = await onCopy([...diffArgs, version, "--", ...batch]);
+            return splitPatches(output, inBatch);
+          },
+        )
+      ).flat();
+      const diffs: VcsFileDiff[] = changed.map(({ path, status }, at) => ({
+        path,
+        status,
+        diff: patches[at] as string,
+      }));
       // By UTF-16 code unit, whatever the locale, as the memory adapter and
       // `listAt` sort paths. Git's own order is by UTF-8 byte, which only
       // differs for a path mixing characters beyond U+FFFF with U+E000-U+FFFF.

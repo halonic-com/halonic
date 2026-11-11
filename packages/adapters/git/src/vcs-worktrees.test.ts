@@ -175,6 +175,16 @@ verifies("git.diff-between", () => {
       }
     });
 
+    it("never reads a changed private file out of git", async () => {
+      const { vcs, head } = await repoWith({ "a.yaml": "1\n" });
+      const worktree = await vcs.addWorktree(head);
+      await writeFiles(worktree.path, { "a.yaml": "2\n", ".env": "KEY=placeholder\n" });
+
+      const changes = await vcs.diffBetween(head, worktree.id);
+      expect(changes.map((each) => each.path)).toEqual(["a.yaml"]);
+      expect(JSON.stringify(changes)).not.toContain("placeholder");
+    });
+
     it("leaves the worktree's own index as it was", async () => {
       const { vcs, folder, head } = await repoWith({ "a.yaml": "1\n" });
       const worktree = await vcs.addWorktree(head);
