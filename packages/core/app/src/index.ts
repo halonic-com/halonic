@@ -305,6 +305,11 @@ export {
   shortRunId,
   shortRunIdLength,
 } from "./run-history.ts";
+export {
+  type ProposalFolderRun,
+  ProposalFolders,
+  type ProposalFoldersOptions,
+} from "./run-proposal-folders.ts";
 export type { PartlyDecided, ProposedRecord, Settled } from "./run-proposal-record.ts";
 export { isProposalFinished, type SettleResult } from "./run-proposal-settle.ts";
 export {

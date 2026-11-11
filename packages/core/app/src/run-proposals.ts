@@ -357,6 +357,31 @@ export class RunProposals {
   }
 
   /**
+   * Ends the worktrees and copies of runs the engine has ended but whose
+   * folder is still open, as `end` would: the engine can stop between
+   * recording a run's end and calling `end`, and nothing calls it again.
+   * What such a run changed becomes its proposal. Call it at start, before
+   * {@link RunProposals.removeLeftovers}, which then removes what an end
+   * here couldn't finish.
+   *
+   * @param openRuns - the runs the engine hasn't ended, as for `removeLeftovers`
+   * @returns the proposals made, for `run.proposal`
+   */
+  async endLeftovers(openRuns: ReadonlySet<string>): Promise<RunProposal[]> {
+    const proposals: RunProposal[] = [];
+    for (const runId of await this.records.running()) {
+      if (openRuns.has(runId)) {
+        continue;
+      }
+      const proposal = await this.end(runId);
+      if (proposal !== null) {
+        proposals.push(proposal);
+      }
+    }
+    return proposals;
+  }
+
+  /**
    * Removes what runs left that the engine has ended, from a crash or an
    * `end` that couldn't finish: their worktrees or copies, records and
    * proposal refs, every worktree no open run records, and every copy no
