@@ -2,7 +2,6 @@
 
 - Approval: [HAL-2868](/HAL/issues/HAL-2868), for [HAL-2829](/HAL/issues/HAL-2829), from Sofia's wording call on [HAL-2848](/HAL/issues/HAL-2848) (a team decision); the package owner (Liam) approves this note in review on [HAL-6320](/HAL/issues/HAL-6320)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o3M/HBbYybBvaPvStn3VKF80+KosqkHaT7L6pxC3jCIo/zkPszhmZ2WxY7wTrQj5FZwZR0jEVqJeBzJT2nYXAA==
 - Task: HAL-2868, part 4 of 4; the guard findings on [HAL-6387](/HAL/issues/HAL-6387)
 
 ## What changes
