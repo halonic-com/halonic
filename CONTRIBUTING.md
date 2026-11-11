@@ -57,7 +57,11 @@ reads it itself, and parallel runs may write to it at once). `pnpm turbo:prune`
 deletes the entries unused for 7 days. `pnpm check` runs
 only the repo checks; the rules are listed in [docs/guides/checks.md](docs/guides/checks.md).
 
-`pnpm install` also installs a git hook that refuses secrets, private keys,
+`pnpm install` also writes the generated files the CLI and the Studio need
+(`src/generated/`, gitignored), so a fresh clone runs both straight away. CI
+checks this: its first job runs the CLI right after a fresh install. If a
+filtered install (`pnpm install --filter ...`) leaves them out, it says so and
+you run `pnpm codegen`. `pnpm install` also installs a git hook that refuses secrets, private keys,
 `.env` files, absolute local paths and personal terms before they leave your
 machine. See [docs/guides/leak-guard.md](docs/guides/leak-guard.md) for what it
 checks, how to add your own local deny-terms file and how to allow a false
