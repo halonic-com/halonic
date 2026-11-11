@@ -74,8 +74,7 @@ verifies("kit.picker-sheet", () => {
   it("puts Close at the top left and the field's label as the title, which takes focus", () => {
     const { container } = render(picker());
     const bar = container.querySelector("header") as HTMLElement;
-    expect(bar.className).toContain("min-h-phone-bar");
-    expect(bar.className).toContain("pt-safe");
+    expect(bar.className).toContain("phone-top-bar");
     const close = bar.firstElementChild as HTMLButtonElement;
     expect(close.getAttribute("aria-label")).toBe("Close");
     const title = bar.querySelector("h2") as HTMLElement;

@@ -112,7 +112,7 @@ interface SheetBarProps {
  */
 function SheetBar({ titleId, title, text, onClose, closeUnavailable, actions }: SheetBarProps) {
   return (
-    <header className="flex min-h-phone-bar shrink-0 items-center gap-1 border-b border-border px-1 pt-safe">
+    <header className="flex phone-top-bar shrink-0 items-center gap-1 border-b border-border px-1">
       {onClose === undefined ? null : (
         <Button
           variant="ghost"

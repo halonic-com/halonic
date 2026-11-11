@@ -140,8 +140,7 @@ verifies("kit.side-panel", () => {
       );
       const { aside, header, title, footer } = parts(container);
       expect(aside.className).not.toContain("border-s");
-      expect(header?.className).toContain("min-h-phone-bar");
-      expect(header?.className).toContain("pt-safe");
+      expect(header?.className).toContain("phone-top-bar");
       const back = header?.firstElementChild;
       expect(back?.getAttribute("aria-label")).toBe("Back");
       expect(title.className).toContain("truncate");

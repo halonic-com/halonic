@@ -106,7 +106,7 @@ function PanelHeader({ props, sheet, titleId, title }: PanelHeaderProps) {
     <header
       className={
         sheet
-          ? "flex min-h-phone-bar items-center gap-1 border-b border-border px-1 pt-safe"
+          ? "flex phone-top-bar items-center gap-1 border-b border-border px-1"
           : "flex h-12 items-center gap-2 border-b border-border pr-2.5 pl-4"
       }
     >

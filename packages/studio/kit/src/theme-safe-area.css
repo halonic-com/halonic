@@ -4,7 +4,7 @@
  */
 
 :root {
-  /* The phone's notch and home bar. Only through pt-safe, pb-safe and pb-safe-inset below, so
+  /* The phone's notch and home bar. Only through pt-safe, phone-top-bar, pb-safe and pb-safe-inset below, so
      screens never write env() by hand. While the keyboard is open, the shell sets
      --safe-bottom: 0px, so a bar sits right on the keyboard. */
   --safe-top: env(safe-area-inset-top);
@@ -13,9 +13,17 @@
 
 /* ---------------------------------------------------------------- Safe areas on a phone */
 
-/* The top bar: clears the notch or status bar. */
+/* Clears the notch or status bar. */
 @utility pt-safe {
   padding-top: var(--safe-top);
+}
+
+/* The phone top bar (component specs 15.1): clears the notch and keeps at least 56px below it.
+   Elements are border-box, so min-h-phone-bar next to pt-safe would count the notch inside the
+   56px; this adds the two instead. */
+@utility phone-top-bar {
+  padding-top: var(--safe-top);
+  min-height: calc(var(--spacing-phone-bar) + var(--safe-top));
 }
 
 /* A bottom action bar, a sheet's bottom, the composer: the larger of 12px and the home bar,
