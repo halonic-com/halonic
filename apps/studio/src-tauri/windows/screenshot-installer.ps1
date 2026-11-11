@@ -63,7 +63,7 @@ if ($h -eq [IntPtr]::Zero) { throw 'The installer opened no window' }
 Wait-Button $h '&Install' 20
 Save-Picture $h '1-install'
 [W]::SendMessage([W]::GetDlgItem($h, 1), 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
-Wait-Button $h '&Finish' 240
+Wait-Button $h '&Finish' 480
 Save-Picture $h '3-finish'
 # Finish with "Start Halonic" ticked, then stop what it opened.
 [W]::SendMessage([W]::GetDlgItem($h, 1), 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null

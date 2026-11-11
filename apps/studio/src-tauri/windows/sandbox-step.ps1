@@ -16,7 +16,9 @@ param(
   [Parameter(Mandatory)][string]$ProfileFolder,
   # For an installer that is already elevated or silent: no prompt.
   [switch]$NoElevate,
-  [int]$CheckSeconds = 60
+  [int]$CheckSeconds = 60,
+  # srt gives its own administrator prompt 120 seconds, so this is longer.
+  [int]$SetupSeconds = 300
 )
 $ErrorActionPreference = 'Stop'
 
@@ -37,14 +39,18 @@ Remove-Item $setupOut -ErrorAction SilentlyContinue
 $line = "`"`"$HostExe`" --profile-folder `"$ProfileFolder`" --sandbox-setup > `"$setupOut`"`""
 try {
   if ($elevated -or $NoElevate) {
-    $p = Start-Process cmd.exe -ArgumentList '/c', $line -Wait -PassThru -WindowStyle Hidden
+    $p = Start-Process cmd.exe -ArgumentList '/c', $line -PassThru -WindowStyle Hidden
   } else {
-    $p = Start-Process cmd.exe -ArgumentList '/c', $line -Verb RunAs -Wait -PassThru -WindowStyle Hidden
+    $p = Start-Process cmd.exe -ArgumentList '/c', $line -Verb RunAs -PassThru -WindowStyle Hidden
   }
 } catch {
   # 1223 is Windows' "The operation was canceled by the user".
   if ($_.Exception.NativeErrorCode -eq 1223) { exit 10 }
   Write-Output ("The setup couldn't start: " + $_.Exception.Message)
+  exit 11
+}
+if (-not $p.WaitForExit($SetupSeconds * 1000)) {
+  Write-Output "it didn't finish within $SetupSeconds seconds"
   exit 11
 }
 $setup = Read-Json $setupOut

@@ -431,7 +431,11 @@ FunctionEnd
 Var AppStartMenuFolder
 Page custom PageInstall PageInstallLeave
 
-; 6. Installation page (flow 2.3)
+; 6. Installation page (flow 2.3): the step lines are the page, so they show
+; at once, under the title
+ShowInstDetails show
+!define MUI_PAGE_HEADER_TEXT "Installing ${PRODUCTNAME} ${VERSION}"
+!define MUI_PAGE_HEADER_SUBTEXT ""
 !insertmacro MUI_PAGE_INSTFILES
 
 ; 7. Finished (flow 2.4), our own page
