@@ -13,6 +13,20 @@ export {
   runDefinitionsOf,
 } from "./definitions.ts";
 export {
+  type ExtractedHub,
+  type ExtractHubError,
+  type ExtractHubOptions,
+  extractHub,
+} from "./extract-hub.ts";
+export {
+  type ExtractError,
+  type ExtractFile,
+  type ExtractPart,
+  type ExtractPlan,
+  type ExtractSettings,
+  planHubExtract,
+} from "./extract-plan.ts";
+export {
   gitIgnoreLines,
   gitIgnorePath,
   type InitializedWorkspace,
