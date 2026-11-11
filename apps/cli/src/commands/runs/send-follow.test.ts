@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -104,6 +104,15 @@ async function addOllama(): Promise<void> {
   await writeFile(join(acme, "providers/ollama.yaml"), "id: ollama\ntype: ollama\nlocal: true\n");
 }
 
+/** Adds a connector to Acme: a change its trust covers, unlike a provider. */
+async function addNotesConnector(): Promise<void> {
+  await mkdir(join(acme, "library/connectors"), { recursive: true });
+  await writeFile(
+    join(acme, "library/connectors/notes.connector.yaml"),
+    "name: Notes\ntransport:\n  stdio:\n    command: notes-server\ntools:\n  approve: []\n",
+  );
+}
+
 /**
  * Puts Writer in Claude Code, which needs the sandbox, and trusts Acme as it
  * is then, so only the sandbox check can stop a send.
@@ -111,6 +120,11 @@ async function addOllama(): Promise<void> {
 async function writerInClaudeCode(): Promise<void> {
   const file = join(acme, "hubs/support/agents/writer.agent.yaml");
   await writeFile(file, `${await readFile(file, "utf8")}harness: claude-code\n`);
+  await trustAcme();
+}
+
+/** Trusts Acme as it is now, in the trust store every `halonic` command here reads. */
+async function trustAcme(): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
@@ -151,7 +165,7 @@ verifies("cli.commands.runs.send", () => {
   });
 
   describe("before anything is sent", () => {
-    it("refuses a workspace that changed since it was trusted, and sends nothing", async () => {
+    it("refuses a workspace that was never trusted here, and sends nothing", async () => {
       await startWaitingRun();
       const before = await eventsOfTheRun();
       await addOllama();
@@ -161,6 +175,22 @@ verifies("cli.commands.runs.send", () => {
       expect(code).toBe(exitCode.notTrusted);
       expect(io.stderr).toContain(
         "✕ Couldn't send approve to run 01jd8q: Acme isn't trusted on this computer yet. Nothing was sent.",
+      );
+      expect(await eventsOfTheRun()).toEqual(before);
+    });
+
+    it("refuses a workspace that changed since it was trusted, and sends nothing", async () => {
+      await startWaitingRun();
+      const before = await eventsOfTheRun();
+      await addOllama();
+      await trustAcme();
+      await addNotesConnector();
+
+      const { code, io } = await halonic(["runs", "send", "01jd8q", "approve"]);
+
+      expect(code).toBe(exitCode.notTrusted);
+      expect(io.stderr).toContain(
+        "✕ Couldn't send approve to run 01jd8q: Acme changed since you trusted it. Nothing was sent.",
       );
       expect(await eventsOfTheRun()).toEqual(before);
     });
