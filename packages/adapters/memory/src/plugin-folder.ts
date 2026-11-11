@@ -5,6 +5,7 @@ import {
   type PlacePluginOptions,
   type PluginFolderWriter,
   type PluginPlacement,
+  segmentAsOpened,
 } from "@halonicjs/ports";
 import { MemoryFolderReader } from "./folder-reader.ts";
 
@@ -53,7 +54,7 @@ export class MemoryPluginFolder implements PluginFolderWriter {
   /** The entry at the top whose name is `id` in any case, if there is one. */
   async #topEntry(id: string): Promise<FolderEntry | undefined> {
     const top = await this.reader.entries(undefined, { recursive: false });
-    const wanted = id.toLowerCase();
-    return top.find((entry) => entry.path.toLowerCase() === wanted);
+    const wanted = segmentAsOpened(id);
+    return top.find((entry) => segmentAsOpened(entry.path) === wanted);
   }
 }

@@ -94,6 +94,8 @@ function takenCases(make: MakePluginFolderWriter): void {
     const { writer, reader } = await make({ files: { "Weather/plugin.yaml": "mine" } });
     expect(await writer.place("weather", weather, { replace: false })).toBe("taken");
     expect(await writer.place("weather", weather, { replace: true })).toBe("taken");
+    // macOS ignores a zero-width non-joiner, so this opens as `Weather` too.
+    expect(await writer.place("weat‌her", weather, { replace: true })).toBe("taken");
     expect(await pathsOf(reader)).toEqual(["Weather", "Weather/plugin.yaml"]);
   });
 
@@ -128,6 +130,12 @@ function removeCases(make: MakePluginFolderWriter): void {
     expect(await reader.read("keep/data.txt")).toEqual(encoder.encode("kept"));
   });
 
+  it("removes only the entry with exactly the id, never one in another case", async () => {
+    const { writer, reader } = await make({ files: { "Weather/plugin.yaml": "mine" } });
+    await writer.remove("weather");
+    expect(await pathsOf(reader)).toEqual(["Weather", "Weather/plugin.yaml"]);
+  });
+
   it("does nothing when there is no entry with the id", async () => {
     const { writer, reader } = await make({ files: { "notes/plugin.yaml": "" } });
     await writer.remove("weather");
@@ -136,7 +144,22 @@ function removeCases(make: MakePluginFolderWriter): void {
 }
 
 function unsafeCases(make: MakePluginFolderWriter): void {
-  const unsafeIds = ["", ".", "..", "a/b", "a\\b", "a\u0000b"];
+  const unsafeIds = [
+    "",
+    ".",
+    "..",
+    "a/b",
+    "a\\b",
+    "a\u0000b",
+    "a\u0007b",
+    "weather:x",
+    "weather.",
+    "weather ",
+    "weath~1",
+    "con",
+    "nul.txt",
+    "com1",
+  ];
 
   it.each(unsafeIds)(
     "refuses the unsafe id %j with a RangeError and writes nothing",
@@ -148,19 +171,36 @@ function unsafeCases(make: MakePluginFolderWriter): void {
     },
   );
 
-  it.each(["../escape.js", "/etc/escape.js", "a//b.js", "./a.js", "a\\b.js", "a/../../b.js"])(
-    "refuses the unsafe file path %j with a RangeError and writes nothing",
-    async (path) => {
-      const { writer, reader } = await make({});
-      const files = new Map([...weather, [path, encoder.encode("x")]]);
-      await expect(writer.place("weather", files, { replace: false })).rejects.toThrow(RangeError);
-      expect(await pathsOf(reader)).toEqual([]);
-    },
-  );
+  it.each([
+    "../escape.js",
+    "/etc/escape.js",
+    "a//b.js",
+    "./a.js",
+    "a\\b.js",
+    "a/../../b.js",
+    "a.js:x",
+    "backend./x.js",
+    "con.js",
+  ])("refuses the unsafe file path %j with a RangeError and writes nothing", async (path) => {
+    const { writer, reader } = await make({});
+    const files = new Map([...weather, [path, encoder.encode("x")]]);
+    await expect(writer.place("weather", files, { replace: false })).rejects.toThrow(RangeError);
+    expect(await pathsOf(reader)).toEqual([]);
+  });
 
   it("refuses a path that is a file and a folder above another file, and writes nothing", async () => {
     const { writer, reader } = await make({});
     const files = new Map([...weather, ["backend/index.js/x", encoder.encode("x")]]);
+    await expect(writer.place("weather", files, { replace: false })).rejects.toThrow(RangeError);
+    expect(await pathsOf(reader)).toEqual([]);
+  });
+
+  it.each([
+    ["Plugin.yaml", "a second plugin.yaml in another case"],
+    ["Backend", "a file that is the backend folder in another case"],
+  ])("refuses %j, %s, and writes nothing", async (path) => {
+    const { writer, reader } = await make({});
+    const files = new Map([...weather, [path, encoder.encode("x")]]);
     await expect(writer.place("weather", files, { replace: false })).rejects.toThrow(RangeError);
     expect(await pathsOf(reader)).toEqual([]);
   });
