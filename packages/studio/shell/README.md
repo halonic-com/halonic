@@ -345,7 +345,9 @@ place or an item opens here, which closes the palette, or with Mod in a new tab 
 action closes the palette and runs with its own feature's context; one that fails shows the danger
 toast "Couldn't run _New agent_." with the reason from `errorMessageFor`. `usePaletteKey` opens it on
 Mod K, in the desktop app and served alike, but not over a modal dialog. K is read by the character
-it types, or by its place on the keyboard on a layout without Latin letters, such as Russian.
+it types, or by its place on the keyboard on a layout without Latin letters, such as Russian. Its
+empty box says "Search", and a place's row starts with the sidebar's outline icon for that place
+(`paletteRowIcon`, `shell.palette-dialog`).
 
 `usePaletteOpening` keeps whether the palette is open and binds Mod K; its `show` goes to
 everything else that opens it (`shell.palette-entry`). `SidebarSearch` is the sidebar's Search box,

@@ -146,13 +146,14 @@ function SearchRow({ box, listId, activeId, words, onWordsChange, onKeyDown }: S
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={activeId}
+        placeholder="Search"
         autoComplete="off"
         spellCheck={false}
         data-text-entry=""
         value={words}
         onChange={(event) => onWordsChange(event.target.value)}
         onKeyDown={onKeyDown}
-        className="min-w-0 flex-1 bg-transparent text-section font-normal text-fg outline-none"
+        className="min-w-0 flex-1 bg-transparent text-section font-normal text-fg outline-none placeholder:text-fg-subtle"
       />
     </div>
   );

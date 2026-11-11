@@ -12,6 +12,7 @@ import type { WorkspaceContext } from "../workspace-context.ts";
 import { CommandPalette } from "./command-palette.tsx";
 import { itemLocation, type PaletteRow, paletteGroups } from "./palette-groups.ts";
 import type { PaletteKindNames } from "./palette-options.ts";
+import { paletteRowIcon } from "./palette-row-icon.tsx";
 import type { RecentPlaces } from "./recent-places.ts";
 import { usePaletteSearch } from "./use-palette-search.ts";
 
@@ -101,6 +102,7 @@ export function ShellPalette(props: ShellPaletteProps) {
       kinds={kinds}
       notAnswering={props.notAnswering}
       announcer={announcer}
+      iconFor={paletteRowIcon}
       onOpen={onOpen}
       onTryAgain={search.tryAgain}
       onCancel={onClose}
