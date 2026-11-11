@@ -65,13 +65,15 @@ pub fn page_may_stay(target: &NavigationTarget, confirmed: Option<&Address>) -> 
     navigation_destination(target, confirmed) == Destination::Stay
 }
 
-/// The app's own pages: `tauri://localhost` on desktop, and
-/// `http://tauri.localhost` on Android and Windows.
+/// The app's own pages: `http://tauri.localhost` on its own port on
+/// Android and Windows, and `tauri://localhost` everywhere else. On macOS
+/// and Linux, `http://tauri.localhost` is an address on the network like
+/// any other.
 fn is_connect_page(target: &NavigationTarget) -> bool {
-    match target.scheme {
-        "tauri" => target.host == Some("localhost"),
-        "http" | "https" => target.host == Some("tauri.localhost"),
-        _ => false,
+    if cfg!(any(windows, target_os = "android")) {
+        target.scheme == "http" && target.host == Some("tauri.localhost") && target.port == Some(80)
+    } else {
+        target.scheme == "tauri" && target.host == Some("localhost")
     }
 }
 
@@ -136,14 +138,39 @@ mod tests {
         );
     }
 
+    /// The connect page's address on the platform the tests run on.
+    fn connect_page() -> NavigationTarget<'static> {
+        if cfg!(any(windows, target_os = "android")) {
+            target("http", "tauri.localhost", 80)
+        } else {
+            target("tauri", "localhost", 0)
+        }
+    }
+
     #[test]
     fn navigation_guard_keeps_the_connect_page() {
-        for page in [
-            target("tauri", "localhost", 0),
-            target("http", "tauri.localhost", 80),
-            target("https", "tauri.localhost", 443),
-        ] {
-            assert_eq!(
+        assert_eq!(
+            navigation_destination(&connect_page(), None),
+            Destination::Stay
+        );
+    }
+
+    #[test]
+    fn navigation_guard_keeps_only_this_platforms_connect_page() {
+        let others = if cfg!(any(windows, target_os = "android")) {
+            vec![
+                target("tauri", "localhost", 0),
+                target("http", "tauri.localhost", 8080),
+                target("https", "tauri.localhost", 443),
+            ]
+        } else {
+            vec![
+                target("http", "tauri.localhost", 80),
+                target("https", "tauri.localhost", 443),
+            ]
+        };
+        for page in others {
+            assert_ne!(
                 navigation_destination(&page, None),
                 Destination::Stay,
                 "{page:?}"
@@ -178,7 +205,7 @@ mod tests {
         let laptop = confirmed("192.168.1.20:4280");
         let may_stay = |target: NavigationTarget| page_may_stay(&target, Some(&laptop));
         assert!(may_stay(target("http", "192.168.1.20", 4280)));
-        assert!(may_stay(target("http", "tauri.localhost", 80)));
+        assert!(may_stay(connect_page()));
         // A form sent with POST, or a 307 redirect of one, that ends here.
         assert!(!may_stay(target("http", "192.168.1.21", 4280)));
         assert!(!may_stay(target("https", "halonic.dev", 443)));
