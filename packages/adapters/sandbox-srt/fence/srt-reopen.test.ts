@@ -10,7 +10,8 @@ import { SrtSandbox } from "../src/srt-sandbox.ts";
  * reopened in it (HAL-5644), against the real fence on Linux (bubblewrap) and
  * macOS (Seatbelt). What another run makes in the data folder after the
  * session opens must be denied as well, with no list to keep up to date.
- * Windows has its own case in `srt-reopen.windows.test.ts`.
+ * Windows denies the data folder's entries by name instead; its case is in
+ * `srt-reopen.windows.test.ts`.
  */
 const sandbox = new SrtSandbox();
 
@@ -61,7 +62,10 @@ describe("SrtSandbox with Halonic's data folder denied and a run's folders reope
   }
 
   beforeAll(async () => {
-    const base = await realpath(await mkdtemp(join(tmpdir(), "srt-reopen-")));
+    // srt puts its socket in the session's temp folder, and a socket path may have at most
+    // 104 bytes on macOS: the system's own per-user temp folder is too deep for that.
+    const parent = process.platform === "darwin" ? "/tmp" : tmpdir();
+    const base = await realpath(await mkdtemp(join(parent, "srt-reopen-")));
     data = join(base, "data");
     for (const folder of [
       "host",

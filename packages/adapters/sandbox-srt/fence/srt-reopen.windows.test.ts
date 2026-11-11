@@ -3,22 +3,28 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { restrictToThisUser } from "../src/journal-acl.ts";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
 
 /**
- * Halonic's data folder denied as a whole, with one run's own folders
- * reopened in it (HAL-5644), on a real Windows machine. There the deny is an
- * inheriting DENY entry on the data folder, and a reopened folder gets an
- * ALLOW entry of its own, which ranks above the inherited DENY.
+ * Halonic's data folder with a run's own folders in it (HAL-5644), on a real
+ * Windows machine, the way `HarnessProfiles` builds it there: the data
+ * folder's other entries are denied by name, and the data folder itself is
+ * not. A deny on the data folder would take the right to look at the folders
+ * on the way to the run's own, and Node, which looks at each of them to
+ * resolve a script's path, could not start there: the first case proves the
+ * fence probe, a Node script in the run's temp folder, starts.
  *
- * srt keeps the write grant on each writable folder between sessions, and
- * any sandboxed session may read a folder that has one. So the profile also
- * denies the data folder's other entries by name, as `HarnessProfiles` does
- * on Windows, and the last case checks that this keeps an earlier session's
+ * What is made later is kept out by the data folder's own access list, which
+ * in the user profile names only the user. This test works outside the
+ * profile (RUNNER_TEMP), so the folder another run makes later gets such an
+ * access list of its own. srt keeps the write grant on each writable folder
+ * between sessions, and any sandboxed session may read a folder that has
+ * one; the last case checks that the deny by name keeps an earlier session's
  * folder unreadable.
  *
  * Run by the `sandbox-windows` CI job, like `srt-fence.windows.test.ts`;
- * the programs are Node scripts, and it works outside the user profile.
+ * the programs are Node scripts.
  */
 const sandbox = new SrtSandbox();
 
@@ -38,24 +44,22 @@ async function isThere(path: string): Promise<boolean> {
   }
 }
 
-describe("SrtSandbox on Windows with Halonic's data folder denied and a run's folders reopened", () => {
+describe("SrtSandbox on Windows with the data folder's other entries denied by name", () => {
   let data: string;
   let session: SandboxSession;
 
   /** A path in the data folder. */
   const inData = (...parts: string[]) => join(data, ...parts);
 
-  /** The profile of `run`, which works in its own folders and denies the data folder, and its `others` by name. */
+  /** The profile of `run`, which works in its own folders and denies the host's folder and its `others` by name. */
   const profileOf = (run: string, others: readonly string[]): SandboxProfile => ({
     workingFolder: inData("runs", run, "files"),
     tempFolder: inData("tmp", run),
     settingsFolder: null,
-    readOnlyPaths: [],
-    deniedPaths: [data, ...others.map((other) => inData("runs", other)), inData("host")],
-    reopenedPaths: [
-      inData("runs", run, "agents"),
-      inData("runs", run, "files"),
-      inData("tmp", run),
+    readOnlyPaths: [inData("runs", run, "agents")],
+    deniedPaths: [
+      inData("host"),
+      ...others.flatMap((other) => [inData("runs", other), inData("tmp", other)]),
     ],
     env: {},
     network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
@@ -89,7 +93,10 @@ for (const [name, path] of Object.entries(${JSON.stringify(paths)})) {
 }
 console.log(JSON.stringify(result));`;
 
-  async function makeRun(run: string): Promise<void> {
+  /** Makes a run's folders; `closed` gives its run folder the access list it would get in the user profile. */
+  async function makeRun(run: string, closed = false): Promise<void> {
+    await mkdir(inData("runs", run), { recursive: true });
+    if (closed) await restrictToThisUser(inData("runs", run));
     for (const folder of [
       ["runs", run, "agents"],
       ["runs", run, "files"],
@@ -108,9 +115,8 @@ console.log(JSON.stringify(result));`;
     await makeRun("run_1");
     await makeRun("run_2");
     session = await sandbox.open(profileOf("run_1", ["run_2"]));
-    // Made after the session opened: another run's folder, and a file at the data folder's root.
-    await makeRun("run_3");
-    await writeFile(inData("late.txt"), "late secret");
+    // Made after the session opened, as in the user profile.
+    await makeRun("run_3", true);
   });
 
   afterAll(async () => {
@@ -118,11 +124,11 @@ console.log(JSON.stringify(result));`;
     if (data !== undefined) await rm(join(data, ".."), { recursive: true, force: true });
   });
 
-  it("proves the fence", () => {
+  it("proves the fence, with its probe in the run's temp folder", () => {
     expect(session.fence).toEqual({ state: "fenced" });
   });
 
-  it("denies the rest of the data folder, also what was made after the session opened", async () => {
+  it("denies the rest of the data folder, also a run folder made after the session opened", async () => {
     const result = await runScript(
       session,
       "read.cjs",
@@ -130,17 +136,10 @@ console.log(JSON.stringify(result));`;
         host: inData("host", "secret.txt"),
         before: inData("runs", "run_2", "agents", "brief.md"),
         after: inData("runs", "run_3", "agents", "brief.md"),
-        late: inData("late.txt"),
         own: inData("runs", "run_1", "agents", "brief.md"),
       }),
     );
-    expect(result).toEqual({
-      host: "denied",
-      before: "denied",
-      after: "denied",
-      late: "denied",
-      own: "read",
-    });
+    expect(result).toEqual({ host: "denied", before: "denied", after: "denied", own: "read" });
   });
 
   it("writes the run's working and temp folders, and creates and renames nothing in the data folder", async () => {
