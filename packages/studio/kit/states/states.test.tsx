@@ -18,16 +18,21 @@ import { StatesPage } from "./states-page.tsx";
 const statesFolder = import.meta.dirname;
 const statesCss = readFileSync(path.join(statesFolder, "states.css"), "utf8");
 
-/** Every class the whole page renders. */
-function pageClasses(): string[] {
-  const markup = renderToStaticMarkup(<StatesPage only={null} />);
-  const classes = [...markup.matchAll(/class="([^"]*)"/g)].flatMap((match) =>
-    (match[1] ?? "").split(" "),
-  );
-  return [...new Set(classes)].filter((name) => name !== "");
-}
+/**
+ * The whole page, rendered once while the file loads, and its CSS built then too: each render
+ * took about 1.5 s in CI, and a test that rendered it again, or was the first to wait for the
+ * build, came within 1 s of Vitest's 5 s limit (HAL-5473).
+ */
+const pageMarkup = renderToStaticMarkup(<StatesPage only={null} />);
 
-const pageCss = buildCss(pageClasses(), statesCss, statesFolder);
+/** Every class the whole page renders. */
+const pageClasses = [
+  ...new Set(
+    [...pageMarkup.matchAll(/class="([^"]*)"/g)].flatMap((match) => (match[1] ?? "").split(" ")),
+  ),
+].filter((name) => name !== "");
+
+const pageCss = await buildCss(pageClasses, statesCss, statesFolder);
 
 type Forced = "hover" | "active" | "focus";
 
@@ -50,8 +55,8 @@ const isForced = (selector: string, state: Forced) =>
 describe("the states page's forced states", () => {
   it.each(["hover", "active", "focus"] as const)(
     "forces %s through the same rule as the real state, for every part on the page",
-    async (state) => {
-      const rules = ruleSelectors(await pageCss);
+    (state) => {
+      const rules = ruleSelectors(pageCss);
       const withReal = rules.filter((selectors) => selectors.some((s) => isReal(s, state)));
       // The parts do have these states, so an empty list would mean the test checked nothing.
       expect(withReal).not.toHaveLength(0);
@@ -113,15 +118,13 @@ describe("the states page's forced states", () => {
 });
 
 describe("the states page", () => {
-  it("uses only classes that exist, so every token class is drawn", async () => {
-    const css = await pageCss;
-    const missing = pageClasses().filter((name) => !css.includes(`.${cssEscape(name)}`));
+  it("uses only classes that exist, so every token class is drawn", () => {
+    const missing = pageClasses.filter((name) => !pageCss.includes(`.${cssEscape(name)}`));
     expect(missing).toEqual([]);
   });
 
   it("draws one section per part, in spec order, and only the one ?part= names", () => {
-    const all = renderToStaticMarkup(<StatesPage only={null} />);
-    const ids = [...all.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1]);
+    const ids = [...pageMarkup.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1]);
     expect(ids).toEqual(SECTIONS.map((section) => section.id));
 
     const one = renderToStaticMarkup(<StatesPage only="field" />);
