@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1218; [ux-checklists-approvals](/HAL/issues/HAL-1250#document-ux-checklists-approvals) 2.5; [ux-checklists](/HAL/issues/HAL-1069#document-ux-checklists) 2.1 and 2.9
 
-Each open workspace shall have one Inbox, which the sidebar's count, Home's Needs you and the Inbox page all read, so they show the same items and change together. The Inbox shall load the waiting runs when it opens and again whenever the runs say one may have started or stopped waiting, here or on another device. When loads overlap, only the last one started shall count. A load that fails shall keep the items and the count as they were and say why, until a load succeeds. An item you answer shall go as soon as the run has your answer, before the next load, and stay out until a load no longer lists it; an answer that fails shall leave it in.
+The Studio shall give each open workspace one Inbox, which the sidebar's count, Home's Needs you and the Inbox page all read, so they show the same items and change together. The Inbox shall load the waiting runs when it opens and again whenever the runs say one may have started or stopped waiting, here or on another device. When loads overlap, only the last one started shall count. A load that fails shall keep the items and the count as they were and say why, until a load succeeds. An item you answer shall go as soon as the run has your answer, before the next load, and stay out until a load no longer lists it; an answer that fails shall leave it in.
 
 ## Examples
 
