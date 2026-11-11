@@ -53,6 +53,8 @@ The host listens on a free port of `127.0.0.1` only. The token is 32 random byte
 
 Every refusal comes before the path is looked at, so a caller without the token can't learn which paths exist. Answers are JSON; an error is `{"error":{"kind","message"}}`. The host stops when its standard input closes, so it never outlives the program that started it.
 
+A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413` before any of the body is read, so a caller can't hold a request open by promising a body it never sends; a body without a length is counted as it arrives. A stream (the blocked accesses, the bridge's calls) never fills the host's memory either: when a caller keeps it open but stops reading, and more than 4 MiB wait to be sent, the host drops the connection and the route cleans up as if the caller had gone.
+
 | Request                                                | Answer                                                                   |
 | ------------------------------------------------------ | ------------------------------------------------------------------------ |
 | `GET /v1/health`                                       | `{"ok":true,"version":"<version>"}`                                      |
@@ -67,7 +69,7 @@ Every refusal comes before the path is looked at, so a caller without the token 
 
 ## The sandbox over loopback
 
-Studio gives the engine a stand-in `Sandbox` that calls these routes, and the host runs the real one (`SrtSandbox`). The profile arrives as data, so the host checks it before the sandbox sees it: every field present, nothing extra, every path absolute (`400 body_invalid` names each problem with its path). A body larger than 1 MiB gets `413`. A session that can't open gets `422 sandbox_open_failed` with the sandbox's reason.
+Studio gives the engine a stand-in `Sandbox` that calls these routes, and the host runs the real one (`SrtSandbox`). The profile arrives as data, so the host checks it before the sandbox sees it: every field present, nothing extra, every path absolute (`400 body_invalid` names each problem with its path). A session that can't open gets `422 sandbox_open_failed` with the sandbox's reason.
 
 A session is named by an id the host makes; any other id gets `404 unknown_session`. When a session's time limit runs out, the host closes it: its id is forgotten and its blocked stream ends. The host keeps at most 64 sessions open, counting those still opening; past that, opening one answers `429 too_many_sessions`. A `timeLimitMs` above 2,147,483,647 (about 24.8 days, the longest a timer can hold) is refused. When the host stops, it closes every open session before it stops serving, so no sandboxed program outlives it.
 

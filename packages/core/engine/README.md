@@ -71,8 +71,10 @@ The caller's `runSubagent` runs the subagent's own turn one level deeper, and th
 `agent.started` and `agent.finished` around it, naming the delegating agent as `parent`. At depth 3
 an agent gets no `delegate_` tools, so agents that delegate to each other stop there. The agent's
 instructions get `delegationHint`, since a subagent never sees the conversation. In a run, the
-local executor runs the subagent's turn on its own model and tools, and refuses a subagent's call
-that needs a person's OK, because a subagent can't pause the run yet (HAL-3361).
+local executor runs the subagent's turn on its own model and tools. Like a `parallel` branch, a
+subagent is offered only the connector tools its own file lists that read and wait for no one (requirement
+`engine.subagent-connector-reads`). It gets none when the executor has no connector calls. It refuses a
+subagent's call that needs a person's OK, because a subagent can't pause the run yet (HAL-3361).
 
 A run's agent gets the tools its kept file grants after its memory tools (requirement
 `engine.run-agent-tools`): `list_runs` and `read_run` with `runLogs: true`, the records tools of
