@@ -170,15 +170,15 @@ the same formats. Its `google-client-secret` answer tells Studio to point to the
 and links; Studio owns the sentences. Nothing in it names a service: everything service-specific
 comes from the sheets.
 
-| Id            | Step                 | Carries                                                         |
-| ------------- | -------------------- | --------------------------------------------------------------- |
-| `project`     | Google Cloud project | New project link, `halonic`, Workspace: inside the organisation |
-| `apis`        | Switch on the APIs   | one row per API with its Enable link; Switch on all for 2+      |
-| `consent`     | Consent screen       | app name and e-mails; personal: External and `in-production`    |
-| `scopes`      | Scopes (D4 switch)   | one row per scope with each service's reason, Copy all scopes   |
-| `client`      | Create the client    | `Halonic desktop`; done when step 6 saves a client ID           |
-| `credentials` | Client ID and secret | Clients link, for a lost secret                                 |
-| `sign-in`     | Sign in with Google  | scopes to grant, one check per service, admin note or warning   |
+| Id | Step | Carries |
+| --- | --- | --- |
+| `project` | Google Cloud project | New project link, `halonic`, Workspace: inside the organisation |
+| `apis` | Switch on the APIs | one row per API with its Enable link; Switch on all for 2+ |
+| `consent` | Consent screen | app name and e-mails; personal: External and `in-production` |
+| `scopes` | Scopes (D4 switch) | one row per scope with each service's reason, Copy all scopes |
+| `client` | Create the client | `Halonic desktop`; done when step 6 saves a client ID |
+| `credentials` | Client ID and secret | Clients link, for a lost secret |
+| `sign-in` | Sign in with Google | scopes to grant, one check per service, admin note or warning |
 
 Progress keys ticks by id, so `listScopes: false` renumbers the steps without moving any tick.
 Links open in the project only when its ID is valid; otherwise `projectIdIgnored` is true.
@@ -203,18 +203,18 @@ await setups.update(accountRef, { kind: "step-done", step: "project" });
 await setups.update(accountRef, { kind: "client-secret-saved", clientRef }); // the ref only
 ```
 
-| Value                  | Holds                                                   |
-| ---------------------- | ------------------------------------------------------- |
-| `route`, `accountType` | the two answers the item asks first                     |
-| `startedAt`            | for "You started this on 8 Nov"                         |
-| `projectId`            | step 1's project ID, if valid                           |
-| `stepsDone`            | when each step was marked done, by step id              |
-| `inProductionTickedAt` | the "In production" tick (personal, step 3)             |
-| `clientId`             | the client ID from step 6                               |
-| `clientSecret`         | the secret's `clientRef` and when it was saved          |
-| `signInStartedAt`      | a sign-in that hasn't come back, for "didn't finish"    |
-| `lastSignInAt`         | the last sign-in, for the 7-day hint                    |
-| `services`             | per service: scope granted, last check result, and when |
+| Value | Holds |
+| --- | --- |
+| `route`, `accountType` | the two answers the item asks first |
+| `startedAt` | for "You started this on 8 Nov" |
+| `projectId` | step 1's project ID, if valid |
+| `stepsDone` | when each step was marked done, by step id |
+| `inProductionTickedAt` | the "In production" tick (personal, step 3) |
+| `clientId` | the client ID from step 6 |
+| `clientSecret` | the secret's `clientRef` and when it was saved |
+| `signInStartedAt` | a sign-in that hasn't come back, for "didn't finish" |
+| `lastSignInAt` | the last sign-in, for the 7-day hint |
+| `services` | per service: scope granted, last check result, and when |
 
 Every change is a `SetupEdit` named after what happened, stamped by the clock. The record is checked
 before every write and after every read, and refuses any other key, so it can't hold the client
@@ -245,11 +245,11 @@ The secrets live in the `TokenStore` (encrypted, written by the server), not in 
 read-only. Names follow the `Secrets` name rule, so they hold refs from the `IdGenerator`, never an
 e-mail address or a client ID.
 
-| Token                              | Holds                                       |
-| ---------------------------------- | ------------------------------------------- |
-| `google-client-<clientRef>`        | the client secret in use                    |
+| Token | Holds |
+| --- | --- |
+| `google-client-<clientRef>` | the client secret in use |
 | `google-client-<clientRef>-staged` | a new client secret until Google accepts it |
-| `google-account-<accountRef>`      | one Google account's refresh token          |
+| `google-account-<accountRef>` | one Google account's refresh token |
 
 `clientSecretName(clientRef)`, `stagedClientSecretName(clientRef)` and `refreshTokenName(accountRef)`
 work out these names. These are the only names of a Google client secret and refresh token. A connector file's `client`
@@ -280,15 +280,15 @@ The pure parts of the Google sign-in round trip. The host package
 `@halonicjs/host-google-sign-in` makes the PKCE pair and `state`, keeps the pending sign-ins and
 talks to Google.
 
-| Export                                      | What it does                                                                                                                                                     |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `googleAuthUrl`                             | the auth URL: code flow, PKCE S256, loopback redirect, `openid email` plus the services' scopes                                                                  |
-| `loopbackRedirectUri`                       | `http://127.0.0.1:<port><path>`; refuses a query string, a fragment and anything unusual in the path                                                             |
-| `PendingSignIns`                            | the port for pending sign-ins: `start` (one per account), `take(state)`, and `authUrlFor` and `cancel` for "Open again" and "Cancel"; in memory only, 10 minutes |
-| `readSignInCallback`                        | reads the callback: finds the sign-in by `state` first, then maps `error` or returns the code                                                                    |
-| `classifyTokenAnswer`                       | what Google's token answer means: `wrongClientSecret`, `codeRefused`, `noRefreshToken` and so on                                                                 |
-| `signInScopes`                              | the scopes to ask for: `baseSignInScopes` (`openid`, `email`) and the services' scopes, sorted, without duplicates                                               |
-| `googleAuthEndpoint`, `googleTokenEndpoint` | Google's authorisation and token endpoints, as constants                                                                                                         |
+| Export | What it does |
+| --- | --- |
+| `googleAuthUrl` | the auth URL: code flow, PKCE S256, loopback redirect, `openid email` plus the services' scopes |
+| `loopbackRedirectUri` | `http://127.0.0.1:<port><path>`; refuses a query string, a fragment and anything unusual in the path |
+| `PendingSignIns` | the port for pending sign-ins: `start` (one per account), `take(state)`, and `authUrlFor` and `cancel` for "Open again" and "Cancel"; in memory only, 10 minutes |
+| `readSignInCallback` | reads the callback: finds the sign-in by `state` first, then maps `error` or returns the code |
+| `classifyTokenAnswer` | what Google's token answer means: `wrongClientSecret`, `codeRefused`, `noRefreshToken` and so on |
+| `signInScopes` | the scopes to ask for: `baseSignInScopes` (`openid`, `email`) and the services' scopes, sorted, without duplicates |
+| `googleAuthEndpoint`, `googleTokenEndpoint` | Google's authorisation and token endpoints, as constants |
 
 `pendingSignInLifetimeMs` is that 10 minutes, and `hasPendingSignInExpired(pending, now)` tells
 whether a pending sign-in has run out. `PendingSignIn` and `PendingSignInDetails` are the shapes the
@@ -302,14 +302,14 @@ Google's `error_description` is never read, and an `error` value that isn't a pl
 The pure parts of setup items 6 and 7. The host's sign-in runs them inside `finishGoogleSignIn`,
 before it saves anything and while it still holds the fresh access token.
 
-| Export                   | What it does                                                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `accountMatches`         | whether the verified address is the connector's: trimmed, any letter case, no dot or `+` folding                      |
-| `serviceScopes`          | per service, whether Google granted all its `googleScopes`, or which are missing                                      |
-| `readGoogleCheckAnswer`  | one `googleCheck` answer as `works` (2xx), `apiOff` (403 that says so) or `checkFailed`                               |
-| `ServiceCheckOutcome`    | what step 7 shows per service: those three, `allowed`, `scopeNotGranted` and `unreachable`                            |
+| Export | What it does |
+| --- | --- |
+| `accountMatches` | whether the verified address is the connector's: trimmed, any letter case, no dot or `+` folding |
+| `serviceScopes` | per service, whether Google granted all its `googleScopes`, or which are missing |
+| `readGoogleCheckAnswer` | one `googleCheck` answer as `works` (2xx), `apiOff` (403 that says so) or `checkFailed` |
+| `ServiceCheckOutcome` | what step 7 shows per service: those three, `allowed`, `scopeNotGranted` and `unreachable` |
 | `accountTypeFromAddress` | `personal` for a Gmail or Googlemail address, otherwise `undefined`: the address alone can't tell a Workspace account |
-| `isApiHost`              | whether text has the `<name>.googleapis.com` shape, the only API host a result keeps                                  |
+| `isApiHost` | whether text has the `<name>.googleapis.com` shape, the only API host a result keeps |
 
 `allowed` means every scope was granted and the sheet has no `googleCheck`: nothing showed the API
 is on. `apiOff` keeps the API host only in the `<name>.googleapis.com` shape, its name only from the
@@ -343,14 +343,14 @@ When a token refresh is refused, a run must not ask Google again.
 `SetupRecordError` and `ClientSecretError` keep their detailed `reason` and carry a coarse `kind` that
 `errorKindOf` from `@halonicjs/std` reads:
 
-| Error               | Reason           | Kind            |
-| ------------------- | ---------------- | --------------- |
-| `SetupRecordError`  | `not-found`      | `not_found`     |
-|                     | `refused`        | `invalid_input` |
-|                     | `cannot-share`   | `conflict`      |
-|                     | `damaged`        | `internal`      |
-| `ClientSecretError` | `empty`          | `invalid_input` |
-|                     | `not-saved`      | `not_found`     |
-|                     | `nothing-staged` | `conflict`      |
+| Error | Reason | Kind |
+| --- | --- | --- |
+| `SetupRecordError` | `not-found` | `not_found` |
+|  | `refused` | `invalid_input` |
+|  | `cannot-share` | `conflict` |
+|  | `damaged` | `internal` |
+| `ClientSecretError` | `empty` | `invalid_input` |
+|  | `not-saved` | `not_found` |
+|  | `nothing-staged` | `conflict` |
 
 Besides the calls shown above, `setups` also has `read`, `list`, `usingClient` and `remove`.

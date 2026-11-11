@@ -12,7 +12,7 @@ export function checkMarkdownTables(context: CheckContext): Report {
   for (const file of context.files.filter((name) => name.endsWith(".md"))) {
     const line = firstPaddedLine(context.read(file));
     if (line !== undefined) {
-      report.warning(
+      report.error(
         file,
         'A table is padded to equal column widths, so one longer cell rewrites every row and two pull requests adding a row conflict. Run "pnpm check:tables".',
         line,

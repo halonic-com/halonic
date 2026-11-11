@@ -47,13 +47,13 @@ with `pnpm test:fence`.
 
 ## Exports
 
-| Export                     | What it is                                                                        |
-| -------------------------- | --------------------------------------------------------------------------------- |
-| `SrtSandbox`               | The `Sandbox` port: `check()`, `capabilities()` and `open()`.                     |
-| `buildSrtConfig`           | Turns a `SandboxProfile` into sandbox-runtime settings.                           |
-| `recoverGitFolders`        | After a host crash, undoes the `commondir` files of sessions whose host has died. |
-| `Machine`, `systemMachine` | What the sandbox asks of the machine; a test passes a fake `Machine`.             |
-| `Runner`, `srtRunner`      | Starts a program inside the fence; a test passes a fake `Runner`.                 |
+| Export | What it is |
+| --- | --- |
+| `SrtSandbox` | The `Sandbox` port: `check()`, `capabilities()` and `open()`. |
+| `buildSrtConfig` | Turns a `SandboxProfile` into sandbox-runtime settings. |
+| `recoverGitFolders` | After a host crash, undoes the `commondir` files of sessions whose host has died. |
+| `Machine`, `systemMachine` | What the sandbox asks of the machine; a test passes a fake `Machine`. |
+| `Runner`, `srtRunner` | Starts a program inside the fence; a test passes a fake `Runner`. |
 
 `new SrtSandbox(machine?, runner?, journalFolder?)` takes the real machine and runner by default.
 Give `journalFolder` (a folder only this user can write) to keep the snapshot `recoverGitFolders`

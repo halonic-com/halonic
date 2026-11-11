@@ -19,12 +19,12 @@ library, only the ones approved for that package.
 
 The layers decide who may import whom:
 
-| Layer    | May use                                                                                      | Never                                           |
-| -------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| core     | core packages listed before it; Zod in `schema-kit` and `format` only, `yaml` in `yaml` only | other third-party code, Node APIs, browser APIs |
-| adapters | core, Node or browser APIs, their approved libraries                                         | Studio packages                                 |
-| host     | core, adapters, Node APIs                                                                    | Studio packages                                 |
-| studio   | core, React, Tauri, Vite                                                                     | adapters (only `studio/services` may)           |
+| Layer | May use | Never |
+| --- | --- | --- |
+| core | core packages listed before it; Zod in `schema-kit` and `format` only, `yaml` in `yaml` only | other third-party code, Node APIs, browser APIs |
+| adapters | core, Node or browser APIs, their approved libraries | Studio packages |
+| host | core, adapters, Node APIs | Studio packages |
+| studio | core, React, Tauri, Vite | adapters (only `studio/services` may) |
 
 The full table is in the repository's `AGENTS.md`. Three things enforce it: the
 core's TypeScript settings load no Node or browser types, `pnpm check` reads

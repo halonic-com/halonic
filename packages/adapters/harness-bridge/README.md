@@ -96,16 +96,16 @@ The rules are in `requirements/`: `server.md`, `pass-through.md`,
 
 ## Options
 
-| Export                           | What it is                                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------- |
-| `NodeHarnessBridgeServer`        | The `HarnessBridgeServer` port on Node's `http` server.                                     |
-| `NodeHarnessBridgeServerOptions` | Its options: `secrets` (required), `limits`, `upstreamLimits`, `fetch`, `closeTimeoutMs`.   |
-| `BodyLimits`                     | Request size (`maxBytes`) and arrival time (`timeoutMs`).                                   |
-| `UpstreamLimits`                 | How long a provider may take to start (`responseTimeoutMs`) or go silent (`idleTimeoutMs`). |
-| `Fetch`                          | The `fetch` the bridge calls providers with; tests give a fake one.                         |
-| `defaultBridgeLimits`            | 32 MiB and 60 seconds.                                                                      |
-| `defaultUpstreamLimits`          | 10 minutes to start a reply, 2 minutes of silence.                                          |
-| `defaultCloseTimeoutMs`          | 5 seconds.                                                                                  |
+| Export | What it is |
+| --- | --- |
+| `NodeHarnessBridgeServer` | The `HarnessBridgeServer` port on Node's `http` server. |
+| `NodeHarnessBridgeServerOptions` | Its options: `secrets` (required), `limits`, `upstreamLimits`, `fetch`, `closeTimeoutMs`. |
+| `BodyLimits` | Request size (`maxBytes`) and arrival time (`timeoutMs`). |
+| `UpstreamLimits` | How long a provider may take to start (`responseTimeoutMs`) or go silent (`idleTimeoutMs`). |
+| `Fetch` | The `fetch` the bridge calls providers with; tests give a fake one. |
+| `defaultBridgeLimits` | 32 MiB and 60 seconds. |
+| `defaultUpstreamLimits` | 10 minutes to start a reply, 2 minutes of silence. |
+| `defaultCloseTimeoutMs` | 5 seconds. |
 
 Each limit you leave out keeps its default. `closeTimeoutMs` must be a whole
 number of milliseconds, 0 or more.

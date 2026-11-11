@@ -51,10 +51,10 @@ The helpers are in
 
 There are two kinds of waiting, and they need different tools.
 
-| The intent is …                  | Use                                          | Example                                                       |
-| -------------------------------- | -------------------------------------------- | ------------------------------------------------------------- |
-| "not before T, and exactly at T" | the exact wait, then one check               | a back-off: the next try comes exactly 4 s after the last one |
-| "at some point within X"         | `eventually(check, { within, every, wait })` | the timer is delivered within a minute                        |
+| The intent is … | Use | Example |
+| --- | --- | --- |
+| "not before T, and exactly at T" | the exact wait, then one check | a back-off: the next try comes exactly 4 s after the last one |
+| "at some point within X" | `eventually(check, { within, every, wait })` | the timer is delivered within a minute |
 
 Use the exact wait when the time is the behaviour. `eventually` would let an
 off-by-one pass, because it keeps checking until the check holds:

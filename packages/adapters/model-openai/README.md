@@ -11,12 +11,12 @@ The model provider for OpenAI's chat completions API and the servers that copy i
 
 A workspace picks the server with a provider's `type`. Each type has a factory; all of them make the same provider and only fill in what the YAML leaves out.
 
-| `type`              | Address when `baseUrl` is left out | Key                                      |
-| ------------------- | ---------------------------------- | ---------------------------------------- |
-| `openai`            | `https://api.openai.com/v1`        | needed; asks for `max_completion_tokens` |
-| `openai-compatible` | none, `baseUrl` is required        | only when `secret` is set                |
-| `ollama`            | `http://localhost:11434/v1`        | only when `secret` is set                |
-| `lmstudio`          | `http://localhost:1234/v1`         | only when `secret` is set                |
+| `type` | Address when `baseUrl` is left out | Key |
+| --- | --- | --- |
+| `openai` | `https://api.openai.com/v1` | needed; asks for `max_completion_tokens` |
+| `openai-compatible` | none, `baseUrl` is required | only when `secret` is set |
+| `ollama` | `http://localhost:11434/v1` | only when `secret` is set |
+| `lmstudio` | `http://localhost:1234/v1` | only when `secret` is set |
 
 ```yaml
 # providers/local.yaml

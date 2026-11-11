@@ -6,13 +6,13 @@
 
 When text holds one of the prefixes `sk-`, `GOCSPX-`, `AIza`, `ghp_`, `github_pat_` or `xoxb-` at the start of a run of letters, digits, `-` and `_`, followed by at least 16 more of them that include a digit or a capital letter, `findSecretShape` shall return that secret's kind, and only its kind; otherwise it shall return `undefined`. When the text holds more than one, it shall return the kind that comes first in the text.
 
-| Prefix                | Kind                   |
-| --------------------- | ---------------------- |
-| `sk-`                 | `ai-provider-key`      |
-| `GOCSPX-`             | `google-client-secret` |
-| `AIza`                | `google-api-key`       |
-| `ghp_`, `github_pat_` | `github-token`         |
-| `xoxb-`               | `slack-token`          |
+| Prefix | Kind |
+| --- | --- |
+| `sk-` | `ai-provider-key` |
+| `GOCSPX-` | `google-client-secret` |
+| `AIza` | `google-api-key` |
+| `ghp_`, `github_pat_` | `github-token` |
+| `xoxb-` | `slack-token` |
 
 ## Examples
 

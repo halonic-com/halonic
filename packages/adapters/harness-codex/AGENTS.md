@@ -11,10 +11,10 @@ everything else is internal.
 
 ## Commands
 
-| Command                                                         | What it does                                                                         |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm verify`                                                   | checks every package your change affects, including the ones that depend on this one |
-| `pnpm turbo run test --filter=@halonicjs/adapter-harness-codex` | runs only this package's tests (and the codegen they need)                           |
+| Command | What it does |
+| --- | --- |
+| `pnpm verify` | checks every package your change affects, including the ones that depend on this one |
+| `pnpm turbo run test --filter=@halonicjs/adapter-harness-codex` | runs only this package's tests (and the codegen they need) |
 
 ## Local rules
 

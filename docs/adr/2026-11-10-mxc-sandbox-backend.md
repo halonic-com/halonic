@@ -167,16 +167,16 @@ Halonic's own folder under `%LOCALAPPDATA%`), never a fresh temporary folder,
 so it fails where a real run would. The adapter builds the canary's profile
 and probe; `core/app` runs them and decides the code.
 
-| Reason code          | Fails when                                                                                                                                                                                                                                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `file-readable`      | a hidden canary file, or a denied file inside a readable folder, can be read                                                                                                                                                                                       |
-| `file-writable`      | a file outside the writable folders can be created, changed or removed                                                                                                                                                                                             |
-| `port-reachable`     | a canary listener on the host, other than the bridge, can be reached (on `127.0.0.1`, `::1` and the host's own addresses), or the host can connect to a listener inside the box (over loopback and over the host's own addresses)                                  |
+| Reason code | Fails when |
+| --- | --- |
+| `file-readable` | a hidden canary file, or a denied file inside a readable folder, can be read |
+| `file-writable` | a file outside the writable folders can be created, changed or removed |
+| `port-reachable` | a canary listener on the host, other than the bridge, can be reached (on `127.0.0.1`, `::1` and the host's own addresses), or the host can connect to a listener inside the box (over loopback and over the host's own addresses) |
 | `internet-reachable` | an address outside the host, public or on the local network (the default gateway and one other private address), can be reached, either directly (by IP and by name, bypassing the proxy) or through the bridge (`CONNECT`, or a request for another host or port) |
-| `dns-reachable`      | a lookup sent straight to a public DNS server (UDP 53) gets an answer                                                                                                                                                                                              |
-| `too-strict`         | nothing leaked, but a control failed: the read-only file can't be read, or Node can't load the script from the working folder                                                                                                                                      |
-| `did-not-start`      | `check()` passed, but the box or the probe program didn't start                                                                                                                                                                                                    |
-| `other`              | anything else, including a fence proof that failed with no probe to say which, and the time limit                                                                                                                                                                  |
+| `dns-reachable` | a lookup sent straight to a public DNS server (UDP 53) gets an answer |
+| `too-strict` | nothing leaked, but a control failed: the read-only file can't be read, or Node can't load the script from the working folder |
+| `did-not-start` | `check()` passed, but the box or the probe program didn't start |
+| `other` | anything else, including a fence proof that failed with no probe to say which, and the time limit |
 
 When more than one fails, the check reports the first in this order, so a
 leak is reported before a failed control.

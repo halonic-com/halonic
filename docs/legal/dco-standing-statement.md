@@ -12,9 +12,9 @@ this statement once, for all of those commits.
 
 ## Covered accounts
 
-| GitHub account | Commit author address                            |
-| -------------- | ------------------------------------------------ |
-| `halonic-dev`  | `353861737+halonic-dev@users.noreply.github.com` |
+| GitHub account | Commit author address |
+| --- | --- |
+| `halonic-dev` | `353861737+halonic-dev@users.noreply.github.com` |
 
 ## Statement
 

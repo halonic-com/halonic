@@ -6,11 +6,11 @@ suite runs it in [`src/sample-plugin.test.ts`](../../src/sample-plugin.test.ts),
 guide uses it. Every host, order and value in it is invented: `api.acme.example` doesn't exist, and
 no key is involved.
 
-| File                | What it is                                                                                                                   |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `plugin.yaml`       | The manifest: a backend with two `read` tools and one secret, and a `ui` block with a setting, a command, a card and a panel |
-| `backend/index.js`  | The backend's `entry`: the `Integration`, plain JavaScript with no imports and no build step                                 |
-| `recordings/*.json` | One recorded answer per tool (`halonic.recording/1`), with the key scrubbed                                                  |
+| File | What it is |
+| --- | --- |
+| `plugin.yaml` | The manifest: a backend with two `read` tools and one secret, and a `ui` block with a setting, a command, a card and a panel |
+| `backend/index.js` | The backend's `entry`: the `Integration`, plain JavaScript with no imports and no build step |
+| `recordings/*.json` | One recorded answer per tool (`halonic.recording/1`), with the key scrubbed |
 
 What it shows:
 

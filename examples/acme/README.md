@@ -9,15 +9,15 @@ network and no key. No file in it points at a real service.
 
 ## What's in it
 
-| Hub     | Part                       | What it does                                                             | File                                                         |
-| ------- | -------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| Support | Agent **Sorter**           | Decides whether an email is a `refund`, a `question` or `spam`           | `hubs/support/agents/sorter.agent.yaml`                      |
-| Support | Agent **Writer**           | Reads the email and drafts a reply                                       | `hubs/support/agents/writer.agent.yaml`                      |
-| Support | Workflow **Support reply** | Reads the email, classifies it, drafts a reply, then a person reviews it | `hubs/support/workflows/support-reply.workflow.yaml`         |
-| Support | Tests                      | The Support reply workflow's five test cases                             | `hubs/support/workflows/support-reply.test.yaml`             |
-| Reports | Agent **Reporter**         | Writes the weekly support report                                         | `hubs/reports/agents/reporter.agent.yaml`                    |
-| Reports | Workflow **Weekly report** | The Reporter's one step                                                  | `hubs/reports/workflows/weekly-report.workflow.yaml`         |
-| Reports | Routine                    | Runs the Weekly report every Monday at 9:00                              | `hubs/reports/workflows/routines/weekly-report.routine.yaml` |
+| Hub | Part | What it does | File |
+| --- | --- | --- | --- |
+| Support | Agent **Sorter** | Decides whether an email is a `refund`, a `question` or `spam` | `hubs/support/agents/sorter.agent.yaml` |
+| Support | Agent **Writer** | Reads the email and drafts a reply | `hubs/support/agents/writer.agent.yaml` |
+| Support | Workflow **Support reply** | Reads the email, classifies it, drafts a reply, then a person reviews it | `hubs/support/workflows/support-reply.workflow.yaml` |
+| Support | Tests | The Support reply workflow's five test cases | `hubs/support/workflows/support-reply.test.yaml` |
+| Reports | Agent **Reporter** | Writes the weekly support report | `hubs/reports/agents/reporter.agent.yaml` |
+| Reports | Workflow **Weekly report** | The Reporter's one step | `hubs/reports/workflows/weekly-report.workflow.yaml` |
+| Reports | Routine | Runs the Weekly report every Monday at 9:00 | `hubs/reports/workflows/routines/weekly-report.routine.yaml` |
 
 In the Support reply workflow, the step **Approve this reply?** (`review`)
 waits for a person and shows the draft. `approve` finishes the workflow with

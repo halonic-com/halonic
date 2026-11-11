@@ -30,12 +30,12 @@ community files and doc comments. Read it before you write or change a page.
 The docs site (`apps/docs`, not built yet: CI's `docs` job is a placeholder)
 has four sections. Pick one per page; don't mix them.
 
-| Section       | Answers                                                  | Example                   |
-| ------------- | -------------------------------------------------------- | ------------------------- |
-| Tutorials     | "Teach me": a guided first experience with a sure result | Your first workflow       |
-| How-to guides | "How do I …?": steps for one task                        | Connect Gmail             |
-| Concepts      | "Why does it work this way?"                             | How runs are recorded     |
-| Reference     | "What exactly is …?": complete and dry                   | CLI commands, file format |
+| Section | Answers | Example |
+| --- | --- | --- |
+| Tutorials | "Teach me": a guided first experience with a sure result | Your first workflow |
+| How-to guides | "How do I …?": steps for one task | Connect Gmail |
+| Concepts | "Why does it work this way?" | How runs are recorded |
+| Reference | "What exactly is …?": complete and dry | CLI commands, file format |
 
 Reference pages for the CLI, the file format, the JSON Schemas and the API are
 **generated from the code**. Don't edit them by hand; change the source (the
@@ -85,18 +85,18 @@ Architecture decisions live in `docs/adr/`, one file each, named
 Use these words, with these meanings. If you need a new term, add it here in
 the same pull request.
 
-| Term            | Meaning                                                                                                                    | Don't say                                         |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **Halonic**     | the whole product: Studio, engine and CLI                                                                                  | Halonic Studio (for the whole product), AI Studio |
-| **Studio**      | the Halonic app, on desktop, Android or in the browser                                                                     | the UI, the client                                |
-| **`halonic`**   | the command-line tool                                                                                                      | the `studio` command                              |
-| **workspace**   | a folder, usually a git repository, that holds a `workspace.yaml` and everything Halonic works with                        | project, repo (for the folder)                    |
-| **hub**         | one area of a workspace, in the `hubs/` folder, with its own agents, workflows, skills, knowledge, connectors and routines | team, space                                       |
-| **agent**       | an AI model with instructions and tools, defined in a file                                                                 | bot, assistant (except the built-in assistant)    |
-| **workflow**    | a defined sequence of steps that agents and people carry out                                                               | flow, pipeline                                    |
-| **routine**     | starts a workflow or an agent by itself: on a schedule, at an interval or on a trigger                                     | job, cron                                         |
-| **run**         | one execution of a workflow, recorded step by step                                                                         | execution, session                                |
-| **approval**    | a step where a run waits until a person agrees                                                                             | confirmation                                      |
-| **event**       | what you send to a waiting run to answer it, such as `approve` or `reject`                                                 | answer (as a noun), command                       |
-| **feature**     | one part of the Studio, such as Agents or Routines, built as its own package (code term; users see the screens)            | module, plugin                                    |
-| **requirement** | one recorded rule of behaviour with a stable ID, proven by tests                                                           | spec, story                                       |
+| Term | Meaning | Don't say |
+| --- | --- | --- |
+| **Halonic** | the whole product: Studio, engine and CLI | Halonic Studio (for the whole product), AI Studio |
+| **Studio** | the Halonic app, on desktop, Android or in the browser | the UI, the client |
+| **`halonic`** | the command-line tool | the `studio` command |
+| **workspace** | a folder, usually a git repository, that holds a `workspace.yaml` and everything Halonic works with | project, repo (for the folder) |
+| **hub** | one area of a workspace, in the `hubs/` folder, with its own agents, workflows, skills, knowledge, connectors and routines | team, space |
+| **agent** | an AI model with instructions and tools, defined in a file | bot, assistant (except the built-in assistant) |
+| **workflow** | a defined sequence of steps that agents and people carry out | flow, pipeline |
+| **routine** | starts a workflow or an agent by itself: on a schedule, at an interval or on a trigger | job, cron |
+| **run** | one execution of a workflow, recorded step by step | execution, session |
+| **approval** | a step where a run waits until a person agrees | confirmation |
+| **event** | what you send to a waiting run to answer it, such as `approve` or `reject` | answer (as a noun), command |
+| **feature** | one part of the Studio, such as Agents or Routines, built as its own package (code term; users see the screens) | module, plugin |
+| **requirement** | one recorded rule of behaviour with a stable ID, proven by tests | spec, story |

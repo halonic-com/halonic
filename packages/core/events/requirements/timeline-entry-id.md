@@ -6,16 +6,16 @@
 
 The `entry` of a run event, which any run event may have, is the `seq` of the event that opened its timeline entry. The events package shall work out each event's entry with `entryOf(events)`. An event that has `entry` keeps it. An event that updates an entry (table below) gets the `seq` of the latest still-open opener of the matching type with the same `branch`, `item` and "matched on" fields. Every other event gets its own `seq`.
 
-| Opens an entry       | Updated later by                | Matched on                 |
-| -------------------- | ------------------------------- | -------------------------- |
-| `run.started`        | `run.completed`, `run.failed`   | the run                    |
-| `state.entered`      | `transition` out of that state  | `state` = `from`           |
-| `agent.started`      | `agent.finished`                | `state`, `agent`, `parent` |
-| `llm.request`        | `llm.response`, `llm.fallback`  | `agent`                    |
-| `tool.called`        | `tool.result`                   | `agent`, `tool`            |
-| `approval.requested` | `approval.resolved`             | `callId`                   |
-| `workflow.started`   | `workflow.finished`             | `childRunId`               |
-| `run.waiting`        | `timer.fired`, `event.received` | the run                    |
+| Opens an entry | Updated later by | Matched on |
+| --- | --- | --- |
+| `run.started` | `run.completed`, `run.failed` | the run |
+| `state.entered` | `transition` out of that state | `state` = `from` |
+| `agent.started` | `agent.finished` | `state`, `agent`, `parent` |
+| `llm.request` | `llm.response`, `llm.fallback` | `agent` |
+| `tool.called` | `tool.result` | `agent`, `tool` |
+| `approval.requested` | `approval.resolved` | `callId` |
+| `workflow.started` | `workflow.finished` | `childRunId` |
+| `run.waiting` | `timer.fired`, `event.received` | the run |
 
 An updating event finishes its entry, so later events can't update it, except `llm.fallback`: the call goes on with the fallback model and its `llm.response` updates the same entry.
 

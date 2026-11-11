@@ -37,15 +37,15 @@ from then on.
 
 ## Errors
 
-| The shell says      | The adapter rejects with                                                                                                     |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `unreadable`        | an `Error` naming the record's location (or its file, when the shell can't read the location), as `FileTrustStore` throws it |
-| `declined`          | a `KindedError` `denied`                                                                                                     |
-| `busy`              | a `KindedError` `conflict`                                                                                                   |
-| `folder_unreadable` | a `KindedError` `not_found`                                                                                                  |
-| `invalid_record`    | a `KindedError` `internal`                                                                                                   |
-| `io`                | a `KindedError` `unavailable`, with the shell's message                                                                      |
-| anything else       | a `KindedError` `unavailable`, without its text                                                                              |
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `unreadable` | an `Error` naming the record's location (or its file, when the shell can't read the location), as `FileTrustStore` throws it |
+| `declined` | a `KindedError` `denied` |
+| `busy` | a `KindedError` `conflict` |
+| `folder_unreadable` | a `KindedError` `not_found` |
+| `invalid_record` | a `KindedError` `internal` |
+| `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
 
 The shell's refusals have the shape `{ kind, message, location?, file? }`. The package exports
 `TauriShell` (the `invoke` the adapter needs), `trustCommands` (the four command names),
@@ -60,9 +60,9 @@ workspace, a folder the person opened in the shell, and optionally a deployment.
 the folder as `runsFolder` in `@halonicjs/profile` does, and refuses a workspace that isn't open in
 it. The page never names a path.
 
-| Runs                      | Folder                                             |
-| ------------------------- | -------------------------------------------------- |
-| the workspace's own       | `<profile>/workspaces/<key>/runs`                  |
+| Runs | Folder |
+| --- | --- |
+| the workspace's own | `<profile>/workspaces/<key>/runs` |
 | one deployment's (`<id>`) | `<profile>/workspaces/<key>/deployments/<id>/runs` |
 
 The deployment id becomes a folder name, so the constructor throws a `RangeError` for one that
@@ -75,16 +75,16 @@ the summaries `list` works out on every call. A snapshot the shell couldn't writ
 append; its reason goes to `onSnapshotError`, which must not throw. A stored snapshot that isn't one,
 or is ahead of the log, reads as `null`, so the engine replays the log.
 
-| The shell says       | The adapter rejects with                                             |
-| -------------------- | -------------------------------------------------------------------- |
-| `broken_log`         | an `Error` with the shell's message, as `FolderRunStore` throws      |
-| `folder_not_open`    | a `KindedError` `denied`                                             |
-| `invalid_deployment` | a `KindedError` `internal` (the page checks deployment ids first)    |
-| `invalid_run_id`     | a `KindedError` `internal` (the page checks run ids first)           |
-| `invalid_lines`      | a `KindedError` `internal` (the page writes the lines)               |
-| `other_runs_log`     | a `KindedError` `invalid_input` (a run id in another case, HAL-4749) |
-| `io`                 | a `KindedError` `unavailable`, with the shell's message              |
-| anything else        | a `KindedError` `unavailable`, without its text                      |
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `broken_log` | an `Error` with the shell's message, as `FolderRunStore` throws |
+| `folder_not_open` | a `KindedError` `denied` |
+| `invalid_deployment` | a `KindedError` `internal` (the page checks deployment ids first) |
+| `invalid_run_id` | a `KindedError` `internal` (the page checks run ids first) |
+| `invalid_lines` | a `KindedError` `internal` (the page writes the lines) |
+| `other_runs_log` | a `KindedError` `invalid_input` (a run id in another case, HAL-4749) |
+| `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
 
 An answer that isn't the command's also rejects with `unavailable`, without text.
 

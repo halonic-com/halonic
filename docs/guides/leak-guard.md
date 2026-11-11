@@ -6,15 +6,15 @@ your machine, and CI blocks them again before they can reach `main`.
 
 ## What it refuses
 
-| Rule               | Refuses                                                                                                                                                                                            |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `private-key`      | a private key block (`-----BEGIN … PRIVATE KEY-----`)                                                                                                                                              |
+| Rule | Refuses |
+| --- | --- |
+| `private-key` | a private key block (`-----BEGIN … PRIVATE KEY-----`) |
 | `aws-access-key` … | known key and token formats: AWS, GitHub, GitLab, npm, Slack, Google, Stripe, Hugging Face, AI provider keys, signed tokens (JWTs) such as agent API keys, passwords in URLs, `.npmrc` auth tokens |
-| `env-file`         | a `.env`, `.env.*`, `*.env`, `.envrc`, `.dev.vars` or `*.tfvars` file (`.env.example`, `.sample`, `.template`, `.defaults` are fine)                                                               |
-| `key-file`         | a private key or keystore file (`id_rsa`, `id_rsa_work`, `*.pem`, `*.key`, `*.p12`, `*.keystore`, …)                                                                                               |
-| `credential-file`  | a file of login details: `.npmrc`, `.netrc`, `.pgpass`, AWS `credentials`                                                                                                                          |
-| `absolute-path`    | a path that only exists on one machine: `/home/…`, `/Users/…`, `C:\…`, `/tmp/…`, `/var/folders/…`, …                                                                                               |
-| `personal-term`    | a personal term from the deny-terms list, in any case, also inside a longer word                                                                                                                   |
+| `env-file` | a `.env`, `.env.*`, `*.env`, `.envrc`, `.dev.vars` or `*.tfvars` file (`.env.example`, `.sample`, `.template`, `.defaults` are fine) |
+| `key-file` | a private key or keystore file (`id_rsa`, `id_rsa_work`, `*.pem`, `*.key`, `*.p12`, `*.keystore`, …) |
+| `credential-file` | a file of login details: `.npmrc`, `.netrc`, `.pgpass`, AWS `credentials` |
+| `absolute-path` | a path that only exists on one machine: `/home/…`, `/Users/…`, `C:\…`, `/tmp/…`, `/var/folders/…`, … |
+| `personal-term` | a personal term from the deny-terms list, in any case, also inside a longer word |
 
 It checks the lines you add (also those a merge commit adds), file names,
 commit messages, and the author and committer of each commit. On push it

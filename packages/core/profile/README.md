@@ -11,12 +11,12 @@ their blobs, its records and its changes to review, so nothing Halonic records e
 
 ## Where the profile folder is
 
-| System  | Profile folder                                                   |
-| ------- | ---------------------------------------------------------------- |
-| any     | `HALONIC_HOME`, when it is set (it must be absolute)             |
+| System | Profile folder |
+| --- | --- |
+| any | `HALONIC_HOME`, when it is set (it must be absolute) |
 | Windows | `%LOCALAPPDATA%\halonic`, or else `<home>\AppData\Local\halonic` |
-| macOS   | `~/Library/Application Support/halonic`                          |
-| Linux   | `$XDG_DATA_HOME/halonic`, or else `~/.local/share/halonic`       |
+| macOS | `~/Library/Application Support/halonic` |
+| Linux | `$XDG_DATA_HOME/halonic`, or else `~/.local/share/halonic` |
 
 An empty variable counts as unset, and a relative `XDG_DATA_HOME` or `LOCALAPPDATA` is ignored.
 `profileFolder(environment)` takes a `ProfileEnvironment` (the system, the home folder and the
@@ -43,13 +43,13 @@ letters, digits, `-` or `_` starting with a letter or digit, or that is a Window
 (`con`, `nul`, `com1`, …). `isDeploymentId` and `checkDeploymentId` apply the same rule for code that
 hands a deployment id to something else that builds the folder, such as the desktop shell.
 
-| Folder                   | Holds                                   |
-| ------------------------ | --------------------------------------- |
-| `runs/`                  | the workspace's runs                    |
-| `deployments/<id>/runs/` | one deployment's runs                   |
-| `blobs/`                 | kept definitions and large run payloads |
-| `records/`               | agent notes and collection records      |
-| `review/`                | the assistant's changes to review       |
+| Folder | Holds |
+| --- | --- |
+| `runs/` | the workspace's runs |
+| `deployments/<id>/runs/` | one deployment's runs |
+| `blobs/` | kept definitions and large run payloads |
+| `records/` | agent notes and collection records |
+| `review/` | the assistant's changes to review |
 
 Records belong to the workspace: two workspaces with an agent `clerk` never share its notes, and a
 moved workspace folder starts without its old records, as it does without its old runs. A person's

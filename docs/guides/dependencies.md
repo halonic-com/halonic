@@ -20,13 +20,13 @@ The user approved five libraries on 8 Nov 2026. Each one sits behind our own
 thin package. **Only that package imports the library;** everything else uses
 the wrapper, so the rest of the code never depends on the library directly.
 
-| Library                | Only in                          | Everyone else uses                                                                   |
-| ---------------------- | -------------------------------- | ------------------------------------------------------------------------------------ |
-| `zod`                  | `core/schema-kit`, `core/format` | `@halonicjs/schema-kit`                                                              |
-| `yaml`                 | `core/yaml`                      | `@halonicjs/yaml`                                                                    |
-| `@noble/hashes`        | `adapters/password-scrypt`       | the `PasswordHasher` port (SHA-256 comes from the hashing port, backed by WebCrypto) |
-| `remark`, `remark-gfm` | `studio/kit`                     | the Markdown view in `@halonicjs/studio-kit`                                         |
-| `react-data-grid`      | `studio/kit`                     | the data grid in `@halonicjs/studio-kit`                                             |
+| Library | Only in | Everyone else uses |
+| --- | --- | --- |
+| `zod` | `core/schema-kit`, `core/format` | `@halonicjs/schema-kit` |
+| `yaml` | `core/yaml` | `@halonicjs/yaml` |
+| `@noble/hashes` | `adapters/password-scrypt` | the `PasswordHasher` port (SHA-256 comes from the hashing port, backed by WebCrypto) |
+| `remark`, `remark-gfm` | `studio/kit` | the Markdown view in `@halonicjs/studio-kit` |
+| `react-data-grid` | `studio/kit` | the data grid in `@halonicjs/studio-kit` |
 
 `zod` and `yaml` are the only **core exceptions** (`"category":
 "core-exception"`). The check lets a core package import one only when the

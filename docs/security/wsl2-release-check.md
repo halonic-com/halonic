@@ -37,16 +37,16 @@ in `/etc/wsl.conf` (then `wsl --shutdown`). Paste the output below.
 Run on 10 Nov 2026, on the board's own PC, from `main` at
 `25e673a`, unchanged and with no harness sandbox around it. Both runs passed.
 
-| Field               | Value                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| Date                | 10 Nov 2026                                                                                 |
-| Run by              | The board ([HAL-3743](/HAL/issues/HAL-3743))                                                |
-| Windows build       | Windows 11 Pro 10.0.26200                                                                   |
-| WSL and kernel      | 6.18.33.2-microsoft-standard-WSL2; fresh Ubuntu 26.04.1 LTS distro, systemd on, normal user |
-| srt version         | 0.0.82 (`@anthropic-ai/sandbox-runtime`), bubblewrap 0.11.1, socat, ripgrep from Ubuntu     |
-| Halonic commit      | `25e673a`                                                                                   |
-| Interop on: result  | PASS (exit 0)                                                                               |
-| Interop off: result | PASS (exit 0)                                                                               |
+| Field | Value |
+| --- | --- |
+| Date | 10 Nov 2026 |
+| Run by | The board ([HAL-3743](/HAL/issues/HAL-3743)) |
+| Windows build | Windows 11 Pro 10.0.26200 |
+| WSL and kernel | 6.18.33.2-microsoft-standard-WSL2; fresh Ubuntu 26.04.1 LTS distro, systemd on, normal user |
+| srt version | 0.0.82 (`@anthropic-ai/sandbox-runtime`), bubblewrap 0.11.1, socat, ripgrep from Ubuntu |
+| Halonic commit | `25e673a` |
+| Interop on: result | PASS (exit 0) |
+| Interop off: result | PASS (exit 0) |
 
 Output, interop on:
 

@@ -11,18 +11,18 @@ Node, Workers and in the browser.
 
 ## What it gives you
 
-| Export                     | What it does                                                                                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `startGoogleSignIn`        | makes the `state` and PKCE pair, keeps them as the account's pending sign-in and returns the auth URL                                                         |
-| `finishGoogleSignIn`       | reads Google's callback, exchanges the code, checks the ID token and the account, saves the refresh token, checks each service and returns a typed result     |
-| `checkGoogleServicesAgain` | refreshes the access token with the saved refresh token and checks each service again, for "Check again"                                                      |
-| `revokeGoogleSignIn`       | revokes the account's refresh token at Google and removes it from the `TokenStore`, whether or not Google confirms                                            |
-| `googleRevokeEndpoint`     | Google's revoke endpoint URL, as a constant                                                                                                                   |
-| `createPendingSignIns`     | the server's pending sign-ins, in memory, at most one per account; one older than 10 minutes counts as none. Create one per server and pass it in like a port |
-| `createPkcePair`           | a new PKCE verifier (32 random bytes, 43 base64url characters) and its S256 challenge (RFC 7636)                                                              |
-| `pkceChallenge`            | the S256 challenge for a verifier                                                                                                                             |
-| `createState`              | a new `state` (32 random bytes, 43 base64url characters)                                                                                                      |
-| `stateMatches`             | compares a returned `state` with the expected one in constant time; a missing one never matches                                                               |
+| Export | What it does |
+| --- | --- |
+| `startGoogleSignIn` | makes the `state` and PKCE pair, keeps them as the account's pending sign-in and returns the auth URL |
+| `finishGoogleSignIn` | reads Google's callback, exchanges the code, checks the ID token and the account, saves the refresh token, checks each service and returns a typed result |
+| `checkGoogleServicesAgain` | refreshes the access token with the saved refresh token and checks each service again, for "Check again" |
+| `revokeGoogleSignIn` | revokes the account's refresh token at Google and removes it from the `TokenStore`, whether or not Google confirms |
+| `googleRevokeEndpoint` | Google's revoke endpoint URL, as a constant |
+| `createPendingSignIns` | the server's pending sign-ins, in memory, at most one per account; one older than 10 minutes counts as none. Create one per server and pass it in like a port |
+| `createPkcePair` | a new PKCE verifier (32 random bytes, 43 base64url characters) and its S256 challenge (RFC 7636) |
+| `pkceChallenge` | the S256 challenge for a verifier |
+| `createState` | a new `state` (32 random bytes, 43 base64url characters) |
+| `stateMatches` | compares a returned `state` with the expected one in constant time; a missing one never matches |
 
 The verifier is a secret. It stays in memory with the pending sign-in and is
 sent only to Google's token endpoint; it is never logged, stored or returned

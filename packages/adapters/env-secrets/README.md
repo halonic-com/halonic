@@ -12,10 +12,10 @@ and `firstSecret`, which chains stores so the environment can come before the OS
 
 A secret's variable is `HALONIC_SECRET_` and its name in upper case, with `-` as `_`:
 
-| Secret name                                          | Variable                        |
-| ---------------------------------------------------- | ------------------------------- |
+| Secret name | Variable |
+| --- | --- |
 | `serve-password`, `SERVE_PASSWORD`, `serve_password` | `HALONIC_SECRET_SERVE_PASSWORD` |
-| `openai`                                             | `HALONIC_SECRET_OPENAI`         |
+| `openai` | `HALONIC_SECRET_OPENAI` |
 
 A name that breaks the port's rule (a letter, then letters, digits, `-` or `_`, at most 128
 characters) is refused with a `RangeError` before any variable is read. An unset or empty variable

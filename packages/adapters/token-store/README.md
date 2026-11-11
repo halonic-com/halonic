@@ -80,12 +80,12 @@ token needs none. A missing or wrong key is not remembered: set the secret and t
 Each token is one record in the collection `_tokens`, under its canonical name (lower case, `-`
 turned into `_`), with one value `sealed`: base64url of
 
-| bytes | content                                                                  |
-| ----- | ------------------------------------------------------------------------ |
-| 1     | format version, `0x01`                                                   |
-| 4     | key id: the first 4 bytes of SHA-256 of `"halonic-token-key-id\0"` + key |
-| 12    | random nonce, new on every `set`                                         |
-| rest  | AES-256-GCM ciphertext with its 16-byte tag                              |
+| bytes | content |
+| --- | --- |
+| 1 | format version, `0x01` |
+| 4 | key id: the first 4 bytes of SHA-256 of `"halonic-token-key-id\0"` + key |
+| 12 | random nonce, new on every `set` |
+| rest | AES-256-GCM ciphertext with its 16-byte tag |
 
 The additional data is `halonic-token-v1:` + the canonical name + the version byte and key id, so
 a value copied to another name won't open. A value that won't open throws `UnreadableTokenError`,

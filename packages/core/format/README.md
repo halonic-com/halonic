@@ -47,24 +47,24 @@ don't make the file fail.
 
 ## Kinds
 
-| Kind           | File                                                                    |
-| -------------- | ----------------------------------------------------------------------- |
-| `workspace`    | `workspace.yaml`                                                        |
-| `deployments`  | `deployments.yaml`                                                      |
-| `models`       | `models.yaml`                                                           |
-| `provider`     | `providers/<id>.yaml`                                                   |
-| `runtime`      | `runtimes/<id>.yaml`                                                    |
-| `knowledge`    | `library/knowledge/<id>.yaml`                                           |
-| `collection`   | `library/collections/<id>.collection.yaml`                              |
-| `connector`    | `library/connectors/<id>.connector.yaml`                                |
-| `skill`        | `library/skills/<id>/SKILL.md` (front matter)                           |
-| `hub`          | `hubs/<hub>/hub.yaml`                                                   |
-| `agent`        | `agents/<id>.agent.yaml`                                                |
-| `workflow`     | `workflows/<id>.workflow.yaml`                                          |
-| `workflowTest` | `workflows/<id>.test.yaml`                                              |
-| `routine`      | `workflows/routines/<id>.routine.yaml`                                  |
-| `integration`  | `integration.yaml`, next to the integration's code (not in a workspace) |
-| `plugin`       | `plugin.yaml`, at the root of a plugin folder (not in a workspace)      |
+| Kind | File |
+| --- | --- |
+| `workspace` | `workspace.yaml` |
+| `deployments` | `deployments.yaml` |
+| `models` | `models.yaml` |
+| `provider` | `providers/<id>.yaml` |
+| `runtime` | `runtimes/<id>.yaml` |
+| `knowledge` | `library/knowledge/<id>.yaml` |
+| `collection` | `library/collections/<id>.collection.yaml` |
+| `connector` | `library/connectors/<id>.connector.yaml` |
+| `skill` | `library/skills/<id>/SKILL.md` (front matter) |
+| `hub` | `hubs/<hub>/hub.yaml` |
+| `agent` | `agents/<id>.agent.yaml` |
+| `workflow` | `workflows/<id>.workflow.yaml` |
+| `workflowTest` | `workflows/<id>.test.yaml` |
+| `routine` | `workflows/routines/<id>.routine.yaml` |
+| `integration` | `integration.yaml`, next to the integration's code (not in a workspace) |
+| `plugin` | `plugin.yaml`, at the root of a plugin folder (not in a workspace) |
 
 Most kinds can also sit inside a hub folder; `fileKinds[kind].places` has the
 exact places (`integration` and `plugin` have none: they live outside workspaces).
