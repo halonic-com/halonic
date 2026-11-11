@@ -74,10 +74,23 @@ async function integrationFolders(workspace: FolderReader): Promise<string[]> {
   const folders: string[] = [];
   for (const entry of await workspace.entries(integrationsFolder, { recursive: false })) {
     if (entry.kind !== "folder") continue;
-    const inside = await workspace.entries(entry.path, { recursive: false });
-    if (inside.some((file) => isSheet(file, entry.path))) folders.push(entry.path);
+    if (await holdsSheet(workspace, entry.path)) folders.push(entry.path);
   }
   return folders.sort(compareText);
+}
+
+/**
+ * Whether `folder` has an `integration.yaml` directly in it. A folder the
+ * reader refuses to list, such as one with a backslash in its name, holds
+ * none, so it doesn't stop the trust check of the whole workspace.
+ */
+async function holdsSheet(workspace: FolderReader, folder: string): Promise<boolean> {
+  try {
+    const inside = await workspace.entries(folder, { recursive: false });
+    return inside.some((file) => isSheet(file, folder));
+  } catch {
+    return false;
+  }
 }
 
 function isSheet(entry: FolderEntry, folder: string): boolean {

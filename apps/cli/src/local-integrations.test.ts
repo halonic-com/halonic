@@ -182,6 +182,24 @@ verifies("cli.local-integrations", () => {
       ]);
     });
 
+    // Windows allows no backslash in a file name.
+    it.skipIf(process.platform === "win32")(
+      "leaves out a folder with a backslash in its name, and still reads the others",
+      async () => {
+        await addStation();
+        await putFiles({
+          "integrations/back\\slash/integration.yaml": stationSheet.replace(
+            "id: station",
+            "id: back",
+          ),
+        });
+        const integrations = await workspaceIntegrations(acme, "./acme");
+        expect(integrations.map((integration) => integration.folder)).toEqual([
+          "integrations/station",
+        ]);
+      },
+    );
+
     it("reads none in a workspace without an integrations folder", async () => {
       expect(await workspaceIntegrations(acme, "./acme")).toEqual([]);
     });
