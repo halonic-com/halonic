@@ -22,7 +22,7 @@ export const defaultMaxBridges = 64;
 
 const unknownBridgeMessage = "The agent host has no open bridge with this id.";
 const tooManyBridgesMessage =
-  "The agent host has as many bridges open as it keeps. Close one first.";
+  "The agent host already has the most bridges it allows. Close one first.";
 
 interface OpenBridge {
   bridge: OpenHarnessBridge;

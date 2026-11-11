@@ -25,7 +25,7 @@ The kit's loader shall build an integration's host only when its permission shee
   then it fails with `sheet-not-approved`; with the same sheet approved, it loads.
 - Given a local integration whose approved sheet declares `tokens`,
   when it is loaded,
-  then it fails with `tokens-not-allowed` and the fix "Use an API key, or ask for sign-in support."; the same sheet loads as built-in.
+  then it fails with `tokens-not-allowed` and the fix "Remove tokens from its sheet and use an API key, or ask for sign-in support."; the same sheet loads as built-in.
 - Given `needs: [process]` on a runtime without `process`,
   when it is loaded,
   then it fails with `need-not-available` at `needs[0]`.

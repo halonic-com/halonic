@@ -56,7 +56,7 @@ type ManifestName = (typeof manifestNames)[number];
 
 /** The ADR's sentence for a backend with `tokens`, the same as for a local integration. */
 const noTokensMessage =
-  "Integrations you build or change can't keep sign-in tokens yet. Use an API key, or ask for sign-in support.";
+  "An integration you build or change can't hold sign-in secrets yet. Use an API key, or ask for sign-in support.";
 
 /**
  * Reads the plugin folder `folder` of `reader`, the profile's plugin folder.

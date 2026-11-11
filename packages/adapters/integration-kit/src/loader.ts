@@ -199,8 +199,8 @@ function localTokenProblems(source: IntegrationSource, sheet: IntegrationSheet):
     {
       code: "tokens-not-allowed",
       path: ["tokens"],
-      message: `${sheet.id}: integrations you build or change can't keep sign-in tokens yet`,
-      fix: "Use an API key, or ask for sign-in support.",
+      message: `${sheet.id}: an integration you build or change can't hold sign-in secrets yet`,
+      fix: "Remove tokens from its sheet and use an API key, or ask for sign-in support.",
     },
   ];
 }

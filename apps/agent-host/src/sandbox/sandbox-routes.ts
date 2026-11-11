@@ -13,7 +13,7 @@ const sessionBody = s.object({ session: s.string().min(1) }).strict();
 const unknownSessionMessage = "The agent host has no open sandbox session with this id.";
 const hostStoppingMessage = "The agent host is stopping and opens no more sessions.";
 const tooManySessionsMessage =
-  "The agent host has as many sandbox sessions open as it keeps. Close one first.";
+  "The agent host already has the most sandbox sessions it allows. Close one first.";
 
 /** Answers that the host is stopping and opens no more sessions. */
 function sendHostStopping(response: ServerResponse): void {

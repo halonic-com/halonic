@@ -17,7 +17,7 @@ export function errorForStatus(status: number, hasSession: boolean): McpError {
     case 401:
       return new McpError(
         "not-signed-in",
-        "The MCP server refused the key. Check the key or reconnect.",
+        "The MCP server refused the secret. Check the secret or connect again.",
       );
     case 403:
       return new McpError("not-allowed", "The MCP server doesn't allow this account to do that.");

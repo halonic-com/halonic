@@ -163,7 +163,7 @@ verifies("integration-kit.loader", () => {
       }).loaded;
       expect(codes(refused)).toEqual([{ code: "tokens-not-allowed", path: ["tokens"] }]);
       expect(refused.ok ? undefined : refused.error[0]?.fix).toBe(
-        "Use an API key, or ask for sign-in support.",
+        "Remove tokens from its sheet and use an API key, or ask for sign-in support.",
       );
       const builtIn = load({ source: { origin: "built-in", sheet: withTokens, integration } });
       expect(builtIn.loaded.ok).toBe(true);

@@ -67,7 +67,7 @@ verifies("integration-runner.start", () => {
       );
       const connection = await connectRunner(bridgeOptions(fake));
       await expect(connection.callTool("forecast", {})).rejects.toThrow(
-        /can't keep sign-in tokens/,
+        /can't hold sign-in secrets/,
       );
       await connection.close();
       await running;

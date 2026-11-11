@@ -266,8 +266,8 @@ const lineTwo = {
   // A per-run budget doesn't reset, so only a monthly one can be waited out.
   budget: (_run, failure) =>
     failure.per === "run"
-      ? phrase`Raise the budget in models.yaml.`
-      : phrase`Raise the budget in models.yaml, or wait until it resets on ${failure.resetsOn}.`,
+      ? phrase`Raise the budget in workspace.yaml.`
+      : phrase`Raise the budget in workspace.yaml, or wait until it resets on ${failure.resetsOn}.`,
   "turn-limit": (run, failure) =>
     phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its turn limit in ${failure.agentFile} if it needs more turns.`,
   "tool-timeout": () => tryLater(),

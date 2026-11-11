@@ -113,7 +113,7 @@ verifies("app.plugin-folder", () => {
       ["backend-tokens", ["backend", "tokens"]],
     ]);
     expect(problems[1]?.message).toBe(
-      "Integrations you build or change can't keep sign-in tokens yet. Use an API key, or ask for sign-in support.",
+      "An integration you build or change can't hold sign-in secrets yet. Use an API key, or ask for sign-in support.",
     );
   });
 

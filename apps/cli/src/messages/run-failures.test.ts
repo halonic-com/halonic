@@ -34,11 +34,11 @@ verifies("cli.messages", () => {
   it("says a run budget stopped the run, and only a monthly one resets (revision 23)", () => {
     expect(lines({ reason: "budget", per: "run", budget: 5, spent: 5.08 })).toEqual([
       "Support reply stopped in the step Draft a reply: this run reached its budget of €5.00 (estimated €5.08 spent).",
-      "Raise the budget in models.yaml.",
+      "Raise the budget in workspace.yaml.",
     ]);
     expect(lines({ reason: "budget", per: "month", budget: 50, resetsOn: "1 Dec" })).toEqual([
       "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of €50.00.",
-      "Raise the budget in models.yaml, or wait until it resets on 1 Dec.",
+      "Raise the budget in workspace.yaml, or wait until it resets on 1 Dec.",
     ]);
   });
 });

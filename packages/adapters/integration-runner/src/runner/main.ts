@@ -71,7 +71,7 @@ export async function runRunner(
  * declares tokens (design HAL-958, section 3.5). So an integration that asks
  * for one anyway gets an error, never a value.
  */
-const noTokensMessage = "Integrations you build or change can't keep sign-in tokens yet.";
+const noTokensMessage = "An integration you build or change can't hold sign-in secrets yet.";
 const noTokens: TokenStore = {
   get: () => Promise.reject(new Error(noTokensMessage)),
   set: () => Promise.reject(new Error(noTokensMessage)),
