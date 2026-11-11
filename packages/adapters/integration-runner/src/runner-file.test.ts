@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -65,7 +65,9 @@ let folder: string;
 let runner: RunnerFile;
 
 beforeAll(async () => {
-  folder = await mkdtemp(join(tmpdir(), "runner-file-"));
+  // The real path, as the runner gets in production: Node resolves modules to
+  // their real paths, and tmpdir() is a symlink on macOS.
+  folder = await realpath(await mkdtemp(join(tmpdir(), "runner-file-")));
   runner = await buildRunnerFile(join(folder, "dist", "runner.mjs"));
   await writeFile(join(folder, "outside.mjs"), "export default 1;");
 });
@@ -173,11 +175,17 @@ verifies("integration-runner.module-fence", () => {
       ["import ../ out of its folder", 'return import("../outside.mjs");'],
       ["import another package", 'return import("left-pad");'],
       ["require fs from a CommonJS file", 'return import("./reach.cjs");'],
+      ["require a native add-on from a CommonJS file", 'return import("./reach-addon.cjs");'],
       ["resolve node:fs with import.meta.resolve", 'return import.meta.resolve("node:fs");'],
     ])("refuses an integration that tries to %s", async (_name, attempt) => {
       const answer = await answerTo(attempting(attempt), {
         nodeLayer,
-        files: { "reach.cjs": 'module.exports = require("fs");' },
+        files: {
+          "reach.cjs": 'module.exports = require("fs");',
+          "reach-addon.cjs": 'module.exports = require("./x.node");',
+          // Only has to resolve: the hook refuses it before Node would load it.
+          "x.node": "",
+        },
       });
       expect(answer).toMatch(/^refused: The runner refused an import/);
     });

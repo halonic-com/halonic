@@ -60,14 +60,16 @@ must be stopped with exactly one block, or answered without stopping, and never 
   and resolves to a file inside the integration's folder. Node's own modules by any name
   (`node:fs`, `fs`, `node:module`), `data:` and `blob:` URLs, other packages and `../` out of
   the folder are refused, and `process.getBuiltinModule` is removed (attack case A34). It holds
-  with Node's permission layer off too. `zod` must resolve inside the folder.
+  with Node's permission layer off too, for imports and requires, and refuses native add-ons
+  (`.node`). `zod` must resolve inside the folder.
 - **The runner file, `pnpm build` (`esbuild.config.ts`):** writes the runner and everything it
   imports (our packages and Zod) to `dist/runner.mjs`, the one file Node may read inside the fence
   besides the integration's folder. The build fails if that file would import anything but Node's
   own modules. esbuild does the build and never ships.
 
-Not done yet: starting through `sandbox-host` on the confirmed path without the fence. Whether a runner may start at all, and fenced or not, is decided before `startRunner`
-by the start gate in `core/app`.
+Not done yet: starting through `sandbox-host` on the confirmed path without the fence. Whether a
+runner may start at all, and fenced or not, is decided before `startRunner` by the start gate in
+`core/app`.
 
 ## Example
 

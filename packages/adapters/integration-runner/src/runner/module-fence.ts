@@ -17,6 +17,9 @@ export type ImportCheck = { allowed: true } | { allowed: false; reason: string }
 
 const allowed: ImportCheck = { allowed: true };
 
+/** The extension Node loads as a native add-on. */
+const nativeAddonExtension = ".node";
+
 /** The integration's folder as a file URL that ends in `/`, so a prefix test can't match a sibling. */
 export function folderUrl(folder: string): string {
   const href = pathToFileURL(folder).href;
@@ -41,11 +44,18 @@ export function checkSpecifier(
   return checkResolved(written, folder);
 }
 
-/** Checks where Node resolved an import: it must be a file inside the folder. */
+/**
+ * Checks where Node resolved an import: it must be a file inside the folder,
+ * and not a native add-on (`.node`), whose native code would get past every
+ * layer once loaded.
+ */
 export function checkResolved(url: string, folder: string): ImportCheck {
   if (!url.startsWith("file:")) return refused(`${schemeOf(url)} imports are not allowed`);
   if (!url.startsWith(folderUrl(folder))) {
     return refused(`${url} is outside the integration's folder`);
+  }
+  if (new URL(url).pathname.endsWith(nativeAddonExtension)) {
+    return refused(`${url} is a native add-on`);
   }
   return allowed;
 }
@@ -54,6 +64,10 @@ export function checkResolved(url: string, folder: string): ImportCheck {
  * Puts the hook in place for this process. Call it once, before the
  * integration's module is imported. The runner's entry also removes
  * `process.getBuiltinModule`, which hands out Node's modules without an import.
+ *
+ * `folder` must be the folder's real path, with no symlink in it: Node
+ * resolves a module to its real path, so through a symlink the hook would
+ * refuse the integration's own files.
  *
  * @throws {Error} later, from the import or require, for a module the hook refuses
  */

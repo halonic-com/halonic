@@ -66,6 +66,11 @@ verifies("integration-runner.module-fence", () => {
     it("refuses the folder itself, which isn't a module", () => {
       expect(checkResolved(fileUrl("/work/weather"), folder).allowed).toBe(false);
     });
+
+    it("refuses a native add-on inside the folder, with or without a query", () => {
+      expect(checkResolved(fileUrl("/work/weather/x.node"), folder).allowed).toBe(false);
+      expect(checkResolved(`${fileUrl("/work/weather/x.node")}?v=1`, folder).allowed).toBe(false);
+    });
   });
 
   describe("folderUrl", () => {
