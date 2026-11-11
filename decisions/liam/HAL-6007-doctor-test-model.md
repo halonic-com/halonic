@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on [HAL-6007](/HAL/issues/HAL-6007) (Sofia's CLI output read, HAL-5959), a fallback state of the approved doctor output, a team decision with no board card (HAL-2282 rule); Priya reviewed it on HAL-6047; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5XYHkD2UFzZaU/uCG2SHqXC4GDS1kRZtEXc+DryEuE+m/7Y5i5Rg/y8pc9JONkZk9rLViP1p1BGso1g0U0GQAQ==
 - Task: HAL-6007
 
 ## What changes
