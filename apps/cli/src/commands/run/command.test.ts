@@ -65,7 +65,10 @@ verifies("cli.run", () => {
     );
   });
 
-  it("answers the wait with --event and ends with the receipt", async () => {
+  // Three whole runs, one per golden mode, each on a real engine that flushes every event to
+  // disk. Nothing waits on a timer: it takes about 1.4 s on an idle machine, but 5.3 s on a
+  // loaded CI runner hit Vitest's 5 s default (HAL-5383). A real hang still fails at 20 s.
+  it("answers the wait with --event and ends with the receipt", { timeout: 20_000 }, async () => {
     const args = ["run", "support-reply", ...samsEmail, "--event", "approve"];
     const output = await runGolden(args, () => [runCommand()], acme);
 
