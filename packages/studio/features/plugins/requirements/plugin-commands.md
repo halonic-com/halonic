@@ -10,7 +10,7 @@ The Studio shall show a plugin command in a dialog with the command's title, the
 
 - Given the Weather plugin's command "Show the forecast" with the required field Place,
   when the person presses Run command with Place empty,
-  then "Fill this in: it is required." shows under Place, Place has focus and the tool isn't called.
+  then "Fill this in." shows under Place, Place has focus and the tool isn't called.
 - Given the person typed "Ghent" in Place,
   when the tool `forecast` answers,
   then the Result box shows its answer and the buttons read Run again and Close.

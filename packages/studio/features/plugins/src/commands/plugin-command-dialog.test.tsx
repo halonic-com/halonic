@@ -172,7 +172,7 @@ verifies("plugins.plugin-commands", () => {
     open(forecast, caller);
     type(fieldNamed("Days"), "three");
     await press("Run command");
-    expect(lineUnder(fieldNamed("Place"))).toContain("Fill this in: it is required.");
+    expect(lineUnder(fieldNamed("Place"))).toBe("Fill this in.");
     expect(lineUnder(fieldNamed("Days"))).toContain("Use a number.");
     expect(document.activeElement).toBe(fieldNamed("Place"));
     expect(calls).toEqual([]);

@@ -24,8 +24,11 @@ export function fromPlugin(name: string): string {
 export const USES_THE_TOOL = " · uses the tool ";
 export const WHICH_READS = ", which reads";
 
-/** A required field left empty. The settings section shows the same line. */
-export const FILL_THIS_IN = "Fill this in: it is required.";
+/**
+ * A required field left empty (decision D5 on HAL-1952). The field's label is the plugin's text, so
+ * the line can't name what to enter; the star already says it's required.
+ */
+export const FILL_THIS_IN = "Fill this in.";
 
 /** The reason when a tool doesn't answer in time: "the plugin didn't answer in 30 seconds". */
 export function noAnswerReason(ms: number): string {

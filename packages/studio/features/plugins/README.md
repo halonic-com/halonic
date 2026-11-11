@@ -32,7 +32,7 @@ A plugin's `secret` setting is saved to the keychain under the plugin's own name
 
 ## Command dialog
 
-`PluginCommandDialog` shows a plugin command from `ui.commands` in a dialog (requirement `plugins.plugin-commands`): the command's title, the line "From the *name* plugin · uses the tool *tool*, which reads", its form, and Cancel and Run command. A required field left empty or a value of the wrong kind gets a line under it ("Fill this in: it is required."), the first such field takes focus, and no tool is called. The tool is called through a `PluginToolCaller`; its answer shows in a Result box with Copy, drawn like `PluginResult`, and the buttons become Run again and Close. A failure reads "Couldn't run *title*: *reason*." with Try again, and the form keeps what was typed. A command without a form runs as soon as the dialog opens.
+`PluginCommandDialog` shows a plugin command from `ui.commands` in a dialog (requirement `plugins.plugin-commands`): the command's title, the line "From the *name* plugin · uses the tool *tool*, which reads", its form, and Cancel and Run command. A required field left empty or a value of the wrong kind gets a line under it ("Fill this in."), the first such field takes focus, and no tool is called. The tool is called through a `PluginToolCaller`; its answer shows in a Result box with Copy, drawn like `PluginResult`, and the buttons become Run again and Close. A failure reads "Couldn't run *title*: *reason*." with Try again, and the form keeps what was typed. A command without a form runs as soon as the dialog opens.
 
 ## Exports
 
