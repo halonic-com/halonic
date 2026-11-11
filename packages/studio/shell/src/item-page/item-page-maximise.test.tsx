@@ -164,4 +164,16 @@ verifies("shell.panel-maximise", () => {
 
     expect(button("Maximise Flow")).toBeNull();
   });
+
+  it("is beside the chat again when a tab that went too narrow for it widens", () => {
+    const { button, chat } = renderAgent();
+    click(button("Maximise Flow"));
+
+    act(() => FakeResizeObserver.resize(800));
+    act(() => FakeResizeObserver.resize(1600));
+
+    expect(button("Maximise Flow")).not.toBeNull();
+    expect(button("Restore Flow")).toBeNull();
+    expect(chat().hasAttribute("inert")).toBe(false);
+  });
 });

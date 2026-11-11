@@ -112,10 +112,18 @@ export function ItemPage<Id extends string>({
     tabWidth,
   );
   // Only a panel beside the chat can cover the tab; one shown as a button has no ⤢.
-  const maximised = choices.maximised && layout.shows === "chat-and-panel";
+  const besideTheChat = layout.shows === "chat-and-panel";
+  const maximised = choices.maximised && besideTheChat;
   useMaximiseLayer(maximised, closeStack, page, () =>
     setChoices((current) => ({ ...current, maximised: false })),
   );
+  // A tab too narrow for the panel beside the chat ends maximise, so widening it again shows the
+  // chat rather than covering it by surprise (Liam's review of #1610, HAL-4976).
+  useEffect(() => {
+    if (!besideTheChat) {
+      setChoices((current) => (current.maximised ? { ...current, maximised: false } : current));
+    }
+  }, [besideTheChat]);
 
   // A control that swaps the layout leaves focus on nothing, so it goes to what took its place.
   useEffect(() => {

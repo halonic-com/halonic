@@ -799,7 +799,8 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   the dimmed, inert chat, and becomes the restore mark "Restore Flow", keeping the focus. The restore
   mark, Esc (a `maximise` layer, once cards above it have closed; pass `closeStack`) or a click in
   the margin puts the panel back at its width. There is no resize edge while it's maximised, and no
-  ⤢ where the panel shows as a button.
+  ⤢ where the panel shows as a button. A tab that gets too narrow for the panel ends maximise, so
+  widening it again shows the panel beside the chat.
 - **Not yet:** the "Changes not live yet" line (24.9). A feature draws its stacked cards with
   `StackedCards` inside its view.
 
