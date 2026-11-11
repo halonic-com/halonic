@@ -148,6 +148,9 @@ export class NodeScheduler implements Scheduler {
     if (now >= this.#nextTickAt && this.#tickInProgress === undefined) {
       this.#startTick(now);
     }
+    // Set the next wake-up now, not after these settle: one slow listener
+    // must not hold back the timers of every other key.
+    this.#armWakeUp();
     await Promise.all([...this.#deliveries.values(), this.#tickInProgress]);
     this.#armWakeUp();
   }
@@ -163,7 +166,11 @@ export class NodeScheduler implements Scheduler {
   #startDelivery(slot: string, stored: StoredTimer): void {
     const delivery = this.#deliver(slot, stored)
       .catch((error: unknown) => this.#reportError(error, stored.timer))
-      .finally(() => this.#deliveries.delete(slot));
+      .finally(() => {
+        this.#deliveries.delete(slot);
+        // The timer may be due again (a retry, or set again during the call).
+        this.#armWakeUp();
+      });
     this.#deliveries.set(slot, delivery);
   }
 
@@ -202,6 +209,7 @@ export class NodeScheduler implements Scheduler {
       .catch((error: unknown) => this.#reportError(error, "tick"))
       .finally(() => {
         this.#tickInProgress = undefined;
+        this.#armWakeUp();
       });
   }
 
@@ -218,15 +226,19 @@ export class NodeScheduler implements Scheduler {
 
   /**
    * Sets the one wake-up timer for the next due timer or tick, but not
-   * sooner than `notBeforeMs` from now, replacing the one before.
+   * sooner than `notBeforeMs` from now, replacing the one before. Timers
+   * and a tick still being delivered are left out: once overdue they would
+   * wake it in a loop, and it is set again when each one settles.
    */
   #armWakeUp(notBeforeMs = 0): void {
     if (this.#closed || this.#timers === undefined) return;
     this.#cancelWakeUp?.();
-    let wakeAt = this.#nextTickAt;
+    let wakeAt = this.#tickInProgress === undefined ? this.#nextTickAt : Number.POSITIVE_INFINITY;
     for (const [slot, stored] of this.#timers) {
       if (!this.#deliveries.has(slot)) wakeAt = Math.min(wakeAt, stored.dueAt);
     }
+    // Nothing to wake for while only the tick runs; it sets the wake-up when it settles.
+    if (wakeAt === Number.POSITIVE_INFINITY) return;
     // The tick is at most a minute away and a retry 15 minutes, so the delay always fits setTimeout.
     const delayMs = Math.max(notBeforeMs, wakeAt - this.#clock.now().getTime());
     this.#cancelWakeUp = this.#setTimer(() => {
