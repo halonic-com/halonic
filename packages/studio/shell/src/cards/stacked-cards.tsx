@@ -102,6 +102,7 @@ export function StackedCards(props: StackedCardsProps) {
             key={card.key}
             card={card}
             depth={shown.length - 1 - index}
+            behind={shown.length - 1}
             onGoBack={() => goBackTo(level)}
           />
         );
@@ -166,6 +167,8 @@ function cardPlace(depth: number, behind: number, fullWidth: boolean): CSSProper
 interface CardBandProps {
   readonly card: StackedCard;
   readonly depth: number;
+  /** How many cards are behind the top one, so the band furthest back sits highest. */
+  readonly behind: number;
   readonly onGoBack: () => void;
 }
 
@@ -174,13 +177,13 @@ interface CardBandProps {
  * step back and `--stack-shade-2` further, with no shadow. A docked card behind stays full width.
  * A click goes back to it; the keyboard has the breadcrumb, so it's hidden from screen readers.
  */
-function CardBand({ card, depth, onGoBack }: CardBandProps) {
+function CardBand({ card, depth, behind, onGoBack }: CardBandProps) {
   const shade = depth === 1 ? "bg-(--stack-shade-1)" : "bg-(--stack-shade-2)";
   return (
     <div
       aria-hidden="true"
       className={`absolute rounded-md border border-border ${shade}`}
-      style={cardPlace(depth, depth, card.docked === true)}
+      style={cardPlace(depth, behind, card.docked === true)}
       onClick={onGoBack}
     />
   );

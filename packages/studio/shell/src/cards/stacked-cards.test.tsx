@@ -105,6 +105,11 @@ verifies("shell.stacked-cards", () => {
       expect(bands).toHaveLength(2);
       expect(bands[0]?.style.insetInline).toBe("calc(16px + var(--stack-inset) * 2)");
       expect(bands[1]?.style.insetInline).toBe("calc(16px + var(--stack-inset) * 1)");
+      expect(bands[0]?.style.top).toBe("calc(16px + var(--stack-peek) * 0)");
+      expect(bands[1]?.style.top).toBe("calc(16px + var(--stack-peek) * 1)");
+      expect(container.querySelector("section")?.style.top).toBe(
+        "calc(16px + var(--stack-peek) * 2)",
+      );
       expect(title(container)?.textContent).toBe("D");
     });
 
