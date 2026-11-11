@@ -19,6 +19,11 @@ export interface Ordered {
  */
 const contributionIdPattern = /^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z][a-zA-Z0-9-]*)*$/;
 
+/** Whether a value is a valid contribution id, for checks that leave a bad one out rather than throw. */
+export function isContributionId(value: unknown): value is string {
+  return typeof value === "string" && contributionIdPattern.test(value);
+}
+
 /**
  * Checks that an id or kind field of a contribution is a valid name.
  *
@@ -30,7 +35,7 @@ export function checkContributionId(
   field: string,
   value: unknown,
 ): void {
-  if (typeof value !== "string" || !contributionIdPattern.test(value)) {
+  if (!isContributionId(value)) {
     throw new ShellError(
       `${pointName}: the feature "${featureId}" gives ${field} ${JSON.stringify(value)}. Use letters, digits and dashes, starting with a letter, joined by dots, such as "agents.new-agent".`,
     );

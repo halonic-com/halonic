@@ -1,6 +1,7 @@
 import { ShellError } from "../shell-error.ts";
 import type {
   CommandContribution,
+  CommandSource,
   KeybindingContribution,
   PersistContribution,
   SearchProviderContribution,
@@ -8,6 +9,7 @@ import type {
 import { KeybindingTable, type KeyboardPlatform } from "./keybindings.ts";
 import {
   byOrder,
+  isContributionId,
   type Point,
   type PointGuard,
   PointStore,
@@ -18,7 +20,15 @@ import {
 
 /** The points for commands, shortcuts, search and saved UI state. */
 export interface CommandPoints {
-  readonly commands: Point<CommandContribution>;
+  readonly commands: Point<CommandContribution> & {
+    /**
+     * Adds commands that come and go while Studio runs. A shortcut can only bind a command
+     * added with `add`.
+     *
+     * @throws ShellError when its id isn't valid or another source has it
+     */
+    addSource(source: CommandSource): void;
+  };
   readonly keybindings: Point<KeybindingContribution>;
   readonly search: { addProvider(provider: SearchProviderContribution): void };
   /**
@@ -32,7 +42,7 @@ export interface CommandPoints {
 /** What the shell reads for the palette, the keybinding table, search and saving. */
 export interface CommandContributions {
   readonly commands: {
-    /** Every command, sorted by id. */
+    /** Every command, those of the sources as they are now included, sorted by id. */
     list(): readonly Registered<CommandContribution>[];
     get(id: string): Registered<CommandContribution> | undefined;
   };
@@ -57,6 +67,7 @@ export interface CommandContributions {
 export class CommandStores {
   private readonly commands = new PointStore<CommandContribution>("commands.add", ["id"]);
   private readonly keybindings: KeybindingTable;
+  private readonly sources = new PointStore<CommandSource>("commands.addSource", ["id"]);
   private readonly searchProviders = new PointStore<SearchProviderContribution>(
     "search.addProvider",
     ["id"],
@@ -71,7 +82,10 @@ export class CommandStores {
   /** The command points for one feature. */
   pointsFor(featureId: string, guard: PointGuard): CommandPoints {
     return {
-      commands: pointOn("commands.add", this.commands, featureId, guard),
+      commands: {
+        ...pointOn("commands.add", this.commands, featureId, guard),
+        addSource: pointOn("commands.addSource", this.sources, featureId, guard).add,
+      },
       keybindings: {
         add: (binding) => {
           guard("keybindings.add");
@@ -96,9 +110,20 @@ export class CommandStores {
   /**
    * Checks what can only be checked once every feature registered.
    *
-   * @throws ShellError for a keybinding whose command no feature adds
+   * @throws ShellError for a keybinding whose command no feature adds, or a command or command
+   *   source whose id starts with another source's id
    */
   check(): void {
+    for (const source of this.sources.all()) {
+      const clash =
+        this.commands.all().find((command) => command.id.startsWith(`${source.id}.`)) ??
+        this.sources.all().find((other) => other.id.startsWith(`${source.id}.`));
+      if (clash !== undefined) {
+        throw new ShellError(
+          `commands.addSource: "${clash.id}" from the feature "${clash.featureId}" starts with "${source.id}", the command source of "${source.featureId}". Ids under a source are its own; rename one.`,
+        );
+      }
+    }
     for (const binding of this.keybindings.list()) {
       if (this.commands.get(binding.command) === undefined) {
         throw new ShellError(
@@ -112,8 +137,12 @@ export class CommandStores {
   contributions(): CommandContributions {
     return {
       commands: {
-        list: () => [...this.commands.all()].sort((left, right) => (left.id < right.id ? -1 : 1)),
-        get: (id) => this.commands.get(id),
+        list: () =>
+          [...this.commands.all(), ...this.sourceCommands()].sort((left, right) =>
+            left.id < right.id ? -1 : 1,
+          ),
+        get: (id) =>
+          this.commands.get(id) ?? this.sourceCommands().find((command) => command.id === id),
       },
       keybindings: {
         list: () => this.keybindings.list(),
@@ -122,5 +151,30 @@ export class CommandStores {
       search: { providers: () => byOrder(this.searchProviders.all()) },
       persist: { list: () => [...this.persisted] },
     };
+  }
+
+  /** The commands the sources give now, leaving out those they may not give and every one of a source that throws. */
+  private sourceCommands(): Registered<CommandContribution>[] {
+    return this.sources.all().flatMap((source) => {
+      let given: readonly CommandContribution[];
+      try {
+        given = source.commands();
+      } catch {
+        return [];
+      }
+      const seen = new Set<string>();
+      return given.flatMap((command) => {
+        const id: unknown = command?.id;
+        if (!isContributionId(id) || !id.startsWith(`${source.id}.`) || seen.has(id)) {
+          return [];
+        }
+        seen.add(id);
+        try {
+          return [registered("commands.addSource", source.featureId, command)];
+        } catch {
+          return [];
+        }
+      });
+    });
   }
 }

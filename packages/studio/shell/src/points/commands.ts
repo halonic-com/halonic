@@ -7,7 +7,33 @@ export interface CommandContribution {
   /** Unique, such as `agents.new`. */
   readonly id: string;
   readonly title: string;
+  /**
+   * Where the command comes from when that isn't Halonic, such as "Weather plugin". The palette
+   * shows it beside the title and reads it after the title, so the title never has to say it.
+   */
+  readonly source?: string;
   run(context: WorkspaceContext): void | Promise<void>;
+}
+
+/**
+ * Commands that come and go while Studio runs, such as those of the plugins that are on. The
+ * shell asks for them each time it lists commands, as when the palette opens.
+ *
+ * @example
+ * studio.commands.addSource({ id: "plugins.commands", commands: () => commandsOfPluginsThatAreOn() });
+ */
+export interface CommandSource {
+  /**
+   * Unique among sources, such as `plugins.commands`. Every command it gives has an id that
+   * starts with this one and a dot, such as `plugins.commands.weather.forecast`.
+   */
+  readonly id: string;
+  /**
+   * Its commands right now. A command whose id doesn't start with the source's id, isn't a
+   * valid id or repeats one is left out, and so is every command of a source that throws, so
+   * one broken source never takes the palette down.
+   */
+  commands(): readonly CommandContribution[];
 }
 
 /**

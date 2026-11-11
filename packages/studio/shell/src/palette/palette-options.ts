@@ -106,8 +106,9 @@ export interface PaletteKindNames {
 }
 
 /**
- * An option's name for a screen reader: its name, its kind when it has one, and "switch to tab"
- * when a window tab shows it already, such as "Support reply, workflow, switch to tab" (24.3).
+ * An option's name for a screen reader: its name, its kind when it has one, an action's source
+ * when it has one, and "switch to tab" when a window tab shows it already, such as "Support
+ * reply, workflow, switch to tab" or "Show forecast, Weather plugin" (24.3, plugins UX 7).
  * An item's kind is read with the name its kind was registered with, the word the row shows,
  * never its id; a kind that isn't registered is left out.
  */
@@ -116,6 +117,9 @@ export function paletteOptionName(row: PaletteRow, kinds: PaletteKindNames): str
   const kind = rowKind(row, kinds);
   if (kind !== undefined) {
     parts.push(kind);
+  }
+  if (row.source !== undefined) {
+    parts.push(row.source);
   }
   if (row.open) {
     parts.push("switch to tab");

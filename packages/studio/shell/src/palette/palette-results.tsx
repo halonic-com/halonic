@@ -154,6 +154,9 @@ function Row({
           {row.detail === undefined ? null : (
             <span className="truncate text-small text-fg-muted">{row.detail}</span>
           )}
+          {row.source === undefined ? null : (
+            <span className="truncate text-small text-fg-muted">{row.source}</span>
+          )}
         </span>
       ) : (
         <span className="min-w-0 truncate">
@@ -163,6 +166,12 @@ function Row({
           )}
         </span>
       )}
+      {row.source !== undefined && phone !== true ? (
+        // Text from outside Halonic: cut to a third of the row, the whole of it on hover.
+        <span title={row.source} className="ms-auto max-w-1/3 truncate text-small text-fg-muted">
+          {row.source}
+        </span>
+      ) : null}
       {row.open ? (
         <span className="ms-auto shrink-0 text-small text-fg-muted">Switch to tab</span>
       ) : null}
@@ -170,9 +179,9 @@ function Row({
   );
 }
 
-/** On a phone, 56px with the kind line under the name and 48px without. */
+/** On a phone, 56px with the kind or source line under the name and 48px without. */
 function phoneRowHeight(row: PaletteRow): string {
-  return row.detail === undefined ? " min-h-touch" : " min-h-14";
+  return row.detail === undefined && row.source === undefined ? " min-h-touch" : " min-h-14";
 }
 
 /** "Couldn't search", the reason and **Try again**, start-aligned (VK T2-F25). */

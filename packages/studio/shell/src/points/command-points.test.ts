@@ -108,3 +108,103 @@ verifies("shell.commands", () => {
     expect(create).toThrow('The feature "agents" calls persist twice.');
   });
 });
+
+verifies("shell.command-sources", () => {
+  const forecast = {
+    id: "plugins.commands.weather.forecast",
+    title: "Show forecast",
+    run: () => {},
+  };
+
+  it("lists a source's commands as they are now, with the source's feature", () => {
+    let on = true;
+    const shell = createShell({
+      features: [
+        feature("plugins", (studio) =>
+          studio.commands.addSource({
+            id: "plugins.commands",
+            commands: () => (on ? [{ ...forecast, source: "Weather plugin" }] : []),
+          }),
+        ),
+        feature("agents", (studio) =>
+          studio.commands.add({ id: "agents.new", title: "New agent", run: () => {} }),
+        ),
+      ],
+    });
+    const { commands } = shell.contributions;
+    expect(commands.list().map((command) => command.id)).toEqual([
+      "agents.new",
+      "plugins.commands.weather.forecast",
+    ]);
+    expect(commands.get(forecast.id)).toMatchObject({
+      featureId: "plugins",
+      source: "Weather plugin",
+    });
+    on = false;
+    expect(commands.list().map((command) => command.id)).toEqual(["agents.new"]);
+    expect(commands.get(forecast.id)).toBeUndefined();
+  });
+
+  it("leaves out commands a source may not give, and every command of a source that throws", () => {
+    const shell = createShell({
+      features: [
+        feature("plugins", (studio) => {
+          studio.commands.addSource({
+            id: "plugins.commands",
+            commands: () => [
+              forecast,
+              { ...forecast, title: "Again" },
+              { id: "agents.new", title: "Not under the source", run: () => {} },
+              { id: "plugins.commands.bad_id", title: "Bad id", run: () => {} },
+            ],
+          });
+          studio.commands.addSource({
+            id: "plugins.broken",
+            commands: () => {
+              throw new Error("the plugin list can't be read");
+            },
+          });
+        }),
+      ],
+    });
+    expect(shell.contributions.commands.list()).toEqual([
+      expect.objectContaining({ id: forecast.id, title: "Show forecast" }),
+    ]);
+    expect(shell.contributions.commands.get("agents.new")).toBeUndefined();
+  });
+
+  it("refuses an id under a source from a command or another source, naming both", () => {
+    const create = (register: (studio: Studio) => void) => () =>
+      createShell({
+        features: [
+          feature("plugins", (studio) =>
+            studio.commands.addSource({ id: "plugins.commands", commands: () => [] }),
+          ),
+          feature("agents", register),
+        ],
+      });
+    const command = create((studio) =>
+      studio.commands.add({ id: "plugins.commands.new", title: "New", run: () => {} }),
+    );
+    expect(command).toThrow(ShellError);
+    expect(command).toThrow(
+      'commands.addSource: "plugins.commands.new" from the feature "agents" starts with "plugins.commands", the command source of "plugins".',
+    );
+    const source = create((studio) =>
+      studio.commands.addSource({ id: "plugins.commands.more", commands: () => [] }),
+    );
+    expect(source).toThrow('"plugins.commands.more" from the feature "agents" starts with');
+  });
+
+  it("refuses two sources with the same id", () => {
+    const source = { id: "plugins.commands", commands: () => [] };
+    const create = () =>
+      createShell({
+        features: [
+          feature("plugins", (studio) => studio.commands.addSource(source)),
+          feature("agents", (studio) => studio.commands.addSource(source)),
+        ],
+      });
+    expect(create).toThrow('commands.addSource: "plugins.commands" is added by both');
+  });
+});

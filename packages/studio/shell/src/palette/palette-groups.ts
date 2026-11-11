@@ -30,6 +30,8 @@ export interface PaletteRow {
   readonly label: string;
   /** The kind and hub, such as "Agent · Billing", when a search provider gave them. */
   readonly detail?: string;
+  /** Where an action comes from when that isn't Halonic, such as "Weather plugin". */
+  readonly source?: string;
   /** Where the typed words are in `label`; none when nothing is typed. */
   readonly match?: NameMatch;
   /** Whether a window tab shows it already, so the row says "Switch to tab". */
@@ -69,7 +71,7 @@ export interface PaletteSources {
   /** Whether a search provider failed (`FoundItems.failed`). */
   readonly searchFailed: boolean;
   /** The commands people can run. */
-  readonly actions: readonly Pick<CommandContribution, "id" | "title">[];
+  readonly actions: readonly Pick<CommandContribution, "id" | "title" | "source">[];
 }
 
 /**
@@ -144,6 +146,7 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
       (action): PaletteRow => ({
         key: `action:${action.id}`,
         label: action.title,
+        ...(action.source === undefined ? {} : { source: action.source }),
         open: false,
         target: { kind: "action", command: action.id },
       }),

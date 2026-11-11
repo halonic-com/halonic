@@ -179,6 +179,9 @@ verifies("shell.palette-options", () => {
       expect(paletteOptionName(refundChecker, kindNames)).toBe("Refund checker, agent");
       expect(paletteOptionName(inbox, kindNames)).toBe("Inbox");
       expect(paletteOptionName(newTab, kindNames)).toBe("New tab");
+      expect(paletteOptionName({ ...newTab, source: "Weather plugin" }, kindNames)).toBe(
+        "New tab, Weather plugin",
+      );
     });
 
     it("reads an item's kind by the name it was registered with, never its id", () => {

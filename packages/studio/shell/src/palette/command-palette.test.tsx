@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
-import type { SearchResult } from "../points/commands.ts";
+import type { CommandContribution, SearchResult } from "../points/commands.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
@@ -43,6 +43,7 @@ interface Shown {
   readonly found?: readonly SearchResult[];
   readonly failed?: boolean;
   readonly searching?: boolean;
+  readonly actions?: readonly Pick<CommandContribution, "id" | "title" | "source">[];
 }
 
 /** Draws what the test shows now; `bind` hands the test the way to show something else. */
@@ -86,7 +87,7 @@ function renderPalette() {
             recent: [],
             found: shown.found ?? [],
             searchFailed: shown.failed ?? false,
-            actions: [{ id: "shell.new-tab", title: "New tab" }],
+            actions: shown.actions ?? [{ id: "shell.new-tab", title: "New tab" }],
           })}
           searching={shown.searching ?? false}
           platform="windows"
@@ -146,6 +147,23 @@ verifies("shell.palette-dialog", () => {
     expect(title?.textContent).toBe("Open tabs");
     expect(palette.activeName()).toBe("Support reply, workflow, switch to tab");
     expect(palette.view.textContent).toContain("Switch to tab");
+  });
+
+  it("shows an action's source beside its title, whole on hover, and reads it after the title", () => {
+    const palette = renderPalette();
+    palette.show({
+      words: "forecast",
+      actions: [
+        {
+          id: "plugins.commands.weather.forecast",
+          title: "Show forecast",
+          source: "Weather plugin",
+        },
+      ],
+    });
+    expect(palette.activeName()).toBe("Show forecast, Weather plugin");
+    const source = palette.view.querySelector('[title="Weather plugin"]');
+    expect(source?.textContent).toBe("Weather plugin");
   });
 
   it("moves the active option with ↓ and ↑ through every group, wrapping", () => {
