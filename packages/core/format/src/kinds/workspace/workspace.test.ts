@@ -27,7 +27,7 @@ verifies("format.workspace-file", () => {
     ]);
   });
 
-  it("refuses a session AI with more than 64 steps", () => {
+  it("refuses an assistant with more than 64 steps", () => {
     const text = yaml("id: acme", "name: Acme", "assistant:", "  maxSteps: 65");
     expect(summary(problemsOf("workspace", text))).toEqual(["assistant.maxSteps too_big 4"]);
   });

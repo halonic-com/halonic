@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-113 (plan 4.2, 7.3, 9.3), ported from 784f78d `packages/core/schema/src/index.ts`
 
-When `parseFile` reads a `workspace.yaml`, the format shall accept the keys, value rules and defaults of the old `WorkspaceSettings` schema, unchanged: `privacy.localOnly` false, `defaults` `inprocess` and `default`, budget currency `EUR`, at most 64 session AI steps.
+When `parseFile` reads a `workspace.yaml`, the format shall accept the keys, value rules and defaults of the old `WorkspaceSettings` schema, unchanged: `privacy.localOnly` false, `defaults` `inprocess` and `default`, budget currency `EUR`, at most 64 assistant steps.
 
 ## Examples
 

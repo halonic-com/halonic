@@ -22,7 +22,6 @@ const referenceCases = [
   "hub/uses-leaves-out",
   "models/unknown-provider",
   "models/unknown-fallback",
-  "workspace/unknown-model",
   "workflowTest/unknown-workflow",
 ];
 
@@ -31,6 +30,20 @@ verifies("workspace.references", () => {
     "gives %s the old loader's error, at the key path and line of the name",
     async (caseId) => {
       expect(await errorsOf(caseId)).toEqual([expectedError(caseId)]);
+    },
+    parityLoadLimitMs,
+  );
+
+  it(
+    "names assistant.model and models.yaml for an unknown assistant model alias",
+    async () => {
+      expect(await errorsOf("workspace/unknown-model")).toEqual([
+        {
+          ...expectedError("workspace/unknown-model"),
+          message:
+            'The assistant model (assistant.model) uses "turbo", which isn\'t an alias in models.yaml.',
+        },
+      ]);
     },
     parityLoadLimitMs,
   );
@@ -48,7 +61,10 @@ verifies("workspace.references", () => {
           "hubs/billing/agents/notifier.agent.yaml",
           'Agent "notifier" uses unknown model alias "default"',
         ],
-        ["workspace.yaml", 'The session AI uses unknown model alias "fast"'],
+        [
+          "workspace.yaml",
+          'The assistant model (assistant.model) uses "fast", which isn\'t an alias in models.yaml.',
+        ],
       ]);
     },
     parityLoadLimitMs,
