@@ -199,6 +199,37 @@ export interface Harness {
    * stream with an error.
    */
   start(task: HarnessTask, session: SandboxSession, bridge: HarnessBridge): HarnessRun;
+  /**
+   * How a person signs in to the harness's program for one agent, with the
+   * program's own sign-in (requirement `ports.harness-sign-in`). Studio runs
+   * it in a terminal the person can see, and `halonic doctor` shows it.
+   *
+   * Optional: the built-in loop has no sign-in of its own.
+   */
+  readonly signIn?: HarnessSignIn;
+}
+
+/**
+ * The program's own sign-in, pointed at one agent's settings folder. Each
+ * agent signs in on its own, so a run reaches only its own sign-in; the
+ * person's own is never copied there.
+ *
+ * @example
+ * // Claude Code: CLAUDE_CONFIG_DIR=<agent's folder> claude auth login
+ * const { program, args, folderVariable } = harness.signIn;
+ * start(program, args, { [folderVariable]: profile.settingsFolder });
+ */
+export interface HarnessSignIn {
+  /** The program, by the name Halonic finds it under, such as "claude". */
+  readonly program: string;
+  /** What it is asked to sign in, such as `["auth", "login"]`. */
+  readonly args: readonly string[];
+  /**
+   * The environment variable that points the program at the agent's
+   * settings folder, such as "CLAUDE_CONFIG_DIR": the same one
+   * `environment()` sets for a run.
+   */
+  readonly folderVariable: string;
 }
 
 /**

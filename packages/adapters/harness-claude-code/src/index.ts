@@ -10,3 +10,4 @@ export {
 export { type ClaudeCodeFolders, claudeCodeEnvironment } from "./environment.ts";
 export { type ClaudeCodeHarnessOptions, claudeCodeHarness } from "./harness.ts";
 export { findSignInProblem, SignInError, type SignInProblem } from "./sign-in.ts";
+export { claudeCodeSignIn } from "./sign-in-command.ts";

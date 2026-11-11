@@ -27,7 +27,9 @@ Codex 0.166.0 run played back through it ends with one `agent.finished`.
 It also exports `detectCodex`, `codexEnvironment` (with its `CodexFolders`
 type), the `CodexHarnessOptions` and `SettingsFolderWriter` types (the
 latter from `@halonicjs/adapter-harness-kit`) and the constants around them (`codexProgram`, `codexRunTokenVariable`,
-`supportedVersions`, `oldestSupportedVersion`). Inside the package, and not
+`supportedVersions`, `oldestSupportedVersion`). `codexSignIn` (also
+`harness.signIn`) is Codex's own sign-in for one agent: `codex login` with
+`CODEX_HOME` set to the agent's settings folder, the one its runs get. Inside the package, and not
 exported, are the client that talks to `codex app-server`, the reader that
 turns its notifications into run events and the `config.toml` text.
 

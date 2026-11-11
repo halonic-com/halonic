@@ -3,6 +3,7 @@ import type { Harness, ProgramProbe } from "@halonicjs/ports";
 import { detectClaudeCode } from "./detect.ts";
 import { claudeCodeEnvironment } from "./environment.ts";
 import { ClaudeCodeRun } from "./run.ts";
+import { claudeCodeSignIn } from "./sign-in-command.ts";
 
 /** What the Claude Code harness is made with. */
 export interface ClaudeCodeHarnessOptions {
@@ -30,5 +31,6 @@ export function claudeCodeHarness(options: ClaudeCodeHarnessOptions): Harness {
     detect: () => detectClaudeCode(options.probe),
     environment: claudeCodeEnvironment,
     start: (task, session, bridge) => new ClaudeCodeRun(task, session, bridge, { settings }),
+    signIn: claudeCodeSignIn,
   };
 }
