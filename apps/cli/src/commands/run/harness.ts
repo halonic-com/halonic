@@ -10,6 +10,7 @@ import type { HarnessProgram } from "../../harness-programs.ts";
 import type { Message } from "../../messages/define.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
+import { printable } from "../../output/printable.ts";
 
 /**
  * `--harness` names no harness (`invalid_input`, exit 2), or one whose
@@ -68,13 +69,13 @@ export async function runHarnessOf(
     case "unsupported":
       throw new RunHarnessError(
         "unavailable",
-        runMessages.harnessUnsupported(program.name, found.version, found.supported),
+        runMessages.harnessUnsupported(program.name, printable(found.version), found.supported),
         runMessages.updateHarness(program.name),
       );
     case "failed":
       throw new RunHarnessError(
         "unavailable",
-        runMessages.harnessVersionFailed(program.name, found.error),
+        runMessages.harnessVersionFailed(program.name, printable(found.error)),
         runMessages.checkHarness(program.name),
       );
   }
