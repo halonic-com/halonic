@@ -147,8 +147,9 @@ verifies("cli.run-sandbox-gate", () => {
 
     expect(code).toBe(exitCode.unavailable);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't run support-reply: this computer's engine can't run agents in a harness yet, and Writer is in claude-code. Nothing ran.",
+      "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
     );
+    expect(io.stderr[1]).toBe("  Run it with --harness halonic.");
     expect(io.stdout).toEqual([]);
     expect(await runsKept()).toBe(0);
   });
@@ -161,7 +162,7 @@ verifies("cli.run-sandbox-gate", () => {
 
     expect(code).toBe(exitCode.unavailable);
     expect(checks).toBe(0);
-    expect(io.stderr[0]).toContain("can't run agents in a harness yet");
+    expect(io.stderr[0]).toContain("Halonic can't run agents in Claude Code yet");
     expect(await runsKept()).toBe(0);
   });
 

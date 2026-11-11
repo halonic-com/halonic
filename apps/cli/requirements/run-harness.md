@@ -22,5 +22,5 @@ When `halonic run <workflow>` is given `--harness <harness>`, the command shall 
 - Given `--harness claude-code` and Acme isn't trusted, then it exits 3, although Acme only reaches the test model.
 - Given Acme trusted, `--harness claude-code` and a sandbox that can't start, then it exits 9.
 - Given Writer, in Halonic's own loop, with `workingFolder: tools`, Acme trusted and `--harness claude-code`, then it exits 2 naming Writer, and the sandbox isn't checked.
-- Given Acme trusted, `--harness claude-code` and a sandbox that starts, then it exits 9 with "this computer's engine can't run agents in a harness yet, and Writer is in claude-code. Nothing ran." and no run starts.
+- Given Acme trusted, `--harness claude-code` and a sandbox that starts, then it exits 9 with "Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran." and no run starts.
 - Given `--harness halonic` and a sandbox that can't start, then the run starts, waits for the reply's approval, and its `run.started` has the harness `halonic`.

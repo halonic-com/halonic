@@ -181,7 +181,7 @@ verifies("cli.run-harness", () => {
       expect(code).toBe(exitCode.usage);
       expect(stderr).toEqual([
         "✕ Couldn't run support-reply: Writer names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. Nothing ran.",
-        "  Name a harness in Writer's file and trust the workspace again, or remove those fields.",
+        "  Name a harness in Writer's file and trust the workspace again, or remove allowed sites and the working folder from it.",
       ]);
       expect(checks).toBe(0);
       expect(await startedRuns()).toEqual([]);
@@ -193,7 +193,7 @@ verifies("cli.run-harness", () => {
 
       expect(code).toBe(exitCode.unavailable);
       expect(stderr[0]).toBe(
-        "✕ Couldn't run support-reply: this computer's engine can't run agents in a harness yet, and Writer is in claude-code. Nothing ran.",
+        "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
       );
       expect(checks).toBe(1);
       expect(await startedRuns()).toEqual([]);
@@ -223,7 +223,7 @@ verifies("cli.run-harness", () => {
       ],
       [
         { status: "failed", error: "it timed out" },
-        "Halonic found Claude Code but couldn't ask its version: it timed out Nothing ran.",
+        "Halonic found Claude Code but couldn't ask its version: it timed out. Nothing ran.",
         "Check that Claude Code starts in a terminal, then run again.",
       ],
     ] as const)("refuses a program that can't start: %j", async (detection, reason, fix) => {

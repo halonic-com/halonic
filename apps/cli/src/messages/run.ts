@@ -69,13 +69,15 @@ export const runMessages = defineMessages("run", {
   /**
    * The reason after "Couldn't run support-reply:" when an agent of the
    * workflow is in a harness (Claude Code or Codex), which this computer's
-   * engine has no adapter for yet: `unavailable`, exit 9. Nothing ran.
+   * engine has no adapter for yet: `unavailable`, exit 9. `harness` is the
+   * id an agent file writes; the line shows its name, as doctor does.
    */
-  harnessNotAvailable: (agent: string, harness: string) =>
-    phrase`this computer's engine can't run agents in a harness yet, and ${agent} is in ${harness}. ${nothingRan}`,
-  /** Its fix. */
-  harnessNotAvailableFix: () =>
-    phrase`Set the agent to Halonic's own harness to run it with halonic run.`,
+  harnessNotAvailable: (agent: string, harness: string) => {
+    const name = trustMessages.harnessName(harness).phrase;
+    return phrase`Halonic can't run agents in ${name} yet, and ${agent} is in ${name}. ${nothingRan}`;
+  },
+  /** Its fix: `--harness halonic` runs every agent in Halonic's own loop (Liam, HAL-5367). */
+  harnessNotAvailableFix: () => phrase`Run it with --harness halonic.`,
   /** `--input`'s line in the help. */
   inputOption: () => phrase`The run's input: a JSON file, or the JSON itself.`,
   /** `--event`'s line in the help. */
@@ -106,7 +108,7 @@ export const runMessages = defineMessages("run", {
   updateHarness: (harness: string) => phrase`Update ${harness}, then run again.`,
   /** The reason when asking the `--harness` program for its version failed; `reason` is the harness's own. */
   harnessVersionFailed: (harness: string, reason: string) =>
-    phrase`Halonic found ${harness} but couldn't ask its version: ${reason} ${nothingRan}`,
+    phrase`Halonic found ${harness} but couldn't ask its version: ${reason}. ${nothingRan}`,
   /** Its fix. */
   checkHarness: (harness: string) =>
     phrase`Check that ${harness} starts in a terminal, then run again.`,
@@ -120,7 +122,7 @@ export const runMessages = defineMessages("run", {
     phrase`${printable(agent)} names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. ${ending}`,
   /** Its fix. */
   uncheckedHarnessFieldsFix: (agent: string) =>
-    phrase`Name a harness in ${printable(agent)}'s file and trust the workspace again, or remove those fields.`,
+    phrase`Name a harness in ${printable(agent)}'s file and trust the workspace again, or remove allowed sites and the working folder from it.`,
   /** No workflow, or more than one, on the command line (exit 2). */
   takesOneWorkflow: (given: readonly string[]) =>
     given.length === 0
