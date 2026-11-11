@@ -1,18 +1,45 @@
-import { rm, symlink } from "node:fs/promises";
-import { join } from "node:path";
-import { folderReaderContract } from "@halonicjs/testing-contracts";
+import { execFile } from "node:child_process";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { promisify } from "node:util";
+import { type FolderTree, folderReaderContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
 import { FileSystemFolderReader } from "./folder-reader.ts";
-import {
-  folderLinkType,
-  folderOf,
-  onWindows,
-  removeTempFolders,
-  tempFolder,
-} from "./temp-folder.test-helper.ts";
+import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
 afterAll(removeTempFolders);
+
+const onWindows = process.platform === "win32";
+
+/** A folder link on Windows is a junction, which needs no special rights. */
+const folderLinkType = onWindows ? "junction" : "dir";
+
+/** Writes `tree` into a new temporary folder, links and special files included. */
+async function folderOf(tree: FolderTree): Promise<string> {
+  const root = await tempFolder();
+  for (const [path, content] of Object.entries(tree.files ?? {})) {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await writeFile(join(root, path), content);
+  }
+  for (const path of tree.folders ?? []) await mkdir(join(root, path), { recursive: true });
+  for (const [path, target] of Object.entries(tree.links ?? {})) {
+    const link = join(root, path);
+    await mkdir(dirname(link), { recursive: true });
+    const isFile = (tree.files ?? {})[resolvedTarget(path, target)] !== undefined;
+    await symlink(target, link, isFile ? "file" : folderLinkType);
+  }
+  for (const path of tree.special ?? []) {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await promisify(execFile)("mkfifo", [join(root, path)]);
+  }
+  return root;
+}
+
+/** Where a link at `path` to the relative `target` points, as a path in the tree. */
+function resolvedTarget(path: string, target: string): string {
+  return resolve("/", dirname(path), target).slice(1).replaceAll("\\", "/");
+}
 
 folderReaderContract(
   "file system",

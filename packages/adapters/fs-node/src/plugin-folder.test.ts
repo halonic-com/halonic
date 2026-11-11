@@ -1,18 +1,16 @@
 import { mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { pluginFolderWriterContract } from "@halonicjs/testing-contracts";
+import { dirname, join } from "node:path";
+import { type FolderTree, pluginFolderWriterContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
 import { FileSystemFolderReader } from "./folder-reader.ts";
 import { FileSystemPluginFolder } from "./plugin-folder.ts";
-import {
-  folderLinkType,
-  removeTempFolders,
-  tempFolder,
-  writeTree,
-} from "./temp-folder.test-helper.ts";
+import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
 afterAll(removeTempFolders);
+
+/** A folder link on Windows is a junction, which needs no special rights. */
+const folderLinkType = process.platform === "win32" ? "junction" : "dir";
 
 const encoder = new TextEncoder();
 
@@ -27,6 +25,21 @@ async function profileFolder(): Promise<{ profile: string; root: string }> {
   const root = join(profile, "plugins");
   await mkdir(root);
   return { profile, root };
+}
+
+/**
+ * Writes `tree` into `root`. The contract's trees link only to folders and
+ * have no special files.
+ */
+async function writeTree(root: string, tree: FolderTree): Promise<void> {
+  for (const [path, content] of Object.entries(tree.files ?? {})) {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await writeFile(join(root, path), content);
+  }
+  for (const path of tree.folders ?? []) await mkdir(join(root, path), { recursive: true });
+  for (const [path, target] of Object.entries(tree.links ?? {})) {
+    await symlink(target, join(root, path), folderLinkType);
+  }
 }
 
 pluginFolderWriterContract("file system", async (tree) => {
