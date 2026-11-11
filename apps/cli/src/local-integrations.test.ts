@@ -184,7 +184,7 @@ verifies("cli.local-integrations", () => {
 
     // Windows allows no backslash in a file name.
     it.skipIf(process.platform === "win32")(
-      "leaves out a folder with a backslash in its name, and still reads the others",
+      "[platform:win32] allows no backslash in a file name: leaves out a folder with a backslash in its name, and still reads the others",
       async () => {
         await addStation();
         await putFiles({
@@ -199,6 +199,14 @@ verifies("cli.local-integrations", () => {
         ]);
       },
     );
+
+    it("reads none when the integrations folder is itself a link", async () => {
+      const elsewhere = join(folder, "elsewhere");
+      await mkdir(join(elsewhere, "station"), { recursive: true });
+      await writeFile(join(elsewhere, "station/integration.yaml"), stationSheet);
+      await symlink(elsewhere, join(acme, "integrations"), folderLinkType);
+      expect(await workspaceIntegrations(acme, "./acme")).toEqual([]);
+    });
 
     it("reads none in a workspace without an integrations folder", async () => {
       expect(await workspaceIntegrations(acme, "./acme")).toEqual([]);

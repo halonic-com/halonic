@@ -20,9 +20,10 @@ const sheetName = "integration.yaml";
  * order of their folders' names.
  *
  * A folder that can't be read as an integration, such as one with a link
- * in it, a sheet that doesn't parse or a file that can't be read, is left out, as `loadWorkspace`
- * leaves out a file with an error. So is a folder whose id an earlier
- * folder already has. A left-out integration is in no trust, so its runner
+ * in it, a sheet that doesn't parse or a file that can't be read, is left
+ * out, as `loadWorkspace` leaves out a file with an error. So is a folder
+ * whose id an earlier folder already has, and every folder when
+ * `integrations/` itself can't be listed. A left-out integration is in no trust, so its runner
  * never starts (`not-in-trust`).
  *
  * A workspace doesn't hold settings for its integrations yet, so each gets
@@ -72,11 +73,25 @@ async function readFolder(
 /** Every folder directly under `integrations/` with an `integration.yaml` in it, by name. */
 async function integrationFolders(workspace: FolderReader): Promise<string[]> {
   const folders: string[] = [];
-  for (const entry of await workspace.entries(integrationsFolder, { recursive: false })) {
+  for (const entry of await integrationsEntries(workspace)) {
     if (entry.kind !== "folder") continue;
     if (await holdsSheet(workspace, entry.path)) folders.push(entry.path);
   }
   return folders.sort(compareText);
+}
+
+/**
+ * What's directly in `integrations/`. When the reader refuses to list it,
+ * such as when `integrations/` is itself a link or can't be read, the
+ * workspace has no local integrations: the trust check of everything else
+ * goes on, and a runner start reads the folder again and refuses it.
+ */
+async function integrationsEntries(workspace: FolderReader): Promise<readonly FolderEntry[]> {
+  try {
+    return await workspace.entries(integrationsFolder, { recursive: false });
+  } catch {
+    return [];
+  }
 }
 
 /**
