@@ -252,11 +252,11 @@ verifies("plugins.plugin-settings", () => {
     });
 
     it("says why a value doesn't fit, under its field, and keeps what was typed", async () => {
-      const problems = [{ setting: "city", message: "fill this in: it is required" }];
+      const problems = [{ setting: "city", message: "fill this in" }];
       const { view, states } = await show({ problems });
       const city = fieldNamed(view, "City");
       await typeAndLeave(city, "");
-      expect(lineUnder(city)).toBe("Fill this in: it is required.");
+      expect(lineUnder(city)).toBe("Fill this in.");
       expect(city.getAttribute("aria-invalid")).toBe("true");
       expect(states).toEqual(["saving", "failed"]);
     });
