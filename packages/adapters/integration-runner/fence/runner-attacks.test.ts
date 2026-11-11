@@ -1,14 +1,20 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { existsSync, mkdirSync } from "node:fs";
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { socketFolders } from "../src/halonic/runner-profile.ts";
-import { type AttackFolders, attackFolders, type NodeLayer, runAttack } from "./attack-session.ts";
+import {
+  type AttackFolders,
+  type Attempt,
+  attackFolders,
+  fenceTestBase,
+  type NodeLayer,
+  runAttack,
+} from "./attack-session.ts";
 
 // The attack cases from the I5 design (HAL-958, section 6) that only the
 // fence can stop: escapes from the runner's process, not requests through the
@@ -22,6 +28,16 @@ import { type AttackFolders, attackFolders, type NodeLayer, runAttack } from "./
 
 const sandbox = new SrtSandbox();
 const isMac = process.platform === "darwin";
+
+/**
+ * Whether an attempt to read a hidden folder found nothing in it. On macOS
+ * Seatbelt refuses it. On Linux bubblewrap lays an empty in-memory folder
+ * over a hidden one, so the read is allowed and comes back empty.
+ */
+function foundNothing(attempt: Attempt | undefined): boolean {
+  if (attempt?.outcome === "refused") return true;
+  return !isMac && attempt?.outcome === "allowed" && attempt.detail === "";
+}
 
 /** A value that must never come back out of the fence. */
 const canary = `canary-${Math.random().toString(36).slice(2)}`;
@@ -39,8 +55,7 @@ let resolverQueries = 0;
 let victim: ChildProcess;
 
 beforeAll(async () => {
-  // Real paths: tmpdir() is a symlink on macOS, and the fence denies real places.
-  base = await realpath(await mkdtemp(join(tmpdir(), "runner-attacks-")));
+  base = await fenceTestBase("ra-");
   // A home folder of its own, so the test never writes in the real one. The
   // profile hides it the way it hides the real home folder.
   homeFolder = join(base, "home");
@@ -157,10 +172,11 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
       `,
       folders,
     );
-    for (const name of ["ssh key", "workspace .env", "list home", "link to the key"]) {
+    for (const name of ["ssh key", "workspace .env", "link to the key"]) {
       expect(attempts[name], name).toMatchObject({ outcome: "refused" });
       expect(attempts[name]?.detail, name).not.toContain(canary);
     }
+    expect(foundNothing(attempts["list home"]), JSON.stringify(attempts["list home"])).toBe(true);
   });
 
   it("A12, known gap: without Node's layer, reads a file outside the home and socket folders", async () => {
@@ -194,7 +210,11 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
     );
     expect(attempts["own code"]?.outcome).toBe("refused");
     expect(attempts["next to its folder"]?.outcome).toBe("refused");
-    expect(attempts["home folder"]?.outcome).toBe("refused");
+    // Without Node's layer on Linux, the write lands in the empty in-memory
+    // folder bubblewrap lays over the hidden home folder, which goes with the
+    // session. The real home folder stays as it was either way.
+    const throwaway = layer === "off" && !isMac;
+    expect(attempts["home folder"]?.outcome).toBe(throwaway ? "allowed" : "refused");
     expect(existsSync(join(base, "planted.txt"))).toBe(false);
     expect(existsSync(join(homeFolder, ".bashrc"))).toBe(false);
     // The runner gets no write grant from Node; the fence allows its temp folder.
@@ -261,12 +281,18 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
     expect(isRunning(pid)).toBe(true);
   });
 
-  it("A17: sees only TMPDIR in its environment", async () => {
+  it("A17: sees only TMPDIR, the safe PATH and the session's marker in its environment", async () => {
+    // The profile sets only TMPDIR. The sandbox adds the host's PATH without
+    // entries in its own folders, and the random marker it finds the session's
+    // processes by. No proxy, bus, agent or key variable gets in.
     const { attempts } = await attack(
       layer,
       `await attempt("environment", () => Object.keys(process.env).sort().join(","));`,
     );
-    expect(attempts["environment"]).toEqual({ outcome: "allowed", detail: "TMPDIR" });
+    expect(attempts["environment"]).toEqual({
+      outcome: "allowed",
+      detail: "HALONIC_SRT_RUN,PATH,TMPDIR",
+    });
   });
 
   it("A35: connects to no socket on disk", async () => {
