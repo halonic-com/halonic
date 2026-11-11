@@ -8,7 +8,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["fence/**/*.test.ts"],
-    exclude: ["fence/**/*.windows.test.ts"],
+    exclude: ["fence/**/*.windows.test.ts", "fence/**/*.windows-uninstall.test.ts"],
     environment: "node",
     expect: { requireAssertions: true },
     testTimeout: 60_000,
