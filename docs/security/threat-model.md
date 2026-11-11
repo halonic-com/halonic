@@ -116,7 +116,7 @@ workspace you didn't write is like running its code.
 | A sandbox limits what a trusted workspace's program can do | Harness agents: see [4.6](#46-agents-in-a-sandbox-b8). Stdio connectors a workspace starts get their own sandbox (D45) | **Planned** (HAL-2310) |
 
 **Known limit.** After you trust a workspace, its programs run with your
-rights. Trust only workspaces from people you trust. Once #1971 lands, a
+rights. Trust only workspaces from people you trust. A
 program gets only a small base of your environment and what its connector
 names, but it can still read your files: see the known limits in
 [4.4](#44-secrets-tokens-and-outbound-calls-b4).
@@ -177,7 +177,7 @@ Its text is attacker text. The rules are the requirement
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
 | A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
-| A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **Lands with #1971** (`app.connector-base-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
+| A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **On `main`** (`app.connector-base-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
 | A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | The bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
 
 **Known limits.**
@@ -201,7 +201,7 @@ Its text is attacker text. The rules are the requirement
 - **A program a workspace starts gets only part of your environment, but it
   still runs as you.** A `stdio` connector started on this computer gets a
   small base of the app's environment and, on top, only its connector's `env`
-  and `secretEnv` (`app.connector-base-env`, lands with #1971). So a model key
+  and `secretEnv` (`app.connector-base-env`). So a model key
   in your shell doesn't reach it, unless the connector names it in
   `secretEnv`; the trust check lists those names, so read them before you
   trust a workspace. But the base keeps your proxy settings, so a password in

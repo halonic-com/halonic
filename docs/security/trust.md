@@ -74,7 +74,7 @@ question as a review of what the workspace can start (HAL-5519).
 ## What trust does not protect against
 
 - **It isn't a sandbox.** After you trust a workspace, its programs run with
-  your rights, and can read your files. Once #1971 lands, a stdio connector
+  your rights, and can read your files. A stdio connector
   gets only a small base of your environment, such as `PATH` and your proxy,
   plus the variables and secrets its connector names. A key it names in
   `secretEnv` still reaches it, so read the names the trust check lists (see the
