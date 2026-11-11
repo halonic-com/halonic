@@ -122,6 +122,31 @@ verifies("ports.harness-detect", () => {
   });
 });
 
+verifies("ports.harness-detect-folder", () => {
+  it("answers for the agent whose settings folder it is given", async () => {
+    const signedInFolders = new Set(["/person-home/.claude"]);
+    const claudeCode: Harness = {
+      ...builtInLoop,
+      id: "claude-code",
+      name: "Claude Code",
+      detect: async ({ settingsFolder = "/person-home/.claude" } = {}) =>
+        signedInFolders.has(settingsFolder)
+          ? { status: "ready", version: "2.1.321" }
+          : { status: "signed-out", version: "2.1.321" },
+    };
+    expect(await claudeCode.detect()).toEqual({ status: "ready", version: "2.1.321" });
+    expect(await claudeCode.detect({ settingsFolder: "/halonic-data/settings/writer" })).toEqual({
+      status: "signed-out",
+      version: "2.1.321",
+    });
+  });
+
+  typeTest("takes the folder as an optional option", () => {
+    expectTypeOf<Harness["detect"]>().toBeCallableWith();
+    expectTypeOf<Harness["detect"]>().toBeCallableWith({ settingsFolder: "/x" });
+  });
+});
+
 verifies("ports.harness-control", () => {
   typeTest("starts with a task, a sandbox session and a bridge, and streams events", () => {
     expectTypeOf<Harness["start"]>().parameters.toEqualTypeOf<

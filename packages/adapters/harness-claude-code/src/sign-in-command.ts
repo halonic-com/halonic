@@ -1,5 +1,5 @@
 import type { HarnessSignIn } from "@halonicjs/ports";
-import { claudeProgram } from "./detect.ts";
+import { claudeFolderVariable, claudeProgram } from "./detect.ts";
 
 /**
  * Claude Code's own sign-in for one agent (requirement
@@ -16,5 +16,5 @@ import { claudeProgram } from "./detect.ts";
 export const claudeCodeSignIn: HarnessSignIn = {
   program: claudeProgram,
   args: ["auth", "login"],
-  folderVariable: "CLAUDE_CONFIG_DIR",
+  folderVariable: claudeFolderVariable,
 };

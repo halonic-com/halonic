@@ -6,6 +6,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { bridgeToken } from "./app-server-events.test-helper.ts";
 import { codexFailing, codexFinishing, MemorySettingsFolder } from "./fake-codex.test-helper.ts";
+import { FakeProbe, ran } from "./fake-probe.test-helper.ts";
 import { codexHarness } from "./harness.ts";
 
 /** A probe the run cases never ask: they don't call `detect`. */
@@ -100,6 +101,17 @@ verifies("harness-codex.detect", () => {
 
       expect([harness.id, harness.name]).toEqual(["codex", "Codex"]);
       expect(await harness.detect()).toEqual({ status: "missing" });
+    });
+
+    it("passes the agent's settings folder on to the sign-in check", async () => {
+      const probe = new FakeProbe({
+        "codex --version": ran(0, "codex-cli 0.167.0"),
+        "codex login status": ran(1, "", "Not logged in\n"),
+      });
+      const harness = codexHarness({ probe });
+
+      await harness.detect({ settingsFolder: "/halonic-data/settings/writer" });
+      expect(probe.asked).toContain("CODEX_HOME=/halonic-data/settings/writer codex login status");
     });
   });
 });

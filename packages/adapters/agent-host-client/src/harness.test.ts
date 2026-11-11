@@ -83,6 +83,18 @@ verifies("agent-host-client.harness", () => {
         body: { harness: "claude-code" },
       });
     });
+
+    it("names the agent's settings folder to the host when detect is given one", async () => {
+      const detection = { status: "signed-out", version: "2.1.0" };
+      const host = hostWithHarnesses().answer("POST /v1/harnesses/detect", ok(detection));
+      const harness = await claudeCode(host);
+      const settingsFolder = "/halonic-data/settings/writer";
+      expect(await harness.detect({ settingsFolder })).toEqual(detection);
+      expect(host.calls).toContainEqual({
+        route: "POST /v1/harnesses/detect",
+        body: { harness: "claude-code", settingsFolder },
+      });
+    });
   });
 
   describe("a run", () => {

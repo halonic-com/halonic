@@ -2,6 +2,7 @@ import type {
   Harness,
   HarnessBridge,
   HarnessDetection,
+  HarnessDetectOptions,
   HarnessEvent,
   HarnessInput,
   HarnessRun,
@@ -103,9 +104,12 @@ export class AgentHostHarness implements Harness {
     if (environment !== undefined) this.environment = environment;
   }
 
-  async detect(): Promise<HarnessDetection> {
+  async detect(options: HarnessDetectOptions = {}): Promise<HarnessDetection> {
     const route = "POST /v1/harnesses/detect";
-    const answer = await this.#transport.request(route, { harness: this.id });
+    const { settingsFolder } = options;
+    const body =
+      settingsFolder === undefined ? { harness: this.id } : { harness: this.id, settingsFolder };
+    const answer = await this.#transport.request(route, body);
     return readAnswer(route, answer, detectionSchema) as HarnessDetection;
   }
 

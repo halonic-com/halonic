@@ -1,5 +1,5 @@
 import type { HarnessSignIn } from "@halonicjs/ports";
-import { codexProgram } from "./detect.ts";
+import { codexFolderVariable, codexProgram } from "./detect.ts";
 
 /**
  * Codex's own sign-in for one agent (requirement
@@ -15,5 +15,5 @@ import { codexProgram } from "./detect.ts";
 export const codexSignIn: HarnessSignIn = {
   program: codexProgram,
   args: ["login"],
-  folderVariable: "CODEX_HOME",
+  folderVariable: codexFolderVariable,
 };

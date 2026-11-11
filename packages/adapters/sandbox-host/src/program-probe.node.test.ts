@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -73,6 +73,53 @@ verifies("sandbox-host.program-probe-node", () => {
       expect(answer).toMatchObject({ status: "ran", code: 0 });
       const text = answer.status === "ran" ? answer.stdout : "";
       expect(JSON.parse(text)).toEqual({ token: null, home: "users-x", hasPath: true });
+    });
+
+    it("sets a question's settings folder, and nothing else the launcher has", async () => {
+      const folder = join(dir, "agent-settings");
+      const launcher = {
+        HOME: "users-x",
+        CLAUDE_CONFIG_DIR: join(dir, "person-settings"),
+        // Claude Code would read its keychain entry from this instead of the folder.
+        CLAUDE_SECURESTORAGE_CONFIG_DIR: join(dir, "person-settings"),
+      };
+      const answer = await probe(launcher).ask(
+        "node",
+        [
+          "-e",
+          "console.log(JSON.stringify({ folder: process.env.CLAUDE_CONFIG_DIR ?? null, storage: process.env.CLAUDE_SECURESTORAGE_CONFIG_DIR ?? null }))",
+        ],
+        { settingsFolder: { variable: "CLAUDE_CONFIG_DIR", path: folder } },
+      );
+      const text = answer.status === "ran" ? answer.stdout : "";
+      expect(JSON.parse(text)).toEqual({ folder, storage: null });
+    });
+
+    it("passes neither of the launcher's settings variables on without a question", async () => {
+      const launcher = { CLAUDE_CONFIG_DIR: join(dir, "a"), CODEX_HOME: join(dir, "b") };
+      const answer = await probe(launcher).ask("node", [
+        "-e",
+        "console.log(JSON.stringify([process.env.CLAUDE_CONFIG_DIR ?? null, process.env.CODEX_HOME ?? null]))",
+      ]);
+      const text = answer.status === "ran" ? answer.stdout : "";
+      expect(JSON.parse(text)).toEqual([null, null]);
+    });
+
+    it("refuses a settings variable it doesn't list, or a folder that isn't absolute", async () => {
+      const refused = {
+        status: "failed",
+        path: join(nodeDir, nodeName),
+        error: "node can't be asked about that folder.",
+      };
+      const marker = join(dir, "started");
+      const program = ["-e", `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "")`];
+      for (const settingsFolder of [
+        { variable: "NODE_OPTIONS", path: join(dir, "x") },
+        { variable: "CODEX_HOME", path: "relative/codex" },
+      ]) {
+        expect(await probe().ask("node", program, { settingsFolder })).toEqual(refused);
+      }
+      await expect(stat(marker)).rejects.toThrow();
     });
 
     it("kills a program that runs too long and says so in one sentence", async () => {

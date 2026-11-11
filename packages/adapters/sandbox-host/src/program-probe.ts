@@ -1,16 +1,27 @@
 import { type ChildProcess, type ChildProcessByStdio, spawn } from "node:child_process";
+import { isAbsolute } from "node:path";
 import type { Readable } from "node:stream";
 import { findProgram } from "@halonicjs/adapter-system-node";
-import type { ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
+import type { ProgramProbe, ProgramProbeResult, ProgramSettingsFolder } from "@halonicjs/ports";
 import { stopOnLauncherExit } from "./launcher-exit.ts";
 
 const defaultTimeoutMs = 5_000;
 const maxOutputBytes = 4_096;
 const allowedEnv = ["PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LC_MESSAGES"] as const;
 
+/**
+ * The variables that point a harness's program at an agent's settings
+ * folder, by name: Claude Code's and Codex's. A question may set one of
+ * these and nothing else, so the probe has no door for other variables.
+ */
+const settingsFolderVariables: ReadonlySet<string> = new Set(["CLAUDE_CONFIG_DIR", "CODEX_HOME"]);
+
 /** What {@link createProgramProbe} may be told. */
 export interface ProgramProbeOptions {
-  /** The launcher's environment; defaults to `process.env`. Only `PATH`, `HOME` and the locale are passed on. */
+  /**
+   * The launcher's environment; defaults to `process.env`. Only `PATH`,
+   * `HOME` and the locale are passed on, plus a question's settings folder.
+   */
   env?: Readonly<Record<string, string | undefined>>;
   /** How long a program may run before it is killed; defaults to 5 seconds. */
   timeoutMs?: number;
@@ -26,13 +37,17 @@ export function createProgramProbe(options: ProgramProbeOptions = {}): ProgramPr
   const env = options.env ?? process.env;
   const timeoutMs = options.timeoutMs ?? defaultTimeoutMs;
   return {
-    async ask(program, args) {
+    async ask(program, args, question = {}) {
       try {
         if (program === "" || /[\\/]/.test(program)) return { status: "missing" };
         // Only absolute PATH folders, never the current one; on Windows only `<name>.exe`.
         const path = await findProgram(program, { path: env["PATH"] ?? "" });
         if (path === undefined) return { status: "missing" };
-        return await run(program, path, args, childEnv(env), timeoutMs);
+        const { settingsFolder } = question;
+        if (settingsFolder !== undefined && !isKnownFolder(settingsFolder)) {
+          return { status: "failed", path, error: `${program} can't be asked about that folder.` };
+        }
+        return await run(program, path, args, childEnv(env, settingsFolder), timeoutMs);
       } catch {
         return { status: "failed", path: program, error: `${program} couldn't be asked.` };
       }
@@ -40,12 +55,21 @@ export function createProgramProbe(options: ProgramProbeOptions = {}): ProgramPr
   };
 }
 
-function childEnv(env: Readonly<Record<string, string | undefined>>): Record<string, string> {
+/** A settings folder the probe may point a program at: a listed variable and an absolute path. */
+function isKnownFolder({ variable, path }: ProgramSettingsFolder): boolean {
+  return settingsFolderVariables.has(variable) && isAbsolute(path);
+}
+
+function childEnv(
+  env: Readonly<Record<string, string | undefined>>,
+  settingsFolder: ProgramSettingsFolder | undefined,
+): Record<string, string> {
   const result: Record<string, string> = {};
   for (const key of allowedEnv) {
     const value = env[key];
     if (value !== undefined) result[key] = value;
   }
+  if (settingsFolder !== undefined) result[settingsFolder.variable] = settingsFolder.path;
   return result;
 }
 

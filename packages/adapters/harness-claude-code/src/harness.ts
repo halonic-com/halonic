@@ -38,7 +38,7 @@ export function claudeCodeHarness(options: ClaudeCodeHarnessOptions): Harness {
   return {
     id: "claude-code",
     name: "Claude Code",
-    detect: () => detectClaudeCode(options.probe),
+    detect: (detectOptions) => detectClaudeCode(options.probe, detectOptions),
     environment: claudeCodeEnvironment,
     start: (task, session, bridge) =>
       new ClaudeCodeRun(task, session, bridge, { settings, ownSandbox }),

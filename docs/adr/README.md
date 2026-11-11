@@ -43,6 +43,7 @@ code is built the way it is, before you change something they describe.
 | [Package names](2026-11-11-package-names-inside-and-published.md) | Small private packages inside; on npm one package per layer, a subpath per piece |
 | [Plugin cards on Home](2026-11-11-plugin-cards-on-home.md) | Cards show on Home; the panel is an optional tab, commands then cards |
 | [Pluggable sandbox layer](2026-11-11-pluggable-sandbox-layer.md) | One choice over a list of backends, no fall-through; srt in WSL first on Windows (v6) |
+| [Harness detect for one agent](2026-11-11-harness-detect-for-one-agent.md) | `detect()` can ask about an agent's settings folder; the probe sets only that variable (v3) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

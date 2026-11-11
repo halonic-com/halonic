@@ -43,7 +43,7 @@ export function codexHarness(options: CodexHarnessOptions): Harness {
   return {
     id: "codex",
     name: "Codex",
-    detect: () => detectCodex(options.probe),
+    detect: (detectOptions) => detectCodex(options.probe, detectOptions),
     environment: codexEnvironment,
     start: (task, session, bridge) =>
       new CodexRun(task, session, bridge, { settings, clientInfo, ownSandbox }),

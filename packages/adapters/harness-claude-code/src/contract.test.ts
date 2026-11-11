@@ -10,6 +10,7 @@ import {
   claudeFinishing,
   MemorySettingsFolder,
 } from "./fake-claude.test-helper.ts";
+import { FakeProbe, ran } from "./fake-probe.test-helper.ts";
 import { claudeCodeHarness } from "./harness.ts";
 
 /** A probe the run cases never ask: they don't call `detect`. */
@@ -93,6 +94,19 @@ verifies("harness-claude-code.detect", () => {
 
       expect([harness.id, harness.name]).toEqual(["claude-code", "Claude Code"]);
       expect(await harness.detect()).toEqual({ status: "missing" });
+    });
+
+    it("passes the agent's settings folder on to the sign-in check", async () => {
+      const probe = new FakeProbe({
+        "claude --version": ran(0, "2.1.321 (Claude Code)"),
+        "claude auth status": ran(1, JSON.stringify({ loggedIn: false })),
+      });
+      const harness = claudeCodeHarness({ probe });
+
+      await harness.detect({ settingsFolder: "/halonic-data/settings/writer" });
+      expect(probe.asked).toContain(
+        "CLAUDE_CONFIG_DIR=/halonic-data/settings/writer claude auth status",
+      );
     });
   });
 });

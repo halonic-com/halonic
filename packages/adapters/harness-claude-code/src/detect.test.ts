@@ -94,4 +94,24 @@ verifies("harness-claude-code.detect", () => {
       },
     );
   });
+
+  describe("detectClaudeCode for one agent", () => {
+    it("asks the sign-in in the agent's settings folder, and the version without it", async () => {
+      const probe = new FakeProbe({ "claude --version": current, "claude auth status": signedOut });
+      const found = await detectClaudeCode(probe, {
+        settingsFolder: "/halonic-data/settings/writer",
+      });
+      expect(found).toEqual({ status: "signed-out", version: "2.1.321" });
+      expect(probe.asked).toEqual([
+        "claude --version",
+        "CLAUDE_CONFIG_DIR=/halonic-data/settings/writer claude auth status",
+      ]);
+    });
+
+    it("asks the person's own sign-in when it has no folder", async () => {
+      const probe = new FakeProbe({ "claude --version": current, "claude auth status": signedIn });
+      expect(await detectClaudeCode(probe, {})).toEqual({ status: "ready", version: "2.1.321" });
+      expect(probe.asked).toEqual(["claude --version", "claude auth status"]);
+    });
+  });
 });

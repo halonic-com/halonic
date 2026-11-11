@@ -1,6 +1,9 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type {
   Harness,
   HarnessBridge,
+  HarnessDetectOptions,
   HarnessEvent,
   HarnessInput,
   HarnessRun,
@@ -87,10 +90,15 @@ class FakeRun implements HarnessRun {
 }
 
 const runs: FakeRun[] = [];
+/** What each `detect()` was asked. */
+const detected: HarnessDetectOptions[] = [];
 const harness: Harness = {
   id: "fake",
   name: "Fake",
-  detect: async () => ({ status: "ready", version: "1.0.0" }),
+  detect: async (options = {}) => {
+    detected.push(options);
+    return { status: "ready", version: "1.0.0" };
+  },
   start: (_task, session, bridge) => {
     const run = new FakeRun(session, bridge);
     runs.push(run);
@@ -180,6 +188,15 @@ describe("harness routes", () => {
     expect(await detect.json()).toEqual({ status: "ready", version: "1.0.0" });
     const unknown = await request(url, "/v1/harnesses/detect", { harness: "other" });
     expect(unknown.status).toBe(404);
+  });
+
+  it("passes the agent's settings folder on to detect, and refuses one that isn't absolute", async () => {
+    const { url } = await started();
+    const settingsFolder = join(tmpdir(), "halonic-settings", "writer");
+    await request(url, "/v1/harnesses/detect", { harness: "fake", settingsFolder });
+    expect(detected).toContainEqual({ settingsFolder });
+    const relative = { harness: "fake", settingsFolder: "settings/writer" };
+    expect((await request(url, "/v1/harnesses/detect", relative)).status).toBe(400);
   });
 
   it("starts a run with the host's session and bridge and streams its events", async () => {

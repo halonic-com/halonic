@@ -1,5 +1,5 @@
 /** Version of the {@link ProgramProbe} port. A breaking change bumps it and comes with an ADR. */
-export const programProbeVersion = 1;
+export const programProbeVersion = 2;
 
 /**
  * What asking a program something answered. `missing`: no program of that
@@ -12,6 +12,28 @@ export type ProgramProbeResult =
   | { status: "missing" }
   | { status: "ran"; path: string; code: number | null; stdout: string; stderr: string }
   | { status: "failed"; path: string; error: string };
+
+/**
+ * The program's own settings folder, for a question about one agent's
+ * settings, such as whether that agent is signed in. `variable` is the
+ * environment variable that points the program at the folder, such as
+ * "CLAUDE_CONFIG_DIR"; `path` is the folder, an absolute path.
+ */
+export interface ProgramSettingsFolder {
+  readonly variable: string;
+  readonly path: string;
+}
+
+/** What else a question to a program may say. */
+export interface ProgramQuestion {
+  /**
+   * Asks the program about this settings folder instead of the person's
+   * own. A probe sets only this variable on top of what it always passes,
+   * and refuses a variable it doesn't know as `failed`, so this can't pass
+   * anything else to the program.
+   */
+  readonly settingsFolder?: ProgramSettingsFolder;
+}
 
 /**
  * Finds a program on this machine and asks it something short, such as
@@ -27,6 +49,9 @@ export type ProgramProbeResult =
  * @example
  * const answer = await probe.ask("codex", ["--version"]);
  * if (answer.status === "missing") return { status: "missing" };
+ * const signIn = await probe.ask("codex", ["login", "status"], {
+ *   settingsFolder: { variable: "CODEX_HOME", path: agentFolder },
+ * });
  */
 export interface ProgramProbe {
   /**
@@ -35,5 +60,9 @@ export interface ProgramProbe {
    *
    * @param program a bare name, such as "claude". A name with a path separator is `missing`.
    */
-  ask(program: string, args: readonly string[]): Promise<ProgramProbeResult>;
+  ask(
+    program: string,
+    args: readonly string[],
+    question?: ProgramQuestion,
+  ): Promise<ProgramProbeResult>;
 }

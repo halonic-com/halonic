@@ -81,7 +81,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/bridge/answer` | `{"answered":true}`, or `404` for a call the bridge isn't waiting for |
 | `POST /v1/bridge/close` | `{"closed":true}`, or `404` for an unknown bridge |
 | `GET /v1/harnesses` | `[{"id","name"}]` |
-| `POST /v1/harnesses/detect` with `{"harness"}` | the `HarnessDetection` |
+| `POST /v1/harnesses/detect` with `{"harness"}`, and `"settingsFolder"` for one agent | the `HarnessDetection` |
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |

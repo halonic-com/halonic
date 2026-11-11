@@ -32,7 +32,10 @@ const input = portSchema<HarnessInput>(
   ]),
 );
 
-export const harnessBody = s.object({ harness: id }).strict();
+/** What Studio gives to detect a harness: which one, and the agent's settings folder when it asks for one agent. */
+export const detectBody = s
+  .object({ harness: id, settingsFolder: absolutePath.optional() })
+  .strict();
 
 /**
  * What Studio gives to start a harness run: the task, and the sandbox session

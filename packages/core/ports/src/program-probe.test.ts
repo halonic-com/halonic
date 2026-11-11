@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { HarnessDetection } from "./harness.ts";
-import type { ProgramProbe, ProgramProbeResult } from "./program-probe.ts";
+import type { ProgramProbe, ProgramProbeResult, ProgramQuestion } from "./program-probe.ts";
 
 /** A probe that answers from a fixed list, as a harness's tests use it until `sandbox-host` lands. */
 function fixedProbe(answers: Record<string, ProgramProbeResult>): ProgramProbe {
@@ -44,5 +44,35 @@ verifies("ports.program-probe", () => {
     // @ts-expect-error: a failed answer says why
     const unexplained: ProgramProbeResult = { status: "failed", path: "/usr/local/bin/codex" };
     expect([failed, unexplained]).toHaveLength(2);
+  });
+});
+
+verifies("ports.program-probe-settings-folder", () => {
+  /** A probe that knows only Codex's folder variable, and reports what it set. */
+  const probe: ProgramProbe = {
+    ask: async (program, _args, question: ProgramQuestion = {}) => {
+      const folder = question.settingsFolder;
+      if (folder !== undefined && folder.variable !== "CODEX_HOME") {
+        return { status: "failed", path: `/usr/local/bin/${program}`, error: "Not that folder." };
+      }
+      const stdout = folder === undefined ? "" : `${folder.variable}=${folder.path}`;
+      return { status: "ran", path: `/usr/local/bin/${program}`, code: 0, stdout, stderr: "" };
+    },
+  };
+
+  it("points the program at the folder it names", async () => {
+    const settingsFolder = { variable: "CODEX_HOME", path: "/halonic-data/settings/writer" };
+    const answer = await probe.ask("codex", ["login", "status"], { settingsFolder });
+    expect(answer).toMatchObject({
+      status: "ran",
+      stdout: "CODEX_HOME=/halonic-data/settings/writer",
+    });
+  });
+
+  it("fails a variable it doesn't know", async () => {
+    const settingsFolder = { variable: "NODE_OPTIONS", path: "/x" };
+    expect(await probe.ask("codex", ["login", "status"], { settingsFolder })).toMatchObject({
+      status: "failed",
+    });
   });
 });

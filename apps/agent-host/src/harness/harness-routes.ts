@@ -1,10 +1,10 @@
-import type { Harness, HarnessRun } from "@halonicjs/ports";
+import type { Harness, HarnessDetectOptions, HarnessRun } from "@halonicjs/ports";
 import type { BridgeTable } from "../bridge/bridge-routes.ts";
 import type { SessionTable } from "../sandbox/session-table.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { type NdjsonStream, startNdjsonStream } from "../server/ndjson-stream.ts";
-import { harnessBody, runBody, sendRunBody, startRunBody } from "./harness-schemas.ts";
+import { detectBody, runBody, sendRunBody, startRunBody } from "./harness-schemas.ts";
 import type { RunTable } from "./run-table.ts";
 
 /** What the harness routes reach: the harnesses, and the host's sessions, bridges and runs. */
@@ -20,7 +20,7 @@ export interface HarnessRouteDeps {
  * for each harness that runs here:
  *
  * - `GET /v1/harnesses` lists them, as `{ id, name }`;
- * - `POST /v1/harnesses/detect` with `{ harness }` answers its `HarnessDetection`;
+ * - `POST /v1/harnesses/detect` with `{ harness, settingsFolder? }` answers its `HarnessDetection`;
  * - `POST /v1/harnesses/runs/start` with `{ harness, task, session, bridge }`
  *   starts the agent in a sandbox session and with a bridge Studio opened on
  *   this host, and answers with an NDJSON stream: `{ type: "started", run }`,
@@ -52,11 +52,11 @@ export function harnessRoutes(deps: HarnessRouteDeps): HostRoute[] {
       method: "POST",
       path: "/v1/harnesses/detect",
       handle: async (request, response) => {
-        const body = await readCheckedBody(request, response, harnessBody);
+        const body = await readCheckedBody(request, response, detectBody);
         if (body === undefined) return;
         const harness = harnessById(body.harness);
         if (harness === undefined) sendUnknown(response, "harness");
-        else sendJson(response, 200, await harness.detect());
+        else sendJson(response, 200, await harness.detect(detectOptions(body.settingsFolder)));
       },
     },
     {
@@ -173,4 +173,9 @@ function sendUnknown(
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** `detect()`'s options: the agent's settings folder, only when Studio named one. */
+function detectOptions(settingsFolder: string | undefined): HarnessDetectOptions {
+  return settingsFolder === undefined ? {} : { settingsFolder };
 }

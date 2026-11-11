@@ -26,7 +26,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `DefinitionStore` | `definition-store.ts` | 2 | the workspace files; `DefinitionSource` is its read-only side | `definition-store` |
 | `Digest` | `digest.ts` | 1 | SHA-256 from the platform's WebCrypto | `digest` (with first adapter) |
 | `FolderReader` | `folder-reader.ts` | 1 | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins | `folder-reader` |
-| `Harness` | `harness.ts` | 2 | what drives an agent (Halonic, Claude Code, Codex): detect it, sign in, start, answer, cancel it | `harness` (with first adapter) |
+| `Harness` | `harness.ts` | 3 | what drives an agent (Halonic, Claude Code, Codex): detect it, sign in, start, answer, cancel it | `harness` (with first adapter) |
 | `HarnessBridgeServer` | `harness-bridge-server.ts` | 1 | opens one run's bridge: model requests to the provider, Halonic's tools and approvals over MCP; a model request the recorder refuses with `limit_reached` gets a 429 and never reaches the provider | `harness-bridge-server` (with first adapter) |
 | `HttpClient` | `http-client.ts` | 1 | outbound HTTP, replaces `FetchLike` | `http-client` (with first adapter) |
 | `IdGenerator` | `id-generator.ts` | 1 | unique ids | `id-generator` |
@@ -36,7 +36,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `LlmProvider` | `llm-provider.ts` | 1 | model providers, and their factory | `llm-provider`, `llm-stream` |
 | `PasswordHasher` | `password-hasher.ts` | 1 | hash and check the sign-in password | `password-hasher` (with first adapter) |
 | `PluginFolderWriter` | `plugin-folder-writer.ts` | 1 | places and removes whole plugin folders in the profile's plugins folder, never through a link | `plugin-folder-writer` |
-| `ProgramProbe` | `program-probe.ts` | 1 | finds a harness's program and asks it something short, such as its version | `program-probe` (with first adapter) |
+| `ProgramProbe` | `program-probe.ts` | 2 | finds a harness's program and asks it something short, such as its version | `program-probe` (with first adapter) |
 | `RecordStore` | `record-store.ts` | 2 | collection records as a change log; `compact` drops overwritten and removed values | `record-store` |
 | `ResourceProbe` | `resource-probe.ts` | 1 | the engine's memory, the processes it started, a folder's size and free disk space | `resource-probe` |
 | `RunExecutor` | `run-executor.ts` | 1 | start, send events, stream them, cancel (optional), chat turns; replaces `Runtime` and `RunHost` | `run-executor` (with the engine) |

@@ -119,4 +119,22 @@ verifies("harness-codex.detect", () => {
       expect(await found).toEqual({ status: "signed-out", version: "0.167.0" });
     });
   });
+
+  describe("detectCodex for one agent", () => {
+    it("asks the sign-in in the agent's settings folder, and the version without it", async () => {
+      const probe = new FakeProbe({ "codex --version": current, "codex login status": signedOut });
+      const found = await detectCodex(probe, { settingsFolder: "/halonic-data/settings/writer" });
+      expect(found).toEqual({ status: "signed-out", version: "0.167.0" });
+      expect(probe.asked).toEqual([
+        "codex --version",
+        "CODEX_HOME=/halonic-data/settings/writer codex login status",
+      ]);
+    });
+
+    it("asks the person's own sign-in when it has no folder", async () => {
+      const probe = new FakeProbe({ "codex --version": current, "codex login status": signedIn });
+      expect(await detectCodex(probe, {})).toEqual({ status: "ready", version: "0.167.0" });
+      expect(probe.asked).toEqual(["codex --version", "codex login status"]);
+    });
+  });
 });

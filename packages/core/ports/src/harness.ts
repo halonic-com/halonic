@@ -2,7 +2,7 @@ import type { AgentResume, RunEventBody, RunEventType } from "@halonicjs/events"
 import type { SandboxProfile, SandboxSession } from "./sandbox.ts";
 
 /** Version of the {@link Harness} port. A breaking change bumps it and comes with an ADR. */
-export const harnessVersion = 2;
+export const harnessVersion = 3;
 
 /**
  * Whether a harness can run on this machine, as `detect()` finds it. Studio
@@ -19,11 +19,17 @@ export const harnessVersion = 2;
  * if (found.status === "signed-out") show(`Found ${codex.name} ${found.version} · not signed in`);
  */
 export type HarnessDetection =
-  /** Installed in a version Halonic supports, and signed in, or its sign-in can't be checked. */
+  /**
+   * Installed in a version Halonic supports, and signed in, or its sign-in
+   * can't be checked. Asked about an agent's settings folder, "signed in"
+   * means that agent is; otherwise it means the person is, in their own
+   * settings, which a run never uses.
+   */
   | { status: "ready"; version: string }
   /**
    * Installed in a version Halonic supports, but the program says no one is
-   * signed in on this computer. It can still run when Halonic holds a key
+   * signed in: for the agent whose settings folder `detect()` was given, or
+   * else on this computer. It can still run when Halonic holds a key
    * for the agent's model provider, so this isn't an error on its own.
    */
   | { status: "signed-out"; version: string }
@@ -37,6 +43,17 @@ export type HarnessDetection =
   | { status: "unsupported"; version: string; supported: string }
   /** Found, but asking it for its version failed; `error` says how, in words a person can act on. */
   | { status: "failed"; error: string };
+
+/** What `detect()` may be asked about. */
+export interface HarnessDetectOptions {
+  /**
+   * The agent's own settings folder, the one its runs get as
+   * `settingsFolder`. With it, the sign-in answer is about that agent, which
+   * is what a run needs. Without it, `detect()` checks the program and the
+   * person's own sign-in, as `halonic doctor` does outside an agent.
+   */
+  settingsFolder?: string;
+}
 
 /** What a harness run is asked to do: one agent of one run, with the agent's own settings. */
 export interface HarnessTask {
@@ -159,7 +176,8 @@ export interface HarnessRun extends AsyncIterable<HarnessEvent> {
  * `start` throws, so the same loop runs there without stdio connectors.
  *
  * @example
- * if ((await harness.detect()).status !== "ready") return;
+ * const found = await harness.detect({ settingsFolder: agentSettingsFolder });
+ * if (found.status !== "ready") return;
  * const extra = harness.environment?.(bridge, profile) ?? {};
  * const session = await sandbox.open({ ...profile, env: addHarnessEnvironment(profile.env, extra) });
  * const run = harness.start(task, session, bridge);
@@ -175,10 +193,12 @@ export interface Harness {
   readonly name: string;
   /**
    * Finds the harness's program on this machine, checks its version and,
-   * where the program can tell, whether someone is signed in to it. Never
-   * throws: a problem is a {@link HarnessDetection}.
+   * where the program can tell, whether someone is signed in to it. Given
+   * an agent's settings folder, it asks the program about that folder's
+   * sign-in (requirement `ports.harness-detect-folder`). Never throws: a
+   * problem is a {@link HarnessDetection}.
    */
-  detect(): Promise<HarnessDetection>;
+  detect(options?: HarnessDetectOptions): Promise<HarnessDetection>;
   /**
    * The environment variables the harness's program needs, such as the
    * bridge's address, the token header and the program's own settings and

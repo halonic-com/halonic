@@ -1,9 +1,18 @@
-import type { HarnessDetection, ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
+import type {
+  HarnessDetection,
+  HarnessDetectOptions,
+  ProgramProbe,
+  ProgramProbeResult,
+  ProgramQuestion,
+} from "@halonicjs/ports";
 import { formatVersion, isAtLeast, readVersion, type Version } from "@halonicjs/std";
 import { saysSignedOut } from "./sign-in.ts";
 
 /** The program's name, as the launcher finds it. */
 export const codexProgram = "codex";
+
+/** The variable that points Codex at an agent's settings folder, where it keeps that agent's sign-in. */
+export const codexFolderVariable = "CODEX_HOME";
 
 /**
  * The oldest Codex Halonic supports: 0.166.0, the release checked by hand
@@ -27,12 +36,17 @@ const versionPrefix = "codex-cli";
  *
  * It asks `codex --version` first; only a supported version is asked
  * `codex login status`, whose exit code and message say signed in or out.
+ * Given the agent's settings folder, it asks that about the agent's
+ * sign-in, which is the one the agent's runs use.
  *
  * @example
  * const found = await detectCodex(probe);
  * if (found.status === "signed-out") show(`Found Codex ${found.version} · not signed in`);
  */
-export async function detectCodex(probe: ProgramProbe): Promise<HarnessDetection> {
+export async function detectCodex(
+  probe: ProgramProbe,
+  options: HarnessDetectOptions = {},
+): Promise<HarnessDetection> {
   const answer = await probe.ask(codexProgram, ["--version"]);
   if (answer.status === "missing") return { status: "missing" };
   const found = readVersionAnswer(answer);
@@ -42,7 +56,7 @@ export async function detectCodex(probe: ProgramProbe): Promise<HarnessDetection
   if (!isAtLeast(found.version, oldestSupportedVersion)) {
     return { status: "unsupported", version, supported: supportedVersions };
   }
-  const signIn = await probe.ask(codexProgram, ["login", "status"]);
+  const signIn = await probe.ask(codexProgram, ["login", "status"], signInQuestion(options));
   return saysSignedOut(signIn) ? { status: "signed-out", version } : { status: "ready", version };
 }
 
@@ -73,4 +87,13 @@ function readCodexVersion(output: string): Version | undefined {
   const words = firstLine.trim().split(/\s+/);
   if (words.length !== 2 || words[0] !== versionPrefix) return undefined;
   return readVersion(words[1] ?? "");
+}
+
+/**
+ * The sign-in question asks about the agent's settings folder when there is
+ * one: a run uses that folder's sign-in, never the person's own.
+ */
+function signInQuestion({ settingsFolder }: HarnessDetectOptions): ProgramQuestion {
+  if (settingsFolder === undefined) return {};
+  return { settingsFolder: { variable: codexFolderVariable, path: settingsFolder } };
 }

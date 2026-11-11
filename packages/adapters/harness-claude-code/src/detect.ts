@@ -1,10 +1,19 @@
-import type { HarnessDetection, ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
+import type {
+  HarnessDetection,
+  HarnessDetectOptions,
+  ProgramProbe,
+  ProgramProbeResult,
+  ProgramQuestion,
+} from "@halonicjs/ports";
 import { formatVersion, isAtLeast, type Version } from "@halonicjs/std";
 import { saysSignedOut } from "./sign-in.ts";
 import { readLeadingVersion } from "./version.ts";
 
 /** The program's name, as the launcher finds it. */
 export const claudeProgram = "claude";
+
+/** The variable that points Claude Code at an agent's settings folder, where it keeps that agent's sign-in. */
+export const claudeFolderVariable = "CLAUDE_CONFIG_DIR";
 
 /**
  * The oldest Claude Code Halonic supports: the stable release channel on
@@ -24,13 +33,18 @@ export const supportedVersions = `>=${formatVersion(oldestSupportedVersion)}`;
  * throws: every answer of the probe becomes a {@link HarnessDetection}.
  *
  * It asks `claude --version` first; only a supported version is asked
- * `claude auth status`, whose exit code says signed in or out.
+ * `claude auth status`, whose exit code says signed in or out. Given the
+ * agent's settings folder, it asks that about the agent's sign-in, which is
+ * the one the agent's runs use.
  *
  * @example
  * const found = await detectClaudeCode(probe);
  * if (found.status === "signed-out") show(`Found Claude Code ${found.version} · not signed in`);
  */
-export async function detectClaudeCode(probe: ProgramProbe): Promise<HarnessDetection> {
+export async function detectClaudeCode(
+  probe: ProgramProbe,
+  options: HarnessDetectOptions = {},
+): Promise<HarnessDetection> {
   const answer = await probe.ask(claudeProgram, ["--version"]);
   if (answer.status === "missing") return { status: "missing" };
   const found = readVersionAnswer(answer);
@@ -40,7 +54,7 @@ export async function detectClaudeCode(probe: ProgramProbe): Promise<HarnessDete
   if (!isAtLeast(found.version, oldestSupportedVersion)) {
     return { status: "unsupported", version, supported: supportedVersions };
   }
-  const signIn = await probe.ask(claudeProgram, ["auth", "status"]);
+  const signIn = await probe.ask(claudeProgram, ["auth", "status"], signInQuestion(options));
   return saysSignedOut(signIn) ? { status: "signed-out", version } : { status: "ready", version };
 }
 
@@ -58,4 +72,13 @@ function readVersionAnswer(
   const version = readLeadingVersion(answer.stdout);
   if (version === undefined) return { error: "`claude --version` didn't print a version." };
   return { version };
+}
+
+/**
+ * The sign-in question asks about the agent's settings folder when there is
+ * one: a run uses that folder's sign-in, never the person's own.
+ */
+function signInQuestion({ settingsFolder }: HarnessDetectOptions): ProgramQuestion {
+  if (settingsFolder === undefined) return {};
+  return { settingsFolder: { variable: claudeFolderVariable, path: settingsFolder } };
 }
