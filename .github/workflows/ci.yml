@@ -1675,9 +1675,16 @@ jobs:
         working-directory: head
         run: |
           base_node=$(cd "$BASE_DIR" && pnpm exec node -p process.execPath)
-          "$base_node" "$BASE_DIR/tooling/check/src/cli/check.ts" \
-            layers dependencies process-starts lockfile advisories deny-toml \
-            --lists-from "$BASE_DIR"
+          script="$BASE_DIR/tooling/check/src/cli/check.ts"
+          rules="layers dependencies process-starts lockfile advisories deny-toml"
+          if grep -q -e '--lists-from' "$script"; then
+            # shellcheck disable=SC2086
+            "$base_node" "$script" $rules --lists-from "$BASE_DIR"
+          else
+            echo "::notice::The base commit's check script has no --lists-from yet; running it without the flag (only until the pull request that adds it merges)."
+            # shellcheck disable=SC2086
+            "$base_node" "$script" $rules
+          fi
 
   ci-ok:
     name: ci-ok

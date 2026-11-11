@@ -70,7 +70,9 @@ export function loadContext(root: string, listsRoot?: string): CheckContext {
     }
     const fromBase = join(listsRoot, file);
     if (!existsSync(fromBase)) {
-      throw new Error(`${file} is missing in the lists folder ${listsRoot}; a list is never read from the checked tree.`);
+      throw new Error(
+        `${file} is missing in the lists folder ${listsRoot}; a list is never read from the checked tree.`,
+      );
     }
     return fromBase;
   };
