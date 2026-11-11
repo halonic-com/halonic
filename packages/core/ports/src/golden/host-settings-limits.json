@@ -1,0 +1,275 @@
+{
+  "//": "The limits of the HostSettingsStore port and the shape of the saved settings, checked by the TypeScript adapters (through the contract suite) and by the desktop shell's Rust side. A key is allowed or not; a size case saves `character` repeated `count` times under `key` in empty settings; a saved case reads `text` as `values` (null: unparsable, read as none saved) and, after saving the turn limit 24 over it, holds `afterSave`.",
+  "keys": [
+    {
+      "key": "assistant.turn-limit",
+      "allowed": true
+    },
+    {
+      "key": "sandbox.new-agents",
+      "allowed": true
+    },
+    {
+      "key": "assistant.model.v2",
+      "allowed": true
+    },
+    {
+      "key": "a1.b2-c3",
+      "allowed": true
+    },
+    {
+      "key": "a.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "allowed": true
+    },
+    {
+      "key": "a.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "allowed": false
+    },
+    {
+      "key": "",
+      "allowed": false
+    },
+    {
+      "key": "turn-limit",
+      "allowed": false
+    },
+    {
+      "key": "Assistant.model",
+      "allowed": false
+    },
+    {
+      "key": "assistant.turn_limit",
+      "allowed": false
+    },
+    {
+      "key": "assistant..model",
+      "allowed": false
+    },
+    {
+      "key": "assistant.-model",
+      "allowed": false
+    },
+    {
+      "key": "assistant.model-",
+      "allowed": false
+    },
+    {
+      "key": "assistant.turn--limit",
+      "allowed": false
+    },
+    {
+      "key": "assistant.2model",
+      "allowed": false
+    },
+    {
+      "key": ".assistant.model",
+      "allowed": false
+    },
+    {
+      "key": "assistant.model.",
+      "allowed": false
+    },
+    {
+      "key": "assistant .model",
+      "allowed": false
+    },
+    {
+      "key": "assistant.modél",
+      "allowed": false
+    },
+    {
+      "key": "__proto__.model",
+      "allowed": false
+    },
+    {
+      "key": "assistant/model.x",
+      "allowed": false
+    },
+    {
+      "key": "../host.json",
+      "allowed": false
+    }
+  ],
+  "sizes": [
+    {
+      "name": "plain text that brings the settings to exactly 256 KiB",
+      "key": "assistant.instructions",
+      "character": "x",
+      "count": 262115,
+      "fits": true
+    },
+    {
+      "name": "plain text one byte over",
+      "key": "assistant.instructions",
+      "character": "x",
+      "count": 262116,
+      "fits": false
+    },
+    {
+      "name": "two-byte characters, counted in UTF-8 bytes, one byte under",
+      "key": "assistant.instructions",
+      "character": "é",
+      "count": 131057,
+      "fits": true
+    },
+    {
+      "name": "two-byte characters, one byte over though fewer characters than the limit",
+      "key": "assistant.instructions",
+      "character": "é",
+      "count": 131058,
+      "fits": false
+    },
+    {
+      "name": "three-byte characters, one byte under",
+      "key": "assistant.instructions",
+      "character": "€",
+      "count": 87371,
+      "fits": true
+    },
+    {
+      "name": "three-byte characters, one byte over",
+      "key": "assistant.instructions",
+      "character": "€",
+      "count": 87372,
+      "fits": false
+    },
+    {
+      "name": "four-byte characters, three bytes under",
+      "key": "assistant.instructions",
+      "character": "😀",
+      "count": 65528,
+      "fits": true
+    },
+    {
+      "name": "four-byte characters, one byte over though fewer UTF-16 units than the limit",
+      "key": "assistant.instructions",
+      "character": "😀",
+      "count": 65529,
+      "fits": false
+    },
+    {
+      "name": "quotes, counted as written in JSON, one byte under",
+      "key": "assistant.instructions",
+      "character": "\"",
+      "count": 131057,
+      "fits": true
+    },
+    {
+      "name": "quotes, counted as written in JSON, one byte over",
+      "key": "assistant.instructions",
+      "character": "\"",
+      "count": 131058,
+      "fits": false
+    }
+  ],
+  "saved": [
+    {
+      "name": "the settings of this version",
+      "text": "{\"version\":1,\"values\":{\"assistant.turn-limit\":20,\"assistant.connector-tools\":false}}",
+      "values": {
+        "assistant.turn-limit": 20,
+        "assistant.connector-tools": false
+      },
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24,
+          "assistant.connector-tools": false
+        }
+      }
+    },
+    {
+      "name": "settings with no version",
+      "text": "{\"values\":{\"assistant.connector-tools\":false}}",
+      "values": {
+        "assistant.connector-tools": false
+      },
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24,
+          "assistant.connector-tools": false
+        }
+      }
+    },
+    {
+      "name": "settings of a newer version, with a field and a key this version doesn't know, kept as they are",
+      "text": "{\"version\":2,\"values\":{\"assistant.turn-limit\":{\"min\":4,\"max\":32},\"assistant.voice\":\"calm\",\"Later Key\":[1]},\"profiles\":{\"work\":{}}}",
+      "values": {
+        "assistant.turn-limit": {
+          "min": 4,
+          "max": 32
+        },
+        "assistant.voice": "calm"
+      },
+      "afterSave": {
+        "version": 2,
+        "values": {
+          "assistant.turn-limit": 24,
+          "assistant.voice": "calm",
+          "Later Key": [
+            1
+          ]
+        },
+        "profiles": {
+          "work": {}
+        }
+      }
+    },
+    {
+      "name": "a file cut off halfway",
+      "text": "{\"version\":1,\"values\":{\"assistant.turn-limit\":2",
+      "values": null,
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24
+        }
+      }
+    },
+    {
+      "name": "an empty file",
+      "text": "",
+      "values": null,
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24
+        }
+      }
+    },
+    {
+      "name": "JSON that isn't an object",
+      "text": "[{\"assistant.turn-limit\":20}]",
+      "values": null,
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24
+        }
+      }
+    },
+    {
+      "name": "an object without values",
+      "text": "{\"version\":1,\"assistant.turn-limit\":20}",
+      "values": null,
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24
+        }
+      }
+    },
+    {
+      "name": "values that aren't an object",
+      "text": "{\"version\":1,\"values\":[20]}",
+      "values": null,
+      "afterSave": {
+        "version": 1,
+        "values": {
+          "assistant.turn-limit": 24
+        }
+      }
+    }
+  ]
+}

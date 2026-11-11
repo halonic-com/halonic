@@ -112,7 +112,9 @@ hostSettingsStoreContract("memory", async () => {
   const elsewhere = new MemoryHostSettingsStore(store);
   return {
     store,
-    damage: async () => store.damage(),
+    saved: async () => store.savedText(),
+    brokenCopy: async () => store.brokenText(),
+    writeSaved: async (text) => store.writeText(text),
     changeElsewhere: (key, value) => elsewhere.set(key, value),
   };
 });

@@ -16,13 +16,21 @@ verifies("memory.host-settings-store", () => {
     expect(await new MemoryHostSettingsStore().read()).toEqual({});
   });
 
-  it("reads damaged settings as none saved, and tells its watchers", async () => {
+  it("keeps the settings as a file holds them, and tells its watchers when the text is replaced", async () => {
     const store = new MemoryHostSettingsStore();
+    expect(store.savedText()).toBeUndefined();
     await store.set("assistant.turn-limit", 20);
+    expect(JSON.parse(store.savedText() ?? "")).toEqual({
+      version: 1,
+      values: { "assistant.turn-limit": 20 },
+    });
+
     const listener = vi.fn();
     store.watch(listener);
-    store.damage();
+    store.writeText("{");
     expect(await store.read()).toEqual({});
     expect(listener).toHaveBeenCalledOnce();
+    await store.remove("assistant.turn-limit");
+    expect(store.brokenText()).toBe("{");
   });
 });

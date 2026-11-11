@@ -243,7 +243,7 @@ One new port, at version 1:
   trusted is what was placed; reading the source and checking it stay in
   `core/app`.
 
-_2026-11-11, proposed on HAL-6159 for the settings host API (T11 PR 7, design on HAL-6159); Liam reviews it._
+_2026-11-11, proposed on HAL-6159 for the settings host API (T11 PR 7, design on HAL-6159), reviewed by Liam on HAL-6216._
 One new port, at version 1:
 
 - **`HostSettingsStore`:** `read` every saved setting by key, `set` one
@@ -257,7 +257,21 @@ One new port, at version 1:
   says something may have changed, so an adapter can sit on a file
   watcher or a Tauri channel; the caller reads again. The port only
   stores: `HostSettings` in `core/app` gives each setting its schema and
-  default.
+  default. `remove(key)` removes a key, so a value is any JSON value,
+  `null` included, and nothing depends on `undefined` surviving the
+  Tauri command.
+- **Saves take turns, within one process.** A save reads the settings,
+  changes one key and writes them back, so each adapter runs its saves one
+  at a time; all desktop windows save through the one Rust process. Between
+  processes (the CLI and the desktop app saving at the same moment) the
+  last save wins for v1: it is rare, it loses one setting at most, and a
+  lock file would cost more than it saves.
+- **Nothing is lost silently.** Settings that can't be parsed read as none
+  saved, and the first save over them keeps them as `host.json.broken`. A
+  save keeps keys and fields it doesn't know, and a newer `version`, as
+  they are. The key form, the 256 KiB limit and the saved shape are golden
+  cases (`src/golden/host-settings-limits.json`) that the TypeScript
+  helpers and the Rust side both pass (review on HAL-6216).
 
 ## Additive after the freeze: optional hints
 

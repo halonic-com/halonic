@@ -1,16 +1,17 @@
-import {
-  type HostSettingsStore,
-  type HostSettingValue,
-  hostSettingsMaxBytes,
-} from "@halonicjs/ports";
+import type { HostSettingsStore, HostSettingValue } from "@halonicjs/ports";
+import golden from "@halonicjs/ports/golden/host-settings-limits.json" with { type: "json" };
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 
-/** One empty store under test, and two ways to change what it holds behind its back. */
+/** One empty store under test, and ways to look at and change what it holds behind its back. */
 export interface HostSettingsStoreHarness {
   store: HostSettingsStore;
-  /** Makes the saved settings unparsable, the way a file cut off halfway would be. */
-  damage(): Promise<void>;
+  /** The saved settings' text, as `host.json` holds it; `undefined` when none is saved. */
+  saved(): Promise<string | undefined>;
+  /** The broken copy's text, as `host.json.broken` holds it; `undefined` when there is none. */
+  brokenCopy(): Promise<string | undefined>;
+  /** Replaces the saved settings' text, the way a file cut off halfway or a newer Halonic would. */
+  writeSaved(text: string): Promise<void>;
   /** Saves `value` under `key` the way another window or the CLI would, through another store. */
   changeElsewhere(key: string, value: HostSettingValue): Promise<void>;
 }
@@ -21,12 +22,15 @@ export type MakeHostSettingsStore = () => Promise<HostSettingsStoreHarness>;
 /**
  * The contract every {@link HostSettingsStore} adapter passes. The port only
  * stores JSON values by key; `HostSettings` gives them meaning. A save
- * changes one key, so two windows that change two settings keep both.
+ * changes one key, so two windows that change two settings keep both. The
+ * keys, sizes and saved shapes come from the port's golden cases, which the
+ * desktop shell's Rust side checks too.
  */
 export function hostSettingsStoreContract(name: string, make: MakeHostSettingsStore): void {
   verifies("contracts.host-settings-store", () => {
     describe(`HostSettingsStore contract: ${name}`, () => {
       storageCases(make);
+      savedCases(make);
       refusalCases(make);
       changeCases(make);
     });
@@ -47,13 +51,24 @@ function storageCases(make: MakeHostSettingsStore): void {
     });
   });
 
-  it("removes a key when its value is undefined, and removing none is not an error", async () => {
+  it("removes a key, keeps null as a value, and removing none is not an error", async () => {
     const { store } = await make();
     await store.set("assistant.turn-limit", 20);
     await store.set("assistant.connector-tools", false);
-    await store.set("assistant.turn-limit", undefined);
-    await store.set("assistant.instructions", undefined);
-    expect(await store.read()).toEqual({ "assistant.connector-tools": false });
+    await store.set("assistant.model", null);
+    await store.remove("assistant.turn-limit");
+    await store.remove("assistant.instructions");
+    expect(await store.read()).toEqual({
+      "assistant.connector-tools": false,
+      "assistant.model": null,
+    });
+  });
+
+  it("keeps every save when twenty keys are saved at once", async () => {
+    const { store } = await make();
+    const keys = Array.from({ length: 20 }, (_, index) => `assistant.key-${index}`);
+    await Promise.all(keys.map((key, index) => store.set(key, index)));
+    expect(await store.read()).toEqual(Object.fromEntries(keys.map((key, index) => [key, index])));
   });
 
   it("keeps what was saved, whatever the caller does with its objects later", async () => {
@@ -69,25 +84,41 @@ function storageCases(make: MakeHostSettingsStore): void {
       "assistant.model": { provider: "anthropic", stop: ["END"] },
     });
   });
+}
 
-  it("reads unparsable settings as none saved, and the next save starts afresh", async () => {
-    const { store, damage } = await make();
+function savedCases(make: MakeHostSettingsStore): void {
+  for (const { name, text, values, afterSave } of golden.saved) {
+    it(`reads and saves over ${name}`, async () => {
+      const { store, saved, brokenCopy, writeSaved } = await make();
+      await writeSaved(text);
+      expect(await store.read()).toEqual(values ?? {});
+
+      await store.set("assistant.turn-limit", 24);
+      expect(JSON.parse((await saved()) ?? "null")).toEqual(afterSave);
+      // Unparsable settings are kept as a broken copy, so they can still be recovered.
+      expect(await brokenCopy()).toBe(values === null ? text : undefined);
+    });
+  }
+
+  it("keeps only the latest broken copy, and none for a save over parsable settings", async () => {
+    const { store, brokenCopy, writeSaved } = await make();
+    await writeSaved('{"values":');
+    await store.remove("assistant.turn-limit");
+    await writeSaved('{"values":[]}');
     await store.set("assistant.turn-limit", 20);
-    await damage();
-    expect(await store.read()).toEqual({});
-
-    await store.set("assistant.connector-tools", false);
-    expect(await store.read()).toEqual({ "assistant.connector-tools": false });
+    await store.set("assistant.turn-limit", 24);
+    expect(await brokenCopy()).toBe('{"values":[]}');
   });
 }
 
 function refusalCases(make: MakeHostSettingsStore): void {
   it("refuses a key that isn't a setting's, and saves nothing", async () => {
-    const { store } = await make();
-    for (const key of ["turn-limit", "Assistant.model", "__proto__.polluted", "../host.json"]) {
+    const { store, saved } = await make();
+    for (const { key } of golden.keys.filter(({ allowed }) => !allowed)) {
       await expect(store.set(key, 1), key).rejects.toThrow(RangeError);
+      await expect(store.remove(key), key).rejects.toThrow(RangeError);
     }
-    expect(await store.read()).toEqual({});
+    expect(await saved()).toBeUndefined();
   });
 
   it("refuses a number JSON can't hold, and keeps the value before it", async () => {
@@ -99,13 +130,19 @@ function refusalCases(make: MakeHostSettingsStore): void {
     expect(await store.read()).toEqual({ "assistant.turn-limit": 20 });
   });
 
-  it("refuses settings over 256 KiB, and keeps the value before it", async () => {
-    const { store } = await make();
-    await store.set("assistant.instructions", "Be brief.");
-    const tooLong = "x".repeat(hostSettingsMaxBytes);
-    await expect(store.set("assistant.instructions", tooLong)).rejects.toThrow(RangeError);
-    expect(await store.read()).toEqual({ "assistant.instructions": "Be brief." });
-  });
+  for (const { name, key, character, count, fits } of golden.sizes) {
+    it(`${fits ? "saves" : "refuses, saving nothing,"} ${name}`, async () => {
+      const { store, saved } = await make();
+      const value = character.repeat(count);
+      if (fits) {
+        await store.set(key, value);
+        expect(await store.read()).toEqual({ [key]: value });
+      } else {
+        await expect(store.set(key, value)).rejects.toThrow(RangeError);
+        expect(await saved()).toBeUndefined();
+      }
+    });
+  }
 }
 
 function changeCases(make: MakeHostSettingsStore): void {
