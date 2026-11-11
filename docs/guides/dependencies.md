@@ -24,7 +24,7 @@ the wrapper, so the rest of the code never depends on the library directly.
 | --- | --- | --- |
 | `zod` | `core/schema-kit`, `core/format` | `@halonicjs/schema-kit` |
 | `yaml` | `core/yaml` | `@halonicjs/yaml` |
-| `@noble/hashes` | `adapters/password-scrypt` | the `PasswordHasher` port (SHA-256 comes from the hashing port, backed by WebCrypto) |
+| `@noble/hashes` | `adapters/password-scrypt` (listed, but not built yet) | the `PasswordHasher` port (SHA-256 comes from the hashing port, backed by WebCrypto) |
 | `remark`, `remark-gfm` | `studio/kit` | the Markdown view in `@halonicjs/studio-kit` |
 | `react-data-grid` | `studio/kit` | the data grid in `@halonicjs/studio-kit` |
 
@@ -42,10 +42,12 @@ A new core exception needs the user's approval, not only Liam's.
 
 ## Cloud runtime bundles
 
-What runs at a cloud provider (the Cloudflare Worker now, the container
-image later) carries **only our own code, the provider's own code and
-`zod`**. The runtime never reads YAML: `halonic deploy` ships the workspace as
-checked JSON. Passwords are checked with WebCrypto, not `@noble/hashes`.
+What runs at a cloud provider (a Cloudflare Worker, later a container image)
+carries **only our own code, the provider's own code and `zod`**. The runtime
+never reads YAML: the deploy step ships the workspace as checked JSON.
+Passwords are checked with WebCrypto, not `@noble/hashes`. `main` has no cloud
+target yet (`packages/targets/` doesn't exist), so these rules and
+`pnpm check:bundle` wait for the first runtime build.
 
 - `"cloudRuntime": true` in `dependencies.json` puts a library on the
   runtime list. Today only `zod` has it, and a test pins that. Only core

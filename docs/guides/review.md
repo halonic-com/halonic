@@ -63,4 +63,10 @@ Check these on every pull request. The guides for
 - [ ] The title is `type(scope): summary` (the scope is optional, and the
   100-character limit is for the summary; the `pr-title` check enforces it),
   and the change is under about 400 lines. No check counts lines, so the
-  reviewer does.
+  reviewer does. A pull request with one commit lands with that commit's
+  subject, not the title, so its subject must pass too (`pnpm check:enqueue`
+  checks it).
+- [ ] The pull request has a `built-on:paperclip` or `built-on:halonic` label
+  and the matching `Built-on:` line in its description (the `built-on-label`
+  check fails without the label). For an outside contributor, the maintainer
+  adds the label.

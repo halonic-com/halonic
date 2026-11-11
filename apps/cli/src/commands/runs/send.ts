@@ -180,7 +180,7 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
   async send(runId: string, event: string): Promise<RunSummary> {
     const { dir, workspace, run, typedDir } = this.target;
     const nothingSent = sandboxMessages.nothingSent();
-    await checkRunTrust(dir, workspace, this.setup.trust(), typedDir, nothingSent);
+    await checkRunTrust(dir, workspace, this.setup.trust(), typedDir, nothingSent, run.harness);
     this.engine = await openWorkspaceEngine(this.context, this.setup, {
       dir,
       workspace,

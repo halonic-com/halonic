@@ -267,7 +267,7 @@ const Command = s
   })
   .strict();
 
-/** A card in the plugin's panel, filled by one `read` tool call with fixed arguments. */
+/** A card on Home and in the plugin's panel, if it has one, filled by one `read` tool call with fixed arguments. */
 const Card = s
   .object({
     id: name,
@@ -278,7 +278,7 @@ const Card = s
   })
   .strict();
 
-/** The plugin's one panel window: its cards, then its commands, in manifest order. */
+/** The plugin's one panel, opened in its own tab: its commands, then its cards, in manifest order. */
 const Panel = s.object({ title: label }).strict();
 
 /** What Studio draws for the plugin. It is data only; no plugin code runs in Studio. */

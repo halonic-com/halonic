@@ -67,14 +67,14 @@ export function toolResultForModel(tool: OfferedTool, result: string): string {
 /**
  * Copies rebuilt parameters with every {@link UntrustedText} fenced. The
  * rebuild leaves only JSON values and untrusted texts, and nests at most 64
- * levels, so the walk can't run out of stack.
+ * levels, so the walk can't run out of stack. The copy is built with
+ * `Object.fromEntries`, so a parameter named `__proto__` stays a parameter
+ * instead of setting the copy's prototype.
  */
 function fenceSchemaTexts(parameters: Record<string, unknown>): Record<string, unknown> {
-  const copy: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(parameters)) {
-    copy[key] = fenceValueTexts(value);
-  }
-  return copy;
+  return Object.fromEntries(
+    Object.entries(parameters).map(([key, value]) => [key, fenceValueTexts(value)]),
+  );
 }
 
 function fenceValueTexts(value: unknown): unknown {

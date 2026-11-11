@@ -51,7 +51,7 @@ reader hears after the name. `showPlace` gives what the sidebar shows, with noth
 `subscribeSignal`, and the sidebar reads it again each time it is told (`shell.place-signal-changes`).
 
 Home's sections come from features the same way, through `home.addCard`, naming one of the fixed
-sections (`homeSections`: Get set up, Needs you, Recent runs). The shell shows them in that order
+sections (`homeSections`: Get set up, Needs you, Recent runs, Cards). The shell shows them in that order
 under the `h1` "Home", each a region named by its heading from `homeSectionTitles`, and leaves out a
 section no feature added. A card's view is a named export that gets `HomeCardProps`: the context of
 the feature that added it (`shell.home-sections`). Each section loads and fails on its own: a card's
@@ -461,7 +461,7 @@ search box, the In and Hub picker chips with Match case and Whole word, the coun
 in a `search` landmark. The count line is a status that also says "Searching…", and, when there is
 no count, the title of the state that stands in for it ("Nothing matches", "Couldn't search"), so a
 screen reader hears the search end.
-The results follow the box as the user types, once the typing pauses for `searchPauseMs` (300 ms),
+The results follow the box as the user types, once the typing pauses for 300 ms,
 in the same place. Enter with other words commits them: it opens their Search page in the same tab,
 so the tab's title names them and Back brings the old words back. A result opens here, or with a
 Ctrl-click in a new tab. "Searching…" shows still skeleton rows, and the page's states are

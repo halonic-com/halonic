@@ -148,6 +148,9 @@ export class NodeScheduler implements Scheduler {
     if (now >= this.#nextTickAt && this.#tickInProgress === undefined) {
       this.#startTick(now);
     }
+    // Set the next wake-up now, not after these settle: one slow listener
+    // must not hold back the timers of every other key.
+    this.#armWakeUp();
     await Promise.all([...this.#deliveries.values(), this.#tickInProgress]);
     this.#armWakeUp();
   }
@@ -163,7 +166,11 @@ export class NodeScheduler implements Scheduler {
   #startDelivery(slot: string, stored: StoredTimer): void {
     const delivery = this.#deliver(slot, stored)
       .catch((error: unknown) => this.#reportError(error, stored.timer))
-      .finally(() => this.#deliveries.delete(slot));
+      .finally(() => {
+        this.#deliveries.delete(slot);
+        // The timer may be due again (a retry, or set again during the call).
+        this.#armWakeUp();
+      });
     this.#deliveries.set(slot, delivery);
   }
 
@@ -182,16 +189,38 @@ export class NodeScheduler implements Scheduler {
     }
     await this.#change(async (timers) => {
       if (timers.get(slot) !== stored) return;
-      if (!failed) {
-        await this.#log.remove(stored.timer.key, stored.timer.timerId);
-        timers.delete(slot);
-        return;
+      try {
+        await this.#recordDelivery(slot, stored, failed, timers);
+      } catch (error) {
+        // The timer is still due in memory, so it would be delivered again at
+        // once, and the failing store hit in a loop. Give it a retry's wait in
+        // memory only; the store keeps the older, earlier try.
+        timers.set(slot, this.#retryOf(stored));
+        throw error;
       }
-      const retryAt = this.#clock.now().getTime() + retryWait(stored.failures + 1);
-      const retry = failedTimer(stored, retryAt);
-      await this.#log.put(retry, false);
-      timers.set(slot, retry);
     });
+  }
+
+  /** Removes a delivered timer, or sets the retry of one the listener rejected, in the store and then in memory. */
+  async #recordDelivery(
+    slot: string,
+    stored: StoredTimer,
+    failed: boolean,
+    timers: Map<string, StoredTimer>,
+  ): Promise<void> {
+    if (!failed) {
+      await this.#log.remove(stored.timer.key, stored.timer.timerId);
+      timers.delete(slot);
+      return;
+    }
+    const retry = this.#retryOf(stored);
+    await this.#log.put(retry, false);
+    timers.set(slot, retry);
+  }
+
+  /** The timer after one more failure, next tried after a retry's wait from now. */
+  #retryOf(stored: StoredTimer): StoredTimer {
+    return failedTimer(stored, this.#clock.now().getTime() + retryWait(stored.failures + 1));
   }
 
   #startTick(now: number): void {
@@ -202,6 +231,7 @@ export class NodeScheduler implements Scheduler {
       .catch((error: unknown) => this.#reportError(error, "tick"))
       .finally(() => {
         this.#tickInProgress = undefined;
+        this.#armWakeUp();
       });
   }
 
@@ -218,15 +248,19 @@ export class NodeScheduler implements Scheduler {
 
   /**
    * Sets the one wake-up timer for the next due timer or tick, but not
-   * sooner than `notBeforeMs` from now, replacing the one before.
+   * sooner than `notBeforeMs` from now, replacing the one before. Timers
+   * and a tick still being delivered are left out: once overdue they would
+   * wake it in a loop, and it is set again when each one settles.
    */
   #armWakeUp(notBeforeMs = 0): void {
     if (this.#closed || this.#timers === undefined) return;
     this.#cancelWakeUp?.();
-    let wakeAt = this.#nextTickAt;
+    let wakeAt = this.#tickInProgress === undefined ? this.#nextTickAt : Number.POSITIVE_INFINITY;
     for (const [slot, stored] of this.#timers) {
       if (!this.#deliveries.has(slot)) wakeAt = Math.min(wakeAt, stored.dueAt);
     }
+    // Nothing to wake for while only the tick runs; it sets the wake-up when it settles.
+    if (wakeAt === Number.POSITIVE_INFINITY) return;
     // The tick is at most a minute away and a retry 15 minutes, so the delay always fits setTimeout.
     const delayMs = Math.max(notBeforeMs, wakeAt - this.#clock.now().getTime());
     this.#cancelWakeUp = this.#setTimer(() => {

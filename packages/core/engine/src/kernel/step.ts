@@ -13,7 +13,7 @@ import { saveArtifacts } from "./saved-artifacts.ts";
  * changes shape: a snapshot of another version is ignored and the run is
  * folded from its log again, because a snapshot is only a cache (C53).
  */
-export const snapshotVersion = 9;
+export const snapshotVersion = 10;
 
 /** How often `step` reads the run again after losing a race before it gives up. */
 export const maxStepAttempts = 10;

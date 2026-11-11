@@ -108,6 +108,19 @@ export interface RunCatchUp {
   countIsMinimum?: true;
 }
 
+/**
+ * Which version of the workspace a run read, as its `run.started` records it
+ * (save model 2.2–2.3, HAL-3246):
+ * - `live-version`: the live version, at `commit`. `versionDate` is that
+ *   version's date, when it was made (the commit's ISO date), not when the
+ *   run started, so a run view can say "the version of <date>";
+ * - `saved-files`: the files as saved, for Try it and Test, and for every
+ *   run while history is off.
+ */
+export type RunVersion =
+  | { reads: "live-version"; commit: string; versionDate: string }
+  | { reads: "saved-files" };
+
 /** The run and state that started a child run, and how deep it is (1 = child of a top-level run). */
 export interface RunParent {
   runId: string;

@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-994 (I5 design v0.2 on HAL-958, section 3.6; Julian's ruling in HAL-972; attack case A19)
+- Source: HAL-994 (I5 design v0.2 on HAL-958, section 3.6; Julian's ruling in HAL-972; attack case A19); HAL-5216
 
-The kit shall replace every secret value of a request with `[secret removed]` in the response it hands back: in the status text, in the headers, in the final URL and in the body, and in the message, stack and cause of every error the request ends with. It shall match the raw value; the exact text it put on the wire (`Bearer <value>`, the header prefix plus the value, the form field); and the URL-encoded, form-encoded and JSON-escaped copies of each. It shall filter the body as the transport hands it over, leaving its bytes and `content-encoding` otherwise as they came, find a value split across two pieces of a streamed body without holding the whole body, and filter the response after a redirect too. The filter shall be a plain function the bridge can use on tool results, errors and stderr. Base64, reversed, split or otherwise transformed copies are not matched.
+The kit shall replace every secret value of a request with `[secret removed]` in the response it hands back: in the status text, in the headers, in the final URL and in the body, and in the message, stack and cause of every error the request ends with. It shall match the raw value; the exact text it put on the wire (`Bearer <value>`, the header prefix plus the value, the form field); and the URL-encoded, form-encoded and JSON-escaped copies of each. It shall filter the body as the transport hands it over, leaving its bytes and `content-encoding` otherwise as they came, find a value split across two pieces of a streamed body without holding the whole body, and filter the response after a redirect too. The filter shall be a plain function the bridge can use on tool results, errors and stderr, and shall look at each part of a text once, so a marker it wrote is never broken up by a secret that matches part of it. Base64, reversed, split or otherwise transformed copies are not matched.
 
 ## Examples
 
@@ -32,3 +32,6 @@ The kit shall replace every secret value of a request with `[secret removed]` in
 - Given a tool result, an error message or stderr in pieces,
   when the bridge runs them through `removeSecrets` or `removeSecretsStream`,
   then every form is replaced.
+- Given two secrets, one of which is `removed]`,
+  when the bridge runs a text holding the other through `removeSecrets`,
+  then the text holds one whole `[secret removed]`.

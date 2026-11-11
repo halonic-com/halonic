@@ -24,6 +24,7 @@ import {
   UsageError,
 } from "../../command.ts";
 import { followUntilStopped } from "../../follow-run.ts";
+import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
 import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -35,6 +36,7 @@ import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace
 import { programAgentsOf, type SandboxGateRun, unsandboxedWarning } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "../../workspace-engine.ts";
+import { runHarnessOf } from "./harness.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
 import { runResult } from "./result.ts";
@@ -49,6 +51,11 @@ export interface RunSetup extends WorkspaceEngineSetup {
   trust(): RunTrustMachine;
   /** Opens the workspace's history, for its live version; git on the `PATH` by default. */
   readonly history?: OpenWorkspaceHistory;
+  /**
+   * The harness programs `--harness` may name, other than Halonic's own
+   * loop; this computer's, found on the `PATH`, by default.
+   */
+  harnesses?(): readonly HarnessProgram[];
 }
 
 /**
@@ -65,6 +72,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  * @throws NotTrustedError when the run could reach more than the test model
  *   and the workspace isn't trusted here; nothing ran
  * @throws RunInputError when `--input` isn't a JSON object
+ * @throws RunHarnessError when `--harness` names no harness, or one whose
+ *   program can't start here; nothing ran
  * @throws OwnLineError when no hub, or more than one, has the workflow
  * @throws SandboxRefusedError when an agent needs the sandbox and it can't
  *   start here; nothing ran. No option skips this check
@@ -83,9 +92,13 @@ export async function runWorkflow(
   const workspaceName = printable(dir.name);
   const typedDir = givenDir(input, dir);
   const workspace = await liveWorkspace(dir, setup.history);
-  await checkRunTrust(dir, workspace, setup.trust(), typedDir);
+  const harness = await runHarnessOf(
+    optionText(input, "harness"),
+    (setup.harnesses ?? nodeHarnessPrograms)(),
+  );
+  await checkRunTrust(dir, workspace, setup.trust(), typedDir, runMessages.nothingRan(), harness);
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
-  const workflow = workflowToRun(workspace, typed, workspaceName);
+  const workflow = workflowToRun(workspace, typed, workspaceName, harness);
   const engine = await openWorkspaceEngine(context, setup, {
     dir,
     workspace,
@@ -155,7 +168,10 @@ async function followWithEvents(
   const workflowRuns = new WorkflowRuns(engine.executor);
   // The workflow the sandbox was checked for, by its hub, so it is the one that starts.
   const typed = `${workflow.hubId}/${workflow.workflowId}`;
-  const started = await workflowRuns.startRun(workspace, typed, runInput, follow);
+  const started = await workflowRuns.startRun(workspace, typed, runInput, {
+    ...follow,
+    ...(workflow.harness === undefined ? {} : { harness: workflow.harness }),
+  });
   if (started.found !== "one") {
     throw noWorkflow(workspace, typed, place.name);
   }
@@ -176,12 +192,18 @@ async function followWithEvents(
 }
 
 /**
- * The hub and the workflow `typed` names, before the engine opens, so the
- * sandbox is checked for the workflow that starts.
+ * The hub and the workflow `typed` names, and the harness for all its
+ * agents, before the engine opens, so the sandbox is checked for the run
+ * that starts.
  *
  * @throws OwnLineError when no hub, or more than one, has the workflow
  */
-function workflowToRun(workspace: LoadedWorkspace, typed: string, name: string): SandboxGateRun {
+function workflowToRun(
+  workspace: LoadedWorkspace,
+  typed: string,
+  name: string,
+  harness: string | undefined,
+): SandboxGateRun {
   const lookup = lookUpWorkflow(hubWorkflows(workspace), typed);
   if (lookup.found === "several") {
     throw new OwnLineError(
@@ -193,7 +215,8 @@ function workflowToRun(workspace: LoadedWorkspace, typed: string, name: string):
   if (lookup.found === "none") {
     throw noWorkflow(workspace, typed, name);
   }
-  return { hubId: lookup.hubId, workflowId: lookup.workflow.id };
+  const run = { hubId: lookup.hubId, workflowId: lookup.workflow.id };
+  return harness === undefined ? run : { ...run, harness };
 }
 
 /**
@@ -209,6 +232,7 @@ function refuseHarnessAgents(workspace: LoadedWorkspace, workflow: SandboxGateRu
   if (agent === undefined) return;
   const reason = runMessages.harnessNotAvailable(
     printable(agent.value.name),
+    // The run's harness when `--harness` names one, as the run would use it.
     printable(workflow.harness ?? agent.value.harness ?? ""),
   );
   throw new KindedError("unavailable", plainText(reason.phrase), {

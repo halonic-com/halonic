@@ -3,7 +3,7 @@ import { ActionBar } from "../action-bar/action-bar.tsx";
 import { InFormSheetContext } from "../sheet/in-form-sheet.ts";
 import { SheetFrame } from "../sheet/sheet-frame.tsx";
 import { AlertSlot } from "./alert-slot.tsx";
-import type { DialogProps } from "./dialog-props.ts";
+import type { ConfirmingDialogProps } from "./dialog-props.ts";
 
 /**
  * A `form` Dialog on a phone (component specs 8 and 15.3): a full-screen sheet with Close at the
@@ -13,7 +13,7 @@ import type { DialogProps } from "./dialog-props.ts";
  * with `showModal()`, so focus, inertness and the toast rule don't change. Close cancels and asks
  * nothing; a failed submit's Callout is the last thing in the body, above the bar.
  */
-export function FormSheet(props: DialogProps) {
+export function FormSheet(props: ConfirmingDialogProps) {
   const { busy = false } = props;
   const confirmId = useId();
   const [attempt, setAttempt] = useState(0);

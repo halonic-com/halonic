@@ -188,8 +188,8 @@ function firstById<File extends LoadedFileOf<"workflow" | "agent">>(
   return byId;
 }
 
-/** Whether the harness an agent runs in starts a program on this computer. */
-function startsAProgram(harness: string | undefined): boolean {
+/** Whether the harness an agent runs in starts a program on this computer: any but `halonic`. */
+export function startsAProgram(harness: string | undefined): boolean {
   return harness !== undefined && harness !== "halonic";
 }
 

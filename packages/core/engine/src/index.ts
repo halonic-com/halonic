@@ -7,6 +7,16 @@ export {
 export { RunStoreTurnLog } from "./agent/run-store-turn-log.ts";
 export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
+export type {
+  HarnessAgent,
+  HarnessBridgeHost,
+  HarnessProfile,
+  HarnessProfileBuilder,
+  HarnessRunsOptions,
+  Placement,
+  PlacementAnswer,
+  PlacementPolicy,
+} from "./harness/harness-host.ts";
 export { decide } from "./kernel/decide.ts";
 export type {
   AnswerHarnessEffect,
@@ -97,6 +107,7 @@ export {
   type LocalExecutorOptions,
 } from "./local-executor.ts";
 export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs.ts";
+export type { ProposalRun, RunProposalFolders } from "./run/proposal-folders.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";
 export {
   knowledgeToolNames,

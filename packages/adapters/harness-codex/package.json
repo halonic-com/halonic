@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Runs Codex as an agent's harness: finds it, checks its version and sign-in, and points it at the Halonic bridge.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./environment": "./src/environment.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

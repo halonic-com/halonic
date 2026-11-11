@@ -8,6 +8,7 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  RunVersion,
   StoredBlob,
   ToolNoun,
   ToolOutcome,
@@ -68,6 +69,14 @@ export type RunEventBody =
        * in older logs.
        */
       cantTry?: CantTryStep[];
+      /**
+       * Which version of the workspace the run read: the live version, with
+       * its commit and date, or the saved files (requirement
+       * `events.run-started-version`). A child run has its parent's. Absent
+       * in logs written before it was recorded: read that as "not
+       * recorded", never as the saved files.
+       */
+      version?: RunVersion;
     }
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */

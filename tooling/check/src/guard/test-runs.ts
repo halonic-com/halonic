@@ -1,8 +1,9 @@
 import type { CheckContext } from "../lib/context.ts";
+import { expectedRequirementId } from "../lib/requirements.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
 import { readTestResults, type TestOutcome, testResultsFile } from "../lib/test-results.ts";
 import { owningPackage } from "../lib/workspace.ts";
-import type { Checkouts, GuardFinding } from "./finding.ts";
+import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
 
 /** Statuses of a test that ran; skipped and todo tests didn't. */
 const ranStatuses = ["passed", "failed"];
@@ -13,11 +14,17 @@ const ranStatuses = ["passed", "failed"];
  * - a deleted test file
  * - fewer tests that ran in a test file
  * - fewer tests that ran for a requirement, even if the total stays the same
- * - fewer `expect` calls for a requirement
+ * - fewer `expect` calls for a requirement, if the pull request changes a file
+ *   in a package that owns its tests, or its requirement file. The count is
+ *   measured at run time, so a shared helper, a fixture or the code under
+ *   test can weaken a test without editing it. A drop in a package nothing
+ *   changed in is run-to-run noise (polling, tests that skip in some
+ *   environments).
  * Both checkouts' tests must have run first. A missing or unreadable result
  * file is a finding too, so the guard fails closed.
  */
-export function checkTestRuns({ base, head }: Checkouts): GuardFinding[] {
+export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
+  const { base, head } = checkouts;
   const findings: GuardFinding[] = [];
   for (const file of testFilesIn(base)) {
     if (!head.files.includes(file)) {
@@ -37,6 +44,8 @@ export function checkTestRuns({ base, head }: Checkouts): GuardFinding[] {
     }),
   ).filter((finding) => head.files.includes(finding.file));
   const fileOf = requirementFiles(before);
+  const touched = touchedRequirements(checkouts, [...before, ...after]);
+  const edited = (id: string): boolean => touched.has(id);
   findings.push(
     ...fewerInFile,
     ...compareCounts(
@@ -52,7 +61,7 @@ export function checkTestRuns({ base, head }: Checkouts): GuardFinding[] {
       subject: id,
       file: fileOf.get(id) ?? id,
       message: `The tests of the requirement "${id}" made ${now} expect call(s), ${was} on the merge base.`,
-    })),
+    })).filter((finding) => finding.subject !== undefined && edited(finding.subject)),
   );
   return findings;
 }
@@ -143,4 +152,41 @@ function requirementFiles(tests: readonly TestOutcome[]): Map<string, string> {
     }
   }
   return files;
+}
+
+/**
+ * The requirements the pull request may have weakened: those with a test in a
+ * package where any file changed (a helper, a fixture, the code under test),
+ * and those whose requirement file changed. The expect count is measured at
+ * run time, so a test can lose calls without being edited. The generated
+ * result file doesn't count as a change.
+ */
+function touchedRequirements(
+  { base, head }: Checkouts,
+  tests: readonly TestOutcome[],
+): ReadonlySet<string> {
+  const packageOf = (file: string): string | undefined =>
+    (owningPackage(file, head.packages) ?? owningPackage(file, base.packages))?.directory;
+  const changedPackages = new Set<string>();
+  const touched = new Set<string>();
+  for (const file of new Set([...base.files, ...head.files])) {
+    const pkg = packageOf(file);
+    if (pkg === undefined || file === `${pkg}/${testResultsFile}`) {
+      continue;
+    }
+    if (changeOf(file, base, head) === undefined) {
+      continue;
+    }
+    changedPackages.add(pkg);
+    if (pkg !== "." && file.endsWith(".md") && file.includes("/requirements/")) {
+      touched.add(expectedRequirementId(file, pkg));
+    }
+  }
+  for (const test of tests) {
+    const pkg = packageOf(test.file);
+    if (test.requirement !== undefined && pkg !== undefined && changedPackages.has(pkg)) {
+      touched.add(test.requirement);
+    }
+  }
+  return touched;
 }

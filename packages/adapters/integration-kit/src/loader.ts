@@ -1,3 +1,4 @@
+import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import {
   type IntegrationSecret,
   type IntegrationSheet,
@@ -5,7 +6,6 @@ import {
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
 import {
-  type HttpClient,
   type Integration,
   type IntegrationHost,
   type ProviderConfig,
@@ -21,6 +21,7 @@ import type { RequestLimits } from "./limited-http.ts";
 import type { LoadProblem } from "./load-problem.ts";
 import type { RequestLog } from "./request-log.ts";
 import type { SecretOnWire } from "./secret-filter.ts";
+import { checkSecretLength } from "./secret-placement.ts";
 
 /** An integration and its permission sheet, as they were found. */
 export interface IntegrationSource {
@@ -56,7 +57,12 @@ export interface WorkspaceChoices {
 export interface LoadIntegrationOptions {
   readonly source: IntegrationSource;
   readonly choices?: WorkspaceChoices;
-  readonly transport: HttpClient;
+  /**
+   * What sends the requests. The sheet names hosts only, so it must check
+   * the addresses a name resolves to itself: the Node one from
+   * `createNodeHttpClient`, never a plain `fetch` wrapper.
+   */
+  readonly transport: AddressCheckingHttpClient;
   readonly secrets: Secrets;
   readonly tokens: TokenStore;
   /** What this runtime offers beyond HTTP, for the sheet's `needs`, such as `process`. Default none. */
@@ -319,11 +325,17 @@ function chosenSecrets(raw: Secrets, secretNames: Readonly<Record<string, string
   };
 }
 
-/** Each declared secret with a value, and its one placement, as {@link PreparedIntegration.readSecrets} gives them. */
+/**
+ * Each declared secret with a value, and its one placement, as {@link PreparedIntegration.readSecrets} gives them.
+ *
+ * @throws {IntegrationRefusedError} `secret-too-short` for a value the filter can't safely remove
+ */
 async function secretsOnWire(sheet: IntegrationSheet, secrets: Secrets): Promise<SecretOnWire[]> {
   const read = Object.entries(sheet.secrets).map(async ([name, declared]) => {
     const value = await secrets.get(name);
-    return value === null ? [] : [{ value, placements: [placementOf(name, declared)] }];
+    if (value === null) return [];
+    checkSecretLength(sheet.id, name, value);
+    return [{ value, placements: [placementOf(name, declared)] }];
   });
   return (await Promise.all(read)).flat();
 }

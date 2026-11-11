@@ -150,7 +150,10 @@ export interface FileReview {
   readonly card: ReviewCard;
   /** The file with every open assistant change rejected; `null` for a file the assistant created. */
   readonly baseline: string | null;
-  /** The digest of the text the parts were worked out from. Pass it back with a part target. */
+  /**
+   * The digest of the baseline and the text the parts were worked out
+   * from. Pass it back with a part or change target.
+   */
   readonly seen: ExpectedContent;
   /** The assistant deleted the file: it is accepted or rejected as a whole, so it has no parts. */
   readonly deleted: boolean;

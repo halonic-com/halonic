@@ -9,6 +9,8 @@ export {
   defaultWorkingFolder,
   isInWorkingFolder,
   MAX_ALLOWED_SITES,
+  PROTECTED_TOP_NAMES,
+  workingFolderProblem,
 } from "./kinds/agent/sandbox-fields.ts";
 export type { Agent, AgentMethod, AgentOutput, MethodField } from "./kinds/agent/schema.ts";
 export {

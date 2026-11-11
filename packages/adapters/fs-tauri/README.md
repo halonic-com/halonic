@@ -1,6 +1,6 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore` and `RunStore` ports for the Studio desktop app.
+The `TrustStore`, `RunStore` and `DefinitionStore` ports for the Studio desktop app.
 
 - `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
@@ -10,6 +10,9 @@ The `TrustStore` and `RunStore` ports for the Studio desktop app.
   `run_logs` command. The shell keeps the runs in the profile's run folder for the workspace, laid
   out as `FolderRunStore` in `fs-node` lays it out, and holds the run's lock file while it appends,
   so of a CLI and the desktop app appending with the same `expectedSeq`, exactly one wins.
+- `TauriDefinitionStore`: every call goes to the shell's `fs_list`, `fs_read`, `fs_write` or
+  `fs_remove` command, on the plain files of a folder the person opened, the files the CLI's
+  `FolderDefinitionStore` reads and writes. `watch()` hears the shell's `fs_watch`.
 
 - **Layer:** adapters
 - **Owner:** priya
@@ -92,6 +95,38 @@ The package exports `TauriRunStore`, `TauriRunStoreOptions`, `runCommands`, `run
 types `RunRefusal` and `RunRefusalKind`, and `isRunRefusal`. The tests run the run-store
 contract against a fake shell; that the shell and the CLI take turns on one lock is proved on real
 files by the Rust tests of `crates/run-store` and `crates/run-lock` (in `apps/studio/src-tauri`).
+
+## Workspace files
+
+`new TauriDefinitionStore(shell, workspace)` serves the files of `workspace`, a folder the person
+opened in the shell. `shell` is a `TauriFileShell`: the shell's `invoke` plus `openChannel`, which
+the Studio builds from `window.__TAURI_INTERNALS__` and its own `TauriChannel`, so this package
+needs no Tauri library.
+
+Paths are checked here with the port's rules before the shell is called, and the shell checks them
+again, since the page isn't trusted; it also refuses any path through a link, which only it can see.
+A write with `expected` is compared and renamed into place in the shell, under a lock it holds for
+each file, so nothing can come between the check and the write. `version()` is worked out here from
+`fs_list` and `fs_read`, as `fs-node` does.
+
+`fs_watch` only says which files may have changed. The store reads each one and reports it only
+when its digest differs from the one it last saw, as `FolderWatch` in `fs-node` does, so its own
+writes and removes, and a file saved again with the same text, are never reported.
+
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `unsafe_path`, `private_path` | a `RangeError`, as the port asks (a link in the path) |
+| `folder_unreadable` | an `UnreadableWorkspaceFolderError` naming the folder |
+| `folder_not_open` | a `KindedError` `denied` |
+| `not_text` | a `KindedError` `invalid_input` |
+| `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
+
+The package exports `TauriDefinitionStore`, `TauriFileShell`, `TauriChannelHandle`,
+`fileCommands`, `fileRefusalKinds`, the types `FileRefusal` and `FileRefusalKind`, and
+`isFileRefusal`. The tests run the definition-store contract against a fake shell; the comparing,
+the rename and the link checks on real files are proved by the Rust tests of the file commands
+(in `apps/studio/src-tauri`).
 
 ## Example
 

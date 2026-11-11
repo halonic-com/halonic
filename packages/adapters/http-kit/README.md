@@ -33,6 +33,13 @@ address inside it is public.
 only, and a `loopback` host (this computer) loopback ones only. Check every address in a DNS
 answer, not only the first.
 
+## Transports that check addresses
+
+`AddressCheckingHttpClient` is an `HttpClient` that checks every address a name resolves to,
+on every request and redirect hop. It is a mark in the types only: the Node transport
+(`createNodeHttpClient`) returns one, and the integration kit's loader takes nothing else, so a
+plain `fetch` wrapper can't send an integration's requests.
+
 ## Only canonical text
 
 `parseIpAddress` and `classifyAddress` read the text a DNS answer or `URL.hostname` gives: dotted

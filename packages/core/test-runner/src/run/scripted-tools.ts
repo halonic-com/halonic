@@ -1,7 +1,7 @@
 // Connectors whose tools answer from a test case's script: tests never reach
 // a real server.
 
-import { approveAll, type Connector, needsApproval } from "@halonicjs/format";
+import { approveAll, type Connector } from "@halonicjs/format";
 import type { ConnectorClient, ConnectorTool } from "@halonicjs/ports";
 import type { TestFailure } from "../test-result.ts";
 
@@ -21,9 +21,9 @@ export class ScriptedTools {
 
   /**
    * A fake client per connector. It lists the connector's allowed and
-   * approved tools and every scripted one. A tool the connector's
-   * `tools.approve` names asks a person first, as it would in a real run;
-   * the others only read, so they run inside the model's turn.
+   * approved tools and every scripted one, with no risk: as in a real run,
+   * every call waits for a person's OK, which a case gives with an
+   * `approve` event.
    */
   clients(connectors: Readonly<Record<string, Connector>>): ConnectorClient[] {
     return Object.entries(connectors).map(([id, connector]) => this.#client(id, connector));
@@ -52,7 +52,6 @@ export class ScriptedTools {
       name,
       description: `${name} (scripted)`,
       parameters: { type: "object", additionalProperties: true },
-      risk: needsApproval(connector.tools, name) ? "write" : "read",
     }));
     return {
       id,

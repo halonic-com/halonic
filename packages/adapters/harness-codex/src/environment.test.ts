@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { addHarnessEnvironment, type HarnessBridge, type SandboxProfile } from "@halonicjs/ports";
 import { FakeSandboxSession, readText } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -40,6 +41,12 @@ async function environmentInSession(): Promise<Readonly<Record<string, string>>>
 
 verifies("harness-codex.environment", () => {
   describe("codexEnvironment", () => {
+    it("imports only the ports, so Studio's page can load @halonicjs/adapter-harness-codex/environment", () => {
+      const code = readFileSync(new URL("./environment.ts", import.meta.url), "utf8");
+      const imported = [...code.matchAll(/from\s+"([^"]+)"/g)].map((match) => match[1]);
+      expect(imported).toEqual(["@halonicjs/ports"]);
+    });
+
     it("points the program at its settings folder and gives it the run token", async () => {
       expect(await environmentInSession()).toEqual({
         PATH: "/usr/bin",

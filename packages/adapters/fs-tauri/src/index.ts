@@ -1,3 +1,13 @@
+export { TauriDefinitionStore } from "./definition-store.ts";
+export {
+  type FileRefusal,
+  type FileRefusalKind,
+  fileCommands,
+  fileRefusalKinds,
+  isFileRefusal,
+  type TauriChannelHandle,
+  type TauriFileShell,
+} from "./file-commands.ts";
 export {
   isRunRefusal,
   type RunRefusal,

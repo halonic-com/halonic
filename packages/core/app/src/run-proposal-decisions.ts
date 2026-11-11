@@ -97,6 +97,11 @@ export class ProposalDecisions {
       // The history drops a settled run's steps; one that comes back anyway changes nothing.
       await this.records.proposed(runId);
       const entries = to === "before" ? [...step.files].reverse() : step.files;
+      if (!(await this.decisionsAsLeft(runId, entries, to))) {
+        // A later decision on the run changed its record: writing the files
+        // back alone would leave a file the record no longer describes.
+        return { changedOnDisk: entries.map((entry) => entry.path), refused: [] };
+      }
       const changedOnDisk: string[] = [];
       const refusedEntries: { path: string; why: RefusalReason }[] = [];
       for (const entry of entries) {
@@ -109,6 +114,24 @@ export class ProposalDecisions {
       }
       return { changedOnDisk, refused: refusedEntries };
     });
+  }
+
+  /**
+   * Whether the run's decisions record is still as the step left it, so
+   * its files may come back with it. A step without a decisions entry
+   * has nothing to keep in step.
+   */
+  private async decisionsAsLeft(
+    runId: string,
+    entries: readonly UndoFileWrite[],
+    to: "before" | "after",
+  ): Promise<boolean> {
+    const entry = entries.find((write) => write.path === decisionsPathOf(runId));
+    if (entry === undefined) {
+      return true;
+    }
+    const current = await this.records.store.read(recordPathOf(runId));
+    return current === (to === "before" ? entry.after : entry.before);
   }
 
   /** Puts one entry of a run's step back, in the run's turn. */

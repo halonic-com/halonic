@@ -1,0 +1,57 @@
+# Builds Halonic's WSL image (HAL-5390): Debian minbase from a pinned snapshot.
+# Build only: nothing is published. The image is kept as a build artifact for
+# 7 days, and the download and on-disk sizes go into the job summary.
+name: WSL image
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/wsl-image.yml
+      - infra/wsl-image/**
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build the WSL image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+          shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh
+      # In a Debian container, so mmdebstrap and the archive keyring are
+      # new enough for the current stable release (Ubuntu's are not).
+      - name: Build and check
+        run: |
+          mkdir -p "$RUNNER_TEMP/wsl-image"
+          docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE/infra/wsl-image:/src:ro" \
+            -v "$RUNNER_TEMP/wsl-image:/out" \
+            debian:trixie bash -euxc '
+              apt-get update
+              apt-get install -y --no-install-recommends mmdebstrap debian-archive-keyring ca-certificates tar gzip
+              /src/build.sh /out
+              /src/check.sh /out/halonic-wsl.tar.gz
+            '
+      - name: Sizes
+        run: |
+          {
+            echo "### WSL image size"
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/wsl-image/sizes.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-wsl-image
+          path: ${{ runner.temp }}/wsl-image/*
+          retention-days: 7

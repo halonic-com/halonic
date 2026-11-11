@@ -16,6 +16,7 @@ on:
       - packages/adapters/sandbox-srt/scripts/windows-probe-kit.mjs
       - packages/adapters/sandbox-srt/scripts/windows-verdict-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-isolation-probe.mjs
+      - packages/adapters/sandbox-srt/scripts/windows-wsl-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-token-probe.ps1
 
 permissions:
@@ -73,6 +74,25 @@ jobs:
         working-directory: packages/adapters/sandbox-srt
         shell: bash
         run: node scripts/windows-isolation-probe.mjs
+      # A pinned Alpine root file system (3.6 MB) for the WSL probes (HAL-5407).
+      # A failed download or hash check removes the file, so the WSL probe
+      # reports NOT-TESTABLE instead of importing an unverified file.
+      - name: Download a small Linux root file system
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          SHA256: 412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be
+        run: |
+          rootfs="$RUNNER_TEMP/rootfs.tar.gz"
+          url="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
+          curl -sSfL -o "$rootfs" "$url" || { rm -f "$rootfs"; exit 1; }
+          echo "$SHA256  $rootfs" | sha256sum -c - || { rm -f "$rootfs"; exit 1; }
+      - name: WSL probes (sandbox-account distro, WSL 2)
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: HALONIC_PROBE_ROOTFS="$RUNNER_TEMP/rootfs.tar.gz" node scripts/windows-wsl-probe.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -81,4 +101,5 @@ jobs:
             packages/adapters/sandbox-srt/windows-spike-results.json
             packages/adapters/sandbox-srt/windows-verdict-results.json
             packages/adapters/sandbox-srt/windows-isolation-results.json
+            packages/adapters/sandbox-srt/windows-wsl-results.json
           if-no-files-found: warn

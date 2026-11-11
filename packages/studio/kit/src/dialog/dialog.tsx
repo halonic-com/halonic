@@ -67,8 +67,11 @@ function DialogBox(props: DialogProps) {
   const cancelButton = useRef<HTMLButtonElement>(null);
   const [attempt, setAttempt] = useState(0);
 
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const footerless = props.confirm === undefined;
+
   useModal(dialog, {
-    initial: () => (form ? firstField(body.current) : null) ?? cancelButton.current,
+    initial: () => initialFocus(props, body.current) ?? cancelButton.current ?? closeButton.current,
     fallback: props.returnFocus,
   });
 
@@ -79,7 +82,7 @@ function DialogBox(props: DialogProps) {
   }
 
   function confirm() {
-    if (busy || props.confirm.unavailable !== undefined) {
+    if (busy || props.confirm === undefined || props.confirm.unavailable !== undefined) {
       return;
     }
     setAttempt((previous) => previous + 1);
@@ -88,16 +91,17 @@ function DialogBox(props: DialogProps) {
 
   const events = useCancelEvents(cancel, props.onCancel);
 
-  const footer = (
-    <DialogFooter
-      props={props}
-      phone={phone}
-      confirmId={ids.confirm}
-      cancelButton={cancelButton}
-      onConfirm={form ? undefined : confirm}
-      onCancel={cancel}
-    />
-  );
+  const footer =
+    props.confirm === undefined ? null : (
+      <DialogFooter
+        props={props}
+        phone={phone}
+        confirmId={ids.confirm}
+        cancelButton={cancelButton}
+        onConfirm={form ? undefined : confirm}
+        onCancel={cancel}
+      />
+    );
 
   const content = (
     <>
@@ -106,7 +110,8 @@ function DialogBox(props: DialogProps) {
           props={props}
           titleId={ids.title}
           confirmId={ids.confirm}
-          closeButton={!phone}
+          closeButton={!phone || footerless}
+          closeButtonRef={closeButton}
           onClose={cancel}
         />
         <div ref={body} id={ids.body} className={`${bodyScroll} ${bodyClasses(flush, form)}`}>
@@ -153,6 +158,17 @@ function heightStyle(height: number | undefined, phone: boolean): CSSProperties 
     return undefined;
   }
   return { "--dialog-height": `${height}px` } as CSSProperties;
+}
+
+/**
+ * The screen's choice for a footerless Dialog, else the first field of a form or of a footerless
+ * body. `null` leaves it to Cancel, or to the ✕ when there's no footer.
+ */
+function initialFocus(props: DialogProps, body: HTMLElement | null): HTMLElement | null {
+  if (props.confirm === undefined) {
+    return props.initialFocus?.() ?? firstField(body);
+  }
+  return props.form === true ? firstField(body) : null;
 }
 
 /** The first field that can take focus: not disabled, and not inside something `hidden`. */

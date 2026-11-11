@@ -9,8 +9,11 @@
  * but its listed sites (docs/adr/2026-11-10-sandbox-optional-bridge.md).
  * 5: strength `none` and the fence proof `off`, for the launcher that starts
  * programs without a fence (docs/adr/2026-11-11-sandbox-without-fence.md).
+ * 6: reason codes for setup, WSL, company policy and sign-in, and `windows`
+ * narrowed to a backend with no Windows mode
+ * (docs/adr/2026-11-11-pluggable-sandbox-layer.md).
  */
-export const sandboxVersion = 5;
+export const sandboxVersion = 6;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -42,19 +45,41 @@ export interface SandboxCapabilities {
  * the CLI turn each one into the words a person reads and the fix; the
  * adapter never words it.
  *
- * - `windows`: plain Windows, outside WSL2.
+ * - `windows`: this backend has no Windows mode, so it can't run on Windows at all.
  * - `container`: Halonic itself runs inside a container (such as Docker), which won't nest the fence.
+ * - `not-supported`: this edition or build of the operating system can't run the backend, such as Windows older than 10 2004.
+ * - `blocked-by-policy`: a company policy blocks the backend, such as a WSL group policy or Docker's admin settings.
+ * - `virtualisation-off`: hardware virtualisation is off, or a VM has no nested virtualisation.
+ * - `wsl-missing`: WSL isn't installed, which needs an administrator.
+ * - `restart-needed`: WSL is installed, but Windows must restart first.
+ * - `distro-missing`: WSL works, but Halonic's own distro isn't imported (no administrator needed).
+ * - `setup-conflict`: the machine-wide setup belongs to another program, or is set up another way.
+ * - `setup-needed`: the one-time administrator setup isn't done, or was done by another release of the backend.
  * - `user-namespaces-restricted`: the system doesn't let programs create user namespaces, as Ubuntu 24.04 does by default.
  * - `bubblewrap-missing`: bubblewrap (`bwrap`) is not installed.
  * - `linux-tools-missing`: `socat` or ripgrep (`rg`), which srt starts next to bubblewrap, is not installed.
+ * - `sign-in-needed`: the backend needs an account sign-in.
  * - `other`: none of the above; `SandboxCheck.missing` says what.
+ *
+ * The order is the order of the fixes: what Halonic can't fix comes before
+ * what an administrator can, and that before what the person can do in one
+ * step.
  */
 export const sandboxUnavailableReasons = [
   "windows",
   "container",
+  "not-supported",
+  "blocked-by-policy",
+  "virtualisation-off",
+  "wsl-missing",
+  "restart-needed",
+  "distro-missing",
+  "setup-conflict",
+  "setup-needed",
   "user-namespaces-restricted",
   "bubblewrap-missing",
   "linux-tools-missing",
+  "sign-in-needed",
   "other",
 ] as const;
 

@@ -56,7 +56,9 @@ type Run =
  * plugin is on, the card calls its tool when it shows, ↻ calls it again and a failure says why
  * with **Try again**; only a failure is announced. A plugin that isn't trusted or can't load
  * leaves the card in place, empty, with **Review** or **Details**, so Home doesn't jump when it
- * turns on. The title and the footer show at once; only the answer has a skeleton (T16-F35).
+ * turns on. The title row is 28px in every state, so an empty card lines up with a live one
+ * (T16-F23). The title and the footer show at once; only the answer has a skeleton, and ↻ turns
+ * a spinner only while it refreshes an answer that stays in place (T16-F35).
  *
  * @example
  * <PluginCard plugin={{ id: "weather", name: "Weather" }} status="on" card={today}
@@ -89,7 +91,7 @@ export function PluginCard({ plugin, status, card, caller, onReview, onDetails }
   return (
     <Card>
       <div className="flex flex-col gap-2">
-        <div className="flex items-start gap-2">
+        <div className="flex min-h-control-sm items-start gap-2">
           <h3 className="min-w-0 flex-1 text-section wrap-anywhere">{card.title}</h3>
           {status === "on" ? (
             <Button
@@ -97,7 +99,7 @@ export function PluginCard({ plugin, status, card, caller, onReview, onDetails }
               size="sm"
               icon={<RefreshIcon />}
               label={refreshLabel(card.title)}
-              busy={run.kind === "loading" || (run.kind === "done" && run.refreshing)}
+              busy={run.kind === "done" && run.refreshing}
               onClick={callAgain}
             />
           ) : null}
@@ -191,7 +193,7 @@ function CardEmpty({
   );
 }
 
-/** One small block and one long bar, after the kit's 300 ms (T16-F35); hidden from screen readers. */
+/** The headline value's block and a bar under it, after the kit's 300 ms (T16-F35); hidden from screen readers. */
 function AnswerSkeleton() {
   const [showing, setShowing] = useState(false);
   useEffect(() => {
@@ -201,8 +203,8 @@ function AnswerSkeleton() {
   if (!showing) return null;
   return (
     <div aria-hidden="true" className="flex flex-col gap-2">
-      <SkeletonBar kind="icon" />
-      <SkeletonBar kind="meta" width="full" />
+      <SkeletonBar kind="value" />
+      <SkeletonBar kind="title" width="7/10" />
     </div>
   );
 }

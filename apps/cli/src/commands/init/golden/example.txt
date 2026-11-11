@@ -8,7 +8,7 @@ stdout:
     cd acme
     halonic test                        \e[2mrun its workflow tests (no key, nothing sent)\e[22m
     halonic run support-reply --input examples/refund-question.json
-    \e[2mOr open the folder in Studio and start Support reply from the Inbox.\e[22m
+    \e[2mOr open the folder in Studio.\e[22m
 stderr:
 
 ## NO_COLOR: halonic init --example acme
@@ -21,7 +21,7 @@ stdout:
     cd acme
     halonic test                        run its workflow tests (no key, nothing sent)
     halonic run support-reply --input examples/refund-question.json
-    Or open the folder in Studio and start Support reply from the Inbox.
+    Or open the folder in Studio.
 stderr:
 
 ## --json: halonic init --example acme

@@ -32,6 +32,12 @@
     "@halonicjs/adapter-git": [
       "./testing"
     ],
+    "@halonicjs/adapter-harness-claude-code": [
+      "./environment"
+    ],
+    "@halonicjs/adapter-harness-codex": [
+      "./environment"
+    ],
     "@halonicjs/adapter-integration-kit": [
       "./integration"
     ],

@@ -177,7 +177,9 @@ integration never holds it, and the host keeps the request log.
   hop's host. The integration never holds the value. A secret the sheet
   marks `optional`, such as the key of a server that may need none, is left
   out when the workspace hasn't set it up; any other missing secret is
-  refused as `secret-not-configured`.
+  refused as `secret-not-configured`. A value shorter than 8 bytes is
+  refused as `secret-too-short`: the filter couldn't remove it from replies
+  without removing ordinary text too.
 - **The sheet says where a secret goes.** The code's placement must match
   the one in the policy: the same `as`, the same `header` ignoring ASCII
   case, the same `prefix` (none and `""` are the same) and the same form
@@ -270,3 +272,8 @@ const loaded = loadIntegration({
 });
 if (loaded.ok) connections.set("weather", loaded.value.integration.connect(loaded.value.host));
 ```
+
+The `transport` must be an `AddressCheckingHttpClient`, such as the Node one from
+`createNodeHttpClient`. The sheet names hosts only, so the transport has to check the addresses a
+name resolves to; a plain `fetch` wrapper doesn't compile here (requirement
+`address-checking-transport`).

@@ -66,7 +66,7 @@ describe("run", () => {
     const { io, lines } = starter();
     const noWindowsInstall = new SrtSandbox(windows({ installed: false }));
     expect(await run(["--sandbox-check"], "1.2.3", io, noWindowsInstall)).toBe(1);
-    expect(JSON.parse(lines[0] ?? "")).toMatchObject({ ok: false, reason: "windows" });
+    expect(JSON.parse(lines[0] ?? "")).toMatchObject({ ok: false, reason: "setup-needed" });
   });
 
   it("sets the sandbox up with --sandbox-setup, and says so on one JSON line", async () => {

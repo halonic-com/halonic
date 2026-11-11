@@ -187,10 +187,13 @@ a type not built yet fails with a clear error.
 A `parallel` state records `agent.started` with `branch` for every branch in name order, asks for every
 branch's model call at once and joins the results under the branch names (requirement
 `engine.parallel-state`). A run records one effect at a time, so a branch can't make a connector call that
-changes things: its model call is offered only the connector tools whose listing says `read`, through
-`readToolsOf`. Write, send and unlabelled tools are left out, and so are read tools the connector's file puts
-under `approve` (they would wait for a person; `engine.parallel-connector-approve`), so the agent never
-sees a tool it can't use there. A branch whose agent stops for an approval ends with `output: null` and an
+changes things: its model call is offered only the tools that count as reading, through `readToolsOf`.
+The engine counts a connector's tool itself and never takes the risk its listing gives: every connector
+tool counts as at least `write` (a listing can raise it to `send`, never lower it), so for now a branch is
+offered no connector tools. The same count means a call to a connector's tool always waits for a person's
+OK in a run (`engine.run-connector-calls`). Tools that wait for a person, such as one the connector's file
+puts under `approve` (`engine.parallel-connector-approve`), are left out too, so the agent never sees a
+tool it can't use there. A branch whose agent stops for an approval ends with `output: null` and an
 `error`; the run goes on.
 A branch whose agent's output is a `choice` must answer with one of its options (the whitespace
 around it is trimmed, nothing else is forgiven); any other answer ends that branch the same way, with
@@ -213,7 +216,9 @@ waits, the parent records `run.waiting` with `child` and the child's events, and
 sent to itself: the executor passes such an event to the child.
 
 The local executor starts a child run at once, in the parent's hub and of its kind, with the
-parent's kept definitions (the child's workflow as the one it runs). A parent hears from its child
+parent's kept definitions (the child's workflow as the one it runs), and its `run.started` records
+the parent's `version`, the version of the workspace the parent read (`engine.run-records-its-version`;
+a start's `version` is recorded as given). A parent hears from its child
 in the same call: `send` to a parent whose child waits passes the event to the child, unchanged,
 and returns the parent once it has gone on. The telling is backed by a scheduler timer on the
 parent (`child:<childRunId>`), set first and cancelled once the parent has heard, so a telling a
@@ -299,14 +304,14 @@ model calls don't write `llm.response` to its log yet, so for now only harness c
 
 ## Example
 
-Run one chat turn through the local executor, with a model that calls a server's tool once. The
+Run one chat turn through the local executor, with a model that calls a Halonic tool once. The
 code lives in [`examples/chat-turn.ts`](examples/chat-turn.ts), where it is typechecked and run by
 `src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`, because a
 package may not import itself by name; outside this package, import `@halonicjs/engine` as below.
 
 ```ts
-import type { ChatRequest, ChatResponse, ConnectorClient, LlmProvider } from "@halonicjs/ports";
-import { LocalExecutor } from "@halonicjs/engine";
+import type { ChatRequest, ChatResponse, LlmProvider } from "@halonicjs/ports";
+import { type HalonicTool, LocalExecutor } from "@halonicjs/engine";
 
 // A stand-in model that first calls the `lookup` tool, then answers with what
 // the tool returned. A real provider comes from an adapter, such as OpenAI's.
@@ -318,27 +323,22 @@ const model: LlmProvider = {
     const usage = { inputTokens: 12, outputTokens: 4 };
     const result = request.messages.find((message) => message.role === "tool");
     if (result === undefined) {
-      const lookup = { id: "call_1", name: "lookup", arguments: { invoice: "INV-7" } };
-      return { content: "", toolCalls: [lookup], usage, finishReason: "tool_calls" };
+      const call = { id: "call_1", name: "lookup", arguments: { invoice: "INV-7" } };
+      return { content: "", toolCalls: [call], usage, finishReason: "tool_calls" };
     }
     return { content: `It says: ${result.content}`, toolCalls: [], usage, finishReason: "stop" };
   },
 };
 
-// A connected server with one tool. Normally the host connects it from the workspace's connectors.
-const billing: ConnectorClient = {
-  id: "billing",
-  listTools: async () => [
-    {
-      name: "lookup",
-      description: "Looks up an invoice",
-      parameters: { type: "object", properties: { invoice: { type: "string" } } },
-      // A chat refuses a tool that writes or sends, and one that names no risk counts as such.
-      risk: "read",
-    },
-  ],
-  callTool: async (_name, args) => `${String(args["invoice"])} is paid`,
-  close: async () => {},
+// A Halonic tool that only reads. A chat runs it; it refuses a tool that
+// writes or sends, and every connected server's tool counts as at least writing.
+const lookup: HalonicTool = {
+  definition: {
+    name: "lookup",
+    description: "Looks up an invoice",
+    parameters: { type: "object", properties: { invoice: { type: "string" } } },
+  },
+  run: async (args) => `${String(args["invoice"])} is paid`,
 };
 
 /** Runs one chat turn through the local executor and returns what the caller gets back. */
@@ -346,8 +346,8 @@ export async function runExample(): Promise<{ answer: string; roles: string[]; m
   const executor = new LocalExecutor({
     // Until workspaces have model aliases, the caller picks the model.
     resolveModel: async () => ({ provider: model, model: "acme-1" }),
-    halonicTools: [],
-    connectors: [billing],
+    halonicTools: [lookup],
+    connectors: [],
     // The stand-in model names no key, so no secret is ever looked up.
     secrets: { get: async () => null },
     clock: { now: () => new Date("2026-11-09T09:00:00Z") },

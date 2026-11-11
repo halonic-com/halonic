@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-harness-kit",
   "private": true,
   "type": "module",
-  "description": "What the harness adapters share: reading a program's output line by line, keeping the bridge token and anything after the final agent.finished out of a run's events, writing the agent's settings folder, and naming a harness's install folders in a Windows profile.",
+  "description": "What the harness adapters share: reading a program's output line by line, keeping the bridge token and anything after the final agent.finished out of a run's events, writing the agent's settings folder, naming a harness's install folders in a Windows profile, and building a harness run's sandbox profile.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,6 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },

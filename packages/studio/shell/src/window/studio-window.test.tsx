@@ -115,6 +115,21 @@ verifies("shell.studio-window", () => {
     expect(container.querySelector("main h1.inbox-view")?.textContent).toBe("Inbox");
   });
 
+  it("moves focus to the h1 of a place whose view loads after the click, every time", async () => {
+    const { container, link } = renderWindow();
+    const back = () => container.querySelector<HTMLButtonElement>('button[aria-label="Back"]');
+
+    act(() => link("Inbox")?.click());
+    expect(container.querySelector("main h1.inbox-view")).toBeNull();
+    await settle();
+    expect(document.activeElement?.className).toBe("inbox-view");
+
+    act(() => link("Home")?.click());
+    act(() => back()?.click());
+    await settle();
+    expect(document.activeElement?.className).toBe("inbox-view");
+  });
+
   it("shows the Search page for a tab on a search", () => {
     const { container, workspace } = renderWindow();
 

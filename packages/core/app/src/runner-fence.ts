@@ -16,9 +16,18 @@ import type { SandboxCheck, SandboxFence } from "@halonicjs/ports";
 export const runnerUnfencedReasons = [
   "windows",
   "container",
+  "not-supported",
+  "blocked-by-policy",
+  "virtualisation-off",
+  "wsl-missing",
+  "restart-needed",
+  "distro-missing",
+  "setup-conflict",
+  "setup-needed",
   "user-namespaces-restricted",
   "bubblewrap-missing",
   "linux-tools-missing",
+  "sign-in-needed",
   "other",
 ] as const;
 

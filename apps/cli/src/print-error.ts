@@ -136,6 +136,8 @@ interface ErrorReport {
   readonly fix: Phrase | undefined;
   readonly docs: string | undefined;
   readonly code: string | undefined;
+  /** The mark on line 1; ✕ when left out. */
+  readonly mark?: "failed" | "needsYou";
 }
 
 function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
@@ -162,6 +164,7 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
       fix: scrubPhrase(error.fixMessage.phrase, scrub),
       docs: undefined,
       code: error.code,
+      mark: error.mark,
     };
   }
   const kind = errorKindOf(error);
@@ -194,7 +197,7 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
 
 /** The ✕ line, then the fix line and the docs line when the error has them. */
 function errorLines(report: ErrorReport): Phrase[] {
-  const lines = [phrase`${markPart("failed")} ${report.firstLine}`];
+  const lines = [phrase`${markPart(report.mark ?? "failed")} ${report.firstLine}`];
   if (report.fix !== undefined) {
     lines.push(phrase`  ${report.fix}`);
   }

@@ -16,13 +16,15 @@
  *   <html data-theme="light"> always light
  *   <html data-theme="dark">  always dark
  *
- * Colour rule of thumb:
- *   accent (iris blue)  you can act on it, or you picked it
+ * Colour rule of thumb, the house style's spectrum (halonic-house-style, section 3):
+ *   accent (blue)       you can act on it, or you picked it
  *   halo (blue->violet) where you are, and the brand
- *   running (violet)    an agent is working
- *   warning (amber)     waiting for you
+ *   running (azure)     an agent is working
+ *   warning (violet)    needs you: waiting for you, or something to look at
  *   danger (rose)       failed or destructive
- *   success (green)     done
+ *   success (teal)      done
+ * No orange or yellow anywhere. Each value keeps the site's hue; its lightness is tuned to the
+ * Studio's own surfaces, which are not the site's.
  *
  * Every text colour passes WCAG AA on the surfaces it's used on, in both modes. theme.test.ts
  * checks this, so tune a colour, run the tests, and adjust until they pass.
@@ -80,25 +82,29 @@
   --color-fg-subtle: light-dark(rgb(16 16 46 / 0.6), rgb(242 242 255 / 0.54));
   --color-fg-disabled: light-dark(rgb(16 16 46 / 0.32), rgb(242 242 255 / 0.3)); /* no AA needed */
 
-  /* ---------------------------------------------------------------- Colour: accent (iris) */
-  /* Iris sits between the halo's blue and violet, and still reads as "you can act on this". */
-  --color-accent: light-dark(#4a63f0, #8796fb); /* focus ring, selected marks, checks, icons */
-  --color-accent-text: light-dark(#3f52e0, #9aa6ff); /* links and accent text */
-  --color-accent-soft: light-dark(rgb(74 99 240 / 0.1), rgb(135 150 251 / 0.18)); /* selected */
-  --color-primary: light-dark(#4a63f0, #8796fb); /* filled primary button */
-  --color-primary-hover: light-dark(#3b50d9, #a1adff);
+  /* ---------------------------------------------------------------- Colour: accent (blue) */
+  /* The spectrum's blue, the site's one colour for actions, at the site's own values. Text in it
+     is a step darker in light and a step lighter in dark, so it passes 4.5:1 on the soft fill. */
+  --color-accent: light-dark(#2668ed, #477ff0); /* focus ring, selected marks, checks, icons */
+  --color-accent-text: light-dark(#0f52d6, #7da9fd); /* links and accent text */
+  --color-accent-soft: light-dark(rgb(38 104 237 / 0.1), rgb(71 127 240 / 0.18)); /* selected */
+  --color-primary: light-dark(#2668ed, #477ff0); /* filled primary button */
+  --color-primary-hover: light-dark(#1658dc, #588ffe);
   --color-on-primary: light-dark(#ffffff, #0d0d1f);
 
   /* ---------------------------------------------------------------- Colour: status */
-  --color-running: light-dark(#7034e0, #b197fc); /* an agent or run is working */
-  --color-running-soft: light-dark(rgb(112 52 224 / 0.1), rgb(177 151 252 / 0.18));
-  --color-success: light-dark(#0b7052, #3dd6a0);
-  --color-success-soft: light-dark(rgb(11 112 82 / 0.1), rgb(61 214 160 / 0.18));
-  --color-warning: light-dark(#a84b05, #fcc24c); /* waiting for you ("Needs you") */
-  --color-warning-soft: light-dark(rgb(168 75 5 / 0.1), rgb(252 194 76 / 0.18));
-  --color-danger: light-dark(#c4143d, #fc7f92);
-  --color-danger-hover: light-dark(#ad1236, #fda4af);
-  --color-danger-soft: light-dark(rgb(196 20 61 / 0.1), rgb(252 127 146 / 0.18));
+  /* The spectrum's azure, teal, violet and rose. The Studio's muted surface is darker than the
+     site's in light, and its surfaces lighter in dark, so each value is the site's moved along its
+     own hue until it reads at 4.5:1 on every surface and on its own soft fill here. */
+  --color-running: light-dark(#026d99, #41ace3); /* azure: an agent or run is working */
+  --color-running-soft: light-dark(rgb(2 109 153 / 0.1), rgb(65 172 227 / 0.18));
+  --color-success: light-dark(#037365, #14b8a2); /* teal: done */
+  --color-success-soft: light-dark(rgb(3 115 101 / 0.1), rgb(20 184 162 / 0.18));
+  --color-warning: light-dark(#9736c5, #d380fe); /* violet: needs you ("Needs you", a warning) */
+  --color-warning-soft: light-dark(rgb(151 54 197 / 0.1), rgb(211 128 254 / 0.18));
+  --color-danger: light-dark(#c70d45, #fd7692); /* rose: failed or destructive */
+  --color-danger-hover: light-dark(#af073b, #fe93a6);
+  --color-danger-soft: light-dark(rgb(199 13 69 / 0.1), rgb(253 118 146 / 0.18));
   --color-on-danger: light-dark(#ffffff, #0d0d1f);
 
   /* ---------------------------------------------------------------- Typography (font-*, text-*) */
@@ -228,16 +234,17 @@
 :root {
   /* light-dark() only takes colours, so the shadow colours are variables and the shapes are
      tokens above. The edge is the mode's ink at a low alpha (the same ink as fg, 16 16 46 in
-     light and 242 242 255 in dark); the lifted shades are black, as every shadow is. */
+     light and 242 242 255 in dark); the lifted shades are that ink in light and black in dark. */
   --shade-edge: light-dark(rgb(16 16 46 / 0.06), rgb(242 242 255 / 0.07)); /* keeps an edge */
   --shade-soft: light-dark(rgb(16 16 46 / 0.06), rgb(0 0 0 / 0.4));
   --shade-mid: light-dark(rgb(16 16 46 / 0.1), rgb(0 0 0 / 0.5));
   --shade-deep: light-dark(rgb(16 16 46 / 0.22), rgb(0 0 0 / 0.6));
 
-  /* The halo: the brand's two hues. Never flat fills; only through the six halo utilities. A
+  /* The halo: the brand's two hues, the site's dark accent blue and the spectrum's violet (its
+     dark twin, as bright as the blue). Never flat fills; only through the six halo utilities. A
      frame colour preset sets only --halo-blue and --halo-violet; the tints follow them. */
   --halo-blue: rgb(59 139 255);
-  --halo-violet: rgb(139 92 246);
+  --halo-violet: rgb(176 94 217);
   --halo-tint-blue: light-dark(
     color-mix(in srgb, var(--halo-blue) 14%, transparent),
     color-mix(in srgb, var(--halo-blue) 20%, transparent)

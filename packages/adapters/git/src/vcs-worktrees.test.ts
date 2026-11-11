@@ -155,6 +155,36 @@ verifies("git.diff-between", () => {
       expect(await files.read("café.yaml")).toBe("2\n");
     });
 
+    it("gives each file its own diff, also for a type change and a path with spaces", async () => {
+      const { vcs, head } = await repoWith({
+        "a.yaml": "1\n",
+        "b c.yaml": "1\n",
+        "d.yaml": "1\n",
+        "e.yaml": "1\n",
+      });
+      const worktree = await vcs.addWorktree(head);
+      await writeFiles(worktree.path, { "a.yaml": "2\n", "b c.yaml": "2\n", "e.yaml": "2\n" });
+      await rm(join(worktree.path, "d.yaml"));
+      await symlink("a.yaml", join(worktree.path, "d.yaml"));
+
+      const changes = await vcs.diffBetween(head, worktree.id);
+      expect(changes.map((each) => each.path)).toEqual(["a.yaml", "b c.yaml", "d.yaml", "e.yaml"]);
+      for (const { path, diff } of changes) {
+        expect(diff, path).toMatch(/^diff --git /u);
+        expect(diff.match(/^diff --git /gmu)?.length, path).toBe(path === "d.yaml" ? 2 : 1);
+      }
+    });
+
+    it("never reads a changed private file out of git", async () => {
+      const { vcs, head } = await repoWith({ "a.yaml": "1\n" });
+      const worktree = await vcs.addWorktree(head);
+      await writeFiles(worktree.path, { "a.yaml": "2\n", ".env": "KEY=placeholder\n" });
+
+      const changes = await vcs.diffBetween(head, worktree.id);
+      expect(changes.map((each) => each.path)).toEqual(["a.yaml"]);
+      expect(JSON.stringify(changes)).not.toContain("placeholder");
+    });
+
     it("leaves the worktree's own index as it was", async () => {
       const { vcs, folder, head } = await repoWith({ "a.yaml": "1\n" });
       const worktree = await vcs.addWorktree(head);

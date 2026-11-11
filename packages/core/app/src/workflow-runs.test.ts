@@ -51,6 +51,22 @@ verifies("app.run-start", () => {
     ]);
   });
 
+  it("starts the run with the harness it names for all its agents", async () => {
+    const executor = new StreamingExecutor();
+    executor.onStart = [completed];
+
+    await new WorkflowRuns(executor).startRun(
+      await acme(),
+      "support-reply",
+      {},
+      { harness: "codex" },
+    );
+
+    expect(executor.starts).toEqual([
+      { hubId: "support", workflowId: "support-reply", input: {}, harness: "codex" },
+    ]);
+  });
+
   it("starts nothing when several hubs have the workflow", async () => {
     const executor = new StreamingExecutor();
 

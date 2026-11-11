@@ -8,7 +8,7 @@ The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-ru
 - **Public API:** `@halonicjs/adapter-sandbox-srt`
 
 `SrtSandbox` is the whole adapter. `check()` says whether the sandbox can start on this machine and
-gives the first reason when it can't: Windows without srt's install (`srt windows-install`, once, as an administrator), inside a container (Docker or Podman), user
+gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator), inside a container (Docker or Podman), user
 namespaces refused, bubblewrap missing, or `socat` or ripgrep (`rg`) missing, which srt starts next to bubblewrap
 (`linux-tools-missing`). `open()` checks first, refuses a bridge that isn't a
 loopback address, then opens a session that proves its fence (a canary file the fence hides and a
@@ -47,8 +47,14 @@ with `pnpm test:fence`.
 
 The report-only `sandbox-windows-spike` CI workflow also runs `scripts/windows-isolation-probe.mjs` when that
 script changes. Among its results, it checks that a session on project B can neither write in nor
-delete from a project A whose grant an earlier session kept (`kept-roots-writable`). It writes
+delete from a project A whose grant an earlier session kept (`kept-roots-writable`). Session B's
+checks pass only on an explicit `blocked:` answer; a crash, empty output or any other text is
+`INCONCLUSIVE`, not a pass. It writes
 `windows-isolation-results.json`; it doesn't gate a merge.
+
+The same workflow runs `scripts/windows-wsl-probe.mjs`. It checks whether srt's sandbox account can register and start a WSL distro of
+its own (and, if it can, whether that distro reads a denied file or reaches a blocked port), and
+whether WSL 2 starts on the runner at all. It writes `windows-wsl-results.json`.
 
 ## Exports
 

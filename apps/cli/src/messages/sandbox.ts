@@ -3,6 +3,21 @@ import { defineMessages } from "./define.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 
 /**
+ * The reason codes the CLI has its own words for. The codes the `Sandbox`
+ * port added in version 6 (setup, WSL, company policy and sign-in, HAL-5389)
+ * read as `other` until the sandbox design words them.
+ */
+type WordedReason = Extract<
+  SandboxUnavailableReason,
+  | "windows"
+  | "container"
+  | "user-namespaces-restricted"
+  | "bubblewrap-missing"
+  | "linux-tools-missing"
+  | "other"
+>;
+
+/**
  * Line 2 of a run refused because the sandbox can't start, by reason code
  * (cli-output 3.8). They are sandbox-screens 3.1's reason and fix as one
  * line, except `container`, whose fix says where `run` works instead, since
@@ -10,7 +25,7 @@ import { type Phrase, phrase } from "./phrase.ts";
  * Halonic doesn't know, is worded from the code alone: the check's own
  * sentence is for logs and shows only with `--debug`.
  */
-const refusedFixes: Readonly<Record<SandboxUnavailableReason, string>> = {
+const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
     "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
   container:
@@ -26,7 +41,7 @@ const refusedFixes: Readonly<Record<SandboxUnavailableReason, string>> = {
 };
 
 /** sandbox-screens 3.1's reason, by code: what's wrong, for `halonic doctor`'s Sandbox line. */
-const reasons: Readonly<Record<SandboxUnavailableReason, string>> = {
+const reasons: Readonly<Record<WordedReason, string>> = {
   windows: "The sandbox doesn't work on Windows in this version of Halonic.",
   container: "Halonic is running inside a container, and the sandbox can't start there.",
   "user-namespaces-restricted": "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
@@ -40,7 +55,7 @@ const reasons: Readonly<Record<SandboxUnavailableReason, string>> = {
  * follow "Fix: ". `container` takes 3.8's fix instead, because `doctor` runs
  * in CI too (cli-output 3.7, revision 24).
  */
-const fixes: Readonly<Record<SandboxUnavailableReason, string>> = {
+const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
   container: "run Halonic on the runner or computer itself, not in a container.",
   "user-namespaces-restricted":
@@ -74,16 +89,16 @@ export const sandboxMessages = defineMessages("sandbox", {
   doctorFix: (code: string) => doctorFix(fixes[known(code)], afterDoctorAgain[known(code)]),
 });
 
-/** A code from the port, or `other` for one this version doesn't know. */
-function known(code: string): SandboxUnavailableReason {
-  return Object.hasOwn(reasons, code) ? (code as SandboxUnavailableReason) : "other";
+/** A code the CLI has words for, or `other` for one it doesn't. */
+function known(code: string): WordedReason {
+  return Object.hasOwn(reasons, code) ? (code as WordedReason) : "other";
 }
 
 /**
  * A note that ends `doctor`'s fix, after "Then run halonic doctor again.",
  * because it says what works where the sandbox doesn't, not what to do.
  */
-const afterDoctorAgain: Readonly<Partial<Record<SandboxUnavailableReason, string>>> = {
+const afterDoctorAgain: Readonly<Partial<Record<WordedReason, string>>> = {
   container: "halonic validate and halonic test work in a container.",
 };
 
@@ -102,7 +117,7 @@ const sandboxDocs = "https://docs.halonic.com/sandbox";
  * one for. The other reasons link the page itself, rather than a section
  * that may not exist.
  */
-const docsSections: Readonly<Partial<Record<SandboxUnavailableReason, string>>> = {
+const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
   "bubblewrap-missing": "bubblewrap",
   container: "container",
 };

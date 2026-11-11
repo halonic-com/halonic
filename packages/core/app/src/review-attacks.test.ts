@@ -141,6 +141,23 @@ verifies("app.assistant-no-git-or-halonic", () => {
     expect(store.log).toEqual([]);
   });
 
+  it.each(["before", "after"] as const)(
+    "holds a step's .halonic path on restore to %s and touches nothing of it",
+    async (to) => {
+      const { store, recordStore, review } = setUp({ trusted: true });
+      const path = ".Halonic./review/x.json";
+      // The entry goes from no file to a planted one, whichever way it is restored.
+      const file = to === "after" ? { before: null, after: "{}" } : { before: "{}", after: null };
+      const outcome = await review.restore(
+        { files: [{ path, record: { before: null, after: null }, file }] },
+        to,
+      );
+      expect(outcome).toEqual({ status: "done", step: { files: [] }, held: [path] });
+      expect(store.log).toEqual([]);
+      expect(recordStore.files.size).toBe(0);
+    },
+  );
+
   it("turns the store's refusal of a path, such as through a symlink, into a refusal", async () => {
     const linked = "agents/link/a.agent.yaml";
     const store = new SymlinkRefusingStore(linked);
@@ -255,6 +272,21 @@ verifies("app.assistant-untrusted-items-only", () => {
       expected: await digestOf(smart),
       card: { chatId: "c2", cardId: "k7" },
     });
+    const read = await records.read(clerk);
+    expect(read.status === "found" && read.record.writtenUntrusted).toBe(true);
+  });
+
+  it("marks the record when Undo writes the assistant's text back while untrusted", async () => {
+    const { store, trust, review, records } = setUp({ trusted: true });
+    await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
+    const rejected = await review.reject({ kind: "card", card: k1 });
+    if (rejected.status !== "done") {
+      throw new Error("Reject didn't happen.");
+    }
+    trust.trusted = false;
+    const undone = await review.restore(rejected.step, "before");
+    expect(undone).toMatchObject({ status: "done", held: [] });
+    expect(store.files.get(clerk)).toBe(smart);
     const read = await records.read(clerk);
     expect(read.status === "found" && read.record.writtenUntrusted).toBe(true);
   });

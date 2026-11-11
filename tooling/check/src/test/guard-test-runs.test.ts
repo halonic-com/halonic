@@ -4,6 +4,7 @@ import { checkTestRuns } from "../guard/test-runs.ts";
 import {
   noteCovering,
   type RanTest,
+  requirementText,
   results,
   runGuard,
   workflowDirectory,
@@ -91,17 +92,48 @@ verifies("check.guard-fewer-assertions", () => {
     { name: "fires once", requirement: id, assertions: 1 },
   );
 
-  test("fails when a requirement's tests make fewer expect calls", async () => {
-    expect(await errorsFor(two, fewer)).toEqual([
+  /** The same results, with the test file edited (what weakening a test takes). */
+  const edited = (files: Record<string, string>): Record<string, string> => ({
+    ...files,
+    [testFile]: `${testSource}// edited\n`,
+  });
+
+  test("fails when a requirement's tests make fewer expect calls and the test file changed", async () => {
+    expect(await errorsFor(two, edited(fewer))).toEqual([
       `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
     ]);
+  });
+
+  test("fails when fewer expect calls come with a changed requirement file", async () => {
+    const requirement = `requirements/${id.replace("workflow.", "")}.md`;
+    const errors = await errorsFor(
+      { ...two, [requirement]: requirementText("timer-fires", "active", "Before.") },
+      { ...fewer, [requirement]: requirementText("timer-fires", "active", "After.") },
+    );
+    expect(errors.join("\n")).toMatch(/made 2 expect call\(s\), 3 on the merge base/);
+  });
+
+  test("fails when a helper in the package changed, the test file didn't, and there are fewer calls", async () => {
+    const helper = "src/assert-timer.ts";
+    const errors = await errorsFor(
+      { ...two, [helper]: "export const assertTimer = 2;\n" },
+      { ...fewer, [helper]: "export const assertTimer = 1;\n" },
+    );
+    expect(errors).toEqual([
+      `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
+    ]);
+  });
+
+  test("passes a lower expect count in a package nothing changed in: that is run-to-run noise", async () => {
+    expect(await errorsFor(two, fewer)).toEqual([]);
   });
 
   test("passes the same or more expect calls, or a note that covers the requirement", async () => {
     expect(await errorsFor(two, two)).toEqual([]);
     expect(await errorsFor(fewer, two)).toEqual([]);
     const note = noteCovering(id);
-    expect((await runGuard({ base: two, head: fewer, note, checks })).errors).toEqual([]);
+    const head = edited(fewer);
+    expect((await runGuard({ base: two, head, note, checks })).errors).toEqual([]);
   });
 });
 

@@ -8,6 +8,7 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  RunVersion,
   ToolOutcome,
   ToolRisk,
 } from "@halonicjs/events";
@@ -44,6 +45,8 @@ export interface StartInput extends InputBase {
    * when it reaches one, or at once when one is the whole item.
    */
   readonly cantTry?: readonly CantTryStep[];
+  /** Which version of the workspace the run read: the live version or the saved files. */
+  readonly version?: RunVersion;
 }
 
 /** An event sent to a waiting run, such as `approve`. */

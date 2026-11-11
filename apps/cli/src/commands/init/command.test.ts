@@ -177,7 +177,7 @@ verifies("cli.commands.init.copy-example", () => {
         "  cd acme",
         "  halonic test                        run its workflow tests (no key, nothing sent)",
         "  halonic run support-reply --input examples/refund-question.json",
-        "  Or open the folder in Studio and start Support reply from the Inbox.",
+        "  Or open the folder in Studio.",
       ]);
       expect(io.stderr).toEqual([]);
       const filesIn = (root: string) => new FolderDefinitionStore(root).list();

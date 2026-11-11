@@ -4,7 +4,7 @@
  */
 import { act, type ReactNode } from "react";
 import { Dialog } from "../dialog/dialog.tsx";
-import type { DialogProps } from "../dialog/dialog-props.ts";
+import type { ConfirmingDialogProps } from "../dialog/dialog-props.ts";
 import { fakeModal, restoreModal } from "./modal.ts";
 
 /** Every `scrollIntoView()` call's options, in order: the alert slot scrolls itself. */
@@ -29,7 +29,7 @@ export function restoreDialogPage(): void {
 export const remove = { label: "Delete agent", variant: "danger", busyLabel: "Deleting…" } as const;
 
 /** A confirmation: "Delete agent?". */
-export function deleteDialog(overrides: Partial<DialogProps> = {}): ReactNode {
+export function deleteDialog(overrides: Partial<ConfirmingDialogProps> = {}): ReactNode {
   return (
     <Dialog
       title="Delete agent?"
@@ -44,7 +44,7 @@ export function deleteDialog(overrides: Partial<DialogProps> = {}): ReactNode {
 }
 
 /** A form: "New agent", with one field. */
-export function newAgentDialog(overrides: Partial<DialogProps> = {}): ReactNode {
+export function newAgentDialog(overrides: Partial<ConfirmingDialogProps> = {}): ReactNode {
   return (
     <Dialog
       title="New agent"

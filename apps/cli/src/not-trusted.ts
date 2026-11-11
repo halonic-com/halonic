@@ -28,6 +28,11 @@ export interface NotTrustedDetails {
    * `error.changes`. Left out when it was never trusted (HAL-188 item 10b).
    */
   readonly changes?: TrustChangesDocument | undefined;
+  /**
+   * The mark on line 1. `✕` by default; `plugin add` uses `!` when the
+   * plugin was added and only its trust is missing (cli-output 3.6).
+   */
+  readonly mark?: "failed" | "needsYou";
 }
 
 /**
@@ -59,6 +64,7 @@ export class NotTrustedError extends Error {
   readonly check: readonly Phrase[];
   readonly action: Message | null | undefined;
   readonly changes: TrustChangesDocument | undefined;
+  readonly mark: "failed" | "needsYou";
 
   constructor(details: NotTrustedDetails) {
     super(plainText(details.problem.phrase));
@@ -68,5 +74,6 @@ export class NotTrustedError extends Error {
     this.check = details.check;
     this.action = details.action;
     this.changes = details.changes;
+    this.mark = details.mark ?? "failed";
   }
 }

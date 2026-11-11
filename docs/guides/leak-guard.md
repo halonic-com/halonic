@@ -32,7 +32,7 @@ that holds a term as `[withheld]`.
 - **On push**, the `pre-push` hook checks every commit you are about to
   push, including its message and author.
 - **In CI**, the `Leak guard` job runs the same rules on every pull
-  request, and on the commits of every push to `main`. Any finding fails
+  request, in the merge queue and on the commits of every push to `main`. Any finding fails
   `ci-ok`, so nothing can merge. On a pull request the job runs the script
   and both allow lists from the base commit, so a pull request can't weaken
   the check it is judged by. It also checks the branch name, title and body

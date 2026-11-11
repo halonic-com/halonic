@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -262,6 +262,41 @@ verifies("cli.commands.trust.review-and-trust", () => {
     await runCli(["trust", "--list"], list, commands());
 
     expect(list.stdout).toEqual([`Acme   .${sep}acme   trusted on 3 Nov`]);
+  });
+
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] needs POSIX modes: lists every trusted workspace when a folder in one can't be read",
+    async () => {
+      writeAcme();
+      const fingerprint = await fingerprintOfAcme();
+      const trust = ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint];
+      await runCli(trust, captureIo(folder), commands());
+      const connectors = join(folder, "acme", "library", "connectors");
+      chmodSync(connectors, 0o000);
+      try {
+        const list = captureIo(folder);
+        const code = await runCli(["trust", "--list"], list, commands());
+
+        expect(code).toBe(exitCode.ok);
+        expect(list.stdout).toEqual([`Acme   .${sep}acme   trusted on 3 Nov`]);
+      } finally {
+        chmodSync(connectors, 0o755);
+      }
+    },
+  );
+
+  it("lists a workspace under its folder when its workspace.yaml has no name to read", async () => {
+    writeAcme();
+    const fingerprint = await fingerprintOfAcme();
+    const trust = ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint];
+    await runCli(trust, captureIo(folder), commands());
+    writeFileSync(join(folder, "acme", "workspace.yaml"), "id: acme\nname: [Acme\n");
+
+    const list = captureIo(folder);
+    const code = await runCli(["trust", "--list"], list, commands());
+
+    expect(code).toBe(exitCode.ok);
+    expect(list.stdout).toEqual([`.${sep}acme   .${sep}acme   trusted on 3 Nov`]);
   });
 
   it("removes the trust of a workspace whose folder is gone", async () => {

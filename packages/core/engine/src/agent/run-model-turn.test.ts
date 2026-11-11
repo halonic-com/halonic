@@ -1,3 +1,4 @@
+import { fenceUntrusted } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
@@ -27,7 +28,7 @@ verifies("engine.turn-runs-tool-calls", () => {
       role: "tool",
       toolCallId: "c1",
       name: "lookup",
-      content: "lookup done",
+      content: fenceUntrusted("lookup done"),
     });
     expect(result.content).toBe("Found it");
     expect(result.finishReason).toBe("stop");
@@ -95,7 +96,7 @@ verifies("engine.turn-caller-tools-return", () => {
     expect(result.toolCalls).toEqual([call("c1", "pick")]);
     expect(result.turn).toEqual([
       { role: "assistant", content: "", toolCalls: [call("c1", "pick"), call("c2", "lookup")] },
-      { role: "tool", toolCallId: "c2", name: "lookup", content: "lookup done" },
+      { role: "tool", toolCallId: "c2", name: "lookup", content: fenceUntrusted("lookup done") },
     ]);
   });
 });
@@ -144,11 +145,12 @@ verifies("engine.turn-logs-events", () => {
     const usage = { inputTokens: 10, outputTokens: 5 };
     const model = { agent: "clerk", provider: "scripted", model: "scripted-1" };
     expect(log.events).toEqual([
-      { type: "llm.request", ...model, messages: 1 },
+      // The first message is the notice that a server wrote the fenced tool texts.
+      { type: "llm.request", ...model, messages: 2 },
       { type: "llm.response", ...model, usage, latencyMs: 250, text: "" },
       { type: "tool.called", agent: "clerk", tool: "lookup", args: { q: "acme" } },
       { type: "tool.result", agent: "clerk", tool: "lookup", result: "lookup done", outcome: "ok" },
-      { type: "llm.request", ...model, messages: 3 },
+      { type: "llm.request", ...model, messages: 4 },
       { type: "llm.response", ...model, usage, latencyMs: 250, text: "Found it" },
     ]);
   });

@@ -1,3 +1,4 @@
+import { fenceUntrusted } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
@@ -73,7 +74,7 @@ verifies("engine.turn-tool-error", () => {
 
     expect(model.requests[1]?.messages.at(-1)).toMatchObject({
       role: "tool",
-      content: "The tool lookup failed: timed out",
+      content: fenceUntrusted("The tool lookup failed: timed out"),
     });
     expect(log.events).toContainEqual({
       type: "tool.result",
@@ -107,7 +108,7 @@ verifies("engine.turn-tool-names", () => {
 
     expect(model.requests[0]?.tools?.map((tool) => tool.description)).toEqual([
       "Picks with search",
-      "Does lookup",
+      fenceUntrusted("Does lookup"),
     ]);
     expect(mail.calls).toEqual([]);
     expect(result.toolCalls).toEqual([call("c1", "search")]);
@@ -132,7 +133,7 @@ verifies("engine.turn-tool-names", () => {
 
     expect(model.requests[0]?.tools?.map((tool) => tool.description)).toEqual([
       "Halonic remember",
-      "Does lookup",
+      fenceUntrusted("Does lookup"),
     ]);
     expect(result.refusals.map((refusal) => refusal.reason)).toEqual([
       'mail offers a tool named "remember", which halonic already offers',

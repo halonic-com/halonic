@@ -17,7 +17,8 @@ function fixedIds(): IdGenerator {
 /**
  * The setup `halonic run` and `halonic runs send` use in a test: the engine
  * on a fixed clock and fixed ids, the trust records in `folder`, the runs in
- * `profile`, and no server to call, as the test model calls none.
+ * `profile`, no server to call, as the test model calls none, and Claude
+ * Code 2.1.0 ready while Codex isn't installed.
  */
 export function testRunSetup(folder: string, profile: ProfileEnvironment): RunSetup {
   return {
@@ -34,5 +35,13 @@ export function testRunSetup(folder: string, profile: ProfileEnvironment): RunSe
     },
     profile,
     engine: { clock: fixedClock(engineStart, 0), ids: fixedIds() },
+    harnesses: () => [
+      {
+        id: "claude-code",
+        name: "Claude Code",
+        detect: async () => ({ status: "ready", version: "2.1.0" }),
+      },
+      { id: "codex", name: "Codex", detect: async () => ({ status: "missing" }) },
+    ],
   };
 }

@@ -7,6 +7,7 @@ import type { SendingSettings } from "@halonicjs/app";
 import { type Agent, type Connector, needsApproval } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import { countedRisk } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
 import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
@@ -49,13 +50,14 @@ export function effectBoundary(calls: RunConnectorCalls): EffectBoundary {
 }
 
 /**
- * The connector with only the tools whose listing says they read: what a
- * `parallel` branch's model call is offered. A tool whose listing gives no
- * risk counts as `write`, so it is left out too. So is a tool the `approve`
- * list of the connector's file in `lists` names, under the name its server
- * lists it under, or every tool when that list is `all` (HAL-4630): it
- * waits for a person, which would only end the branch. Calls go to the
- * connector itself.
+ * The connector with only the tools that count as reading: what a
+ * `parallel` branch's model call is offered. A listing can't lower a tool's
+ * risk ({@link countedRisk}), so until the workspace can set one, none of a
+ * connector's tools counts as reading, and a branch is offered none. A tool
+ * the `approve` list of the connector's file in `lists` names, under the
+ * name its server lists it under, or every tool when that list is `all`
+ * (HAL-4630), is left out too: it waits for a person, which would only end
+ * the branch. Calls go to the connector itself.
  */
 export function readToolsOf(
   connector: ConnectorClient,
@@ -66,7 +68,9 @@ export function readToolsOf(
     id: connector.id,
     listTools: async () =>
       (await connector.listTools()).filter(
-        (tool) => tool.risk === "read" && (tools === undefined || !needsApproval(tools, tool.name)),
+        (tool) =>
+          countedRisk(tool.risk) === "read" &&
+          (tools === undefined || !needsApproval(tools, tool.name)),
       ),
     callTool: (name, args, options) => connector.callTool(name, args, options),
     close: () => connector.close(),
@@ -112,7 +116,7 @@ export async function makeConnectorCall(
   if (!isPlainObject(effect.args)) {
     return notMade(`the arguments of ${effect.tool} aren't an object`);
   }
-  const risk = tool.risk === undefined ? {} : { risk: tool.risk };
+  const risk = tool.listedRisk === undefined ? {} : { risk: tool.listedRisk };
   try {
     const result = await connector.callTool(tool.listedName, effect.args, {
       idempotencyKey: effect.idempotencyKey,

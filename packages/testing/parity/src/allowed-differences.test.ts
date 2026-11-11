@@ -208,6 +208,7 @@ verifies("parity.allowed-differences-checked", () => {
       "events.run-failed-reason",
       "engine.task-json-answer",
       "engine.budget-composite-stops",
+      "workspace.references",
     ]);
   });
 

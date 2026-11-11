@@ -44,11 +44,11 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(halonic_trust_grant::TrustState::default())
         .manage(runs::RunState::default())
         .manage(agent_host::AgentHostState::default())
-        // The opener is used only from Rust: the navigation guard hands
-        // outside links to the browser with it. Its click script stays off.
-        // That script would run in every page, the served Studio too, and
-        // only make the page call `plugin:opener|open_url`, which no page
-        // is granted.
+        // The navigation guard hands outside links to the browser with the
+        // opener. Its click script stays off. That script would run in
+        // every page, the served Studio too, and make the page call
+        // `plugin:opener|open_url`, which only the connect page is granted,
+        // and only for the release page (`capabilities/connect-page.json`).
         .plugin(
             tauri_plugin_opener::Builder::new()
                 .open_js_links_on_click(false)

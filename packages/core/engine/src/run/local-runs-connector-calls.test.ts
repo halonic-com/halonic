@@ -135,25 +135,32 @@ verifies("engine.run-connector-calls", () => {
     expect(JSON.stringify(model.requests)).not.toContain("EACCES");
   });
 
-  it("makes a call to a tool that only reads in the turn, with no record before it", async () => {
-    const mail = new ScriptedConnector("mail", [mailTool("search", "read")], () => "3 mails");
+  it("counts a tool its listing labels read as write: it waits for a person, then is recorded before it is made", async () => {
+    const mail = new ScriptedConnector("mail", [mailTool("send_mail", "read")], () => "Sent");
     const { connectorCalls } = settingsGiving({ allowed: true });
-    const answers = [callAnswer(call("s-1", "search", { to: "support" })), textAnswer("Found")];
-    const { executor, scheduler, runs } = runsOn(answers, new KernelRuns(), {
-      agents: mailWriter,
-      connectors: [mail],
-      connectorCalls,
-    });
+    const { executor, scheduler, runs } = runsOn(
+      [sendMail, textAnswer("Posted")],
+      new KernelRuns(),
+      {
+        agents: mailWriter,
+        connectors: [mail],
+        connectorCalls,
+      },
+    );
 
     await executor.start(replyStart);
     await scheduler.runDue();
 
-    expect(mail.calls).toHaveLength(1);
-    expect(eventsOf(runs.logs.get("run_1"), "effect.requested")).toEqual([]);
-    expect(await runs.get("run_1")).toMatchObject({
-      status: "completed",
-      context: { reply: "Found" },
-    });
+    expect(mail.calls).toEqual([]);
+    expect(typesOf(runs.logs.get("run_1"))).toContain("approval.requested");
+    expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(mail.calls).toEqual([{ name: "send_mail", args: { to: "support" } }]);
+    expect(eventsOf(runs.logs.get("run_1"), "effect.requested")).toHaveLength(1);
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 
   it("offers no connector's tools when the executor has no connector calls", async () => {
@@ -305,11 +312,11 @@ verifies("engine.run-connector-approve", () => {
     expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
   });
 
-  it("runs a read tool the file doesn't put under approve without asking", async () => {
+  it("still waits for a person before a tool the file doesn't put under approve, whatever its listing says", async () => {
     const { runs, mail } = await callingUnder(["send_mail"], mailTool("search", "read"));
 
-    expect(mail.calls).toHaveLength(1);
-    expect(typesOf(runs.logs.get("run_1"))).not.toContain("approval.requested");
+    expect(mail.calls).toEqual([]);
+    expect(typesOf(runs.logs.get("run_1"))).toContain("approval.requested");
   });
 });
 

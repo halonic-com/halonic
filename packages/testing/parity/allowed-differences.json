@@ -786,5 +786,144 @@
     "cliRules": [
       "item-failed-words"
     ]
+  },
+  {
+    "id": "assistant-model-alias-message",
+    "requirement": "workspace.references",
+    "area": "workspace loader: the assistant model alias",
+    "old": "An unknown alias in assistant.model in workspace.yaml gave The session AI uses unknown model alias \"fast\", without a full stop.",
+    "new": "The message is The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml. The code stays unknown-model-alias.",
+    "why": "The product calls this setting the assistant model; \"session AI\" was retired in the microcopy (section 1.2). Naming assistant.model tells a person which key to fix, and models.yaml where the aliases live.",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "workspace/unknown-model",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"turbo\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"turbo\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/bad-enum",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/deep-nesting",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/missing-required",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/not-a-map",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/out-of-range",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/unknown-key",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      },
+      {
+        "case": "models/wrong-type",
+        "file": "workspace.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "The session AI uses unknown model alias \"fast\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "The assistant model (assistant.model) uses \"fast\", which isn't an alias in models.yaml."
+          }
+        ]
+      }
+    ]
   }
 ]

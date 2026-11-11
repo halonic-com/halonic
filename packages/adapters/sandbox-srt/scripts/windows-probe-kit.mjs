@@ -98,11 +98,19 @@ export async function createKit(prefix) {
     }
   };
 
+  // srt itself failed to start the program (no sandbox account logon, fence not
+  // verified): a blocked answer then proves nothing about the fence.
+  const srtFailed = (r) => /srt-win: error|could not be verified/.test(r.out + r.err);
+
   // Runs a command inside srt and outside, and counts the canary connections.
   const canaryProbe = async (group, name, command, why) => {
     const before = canary.connections;
     const inside = await inSrt(command);
     const reached = canary.connections - before;
+    if (reached === 0 && srtFailed(inside)) {
+      record(group, name, "INCONCLUSIVE", `srt did not start: ${tail(inside.err || inside.out)}`);
+      return;
+    }
     const controlBefore = canary.connections;
     const control = await outsideSrt(command);
     if (canary.connections - controlBefore === 0) {
@@ -145,6 +153,7 @@ export async function createKit(prefix) {
     tail,
     lastJson,
     canaryProbe,
+    srtFailed,
     finish,
   };
 }

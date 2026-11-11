@@ -58,7 +58,7 @@ export function checkModelsFile(context: CheckContext): WorkspaceIssue[] {
   return issues;
 }
 
-/** The model the session AI in `workspace.yaml` starts with must be a known alias. */
+/** The assistant model in `workspace.yaml` (`assistant.model`) must be a known alias. */
 export function checkSessionModel(context: CheckContext): WorkspaceIssue[] {
   const aliases = modelAliasesOf(context, null);
   return context.filesOf("workspace").flatMap((workspace) => {
@@ -66,7 +66,7 @@ export function checkSessionModel(context: CheckContext): WorkspaceIssue[] {
     if (model === undefined || !isAliasName(model) || aliases.has(model)) {
       return [];
     }
-    const message = `The session AI uses unknown model alias "${model}"`;
+    const message = `The assistant model (assistant.model) uses "${model}", which isn't an alias in models.yaml.`;
     return [context.error(workspace.path, ["assistant", "model"], "unknown-model-alias", message)];
   });
 }

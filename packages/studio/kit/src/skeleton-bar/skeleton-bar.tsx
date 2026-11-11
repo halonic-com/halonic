@@ -1,9 +1,16 @@
 /**
  * Which part of a row the bar stands in for. `title` is 10px high and `meta` 8px; `trailing` is
  * the 80px value or chip on the right; `heading` is a List heading's 48px bar. `icon` (20px) and
- * `avatar` (28px) are the leading block.
+ * `avatar` (28px) are the leading block; `value` (72 × 36px) is a card's headline value.
  */
-export type SkeletonBarKind = "title" | "meta" | "trailing" | "heading" | "icon" | "avatar";
+export type SkeletonBarKind =
+  | "title"
+  | "meta"
+  | "trailing"
+  | "heading"
+  | "icon"
+  | "avatar"
+  | "value";
 
 /**
  * The share of the text column a `title` or `meta` bar takes. A fixed set, never random, so
@@ -25,6 +32,7 @@ const kindClasses: Record<SkeletonBarKind, string> = {
   heading: "h-2 w-12 rounded-xs",
   icon: "size-icon-md shrink-0 rounded-xs",
   avatar: "size-7 shrink-0 rounded-full",
+  value: "h-9 w-18 shrink-0 rounded-sm",
 };
 
 const widthClasses: Record<SkeletonBarWidth, string> = {

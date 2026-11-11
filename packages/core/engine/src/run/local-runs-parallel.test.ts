@@ -91,7 +91,7 @@ verifies("engine.parallel-state", () => {
     );
   });
 
-  it("offers a branch's agent only the connector tools that read", async () => {
+  it("offers a branch's agent no connector tools, not even one whose listing says it reads", async () => {
     const mail = new ScriptedConnector(
       "mail",
       [
@@ -118,18 +118,18 @@ verifies("engine.parallel-state", () => {
 
     expect(model.requests).toHaveLength(2);
     for (const request of model.requests) {
-      expect(request.tools?.map((tool) => tool.name)).toEqual(["search"]);
+      expect(request.tools?.map((tool) => tool.name) ?? []).toEqual([]);
     }
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 });
 
 verifies("engine.parallel-connector-approve", () => {
-  it("leaves out a read tool its connector's file puts under approve", async () => {
+  it("leaves out a tool its connector's file puts under approve, and one whose listing says it reads", async () => {
     const model = await branchesOfferedUnder(["search"]);
 
     for (const request of model.requests) {
-      expect(request.tools?.map((tool) => tool.name)).toEqual(["list_folders"]);
+      expect(request.tools?.map((tool) => tool.name) ?? []).toEqual([]);
     }
   });
 

@@ -194,7 +194,7 @@ verifies("cli.commands.runs.show", () => {
         "! Approve this reply?   waiting for you since 10:41",
         "",
         "! Waiting for you: Approve this reply?",
-        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (or reject)",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
       ]);
     });
 
@@ -218,7 +218,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "09d9a0");
 
       expect(io.stdout.at(-1)).toBe(
-        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send reply) (or reject (Discard))",
+        "  Answer with: halonic runs send 09d9a0 approve (Send reply) (or reject (Discard))",
       );
     });
 
@@ -260,7 +260,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "09d9a0");
 
       expect(io.stdout.at(-1)).toBe(
-        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send it) (or needs_changes)",
+        "  Answer with: halonic runs send 09d9a0 approve (Send it) (or needs_changes)",
       );
     });
 

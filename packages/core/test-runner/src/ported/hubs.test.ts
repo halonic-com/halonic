@@ -34,6 +34,7 @@ const files = {
 cases:
   - name: reads the mailbox
     mocks: { helper: ['tool:list_mail {}', Two letters] }
+    events: [approve]
     tools: { mailbox.list_mail: ['[school, bank]'] }
     expect: { final: end, context: { summary: Two letters } }
 `,
@@ -68,7 +69,8 @@ verifies("test-runner.old-suites", () => {
       ]);
       expect(promptsOf(models[0])).toEqual([
         ["helper", "Check the post"],
-        ["helper", "[school, bank]"],
+        // The shared connector's result reaches the model inside the untrusted fence.
+        ["helper", "<untrusted>\n[school, bank]\n</untrusted>"],
       ]);
       expect(promptsOf(models[1])).toEqual([["analyst", "Check the post"]]);
     });

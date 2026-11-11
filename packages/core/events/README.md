@@ -38,6 +38,11 @@ optional and come with a requirement.
   `deniedPathGroupCodes` is the one list of the six groups of denied paths.
   `readSandboxOpened(value)` reads a stored view without throwing, and gives
   `null` for a damaged one.
+- `run.started.version`: which version of the workspace the run read,
+  `{ reads: "live-version", commit, versionDate }` with the date that version
+  was made, or `{ reads: "saved-files" }` (`RunVersion`). A child run has its
+  parent's. Older logs have none, which means "not recorded", not the saved
+  files (requirement `run-started-version`).
 - `sandbox.off`: a step ran without the sandbox because a person chose to run
   the agent on this computer, with `chosenAt`, when they chose it
   (requirement `sandbox-off`).

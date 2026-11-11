@@ -5,6 +5,7 @@ import type {
   RunKind,
   RunSummary,
   RunTrigger,
+  RunVersion,
 } from "@halonicjs/events";
 import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./chat.ts";
 
@@ -37,6 +38,14 @@ export interface StartRunRequest {
    * `run.started`, and the run never runs them. None when absent.
    */
   cantTry?: readonly CantTryStep[];
+  /**
+   * Which version of the workspace the run reads, as the caller loaded it:
+   * the live version, with its commit and date, or the saved files. It goes
+   * on `run.started`, and the run's child runs record it too. Not recorded
+   * when absent. The executor doesn't check it against `definitionsOf`, so
+   * the caller passes the version of the files it gives the run.
+   */
+  version?: RunVersion;
   /**
    * The id the run gets, for a start that may be repeated: a routine fire, a
    * mail or a signal. When a run with this id already exists, `start` returns

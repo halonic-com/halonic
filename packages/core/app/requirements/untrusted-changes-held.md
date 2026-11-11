@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-65 section F, `workspace.trust.untrusted-changes-held` (rule C, HAL-3268); agreed on HAL-3362; HAL-3277
+- Source: HAL-65 section F, `workspace.trust.untrusted-changes-held` (rule C, HAL-3268); agreed on HAL-3362; HAL-3277; HAL-5218
 
-When the assistant writes a file while the workspace is untrusted, the review service shall mark its record as written untrusted, and keep the mark through later writes until the record goes. While the mark is there, the Try it and Test source shall use the file's baseline whole, even after the workspace is trusted, and count its line changes as left out from before trust.
+When the assistant writes a file while the workspace is untrusted, or Undo or Redo writes the assistant's text back then, the review service shall mark its record as written untrusted, and keep the mark through later writes until the record goes. While the mark is there, the Try it and Test source shall use the file's baseline whole, even after the workspace is trusted, and count its line changes as left out from before trust.
 
 ## Examples
 
@@ -14,3 +14,6 @@ When the assistant writes a file while the workspace is untrusted, the review se
 - Given the same, and the person accepts the change to `intake`,
   when Try it asks for its source,
   then the source has the new `intake` and leaves nothing out.
+- Given the assistant changed agent `clerk` while the workspace was trusted, the person rejected it, and the workspace is no longer trusted,
+  when the person undoes the Reject,
+  then `clerk` has the assistant's text again and its record is marked as written untrusted.

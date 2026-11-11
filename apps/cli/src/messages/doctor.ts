@@ -96,9 +96,12 @@ export const doctorMessages = defineMessages("doctor", {
   /** Under {@link harnessMissing}. */
   installHarness: (harness: string) =>
     phrase`Fix: install ${harness}, then run halonic doctor again.`,
-  /** Harnesses !: "Claude Code 0.9.1 isn't supported. Halonic needs 1.0.0 or newer." */
+  /**
+   * Harnesses !: "Claude Code 0.9.1 isn't supported. Halonic needs 1.0.0 or newer."
+   * `supported` as `detect()` writes it, ">=1.0.0".
+   */
   harnessUnsupported: (harness: string, version: string, supported: string) =>
-    phrase`${harness} ${version} isn't supported. Halonic needs ${supported} or newer.`,
+    phrase`${harness} ${version} isn't supported. Halonic needs ${oldestSupported(supported)} or newer.`,
   /** Under {@link harnessUnsupported}. */
   updateHarness: (harness: string) =>
     phrase`Fix: update ${harness}, then run halonic doctor again.`,
@@ -135,4 +138,15 @@ function halonicUses(use: DataUse): string {
 function listed(names: readonly string[], conjunction: "and" | "or" = "and"): string {
   const last = names.at(-1) ?? "";
   return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} ${conjunction} ${last}`;
+}
+
+/**
+ * The oldest version a harness supports, as a person reads it after
+ * "Halonic needs": `detect()` writes it as ">=X.Y.Z".
+ *
+ * @example
+ * oldestSupported(">=1.0.0"); // "1.0.0"
+ */
+export function oldestSupported(supported: string): string {
+  return supported.replace(/^>=\s*/, "");
 }

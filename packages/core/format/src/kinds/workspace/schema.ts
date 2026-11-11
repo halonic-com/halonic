@@ -2,7 +2,7 @@ import { type Infer, s } from "@halonicjs/schema-kit";
 import { id, ModelParams, version } from "../../shared/fields.ts";
 
 /**
- * This workspace's own choices for the session AI (chat sessions, Build
+ * This workspace's own choices for the assistant model (chat sessions, Build
  * mode), on top of the global AI agent each person sets. An empty field
  * follows the global agent.
  */
@@ -69,5 +69,5 @@ export const WorkspaceSettings = s
 
 /** The settings in `workspace.yaml`, with defaults filled in. */
 export type WorkspaceSettings = Infer<typeof WorkspaceSettings>;
-/** The session AI settings of a workspace. */
+/** The assistant settings of a workspace. */
 export type SessionAssistant = Infer<typeof SessionAssistant>;

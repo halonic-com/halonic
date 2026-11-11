@@ -80,7 +80,9 @@ await eventually(
 
 `within` counts only the time waited between checks, not the time the
 checks take. A slow machine runs exactly the same checks as a fast one.
-Vitest's test timeout stays the limit on real time. Without `wait`,
+Vitest's test timeout stays the limit on real time; on a loaded machine,
+`HALONIC_TEST_TIMEOUT` (milliseconds) raises it for tests and hooks, as
+described in [Checks](checks.md#running-checks-on-your-machine). Without `wait`,
 `eventually` waits on a real timer, for checks on a real process.
 
 Don't use `vi.waitFor` or `expect.poll` in scenario tests. They time out on

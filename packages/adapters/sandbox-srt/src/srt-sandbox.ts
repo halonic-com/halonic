@@ -113,7 +113,7 @@ export class SrtSandbox implements Sandbox {
       return (await machine.hasWindowsSandbox())
         ? null
         : {
-            reason: "windows",
+            reason: "setup-needed",
             missing:
               "srt's Windows install is missing; run `srt windows-install` once as an administrator",
           };

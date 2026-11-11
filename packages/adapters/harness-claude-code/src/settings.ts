@@ -1,13 +1,7 @@
 import { type SettingsFolderWriter, writeSettingsFiles } from "@halonicjs/adapter-harness-kit";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName, permissionServerName } from "./bridge-tools.ts";
-
-/**
- * The variable that carries the run token for the bridge's MCP server. The
- * MCP settings name it in the server's header, and Claude Code fills it in
- * from its environment, so the token is never written into a file.
- */
-export const claudeCodeRunTokenVariable = "HALONIC_RUN_TOKEN";
+import { claudeCodeRunTokenVariable } from "./environment.ts";
 
 /** The file in the settings folder that names the bridge's MCP server; Claude Code reads it with `--mcp-config`. */
 export const mcpSettingsFile = "halonic-mcp.json";

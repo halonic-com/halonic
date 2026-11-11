@@ -44,15 +44,19 @@ const request: ChatTurnRequest = {
 };
 
 verifies("engine.local-chat-turn", () => {
-  it("runs the turn on the resolved model with its servers' tools", async () => {
+  it("runs the turn on the resolved model with its Halonic tools", async () => {
     const model = new ScriptedModel([callAnswer(call("c1", "lookup")), textAnswer("Found it")]);
-    const mail = new ScriptedConnector("mail", [{ ...listedTool("lookup"), risk: "read" }]);
-    const { executor, resolved } = executorOn(model, { connectors: [mail] });
+    const looked: Record<string, unknown>[] = [];
+    const lookup = halonicTool("lookup", async (args) => {
+      looked.push(args);
+      return "INV-7";
+    });
+    const { executor, resolved } = executorOn(model, { halonicTools: [lookup] });
 
     const response = await executor.chatTurn(request);
 
     expect(resolved).toEqual([request]);
-    expect(mail.calls).toEqual([{ name: "lookup", args: {} }]);
+    expect(looked).toEqual([{}]);
     expect(response).toMatchObject({
       model: "scripted-1",
       content: "Found it",
@@ -89,15 +93,67 @@ verifies("engine.local-chat-turn", () => {
     });
   });
 
-  it("refuses a connector tool whose listing gives no risk, which counts as one that writes", async () => {
-    const model = new ScriptedModel([callAnswer(call("c1", "archive")), textAnswer("Kept")]);
-    const mail = new ScriptedConnector("mail", [listedTool("archive")]);
+  it("refuses a connector tool whose listing says it only reads or gives no risk, since both count as writing", async () => {
+    const model = new ScriptedModel([
+      callAnswer(call("c1", "lookup"), call("c2", "archive")),
+      textAnswer("Kept"),
+    ]);
+    const mail = new ScriptedConnector("mail", [
+      { ...listedTool("lookup"), risk: "read" },
+      listedTool("archive"),
+    ]);
     const { executor } = executorOn(model, { connectors: [mail] });
 
     const response = await executor.chatTurn(request);
 
     expect(mail.calls).toEqual([]);
-    expect((response.refusals ?? []).map((refusal) => refusal.name)).toEqual(["archive"]);
+    expect((response.refusals ?? []).map((refusal) => refusal.name)).toEqual(["lookup", "archive"]);
+  });
+
+  it("refuses a read tool that its connector file puts under approve, or under all", async () => {
+    for (const approve of [["lookup"], "all" as const]) {
+      const model = new ScriptedModel([callAnswer(call("c1", "lookup")), textAnswer("Kept")]);
+      const mail = new ScriptedConnector("mail", [{ ...listedTool("lookup"), risk: "read" }]);
+      const { executor } = executorOn(model, {
+        connectors: [mail],
+        chatConnectorToolsOf: async () => ({ mail: { approve } }),
+      });
+
+      const response = await executor.chatTurn(request);
+
+      expect(mail.calls).toEqual([]);
+      expect(response.refusals).toEqual([
+        { source: "mail", name: "lookup", refused: "call", reason: chatApprovalReason },
+      ]);
+    }
+  });
+
+  it("still refuses a read tool that its connector file leaves out of approve, since a listed read counts as writing", async () => {
+    const model = new ScriptedModel([callAnswer(call("c1", "lookup")), textAnswer("Kept")]);
+    const mail = new ScriptedConnector("mail", [{ ...listedTool("lookup"), risk: "read" }]);
+    const { executor } = executorOn(model, {
+      connectors: [mail],
+      chatConnectorToolsOf: async () => ({ mail: { approve: ["archive"] } }),
+    });
+
+    const response = await executor.chatTurn(request);
+
+    expect(mail.calls).toEqual([]);
+    expect((response.refusals ?? []).map((refusal) => refusal.name)).toEqual(["lookup"]);
+  });
+
+  it("offers a chat turn only the tools its connector file allows, and no connector without a file", async () => {
+    const model = new ScriptedModel([textAnswer("Hello")]);
+    const mail = new ScriptedConnector("mail", [listedTool("lookup"), listedTool("archive")]);
+    const tracker = new ScriptedConnector("tracker", [listedTool("search_issues")]);
+    const { executor } = executorOn(model, {
+      connectors: [mail, tracker],
+      chatConnectorToolsOf: async () => ({ mail: { allow: ["lookup"], approve: [] } }),
+    });
+
+    await executor.chatTurn(request);
+
+    expect((model.requests[0]?.tools ?? []).map((tool) => tool.name)).toEqual(["lookup"]);
   });
 
   it("offers its Halonic tools after the caller's and names the request's agent", async () => {

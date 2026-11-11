@@ -82,8 +82,17 @@ export class MessageStreamReader {
     return readReply({ ...this.#message, content: this.#blocks });
   }
 
+  /**
+   * The API starts blocks in order, 0, 1, 2 and on. Any other index is
+   * refused: a far one would grow the block list to that length.
+   */
   #startBlock(index: number, block: Record<string, unknown>): ChatStreamEvent[] {
-    this.#blocks[index] = { ...block };
+    if (index !== this.#blocks.length) {
+      throw new ReplyFormatError(
+        `block ${index} started, but block ${this.#blocks.length} was next`,
+      );
+    }
+    this.#blocks.push({ ...block });
     switch (block["type"]) {
       case "text":
         return textPiece("text", textOf(block["text"]));

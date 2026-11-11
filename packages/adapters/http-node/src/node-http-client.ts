@@ -1,5 +1,5 @@
 import { lookup as dnsLookup } from "node:dns/promises";
-import type { HostClass } from "@halonicjs/adapter-http-kit";
+import type { AddressCheckingHttpClient, HostClass } from "@halonicjs/adapter-http-kit";
 import type { HttpClient } from "@halonicjs/ports";
 import { AddressRefusedError } from "./address-refused.ts";
 import { checkedAddresses, fixedLookup, type Resolve } from "./checked-addresses.ts";
@@ -36,15 +36,17 @@ const originBoundHeaders = ["authorization", "cookie", "proxy-authorization"];
  * checks every address against the host's class, and connects only to an
  * address it checked, so DNS rebinding can't get around it. It decompresses
  * responses itself. `redirect` and `signal` pass through as the port asks.
+ * It is an `AddressCheckingHttpClient`, the transport the integration kit's
+ * loader asks for.
  *
  * @example
  * const http = createNodeHttpClient({ hostClass: () => "public" });
  * const response = await http.fetch("https://api.example.com/v1", { redirect: "manual" });
  */
-export function createNodeHttpClient(options: NodeHttpOptions): HttpClient {
+export function createNodeHttpClient(options: NodeHttpOptions): AddressCheckingHttpClient {
   const resolve = options.resolve ?? resolveWithNode;
   const maxRedirects = options.maxRedirects ?? 20;
-  return {
+  const client: HttpClient = {
     async fetch(rawUrl: string, init: RequestInit = {}): Promise<Response> {
       const mode = init.redirect ?? "follow";
       let url = new URL(rawUrl);
@@ -68,6 +70,8 @@ export function createNodeHttpClient(options: NodeHttpOptions): HttpClient {
       }
     },
   };
+  // This is the transport that checks addresses, so it is the one place that says so.
+  return client as AddressCheckingHttpClient;
 
   async function sendChecked(
     url: URL,

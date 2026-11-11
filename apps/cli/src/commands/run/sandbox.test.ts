@@ -147,8 +147,9 @@ verifies("cli.run-sandbox-gate", () => {
 
     expect(code).toBe(exitCode.unavailable);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't run support-reply: this computer's engine can't run agents in a harness yet, and Writer is in claude-code. Nothing ran.",
+      "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
     );
+    expect(io.stderr[1]).toBe("  Run it with --harness halonic.");
     expect(io.stdout).toEqual([]);
     expect(await runsKept()).toBe(0);
   });
@@ -161,7 +162,7 @@ verifies("cli.run-sandbox-gate", () => {
 
     expect(code).toBe(exitCode.unavailable);
     expect(checks).toBe(0);
-    expect(io.stderr[0]).toContain("can't run agents in a harness yet");
+    expect(io.stderr[0]).toContain("Halonic can't run agents in Claude Code yet");
     expect(await runsKept()).toBe(0);
   });
 
@@ -169,7 +170,10 @@ verifies("cli.run-sandbox-gate", () => {
     await writerWith("harness: claude-code\n");
     const options = Object.keys(runCommand(bubblewrapMissing).options ?? {});
 
-    expect(options.sort()).toEqual(["dir", "event", "input"]);
+    // `--harness` picks the harness, never the sandbox: a program it names is
+    // checked like one the file names, and `halonic` starts no program
+    // (`cli.run-harness`).
+    expect(options.sort()).toEqual(["dir", "event", "harness", "input"]);
     for (const flag of ["--no-sandbox", "--unsafe", "--skip-sandbox", "--sandbox=off"]) {
       const { code } = await run(bubblewrapMissing, flag);
       expect(code).toBe(exitCode.usage);

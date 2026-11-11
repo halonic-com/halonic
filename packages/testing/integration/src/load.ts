@@ -1,4 +1,5 @@
 import {
+  type AddressCheckingHttpClient,
   type LoadedIntegration,
   type LoadProblem,
   loadIntegration,
@@ -32,7 +33,9 @@ export function loadSubject(
       // The canary store answers by name, so each secret is picked as itself.
       secretNames: Object.fromEntries(Object.keys(sheet.secrets).map((name) => [name, name])),
     },
-    transport,
+    // A replay answers from the recording and never connects anywhere, so
+    // there is no address to check.
+    transport: transport as AddressCheckingHttpClient,
     secrets: canarySecrets,
     tokens,
     capabilities: sheet.needs,

@@ -136,6 +136,11 @@ export {
   maxKnowledgeRefLength,
 } from "./knowledge-for-model.ts";
 export {
+  type KeptListedTool,
+  type RefusedListedTool,
+  readListedTool,
+} from "./listed-tool.ts";
+export {
   httpToolServer,
   listedToolFingerprint,
   listedToolFingerprintPrefix,
@@ -145,7 +150,7 @@ export {
   strictCanonicalJson,
   writtenDigest,
 } from "./listed-tool-fingerprint.ts";
-export { UntrustedText } from "./listed-tool-rules.ts";
+export { escapeListedText, UntrustedText } from "./listed-tool-rules.ts";
 export { LiveRoutines, type LiveRoutinesOptions } from "./live-routines.ts";
 export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
 export {
@@ -241,6 +246,12 @@ export {
   pluginTrustFingerprint,
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
+export {
+  ProgramCopies,
+  type ProgramCopyLease,
+  ProgramCopyUnavailableError,
+  type ProgramCopyVcs,
+} from "./program-copies.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
 export {
   type DataFolder,
@@ -344,6 +355,7 @@ export {
   type RunSourceInput,
   type RunStartedBy,
   runSourceFor,
+  runVersionOf,
 } from "./run-source.ts";
 export {
   type RunnerFence,
@@ -434,6 +446,7 @@ export {
   type FollowOptions,
   RunFollowStopped,
   type StartedRun,
+  type StartRunOptions,
   WorkflowRuns,
 } from "./workflow-runs.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";

@@ -116,12 +116,27 @@ export class GitWorktrees {
     try {
       await onCopy(["read-tree", version]);
       await onCopy(["add", "--all", "--", "."]);
-      const changed = parseNameStatus(await onCopy([...diffArgs, "--name-status", version]));
-      const diffs: VcsFileDiff[] = [];
-      for (const { path, status } of changed.filter((each) => !isPrivateWorkspacePath(each.path))) {
-        const diff = (await onCopy([...diffArgs, version, "--", path])).toString("utf8");
-        diffs.push({ path, status, diff });
-      }
+      // Only public paths go to the diff, so a private file's content never
+      // comes out of git into this process.
+      const changed = parseNameStatus(await onCopy([...diffArgs, "--name-status", version])).filter(
+        ({ path }) => !isPrivateWorkspacePath(path),
+      );
+      const patches = (
+        await inPathBatches(
+          changed.map(({ path }) => path),
+          async (batch) => {
+            const paths = new Set(batch);
+            const inBatch = changed.filter(({ path }) => paths.has(path));
+            const output = await onCopy([...diffArgs, version, "--", ...batch]);
+            return splitPatches(output, inBatch);
+          },
+        )
+      ).flat();
+      const diffs: VcsFileDiff[] = changed.map(({ path, status }, at) => ({
+        path,
+        status,
+        diff: patches[at] as string,
+      }));
       // By UTF-16 code unit, whatever the locale, as the memory adapter and
       // `listAt` sort paths. Git's own order is by UTF-8 byte, which only
       // differs for a path mixing characters beyond U+FFFF with U+E000-U+FFFF.
@@ -272,16 +287,48 @@ async function removeWorktree(worktree: Worktree): Promise<void> {
 
 const statusOfLetter: Readonly<Record<string, VcsDiffStatus>> = { A: "added", D: "deleted" };
 
+/** A changed file in `diff --name-status -z`. */
+interface ChangedFile {
+  path: string;
+  status: VcsDiffStatus;
+  /** How many `diff --git` sections its patch has: two for a type change, which is a delete and an add. */
+  sections: number;
+}
+
 /** The changed files in `diff --name-status -z`: a status letter, then a path. */
-function parseNameStatus(output: Buffer): { path: string; status: VcsDiffStatus }[] {
+function parseNameStatus(output: Buffer): ChangedFile[] {
   const entries = nulSeparated(output);
-  const changed: { path: string; status: VcsDiffStatus }[] = [];
+  const changed: ChangedFile[] = [];
   for (let at = 0; at + 1 < entries.length; at += 2) {
+    const letter = entries[at] as string;
     // `M`, or `T` for a file whose type changed, is a modification.
-    const status = statusOfLetter[entries[at] as string] ?? "modified";
-    changed.push({ path: entries[at + 1] as string, status });
+    const status = statusOfLetter[letter] ?? "modified";
+    changed.push({ path: entries[at + 1] as string, status, sections: letter === "T" ? 2 : 1 });
   }
   return changed;
+}
+
+/**
+ * The patch of each of `changed`, from the one patch git gives for all of
+ * them. Git lists the files in the same order in both, and every section
+ * starts with a `diff --git` line: a line of a file's content always
+ * starts with a space, `+`, `-` or `\`, so none can be mistaken for one.
+ *
+ * @throws Error when the patch has other sections than the files need
+ */
+function splitPatches(output: Buffer, changed: readonly ChangedFile[]): string[] {
+  const text = output.toString("utf8");
+  const sections = text.length === 0 ? [] : text.split(/^(?=diff --git )/mu);
+  const patches: string[] = [];
+  let next = 0;
+  for (const { sections: count } of changed) {
+    patches.push(sections.slice(next, next + count).join(""));
+    next += count;
+  }
+  if (next !== sections.length || patches.some((patch) => patch === "")) {
+    throw new Error("Git's patch doesn't match its list of changed files.");
+  }
+  return patches;
 }
 
 /** A file's first line, without its line ending; `null` when the file isn't there. */

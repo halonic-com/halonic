@@ -1,6 +1,7 @@
 import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
+import { oldestSupported } from "./doctor.ts";
 import { money } from "./money.ts";
 import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -68,18 +69,63 @@ export const runMessages = defineMessages("run", {
   /**
    * The reason after "Couldn't run support-reply:" when an agent of the
    * workflow is in a harness (Claude Code or Codex), which this computer's
-   * engine has no adapter for yet: `unavailable`, exit 9. Nothing ran.
+   * engine has no adapter for yet: `unavailable`, exit 9. `harness` is the
+   * id an agent file writes; the line shows its name, as doctor does.
    */
-  harnessNotAvailable: (agent: string, harness: string) =>
-    phrase`this computer's engine can't run agents in a harness yet, and ${agent} is in ${harness}. ${nothingRan}`,
-  /** Its fix. */
-  harnessNotAvailableFix: () =>
-    phrase`Set the agent to Halonic's own harness to run it with halonic run.`,
+  harnessNotAvailable: (agent: string, harness: string) => {
+    const name = trustMessages.harnessName(harness).phrase;
+    return phrase`Halonic can't run agents in ${name} yet, and ${agent} is in ${name}. ${nothingRan}`;
+  },
+  /** Its fix: `--harness halonic` runs every agent in Halonic's own loop (Liam, HAL-5367). */
+  harnessNotAvailableFix: () => phrase`Run it with --harness halonic.`,
   /** `--input`'s line in the help. */
   inputOption: () => phrase`The run's input: a JSON file, or the JSON itself.`,
   /** `--event`'s line in the help. */
   eventOption: () =>
     phrase`What to answer when the run waits for you, such as approve. One per wait, in order.`,
+  /** `--harness`'s line in the help. */
+  harnessOption: (harnesses: readonly string[]) =>
+    phrase`The harness every agent of the run runs in, in place of its own: ${listInWords(harnesses, "or")}.`,
+  /**
+   * The reason after "Couldn't run support-reply:" when `--harness` names
+   * no harness (exit 2). Words for HAL-189 6b, placeholders like doctor's
+   * Harnesses line until Sofia's check.
+   */
+  noHarness: (typed: string) =>
+    phrase`there's no harness called ${printable(typed)}. ${nothingRan}`,
+  /** Its fix: the harnesses there are. */
+  noHarnessFix: (harnesses: readonly string[]) =>
+    phrase`Use ${listInWords(harnesses, "or")}, or leave --harness out to run each agent in its own.`,
+  /** The reason when the `--harness` program isn't installed here (exit 9). */
+  harnessMissing: (harness: string) =>
+    phrase`${harness} isn't installed on this computer. ${nothingRan}`,
+  /** Its fix. */
+  installHarness: (harness: string) => phrase`Install ${harness}, then run again.`,
+  /** The reason when the `--harness` program is too old; `supported` as `detect()` writes it, ">=1.0.0". */
+  harnessUnsupported: (harness: string, version: string, supported: string) =>
+    phrase`${harness} ${version} isn't supported. Halonic needs ${oldestSupported(supported)} or newer. ${nothingRan}`,
+  /** Its fix. */
+  updateHarness: (harness: string) => phrase`Update ${harness}, then run again.`,
+  /**
+   * The reason when asking the `--harness` program for its version failed;
+   * `reason` is the harness's own sentence and ends with its full stop.
+   */
+  harnessVersionFailed: (harness: string, reason: string) =>
+    phrase`Halonic found ${harness} but couldn't ask its version: ${reason} ${nothingRan}`,
+  /** Its fix. */
+  checkHarness: (harness: string) =>
+    phrase`Check that ${harness} starts in a terminal, then run again.`,
+  /**
+   * The reason when the run's harness would move an agent from Halonic's
+   * own loop into a program while its file names allowed sites or a
+   * working folder, which no check read (exit 2). `ending` is "Nothing
+   * ran." or `runs send`'s "Nothing was sent.".
+   */
+  uncheckedHarnessFields: (agent: string, ending: Phrase) =>
+    phrase`${printable(agent)} names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. ${ending}`,
+  /** Its fix. */
+  uncheckedHarnessFieldsFix: (agent: string) =>
+    phrase`Name a harness in ${printable(agent)}'s file and trust the workspace again, or remove allowed sites and the working folder from it.`,
   /** No workflow, or more than one, on the command line (exit 2). */
   takesOneWorkflow: (given: readonly string[]) =>
     given.length === 0
@@ -190,7 +236,8 @@ function joinedFacts(facts: readonly string[]): Phrase {
 }
 
 /**
- * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (or reject)".
+ * "Answer with: halonic runs send 01jd8q approve (or reject)". No Inbox until the Studio shows one
+ * (HAL-5915).
  * Three or more events read "(or reject, hold or skip)" (revision 37). The event stays, since it is
  * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label that
  * only repeats its event, as "Approve" for approve, is left out (HAL-4190). A label is the author's
@@ -216,8 +263,8 @@ function answerLine(
   const firstLabel = labelOf(first);
   const line =
     firstLabel === undefined
-      ? phrase`Answer in Studio's Inbox, or here: ${command}`
-      : phrase`Answer in Studio's Inbox, or here: ${command} ${dim(`(${firstLabel})`)}`;
+      ? phrase`Answer with: ${command}`
+      : phrase`Answer with: ${command} ${dim(`(${firstLabel})`)}`;
   if (others.length === 0) {
     return line;
   }

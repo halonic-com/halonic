@@ -117,6 +117,18 @@ verifies("plugins.plugin-cards", () => {
     expect(view.querySelector('[aria-hidden="true"].flex-col')).toBeNull();
     await act(async () => vi.advanceTimersByTime(300));
     expect(view.querySelectorAll('[aria-hidden="true"].flex-col > span')).toHaveLength(2);
+    expect(button(view, "Refresh Today's weather").getAttribute("aria-busy")).not.toBe("true");
+  });
+
+  it("restarts the first call on Refresh, and keeps the latest answer", async () => {
+    const { caller, calls } = callerWithAnswers();
+    const { view } = showCard(caller);
+    act(() => button(view, "Refresh Today's weather").click());
+    expect(calls).toHaveLength(2);
+    await act(async () => calls[0]?.settle("Old"));
+    expect(view.textContent).not.toContain("Old");
+    await act(async () => calls[1]?.settle("Sunny"));
+    expect(view.textContent).toContain("Sunny");
   });
 
   it("calls the tool again on Refresh, keeping the answer until the new one comes", async () => {
@@ -126,6 +138,7 @@ verifies("plugins.plugin-cards", () => {
     act(() => button(view, "Refresh Today's weather").click());
     expect(calls).toHaveLength(2);
     expect(view.textContent).toContain("Sunny");
+    expect(button(view, "Refresh Today's weather").getAttribute("aria-busy")).toBe("true");
     await answer("Rain");
     expect(view.textContent).toContain("Rain");
     expect(view.textContent).not.toContain("Sunny");
@@ -150,6 +163,7 @@ verifies("plugins.plugin-cards", () => {
     expect(view.textContent).toContain("Weather isn't trusted yet, so this card is empty.");
     expect(view.textContent).toContain("From the Weather plugin");
     expect(() => button(view, "Refresh Today's weather")).toThrow();
+    expect(view.querySelector("h3")?.parentElement?.className).toContain("min-h-control-sm");
     act(() => button(view, "Review").click());
     expect(review).toHaveBeenCalledOnce();
     expect(calls).toEqual([]);

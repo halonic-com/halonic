@@ -12,6 +12,7 @@ import type { ProfileEnvironment } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext } from "./command.ts";
+import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type LocalEngine,
   type LocalEngineInput,
@@ -41,8 +42,12 @@ export interface WorkspaceEngineSetup {
   readonly http: HttpClient;
   /** Where the profile folder is; this process's by default. */
   readonly profile?: ProfileEnvironment;
-  /** The engine's clock and ids; the computer's own by default. */
-  readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer">;
+  /**
+   * The engine's clock and ids; the computer's own by default. `onWokeUp`
+   * hears each wake-up once its deliveries have settled, so a test that
+   * moves the clock can wait for them.
+   */
+  readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer" | "onWokeUp">;
   /** The sandbox and the "On this computer" choices; this computer's, in `profile`, by default. */
   readonly sandboxGate?: () => SandboxGateHost;
 }
@@ -97,6 +102,9 @@ export interface WorkspaceEngine extends LocalEngine {
  * command closes it in a `finally`. Trust is the command's to check first,
  * each in its own words. Each retry of a failing step shows with `--debug`.
  *
+ * @throws KindedError `invalid_input` when a run's harness would move an
+ *   agent whose allowed sites or working folder no check read into a
+ *   program (`checkHarnessOverride`): no engine was opened (exit 2)
  * @throws SandboxRefusedError when an agent of a run needs the sandbox and
  *   it can't start here: no engine was opened, so nothing ran (exit 9)
  * @throws KindedError `conflict` when another engine is open on the workspace
@@ -118,6 +126,7 @@ export async function openWorkspaceEngine(
   const machine = await sandboxGateMachine(host, target.dir.root);
   const unsandboxed = new Map<string, UnsandboxedAgent>();
   for (const run of target.runs) {
+    checkHarnessOverride(target.workspace, run, target.ending);
     for (const agent of await checkRunSandbox(target.workspace, run, machine, target.ending)) {
       unsandboxed.set(agent.name, agent);
     }
@@ -147,14 +156,17 @@ export async function openWorkspaceEngine(
     // The scheduler retries a failed step; one that keeps failing stops the command with its
     // error, or goes to `onStuck`, and after an hour to `onGaveUp`.
     reportError: stuck.report,
-    // Only failed wake-ups in a row count, as for ticks (HAL-5164).
-    onWokeUp: () => stuck.succeeded("wake-up"),
-    // The same for a timer: only an hour of failures in a row gives up on its run.
+    // A timer that worked starts over: only an hour of failures in a row gives up on its run.
     onTimerDone: (timer) => stuck.succeeded(timer),
     holdsTimer: (timer) => stuck.holds(timer),
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
     ...(target.routines === undefined ? {} : { routines: countedTicks(target.routines, stuck) }),
     ...setup.engine,
+    // Only failed wake-ups in a row count, as for ticks (HAL-5164).
+    onWokeUp: () => {
+      stuck.succeeded("wake-up");
+      setup.engine?.onWokeUp?.();
+    },
   });
   opened = engine;
   return {
