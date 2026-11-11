@@ -83,6 +83,7 @@ export function List<Id extends string>({
   onOpen,
   onOpenInNewTab,
   selection,
+  current,
   dense = false,
   flush: flushProp,
   empty,
@@ -181,6 +182,7 @@ export function List<Id extends string>({
                   onOpen={onOpen}
                   onOpenInNewTab={onOpenInNewTab}
                   selection={selection}
+                  current={current === row.id}
                 />
               ))}
             </tbody>
@@ -217,6 +219,8 @@ interface RowProps<Id extends string> {
   readonly onOpen: ((id: Id) => void) | undefined;
   readonly onOpenInNewTab: ((id: Id) => void) | undefined;
   readonly selection: ListSelection<Id> | undefined;
+  /** The row is the list's `current` one. */
+  readonly current: boolean;
 }
 
 /** The radius of the box's corners, on the cells that sit in them, so their fills stay inside. */
@@ -296,11 +300,13 @@ function Row<Id extends string>({
   onOpen,
   onOpenInNewTab,
   selection,
+  current,
 }: RowProps<Id>) {
   const isSelected = selection?.selected.has(row.id) === true;
   const isUnavailable = row.unavailable !== undefined;
   const reasonId = useId();
-  const state = rowStateClasses[rowState(isUnavailable, isSelected)];
+  // Being current only changes the row's look: its `aria-selected` and checkbox follow the selection.
+  const state = rowStateClasses[rowState(isUnavailable, isSelected || current)];
   const cells = cellClasses({ look, first, top, last, state, hasCheck, hasMore });
   const mainColumn = hasCheck ? 1 : 0;
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({
@@ -314,6 +320,7 @@ function Row<Id extends string>({
   return (
     <tr
       aria-selected={selection === undefined ? undefined : isSelected}
+      aria-current={current ? true : undefined}
       aria-disabled={isUnavailable ? true : undefined}
       className={`group ${state.row}`}
     >

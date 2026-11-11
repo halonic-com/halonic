@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { errorMessageFor } from "../errors/error-message.ts";
 import { type HomeCardContribution, type HomeSection, homeSectionTitles } from "../points/home.ts";
@@ -91,10 +92,16 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
   };
   const focusMoved = useCallback(() => setFocusPending(false), []);
   const [empty, setEmpty] = useState(false);
+  const signal = useCardSignal(card, context);
 
   return (
     <section aria-labelledby={headingId} hidden={empty}>
-      <ListHeading id={headingId} headingRef={headingRef} name={homeSectionTitles[card.id]} />
+      <ListHeading
+        id={headingId}
+        headingRef={headingRef}
+        name={homeSectionTitles[card.id]}
+        {...(signal === undefined ? {} : { detail: signal })}
+      />
       <ViewErrorBoundary
         // A new attempt starts a new boundary, which forgets the error and mounts the card again.
         key={attempt}
@@ -117,6 +124,24 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
       </ViewErrorBoundary>
     </section>
   );
+}
+
+/**
+ * The words of the card's signal for its heading, such as "1 waiting", or `undefined` at zero or
+ * without one. Read again whenever the card says its signal changed.
+ */
+function useCardSignal(card: HomeCardContribution, context: WorkspaceContext): string | undefined {
+  // Home builds a new context each render; the latest one is read, so the section subscribes once.
+  const latest = useRef(context);
+  latest.current = context;
+  const subscribe = useCallback(
+    (listener: () => void) => card.subscribeSignal?.(latest.current, listener) ?? (() => {}),
+    [card],
+  );
+  return useSyncExternalStore(subscribe, () => {
+    const signal = card.signal?.(latest.current);
+    return signal === undefined || signal.value <= 0 ? undefined : signal.spoken;
+  });
 }
 
 /** What a section shows while its card loads: none for Get set up, cards for Cards, else rows. */

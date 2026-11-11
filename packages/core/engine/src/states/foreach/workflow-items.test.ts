@@ -128,14 +128,18 @@ verifies("engine.foreach-workflow-items", () => {
     });
   });
 
-  it("fails the run when an item's child run waits", () => {
+  it("fails the run and cancels every item's child run when one waits", () => {
     const waiting = told("r-acme.2.0", { status: "waiting", events: ["approve", "reject"] });
-    const { log } = play(greetWorkflow(), [start, waiting], undefined, workflows);
+    const { log, decisions } = play(greetWorkflow(), [start, waiting], undefined, workflows);
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       error:
         'Workflow "reply" in item 0 of for-each state "greet" waits for approve, reject; an item\'s child run must finish without waiting.',
     });
+    expect(decisions[1]?.effects).toEqual([
+      { type: "cancel-child", childRunId: "r-acme.2.0" },
+      { type: "cancel-child", childRunId: "r-acme.2.1" },
+    ]);
   });
 
   it("records the child's failure, then fails the run", () => {

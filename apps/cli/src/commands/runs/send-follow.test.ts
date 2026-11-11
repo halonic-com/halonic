@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +7,7 @@ import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-n
 import { AgentPlacement, RunHistory } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { SandboxCheck } from "@halonicjs/ports";
-import type { ProfileEnvironment } from "@halonicjs/profile";
+import { type ProfileEnvironment, profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -98,6 +98,38 @@ async function eventsOfTheRun(): Promise<readonly RunEvent[]> {
   const [run] = (await new RunHistory(runs).listRuns()).runs;
   if (run === undefined) throw new Error("The test's run wasn't stored.");
   return runs.events(run.id);
+}
+
+/**
+ * Rewrites the one run's log so its `run.started` names `harness`, as a run
+ * started with `halonic run --harness` would. No engine can start such a run
+ * here yet, so the test writes what it would have left.
+ */
+async function startedInHarness(harness: string): Promise<void> {
+  const [run] = (await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns()).runs;
+  if (run === undefined) throw new Error("The test's run wasn't stored.");
+  const folders = await workspaceFolders(
+    profileFolder(profile),
+    await realpath(acme),
+    webCryptoDigest,
+  );
+  const log = join(folders.runsFolder(), `${run.id}.jsonl`);
+  const lines = (await readFile(log, "utf8")).split("\n").map((line) => {
+    if (line === "") return line;
+    const event = JSON.parse(line) as RunEvent;
+    return event.type === "run.started" ? JSON.stringify({ ...event, harness }) : line;
+  });
+  await writeFile(log, lines.join("\n"));
+}
+
+/**
+ * Gives Writer, which runs in Halonic's own loop, a working folder, and
+ * trusts Acme as it is then, so only the harness check can stop a send.
+ */
+async function writerWithWorkingFolder(): Promise<void> {
+  const file = join(acme, "hubs/support/agents/writer.agent.yaml");
+  await writeFile(file, `${await readFile(file, "utf8")}workingFolder: tools\n`);
+  await trustAcme();
 }
 
 /** Lets Writer reach a local Ollama, so a run in Acme reaches more than the test model. */
@@ -213,5 +245,23 @@ verifies("cli.commands.runs.send", () => {
       );
       expect(await eventsOfTheRun()).toEqual(before);
     });
+  });
+});
+
+// `cli.run-harness` item 4: `runs send` refuses as `run` does, ending "Nothing was sent.".
+verifies("cli.run-harness", () => {
+  it("refuses a run whose harness would move an agent with unchecked fields into a program, and sends nothing", async () => {
+    await startWaitingRun();
+    await startedInHarness("claude-code");
+    const before = await eventsOfTheRun();
+    await writerWithWorkingFolder();
+
+    const { code, io } = await halonic(["runs", "send", "01jd8q", "approve"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't send approve to run 01jd8q: Writer names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. Nothing was sent.",
+    );
+    expect(await eventsOfTheRun()).toEqual(before);
   });
 });

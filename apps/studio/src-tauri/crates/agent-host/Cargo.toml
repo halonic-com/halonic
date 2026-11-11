@@ -11,6 +11,8 @@ publish.workspace = true
 # Reads the host's handshake line, `{"url","token"}`.
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
+# Checks the WSL runtime archive's SHA-256 before it goes into the distro.
+sha2 = { version = "=0.10.9", default-features = false }
 
 [lints]
 workspace = true

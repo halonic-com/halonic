@@ -102,3 +102,21 @@ export function exitOnceWritten(
     }
   };
 }
+
+/** An output stream that reports a failed write as an `error` event: `process.stdout` or `process.stderr`. */
+export interface ErrorEmitter {
+  on(event: "error", listener: (error: Error) => void): unknown;
+}
+
+/**
+ * Makes a closed pipe end the output quietly, as when `halonic run … | head -2`
+ * has read its two lines (HAL-6007): text written after that is dropped and
+ * the command finishes its work. Any other write error still throws, as it
+ * did without this.
+ */
+export function quietOnClosedPipe(stream: ErrorEmitter): void {
+  stream.on("error", (error) => {
+    if ((error as NodeJS.ErrnoException).code === "EPIPE") return;
+    throw error;
+  });
+}

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HarnessAgent } from "@halonicjs/engine";
@@ -139,6 +139,19 @@ verifies("harness-kit.harness-profile", () => {
       await expect(profilesWith().profileOf(agentWith(null), bridge)).rejects.toThrow(
         /is really .*where it can't work/,
       );
+    });
+
+    it("makes no folder in .git before it refuses a working folder that leads there (HAL-5596)", async () => {
+      const { workspace } = computer;
+      await symlink(join(workspace, ".git"), join(workspace, "files"), "junction");
+
+      await expect(
+        profilesWith({ workingFolder: "files/hooks/post-checkout" }).profileOf(
+          agentWith(null),
+          bridge,
+        ),
+      ).rejects.toThrow(/is really .*where it can't work/);
+      await expect(readdir(join(workspace, ".git", "hooks"))).resolves.toEqual([]);
     });
 
     it("refuses a working folder through a link to a folder that isn't there", async () => {

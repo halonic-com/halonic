@@ -59,7 +59,13 @@ export interface LocalRunsOptions {
  * has `connectorCalls`.
  */
 export function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["type"]> {
-  const built: Effect["type"][] = ["call-model", "set-timer", "start-child", "tell-parent"];
+  const built: Effect["type"][] = [
+    "call-model",
+    "set-timer",
+    "start-child",
+    "tell-parent",
+    "cancel-child",
+  ];
   if (options.harnesses !== undefined) built.push("run-harness", "answer-harness");
   if (options.connectorCalls !== undefined) built.push("call-tool");
   return new Set(built);

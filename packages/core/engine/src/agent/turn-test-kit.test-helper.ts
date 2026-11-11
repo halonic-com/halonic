@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   ChatResponse,
   Clock,
   ConnectorClient,
@@ -68,6 +69,8 @@ export interface TestTurn {
   pricing?: Pick<ResolvedModel, "local" | "price">;
   /** Checks each call; {@link runEveryCall} when left out. */
   checkCall?: CallChecker;
+  /** The conversation so far; one user message asking for the Acme invoice when left out. */
+  messages?: ChatMessage[];
 }
 
 /** Runs a turn on the scripted model with a fixed clock, and gives the model back too. */
@@ -76,7 +79,7 @@ export async function runTestTurn(setup: TestTurn) {
   const input: ModelTurnInput = {
     model: { provider: model, model: "scripted-1", ...setup.pricing },
     secrets: secretsWith(),
-    messages: [{ role: "user", content: "Find the Acme invoice" }],
+    messages: setup.messages ?? [{ role: "user", content: "Find the Acme invoice" }],
     callerTools: setup.callerTools ?? [],
     halonicTools: setup.halonicTools ?? [],
     connectors: setup.connectors ?? [],

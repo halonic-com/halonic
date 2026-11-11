@@ -21,7 +21,7 @@ import { withKnowledgeFirst } from "../knowledge/knowledge-first.ts";
 import { callCost } from "./call-cost.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { checkChatToolCall } from "./check-chat-tool-call.ts";
-import { withListedToolsNotice } from "./listed-tools-notice.ts";
+import { withFencedTextsNotice } from "./fenced-texts-notice.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { type EffectBoundary, runCalls, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
@@ -95,6 +95,8 @@ export interface ModelTurnResult extends ChatResponse {
   readonly skipped: ChatTurnSkip[];
   /** The model name that gave the last answer. */
   readonly model: string;
+  /** Set when the turn reached its round limit while the model still called tools. */
+  readonly atRoundLimit?: true;
 }
 
 /**
@@ -209,7 +211,8 @@ async function askModel(
   messages: ChatMessage[],
 ) {
   const { agent } = input;
-  const sent = withListedToolsNotice(messages, tools.tools);
+  const definitions = tools.tools.map((tool) => tool.definition);
+  const sent = withFencedTextsNotice(messages, definitions);
   const asked = await models.current();
   await input.log?.append({
     type: "llm.request",
@@ -221,7 +224,7 @@ async function askModel(
   const started = input.clock.now().getTime();
   const answer = await models.chat({
     messages: sent,
-    tools: tools.tools.map((tool) => tool.definition),
+    tools: definitions,
     ...(input.params === undefined ? {} : { params: input.params }),
     meta: { agentId: agent },
   });
@@ -258,7 +261,7 @@ function endAtRoundLimit(ended: ModelTurnResult, tools: TurnTools, maxRounds: nu
   }
   ended.turn.push({ role: "assistant", content: ended.content });
   const { replay: _dropped, ...answer } = ended;
-  return { ...answer, toolCalls: [], finishReason: "length" as const };
+  return { ...answer, toolCalls: [], finishReason: "length" as const, atRoundLimit: true as const };
 }
 
 function assistantMessage(response: ChatResponse, toolCalls: ToolCall[]): ChatMessage {

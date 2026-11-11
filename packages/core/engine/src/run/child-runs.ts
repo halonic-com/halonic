@@ -4,7 +4,7 @@
 
 import type { BlobStore, RunStore } from "@halonicjs/ports";
 import type { ChildRunNow, StartChildEffect, StartInput } from "../kernel/decide-types.ts";
-import { keepDefinitions, readDefinitions } from "../kernel/kept-definitions.ts";
+import { definitionsOf, keepDefinitions } from "../kernel/kept-definitions.ts";
 import type { RunState } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
 import { maxChildDepth } from "../states/workflow/state.ts";
@@ -26,12 +26,12 @@ export async function childStart(
   effect: StartChildEffect,
   at: string,
 ): Promise<StartInput> {
-  const definitions = await readDefinitions(blobs, parent.definitionsVersion);
-  const workflows = definitions?.workflows ?? {};
+  const definitions = await definitionsOf(blobs, parent.definitionsVersion);
+  const workflows = definitions.workflows ?? {};
   const workflow = Object.hasOwn(workflows, effect.workflowId)
     ? workflows[effect.workflowId]
     : undefined;
-  if (definitions === null || workflow === undefined) {
+  if (workflow === undefined) {
     throw new Error(
       `The definitions run "${parent.runId}" started with have no workflow "${effect.workflowId}".`,
     );

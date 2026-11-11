@@ -2,12 +2,7 @@
 // then carries out the effects through the scheduler, so a run moves on one
 // step per timer, and a timer that is late or repeated changes nothing.
 
-import {
-  type RunEvent,
-  type RunFailureReason,
-  type RunSummary,
-  summarize,
-} from "@halonicjs/events";
+import type { RunEvent, RunFailureReason, RunSummary } from "@halonicjs/events";
 import { AGENT_HARNESSES } from "@halonicjs/format";
 import type {
   Clock,
@@ -34,6 +29,7 @@ import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
+import { appendFailed } from "./append-failed.ts";
 import { childNow, childStart, receiverOf, runAndChildren } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
@@ -120,6 +116,8 @@ export class LocalRuns {
     this.#feed = new RunFeed(options.store);
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
     this.#folders = new RunsProposalFolders(options.store, options.proposalFolders);
+    this.#builtEffects = builtEffectsOf(options);
+    this.#budget = budgetCheckOf(options);
     this.#harnessCalls = new LocalHarnessCalls({
       store: options.store,
       blobs: options.blobs,
@@ -127,10 +125,9 @@ export class LocalRuns {
       folders: this.#folders,
       startDeadlines: this.#startDeadlines,
       clock,
+      ...(this.#budget === undefined ? {} : { budget: this.#budget }),
       record: (runId, input) => this.#record(runId, input),
     });
-    this.#builtEffects = builtEffectsOf(options);
-    this.#budget = budgetCheckOf(options);
     this.#connectorCalls = new RunConnectorCallRunner({
       store: options.store,
       deadlines: this.#startDeadlines,
@@ -209,16 +206,26 @@ export class LocalRuns {
    */
   async cancel(runId: string): Promise<RunSummary> {
     await this.#ready();
-    const runs = await runAndChildren(this.#options.store, runId);
-    if (runs.length === 0)
+    if (!(await this.#cancelDown(runId)))
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
+    // Only now: its children are cancelled, so a call it stops records nothing in them.
+    await this.#ended(runId);
+    return this.#summary(runId);
+  }
+
+  /**
+   * Ends the run and the child run it waits on, all the way down, with
+   * `reason: "cancelled"`, and stops their harness calls.
+   *
+   * @returns whether the run has a log
+   */
+  async #cancelDown(runId: string): Promise<boolean> {
+    const runs = await runAndChildren(this.#options.store, runId);
     for (const id of runs) {
       await this.#fail(id, cancelledError, "cancelled");
       await this.#harnessCalls.stop(id);
     }
-    // Only now: its children are cancelled, so a call it stops records nothing in them.
-    await this.#ended(runId);
-    return this.#summary(runId);
+    return runs.length > 0;
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
@@ -426,14 +433,20 @@ export class LocalRuns {
       await scheduler.schedule(effect.parentRunId, timerId, this.#now());
       await this.#hearFromChild(effect.parentRunId, effect.childRunId);
       await scheduler.cancel(effect.parentRunId, timerId);
+    } else if (effect.type === "cancel-child") {
+      await this.#cancelDown(effect.childRunId);
     }
   }
 
   /**
    * Starts a child run; one that can't start fails its parent with the
    * reason. An error after the child's start is recorded goes to the caller.
+   * A parent that ended while its earlier children started, as when one of
+   * them waits in a `foreach` state, starts none: no one would end it.
    */
   async #startChild(parent: RunState, effect: StartChildEffect): Promise<void> {
+    const parentNow = await this.#options.store.get(parent.runId);
+    if (parentNow !== null && hasEnded(parentNow.status)) return;
     try {
       const start = await childStart(this.#options.blobs, parent, effect, this.#now());
       await this.#record(effect.childRunId, start);
@@ -466,23 +479,9 @@ export class LocalRuns {
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
   }
 
-  /** Ends a run that hasn't ended with `run.failed`, reading again when another write got there first. */
+  /** Ends a run that hasn't ended with `run.failed`, and tells its feed and its parent. */
   async #fail(runId: string, error: string, reason: RunFailureReason = "error"): Promise<void> {
-    const store = this.#options.store;
-    for (;;) {
-      const summary = summarize(await store.events(runId));
-      if (summary === null || hasEnded(summary.status)) return;
-      const failed: RunEvent = {
-        runId,
-        seq: summary.lastSeq + 1,
-        at: this.#now(),
-        type: "run.failed",
-        state: summary.state,
-        error,
-        reason,
-      };
-      if ((await store.append(runId, summary.lastSeq, [failed])).ok) break;
-    }
+    if (!(await appendFailed(this.#options.store, runId, error, reason, () => this.#now()))) return;
     this.#feed.notify(runId);
     await this.#tellParentOf(runId);
   }

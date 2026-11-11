@@ -1486,6 +1486,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -1580,6 +1581,14 @@ dependencies = [
 
 [[package]]
 name = "halonic-trust-store"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "halonic-workspace-files"
 version = "0.1.0"
 dependencies = [
  "serde_json",

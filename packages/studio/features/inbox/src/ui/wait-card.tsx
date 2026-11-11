@@ -18,7 +18,8 @@ import { PlainValue } from "./plain-value.tsx";
 export interface WaitCardProps {
   readonly item: WaitItem;
   readonly decisions: Pick<InboxDecisions, "answer">;
-  readonly onOpenRun: (runId: string) => void;
+  /** Opens the run; without it the card has no **Open run**. */
+  readonly onOpenRun?: ((runId: string) => void) | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
@@ -129,7 +130,9 @@ export function WaitCard(props: WaitCardProps) {
           title={markedName(item.title)}
           heading={heading}
           since={state.kind === "answered" ? null : waitingSince(new Date(item.since), now())}
-          onOpenRun={() => props.onOpenRun(item.runId)}
+          onOpenRun={
+            props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
+          }
         />
         {item.body === "" ? null : (
           <div

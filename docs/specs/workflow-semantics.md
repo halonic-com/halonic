@@ -127,7 +127,9 @@ on an event.
   workspace: the Studio's, or the CLI's while `halonic run` or
   `halonic routines watch` runs. It keeps its timers in the profile, so a
   timer missed while nothing was running fires as soon as an engine opens.
-- **Task states have no timeout.** An agent is limited by `maxSteps`.
+- **Task states have no timeout.** An agent is limited by `maxSteps`. An
+  agent that uses all its steps and is still calling tools gave no answer,
+  so its state fails rather than going on with an unfinished one.
 
 The functions are `stateTimers` (the timers and their due times) and
 `dueTimer` (the one to take now, or none).
@@ -187,7 +189,9 @@ A state with `type: foreach` runs once for each item of a list.
 - **Failure.** The first item that fails fails the state and the run, with that
   item's reason. Items still running end on their own, and what they give is
   not recorded (HAL-1537).
-- **Limits.** A child run for an item must finish without waiting. An item agent
+- **Limits.** A child run for an item must finish without waiting: when one
+  waits, the run fails, and that child and every other item's child run still
+  going end as cancelled, so none is left waiting (HAL-6090). An item agent
   can't pause for an approval.
 - **Log.** An event from an item carries `item`.
 

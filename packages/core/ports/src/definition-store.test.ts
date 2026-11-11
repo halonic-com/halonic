@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import golden from "./golden/workspace-paths.json" with { type: "json" };
 import {
   checkPublicWorkspacePath,
   checkWorkspacePath,
@@ -38,6 +39,24 @@ verifies("ports.workspace-path-checks", () => {
     expect(isPrivateWorkspacePath(".env::$DATA")).toBe(true);
     expect(isPrivateWorkspacePath("hubs/.git. /config")).toBe(true);
   });
+
+  // The desktop shell's Rust checks the same cases (crates/workspace-files), so both refuse the same paths.
+  it("gives every golden path its verdict", () => {
+    expect(golden.paths.length).toBeGreaterThanOrEqual(30);
+    for (const { path, verdict } of golden.paths) {
+      expect(["public", "private", "unsafe"], path).toContain(verdict);
+      if (verdict === "unsafe") {
+        expect(() => checkWorkspacePath(path), path).toThrow(RangeError);
+      } else {
+        expect(() => checkWorkspacePath(path), path).not.toThrow();
+      }
+      if (verdict === "public") {
+        expect(() => checkPublicWorkspacePath(path), path).not.toThrow();
+      } else {
+        expect(() => checkPublicWorkspacePath(path), path).toThrow(RangeError);
+      }
+    }
+  });
 });
 
 verifies("ports.segment-as-opened", () => {
@@ -47,5 +66,11 @@ verifies("ports.segment-as-opened", () => {
     expect(segmentAsOpened(".hal\u200Conic")).toBe(".halonic");
     expect(segmentAsOpened(".\u017Ftudio")).toBe(".studio");
     expect(segmentAsOpened("review")).toBe("review");
+  });
+
+  it("gives every golden segment as opened", () => {
+    for (const { segment, opened } of golden.segments) {
+      expect(segmentAsOpened(segment), segment).toBe(opened);
+    }
   });
 });

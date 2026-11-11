@@ -271,6 +271,31 @@ describe("doctorReportLines", () => {
     expect(lines.at(-1)).toBe("No problems. 2 warnings.");
   });
 
+  it("escapes the control characters in what a harness program said", () => {
+    const harnesses: HarnessesLine = {
+      check: "harnesses",
+      status: "warning",
+      installed: [{ harness: "claude-code", name: "Claude Code", version: "2.1.0\u001b[2J" }],
+      problems: [
+        {
+          problem: "unsupported",
+          harness: "claude-code",
+          name: "Claude Code",
+          version: "0.9.1\u001b[2J",
+          supported: ">=1.0.0",
+        },
+        { problem: "failed", harness: "codex", name: "Codex", error: "it said \u001b[31mno" },
+      ],
+    };
+    const lines = printed(reportOf({ sandbox: sandboxReady, harnesses, disk: diskFree }));
+    expect(check(lines, "Harnesses")).toEqual([
+      "! Harnesses   Claude Code 2.1.0\\u001b[2J",
+      "              Claude Code 0.9.1\\u001b[2J isn't supported. Halonic needs 1.0.0 or newer.",
+      "              Fix: update Claude Code, then run halonic doctor again.",
+      "              Halonic found Codex but couldn't ask its version: it said \\u001b[31mno",
+    ]);
+  });
+
   it("says at least when the count stopped, and drops the use when a folder couldn't be read", () => {
     const partial: DiskLine = { ...diskFree, data: { ...data, complete: false } };
     const unknown: DiskLine = { ...diskFree, data: null };

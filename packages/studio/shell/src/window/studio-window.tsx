@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
@@ -9,10 +9,12 @@ import { BottomNavigation } from "../phone/bottom-navigation.tsx";
 import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
+import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import type { Shell } from "../shell.ts";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
+import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
 import { useWindowKeys } from "../tabs/use-window-keys.ts";
 import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
@@ -62,16 +64,27 @@ export function StudioWindow(props: StudioWindowProps) {
   const { shell, workspace, host, platform } = props;
   const { tabs } = workspace;
   const { announcer, contributions } = shell;
+  const palette = usePaletteOpening(platform);
+  const desktop = usePresentationFromWidth() === "desktop";
+  const phone = usePhonePlaces();
+  const focusNewPage = usePageHeadingFocus();
+  // Read when a view opens a place, so the context stays the same as the window narrows or widens.
+  const openPlaceHere = useRef<(place: SidebarPlace) => void>(phone.openPlace);
+  openPlaceHere.current = desktop
+    ? (place) => {
+        tabs.openHere({ key: place, title: placeNames[place].label });
+        focusNewPage();
+      }
+    : phone.openPlace;
   const contextFor = useCallback(
-    (featureId: string): WorkspaceContext =>
-      shell.services.contextFor(featureId, workspace.services),
+    (featureId: string): WorkspaceContext => ({
+      ...shell.services.contextFor(featureId, workspace.services),
+      openPlace: (place) => openPlaceHere.current(place),
+    }),
     [shell, workspace],
   );
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
-  const palette = usePaletteOpening(platform);
-  const desktop = usePresentationFromWidth() === "desktop";
-  const phone = usePhonePlaces();
   usePhoneBackButton(!desktop, shell.closeStack, phone);
   // Read again on every phone move, so the bottom navigation's signals follow.
   const shown = shownPlaces(contributions.places.list(), contextFor);

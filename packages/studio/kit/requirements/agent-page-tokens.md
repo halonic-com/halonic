@@ -8,7 +8,7 @@ The kit's theme shall have exactly ten agent orb colours, `--character-1a` to `-
 
 ## Examples
 
-- Given the orchid orb (`--character-5b`) in dark mode,
+- Given the violet orb (`--character-5b`) in dark mode,
   when it sits on `surface-muted` (a hovered menu row),
   then its edge reaches 3:1.
 - Given a card two behind in a stack in dark mode,

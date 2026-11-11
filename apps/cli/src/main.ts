@@ -3,10 +3,14 @@ import { profileFolder } from "@halonicjs/profile";
 import { commands } from "./generated/commands.ts";
 import { readGlobalOptions } from "./global-options.ts";
 import { LineReader } from "./output/line-reader.ts";
-import { exitOnceWritten } from "./output/stop.ts";
+import { exitOnceWritten, quietOnClosedPipe } from "./output/stop.ts";
 import { runCli } from "./run-cli.ts";
 import { recoverSandboxSessions } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
+
+// A reader that stops reading, such as `head`, ends the output, not the command.
+quietOnClosedPipe(process.stdout);
+quietOnClosedPipe(process.stderr);
 
 // Before any session opens, undo what a crashed run left in its git folders.
 // It never throws; with `--debug` it says what it couldn't undo.

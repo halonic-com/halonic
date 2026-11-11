@@ -290,6 +290,16 @@ export interface TellParentEffect {
   readonly childRunId: string;
 }
 
+/**
+ * Cancel a child run the run no longer waits for, and the child run it
+ * waits on, all the way down, as a cancel of the child would. A child that
+ * has ended, or hasn't started, stays as it is.
+ */
+export interface CancelChildEffect {
+  readonly type: "cancel-child";
+  readonly childRunId: string;
+}
+
 /** Wake the run with a `timer` input at `at`. */
 export interface SetTimerEffect {
   readonly type: "set-timer";
@@ -305,6 +315,7 @@ export type Effect =
   | CallToolEffect
   | StartChildEffect
   | TellParentEffect
+  | CancelChildEffect
   | SetTimerEffect;
 
 /**

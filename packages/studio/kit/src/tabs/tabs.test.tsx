@@ -249,7 +249,7 @@ verifies("kit.tabs", () => {
     expect(runs?.querySelector(".rounded-full")?.className).toContain("bg-accent-soft");
   });
 
-  it("counts what needs a person in amber", () => {
+  it("counts what needs a person in violet", () => {
     const tabs: readonly Tab<View>[] = [
       { id: "runs", label: "Runs", count: { value: 1, tone: "warning", name: "1 needs you" } },
     ];

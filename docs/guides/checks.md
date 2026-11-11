@@ -13,7 +13,7 @@ machine](#running-checks-on-your-machine).
 | `pnpm check:enqueue` | before you queue a PR: merges the latest `origin/main`, checks the subject that will land (the title, and a one-commit branch's commit subject), then lockfile, typecheck of every package, format spec tests, process-starts and requirement guards |
 | `pnpm check:leaks` | the leak guard over the working tree; see [leak-guard.md](leak-guard.md) |
 | `pnpm check:licences` | every installed package's licence against `tooling/check/licences.json` |
-| `pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]` | release only: writes the CycloneDX SBOM (of one package, or of the workspace without `--package`), and with `--notices` also `THIRD-PARTY-NOTICES.txt`; fails on a library missing from `tooling/check/dependencies.json` |
+| `pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]` | release only: writes the CycloneDX SBOM (of one package, or of the workspace without `--package`), and with `--notices` also `THIRD-PARTY-NOTICES.txt`; fails on a library that isn't in `tooling/check/dependencies.json` and that no listed package depends on |
 | `pnpm check:audit [options]` | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
 | `pnpm check:pr-title` | the pull request title as a Conventional Commits title (`PR_TITLE` when run locally); CI runs it |
@@ -52,7 +52,7 @@ queue.
 | --- | --- |
 | `packages` | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder`; `apiTypes` lists a package that isn't core |
 | `agents-md` | a package has no `AGENTS.md`, its `Owner:` or `Layer:` line differs from `package.json`, or its purpose line is still the `pnpm new` placeholder |
-| `layers` | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`); a feature uses another feature other than through its `/api` |
+| `layers` | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`, `eval(…)` or `Function(…)`, a global object's `process`, `require`, `Buffer`, `eval` or `Function`, and `process.binding`, `process._linkedBinding` or `process.dlopen`); a feature uses another feature other than through its `/api` |
 | `dependencies` | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages or `layers`, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`; an entry doesn't fit its category; a catalog version isn't a plain version (`1.2.3`, `^1.2.3`, `~1.2.3`); an `overrides:` key isn't in `overrides-allowed.json` (or isn't `parent>child` at the catalog version, or has no override); `resolutions`, `packageExtensions`, `patchedDependencies` or named catalogs are used. See [dependencies.md](dependencies.md) |
 | `deny-toml` | `apps/studio/src-tauri/deny.toml`: `[licenses] allow` differs from `shipped` in `licences.json`, or an `[advisories] ignore` entry has no reason, no or several expiry dates in its reason, a date that has passed or is more than 90 days out, or repeats an ID |
 | `advisories` | `tooling/check/advisories-ignored.json` has an unknown field, a missing or thin reason, a bad advisory ID or date, a repeated advisory, an expired entry or one expiring more than 90 days out; or an advisory is ignored anywhere else (`auditConfig` and `ignoreGhsas` in the workspace file, an `--ignore` on an audit command in a workflow or `package.json`) |
@@ -66,7 +66,7 @@ queue.
 | `markdown-tables` | a Markdown table is padded to equal column widths, so one longer cell rewrites every row and two pull requests that each add a row conflict in the merge queue. Fix with `pnpm check:tables`, which writes `\| a \| b \|` rows |
 | `native-disabled` | a `.tsx` or `.jsx` file outside `packages/studio/kit` gives a `<button>` a native `disabled` attribute. A disabled button loses focus and hides why it can't be used; use the kit's Button with `unavailable={{ reason }}` (component specs 23, A1). Tests are exempt |
 | `readme-examples` | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block |
-| `process-starts` | a product file imports `child_process`, `worker_threads` or `cluster` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts) |
+| `process-starts` | a product file imports `child_process`, `worker_threads`, `cluster` or `vm` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts) |
 | `api-specs` | a public API's `spec/<name>.schema.json` breaks its newest copy in `spec/released/` but its `$id` still names the same API version; bump the version or keep the change additive |
 
 ### The DCO sign-off
@@ -119,11 +119,14 @@ DCO_RANGE=origin/main..HEAD pnpm check dco
 Halonic never runs a file under a skill's `scripts/` folder (HAL-188). Any
 code that can start a process could break that, so every such file is
 listed and reviewed. `process-starts` fails when a source file imports
-`child_process`, `worker_threads` or `cluster` (with or without `node:`)
-and isn't listed under `starters` in `tooling/check/process-starters.json`.
+`child_process`, `worker_threads`, `cluster` or `vm` (with or without
+`node:`) and isn't listed under `starters` in `tooling/check/process-starters.json`.
 A load the check can't follow counts too, in every layer: `import(x)` or
-`require(x)` with a computed name, `createRequire` and
-`process.getBuiltinModule` could load these modules under any name.
+`require(x)` with a computed name, `createRequire`,
+`process.getBuiltinModule`, `eval(…)`, `Function(…)`, a global object's
+`process`, `require`, `Buffer`, `eval` or `Function` (also destructured or
+by a computed name), and `process.binding`, `process._linkedBinding` or
+`process.dlopen` could load these modules or run code under any name.
 Tests and the testing and tooling packages are exempt: they never ship.
 Tool config files such as `vitest.config.ts` aren't, because shipped code
 could import one.
@@ -241,8 +244,8 @@ object <git object ID at the pull request's head, or missing> <path>
 ```
 
 with one `object` line per covered path, per covered requirement's file and
-per test file at the head that calls `verifies()` with a covered requirement
-ID, sorted by path. So a signature can't be reused on another pull request (a
+per test file at the head that names a covered requirement ID as a quoted
+string (a file that only quotes it, say in a comment, counts too), sorted by path. So a signature can't be reused on another pull request (a
 fork's branch with the same name included), and editing the note, a
 covered file or a test that verifies a covered requirement after signing
 (or removing one) breaks it. Editing other files or rebasing
@@ -282,7 +285,10 @@ for the note's kind.
 on `pull_request_target` and in the merge queue. On `pull_request_target`
 GitHub runs that file from the base branch, so a pull request can't edit or
 remove it, and the job runs only the base's code: the pull request's head is fetched as git
-objects and only read, with no install, cache or secret. It fails a change
+objects and only read, with no install, cache or secret. So nothing the note
+check runs may load an npm package, the TypeScript parser included:
+`src/guard/signatures.ts` takes its path helpers from `src/lib/source-paths.ts`
+and finds tests by their quoted IDs. It fails a change
 under the guard's own paths (`.github/`, `.gitattributes`, `tooling/check/`
 with its `approvers.json`, `packages/testing/spec/`,
 `packages/testing/parity/allowed-differences.json`,

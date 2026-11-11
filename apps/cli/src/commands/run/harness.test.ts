@@ -187,6 +187,23 @@ verifies("cli.run-harness", () => {
       expect(await startedRuns()).toEqual([]);
     });
 
+    it("refuses to move an agent whose allowed sites no one was shown into a program", async () => {
+      const writer = join(acme, writerPath);
+      await writeFile(
+        writer,
+        `${await readFile(writer, "utf8")}allowedSites:\n  - api.example.com\n`,
+      );
+      await trustAcme();
+      const { code, stderr } = await run(claudeCodeReady, sandboxReady, "--harness", "claude-code");
+
+      expect(code).toBe(exitCode.usage);
+      expect(stderr[0]).toBe(
+        "✕ Couldn't run support-reply: Writer names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. Nothing ran.",
+      );
+      expect(checks).toBe(0);
+      expect(await startedRuns()).toEqual([]);
+    });
+
     it("passes every check, then refuses it as this computer's engine has no harness adapter yet", async () => {
       await trustAcme();
       const { code, stderr } = await run(claudeCodeReady, sandboxReady, "--harness", "claude-code");
@@ -237,6 +254,27 @@ verifies("cli.run-harness", () => {
       expect((failure as RunHarnessError).message).toBe(reason);
       expect((failure as RunHarnessError).fix).toBe(fix);
     });
+
+    it.each([
+      [
+        { status: "unsupported", version: "0.9.1\u001b[2J", supported: ">=1.0.0" },
+        "Claude Code 0.9.1\\u001b[2J isn't supported. Halonic needs 1.0.0 or newer. Nothing ran.",
+      ],
+      [
+        { status: "failed", error: "it said \u001b[31mno" },
+        "Halonic found Claude Code but couldn't ask its version: it said \\u001b[31mno Nothing ran.",
+      ],
+    ] as const)(
+      "escapes the control characters in what the program said: %j",
+      async (detection, reason) => {
+        const failure = await runHarnessOf(
+          "claude-code",
+          programs(detection, { status: "missing" }),
+        ).catch((error: unknown) => error);
+
+        expect((failure as RunHarnessError).message).toBe(reason);
+      },
+    );
 
     it("gives no harness without the option", async () => {
       expect(await runHarnessOf(undefined, [])).toBeUndefined();

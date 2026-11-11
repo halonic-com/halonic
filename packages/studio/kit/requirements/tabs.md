@@ -19,7 +19,7 @@ The kit's `Tabs` shall render a page's views as a named `tablist` of `tab` butto
   then each tab is at least 48px high and they share the track equally.
 - Given a Runs tab with `count={{ value: 1, tone: "warning", name: "1 needs you" }}`,
   when it renders,
-  then it shows an amber "1" chip, and screen readers hear "Runs, 1 needs you".
+  then it shows a violet "1" chip, and screen readers hear "Runs, 1 needs you".
 - Given a Runs tab with `running={{ name: "1 running" }}` and no counter,
   when it renders,
   then a still dot follows the label, and screen readers hear "Runs, 1 running".

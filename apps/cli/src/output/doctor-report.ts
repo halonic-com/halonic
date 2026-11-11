@@ -22,6 +22,7 @@ import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts"
 import { sandboxDocsLink, sandboxMessages } from "../messages/sandbox.ts";
 import { shownSize } from "../messages/size.ts";
 import type { Mark } from "./paint.ts";
+import { printable } from "./printable.ts";
 
 /** What the report doesn't hold, because only the host knows it. */
 export interface DoctorFacts {
@@ -179,7 +180,7 @@ function sandboxCheck(line: SandboxLine, kind: string): CheckLines {
 /** The harnesses that are ready on one line, then each problem with its fix under it. */
 function harnessesCheck(line: HarnessesLine): CheckLines {
   const ready = line.installed.map(
-    ({ name, version }) => doctorMessages.harnessReady(name, version).phrase,
+    ({ name, version }) => doctorMessages.harnessReady(name, printable(version)).phrase,
   );
   const readyLine = ready.length === 0 ? [] : [joined(ready)];
   return {
@@ -198,11 +199,15 @@ function harnessProblem(problem: HarnessProblem): Phrase[] {
       ];
     case "unsupported":
       return [
-        doctorMessages.harnessUnsupported(problem.name, problem.version, problem.supported).phrase,
+        doctorMessages.harnessUnsupported(
+          problem.name,
+          printable(problem.version),
+          problem.supported,
+        ).phrase,
         doctorMessages.updateHarness(problem.name).phrase,
       ];
     case "failed":
-      return [doctorMessages.harnessVersionFailed(problem.name, problem.error).phrase];
+      return [doctorMessages.harnessVersionFailed(problem.name, printable(problem.error)).phrase];
   }
 }
 

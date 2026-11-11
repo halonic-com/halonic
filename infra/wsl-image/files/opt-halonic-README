@@ -1,5 +1,7 @@
 This folder is Halonic's runtime slot.
 
 Halonic Studio puts the runtime (Node, engine, agent host and srt, pinned
-together) in /opt/halonic/<version> and points /opt/halonic/current at it.
-The updater does this as root from Windows; the image ships the folder empty.
+together) in /opt/halonic/<version> and points /opt/halonic/current at it,
+keeping the version before as /opt/halonic/previous. The updater,
+/usr/local/sbin/halonic-runtime, does this as root from Windows; the image
+ships the folder empty. Everything here is root's: don't change it by hand.

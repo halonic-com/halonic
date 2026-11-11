@@ -836,9 +836,9 @@ jobs:
       # Tauri builds against the system web view: WebKitGTK on Linux. The
       # keychain crate links libdbus for the Secret Service.
       - name: Install the Linux libraries Tauri needs
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev
+        uses: $/.github/actions/apt-install
+        with:
+          packages: libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev gnome-keyring dbus-daemon
       - name: Formatting (rustfmt)
         run: cargo fmt --all --check
       # --workspace: the shell is the root package, so without it Cargo
@@ -853,7 +853,6 @@ jobs:
       # Secret Service it talks to.
       - name: Keychain contract (GNOME Keyring)
         run: |
-          sudo apt-get install --yes --no-install-recommends gnome-keyring dbus-daemon
           dbus-run-session -- sh -c '
             od -An -N16 -tx1 /dev/urandom | tr -d " \n" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
             cargo test --locked -p halonic-keychain -- --ignored
@@ -1058,20 +1057,11 @@ jobs:
           persist-credentials: false
       - uses: $/.github/actions/setup
       - name: Install bubblewrap and socat
-        # The runner's Azure Ubuntu mirror sometimes fails DNS for hours
-        # (HAL-5648). Try it once, then drop it from the mirror list so apt
-        # uses archive.ubuntu.com, with a few more tries.
-        run: |
-          for attempt in 1 2 3 4; do
-            if sudo apt-get update && sudo apt-get install --yes --no-install-recommends bubblewrap socat ripgrep; then
-              break
-            fi
-            if [ "$attempt" = 4 ]; then exit 1; fi
-            [ -f /etc/apt/apt-mirrors.txt ] && sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt
-            grep -q . /etc/apt/apt-mirrors.txt || echo 'http://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt
-            sleep 15
-          done
-          sudo sysctl --write kernel.apparmor_restrict_unprivileged_userns=0
+        uses: $/.github/actions/apt-install
+        with:
+          packages: bubblewrap socat ripgrep
+      - name: Allow unprivileged user namespaces
+        run: sudo sysctl --write kernel.apparmor_restrict_unprivileged_userns=0
       - name: Fence tests
         working-directory: packages/adapters/sandbox-srt
         run: pnpm test:fence
@@ -1607,9 +1597,33 @@ jobs:
         with:
           persist-credentials: false
       - uses: $/.github/actions/setup
+      # Not `install --with-deps`: that runs apt-get itself, and stalled until
+      # the job timed out when the Ubuntu mirrors were down (HAL-5765). The
+      # dry run asks `apt-get install -s` which of Playwright's packages are
+      # missing; a stand-in apt-get that reports every one turns that into
+      # Playwright's own list, without the network.
+      - id: playwright-deps
+        name: List the Linux packages Playwright needs
+        working-directory: packages/studio/shell
+        run: |
+          shim="$RUNNER_TEMP/apt-get-list"
+          mkdir -p "$shim"
+          printf '#!/bin/sh\nfor p; do case "$p" in -*|install) ;; *) echo "Inst $p ";; esac; done\n' > "$shim/apt-get"
+          chmod +x "$shim/apt-get"
+          out=$(PATH="$shim:$PATH" pnpm exec playwright install-deps --dry-run chromium webkit) || true
+          packages=$(sed -n 's/^  //p' <<< "$out" | tr '\n' ' ')
+          if [ -z "${packages// }" ]; then
+            echo "::error::Couldn't list Playwright's Linux packages:"$'\n'"$out"
+            exit 1
+          fi
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+      - name: Install the Linux libraries Playwright needs
+        uses: $/.github/actions/apt-install
+        with:
+          packages: ${{ steps.playwright-deps.outputs.packages }}
       - name: Install Chromium and WebKit for Playwright
         working-directory: packages/studio/shell
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
       - name: Shell end-to-end tests
         working-directory: packages/studio/shell
         run: pnpm e2e

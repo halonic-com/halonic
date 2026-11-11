@@ -1,10 +1,14 @@
-import type { RunEventBody } from "@halonicjs/events";
 import { isRunFailureError } from "@halonicjs/ports";
 import { StopSource } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
+import {
+  writerCall as call,
+  goingOn,
+  logOf,
+  runCallOn as runOn,
+} from "./harness-call-test-kit.test-helper.ts";
 import {
   finished,
   harnessPorts,
@@ -12,48 +16,7 @@ import {
   startLimits,
   stillOpen,
 } from "./harness-test-kit.test-helper.ts";
-import { type HarnessCall, type HarnessEventLog, runHarnessCall } from "./run-harness-call.ts";
-
-const call: HarnessCall = {
-  effect: {
-    callId: "call-1",
-    state: "draft",
-    agent: "writer",
-    harness: "claude-code",
-    prompt: "Reply to support",
-  },
-  runId: "run_1",
-  hubId: "acme",
-  agent: { ...writerAgent("claude-code"), instructions: "Write short mails.", model: "sonnet" },
-  filesFolder: null,
-};
-
-/** A signal no one tells to stop, for calls the engine doesn't stop. */
-const goingOn = new StopSource().signal;
-
-/** A log that stores nothing, except where `append` says. */
-function logOf(append: (event: RunEventBody) => Promise<void>): HarnessEventLog {
-  return { append, settled: async () => {}, whileHeld: (work) => work() };
-}
-
-/** Runs the call on the ports, and keeps what it wrote to the log. */
-async function runOn(
-  ports: ReturnType<typeof harnessPorts>,
-  limits = startLimits().limits,
-  stop = goingOn,
-  approvals = noApprovals,
-) {
-  const written: RunEventBody[] = [];
-  const log = logOf(async (event) => {
-    written.push(event);
-  });
-  try {
-    const output = await runHarnessCall(ports.options, call, log, approvals, limits, stop);
-    return { output, written };
-  } catch (error) {
-    return { error, written };
-  }
-}
+import { type HarnessEventLog, runHarnessCall } from "./run-harness-call.ts";
 
 verifies("engine.run-harness", () => {
   it("opens the bridge and the sandbox, starts the harness and gives back the agent's result", async () => {
