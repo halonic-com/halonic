@@ -27,6 +27,19 @@ export interface ProposedRecord {
   readonly finishedAt: string;
   /** One decision per proposed file, by path. */
   readonly decisions: Readonly<Record<string, Decision>>;
+  /**
+   * The undecided files of which the person decided some parts or
+   * changes, by path. Absent when there are none.
+   */
+  readonly partly?: Readonly<Record<string, PartlyDecided>>;
+}
+
+/** Where a file stands once some of its parts or changes are decided. */
+export interface PartlyDecided {
+  /** The digest of the saved file as the last accepted part left it: what the next write expects. */
+  readonly saved: `sha256:${string}`;
+  /** The run's text, less the parts and changes the person rejected. */
+  readonly run: string;
 }
 
 /** The record of one run. */
@@ -102,7 +115,7 @@ function readProposed(
   json: Record<string, unknown>,
   runId: string,
 ): Result<ProposedRecord, string> {
-  const { proposal: proposalJson, finishedAt, decisions: decisionsJson } = json;
+  const { proposal: proposalJson, finishedAt, decisions: decisionsJson, partly: partlyJson } = json;
   const proposal = readProposal(proposalJson, runId);
   if (!proposal.ok) {
     return proposal;
@@ -114,11 +127,24 @@ function readProposed(
   if (!decisions.ok) {
     return decisions;
   }
+  if (partlyJson === undefined) {
+    return ok({
+      state: "proposed",
+      proposal: proposal.value,
+      finishedAt,
+      decisions: decisions.value,
+    });
+  }
+  const partly = readPartly(partlyJson, decisions.value);
+  if (!partly.ok) {
+    return partly;
+  }
   return ok({
     state: "proposed",
     proposal: proposal.value,
     finishedAt,
     decisions: decisions.value,
+    partly: partly.value,
   });
 }
 
@@ -201,6 +227,29 @@ function readDecisions(
     decisions[path] = decision as Decision;
   }
   return ok(decisions);
+}
+
+/** Reads `partly`: each entry is about an undecided file of the proposal. */
+function readPartly(
+  json: unknown,
+  decisions: Readonly<Record<string, Decision>>,
+): Result<Record<string, PartlyDecided>, string> {
+  if (!isPlainObject(json)) {
+    return err("its partly decided files aren't a JSON object");
+  }
+  const partly: Record<string, PartlyDecided> = {};
+  for (const [path, entry] of Object.entries(json)) {
+    if (decisions[path] !== "undecided") {
+      return err(`its partly decided ${JSON.stringify(path)} isn't an undecided file`);
+    }
+    const saved = isPlainObject(entry) ? entry["saved"] : undefined;
+    const run = isPlainObject(entry) ? entry["run"] : undefined;
+    if (typeof saved !== "string" || !digestPattern.test(saved) || typeof run !== "string") {
+      return err(`its partly decided ${JSON.stringify(path)} has no saved digest and run text`);
+    }
+    partly[path] = { saved: saved as PartlyDecided["saved"], run };
+  }
+  return ok(partly);
 }
 
 function isCommitId(value: unknown): value is string {

@@ -108,3 +108,39 @@ verifies("app.run-proposal-end", () => {
     });
   });
 });
+
+verifies("app.run-proposal-accept-reject-part", () => {
+  describe("a record with partly decided files", () => {
+    const partly: ProposedRecord = {
+      ...proposed,
+      decisions: { "agents/clerk.agent.yaml": "undecided", "notes/today.md": "undecided" },
+      partly: { "agents/clerk.agent.yaml": { saved: digest, run: "name: Clerk\n" } },
+    };
+
+    it("reads back where each partly decided file stands", () => {
+      expect(parseRunProposalRecord(serializeRunProposalRecord(partly), "01JD8Q")).toEqual({
+        ok: true,
+        value: partly,
+      });
+    });
+
+    it.each([
+      [{ partly: [] }, "its partly decided files aren't a JSON object"],
+      [
+        { partly: { "agents/clerk.agent.yaml": { saved: digest, run: "x" } } },
+        `its partly decided "agents/clerk.agent.yaml" isn't an undecided file`,
+      ],
+      [
+        { partly: { "notes/today.md": { saved: "x", run: "x" } } },
+        `its partly decided "notes/today.md" has no saved digest and run text`,
+      ],
+      [
+        { partly: { "notes/today.md": { saved: digest } } },
+        `its partly decided "notes/today.md" has no saved digest and run text`,
+      ],
+    ])("refuses partly decided files that were changed by hand: %o", (changes, error) => {
+      // `proposed` has clerk accepted and today undecided.
+      expect(parseRunProposalRecord(edited(changes), "01JD8Q")).toEqual({ ok: false, error });
+    });
+  });
+});

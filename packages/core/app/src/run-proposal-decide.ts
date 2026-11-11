@@ -11,7 +11,7 @@ import {
 import { contentDigest, matchesExpected } from "@halonicjs/std";
 import { isNeverWritten, refused, storeRefusing } from "./review-gate.ts";
 import type { Trash } from "./review-types.ts";
-import type { ProposedRecord } from "./run-proposal-record.ts";
+import type { PartlyDecided, ProposedRecord } from "./run-proposal-record.ts";
 import type {
   AcceptResult,
   Decision,
@@ -41,7 +41,9 @@ export type AcceptedFile =
 /**
  * Accepts one file of a proposal: writes the run's text, or moves the file
  * to the trash for a delete, only while the saved file is still the run's
- * base. A file already as the run left it is accepted without a write.
+ * base. A file already as the run left it is accepted without a write. Of
+ * a partly decided file, what is left of the run's text is written, while
+ * the saved file is as the last accepted part left it.
  *
  * @param commit - the commit the proposal's ref points at
  */
@@ -49,6 +51,7 @@ export async function acceptFile(
   context: DecideContext,
   file: ProposedFile,
   commit: string,
+  partly?: PartlyDecided,
 ): Promise<AcceptedFile> {
   const why = refusalOf(file.path);
   if (why !== null) {
@@ -58,11 +61,11 @@ export async function acceptFile(
   if (saved === refused) {
     return { kind: "refused", why: "outside-workspace" };
   }
-  const run = await context.vcs.readAt(commit, file.path);
+  const run = partly?.run ?? (await context.vcs.readAt(commit, file.path));
   if (saved === run) {
     return { kind: "accepted", write: null };
   }
-  const expected = expectedOf(file);
+  const expected = partly?.saved ?? expectedOf(file);
   if (!(await matchesExpected(saved, expected, context.digest))) {
     return { kind: "changed-on-disk" };
   }
@@ -123,7 +126,7 @@ async function putFile(
 }
 
 /** What Accept expects the saved file to hold: the run's base. */
-function expectedOf(file: ProposedFile): ExpectedContent {
+export function expectedOf(file: ProposedFile): ExpectedContent {
   return file.base === "absent" ? "absent" : file.base.digest;
 }
 
@@ -177,7 +180,7 @@ export async function acceptFiles(
     if (decisions[file.path] !== "undecided") {
       continue;
     }
-    const outcome = await acceptFile(context, file, commit);
+    const outcome = await acceptFile(context, file, commit, record.partly?.[file.path]);
     if (outcome.kind === "changed-on-disk") {
       changedOnDisk.push(file.path);
     } else if (outcome.kind === "refused") {

@@ -3,6 +3,8 @@
 // Agreed with Elena on HAL-4121.
 
 import type { ExpectedContent } from "@halonicjs/ports";
+import type { LineChange } from "@halonicjs/std";
+import type { ItemPath } from "./changes/revert-parts.ts";
 
 /** A proposed file's text at the run's base: its digest, or `"absent"` when the run created it. */
 export type FileBase = { readonly digest: Exclude<ExpectedContent, "absent"> } | "absent";
@@ -90,11 +92,57 @@ export interface CompareTexts {
   readonly run: string | null;
 }
 
-/**
- * What one Accept or Reject covers: one file, or every undecided file.
- * Parts and changes inside a file follow (`revertParts`, HAL-3278).
- */
+/** What one Accept or Reject covers: one file, or every undecided file. */
 export type ProposalTarget = { readonly file: string } | "all";
+
+/**
+ * What is left to decide in a file the run modified, once some of its
+ * parts or changes were decided: the saved file and the run's text with
+ * the rejected ones taken out. Before any, they are the run's base and the
+ * run's text.
+ */
+export interface ProposalFileParts {
+  readonly path: string;
+  /** The saved file the parts were worked out from. */
+  readonly saved: string;
+  /** The run's text, less what the person rejected. */
+  readonly run: string;
+  /** Names both texts; pass it back with a part or change target. */
+  readonly seen: string;
+  /** The changes left, as line changes from `saved` to `run`, in order. */
+  readonly parts: readonly LineChange[];
+}
+
+/** One part or one change inside a file of a proposal (`app.run-proposal-accept-reject-part`, `-change`). */
+export type InFileProposalTarget =
+  | {
+      readonly kind: "part";
+      readonly file: string;
+      /** Its index in {@link ProposalFileParts.parts}. */
+      readonly part: number;
+      /** The {@link ProposalFileParts.seen} the parts were worked out from. */
+      readonly seen: string;
+    }
+  | {
+      /** A line `describeItemChange` gives from `saved` to `run` (HAL-3278). */
+      readonly kind: "change";
+      readonly file: string;
+      /** The line's `parts`: the item paths it covers. */
+      readonly parts: readonly ItemPath[];
+      readonly seen: string;
+    };
+
+/** What one Accept or Reject of a part or a change did. */
+export type InFileResult =
+  | ({ readonly status: "done" } & AcceptResult)
+  /** The parts were worked out from texts that changed since: nothing changed; show them again. */
+  | { readonly status: "stale"; readonly path: string }
+  /**
+   * The change can't be decided apart from the rest of the file: the run
+   * added or deleted it, the line has no parts, or a text doesn't read as
+   * YAML. Nothing changed; offer the parts or the whole file instead.
+   */
+  | { readonly status: "cant-separate"; readonly path: string; readonly message: string };
 
 /** What an Undo or Redo of a proposal's step did. */
 export interface RestoreResult {

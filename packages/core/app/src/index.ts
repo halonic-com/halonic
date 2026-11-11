@@ -271,12 +271,15 @@ export {
   shortRunId,
   shortRunIdLength,
 } from "./run-history.ts";
-export type { ProposedRecord } from "./run-proposal-record.ts";
+export type { PartlyDecided, ProposedRecord } from "./run-proposal-record.ts";
 export type {
   AcceptResult,
   CompareTexts,
   Decision,
   FileBase,
+  InFileProposalTarget,
+  InFileResult,
+  ProposalFileParts,
   ProposedFile,
   RefusalReason,
   RejectResult,

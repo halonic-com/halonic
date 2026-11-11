@@ -8,11 +8,15 @@ import { contentDigest } from "@halonicjs/std";
 import { placeOf } from "@halonicjs/workspace";
 import type { Trash } from "./review-types.ts";
 import { ProposalDecisions } from "./run-proposal-decisions.ts";
+import { ProposalParts } from "./run-proposal-parts.ts";
 import { type ProposedRecord, proposalRefOf } from "./run-proposal-record.ts";
 import { ProposalRecordStore } from "./run-proposal-store.ts";
 import type {
   AcceptResult,
   CompareTexts,
+  InFileProposalTarget,
+  InFileResult,
+  ProposalFileParts,
   ProposalTarget,
   ProposedFile,
   RejectResult,
@@ -85,6 +89,7 @@ export class RunProposals {
   private readonly clock: Clock;
   private readonly onEndFailed: (runId: string, error: unknown) => void;
   private readonly decisions: ProposalDecisions;
+  private readonly inFile: ProposalParts;
 
   constructor(options: RunProposalsOptions) {
     this.vcs = options.vcs;
@@ -92,12 +97,14 @@ export class RunProposals {
     this.digest = options.digest;
     this.clock = options.clock;
     this.onEndFailed = options.onEndFailed;
-    this.decisions = new ProposalDecisions(this.records, {
+    const context = {
       vcs: options.vcs,
       store: options.store,
       digest: options.digest,
       trash: options.trash,
-    });
+    };
+    this.decisions = new ProposalDecisions(this.records, context);
+    this.inFile = new ProposalParts(this.records, context, this.decisions);
   }
 
   /**
@@ -221,8 +228,48 @@ export class RunProposals {
   }
 
   /**
+   * What is left to decide in an undecided file the run modified: the
+   * line parts from the saved file to the run's text less what was
+   * rejected, and both texts, for `describeItemChange` on an item page.
+   *
+   * @returns `null` when the file has no parts to decide: it is decided,
+   *   the run added or deleted it, Accept may never write it, or the person
+   *   changed it since (Accept lists it under `changedOnDisk`, for Compare)
+   * @throws when the run has no proposal, its ref is gone, or it doesn't propose the file
+   */
+  parts(runId: string, path: string): Promise<ProposalFileParts | null> {
+    return this.inFile.parts(runId, path);
+  }
+
+  /**
+   * Accepts one part or one change of a file (`app.run-proposal-accept-reject-part`,
+   * `app.run-proposal-accept-reject-change`): writes the saved file with it,
+   * with `expected` set to what the saved file held, as for a whole file.
+   * Once no part is left, the file is accepted.
+   *
+   * @returns as for {@link accept}, or `stale` when the parts were worked
+   *   out from texts that changed since, or `cant-separate`
+   * @throws as for {@link parts}
+   */
+  acceptInFile(runId: string, target: InFileProposalTarget): Promise<InFileResult> {
+    return this.inFile.decide(runId, target, "accept");
+  }
+
+  /**
+   * Rejects one part or one change of a file: takes it out of the run's
+   * text and leaves the saved file alone. Once no part is left, the file is
+   * accepted if the person accepted any part of it, and rejected if not.
+   *
+   * @returns as for {@link acceptInFile}; the undo step holds only the decisions record
+   * @throws as for {@link parts}
+   */
+  rejectInFile(runId: string, target: InFileProposalTarget): Promise<InFileResult> {
+    return this.inFile.decide(runId, target, "reject");
+  }
+
+  /**
    * The texts Compare shows for a file of the proposal: the run's base,
-   * the saved file and the run's.
+   * the saved file and the run's, less what the person rejected of it.
    *
    * @throws when the run has no proposal, its ref is gone, or it doesn't propose the file
    */

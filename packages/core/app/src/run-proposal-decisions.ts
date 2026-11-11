@@ -4,6 +4,7 @@
 
 import { acceptFiles, type DecideContext, refusalOf, restoreFile } from "./run-proposal-decide.ts";
 import {
+  type PartlyDecided,
   type ProposedRecord,
   recordPathOf,
   serializeRunProposalRecord,
@@ -75,7 +76,7 @@ export class ProposalDecisions {
     return {
       base: await this.context.vcs.readAt(proposal.base, path),
       saved: await this.context.store.read(path),
-      run: await this.context.vcs.readAt(commit, path),
+      run: record.partly?.[path]?.run ?? (await this.context.vcs.readAt(commit, path)),
     };
   }
 
@@ -124,7 +125,7 @@ export class ProposalDecisions {
   }
 
   /** @throws when the proposal's ref is gone */
-  private async commitOf(record: ProposedRecord): Promise<string> {
+  async commitOf(record: ProposedRecord): Promise<string> {
     const commit = await this.context.vcs.readRef(record.proposal.ref);
     if (commit === null) {
       throw new Error(
@@ -135,14 +136,16 @@ export class ProposalDecisions {
   }
 
   /**
-   * Saves new decisions and gives the decisions record's entry for the
-   * undo step; no entry when nothing changed.
+   * Saves new decisions, and where the partly decided files stand, and
+   * gives the decisions record's entry for the undo step; no entry when
+   * nothing changed. A file decided as a whole is no longer partly decided.
    */
-  private async saveDecisions(
+  async saveDecisions(
     record: ProposedRecord,
     decisions: Readonly<Record<string, Decision>>,
+    partly: Readonly<Record<string, PartlyDecided>> = record.partly ?? {},
   ): Promise<UndoStep["files"]> {
-    const after: ProposedRecord = { ...record, decisions };
+    const after = withPartly({ ...record, decisions }, partly);
     const beforeText = serializeRunProposalRecord(record);
     const afterText = serializeRunProposalRecord(after);
     if (beforeText === afterText) {
@@ -161,12 +164,22 @@ export function decisionsPathOf(runId: string): string {
   return `.halonic/proposals/${runId}.json`;
 }
 
+/** The record with `partly` kept for its undecided files only, and left out when none are. */
+function withPartly(
+  record: ProposedRecord,
+  partly: Readonly<Record<string, PartlyDecided>>,
+): ProposedRecord {
+  const { partly: _old, ...rest } = record;
+  const kept = Object.entries(partly).filter(([path]) => record.decisions[path] === "undecided");
+  return kept.length === 0 ? rest : { ...rest, partly: Object.fromEntries(kept) };
+}
+
 /** Whether the target covers a file. */
 function covers(target: ProposalTarget, file: ProposedFile): boolean {
   return target === "all" || target.file === file.path;
 }
 
 /** An undo step of a run's proposal. */
-function stepOf(runId: string, files: UndoStep["files"]): UndoStep {
+export function stepOf(runId: string, files: UndoStep["files"]): UndoStep {
   return { source: { kind: "run-proposal", runId }, files };
 }

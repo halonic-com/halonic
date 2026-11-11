@@ -14,12 +14,14 @@ export const old = "name: Old\n";
  * version `version`, as after Create version.
  *
  * @param digest - hashes text; core has none of its own, so the test passes one in
+ * @param extraFiles - more saved files, by path, also in the version
  */
-export function setUpProposals(digest: Digest) {
+export function setUpProposals(digest: Digest, extraFiles: Readonly<Record<string, string>> = {}) {
   const files = {
     "agents/clerk.agent.yaml": clerk,
     "agents/old.agent.yaml": old,
     "README.md": "# Acme\n",
+    ...extraFiles,
   };
   const vcs = new TestProposalVcs();
   const records = new TestDefinitionStore({}, digest);
