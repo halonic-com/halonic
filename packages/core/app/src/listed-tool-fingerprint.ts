@@ -19,6 +19,7 @@ import {
   isPlainObject,
   keyPath,
   ok,
+  posixPath,
   type Result,
 } from "@halonicjs/std";
 import { trustUrl } from "@halonicjs/workspace";
@@ -211,20 +212,24 @@ export async function httpToolServer(
 
 /**
  * The address of a `stdio` connector: its command and arguments as written,
- * its pin or `null`, and its environment as a {@link writtenDigest}.
+ * its pin or `null`, the folder it starts in as the trust content writes it
+ * (`.` when none is written), and its environment and secret environment
+ * (variable name to secret name) each as a {@link writtenDigest}.
  *
  * @example
  * await stdioToolServer(
  *   { command: "notes-mcp", args: ["--token=${NOTES_TOKEN}"], env: {} },
  *   digest,
  * );
- * // => { kind: "stdio", command: "notes-mcp", args: ["--token=${NOTES_TOKEN}"], pin: null, env: null }
+ * // => { kind: "stdio", command: "notes-mcp", args: ["--token=${NOTES_TOKEN}"], pin: null, cwd: ".", env: null, secretEnv: null }
  */
 export async function stdioToolServer(
   connector: {
     readonly command: string;
     readonly args: readonly string[];
     readonly env: Readonly<Record<string, string>>;
+    readonly cwd?: string;
+    readonly secretEnv?: Readonly<Record<string, string>>;
     readonly pin?: ConnectorPin;
   },
   digest: Digest,
@@ -234,7 +239,9 @@ export async function stdioToolServer(
     command: connector.command,
     args: [...connector.args],
     pin: connector.pin === undefined ? null : { ...connector.pin },
+    cwd: posixPath.normalize(connector.cwd ?? "."),
     env: await writtenDigest(connector.env, digest),
+    secretEnv: await writtenDigest(connector.secretEnv ?? {}, digest),
   };
 }
 

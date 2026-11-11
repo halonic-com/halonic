@@ -187,7 +187,9 @@ verifies("ports.listed-tool-approval", () => {
       command: "notes-mcp",
       args: [`--token=${reference}`],
       pin: null,
+      cwd: ".",
       env: null,
+      secretEnv: null,
     });
   });
 
@@ -200,6 +202,30 @@ verifies("ports.listed-tool-approval", () => {
         await at("https://other.example.com/mcp"),
       ),
     ).toBe(false);
+  });
+
+  it("asks again when a stdio server starts in another folder", async () => {
+    const at = async (cwd?: string) =>
+      stdioToolServer(
+        { command: "node", args: ["server.js"], env: {}, ...(cwd === undefined ? {} : { cwd }) },
+        digest,
+      );
+    expect(sameToolServer(await at("tools/notes"), await at("tools/other"))).toBe(false);
+    // Written another way, the same folder is the same server, as trust has it.
+    expect(sameToolServer(await at("./tools/../tools/notes"), await at("tools/notes"))).toBe(true);
+    expect(sameToolServer(await at(), await at("."))).toBe(true);
+  });
+
+  it("asks again when a stdio server's secret environment names another secret", async () => {
+    const at = async (secret: string) =>
+      stdioToolServer(
+        { command: "notes-mcp", args: [], env: {}, secretEnv: { NOTES_TOKEN: secret } },
+        digest,
+      );
+    const notes = await at("notes-token");
+    expect(sameToolServer(notes, await at("other-token"))).toBe(false);
+    expect(notes).toMatchObject({ secretEnv: expect.stringMatching(/^sha256:[0-9a-f]{64}$/) });
+    expect(JSON.stringify(notes)).not.toContain("notes-token");
   });
 
   it("compares integration settings as canonical JSON", () => {
