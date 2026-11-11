@@ -13,6 +13,7 @@ import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
  */
 export const guardedPaths: readonly string[] = [
   ".github/",
+  ".gitattributes",
   "packages/testing/parity/allowed-differences.json",
   "packages/testing/spec/",
   "tooling/check/",

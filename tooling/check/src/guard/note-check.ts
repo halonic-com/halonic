@@ -11,6 +11,13 @@ import { approversFile, type GitObjects } from "./signatures.ts";
  */
 export const ownPaths: readonly string[] = [...guardedPaths, approversFile];
 
+/**
+ * Own paths an `internal` note signed by the CTO key may cover, until the
+ * board pins a user key (HAL-3434). Everything else in `ownPaths`, with the
+ * approvers file, still needs a `user-visible` note.
+ */
+export const internalOwnPaths: readonly string[] = [".github/", "tooling/check/", ".gitattributes"];
+
 /** One run of the note check: the pull request, its branch and changed files. */
 export interface NoteCheckRun {
   readonly pull: PullRequest;
@@ -22,9 +29,10 @@ export interface NoteCheckRun {
 
 /**
  * The note check that `guard-notes.yml` runs from the base branch: a
- * pull request that touches an own path needs a `user-visible` note listing
- * it, and any note it adds must carry a valid signature. The test-result
- * comparison stays in the requirement guard.
+ * pull request that touches an own path needs a note listing it (`user-visible`,
+ * or `internal` for the paths in `internalOwnPaths`), and any note it adds
+ * must carry a valid signature. The test-result comparison stays in the
+ * requirement guard.
  */
 export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   const report = new Report("guard-notes");
@@ -39,7 +47,7 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     for (const path of touched) {
       report.error(
         path,
-        `Changes the guard's own path ${path}. That needs a signed user-visible note: add ${file} and list "${path}" under Covers.`,
+        `Changes the guard's own path ${path}. That needs a signed decision note: add ${file} and list "${path}" under Covers.`,
       );
     }
     return report;
@@ -51,10 +59,11 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     }
     return report;
   }
-  if (touched.length > 0 && parsed.note.kind !== "user-visible") {
+  const needUser = touched.filter((path) => !internalOwnPaths.includes(path));
+  if (parsed.note.kind !== "user-visible" && needUser.length > 0) {
     report.error(
       file,
-      `Changes the guard's own paths (${touched.join(", ")}), so the note's Kind must be user-visible.`,
+      `Changes the guard's own paths (${needUser.join(", ")}), so the note's Kind must be user-visible.`,
     );
   }
   for (const path of touched.filter((own) => !parsed.note.covers.includes(own))) {

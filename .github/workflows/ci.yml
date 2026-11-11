@@ -707,16 +707,12 @@ jobs:
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
-      # Advisory for now: a `user-visible` note can't be approved until the
-      # board decides how the user approves (HAL-3434), so the guard only
-      # reports; it turns blocking with that (HAL-1337). Trace above stays
-      # blocking. A note's signature is checked offline against the keys in
+      # Blocking. A note's signature is checked offline against the keys in
       # the base branch's tooling/check/approvers.json (pull_request.base.sha,
       # not the commit base-tests may have stepped back to). Both commits
       # are fetched as objects only: nothing of the pull request runs.
       - name: Requirement guard (merge base's copy)
         if: ${{ !cancelled() }}
-        continue-on-error: true
         working-directory: head
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
@@ -734,11 +730,8 @@ jobs:
             echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
             exit 0
           fi
-          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH" \
-            --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"; then
-            echo "::warning title=requirement-guard::The requirement guard found errors (see this step's log). It reports and doesn't block until user-visible approvals exist (HAL-3434)."
-            exit 1
-          fi
+          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH" \
+            --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"
 
   scaffold:
     # Proves the templates still pass every check, so `pnpm new` never
@@ -1639,6 +1632,52 @@ jobs:
             sleep 30
           done
 
+  policy-base:
+    # The policy rules, run from the base commit's copy: the rules and the
+    # allow-lists they trust (dependencies.json, process-starters.json,
+    # policy.json, advisories-ignored.json, overrides-allowed.json,
+    # licences.json, deny.toml) come from the base, and only the files under
+    # test come from the pull request. A change to a rule or a list is
+    # checked against the old one and takes effect after it merges. `fast`
+    # still runs the pull request's own copy for early feedback. The one
+    # pull request that adds `--lists-from` runs the old script, which reads
+    # the pull request's lists.
+    name: Policy rules (base commit's copy)
+    if: ${{ github.event_name != 'push' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      HEAD_DIR: ${{ github.workspace }}/head
+      BASE_DIR: ${{ github.workspace }}/base
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: head
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: base
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: false
+          package_json_file: base/package.json
+      - name: Install the base commit's dependencies
+        working-directory: base
+        run: pnpm install --frozen-lockfile
+      # Runs the base's files with the base's Node. Calling pnpm in the pull
+      # request's checkout would read its config, so only node runs there.
+      - name: Policy rules (layers, dependencies, process-starts, lockfile, advisories, deny-toml)
+        working-directory: head
+        run: |
+          base_node=$(cd "$BASE_DIR" && pnpm exec node -p process.execPath)
+          "$base_node" "$BASE_DIR/tooling/check/src/cli/check.ts" \
+            layers dependencies process-starts lockfile advisories deny-toml \
+            --lists-from "$BASE_DIR"
+
   ci-ok:
     name: ci-ok
     # Not always(): in a pull request run that was itself cancelled (a newer
@@ -1655,6 +1694,7 @@ jobs:
         changes,
         fast,
         leaks,
+        policy-base,
         coverage-floors,
         gitleaks,
         zizmor,

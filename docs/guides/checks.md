@@ -222,9 +222,9 @@ signature isn't in the header (the `- ` lines above the first paragraph),
 when it has a carriage return (save it with LF line endings), and when the
 base branch already has the note: a branch name that was used before needs
 a new name. Only `internal` keys exist so far, so `user-visible` notes fail
-until the board decides how the user approves (HAL-3434). Until then, in CI
-the guard reports its findings as a warning on the pull request and doesn't
-block the merge.
+until the board decides how the user approves (HAL-3434). Both guards fail
+the pull request when they find an error. A change to a requirement still
+needs a `user-visible` note, so it can't pass until a user key is pinned.
 
 **Signing.** The approver signs only from a clean worktree of
 `origin/main`, never from the pull request's checkout: there the
@@ -250,20 +250,40 @@ on `pull_request_target` and in the merge queue. On `pull_request_target`
 GitHub runs that file from the base branch, so a pull request can't edit or
 remove it, and the job runs only the base's code: the pull request's head is fetched as git
 objects and only read, with no install, cache or secret. It fails a change
-under the guard's own paths (`.github/`, `tooling/check/` with its
-`approvers.json`, `packages/testing/spec/`,
+under the guard's own paths (`.github/`, `.gitattributes`, `tooling/check/`
+with its `approvers.json`, `packages/testing/spec/`,
 `packages/testing/parity/allowed-differences.json`,
-`tooling/config/src/vitest-preset.ts`, `turbo.json`) unless the note is
-`user-visible`, lists that path as written here and its signature verifies.
-So an agent key alone can't loosen the guard or add a signer. It also
+`tooling/config/src/vitest-preset.ts`, `turbo.json`) unless the note lists
+that path as written here and its signature verifies. The note must be
+`user-visible`, except that until a user key is pinned an `internal` note
+signed by the CTO key covers `.github/`, `tooling/check/` and
+`.gitattributes`. A change to `approvers.json` (a new signer) always needs
+a `user-visible` note, so an agent key alone can't add a signer. It also
 checks any note's signature again in the merge queue, against the queue
 base's `approvers.json`. The merge queue is different: there GitHub runs
 the file from the merge group's commit, which holds the pull request's own
 changes, so a pull request that edits the workflow runs its own copy in the
 queue. That is why the `pull_request_target` run is the one that must be
 required: it fails any change under `.github/` without a signed note before
-the pull request can reach the queue. It only reports until user-visible
-approvals exist.
+the pull request can reach the queue. The job fails the pull request, but
+GitHub blocks the merge on it only when an admin lists it as a required
+check next to `ci-ok`. It can't be part of `ci-ok`, because it runs in a
+different workflow.
+
+**CI runs the policy rules from the base commit's copy.** The `Policy rules`
+job runs `layers`, `dependencies`, `process-starts`, `lockfile`,
+`advisories` and `deny-toml` with the base's code and the base's lists
+(`dependencies.json`, `policy.json`, `process-starters.json`,
+`advisories-ignored.json`, `overrides-allowed.json`, `licences.json` and
+`deny.toml`) over the pull request's files, with
+`pnpm check <rules> --lists-from <base checkout>`. A pull request that adds
+a dependency together with its allow-list entry fails: the base's list
+doesn't know it. The change takes effect after it merges. The `Fast gates`
+job still runs the pull request's own copy, for early feedback; only the
+base's verdict counts as a gate. What isn't enforced: the other `pnpm check`
+rules (names, file size and so on) run from the pull request's own copy, so
+a pull request can change them, and `guard-notes` is blocking only as a
+required check (above).
 
 **CI runs the guard and `trace` from the merge base's copy** of
 `tooling/check`, not the pull request's, so a pull request can't weaken
@@ -569,8 +589,10 @@ your deny-terms file and how to allow a false positive.
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request, in the merge queue
-and on `main`. The only required check is `ci-ok`: it always runs, waits
-for every other job and fails if any failed. Jobs that only run for some
+and on `main`. The only check this repo's code makes required is `ci-ok`: it always runs,
+waits for every other job in this workflow and fails if any failed. The
+note check in `guard-notes.yml` is another workflow, so it is required
+only if an admin adds it in the repo settings. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
@@ -611,8 +633,9 @@ requirement guard, and the workflow lint unless the group changes
 | Secret scan | `gitleaks` over the pull request's commits, checksum-verified |
 | Workflow lint | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes |
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does |
+| Policy rules (base's copy) | pull requests and the queue: `layers`, `dependencies`, `process-starts`, `lockfile`, `advisories` and `deny-toml`, run from the base commit's `tooling/check` with the base's allow-lists (`--lists-from`), so a change can't approve itself |
 | Merge base's tests | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline |
-| Requirement guard | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results |
+| Requirement guard | pull requests only: `trace` and the requirement guard (blocking), run from the merge base's copy with the merge base's dependencies, over both sides' test results |
 | Empty package and feature | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full` |
 | Tauri shell (Rust checks) | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny` |
 | Tauri shell on Windows | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths |

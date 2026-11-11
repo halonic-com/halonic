@@ -18,12 +18,23 @@ import { dcoRange } from "../rules/dco.ts";
  * Runs our own repo checks. With rule names it
  * runs only those. Without, it runs every rule except `trace`, which reads
  * the test result files and so runs after the tests: `pnpm check trace`.
+ * With --lists-from <folder> the allow-lists (dependencies.json and the
+ * other files under tooling/check, deny.toml) come from that checkout, so
+ * CI can run the base commit's rules and lists over a pull request's tree.
  * With --report it also writes each package's requirement report to
  * test-results/requirements.md. The personal-terms guard has its own
  * command, `pnpm check:leaks`, because CI runs it with a secret.
  */
 function main(argv: readonly string[]): number {
-  const selected = argv.filter((argument) => !argument.startsWith("-"));
+  const listsAt = argv.indexOf("--lists-from");
+  const listsRoot = listsAt === -1 ? undefined : argv[listsAt + 1];
+  if (listsAt !== -1 && (listsRoot === undefined || listsRoot.startsWith("-"))) {
+    console.error("check: --lists-from needs a folder.");
+    return 2;
+  }
+  const selected = argv.filter(
+    (argument, index) => !argument.startsWith("-") && !(listsAt !== -1 && index === listsAt + 1),
+  );
   const unknown = selected.filter((name) => !Object.hasOwn(rules, name));
   if (unknown.length > 0) {
     console.error(`Unknown rule: ${unknown.join(", ")}. Rules: ${Object.keys(rules).join(", ")}.`);
@@ -33,7 +44,7 @@ function main(argv: readonly string[]): number {
   const started = performance.now();
   let context: CheckContext;
   try {
-    context = loadContext(findRepoRoot());
+    context = loadContext(findRepoRoot(), listsRoot);
   } catch (error) {
     console.error(`check: ${(error as Error).message}`);
     return 2;

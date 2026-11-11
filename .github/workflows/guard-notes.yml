@@ -44,11 +44,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
-      # Advisory until user-visible approvals exist (HAL-3434): no note
-      # can pass a guarded path yet. Then this line goes and the job
-      # becomes a required check.
+      # Blocking. Until a user key is pinned (HAL-3434), an `internal`
+      # note signed by the CTO key covers .github/, tooling/check/ and
+      # .gitattributes. This job fails the pull request, but it blocks a
+      # merge only once it is a required check next to ci-ok: ci-ok can't
+      # wait for it, because it runs in another workflow.
       - name: Check the decision note (base branch's code)
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
