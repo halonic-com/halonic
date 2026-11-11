@@ -5,10 +5,13 @@
 set -euo pipefail
 img="${1:?usage: check.sh <halonic-wsl.tar.gz>}"
 root="$(mktemp -d)"
-trap 'rm -rf "$root"' EXIT
+canary="$(mktemp -d)"
+trap 'rm -rf "$root" "$canary"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
+# With extended attributes, so file capabilities (security.capability) show.
+extract() { tar -xzf "$1" -C "$2" --numeric-owner --xattrs --xattrs-include='*'; }
 
-tar -xzf "$img" -C "$root" --numeric-owner
+extract "$img" "$root"
 
 # Each setting under its own section: "[section]key=value" per line.
 conf="$(awk '/^\[/ { s = $0; next } NF && !/^#/ { print s $0 }' "$root/etc/wsl.conf")"
@@ -28,6 +31,23 @@ while IFS= read -r f; do
 done < <(find "$root" -xdev -type f -perm /6000)
 # The bit stays off after an apt upgrade only through dpkg-statoverride.
 grep -q ' /usr/bin/su$' "$root/var/lib/dpkg/statoverride" || fail "no statoverride for /usr/bin/su"
+
+# No file capabilities either (HAL-6181): the other way up to root. The canary
+# first proves this extraction and getcap see them, so an empty list means none.
+mkdir "$canary/in" "$canary/out"
+touch "$canary/in/ping"
+setcap cap_net_raw+ep "$canary/in/ping"
+tar -czf "$canary/canary.tar.gz" -C "$canary/in" --xattrs --xattrs-include='*' .
+extract "$canary/canary.tar.gz" "$canary/out"
+getcap -r "$canary/out" | grep -q 'cap_net_raw' || fail "capabilities don't survive extraction, can't check them"
+# Add a path here only with a reason in the review.
+allowed_caps=()
+while IFS= read -r line; do
+  path="${line%% *}"
+  path="${path#"$root"}"
+  for ok in "${allowed_caps[@]}"; do [ "$path" = "$ok" ] && continue 2; done
+  fail "file with capabilities: $path (${line#* })"
+done < <(getcap -r "$root")
 
 [ -d "$root/opt/halonic" ] || fail "/opt/halonic is missing"
 [ -f "$root/usr/share/doc/halonic-image/NOTICE" ] || fail "licence notice is missing"

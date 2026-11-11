@@ -11,7 +11,9 @@ release and needs the board's yes.
   notices, and removes every setuid and setgid bit (kept off on upgrades with
   `dpkg-statoverride`): root in this distro can mount the Windows drive.
 - `check.sh <image>`: checks config, packages, licence notice, that no setuid or
-  setgid file is left, and that the tools start.
+  setgid file and no file capability is left, and that the tools start.
+- `Dockerfile`: the build container, `debian:trixie` pinned by digest. Dependabot
+  proposes new digests.
 - `files/`: `/etc/wsl.conf` (interop off, automount and `/etc/fstab` mounts off, user `halonic`, systemd off),
   the empty `/opt/halonic` runtime slot, the runtime updater and the licence notice.
 
@@ -43,12 +45,11 @@ Studio checks the archive's SHA-256 on Windows before it sends it, and the scrip
 checks it again. `check.sh` installs, rolls back and updates three test runtimes
 and checks owners and modes after each step.
 
-Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap` then
+Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.
 
-CI: `.github/workflows/wsl-image.yml` builds in a `debian:trixie` container pinned
-by digest, runs on changes here and by hand, prints
-the sizes in the job summary, and keeps the image as a 7-day build artifact.
+CI: `.github/workflows/wsl-image.yml` builds in the container from `Dockerfile`,
+runs on changes here and by hand, prints the sizes in the job summary, and keeps the image as a 7-day build artifact.
 The image is imported on Windows with
 `wsl --import halonic %LOCALAPPDATA%\Halonic\wsl halonic-wsl.tar.gz --version 2`.
 

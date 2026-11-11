@@ -27,19 +27,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck
           shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh
-      # In a Debian container, so mmdebstrap and the archive keyring are
-      # new enough for the current stable release (Ubuntu's are not).
-      # Pinned by digest: its archive keyring checks every package in the
-      # image (HAL-5845). To update, take the new digest of debian:trixie.
+      # The build container is infra/wsl-image/Dockerfile: Debian pinned by
+      # digest, which Dependabot keeps fresh (HAL-6181). Built without a
+      # context, so it can't copy anything in.
       - name: Build and check
         run: |
           mkdir -p "$RUNNER_TEMP/wsl-image"
+          docker build -t halonic-wsl-build - < infra/wsl-image/Dockerfile
           docker run --rm --privileged \
             -v "$GITHUB_WORKSPACE/infra/wsl-image:/src:ro" \
             -v "$RUNNER_TEMP/wsl-image:/out" \
-            debian:trixie@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6 bash -euxc '
-              apt-get update
-              apt-get install -y --no-install-recommends mmdebstrap debian-archive-keyring ca-certificates tar gzip
+            halonic-wsl-build bash -euxc '
               /src/build.sh /out
               /src/check.sh /out/halonic-wsl.tar.gz
             '

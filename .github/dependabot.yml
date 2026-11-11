@@ -1,7 +1,16 @@
-# Only the gitleaks image for now: its pin lives in the Dockerfile of the
-# gitleaks action, which is never built.
+# Docker image pins only: the gitleaks action's image (its Dockerfile is
+# never built) and the WSL image's build container.
 version: 2
 updates:
+  # Its archive keyring checks every package in the WSL image (HAL-6181).
+  - package-ecosystem: docker
+    directory: /infra/wsl-image
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
   - package-ecosystem: docker
     directory: /.github/actions/gitleaks
     schedule:
