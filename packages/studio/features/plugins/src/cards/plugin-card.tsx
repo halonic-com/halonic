@@ -26,10 +26,11 @@ import {
 export type PluginCardUi = PluginUi["cards"][number];
 
 /**
- * Where the card's plugin stands: `on` when it's trusted, `not-trusted` when it's new or changed
- * since it was trusted, `cant-load` when its folder can't be read or checked.
+ * Where the card's plugin stands: `on` when it's trusted, `not-trusted` when it's new, `changed`
+ * when it changed since it was trusted, `cant-load` when its folder can't be read or checked. A
+ * card shows `not-trusted` and `changed` alike (T15).
  */
-export type PluginCardStatus = "on" | "not-trusted" | "cant-load";
+export type PluginCardStatus = "on" | "not-trusted" | "changed" | "cant-load";
 
 /** The props of `PluginCard`. */
 export interface PluginCardProps {
@@ -109,12 +110,12 @@ export function PluginCard({ plugin, status, card, caller, onReview, onDetails }
             <CardAnswer card={card} run={run} onTryAgain={callAgain} />
           ) : (
             <CardEmpty
-              icon={status === "not-trusted" ? <DashedRingIcon /> : <WarningIcon />}
+              icon={status === "cant-load" ? <WarningIcon /> : <DashedRingIcon />}
               line={
-                status === "not-trusted" ? notTrustedLine(plugin.name) : cantLoadLine(plugin.name)
+                status === "cant-load" ? cantLoadLine(plugin.name) : notTrustedLine(plugin.name)
               }
-              action={status === "not-trusted" ? REVIEW : DETAILS}
-              onAction={status === "not-trusted" ? onReview : onDetails}
+              action={status === "cant-load" ? DETAILS : REVIEW}
+              onAction={status === "cant-load" ? onDetails : onReview}
             />
           )}
         </div>

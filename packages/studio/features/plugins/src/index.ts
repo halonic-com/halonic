@@ -20,3 +20,15 @@ export {
 } from "./commands/plugin-command-source.ts";
 export { TOOL_CALL_TIMEOUT_MS, timedToolCaller } from "./commands/tool-call-timeout.ts";
 export { pluginsFeature } from "./feature.ts";
+export { PluginPanel, type PluginPanelProps } from "./panel/plugin-panel.tsx";
+export {
+  PLUGIN_PANEL_KIND,
+  PLUGIN_PANELS_SOURCE,
+  type PluginPanelFeed,
+  type PluginPanelOptions,
+  type PluginPanelUi,
+  pluginPanelCommandSource,
+  pluginPanelItem,
+  pluginPanelKind,
+  pluginPanelLocation,
+} from "./panel/plugin-panels.ts";

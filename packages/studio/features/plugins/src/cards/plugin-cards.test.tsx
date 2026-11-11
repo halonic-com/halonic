@@ -169,6 +169,15 @@ verifies("plugins.plugin-cards", () => {
     expect(calls).toEqual([]);
   });
 
+  it("shows a card whose plugin changed since it was trusted as not trusted, with Review", () => {
+    const { caller, calls } = callerWithAnswers();
+    const { view, review } = showCard(caller, "changed");
+    expect(view.textContent).toContain("Weather isn't trusted yet, so this card is empty.");
+    act(() => button(view, "Review").click());
+    expect(review).toHaveBeenCalledOnce();
+    expect(calls).toEqual([]);
+  });
+
   it("keeps a card whose plugin can't load empty, with Details", () => {
     const { caller, calls } = callerWithAnswers();
     const { view, details } = showCard(caller, "cant-load");
