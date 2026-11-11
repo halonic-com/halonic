@@ -203,6 +203,18 @@ class SandboxStdioConnector implements ConnectorClient {
 
   async #start(): Promise<Connection> {
     this.#checkSession();
+    // A program that stopped was stopped all the way by its transport; this waits for it.
+    await this.#transport?.close();
+    // Before the launch check, so a start the limit refuses reads no secret and looks nothing up.
+    if (!this.#restarts.allowsStart()) {
+      // Its error output isn't kept: the profile gives the program secrets it may print.
+      this.#stopped = new ConnectorStoppedError(
+        this.id,
+        this.#options.restartLimits ?? defaultRestartLimits,
+        [],
+      );
+      throw this.#stopped;
+    }
     const command = await planLaunch({
       config: this.#config,
       stdio: this.#stdio,
@@ -214,18 +226,12 @@ class SandboxStdioConnector implements ConnectorClient {
     if (this.#closed) {
       throw new Error(`Connector "${this.id}" was closed while its launch was checked.`);
     }
-    // A program that stopped was stopped all the way by its transport; this waits for it.
-    await this.#transport?.close();
-    if (!this.#restarts.allowsStart()) {
-      // Its error output isn't kept: the profile gives the program secrets it may print.
-      this.#stopped = new ConnectorStoppedError(
-        this.id,
-        this.#options.restartLimits ?? defaultRestartLimits,
-        [],
-      );
-      throw this.#stopped;
-    }
-    const process = await this.#context.sandbox.start(command);
+    // A session that ended meanwhile is what the host must hear, to open a new one.
+    const ended = this.#sessionEnded();
+    if (ended !== undefined) throw ended;
+    const process = await this.#context.sandbox.start(command).catch((error: unknown) => {
+      throw this.#sessionEnded() ?? error;
+    });
     // Counted once it runs: a program that can't start at all hasn't crashed.
     this.#restarts.recordStart();
     const transport = new StdioTransport(

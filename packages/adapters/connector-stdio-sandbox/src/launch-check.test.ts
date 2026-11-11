@@ -4,6 +4,7 @@ import type { FakeProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { config, setUp } from "./connector-setup.spec.ts";
+import { SandboxSessionEndedError } from "./errors.ts";
 import { contractProgram, testPlace } from "./fake-mcp-program.spec.ts";
 import { type LocalToolPlace, localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 
@@ -123,6 +124,24 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
       await expect(
         factory.create(otherVersion, { ...context, http: npmRegistry([]) }).listTools(),
       ).rejects.toThrow("Halonic didn't start the connector");
+      expect(sandbox.started).toEqual([]);
+    });
+
+    it("fails with the session-ended error when the session ends during the registry lookup", async () => {
+      const profile = localToolLaunch(pinned.transport as StdioConfig, pinnedPlace, pin, {});
+      const { sandbox, factory, context } = setUp({
+        profile: profile.profile,
+        factory: { localTools: () => ({ place: pinnedPlace }) },
+      });
+      const registry = npmRegistry([]);
+      const closesSession: HttpClient = {
+        fetch: async (url, init) => {
+          await sandbox.close();
+          return registry.fetch(url, init);
+        },
+      };
+      const client = factory.create(pinned, { ...context, http: closesSession });
+      await expect(client.listTools()).rejects.toThrow(SandboxSessionEndedError);
       expect(sandbox.started).toEqual([]);
     });
   });
