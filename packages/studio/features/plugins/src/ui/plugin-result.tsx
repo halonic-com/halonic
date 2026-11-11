@@ -1,5 +1,6 @@
 import type { PluginUi } from "@halonicjs/format";
 import { ExternalLink } from "@halonicjs/studio-kit";
+import { useMemo } from "react";
 import { type Block, type Inline, readMarkdown } from "../text/markdown.ts";
 import { readTable, type Table } from "../text/table.ts";
 
@@ -19,9 +20,11 @@ export interface PluginResultProps {
  * table shows as plain text.
  */
 export function PluginResult({ text, show }: PluginResultProps) {
-  const table = show === "table" ? readTable(text) : null;
+  // A long answer is read once, not on every render.
+  const table = useMemo(() => (show === "table" ? readTable(text) : null), [text, show]);
+  const blocks = useMemo(() => (show === "markdown" ? readMarkdown(text) : null), [text, show]);
   if (table !== null) return <ResultTable table={table} />;
-  if (show === "markdown") return <MarkdownBlocks blocks={readMarkdown(text)} />;
+  if (blocks !== null) return <MarkdownBlocks blocks={blocks} />;
   return <bdi className="block whitespace-pre-wrap wrap-anywhere text-body text-fg">{text}</bdi>;
 }
 
