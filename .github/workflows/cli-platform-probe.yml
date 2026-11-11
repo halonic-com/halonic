@@ -1,0 +1,52 @@
+# Report-only probe: how Codex and Claude Code behave on Windows, macOS and
+# Linux runners with their own sandboxes turned on. A fake model server on
+# 127.0.0.1 drives each CLI; no account or key is used. The results are in
+# the job summary. It runs by hand only.
+name: CLI platform probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      codex_version:
+        description: "@openai/codex version"
+        default: "0.166.0"
+      claude_code_version:
+        description: "@anthropic-ai/claude-code version"
+        default: "2.1.318"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: CLI probe (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, macos-15, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Install the CLIs
+        shell: bash
+        env:
+          CODEX_VERSION: ${{ inputs.codex_version }}
+          CLAUDE_CODE_VERSION: ${{ inputs.claude_code_version }}
+        run: npm install --global "@openai/codex@$CODEX_VERSION" "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+      - name: Install bubblewrap (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash .github/probes/cli-platform/linux-setup.sh 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Sandbox probe
+        shell: bash
+        run: bash .github/probes/cli-platform/sandbox-probe.sh 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Settings folder probe (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: bash .github/probes/cli-platform/keychain-probe.sh 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
