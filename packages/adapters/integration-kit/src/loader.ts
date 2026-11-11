@@ -94,6 +94,7 @@ export function loadIntegration(
   const secretNames = options.choices?.secretNames ?? {};
   const problems = [
     ...approvalProblems(source, sheet),
+    ...localTokenProblems(source, sheet),
     ...declarationProblems(sheet, source.integration),
     ...needProblems(sheet, options.capabilities ?? []),
     ...secretChoiceProblems(sheet, secretNames),
@@ -181,6 +182,25 @@ function approvalProblems(source: IntegrationSource, sheet: IntegrationSheet): L
       code: "sheet-not-approved",
       path: [],
       message: `${sheet.id}: this local integration's permission sheet isn't the one you approved; approve it again`,
+    },
+  ];
+}
+
+/**
+ * A local integration runs in the runner, and no token value crosses into it
+ * (I5 design HAL-958, section 3.5): its sheet can't declare `tokens` (A32).
+ * Tokens as handles are the follow-up HAL-984. Built-in ones keep `tokens`.
+ */
+function localTokenProblems(source: IntegrationSource, sheet: IntegrationSheet): LoadProblem[] {
+  if (source.origin !== "local" || sheet.tokens.length === 0) {
+    return [];
+  }
+  return [
+    {
+      code: "tokens-not-allowed",
+      path: ["tokens"],
+      message: `${sheet.id}: integrations you build or change can't keep sign-in tokens yet`,
+      fix: "Use an API key, or ask for sign-in support.",
     },
   ];
 }

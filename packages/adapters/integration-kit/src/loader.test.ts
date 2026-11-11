@@ -151,6 +151,23 @@ verifies("integration-kit.loader", () => {
       const approved = { ...sheet(), hosts: ["api.example.com", "files.example.com"] };
       expect(codes(local(approved))).toEqual([{ code: "sheet-not-approved", path: [] }]);
     });
+
+    it("is refused when its sheet declares tokens, which a built-in one may (A32)", () => {
+      const withTokens = {
+        ...sheet(),
+        tokens: [{ name: "weather-refresh", purpose: "Keeps you signed in." }],
+      };
+      const integration = weather();
+      const refused = load({
+        source: { origin: "local", sheet: withTokens, integration, approvedSheet: withTokens },
+      }).loaded;
+      expect(codes(refused)).toEqual([{ code: "tokens-not-allowed", path: ["tokens"] }]);
+      expect(refused.ok ? undefined : refused.error[0]?.fix).toBe(
+        "Use an API key, or ask for sign-in support.",
+      );
+      const builtIn = load({ source: { origin: "built-in", sheet: withTokens, integration } });
+      expect(builtIn.loaded.ok).toBe(true);
+    });
   });
 
   it("refuses a need this runtime doesn't offer", () => {
