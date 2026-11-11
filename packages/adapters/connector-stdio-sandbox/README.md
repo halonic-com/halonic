@@ -26,6 +26,21 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 Halonic builds the session's profile (working folder, environment, network, time limit) itself,
 never the plugin. Until that lands, a config with a `pin` or a `cwd` is refused (HAL-1738).
 
+## What it exports
+
+- `SandboxStdioConnectorFactory`: the `ConnectorFactory` for the `stdio` transport. `create(config,
+  context)` throws for another transport or a context without `sandbox`, and otherwise returns a
+  `ConnectorClient` that starts its program on the first call, through `context.sandbox` only.
+- `SandboxStdioOptions`: `clientInfo` and `onBlocked`, and optionally `limits`, `restartLimits`
+  and `clock`.
+- `ConnectorBlock`: what `onBlocked` hears, `{ connectorId, block }`.
+- `SandboxNotFencedError` (with its `reason`) and `SandboxSessionEndedError`: the two typed
+  refusals the host checks for.
+- `sandboxProgram(process)`: a session's `SandboxProcess` as the MCP stdio transport's
+  `RunningProgram`. `terminate` and `kill` both call the sandbox's one `kill`.
+
+Requirements: `session-start`, `session-ended` and `blocked-events`.
+
 ## Example
 
 ```ts

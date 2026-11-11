@@ -829,6 +829,9 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
   `engineRestartWindowMs` (60 s), `engineWords`, `EngineWords`, `StudioHost`, `EngineLineProps`.
 - **Frame:** `ShellFrameProps`, `StatusBarItemsProps`, `StatusBarItemProps` (what an item's view
   gets: `context`), `HomeCardProps`.
+- **Side panel:** `PANEL_DEFAULT_WIDTH` (700), `PANEL_MIN_WIDTH` (420), `PANEL_MAX_WIDTH` (1400),
+  `CHAT_MIN_WIDTH` (320), `ITEM_PAGE_LEAD` (40), `PANEL_GAP` (48), `PanelWidthProviderProps`.
+- **Search page:** `SearchScope`, `SearchPageQuery`, `NameResult`, `SearchPageNames`.
 - **Sidebar:** `SidebarResizeEdgeProps`, `clampSidebarWidth`, `SIDEBAR_MIN_WIDTH`,
   `SIDEBAR_MAX_WIDTH`, `SIDEBAR_DEFAULT_WIDTH`.
 - **Tabs and toolbar:** `TabLocation`, `WindowTab`, `TabSetState`, `OpenedTab`, `homeLocation`,

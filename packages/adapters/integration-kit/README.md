@@ -236,7 +236,8 @@ integration never holds it, and the host keeps the request log.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name
-  no other integration can reach.
+  no other integration can reach. A local integration declares none (see Loading an
+  integration).
 - **Waiting** goes through `host.wait(ms, signal)`, the integration's only
   timer: at most 30 s (`maxIntegrationWaitMs`), and it rejects with
   `signal.reason` when the call's signal aborts.
@@ -255,7 +256,9 @@ connector on any of them. Every other code is an ordinary mistake, or, like
 `loadIntegration` reads an integration's permission sheet (`integration.yaml`, a
 file kind in `@halonicjs/format`), checks it against the integration's code and the
 workspace's choices, and builds the host. A local integration loads only with the
-sheet the user approved. Nothing is sent until you call
+sheet the user approved, and only when that sheet declares no `tokens`: no token value crosses
+into the runner, so it is refused as `tokens-not-allowed` ("Use an API key, or ask for sign-in
+support."). A built-in integration keeps its `tokens` (requirement `loader`). Nothing is sent until you call
 `integration.connect(loaded.host)`:
 
 ```ts
