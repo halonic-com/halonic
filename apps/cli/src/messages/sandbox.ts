@@ -1,4 +1,5 @@
 import type { SandboxUnavailableReason } from "@halonicjs/ports";
+import { withoutUnsafe } from "../output/printable.ts";
 import { defineMessages } from "./define.ts";
 import { docsBase } from "./docs.ts";
 import { type Phrase, phrase } from "./phrase.ts";
@@ -23,7 +24,12 @@ export const windowsNodeInWsl = "windows-node-in-wsl";
  * sentence is for logs and shows only with `--debug`. The codes port
  * version 6 added take the onboarding wording's reasons where it has them
  * (HAL-3778 section 4) and the team's words where it doesn't (HAL-5900).
+ * The CLI's sandbox gives `not-supported` only on WSL 1, so its words are
+ * WSL 1's, with the distro's name in the command (Sofia, HAL-6526).
  */
+/** Where a fix's command takes the WSL distro's name, filled in by {@link distroArgument}. */
+const distroSlot = "<distro>";
+
 const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
     "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
@@ -31,8 +37,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
     "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal.",
   container:
     "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
-  "not-supported":
-    "This version or edition of the operating system can't run the sandbox. Update it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+  "not-supported": `This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version ${distroSlot} 2 in PowerShell on Windows, then run it again.`,
   "blocked-by-policy":
     "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "virtualisation-off":
@@ -66,7 +71,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   windows: "The sandbox doesn't work on Windows in this version of Halonic.",
   [windowsNodeInWsl]: "Windows' Node.js can't start the sandbox in a WSL folder.",
   container: "Halonic is running inside a container, and the sandbox can't start there.",
-  "not-supported": "This version or edition of the operating system can't run the sandbox.",
+  "not-supported": "This distro runs on WSL 1, and the sandbox needs WSL 2.",
   "blocked-by-policy": "A company policy on this computer blocks the sandbox.",
   "virtualisation-off": "Hardware virtualisation is turned off on this computer.",
   "wsl-missing": "WSL isn't installed, and the sandbox needs it.",
@@ -92,8 +97,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
   [windowsNodeInWsl]: "install Node.js inside WSL and open a WSL terminal.",
   container: "run Halonic on the computer itself, not in a container.",
-  "not-supported":
-    "update the operating system, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+  "not-supported": `switch it to WSL 2 with wsl --set-version ${distroSlot} 2 in PowerShell on Windows.`,
   "blocked-by-policy":
     "ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "virtualisation-off":
@@ -127,16 +131,56 @@ export const sandboxMessages = defineMessages("sandbox", {
   cantStart: () => phrase`the sandbox can't start on this computer.`,
   /** The end of `runs send`'s line 1: the answer wasn't sent, so the run is still waiting. */
   nothingSent: () => phrase`Nothing was sent.`,
-  /** Line 2 of a refused `run` or `runs send`. */
-  refusedFix: (code: string) => phrase`${refusedFixes[known(code)]}`,
+  /** Line 2 of a refused `run` or `runs send`, with the WSL distro's name when it is known. */
+  refusedFix: (code: string, distro?: string) =>
+    phrase`${withDistro(refusedFixes[known(code)], distro)}`,
   /** Line 2 of a sandbox error with more than one problem, so no single fix. */
   seeDoctor: () => phrase`Run halonic doctor to see what's missing.`,
 
   /** `halonic doctor`'s line under "can't start on this computer": what's wrong. */
   reason: (code: string) => phrase`${reasons[known(code)]}`,
+  /**
+   * `halonic doctor`'s line in place of `other`'s reason when the check
+   * said what failed: its sentence as the tool wrote it, after a label, so
+   * it reads as the tool's words, not Halonic's (Sofia, HAL-6526).
+   */
+  whatFailed: (sentence: string) => phrase`What failed: ${sentence}`,
   /** `halonic doctor`'s fix under the reason, with "Then run halonic doctor again." after it. */
-  doctorFix: (code: string) => doctorFix(fixes[known(code)], afterDoctorAgain[known(code)]),
+  doctorFix: (code: string, distro?: string) =>
+    doctorFix(withDistro(fixes[known(code)], distro), afterDoctorAgain[known(code)]),
 });
+
+/**
+ * `text` with the WSL distro's name in its command, or `<distro>` there when
+ * the name isn't known or can't be pasted into PowerShell as it is.
+ */
+function withDistro(text: string, distro: string | undefined): string {
+  return text.replace(distroSlot, () => distroArgument(distro));
+}
+
+/**
+ * The distro's name as `wsl --set-version` takes it in PowerShell: as it is
+ * when it has only letters, digits, `.`, `-` and `_`, in double quotes when
+ * it has other characters, and `<distro>` when it is empty or has a
+ * character double quotes don't keep as it is (`"`, `$`, a backtick or a
+ * control or bidi character).
+ *
+ * @example
+ * distroArgument("Ubuntu-24.04"); // "Ubuntu-24.04"
+ * distroArgument("My Ubuntu"); // '"My Ubuntu"'
+ * distroArgument(undefined); // "<distro>"
+ */
+export function distroArgument(distro: string | undefined): string {
+  if (distro === undefined || distro === "") return distroSlot;
+  if (/^[A-Za-z0-9._-]+$/u.test(distro)) return distro;
+  if (/["$`]/u.test(distro) || withoutUnsafe(distro) !== distro) return distroSlot;
+  return `"${distro}"`;
+}
+
+/** Whether the CLI words `code` as `other`: it is `other`, or a code this version doesn't know. */
+export function readsAsOther(code: string): boolean {
+  return known(code) === "other";
+}
 
 /** A code the CLI has words for, or `other` for one it doesn't. */
 function known(code: string): WordedReason {

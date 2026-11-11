@@ -39,7 +39,10 @@ ripgrep is missing on macOS, the codes port version 6 added for setup, WSL, comp
 such as `setup-needed` for Windows without the sandbox's one-time setup, and `other`) has its own words
 and fix in `src/messages/sandbox.ts`, as has the CLI's own `windows-node-in-wsl`, used in place of the
 sandbox's reason when Windows' Node.js runs Halonic on a workspace in a WSL folder; a code this version
-doesn't know reads as `other`. The check's own sentence shows only with `--debug`.
+doesn't know reads as `other`. The CLI's sandbox gives `not-supported` only on WSL 1, so its fix is
+`wsl --set-version <distro> 2` in PowerShell, with the distro's name from `WSL_DISTRO_NAME`. For `run`
+and `runs send` the check's own sentence shows only with `--debug`; `doctor` shows it for `other`, as
+"What failed:" and its first line.
 
 Every `halonic plugin` command opens the plugin service with `openPluginService`
 (`src/plugin-host.ts`): the profile's plugins folder and records, and the trust records plugins share

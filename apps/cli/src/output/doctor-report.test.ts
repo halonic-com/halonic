@@ -159,6 +159,34 @@ verifies("cli.doctor-report", () => {
       "              Halonic couldn't read the free space on this drive.",
     ]);
   });
+
+  it("shows what failed for other, as the check said it", () => {
+    const other: SandboxLine = {
+      ...bubblewrapMissing,
+      reason: "other",
+      missing: ["bubblewrap can't start: bwrap: setting up uid map: Permission denied"],
+    };
+    expect(check(printed(reportOf({ sandbox: other, disk: diskFree })), "Sandbox")).toEqual([
+      "✕ Sandbox     can't start on this computer",
+      "              What failed: bubblewrap can't start: bwrap: setting up uid map: Permission denied",
+      "              Fix: see what the sandbox needs on this computer. Then run halonic doctor again.",
+      "              More: https://docs.halonic.com/sandbox (other)",
+    ]);
+  });
+
+  it("names the WSL distro in WSL 1's fix", () => {
+    const wsl1: SandboxLine = { ...bubblewrapMissing, reason: "not-supported" };
+    const lines = printed(reportOf({ sandbox: wsl1, disk: diskFree }), {
+      ...facts,
+      wslDistro: "Ubuntu",
+    });
+    expect(check(lines, "Sandbox")).toEqual([
+      "✕ Sandbox     can't start on this computer",
+      "              This distro runs on WSL 1, and the sandbox needs WSL 2.",
+      "              Fix: switch it to WSL 2 with wsl --set-version Ubuntu 2 in PowerShell on Windows. Then run halonic doctor again.",
+      "              More: https://docs.halonic.com/sandbox (not-supported)",
+    ]);
+  });
 });
 
 verifies("cli.doctor-windows-drive", () => {
@@ -305,6 +333,35 @@ describe("doctorReportLines", () => {
       "✓ Models      Ollama answering at localhost:11434",
       "              LM Studio answering at localhost:1234 · qwen3 loaded",
     ]);
+  });
+
+  it("shows other's own words when the check said nothing, or a reason that isn't other", () => {
+    const reasonOf = (line: SandboxLine) =>
+      check(printed(reportOf({ sandbox: line, disk: diskFree })), "Sandbox")[1];
+    expect(reasonOf({ ...bubblewrapMissing, reason: "other", missing: [] })).toBe(
+      "              Halonic can't tell what the sandbox is missing.",
+    );
+    expect(reasonOf({ ...bubblewrapMissing, reason: "other", missing: ["", "  \n"] })).toBe(
+      "              Halonic can't tell what the sandbox is missing.",
+    );
+    expect(reasonOf(bubblewrapMissing)).toBe(
+      "              bubblewrap isn't installed, and the sandbox needs it.",
+    );
+  });
+
+  it("keeps the check's sentence to one short line without colour codes", () => {
+    const reasonOf = (missing: string[]) =>
+      check(
+        printed(
+          reportOf({ sandbox: { ...bubblewrapMissing, reason: "other", missing }, disk: diskFree }),
+        ),
+        "Sandbox",
+      )[1];
+    expect(reasonOf(["  \u001b[31mbwrap\u001b[0m failed \u0007\n    at line 2", "next"])).toBe(
+      "              What failed: bwrap failed",
+    );
+    const long = reasonOf(["x".repeat(500)]);
+    expect(long).toBe(`              What failed: ${"x".repeat(199)}…`);
   });
 
   it("links the sandbox page for a reason without its own section", () => {

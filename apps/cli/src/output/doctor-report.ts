@@ -21,6 +21,7 @@ import { type DataUse, doctorMessages } from "../messages/doctor.ts";
 import { errorMessages } from "../messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import {
+  readsAsOther,
   sandboxDocsLink,
   sandboxMessages,
   windowsNodeInWsl,
@@ -28,7 +29,7 @@ import {
 } from "../messages/sandbox.ts";
 import { shownSize } from "../messages/size.ts";
 import type { Mark } from "./paint.ts";
-import { printable } from "./printable.ts";
+import { printable, withoutUnsafe } from "./printable.ts";
 
 /** What the report doesn't hold, because only the host knows it. */
 export interface DoctorFacts {
@@ -40,6 +41,8 @@ export interface DoctorFacts {
   readonly sandboxKind: string;
   /** The `--dir` the user gave, so the suggested `halonic trust` keeps it. */
   readonly dir?: string;
+  /** The WSL distro `doctor` runs in, for the WSL 1 fix's command. */
+  readonly wslDistro?: string;
 }
 
 /** The labels' column: the longest label, "Workspace" or "Harnesses", and three spaces. */
@@ -81,7 +84,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
   const checks = [
     report.workspace && workspaceCheck(report.workspace, facts.dir),
     report.models && modelsCheck(report.models),
-    sandboxCheck(report.sandbox, facts.sandboxKind, report.node),
+    sandboxCheck(report.sandbox, facts, report.node),
     report.harnesses && harnessesCheck(report.harnesses),
     report.node && nodeCheck(report.node),
     diskCheck(report.disk),
@@ -189,10 +192,14 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
  * `windows-node-in-wsl` whatever the sandbox's own reason, as for a refused
  * `run`, because the fix is Node.js inside WSL (HAL-6552).
  */
-function sandboxCheck(line: SandboxLine, kind: string, node: NodeLine | undefined): CheckLines {
+function sandboxCheck(line: SandboxLine, facts: DoctorFacts, node: NodeLine | undefined): CheckLines {
   const label = doctorMessages.sandboxLabel();
   if (line.status === "ok") {
-    return { status: line.status, label, lines: [doctorMessages.sandboxReady(kind).phrase] };
+    return {
+      status: line.status,
+      label,
+      lines: [doctorMessages.sandboxReady(facts.sandboxKind).phrase],
+    };
   }
   const code = node?.problem === "windows-node-in-wsl" ? windowsNodeInWsl : line.reason;
   return {
@@ -200,11 +207,52 @@ function sandboxCheck(line: SandboxLine, kind: string, node: NodeLine | undefine
     label,
     lines: [
       doctorMessages.sandboxCantStart().phrase,
-      sandboxMessages.reason(code).phrase,
-      sandboxMessages.doctorFix(code).phrase,
+      sandboxReason(code, line.missing).phrase,
+      sandboxMessages.doctorFix(code, facts.wslDistro).phrase,
       errorMessages.more(sandboxDocsLink(code), code).phrase,
     ],
   };
+}
+
+/**
+ * The reason by its code, except that `other` shows what the check said
+ * failed, when it said anything, since the code alone can't say what to fix.
+ */
+function sandboxReason(code: string, missing: readonly string[]): Message {
+  const said = readsAsOther(code) ? toolSentence(missing) : undefined;
+  return said === undefined ? sandboxMessages.reason(code) : sandboxMessages.whatFailed(said);
+}
+
+/** A colour or cursor code, taken out whole so none of it is left on the line. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: the escape character starts the code
+const colourCode = /\u001b\[[0-?]*[ -/]*[@-~]/gu;
+
+/** The most of the check's sentence `doctor` shows; the rest is cut with "…". */
+const toolSentenceLength = 200;
+
+/**
+ * The check's own sentence as one line: its first line, trimmed, without
+ * colour codes or control characters, and cut at about 200 characters, so
+ * it can't flood the screen. It gets no full stop, since it may end in a
+ * path or its own punctuation. `undefined` when the check said nothing.
+ *
+ * @example
+ * toolSentence(["bwrap: setting up uid map: Permission denied\n  at …"]);
+ * // "bwrap: setting up uid map: Permission denied"
+ */
+function toolSentence(missing: readonly string[]): string | undefined {
+  for (const sentence of missing) {
+    const [first = ""] = sentence.split(/\r?\n/u);
+    const line = withoutUnsafe(first.replace(colourCode, "")).trim();
+    if (line === "") continue;
+    const characters = Array.from(line);
+    if (characters.length <= toolSentenceLength) return line;
+    return `${characters
+      .slice(0, toolSentenceLength - 1)
+      .join("")
+      .trimEnd()}…`;
+  }
+  return undefined;
 }
 
 /** The harnesses that are ready on one line, then each problem with its fix under it. */

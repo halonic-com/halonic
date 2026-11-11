@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { plainText } from "./phrase.ts";
-import { sandboxDocsLink, sandboxMessages } from "./sandbox.ts";
+import { distroArgument, readsAsOther, sandboxDocsLink, sandboxMessages } from "./sandbox.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -27,7 +27,7 @@ describe("the sandbox sentences", () => {
     ).toEqual([
       "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
-      "This version or edition of the operating system can't run the sandbox. Update it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+      "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version <distro> 2 in PowerShell on Windows, then run it again.",
       "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
       "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. Then run it again.",
       "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
@@ -69,8 +69,8 @@ describe("the sandbox sentences", () => {
         "Fix: run Halonic on the computer itself, not in a container. Then run halonic doctor again. halonic validate and halonic test work in a container.",
       ],
       [
-        "This version or edition of the operating system can't run the sandbox.",
-        "Fix: update the operating system, or pick another sandbox in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
+        "This distro runs on WSL 1, and the sandbox needs WSL 2.",
+        "Fix: switch it to WSL 2 with wsl --set-version <distro> 2 in PowerShell on Windows. Then run halonic doctor again.",
       ],
       [
         "A company policy on this computer blocks the sandbox.",
@@ -146,6 +146,44 @@ describe("the sandbox sentences", () => {
       "https://docs.halonic.dev/sandbox",
       "https://docs.halonic.dev/sandbox",
     ]);
+  });
+
+  it("names the WSL distro in WSL 1's fix, for run and for doctor", () => {
+    expect(words(sandboxMessages.refusedFix("not-supported", "Ubuntu"))).toBe(
+      "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version Ubuntu 2 in PowerShell on Windows, then run it again.",
+    );
+    expect(words(sandboxMessages.doctorFix("not-supported", "Ubuntu"))).toBe(
+      "Fix: switch it to WSL 2 with wsl --set-version Ubuntu 2 in PowerShell on Windows. Then run halonic doctor again.",
+    );
+    expect(words(sandboxMessages.refusedFix("bubblewrap-missing", "Ubuntu"))).toBe(
+      words(sandboxMessages.refusedFix("bubblewrap-missing")),
+    );
+  });
+
+  it("gives the distro's name so it pastes into PowerShell, or <distro>", () => {
+    expect(distroArgument("Ubuntu-24.04")).toBe("Ubuntu-24.04");
+    expect(distroArgument("my_distro.1")).toBe("my_distro.1");
+    expect(distroArgument("My Ubuntu")).toBe('"My Ubuntu"');
+    expect(distroArgument("Débian")).toBe('"Débian"');
+    expect(distroArgument(undefined)).toBe("<distro>");
+    expect(distroArgument("")).toBe("<distro>");
+    expect(distroArgument('a"b')).toBe("<distro>");
+    expect(distroArgument("$env:x")).toBe("<distro>");
+    expect(distroArgument("a`b")).toBe("<distro>");
+    expect(distroArgument("a\u001b[31mb")).toBe("<distro>");
+    expect(distroArgument("a\u202eb")).toBe("<distro>");
+  });
+
+  it("labels the check's own sentence, without a full stop of its own", () => {
+    expect(words(sandboxMessages.whatFailed("bwrap: setting up uid map: Permission denied"))).toBe(
+      "What failed: bwrap: setting up uid map: Permission denied",
+    );
+  });
+
+  it("reads other and a code it doesn't know as other", () => {
+    expect(readsAsOther("other")).toBe(true);
+    expect(readsAsOther("seccomp-missing")).toBe(true);
+    expect(readsAsOther("not-supported")).toBe(false);
   });
 
   it("has runs send's ending and the pointer to doctor", () => {

@@ -277,6 +277,19 @@ verifies("cli.sandbox-gate", () => {
       expect(error.message).toBe("the sandbox can't start on this computer. Nothing was sent.");
     });
 
+    it("names the WSL distro the CLI runs in, in WSL 1's fix (Sofia, HAL-6526)", async () => {
+      const workspace = await workspaceOf();
+      const { machine } = machineWith({ ok: false, reason: "not-supported", missing: ["WSL 1"] });
+
+      const error = await refusal(
+        checkRunSandbox(workspace, supportReply, { ...machine, wslDistro: "Ubuntu" }),
+      );
+
+      expect(error.fix).toBe(
+        "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version Ubuntu 2 in PowerShell on Windows, then run it again.",
+      );
+    });
+
     it.each([...sandboxUnavailableReasons, "a-code-from-a-later-port"])(
       "words %s from the code alone, never the check's own sentence",
       async (code) => {
