@@ -187,11 +187,16 @@ verifies("cli.run-harness", () => {
       expect(await startedRuns()).toEqual([]);
     });
 
-    it("starts the run with the harness, in its run.started", async () => {
+    it("passes every check, then refuses it as this computer's engine has no harness adapter yet", async () => {
       await trustAcme();
-      await run(claudeCodeReady, sandboxReady, "--harness", "claude-code");
+      const { code, stderr } = await run(claudeCodeReady, sandboxReady, "--harness", "claude-code");
 
-      expect((await startedRuns()).map((each) => each.harness)).toEqual(["claude-code"]);
+      expect(code).toBe(exitCode.unavailable);
+      expect(stderr[0]).toBe(
+        "✕ Couldn't run support-reply: this computer's engine can't run agents in a harness yet, and Writer is in claude-code. Nothing ran.",
+      );
+      expect(checks).toBe(1);
+      expect(await startedRuns()).toEqual([]);
     });
 
     it("runs every agent in Halonic's own loop with halonic, without trust or the sandbox", async () => {

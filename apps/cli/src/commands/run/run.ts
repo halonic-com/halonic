@@ -232,6 +232,7 @@ function refuseHarnessAgents(workspace: LoadedWorkspace, workflow: SandboxGateRu
   if (agent === undefined) return;
   const reason = runMessages.harnessNotAvailable(
     printable(agent.value.name),
+    // The run's harness when `--harness` names one, as the run would use it.
     printable(workflow.harness ?? agent.value.harness ?? ""),
   );
   throw new KindedError("unavailable", plainText(reason.phrase), {
