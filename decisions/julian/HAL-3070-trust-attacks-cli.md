@@ -3,6 +3,7 @@
 - Task: HAL-3070
 - Approval: Liam approves this note in review of [HAL-3070](/HAL/issues/HAL-3070)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:u7ZE2r0si2xYlZ1Xq+5fLMqo9Pv/32fXByQYODNlnJYpYAfN1xmZ3svWo2dwzbjr0lECtZbk6EG4WZPHn2yiAg==
 
 ## What changes
 
