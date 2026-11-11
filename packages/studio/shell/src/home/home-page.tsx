@@ -78,7 +78,7 @@ function HomeStatus({
   const reasons = useSyncExternalStore(errors.subscribe, errors.reasons);
   let text = "";
   if (reasons.length > 0) {
-    text = reasons.join(" ");
+    text = reasons.map(asSentence).join(" ");
   } else if (loadingSections > 0) {
     text = "Loading Home";
   }
@@ -87,4 +87,13 @@ function HomeStatus({
       {text}
     </span>
   );
+}
+
+/**
+ * The reason with a full stop at its end when it has none, so screen readers don't run two
+ * reasons together. The Studio's own reasons end in one; an engine's message may not.
+ */
+function asSentence(reason: string): string {
+  const trimmed = reason.trimEnd();
+  return /[.!?…]$/u.test(trimmed) ? trimmed : `${trimmed}.`;
 }

@@ -218,6 +218,18 @@ verifies("shell.home-states", () => {
     expect(status(container)).toBe(notAnswering);
   });
 
+  it("ends each reason in a full stop, so two reasons don't run together", async () => {
+    const inbox = new PendingRows();
+    const runs = new PendingRows();
+    const container = renderHome([card("needs-you", inbox), card("recent-runs", runs)]);
+    await settle();
+    await fail(inbox, new KindedError("denied", "Trust doesn't allow reading the inbox"));
+    await fail(runs, new KindedError("unavailable", "Halonic on your computer isn't answering."));
+    expect(status(container)).toBe(
+      "Trust doesn't allow reading the inbox. Halonic on your computer isn't answering.",
+    );
+  });
+
   it("stops saying a reason once no section fails for it", async () => {
     const runs = new PendingRows();
     const container = renderHome([card("recent-runs", runs)]);
