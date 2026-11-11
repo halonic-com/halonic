@@ -29,6 +29,10 @@ import type { LocalToolPlace, StdioConfig } from "./local-tool-launch.ts";
 import { planLaunch } from "./plan-launch.ts";
 import { sandboxProgram } from "./sandbox-program.ts";
 
+/** Why a session without a fence by design (`off`) starts no local tool. */
+const noFenceReason =
+  "the session has no fence at all. A local tool runs only inside the sandbox, even when running without it is allowed.";
+
 /** An access the sandbox refused while a connector's program ran, and whose program it was. */
 export interface ConnectorBlock {
   readonly connectorId: string;
@@ -83,6 +87,7 @@ export interface SandboxStdioOptions {
  * - Without a session in the context, `create` refuses the connector.
  * - Without a trust grant, or while the session's fence proof isn't
  *   `fenced`, the connector starts nothing ({@link SandboxNotFencedError}).
+ *   That includes `off`, the launcher's session with no fence at all.
  * - Once the session has ended, every call throws
  *   {@link SandboxSessionEndedError}; the host opens a new session and
  *   connector.
@@ -295,6 +300,8 @@ class SandboxStdioConnector implements ConnectorClient {
     if (ended !== undefined) throw ended;
     const fence = this.#context.sandbox.fence;
     if (fence.state === "not-fenced") throw new SandboxNotFencedError(this.id, fence.reason);
+    // A session with no fence by design is the launcher's, which a saved yes to run without the sandbox opens.
+    if (fence.state === "off") throw new SandboxNotFencedError(this.id, noFenceReason);
   }
 
   /** What the host set up for this local tool. */

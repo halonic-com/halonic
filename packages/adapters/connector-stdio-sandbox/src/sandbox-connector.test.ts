@@ -26,6 +26,16 @@ verifies("ports.connector-sandbox-session", () => {
     );
     expect(start).not.toHaveBeenCalled();
   });
+
+  it("starts nothing in a session with no fence at all, the one a yes to run without the sandbox opens", async () => {
+    const { sandbox, factory, context } = setUp({ fence: { state: "off" } });
+    const start = vi.spyOn(sandbox, "start");
+    const client = factory.create(config, context);
+    const refused = client.listTools();
+    await expect(refused).rejects.toThrow(SandboxNotFencedError);
+    await expect(refused).rejects.toThrow("the session has no fence at all");
+    expect(start).not.toHaveBeenCalled();
+  });
 });
 
 verifies("connector-stdio-sandbox.session-start", () => {
