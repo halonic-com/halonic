@@ -69,6 +69,7 @@ verifies("format.program-start-paths", () => {
       ["after -m among short flags", ["-Im", "tools.mail"]],
       ["written with -m among short flags", ["-Imtools.mail"]],
       ["after -m among short flags with an -O", ["-OIm", "tools.mail"]],
+      ["written with -m after a group of short flags ending in m", ["-Wm", "-mtools.mail"]],
     ])("reads the folder path of a module %s", (_, args) => {
       expect(pathsOf(start("python", args))).toContain("tools/mail");
     });
@@ -88,6 +89,7 @@ verifies("format.program-start-paths", () => {
       ["in quotes after an =", '--file="tools/x.js"', "tools/x.js"],
       ["in quotes with a space", '--require "my tools/x.js"', "my tools/x.js"],
       ["in quotes behind a short flag", '-c"tools/x.js"', "tools/x.js"],
+      ["in double quotes after a stray apostrophe", `it's --require "my x.js" '`, "my x.js"],
     ])("reads a path %s without its quotes (HAL-4903)", (_, arg, path) => {
       expect(pathsOf(start("node", [arg]))).toContain(path);
     });

@@ -133,6 +133,10 @@ verifies("format.working-folder-start", () => {
       ["a PATH folder in env", start("npx", [], workspace, { PATH: `${coder}/bin:/usr/bin` })],
       ["a new file in a linked folder", start("node", ["--out=out/new.json"])],
       ["a module that python -m runs", start("python", ["-m", "files.agents.coder.server"])],
+      [
+        "a module written with -m after -Wm",
+        start("python", ["-Wm", "-mfiles.agents.coder.server"]),
+      ],
       ["a start folder that links to the folder above it", start("node", ["x.js"], "/w/linked")],
     ])("finds %s", async (_, bad) => {
       expect(await reach(bad)).toMatchObject({ folder: coder });

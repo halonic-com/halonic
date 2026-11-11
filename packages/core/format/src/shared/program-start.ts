@@ -80,26 +80,38 @@ function textsAfter(separator: RegExp, text: string): string[] {
   return [...text.matchAll(separator)].map((match) => text.slice(match.index + 1));
 }
 
-/** The text inside each pair of `"` or `'`: `--require "my x.js"` gives `my x.js`. */
+/**
+ * The text inside each pair of `"` and each pair of `'`: `--require "my x.js"`
+ * gives `my x.js`. The two kinds are paired in separate passes, so a stray
+ * apostrophe, as in `it's --require "my x.js"`, can't hide a double-quoted
+ * path (HAL-4903). A quote escaped with `\` inside quotes isn't read as part
+ * of the path; that needs a path with quotes and spaces in its name.
+ */
 function textsInQuotes(text: string): string[] {
-  return [...text.matchAll(/"([^"]*)"|'([^']*)'/g)].map((match) => match[1] ?? match[2] ?? "");
+  const inPairsOf = (quote: string): string[] =>
+    [...text.matchAll(new RegExp(`${quote}([^${quote}]*)${quote}`, "g"))].map(
+      (match) => match[1] ?? "",
+    );
+  return [...inPairsOf('"'), ...inPairsOf("'")];
 }
 
 /**
- * The folder path of a module that `python -m` runs, from the argument at
+ * The folder paths of a module that `python -m` runs, from the argument at
  * `index`: `-m tools.mail`, `-mtools.mail` and, with `-m` among other short
- * flags, `-Im tools.mail` or `-Imtools.mail` read `tools/mail`. Empty when
- * that argument names no module.
+ * flags, `-Im tools.mail` or `-Imtools.mail` read `tools/mail`. Both readings
+ * are kept: in `-Wm -mtools.mail`, the argument is read as a module after
+ * `-Wm` and as `-m` with its module, so a guard never reads less than before
+ * (HAL-4903). Empty when that argument names no module.
  */
 export function moduleIn(args: readonly string[], index: number): string[] {
-  const name = moduleName(args[index - 1], args[index] ?? "");
-  return name === "" ? [] : [name.replaceAll(".", "/")];
+  return moduleNames(args[index - 1], args[index] ?? "").map((name) => name.replaceAll(".", "/"));
 }
 
-/** The module an argument names after `-m`, or with `-m` in front of it; otherwise empty. */
-function moduleName(before: string | undefined, arg: string): string {
-  if (before !== undefined && textAfterShortM(before) === "") return arg;
-  return textAfterShortM(arg) ?? "";
+/** The modules an argument names: after a `-m` before it, and after its own `-m`. */
+function moduleNames(before: string | undefined, arg: string): string[] {
+  const afterFlagBefore = before !== undefined && textAfterShortM(before) === "" ? arg : "";
+  const afterOwnFlag = textAfterShortM(arg) ?? "";
+  return [...new Set([afterFlagBefore, afterOwnFlag].filter((name) => name !== ""))];
 }
 
 /**

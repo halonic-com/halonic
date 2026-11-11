@@ -98,6 +98,18 @@ verifies("format.skill-scripts-folder", () => {
       ],
       ["a quoted argument", start("node", ["--require='skills/mail/scripts/send.js'"])],
       ["a quoted link with a space in its name", start("node", ['--file="my link"'])],
+      [
+        "a module written with -m after a group of short flags ending in m",
+        start("python", ["-Wm", "-mskills.mail.scripts.send"]),
+      ],
+      [
+        "a module written with -m after -Im",
+        start("python", ["-Im", "-mskills.mail.scripts.send"]),
+      ],
+      [
+        "a double-quoted link after a stray apostrophe",
+        { ...start("node"), env: { NODE_OPTIONS: `--title it's --require "my link" '` } },
+      ],
     ])("is true for %s (HAL-4903)", async (_, bad) => {
       expect(await touchesSkillScripts(bad, paths)).toBe(true);
     });

@@ -21,15 +21,21 @@ start (`format.program-start-paths`) and so `format.skill-scripts-folder` strict
 2. **`-m` among short flags.** `python -Im skills.mail.scripts.send` and
    `python -Imskills.mail.scripts.send` now read `skills/mail/scripts/send`. In a group of short
    flags, the text after the first `m` is the module, and when the `m` ends the group, the next
-   argument is. A flag that takes a value, as in `-Xdev`, may read a stray module; that only adds
-   a path to check.
+   argument is. Both readings are kept: in `python -Wm -mskills.mail.scripts.send`, the second
+   argument is read as the module after `-Wm` and also as `-m` with its own module, which is what
+   Python runs (Julian's check on [HAL-4917](/HAL/issues/HAL-4917)). A flag that takes a value, as
+   in `-Xdev` or `-Wm`, may read a stray module; that only adds a path to check.
 3. **Quotes.** Each piece is also read without its `"` and `'`, and the whole text inside each pair
-   of quotes is read too. So `NODE_OPTIONS=--require "skills/mail/scripts/send.js"` and
+   of quotes is read too. Pairs of `"` and pairs of `'` are found in separate passes, so a stray
+   apostrophe, as in `--title it's --require "my link"`, can't hide a double-quoted path. So `NODE_OPTIONS=--require "skills/mail/scripts/send.js"` and
    `--file="my link"` (a link into a skill's scripts) refuse.
 
 Every start the guard refused before, it still refuses: every path it listed is still listed, and
 no example or test is removed. The working-folder guards share the reading and get the same, which
 for them also only adds paths.
+
+A quote escaped with `\` inside quotes (`"my \"x\" link"`) isn't read as part of the path. It
+needs a link with quotes and spaces in its name, so it stays out of scope.
 
 Inline code (`python -c "runpy.run_path(...)"`) stays out of scope: reading strings can't catch it
 reliably, and the fence is the protection there.
