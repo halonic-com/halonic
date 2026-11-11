@@ -13,11 +13,17 @@ import { StudioWindow } from "./studio-window.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
 import { windowTitle } from "./window-title.ts";
 
+/** A phone's width, under `PHONE_MAX_WIDTH`. */
+const PHONE_WIDTH = 390;
+const DESKTOP_WIDTH = 1280;
+
+let media: FakeMediaQueries;
 let restoreMedia: () => void;
 let restoreModal: () => void;
 
 beforeEach(() => {
-  restoreMedia = new FakeMediaQueries(1280).install();
+  media = new FakeMediaQueries(DESKTOP_WIDTH);
+  restoreMedia = media.install();
   restoreModal = fakeShowModal();
   document.title = "";
 });
@@ -26,6 +32,7 @@ afterEach(() => {
   unmountAll();
   restoreModal();
   restoreMedia();
+  window.history.replaceState(null, "");
 });
 
 const supportReply = {
@@ -40,7 +47,7 @@ function renderWindow(name?: string) {
   const services = new MapTarget();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
-  render(
+  const container = render(
     <StudioWindow
       shell={shell}
       workspace={workspace}
@@ -49,7 +56,13 @@ function renderWindow(name?: string) {
       language="en"
     />,
   );
-  return workspace;
+  const tapPlace = (name: string) =>
+    act(() =>
+      container
+        .querySelector<HTMLElement>(`nav[aria-label="Places"] a[aria-label^="${name}"]`)
+        ?.click(),
+    );
+  return { tabs: workspace.tabs, tapPlace };
 }
 
 verifies("shell.window-title", () => {
@@ -95,5 +108,16 @@ verifies("shell.window-title", () => {
     act(() => tabs.openHere(supportReply));
     act(() => tabs.rename(supportReply.key, "Refund reply"));
     expect(document.title).toBe("Refund reply · Acme · Halonic");
+  });
+
+  it("names the phone's page on a phone, and the active tab's again on the desktop", () => {
+    const { tabs, tapPlace } = renderWindow("Acme");
+    act(() => tabs.openHere(supportReply));
+    act(() => media.resize(PHONE_WIDTH));
+    expect(document.title).toBe("Home · Acme · Halonic");
+    tapPlace("More");
+    expect(document.title).toBe("More · Acme · Halonic");
+    act(() => media.resize(DESKTOP_WIDTH));
+    expect(document.title).toBe("Support reply · Acme · Halonic");
   });
 });

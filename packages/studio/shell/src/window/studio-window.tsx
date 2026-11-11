@@ -24,7 +24,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
-import { useWindowTitle } from "./window-title.ts";
+import { useActiveTabTitle, useWindowTitle } from "./window-title.ts";
 
 /** Props for {@link StudioWindow}. */
 export interface StudioWindowProps {
@@ -85,7 +85,9 @@ export function StudioWindow(props: StudioWindowProps) {
     }
   }, [paletteOpen, desktop, closePalette]);
   useEffect(() => announceSaveNotes(workspace.saving, announcer), [workspace, announcer]);
-  useWindowTitle(tabs, workspace.name);
+  // A phone shows its own place's page, not the active tab's, so the title names that page.
+  const tabTitle = useActiveTabTitle(tabs);
+  useWindowTitle(desktop ? tabTitle : phone.topBar.title, workspace.name);
 
   return (
     <ShellFrame

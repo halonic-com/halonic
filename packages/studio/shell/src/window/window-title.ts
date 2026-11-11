@@ -24,16 +24,22 @@ export function windowTitle(page: string, workspace?: string): string {
 }
 
 /**
- * Keeps `document.title` as the active tab's {@link windowTitle}, following tab switches, Back
- * and Forward, and renames. The browser's tab reads it. In the desktop app the Tauri shell copies
- * it into the native window title, which the task bar and window switchers read
- * (`studio.src-tauri.window-title`).
+ * The active tab's title, following tab switches, Back and Forward, and renames.
  */
-export function useWindowTitle(tabs: TabSet, workspace?: string): void {
-  const page = useSyncExternalStore(
+export function useActiveTabTitle(tabs: TabSet): string {
+  return useSyncExternalStore(
     (onChange) => tabs.subscribe(onChange),
     () => currentLocation(tabs.active).title,
   );
+}
+
+/**
+ * Keeps `document.title` as the {@link windowTitle} of the page shown: the active tab's on the
+ * desktop, the phone page's on a phone (`shell.window-title`). The browser's tab reads it. In the
+ * desktop app the Tauri shell copies it into the native window title, which the task bar and
+ * window switchers read (`studio.src-tauri.window-title`).
+ */
+export function useWindowTitle(page: string, workspace?: string): void {
   useEffect(() => {
     document.title = windowTitle(page, workspace);
   }, [page, workspace]);
