@@ -77,6 +77,7 @@ export {
   integrationsTrustContent,
   type LocalIntegrationInput,
   type SecretTrustContent,
+  type ToolTrustContent,
 } from "./trust-integrations.ts";
 export { secretReference } from "./trust-secret.ts";
 export { reachesOnlyTheTestModel, type TrustSkipInput } from "./trust-skip.ts";

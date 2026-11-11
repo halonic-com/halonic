@@ -20,13 +20,18 @@ interface SheetParts {
   hosts: readonly unknown[];
   secrets?: Record<string, unknown>;
   tools?: readonly unknown[];
+  provides?: readonly string[];
+  needs?: readonly string[];
+  googleScopes?: readonly unknown[];
 }
 
-/** A parsed permission sheet with these hosts, secrets and tools. */
-function sheet(id: string, { hosts, secrets = {}, tools = [] }: SheetParts): IntegrationSheet {
+/** A parsed permission sheet with these parts. */
+function sheet(id: string, parts: SheetParts): IntegrationSheet {
+  const { hosts, secrets = {}, tools = [], provides = ["connector"], needs = [] } = parts;
   // Built as data, so the test doesn't depend on the sheet's other fields.
-  const data = { id, version: "1.0.0", kit: 1, provides: ["connector"], hosts, secrets, tools };
-  return { ...data, tokens: [], needs: [] } as unknown as IntegrationSheet;
+  const data = { id, version: "1.0.0", kit: 1, provides, hosts, secrets, tools, needs };
+  const google = parts.googleScopes === undefined ? {} : { googleScopes: parts.googleScopes };
+  return { ...data, ...google, tokens: [] } as unknown as IntegrationSheet;
 }
 
 const homeParts: SheetParts = {
@@ -45,6 +50,16 @@ const homeParts: SheetParts = {
     { name: "read-sensors", description: "Reads the sensors", risk: "read", untrusted: false },
   ],
 };
+
+/** `homeParts` with its one tool changed. */
+function withTool(changes: Record<string, unknown>): SheetParts {
+  return { ...homeParts, tools: [{ ...(homeParts.tools?.[0] as object), ...changes }] };
+}
+
+/** `homeParts` with a Google scope, as a sheet with the `google-account` secret has it. */
+function withScope(scope: string, reason = "Reads your mail"): SheetParts {
+  return { ...homeParts, googleScopes: [{ scope, reason }] };
+}
 
 const homeCode = await integrationCodeDigest(
   [{ path: "index.js", bytes: encodeUtf8("export default {};\n") }],
@@ -74,11 +89,12 @@ function fingerprintOf(integrations: LocalIntegrationInput[]): Promise<string> {
 
 verifies("workspace.trust-integrations", () => {
   describe("the content", () => {
-    it("lists the folder, the hosts with their class, the secrets by name, the tool risks, the code and the setting's URL", () => {
+    it("lists the folder, what it provides, the hosts with their class, the secrets by name, the scopes, the tools, the needs, the code and the setting's URL", () => {
       expect(contentOf([homeStation({ url: "HTTP://192.168.1.20:8123" })]).integrations).toEqual([
         {
           id: "home-station",
-          folder: "integrations/home-station/",
+          folder: "integrations/home-station",
+          provides: ["connector"],
           hosts: { "api.example.com": "public", "‹setting url›": "private" },
           secrets: [
             {
@@ -88,7 +104,9 @@ verifies("workspace.trust-integrations", () => {
               optional: false,
             },
           ],
-          tools: { "read-sensors": "read" },
+          googleScopes: [],
+          tools: { "read-sensors": { risk: "read", untrusted: false } },
+          needs: [],
           code: homeCode,
           addresses: { url: "http://192.168.1.20:8123/" },
         },
@@ -108,6 +126,39 @@ verifies("workspace.trust-integrations", () => {
       });
       expect(JSON.stringify(content)).not.toContain("pw@");
     });
+
+    it("lists each Google scope without its reason, and what it needs, sorted", () => {
+      const parts: SheetParts = {
+        ...homeParts,
+        provides: ["knowledge", "connector"],
+        needs: ["process"],
+        googleScopes: [
+          { scope: "https://www.googleapis.com/auth/gmail.readonly", reason: "Reads your mail" },
+          { scope: "email", reason: "Shows which account is signed in" },
+        ],
+      };
+      expect(contentOf([homeStation({}, parts)]).integrations?.[0]).toMatchObject({
+        provides: ["connector", "knowledge"],
+        googleScopes: ["email", "https://www.googleapis.com/auth/gmail.readonly"],
+        needs: ["process"],
+      });
+    });
+
+    it.each([
+      "integrations/home-station/",
+      "integrations//home-station/.",
+      "./integrations/home-station",
+    ])("writes the folder %j without a trailing slash", (folder) => {
+      const integration = { ...homeStation({}), folder };
+      expect(contentOf([integration]).integrations?.[0]?.folder).toBe("integrations/home-station");
+    });
+
+    it.each(["/srv/integrations/home-station", "../home-station", "integrations/../..", ".", ""])(
+      "refuses the folder %j, which isn't inside the workspace",
+      (folder) => {
+        expect(() => contentOf([{ ...homeStation({}), folder }])).toThrow(RangeError);
+      },
+    );
 
     it("adds an integration with fixed hosts only, with no addresses", () => {
       const weather = homeStation({}, { hosts: ["api.example.com"] });
@@ -212,20 +263,14 @@ verifies("workspace.trust-integrations", () => {
         },
         ["secrets"],
       ],
+      ["a tool's risk", withTool({ risk: "write" }), ["tools"]],
+      ["whether a tool's result is outside content", withTool({ untrusted: true }), ["tools"]],
+      ["what it provides", { ...homeParts, provides: ["llm"] }, ["provides"]],
+      ["what it needs", { ...homeParts, needs: ["process"] }, ["needs"]],
       [
-        "a tool's risk",
-        {
-          ...homeParts,
-          tools: [
-            {
-              name: "read-sensors",
-              description: "Reads the sensors",
-              risk: "write",
-              untrusted: false,
-            },
-          ],
-        },
-        ["tools"],
+        "a Google scope",
+        withScope("https://www.googleapis.com/auth/gmail.modify"),
+        ["googleScopes"],
       ],
     ])("changes when %s changes", async (_, parts, fields) => {
       await expectChange([homeStation({ url: "http://192.168.1.20:8123" }, parts)], fields);
@@ -236,20 +281,45 @@ verifies("workspace.trust-integrations", () => {
       await expectChange([moved], ["folder"]);
     });
 
-    it("stays the same when only the wording of the sheet changes", async () => {
-      const reworded = {
-        ...homeParts,
-        tools: [
-          {
-            name: "read-sensors",
-            description: "Reads every sensor",
-            risk: "read",
-            untrusted: false,
-          },
+    // In a real folder `integration.yaml` is one of the files, so any edit to
+    // the sheet changes `code` too. `withSheetFile` stands for that edit.
+    async function withSheetFile(text: string): Promise<string> {
+      return integrationCodeDigest(
+        [
+          { path: "index.js", bytes: encodeUtf8("export default {};\n") },
+          { path: "integration.yaml", bytes: encodeUtf8(text) },
         ],
-      };
-      const same = [homeStation({ url: "http://192.168.1.20:8123" }, reworded)];
-      expect(await fingerprintOf(same)).toBe(await fingerprintOf(trusted));
+        digest,
+      );
+    }
+
+    it("shows a change to a field of the sheet as that field and code", async () => {
+      const parts = { ...homeParts, needs: ["process"] };
+      const code = await withSheetFile("needs: [process]\n");
+      await expectChange(
+        [homeStation({ url: "http://192.168.1.20:8123" }, parts, code)],
+        ["code", "needs"],
+      );
+    });
+
+    it.each([
+      ["a tool's description", withTool({ description: "Reads every sensor" })],
+      ["a tool's noun", withTool({ noun: { one: "sensor", many: "sensors" } })],
+    ])("shows a change to %s as code only", async (_, reworded) => {
+      const code = await withSheetFile("description: Reads every sensor\n");
+      await expectChange(
+        [homeStation({ url: "http://192.168.1.20:8123" }, reworded, code)],
+        ["code"],
+      );
+    });
+
+    it("shows a change to a Google scope's reason as code only", async () => {
+      const scope = "https://www.googleapis.com/auth/gmail.readonly";
+      const before = [homeStation({}, withScope(scope))];
+      const code = await withSheetFile("reason: Reads your mail to sort it\n");
+      const after = [homeStation({}, withScope(scope, "Reads your mail to sort it"), code)];
+      const changes = trustChanges(contentOf(before), contentOf(after));
+      expect(changes.integrations.changed.map((change) => change.fields)).toEqual([["code"]]);
     });
 
     it("lists a removed integration as removed, which only removes things", () => {

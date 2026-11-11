@@ -42,9 +42,12 @@ const content = { connectors: [mail, notes], agents: [coder] };
 /** What every local integration's trust content has besides its id and addresses. */
 const integrationBase = {
   folder: "integrations/my-crm",
+  provides: ["connector"],
   hosts: {},
   secrets: [],
+  googleScopes: [],
   tools: {},
+  needs: [],
   code: "sha256:00",
 };
 

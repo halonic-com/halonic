@@ -7,11 +7,17 @@
 ## What changes
 
 - `workspace.trust-integrations`: every local integration is now in the trust content, not
-  only one with a `{ fromSetting }` host. Per integration: its folder, every declared host with
-  its address class (`public` for a fixed host name), every secret by name with its hosts and
-  placement, every tool with its risk, a hash of every file in its folder, and the setting
-  addresses as before. A workspace without local integrations keeps its content and
-  fingerprint.
+  only one with a `{ fromSetting }` host. Per integration: its folder (without a trailing `/`;
+  an absolute folder or one outside the workspace is refused), a hash of every file in its
+  folder, and the setting addresses as before. The hash covers `integration.yaml` too, so any
+  edit to the sheet changes the fingerprint, wording included. On top, so the change can name
+  them, the sheet's fields that widen what the code may do: what it provides, every declared
+  host with its address class (`public` for a fixed host name), every secret by name with its
+  hosts and placement, every Google scope (not its reason), every tool with its risk and
+  `untrusted`, and what it needs (`process`). An edit to one of those shows as that field and
+  `code`; an edit to the wording or the other fields as `code` only. The requirement says why
+  each other field stays out on its own. A workspace without local integrations keeps its
+  content and fingerprint.
 - `workspace.trust-skip`: one example said an integration with only fixed hosts adds nothing
   to the trust content. It now does; the skip stays off, as before.
 - New `workspace.trust-integration-code`: how the code hash is built.
