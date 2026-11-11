@@ -15,6 +15,7 @@ function windows(state: { installed: boolean; prompt?: "installed" | "cancelled"
     platform: "win32",
     insideContainer: async () => false,
     hasBubblewrap: async () => false,
+    hasLinuxHelpers: async () => false,
     userNamespacesRestricted: async () => false,
     hasSeatbelt: async () => false,
     hasWindowsSandbox: async () => state.installed,
