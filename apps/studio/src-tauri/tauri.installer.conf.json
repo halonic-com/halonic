@@ -9,6 +9,9 @@
     "externalBin": [
       "binaries/halonic-agent-host"
     ],
+    "resources": {
+      "windows/sandbox-step.ps1": "sandbox-step.ps1"
+    },
     "windows": {
       "nsis": {
         "template": "windows/installer.nsi",

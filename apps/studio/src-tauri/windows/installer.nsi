@@ -1,4 +1,4 @@
-; Halonic's NSIS installer template.
+﻿; Halonic's NSIS installer template.
 ;
 ; Based on Tauri's own template (tauri-bundler 2.x, `nsis/installer.nsi`,
 ; MIT or Apache-2.0, (c) Tauri Programme within The Commons Conservancy).
@@ -84,6 +84,24 @@ Var UpdateMode
 Var NoShortcutMode
 Var WixMode
 Var OldMainBinaryName
+
+; Halonic change (HAL-1202): the sandbox step and the one page.
+; Remove the next line for a build without the Windows sandbox (flow 2.2, D44 (c)):
+; the checkbox, its three lines, the step and the finish page's sandbox line go,
+; and nothing else moves.
+!define SANDBOX_STEP
+; What the installer says it uses. CI fails when the real size is off by a quarter.
+!define SIZE_MB 180
+Var SandboxState
+Var ShortcutState
+Var SandboxOutcome
+Var SandboxReason
+Var StartAfterState
+Var PathLabel
+Var FolderErrorLabel
+Var SandboxCheckbox
+Var ShortcutCheckbox
+Var StartCheckbox
 
 Name "${PRODUCTNAME}"
 BrandingText "${COPYRIGHT}"
@@ -173,22 +191,13 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_LANGDLL_REGISTRY_KEY "${MANUPRODUCTKEY}"
 !define MUI_LANGDLL_REGISTRY_VALUENAME "Installer Language"
 
-; Installer pages, must be ordered as they appear
-; 1. Welcome Page
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!insertmacro MUI_PAGE_WELCOME
-
-; 2. License Page (if defined)
-!if "${LICENSE}" != ""
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-  !insertmacro MUI_PAGE_LICENSE "${LICENSE}"
-!endif
-
-; 3. Install mode (if it is set to `both`)
-!if "${INSTALLMODE}" == "both"
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-  !insertmacro MULTIUSER_PAGE_INSTALLMODE
-!endif
+; Halonic change (HAL-1202, flow 2.2): one page instead of Tauri's welcome,
+; licence, install mode, folder and Start menu pages. The Start menu entry is
+; always added, in the "Halonic" folder. The reinstall page below is still
+; Tauri's until the "run again" page (flow 2.5) lands.
+!define MUI_ABORTWARNING
+!define MUI_ABORTWARNING_TEXT "Cancel installing ${PRODUCTNAME}?"
+!define MUI_ABORTWARNING_CANCEL_DEFAULT
 
 ; 4. Custom page to ask user if he wants to reinstall/uninstall
 ;    only if a previous installation was detected
@@ -418,37 +427,15 @@ Function PageLeaveReinstall
   reinst_done:
 FunctionEnd
 
-; 5. Choose install directory page
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!insertmacro MUI_PAGE_DIRECTORY
-
-; 6. Start menu shortcut page
+; 5. Halonic's one page (flow 2.2)
 Var AppStartMenuFolder
-!if "${STARTMENUFOLDER}" != ""
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-  !define MUI_STARTMENUPAGE_DEFAULTFOLDER "${STARTMENUFOLDER}"
-!else
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE Skip
-!endif
-!insertmacro MUI_PAGE_STARTMENU Application $AppStartMenuFolder
+Page custom PageInstall PageInstallLeave
 
-; 7. Installation page
+; 6. Installation page (flow 2.3)
 !insertmacro MUI_PAGE_INSTFILES
 
-; 8. Finish page
-;
-; Don't auto jump to finish page after installation page,
-; because the installation page has useful info that can be used debug any issues with the installer.
-!define MUI_FINISHPAGE_NOAUTOCLOSE
-; Use show readme button in the finish page as a button create a desktop shortcut
-!define MUI_FINISHPAGE_SHOWREADME
-!define MUI_FINISHPAGE_SHOWREADME_TEXT "$(createDesktop)"
-!define MUI_FINISHPAGE_SHOWREADME_FUNCTION CreateOrUpdateDesktopShortcut
-; Show run app after installation.
-!define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!insertmacro MUI_PAGE_FINISH
+; 7. Finished (flow 2.4), our own page
+Page custom PageFinish PageFinishLeave
 
 Function RunMainBinary
   nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
@@ -529,6 +516,25 @@ Function .onInit
   ${GetOptions} $CMDLINE "/UPDATE" $UpdateMode
   ${IfNot} ${Errors}
     StrCpy $UpdateMode 1
+  ${EndIf}
+
+  ; Halonic change (HAL-1202, flow 2.6): the sandbox step is on by default on
+  ; the page, off for silent and passive installs because they can't ask, and
+  ; on for a silent install given `/SANDBOX=1` from an elevated prompt.
+  StrCpy $SandboxState ${BST_CHECKED}
+  StrCpy $ShortcutState ${BST_CHECKED}
+  StrCpy $StartAfterState ${BST_CHECKED}
+  StrCpy $SandboxOutcome ""
+  StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
+  ${If} ${Silent}
+  ${OrIf} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+    StrCpy $SandboxState ${BST_UNCHECKED}
+    ${GetOptions} $CMDLINE "/SANDBOX=" $R0
+    ${IfNot} ${Errors}
+    ${AndIf} $R0 == "1"
+      StrCpy $SandboxState ${BST_CHECKED}
+    ${EndIf}
   ${EndIf}
 
   !if "${DISPLAYLANGUAGESELECTOR}" == "true"
@@ -690,6 +696,7 @@ SectionEnd
 
 Section Install
   SetOutPath $INSTDIR
+  DetailPrint "Copying Halonic…"
 
   !ifmacrodef NSIS_HOOK_PREINSTALL
     !insertmacro NSIS_HOOK_PREINSTALL
@@ -771,15 +778,12 @@ Section Install
     WriteRegStr SHCTX "${UNINSTKEY}" "HelpLink" "${HOMEPAGE}"
   !endif
 
-  ; Create start menu shortcut
-  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-    Call CreateOrUpdateStartMenuShortcut
-  !insertmacro MUI_STARTMENU_WRITE_END
+  ; Create start menu shortcut (always, in the "Halonic" folder)
+  Call CreateOrUpdateStartMenuShortcut
 
-  ; Create desktop shortcut for silent and passive installers
-  ; because finish page will be skipped
-  ${If} $PassiveMode = 1
-  ${OrIf} ${Silent}
+  ; Halonic change (HAL-1202): the desktop shortcut is a box on our page; a
+  ; silent or passive install keeps it, as before.
+  ${If} $ShortcutState == ${BST_CHECKED}
     Call CreateOrUpdateDesktopShortcut
   ${EndIf}
 
@@ -787,8 +791,66 @@ Section Install
     !insertmacro NSIS_HOOK_POSTINSTALL
   !endif
 
+  DetailPrint "✓ Copied Halonic"
+
   ; Auto close this page for passive mode
   ${If} $PassiveMode = 1
+    SetAutoClose true
+  ${EndIf}
+SectionEnd
+
+; The sandbox step (flow 2.3 steps 3 and 4). None of its outcomes stops the
+; install: Halonic is already copied. The page after this one says what
+; happened (flow 2.4).
+Section SandboxStep
+  !ifdef SANDBOX_STEP
+    ${If} $SandboxState == ${BST_CHECKED}
+      DetailPrint "◌ Setting up the agent sandbox…"
+      StrCpy $0 ""
+      ${IfNot} ${Silent}
+        DetailPrint "   Windows is asking for administrator rights."
+        DetailPrint "   Check the taskbar if you don't see the request."
+      ${EndIf}
+      ; Silent: no prompt (an installer that can't ask runs the setup as it is).
+      ${If} ${Silent}
+        StrCpy $0 "-NoElevate"
+      ${EndIf}
+      StrCpy $1 "$LOCALAPPDATA\halonic"
+      ReadEnvStr $2 "HALONIC_HOME"
+      ${If} $2 != ""
+        StrCpy $1 $2
+      ${EndIf}
+      nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1" $0'
+      Pop $2
+      Pop $SandboxReason
+      Push $SandboxReason
+      Call TrimEol
+      Pop $SandboxReason
+      ${If} $2 == "0"
+        StrCpy $SandboxOutcome "ready"
+        DetailPrint "✓ Set up the agent sandbox"
+        DetailPrint "✓ Checked the agent sandbox"
+      ${ElseIf} $2 == "10"
+        StrCpy $SandboxOutcome "refused"
+        DetailPrint "! The agent sandbox isn't set up: Windows didn't give administrator rights."
+        DetailPrint "○ Checking the agent sandbox, skipped"
+      ${ElseIf} $2 == "12"
+        StrCpy $SandboxOutcome "checkfailed"
+        DetailPrint "✓ Set up the agent sandbox"
+        DetailPrint "! The agent sandbox didn't pass its check: $SandboxReason"
+      ${Else}
+        StrCpy $SandboxOutcome "failed"
+        DetailPrint "! The agent sandbox isn't set up: $SandboxReason"
+        DetailPrint "○ Checking the agent sandbox, skipped"
+      ${EndIf}
+    ${EndIf}
+  !endif
+
+  ; Go to the finish page by itself, as nothing on this page needs a click.
+  ${If} ${Silent}
+  ${OrIf} $PassiveMode = 1
+    ; nothing to show
+  ${Else}
     SetAutoClose true
   ${EndIf}
 SectionEnd
@@ -878,7 +940,7 @@ Section Uninstall
     !insertmacro DeleteAppUserModelId
 
     ; Remove start menu shortcut
-    !insertmacro MUI_STARTMENU_GETFOLDER Application $AppStartMenuFolder
+    StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
     !insertmacro IsShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
     Pop $0
     ${If} $0 = 1
@@ -1028,4 +1090,159 @@ Function CreateOrUpdateDesktopShortcut
 
   CreateShortcut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
   !insertmacro SetLnkAppUserModelId "$DESKTOP\${PRODUCTNAME}.lnk"
+FunctionEnd
+
+; ---------------------------------------------------------------------------
+; Halonic's pages (HAL-1202, flows 2.2 and 2.4). Standard Win32 controls only,
+; so the keyboard, Narrator and high contrast work as they do for any Windows
+; installer (flow 7.1).
+; ---------------------------------------------------------------------------
+
+; Takes a string from the stack and gives it back without the line end.
+Function TrimEol
+  Exch $R0
+  Push $R1
+  trim_loop:
+    StrCpy $R1 $R0 1 -1
+    ${If} $R1 == "$\r"
+    ${OrIf} $R1 == "$\n"
+      StrCpy $R0 $R0 -1
+      Goto trim_loop
+    ${EndIf}
+  Pop $R1
+  Exch $R0
+FunctionEnd
+
+Function PageInstall
+  ; Silent and passive installs have no pages.
+  ${If} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+    Abort
+  ${EndIf}
+  !insertmacro MUI_HEADER_TEXT "Install ${PRODUCTNAME} ${VERSION}" ""
+  nsDialogs::Create 1018
+  Pop $0
+
+  ${NSD_CreateLabel} 0 0 100% 10u "Install to"
+  Pop $0
+  ${NSD_CreateLabel} 0 12u 76% 10u "$INSTDIR"
+  Pop $PathLabel
+  ${NSD_CreateButton} 80% 9u 20% 14u "C&hange…"
+  Pop $0
+  ${NSD_OnClick} $0 PageInstallChange
+  ${NSD_CreateLabel} 0 26u 100% 10u "Installs for you only. No administrator rights needed."
+  Pop $0
+  ${NSD_CreateLabel} 0 38u 100% 10u ""
+  Pop $FolderErrorLabel
+
+  !ifdef SANDBOX_STEP
+    ${NSD_CreateCheckbox} 0 54u 100% 10u "Set up the agent sandbox (recommended)"
+    Pop $SandboxCheckbox
+    ${NSD_Check} $SandboxCheckbox
+    ${NSD_CreateLabel} 12u 66u 96% 32u "Agents then run in a fence: they can only change their own folder and can't reach the internet unless you allow a site. Windows asks for administrator rights once for this step."
+    Pop $0
+    ${NSD_CreateCheckbox} 0 102u 100% 10u "Add a desktop shortcut"
+  !else
+    ${NSD_CreateCheckbox} 0 54u 100% 10u "Add a desktop shortcut"
+  !endif
+  Pop $ShortcutCheckbox
+  ${NSD_Check} $ShortcutCheckbox
+
+  ${NSD_CreateLabel} 0 -12u 60% 10u "Uses about ${SIZE_MB} MB."
+  Pop $0
+
+  ; The buttons say what they do, and Install is the default button.
+  GetDlgItem $0 $HWNDPARENT 1
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Install"
+  Call PageInstallCheckFolder
+  nsDialogs::Show
+FunctionEnd
+
+; "You can't install to this folder" and Install disabled until it can be written.
+Function PageInstallCheckFolder
+  CreateDirectory "$INSTDIR"
+  ClearErrors
+  FileOpen $0 "$INSTDIR\.halonic-write-test" w
+  ${If} ${Errors}
+    ${NSD_SetText} $FolderErrorLabel "You can't install to this folder. Pick a folder in your user profile."
+    GetDlgItem $0 $HWNDPARENT 1
+    EnableWindow $0 0
+  ${Else}
+    FileClose $0
+    Delete "$INSTDIR\.halonic-write-test"
+    ${NSD_SetText} $FolderErrorLabel ""
+    GetDlgItem $0 $HWNDPARENT 1
+    EnableWindow $0 1
+  ${EndIf}
+FunctionEnd
+
+Function PageInstallChange
+  nsDialogs::SelectFolderDialog "Install to" "$INSTDIR"
+  Pop $0
+  ${If} $0 != "error"
+    ; Folders other than ...\Halonic get a Halonic folder inside, as Tauri's page does.
+    StrCpy $1 $0 8 -8
+    ${If} $1 != "\${PRODUCTNAME}"
+      StrCpy $0 "$0\${PRODUCTNAME}"
+    ${EndIf}
+    StrCpy $INSTDIR $0
+    ${NSD_SetText} $PathLabel "$INSTDIR"
+    Call PageInstallCheckFolder
+  ${EndIf}
+FunctionEnd
+
+Function PageInstallLeave
+  !ifdef SANDBOX_STEP
+    ${NSD_GetState} $SandboxCheckbox $SandboxState
+  !else
+    StrCpy $SandboxState ${BST_UNCHECKED}
+  !endif
+  ${NSD_GetState} $ShortcutCheckbox $ShortcutState
+FunctionEnd
+
+Function PageFinish
+  ${If} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+    Abort
+  ${EndIf}
+  !insertmacro MUI_HEADER_TEXT "${PRODUCTNAME} is installed" ""
+  nsDialogs::Create 1018
+  Pop $0
+
+  ${If} $SandboxOutcome == "ready"
+    ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is set up and passed its check."
+    Pop $0
+  ${ElseIf} $SandboxOutcome != ""
+    ; The D44 fallback: the cause, then the same three sentences for every cause.
+    ${NSD_CreateLabel} 0 0 100% 10u "! The agent sandbox isn't set up."
+    Pop $0
+    ${If} $SandboxOutcome == "refused"
+      StrCpy $1 "Windows didn't give the installer administrator rights."
+    ${ElseIf} $SandboxOutcome == "checkfailed"
+      StrCpy $1 "It was set up, but didn't pass its check: $SandboxReason"
+    ${Else}
+      StrCpy $1 "The setup stopped: $SandboxReason"
+    ${EndIf}
+    ${NSD_CreateLabel} 10u 12u 96% 22u "$1"
+    Pop $0
+    ${NSD_CreateLabel} 10u 36u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, open Settings › Agent sandbox in Halonic."
+    Pop $0
+  ${EndIf}
+
+  ${NSD_CreateCheckbox} 0 90u 100% 10u "Start ${PRODUCTNAME}"
+  Pop $StartCheckbox
+  ${NSD_Check} $StartCheckbox
+
+  GetDlgItem $0 $HWNDPARENT 1
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Finish"
+  GetDlgItem $0 $HWNDPARENT 2
+  ShowWindow $0 ${SW_HIDE}
+  nsDialogs::Show
+FunctionEnd
+
+Function PageFinishLeave
+  ${NSD_GetState} $StartCheckbox $StartAfterState
+  ${If} $StartAfterState == ${BST_CHECKED}
+    Call RunMainBinary
+  ${EndIf}
 FunctionEnd

@@ -1342,12 +1342,17 @@ jobs:
           $p = Start-Process $setup -ArgumentList '/S', "/D=$dir" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 -ExpandProperty FullName | Out-Host
-          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe') {
+          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
           }
           # Per user: the uninstall entry is in HKCU, none in HKLM.
           if (-not (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic')) { throw 'No uninstall entry for the current user' }
           if (Test-Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The install wrote a machine-wide uninstall entry' }
+          # The size line on page 1 says about SIZE_MB MB: it must be within a quarter.
+          $said = [int]((Select-String -Path apps/studio/src-tauri/windows/installer.nsi -Pattern '^!define SIZE_MB (\d+)').Matches[0].Groups[1].Value)
+          $real = [math]::Round(((Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum) / 1MB)
+          Write-Output "installed size: $real MB (page 1 says $said MB)"
+          if ([math]::Abs($real - $said) -gt $said / 4) { throw "Page 1 says $said MB, the install is $real MB. Change SIZE_MB in installer.nsi." }
           # `/S` leaves Halonic closed.
           Start-Sleep -Seconds 5
           if (Get-Process Halonic -ErrorAction SilentlyContinue) { throw 'Halonic was opened by a silent install without /RELAUNCH' }
@@ -1357,6 +1362,45 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The installed agent host did not start' }
           Write-Output "agent host: $v"
           Add-Content $env:GITHUB_ENV "HALONIC_TEST_DIR=$dir"
+      - name: The sandbox step maps each outcome to its exit code and its reason
+        run: |
+          $step = Join-Path $env:HALONIC_TEST_DIR 'sandbox-step.ps1'
+          # A stand-in for the agent host: its answers come from environment variables.
+          $fake = Join-Path $env:RUNNER_TEMP 'fake-host.cmd'
+          @'
+          @echo off
+          echo %* | findstr /C:"--sandbox-setup" >nul && goto setup
+          echo %* | findstr /C:"--sandbox-check" >nul && goto check
+          exit /b 2
+          :setup
+          if "%FAKE_SETUP%"=="ok" goto setupok
+          echo {"ok":false,"reason":"the firewall filter isn't active"}
+          exit /b 1
+          :setupok
+          echo {"ok":true}
+          exit /b 0
+          :check
+          if "%FAKE_CHECK%"=="ok" goto checkok
+          if "%FAKE_CHECK%"=="hang" ping -n 30 127.0.0.1 >nul
+          echo {"ok":false,"reason":"windows","missing":["srt's Windows install is missing"]}
+          exit /b 0
+          :checkok
+          echo {"ok":true,"reason":null,"missing":[]}
+          exit /b 0
+          '@ | Set-Content $fake -Encoding ASCII
+          $cases = @(
+            @{ setup = 'ok'; check = 'ok'; code = 0; reason = '' },
+            @{ setup = 'fail'; check = 'ok'; code = 11; reason = "the firewall filter isn't active" },
+            @{ setup = 'ok'; check = 'fail'; code = 12; reason = "srt's Windows install is missing" },
+            @{ setup = 'ok'; check = 'hang'; code = 12; reason = "it didn't answer within 3 seconds" }
+          )
+          foreach ($c in $cases) {
+            $env:FAKE_SETUP = $c.setup; $env:FAKE_CHECK = $c.check
+            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $step -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -NoElevate -CheckSeconds 3 | Out-String).Trim()
+            Write-Output "setup=$($c.setup) check=$($c.check): exit $LASTEXITCODE, '$out'"
+            if ($LASTEXITCODE -ne $c.code) { throw "Expected exit $($c.code)" }
+            if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
+          }
       - name: Install again with /RELAUNCH, Halonic reopens
         run: |
           $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
