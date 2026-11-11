@@ -2,6 +2,7 @@
 
 - Approval: Noah, the kit's owner and designer, decided this on [HAL-6060](/HAL/issues/HAL-6060)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:21niAKPEJaJSyEP2KT12OaT8SmkB5wbBxtM0EE9BJH58mTJX4W6vRXpiadLona/yT1X9N5/FyKTOGXGRi7C8BQ==
 - Task: HAL-6060
 
 ## What changes
