@@ -470,6 +470,13 @@ subpath (`packages/adapters/integration-kit` gives
 layer's main entry; `packages` fails otherwise. Adding a name needs Liam's
 review.
 
+CI stages every layer package in the tests of `tooling/publish`. Its
+`turbo.json` adds the sources of all workspace packages to that task's
+inputs, so a change to a published package, or to code it bundles, reruns
+the staging tests instead of taking them from the cache. An undeclared
+import or an import from inside another layer's entry fails that pull
+request, not the publish run.
+
 ## Ignoring an advisory
 
 `pnpm audit` fails the daily run and the pull request check on a high or

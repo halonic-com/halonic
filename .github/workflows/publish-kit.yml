@@ -118,14 +118,16 @@ jobs:
         if: steps.version.outputs.changed == 'true'
       - name: Stage the layer packages
         if: steps.version.outputs.changed == 'true'
-        run: pnpm --filter @halonicjs/tooling-publish stage adapters testing
-      - name: Pack, in the order they publish
+        # No layer given: `stage` builds every layer package.
+        run: pnpm --filter @halonicjs/tooling-publish run stage
+      - name: Pack the layer packages
         if: steps.version.outputs.changed == 'true'
         run: |
           mkdir -p tarballs
-          # The adapters first: the testing package depends on them.
-          (cd tooling/publish/dist/adapters && npm pack --pack-destination ../../../../tarballs)
-          (cd tooling/publish/dist/testing && npm pack --pack-destination ../../../../tarballs)
+          # The publish job sets the order, not this loop.
+          for directory in tooling/publish/dist/*/; do
+            (cd "$directory" && npm pack --pack-destination ../../../../tarballs)
+          done
           ls -l tarballs
       - name: Check what is in the tarballs
         if: steps.version.outputs.changed == 'true'

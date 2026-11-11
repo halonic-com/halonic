@@ -45,8 +45,8 @@ A workspace package of that layer becomes one subpath with `halonic.publish` in 
 }
 ```
 
-`pnpm --filter @halonicjs/tooling-publish stage` writes the publishable copy of every layer package to
-`tooling/publish/dist/<layer>`; `stage adapters` stages one. Publish that folder, never a source package.
+`pnpm --filter @halonicjs/tooling-publish run stage` writes the publishable copy of every layer package to
+`tooling/publish/dist/<layer>`; `run stage adapters` stages one. Publish that folder, never a source package.
 
 - `layer.json` `name` and `version`: the npm name and the one version of the whole layer package.
 - `layer.json` `description`: the npm description.

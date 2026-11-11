@@ -6,7 +6,7 @@ import { findLayers, layersDirectory } from "../workspace.ts";
 /**
  * Builds the publishable copy of each layer package given by its layer
  * (`adapters`, `testing`), or of every layer package when none is given:
- * `pnpm --filter @halonicjs/tooling-publish stage`. Prints the staged
+ * `pnpm --filter @halonicjs/tooling-publish run stage`. Prints the staged
  * folder, name and version.
  */
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../../..");

@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { packageOf, rewriteSpecifiers } from "./specifiers.ts";
 import { requireMatchingVersions } from "./versions.ts";
 import {
@@ -130,7 +130,7 @@ function otherLayersEntries(
   for (const workspacePackage of workspace) {
     const published = workspacePackage.published;
     if (published === undefined || packageOf(published.name) === config.name) continue;
-    entries.set(join(workspacePackage.name, published.entry), published.name);
+    entries.set(posix.join(workspacePackage.name, published.entry), published.name);
   }
   return entries;
 }
@@ -145,7 +145,7 @@ function emit(options: {
   const paths: Record<string, string[]> = {};
   for (const workspacePackage of options.workspace) {
     for (const [subpath, file] of workspacePackage.entries) {
-      paths[join(workspacePackage.name, subpath)] = [file];
+      paths[posix.join(workspacePackage.name, subpath)] = [file];
     }
   }
   // Written next to the package so its own tsconfig and type roots resolve.
@@ -209,7 +209,7 @@ function rewriteImports(
   const targets = new Map<string, string>();
   for (const workspacePackage of workspace) {
     for (const [subpath, file] of workspacePackage.entries) {
-      targets.set(join(workspacePackage.name, subpath), moduleOf(emittedPath(file)));
+      targets.set(posix.join(workspacePackage.name, subpath), moduleOf(emittedPath(file)));
     }
   }
   const aliasedModules = new Map<string, string>();
@@ -261,11 +261,11 @@ export function aliasedEntryFile(
 ): string {
   for (const workspacePackage of workspace) {
     for (const [subpath, file] of workspacePackage.entries) {
-      if (join(workspacePackage.name, subpath) !== specifier) continue;
+      if (posix.join(workspacePackage.name, subpath) !== specifier) continue;
       const folder = dirname(file);
       const neighbours = [...workspacePackage.entries]
         .filter(([, other]) => other !== file && isInside(folder, other))
-        .map(([otherSubpath]) => join(workspacePackage.name, otherSubpath));
+        .map(([otherSubpath]) => posix.join(workspacePackage.name, otherSubpath));
       if (neighbours.length > 0) {
         throw new Error(
           `${layerName}: the published entry "${specifier}" can't be left out of the tarball, because its folder also holds ${neighbours.join(", ")}. Only an entry in a folder of its own can be published.`,
