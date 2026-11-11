@@ -85,6 +85,31 @@ verifies("app.scheduler-skip-target-unavailable", () => {
     ]);
   });
 
+  it("asks about a routine that allows overlap even with a run going, since its times would start", async () => {
+    const whys: Record<string, TargetUnavailableWhy> = {};
+    const { asked, targetUnavailable } = targets(whys);
+    const { scheduler, executor, at } = setUp(
+      [{ key: "support/hourly", minute: 0, overlap: "allow" }],
+      { targetUnavailable },
+    );
+    await scheduler.tick();
+    at("2026-11-03T08:00:20Z");
+    await scheduler.tick();
+    whys["support/hourly"] = "in-trash";
+    at("2026-11-03T09:00:20Z");
+
+    const tick = await scheduler.tick();
+
+    expect(executor.requests).toHaveLength(1);
+    expect(asked).toEqual([
+      "support/hourly 2026-11-03T08:00:00.000Z",
+      "support/hourly 2026-11-03T09:00:00.000Z",
+    ]);
+    expect(tick.unavailable).toEqual([
+      { key: "support/hourly", at: "2026-11-03T09:00:00.000Z", why: "in-trash" },
+    ]);
+  });
+
   it("skips every due time of a tick as target-unavailable, none as busy or queued", async () => {
     for (const overlap of ["skip", "queue"] as const) {
       const { asked, targetUnavailable } = targets({ "support/hourly": "in-trash" });
@@ -109,6 +134,26 @@ verifies("app.scheduler-skip-target-unavailable", () => {
         (await scheduler.skippedTimes("support/hourly")).map((row) => [row.reason, row.count]),
       ).toEqual([["target-unavailable", 3]]);
     }
+  });
+
+  it("reports the unavailable times oldest first across routines", async () => {
+    const { targetUnavailable } = targets({
+      "support/late": "in-trash",
+      "support/early": "never-live",
+    });
+    const { scheduler, at } = setUp(
+      [
+        { key: "support/late", minute: 30, hour: 8 },
+        { key: "support/early", minute: 0, hour: 8 },
+      ],
+      { targetUnavailable },
+    );
+    await scheduler.tick();
+    at("2026-11-03T08:30:20Z");
+
+    const tick = await scheduler.tick();
+
+    expect(tick.unavailable.map((time) => time.key)).toEqual(["support/early", "support/late"]);
   });
 
   it("fails only the run whose check throws, and starts the others", async () => {

@@ -10,13 +10,16 @@
 `targetUnavailable` check:
 
 - **Before:** after the overlap rule, about each run the tick would start.
-- **Now:** before the overlap rule, once per routine that has due times and no run going, about
-  its oldest due time. When the target can't start, every due time of that routine in the tick is
+- **Now:** before the overlap rule, once per routine with due times that the overlap rule would
+  start, about its oldest due time. When the target can't start, every due time of that routine in the tick is
   a `target-unavailable` skip. When the check throws, every one of them is reported as failed.
 
-A routine with a run going still isn't asked, so its times keep `busy` or stay queued, as the
-existing example says. One example is added for the catch-up case, and one is reworded for
-"failed".
+A routine whose overlap rule starts nothing this tick (a run going, and `overlap: skip` or
+`queue`) isn't asked, so its times keep `busy` or stay queued, as the existing example says. A
+routine with `overlap: allow` is still asked with a run going, since its times would start: a
+target can go to the trash while a run is going. The unavailable and failed times are reported
+oldest first across routines, as they were when they followed the sorted starts. Two examples are
+added, for the catch-up case and the `allow` case, and one is reworded for "failed".
 
 ## Why
 
@@ -30,7 +33,8 @@ true.
 ## What doesn't change
 
 The `why` values, the rows they make, the stored shape of a skip and the behaviour without a
-check stay the same. No test is weakened: the existing tests pass unchanged, and one is added.
+check stay the same. No test is weakened: the existing tests pass unchanged, and three are added (the catch-up case,
+the `allow` case from Liam's review of this pull request, and the order across routines).
 
 ## Covers
 

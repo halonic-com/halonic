@@ -31,19 +31,19 @@ export class TargetChecks<Run extends ScheduledRun> {
 
   /**
    * The due times of one routine that go on to the overlap rule: all of
-   * them when its target can be started, none when it can't. A routine with
-   * a run going isn't asked: its target was there when that run started,
-   * and its times keep the overlap rule's reason. The check is asked once,
-   * about the oldest time, since every time of a routine has its target.
+   * them when its target can be started, none when it can't. A routine whose
+   * overlap rule starts nothing this tick (a run going, and `skip` or
+   * `queue`) isn't asked, so its times keep that rule's reason. The check is
+   * asked once, about the oldest time, since every time of a routine has its
+   * target.
+   *
+   * @param startsNothing - whether the overlap rule would start none of `runs`
    */
-  async pass(runs: readonly Run[], busy: boolean): Promise<readonly Run[]> {
-    const oldest = runs.reduce<Run | undefined>(
-      (found, run) => (found === undefined || run.at < found.at ? run : found),
-      undefined,
-    );
-    if (this.#targetUnavailable === undefined || busy || oldest === undefined) {
+  async pass(runs: readonly Run[], startsNothing: boolean): Promise<readonly Run[]> {
+    if (this.#targetUnavailable === undefined || startsNothing || runs.length === 0) {
       return runs;
     }
+    const oldest = runs.reduce((found, run) => (run.at < found.at ? run : found));
     let why: TargetUnavailableWhy | null;
     try {
       why = await this.#targetUnavailable(oldest);
@@ -58,6 +58,20 @@ export class TargetChecks<Run extends ScheduledRun> {
     this.unavailable.push(...runs.map((run) => ({ ...timeOf(run), why })));
     return [];
   }
+
+  /**
+   * Puts what the checks found oldest first across routines, as the tick's
+   * starts are; `pass` is asked one routine at a time.
+   */
+  sortOldestFirst(): void {
+    this.unavailable.sort(byTime);
+    this.failed.sort(byTime);
+  }
+}
+
+/** Orders times oldest first. */
+function byTime(first: RoutineTime, second: RoutineTime): number {
+  return Date.parse(first.at) - Date.parse(second.at);
 }
 
 function timeOf(run: ScheduledRun): RoutineTime {
