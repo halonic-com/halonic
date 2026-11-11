@@ -19,10 +19,9 @@ import type { Message } from "../../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
-import { NotTrustedError } from "../../not-trusted.ts";
-import { pluginTrustCheckLines } from "../../output/plugin-trust-check.ts";
 import { printable } from "../../output/printable.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
+import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
 
 /** An added plugin that was read and checked. */
 type AddedPlugin = Exclude<PluginEntry, { status: "broken" }>;
@@ -70,72 +69,29 @@ export async function addPlugin(
   if (entry.status === "broken") {
     throw refusal("invalid_input", firstProblem(entry.problems));
   }
-  return await askToTrust(service, entry, { context, yes, fingerprint });
+  return await trustAdded(service, entry, { context, yes, fingerprint });
 }
 
-/** What the answer to the trust question depends on. */
-interface TrustAnswer {
-  readonly context: CommandContext;
-  /** `--yes`, which counts only with a `--fingerprint`. */
-  readonly yes: boolean;
-  readonly fingerprint: string | undefined;
-}
-
-async function askToTrust(
+/** Says it's on, or asks whether to trust it, with `plugin add`'s words around the question. */
+async function trustAdded(
   service: PluginService,
   entry: AddedPlugin,
-  answer: TrustAnswer,
+  answer: PluginTrustAnswer,
 ): Promise<CommandResult> {
-  const { plugin, fingerprint } = entry;
-  const id = entry.folder;
-  const json = { id, name: plugin.name, version: plugin.version, fingerprint };
+  const { plugin } = entry;
   if (entry.status === "trusted") {
-    return { exitCode: exitCode.ok, lines: [addedLine(plugin)], json: { ...json, status: "on" } };
-  }
-  const check = pluginTrustCheckLines(entry.content);
-  const stoppedOff = (
-    problem: ReturnType<typeof pluginMessages.addNoTerminal>,
-    fix: typeof problem,
-  ) => new NotTrustedError({ problem, fix, fingerprint, check, action: null, mark: "needsYou" });
-  const noTerminal = () =>
-    stoppedOff(pluginMessages.addNoTerminal(plugin.name), pluginMessages.addNoTerminalFix(id));
-  if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
-    throw new NotTrustedError({
-      problem: trustMessages.fingerprintChanged(),
-      fix: pluginMessages.addNoTerminalFix(id),
-      fingerprint,
-      check,
-      action: trustMessages.action(plugin.name),
-    });
-  }
-
-  const trusted = await answer.context.ask({
-    question: pluginMessages.trustQuestion(plugin.name),
-    shownFirst: [...check, phrase``],
-    yes: answer.yes,
-    refusal: noTerminal,
-  });
-  if (!trusted) {
+    const json = { id: entry.folder, name: plugin.name, version: plugin.version };
     return {
-      exitCode: exitCode.notTrusted,
-      lines: [
-        phrase`${markPart("needsYou")} ${pluginMessages.addedButOff(plugin.name, id).phrase}`,
-      ],
-      json: { ...json, status: "off" },
+      exitCode: exitCode.ok,
+      lines: [addedLine(plugin)],
+      json: { ...json, fingerprint: entry.fingerprint, status: "on" },
     };
   }
-  const granted = await service.trust(id, fingerprint, "cli");
-  if (!granted.ok) {
-    // The files changed between the check and the answer.
-    throw new NotTrustedError({
-      problem: trustMessages.fingerprintChanged(),
-      fix: pluginMessages.addNoTerminalFix(id),
-      fingerprint,
-      check: [],
-      action: trustMessages.action(plugin.name),
-    });
-  }
-  return { exitCode: exitCode.ok, lines: [addedLine(plugin)], json: { ...json, status: "on" } };
+  return await askToTrustPlugin(service, entry, answer, {
+    on: pluginMessages.added(plugin.name, plugin.version),
+    off: pluginMessages.addedButOff(plugin.name, entry.folder),
+    noTerminal: pluginMessages.addNoTerminal(plugin.name),
+  });
 }
 
 function addedLine(plugin: AddedPlugin["plugin"]) {

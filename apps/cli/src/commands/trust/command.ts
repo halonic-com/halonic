@@ -19,17 +19,21 @@ import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
 import type { Message } from "../../messages/define.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
+import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { NotTrustedError } from "../../not-trusted.ts";
+import { printable } from "../../output/printable.ts";
 import {
   type TrustChangesDocument,
   trustChangesDocument,
 } from "../../output/trust-changes-json.ts";
 import { shownDate, trustCheckLines } from "../../output/trust-check.ts";
+import type { PluginSetup } from "../../plugin-host.ts";
 import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { trustPlugin } from "./plugin.ts";
 
 /** What `trust` uses on this computer, so tests can hand it a memory store and a fixed clock. */
 export interface TrustMachine {
@@ -56,17 +60,27 @@ export function nodeTrustMachine(): TrustMachine {
 }
 
 /**
- * `halonic trust [--dir <folder>]` on the records `machine` keeps, so tests
- * can hand it their own (cli-output 3.5).
+ * `halonic trust [--dir <folder> | --plugin <id>]` on the records `machine`
+ * keeps and the plugins `plugins` opens, so tests can hand it their own
+ * (cli-output 3.5 and 3.6).
  */
-export function createTrustCommand(machine: () => TrustMachine): CliCommand {
+export function createTrustCommand(
+  machine: () => TrustMachine,
+  plugins: PluginSetup = {},
+): CliCommand {
   return {
     name: "trust",
-    usage: "[--dir <folder>] [--yes --fingerprint <fingerprint>] [--list] [--remove]",
+    usage:
+      "[--dir <folder> | --plugin <id>] [--yes --fingerprint <fingerprint>] [--list] [--remove]",
     summary: trustMessages.summary(),
-    action: (input) => trustMessages.action(givenDir(input)),
+    action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
     options: {
       dir: dirOption,
+      plugin: {
+        type: "string",
+        valueName: "id",
+        description: pluginMessages.trustPluginOption(),
+      },
       list: { type: "boolean", description: trustMessages.listOption() },
       remove: { type: "boolean", description: trustMessages.removeOption() },
       yes: { type: "boolean", description: trustMessages.yesOption() },
@@ -77,6 +91,10 @@ export function createTrustCommand(machine: () => TrustMachine): CliCommand {
       },
     },
     async run(input, context) {
+      const plugin = input.options["plugin"];
+      if (typeof plugin === "string") {
+        return await trustPlugin(plugin, input, context, plugins);
+      }
       if (input.options["list"] === true) {
         return await listTrusted(machine(), context.cwd);
       }
@@ -299,6 +317,12 @@ async function nameAt(location: string, fallback: string): Promise<string> {
   }
   const parsed = parseFile("workspace", text);
   return parsed.ok ? parsed.value.value.name : fallback;
+}
+
+/** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */
+function givenPlugin(input: CommandInput): string | undefined {
+  const plugin = input.options["plugin"];
+  return typeof plugin === "string" ? printable(plugin) : undefined;
 }
 
 /** The `--dir` as the user typed it, for the fixes that name `halonic trust`. */

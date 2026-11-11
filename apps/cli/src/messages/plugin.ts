@@ -110,4 +110,26 @@ export const pluginMessages = defineMessages("plugin", {
   unknownPluginNear: (name: string, near: string) =>
     phrase`There's no plugin called "${name}". Did you mean ${near}?`,
   unknownPluginFix: () => phrase`See them with halonic plugin list.`,
+
+  /** `halonic trust --plugin <id>`'s option. */
+  trustPluginOption: () =>
+    phrase`Trust the plugin with this id and turn it on, instead of a workspace.`,
+  /** `--plugin` with `--dir` or `--list`: wrong usage, exit 2. A plugin id is never a workspace folder. */
+  trustPluginWith: (option: string) => phrase`--plugin can't go with --${option}.`,
+  trustPluginWithFix: () =>
+    phrase`Run halonic trust --plugin <id>, with --yes --fingerprint <fingerprint> or --remove if you need them.`,
+  /** Answer yes: exit 0. */
+  trustedOn: (name: string) => phrase`${name} is on now.`,
+  /** With a ✓, when it's trusted as it is now; nothing is asked. */
+  alreadyOn: (name: string, trustedOn: string) =>
+    phrase`${name} is already on. Nothing changed since ${trustedOn}.`,
+  /** Answer No, or Enter, with a !: exit 3. */
+  stillOff: (name: string) =>
+    phrase`${name} is still off. Nothing from it runs until you trust it.`,
+  /** No terminal, or `CI` set, without `--yes --fingerprint`: exit 3 (F16). */
+  offNoTerminal: (name: string) =>
+    phrase`${name} is off, because there's no terminal to ask you to trust it.`,
+  /** `--plugin <id> --remove`, word for word from the words check on HAL-1991. */
+  trustRemoved: (name: string) =>
+    phrase`Removed trust for ${name}. Nothing from this plugin runs until you trust it.`,
 });
