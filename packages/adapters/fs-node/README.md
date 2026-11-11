@@ -282,7 +282,8 @@ all, and `remove` takes one away. It passes the shared
   renamed into place as `<root>/<id>`. A replaced or removed plugin is
   renamed out to the staging folder first and deleted there, so a reader
   never lists half of one. A failed write leaves nothing in the plugins
-  folder.
+  folder. What a crash leaves in the staging folder is deleted on the
+  writer's first `place`, once it has been untouched for an hour.
 - **Names:** "the same id in any case" is decided with `segmentAsOpened`,
   so it doesn't depend on the disk. `remove` acts only on the entry named
   exactly the id.

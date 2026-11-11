@@ -19,6 +19,11 @@ const weather = new Map<string, Uint8Array>([
   ["backend/index.js", encoder.encode("export default {};\n")],
 ]);
 
+/** Two hours from now, when everything made in a test is a leftover. */
+function inTwoHours(): Date {
+  return new Date(Date.now() + 2 * 60 * 60 * 1000);
+}
+
 /** A new profile folder holding `plugins`, the plugins folder, so the staging folder beside it is cleaned up too. */
 async function profileFolder(): Promise<{ profile: string; root: string }> {
   const profile = await tempFolder();
@@ -58,6 +63,31 @@ verifies("fs-node.plugin-folder", () => {
     expect((await readdir(profile)).sort()).toEqual(["plugins", "plugins.staging"]);
     expect(await readdir(join(profile, "plugins.staging"))).toEqual([]);
     expect(await readdir(root)).toEqual([]);
+  });
+
+  it("deletes what a crash left in the staging folder on the first place, and only that", async () => {
+    const { profile, root } = await profileFolder();
+    const staging = join(profile, "plugins.staging");
+    const uuid = "0f8e2a4c-1b3d-4e5f-9a7b-6c5d4e3f2a1b";
+    for (const name of [`removed.${uuid}`, `weather.${uuid}`, "notes"]) {
+      await mkdir(join(staging, name, "backend"), { recursive: true });
+    }
+    const outside = join(profile, "outside");
+    await mkdir(outside);
+    await writeFile(join(outside, "data.txt"), "kept");
+    await symlink(outside, join(staging, `removed.${uuid}`, "linked"), folderLinkType);
+
+    const now = new FileSystemPluginFolder(root);
+    await now.place("rain", weather, { replace: false });
+    expect((await readdir(staging)).sort()).toEqual(
+      ["notes", `removed.${uuid}`, `weather.${uuid}`].sort(),
+    );
+
+    const later = new FileSystemPluginFolder(root, { clock: { now: () => inTwoHours() } });
+    await later.place("sun", weather, { replace: false });
+    expect(await readdir(staging)).toEqual(["notes"]);
+    expect(await readFile(join(outside, "data.txt"), "utf8")).toBe("kept");
+    expect((await readdir(root)).sort()).toEqual(["rain", "sun"]);
   });
 
   it("makes the plugins folder on the first place, and removes nothing when it isn't there", async () => {

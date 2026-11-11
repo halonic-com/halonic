@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, rm, rmdir, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
+  type Clock,
   checkPluginFiles,
   checkPluginId,
   type PlacePluginOptions,
@@ -23,7 +24,26 @@ export interface FileSystemPluginFolderOptions {
   readonly staging?: string;
   /** Shown to people as where the plugins folder is; the root by default. */
   readonly location?: string;
+  /**
+   * The time now, for telling a leftover in the staging folder from work
+   * under way; the system clock by default.
+   */
+  readonly clock?: Clock;
 }
+
+/**
+ * How long a folder this writer left in the staging folder must have been
+ * untouched before the first `place` deletes it: an hour, so a write another
+ * process has under way is left alone.
+ */
+const STALE_STAGING_MS = 60 * 60 * 1000;
+
+/**
+ * The name of a folder this writer makes in the staging folder: a plugin
+ * being written, `<id>.<uuid>`, or one waiting to be deleted,
+ * `removed.<uuid>`. Anything else in the staging folder isn't ours to delete.
+ */
+const STAGED_NAME = /^.+\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 /** An entry at the top of the plugins folder, seen with `lstat`. */
 interface TopEntry {
@@ -44,6 +64,8 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
   readonly location: string;
   readonly #root: string;
   readonly #staging: string;
+  readonly #clock: Clock;
+  #stagingSwept = false;
 
   /**
    * @param root - the plugins folder; a relative one is resolved against the working directory
@@ -52,6 +74,7 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
     this.#root = resolve(root);
     this.#staging = resolve(options.staging ?? `${this.#root}.staging`);
     this.location = options.location ?? root;
+    this.#clock = options.clock ?? { now: () => new Date() };
   }
 
   async place(
@@ -60,6 +83,7 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
     options: PlacePluginOptions,
   ): Promise<PluginPlacement> {
     checkPluginFiles(id, files);
+    await this.#sweepStagingOnce();
     await mkdir(this.#root, { recursive: true });
     const existing = await this.#topEntry(id);
     if (existing !== undefined && !(options.replace && existing.name === id && existing.isFolder)) {
@@ -99,6 +123,36 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
       await rm(old, { recursive: true, force: true });
     } else {
       await unlink(target);
+    }
+  }
+
+  /**
+   * Deletes what a crash left in the staging folder, once per writer: every
+   * folder this writer names, such as `removed.<uuid>`, untouched for an
+   * hour. A leftover is never listed as a plugin, so a failure here is
+   * ignored and `place` goes on.
+   */
+  async #sweepStagingOnce(): Promise<void> {
+    if (this.#stagingSwept) return;
+    this.#stagingSwept = true;
+    let names: string[];
+    try {
+      names = await readdir(this.#staging);
+    } catch {
+      return;
+    }
+    const staleBefore = this.#clock.now().getTime() - STALE_STAGING_MS;
+    for (const name of names.filter((found) => STAGED_NAME.test(found))) {
+      const path = join(this.#staging, name);
+      try {
+        const stats = await lstatOrNull(path);
+        // A rename changes `ctime` and not `mtime`, so the later of the two is when it was last touched.
+        if (stats === null || Math.max(stats.mtimeMs, stats.ctimeMs) >= staleBefore) continue;
+        // `rm` takes away a link itself, never what it points to.
+        await rm(path, { recursive: true, force: true });
+      } catch {
+        // Left for the next writer; it is never listed as a plugin.
+      }
     }
   }
 
