@@ -1,0 +1,32 @@
+## colour: halonic routines
+exit 0
+stdout:
+  Weekly report   Mondays at 09:00   Next 16 Nov 09:00   \e[2mNever ran\e[22m
+stderr:
+
+## NO_COLOR: halonic routines
+exit 0
+stdout:
+  Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran
+stderr:
+
+## --json: halonic routines
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "routines": [
+      {
+        "key": "reports/weekly-report",
+        "hubId": "reports",
+        "routineId": "weekly-report",
+        "name": "Weekly report",
+        "enabled": true,
+        "trigger": "Mondays at 09:00",
+        "nextRun": "2026-11-16T09:00:00.000Z",
+        "lastRun": null
+      }
+    ]
+  }
+stderr:

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { RunEvent, RunEventBody } from "@halonicjs/events";
+import type { RunEvent, RunEventBody, RunTrigger } from "@halonicjs/events";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import type { RunSetup } from "../commands/run/run.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../workspace-runs.ts";
@@ -95,6 +95,8 @@ export interface StoredRun {
   readonly after?: readonly (readonly [string, RunEventBody])[];
   readonly kind?: "run" | "test";
   readonly workflowId?: string;
+  /** What started it, such as a routine; started by hand when left out. */
+  readonly trigger?: RunTrigger;
 }
 
 /** Stores runs of Acme's Support reply in the profile folder, as `halonic run` would. */
@@ -111,6 +113,7 @@ export async function storeRuns(acmeRuns: AcmeRuns, ...runs: readonly StoredRun[
           input: {},
           kind: run.kind ?? "run",
           definitionsVersion: "v1",
+          ...(run.trigger === undefined ? {} : { trigger: run.trigger }),
         },
       ],
       ...(run.after ?? []),

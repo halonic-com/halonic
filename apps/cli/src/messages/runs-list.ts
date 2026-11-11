@@ -272,7 +272,11 @@ export function endedInWords(ended: EndedAt): string {
     : happenedInWords(ended);
 }
 
-function dueInWords(due: DueAt): string {
+/**
+ * When a timer is due: "14:00", "tomorrow 08:00" or "3 Dec 08:00". A waiting
+ * run's What column and a routine's next run write it the same way.
+ */
+export function dueInWords(due: DueAt): string {
   switch (due.day) {
     case "today":
       return due.time;
