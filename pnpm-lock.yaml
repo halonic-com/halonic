@@ -277,6 +277,12 @@ importers:
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-srt
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/system-node
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../packages/core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports

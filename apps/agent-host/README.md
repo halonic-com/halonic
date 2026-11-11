@@ -121,3 +121,13 @@ Studio gives the engine a stand-in `Harness` for each one the host lists, and th
 A run that fails or is cancelled ends with `{"type":"failed","message"}` instead of `finished`. A harness, session or bridge the host doesn't have gets `404 unknown_harness`, `unknown_session` or `unknown_bridge`. When Studio goes away the run is cancelled, and when the host stops it cancels every run before it closes the sessions.
 
 The port's `environment` has no route: the engine asks for it without waiting, and it only reads its arguments, so Studio calls the adapter's own function with the bridge's address and token from `/v1/bridge/open`.
+
+## Opening a terminal the person can see
+
+`openTerminal` (`src/terminal/open-terminal.ts`) opens a new terminal window that runs one program, so the person answers it themselves. It is for a harness program's own sign-in for one agent, such as `claude auth login` with `CLAUDE_CONFIG_DIR` set to that agent's settings folder. It takes the program's absolute path, plain-word arguments and the variables to add to the person's environment:
+
+- **Windows:** `cmd.exe` from the Windows folder runs `start`, which opens a new console window. The variables travel in the environment, never on the command line.
+- **macOS:** it writes a `.command` file to a new private temp folder and opens it with `open`, so the person's chosen terminal runs it. The variables are quoted for `sh` there.
+- **Linux:** it uses the first of `x-terminal-emulator`, `gnome-terminal`, `konsole`, `xfce4-terminal` and `xterm` it finds on the `PATH`, with the variables in its environment.
+
+It answers `{ opened: false, reason }` when no window could open: no terminal or desktop session, or a start that failed. The caller then shows the command to run by hand. It refuses a program or variable under a skill's `scripts/` folder.
