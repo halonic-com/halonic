@@ -117,7 +117,8 @@ jobs:
   fast:
     name: Fast gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # pr.read can wait about 10 min in total under a GitHub rate limit.
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: read
@@ -251,7 +252,8 @@ jobs:
     name: Coverage floors don't go down
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # pr.read can wait about 10 min in total under a GitHub rate limit.
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: read
