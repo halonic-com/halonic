@@ -74,7 +74,10 @@ question as a review of what the workspace can start (HAL-5519).
 ## What trust does not protect against
 
 - **It isn't a sandbox.** After you trust a workspace, its programs run with
-  your rights. Trust only workspaces from people you trust.
+  your rights. That includes the keys in your environment: a stdio connector
+  gets the CLI's whole environment, model keys too (see the
+  [threat model's known limits](threat-model.md#44-secrets-tokens-and-outbound-calls-b4)).
+  Trust only workspaces from people you trust.
 - **It covers what the check lists, not what the files say.** Prompts,
   workflows, skills and knowledge aren't in the fingerprint. They can't start a
   program, but they can steer a model. The threat model covers that under

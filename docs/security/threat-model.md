@@ -104,7 +104,9 @@ workspace you didn't write is like running its code.
 | A sandbox limits what a trusted workspace's program can do | Harness agents: see [4.6](#46-agents-in-a-sandbox-b8). Stdio connectors a workspace starts get their own sandbox (D45) | **Planned** (HAL-2310) |
 
 **Known limit.** After you trust a workspace, its programs run with your
-rights. Trust only workspaces from people you trust.
+rights. Trust only workspaces from people you trust. That includes the keys in
+your environment: see the known limits in
+[4.4](#44-secrets-tokens-and-outbound-calls-b4).
 
 ### 4.2 Model output and content (B2)
 
@@ -182,6 +184,16 @@ Its text is attacker text. The rules are the requirement
   unlocked) and Windows (Credential Manager) it gets them without a prompt. On
   macOS the keychain may ask you once for each app. An agent you run on this
   computer, outside the sandbox, is such a program (see 4.6).
+- **A program a workspace starts can read the keys in your environment.** A
+  `stdio` connector the CLI starts runs as you with the CLI's whole
+  environment, plus the variables and secrets its connector names
+  (`apps/cli/src/connector-machine.ts` passes `process.env`;
+  `packages/adapters/mcp/src/stdio/stdio-connector.ts` starts it with
+  `{ ...inheritedEnv, ...stdio.env, ...secretEnv }`). So it can read every key
+  set there, including the `HALONIC_SECRET_…` variables the CLI reads model
+  keys from. Halonic only removes known secret values from the program's error
+  output it shows you. Giving a connector only a base set plus the variables
+  it declares is Planned (HAL-6266).
 - **The desktop app doesn't use it yet.** The bridge that gives Studio's
   services the keychain is on `main`; the code in the app that builds those
   services is Planned (HAL-2952). Until then, no desktop token reaches the
