@@ -13,6 +13,7 @@ import {
   RunEvents,
   WorkflowRuns,
 } from "@halonicjs/app";
+import type { RunVersion } from "@halonicjs/events";
 import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
@@ -91,7 +92,7 @@ export async function runWorkflow(
   const dir = await openWorkspaceDir(input, context);
   const workspaceName = printable(dir.name);
   const typedDir = givenDir(input, dir);
-  const { workspace, changesNotLive } = await liveWorkspace(dir, setup.history);
+  const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup.history);
   const harness = await runHarnessOf(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),
@@ -128,7 +129,7 @@ export async function runWorkflow(
       engine,
       workspace,
       (signal) =>
-        followWithEvents(engine, place, workflow, runInput, events, {
+        followWithEvents(engine, place, { workflow, input: runInput, version }, events, {
           signal,
           onEvent: live.onEvent,
         }),
@@ -146,6 +147,15 @@ export async function runWorkflow(
   }
 }
 
+/** What the command starts: the workflow, its input, and the version of the workspace it reads. */
+interface RunToStart {
+  /** The workflow the sandbox was checked for, with the harness for all its agents. */
+  readonly workflow: SandboxGateRun;
+  readonly input: Record<string, unknown>;
+  /** Recorded on the run's `run.started` (`app.run-records-its-version`). */
+  readonly version: RunVersion;
+}
+
 /** The run where the command left it, and the `--event`s it never took. */
 interface FollowedRun {
   readonly run: RunDetail;
@@ -154,7 +164,7 @@ interface FollowedRun {
 }
 
 /**
- * Starts the run and, each time it waits for the user, sends the next of
+ * Starts `start` and, each time it waits for the user, sends the next of
  * `events` and follows it on, until it ends, waits with no event left, or
  * waits for something else. Every follow gets `follow`'s signal and
  * `onEvent`.
@@ -162,17 +172,18 @@ interface FollowedRun {
 async function followWithEvents(
   engine: LocalEngine,
   place: RunPlace,
-  workflow: SandboxGateRun,
-  runInput: Record<string, unknown>,
+  start: RunToStart,
   events: readonly string[],
   follow: Required<Pick<FollowOptions, "signal" | "onEvent">>,
 ): Promise<FollowedRun> {
   const { workspace } = place;
+  const { workflow, input, version } = start;
   const workflowRuns = new WorkflowRuns(engine.executor);
   // The workflow the sandbox was checked for, by its hub, so it is the one that starts.
   const typed = `${workflow.hubId}/${workflow.workflowId}`;
-  const started = await workflowRuns.startRun(workspace, typed, runInput, {
+  const started = await workflowRuns.startRun(workspace, typed, input, {
     ...follow,
+    version,
     ...(workflow.harness === undefined ? {} : { harness: workflow.harness }),
   });
   if (started.found !== "one") {
@@ -258,14 +269,19 @@ function noWorkflow(workspace: LoadedWorkspace, typed: string, name: string): Ow
 
 /**
  * The workspace the run starts: the live version, or the saved files with
- * history off, and whether saved definition changes aren't in it.
+ * history off; the version the run records; and whether saved definition
+ * changes aren't in it.
  *
  * @throws OwnLineError `conflict` when nothing is live yet
  */
 async function liveWorkspace(
   dir: OpenWorkspaceDir,
   history: OpenWorkspaceHistory | undefined,
-): Promise<{ workspace: LoadedWorkspace; changesNotLive: boolean }> {
+): Promise<{
+  readonly workspace: LoadedWorkspace;
+  readonly version: RunVersion;
+  readonly changesNotLive: boolean;
+}> {
   const run = await loadRunWorkspace(dir, history);
   if (run.found === "nothing-live") {
     throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());

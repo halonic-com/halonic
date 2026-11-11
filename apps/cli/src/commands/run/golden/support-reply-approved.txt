@@ -89,6 +89,9 @@ stdout:
         },
         "kind": "run",
         "definitionsVersion": "87d82ee0c8b244411cfcbbe85442c46d63c5994774ae780592deee031858f3c7",
+        "version": {
+          "reads": "saved-files"
+        },
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 1,
         "at": "2026-11-10T14:01:00.000Z"

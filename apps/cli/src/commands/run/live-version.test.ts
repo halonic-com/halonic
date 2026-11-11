@@ -7,6 +7,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { RunHistory } from "@halonicjs/app";
+import type { RunEvent } from "@halonicjs/events";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf } from "@halonicjs/workspace";
@@ -95,6 +96,14 @@ async function storedRuns(): Promise<number> {
   return listed.runs.length;
 }
 
+/** The `run.started` of the one stored run. */
+async function runStarted(): Promise<RunEvent | undefined> {
+  const runs = await openWorkspaceRuns(acme, profile);
+  const [stored] = (await new RunHistory(runs).listRuns()).runs;
+  const events = await runs.events(stored?.id ?? "");
+  return events.find((event) => event.type === "run.started");
+}
+
 /** The workspace folder as the CLI opens it. */
 const dirOf = () => ({
   root: acme,
@@ -137,6 +146,21 @@ verifies("cli.run-live-version", () => {
   );
 
   it(
+    "records on the run the live version's commit and date",
+    async () => {
+      const commit = await makeLive();
+      const [head] = await vcs.log(1);
+
+      expect(await run()).toMatchObject({ code: exitCode.ok });
+
+      expect(await runStarted()).toMatchObject({
+        version: { reads: "live-version", commit, versionDate: head?.date },
+      });
+    },
+    gitTimeout,
+  );
+
+  it(
     "says nothing about changes when nothing changed, or only a file no kind places",
     async () => {
       await makeLive();
@@ -153,6 +177,16 @@ verifies("cli.run-live-version", () => {
   );
 
   it(
+    "records on the run that it read the saved files when the folder isn't a git repository",
+    async () => {
+      expect(await run()).toMatchObject({ code: exitCode.ok });
+
+      expect(await runStarted()).toMatchObject({ version: { reads: "saved-files" } });
+    },
+    gitTimeout,
+  );
+
+  it(
     "loads the live version with its commit as the workspace's version",
     async () => {
       const commit = await makeLive();
@@ -163,6 +197,7 @@ verifies("cli.run-live-version", () => {
         found: "loaded",
         workspace: { version: commit },
         changesNotLive: true,
+        version: { reads: "live-version", commit },
       });
     },
     gitTimeout,

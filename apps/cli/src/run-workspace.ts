@@ -8,7 +8,8 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
-import { type LiveVersionReader, liveVersionOf, runSourceFor } from "@halonicjs/app";
+import { type LiveVersionReader, liveVersionOf, runSourceFor, runVersionOf } from "@halonicjs/app";
+import type { RunVersion } from "@halonicjs/events";
 import type { Vcs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type LoadedWorkspace, loadWorkspace, placeOf } from "@halonicjs/workspace";
@@ -32,12 +33,13 @@ export interface OpenedHistory {
 
 /**
  * The workspace a run reads:
- * - `loaded`: the live version, or the saved files with history off.
- *   `changesNotLive` says a definition file differs from the live version
- *   and the run won't use it (HAL-6007): changed, added, removed or renamed
- *   since the last commit, staged or not. Other files, such as a
- *   connector's script, aren't counted: a live run's programs read them as
- *   saved;
+ * - `loaded`: the live version, or the saved files with history off, with
+ *   the version the run records on its `run.started`
+ *   (`app.run-records-its-version`). `changesNotLive` says a definition
+ *   file differs from the live version and the run won't use it
+ *   (HAL-6007): changed, added, removed or renamed since the last commit,
+ *   staged or not. Other files, such as a connector's script, aren't
+ *   counted: a live run's programs read them as saved;
  * - `nothing-live`: the workspace has history but no version yet, so there
  *   is nothing to run.
  */
@@ -45,6 +47,7 @@ export type RunWorkspace =
   | {
       readonly found: "loaded";
       readonly workspace: LoadedWorkspace;
+      readonly version: RunVersion;
       readonly changesNotLive: boolean;
     }
   | { readonly found: "nothing-live" };
@@ -67,7 +70,8 @@ export class HistoryUnavailableError extends KindedError {
 /**
  * Loads the workspace `halonic run` starts: the live version, or the saved
  * files with history off (requirement `cli.run-live-version`). The run
- * records the loaded workspace's version, the commit for the live version.
+ * records the version it read: the live version's commit and date, or the
+ * saved files.
  * `nothingDone` ends line 1 of a refusal: "Nothing ran." by default.
  *
  * @throws HistoryUnavailableError when the workspace has history but it can't be opened
@@ -90,7 +94,7 @@ export async function loadRunWorkspace(
     const workspace = await loadWorkspace(picked.source);
     const changesNotLive =
       vcs !== null && picked.reads === "live-version" && (await definitionsChanged(vcs));
-    return { found: "loaded", workspace, changesNotLive };
+    return { found: "loaded", workspace, version: runVersionOf(picked), changesNotLive };
   } finally {
     await history?.close();
   }

@@ -178,6 +178,10 @@ verifies("cli.commands.routines.watch", () => {
       started?.id ?? "",
     );
     expect(events.map((event) => event.type)).toContain("timer.fired");
+    // The watch froze the saved files when it started, and the run records that it read them.
+    expect(events.find((event) => event.type === "run.started")).toMatchObject({
+      version: { reads: "saved-files" },
+    });
 
     signals.send("SIGINT");
     expect(await watching).toBe(130);

@@ -9,6 +9,7 @@
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 
 import { placedRoutines, type RoutineScheduler, workspaceRoutineScheduler } from "@halonicjs/app";
+import type { RunVersion } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -110,9 +111,17 @@ function routineScheduler(
     runs: engine.runs,
     // As the workspace was when the watch started: the engine runs those definitions too.
     routines: async () => routines,
+    // The saved files it froze then, not the newest commit (`app.run-records-its-version`).
+    runVersion: async () => frozenVersion,
     policy: { ...DEFAULT_TICK_POLICY, timeZone },
   });
 }
+
+/**
+ * The version every routine run of a watch reads: the saved files, loaded
+ * once when the watch starts.
+ */
+const frozenVersion: RunVersion = { reads: "saved-files" };
 
 /**
  * The workflows the routines start, for the sandbox check: each enabled
