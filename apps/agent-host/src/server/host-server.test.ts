@@ -228,25 +228,28 @@ describe("startHostServer, with a caller that holds connections open", () => {
     expect(answer).toContain('{"late":true}');
   });
 
-  it("takes no more connections than its cap", async () => {
-    const { port } = await startedWithLimits();
-    const held: Socket[] = [];
-    try {
-      for (let index = 0; index < limits.maxConnections; index++) {
-        held.push(
-          await new Promise<Socket>((resolve) => {
-            const socket = connect(port, "127.0.0.1", () => resolve(socket));
-          }),
-        );
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4750: the connection reset (read ECONNRESET) breaks the cap test: takes no more connections than its cap",
+    async () => {
+      const { port } = await startedWithLimits();
+      const held: Socket[] = [];
+      try {
+        for (let index = 0; index < limits.maxConnections; index++) {
+          held.push(
+            await new Promise<Socket>((resolve) => {
+              const socket = connect(port, "127.0.0.1", () => resolve(socket));
+            }),
+          );
+        }
+        // Give the server time to count the held connections before the next one.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
+        expect(answer).toBe("");
+      } finally {
+        for (const socket of held) socket.destroy();
       }
-      // Give the server time to count the held connections before the next one.
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
-      expect(answer).toBe("");
-    } finally {
-      for (const socket of held) socket.destroy();
-    }
-  });
+    },
+  );
 });
 
 describe("launch token", () => {
