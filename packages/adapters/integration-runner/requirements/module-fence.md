@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-983 (design HAL-958, section 5, attack case A34)
 
-Before the runner imports an integration, it shall put a module hook in place that allows an import or require only when it names a file, or `zod`, and resolves to a file inside the integration's folder. Node's own modules by any name (including `node:module`, so no `createRequire`), `data:`, `blob:` and other URLs, other packages, native add-ons (`.node` files, even inside the folder), and paths out of the folder are refused. The runner shall also remove `process.getBuiltinModule` before the integration loads.
+When the runner imports an integration, it shall first put a module hook in place that allows an import or require only when it names a file, or `zod`, and resolves to a file inside the integration's folder. Node's own modules by any name (including `node:module`, so no `createRequire`), `data:`, `blob:` and other URLs, other packages, native add-ons (`.node` files, even inside the folder), and paths out of the folder are refused. The runner shall also remove `process.getBuiltinModule` before the integration loads.
 
 The hook is one more layer behind the loader's static import checks and the fence: for imports and requires, it holds with Node's permission layer off. A path out of the folder is refused before Node resolves it, so Node never looks at it. The hook does not cover Node's ways into native code that skip imports: `process.binding`, `process._linkedBinding` and `process.dlopen`. Only Node's permission layer and the fence stop those.
 
