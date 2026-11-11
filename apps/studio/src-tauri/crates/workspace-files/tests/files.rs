@@ -34,14 +34,15 @@ fn workspace_files_list_every_file_sorted_without_private_or_temporary_entries()
 
     assert_eq!(
         folder.list(None),
-        // UTF-16 order: "g" and "h" before the surrogate of U+10000, and
-        // that before U+FFFF, as JavaScript sorts them.
+        // UTF-16 order: "g" before the surrogate of U+10000, and that before
+        // U+FFFF, as JavaScript sorts them. By code point it would be the
+        // other way round.
         Ok(vec![
             "agents/review.yaml".to_owned(),
-            "hubs/a/hub.yaml".to_owned(),
-            "hubs/b/hub.yaml".to_owned(),
             "a\u{10000}.yaml".to_owned(),
             "a\u{ffff}.yaml".to_owned(),
+            "hubs/a/hub.yaml".to_owned(),
+            "hubs/b/hub.yaml".to_owned(),
         ])
     );
     assert_eq!(
