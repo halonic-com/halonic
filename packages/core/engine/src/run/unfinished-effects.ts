@@ -33,6 +33,12 @@ interface KeptEffects {
   readonly effects: readonly Effect[];
 }
 
+/** Where carrying out a step stopped: what of it is still to do, and the error. */
+interface Stopped {
+  readonly left: KeptEffects;
+  readonly error: unknown;
+}
+
 /** Carries out a step's effects in order, and keeps those it couldn't for the run's next timer. */
 export class UnfinishedEffects {
   readonly #options: UnfinishedEffectsOptions;
@@ -49,14 +55,11 @@ export class UnfinishedEffects {
    * the error goes to the caller.
    */
   async carryOut(run: RunState, effects: readonly Effect[]): Promise<void> {
-    for (const [index, effect] of effects.entries()) {
-      try {
-        await this.#options.carryOut(run, effect);
-      } catch (error) {
-        await this.#keep(run, effects.slice(index));
-        throw error;
-      }
-    }
+    const stopped = await this.#carryOutUntilError({ run, effects });
+    if (stopped === undefined) return;
+    this.#kept.set(run.runId, [...(this.#kept.get(run.runId) ?? []), stopped.left]);
+    await this.#setResumeTimer(run.runId);
+    throw stopped.error;
   }
 
   /**
@@ -69,29 +72,50 @@ export class UnfinishedEffects {
     if (kept === undefined) return;
     this.#kept.delete(runId);
     for (const [index, step] of kept.entries()) {
-      try {
-        await this.#resumeStep(runId, step);
-      } catch (error) {
-        // Those of this step that failed are kept again; keep the later steps' after them.
-        this.#kept.set(runId, [...(this.#kept.get(runId) ?? []), ...kept.slice(index + 1)]);
-        throw error;
-      }
+      const stopped = await this.#resumeStep(runId, step);
+      if (stopped === undefined) continue;
+      // Ahead of any a delivery kept meanwhile: theirs come from later steps.
+      const later = this.#kept.get(runId) ?? [];
+      this.#kept.set(runId, [stopped.left, ...kept.slice(index + 1), ...later]);
+      await this.#setResumeTimer(runId);
+      throw stopped.error;
     }
   }
 
-  async #resumeStep(runId: string, step: KeptEffects): Promise<void> {
+  /** @returns where it stopped, when reading the run, an effect or ending the run threw */
+  async #resumeStep(runId: string, step: KeptEffects): Promise<Stopped | undefined> {
     const endedByStep = hasEnded(step.run.status);
-    const now = await readRun(this.#options.store, runId);
-    if (now === null || (hasEnded(now.status) && !endedByStep)) return;
-    await this.carryOut(step.run, step.effects);
-    if (endedByStep) await this.#options.ended(runId);
+    let left = step;
+    try {
+      const now = await readRun(this.#options.store, runId);
+      if (now === null || (hasEnded(now.status) && !endedByStep)) return undefined;
+      const stopped = await this.#carryOutUntilError(step);
+      if (stopped !== undefined) return stopped;
+      // Its effects are carried out: kept again from here, only the end is left.
+      left = { run: step.run, effects: [] };
+      if (endedByStep) await this.#options.ended(runId);
+      return undefined;
+    } catch (error) {
+      return { left, error };
+    }
   }
 
-  async #keep(run: RunState, effects: readonly Effect[]): Promise<void> {
-    this.#kept.set(run.runId, [...(this.#kept.get(run.runId) ?? []), { run, effects }]);
+  /** @returns where it stopped, when an effect threw */
+  async #carryOutUntilError(step: KeptEffects): Promise<Stopped | undefined> {
+    for (const [index, effect] of step.effects.entries()) {
+      try {
+        await this.#options.carryOut(step.run, effect);
+      } catch (error) {
+        return { left: { run: step.run, effects: step.effects.slice(index) }, error };
+      }
+    }
+    return undefined;
+  }
+
+  async #setResumeTimer(runId: string): Promise<void> {
     const { scheduler, now } = this.#options;
     try {
-      await scheduler.schedule(run.runId, resumeTimer, now());
+      await scheduler.schedule(runId, resumeTimer, now());
     } catch {
       // The caller gets the error that kept the effects. A scheduler that
       // can't set this timer either delivers the timer that failed again,

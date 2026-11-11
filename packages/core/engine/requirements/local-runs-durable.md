@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-5214, findings of the 11 Nov code review
 
-When the local executor has stored a step's events but can't carry out one of its effects, because the scheduler or the store fails, it shall keep that effect and the ones after it, and carry them out on the run's next timer, so the run never waits with no timer to move it on. It shall set a `resume` timer for the run for that, and a run that has ended since drops what was kept. When a model, harness or connector call has an answer but the executor can't record it, it shall keep the answer, and a later delivery of the same timer shall record the kept answer without making the call again.
+When the local executor has stored a step's events but can't carry out one of its effects, because the scheduler or the store fails, it shall keep that effect and the ones after it, and carry them out on the run's next timer, so that, while the engine runs, the run never waits with no timer to move it on. What it keeps lives in memory: after a restart, a running run ends as interrupted, and a waiting run whose kept effect was a timer has none. It shall set a `resume` timer for the run for that, and a run that has ended since drops what was kept. Kept steps are carried out oldest first, also when two timers of the run fail at once. When a model, harness or connector call has an answer but the executor can't record it, it shall keep the answer, and a later delivery of the same timer shall record the kept answer without making the call again.
 
 ## Examples
 
