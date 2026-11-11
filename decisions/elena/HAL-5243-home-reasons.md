@@ -2,6 +2,7 @@
 
 - Approval: the maintainer approves this change in review of HAL-5243 (Sofia's UX check, HAL-5238)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lp/qPQ8nWtWJSYBXIBO/iC8QGR6UkY+/0Tt49ZKIVlmuWoTnFdMitstCTeokxj3fR+0uI0Tk5yl90yScCGEQBQ==
 
 The requirement gains a promise; nothing is narrowed and no test was weakened.
 
