@@ -11,7 +11,8 @@
 When a run ends, the local executor now cancels every child run it started and hasn't heard end,
 all the way down (the new `engine.child-runs-end-with-run`). Before, a cancel reached only the
 child a `workflow` state waits on, and a run that failed left its `foreach` items' child runs
-going, with their harness calls.
+going, with their harness calls. A `cancel-child` effect (HAL-6090) now ends a child the same
+way, so it also reaches that child's own `foreach` items.
 
 `engine.budget-composite-stops` said that when one `foreach` item's child run stops for the
 budget, the other items' child runs each stop at their next model call or harness run, because
