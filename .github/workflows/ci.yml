@@ -1042,8 +1042,10 @@ jobs:
     # The real fence: the tests under packages/adapters/sandbox-srt/fence run
     # the actual sandbox-runtime (bubblewrap) and try to get out. Ubuntu 24.04
     # refuses unprivileged user namespaces through AppArmor by default, so the
-    # job turns that off first; without them the fence can't start and these
-    # tests fail on purpose (never skip). No cache is restored.
+    # job adds the AppArmor profile for bwrap from the sandbox guide first, the
+    # same fix we give users (HAL-6030), and leaves the restriction on for
+    # every other program. Without user namespaces the fence can't start and
+    # these tests fail on purpose (never skip). No cache is restored.
     name: Sandbox fence (bubblewrap)
     needs: changes
     if: needs.changes.outputs.sandbox-fence == 'true'
@@ -1060,8 +1062,24 @@ jobs:
         uses: $/.github/actions/apt-install
         with:
           packages: bubblewrap socat ripgrep
-      - name: Allow unprivileged user namespaces
-        run: sudo sysctl --write kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Allow user namespaces for bubblewrap (AppArmor profile)
+        # The AppArmor profile for bwrap that docs/security/sandbox.md points
+        # users to; the guide gets this exact text in HAL-6007. The restriction
+        # itself stays on, so the fence tests prove the profile.
+        run: |
+          test "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)" = 1
+          sudo tee /etc/apparmor.d/bwrap > /dev/null << 'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+
+            include if exists <local/bwrap>
+          }
+          EOF
+          sudo apparmor_parser --replace /etc/apparmor.d/bwrap
+          bwrap --ro-bind / / --unshare-user -- true
       - name: Fence tests
         working-directory: packages/adapters/sandbox-srt
         run: pnpm test:fence
