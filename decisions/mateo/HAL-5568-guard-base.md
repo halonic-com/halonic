@@ -18,6 +18,10 @@ The fewer-`expect`-calls rule in `tooling/check/src/guard/test-runs.ts` now only
 
 Once it blocked, CI showed a second source of false findings: the `expect` counts of `cli.commands.routines.watch` (221 vs 232) and `sandbox-srt.check` (31 vs 37) differ between runs with no code change in those packages (polling tests, environment-dependent skips). The count is measured at run time, so a test can also be weakened through a shared helper, a fixture or the code under test; the rule therefore fires on any change in the owning package. A lower count in a package the pull request didn't touch is noise, and the rule ignores it. The other guard rules are unchanged.
 
+## Why the note covers three requirements
+
+The guard runs the merge base's copy of its own code, so on this pull request the old fewer-`expect`-calls rule still runs. It flags `cli.commands.routines.watch` (222 against 227) and `sandbox-srt.check`, which this pull request doesn't touch, and it flags the edit of `check.guard-fewer-assertions`. The note covers these three so this pull request can merge; after it, the new rule runs on every pull request and ignores the run-to-run drop.
+
 ## Tests
 
 No test was skipped. One guard test changed on purpose: the "fewer expect calls" test now edits the test file too, because that is when the rule fires; new tests cover a changed requirement file, a changed helper with an unchanged test file, and an untouched package with a lower count. `guard-base.test.ts` runs the workflow's own switch step against a real git history, and runs the guard with main's new commit as the base (nothing reported) and with the older commit (the finding that used to appear). The decision note's signature is still checked against `pull_request.base.sha`, as before.
@@ -26,3 +30,6 @@ No test was skipped. One guard test changed on purpose: the "fewer expect calls"
 
 - .github/
 - tooling/check/
+- check.guard-fewer-assertions
+- cli.commands.routines.watch
+- sandbox-srt.check
