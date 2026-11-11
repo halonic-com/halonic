@@ -211,9 +211,9 @@ interface SearchResultsProps {
 }
 
 /**
- * What the words found, or the state that stands in for it: "Searching…" with still skeleton
- * rows, "Couldn't search" with the reason and **Try again**, or "Nothing matches" with **Search
- * all hubs** while a hub is picked. The line above them is a status, so a screen reader hears the
+ * What the words found, or the state that stands in for it: "Searching…" over the rows kept from
+ * the earlier words, marked busy, or over still skeleton rows, "Couldn't search" with the reason
+ * and **Try again**, or "Nothing matches" with **Search all hubs** while a hub is picked. The line above them is a status, so a screen reader hears the
  * count, or what stands in for it, once the search is done; with nothing typed there is nothing
  * to say.
  */
@@ -232,7 +232,10 @@ function SearchResults(props: SearchResultsProps) {
           <h2 id={headingId} className={groupLabelClasses}>
             Names and descriptions
           </h2>
-          <ul className="overflow-hidden rounded-md border border-border">
+          <ul
+            aria-busy={props.searching}
+            className="overflow-hidden rounded-md border border-border"
+          >
             {props.names.results.map((result) => (
               <li key={result.key} className="border-border not-last:border-b">
                 {props.renderResult(result)}
@@ -273,7 +276,9 @@ function nothingMatchesTitle(words: string): string {
 
 /**
  * The state that takes the results' place: nothing while nothing is typed, or `undefined` when
- * there are results to list.
+ * there are results to list. While new words are searched, the rows found for the earlier words
+ * that the new words still match stay listed, as in the palette, so the list doesn't flash and
+ * jump at every pause in the typing; the skeleton rows show only when there are none to keep.
  */
 function searchedState(props: SearchResultsProps): ReactNode {
   const { words, names } = props;
@@ -281,7 +286,7 @@ function searchedState(props: SearchResultsProps): ReactNode {
     return null;
   }
   if (props.searching) {
-    return <SearchingRows />;
+    return names.results.length === 0 ? <SearchingRows /> : undefined;
   }
   if (names.couldNotSearch) {
     return (

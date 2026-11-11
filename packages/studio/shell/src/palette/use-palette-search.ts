@@ -22,12 +22,22 @@ interface Question {
   readonly attempt: number;
 }
 
+/** What the providers last answered, and to which question. */
+interface Answer {
+  readonly question: Question;
+  readonly found: FoundItems;
+}
+
+/** Before the first question, and after the box is cleared: nothing found to keep. */
+const noAnswer: Answer = { question: { words: "", attempt: 0 }, found: nothingFound };
+
 /**
  * Asks the search providers each time the palette's words change, and again on Try again. Only
  * the answer to the latest question counts: one that comes back after the words changed again is
  * dropped. While the providers look, what they found for the earlier words stays, so the rows
  * don't empty and fill again with every letter, but "Couldn't search" waits for the new answer.
- * With nothing typed, nothing is asked.
+ * With nothing typed, nothing is asked, and what was found is forgotten: the next words start
+ * with nothing to keep.
  *
  * @param contextFor the workspace context of a feature, for the palette's target
  *
@@ -40,10 +50,12 @@ export function usePaletteSearch(
   contextFor: (featureId: string) => WorkspaceContext,
 ): PaletteSearch {
   const [attempt, setAttempt] = useState(0);
-  const [answer, setAnswer] = useState<{ question: Question; found: FoundItems }>({
-    question: { words: "", attempt: 0 },
-    found: nothingFound,
-  });
+  const [answer, setAnswer] = useState<Answer>(noAnswer);
+  // Forgotten while rendering the empty box, not in an effect after it, so React redraws at once
+  // and no frame paints with an answer the box no longer asks for.
+  if (words.trim() === "" && answer !== noAnswer) {
+    setAnswer(noAnswer);
+  }
   // Read when a question starts, so a new array or callback each render doesn't ask again.
   const sources = useRef({ providers, contextFor });
   sources.current = { providers, contextFor };

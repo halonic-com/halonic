@@ -27,6 +27,11 @@ const mailTriage: SearchResult = {
   detail: "Agent · acme",
   description: "Sorts refund mail.",
 };
+const refundPolicy: SearchResult = {
+  item: { kind: "file", hub: "acme", id: "refund-policy.md" },
+  label: "Refund policy",
+  detail: "File · acme",
+};
 
 let restorePopover: () => void;
 
@@ -52,7 +57,28 @@ function provider(results: readonly SearchResult[]): Registered<SearchProviderCo
   };
 }
 
-async function renderPage(words: string, results: readonly SearchResult[]) {
+/** A provider that answers each search only when the test calls `answer`, oldest first. */
+function heldProvider() {
+  const waiting: ((results: readonly SearchResult[]) => void)[] = [];
+  const search: Registered<SearchProviderContribution> = {
+    ...provider([]),
+    search: () => new Promise((resolve) => waiting.push(resolve)),
+  };
+  return {
+    search,
+    answer: async (results: readonly SearchResult[]) => {
+      waiting.shift()?.(results);
+      // Lets the answer arrive.
+      await act(async () => undefined);
+    },
+  };
+}
+
+async function renderPage(
+  words: string,
+  results: readonly SearchResult[],
+  search: Registered<SearchProviderContribution> = provider(results),
+) {
   const tabs = new TabSet();
   tabs.openHere(searchPageLocation(words));
   const timers = new FakeTimers();
@@ -67,7 +93,7 @@ async function renderPage(words: string, results: readonly SearchResult[]) {
       words={words}
       tabs={tabs}
       announcer={announcer}
-      providers={[provider(results)]}
+      providers={[search]}
       contextFor={(featureId) => ({ featureId }) as unknown as WorkspaceContext}
       kinds={{ get: (kind) => (kind === "agent" ? { label: "Agent" } : undefined) }}
       notAnswering="The engine isn't answering. It may still be starting."
@@ -98,6 +124,8 @@ async function renderPage(words: string, results: readonly SearchResult[]) {
       });
     },
     rows: () => [...view.querySelectorAll("li a")].map((row) => row.textContent),
+    busy: () => view.querySelector("ul")?.getAttribute("aria-busy"),
+    skeletonRows: () => view.querySelectorAll('div[aria-hidden="true"] > div').length,
     marks: () => [...view.querySelectorAll("mark")].map((mark) => mark.textContent),
     button: (name: string) => {
       const found = [...view.querySelectorAll("button")].find(
@@ -176,11 +204,6 @@ verifies("shell.search-page", () => {
       label: "Invoice reader",
       detail: "Agent · acme",
     };
-    const refundPolicy: SearchResult = {
-      item: { kind: "file", hub: "acme", id: "refund-policy.md" },
-      label: "Refund policy",
-      detail: "File · acme",
-    };
     const page = await renderPage("invoice", [invoiceReader, refundChecker, refundPolicy]);
     expect(page.rows()).toEqual(["Invoice readerAgent · acme"]);
 
@@ -202,6 +225,54 @@ verifies("shell.search-page", () => {
     expect(page.titles()).toEqual(["Search: refund"]);
     act(() => page.tabs.back());
     expect(page.titles()).toEqual(["Search: invoice"]);
+  });
+
+  it("keeps the earlier rows, marked busy, while the paused words are searched", async () => {
+    vi.useFakeTimers();
+    const held = heldProvider();
+    const page = await renderPage("ref", [], held.search);
+    // The first search has nothing to keep.
+    expect(page.status()).toBe("Searching…");
+    expect(page.skeletonRows()).toBe(3);
+    await held.answer([refundChecker, refundPolicy]);
+    expect(page.rows()).toEqual([
+      "Refund checkerAgent · acmeChecks refund requests against the policy.",
+      "Refund policyFile · acme",
+    ]);
+    expect(page.busy()).toBe("false");
+
+    page.type("refund");
+    act(() => vi.advanceTimersByTime(searchPauseMs));
+    expect(page.status()).toBe("Searching…");
+    expect(page.rows()).toEqual([
+      "Refund checkerAgent · acmeChecks refund requests against the policy.",
+      "Refund policyFile · acme",
+    ]);
+    expect(page.busy()).toBe("true");
+    expect(page.skeletonRows()).toBe(0);
+
+    await held.answer([refundChecker]);
+    expect(page.rows()).toEqual([
+      "Refund checkerAgent · acmeChecks refund requests against the policy.",
+    ]);
+    expect(page.busy()).toBe("false");
+    expect(page.status()).toBe("1 match in 1 item");
+  });
+
+  it("shows skeleton rows when the box was cleared before the new words", async () => {
+    vi.useFakeTimers();
+    const held = heldProvider();
+    const page = await renderPage("refund", [], held.search);
+    await held.answer([refundChecker]);
+    page.click(page.button("Clear"));
+    act(() => vi.advanceTimersByTime(searchPauseMs));
+    expect(page.rows()).toEqual([]);
+    // "Refund checker" has "ref" too, but the box was cleared since it was found.
+    page.type("ref");
+    act(() => vi.advanceTimersByTime(searchPauseMs));
+    expect(page.status()).toBe("Searching…");
+    expect(page.rows()).toEqual([]);
+    expect(page.skeletonRows()).toBe(3);
   });
 
   it("says nothing matches, and offers all hubs while a hub is picked", async () => {
