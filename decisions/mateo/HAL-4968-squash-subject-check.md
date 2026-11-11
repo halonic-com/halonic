@@ -10,7 +10,7 @@
 
 ## Why
 
-The `pr-title` check read only the title, so a pull request with one long commit subject was green, then failed the queue's *Squash commit subject* step and lost its slot.
+The `pr-title` check read only the title, so a pull request with one long commit subject was green, then failed the queue's _Squash commit subject_ step and lost its slot.
 
 ## Tests
 
