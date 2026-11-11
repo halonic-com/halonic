@@ -26,6 +26,9 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
   such as "only while the run is waiting" or "refuse an untrusted workspace" live in the service,
   which returns them as a result; the command only maps that result to output and an exit code
   ([details](../../docs/guides/code-style.md#thin-commands-and-screens)).
+- `bin/` is plain JavaScript and the only code that runs before TypeScript: `bin/halonic.js`
+  checks the Node.js version (`bin/node-floor.js`, equal to the root `devEngines.runtime`) and
+  only then imports `src/main.ts`. Keep it that small, so an old Node.js can parse it (HAL-6414).
 - A new command is a new folder `src/commands/<name>/` with `command.ts` exporting `<name>Command`.
   Never edit a shared list; `pnpm discover` writes `src/generated/commands.ts`.
 - Exit codes: 0 ok, 1 errors found or the command failed (`internal`), 2 wrong usage

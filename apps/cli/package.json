@@ -4,7 +4,7 @@
   "type": "module",
   "description": "The halonic command-line tool. Each command lives in its own folder under src/commands and the help is made from them.",
   "bin": {
-    "halonic": "./src/main.ts"
+    "halonic": "./bin/halonic.js"
   },
   "exports": {
     ".": "./src/index.ts"
