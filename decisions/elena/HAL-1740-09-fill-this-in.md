@@ -4,6 +4,7 @@
   plugin screens on [HAL-1952](/HAL/issues/HAL-1952) (small wording on an approved screen, a team
   decision under HAL-2282); the package's reviewer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TxWs9T1DRfKQhwpPwizsWB6LHVqoRBvHEEfk23DIzJwwYBT7l1Yu8LhaltH2RQyzr3VyxhmSubzalIvFqC/kCA==
 - Task: HAL-1740
 
 ## What changes
