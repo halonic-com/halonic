@@ -10,6 +10,7 @@
 
 import {
   hubWorkflows,
+  type RunDetail,
   type RunEventRefusal,
   RunEventRefused,
   RunEvents,
@@ -42,6 +43,7 @@ import { stepName } from "../../messages/step-name.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { endedAt, type RunClock } from "../../run-times.ts";
+import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
@@ -104,7 +106,12 @@ export async function sendToRun(
     dir,
     clock: setup.clock(),
   };
-  const engine = new EngineOnSend(context, setup, workspace, loaded, dir);
+  const engine = new EngineOnSend(context, setup, {
+    dir: workspace,
+    workspace: loaded,
+    run: sandboxRunOf(lookup.run),
+    typedDir: dir,
+  });
   // After 3.4's line, the steps as `halonic run` prints them while it goes; no heading.
   const live = liveLines(context, { ...facts, heading: false });
   try {
@@ -137,41 +144,42 @@ export async function sendToRun(
   }
 }
 
+/** The run a send moves on, in the workspace it was found in. */
+interface SendTarget {
+  readonly dir: OpenWorkspaceDir;
+  readonly workspace: LoadedWorkspace;
+  /** The run's hub, workflow and harness, which the sandbox is checked for. */
+  readonly run: SandboxGateRun;
+  /** The user's own `--dir`, which the trust fix repeats. */
+  readonly typedDir: string | undefined;
+}
+
 /**
  * The engine a send lets the run go on in, opened only once `RunEvents`
- * knows the run waits for the event, so a refused send doesn't check trust.
- * Trust is checked as `halonic run` checks it before it starts a run, with
- * "Nothing was sent." as line 1's end.
+ * knows the run waits for the event, so a refused send checks neither trust
+ * nor the sandbox. Both are checked as `halonic run` checks them before it
+ * starts a run, with "Nothing was sent." as line 1's end.
  */
 class EngineOnSend implements Pick<RunExecutor, "send"> {
   private readonly context: CommandContext;
   private readonly setup: RunSetup;
-  private readonly dir: OpenWorkspaceDir;
-  private readonly workspace: LoadedWorkspace;
-  /** The user's own `--dir`, which the trust fix repeats. */
-  private readonly typedDir: string | undefined;
+  private readonly target: SendTarget;
   private engine: WorkspaceEngine | undefined;
 
-  constructor(
-    context: CommandContext,
-    setup: RunSetup,
-    dir: OpenWorkspaceDir,
-    workspace: LoadedWorkspace,
-    typedDir: string | undefined,
-  ) {
+  constructor(context: CommandContext, setup: RunSetup, target: SendTarget) {
     this.context = context;
     this.setup = setup;
-    this.dir = dir;
-    this.workspace = workspace;
-    this.typedDir = typedDir;
+    this.target = target;
   }
 
   async send(runId: string, event: string): Promise<RunSummary> {
+    const { dir, workspace, run, typedDir } = this.target;
     const nothingSent = sandboxMessages.nothingSent();
-    await checkRunTrust(this.dir, this.workspace, this.setup.trust(), this.typedDir, nothingSent);
+    await checkRunTrust(dir, workspace, this.setup.trust(), typedDir, nothingSent);
     this.engine = await openWorkspaceEngine(this.context, this.setup, {
-      dir: this.dir,
-      workspace: this.workspace,
+      dir,
+      workspace,
+      run: { ...run, ending: nothingSent },
     });
     return this.engine.executor.send(runId, event);
   }
@@ -206,6 +214,18 @@ function withoutRun(event: string, reason: Message): Message {
 /** The workflow the run is of, from its own hub, or `undefined` once it's gone. */
 function workflowOf(loaded: LoadedWorkspace, summary: RunSummary): WorkflowDefinition | undefined {
   return workflowIn(hubWorkflows(loaded), summary.hubId, summary.workflowId);
+}
+
+/**
+ * The run as the sandbox check needs it: its hub and workflow, and the
+ * harness it named for all its agents when it started (HAL-4305), so the
+ * steps after the event are checked in the harness they will run in.
+ */
+function sandboxRunOf(detail: RunDetail): SandboxGateRun {
+  const { hubId, workflowId } = detail.summary;
+  const started = detail.events.find((each) => each.type === "run.started");
+  const harness = started?.type === "run.started" ? started.harness : undefined;
+  return harness === undefined ? { hubId, workflowId } : { hubId, workflowId, harness };
 }
 
 /** What a refused send's lines name besides the refusal. */
