@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4658](/HAL/issues/HAL-4658), decided by the CTO on [HAL-4657](/HAL/issues/HAL-4657); the package owner approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/hJIMD65e5J2nVRuDmJUVb4Pe5ri/ZDbS18bZvFkXwwG0YGv+d9ICvD1e88WsnUHLAgf3OP4EcQ/nQAioGATCw==
 - Task: HAL-4658
 
 ## What changes
