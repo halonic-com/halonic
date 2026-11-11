@@ -629,6 +629,81 @@
     "old": "784f78d's runner started a parallel state's branches, logged their agent.started and agent.finished events, and wrote their context.updated results and the output map in the order the file lists them (the base fixture's invoice: vendor, then amount).",
     "new": "The engine does all of these in name order (amount, then vendor). Only the order of sibling branch entries inside one parallel state differs: the set of branches, each branch's own events, every result and the final output are the same.",
     "why": "Runs keep their definitions as canonical JSON (HAL-186 decision 5), which sorts keys, so the file's order is gone when a run reads them. Each branch writes only under its own name, so the order changes the log, not a result. Decided by Liam on HAL-3703; if a fixture shows a result that depends on branch order, this entry no longer applies and the question goes back to him.",
-    "status": "signed-off"
+    "status": "signed-off",
+    "runRules": [
+      "parallel-branches-by-name"
+    ]
+  },
+  {
+    "id": "child-run-ids-from-the-step",
+    "requirement": "engine.local-child-runs",
+    "area": "run logs: child run IDs",
+    "old": "784f78d gave every run of a test the next ID from one counter: the test run test_1, its child runs test_2, test_3 and so on, in the order they started.",
+    "new": "The engine names a child run after its parent and the step that started it: <parent>.<seq of the step>, and <parent>.<seq>.<item> for a foreach item (test_1.23, test_1.2.0). The compare names both sides run_1, run_2, ... in the order the runs started.",
+    "why": "A child run ID made from the parent log is the same each time the parent decision is replayed, so a start asked for twice finds the run it already started instead of starting a second one. A counter would give a new ID on every replay.",
+    "status": "proposed",
+    "runRules": [
+      "run-ids-by-start"
+    ]
+  },
+  {
+    "id": "definitions-version-is-the-blob-hash",
+    "requirement": "workspace.definitions",
+    "area": "run logs: definitionsVersion",
+    "old": "784f78d wrote a short hash of the old definitions, sha256:<16 hex>, in run.started and the summary.",
+    "new": "definitionsVersion is the full SHA-256 of the definitions kept for the run, which is the hash of their blob. The compare leaves it out on both sides.",
+    "why": "The run reads its definitions back from the blob store by this hash (HAL-186 decision 5), so it has to be the blob hash. The definitions themselves differ in shape, so the two hashes can never match.",
+    "status": "proposed",
+    "runRules": [
+      "no-definitions-version"
+    ]
+  },
+  {
+    "id": "waiting-carries-labels-and-title",
+    "requirement": "events.waiting-description",
+    "area": "run logs: run.waiting",
+    "old": "784f78d wrote run.waiting with the state, the events it takes and its timers.",
+    "new": "run.waiting also carries the answer labels and the wait step description (labels, title). The compare leaves them out of the new events.",
+    "why": "Every place that shows a waiting run reads the same words from the log (HAL-1290 inbox, halonic runs). They are added fields: the old ones are unchanged.",
+    "status": "proposed",
+    "runRules": [
+      "waiting-labels-and-title"
+    ]
+  },
+  {
+    "id": "workflow-finished-carries-context",
+    "requirement": "events.workflow-finished-context",
+    "area": "run logs: workflow.finished",
+    "old": "784f78d wrote workflow.finished with the child run ID and status only.",
+    "new": "For a foreach item that runs a workflow, workflow.finished also carries the child final context. The compare leaves it out of the new events.",
+    "why": "A foreach keeps each item result in its own log, so a run read on its own shows every item result without reading the child logs. It is an added field.",
+    "status": "proposed",
+    "runRules": [
+      "child-context-in-finished"
+    ]
+  },
+  {
+    "id": "run-summary-new-fields",
+    "requirement": "events.summary-approvals-and-signals",
+    "area": "run logs: run summary",
+    "old": "784f78d summary had one approval (or null) and no fields for subscriptions, failure reasons, waiting text, answers a run could not try, or the last event.",
+    "new": "The summary has an approvals list and adds subscriptionCalls, reason, answerLabels, waitingFor, lastWaitingAt, cantTry, lastSeq and updatedAt. The compare leaves the old approval and the new fields out; every other field is compared.",
+    "why": "Approvals routed by callId need a list (E5, HAL-1257); the other fields come from their own requirements in core/events. None changes a field the old summary had.",
+    "status": "proposed",
+    "runRules": [
+      "summary-new-fields"
+    ]
+  },
+  {
+    "id": "foreach-starts-the-next-item-at-once",
+    "requirement": "engine.foreach-state",
+    "area": "run logs: foreach with concurrency",
+    "old": "With concurrency: 2, 784f78d ran the items in batches of two: items 0 and 1, then item 2 once both had finished.",
+    "new": "The engine starts the next item as soon as one finishes, so at most two wait at once. Only the order of item events in one foreach state differs. The compare sorts each stretch of item events by item on both sides.",
+    "why": "concurrency is a limit on items running at once, as engine.foreach-state says. A batch leaves a slot unused while the slower item of the batch runs.",
+    "status": "proposed",
+    "runRules": [
+      "foreach-items-in-order"
+    ]
   }
 ]

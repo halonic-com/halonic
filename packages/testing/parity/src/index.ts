@@ -46,7 +46,30 @@ export {
   checksByFile,
   compareChecks,
 } from "./compare/loader-checks.ts";
+export {
+  judgeRunLogs,
+  type RunLogReport,
+  type RunLogResult,
+  type RunLogVerdict,
+  type StaleRunEntry,
+} from "./compare/run-judge.ts";
+export {
+  type ComparedRun,
+  type ComparedTest,
+  type NewTestRun,
+  pairRunLogs,
+  type RunLogComparison,
+  readRunLogs,
+  testName,
+} from "./compare/run-logs.ts";
+export { type RunRule, runRules } from "./compare/run-rules.ts";
 export { composeWorkspace } from "./compose.ts";
+export {
+  type KnownGap,
+  knownGapsFile,
+  parseKnownGaps,
+  readKnownGaps,
+} from "./known-gaps.ts";
 export {
   cloneProblems,
   fixedTestTime,

@@ -6,6 +6,7 @@ import {
   readAllowedChecks,
   readAllowedFixtures,
 } from "./compare/allowed-fixtures.ts";
+import { runRule, runRules } from "./compare/run-rules.ts";
 
 /** The statuses an allowed difference can have, in order. */
 export const differenceStatuses = ["proposed", "signed-off"] as const;
@@ -38,6 +39,11 @@ export interface AllowedDifference {
    * when those checks don't show it.
    */
   readonly checks?: readonly AllowedCheck[];
+  /**
+   * The run-log rules (`src/compare/run-rules.ts`) this difference allows in
+   * the base fixture's workflow tests. Left out when the run logs don't show it.
+   */
+  readonly runRules?: readonly string[];
 }
 
 /** The package's own allowed-differences file. */
@@ -58,7 +64,23 @@ const fields = [
   "status",
   "fixtures",
   "checks",
+  "runRules",
 ] as const;
+
+/** An entry's `runRules`: a list of known rule ids. */
+function readRunRules(raw: unknown, where: string): string[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error(`${where}: "runRules" must list at least one rule`);
+  }
+  for (const id of raw) {
+    if (typeof id !== "string" || runRule(id) === undefined) {
+      throw new Error(
+        `${where}: unknown run rule ${JSON.stringify(id)} (rules: ${runRules.map((rule) => rule.id).join(", ")})`,
+      );
+    }
+  }
+  return raw as string[];
+}
 
 function text(entry: Record<string, unknown>, field: string, where: string): string {
   const value = entry[field];
@@ -106,6 +128,9 @@ function readEntry(raw: unknown, where: string): AllowedDifference {
       ? {}
       : { fixtures: readAllowedFixtures(entry["fixtures"], where) }),
     ...(entry["checks"] === undefined ? {} : { checks: readAllowedChecks(entry["checks"], where) }),
+    ...(entry["runRules"] === undefined
+      ? {}
+      : { runRules: readRunRules(entry["runRules"], where) }),
   };
 }
 
@@ -136,6 +161,7 @@ export function parseAllowedDifferences(raw: unknown): AllowedDifference[] {
   const seen = new Set<string>();
   const seenFixtures = new Set<string>();
   const seenChecks = new Set<string>();
+  const seenRules = new Set<string>();
   return raw.map((item, index) => {
     const where = `allowed difference ${index + 1}`;
     const difference = readEntry(item, where);
@@ -145,6 +171,10 @@ export function parseAllowedDifferences(raw: unknown): AllowedDifference[] {
     seen.add(difference.id);
     noFileTwice(difference.fixtures ?? [], seenFixtures, where);
     noFileTwice(difference.checks ?? [], seenChecks, `${where}: checks`);
+    for (const rule of difference.runRules ?? []) {
+      if (seenRules.has(rule)) throw new Error(`${where}: run rule "${rule}" is listed twice`);
+      seenRules.add(rule);
+    }
     return difference;
   });
 }

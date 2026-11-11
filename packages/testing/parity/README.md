@@ -207,6 +207,37 @@ for (const checkCase of checkCases(fixtures)) {
 const report = judgeChecks(comparisons, readAllowedDifferences(allowedDifferencesFile));
 ```
 
+### Run logs
+
+For the base, the compare also checks the new test runner's run logs against
+`run-logs.json`. Core/test-runner's `parity.test.ts` runs the base's 8 workflow
+tests through `runWorkspaceTests`, from the same fixed clock, and feeds the
+results in:
+
+```ts
+const report = judgeRunLogs(
+  pairRunLogs(readRunLogs(base), suite.tests),
+  readAllowedDifferences(allowedDifferencesFile),
+  readKnownGaps(knownGapsFile),
+);
+// Passes only when report.unexplained and report.stale are both empty.
+```
+
+Tests are paired by `<hub>/<workflow>/<name>` and compared exactly: pass or
+fail, the number of failures (the old ones are sentences, the new ones data;
+the CLI's compare checks the words), and every run's summary and events in
+order. Before that, the compare applies the **run-log rules** that allowed
+differences name in `runRules`. Each rule, in `src/compare/run-rules.ts`,
+takes out or reorders one thing on the side it names, such as the run IDs
+(`run-ids-by-start` names both sides' runs `run_1`, `run_2`, ... in start
+order) or `definitionsVersion`. A rule that changes no test is stale.
+
+A test that still differs fails, unless `known-gaps.json` names it. A **known
+gap** is a place where the new engine is still wrong, with the task that fixes
+it: unlike an allowed difference, it says the new behaviour has to change. A
+gap whose tests match is stale, so each fix removes its gap and the list only
+shrinks.
+
 ## Allowed differences
 
 `allowed-differences.json` is the one file that lists where the new repo may
@@ -227,6 +258,9 @@ behave differently from the old one. Each entry has:
   fixture file (`case` and `file`, or a folder for an old layout) with its
   `old` and `new` messages (`severity` and `message`) written out in full and
   in order. It is judged the same way as `fixtures`
+- `runRules`, only where the difference shows in the base's run logs: the ids
+  of the run-log rules it allows. A rule the compare doesn't have, or one two
+  entries name, is refused
 
 Every fixture, the base's valid file of each kind and at least one invalid case
 per kind, has a recording from the reference commit.
@@ -344,3 +378,5 @@ export function runExample(): string[] {
 - [`parity.compare-runs-on-fixtures`](requirements/compare-runs-on-fixtures.md)
 - [`parity.allowed-differences-checked`](requirements/allowed-differences-checked.md)
 - [`parity.allowed-fixture-differences`](requirements/allowed-fixture-differences.md)
+- [`parity.compare-run-logs`](requirements/compare-run-logs.md)
+- [`parity.known-gaps-checked`](requirements/known-gaps-checked.md)

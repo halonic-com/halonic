@@ -98,6 +98,31 @@ verifies("parity.allowed-differences-checked", () => {
     );
   });
 
+  it("reads the run-log rules an entry names", () => {
+    const withRules = { ...difference, runRules: ["run-ids-by-start"] };
+    expect(parseAllowedDifferences([withRules])).toEqual([withRules]);
+  });
+
+  it("refuses a run-log rule the compare doesn't have, and names the ones it has", () => {
+    expect(() =>
+      parseAllowedDifferences([{ ...difference, runRules: ["run-ids-by-name"] }]),
+    ).toThrow(/unknown run rule "run-ids-by-name" \(rules: run-ids-by-start, /);
+  });
+
+  it("refuses an empty list of run-log rules", () => {
+    expect(() => parseAllowedDifferences([{ ...difference, runRules: [] }])).toThrow(
+      /"runRules" must list at least one rule/,
+    );
+  });
+
+  it("refuses a run-log rule two entries name", () => {
+    const first = { ...difference, runRules: ["run-ids-by-start"] };
+    const second = { ...first, id: "another-difference" };
+    expect(() => parseAllowedDifferences([first, second])).toThrow(
+      /allowed difference 2: run rule "run-ids-by-start" is listed twice/,
+    );
+  });
+
   it("refuses a file that isn't a list", () => {
     expect(() => parseAllowedDifferences({ differences: [] })).toThrow(/must hold a list/);
   });
@@ -129,6 +154,12 @@ verifies("parity.allowed-differences-checked", () => {
       "routines.cron-rejects-bad-expressions",
       "format.connector-approve-all",
       "engine.parallel-state",
+      "engine.local-child-runs",
+      "workspace.definitions",
+      "events.waiting-description",
+      "events.workflow-finished-context",
+      "events.summary-approvals-and-signals",
+      "engine.foreach-state",
     ]);
   });
 
