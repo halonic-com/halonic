@@ -72,6 +72,10 @@ export class TauriHostSettingsStore implements HostSettingsStore {
     this.#checkWatches();
   }
 
+  /**
+   * The first read only sets the baseline, so a change that lands before it
+   * answers isn't told: watch first, then read.
+   */
   watch(listener: () => void): () => void {
     let stopped = false;
     /** Whether a read is under way, and whether another must follow it. */
