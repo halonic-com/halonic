@@ -24,3 +24,6 @@ apps/studio/src-tauri/gen/schemas/
 
 # The agent host, copied here by windows/build-installer.ps1 for the installer.
 apps/studio/src-tauri/binaries/
+
+# The release notices and SBOM, written by windows/build-installer.ps1.
+apps/studio/src-tauri/legal/

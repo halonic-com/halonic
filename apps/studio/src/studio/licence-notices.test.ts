@@ -86,3 +86,31 @@ verifies("studio.licence-notices", () => {
     }
   });
 });
+
+verifies("studio.installer-third-party-notices", () => {
+  const script = () => readFileSync(join(shellFolder, "windows/build-installer.ps1"), "utf8");
+
+  it("installs THIRD-PARTY-NOTICES.txt from src-tauri/legal next to the app", () => {
+    const resources = installerResources();
+    const source = Object.keys(resources).find(
+      (path) => resources[path] === "THIRD-PARTY-NOTICES.txt",
+    );
+    expect(source).toBe("legal/THIRD-PARTY-NOTICES.txt");
+  });
+
+  it("writes the notices into src-tauri/legal before it builds the installer", () => {
+    const text = script();
+    expect(text).toContain("$legal = Join-Path $shell 'legal'");
+    const sbom = text.indexOf("pnpm check:sbom");
+    expect(sbom).toBeGreaterThan(-1);
+    const call = text.slice(sbom, text.indexOf("\n", sbom));
+    expect(call).toContain("--notices");
+    expect(call).toContain("--out $legal");
+    expect(sbom).toBeLessThan(text.indexOf("pnpm exec tauri build"));
+  });
+
+  it("keeps the generated folder out of git", () => {
+    const ignored = readFileSync(resolve(process.cwd(), "../../.gitignore"), "utf8").split("\n");
+    expect(ignored).toContain("apps/studio/src-tauri/legal/");
+  });
+});

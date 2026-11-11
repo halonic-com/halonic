@@ -1441,7 +1441,7 @@ jobs:
           $p = Start-Process $setup -ArgumentList '/S', "/D=$dir" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 -ExpandProperty FullName | Out-Host
-          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1') {
+          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
           }
           # Per user: the uninstall entry is in HKCU, none in HKLM.
