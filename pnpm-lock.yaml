@@ -1946,6 +1946,12 @@ importers:
       '@halonicjs/adapter-agent-host-client':
         specifier: workspace:*
         version: link:../../adapters/agent-host-client
+      '@halonicjs/adapter-harness-claude-code':
+        specifier: workspace:*
+        version: link:../../adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../adapters/harness-codex
       '@halonicjs/adapter-secrets-tauri':
         specifier: workspace:*
         version: link:../../adapters/secrets-tauri

@@ -99,6 +99,11 @@ page only names routes. A stream's lines come on a Tauri channel, which this pac
   stream of a page that reloads or closes.
 - Aborting a JSON call only stops waiting: the shell's call runs to its own time limit.
 
+`studioHarnesses(transport, bridgeIdOf)` gives one `Harness` stand-in per harness the host lists.
+Each carries its adapter's own `environment` function (`harnessEnvironments`: `claudeCodeEnvironment`
+and `codexEnvironment`, from the adapters' browser-safe `./environment` entry points), which runs on
+the page. A harness without one there has no `environment`.
+
 ## Limits
 
 - Outside the shell `provideShellSecrets` provides nothing and returns `false`. The browser and

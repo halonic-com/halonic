@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@halonicjs/adapter-agent-host-client": "workspace:*",
+    "@halonicjs/adapter-harness-claude-code": "workspace:*",
+    "@halonicjs/adapter-harness-codex": "workspace:*",
     "@halonicjs/adapter-secrets-tauri": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/ports": "workspace:*"
