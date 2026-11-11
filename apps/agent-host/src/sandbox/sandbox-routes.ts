@@ -1,3 +1,4 @@
+import type { ServerResponse } from "node:http";
 import type { Sandbox, SandboxSession } from "@halonicjs/ports";
 import { s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -10,6 +11,12 @@ const openBody = s.object({ profile: sandboxProfileSchema }).strict();
 const sessionBody = s.object({ session: s.string().min(1) }).strict();
 
 const unknownSessionMessage = "The agent host has no open sandbox session with this id.";
+const hostStoppingMessage = "The agent host is stopping and opens no more sessions.";
+
+/** Answers that the host is stopping and opens no more sessions. */
+function sendHostStopping(response: ServerResponse): void {
+  sendError(response, 503, "host_stopping", hostStoppingMessage);
+}
 
 /**
  * The `Sandbox` port over loopback, so Studio can give the engine a stand-in
@@ -17,7 +24,8 @@ const unknownSessionMessage = "The agent host has no open sandbox session with t
  *
  * - `GET /v1/sandbox/check` and `GET /v1/sandbox/capabilities` answer as the port does;
  * - `POST /v1/sandbox/sessions/open` with `{ profile }` opens a session and
- *   answers `{ session, fence }`: its id and the fence proof;
+ *   answers `{ session, fence }`: its id and the fence proof, or 503
+ *   `host_stopping` once the host has begun to stop;
  * - `POST /v1/sandbox/sessions/blocked` with `{ session }` streams the
  *   session's blocked accesses, one `SandboxBlock` per line, until it closes;
  * - `POST /v1/sandbox/sessions/close` with `{ session }` closes it.
@@ -43,6 +51,10 @@ export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRou
       handle: async (request, response) => {
         const body = await readCheckedBody(request, response, openBody);
         if (body === undefined) return;
+        if (sessions.isStopping) {
+          sendHostStopping(response);
+          return;
+        }
         let callerGone = false;
         response.once("close", () => {
           callerGone = true;
@@ -60,7 +72,11 @@ export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRou
           await session.close();
           return;
         }
-        sendJson(response, 200, { session: sessions.add(session), fence: session.fence });
+        // Read the fence before adding: a host that is stopping closes the session in `add`.
+        const fence = session.fence;
+        const id = await sessions.add(session);
+        if (id === undefined) sendHostStopping(response);
+        else sendJson(response, 200, { session: id, fence });
       },
     },
     {

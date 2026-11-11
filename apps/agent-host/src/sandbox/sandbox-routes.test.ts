@@ -37,6 +37,8 @@ class FakeSession implements SandboxSession {
   readonly listeners = new Set<SandboxBlockListener>();
   fence: SandboxFence = { state: "fenced" };
   closed = false;
+  /** When set, `close` stops the session's work but then rejects, as a broken sandbox would. */
+  failClose = false;
   readonly profile: SandboxProfile;
 
   constructor(profile: SandboxProfile) {
@@ -59,12 +61,17 @@ class FakeSession implements SandboxSession {
   async close(): Promise<void> {
     this.closed = true;
     this.fence = { state: "stopped" };
+    if (this.failClose) throw new Error("the sandbox didn't answer");
   }
 }
 
 class FakeSandbox implements Sandbox {
   readonly opened: FakeSession[] = [];
   refuseOpen = false;
+  /** When set, `open` waits for it before it answers: a session still opening. */
+  hold: Promise<void> | undefined;
+  /** Settles when `open` is called. */
+  readonly openCalled = signal();
 
   async check(): Promise<SandboxCheck> {
     return { ok: true, reason: null, missing: [] };
@@ -75,11 +82,22 @@ class FakeSandbox implements Sandbox {
   }
 
   async open(profile: SandboxProfile): Promise<SandboxSession> {
+    this.openCalled.settle();
     if (this.refuseOpen) throw new Error("bubblewrap is not installed");
+    await this.hold;
     const session = new FakeSession(profile);
     this.opened.push(session);
     return session;
   }
+}
+
+/** A promise the test settles by hand. */
+function signal(): { promise: Promise<void>; settle: () => void } {
+  let settle: () => void = () => {};
+  const promise = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  return { promise, settle };
 }
 
 let server: HostServer | undefined;
@@ -205,5 +223,40 @@ describe("sandboxRoutes", () => {
     await openSession(url);
     await sessions.closeAll();
     expect(sandbox.opened.map((session) => session.closed)).toEqual([true, true]);
+  });
+
+  it("opens no session once the host is stopping", async () => {
+    const url = await started();
+    await sessions.closeAll();
+    const answer = await post(url, "/v1/sandbox/sessions/open", { profile });
+    expect(answer.status).toBe(503);
+    const { error } = (await answer.json()) as { error: { kind: string } };
+    expect(error.kind).toBe("host_stopping");
+    expect(sandbox.opened).toHaveLength(0);
+  });
+
+  it("closes a session that was still opening when the host began to stop", async () => {
+    const url = await started();
+    const release = signal();
+    sandbox.hold = release.promise;
+    const answer = post(url, "/v1/sandbox/sessions/open", { profile });
+    await sandbox.openCalled.promise;
+    await sessions.closeAll();
+    release.settle();
+    expect((await answer).status).toBe(503);
+    expect(sandbox.opened[0]?.closed).toBe(true);
+  });
+
+  it("ends a session's stream and closes the others when one fails to close", async () => {
+    const url = await started();
+    const failing = await openSession(url);
+    await openSession(url);
+    const [broken, healthy] = sandbox.opened;
+    if (broken !== undefined) broken.failClose = true;
+    const stream = await post(url, "/v1/sandbox/sessions/blocked", { session: failing });
+    await sessions.closeAll();
+    expect(await stream.text()).toBe("");
+    expect(healthy?.closed).toBe(true);
+    expect(broken?.listeners.size).toBe(0);
   });
 });
