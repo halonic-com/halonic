@@ -299,6 +299,13 @@ other items' child runs stop at their own next paid call, since they spend from 
 budget. The run's own
 model calls don't write `llm.response` to its log yet, so for now only harness calls count.
 
+A harness run can last long and make many model calls in one step, so it also keeps to the budget
+call by call. Before each model call the bridge passes on, the call's `RunCallBudget` works out the
+spend the same way, with every earlier call's `llm.response` already in the log. At or over a limit,
+the bridge refuses that call with 429 `limit_reached` and the budget's error, nothing goes to the
+provider, and the harness call stops its harness run, sandbox and bridge. The run then fails in that
+state with reason `budget` and the same error. As in `step`, the engine sets that reason itself.
+
 ## Example
 
 Run one chat turn through the local executor, with a model that calls a Halonic tool once. The

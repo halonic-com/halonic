@@ -5,6 +5,8 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, Clock, RunStore } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
+import { RunCallBudget } from "../budget/call-budget.ts";
+import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";
@@ -27,6 +29,8 @@ export interface HarnessCallsOptions {
   readonly folders: RunsProposalFolders;
   readonly startDeadlines: StartDeadlines;
   readonly clock: Clock;
+  /** The budget each call's model calls keep to, one by one; none when left out. */
+  readonly budget?: BudgetCheck;
   /**
    * Steps the run with an input, as the executor records any other.
    *
@@ -53,14 +57,17 @@ export class LocalHarnessCalls {
    * waits on.
    *
    * The agent writes workspace files in the proposal folder of the run's
-   * top-level run, which the run's child runs share.
+   * top-level run, which the run's child runs share. With a `budget`, each
+   * model call the harness makes keeps to it, and the call stops once it is
+   * reached.
    *
    * @throws when there are no `harnesses`, the definitions are gone, the
    *   agent names no harness, the top-level run has no proposal folder where
    *   the host has them, the harness run fails, or the engine stops it
+   * @throws BudgetReachedError when the run's budget refused one of its model calls
    */
   async run(run: RunState, call: PendingCall, waitedOn: WaitedOnCall): Promise<unknown> {
-    const { store, blobs, harnesses, folders, startDeadlines, clock } = this.#options;
+    const { store, blobs, harnesses, folders, startDeadlines, clock, budget } = this.#options;
     if (harnesses === undefined) {
       throw new Error(
         "The local executor can't carry out a run-harness effect: it has no harnesses.",
@@ -87,7 +94,14 @@ export class LocalHarnessCalls {
     const limits = startDeadlines.of(runId, call.callId);
     const running = (stop: StopSignal) => {
       const approvals = this.#approvalsOf(runId, call.agent, waitedOn, stop);
-      const harnessCall = { effect, runId, hubId, agent, filesFolder };
+      const harnessCall = {
+        effect,
+        runId,
+        hubId,
+        agent,
+        filesFolder,
+        ...(budget === undefined ? {} : { budget: new RunCallBudget(budget, run, clock) }),
+      };
       return runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
     };
     return this.#live.run(runId, running, topLevelRunId);

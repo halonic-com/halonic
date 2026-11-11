@@ -1,4 +1,5 @@
 import { type BridgeEvent, harnessBridgeTokenHeader, type ModelPrice } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { anthropicRoute } from "./anthropic-route.ts";
@@ -93,6 +94,24 @@ const request: BridgeEvent = {
 };
 
 verifies("harness-bridge.spend", () => {
+  it("answers 429 with the recorder's reason and sends nothing when the recorder refuses the request", async () => {
+    const anthropic = fakeProvider(() => new Response("{}"));
+    const reason = "Run budget reached: 1.80 of 1.50 EUR spent.";
+    const { bridge, recorded } = await open(anthropic.fetch, async () => {
+      throw new KindedError("limit_reached", reason);
+    });
+
+    const reply = await programRequest(bridge);
+
+    expect(reply.status).toBe(429);
+    expect(await reply.json()).toEqual({
+      type: "error",
+      error: { type: "limit_reached", message: reason },
+    });
+    expect(anthropic.calls).toEqual([]);
+    expect(recorded).toEqual([]);
+  });
+
   describe("a streamed reply", () => {
     it("records the call with the usage from message_start and message_delta, its text and cost", async () => {
       const anthropic = fakeProvider(

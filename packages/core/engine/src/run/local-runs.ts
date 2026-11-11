@@ -18,6 +18,7 @@ import type {
   StartRunRequest,
 } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
+import { BudgetReachedError } from "../budget/call-budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
@@ -120,6 +121,8 @@ export class LocalRuns {
     this.#feed = new RunFeed(options.store);
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
     this.#folders = new RunsProposalFolders(options.store, options.proposalFolders);
+    this.#builtEffects = builtEffectsOf(options);
+    this.#budget = budgetCheckOf(options);
     this.#harnessCalls = new LocalHarnessCalls({
       store: options.store,
       blobs: options.blobs,
@@ -127,10 +130,9 @@ export class LocalRuns {
       folders: this.#folders,
       startDeadlines: this.#startDeadlines,
       clock,
+      ...(this.#budget === undefined ? {} : { budget: this.#budget }),
       record: (runId, input) => this.#record(runId, input),
     });
-    this.#builtEffects = builtEffectsOf(options);
-    this.#budget = budgetCheckOf(options);
     this.#connectorCalls = new RunConnectorCallRunner({
       store: options.store,
       deadlines: this.#startDeadlines,
@@ -323,6 +325,17 @@ export class LocalRuns {
           : { type: "harness" as const, output: await this.#harnessCalls.run(run, call, waitedOn) };
       return { type: "effect-done", at: this.#now(), callId: waitedOn.callId, result };
     } catch (error) {
+      if (error instanceof BudgetReachedError) {
+        // As `step` stops a run for its budget: the reason is the engine's own, not an error's.
+        const at = this.#now();
+        return {
+          type: "effect-failed",
+          at,
+          callId: waitedOn.callId,
+          error: error.message,
+          reason: "budget",
+        };
+      }
       return failedCallInput(error, { callId: waitedOn.callId, at: this.#now(), step: call.state });
     }
   }

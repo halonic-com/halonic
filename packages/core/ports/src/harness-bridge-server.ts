@@ -36,6 +36,11 @@ export type BridgeEvent = Extract<
 
 /** Writes the bridge's events to the run's log. The engine adds `runId`, `seq`, `at` and the `state`. */
 export interface BridgeRecorder {
+  /**
+   * @throws KindedError `limit_reached` for an `llm.request` once the run's
+   *   budget is reached: the bridge then sends the model call nowhere and
+   *   answers the program with 429 and the error's message
+   */
   record(event: BridgeEvent): Promise<void>;
 }
 
