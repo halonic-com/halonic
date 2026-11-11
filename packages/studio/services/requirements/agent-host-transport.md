@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-4878 (part 6, and L4 of Julian's review on HAL-4915)
 
-In the desktop shell, the Studio shall reach the agent host only through the shell's `agent_host_request`, `agent_host_stream` and `agent_host_stream_end` commands, as an `AgentHostTransport`, so the launch token stays in the shell. A refusal from the shell shall be an `AgentHostError` with status `0` and the shell's kind; the host's own refusals stay answers. Each stream shall have its own id on the page. Its lines shall end when the shell sends `end`, throw when it sends `failed`, and end and hang up when the caller aborts, stops reading, or the shell sends something that isn't a stream message. Outside the shell there shall be no transport.
+While the Studio runs in the desktop shell, it shall reach the agent host only through the shell's `agent_host_request`, `agent_host_stream` and `agent_host_stream_end` commands, as an `AgentHostTransport`, so the launch token stays in the shell. A refusal from the shell shall be an `AgentHostError` with status `0` and the shell's kind; the host's own refusals stay answers. Each stream shall have its own id on the page. Its lines shall end when the shell sends `end`, throw when it sends `failed`, and end and hang up when the caller aborts, stops reading, or the shell sends something that isn't a stream message. Outside the shell there shall be no transport.
 
 ## Examples
 
