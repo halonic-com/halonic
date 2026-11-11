@@ -155,10 +155,10 @@ is `agents.explorer.filter-by-hub`.
 
 ## Requirement guard: nothing that works may break
 
-The requirement guard compares a pull request with its merge
-base, including both sides' test results. It is advisory for now (HAL-5568): it diffs against the older
-`pull_request.base.sha`, so it can list requirements other pull requests changed.
-It runs on pull requests only:
+The requirement guard compares a pull request with the main commit its merge
+ref was built on, including both sides' test results, so it lists only the pull
+request's own changes, not what main changed after the branch point. It blocks:
+a finding fails `ci-ok`. It runs on pull requests only:
 the merge queue holds the same change, so it would give the same verdict. It fails on any of these, unless the branch's decision note
 covers it:
 
@@ -297,7 +297,8 @@ required check (above).
 `tooling/check`, not the pull request's, so a pull request can't weaken
 the checks that judge it. The merge base's test results are the guard's
 baseline, so a separate job produces them where no pull-request code
-runs: it switches to the merge base before anything runs and reads no
+runs: it switches to the main commit the pull request's merge ref was built
+on (its first parent) before anything runs and reads no
 cache (neither Turbo's nor the pnpm store, which a pull request's runs can
 write). A third job, which also runs no pull-request code, installs only
 the merge base's dependencies, takes both sides' result files and runs
@@ -643,7 +644,7 @@ requirement guard, and the workflow lint unless the group changes
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does |
 | Policy rules (base's copy) | pull requests and the queue: `layers`, `dependencies`, `process-starts`, `lockfile`, `advisories` and `deny-toml`, run from the base commit's `tooling/check` with the base's allow-lists (`--lists-from`), so a change can't approve itself |
 | Merge base's tests | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline |
-| Requirement guard | pull requests only: `trace` (blocking) and the requirement guard (advisory until HAL-5568 fixes the base comparison), run from the merge base's copy with the merge base's dependencies, over both sides' test results |
+| Requirement guard | pull requests only: `trace` (blocking) and the requirement guard (both blocking), run from the merge base's copy with the merge base's dependencies, over both sides' test results |
 | Empty package and feature | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full` |
 | Tauri shell (Rust checks) | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny` |
 | Tauri shell on Windows | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths |

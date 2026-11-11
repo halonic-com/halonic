@@ -503,7 +503,18 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
-          sha=$(git merge-base "$BASE" HEAD)
+          # The checkout is the merge ref: the pull request merged into the
+          # newest main, so its first parent is the main commit the guard's
+          # head side was built on. Comparing with that commit shows only
+          # the pull request's own changes. pull_request.base.sha is older
+          # when main moved on, and would list every requirement main
+          # changed since (HAL-5568). Without a merge commit, fall back to
+          # the merge base.
+          if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" = 3 ]; then
+            sha=$(git rev-parse HEAD^1)
+          else
+            sha=$(git merge-base "$BASE" HEAD)
+          fi
           git checkout --quiet --detach "$sha"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -708,17 +719,15 @@ jobs:
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
-      # Advisory for now (HAL-5568): the guard diffs the merge ref against
-      # pull_request.base.sha, an older commit than main, so it reports
-      # requirements other pull requests changed. HAL-5568 fixes the
-      # comparison and removes continue-on-error. A note's signature is
+      # Blocking through ci-ok. The base side is the main commit the merge
+      # ref was built on (base-tests), so the guard sees only the pull
+      # request's own changes. A note's signature is
       # checked offline against the keys in
       # the base branch's tooling/check/approvers.json (pull_request.base.sha,
       # not the commit base-tests may have stepped back to). Both commits
       # are fetched as objects only: nothing of the pull request runs.
       - name: Requirement guard (merge base's copy)
         if: ${{ !cancelled() }}
-        continue-on-error: true
         working-directory: head
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
