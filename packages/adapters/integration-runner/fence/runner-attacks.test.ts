@@ -284,15 +284,19 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
   it("A17: sees only TMPDIR, the safe PATH and the session's marker in its environment", async () => {
     // The profile sets only TMPDIR. The sandbox adds the host's PATH without
     // entries in its own folders, and the random marker it finds the session's
-    // processes by. No proxy, bus, agent or key variable gets in.
+    // processes by. macOS adds its text encoding variable to every process. No
+    // proxy, bus, agent or key variable gets in.
     const { attempts } = await attack(
       layer,
       `await attempt("environment", () => Object.keys(process.env).sort().join(","));`,
     );
-    expect(attempts["environment"]).toEqual({
-      outcome: "allowed",
-      detail: "HALONIC_SRT_RUN,PATH,TMPDIR",
-    });
+    const names = [
+      "HALONIC_SRT_RUN",
+      "PATH",
+      "TMPDIR",
+      ...(isMac ? ["__CF_USER_TEXT_ENCODING"] : []),
+    ];
+    expect(attempts["environment"]).toEqual({ outcome: "allowed", detail: names.join(",") });
   });
 
   it("A35: connects to no socket on disk", async () => {
