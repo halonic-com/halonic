@@ -55,6 +55,7 @@ export class Inbox {
    */
   readonly #answered = new Set<string>();
   #loads = 0;
+  #disposed = false;
 
   constructor(runs: InboxRuns) {
     this.#runs = runs;
@@ -74,13 +75,16 @@ export class Inbox {
 
   /**
    * Loads the waiting runs again. When loads overlap, only the last one
-   * started counts, so an older answer never overwrites a newer one.
+   * started counts, so an older answer never overwrites a newer one. Once
+   * the workspace has closed it does nothing, and a load still on its way is
+   * dropped.
    */
   async refresh(): Promise<void> {
+    if (this.#disposed) return;
     const load = ++this.#loads;
     try {
       const runs = await this.#runs.waiting();
-      if (load !== this.#loads) return;
+      if (load !== this.#loads || this.#disposed) return;
       const items = inboxItems(runs);
       const listed = new Set(items.map(answerId));
       for (const id of this.#answered) if (!listed.has(id)) this.#answered.delete(id);
@@ -90,7 +94,7 @@ export class Inbox {
         error: undefined,
       });
     } catch (error) {
-      if (load !== this.#loads) return;
+      if (load !== this.#loads || this.#disposed) return;
       this.#set({ ...this.#state, error });
     }
   }
@@ -101,8 +105,12 @@ export class Inbox {
     return () => this.#listeners.delete(listener);
   }
 
-  /** Stops watching the runs, when the workspace closes. */
+  /**
+   * Stops watching the runs, when the workspace closes. The workspace's
+   * `ServiceRegistry` calls it as it disposes its services.
+   */
   dispose(): void {
+    this.#disposed = true;
     this.#stopWatching();
     this.#listeners.clear();
   }

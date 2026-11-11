@@ -175,6 +175,22 @@ describe("Inbox", () => {
     inbox.dispose();
     expect(fake.listeners.size).toBe(0);
   });
+
+  it("drops a load still on its way when its workspace closes, and loads nothing after", async () => {
+    const fake = fakeRuns([notes]);
+    fake.holdLoads();
+    const inbox = new Inbox(fake.runs);
+    const listener = vi.fn();
+    inbox.subscribe(listener);
+
+    inbox.dispose();
+    fake.loads[0]?.resolve([notes]);
+    await settled();
+    await inbox.refresh();
+    expect(fake.loads).toHaveLength(1);
+    expect(inbox.state.loaded).toBe(false);
+    expect(listener).not.toHaveBeenCalled();
+  });
 });
 
 /** A minimal workspace registry; the Studio uses `ServiceRegistry` from `@halonicjs/app`. */
