@@ -132,6 +132,18 @@ verifies("mcp.pinned-launcher", () => {
       await client.close();
     });
 
+    it("gets the harness agents' working folders for the starter to check", async () => {
+      const { starter, factory, context } = setUp();
+      const coder = "/workspaces/acme/files/agents/coder";
+      const client = factory.create(pinned(), { ...context, workingFolders: [coder] });
+      await client.listTools();
+      expect(starter.programs[0]?.launch.workingFolders).toEqual({
+        workspaceRoot: "/workspaces/acme",
+        folders: [coder],
+      });
+      await client.close();
+    });
+
     it("starts the runner it found, with the runner's folder first on its PATH", async () => {
       const { starter, factory, context } = setUp();
       const client = factory.create(pinned(), context);

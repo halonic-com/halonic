@@ -148,12 +148,31 @@ verifies("mcp.program-starter", () => {
       const launch = await guarded({
         ...node(""),
         program: "acme-server",
+        args: [],
         env: { PATH: join(folder, "bin") },
       });
       // The PATH entry is a link, so only its real path shows the working folder.
       await symlink(coder, join(folder, "bin"), "dir");
       await writeFile(join(coder, fileName), "#!/bin/sh\n");
       await chmod(join(coder, fileName), 0o755);
+      await expect(nodeProgramStarter.start(launch)).rejects.toThrow("in the agent working folder");
+    });
+
+    it("refuses a program on the PATH that links into a working folder, from a plain PATH folder", async () => {
+      const fileName = process.platform === "win32" ? "acme-server.exe" : "acme-server";
+      const coder = join(folder, "files/agents/coder");
+      const launch = await guarded({
+        ...node(""),
+        program: "acme-server",
+        args: [],
+        env: { PATH: join(folder, "bin") },
+      });
+      // Neither the PATH folder nor the name shows the working folder: only the
+      // program found there does, so the check on the found program refuses it.
+      await mkdir(join(folder, "bin"));
+      await writeFile(join(coder, fileName), "#!/bin/sh\n");
+      await chmod(join(coder, fileName), 0o755);
+      await symlink(join(coder, fileName), join(folder, "bin", fileName));
       await expect(nodeProgramStarter.start(launch)).rejects.toThrow("in the agent working folder");
     });
 
