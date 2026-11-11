@@ -50,13 +50,57 @@ export function usePageHeadingFocus(): () => void {
  * Moves focus to the page's `h1`, the first one in `main` that is shown: the pages of other tabs
  * stay mounted but hidden (`TabPages`), and their headings don't count. A heading isn't focusable
  * by itself, so it gets `tabindex="-1"` when it has none: focusable from code, never a Tab stop.
+ *
+ * A page whose view is still loading has no `h1` yet (a place's view is imported when a tab first
+ * shows it), so the focus waits for it and moves when the view draws its `h1`. It stops waiting
+ * when the focus moves somewhere else first, or when the next call asks for another page.
  */
 export function focusPageHeading(root: ParentNode = document): void {
-  const headings = root.querySelectorAll<HTMLHeadingElement>("main h1");
-  const heading = [...headings].find((candidate) => candidate.closest("[hidden]") === null);
-  if (heading === undefined) {
+  stopWaiting?.();
+  stopWaiting = undefined;
+  const heading = shownPageHeading(root);
+  if (heading !== undefined) {
+    focusHeading(heading);
     return;
   }
+  const focusBefore = document.activeElement;
+  const watched = root instanceof Document ? (root.querySelector("main") ?? root.body) : root;
+  const observer = new MutationObserver(() => {
+    const active = document.activeElement;
+    if (active !== focusBefore && active !== document.body && active !== null) {
+      stop();
+      return;
+    }
+    const drawn = shownPageHeading(root);
+    if (drawn !== undefined) {
+      stop();
+      focusHeading(drawn);
+    }
+  });
+  const stop = () => {
+    observer.disconnect();
+    if (stopWaiting === stop) {
+      stopWaiting = undefined;
+    }
+  };
+  observer.observe(watched, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
+  stopWaiting = stop;
+}
+
+/** Stops the focus that waits for a page's `h1` still loading; one page waits at a time. */
+let stopWaiting: (() => void) | undefined;
+
+function shownPageHeading(root: ParentNode): HTMLHeadingElement | undefined {
+  const headings = root.querySelectorAll<HTMLHeadingElement>("main h1");
+  return [...headings].find((candidate) => candidate.closest("[hidden]") === null);
+}
+
+function focusHeading(heading: HTMLHeadingElement): void {
   if (!heading.hasAttribute("tabindex")) {
     heading.tabIndex = -1;
   }

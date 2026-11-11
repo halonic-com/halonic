@@ -6,7 +6,7 @@
 
 The shell shall put the desktop Studio window together from its parts for one open workspace: the window tabs in the title bar, the toolbar with Back, Forward, the path and the save note, the sidebar, the active tab's page with the last five tabs' pages kept mounted, the status bar items features added, and the Ctrl K palette. A new workspace shall start with one tab on Home. The sidebar shall show the Search box, then Home and the places features added, each with its signal read through the context of the feature that added it, then its resize edge. The workspace switcher shall show only once the app gives it a workspace menu.
 
-The page for a tab shall be Home, with the cards features added, when the tab is on Home; the Search page for its words when the tab is on a search; and the view of the place a feature added, given that feature's context, when the tab is on that place. The view of a place shall be imported the first time a tab shows it. The Search box, Mod K, **+** and, in the desktop app, Ctrl T shall open the Ctrl K palette, **+** and Ctrl T over a new tab on Home. When the workspace closes, the window shall stop following its tabs for Ctrl K's Recent.
+The page for a tab shall be Home, with the cards features added, when the tab is on Home; the Search page for its words when the tab is on a search; and the view of the place a feature added, given that feature's context, when the tab is on that place. The view of a place shall be imported the first time a tab shows it. When a move asks for focus on the new page's `h1` while that page's view is still loading, the shell shall move the focus once the view draws its `h1`, unless the focus moved somewhere else first. The Search box, Mod K, **+** and, in the desktop app, Ctrl T shall open the Ctrl K palette, **+** and Ctrl T over a new tab on Home. When the workspace closes, the window shall stop following its tabs for Ctrl K's Recent.
 
 ## Examples
 
@@ -19,6 +19,9 @@ The page for a tab shall be Home, with the cards features added, when the tab is
 - Given _inbox_ adds the Inbox,
   when the user clicks Inbox in the sidebar,
   then the active tab shows the Inbox's view, with the context of _inbox_.
+- Given _inbox_ adds the Inbox, with a view that loads after the click,
+  when the user clicks Inbox in the sidebar, or goes Back to it from Home,
+  then focus is on the Inbox's `h1` once its view draws.
 - Given a tab on the search "refund",
   when it shows,
   then its page is the Search page with "refund" in its box.
