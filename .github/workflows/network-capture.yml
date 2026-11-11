@@ -1,0 +1,44 @@
+# Report-only check that a CLI session sends nothing off the computer: a
+# full session from a clean home folder, then 10 minutes idle, under tcpdump
+# on Linux and macOS runners. It fails on any packet of the session that
+# isn't loopback, and uploads the capture and a host list. WSL2 has no hosted
+# runner; it uses the Linux kernel's network stack, so the Linux leg covers
+# it. It runs by hand only (HAL-6494).
+name: Network capture
+
+on:
+  workflow_dispatch:
+    inputs:
+      idle_minutes:
+        description: Minutes to keep listening after the session
+        default: "10"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Network capture (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Before the capture: installing needs the network, the session doesn't.
+      - uses: $/.github/actions/setup
+      - name: Capture a CLI session
+        shell: bash
+        env:
+          IDLE_MINUTES: ${{ inputs.idle_minutes || '10' }}
+        run: bash .github/probes/network-capture/capture.sh "$RUNNER_TEMP/network-capture-artifacts"
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: network-capture-${{ matrix.os }}
+          path: ${{ runner.temp }}/network-capture-artifacts
+          if-no-files-found: error
