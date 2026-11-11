@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4114](/HAL/issues/HAL-4114) sets this as the condition for git part 4 of HAL-3245; the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/13/7jKfU3Cx4G4x7n2GV6yey1XDz+EP7K8JJ8rLr0FeqQlF/y+6VHEItBWL0uEsv6GB51zgutfN1VoSqjUSCg==
 
 ## What changes
 
