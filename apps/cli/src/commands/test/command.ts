@@ -9,7 +9,7 @@ import {
   type TestInput,
 } from "@halonicjs/test-runner";
 import { loadWorkspace } from "@halonicjs/workspace";
-import { type CliCommand, type CommandInput, UsageError } from "../../command.ts";
+import { type CliCommand, type CommandInput, type JsonFields, UsageError } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { testMessages } from "../../messages/test.ts";
 import {
@@ -50,18 +50,19 @@ export function testCommandWith(setup: TestSetup): CliCommand {
         textOf: (path) => workspace.store.read(path),
         ...(typeof filter === "string" ? { filter: { contains: filter } } : {}),
       };
-      const none = () => {
+      /** No test to list or run: exit 2 under --filter, else the "no tests yet" lines and the empty `json`. */
+      const none = (json: JsonFields) => {
         if (typeof filter === "string") {
           throw new UsageError(
             testMessages.noMatch(filter),
             testMessages.noMatchFix(givenDir(input, workspace)),
           );
         }
-        return { exitCode: exitCode.ok, lines: noTestsLines(workspace.name), json: { cases: [] } };
+        return { exitCode: exitCode.ok, lines: noTestsLines(workspace.name), json };
       };
       if (input.options["list"] === true) {
         const found = await listWorkspaceTests(tests);
-        if (found.length === 0) return none();
+        if (found.length === 0) return none(listJson(found));
         return {
           exitCode: exitCode.ok,
           lines: listLines(found, workspace.name),
@@ -69,7 +70,7 @@ export function testCommandWith(setup: TestSetup): CliCommand {
         };
       }
       const result = await runWorkspaceTests(tests, testDeps(setup.clock));
-      if (result.tests.length === 0) return none();
+      if (result.tests.length === 0) return none(testJson(result, loaded));
       return {
         exitCode: result.failed > 0 ? exitCode.failed : exitCode.ok,
         lines: testLines(result, { workspace: workspace.name, loaded }),

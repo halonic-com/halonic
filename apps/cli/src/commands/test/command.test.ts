@@ -126,6 +126,26 @@ verifies("cli.commands.test.run-tests", () => {
       ]);
     });
 
+    it("with --json, gives no counts for --list and zero counts for a run without tests", async () => {
+      await rm(join(acme, testFile));
+
+      const listed = await testIn(acme, "--list", "--json");
+      const ran = await testIn(acme, "--json");
+
+      expect(JSON.parse(listed.io.stdout.join("\n"))).toEqual({
+        outputVersion: 1,
+        ok: true,
+        cases: [],
+      });
+      expect(JSON.parse(ran.io.stdout.join("\n"))).toEqual({
+        outputVersion: 1,
+        ok: true,
+        passed: 0,
+        failed: 0,
+        cases: [],
+      });
+    });
+
     it("stops with exit 4 in a folder without workspace.yaml", async () => {
       const { code, io } = await testIn(folder);
 
