@@ -14,10 +14,19 @@ const kinds = Object.keys(kit.fileSchemas) as (keyof typeof kit.fileSchemas)[];
 // SCHEMA_KIT_SEED to explore other inputs locally.
 const seed = Number(process.env["SCHEMA_KIT_SEED"] ?? 20261107);
 
+// Each property parses 300 generated files with both Zod and schema-kit. For
+// workflow, the largest kind, that took 2.0 s median and 3.5 s at worst in
+// CI, against Vitest's 5 s default (HAL-5473). Fewer runs would check less,
+// and the time is the parsing itself, so the property gets room instead. A
+// real hang still fails at 20 s.
+const propertyTimeout = 20_000;
+
 verifies("schema-kit.old-schema-parity", () => {
   for (const kind of kinds) {
     for (const noise of ["high", "low"] as const) {
-      it(`gives plain Zod's pass or fail, paths and value for ${kind} (${noise} noise)`, () => {
+      it(`gives plain Zod's pass or fail, paths and value for ${kind} (${noise} noise)`, {
+        timeout: propertyTimeout,
+      }, () => {
         const kitSchema = kit.fileSchemas[kind];
         const zodSchema = zod.fileSchemas[kind];
         fc.assert(
