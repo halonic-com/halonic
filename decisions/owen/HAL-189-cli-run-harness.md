@@ -4,6 +4,7 @@
 - Task: HAL-189, step 4h of the implementation plan
 - Approval: Julian's security check on HAL-4739 makes this a condition on wiring the working folder (tracked by Priya on HAL-4759); the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6F1se1gRFJDSI3h+nBvQB9v5P1TRn95ZZDv10kel1y479bxvJIlZQgW7TKHzbsRncbotDem586NZDXeHuu1iBw==
 
 ## What changes
 
