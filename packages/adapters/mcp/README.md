@@ -58,7 +58,9 @@ secrets. Both kinds start only once the workspace is trusted.
   trust, pin and runner checks and in a new folder. After 3 restarts within 10 minutes
   (`defaultRestartLimits`) the connector stays stopped and throws `ConnectorStoppedError`, with the
   program's last error output in `errorOutput`, its secrets, key-shaped lines, e-mail addresses,
-  home folder and user name removed.
+  home folder and user name removed. Its secrets include what it inherited from the app's
+  environment: the value of each variable named like a secret (`API_KEY`, `NODE_AUTH_TOKEN`) and
+  the password in a URL value, whatever their shape (`inheritedSecrets`).
 - **Stopping** closes the program's input, waits 2 seconds, sends SIGTERM to its process group,
   waits again, then SIGKILL. On Windows, `taskkill /T` ends the process tree.
 - **Process starts** happen in one file, `src/stdio/node-program-starter.ts`, listed in

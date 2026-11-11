@@ -62,7 +62,9 @@ function crashingServer(
   };
 }
 
-function setUp(handler: (reached: ReachedCall[]) => FakeHandler) {
+const appEnv = { PATH: "/usr/bin", HOME: "/acme/home/acme-user", USER: "acme-user" };
+
+function setUp(handler: (reached: ReachedCall[]) => FakeHandler, inheritedEnv = appEnv) {
   const reached: ReachedCall[] = [];
   const starter = new FakeStarter(handler(reached));
   const folders = new FakeFolders();
@@ -73,7 +75,7 @@ function setUp(handler: (reached: ReachedCall[]) => FakeHandler) {
     starter,
     folders,
     runners: runnerComputer,
-    inheritedEnv: { PATH: "/usr/bin", HOME: "/acme/home/acme-user", USER: "acme-user" },
+    inheritedEnv,
     clientInfo: { name: "halonic", version: "0.1.0" },
     clock,
   });
@@ -210,5 +212,42 @@ verifies("mcp.stdio-restart", () => {
       await expect(client.listTools()).rejects.not.toBeInstanceOf(ConnectorStoppedError);
       expect(starter.counts().started).toBe(5);
     });
+  });
+});
+
+verifies("mcp.stdio-inherited-secrets", () => {
+  // No known key shape, so only knowing the app's environment can find it.
+  const inheritedKey = "plain-words-only";
+  const inheritedEnv = {
+    ...appEnv,
+    ACME_API_KEY: inheritedKey,
+    NOTES_DB: "postgres://acme:hush@db.acme.test/notes",
+  };
+
+  /** Writes what it inherited to its error output, then ends as soon as it is asked to start. */
+  const echoesInherited = (reached: ReachedCall[]): FakeHandler => {
+    const server = contractServer(reached);
+    return (message, program) => {
+      if (message["method"] !== "initialize") {
+        server(message, program);
+        return;
+      }
+      program.writeError(`key ${inheritedKey} rejected\n`);
+      program.writeError("database password hush rejected\n");
+      program.exit(1);
+    };
+  };
+
+  it("removes the secrets the program inherited from the app's environment", async () => {
+    const { client } = setUp(echoesInherited, inheritedEnv);
+    for (let start = 0; start < 4; start += 1) {
+      await expect(client.listTools()).rejects.toThrow();
+    }
+    const error = await client.listTools().catch((caught) => caught);
+    expect(error).toBeInstanceOf(ConnectorStoppedError);
+    expect(error.errorOutput).toEqual([
+      "key [secret removed] rejected",
+      "database password [secret removed] rejected",
+    ]);
   });
 });

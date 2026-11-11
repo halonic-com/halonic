@@ -14,6 +14,7 @@ import { checkPinnedLaunch, pinnedLaunch } from "../pinned/pinned-launch.ts";
 import { McpError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
 import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
+import { inheritedSecrets } from "./inherited-secrets.ts";
 import type { ProgramLaunch, ProgramStarter } from "./program.ts";
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
@@ -95,7 +96,7 @@ class McpStdioConnector implements ConnectorClient {
   readonly #context: ConnectorFactoryContext;
   readonly #options: McpStdioOptions;
   readonly #restarts: RestartLimit;
-  /** Every secret given to the program, to remove from its error output. */
+  /** Every secret given to the program or inherited by it, to remove from its error output. */
   readonly #scrubber = new SecretScrubber();
   #connecting: Promise<Connection> | undefined;
   /** The program that is running, once its session has started. */
@@ -122,6 +123,7 @@ class McpStdioConnector implements ConnectorClient {
       options.restartLimits ?? defaultRestartLimits,
       options.clock ?? systemClock,
     );
+    for (const secret of inheritedSecrets(options.inheritedEnv)) this.#scrubber.remember(secret);
   }
 
   async listTools(): Promise<ConnectorTool[]> {
