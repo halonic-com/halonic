@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { findRepoRoot } from "../lib/workspace.ts";
+import { badSubjects, commitSubjectsIn } from "./pr-title.ts";
 
 /**
  * pnpm check:enqueue
@@ -10,6 +11,9 @@ import { findRepoRoot } from "../lib/workspace.ts";
  * The check to run before you queue a pull request. It tests your branch
  * merged with the latest `origin/main`, as the merge queue will: if your branch
  * is behind, it merges `origin/main` into a temporary worktree and runs there.
+ * First it checks the subject that will land on `main`: the pull request title
+ * (read with `gh`, if it is signed in) and, for a one-commit branch, that
+ * commit's subject, as the queue's squash commit subject check does.
  * Steps: frozen lockfile, typecheck of every package (tests included), the
  * `@halonicjs/format` spec tests, the process-starts guard and the requirement
  * guard. No other tests, no mutation tests, no builds. It prints only the
@@ -41,6 +45,29 @@ function printFailure(output: string): void {
   for (const line of matching.length > 0 ? matching : lines.slice(-fallbackLines)) {
     console.error(`  ${line}`);
   }
+}
+
+/** The open pull request's title for this branch, if `gh` can tell. */
+function pullRequestTitle(cwd: string): string | undefined {
+  const result = run("gh", ["pr", "view", "--json", "title", "--jq", ".title"], cwd);
+  return result.status === 0 && result.stdout.trim() !== "" ? result.stdout.trim() : undefined;
+}
+
+/** Prints the subjects that would fail the queue's squash subject check; true if any. */
+function badLandingSubjects(root: string): boolean {
+  const commits = commitSubjectsIn("origin/main..HEAD", root);
+  const bad = badSubjects(pullRequestTitle(root) ?? commits[0] ?? "", commits);
+  for (const subject of bad) {
+    console.error(
+      `✗ subject "${subject}" is not "type(scope): summary" of at most 100 characters.`,
+    );
+  }
+  if (bad.length > 0) {
+    console.error(
+      "\nFailed: squash commit subject. With one commit, its subject lands on main, not the pull request title. Fix it before you queue the pull request.",
+    );
+  }
+  return bad.length > 0;
 }
 
 function steps(base: string, branch: string): readonly Step[] {
@@ -80,7 +107,7 @@ function steps(base: string, branch: string): readonly Step[] {
   ];
 }
 
-function main(): number {
+function runChecks(): number {
   const root = findRepoRoot();
   const branch = git(root, "branch", "--show-current");
   if (branch === undefined || branch === "") {
@@ -142,6 +169,10 @@ function main(): number {
     }
     rmSync(scratch, { recursive: true, force: true });
   }
+}
+
+function main(): number {
+  return badLandingSubjects(findRepoRoot()) ? 1 : runChecks();
 }
 
 process.exitCode = main();
