@@ -262,6 +262,9 @@ importers:
 
   apps/agent-host:
     dependencies:
+      '@halonicjs/adapter-harness-bridge':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-bridge
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-srt

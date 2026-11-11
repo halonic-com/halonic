@@ -4,7 +4,7 @@ Owner: owen · Layer: apps · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-Halonic's agent host as one Node program. It unpacks its files and serves on loopback with a token per launch, with the sandbox's routes; the bridge and the harnesses come next (HAL-4476).
+Halonic's agent host as one Node program. It unpacks its files and serves on loopback with a token per launch: its health, the sandbox and the Halonic bridge; the harnesses come next (HAL-4476).
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

@@ -1,5 +1,7 @@
 import type { Readable } from "node:stream";
+import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { healthRoute } from "./server/health-route.ts";
@@ -53,15 +55,18 @@ export async function run(
 async function serve(version: string, io: HostIo): Promise<void> {
   const token = randomLaunchToken();
   const sessions = new SessionTable();
+  const bridges = new BridgeTable();
   const server = await startHostServer(token, [
     healthRoute(version),
     ...sandboxRoutes(new SrtSandbox(), sessions),
+    ...bridgeRoutes((secrets) => new NodeHarnessBridgeServer({ secrets }), bridges),
   ]);
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
   await inputClosed(io.input);
-  // Stop the sandboxed programs first, so none outlives the host.
+  // Stop the sandboxed programs first, so none outlives the host; their bridges then have no caller.
   await sessions.closeAll();
+  await bridges.closeAll();
   await server.close();
 }
 

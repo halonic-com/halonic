@@ -1,6 +1,6 @@
 # @halonicjs/app-agent-host
 
-Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. It serves the `Sandbox` port; the bridge and the harnesses come next (HAL-4476).
+Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. It serves `GET /v1/health`, the `Sandbox` port and the Halonic bridge; the harnesses come next (HAL-4476).
 
 - **Layer:** apps
 - **Owner:** owen
@@ -61,9 +61,27 @@ Every refusal comes before the path is looked at, so a caller without the token 
 | `POST /v1/sandbox/sessions/open` with `{"profile"}`    | `{"session","fence"}`: the new session's id and its fence proof          |
 | `POST /v1/sandbox/sessions/blocked` with `{"session"}` | a stream, one `SandboxBlock` per line (NDJSON), until the session closes |
 | `POST /v1/sandbox/sessions/close` with `{"session"}`   | `{"closed":true}`                                                        |
+| `POST /v1/bridge/open`                                 | an NDJSON stream: the bridge, then its calls to Studio (below)           |
+| `POST /v1/bridge/answer`                               | `{"answered":true}`, or `404` for a call the bridge isn't waiting for    |
+| `POST /v1/bridge/close`                                | `{"closed":true}`, or `404` for an unknown bridge                        |
 
 ## The sandbox over loopback
 
 Studio gives the engine a stand-in `Sandbox` that calls these routes, and the host runs the real one (`SrtSandbox`). The profile arrives as data, so the host checks it before the sandbox sees it: every field present, nothing extra, every path absolute (`400 body_invalid` names each problem with its path). A body larger than 1 MiB gets `413`. A session that can't open gets `422 sandbox_open_failed` with the sandbox's reason.
 
 A session is named by an id the host makes; any other id gets `404 unknown_session`. When a session's time limit runs out, the host closes it: its id is forgotten and its blocked stream ends. The host keeps at most 64 sessions open, counting those still opening; past that, opening one answers `429 too_many_sessions`. A `timeLimitMs` above 2,147,483,647 (about 24.8 days, the longest a timer can hold) is refused. When the host stops, it closes every open session before it stops serving, so no sandboxed program outlives it.
+
+## The bridge over loopback
+
+`harness-bridge` runs here, next to the sandbox whose program calls it, but the engine's recorder, tools, approvals and provider keys stay in Studio. Studio opens a bridge for one run with `{ runId, agentId, providers, prices }`; `prices` is each provider's models with a price, because the bridge asks for a price without waiting. The answer stays open as a stream:
+
+```
+{"type":"opened","bridge":"<id>","url":"http://127.0.0.1:41817","token":"<run token>"}
+{"type":"call","call":"1","method":"secrets.get","params":{"name":"anthropic-key"}}
+{"type":"call","call":"2","method":"recorder.record","params":{"type":"llm.request",...}}
+{"type":"cancel","call":"3"}
+```
+
+The first line is `opened`, or `{"type":"failed","message"}` when the bridge couldn't listen. Each `call` is one of `recorder.record`, `tools.list`, `tools.check`, `tools.call`, `approvals.request` and `secrets.get`, with the port's arguments; Studio answers it with `POST /v1/bridge/answer` and `{ bridge, call, result }` or `{ bridge, call, error }`. A `cancel` means the bridge stopped waiting (the program went away), so Studio can stop the tool call or withdraw the approval. The host checks each answer against the port's shape, and asks only for the secrets the run's `providers` name. A bridge is named by a random id the host makes, like a session, because call ids (`1`, `2`, …) repeat from bridge to bridge.
+
+The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
