@@ -2,7 +2,6 @@
 
 - Approval: wording decided by Sofia (designer) on [HAL-6041](/HAL/issues/HAL-6041) (team decision under HAL-2282, no card); Liam approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:F/GOURFXKpEOLj6uzunavyHE2rPyCT8VsisSgsz8Ha71ozWBO6hryN4FGACr4NrmyOcdcv/ft/nU7IWjJMO0Aw==
 - Task: HAL-6041, found on HAL-6038 while reading website #153
 
 ## What changes
@@ -34,6 +33,16 @@ command exists, the line names it.
 No test was weakened or skipped: the one changed assertion checks the new
 wording with the same `expect` calls.
 
+`cli.commands.routines.watch` is listed under Covers only because its
+`expect` count moves from run to run. Its tests put `expect` inside
+`vi.waitFor`, so each retry counts as a call: on this pull request's CI run
+"starts a routine when it's due" made 10 calls (19 on the merge base) and
+"ends with 143 at SIGTERM" made 3 (15). This pull request changes nothing
+under `apps/cli/src/commands/routines/`, and the same tests ran and passed on
+both sides. The guard only treats such a drop as noise in a package the pull
+request doesn't touch, and this one touches `apps/cli`.
+
 ## Covers
 
 - cli.run-live-version
+- cli.commands.routines.watch
