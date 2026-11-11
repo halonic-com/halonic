@@ -1,6 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { parseArguments, ReplyFormatError, readFinishReason, readReply } from "./reply.ts";
+import {
+  parseArguments,
+  ReplyFormatError,
+  readFinishReason,
+  readReply,
+  readUsage,
+} from "./reply.ts";
 
 /** A chat completions reply with one choice holding `message`. */
 function replyWith(message: Record<string, unknown>, finishReason: string): unknown {
@@ -95,5 +101,38 @@ verifies("model-openai.replies", () => {
     });
     expect(() => readReply({ result: "Hi" })).toThrow(ReplyFormatError);
     expect(() => readReply({ choices: [{ text: "Hi" }] })).toThrow(ReplyFormatError);
+  });
+});
+
+verifies("model-openai.reply-cache-usage", () => {
+  it("counts the tokens read from the prompt cache apart from the input", () => {
+    const usage = {
+      prompt_tokens: 9_040,
+      completion_tokens: 9,
+      prompt_tokens_details: { cached_tokens: 9_000 },
+    };
+    expect(readUsage(usage)).toEqual({ inputTokens: 40, outputTokens: 9, cacheReadTokens: 9_000 });
+  });
+
+  it("leaves the cache count out when there was none, or when it isn't a count", () => {
+    const plain = { prompt_tokens: 40, completion_tokens: 9 };
+    expect(readUsage(plain)).toEqual({ inputTokens: 40, outputTokens: 9 });
+    expect(readUsage({ ...plain, prompt_tokens_details: { cached_tokens: 0 } })).toEqual({
+      inputTokens: 40,
+      outputTokens: 9,
+    });
+    expect(readUsage({ ...plain, prompt_tokens_details: { cached_tokens: "5" } })).toEqual({
+      inputTokens: 40,
+      outputTokens: 9,
+    });
+  });
+
+  it("never counts more cache reads than the prompt had", () => {
+    const usage = {
+      prompt_tokens: 40,
+      completion_tokens: 9,
+      prompt_tokens_details: { cached_tokens: 500 },
+    };
+    expect(readUsage(usage)).toEqual({ inputTokens: 0, outputTokens: 9, cacheReadTokens: 40 });
   });
 });
