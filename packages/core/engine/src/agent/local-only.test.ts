@@ -1,3 +1,4 @@
+import type { Connector } from "@halonicjs/format";
 import { ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -26,11 +27,15 @@ function alias(name: string, provider: ScriptedModel, more: Partial<ResolvedMode
   return { alias: name, provider, model: `${provider.id}-1`, ...more };
 }
 
-/** An executor for chat turns on one model, local only unless `localOnly` says otherwise. */
+/**
+ * An executor for chat turns on one model, local only unless `localOnly` says otherwise.
+ * With `lists`, a chat turn reads its connectors' tool lists from them, as from a workspace's files.
+ */
 function executorOn(
   model: ResolvedModel,
   connectors: ScriptedConnector[] = [],
   localOnly = true,
+  lists?: Readonly<Record<string, Connector["tools"]>>,
 ): LocalExecutor {
   return new LocalExecutor({
     resolveModel: async () => model,
@@ -39,6 +44,7 @@ function executorOn(
     secrets: secretsWith(),
     clock: steppingClock(),
     localOnly,
+    ...(lists === undefined ? {} : { chatConnectorToolsOf: async () => lists }),
   });
 }
 
@@ -114,6 +120,26 @@ verifies("engine.local-only", () => {
       messages: [],
       tools: [],
     });
+
+    const offered = model.requests[0]?.tools?.map((tool) => tool.name) ?? [];
+    expect(offered.some((name) => name.includes("read_file"))).toBe(true);
+    expect(offered.some((name) => name.includes("transfer"))).toBe(false);
+  });
+
+  it("offers no connector that isn't local when the workspace's files list its tools", async () => {
+    const model = local();
+    const files = Object.assign(new ScriptedConnector("files", [listedTool("read_file")]), {
+      local: true,
+    });
+    const bank = new ScriptedConnector("bank", [listedTool("transfer")]);
+    const lists = {
+      files: { allow: ["read_file"], approve: [] },
+      bank: { allow: ["transfer"], approve: [] },
+    };
+
+    await executorOn(alias("default", model, { local: true }), [files, bank], true, lists).chatTurn(
+      { hubId: "acme", messages: [], tools: [] },
+    );
 
     const offered = model.requests[0]?.tools?.map((tool) => tool.name) ?? [];
     expect(offered.some((name) => name.includes("read_file"))).toBe(true);
