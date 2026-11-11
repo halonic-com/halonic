@@ -60,15 +60,22 @@ export function workingFolderRefusal(reach: WorkingFolderReach): string {
  *    links (a path that doesn't exist yet is followed as far as it does);
  * 2. the program as given, so the caller checks again with the absolute
  *    path it found on `PATH`;
- * 3. every package in the `node_modules` folders from the start folder up to
- *    the workspace root, where `npx` and `require()` look without being
- *    told: npm and pnpm workspaces link these to folders in the workspace;
- * 4. the folder of each script it runs (the program, or an argument that is
- *    a file) and the folder it starts in, unless that is the workspace root:
- *    a program loads files from there without naming them.
+ * 3. every package in the `node_modules` folders from the start folder and
+ *    from the folder of each script it runs up to the workspace root, where
+ *    `npx` and `require()` look without being told: npm and pnpm workspaces
+ *    link these to folders in the workspace. A package that is such a
+ *    workspace folder has its own `node_modules` folders looked at too;
+ * 4. the folder of each script it runs and the folder it starts in, unless
+ *    that is the workspace root: a program loads files from there without
+ *    naming them. A script is the program, an argument or a piece of one
+ *    that is a file, an argument that is a file once Node or Python add an
+ *    ending (`node server`, `python -m mail`), or an argument that is a
+ *    folder, which Node and Python run from inside (`node .`).
  *
  * Paths are compared without regard to case, with `\` as `/`, as Windows
  * and macOS read them. Reading too much as a path only makes it stricter.
+ * Inline code (`node -e`) isn't read, and packages in pnpm's store aren't
+ * followed into their own `node_modules`: see the requirement's limits.
  *
  * @param start - the start, with absolute `cwd`
  * @param workspaceRoot - the workspace's absolute path
@@ -88,10 +95,12 @@ export async function touchesWorkingFolder(
       forms: await formsOf(folder, folder, lookup),
     })),
   );
+  const root = await realPath(workspaceRoot, lookup);
+  const scripts = await scriptsRun(start, lookup);
   const finds = [
     () => namedPart(start, folders, lookup),
-    () => linkedPackage(start.cwd, workspaceRoot, folders, lookup),
-    () => scriptFolder(start, workspaceRoot, folders, lookup),
+    () => linkedPackage(start, scripts, root, folders, lookup),
+    () => scriptFolder(start, scripts, root, folders, lookup),
   ];
   for (const find of finds) {
     const reach = await find();
@@ -105,6 +114,15 @@ interface Folder {
   readonly folder: string;
   readonly forms: readonly string[];
 }
+
+/** A script a start runs, as written, and the real folder it loads files from. */
+interface Script {
+  readonly shown: string;
+  readonly folder: string;
+}
+
+/** The endings Node and Python add to a script or module name that names no file. */
+const SCRIPT_ENDINGS = [".js", ".mjs", ".cjs", ".ts", ".json", ".node", ".py"];
 
 /** Rule 1 and 2: a path the start names, read from its folder, inside a working folder. */
 async function namedPart(
@@ -134,34 +152,64 @@ async function namedPart(
 
 /**
  * Rule 3: a `node_modules` folder, or a package, `.bin` entry or scoped
- * package in one, that really lives in a working folder. Only the folders
- * from the start folder up to the workspace root are listed: anything above
- * the workspace is out of an agent's reach, and a start outside it (such as
- * a pinned package's new empty folder) has none to list. Both are compared
- * where they really are, as `npx` sees its start folder, so a start folder
- * or root given through a link is still walked.
+ * package in one, that really lives in a working folder. `require()` looks
+ * from the folder of the file that asks, so the folders listed are those from
+ * the start folder, from each script's folder and from each workspace package
+ * found on the way, up to the workspace root. Anything above the workspace is
+ * out of an agent's reach, and a start outside it (such as a pinned package's
+ * new empty folder) has none to list.
  */
 async function linkedPackage(
-  cwd: string,
-  workspaceRoot: string,
+  start: ConnectorStart,
+  scripts: readonly Script[],
+  root: string,
   folders: readonly Folder[],
   lookup: FolderLookup,
 ): Promise<WorkingFolderReach | null> {
-  const [realCwd, realRoot] = await Promise.all([
-    realPath(cwd, lookup),
-    realPath(workspaceRoot, lookup),
-  ]);
-  for (const folder of foldersUpTo(realCwd, realRoot, lookup)) {
-    const modules = lookup.resolve(folder, "node_modules");
-    const entries = [modules, ...(await packagesIn(modules, lookup))];
-    const holders = await Promise.all(
-      entries.map(async (entry) => holding([await realPath(entry, lookup)], folders)),
-    );
-    const index = holders.findIndex((holder) => holder !== undefined);
-    const holder = holders[index];
-    if (holder !== undefined) return { folder: holder, how: `loads '${entries[index]}'` };
+  const listed = new Set<string>();
+  const from = [await realPath(start.cwd, lookup), ...scripts.map((script) => script.folder)];
+  for (let next = from.shift(); next !== undefined; next = from.shift()) {
+    for (const folder of foldersUpTo(next, root, lookup)) {
+      const modules = lookup.resolve(folder, "node_modules");
+      if (listed.has(comparable(modules))) continue;
+      listed.add(comparable(modules));
+      const found = await modulesFolder(modules, root, folders, lookup);
+      if (found.reach !== null) return found.reach;
+      from.push(...found.workspacePackages);
+    }
   }
   return null;
+}
+
+/**
+ * One `node_modules` folder for rule 3: the first entry that really lives
+ * in a working folder, and the real folders of the workspace packages in it.
+ */
+async function modulesFolder(
+  modules: string,
+  root: string,
+  folders: readonly Folder[],
+  lookup: FolderLookup,
+): Promise<{ reach: WorkingFolderReach | null; workspacePackages: string[] }> {
+  const entries = [modules, ...(await packagesIn(modules, lookup))];
+  const reals = await Promise.all(entries.map((entry) => realPath(entry, lookup)));
+  for (const [index, real] of reals.entries()) {
+    const holder = holding([real], folders);
+    if (holder !== undefined) {
+      return { reach: { folder: holder, how: `loads '${entries[index]}'` }, workspacePackages: [] };
+    }
+  }
+  return { reach: null, workspacePackages: reals.filter((real) => isWorkspacePackage(real, root)) };
+}
+
+/**
+ * Whether a real path is in the workspace's own folders and not in a
+ * `node_modules` folder, as a workspace package linked into one is.
+ * `require()` in that package reads its own `node_modules` folders.
+ */
+function isWorkspacePackage(path: string, root: string): boolean {
+  if (!isInside(path, root)) return false;
+  return !comparable(path).slice(comparable(root).length).split("/").includes("node_modules");
 }
 
 /** The entries of a `node_modules` folder, with those inside `.bin` and `@scope` folders. */
@@ -178,18 +226,67 @@ async function packagesIn(modules: string, lookup: FolderLookup): Promise<string
   return entries;
 }
 
-/** `cwd` and each folder above it up to the workspace root, or none when `cwd` is outside it. */
-function foldersUpTo(cwd: string, workspaceRoot: string, lookup: PathLookup): string[] {
-  if (!isInside(cwd, workspaceRoot)) return [];
-  const chain = [cwd];
-  let folder = cwd;
-  while (!isSame(folder, workspaceRoot)) {
-    const parent = lookup.resolve(folder, "..");
-    if (parent === folder) break;
-    folder = parent;
-    chain.push(folder);
+/** A real `folder` and each folder above it up to the real workspace root, or none when it's outside. */
+function foldersUpTo(folder: string, root: string, lookup: PathLookup): string[] {
+  if (!isInside(folder, root)) return [];
+  const chain = [folder];
+  let current = folder;
+  while (!isSame(current, root)) {
+    const parent = lookup.resolve(current, "..");
+    if (parent === current) break;
+    current = parent;
+    chain.push(current);
   }
   return chain;
+}
+
+/**
+ * The scripts a start runs (see rule 4): the program and each piece of an
+ * argument when it is a file, and each argument and `-m` module also when
+ * it is a file once an ending is added, or a folder.
+ */
+async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<Script[]> {
+  const exact = [
+    start.program,
+    ...start.args.flatMap((arg) => pathsIn(arg).filter((piece) => piece !== arg)),
+  ];
+  const filled = start.args.flatMap((arg, index) => [
+    { shown: arg, path: arg },
+    ...moduleIn(start.args, index).map((path) => ({ shown: arg, path })),
+  ]);
+  const scripts: Script[] = [];
+  for (const shown of exact) {
+    const folder = await fileFolder([lookup.resolve(start.cwd, shown)], lookup);
+    if (folder !== null) scripts.push({ shown, folder });
+  }
+  for (const { shown, path } of filled) {
+    const folder = await loadFolder(lookup.resolve(start.cwd, path), lookup);
+    if (folder !== null) scripts.push({ shown, folder });
+  }
+  return scripts;
+}
+
+/** The real folder of the first of `paths` that is a file, or `null`. */
+async function fileFolder(paths: readonly string[], lookup: FolderLookup): Promise<string | null> {
+  for (const path of paths) {
+    if (await lookup.isFile(path)) return lookup.resolve(await realPath(path, lookup), "..");
+  }
+  return null;
+}
+
+/**
+ * The real folder a script named by `path` loads files from: the folder of
+ * the file it names, with or without an ending Node or Python adds, or the
+ * folder itself when it names one. `null` when nothing is there.
+ */
+async function loadFolder(path: string, lookup: FolderLookup): Promise<string | null> {
+  const file = await fileFolder([path, ...SCRIPT_ENDINGS.map((ending) => path + ending)], lookup);
+  if (file !== null) return file;
+  try {
+    return await lookup.realpath(path);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -200,23 +297,24 @@ function foldersUpTo(cwd: string, workspaceRoot: string, lookup: PathLookup): st
  */
 async function scriptFolder(
   start: ConnectorStart,
-  workspaceRoot: string,
+  scripts: readonly Script[],
+  root: string,
   folders: readonly Folder[],
   lookup: FolderLookup,
 ): Promise<WorkingFolderReach | null> {
-  for (const script of [start.program, ...start.args]) {
-    const path = lookup.resolve(start.cwd, script);
-    if (!(await lookup.isFile(path))) continue;
-    const scriptFolder = lookup.resolve(await realPath(path, lookup), "..");
+  for (const script of scripts) {
     const inside = folders.find((folder) =>
-      folder.forms.some((form) => isInside(form, scriptFolder)),
+      folder.forms.some((form) => isInside(form, script.folder)),
     );
     if (inside !== undefined) {
-      return { folder: inside.folder, how: `runs '${script}', which loads files from next to it` };
+      return {
+        folder: inside.folder,
+        how: `runs '${script.shown}', which loads files from next to it`,
+      };
     }
   }
   const cwd = await realPath(start.cwd, lookup);
-  if (isSame(cwd, await realPath(workspaceRoot, lookup))) return null;
+  if (isSame(cwd, root)) return null;
   const inside = folders.find((folder) => folder.forms.some((form) => isInside(form, cwd)));
   return inside === undefined
     ? null

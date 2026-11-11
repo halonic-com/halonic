@@ -18,14 +18,17 @@ const coder = "/w/files/agents/coder";
  */
 const links: Record<string, string> = {
   "/w/FILES~1": "/w/files",
-  "/alias": "/w",
-  "/t/link": "/w/pnpm",
   "/w/tools/run.js": "/w/files/agents/coder/run.js",
   "/w/out": "/w/files/agents/coder",
   "/w/linked": "/w/files/agents",
   "/w/pnpm/node_modules/mail-mcp": "/w/files/agents/coder",
   "/w/bin-link/node_modules/.bin/mail-mcp": "/w/files/agents/coder/cli.js",
   "/w/scoped/node_modules/@acme/mail": "/w/files/agents/coder",
+  "/w/tools/chat/node_modules/helper": "/w/files/agents/coder",
+  "/w/mono/node_modules/mail-mcp": "/w/mono/packages/mail-mcp",
+  "/w/mono/packages/mail-mcp/node_modules/helper": "/w/files/agents/coder",
+  "/t/link": "/w/pnpm",
+  "/alias": "/w",
 };
 
 const folders: Record<string, readonly string[]> = {
@@ -38,11 +41,18 @@ const folders: Record<string, readonly string[]> = {
   "/w/bin-link/node_modules/.bin": ["mail-mcp"],
   "/w/scoped/node_modules": ["@acme"],
   "/w/scoped/node_modules/@acme": ["mail"],
+  "/w/tools/chat/node_modules": ["helper"],
+  "/w/mono/node_modules": ["mail-mcp"],
+  "/w/mono/packages/mail-mcp/node_modules": ["helper"],
 };
 
 const files = new Set([
   "/w/server.js",
   "/w/tools/mail/server.js",
+  "/w/tools/mail/index.js",
+  "/w/tools/chat/server.js",
+  "/w/mail.py",
+  "/w/preload.js",
   "/w/files/agents/coder/run.js",
   "/w/files/agents/coder/cli.js",
 ]);
@@ -55,6 +65,11 @@ const realFolders = new Set([
   "/w/files/agents/coder-old",
   "/w/tools",
   "/w/tools/mail",
+  "/w/tools/chat",
+  "/w/mono",
+  "/w/mono/packages",
+  "/w/mono/packages/mail-mcp",
+  "/t",
   "/w/pnpm",
   "/w/bin-link",
   "/w/scoped",
@@ -101,8 +116,11 @@ const start = (
   env: Record<string, string> = {},
 ): ConnectorStart => ({ cwd, program, args, env });
 
-const reach = (connectorStart: ConnectorStart, workingFolders: readonly string[] = [coder]) =>
-  touchesWorkingFolder(connectorStart, workspace, workingFolders, lookup);
+const reach = (
+  connectorStart: ConnectorStart,
+  workingFolders: readonly string[] = [coder],
+  workspaceRoot = workspace,
+) => touchesWorkingFolder(connectorStart, workspaceRoot, workingFolders, lookup);
 
 verifies("format.working-folder-start", () => {
   describe("touchesWorkingFolder", () => {
@@ -125,7 +143,12 @@ verifies("format.working-folder-start", () => {
       ["a .bin entry", start("npx", ["mail-mcp"], "/w/bin-link")],
       ["a scoped package", start("node", ["-e", "require('@acme/mail')"], "/w/scoped")],
       ["a package above the start folder", start("npx", ["mail-mcp"], "/w/pnpm/tools")],
-      ["a package from a start folder linked from outside", start("npx", ["mail-mcp"], "/t/link")],
+      ["a package next to a script", start("node", ["tools/chat/server.js"])],
+      ["a package of a workspace package", start("npx", ["mail-mcp"], "/w/mono")],
+      [
+        "a package from a start folder reached through a link",
+        start("npx", ["mail-mcp"], "/t/link"),
+      ],
     ])("finds %s linked into node_modules", async (_, bad) => {
       expect(await reach(bad)).toMatchObject({
         folder: coder,
@@ -133,21 +156,40 @@ verifies("format.working-folder-start", () => {
       });
     });
 
-    it("finds a package linked into node_modules when the workspace root is given through a link", async () => {
-      expect(
-        await touchesWorkingFolder(
-          start("npx", ["mail-mcp"], "/w/pnpm"),
-          "/alias",
-          [coder],
-          lookup,
-        ),
-      ).toMatchObject({ folder: coder, how: expect.stringContaining("node_modules") });
+    it("finds a package linked into node_modules when the workspace root is reached through a link", async () => {
+      expect(await reach(start("npx", ["mail-mcp"], "/w/pnpm"), [coder], "/alias")).toMatchObject({
+        folder: coder,
+        how: expect.stringContaining("node_modules"),
+      });
     });
 
     it("finds a script in the workspace root, which loads files from next to it", async () => {
       expect(await reach(start("node", ["server.js"]))).toEqual({
         folder: coder,
         how: "runs 'server.js', which loads files from next to it",
+      });
+    });
+
+    it.each([
+      ["a script without its ending", start("node", ["server"]), "server"],
+      ["the folder it runs", start("node", ["."]), "."],
+      ["a module without its ending", start("python", ["-m", "mail"]), "mail"],
+      [
+        "a script a flag loads",
+        start("node", ["--require=./preload.js", "tools/mail/server.js"]),
+        "./preload.js",
+      ],
+    ])("finds %s in the workspace root", async (_, bad, shown) => {
+      expect(await reach(bad)).toEqual({
+        folder: coder,
+        how: `runs '${shown}', which loads files from next to it`,
+      });
+    });
+
+    it("finds a working folder inside a folder it runs", async () => {
+      const drafts = "/w/tools/mail/drafts";
+      expect(await reach(start("node", ["tools/mail"]), [drafts])).toMatchObject({
+        folder: drafts,
       });
     });
 
@@ -162,6 +204,12 @@ verifies("format.working-folder-start", () => {
       ["real packages in node_modules", start("npx", ["tsc"]), [coder]],
       ["a folder with a longer name", start("node", ["/w/files/agents/coder-old/x.js"]), [coder]],
       ["a start in another folder", start("node", ["server.js"], "/w/tools/mail"), [coder]],
+      ["a folder it runs outside the working folder", start("node", ["tools/mail"]), [coder]],
+      [
+        "an argument that names nothing",
+        start("node", ["tools/mail/server.js", "--port", "8080"]),
+        [coder],
+      ],
     ])("allows %s", async (_, fine, workingFolders) => {
       expect(await reach(fine, workingFolders)).toBeNull();
     });
