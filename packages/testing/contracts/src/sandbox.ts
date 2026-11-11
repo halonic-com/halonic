@@ -1,4 +1,10 @@
-import { type Sandbox, type SandboxProfile, sandboxUnavailableReasons } from "@halonicjs/ports";
+import {
+  type Sandbox,
+  type SandboxCommand,
+  type SandboxProfile,
+  type SandboxSession,
+  sandboxUnavailableReasons,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
@@ -60,6 +66,56 @@ export function sandboxCheckContract(name: string, harness: SandboxCheckHarness)
       it("opens no session when it can't start, so nothing runs without the fence", async () => {
         const sandbox = await harness.makeUnavailable();
         await expect(sandbox.open(plainProfile)).rejects.toThrow();
+      });
+    });
+  });
+}
+
+/** What the adapter's test harness hands the {@link sandboxFenceContract}. */
+export interface SandboxFenceHarness {
+  /**
+   * A session of the adapter whose fence proof came out `not-fenced`: its
+   * probes were told that the canary file is readable, for example. The
+   * adapter reports the proof as the port says; the suite checks what the
+   * session then does.
+   */
+  openNotFenced(): Promise<SandboxSession>;
+  /** The program the adapter would have started, to check nothing was. */
+  startedPrograms(): number;
+}
+
+/** A command any sandbox could run, if the fence held. */
+const plainCommand: SandboxCommand = { program: "contract-program", args: [] };
+
+/**
+ * The part of the {@link Sandbox} contract about the fence proof: a session
+ * whose proof is `not-fenced` says so with a reason, and its `start` throws
+ * and starts nothing, so a program never runs outside the fence by a
+ * session that couldn't prove it (the port's \"never falls back\" rule).
+ */
+export function sandboxFenceContract(name: string, harness: SandboxFenceHarness): void {
+  verifies("contracts.sandbox-fence", () => {
+    describe(`Sandbox fence contract: ${name}`, () => {
+      it("reports not-fenced with a reason in plain words", async () => {
+        const session = await harness.openNotFenced();
+        try {
+          expect(session.fence.state).toBe("not-fenced");
+          if (session.fence.state === "not-fenced") {
+            expect(session.fence.reason.trim()).not.toBe("");
+          }
+        } finally {
+          await session.close();
+        }
+      });
+
+      it("throws from start and starts no program when it isn't fenced", async () => {
+        const session = await harness.openNotFenced();
+        try {
+          await expect(session.start(plainCommand)).rejects.toThrow();
+          expect(harness.startedPrograms()).toBe(0);
+        } finally {
+          await session.close();
+        }
       });
     });
   });

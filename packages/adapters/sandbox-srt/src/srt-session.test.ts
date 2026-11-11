@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
+import { sandboxFenceContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SrtSandbox } from "./srt-sandbox.ts";
@@ -22,6 +23,17 @@ afterEach(async () => {
 });
 
 const profile = (overrides: Partial<SandboxProfile> = {}) => makeProfile(base, overrides);
+
+let programsRun: readonly unknown[] = [];
+
+sandboxFenceContract("srt", {
+  openNotFenced: async () => {
+    const { runner, runs } = fakeRunner({ ...fenced, canary: "readable" });
+    programsRun = runs;
+    return new SrtSandbox(linux, runner).open(profile());
+  },
+  startedPrograms: () => programsRun.length,
+});
 
 verifies("sandbox-srt.session", () => {
   describe("SrtSandbox.open", () => {

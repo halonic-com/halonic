@@ -61,6 +61,7 @@ export {
   type MakeFolderReader,
 } from "./folder-reader.ts";
 export { type HarnessContractHarness, harnessContract, type MakeHarness } from "./harness.ts";
+export { type HttpClientHarness, type HttpPeer, httpClientContract } from "./http-client.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
 export {
   type KnowledgeProviderContractOptions,
@@ -134,7 +135,9 @@ export {
 export {
   type MakeSandbox,
   type SandboxCheckHarness,
+  type SandboxFenceHarness,
   sandboxCheckContract,
+  sandboxFenceContract,
 } from "./sandbox.ts";
 export { schedulerContract } from "./scheduler.ts";
 export {
