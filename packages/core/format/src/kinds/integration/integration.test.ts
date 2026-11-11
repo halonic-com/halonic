@@ -21,7 +21,8 @@ function guideExample(): string {
 /**
  * Sheets from halonic-com/integrations, copied as they are: the Google ones
  * at ac597f7, the others at 2eda45e. The Google ones carry each send
- * tool's `noun` ahead of the integrations repo (HAL-2836).
+ * tool's `noun` ahead of the integrations repo (HAL-2836), and Drive's its
+ * `verb` and "Drive file" nouns too (HAL-2868).
  */
 function fixture(name: string): string {
   return readFileSync(join(import.meta.dirname, "fixtures", `${name}.yaml`), "utf8");
@@ -195,15 +196,46 @@ verifies("format.integration-file", () => {
     ]);
   });
 
-  it("reads a send tool's noun, in the singular and the plural", () => {
+  it("reads a send tool's noun, in the singular and the plural, and its verb", () => {
     const sheet = parsedValue("integration", fixture("tool-google-drive"));
-    const nouns = sheet.tools.filter((tool) => tool.risk === "send").map((tool) => tool.noun);
-    expect(nouns).toEqual([
-      { one: "file", many: "files" },
-      { one: "file update", many: "file updates" },
-      { one: "folder", many: "folders" },
-      { one: "file", many: "files" },
+    const sends = sheet.tools
+      .filter((tool) => tool.risk === "send")
+      .map((tool) => ({ noun: tool.noun, verb: tool.verb }));
+    expect(sends).toEqual([
+      { noun: { one: "Drive file", many: "Drive files" }, verb: "saved" },
+      { noun: { one: "Drive file", many: "Drive files" }, verb: "updated" },
+      { noun: { one: "Drive folder", many: "Drive folders" }, verb: "created" },
+      { noun: { one: "Drive file", many: "Drive files" }, verb: "moved" },
     ]);
+  });
+
+  it("reads a tool without a verb as having none, which a run reads as sent", () => {
+    const text = yaml(
+      ...base,
+      "tools:",
+      "  - { name: share, description: Share., risk: send, untrusted: false, noun: { one: email, many: emails } }",
+    );
+    expect(parsedValue("integration", text).tools[0]).not.toHaveProperty("verb");
+  });
+
+  it("refuses a verb that isn't on the list, and a verb without a noun", () => {
+    const text = yaml(
+      ...base,
+      "tools:",
+      "  - { name: share, description: Share., risk: send, untrusted: false, noun: { one: email, many: emails }, verb: checked }",
+      "  - { name: save, description: Save., risk: write, untrusted: false, verb: saved }",
+    );
+    expect(summary(problemsOf("integration", text))).toEqual(["tools.0.verb invalid_value 7"]);
+    const alone = yaml(
+      ...base,
+      "tools:",
+      "  - { name: save, description: Save., risk: write, untrusted: false, verb: saved }",
+    );
+    const problems = problemsOf("integration", alone);
+    expect(summary(problems)).toEqual(["tools.0.verb verb-without-noun 7"]);
+    expect(problems[0]?.message).toBe(
+      `Integration "weather": tool "save" has verb saved but no noun, so a run couldn't say what was saved; add one, such as noun: { one: file, many: files }`,
+    );
   });
 
   it("refuses a send tool without a noun, and lets a read or write tool leave it out", () => {
@@ -221,14 +253,26 @@ verifies("format.integration-file", () => {
     );
   });
 
-  it("refuses a noun that isn't lower-case words or misses a form", () => {
+  it("takes a noun whose first letter is a capital, such as a product name", () => {
+    const text = yaml(
+      ...base,
+      "tools:",
+      "  - { name: save, description: Save., risk: send, untrusted: false, noun: { one: Drive file, many: Drive files } }",
+    );
+    expect(parsedValue("integration", text).tools[0]?.noun).toEqual({
+      one: "Drive file",
+      many: "Drive files",
+    });
+  });
+
+  it("refuses a noun that isn't lower-case words after its first letter, or misses a form", () => {
     const text = yaml(
       ...base,
       "tools:",
       "  - name: forecast",
       "    description: Forecast.",
       "    risk: send",
-      "    noun: { one: Email, many: '' }",
+      "    noun: { one: EMail, many: '' }",
       "    untrusted: false",
       "  - name: alerts",
       "    description: Alerts.",
@@ -238,7 +282,7 @@ verifies("format.integration-file", () => {
       "  - name: radar",
       "    description: Radar.",
       "    risk: send",
-      "    noun: { one: 'file 2', many: maps, few: maps }",
+      "    noun: { one: 'file 2', many: Drive Files, few: maps }",
       "    untrusted: false",
     );
     expect(summary(problemsOf("integration", text))).toEqual([
@@ -246,6 +290,7 @@ verifies("format.integration-file", () => {
       "tools.0.noun.many invalid_format 10",
       "tools.1.noun.many invalid_type 15",
       "tools.2.noun.one invalid_format 20",
+      "tools.2.noun.many invalid_format 20",
       "tools.2.noun unrecognized_keys 20",
     ]);
   });
