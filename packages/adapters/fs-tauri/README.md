@@ -75,15 +75,16 @@ the summaries `list` works out on every call. A snapshot the shell couldn't writ
 append; its reason goes to `onSnapshotError`, which must not throw. A stored snapshot that isn't one,
 or is ahead of the log, reads as `null`, so the engine replays the log.
 
-| The shell says       | The adapter rejects with                                          |
-| -------------------- | ----------------------------------------------------------------- |
-| `broken_log`         | an `Error` with the shell's message, as `FolderRunStore` throws   |
-| `folder_not_open`    | a `KindedError` `denied`                                          |
-| `invalid_deployment` | a `KindedError` `internal` (the page checks deployment ids first) |
-| `invalid_run_id`     | a `KindedError` `internal` (the page checks run ids first)        |
-| `invalid_lines`      | a `KindedError` `internal` (the page writes the lines)            |
-| `io`                 | a `KindedError` `unavailable`, with the shell's message           |
-| anything else        | a `KindedError` `unavailable`, without its text                   |
+| The shell says       | The adapter rejects with                                             |
+| -------------------- | -------------------------------------------------------------------- |
+| `broken_log`         | an `Error` with the shell's message, as `FolderRunStore` throws      |
+| `folder_not_open`    | a `KindedError` `denied`                                             |
+| `invalid_deployment` | a `KindedError` `internal` (the page checks deployment ids first)    |
+| `invalid_run_id`     | a `KindedError` `internal` (the page checks run ids first)           |
+| `invalid_lines`      | a `KindedError` `internal` (the page writes the lines)               |
+| `other_runs_log`     | a `KindedError` `invalid_input` (a run id in another case, HAL-4749) |
+| `io`                 | a `KindedError` `unavailable`, with the shell's message              |
+| anything else        | a `KindedError` `unavailable`, without its text                      |
 
 An answer that isn't the command's also rejects with `unavailable`, without text.
 

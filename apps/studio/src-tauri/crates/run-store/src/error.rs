@@ -10,6 +10,10 @@ pub enum RunStoreError {
     InvalidLines,
     /// The log's whole lines are not UTF-8 text. `file` is the log's name.
     BrokenLog { file: String },
+    /// The run folder ignores case, and `<run_id>.jsonl` opens the log of
+    /// another run, whose id differs only in case. Run ids are
+    /// case-sensitive, so the run can't be stored in this folder.
+    OtherRunsLog { run_id: String },
     /// Reading or writing a file, or taking the lock, failed.
     Io { message: String },
 }
@@ -21,6 +25,7 @@ impl RunStoreError {
             RunStoreError::InvalidRunId { .. } => "invalid_run_id",
             RunStoreError::InvalidLines => "invalid_lines",
             RunStoreError::BrokenLog { .. } => "broken_log",
+            RunStoreError::OtherRunsLog { .. } => "other_runs_log",
             RunStoreError::Io { .. } => "io",
         }
     }
@@ -53,6 +58,10 @@ impl fmt::Display for RunStoreError {
                     "Broken run log {file}: it is not valid UTF-8 text."
                 )
             }
+            RunStoreError::OtherRunsLog { run_id } => write!(
+                formatter,
+                "Run {run_id} can't be stored here: the run folder ignores case, and {run_id}.jsonl opens another run's log."
+            ),
             RunStoreError::Io { message } => write!(formatter, "{message}"),
         }
     }

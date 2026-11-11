@@ -5,6 +5,10 @@
 //! `<runId>.lock` from `halonic-run-lock` while they check `expectedSeq`
 //! and write, so a CLI and the desktop app writing one run can't both win.
 //!
+//! Run ids are case-sensitive, also in a folder that ignores case (on
+//! Windows and macOS), where `RUN_X.jsonl` opens the log of `run_x`. Such a
+//! log reads as an unknown run, and an append to it is refused (HAL-4749).
+//!
 //! This crate does only the file work. The page keeps everything else in
 //! TypeScript, shared with `fs-node` through the `RunStore` port: it checks
 //! the events and writes them as lines, reads lines back into events, and
@@ -150,18 +154,23 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         })
     }
 
-    /// The log's whole lines, empty when the run has no log.
+    /// The log's whole lines, empty when the run has no log, or when the
+    /// log is another run's whose id differs only in case.
     pub fn events(&self, run_id: &str) -> Result<String, RunStoreError> {
         check_run_id(run_id)?;
         let lock_file = self.file(run_id, LOCK_SUFFIX);
         self.take_turn(&lock_file, || -> Result<String, RunStoreError> {
-            Ok(self.read_log(run_id)?.lines)
+            let log = self.read_log(run_id)?;
+            if log.is_other_runs(run_id) {
+                return Ok(String::new());
+            }
+            Ok(log.lines)
         })
     }
 
-    /// The cached snapshot, or `None` when there is none or it can't be
-    /// read. Bytes that aren't UTF-8 become U+FFFD, as when `fs-node` reads
-    /// the file as `utf8`.
+    /// The cached snapshot, or `None` when there is none, it can't be read,
+    /// or the log is another run's whose id differs only in case. Bytes that
+    /// aren't UTF-8 become U+FFFD, as when `fs-node` reads the file as `utf8`.
     pub fn snapshot(&self, run_id: &str) -> Result<Option<StoredSnapshot>, RunStoreError> {
         check_run_id(run_id)?;
         let lock_file = self.file(run_id, LOCK_SUFFIX);
@@ -172,10 +181,13 @@ impl<C: ThisComputer> RunFolder<'_, C> {
                     // Missing or not readable: either way the cache can't be used.
                     return Ok(None);
                 };
-                let log_events = self.read_log(run_id)?.last_seq();
+                let log = self.read_log(run_id)?;
+                if log.is_other_runs(run_id) {
+                    return Ok(None);
+                }
                 Ok(Some(StoredSnapshot {
                     text: String::from_utf8_lossy(&bytes).into_owned(),
-                    log_events,
+                    log_events: log.last_seq(),
                 }))
             },
         )
@@ -217,6 +229,7 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         snapshot: Option<&str>,
     ) -> Result<AppendOutcome, RunStoreError> {
         let log = self.read_log(run_id)?;
+        self.refuse_other_runs_log(run_id, &log)?;
         if log.last_seq() != expected_seq {
             return Ok(AppendOutcome::Conflict {
                 last_seq: log.last_seq(),
@@ -237,6 +250,38 @@ impl<C: ThisComputer> RunFolder<'_, C> {
             snapshot_error,
             release_error: None,
         })
+    }
+
+    /// Refuses an append to `run_id` when its log is another run's, whose
+    /// id differs only in case. A log without a whole line can't tell by
+    /// what it holds, so then the folder's names do; that costs a listing
+    /// only for such a log, never for a missing one or one with events.
+    fn refuse_other_runs_log(&self, run_id: &str, log: &LogFile) -> Result<(), RunStoreError> {
+        let other_runs = log.is_other_runs(run_id)
+            || (log.last_seq() == 0 && self.listed_under_other_name(run_id)?);
+        if other_runs {
+            return Err(RunStoreError::OtherRunsLog {
+                run_id: run_id.to_owned(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Whether `<run_id>.jsonl` opens a file the folder lists under another
+    /// name, as only a folder that ignores case does.
+    fn listed_under_other_name(&self, run_id: &str) -> Result<bool, RunStoreError> {
+        let name = format!("{run_id}{LOG_SUFFIX}");
+        match fs::metadata(self.root.join(&name)) {
+            Ok(_) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+            Err(error) => return Err(error.into()),
+        }
+        for entry in fs::read_dir(&self.root)? {
+            if entry?.file_name() == name.as_str() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     /// Replaces the snapshot through a temporary file and a rename, so a

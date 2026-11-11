@@ -42,6 +42,11 @@ export const runRefusalKinds = [
   "invalid_run_id",
   /** The lines to append aren't whole lines. The page writes them, so this is a bug. */
   "invalid_lines",
+  /**
+   * The run folder ignores case, and the run's log is another run's, whose
+   * id differs only in case (HAL-4749). The append stored nothing.
+   */
+  "other_runs_log",
   /** Reading or writing the run folder, or taking the run's lock, failed. */
   "io",
 ] as const;

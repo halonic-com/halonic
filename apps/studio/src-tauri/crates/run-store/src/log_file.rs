@@ -28,6 +28,26 @@ impl LogFile {
     pub(crate) fn intact_bytes(&self) -> u64 {
         self.lines.len() as u64
     }
+
+    /// Whether this is the log of another run, whose id differs from
+    /// `run_id` only in case, as a folder that ignores case (on Windows and
+    /// macOS) opens it for `<run_id>.jsonl`. Told from the first line alone,
+    /// as `isOtherRunsLog` in the `RunStore` port tells it: a first line
+    /// that isn't an event with a run id is not another run's, and the page
+    /// reports it when it reads the lines.
+    pub(crate) fn is_other_runs(&self, run_id: &str) -> bool {
+        let Some((first_line, _)) = self.lines.split_once('\n') else {
+            return false;
+        };
+        let Ok(event) = serde_json::from_str::<serde_json::Value>(first_line) else {
+            return false;
+        };
+        let Some(owner) = event.get("runId").and_then(serde_json::Value::as_str) else {
+            return false;
+        };
+        // Run ids are ASCII only, so this is how every such folder compares them.
+        owner != run_id && owner.eq_ignore_ascii_case(run_id)
+    }
 }
 
 /// Reads the log at `file`, empty when it is missing. An event counts only

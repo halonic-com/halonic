@@ -156,6 +156,7 @@ verifies("fs-tauri.run-store", () => {
         invalid_deployment: "internal",
         invalid_run_id: "internal",
         invalid_lines: "internal",
+        other_runs_log: "invalid_input",
         io: "unavailable",
       };
       for (const [refusal, kind] of Object.entries(expected)) {

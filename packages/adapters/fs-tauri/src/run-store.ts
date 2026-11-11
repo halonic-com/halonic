@@ -154,6 +154,8 @@ const errorKinds: Readonly<Record<Exclude<RunRefusalKind, "broken_log">, ErrorKi
   invalid_deployment: "internal",
   invalid_run_id: "internal",
   invalid_lines: "internal",
+  // A run id this folder can't keep apart from another run's: trying again can't help.
+  other_runs_log: "invalid_input",
   io: "unavailable",
 };
 

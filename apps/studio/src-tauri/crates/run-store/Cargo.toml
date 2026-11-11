@@ -9,6 +9,8 @@ publish.workspace = true
 
 [dependencies]
 halonic-run-lock = { path = "../run-lock" }
+# Reads the run id of a log's first line, to tell another run's log.
+serde_json = { version = "1", default-features = false, features = ["std"] }
 
 [lints]
 workspace = true
