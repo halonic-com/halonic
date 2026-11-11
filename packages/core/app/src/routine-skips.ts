@@ -15,10 +15,11 @@ import { deleteValue } from "./routine-last-runs.ts";
 export type SkipReason = CatchUpReason | "busy" | "changed" | "target-unavailable";
 
 /**
- * Why a routine's target can't be started (flow-routines 3.9): it has
- * never been in a version (`never-live`, "Briefing isn't live yet"), or it
- * is live but its saved file is gone, as in the trash (`in-trash`,
- * "Briefing is in the trash").
+ * Why a routine's target can't be started (flow-routines 3.9): it isn't in
+ * the live version (`never-live`, "Briefing isn't live yet"), or it is live
+ * but its saved file is gone, as in the trash (`in-trash`, "Briefing is in
+ * the trash"). A target that was live once but left the live version, say
+ * moved to the trash before a new version, reads as `never-live` too.
  */
 export type TargetUnavailableWhy = "never-live" | "in-trash";
 

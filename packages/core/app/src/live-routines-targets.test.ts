@@ -1,4 +1,4 @@
-import type { DueRun } from "@halonicjs/routines";
+import type { DueRun, PlacedRoutine } from "@halonicjs/routines";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { LiveRoutines } from "./live-routines.ts";
@@ -30,19 +30,34 @@ function acme(saved: Record<string, string>) {
   return { versions, store, routines: new LiveRoutines({ vcs: versions, saved: store }) };
 }
 
+/** The routine's 08:00 run, as the scheduler hands it to the check. */
+function dueAt8(placed: PlacedRoutine): DueRun {
+  return {
+    key: `news/${placed.routine.id}`,
+    placed,
+    at: new Date("2026-11-03T08:00:00Z"),
+    trigger: "schedule",
+  };
+}
+
 /** Why each listed routine's 08:00 run can't start, by routine id. */
 async function whys(routines: LiveRoutines): Promise<Record<string, string | null>> {
   const answers: Record<string, string | null> = {};
   for (const placed of await routines.list()) {
-    const run: DueRun = {
-      key: `news/${placed.routine.id}`,
-      placed,
-      at: new Date("2026-11-03T08:00:00Z"),
-      trigger: "schedule",
-    };
-    answers[placed.routine.id] = await routines.targetUnavailable(run);
+    answers[placed.routine.id] = await routines.targetUnavailable(dueAt8(placed));
   }
   return answers;
+}
+
+/** Routine `morning` as placed in the news hub, read from a version that holds it. */
+async function placedMorning(): Promise<PlacedRoutine> {
+  const { versions, routines } = acme({ [morningPath]: morning });
+  versions.commit({ [morningPath]: morning });
+  const [placed] = await routines.list();
+  if (placed === undefined) {
+    throw new Error("Routine morning isn't listed.");
+  }
+  return placed;
 }
 
 verifies("app.scheduler-skip-target-unavailable", () => {
@@ -74,6 +89,21 @@ verifies("app.scheduler-skip-target-unavailable", () => {
       versions.commit(files);
 
       expect(await whys(routines)).toEqual({ morning: "in-trash" });
+    });
+
+    it("says never-live while the workspace has no version yet", async () => {
+      const { routines } = acme({ [morningPath]: morning, [digestPath]: digest });
+
+      expect(await routines.targetUnavailable(dueAt8(await placedMorning()))).toBe("never-live");
+    });
+
+    it("lets a routine whose target has no hub through, as its start fails on its own", async () => {
+      const files = { [morningPath]: morning, [digestPath]: digest };
+      const { versions, routines } = acme(files);
+      versions.commit(files);
+      const hubless = { ...(await placedMorning()), hub: null };
+
+      expect(await routines.targetUnavailable(dueAt8(hubless))).toBeNull();
     });
 
     it("lets every target start with history off, as the saved files are what runs", async () => {
