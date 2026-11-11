@@ -1066,7 +1066,7 @@ jobs:
     # tests start) gets too few variables and hangs until it is stopped.
     #
     # The Windows leg also runs the tests of the other packages that touch
-    # paths, files and processes (HAL-4348, step 1 of HAL-4343). Pull requests
+    # paths, files and processes (HAL-4348, step 1 of HAL-4343; agent-host added in HAL-4672). Pull requests
     # and merge groups run the listed packages that changed or depend on a
     # changed one; a push to main runs the whole list plus the parity and
     # integration kits. A test that fails there today skips itself with
@@ -1132,7 +1132,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
-          list="@halonicjs/adapter-fs-node @halonicjs/adapter-harness-kit @halonicjs/adapter-harness-claude-code @halonicjs/adapter-harness-codex @halonicjs/adapter-mcp @halonicjs/workspace @halonicjs/app halonic"
+          list="@halonicjs/adapter-fs-node @halonicjs/adapter-harness-kit @halonicjs/adapter-harness-claude-code @halonicjs/adapter-harness-codex @halonicjs/adapter-mcp @halonicjs/workspace @halonicjs/app @halonicjs/app-agent-host halonic"
           if [ "$EVENT" = "push" ]; then
             list="$list @halonicjs/testing-integration @halonicjs/testing-parity"
             picked="$list"
