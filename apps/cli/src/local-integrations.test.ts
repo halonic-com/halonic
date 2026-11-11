@@ -219,7 +219,7 @@ verifies("cli.local-integrations", () => {
       expect(trusted.status).toBe("trusted");
       await putFiles({ "integrations/station/src/index.js": "export default { changed: 2 };\n" });
       const error = await refusal(
-        starts.start({ trust: trusted, folder: "integrations/station" }, startIn),
+        starts.start({ trust: trusted, folder: "integrations/station", settings: {} }, startIn),
       );
       expect(error.reason).toBe("code-changed");
       expect(started).toEqual([]);
@@ -245,7 +245,7 @@ verifies("cli.local-integrations", () => {
       const check = await (await acmeTrust()).check();
       expect(check.status).toBe("new");
       const error = await refusal(
-        starts.start({ trust: check, folder: "integrations/station" }, startIn),
+        starts.start({ trust: check, folder: "integrations/station", settings: {} }, startIn),
       );
       expect(error.reason).toBe("workspace-not-trusted");
       expect(started).toEqual([]);
