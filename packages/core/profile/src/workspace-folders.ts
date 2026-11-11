@@ -77,6 +77,12 @@ export interface WorkspaceFolders {
    * @throws RangeError when either id can't name a folder safely
    */
   harnessSettingsFolder(agentId: string, harnessId: string): string;
+  /**
+   * The folder for the copies of the workspace that a live run's programs
+   * start in, one per version (HAL-4975). Only the engine holding the
+   * workspace's engine lock uses it, and it removes what it finds there.
+   */
+  programCopiesFolder(): string;
 }
 
 /**
@@ -134,6 +140,9 @@ export async function workspaceFolders(
       checkFolderId("an agent id", agentId);
       checkFolderId("a harness id", harnessId);
       return joinPath(profile.platform, folder, harnessSettingsFolderName, agentId, harnessId);
+    },
+    programCopiesFolder(): string {
+      return joinPath(profile.platform, folder, "program-copies");
     },
   };
 }

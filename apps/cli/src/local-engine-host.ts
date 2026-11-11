@@ -7,7 +7,9 @@
 //
 // In 0.1 it has no Halonic tools and no harnesses (a run whose agent names a
 // harness fails at that step with the engine's own error), and it has the
-// connectors it is given, none by default.
+// connectors it is given, none by default. The folder a run's programs start
+// in is ready all the same: `programFolders`, a copy at the run's commit for a
+// live run (HAL-4975).
 
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -21,6 +23,7 @@ import {
   LockHeldError,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
+import type { GitRunnerOptions } from "@halonicjs/adapter-git";
 import {
   type NodeScheduler,
   nodeSchedulerFactory,
@@ -54,6 +57,7 @@ import {
   type LoadedWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import { workspaceModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
@@ -99,6 +103,8 @@ export interface LocalEngineInput {
   readonly connectors?: readonly ConnectorClient[];
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
+  /** Which git makes the copies a live run's programs start in; the one on the `PATH` by default. */
+  readonly git?: GitRunnerOptions;
   /** The time; the computer's clock by default. */
   readonly clock?: Clock;
   /** Gives each new run its id; random ids by default. */
@@ -134,9 +140,12 @@ export interface LocalEngine {
   readonly executor: LocalExecutor;
   /** The workspace's run store, the one `halonic runs` reads. */
   readonly runs: RunStore;
+  /** Where the programs of a run start: a copy at the run's commit for a live run. */
+  readonly programFolders: ProgramFolders;
   /**
    * Closes the executor, then the scheduler, which waits for the step in
-   * progress, and releases the workspace's engine lock. Safe to call twice. A run that is still going stays in the run store; the next
+   * progress, removes the copies its runs' programs started in, and
+   * releases the workspace's engine lock. Safe to call twice. A run that is still going stays in the run store; the next
    * engine on this workspace moves it on from its timers, or ends it as
    * `interrupted` when it was a harness run.
    */
@@ -181,17 +190,30 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     },
     onRenewError: (error) => input.reportError(error, "engine-lock"),
   });
+  let programFolders: ProgramFolders | undefined;
   try {
-    engine = engineOn(input, folders, lock);
+    // Under the lock: it removes the copies a stopped engine left behind.
+    programFolders = await openProgramFolders({
+      workspaceRoot: input.workspaceRoot,
+      copiesFolder: folders.programCopiesFolder(),
+      ...(input.git === undefined ? {} : { git: input.git }),
+    });
+    engine = engineOn(input, folders, lock, programFolders);
     return engine;
   } catch (error) {
+    await programFolders?.close();
     await lock.release();
     throw error;
   }
 }
 
 /** The engine on the workspace's folders in the profile, which holds `lock` until it is closed. */
-function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: HeldLock): LocalEngine {
+function engineOn(
+  input: LocalEngineInput,
+  folders: WorkspaceFolders,
+  lock: HeldLock,
+  programFolders: ProgramFolders,
+): LocalEngine {
   const clock = input.clock ?? systemClock;
   const runs = new FolderRunStore(folders.runsFolder());
 
@@ -262,14 +284,20 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
   return {
     executor: opened,
     runs,
+    programFolders,
     close: () => {
       closing ??= (async () => {
         try {
           // First, so no routine run starts on an executor that is closing.
           await ticks?.dispose();
           // Before the scheduler: its close waits for the deliveries in progress.
-          await opened.close();
-          await scheduler.close();
+          try {
+            await opened.close();
+            await scheduler.close();
+          } finally {
+            // After the scheduler, so no step still has a program running in a copy.
+            await programFolders.close();
+          }
         } finally {
           // Last, so no other engine starts while this one still delivers a timer.
           await lock.release();

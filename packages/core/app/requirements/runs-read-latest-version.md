@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: save model 2.2–2.3 (HAL-1102, HAL-3236 task 2, HAL-3246); plan 9.1, whole-item reading (HAL-3227); stub `engine.runs-read-latest-version` in req-core-engine; the known limit for programs from Julian on HAL-4966
+- Source: save model 2.2–2.3 (HAL-1102, HAL-3236 task 2, HAL-3246); plan 9.1, whole-item reading (HAL-3227); stub `engine.runs-read-latest-version` in req-core-engine; the known limit for programs from Julian on HAL-4966, lifted by HAL-4975
 
 When a run is started by Run, a routine, a trigger or a call from another agent or workflow, the app shall read the whole workspace at the live version's commit, never the saved files; when it is started by Try it or Test, it shall read the saved files. With history off, every run shall read the saved files. When the workspace has history but no version yet, a run that reads the live version shall have nothing to start.
 
-When a run that reads the live version starts a program from the workspace folder, such as an unpinned stdio connector's script or a harness agent's working folder, that program shall read the saved files on disk, including changes that aren't live yet. This is a known limit for v0.1 (Julian's security review, HAL-4966): trust and the sandbox are checked on the live version, so a saved change can't add a program or widen what it may do, but it can change what an already trusted program reads. Those saved changes aren't only the person's own: a builder chat or an agent can write a script too, and that script can run in a live run, for example a scheduled routine, before anyone has made it live. The follow-up that runs these programs from a copy at the live commit is HAL-4975.
+When a run that reads the live version starts a program from the workspace, such as an unpinned stdio connector's script or a harness agent's working folder, that program shall start in a copy of the workspace at the run's commit, so a saved change that isn't live, such as a script a builder chat or an agent wrote, never runs before someone has made it live. The copy shall hold only what git holds at that commit: no private entries such as `.env` files, and nothing installed such as `node_modules` or `.venv`. When the copy can't be made, the program shall not start, and the saved folder shall never be used in its place. The copy shall be removed when the engine closes, and a copy left behind by an engine that was stopped or lost power shall be removed when the next engine opens on the workspace. A run that reads the saved files starts its programs in the workspace folder.
 
 ## Examples
 
@@ -16,5 +16,6 @@ When a run that reads the live version starts a program from the workspace folde
 - Given agent "triage" with saved changes that aren't live, when a routine's run reaches it, then it reads the live "triage".
 - Given a workspace with history off, then every run reads the saved files.
 - Given a connector whose script is live as "the live script" and saved as "the saved script",
-  when a run started by Run calls the connector, then the program it starts answers "the saved script".
+  when a run started by Run calls the connector, then the program it starts answers "the live script".
+- Given a run that reads the live version and a commit that can't be copied, when it starts a program, then the program doesn't start and the saved folder isn't used.
 - Given a repository without a commit, when Run is chosen, then there is nothing live to start; when Try it is chosen, then it reads the saved files.

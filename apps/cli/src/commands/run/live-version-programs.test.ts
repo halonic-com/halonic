@@ -7,12 +7,13 @@ import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { connectorConfigOf } from "@halonicjs/app";
+import { connectorConfigOf, liveVersionOf } from "@halonicjs/app";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliConnectorFactories } from "../../connector-machine.ts";
+import { openProgramFolders } from "../../program-folders.ts";
 import { loadRunWorkspace, openGitHistory } from "../../run-workspace.ts";
 
 /** The Acme example, which the notes connector is added to. */
@@ -91,7 +92,10 @@ async function makeLive(): Promise<void> {
   await vcs.commit("First version");
 }
 
-/** Loads the workspace as `halonic run` does, then calls `which` on its notes connector. */
+/**
+ * Loads the workspace as `halonic run` does, then calls `which` on its notes
+ * connector, started in the folder the engine gives a live run's programs.
+ */
 async function askNotesFromALiveRun(): Promise<string> {
   const history = async (root: string) => openGitHistory(root, { git: await testGit() });
   const dir = { root: acme, shown: ".", name: "acme", store: new FolderDefinitionStore(acme, ".") };
@@ -100,34 +104,50 @@ async function askNotesFromALiveRun(): Promise<string> {
   const notes = filesOf(loaded.workspace, "connector").find((file) => file.value.id === "notes");
   if (notes === undefined) throw new Error("The live version has no notes connector.");
 
-  const factories = cliConnectorFactories(nodeProgramStarter, process.env);
-  const client = factories.create(connectorConfigOf(notes.value), {
-    secrets: new MemorySecrets({}),
-    tokens: new MemoryTokenStore(),
-    http: { fetch: async () => new Response("unused") },
+  const live = await liveVersionOf(vcs);
+  if (live.kind !== "commit") throw new Error("Nothing is live.");
+  const programs = await openProgramFolders({
     workspaceRoot: acme,
-    trust: contractGrant,
+    copiesFolder: join(folder, "program-copies"),
+    git: { git: await testGit() },
   });
   try {
-    return await client.callTool("which", {});
+    const version = {
+      reads: "live-version",
+      commit: live.commit.hash,
+      versionDate: live.commit.date,
+    } as const;
+    const programFolder = await programs.folderFor(version);
+    const factories = cliConnectorFactories(nodeProgramStarter, process.env);
+    const client = factories.create(connectorConfigOf(notes.value), {
+      secrets: new MemorySecrets({}),
+      tokens: new MemoryTokenStore(),
+      http: { fetch: async () => new Response("unused") },
+      workspaceRoot: programFolder.path,
+      trust: contractGrant,
+    });
+    try {
+      return await client.callTool("which", {});
+    } finally {
+      await client.close();
+      await programFolder.release();
+    }
   } finally {
-    await client.close();
+    await programs.close();
   }
 }
 
 verifies("app.runs-read-latest-version", () => {
-  // Today's known limit (HAL-4966): the program reads the saved folder, not
-  // the live version. This flips when programs run from a copy at the live
-  // commit (HAL-4975).
+  // Was the known limit of HAL-4966: the program read the saved folder.
   it(
-    "starts a connector's saved script in a live run, even when that change isn't live yet",
+    "starts a connector's live script in a live run, not a saved change that isn't live yet",
     async () => {
       await save(connectorFile, notesConnector);
       await save(scriptFile, notesServer("the live script"));
       await makeLive();
       await save(scriptFile, notesServer("the saved script"));
 
-      expect(await askNotesFromALiveRun()).toBe("the saved script");
+      expect(await askNotesFromALiveRun()).toBe("the live script");
     },
     gitTimeout,
   );

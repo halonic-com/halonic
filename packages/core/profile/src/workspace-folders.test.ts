@@ -45,6 +45,13 @@ verifies("profile.workspace-folders", () => {
     expect(windows.reviewFolder()).toBe(`${windows.folder}\\review`);
   });
 
+  it("keeps the copies a live run's programs start in beside its records", async () => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(folders.programCopiesFolder()).toBe(`${folders.folder}/program-copies`);
+    const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
+    expect(windows.programCopiesFolder()).toBe(`${windows.folder}\\program-copies`);
+  });
+
   it("keys the folder by the SHA-256 of the real path", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     const hash = await digest.sha256(encodeUtf8("/srv/acme/workspace"));

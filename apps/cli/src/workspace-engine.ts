@@ -172,6 +172,7 @@ export async function openWorkspaceEngine(
   return {
     executor: engine.executor,
     runs: engine.runs,
+    programFolders: engine.programFolders,
     close: () => engine.close(),
     signal: AbortSignal.any([context.signal, stuck.signal]),
     stuck: stuck.signal,
