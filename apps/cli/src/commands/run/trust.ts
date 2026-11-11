@@ -45,7 +45,10 @@ export async function checkRunTrust(
   harness?: string,
 ): Promise<void> {
   const integrations = await workspaceIntegrations(dir.root, dir.shown);
-  if (!startsAProgram(harness) && reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations))) {
+  if (
+    !startsAProgram(harness) &&
+    reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations))
+  ) {
     return;
   }
   await trustedGrant(dir, machine, typedDir, nothingDone, workspace);

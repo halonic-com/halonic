@@ -23,8 +23,8 @@ const sheetName = "integration.yaml";
  * in it, a sheet that doesn't parse or a file that can't be read, is left
  * out, as `loadWorkspace` leaves out a file with an error. So is a folder
  * whose id an earlier folder already has, and every folder when
- * `integrations/` itself can't be listed. A left-out integration is in no trust, so its runner
- * never starts (`not-in-trust`).
+ * `integrations/` itself can't be listed. A left-out integration is in no
+ * trust, so its runner never starts (`not-in-trust`).
  *
  * A workspace doesn't hold settings for its integrations yet, so each gets
  * none, and a `{ fromSetting }` host shows as "not set" in the trust check.
