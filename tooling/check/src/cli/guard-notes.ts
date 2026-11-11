@@ -1,4 +1,4 @@
-import { changedFiles, gitObjects } from "../guard/git-objects.ts";
+import { changedFiles, gitObjects, mergeBaseOf } from "../guard/git-objects.ts";
 import { checkNotes } from "../guard/note-check.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
@@ -29,6 +29,7 @@ async function main(argv: readonly string[]): Promise<number> {
     pull: { repo, number, head, base },
     branch,
     changed: changedFiles(root, base, head),
+    mergeBase: mergeBaseOf(root, base, head),
     git: gitObjects(root),
   });
   const annotate = process.env["GITHUB_ACTIONS"] === "true";

@@ -1,7 +1,7 @@
 import { Report } from "../lib/problems.ts";
 import { type PullRequest, signedApprovals } from "./approvals.ts";
 import { decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
-import { guardedPaths } from "./guarded-paths.ts";
+import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
 /**
@@ -24,6 +24,8 @@ export interface NoteCheckRun {
   readonly branch: string;
   /** The files the pull request changes, adds or deletes, from its merge base. */
   readonly changed: readonly string[];
+  /** The commit `changed` is counted from, where `policy.json` is compared. */
+  readonly mergeBase: string;
   readonly git: GitObjects;
 }
 
@@ -31,23 +33,26 @@ export interface NoteCheckRun {
  * The note check that `guard-notes.yml` runs from the base branch: a
  * pull request that touches an own path needs a note listing it (`user-visible`,
  * or `internal` for the paths in `internalOwnPaths`), and any note it adds
- * must carry a valid signature. The test-result comparison stays in the
- * requirement guard.
+ * must carry a valid signature. A change to `policy.json` in `extraExports`
+ * only needs a note that lists `policy.json`, of either kind. The
+ * test-result comparison stays in the requirement guard.
  */
 export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   const report = new Report("guard-notes");
   const file = decisionNoteFile(run.branch);
-  const touched = ownPaths.filter((path) =>
-    run.changed.some((changed) =>
-      path.endsWith("/") ? changed.startsWith(path) : changed === path,
-    ),
-  );
+  const { touched, exports } = touchedPaths(run);
   const text = run.git.readFile(run.pull.head, file);
   if (text === undefined) {
     for (const path of touched) {
       report.error(
         path,
         `Changes the guard's own path ${path}. That needs a signed decision note: add ${file} and list "${path}" under Covers.`,
+      );
+    }
+    for (const path of exports) {
+      report.error(
+        path,
+        `Changes extraExports in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
       );
     }
     return report;
@@ -66,10 +71,17 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
       `Changes the guard's own paths (${needUser.join(", ")}), so the note's Kind must be user-visible.`,
     );
   }
-  for (const path of touched.filter((own) => !parsed.note.covers.includes(own))) {
+  const unlisted = (path: string): boolean => !parsed.note.covers.includes(path);
+  for (const path of touched.filter(unlisted)) {
     report.error(
       file,
       `Changes the guard's own path ${path}, but the note doesn't list "${path}" under Covers.`,
+    );
+  }
+  for (const path of exports.filter(unlisted)) {
+    report.error(
+      file,
+      `Changes extraExports in ${path}, but the note doesn't list "${path}" under Covers.`,
     );
   }
   const verdict = await signedApprovals(run.pull, run.git).check({ note: parsed.note });
@@ -77,4 +89,23 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
   }
   return report;
+}
+
+/**
+ * The own paths a pull request touches, which need a `user-visible` note,
+ * and `policy.json` when it changes in `extraExports` only, which needs a
+ * note of either kind.
+ */
+function touchedPaths(run: NoteCheckRun): { touched: string[]; exports: string[] } {
+  const exportsOnly =
+    run.changed.includes(policyFile) &&
+    onlyExtraExportsChanged(
+      run.git.readFile(run.mergeBase, policyFile),
+      run.git.readFile(run.pull.head, policyFile),
+    );
+  const changed = exportsOnly ? run.changed.filter((path) => path !== policyFile) : run.changed;
+  const touched = ownPaths.filter((path) =>
+    changed.some((each) => (path.endsWith("/") ? each.startsWith(path) : each === path)),
+  );
+  return { touched, exports: exportsOnly ? [policyFile] : [] };
 }

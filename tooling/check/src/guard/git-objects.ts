@@ -51,17 +51,21 @@ export function gitObjects(root: string): GitObjects {
   };
 }
 
+/** The commit `head` branched from on `base`'s history. */
+export function mergeBaseOf(root: string, base: string, head: string): string {
+  if (!commitPattern.test(base) || !commitPattern.test(head)) {
+    throw new Error(`Not full commit IDs: ${base} ${head}`);
+  }
+  return gitIn(root)("merge-base", base, head).trim();
+}
+
 /**
  * The files `head` changes, adds or deletes since its merge base with
  * `base`, by name only: no diff driver or textconv runs.
  */
 export function changedFiles(root: string, base: string, head: string): readonly string[] {
-  if (!commitPattern.test(base) || !commitPattern.test(head)) {
-    throw new Error(`Not full commit IDs: ${base} ${head}`);
-  }
-  const git = gitIn(root);
-  const mergeBase = git("merge-base", base, head).trim();
-  return git(
+  const mergeBase = mergeBaseOf(root, base, head);
+  return gitIn(root)(
     "diff",
     "--name-only",
     "--no-renames",

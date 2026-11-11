@@ -205,6 +205,7 @@ covers it:
 | a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed | the golden/test file |
 | a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings | the changed file |
 | a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
+| `tooling/check/policy.json` changed in `extraExports` only (a note of either kind is enough, so the CTO can sign it as `internal`) | `tooling/check/policy.json` |
 
 A package with tests but no readable result file on either side always
 fails: no note can stand in for a comparison the guard couldn't make.
@@ -323,7 +324,13 @@ that path as written here and its signature verifies. The note must be
 `user-visible`, except that until a user key is pinned an `internal` note
 signed by the CTO key covers `.github/`, `tooling/check/` and
 `.gitattributes`. A change to `approvers.json` (a new signer) always needs
-a `user-visible` note, so an agent key alone can't add a signer. It also
+a `user-visible` note, so an agent key alone can't add a signer. One
+more exception: a change to `tooling/check/policy.json` that touches
+nothing but `extraExports` (a package's deliberate extra entry point) needs
+a note that lists `tooling/check/policy.json`, and an `internal` note the
+CTO signs is enough, also once a user key is pinned. Any other change to
+`policy.json`, even in the same pull request, counts as a change under
+`tooling/check/`. The check also
 checks any note's signature again in the merge queue, against the queue
 base's `approvers.json`. The merge queue is different: there GitHub runs
 the file from the merge group's commit, which holds the pull request's own

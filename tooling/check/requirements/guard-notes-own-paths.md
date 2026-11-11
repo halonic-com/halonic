@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1337
 
-If a pull request changes, adds or deletes a file under one of the guard's own paths, that is a path of `check.guard-own-paths` or `tooling/check/approvers.json`, then the note check shall fail it unless its decision note is `user-visible`, lists that path as written here under Covers, and its signature verifies.
+If a pull request changes, adds or deletes a file under one of the guard's own paths, that is a path of `check.guard-own-paths` or `tooling/check/approvers.json`, then the note check shall fail it unless its decision note is `user-visible`, lists that path as written here under Covers, and its signature verifies. A change to `tooling/check/policy.json` in its `extraExports` entry only follows `check.guard-extra-exports` instead.
 
 ## Examples
 
