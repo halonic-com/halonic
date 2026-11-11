@@ -50,8 +50,7 @@ script changes. Among its results, it checks that a session on project B can nei
 delete from a project A whose grant an earlier session kept (`kept-roots-writable`). It writes
 `windows-isolation-results.json`; it doesn't gate a merge.
 
-The same workflow runs `scripts/windows-wsl-probe.mjs` on a Windows Server runner and on a desktop
-Windows 11 runner. It checks whether srt's sandbox account can register and start a WSL distro of
+The same workflow runs `scripts/windows-wsl-probe.mjs`. It checks whether srt's sandbox account can register and start a WSL distro of
 its own (and, if it can, whether that distro reads a denied file or reaches a blocked port), and
 whether WSL 2 starts on the runner at all. It writes `windows-wsl-results.json`.
 

@@ -31,18 +31,35 @@ if (haveInputs) copyFileSync(rootfsSource, rootfs);
 // Both WSL versions: WSL 1 needs no virtualisation, WSL 2 is what the sandbox
 // account's own settings default to. Each runs outside srt first as the
 // control: an import that fails for the runner's user too proves nothing.
-// The distro's folder is in the work folder, which the session may write.
+// The distro's disk goes into the work folder (which the session may write),
+// then the session's own temp and local app data folders, expanded by cmd
+// inside the session: the WSL service may treat them differently.
+const locations = (name) => [join(work, name), `%TEMP%\\${name}`, `%LOCALAPPDATA%\\${name}`];
+
+async function importInside(name, version) {
+  const tries = [];
+  for (const location of locations(name)) {
+    const imported = await inSrt(
+      `cmd /c "${wsl} --import ${name} ${location} ${rootfs} --version ${version}"`,
+    );
+    tries.push(`${location}: ${say(imported)}`);
+    if (imported.code === 0 || kit.srtFailed(imported)) return { imported, tries };
+  }
+  return { imported: { code: 1, out: "", err: "" }, tries };
+}
+
 async function sandboxDistro(version) {
   const group = `D1 sandbox-account distro (WSL ${version})`;
-  const importCommand = (name) =>
-    `${wsl} --import ${name} ${join(work, name)} ${rootfs} --version ${version}`;
-  const control = await outsideSrt(importCommand(`halonic-control-v${version}`));
-  if (control.code === 0) await outsideSrt(`${wsl} --unregister halonic-control-v${version}`);
+  const controlName = `halonic-control-v${version}`;
+  const control = await outsideSrt(
+    `${wsl} --import ${controlName} ${join(work, controlName)} ${rootfs} --version ${version}`,
+  );
+  if (control.code === 0) await outsideSrt(`${wsl} --unregister ${controlName}`);
   const name = `halonic-sandbox-v${version}`;
-  const imported = await inSrt(importCommand(name));
+  const { imported, tries } = await importInside(name, version);
   const started = await inSrt(`${wsl} -d ${name} -e /bin/true`);
   const registered = imported.code === 0 && started.code === 0;
-  const detail = `control ${say(control)} | import ${say(imported)} | start ${say(started)}`;
+  const detail = `control ${say(control)} | import ${tries.join(" / ")} | start ${say(started)}`;
   const question = "the sandbox account registers and starts a distro of its own";
   if (registered) {
     record(group, question, "FAIL", detail);
