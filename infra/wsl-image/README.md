@@ -11,7 +11,8 @@ release and needs the board's yes.
   notices, and removes every setuid and setgid bit (kept off on upgrades with
   `dpkg-statoverride`): root in this distro can mount the Windows drive.
 - `check.sh <image>`: checks config, packages, licence notice, that no setuid or
-  setgid file and no file capability is left, and that the tools start.
+  setgid file and no file capability is left, that the tools start, and the
+  runtime updater (below).
 - `Dockerfile`: the build container, `debian:trixie` pinned by digest. Dependabot
   proposes new digests.
 - `files/`: `/etc/wsl.conf` (interop off, automount and `/etc/fstab` mounts off, user `halonic`, systemd off),
@@ -24,7 +25,7 @@ runtime in `/opt/halonic/<version>` and points `/opt/halonic/current` at it. Stu
 runs it as root from Windows, with `wsl.exe` by its full path and no shell:
 
 ```
-%SystemRoot%\System32\wsl.exe -d halonic -u root --exec /usr/local/sbin/halonic-runtime install <version> <sha256> < runtime.tar.gz
+%SystemRoot%\System32\wsl.exe -d halonic -u root --cd / --exec /usr/local/sbin/halonic-runtime install <version> <sha256> < runtime.tar.gz
 ```
 
 | Command | What it does |
@@ -34,9 +35,11 @@ runs it as root from Windows, with `wsl.exe` by its full path and no shell:
 | `security-update` | `apt-get upgrade` from Debian's security archive only, at most once a day, and never while a sandbox session (`bwrap`) runs; then drops the setuid and setgid bit from any file the upgrade brought, with a `dpkg-statoverride` that keeps it off |
 | `status` | prints `{"current":"<version>","previous":"<version>","securityUpdated":"<UTC time>"}`; any user may run it, but only root sees when security updates last ran. Any process named `bwrap` holds them off, so Studio can warn when that is long ago |
 
-Exit codes: 0 done, 2 wrong use (also: not root), 3 a sandbox session runs, 4 the
-SHA-256 differs, 5 the archive is refused (no `bin` folder, device, pipe or
-socket files, or a link that is absolute or leads out of the version folder), 6 nothing to roll back to.
+Exit codes: 0 done, 1 anything else (such as `/opt/halonic` missing or not root's),
+2 wrong use (also: not root, or the version is already current), 3 a sandbox session
+runs, 4 the SHA-256 differs, 5 the archive is refused (it can't be unpacked, has no
+`bin` folder, holds device, pipe or socket files, or a link that is absolute or leads
+out of the version folder), 6 nothing to roll back to.
 
 It runs as root, so it never runs or sources a file the `halonic` user can write
 (security review W2 on HAL-5407): it ships in the image, root-owned, and every

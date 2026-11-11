@@ -27,13 +27,13 @@ loop of one model turn, which the local chat turn runs.
 | `AgentMemory` | (internal) an agent's notes, by title, in the `RecordStore` collection `agent-memory/<agentId>` | `engine.agent-memory-records` |
 | `decide` | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take | `engine.decide-refusals` |
 | `DecideInput` | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`, `effect-failed`, `child`), each with its time | (types only) |
-| `Effect` | what `decide` asks `step` to do after appending: call a model or a tool, start a child run, tell the parent, set a timer | (types only) |
+| `Effect` | what `decide` asks `step` to do after appending: call a model or a tool, run or answer a harness, start or cancel a child run, tell the parent, set a timer | (types only) |
 | `final` state | completes the run with its context | `engine.final-state` |
 | `halonicSource` | the source id `"halonic"` that refusals name for Halonic's tools; `callerSource` (`"caller"`) is the same for the caller's | `engine.turn-refusals-as-data` |
 | `HalonicTool` | one of Halonic's own tools: its definition and how to run it | `engine.turn-runs-tool-calls` |
 | `InputRefused` | what `decide` throws for an input the run can't take; its `code` (a `RefusalCode`) says why, and nothing is recorded | `engine.decide-refusals` |
 | `InputRefused` | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused | `engine.decide-refusals`, `engine.decision-callid-must-match` |
-| `keepDefinitions` | keeps a run's definitions in the blob store (`definitionsOf` reads them back, and says why it can't); a missing blob fails the run | `engine.kept-definitions` |
+| `keepDefinitions` | keeps a run's definitions in the blob store (`definitionsOf` reads them back); a missing or unreadable blob fails the run, and the error says why | `engine.kept-definitions`, `engine.kept-definitions-why` |
 | `knowledgeTools` | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; offered to a run's agents and subagents and to a chat turn's agent | `engine.knowledge-tools` |
 | `localEngine` | builds the local executor and the workspace's routine scheduler on one scheduler, and closes them in order | `engine.local-engine-routines` |
 | `LocalExecutor` | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs | `engine.local-chat-turn`, `engine.local-chat-harness`, `engine.local-runs` |
@@ -112,7 +112,9 @@ the old `createdAt` is gone, because the record store's fold keeps only that tim
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, the call check and `passResultToModel`, in `src/agent/`.
-`offerListedTools` and `passResultToModel` pass values through unchanged for now. A run's model
+`offerListedTools` fences what a server wrote in its tools, and `passResultToModel` fences every
+result of a server's tool. Each model request that holds fenced text gets the fixed line of
+`withFencedTextsNotice`. A run's model
 call checks each call with `checkRunToolCall`; a chat turn with `checkChatToolCall`, which refuses
 a call that would need a person's OK, such as one to a connector tool that writes or sends, because
 nothing in a chat can wait for a person. When the host gives `chatConnectorToolsOf`, a chat turn reads
@@ -166,8 +168,8 @@ last `seq` as `expectedSeq`, with the state after them as the snapshot. A lost r
 so it reads the run again and decides afresh; an input is never written twice. It hands the effects
 back to the caller, which carries them out once the events are stored. The snapshot is a cache: it
 carries `snapshotVersion`, and one that doesn't fit the log is ignored. A run reads its definitions
-only from the blob its `definitionsVersion` names; when that blob is missing the run fails, and the
-engine never falls back to the workspace's files.
+only from the blob its `definitionsVersion` names; when that blob is missing or can't be read the run
+fails with an error that says why, and the engine never falls back to the workspace's files.
 
 The local executor drives `step`. `start` and `send` record the input and set a `Scheduler` timer
 for each effect, then return; the run goes on when the timer is due, so the scheduler's listener
@@ -177,7 +179,10 @@ run still waiting on a call when the engine stops is `running`, so the next star
 `interrupted`. An effect the executor can't carry out yet fails the run rather than leaving it going with no
 timer: a harness run when the executor has no `harnesses` (reason `harness-unavailable`), a tool call with reason `error`. A failed call becomes an `effect-failed` input, and the run fails with the
 reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
-model with Halonic's tools and the tools its file grants; the agent's own prompt and the run log
+model with Halonic's tools and the tools its file grants. The agent's `maxSteps` (6 without its
+file) is the round limit: a call that reaches it while the model still calls tools fails, so a `task`
+state fails the run and a `parallel` branch ends with that error (requirement
+`engine.run-step-limit`); the agent's own prompt and the run log
 of the call come with the agent loop. `subscribe` reads every event from the store, after each append the executor makes; it
 assumes one engine per run store, as `endInterruptedRuns` does.
 
@@ -231,6 +236,9 @@ and returns the parent once it has gone on. The telling is backed by a scheduler
 parent (`child:<childRunId>`), set first and cancelled once the parent has heard, so a telling a
 crash cut off is carried out after the restart. A child that can't start, that the executor fails,
 or that the next start ends as interrupted tells its parent too, so the parent fails with it.
+When a `foreach` item's child run waits, the run fails and the engine cancels that child and every
+other item's child run still going (`cancel-child`), so none is left waiting; a child whose parent
+has already ended doesn't start.
 
 A `wait` state's `run.waiting` carries `labels`, the first non-empty label of the transitions for each
 event it takes (`answerLabels` in `@halonicjs/workflow`), and leaves the field out when no transition has

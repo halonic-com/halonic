@@ -270,10 +270,11 @@ object <git object ID at the pull request's head, or missing> <path>
 
 with one `object` line per covered path, per covered requirement's file and
 per test file at the head that names a covered requirement ID as a quoted
-string (a file that only quotes it, say in a comment, counts too), sorted by path. So a signature can't be reused on another pull request (a
-fork's branch with the same name included), and editing the note, a
-covered file or a test that verifies a covered requirement after signing
-(or removing one) breaks it. Editing other files or rebasing
+string (a file that only quotes it, say in a comment, counts too), sorted by
+path. So a signature can't be reused on another pull request (a fork's
+branch with the same name included), and editing the note, a covered file
+or a test file that names a covered requirement ID after signing (or
+removing one) breaks it. Editing other files or rebasing
 doesn't. The note fails when it has no signature or more than one, when the
 signature isn't in the header (the `- ` lines above the first paragraph),
 when it has a carriage return (save it with LF line endings), and when the

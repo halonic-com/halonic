@@ -790,6 +790,7 @@ List draws them.
 | `onOpen` | Called with a row's `id` on Enter or a click |
 | `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click |
 | `selection` | `{ selected, onToggle, multiple, verb }`: the screen keeps the set, Space toggles a row |
+| `current` | The row whose item shows beside the list, as the Inbox's open item: the selected look and `aria-current`, but not selected, and it still opens |
 | `dense` | 32px rows, for menus and pickers |
 | `flush` | No outer border or radius, lines from 16px. On by default on a phone |
 | `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
@@ -852,7 +853,7 @@ rows hold a button.
 | Focus | An inset 2px `accent` ring, which the list's edge can't clip |
 | Unavailable | Title and icon `fg-disabled` (`GrayText` in high contrast), avatar at 45%, the reason in `fg-muted`. No hover, a `not-allowed` cursor. Still focusable, but doesn't open |
 | Error | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens |
-| Selected | `accent-soft` and a 2px `accent` bar at the start (8px from a bordered box's corners), and an outline in high contrast; `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
+| Selected | `accent-soft` and a 2px `accent` bar at the start (8px from a bordered box's corners), and an outline in high contrast; `aria-selected="true"`. A `current` row looks the same, with `aria-current="true"`. Not "where you are" in the sidebar: that's the shell's `halo-tint` |
 
 **On a phone** the list is `flush` and rows are at least 56px, padded 12px 16px; `dense` rows are
 48px, with a 20px icon. The More button is always there at 48px, and
@@ -1863,6 +1864,7 @@ its full width, and stays one or two lines on a phone.
 
 **How it copies.** `navigator.clipboard` first. Without a secure context (a phone on plain http)
 it falls back to selecting the text in a hidden text box and running the browser's copy command.
+`copyText(text)` copies the same way for a part outside the kit, and resolves `true` or `false`.
 
 **Never a secret.** A secret field holds its value as a `SecretText`, not a string. `text` takes
 only a `string`, so passing a secret is a type error, and the button throws if one gets through a
@@ -2100,7 +2102,8 @@ The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `InfoIcon`, `MaximiseIcon` (�
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
-names a `PlaceIcon` knows. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined on
+hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
 | Export | Value | What it is |

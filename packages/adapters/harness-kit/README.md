@@ -71,8 +71,11 @@ call it builds the sandbox profile from the trusted workspace, Halonic's data
 folder and the person's home folder (`HarnessProfilesOptions`), on real paths,
 with every link resolved. The working folder is the one the agent's file
 names, or `files/agents/<agent id>`, inside the run's proposal folder when it
-has one and inside the workspace otherwise; one that leaves that folder or is
-in `.git`, a definition folder or Halonic's data is refused. The definition
+has one and inside the workspace otherwise; one that is that folder itself,
+leaves it, or is in `.git`, a definition folder, a folder whose name starts
+with `.` or Halonic's data is refused. A missing working folder is made one
+part at a time, and each part's real place is checked before the next is
+made, so a link on the way makes nothing in `.git` or a definition folder. The definition
 files at the top are read-only. The profile denies the person's SSH keys,
 cloud sign-ins, browser data, password stores and own Claude Code and Codex
 settings, and all of Halonic's data folder except the run's own folders

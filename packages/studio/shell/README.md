@@ -659,6 +659,7 @@ The states every page shares, so no feature words them on its own:
   when the tab opens another item, the boundary starts fresh.
 - **Copy details.** `useCopyDetails()` copies `detailsOf(what, error)` through the frame's
   clipboard and says "Copied. Paste it into a bug report." or "Couldn't copy." in a toast (22 F13b).
+  Outside React, such as in a toast's action, `copyDetails(details, toasts)` does the same.
   **Report a problem ›** waits until the Studio has a place it opens.
 - **An item that's gone.** `TabPages` shows it for a tab whose `goneItem` answers; elsewhere,
   `<ItemGone kindName="run" place="Runs" onGoTo={…} />` says "This run
@@ -951,6 +952,13 @@ desktop's tabs, so a window that crosses the phone width comes back to where eac
 K's palette is the desktop's; a phone searches in its Search sheet. `shownPlaces` reads the places
 with their signals for the sidebar, the bottom navigation and the More page alike.
 
+While no workspace is open the window is `WelcomeWindow` (`shell.welcome-open`): the `Welcome`
+screen in the shell's frame, with no tabs, toolbar, sidebar or status bar, and the app's name alone
+as the title. `Welcome` shows "Halonic Studio" and **Open folder**, which reads "Opening…" while the
+folder opens. A folder that fails says "Can't open *folder*: *reason*" (`cantOpenProblem`, with the
+reasons in `cantOpenWords`), and **Copy details** when Halonic can't explain it
+(`shell.welcome-cant-open`).
+
 `StudioWorkspace` is the window's state for one workspace: its `tabs`, `recent` (Ctrl K's Recent),
 `saving` and `services`. Create one when the workspace opens and `dispose()` it when it closes.
 Give it the workspace's `name`, once the app knows it, for the window's title: the window keeps
@@ -965,7 +973,8 @@ const workspace = new StudioWorkspace({ toasts: shell.toasts, services: registry
 ```
 
 `mountStudioWindow` draws that window into an element of the page and returns `unmount()`
-(`shell.studio-mount`). The app's entry uses it, so React stays inside the Studio packages and
+(`shell.studio-mount`). The served Studio's entry uses it (the desktop app draws its window with
+the workspace feature's `mountWorkspaceWindow`), so React stays inside the Studio packages and
 `apps/studio` only starts the window. The window's CSS entry, `src/studio.css` (Tailwind, the kit's
 tokens and the `@source` over `packages/studio`), is the package's `style` export, so the page's CSS
 is one line, `@import "@halonicjs/studio-shell";`:
