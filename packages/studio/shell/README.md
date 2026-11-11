@@ -846,6 +846,26 @@ A view is a `ViewRef`: the name of a named export and a `load` that imports its 
 takes the export, and throws a `ShellError` listing what the module does export when the name isn't
 there (`shell.view-loading`).
 
+## The Studio window
+
+`StudioWindow` puts the desktop window together for one open workspace (`shell.studio-window`):
+`WindowTabStrip` in the title bar, the `Toolbar` with `ToolbarSaveNote`, the sidebar
+(`SidebarSearch`, `PlacesList` and `SidebarResizeEdge`, with `WorkspaceSwitcher` once the app passes
+a workspace menu), `TabPages` and `StatusBarItems`, and the Ctrl K palette, opened from the Search
+box, Mod K, **+** and Ctrl T. A tab on Home shows `HomePage`, a tab on a search the `SearchPage`,
+and a tab on a place a feature added that place's view, which gets `PlaceViewProps`: the context of
+the feature that added it. Items open once a feature adds an item kind (T6, T7). The phone's bars
+come in a later part, so on a phone it shows only the page.
+
+`StudioWorkspace` is the window's state for one workspace: its `tabs`, `recent` (Ctrl K's Recent),
+`saving` and `services`. Create one when the workspace opens and `dispose()` it when it closes.
+
+```tsx
+shell.services.instantiate(registry);
+const workspace = new StudioWorkspace({ toasts: shell.toasts, services: registry });
+<StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />;
+```
+
 ## Other exports
 
 The rest of `src/index.ts`, by area; the types are what the parts above take and return.

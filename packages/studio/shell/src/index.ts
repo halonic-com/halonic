@@ -322,4 +322,8 @@ export {
   type ToolbarSaveNoteProps,
 } from "./toolbar/toolbar-save-note.tsx";
 export { loadView, type ViewRef } from "./view.ts";
+export { type PlaceViewProps, StudioPage, type StudioPageProps } from "./window/studio-page.tsx";
+export { StudioSidebar, type StudioSidebarProps } from "./window/studio-sidebar.tsx";
+export { StudioWindow, type StudioWindowProps } from "./window/studio-window.tsx";
+export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-workspace.ts";
 export type { WorkspaceContext } from "./workspace-context.ts";
