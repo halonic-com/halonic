@@ -4,7 +4,6 @@
 - Task: HAL-6000, found on HAL-5994
 - Approval: Liam decided the 0.1.0 source install as CLI owner on [HAL-6000](/HAL/issues/HAL-6000); he approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lgsQvXz9CgQ8L5+3KanSgKM4rJyZ5aeiLfkpIckS0mAYjZxS3z9tdNWPL2Fih2ale61CMOIosKPGR1QFujUgDA==
 
 ## What changes
 
