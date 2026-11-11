@@ -92,7 +92,7 @@ export async function startHostServer(
     const refusal = refusalOf(request, port, token);
     const route = refusal === undefined ? findRoute(routes, request) : undefined;
     if (route === undefined) {
-      sendRefusal(response, refusal ?? "not_found");
+      sendRefusal(request, response, refusal ?? "not_found");
       return;
     }
     // Calling `handle` inside `then` turns a synchronous throw into a rejection,
@@ -124,21 +124,16 @@ function findRoute(routes: readonly HostRoute[], request: IncomingMessage): Host
   return routes.find((route) => route.method === request.method && route.path === path);
 }
 
-function sendRefusal(response: ServerResponse, refusal: Refusal): void {
+function sendRefusal(request: IncomingMessage, response: ServerResponse, refusal: Refusal): void {
   if (refusal === "unauthenticated") response.setHeader("WWW-Authenticate", "Bearer");
-  // The caller may still be sending: close the connection once the answer is out.
-  response.shouldKeepAlive = false;
-  sendError(response, refusalStatus[refusal], refusal, refusalMessage[refusal]);
+  // The caller may still be sending a body the host won't read.
+  sendErrorAndHangUp(request, response, refusalStatus[refusal], refusal, refusalMessage[refusal]);
 }
 
 /** Answers with `value` as JSON. */
 export function sendJson(response: ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
-  response.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": Buffer.byteLength(body),
-    "Cache-Control": "no-store",
-  });
+  response.writeHead(status, jsonHeaders(body));
   response.end(body);
 }
 
@@ -150,6 +145,67 @@ export function sendError(
   message: string,
 ): void {
   sendJson(response, status, { error: { kind, message } });
+}
+
+/**
+ * How long the host goes on reading a body it won't use before it hangs up.
+ * Closing a connection that still has unread data resets it, and on Windows
+ * the reset makes the caller drop the answer it hasn't read yet. So the host
+ * reads and throws away the rest of the body until it ends, until the caller
+ * sends nothing for `idleMs`, or for `atMostMs` in all, whichever is first.
+ */
+const unreadBodyLinger = { idleMs: 1_000, atMostMs: 10_000 };
+
+/**
+ * Answers with an error and closes the connection, for a request whose body
+ * the host won't read, or stopped reading. The whole answer goes out at once,
+ * with `Connection: close`; the connection closes only once the caller has
+ * stopped sending (see {@link unreadBodyLinger}), so every caller reads the
+ * answer instead of a reset.
+ */
+export function sendErrorAndHangUp(
+  request: IncomingMessage,
+  response: ServerResponse,
+  status: number,
+  kind: string,
+  message: string,
+): void {
+  const body = JSON.stringify({ error: { kind, message } });
+  response.shouldKeepAlive = false;
+  response.writeHead(status, jsonHeaders(body));
+  response.write(body);
+  discardRestOfBody(request).then(() => {
+    if (!response.destroyed) response.end();
+  });
+}
+
+/** Reads and throws away the rest of the request's body, within {@link unreadBodyLinger}. */
+function discardRestOfBody(request: IncomingMessage): Promise<void> {
+  return new Promise((resolve) => {
+    if (request.complete || request.destroyed) {
+      resolve();
+      return;
+    }
+    const idle = setTimeout(stop, unreadBodyLinger.idleMs);
+    const atMost = setTimeout(stop, unreadBodyLinger.atMostMs);
+    const onData = () => idle.refresh();
+    function stop(): void {
+      clearTimeout(idle);
+      clearTimeout(atMost);
+      request.off("data", onData).off("end", stop).off("close", stop);
+      resolve();
+    }
+    request.on("data", onData).once("end", stop).once("close", stop);
+    request.resume();
+  });
+}
+
+function jsonHeaders(body: string): Record<string, string | number> {
+  return {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Cache-Control": "no-store",
+  };
 }
 
 function listenOnLoopback(server: Server): Promise<number> {

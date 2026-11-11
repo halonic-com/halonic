@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { formatPath, parse, type Schema } from "@halonicjs/schema-kit";
-import { sendError } from "./host-server.ts";
+import { sendError, sendErrorAndHangUp } from "./host-server.ts";
 
 /**
  * The largest request body the host reads. A sandbox profile, the largest
@@ -37,7 +37,8 @@ export const bodyProblemStatus: Record<BodyProblem, number> = {
  * over {@link maxBodyBytes} before reading any of it, so a caller can't hold
  * the request open by promising a body it never sends. A body without a
  * length (chunked) is counted as it arrives, and reading stops as soon as it
- * passes the limit.
+ * passes the limit. The request stays open, so the answer can still reach the
+ * caller.
  *
  * @throws {BodyError} when the body is too large or not JSON
  */
@@ -47,7 +48,8 @@ export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   }
   const chunks: Buffer[] = [];
   let size = 0;
-  for await (const chunk of request as AsyncIterable<Buffer>) {
+  // Leaving a plain `for await` early would destroy the request and its connection.
+  for await (const chunk of request.iterator({ destroyOnReturn: false }) as AsyncIterable<Buffer>) {
     size += chunk.length;
     if (size > maxBodyBytes) throw new BodyError("body_too_large");
     chunks.push(chunk);
@@ -74,9 +76,14 @@ export async function readCheckedBody<T>(
     body = await readJsonBody(request);
   } catch (error) {
     if (!(error instanceof BodyError)) throw error;
-    // The caller may still be sending: close the connection once the answer is out.
-    response.shouldKeepAlive = false;
-    sendError(response, bodyProblemStatus[error.problem], error.problem, error.message);
+    // The caller may still be sending the rest of a body that is too large.
+    sendErrorAndHangUp(
+      request,
+      response,
+      bodyProblemStatus[error.problem],
+      error.problem,
+      error.message,
+    );
     return undefined;
   }
   const parsed = parse(schema, body);
