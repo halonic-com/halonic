@@ -60,6 +60,11 @@ export interface LocalSubagentContext {
  * the engine must make, stops the subagent's turn, and the turn that
  * delegated to it stops at the `delegate_*` call (HAL-3361).
  *
+ * A subagent that uses all its `maxSteps` while still calling tools hands
+ * back the text it has, unlike a run's own call, which fails then
+ * (`engine.run-step-limit`): the agent that delegated reads the result and
+ * judges it.
+ *
  * Given `task.resumeFrom`, its turn goes on from where it stopped.
  *
  * @returns the subagent's answer, or where its turn stopped

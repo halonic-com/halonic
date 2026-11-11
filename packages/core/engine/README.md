@@ -32,7 +32,7 @@ loop of one model turn, which the local chat turn runs.
 | `HalonicTool` | one of Halonic's own tools: its definition and how to run it | `engine.turn-runs-tool-calls` |
 | `InputRefused` | what `decide` throws for an input the run can't take; its `code` (a `RefusalCode`) says why, and nothing is recorded | `engine.decide-refusals` |
 | `InputRefused` | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused | `engine.decide-refusals`, `engine.decision-callid-must-match` |
-| `keepDefinitions` | keeps a run's definitions in the blob store (`readDefinitions` reads them back); a missing blob fails the run | `engine.kept-definitions` |
+| `keepDefinitions` | keeps a run's definitions in the blob store (`definitionsOf` reads them back, and says why it can't); a missing blob fails the run | `engine.kept-definitions` |
 | `knowledgeTools` | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; offered to a run's agents and subagents and to a chat turn's agent | `engine.knowledge-tools` |
 | `localEngine` | builds the local executor and the workspace's routine scheduler on one scheduler, and closes them in order | `engine.local-engine-routines` |
 | `LocalExecutor` | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs | `engine.local-chat-turn`, `engine.local-chat-harness`, `engine.local-runs` |

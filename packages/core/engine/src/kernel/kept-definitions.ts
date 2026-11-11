@@ -65,25 +65,6 @@ export async function definitionsOf(
   return parsed;
 }
 
-/**
- * Reads the definitions a run started with, as {@link definitionsOf} does.
- *
- * @param version - the run's `definitionsVersion`, the hash {@link keepDefinitions} returned
- * @returns the definitions, or `null` when the blob is missing or isn't definitions
- */
-export async function readDefinitions(
-  blobs: Pick<BlobStore, "get">,
-  version: string,
-): Promise<RunDefinitions | null> {
-  try {
-    return await definitionsOf(blobs, version);
-  } catch (error) {
-    // `null` is this function's answer for both; `definitionsOf` says why.
-    if (error instanceof UnreadableDefinitions) return null;
-    throw error;
-  }
-}
-
 function isDefinitions(parsed: unknown): parsed is RunDefinitions {
   return (
     isPlainObject(parsed) &&

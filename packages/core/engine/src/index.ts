@@ -52,7 +52,7 @@ export type {
   ToolResult,
 } from "./kernel/decide-types.ts";
 export { InputRefused, type RefusalCode } from "./kernel/input-refused.ts";
-export { keepDefinitions, readDefinitions } from "./kernel/kept-definitions.ts";
+export { keepDefinitions } from "./kernel/kept-definitions.ts";
 export type {
   BuiltStateType,
   StateContext,

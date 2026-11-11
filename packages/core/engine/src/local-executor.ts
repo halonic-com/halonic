@@ -406,8 +406,9 @@ export class LocalExecutor implements RunExecutor {
    * their kept files allow ({@link runConnectorsOf}), through the same turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first, and a connector call its kept file puts
    * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
-   * round limit: a turn that reaches it while the model still calls tools fails the call. The agent's own prompt and the turn's full run log come in step 4; until then
-   * it logs only `tool.refused` ({@link refusalLog}).
+   * round limit: a turn that reaches it while the model still calls tools fails the call. The
+   * agent's own prompt and the turn's full run log come in step 4; until then it logs only
+   * `tool.refused` ({@link refusalLog}).
    *
    * A `parallel` branch's call is offered only the connector tools whose
    * listing says they read and their kept file doesn't put under `approve`

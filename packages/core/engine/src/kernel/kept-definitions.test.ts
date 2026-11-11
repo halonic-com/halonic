@@ -1,7 +1,7 @@
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { keepDefinitions, readDefinitions } from "./kept-definitions.ts";
+import { definitionsOf, keepDefinitions, UnreadableDefinitions } from "./kept-definitions.ts";
 import {
   answer,
   KernelBlobs,
@@ -20,7 +20,7 @@ verifies("engine.kept-definitions", () => {
       const version = await keepDefinitions(blobs, { workflow: replyWorkflow });
 
       expect(await keepDefinitions(blobs, { workflow: { ...replyWorkflow } })).toBe(version);
-      expect(await readDefinitions(blobs, version)).toEqual({ workflow: replyWorkflow });
+      expect(await definitionsOf(blobs, version)).toEqual({ workflow: replyWorkflow });
     });
 
     it("reads back the agents and workflows a run started with", async () => {
@@ -33,7 +33,7 @@ verifies("engine.kept-definitions", () => {
 
       const version = await keepDefinitions(blobs, definitions);
 
-      expect(await readDefinitions(blobs, version)).toEqual(definitions);
+      expect(await definitionsOf(blobs, version)).toEqual(definitions);
     });
 
     it.each([
@@ -42,13 +42,13 @@ verifies("engine.kept-definitions", () => {
       ["JSON without a workflow", '{"agents":{}}'],
       ["a workflow with agents that aren't an object", '{"workflow":{},"agents":[]}'],
       ["a workflow with workflows that aren't an object", '{"workflow":{},"workflows":[]}'],
-    ])("reads a blob that is %s as no definitions", async (_name, text) => {
+    ])("refuses a blob that is %s as definitions", async (_name, text) => {
       const blobs = new KernelBlobs();
       if (text !== null) {
         blobs.blobs.set("f".repeat(64), encodeUtf8(text));
       }
 
-      expect(await readDefinitions(blobs, "f".repeat(64))).toBeNull();
+      await expect(definitionsOf(blobs, "f".repeat(64))).rejects.toThrow(UnreadableDefinitions);
     });
 
     it("refuses to start a run whose definitions are missing, and stores nothing", async () => {
