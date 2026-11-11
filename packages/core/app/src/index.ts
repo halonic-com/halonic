@@ -245,6 +245,7 @@ export type {
 } from "./review-types.ts";
 export { ReviewingDefinitionStore } from "./reviewing-store.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
+export { type ListedRoutine, RoutineList } from "./routine-list.ts";
 export type { RoutineOverlap } from "./routine-overlap.ts";
 export type { QueuedTimes } from "./routine-queue.ts";
 export {
