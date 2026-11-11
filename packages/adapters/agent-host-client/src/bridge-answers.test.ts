@@ -1,9 +1,15 @@
 import type { BridgeTools } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
-import { answers, answersSent, hostAnswering, openOn, services } from "./bridges.test-helper.ts";
+import { describe, expect, it, vi } from "vitest";
+import { answersSent, hostAnswering, openOn, services } from "./bridges.test-helper.ts";
 import { fitsAnswerLimit } from "./bridges.ts";
 import { type FakeHost, ok, refused } from "./fake-host.test-helper.ts";
+
+/** Waits until `host` has had `count` answers, and returns them. */
+async function answers(host: FakeHost, count: number): Promise<unknown[]> {
+  await vi.waitFor(() => expect(answersSent(host)).toHaveLength(count));
+  return answersSent(host);
+}
 
 verifies("agent-host-client.bridges", () => {
   describe("answers the host can't take (HAL-4730)", () => {

@@ -6,7 +6,6 @@ import type {
   BridgeTools,
   OpenHarnessBridge,
 } from "@halonicjs/ports";
-import { expect, vi } from "vitest";
 import { AgentHostBridges, type BridgeServices } from "./bridges.ts";
 import { FakeHost, type FakeStream, ok } from "./fake-host.test-helper.ts";
 
@@ -62,10 +61,4 @@ export function answersSent(host: FakeHost): unknown[] {
   return host.calls
     .filter((call) => call.route === "POST /v1/bridge/answer")
     .map((call) => call.body);
-}
-
-/** Waits until `host` has had `count` answers, and returns them. */
-export async function answers(host: FakeHost, count: number): Promise<unknown[]> {
-  await vi.waitFor(() => expect(answersSent(host)).toHaveLength(count));
-  return answersSent(host);
 }

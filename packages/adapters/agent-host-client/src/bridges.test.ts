@@ -3,7 +3,6 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
   agent,
-  answers,
   answersSent,
   hostAnswering,
   opened,
@@ -12,8 +11,14 @@ import {
   services,
 } from "./bridges.test-helper.ts";
 import { AgentHostBridges, bridgeOpenLimitMs } from "./bridges.ts";
-import { refused } from "./fake-host.test-helper.ts";
+import { type FakeHost, refused } from "./fake-host.test-helper.ts";
 import { AgentHostError } from "./transport.ts";
+
+/** Waits until `host` has had `count` answers, and returns them. */
+async function answers(host: FakeHost, count: number): Promise<unknown[]> {
+  await vi.waitFor(() => expect(answersSent(host)).toHaveLength(count));
+  return answersSent(host);
+}
 
 verifies("agent-host-client.bridges", () => {
   describe("AgentHostBridges.open", () => {
