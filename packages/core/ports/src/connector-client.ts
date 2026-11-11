@@ -13,6 +13,25 @@ export const connectorClientVersion = 1;
  */
 export type ToolRisk = "read" | "write" | "send";
 
+const toolNamePattern = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * Whether a text passes the name rule of `ports.untrusted-tool-listings`:
+ * 1 to 64 ASCII letters, digits, `_` or `-`. The model sends tool names
+ * back in calls, so they can't be fenced, and the rule keeps them too short
+ * and plain to carry much. A connector file's `tools.read` names pass the
+ * same rule, so a look-alike letter or an invisible character can't hide
+ * in one; widen both together or neither.
+ *
+ * @example
+ * passesNameRule("search_issues"); // true
+ * passesNameRule("search_\u0456ssues"); // false: a Cyrillic "і" in "issues"
+ * passesNameRule("notes.lookup"); // false
+ */
+export function passesNameRule(text: unknown): text is string {
+  return typeof text === "string" && toolNamePattern.test(text);
+}
+
 /** A tool a connector offers. */
 export interface ConnectorTool {
   /** The tool's name, unique within its connector. */
@@ -60,7 +79,8 @@ export interface ConnectorClient {
    * For an `http` or `stdio` connector, a server the workspace chose wrote
    * these tools. The host rebuilds their parameters from an allow-list,
    * fences off their descriptions and results as untrusted text, treats
-   * their `risk` as `write` unless the workspace sets a lower one, and
+   * their `risk` as `write`, or `send` when they say so, unless the
+   * workspace sets a lower one for a `write` tool, and
    * refuses tools that are too large or whose names it can't check
    * (requirement `ports.untrusted-tool-listings`).
    * Don't fence them here, and don't mark them trusted.

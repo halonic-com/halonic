@@ -40,6 +40,28 @@ verifies("format.connector-read", () => {
     }
   });
 
+  it("refuses a name that breaks the name rule, so a look-alike can't pass review", () => {
+    const lookAlikes = {
+      "a Cyrillic letter": "search_\u0456ssues",
+      "a trailing space": "search_issues ",
+      "a zero-width space": "search_issues\u200b",
+      "no name at all": "",
+    };
+    for (const [why, name] of Object.entries(lookAlikes)) {
+      const text = connectorWithTools(`  read: [${JSON.stringify(name)}]`);
+      const problems = problemsOf("connector", text);
+      expect(summary(problems), why).toEqual(["tools.read.0 read-tool-name 4"]);
+      expect(problems[0]?.message, why).toBe(
+        '"read" needs exact tool names made of letters A–Z, digits, "_" and "-", up to 64 characters. This one has another character, such as a look-alike letter, a space or an invisible character.',
+      );
+    }
+  });
+
+  it("refuses a name with a dot, as the name rule does", () => {
+    const problems = problemsOf("connector", connectorWithTools("  read: [notes.lookup]"));
+    expect(summary(problems)).toEqual(["tools.read.0 read-tool-name 4"]);
+  });
+
   it("warns, without failing, about a name that tools.allow leaves out", () => {
     const text = connectorWithTools("  allow: [search_issues]", "  read: [search_isues]");
     const parsed = parseFile("connector", text);

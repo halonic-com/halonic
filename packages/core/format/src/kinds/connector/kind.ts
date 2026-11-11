@@ -1,3 +1,4 @@
+import { passesNameRule } from "@halonicjs/ports";
 import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
@@ -134,10 +135,22 @@ function checkApprovedTools(connector: Connector): KindCheckProblem[] {
 const patternCharacters = /[*?[\]{}]/;
 
 /**
+ * Said when a name in `tools.read` fails the listed-tool name rule. It
+ * doesn't quote the name: the character at fault may be invisible, so the
+ * name would look right. Wording: Sofia, HAL-5762.
+ */
+const readNameBreaksRule =
+  '"read" needs exact tool names made of letters A–Z, digits, "_" and "-", up to 64 characters. This one has another character, such as a look-alike letter, a space or an invisible character.';
+
+/**
  * `tools.read` takes exact names only, so a pattern is refused rather than
- * matching nothing in silence. A name that `tools.allow` leaves out is never
- * offered, so say so. Without `tools.allow` the names are checked against
- * the server's listing when a run starts, not here. Wording: Sofia, HAL-5582.
+ * matching nothing in silence. A name must also pass the name rule that a
+ * server's tool names pass, so a look-alike letter, a space or an invisible
+ * character can't make a name read as one tool and be another; it is
+ * refused too. A name that `tools.allow` leaves out is never offered, so
+ * say so. Without `tools.allow` nothing checks the names against a listing:
+ * a name, exactly as written, makes a tool `read` as soon as a server lists
+ * a tool by that name. Wording: Sofia, HAL-5582 and HAL-5762.
  */
 function checkReadTools(connector: Connector): KindCheckProblem[] {
   const { allow, read } = connector.tools;
@@ -150,6 +163,13 @@ function checkReadTools(connector: Connector): KindCheckProblem[] {
         code: "read-tool-pattern",
         path,
         message: `"read" needs exact tool names. "${tool}" looks like a pattern.`,
+      });
+    } else if (!passesNameRule(tool)) {
+      problems.push({
+        severity: "error",
+        code: "read-tool-name",
+        path,
+        message: readNameBreaksRule,
       });
     } else if (allow !== undefined && !allow.includes(tool)) {
       problems.push({

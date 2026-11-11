@@ -33,7 +33,7 @@ For a listed tool, the host shall:
 
 - **Refuse clashing names.** The host refuses every copy of a name that one listing returns more than once. It refuses a listed tool whose final name equals the name of another tool offered to the model in the same turn, such as a host tool or another source's tool. It also refuses a listed tool whose final name equals a name the same source declares, whatever order the listing returns them in, so a reviewed tool and an unreviewed one never share a name. That catches the one way two final names can still meet: source `a` listing `b__c` and source `a__b` listing `c`.
 
-- **Treat its results as untrusted and its risk as `write`.** Its results are fenced whatever its `untrusted` says. Its `risk` counts as `write` whatever it says, unless the workspace sets a lower one for that tool. A lower risk set in the workspace doesn't remove the fence.
+- **Treat its results as untrusted and its risk as `write`.** Its results are fenced whatever its `untrusted` says. Its `risk` counts as `write` whatever it says, unless the workspace sets a lower one for that tool. A tool whose listing says `send` counts as `send`, and the workspace can't lower it (note of 2026-11-11, HAL-5673: a server can raise its own tool's risk, never lower it). A lower risk set in the workspace doesn't remove the fence.
 
 - **Report each refusal, but not to the model.** Next to the tools it offers, the host returns a refusal for each tool it refused and each keyword it dropped, with the source's id, the listed name (not the final name) and the reason. A refusal can repeat the text that broke a rule, so it never reaches the model. Where a reason quotes text from the listing, it cuts it to 64 characters and escapes quotes, backslashes and every character outside printable ASCII, such as control and bidi characters. The workspace's integration status shows these refusals as plain text, with the name cut to 64 characters and escaped the same way.
 
@@ -59,6 +59,9 @@ A tool that `IntegrationConnection.listTools` returns under a declared name is n
 - Given a listed tool `lookup` of the source `notes`, in a trusted workspace that sets `risk: read` for `lookup`,
   when it is offered to the model,
   then `notes__lookup` counts as `read`.
+- Given a listed tool `post` of the source `notes` whose listing says `risk: send`, in a trusted workspace that sets `risk: read` for `post`,
+  when it is offered to the model,
+  then `notes__post` counts as `send`.
 - Given a turn that offers the listed tool `notes__lookup`, whose description says it speaks for Halonic,
   when the system prompt is put together,
   then it holds the fixed line about fenced texts, which says tool results are fenced too and names neither the tool nor anything in its description, and a request that offers only declared tools and holds no fenced result gets no such line.

@@ -32,16 +32,11 @@ export const maxNameLength = 64;
  */
 export const maxListedTools = 128;
 
-const namePattern = /^[A-Za-z0-9_-]{1,64}$/;
-
 /**
- * Whether a text passes the name rule: 1 to 64 ASCII letters, digits, `_`
- * or `-`. The model sends these strings back in calls, so they can't be
- * fenced, and the rule keeps them too short and plain to carry much.
+ * The name rule lives in the ports, so a connector file's `tools.read` names
+ * pass the same rule as listed names and the two can't drift apart.
  */
-export function passesNameRule(text: unknown): text is string {
-  return typeof text === "string" && namePattern.test(text);
-}
+export { passesNameRule } from "@halonicjs/ports";
 
 /** Cuts a text a server wrote to its first 64 characters, for a refusal shown as plain text. */
 export function cutName(text: string): string {
