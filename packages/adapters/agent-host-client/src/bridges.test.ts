@@ -7,7 +7,12 @@ import type {
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { AgentHostBridges, type BridgeServices, fitsAnswerLimit } from "./bridges.ts";
+import {
+  AgentHostBridges,
+  type BridgeServices,
+  bridgeOpenLimitMs,
+  fitsAnswerLimit,
+} from "./bridges.ts";
 import { FakeHost, type FakeStream, ok, refused } from "./fake-host.test-helper.ts";
 import { AgentHostError } from "./transport.ts";
 
@@ -126,6 +131,25 @@ verifies("agent-host-client.bridges", () => {
       (await streamOpened).end();
       await expect(opening).rejects.toMatchObject({ kind: "bridge_failed" });
     });
+
+    it("throws and hangs up when the first line never comes", async () => {
+      vi.useFakeTimers();
+      try {
+        const host = hostAnswering();
+        const bridges = new AgentHostBridges(host, { servicesFor: () => services() });
+        const streamOpened = host.nextStream("POST /v1/bridge/open");
+        const opening = bridges.open(agent, recorder);
+        const failed = expect(opening).rejects.toMatchObject({ kind: "bridge_failed" });
+        const stream = await streamOpened;
+        await vi.advanceTimersByTimeAsync(bridgeOpenLimitMs - 1);
+        expect(stream.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await failed;
+        expect(stream.signal.aborted).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe("the bridge's calls", () => {
@@ -140,6 +164,20 @@ verifies("agent-host-client.bridges", () => {
         params: { name: "anthropic-key" },
       });
       expect(await answers(host, 1)).toEqual([{ bridge: "b1", call: "1", result: "test-value" }]);
+    });
+
+    it("answers null for a key no provider of the bridge names, without asking for it", async () => {
+      const host = hostAnswering();
+      const get = vi.fn(async () => "test-value");
+      const { stream } = await openOn(host, services({ secrets: { get } }));
+      stream.send({
+        type: "call",
+        call: "1",
+        method: "secrets.get",
+        params: { name: "github-token" },
+      });
+      expect(await answers(host, 1)).toEqual([{ bridge: "b1", call: "1", result: null }]);
+      expect(get).not.toHaveBeenCalled();
     });
 
     it("records the bridge's events with the run's recorder and answers null", async () => {
@@ -232,6 +270,42 @@ verifies("agent-host-client.bridges", () => {
       expect(await answers(host, 1)).toEqual([{ bridge: "b1", call: "1", result: null }]);
     });
 
+    it("answers an error for a call line of the wrong shape, and takes a line with a new field", async () => {
+      const host = hostAnswering();
+      const { stream } = await openOn(host);
+      stream.send({ type: "call", call: "1", method: 7, params: {} });
+      stream.send({ type: "call", call: "2", method: "tools.list", params: {}, sentAt: 1 });
+      const sent = await answers(host, 2);
+      expect(sent).toContainEqual({
+        bridge: "b1",
+        call: "1",
+        error: "The bridge's call wasn't of the expected shape.",
+      });
+      expect(sent).toContainEqual({ bridge: "b1", call: "2", result: [] });
+    });
+
+    it("skips a call whose id is still waiting, so the first can still be cancelled", async () => {
+      const host = hostAnswering();
+      const signals: AbortSignal[] = [];
+      const approvals: BridgeApprovals = {
+        request: (_request, { signal }) => {
+          signals.push(signal);
+          return new Promise((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(new Error("Withdrawn.")), { once: true });
+          });
+        },
+      };
+      const { stream } = await openOn(host, services({ approvals }));
+      const approval = { callId: "c1", tool: "Bash", args: { command: "ls" } };
+      stream.send({ type: "call", call: "1", method: "approvals.request", params: approval });
+      stream.send({ type: "call", call: "1", method: "approvals.request", params: approval });
+      stream.send({ type: "call", call: "2", method: "tools.list", params: {} });
+      await answers(host, 1);
+      expect(signals).toHaveLength(1);
+      stream.send({ type: "cancel", call: "1" });
+      await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    });
+
     it("answers a quick call while an approval waits, and a cancel aborts the approval unanswered", async () => {
       const host = hostAnswering();
       let approvalSignal: AbortSignal | undefined;
@@ -256,7 +330,8 @@ verifies("agent-host-client.bridges", () => {
     });
   });
 
-  describe("answers over the host's limit (HAL-4730)", () => {
+  describe("answers the host can't take (HAL-4730)", () => {
+    const unsendable = "Studio's answer to this call couldn't be sent to the agent host.";
     const tooLarge = {
       bridge: "b1",
       call: "1",
@@ -295,6 +370,56 @@ verifies("agent-host-client.bridges", () => {
         params: { name: "anthropic-key" },
       });
       expect(await answers(host, 2)).toEqual([{ bridge: "b1", call: "1", result: null }, tooLarge]);
+    });
+
+    it("sends an error for the call when the host refuses the answer for another reason", async () => {
+      const host = hostAnswering().answer("POST /v1/bridge/answer", (body) =>
+        "result" in (body as object) ? refused(400, "bad_request", "No.") : ok({ answered: true }),
+      );
+      const { stream } = await openOn(host);
+      stream.send({ type: "call", call: "1", method: "tools.list", params: {} });
+      expect(await answers(host, 2)).toEqual([
+        { bridge: "b1", call: "1", result: [] },
+        { bridge: "b1", call: "1", error: unsendable },
+      ]);
+    });
+
+    it("sends an error for a result with no JSON form, and still closes", async () => {
+      const host = hostAnswering();
+      const tools = services().tools;
+      const odd: BridgeTools = {
+        ...tools,
+        call: async () => ({ result: "done", outcome: "ok", bytes: 10n }) as never,
+      };
+      const { bridge, stream } = await openOn(host, services({ tools: odd }));
+      stream.send({
+        type: "call",
+        call: "1",
+        method: "tools.call",
+        params: { name: "search", args: {} },
+      });
+      expect(await answers(host, 1)).toEqual([{ bridge: "b1", call: "1", error: unsendable }]);
+      stream.end();
+      await expect(bridge.close()).resolves.toBeUndefined();
+    });
+
+    it("sends text cut in the middle of an emoji as well-formed text", async () => {
+      const host = hostAnswering();
+      const tools = services().tools;
+      const cut: BridgeTools = {
+        ...tools,
+        call: async () => ({ result: "hi \ud83d", outcome: "ok" }),
+      };
+      const { stream } = await openOn(host, services({ tools: cut }));
+      stream.send({
+        type: "call",
+        call: "1",
+        method: "tools.call",
+        params: { name: "search", args: {} },
+      });
+      expect(await answers(host, 1)).toEqual([
+        { bridge: "b1", call: "1", result: { result: "hi \ufffd", outcome: "ok" } },
+      ]);
     });
 
     it("measures the answer in UTF-8 bytes, not characters", () => {

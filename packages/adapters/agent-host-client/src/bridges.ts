@@ -5,9 +5,10 @@ import type {
   HarnessBridge,
   ModelPrice,
   OpenHarnessBridge,
+  Secrets,
 } from "@halonicjs/ports";
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
-import { encodeUtf8 } from "@halonicjs/std";
+import { encodeUtf8, isPlainObject } from "@halonicjs/std";
 import { answerBridgeCall, type BridgeCallServices } from "./bridge-calls.ts";
 import { AgentHostError, type AgentHostTransport, answerError, checked } from "./transport.ts";
 
@@ -20,6 +21,14 @@ export const bridgeAnswerLimitBytes = 1024 * 1024;
 
 const tooLargeMessage =
   "Studio's answer to this call is larger than the agent host takes (1 MiB), so it wasn't sent.";
+const unsendableMessage = "Studio's answer to this call couldn't be sent to the agent host.";
+const malformedCallMessage = "The bridge's call wasn't of the expected shape.";
+
+/**
+ * How long the host has to send a bridge's first line, as long as it gives
+ * Studio for a quick call. Then Studio hangs up, so `open` doesn't wait forever.
+ */
+export const bridgeOpenLimitMs = 30_000;
 
 /** The agent a bridge serves; the engine's `HarnessAgent` has these and more. */
 export interface BridgeAgent {
@@ -51,6 +60,7 @@ const firstLineSchema = s.discriminatedUnion("type", [
   s.object({ type: s.literal("failed"), message: s.string() }).strict(),
 ]);
 
+// Not strict: a field the host adds later mustn't make Studio drop every call.
 const callLineSchema = s.discriminatedUnion("type", [
   s
     .object({
@@ -59,9 +69,12 @@ const callLineSchema = s.discriminatedUnion("type", [
       method: s.string(),
       params: s.unknown(),
     })
-    .strict(),
-  s.object({ type: s.literal("cancel"), call: s.string().min(1) }).strict(),
+    .passthrough(),
+  s.object({ type: s.literal("cancel"), call: s.string().min(1) }).passthrough(),
 ]);
+
+/** Enough of a call line to answer it with an error when the rest is malformed. */
+const callIdSchema = s.object({ type: s.literal("call"), call: s.string().min(1) }).passthrough();
 
 const openRoute = "POST /v1/bridge/open";
 
@@ -102,7 +115,7 @@ export class AgentHostBridges {
     const lines = answer.lines[Symbol.asyncIterator]();
     let opened: Infer<typeof firstLineSchema> | undefined;
     try {
-      const first = await lines.next();
+      const first = await firstLine(lines);
       opened = first.done ? undefined : checked(openRoute, first.value, firstLineSchema);
     } catch (error) {
       // Hanging up closes the bridge in the host, which may have opened it.
@@ -116,7 +129,8 @@ export class AgentHostBridges {
       throw new AgentHostError(200, "bridge_failed", message);
     }
     this.#ids.set(opened.token, opened.bridge);
-    const serving = this.#serve(opened.bridge, lines, { ...services, recorder });
+    const secrets = providerKeys(services.providers, services.secrets);
+    const serving = this.#serve(opened.bridge, lines, { ...services, secrets, recorder });
     return {
       url: opened.url,
       token: opened.token,
@@ -161,13 +175,26 @@ export class AgentHostBridges {
     try {
       for (let next = await lines.next(); !next.done; next = await lines.next()) {
         const parsed = parse(callLineSchema, next.value);
-        // A line that isn't a call or a cancel is skipped, not taken for one.
-        if (!parsed.ok) continue;
+        if (!parsed.ok) {
+          // The host waits for a call it sent, however malformed, so it gets an error.
+          // Any other line isn't a call or a cancel: it is skipped, not taken for one.
+          const call = parse(callIdSchema, next.value);
+          if (call.ok) {
+            const error = { error: malformedCallMessage };
+            const done = this.#sendAnswer(id, call.value.call, error).finally(() =>
+              answering.delete(done),
+            );
+            answering.add(done);
+          }
+          continue;
+        }
         const line = parsed.value;
         if (line.type === "cancel") {
           waiting.get(line.call)?.abort();
           continue;
         }
+        // The host numbers its calls, so only a broken host repeats a waiting one: skip it.
+        if (waiting.has(line.call)) continue;
         const cancelled = new AbortController();
         waiting.set(line.call, cancelled);
         const done = this.#answerCall(id, line, services, cancelled.signal).finally(() => {
@@ -198,28 +225,94 @@ export class AgentHostBridges {
       outcome = { error: error instanceof Error ? error.message : String(error) };
     }
     if (signal.aborted) return; // The bridge stopped waiting for it.
-    await this.#sendAnswer({ bridge: id, call: line.call, ...outcome });
+    await this.#sendAnswer(id, line.call, outcome);
   }
 
   /**
-   * Sends one answer. One over the host's limit, by its size here or by the
-   * host's 413, is replaced by an error for that call, so the call doesn't
-   * wait for an answer that never arrives (HAL-4730).
+   * Sends one answer. One that can't be sent, because it doesn't turn into
+   * JSON, is over the host's limit by its size here or by the host's 413, or
+   * is refused for any other reason, is replaced by an error for that call,
+   * so the call doesn't wait for an answer that never arrives (HAL-4730).
    */
   async #sendAnswer(
-    body: { bridge: string; call: string } & Record<string, unknown>,
+    bridge: string,
+    call: string,
+    outcome: { result: unknown } | { error: string },
   ): Promise<void> {
     const route = "POST /v1/bridge/answer";
-    const tooLarge = { bridge: body.bridge, call: body.call, error: tooLargeMessage };
-    const fits = fitsAnswerLimit(JSON.stringify(body));
+    const errorAnswer = (error: string) => ({ bridge, call, error });
+    const answerJson = asWellFormedJson({ bridge, call, ...outcome });
+    let first: unknown;
+    if (answerJson === undefined) first = errorAnswer(unsendableMessage);
+    else if (!fitsAnswerLimit(answerJson.text)) first = errorAnswer(tooLargeMessage);
+    else first = answerJson.data;
+    const sentAsIs = first === answerJson?.data;
     try {
-      const answer = await this.#transport.request(route, fits ? body : tooLarge);
-      if (answer.status === 413 && fits) await this.#transport.request(route, tooLarge);
-      // Any other refusal (404: the call was cancelled, or the bridge closed) has nobody left to tell.
+      const answer = await this.#transport.request(route, first);
+      // 404: the call was cancelled, or the bridge closed, so nobody is left to tell.
+      if (answer.status === 200 || answer.status === 404 || !sentAsIs) return;
+      const error = answer.status === 413 ? tooLargeMessage : unsendableMessage;
+      await this.#transport.request(route, errorAnswer(error));
     } catch {
       // The host has gone; its bridge with it.
     }
   }
+}
+
+/** The stream's first line, or a `bridge_failed` error when it doesn't come in time. */
+async function firstLine(lines: AsyncIterator<unknown>): Promise<IteratorResult<unknown>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      const message = `The agent host didn't open the bridge within ${bridgeOpenLimitMs / 1000} s.`;
+      reject(new AgentHostError(200, "bridge_failed", message));
+    }, bridgeOpenLimitMs);
+  });
+  try {
+    return await Promise.race([lines.next(), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Studio's keys as a bridge may read them: only those its keyed providers
+ * name. Any other name is `null` without asking `secrets`, the same rule as
+ * the host's, so a host that asks for more still gets nothing.
+ */
+function providerKeys(
+  providers: BridgeServices["providers"],
+  secrets: Pick<Secrets, "get">,
+): Pick<Secrets, "get"> {
+  const named = new Set<string>();
+  for (const access of Object.values(providers)) {
+    if (access?.kind === "key") named.add(access.secret);
+  }
+  return { get: async (name) => (named.has(name) ? secrets.get(name) : null) };
+}
+
+/**
+ * `value` as JSON whose text is well formed, with the plain data it reads
+ * back as, or `undefined` when it has no JSON form (a BigInt, a cycle). A
+ * lone surrogate, as from text cut in the middle of an emoji, becomes U+FFFD:
+ * the shell's JSON parser refuses it.
+ */
+function asWellFormedJson(value: unknown): { text: string; data: unknown } | undefined {
+  let text: string;
+  try {
+    text = JSON.stringify(value, wellFormedReplacer);
+  } catch {
+    return undefined;
+  }
+  return { text, data: JSON.parse(text) };
+}
+
+function wellFormedReplacer(_key: string, value: unknown): unknown {
+  if (typeof value === "string") return value.toWellFormed();
+  if (isPlainObject(value) && Object.keys(value).some((key) => !key.isWellFormed())) {
+    return Object.fromEntries(Object.entries(value).map(([key, v]) => [key.toWellFormed(), v]));
+  }
+  return value;
 }
 
 /**
