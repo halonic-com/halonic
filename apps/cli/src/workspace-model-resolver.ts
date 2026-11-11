@@ -5,7 +5,7 @@
 // CLI's printer, argv or `process` (Liam, HAL-3895), so it can move into a
 // package Studio shares once Studio starts runs.
 
-import type { ResolvedModel } from "@halonicjs/engine";
+import { layeredParams, type ResolvedModel } from "@halonicjs/engine";
 import type { Provider } from "@halonicjs/format";
 import type {
   ChatAgentSettings,
@@ -123,14 +123,15 @@ function agentModel(definitions: HubDefinitions, agentId: string | undefined): s
 }
 
 /**
- * The model a provider file and a target make. The mock model runs on this
- * computer whatever its file says, so its calls cost nothing.
+ * The model a provider file and a target make, with its alias's params. The
+ * mock model runs on this computer whatever its file says, so its calls cost nothing.
  */
 function resolvedModel(
   provider: LlmProvider,
   file: ProviderFile,
   target: ModelTarget,
 ): ResolvedModel {
+  const params = layeredParams(target.params);
   return {
     provider,
     model: target.model,
@@ -138,6 +139,7 @@ function resolvedModel(
     ...(target.alias === undefined ? {} : { alias: target.alias }),
     ...(file.secret === undefined ? {} : { secret: file.secret }),
     ...(target.price === undefined ? {} : { price: modelPrice(target.price) }),
+    ...(params === undefined ? {} : { params }),
   };
 }
 

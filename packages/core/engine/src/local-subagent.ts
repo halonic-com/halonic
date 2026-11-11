@@ -4,6 +4,7 @@
 import type { ChatTurnRequest, Clock, ConnectorClient, Secrets } from "@halonicjs/ports";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
+import { agentParamsOf } from "./agent/model-params.ts";
 import { runAgentTurn } from "./agent/run-model-turn.ts";
 import type { EffectBoundary } from "./agent/run-tool-call.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
@@ -87,6 +88,7 @@ export async function runLocalSubagent(
     halonicTools: context.toolsOf(task.agent, task.depth, knowledge),
     connectors: context.effects === undefined ? [] : connectors,
     ...(context.effects === undefined ? {} : { effects: context.effects }),
+    ...agentParamsOf(subagent),
     maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
     agent: task.agent,
     clock: context.clock,

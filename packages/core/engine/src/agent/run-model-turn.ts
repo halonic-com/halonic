@@ -49,6 +49,10 @@ export interface ModelTurnInput {
   readonly halonicTools: readonly HalonicTool[];
   /** The connected servers, whose listed tools are offered last and run by the turn. */
   readonly connectors: readonly ConnectorClient[];
+  /**
+   * The params of the turn's calls, laid over each model's own alias params:
+   * the agent's, then a chat turn's request's on top (see `layeredParams`).
+   */
   readonly params?: ChatParams;
   /** The most model calls the turn makes, at least 1. */
   readonly maxRounds: number;

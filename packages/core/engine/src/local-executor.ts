@@ -20,6 +20,7 @@ import type {
 import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
+import { agentParamsOf } from "./agent/model-params.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
@@ -283,7 +284,7 @@ export class LocalExecutor implements RunExecutor {
       halonicTools: [...this.halonicToolsOf(request.agentId), ...knowledgeTools(knowledge.sources)],
       connectors: lists === undefined ? connectors : allowedToolsOf(connectors, lists),
       ...(lists === undefined ? {} : { checkCall: chatToolCheckOf(lists) }),
-      ...(request.params === undefined ? {} : { params: request.params }),
+      ...agentParamsOf(agent, request.params),
       maxRounds: this.maxRounds,
       agent: request.agentId ?? chatAgent,
       clock: this.options.clock,
@@ -457,6 +458,7 @@ export class LocalExecutor implements RunExecutor {
       halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
       connectors: connectorCalls === undefined ? [] : connectors,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
+      ...agentParamsOf(agent),
       maxRounds,
       agent: call.agent,
       clock: this.options.clock,

@@ -90,6 +90,34 @@ verifies("cli.workspace-models", () => {
       ]);
     });
 
+    it("gives each model its own alias's params, and none when its alias sets none", async () => {
+      const resolve = await resolverFor({
+        ...acmeFiles,
+        "models.yaml": [
+          "aliases:",
+          "  smart:",
+          "    provider: anthropic",
+          "    model: claude-opus-5-5",
+          "    params: { temperature: 0.2, maxTokens: 800 }",
+          "    fallback: [fast, local]",
+          "  fast:",
+          "    provider: mock",
+          "    model: echo",
+          "    params: { maxTokens: 300 }",
+          "  local:",
+          "    provider: ollama",
+          "    model: qwen3",
+          "",
+        ].join("\n"),
+      });
+
+      const model = await resolve(callOf({ agentId: "writer" }));
+
+      expect(model.params).toEqual({ temperature: 0.2, maxTokens: 800 });
+      expect(model.fallback?.[0]?.params).toEqual({ maxTokens: 300 });
+      expect(model.fallback?.[1]).not.toHaveProperty("params");
+    });
+
     it("puts the call's own alias before the agent's model", async () => {
       const resolve = await resolverFor();
 

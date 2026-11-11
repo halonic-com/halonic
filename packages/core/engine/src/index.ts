@@ -1,4 +1,5 @@
 export type { ResolvedModel } from "./agent/model-chain.ts";
+export { layeredParams, type ParamsLayer } from "./agent/model-params.ts";
 export {
   type ModelTurnInput,
   type ModelTurnResult,

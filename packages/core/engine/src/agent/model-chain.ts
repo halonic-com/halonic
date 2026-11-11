@@ -8,6 +8,7 @@
 // move their spending to another provider (HAL-3178).
 
 import {
+  type ChatParams,
   type ChatRequest,
   type ChatResponse,
   type ChatTurnSkip,
@@ -20,6 +21,7 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import { providerTextOf } from "../run/provider-text-of.ts";
+import { layeredParams } from "./model-params.ts";
 import type { TurnLog } from "./turn-log.ts";
 
 /** The provider and model a turn goes to, with the models it falls back to. */
@@ -42,13 +44,21 @@ export interface ResolvedModel {
   /** What the model costs, from its alias in `models.yaml`. */
   readonly price?: ModelPrice;
   /**
+   * The params its alias in `models.yaml` sets, under the call's own: a call
+   * keeps its keys and takes the rest from here. Left out when the alias sets none.
+   */
+  readonly params?: ChatParams;
+  /**
    * The models of the alias's own `fallback` entries, in order. Only this
    * level is tried: a fallback's own fallbacks are not followed.
    */
   readonly fallback?: readonly ResolvedModel[];
 }
 
-/** A model call without its model: the chain picks the model. */
+/**
+ * A model call without its model: the chain picks the model, and lays the
+ * call's `params` over that model's own (see {@link ResolvedModel.params}).
+ */
 export type ChainRequest = Omit<ChatRequest, "model">;
 
 /** A model's answer, with the model that gave it. */
@@ -134,6 +144,7 @@ export class ModelChain {
   /**
    * Makes one model call, moving on to the next model when one has no key,
    * is offline or its provider is busy. It writes an `llm.fallback` for each move.
+   * Each model gets its own alias's params under the call's, never the first model's.
    *
    * @throws {ModelCallError} with the last cause when no model is left
    * @throws whatever the model threw for any other failure; the turn stops there
@@ -142,7 +153,7 @@ export class ModelChain {
     for (;;) {
       const model = await this.current();
       try {
-        const response = await model.provider.chat({ ...request, model: model.model });
+        const response = await model.provider.chat(requestFor(model, request));
         return { response, answeredBy: model };
       } catch (error) {
         if (!movesOn(error)) {
@@ -202,6 +213,13 @@ export class ModelChain {
       this.lastHost === undefined ? {} : { host: this.lastHost },
     );
   }
+}
+
+/** The call as one model gets it: its model name, and the call's params over its alias's. */
+function requestFor(model: ResolvedModel, request: ChainRequest): ChatRequest {
+  const { params: callParams, ...call } = request;
+  const params = layeredParams(model.params, callParams);
+  return { ...call, model: model.model, ...(params === undefined ? {} : { params }) };
 }
 
 /** The name a model goes by in the log: its alias, or `<provider>/<model>`. */

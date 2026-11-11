@@ -1,6 +1,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { Agent, Collection, Connector, KnowledgeSource, Workflow } from "@halonicjs/format";
 import type {
+  ChatParams,
   ChatResponse,
   Clock,
   ConnectorClient,
@@ -121,6 +122,8 @@ export interface RunsSetup {
   readonly connectorCalls?: RunConnectorCalls;
   /** The proposal folders of top-level runs; runs get none when left out. */
   readonly proposalFolders?: RunProposalFolders;
+  /** The params of the alias the scripted model answers as; none when left out. */
+  readonly aliasParams?: ChatParams;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -146,7 +149,11 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const scheduler = new TestScheduler();
   const definitionsAsked: string[] = [];
   const executor = new LocalExecutor({
-    resolveModel: async () => ({ provider: model, model: "scripted-1" }),
+    resolveModel: async () => ({
+      provider: model,
+      model: "scripted-1",
+      ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
+    }),
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: setup.connectors ?? [],

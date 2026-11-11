@@ -35,15 +35,16 @@ loop of one model turn, which the local chat turn runs.
 | `InputRefused` | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused | `engine.decide-refusals`, `engine.decision-callid-must-match` |
 | `keepDefinitions` | keeps a run's definitions in the blob store (`readDefinitions` reads them back); a missing blob fails the run | `engine.kept-definitions` |
 | `knowledgeTools` | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; offered to a run's agents and subagents and to a chat turn's agent | `engine.knowledge-tools` |
+| `layeredParams` | the params of a model call: its alias's, then its agent's, then a chat turn's request's, each over the one before, key by key | `engine.model-params` |
 | `localEngine` | builds the local executor and the workspace's routine scheduler on one scheduler, and closes them in order | `engine.local-engine-routines` |
 | `LocalExecutor` | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs | `engine.local-chat-turn`, `engine.local-chat-harness`, `engine.local-runs` |
 | `maxStepAttempts` | how many times `step` tries after a lost race (10) | `engine.step-appends-once` |
 | `memoryTools` | (internal) `memory_list`, `_save` and `_forget`; offered in a chat turn of an agent when `memory` is set | `engine.agent-memory-tools` |
-| `ModelChain` | (internal) skips a model whose key isn't set, and moves on at once from an offline one, with no retries | `engine.skip-model-without-key`, `engine.offline-falls-back` |
+| `ModelChain` | (internal) skips a model whose key isn't set, and moves on at once from an offline one, with no retries; each model gets its own alias's params under the call's | `engine.skip-model-without-key`, `engine.offline-falls-back`, `engine.model-params` |
 | `ModelTurnInput` | what `runModelTurn` takes, and `ModelTurnResult`, which it returns: the answer, the turn's messages, refusals and skips | `engine.local-chat-turn` |
 | `readRun` | reads a run from its snapshot and the events after it; a snapshot that doesn't fit is ignored and the log folded | `engine.snapshot-is-cache` |
 | `recordTools` | `find_`, `add_` and `update_<collection>` for an agent with `collections`: checked values, seeds once, changes logged | `engine.record-tools`, `engine.record-values` |
-| `ResolvedModel` | the model a turn starts on, the name of its key's secret, and its alias's own fallbacks | `engine.offline-falls-back` |
+| `ResolvedModel` | the model a turn starts on, the name of its key's secret, its alias's params, and its alias's own fallbacks | `engine.offline-falls-back`, `engine.model-params` |
 | `runFailureReasonOf` | the one place an error becomes the reason, and the host, that a `run.failed` event records | `engine.run-failure-reason-of`, `engine.model-failure-stops` |
 | `runLogTools` | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model | `engine.run-log-tools` |
 | `runModelTurn` | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return` |
