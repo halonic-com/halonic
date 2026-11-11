@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: the expectations of the old test runner (`packages/testing/test-runner`) at 784f78d, the failure sentences of `halonic test` (HAL-1981, section 3.3; HAL-2676, HAL-2690) and the HAL-4224 plan review
+- Source: the expectations of the old test runner (`packages/testing/test-runner`) at 784f78d, the failure sentences of `halonic test` (HAL-1981, section 3.3; HAL-2676, HAL-2690) the HAL-4224 plan review and HAL-4248
 
 When a case's run has ended or stopped, the test runner shall check the case's `expect` against it and give one failure for each thing that doesn't match, in this order:
 
@@ -14,7 +14,7 @@ When a case's run has ended or stopped, the test runner shall check the case's `
 - When the run failed and `expect` sets no status, the case shall fail with `error` and the run's error.
 - When the run couldn't try every step (status `cant-try`, requirement `events.run-cant-try`) and `expect` sets no status, the case shall fail with `cant-try` and every step the run couldn't try. A case can't expect `cant-try`: with a status expected, `status` fails with actual `cant-try`, so such a run never passes as `completed` or `failed`.
 
-When a run of the case failed because a step would start a program (`harness-unavailable`), the case shall fail with `unscripted-program`, naming that step, and with no other expectation failure, because the run never got further.
+When a run of the case failed because a step started a program the case has no scripted result left for (requirement `test-runner.scripted-programs`), the case shall fail with `unscripted-program`, naming that step and its agent, and with no other expectation failure, because the run never got further.
 
 ## Examples
 

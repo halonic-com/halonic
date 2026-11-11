@@ -71,6 +71,9 @@ export const testMessages = defineMessages("test", {
   /** Scripted tool results the run never used. */
   unusedToolResults: (tool: string, count: number) =>
     phrase`The test scripted ${counted(count, "result", "results")} for the tool ${bold(tool)} that the run never used.`,
+  /** Scripted program results the run never used. */
+  unusedProgramResults: (agent: string, count: number) =>
+    phrase`The test scripted ${counted(count, "program result", "program results")} for the agent ${bold(agent)} that the run never used.`,
   /** An event of the test the run didn't take; the events after it weren't sent. */
   eventNotTaken: (event: string, status: RunStatus) =>
     phrase`The run didn't take the event ${bold(event)}, because ${notTakenWords[status]}.`,

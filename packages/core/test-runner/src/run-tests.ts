@@ -10,9 +10,9 @@ import type { TestResult, TestSuiteResult } from "./test-result.ts";
  * Runs the workspace's test cases that pass the filter, one after the
  * other, in file order and then case order. Each case gets fresh stores, a
  * test clock that starts at `deps.clock`'s time and moves only on its
- * `{ advance }` events, the model `deps.model` makes from its `mocks`, and
- * connectors that answer from its `tools`. Nothing real is reached, and no
- * program is started.
+ * `{ advance }` events, the model `deps.model` makes from its `mocks`,
+ * connectors that answer from its `tools` and programs that answer from its
+ * `programs`. Nothing real is reached, and no program is started.
  *
  * A failed test is a result, never an error: the result says why it failed.
  *
@@ -52,7 +52,11 @@ async function runTest(
   const started = deps.clock.now().getTime();
   const { testCase, ...ref } = found;
   const ran = await runCase({ workspace: input.workspace, ...ref, testCase }, deps);
-  const failures = [...checkExpectations(testCase.expect, ran.runs), ...ran.script, ...ran.stopped];
+  const failures = [
+    ...checkExpectations(testCase.expect, ran.runs, ran.unscriptedPrograms),
+    ...ran.script,
+    ...ran.stopped,
+  ];
   return {
     ...ref,
     passed: failures.length === 0,

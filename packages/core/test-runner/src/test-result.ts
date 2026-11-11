@@ -50,12 +50,17 @@ export type TestFailure =
   | { readonly kind: "artifacts"; readonly expected: string; readonly saved: readonly string[] }
   /** The run called a connector tool the case has no scripted result for. */
   | { readonly kind: "unscripted-tool"; readonly tool: string }
-  /** A step would start a program, which tests never do. */
-  | { readonly kind: "unscripted-program"; readonly step: string }
+  /**
+   * A step started a program the case has no scripted result left for, in
+   * `programs` under its `agent`. Tests never start a real program.
+   */
+  | { readonly kind: "unscripted-program"; readonly step: string; readonly agent: string }
   /** Scripted model replies for an agent that the run never asked for. */
   | { readonly kind: "unused-replies"; readonly agent: string; readonly count: number }
   /** Scripted results for a tool that the run never called. */
   | { readonly kind: "unused-tool-results"; readonly tool: string; readonly count: number }
+  /** Scripted program results for an agent whose programs the run never started. */
+  | { readonly kind: "unused-program-results"; readonly agent: string; readonly count: number }
   /** An event of the case reached a run that wasn't waiting; later events weren't sent. */
   | {
       readonly kind: "event-not-delivered";

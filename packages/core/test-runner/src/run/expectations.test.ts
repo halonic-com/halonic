@@ -193,23 +193,27 @@ verifies("test-runner.expectations", () => {
       ]);
     });
 
-    it("gives only the step that would start a program, in a child run too", () => {
+    it("gives only the first step that started an unscripted program, in a child run too", () => {
       const child = run(
         [
           { type: "state.entered", state: "code" },
           {
             type: "run.failed",
             state: "code",
-            error: "No harness.",
-            reason: "harness-unavailable",
+            error: "Codex didn't start.",
+            reason: "harness-start-failed",
           },
         ],
         "test_1.4",
       );
+      const unscripted = [
+        { runId: "test_1.4", agent: "coder" },
+        { runId: "test_1", agent: "writer" },
+      ];
 
-      expect(check({ final: "done", context: { fixed: true } }, failed, child)).toEqual([
-        { kind: "unscripted-program", step: "code" },
-      ]);
+      expect(
+        checkExpectations({ final: "done", context: { fixed: true } }, [failed, child], unscripted),
+      ).toEqual([{ kind: "unscripted-program", step: "code", agent: "coder" }]);
     });
 
     it("finds nothing to check when there is no run", () => {

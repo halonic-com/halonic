@@ -9,6 +9,7 @@ import { parseDuration } from "@halonicjs/workflow";
 import { filesOf, type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import type { ScriptedModel, TestDeps, TestKnowledge } from "../test-deps.ts";
 import type { TestFailure, TestRun } from "../test-result.ts";
+import { ScriptedPrograms, type UnscriptedProgram } from "./scripted-programs.ts";
 import { ScriptedTools } from "./scripted-tools.ts";
 import { TestClock, TestScheduler } from "./test-time.ts";
 
@@ -25,6 +26,8 @@ export interface CaseRun {
   readonly stopped: readonly TestFailure[];
   /** The script's own failures: unscripted tool calls, unused replies and results. */
   readonly script: readonly TestFailure[];
+  /** The program starts the script had no result for, in the order they started. */
+  readonly unscriptedPrograms: readonly UnscriptedProgram[];
 }
 
 /** The case and where it runs. */
@@ -37,9 +40,9 @@ export interface CaseToRun {
 
 /**
  * Runs one case on a fresh engine: its own stores, its own test clock from
- * `deps.clock`'s time now, and a model and connectors that answer from the
- * case's script. No harness is passed, so a step that would start a program
- * fails the run with `harness-unavailable`, and nothing real is reached.
+ * `deps.clock`'s time now, and a model, connectors and programs that answer
+ * from the case's script, so nothing real is reached. A program start with no
+ * result left fails its run, and is noted in `unscriptedPrograms`.
  */
 export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun> {
   const clock = new TestClock(deps.clock.now());
@@ -47,6 +50,7 @@ export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun
   const stores = deps.stores();
   const model = deps.model(toRun.testCase.mocks);
   const tools = new ScriptedTools(toRun.testCase.tools);
+  const programs = new ScriptedPrograms(toRun.testCase.programs);
   const executor = new LocalExecutor({
     resolveModel: async () => ({ provider: model.provider, model: "test", local: true }),
     halonicTools: deps.halonicTools ?? [],
@@ -59,6 +63,7 @@ export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun
       blobs: stores.blobs,
       scheduler,
       ids: testIds(),
+      harnesses: programs.harnesses(),
       definitionsOf: async (hubId, workflowId) =>
         runDefinitionsOf(toRun.workspace, hubId, workflowId),
       // Every call goes to a scripted connector, so sending is always allowed.
@@ -94,7 +99,8 @@ export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun
     stopped.push(engineError(error));
   }
   const runs = await closeAndRead(executor, stores.runs, runId, stopped);
-  return { runId, runs, stopped, script: [...tools.failures(), ...unusedReplies(model)] };
+  const script = [...tools.failures(), ...unusedReplies(model), ...programs.failures()];
+  return { runId, runs, stopped, script, unscriptedPrograms: programs.unscripted() };
 }
 
 /**

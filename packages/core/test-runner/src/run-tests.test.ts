@@ -190,7 +190,7 @@ cases:
       expect(received(child?.events)).toEqual(["approve"]);
     });
 
-    it("fails a case whose step would start a program, naming only that step", async () => {
+    it("fails a case whose step starts an unscripted program, naming only that step", async () => {
       const input = await testInput(
         agent("coder", "harness: codex\n"),
         workflow(
@@ -208,7 +208,9 @@ states:
 
       const [test] = (await runWorkspaceTests(input, fakeDeps())).tests;
 
-      expect(test?.failures).toEqual([{ kind: "unscripted-program", step: "code" }]);
+      expect(test?.failures).toEqual([
+        { kind: "unscripted-program", step: "code", agent: "coder" },
+      ]);
     });
 
     it("checks artifacts against the files the run saved", async () => {

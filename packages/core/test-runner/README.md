@@ -25,22 +25,23 @@ case's `hub/workflow/name` holds. `halonic test --filter <text>` passes its text
 
 `runWorkspaceTests` runs the cases the filter keeps, one after the other, each on an engine of its
 own: fresh stores, a test clock that starts at the given clock's time and moves only on
-`{ advance }`, the scripted model made from the case's `mocks`, and connectors that answer from its
-`tools`. Each case's run is the `test` run `test_1`. A failed test is a result, never an error.
+`{ advance }`, the scripted model made from the case's `mocks`, connectors that answer from its
+`tools`, and programs that answer from its `programs`. Each case's run is the `test` run `test_1`. A failed test is a result, never an error.
 
 The expectations follow the old runner: `context` is a partial match (objects key by key, arrays
 whole), `artifacts` means "at least these" and is checked against the run's `artifact.created`
 events, `final` without `status` expects the run to finish, and a run that fails with no `status`
 that allows it fails its test. A scripted reply to an agent whose output is a `choice` must be one of
 its options, in a `task`, a `parallel` branch or a `foreach` item alike: any other answer fails the
-run, or the branch, with `answer-not-an-option` (`engine.task-choice-answer`). On top of `expect`, a case fails on scripted replies or tool results
-its runs never used, on a tool call it has no result for, and on an event its run doesn't take.
+run, or the branch, with `answer-not-an-option` (`engine.task-choice-answer`). On top of `expect`, a case fails on scripted replies, tool results or
+program results its runs never used, on a tool call or program start it has no result for, and on an
+event its run doesn't take.
 
-## Known gaps
-
-- The runner doesn't use a case's `programs` yet, so a step that would start a program fails its
-  case with `unscripted-program` (HAL-4248 adds the scripted results). The runner tells such a step by the run's
-  `harness-unavailable` failure reason, never by the engine's error text.
+A step whose agent runs in a program harness (`claude-code` or `codex`) never starts a real
+program: each start of an agent's program takes the agent's next `programs` result, in the order the
+engine starts them (item order in a `foreach`). A text result or `{ output }` is the program's
+output; `{ fails }` fails the run with its message. A start with no result left fails the case with
+`unscripted-program`, naming the step and the agent.
 
 ## Differences from the old runner
 

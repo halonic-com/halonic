@@ -8,21 +8,27 @@ import type { RunSummary } from "@halonicjs/events";
 import type { WorkflowTestCase } from "@halonicjs/format";
 import { deepEqual, isPlainObject } from "@halonicjs/std";
 import type { ExpectedStatus, TestFailure, TestRun } from "../test-result.ts";
+import type { UnscriptedProgram } from "./scripted-programs.ts";
 
 type Expect = WorkflowTestCase["expect"];
 
 /**
  * What `expect` finds wrong with the case's runs: its own run first in
- * `runs`, then its child runs. A step that would start a program cuts the
- * run short, so then only that step is reported: the rest of `expect` was
- * never reached.
+ * `runs`, then its child runs. A program start the script had no result
+ * for cuts its run short, so then only the first such step is reported: the
+ * rest of `expect` was never reached.
  */
-export function checkExpectations(expect: Expect, runs: readonly TestRun[]): TestFailure[] {
+export function checkExpectations(
+  expect: Expect,
+  runs: readonly TestRun[],
+  unscripted: readonly UnscriptedProgram[] = [],
+): TestFailure[] {
   const [own] = runs;
   if (own === undefined) return [];
-  const program = runs.find((run) => run.summary.reason === "harness-unavailable");
+  const [program] = unscripted;
   if (program !== undefined) {
-    return [{ kind: "unscripted-program", step: program.summary.state ?? "" }];
+    const run = runs.find(({ id }) => id === program.runId);
+    return [{ kind: "unscripted-program", step: run?.summary.state ?? "", agent: program.agent }];
   }
   return [
     ...outcomeFailures(expect, own.summary),

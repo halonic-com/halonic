@@ -145,6 +145,8 @@ function failureSentence(failure: TestFailure, step: (id: string) => string): Me
       return testMessages.unusedReplies(printable(failure.agent), failure.count);
     case "unused-tool-results":
       return testMessages.unusedToolResults(printable(failure.tool), failure.count);
+    case "unused-program-results":
+      return testMessages.unusedProgramResults(printable(failure.agent), failure.count);
     case "event-not-delivered":
       return testMessages.eventNotTaken(printable(failure.event), failure.status);
     case "cant-try":

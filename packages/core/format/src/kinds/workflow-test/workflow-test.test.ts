@@ -81,18 +81,19 @@ verifies("format.workflow-test-programs", () => {
     });
   });
 
-  it("refuses an empty result, an empty failure and an unknown key", () => {
+  it("refuses an empty result, an empty or blank failure and an unknown key", () => {
     const text = yaml(
       "workflow: build",
       "cases:",
       "  - name: a",
       "    programs:",
-      "      coder: [{}, { fails: '' }, { output: x, exitCode: 1 }]",
+      "      coder: [{}, { fails: '' }, { fails: '  ' }, { output: x, exitCode: 1 }]",
     );
     expect(summary(problemsOf("workflowTest", text))).toEqual([
       "cases.0.programs.coder.0 invalid_union 5",
-      "cases.0.programs.coder.1.fails too_small 5",
-      "cases.0.programs.coder.2 unrecognized_keys 5",
+      "cases.0.programs.coder.1.fails invalid_format 5",
+      "cases.0.programs.coder.2.fails invalid_format 5",
+      "cases.0.programs.coder.3 unrecognized_keys 5",
     ]);
   });
 });

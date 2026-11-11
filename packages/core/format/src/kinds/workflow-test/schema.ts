@@ -19,7 +19,7 @@ const TestEvent = s.union([
 const ProgramResult = s.union([
   s.string(),
   s.object({ output: s.unknown() }).strict(),
-  s.object({ fails: s.string().min(1) }).strict(),
+  s.object({ fails: s.string().regex(/\S/, "say why the program fails") }).strict(),
 ]);
 
 /** One test case: the input, the scripted replies, the events and what to expect. */
