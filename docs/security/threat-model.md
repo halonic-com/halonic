@@ -76,7 +76,7 @@ them.
 | B5 | Google setup and sign-in | client secret, sign-in callback, tokens | [4.5](#45-google-setup-and-sign-in-b5) |
 | B6 | client to `serve` | HTTP from browsers, phones, scanners | [5](#5-serve-b6) |
 | B7 | owner to cloud deployment | deploy credentials, workspace files, runtime data | [6](#6-cloud-deployments-b7) |
-| B8 | agent sandbox to host | model calls, tool calls, approvals, blocked access | [4.6](#46-agents-in-a-sandbox-b8) |
+| B8 | agent sandbox to host | model calls, tool calls, approvals, blocked access | [4.6](#46-agents-in-a-sandbox-b8), [4.7](#47-sandbox-backends-on-windows-b8) |
 
 ## 4. Threats per boundary
 
@@ -404,6 +404,111 @@ routes, isn't built yet, so no app uses the host today.
   later temp folder or a new agent's settings folder. **Planned** fix: one
   folder per run in the data folder, so nothing another run makes lands on the
   way (HAL-5644).
+
+### 4.7 Sandbox backends on Windows (B8)
+
+Windows gets three choices ([ADR](../adr/2026-11-11-pluggable-sandbox-layer.md)):
+srt inside Halonic's own WSL distro (`srt-wsl`, the default), srt's native
+Windows mode (experimental), and "continue without a sandbox", where the
+agent asks before every command. None of them is built yet. The rows below
+are the security review's conditions (HAL-5407): what each backend must do
+before a release may offer it.
+
+**Release rule.** A backend can be offered in a release only when every row
+marked **[gate]** is **On `main`** or has a case in that backend's attack
+suite, and its open probes are answered.
+
+#### `srt-wsl`: srt inside Halonic's WSL distro
+
+Three boundaries: the agent and the rest of the distro (bubblewrap through
+srt, as on Linux); the distro and Windows (interop off, no automatic drive
+mounts, only the project's own folder mounted when you keep a project on the
+Windows drive); Studio on Windows and the engine in the distro (standard input
+and output of `wsl.exe`). You are trusted over the distro: you can open it as
+root. What matters is the distro reaching Windows.
+
+| Threat | Mitigation | Mark |
+| --- | --- | --- |
+| **[gate]** An agent on one project reads another project, a Windows-drive project mount or Halonic's data in the distro. srt on Linux leaves reads open (`/` read-only), so every file the `halonic` user can read is readable unless denied | The profile denies the other projects, the other Windows-drive mounts, `/mnt/wsl`, Halonic's data in the distro, the other harnesses' settings folders and the writable parts of `/opt/halonic`. bubblewrap's deny lasts one session, so nothing stays behind. Attack-suite case: a session on one project reads a canary in another | **Planned** (HAL-5396, HAL-5402) |
+| **[gate]** Root in the distro reaches all of Windows: it can mount a Windows drive whatever `wsl.conf` says, and switch interop back on | Agents never run as root: no `sudo`, the root password locked. The updater, which runs as root, never runs or reads a file the `halonic` user can write, and checks a new runtime's SHA-256 on the Windows side before copying it in | No `sudo` and a locked root **On `main`** (`infra/wsl-image`); the updater **Planned** (HAL-5396) |
+| Programs with the setuid bit give more ways to become root | The image removes it from `su`, `mount`, `umount`, `newgrp`, `chsh`, `chfn` and `gpasswd`, and its check refuses any setuid file outside an allowed list | **Lands with #1894** |
+| An agent starts `cmd.exe` or `powershell.exe` through interop | `[interop] enabled=false`. Inside srt the socket interop needs is refused anyway (seen with interop on) | **On `main`** (`infra/wsl-image/files/wsl.conf`) |
+| The Windows drive is mounted | `[automount] enabled=false` | **On `main`** (`infra/wsl-image/files/wsl.conf`) |
+| A planted `/etc/fstab` mounts a drive at the next start (root-only file) | `mountFsTab=false` | **Lands with #1894** |
+| **[gate]** While a folder is imported from Windows, every process in the distro sees it; a drive mount without `metadata` shows every file as writable by everyone | The import mount is read-only, `noexec,nosuid,nodev`, under a new random name, and unmounted when the import ends, or at the next start after a crash. A project mount belongs to `halonic` with `umask=077`, `nosuid,nodev`, and holds the project folder only, never a parent | **Planned** (HAL-5402) |
+| **[gate]** A junction or link inside a mounted project folder points at your Windows files, such as `.ssh` | Must not be readable through the mount. Real-PC probe | **Planned** (HAL-5402) |
+| **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). The setup checks whether `halonic` became the default after import, and the trust check reports a residual when Docker's socket or its `/mnt/wsl` folder is present. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | **Planned** (HAL-5394) |
+| A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **Planned** (HAL-5396) |
+| Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record | **Planned** (HAL-5394) |
+| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the rest **Planned** (HAL-5396) |
+| **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first | **Planned** (HAL-5402) |
+| Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); when updates run **Planned** (HAL-5396) |
+
+**Known limits.**
+
+- **The kernel is shared.** The distro runs Microsoft's WSL kernel, shared by
+  all of your distros and updated by WSL, not by Halonic. A kernel bug can
+  break the fence, as on Linux. **Planned** (HAL-5394): the trust check reads
+  the kernel version and the setup offers `wsl --update` below a floor.
+- **Your Windows tools run what the agent wrote.** Opening a project in the
+  distro from a Windows git client, VS Code or Explorer runs
+  their settings and hooks with your rights. srt stops the agent writing
+  `.git/hooks`, `.git/config`, `.vscode`, `.idea` and shell startup files; the
+  other files it wrote are still yours to open with care.
+
+#### Continue without a sandbox
+
+The claim is "every shell command, and every file outside the project, needs
+your yes". Asking is not a fence. These are the paths where a command could
+run without a prompt; each becomes a case in this mode's attack suite.
+
+| Threat | Mitigation | Mark |
+| --- | --- | --- |
+| **[gate]** The agent writes tool settings inside the project (Claude Code's `.claude/settings*.json`: allowed commands, hooks, status line, key helper, plugins; Codex's `.codex/config.toml`), and the next turn runs them | Claude Code starts with only Halonic's settings source, `--strict-mcp-config` and an explicit permission mode; Codex with its home in Halonic's data and the approval policy on the command line. An edit to `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, `.vscode/`, `.idea/`, anything in `.git/`, `.envrc`, `.gitmodules` or shell startup files always asks, even inside the project | **Planned** (HAL-5397) |
+| **[gate]** Codex runs commands on its own "safe" list without asking. `git status` runs a `core.fsmonitor` from `.git/config`; `git diff` runs a diff or text-conversion driver | Every command asks, with no list that skips the prompt. If the Codex version we pin can't do that, Codex doesn't run in this mode | **Planned** (HAL-5397) |
+| **[gate]** A path looks inside the project but isn't: a link or junction, `..`, a Windows short name (`ABCDEF~1`), a `\\?\` or `\\.\` prefix, a network path, a file stream (`file:stream`), a different case, a hard link | The approve tool resolves the real path of the target, and of its folder for writes, compares it with the project's real path and asks when in doubt. Device paths and streams are refused | **Planned** (HAL-5397) |
+| MCP servers and hooks from the project start without a prompt | Only Halonic's MCP server and settings load, as in the sandbox (4.6) | **Planned** (HAL-5397) |
+| Halonic's own tools that run code (plugins, integrations, stdio connectors) | They keep their own consent and are listed under "More info". No Halonic tool runs a shell command for the agent in this mode | **Planned** (HAL-5397) |
+| The approval card hides part of the command: a long line, a line break, control or bidirectional characters | The card shows the whole command, escapes those characters and wraps rather than cuts. A very long command asks with a warning | **Planned** (HAL-5397) |
+| No answer, or no Studio window to ask in | No answer means no. A run started from the CLI in this mode, with no way to ask, is refused | **Planned** (HAL-5397) |
+| A command you allow sees your tokens in its environment | The launcher passes only the profile's variables, as in the sandbox | **Planned** (HAL-5397) |
+
+**Known limits.**
+
+- **An allowed command can start more.** `npm test` runs package scripts and a
+  dev server keeps running after the turn. The card says so, and this mode
+  has no "allow always".
+- **Reads inside the project need no prompt.** A secret kept in the project,
+  such as a `.env` file, can be read and sent to the model provider without a
+  prompt.
+
+#### Native srt on Windows (experimental)
+
+The limits are in the [ADR](../adr/2026-11-11-pluggable-sandbox-layer.md):
+name lookups leave the fence, reads are open by default, kept folders stay
+readable to srt's sandbox account, the WSL service is reachable, and Windows'
+own TLS fails inside. Another session can't write a kept folder (HAL-5432).
+Plugins stay unfenced on Windows (`packages/core/app`, `runner-fence.ts`).
+
+| Threat | Mitigation | Mark |
+| --- | --- | --- |
+| **[gate]** A tool folder on `PATH` granted for reading is your profile itself, `AppData`, `.` or a folder with secrets | Only `PATH` entries strictly below the profile, never the profile, `AppData`, `AppData\Roaming` or `AppData\Local` as a whole, nor a folder on the deny list or above it. Relative entries are dropped. A contract test holds those cases | **Planned** (HAL-5398) |
+| **[gate]** A crash between a grant and its record leaves a folder granted forever | The folder is recorded before srt grants it and confirmed after. Removing the setup and uninstalling forget every grant, recorded or not | **Planned** (HAL-5398, HAL-5404) |
+| A rollback to an older setup version keeps grants under the old account | A rollback that can't uninstall first is refused | **Planned** (HAL-5404) |
+| Another program's srt shares the machine-wide sandbox account and reads our kept folders | The trust check reports it when another program's srt setup is present, not only a second Halonic user | **Planned** (HAL-5398) |
+| The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | Probed (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
+
+The DNS leak is what keeps native srt experimental.
+
+#### Open probes
+
+- **CI:** WSL 2 starts on GitHub's free `windows-2025` runner (3 runs out of 3),
+  so the `srt-wsl` attack suite can run in CI. GitHub doesn't officially
+  support nested virtualisation there, so the suite reports "not testable",
+  never a pass, when WSL 2 won't start.
+- **Real-PC test** (Windows 11): WebDAV with native srt, `wsl --import` by the
+  sandbox account, a junction in a mounted project folder, Docker Desktop with
+  `halonic` as the only distro, and mirrored networking. CI can't answer these.
 
 ## 5. `serve` (B6)
 
