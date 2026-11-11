@@ -52,6 +52,17 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     });
   });
 
+  it("grants reading the read-only paths on Windows only", () => {
+    const readOnlyPaths = ["%APPDATA%\\npm"];
+    const win = buildSrtConfig(profile({ readOnlyPaths }), [], [], "win32").filesystem;
+    expect(win?.allowRead).toContainEqual({ path: readOnlyPaths[0], literal: true });
+    expect(win?.denyWrite).toContainEqual({ path: readOnlyPaths[0], literal: true });
+    expect(
+      buildSrtConfig(profile({ readOnlyPaths }), [], [], "linux").filesystem,
+    ).not.toHaveProperty("allowRead");
+    expect(buildSrtConfig(profile(), [], [], "win32").filesystem).not.toHaveProperty("allowRead");
+  });
+
   it("denies writing the tool settings and hooks inside the working folder", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
     const inWork = (...parts: string[]) => ({

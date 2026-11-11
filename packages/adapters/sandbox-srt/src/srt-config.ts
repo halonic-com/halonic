@@ -139,6 +139,12 @@ const toolSettingsInWorkingFolder = [
  * path inside a denied one. Read-only paths are denied for writing only. The
  * tool settings in the working folder are denied for writing as well.
  *
+ * On Windows reads are not open by default: `--sandbox-setup` skips srt's read
+ * grant for the whole user profile, so a program reads only the folders the
+ * settings name. There the read-only paths (which include the folders of the
+ * harness and its runtime under the profile) also become `allowRead`, an
+ * inheriting read and execute grant. On macOS and Linux reads are open already.
+ *
  * `hiddenPaths` are paths the session adds to hide from the program, such as
  * its own settings and canary folder. `gitPaths` are the git files the session
  * found in the working folder at start (see `gitPathsToDeny`), relative to it,
@@ -155,6 +161,7 @@ export function buildSrtConfig(
   profile: SandboxProfile,
   hiddenPaths: string[] = [],
   gitPaths: string[] = [],
+  platform: NodeJS.Platform = process.platform,
 ): SandboxRuntimeConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
   const toolSettings = [
@@ -178,6 +185,9 @@ export function buildSrtConfig(
     },
     filesystem: {
       denyRead: withResolved(hidden).map(literalPath),
+      ...(platform === "win32" && profile.readOnlyPaths.length > 0
+        ? { allowRead: withResolved(profile.readOnlyPaths).map(literalPath) }
+        : {}),
       allowWrite: withResolved(writableFolders).map(literalPath),
       denyWrite: withResolved([...hidden, ...profile.readOnlyPaths, ...toolSettings]).map(
         literalPath,
