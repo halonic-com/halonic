@@ -3,11 +3,11 @@
 // parts of each kind that give an item more reach. Try it takes the
 // baseline's value for them until the person accepts the change.
 
+import type { LeftOutReason } from "@halonicjs/events";
 import type { KindName } from "@halonicjs/format";
 import { isPlainObject } from "@halonicjs/std";
 import { readYaml } from "@halonicjs/yaml";
 import type { ItemPath } from "./changes/revert-parts.ts";
-import type { LeftOutReason } from "./review-types.ts";
 
 /** The groups a part can be held back for, in the order a file's one reason is picked from. */
 export type HeldBackGroup = Exclude<LeftOutReason, "before-trust">;

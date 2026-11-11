@@ -225,7 +225,6 @@ export type {
   ItemToReview,
   LeftOut,
   LeftOutFile,
-  LeftOutReason,
   ProposedDelete,
   ProposedWrite,
   ProposeOutcome,

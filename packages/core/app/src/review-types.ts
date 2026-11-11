@@ -1,6 +1,7 @@
 // The shapes the review service takes and gives (HAL-3277), apart from the
 // service, so the Studio can use them without reading the service.
 
+import type { LeftOutReason } from "@halonicjs/events";
 import type { DefinitionSource, ExpectedContent } from "@halonicjs/ports";
 import type { LineChange } from "@halonicjs/std";
 import type { ItemPath } from "./changes/revert-parts.ts";
@@ -163,26 +164,14 @@ export interface ItemToReview {
   readonly card: ReviewCard;
 }
 
-/**
- * Why Try it and Test leave out one file's changes to review. A file has
- * one reason: `before-trust` first, then the others in this order.
- * - `before-trust`: the assistant wrote it before the workspace was
- *   trusted, so the whole file stays at its baseline;
- * - `permissions`: tools, `tools.approve`, step limits, budget;
- * - `trust-and-sandbox`: the harness, working folder, allowed sites, privacy;
- * - `connections`: which connectors and how they connect, with their secrets;
- * - `models`: `models.yaml`, providers and a hub's own aliases.
- */
-export type LeftOutReason =
-  | "before-trust"
-  | "permissions"
-  | "trust-and-sandbox"
-  | "connections"
-  | "models";
-
 /** One file whose changes Try it doesn't use, or uses only some of. */
 export interface LeftOutFile {
   readonly path: string;
+  /**
+   * Why, as the run events name it. `before-trust` wins; otherwise the
+   * first of `permissions`, `trust-and-sandbox`, `connections` and
+   * `models` that a held-back part of the change is about.
+   */
   readonly reason: LeftOutReason;
   /**
    * How many line changes Try it leaves out: those from the text it reads

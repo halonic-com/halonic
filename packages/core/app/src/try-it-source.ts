@@ -5,6 +5,7 @@
 // with the whole baseline for what the assistant wrote before the workspace
 // was trusted. Built in memory; nothing is written.
 
+import type { LeftOutReason } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { deepEqual, diffLines, isPlainObject } from "@halonicjs/std";
 import { placeOf } from "@halonicjs/workspace";
@@ -12,7 +13,7 @@ import { readYaml } from "@halonicjs/yaml";
 import { revertParts } from "./changes/revert-parts.ts";
 import type { ReviewFiles } from "./review-files.ts";
 import type { ReviewRecord } from "./review-record.ts";
-import type { LeftOut, LeftOutFile, LeftOutReason, TryItSource } from "./review-types.ts";
+import type { LeftOut, LeftOutFile, TryItSource } from "./review-types.ts";
 import { firstGroup, type HeldBackPart, heldBackFor } from "./try-it-held-back.ts";
 
 /** What Try it reads for one file instead of the file, and why. */
