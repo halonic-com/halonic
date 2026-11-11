@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-983 (design HAL-958 section 5, the loader: a local integration's code loads only in the runner)
 
-After `start`, the runner shall send `declared` with the integration's name, version and tools, with only the fields the protocol knows. Halonic's side of the bridge shall wait for it within the time for `ready`, hand it over as frozen data on the connection, and treat any other frame before it, a second one, or one whose tools don't fit the protocol's shape as outside the protocol: report it as blocked and stop and kill the runner.
+When the runner has received `start`, it shall send `declared` with the integration's name, version and tools, with only the fields the protocol knows. Halonic's side of the bridge shall wait for it within the time for `ready`, hand it over as frozen data on the connection, and treat any other frame before it, a second one, or one whose tools don't fit the protocol's shape as outside the protocol: report it as blocked and stop and kill the runner.
 
 ## Examples
 
