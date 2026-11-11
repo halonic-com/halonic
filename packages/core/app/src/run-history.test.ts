@@ -1,4 +1,5 @@
 import type { RunEventBody, RunKind } from "@halonicjs/events";
+import type { RunFilter } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type RunDetail, RunHistory, shortRunId } from "./run-history.ts";
@@ -195,6 +196,27 @@ verifies("app.run-short-id", () => {
         });
       },
     );
+
+    it("gives the id as stored when the store ignores case, as files on Windows do", async () => {
+      const stored = oneRun();
+      // Like the file stores on Windows: the log opens from the id in any
+      // case, then its events carry another id than the one asked for.
+      const ignoringCase = {
+        list: (filter?: RunFilter) => stored.list(filter),
+        events: async (runId: string) => {
+          const events = await stored.events(runId.toLowerCase());
+          if (events.some((event) => event.runId !== runId)) {
+            throw new Error(`Broken run log ${runId}.jsonl`);
+          }
+          return events;
+        },
+      };
+
+      expect(await new RunHistory(ignoringCase).findRun("RUN_MFX3K2A1_A1B2C3D4")).toEqual({
+        found: "one",
+        run: "run_mfx3k2a1_a1b2c3d4",
+      });
+    });
 
     it("finds a test run by its short id", async () => {
       const store = new MemoryRuns();

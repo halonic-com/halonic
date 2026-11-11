@@ -119,16 +119,19 @@ export class RunHistory {
    * // { found: "one", run: "run_mfx3k2a1_a1b2c3d4" }
    */
   async findRun(typed: string): Promise<RunLookup<string>> {
-    // The id as typed first: the list may lag the log (RunStore.list), and a
-    // run that has only just started must be found by its full id.
-    if ((await this.#runs.events(typed)).length > 0) {
-      return { found: "one", run: typed };
-    }
+    // The list first, so a full id in capitals becomes the id as stored before
+    // the store reads a log with it: on Windows the file system ignores case,
+    // and the store would open the run's log under the wrong id and refuse it.
     const ids = (await this.#runs.list()).map((run) => run.id);
     const wanted = typed.toLowerCase();
     const sameId = ids.find((id) => id.toLowerCase() === wanted);
     if (sameId !== undefined) {
       return { found: "one", run: sameId };
+    }
+    // Then the id as typed: the list may lag the log (RunStore.list), and a
+    // run that has only just started must be found by its full id.
+    if ((await this.#runs.events(typed)).length > 0) {
+      return { found: "one", run: typed };
     }
     if (typed.length !== shortRunIdLength) {
       return { found: "none" };
