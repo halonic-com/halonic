@@ -18,6 +18,7 @@
     "@halonicjs/schema-kit": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

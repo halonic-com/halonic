@@ -302,6 +302,13 @@ export {
   runnerUnfencedReasons,
 } from "./runner-fence.ts";
 export {
+  type GatedRunner,
+  type GatedStart,
+  RunnerStartGate,
+  type RunnerStartGateOptions,
+  type StartInSandbox,
+} from "./runner-start-gate.ts";
+export {
   type MxcDefault,
   type MxcSetting,
   type MxcState,

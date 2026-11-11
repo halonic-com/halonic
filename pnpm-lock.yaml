@@ -814,6 +814,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/schema-kit
     devDependencies:
+      '@halonicjs/adapter-sandbox-host':
+        specifier: workspace:*
+        version: link:../sandbox-host
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
