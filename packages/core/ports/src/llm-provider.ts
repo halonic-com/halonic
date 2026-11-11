@@ -60,6 +60,7 @@ export const modelCallErrorReasons = [
   "out-of-credit",
   "provider-busy",
   "refused",
+  "local-only",
 ] as const;
 
 /**
@@ -80,6 +81,8 @@ export const modelCallErrorReasons = [
  * - `provider-busy`: the provider is overloaded or asked the caller to slow
  *   down, such as any other HTTP 429, a 5xx or Anthropic's 529.
  * - `refused`: anything else the provider turned down or failed on.
+ * - `local-only`: the workspace is local only (`privacy.localOnly: true`)
+ *   and the model's provider isn't local, so the engine never called it.
  */
 export type ModelCallErrorReason = (typeof modelCallErrorReasons)[number];
 

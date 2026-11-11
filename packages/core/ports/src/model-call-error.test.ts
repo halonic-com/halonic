@@ -59,7 +59,7 @@ verifies("ports.model-call-error", () => {
     expect(isModelCallError("ModelCallError")).toBe(false);
   });
 
-  typeTest("has exactly the nine reasons", () => {
+  typeTest("has exactly the ten reasons", () => {
     expectTypeOf<ModelCallErrorReason>().toEqualTypeOf<
       | "no-key"
       | "offline"
@@ -70,6 +70,7 @@ verifies("ports.model-call-error", () => {
       | "out-of-credit"
       | "provider-busy"
       | "refused"
+      | "local-only"
     >();
     expectTypeOf<ModelCallError["reason"]>().toEqualTypeOf<ModelCallErrorReason>();
   });

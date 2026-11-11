@@ -26,6 +26,7 @@ const reasonOfModelCall = {
   "out-of-credit": "out-of-credit",
   "provider-busy": "provider-busy",
   refused: "error",
+  "local-only": "local-only",
 } as const satisfies Record<ModelCallErrorReason, RunFailureReason>;
 
 /**

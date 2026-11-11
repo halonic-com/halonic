@@ -45,6 +45,8 @@ export interface LocalSubagentContext {
   readonly connectors: readonly ConnectorClient[];
   /** Where the turn hands over connector calls that can change things; set with `runs.connectorCalls`. */
   readonly effects?: EffectBoundary;
+  /** Whether the workspace is local only, as `LocalExecutorOptions.localOnly` says. */
+  readonly localOnly: boolean;
   /** The knowledge sources of an agent in the turn's run. */
   knowledgeOf(agentId: string): AgentKnowledge;
   /** The Halonic tools of an agent in the turn's run, at a depth, with its knowledge. */
@@ -98,6 +100,7 @@ export async function runLocalSubagent(
     checkCall: runToolCheckOf(lists),
     autoKnowledge: knowledge.auto,
     ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
+    localOnly: context.localOnly,
   });
   return outcome.kind === "stopped" ? outcome : { kind: "answer", content: outcome.result.content };
 }

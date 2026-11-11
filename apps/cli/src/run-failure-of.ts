@@ -20,6 +20,10 @@ export interface FailedModel {
   readonly alias: string;
   /** The model's name at its provider, such as "llama3.2". */
   readonly model: string;
+  /** The agent the model was called for, such as "sorter". */
+  readonly agent: string;
+  /** The workspace's name, such as "Acme", from {@link WorkspaceModels.name}. */
+  readonly workspace: string;
   /** The provider's id in the workspace, such as "ollama". */
   readonly providerId: string;
   /** The provider's file; `undefined` when the workspace has none by that id. */
@@ -33,6 +37,8 @@ export interface FailedModel {
 
 /** What {@link failedModelOf} reads from the workspace. */
 export interface WorkspaceModels {
+  /** The workspace's name, such as "Acme", as `workspace.yaml` gives it; else its id. */
+  readonly name: string;
   /**
    * The model aliases the run's hub can use, by name: `modelAliases(workspace, hubId)`
    * with the run's own hub, so a hub's alias over a `models.yaml` one names the model
@@ -49,10 +55,12 @@ export interface WorkspaceModels {
  *
  * @example
  * workspaceModelsOf(loaded, "support");
- * // { aliases: Map { "smart" => { provider: "anthropic", … } }, providers: Map { "anthropic" => { … } } }
+ * // { name: "Acme", aliases: Map { "smart" => { provider: "anthropic", … } }, providers: Map { "anthropic" => { … } } }
  */
 export function workspaceModelsOf(workspace: LoadedWorkspace, hubId: string): WorkspaceModels {
+  const settings = filesOf(workspace, "workspace")[0]?.value;
   return {
+    name: settings?.name ?? settings?.id ?? "",
     aliases: modelAliases(workspace, hubId),
     providers: new Map(filesOf(workspace, "provider").map((file) => [file.value.id, file.value])),
   };
@@ -68,29 +76,31 @@ export function workspaceModelsOf(workspace: LoadedWorkspace, hubId: string): Wo
  *
  * @example
  * failedModelOf(events, { aliases, providers });
- * // { alias: "local", model: "llama3.2", providerId: "ollama", provider: { type: "ollama", … }, keyMissing: false }
+ * // { alias: "local", agent: "sorter", workspace: "Acme", model: "llama3.2", providerId: "ollama", provider: { type: "ollama", … }, keyMissing: false }
  */
 export function failedModelOf(
   events: readonly RunEvent[],
   workspace: WorkspaceModels,
 ): FailedModel | undefined {
-  let last: Omit<FailedModel, "provider"> | undefined;
+  let last: Omit<FailedModel, "provider" | "workspace"> | undefined;
   for (const event of events) {
     switch (event.type) {
       case "llm.request":
         last = {
           alias: aliasPointingAt(workspace.aliases, event.provider, event.model),
+          agent: event.agent,
           model: event.model,
           providerId: event.provider,
           keyMissing: false,
         };
         break;
       case "llm.fallback":
-        last = modelNamed(workspace.aliases, event.to);
+        last = modelNamed(workspace.aliases, event.to, event.agent);
         break;
       case "llm.skipped":
         last = {
           alias: event.alias,
+          agent: event.agent,
           model: event.model,
           providerId: event.provider,
           keyMissing: event.reason === "no-key" && event.next === undefined,
@@ -102,7 +112,7 @@ export function failedModelOf(
   }
   return last === undefined
     ? undefined
-    : { ...last, provider: workspace.providers.get(last.providerId) };
+    : { ...last, workspace: workspace.name, provider: workspace.providers.get(last.providerId) };
 }
 
 /**
@@ -158,6 +168,17 @@ export function runFailureOf(
       return model === undefined
         ? generalFailure(failed)
         : { reason, provider: providerName(model) };
+    // Nothing was sent: the run log's last `llm.skipped` names the model and its agent.
+    case "local-only":
+      return model === undefined
+        ? generalFailure(failed)
+        : {
+            reason,
+            workspace: model.workspace,
+            provider: providerName(model),
+            agent: model.agent,
+            alias: model.alias,
+          };
     case "budget":
     case "model-out-of-memory":
     case "disk-full":
@@ -234,16 +255,24 @@ function aliasPointingAt(
 function modelNamed(
   aliases: ReadonlyMap<string, ModelAlias>,
   name: string,
-): Omit<FailedModel, "provider"> | undefined {
+  agent: string,
+): Omit<FailedModel, "provider" | "workspace"> | undefined {
   const target = aliases.get(name);
   if (target !== undefined) {
-    return { alias: name, model: target.model, providerId: target.provider, keyMissing: false };
+    return {
+      alias: name,
+      agent,
+      model: target.model,
+      providerId: target.provider,
+      keyMissing: false,
+    };
   }
   // A provider id can't hold a "/", so the model's name is everything after the first one.
   const slash = name.indexOf("/");
   if (slash === -1) return undefined;
   return {
     alias: name,
+    agent,
     model: name.slice(slash + 1),
     providerId: name.slice(0, slash),
     keyMissing: false,

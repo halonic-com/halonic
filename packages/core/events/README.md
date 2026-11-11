@@ -22,7 +22,10 @@ optional and come with a requirement.
   `sandbox-not-ready` means the sandbox check failed before the step started;
   `sandboxReason` then gives the `Sandbox` port's reason code, such as
   `bubblewrap-missing` (requirement `run-failed-sandbox-not-ready`). A reader
-  that doesn't know a code reads it as `other`.
+  that doesn't know a code reads it as `other`. `local-only` means the
+  workspace is local only and no model the step could use is local; the
+  `llm.skipped` events with that reason name them (requirement
+  `run-failed-local-only`).
 - `summarize(events)`: folds a run's events into a `RunSummary`. Every run
   store uses it.
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,

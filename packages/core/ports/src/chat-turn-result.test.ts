@@ -58,7 +58,7 @@ verifies("ports.chat-turn-skipped", () => {
   });
 
   typeTest("skips a model only for a missing key", () => {
-    expectTypeOf<ChatTurnSkip["reason"]>().toEqualTypeOf<"no-key">();
+    expectTypeOf<ChatTurnSkip["reason"]>().toEqualTypeOf<"no-key" | "local-only">();
     // @ts-expect-error: an offline model was called, so it isn't skipped
     expectTypeOf<"offline">().toMatchTypeOf<ChatTurnSkip["reason"]>();
   });

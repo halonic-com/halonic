@@ -55,6 +55,12 @@ export interface ConnectorClient {
   /** The connector's id in the workspace. */
   readonly id: string;
   /**
+   * Whether the connector runs on this computer, as `connectorIsLocal` in
+   * `@halonicjs/format` says. In a local-only workspace the engine uses only
+   * the connectors that set it to `true`.
+   */
+  readonly local?: boolean;
+  /**
    * The tools the connector offers now. Connects on the first call.
    *
    * For an `http` or `stdio` connector, a server the workspace chose wrote

@@ -147,7 +147,7 @@ verifies("events.llm-skipped", () => {
       reason: ModelSkipReason;
       next?: string;
     }>();
-    expectTypeOf<ModelSkipReason>().toEqualTypeOf<"no-key">();
+    expectTypeOf<ModelSkipReason>().toEqualTypeOf<"no-key" | "local-only">();
   });
 
   typeTest("leaves next out when no alias is left", () => {

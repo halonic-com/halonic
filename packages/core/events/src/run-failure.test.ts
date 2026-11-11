@@ -32,6 +32,7 @@ verifies("events.run-failed-reason", () => {
       | "provider-busy"
       | "answer-not-an-option"
       | "harness-unavailable"
+      | "local-only"
     >();
     expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
   });
@@ -130,6 +131,12 @@ verifies("events.run-failed-answer-not-an-option", () => {
 verifies("events.run-failed-harness-unavailable", () => {
   typeTest("has a reason for a harness step in an engine without harnesses", () => {
     expectTypeOf<IsReason<"harness-unavailable">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-local-only", () => {
+  typeTest("has a reason for a local-only workspace with no local model", () => {
+    expectTypeOf<IsReason<"local-only">>().toEqualTypeOf<true>();
   });
 });
 

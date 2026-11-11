@@ -51,6 +51,7 @@ import { KindedError, randomIds, systemClock } from "@halonicjs/std";
 import {
   connectorToolsOf,
   definitionsOf,
+  filesOf,
   type LoadedWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
@@ -236,6 +237,8 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
     chatAgentOf: async (request) => chatAgentOf(input.workspace, request),
     chatConnectorToolsOf: async (request) =>
       connectorToolsOf(definitionsOf(input.workspace, request.hubId)),
+    // Without a workspace.yaml that parsed, the format default: not local only.
+    localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
     runs: {
       store: runs,
       blobs: new FolderBlobStore(folders.blobsFolder()),

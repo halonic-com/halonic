@@ -202,6 +202,8 @@ export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved";
  *   options.
  * - `harness-unavailable`: the step's agent runs in a harness program, and the engine that ran it
  *   has no harnesses, as in workflow tests, which never start programs.
+ * - `local-only`: the workspace is local only, and no model the step could use runs on this
+ *   computer, so Halonic called none of them.
  */
 export type RunFailureReason =
   | "budget"
@@ -220,7 +222,8 @@ export type RunFailureReason =
   | "out-of-credit"
   | "provider-busy"
   | "answer-not-an-option"
-  | "harness-unavailable";
+  | "harness-unavailable"
+  | "local-only";
 
 /**
  * The model provider's own error text, kept in the run log for `--debug` and
@@ -235,8 +238,12 @@ export interface ProviderText {
   text: string;
 }
 
-/** Why a model was skipped before it was called: its provider's key isn't set. */
-export type ModelSkipReason = "no-key";
+/**
+ * Why a model was skipped before it was called: its provider's key isn't set
+ * (`no-key`), or the workspace is local only and the provider isn't local
+ * (`local-only`).
+ */
+export type ModelSkipReason = "no-key" | "local-only";
 
 /** Who resolved an approval: a person, or a rule that answers without asking anyone. */
 export type ApprovalResolver = "person" | "rule";

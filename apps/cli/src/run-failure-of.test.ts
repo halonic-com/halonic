@@ -40,6 +40,7 @@ function alias(provider: string, model: string, fallback: string[] = []): ModelA
 const openaiModel = { alias: "smart", model: "gpt-4o", providerId: "openai", provider: openai };
 
 const workspace: WorkspaceModels = {
+  name: "Acme",
   aliases: new Map([
     ["local", alias("ollama", "llama3.2")],
     ["smart", alias("openai", "gpt-4o", ["local"])],
@@ -51,6 +52,8 @@ const workspace: WorkspaceModels = {
 function calledModel(change: Partial<FailedModel> = {}): FailedModel {
   return {
     alias: "local",
+    agent: "drafter",
+    workspace: "Acme",
     model: "llama3.2",
     providerId: "ollama",
     provider: ollama,
@@ -271,6 +274,8 @@ describe("the model a run called last", () => {
     });
     expect(failedModelOf(events, workspace)).toEqual({
       alias: "lmstudio/qwen3",
+      agent: "drafter",
+      workspace: "Acme",
       model: "qwen3",
       providerId: "lmstudio",
       provider: lmStudio,
@@ -311,7 +316,9 @@ describe("the model a run called last", () => {
         reason: "no-key",
         ...(next === undefined ? {} : { next }),
       });
-    expect(failedModelOf(skipped(), workspace)).toEqual({ ...openaiModel, keyMissing: true });
+    expect(failedModelOf(skipped(), workspace)).toEqual(
+      calledModel({ ...openaiModel, keyMissing: true }),
+    );
     expect(failedModelOf(skipped("local"), workspace)).toMatchObject({ keyMissing: false });
   });
 
@@ -319,6 +326,35 @@ describe("the model a run called last", () => {
     expect(
       failedModelOf(log({ type: "state.entered", state: "draft" }), workspace),
     ).toBeUndefined();
+  });
+});
+
+verifies("cli.run-failed-local-only", () => {
+  const skippedSmart = log({
+    type: "llm.skipped",
+    agent: "drafter",
+    alias: "smart",
+    provider: "openai",
+    model: "gpt-4o",
+    reason: "local-only",
+  });
+
+  it("names the workspace, the provider nothing was sent to, the agent and its alias", () => {
+    const model = failedModelOf(skippedSmart, workspace);
+    expect(runFailureOf(failedWith("local-only"), model)).toEqual({
+      reason: "local-only",
+      workspace: "Acme",
+      provider: "OpenAI",
+      agent: "drafter",
+      alias: "smart",
+    });
+  });
+
+  it("gets the general lines when the run log names no model", () => {
+    expect(runFailureOf(failedWith("local-only"), undefined)).toEqual({
+      reason: "error",
+      message: "the engine's own words",
+    });
   });
 });
 

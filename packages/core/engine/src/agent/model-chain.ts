@@ -5,8 +5,11 @@
 // once: retrying would only make the person wait. Any other failure ends the
 // turn with its own reason. A refused key or an empty account ends it too,
 // because the person has to fix it, and moving on would hide that and could
-// move their spending to another provider (HAL-3178).
+// move their spending to another provider (HAL-3178). In a local-only
+// workspace, a model that isn't local is skipped before any call, so nothing
+// is sent to it (ADR 2026-11-08-local-first).
 
+import type { ModelSkipReason } from "@halonicjs/events";
 import {
   type ChatRequest,
   type ChatResponse,
@@ -70,6 +73,15 @@ const noneLeftBecause = {
 /** A reason that moves a call on to the next model. */
 type MoveOnReason = keyof typeof noneLeftBecause;
 
+/** Why the last model was passed over: a call moved on, or it was skipped before any call. */
+type PassOverReason = MoveOnReason | ModelSkipReason;
+
+/** What the error says when no model is left, by why the last one was passed over. */
+const noneLeftMessage: Record<PassOverReason, string> = {
+  ...noneLeftBecause,
+  "local-only": "no model is local, and the workspace is local only",
+};
+
 /** A model call failure that moves the call on to the next model. */
 type MoveOnError = ModelCallError & { readonly reason: MoveOnReason };
 
@@ -88,30 +100,40 @@ export class ModelChain {
   private readonly secrets: Secrets;
   private readonly agent: string;
   private readonly log: TurnLog | undefined;
+  private readonly localOnly: boolean;
   /** The model calls go to; it only moves forward. */
   private index = 0;
   /** Whether the model at `index` has its key, so it needs no second look. */
   private usable = false;
   /** Why the last model was given up on, for the error when none is left. */
-  private lastCause: MoveOnReason = "offline";
+  private lastCause: PassOverReason = "offline";
   /** The host of the last model that was offline, when its provider named it. */
   private lastHost: string | undefined;
 
   /**
    * @param agent - names the agent in the events the chain writes
    * @param log - where `llm.skipped` and `llm.fallback` go; a turn outside any run has none
+   * @param localOnly - whether the workspace is local only: a model that isn't `local` is skipped
    */
-  constructor(first: ResolvedModel, secrets: Secrets, agent: string, log?: TurnLog) {
+  constructor(
+    first: ResolvedModel,
+    secrets: Secrets,
+    agent: string,
+    log?: TurnLog,
+    localOnly = false,
+  ) {
     this.models = withoutRepeats([first, ...(first.fallback ?? [])]);
     // A model's secret is a name the workspace chose, so it can't reach
     // Halonic's own secrets or tokens.
     this.secrets = workspaceSecrets(secrets);
     this.agent = agent;
     this.log = log;
+    this.localOnly = localOnly;
   }
 
   /**
-   * The model the next call goes to, after skipping the models without a key.
+   * The model the next call goes to, after skipping the models without a key
+   * and, in a local-only workspace, those that aren't local.
    *
    * @throws {ModelCallError} with the last cause when no model is left
    */
@@ -121,10 +143,12 @@ export class ModelChain {
       if (model === undefined) {
         throw this.noneLeft();
       }
-      if (await this.hasKey(model)) {
+      if (this.localOnly && model.local !== true) {
+        await this.skip(model, "local-only");
+      } else if (await this.hasKey(model)) {
         this.usable = true;
       } else {
-        await this.skip(model);
+        await this.skip(model, "no-key");
       }
     }
     // `usable` is only true while `index` points at a model.
@@ -161,17 +185,17 @@ export class ModelChain {
     return (await this.secrets.get(model.secret)) !== null;
   }
 
-  private async skip(model: ResolvedModel): Promise<void> {
+  private async skip(model: ResolvedModel, reason: ModelSkipReason): Promise<void> {
     const next = this.models[this.index + 1];
     const skip: ChatTurnSkip = {
       alias: nameOf(model),
       provider: model.provider.id,
       model: model.model,
-      reason: "no-key",
+      reason,
       ...(next === undefined ? {} : { next: nameOf(next) }),
     };
     this.skipped.push(skip);
-    this.lastCause = "no-key";
+    this.lastCause = reason;
     this.index++;
     await this.log?.append({ type: "llm.skipped", agent: this.agent, ...skip });
   }
@@ -195,7 +219,7 @@ export class ModelChain {
 
   private noneLeft(): ModelCallError {
     const tried = this.models.map(nameOf).join(", ");
-    const message = `${noneLeftBecause[this.lastCause]} (tried ${tried})`;
+    const message = `${noneLeftMessage[this.lastCause]} (tried ${tried})`;
     return new ModelCallError(
       this.lastCause,
       message,

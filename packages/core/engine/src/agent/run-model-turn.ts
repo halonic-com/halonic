@@ -65,6 +65,11 @@ export interface ModelTurnInput {
    * call, the task text is searched and their best passages go into the prompt.
    */
   readonly autoKnowledge?: readonly KnowledgeProvider[];
+  /**
+   * Whether the workspace is local only (`privacy.localOnly: true`): the
+   * turn skips every model that isn't `local` before calling it.
+   */
+  readonly localOnly?: boolean;
 }
 
 /**
@@ -139,7 +144,13 @@ async function turnLoop(
   { resumeFrom, effects }: Pick<AgentTurnInput, "resumeFrom" | "effects"> = {},
 ): Promise<AgentTurnOutcome> {
   const tools = await collectTurnTools(input);
-  const models = new ModelChain(input.model, input.secrets, input.agent, input.log);
+  const models = new ModelChain(
+    input.model,
+    input.secrets,
+    input.agent,
+    input.log,
+    input.localOnly === true,
+  );
   const context: ToolCallContext = {
     agent: input.agent,
     refusals: [...tools.refusals],
