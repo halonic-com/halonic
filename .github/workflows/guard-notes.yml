@@ -3,8 +3,8 @@ name: Guard notes
 # The decision-note check, in a workflow a pull request can't change or
 # switch off (HAL-1337). On pull_request_target, GitHub runs this file from
 # the base branch, and the job runs only the base's code: the pull request's
-# head is fetched as git objects and only read. No install, no cache, no
-# secret, a read-only token. It checks that a change to the guard's own
+# head is fetched as git objects and only read. One scripts-free install of
+# the check's own dependencies, no cache, no secret, a read-only token. It checks that a change to the guard's own
 # paths has a signed user-visible note, and that any note's signature
 # verifies against the base's approvers.json. The test-result comparison
 # stays in ci.yml's guard job.
@@ -44,6 +44,14 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
+      # The check reads TypeScript sources with the compiler API, so it needs
+      # @typescript/typescript6 from the base's own lockfile (HAL-5739). Only
+      # the check's package and what it depends on, no install scripts.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: false
+      - name: Install the check's dependencies (base branch's lockfile)
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@halonicjs/tooling-check..."
       # Blocking. Until a user key is pinned (HAL-3434), an `internal`
       # note signed by the CTO key covers .github/, tooling/check/ and
       # .gitattributes. This job fails the pull request, but it blocks a
