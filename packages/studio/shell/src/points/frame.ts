@@ -27,9 +27,30 @@ export interface PhoneBarContribution extends Ordered, ViewRef {
   badge?(context: WorkspaceContext): number | undefined;
 }
 
-/** A section in the settings container, which the shell owns. */
+/**
+ * Where a settings section's values live, which also decides its group in the settings list:
+ * - `workspace`: in the open workspace's files, listed under the workspace's name;
+ * - `display`: in the app's profile on this computer (or the browser, when served), such as the theme;
+ * - `host`: in the user profile where Halonic runs, never in a workspace file, such as the assistant.
+ *
+ * `display` and `host` sections share the "On this computer" group.
+ */
+export const settingsScopes = ["workspace", "display", "host"] as const;
+
+/** Where a settings section's values live. */
+export type SettingsScope = (typeof settingsScopes)[number];
+
+/**
+ * A section in the settings container, which the shell owns. The container writes the group
+ * headings and sorts by group, then `order`, so a feature never writes a heading itself.
+ */
 export interface SettingsSectionContribution extends Ordered, ViewRef {
   readonly title: string;
+  readonly scope: SettingsScope;
+  /** The line under the section's name in the phone's settings list, or `undefined` for none. */
+  summary?(context: WorkspaceContext): string | undefined;
+  /** `false` leaves the section out on a phone, as Developer does. */
+  readonly phone?: false;
 }
 
 /**

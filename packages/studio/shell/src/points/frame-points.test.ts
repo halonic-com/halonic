@@ -45,7 +45,14 @@ verifies("shell.frame-points", () => {
             load,
             badge: () => 3,
           });
-          studio.settings.add({ id: "models", title: "Models", order: 1, view: "View", load });
+          studio.settings.add({
+            id: "models",
+            title: "Models",
+            scope: "workspace",
+            order: 1,
+            view: "View",
+            load,
+          });
         }),
       ],
     });
@@ -90,7 +97,14 @@ verifies("shell.frame-points", () => {
   });
 
   it("refuses a duplicate id, naming both features", () => {
-    const section = { id: "models", title: "Models", order: 1, view: "View", load };
+    const section = {
+      id: "models",
+      title: "Models",
+      scope: "workspace",
+      order: 1,
+      view: "View",
+      load,
+    } as const;
     const create = () =>
       createShell({
         features: [

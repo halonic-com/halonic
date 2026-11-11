@@ -907,6 +907,11 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   feature uses the page's feature only through its `api.ts` (`shell.feature-isolation`).
 - **Frame** (`shell.frame-points`): `cards.add`, `panelWindows.add`, `statusBar.add`,
   `titleBar.add`, `phoneBar.add` and `settings.add`, with `places.add` and `home.addCard` above.
+  A settings section names its `scope` (`workspace`, `display` or `host`: where its values are
+  saved), may give a `summary` for the phone's list and `phone: false` to stay off a phone. The
+  settings list shows the workspace's group, then "On this computer", each by `order`
+  (`bySettingsGroup`); features never write headings. `settingsSectionToOpen` picks the section
+  `settings.open` shows (`shell.settings-open`).
 - **Commands** (`shell.commands`, `shell.keybindings`): `commands.add`, `keybindings.add`,
   `commands.addSource`, `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
   contexts with `&&`, each optionally `!`; of the bindings that hold, the one with the most

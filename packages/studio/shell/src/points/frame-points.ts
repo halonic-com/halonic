@@ -17,6 +17,7 @@ import {
   pointOn,
   type Registered,
 } from "./point-store.ts";
+import { bySettingsGroup, checkSettingsScope } from "./settings-sections.ts";
 
 /**
  * The points for the window frame around the item pages: cards, panel
@@ -29,6 +30,7 @@ export interface FramePoints {
   readonly statusBar: Point<BarItemContribution>;
   readonly titleBar: Point<BarItemContribution>;
   readonly phoneBar: Point<PhoneBarContribution>;
+  /** Adds a settings section. Throws a `ShellError` for a `scope` that isn't one of `settingsScopes`. */
   readonly settings: Point<SettingsSectionContribution>;
   /**
    * Adds a sidebar place; the shell sets their order, name and icon. Throws a `ShellError` for an
@@ -39,7 +41,10 @@ export interface FramePoints {
   readonly home: HomePoint;
 }
 
-/** What the shell's frame reads. Every list is sorted by `order`, then `id`. */
+/**
+ * What the shell's frame reads. Every list is sorted by `order`, then `id`; settings sections by
+ * their group first (`bySettingsGroup`).
+ */
 export interface FrameContributions {
   readonly cards: { for(selection: string): readonly Registered<CardContribution>[] };
   readonly panelWindows: { list(): readonly Registered<PanelWindowContribution>[] };
@@ -90,7 +95,14 @@ export class FrameStores {
       statusBar: pointOf("statusBar.add", this.statusBar),
       titleBar: pointOf("titleBar.add", this.titleBar),
       phoneBar: pointOf("phoneBar.add", this.phoneBar),
-      settings: pointOf("settings.add", this.settings),
+      settings: {
+        add: (section) => {
+          guard("settings.add");
+          // The store checks first that it is a plain object with a valid id, so the scope can be read.
+          this.settings.add(featureId, section);
+          checkSettingsScope(featureId, section);
+        },
+      },
       places: {
         add: (place) => {
           guard("places.add");
@@ -120,7 +132,7 @@ export class FrameStores {
       statusBar: { list: () => byOrder(this.statusBar.all()) },
       titleBar: { list: () => byOrder(this.titleBar.all()) },
       phoneBar: { list: () => byOrder(this.phoneBar.all()) },
-      settings: { list: () => byOrder(this.settings.all()) },
+      settings: { list: () => bySettingsGroup(this.settings.all()) },
       places: {
         list: () =>
           [...this.places.all()].sort(

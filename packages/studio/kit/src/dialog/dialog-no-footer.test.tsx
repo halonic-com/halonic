@@ -74,4 +74,17 @@ verifies("kit.dialog-no-footer", () => {
     buttonNamed(dialog, "Close Settings").click();
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
+
+  it("calls onCancel on a click on the overlay, also after typing", () => {
+    const onCancel = vi.fn();
+    const dialog = dialogOf(render(settingsDialog({ onCancel })).container);
+    const pressOverlay = () => {
+      fire(dialog, new MouseEvent("pointerdown", { bubbles: true }));
+      fire(dialog, new MouseEvent("click", { bubbles: true }));
+    };
+    pressOverlay();
+    fire(dialog.querySelector("input") as HTMLInputElement, new Event("input", { bubbles: true }));
+    pressOverlay();
+    expect(onCancel).toHaveBeenCalledTimes(2);
+  });
 });

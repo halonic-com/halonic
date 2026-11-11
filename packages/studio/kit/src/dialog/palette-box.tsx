@@ -46,9 +46,9 @@ const frame = [
 export function PaletteBox({ label, initialFocus, onCancel, children }: PaletteBoxProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   useModal(dialog, { initial: initialFocus });
-  // No `onInput`: a Dialog's overlay stops cancelling once something is typed, to keep a form's
-  // work, but typing is all a palette is for and its words are no work to lose.
-  const { onInput: _typed, ...cancelEvents } = useCancelEvents(onCancel, onCancel);
+  // A form Dialog's overlay stops cancelling once something is typed, to keep its work, but typing
+  // is all a palette is for and its words are no work to lose.
+  const cancelEvents = useCancelEvents(onCancel, onCancel, false);
 
   return (
     <dialog ref={dialog} aria-label={label} className={frame} {...cancelEvents}>

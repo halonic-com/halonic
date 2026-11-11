@@ -4,9 +4,11 @@ import { type MouseEvent, type PointerEvent, type SyntheticEvent, useRef } from 
  * The `<dialog>`'s own events, all of which cancel through `cancel` (which does nothing while
  * busy). Escape is Cancel: whatever Cancel puts back, Escape puts back too. The Dialog never
  * closes itself, the screen unmounts it, so Escape's own close is always stopped. A click on the
- * overlay cancels only when the press started there too, and only before anything was typed.
+ * overlay cancels only when the press started there too, and, with `keepTyping`, only before
+ * anything was typed, so a stray click doesn't throw away what the form holds. A footerless Dialog
+ * saves as it goes, so it has nothing to lose and passes `false`.
  */
-export function useCancelEvents(cancel: () => void, onCancel: () => void) {
+export function useCancelEvents(cancel: () => void, onCancel: () => void, keepTyping: boolean) {
   const typed = useRef(false);
   const pressedOverlay = useRef(false);
   return {
@@ -22,7 +24,11 @@ export function useCancelEvents(cancel: () => void, onCancel: () => void) {
       pressedOverlay.current = event.target === event.currentTarget;
     },
     onClick: (event: MouseEvent<HTMLDialogElement>) => {
-      if (event.target === event.currentTarget && pressedOverlay.current && !typed.current) {
+      if (
+        event.target === event.currentTarget &&
+        pressedOverlay.current &&
+        !(keepTyping && typed.current)
+      ) {
         cancel();
       }
     },

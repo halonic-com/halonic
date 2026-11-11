@@ -65,7 +65,7 @@ export function SheetFrame(props: SheetFrameProps) {
     initial: () => props.initialFocus?.() ?? title.current,
     fallback: props.returnFocus,
   });
-  const events = useCancelEvents(props.onCancel, props.onClosedByBrowser ?? props.onCancel);
+  const events = useCancelEvents(props.onCancel, props.onClosedByBrowser ?? props.onCancel, true);
   const content = (
     <>
       <SheetBar

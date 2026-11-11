@@ -214,9 +214,11 @@ export {
   type PlaceName,
   type PlaceSignal,
   placeNames,
+  type SettingsScope,
   type SettingsSectionContribution,
   type ShownPlace,
   type SidebarPlace,
+  settingsScopes,
   showPlace,
   sidebarPlaces,
 } from "./points/frame.ts";
@@ -250,6 +252,11 @@ export type {
   Point,
   Registered,
 } from "./points/point-store.ts";
+export {
+  bySettingsGroup,
+  firstSettingsSection,
+  settingsSectionToOpen,
+} from "./points/settings-sections.ts";
 export {
   type ChildProcessUsage,
   type EngineResourceReport,

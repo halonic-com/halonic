@@ -38,6 +38,10 @@ const bodyScroll = "min-h-0 flex-1 overflow-y-auto short:flex-none short:overflo
  * `showModal()`. Mounting it opens it, and the screen unmounts it to close it. Focus starts on
  * the first field of a form, or on Cancel in a confirmation, and goes back to the opener.
  *
+ * Without `confirm` there is no footer, for a screen that saves as it goes, such as Settings.
+ * Focus then starts on what `initialFocus` returns, else on the body's first field, else on the
+ * header's ✕. Escape, the ✕ and a click on the overlay close it, also after typing.
+ *
  * The confirming button stays pressable while the form is incomplete: the screen shows every
  * field error and focuses the first. A failed request keeps the Dialog open with `error`. On a
  * phone a `form` Dialog is a full-screen form sheet, with Close at the top left and the
@@ -89,7 +93,7 @@ function DialogBox(props: DialogProps) {
     props.onConfirm();
   }
 
-  const events = useCancelEvents(cancel, props.onCancel);
+  const events = useCancelEvents(cancel, props.onCancel, !footerless);
 
   const footer =
     props.confirm === undefined ? null : (
