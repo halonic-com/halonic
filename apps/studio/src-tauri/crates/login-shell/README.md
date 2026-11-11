@@ -1,0 +1,14 @@
+# halonic-login-shell
+
+Reads environment variables as the person's terminal sees them (HAL-5545). A Studio started from Finder, the Dock or a desktop launcher doesn't get the variables a shell rc file sets. With `HALONIC_HOME` in `.zshrc`, the CLI would keep trust records and runs in one profile and the Studio in another, so a folder trusted in one wouldn't be trusted in the other, with no error.
+
+- `login_variables(shell, names, timeout)` starts the shell as a terminal does, interactive and as a login shell (`-i -l -c`; `csh` and `tcsh` get `-i -c`, as they take `-l` only alone), with no input, and runs `/usr/bin/env` between two marker lines. Whatever the rc files print themselves is left out. Names the shell doesn't set are left out of the answer.
+- The shell gets `HALONIC_RESOLVING_ENVIRONMENT=1`, so an rc file can skip what only makes sense in a real terminal, such as starting tmux.
+- A shell that doesn't finish within `timeout` is stopped (`TimedOut`). A program the rc file leaves running in the background doesn't hold the answer up: it comes as soon as the second marker has been read. A shell that ends without printing both markers gives `NoEnvironment`; its exit status isn't looked at.
+- Values are `OsString`, so the caller decides what to do with one that isn't Unicode.
+
+The Studio shell (`src/profile.rs`) asks once per app run, on macOS and Linux only, for `HALONIC_HOME`, `LOCALAPPDATA` and `XDG_DATA_HOME`, and only for a variable the app wasn't started with: an app started from a terminal keeps that terminal's values. Windows gives an app started from Explorer the person's own variables already. If the shell can't be asked, the app's own variables are used, as before, and the reason goes to the log.
+
+What it can't see: a variable set only in one terminal session (`export HALONIC_HOME=...` typed at the prompt), which no rc file sets.
+
+No dependencies. The requirement is `login-shell` in `requirements/`; the tests' names start with `login_shell_`. `tests/login_shell.rs` starts stand-in shells, small scripts that act as an rc file would, and the real `/bin/sh`.

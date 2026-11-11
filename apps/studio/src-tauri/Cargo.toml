@@ -33,6 +33,7 @@ halonic-agent-host = { path = "crates/agent-host" }
 halonic-connect = { path = "crates/connect" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-keychain = { path = "crates/keychain" }
+halonic-login-shell = { path = "crates/login-shell" }
 halonic-process-probe = { path = "crates/process-probe" }
 halonic-profile = { path = "crates/profile" }
 halonic-run-store = { path = "crates/run-store" }

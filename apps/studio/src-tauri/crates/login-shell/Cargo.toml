@@ -1,0 +1,11 @@
+[package]
+name = "halonic-login-shell"
+description = "Reads environment variables the way the person's terminal sees them, for a Studio started from Finder, the Dock or a desktop launcher."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
