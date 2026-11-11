@@ -189,7 +189,8 @@ jobs:
     # never near a dependency. Prints locations, never a term or a secret.
     name: Leak guard
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # pr.read can wait about 10 min in total under a GitHub rate limit.
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: read
