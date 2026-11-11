@@ -28,7 +28,7 @@ import { heavyTestTimeout } from "./test/golden.ts";
 import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
 /** The Acme example, on the test model, that the attacker's connectors are added to. */
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -94,10 +94,11 @@ async function writeConnectors(connectors: readonly Connector[]): Promise<void> 
 async function trustAcme({ before }: FingerprintCase): Promise<void> {
   await writeConnectors(before);
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const { subject } = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands);
   const service = cliTrustService(machine.trustStore, machine.clock);
-  const shown = await service.check(subject);
-  expect((await service.grant(subject, shown.fingerprint, "cli")).ok).toBe(true);
+  const shown = await service.check(read.subject);
+  assertTrustable(shown, read);
+  expect((await service.grant(read.subject, shown.fingerprint, "cli")).ok).toBe(true);
 }
 
 /** Reads every connector's tool listing as `halonic tools` does; the error of each, if any. */
