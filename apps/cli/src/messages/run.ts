@@ -190,7 +190,8 @@ function joinedFacts(facts: readonly string[]): Phrase {
 }
 
 /**
- * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (or reject)".
+ * "Answer with: halonic runs send 01jd8q approve (or reject)". No Inbox until the Studio shows one
+ * (HAL-5915).
  * Three or more events read "(or reject, hold or skip)" (revision 37). The event stays, since it is
  * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label that
  * only repeats its event, as "Approve" for approve, is left out (HAL-4190). A label is the author's
@@ -216,8 +217,8 @@ function answerLine(
   const firstLabel = labelOf(first);
   const line =
     firstLabel === undefined
-      ? phrase`Answer in Studio's Inbox, or here: ${command}`
-      : phrase`Answer in Studio's Inbox, or here: ${command} ${dim(`(${firstLabel})`)}`;
+      ? phrase`Answer with: ${command}`
+      : phrase`Answer with: ${command} ${dim(`(${firstLabel})`)}`;
   if (others.length === 0) {
     return line;
   }

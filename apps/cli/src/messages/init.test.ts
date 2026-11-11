@@ -20,9 +20,7 @@ verifies("cli.messages", () => {
     expect(words(initMessages.nextRun("support-reply", "examples/refund-question.json"))).toBe(
       "halonic run support-reply --input examples/refund-question.json",
     );
-    expect(words(initMessages.nextStudioExample("Support reply"))).toBe(
-      "Or open the folder in Studio and start Support reply from the Inbox.",
-    );
+    expect(words(initMessages.nextStudioExample())).toBe("Or open the folder in Studio.");
   });
 
   it("keys init's sentences under init", () => {

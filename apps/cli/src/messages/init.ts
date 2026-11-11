@@ -45,10 +45,11 @@ export const initMessages = defineMessages("init", {
   nextRun: (workflow: string, input: string) => phrase`halonic run ${workflow} --input ${input}`,
   /** Studio as a choice, not pushed (1.6): the last `Next:` line, dimmed as the preview shows it. */
   nextStudio: () => [dim("Or open the folder in Studio to add your first agent.")],
-  /** The example's last `Next:` line, with the title of the workflow to start, such as "Support reply". */
-  nextStudioExample: (workflowTitle: string) => [
-    dim(`Or open the folder in Studio and start ${workflowTitle} from the Inbox.`),
-  ],
+  /**
+   * The example's last `Next:` line. It names no Inbox until the Studio shows one (HAL-5915); then it
+   * can say again where to start the example's workflow.
+   */
+  nextStudioExample: () => [dim("Or open the folder in Studio.")],
 
   /** The help line for `--example <name>`. */
   exampleOption: () => phrase`Make a copy of this example instead of an empty workspace.`,

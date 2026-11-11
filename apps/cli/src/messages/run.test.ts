@@ -62,25 +62,25 @@ describe("run's sentences", () => {
     );
     expect(words(runMessages.waitingInStep("review"))).toBe("Waiting for you in the step review.");
     expect(words(runMessages.answerHere("01JD8Q", ["approve", "reject"]))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01JD8Q approve (or reject)",
+      "Answer with: halonic runs send 01JD8Q approve (or reject)",
     );
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject", "hold", "skip"]))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (or reject, hold or skip)",
+      "Answer with: halonic runs send 01jd8q approve (or reject, hold or skip)",
     );
     expect(words(runMessages.answerHere("01JD8Q", ["done"], "./acme"))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01JD8Q done",
+      "Answer with: halonic runs send --dir ./acme 01JD8Q done",
     );
   });
 
   it("writes the author's label after an event that has one, and keeps the event to type", () => {
     const labels = { approve: "Send reply", hold: "Ask me later" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (Send reply) (or reject)",
+      "Answer with: halonic runs send 01jd8q approve (Send reply) (or reject)",
     );
     expect(
       words(runMessages.answerHere("01jd8q", ["reject", "approve", "hold"], "./acme", labels)),
     ).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01jd8q reject (or approve (Send reply) or hold (Ask me later))",
+      "Answer with: halonic runs send --dir ./acme 01jd8q reject (or approve (Send reply) or hold (Ask me later))",
     );
   });
 
@@ -95,27 +95,25 @@ describe("run's sentences", () => {
           repeats,
         ),
       ),
-    ).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (or reject or needs_changes)",
-    );
+    ).toBe("Answer with: halonic runs send 01jd8q approve (or reject or needs_changes)");
     const differs = { approve: "Send it", "needs-changes": "Needs change" };
     expect(
       words(runMessages.answerHere("01jd8q", ["approve", "needs-changes"], undefined, differs)),
     ).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (Send it) (or needs-changes (Needs change))",
+      "Answer with: halonic runs send 01jd8q approve (Send it) (or needs-changes (Needs change))",
     );
   });
 
   it("reads only the workflow's own labels, so an event named toString or constructor has none", () => {
     expect(
       words(runMessages.answerHere("01jd8q", ["toString", "constructor"], undefined, {})),
-    ).toBe("Answer in Studio's Inbox, or here: halonic runs send 01jd8q toString (or constructor)");
+    ).toBe("Answer with: halonic runs send 01jd8q toString (or constructor)");
   });
 
   it("escapes a label's control characters, since the label comes from the workflow file", () => {
     const labels = { approve: "\u001b[31mSend\u202e", reject: "Drop\nit" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (\\u001b[31mSend\\u202e) (or reject (Drop\\u000ait))",
+      "Answer with: halonic runs send 01jd8q approve (\\u001b[31mSend\\u202e) (or reject (Drop\\u000ait))",
     );
   });
 

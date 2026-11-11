@@ -115,7 +115,6 @@ async function copyExample(
   }
 
   const copy = await loadWorkspace(store);
-  const workflow = filesOf(copy, "workflow").find((file) => file.value.id === example.workflow.id);
   const contents: ExampleContents = {
     hubs: filesOf(copy, "hub").length,
     agents: filesOf(copy, "agent").length,
@@ -126,14 +125,7 @@ async function copyExample(
   const beside = !named && folder.shown !== firstChoice ? firstChoice : undefined;
   return {
     exitCode: exitCode.ok,
-    lines: exampleLines(
-      example,
-      workflow?.value.name ?? example.workflow.id,
-      folder,
-      contents,
-      beside,
-      cwd,
-    ),
+    lines: exampleLines(example, folder, contents, beside, cwd),
     json: {
       workspace: {
         name: filesOf(copy, "workspace")[0]?.value.name ?? folder.name,
@@ -210,12 +202,10 @@ function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: 
  * The ✓ line and the example's contents under it, then the `Next:` block:
  * `cd`, `halonic test`, `halonic run` on the example's input, and Studio.
  *
- * @param workflowTitle - the name of the workflow to start, such as "Support reply"
  * @param beside - the folder that was already there, when the copy went next to it
  */
 function exampleLines(
   example: InitExample,
-  workflowTitle: string,
   folder: InitFolder,
   contents: ExampleContents,
   beside: string | undefined,
@@ -235,7 +225,7 @@ function exampleLines(
     phrase`  ${initMessages.exampleContents(contents).phrase}`,
     ...nextSteps(
       [...changeFolder(folder, cwd), test, run],
-      initMessages.nextStudioExample(printable(workflowTitle)).phrase,
+      initMessages.nextStudioExample().phrase,
     ),
   ];
 }

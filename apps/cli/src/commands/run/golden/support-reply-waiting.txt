@@ -9,7 +9,7 @@ stdout:
   \e[33m!\e[39m Approve this reply?   waiting for you since 14:01
   
   \e[33m!\e[39m Waiting for you: Approve this reply?
-    Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve \e[2m(or reject)\e[22m
+    Answer with: halonic runs send 01jd8q approve \e[2m(or reject)\e[22m
 stderr:
 
 ## NO_COLOR: halonic run support-reply --input examples/refund-question.json
@@ -23,7 +23,7 @@ stdout:
   ! Approve this reply?   waiting for you since 14:01
   
   ! Waiting for you: Approve this reply?
-    Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (or reject)
+    Answer with: halonic runs send 01jd8q approve (or reject)
 stderr:
 
 ## --json: halonic run support-reply --input examples/refund-question.json
