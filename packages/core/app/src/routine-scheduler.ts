@@ -359,7 +359,7 @@ export class RoutineScheduler<
     skips: TickSkips,
     targets: TargetChecks<Run>,
   ): Promise<OverlapDecision<Run>> {
-    const { due, policy, keyOf } = this.options;
+    const { due, policy, keyOf, overlapOf } = this.options;
     const waiting = new Map<string, Run[]>();
     const wait = (run: Run): void => {
       const runs = waiting.get(run.key) ?? [];
@@ -393,7 +393,14 @@ export class RoutineScheduler<
     const busy = new Set(going.map((run) => run.trigger?.routineId));
     const goingIds = new Set(going.map((run) => run.id));
     for (const [key, all] of waiting) {
-      const decision = await this.decide(all, busy.has(key), goingIds, targets);
+      // A time whose run is already going was started before, by a tick that
+      // didn't get to store the last tick; it waits for nothing.
+      const runs = all.filter((run) => !goingIds.has(this.runIdOf(run)));
+      if (runs.length === 0) {
+        continue;
+      }
+      // Every run in the list is of the same routine, so the first has its rule.
+      const decision = await targets.decide(overlapOf(runs[0] as Run), busy.has(key), runs);
       plan.start.push(...decision.start);
       plan.queue.push(...decision.queue);
       plan.skip.push(...decision.skip);
@@ -402,30 +409,6 @@ export class RoutineScheduler<
     plan.queue.sort(oldestFirst);
     fitQueue(plan);
     return plan;
-  }
-
-  /**
-   * What the overlap rule does with one routine's waiting due times, once
-   * `targets` has passed them: none go on when its target can't be started.
-   *
-   * @param busy - whether a run of the routine is running or waiting
-   */
-  private async decide(
-    all: readonly Run[],
-    busy: boolean,
-    goingIds: ReadonlySet<string>,
-    targets: TargetChecks<Run>,
-  ): Promise<OverlapDecision<Run>> {
-    // A time whose run is already going was started before, by a tick that
-    // didn't get to store the last tick; it waits for nothing.
-    const notGoing = all.filter((run) => !goingIds.has(this.runIdOf(run)));
-    if (notGoing.length === 0) {
-      return { start: [], queue: [], skip: [] };
-    }
-    // Every run in the list is of the same routine, so the first has its rule.
-    const overlap = this.options.overlapOf(notGoing[0] as Run);
-    const runs = await targets.pass(notGoing, busy && overlap !== "allow");
-    return applyOverlap(overlap, busy, runs);
   }
 
   /**

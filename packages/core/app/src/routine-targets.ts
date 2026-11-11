@@ -4,6 +4,7 @@
 // the overlap rule, so a routine whose target can't start never has its
 // other due times marked busy, or queued, behind a run that never starts.
 
+import { applyOverlap, type OverlapDecision, type RoutineOverlap } from "./routine-overlap.ts";
 import type { RoutineFailure, RoutineTime, ScheduledRun } from "./routine-scheduler.ts";
 import type { TargetUnavailableWhy } from "./routine-skips.ts";
 
@@ -30,6 +31,21 @@ export class TargetChecks<Run extends ScheduledRun> {
   }
 
   /**
+   * What the overlap rule does with one routine's due times, once they are
+   * checked: none go on when its target can't be started.
+   *
+   * @param busy - whether a run of the routine is running or waiting
+   */
+  async decide(
+    overlap: RoutineOverlap,
+    busy: boolean,
+    runs: readonly Run[],
+  ): Promise<OverlapDecision<Run>> {
+    const passed = await this.#pass(runs, busy && overlap !== "allow");
+    return applyOverlap(overlap, busy, passed);
+  }
+
+  /**
    * The due times of one routine that go on to the overlap rule: all of
    * them when its target can be started, none when it can't. A routine whose
    * overlap rule starts nothing this tick (a run going, and `skip` or
@@ -39,7 +55,7 @@ export class TargetChecks<Run extends ScheduledRun> {
    *
    * @param startsNothing - whether the overlap rule would start none of `runs`
    */
-  async pass(runs: readonly Run[], startsNothing: boolean): Promise<readonly Run[]> {
+  async #pass(runs: readonly Run[], startsNothing: boolean): Promise<readonly Run[]> {
     if (this.#targetUnavailable === undefined || startsNothing || runs.length === 0) {
       return runs;
     }
@@ -61,7 +77,7 @@ export class TargetChecks<Run extends ScheduledRun> {
 
   /**
    * Puts what the checks found oldest first across routines, as the tick's
-   * starts are; `pass` is asked one routine at a time.
+   * starts are; `decide` is asked one routine at a time.
    */
   sortOldestFirst(): void {
     this.unavailable.sort(byTime);

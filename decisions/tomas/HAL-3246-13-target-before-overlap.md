@@ -1,6 +1,8 @@
 # Decision: check a routine's target before the overlap rule
 
-- Approval: Liam's note in his review of halonic#1580 ([HAL-4876](/HAL/issues/HAL-4876)) asked for this; Liam approves this note in his review of this pull request on [HAL-3246](/HAL/issues/HAL-3246)
+- Approval: Liam's note in his review of halonic#1580 ([HAL-4876](/HAL/issues/HAL-4876)) asked
+  for this; Liam approves this note in his review of this pull request on
+  [HAL-3246](/HAL/issues/HAL-3246)
 - Kind: internal
 - Task: HAL-3246
 
@@ -11,8 +13,9 @@
 
 - **Before:** after the overlap rule, about each run the tick would start.
 - **Now:** before the overlap rule, once per routine with due times that the overlap rule would
-  start, about its oldest due time. When the target can't start, every due time of that routine in the tick is
-  a `target-unavailable` skip. When the check throws, every one of them is reported as failed.
+  start, about its oldest due time. When the target can't start, every due time of that routine
+  in the tick is a `target-unavailable` skip. When the check throws, every one of them is
+  reported as failed.
 
 A routine whose overlap rule starts nothing this tick (a run going, and `overlap: skip` or
 `queue`) isn't asked, so its times keep `busy` or stay queued, as the existing example says. A
@@ -33,8 +36,9 @@ true.
 ## What doesn't change
 
 The `why` values, the rows they make, the stored shape of a skip and the behaviour without a
-check stay the same. No test is weakened: the existing tests pass unchanged, and three are added (the catch-up case,
-the `allow` case from Liam's review of this pull request, and the order across routines).
+check stay the same. No test is weakened: the existing tests pass unchanged, and three are
+added (the catch-up case, the `allow` case from Liam's review of this pull request, and the order
+across routines).
 
 ## Covers
 
