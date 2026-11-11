@@ -1296,6 +1296,83 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Build time: ${BUILD_SECONDS} s" >> "$GITHUB_STEP_SUMMARY"
 
+  installer-windows:
+    # The Windows installer (HAL-1202): built with the custom NSIS template,
+    # named as HAL-1119 settled, installed silently into a temporary folder
+    # and uninstalled again. Checks the files, the per-user install (no
+    # admin), and that Halonic reopens only on /RELAUNCH (HAL-1139). The
+    # screens, the sandbox step and the signing are later parts of the stack.
+    name: Windows installer (build, install, uninstall)
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Install the pinned Rust toolchain
+        working-directory: apps/studio/src-tauri
+        run: rustup toolchain install
+      - name: Build the installer
+        working-directory: apps/studio/src-tauri
+        run: pwsh windows/build-installer.ps1
+      - name: Install it silently, then check what it left
+        run: |
+          $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $setup = Resolve-Path "dist/Halonic-$version-windows-x64-setup.exe"
+          $dir = Join-Path $env:RUNNER_TEMP 'Halonic'
+          $p = Start-Process $setup -ArgumentList '/S', "/D=$dir" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
+          Get-ChildItem $dir -Recurse | Select-Object -First 40 FullName
+          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe') {
+            if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
+          }
+          # Per user: the uninstall entry is in HKCU, none in HKLM.
+          if (-not (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic')) { throw 'No uninstall entry for the current user' }
+          if (Test-Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The install wrote a machine-wide uninstall entry' }
+          # `/S` leaves Halonic closed.
+          Start-Sleep -Seconds 5
+          if (Get-Process Halonic -ErrorAction SilentlyContinue) { throw 'Halonic was opened by a silent install without /RELAUNCH' }
+          # The agent host runs from the installed folder.
+          $v = & (Join-Path $dir 'halonic-agent-host.exe') --version
+          Write-Output "agent host: $v"
+          Add-Content $env:GITHUB_ENV "HALONIC_TEST_DIR=$dir"
+      - name: Install again with /RELAUNCH, Halonic reopens
+        run: |
+          $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $setup = Resolve-Path "dist/Halonic-$version-windows-x64-setup.exe"
+          Start-Process $setup -ArgumentList '/S', '/RELAUNCH', "/D=$env:HALONIC_TEST_DIR" -Wait
+          Start-Sleep -Seconds 10
+          $running = Get-Process Halonic -ErrorAction SilentlyContinue
+          if (-not $running) { throw 'Halonic was not reopened after /RELAUNCH' }
+          $running | Stop-Process -Force
+      - name: Uninstall
+        run: |
+          $u = Join-Path $env:HALONIC_TEST_DIR 'uninstall.exe'
+          Start-Process $u -ArgumentList '/S' -Wait
+          Start-Sleep -Seconds 5
+          if (Test-Path (Join-Path $env:HALONIC_TEST_DIR 'Halonic.exe')) { throw 'Halonic.exe is still there after uninstall' }
+          if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The uninstall entry is still there' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: halonic-windows-installer-test
+          path: dist/*.exe
+          retention-days: 3
+          if-no-files-found: ignore
+
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
     # emulators. Its own job, so the slow Android build never holds up the
@@ -1515,6 +1592,7 @@ jobs:
         sandbox-os,
         sandbox-windows,
         agent-host,
+        installer-windows,
         android,
         e2e,
         docs,
