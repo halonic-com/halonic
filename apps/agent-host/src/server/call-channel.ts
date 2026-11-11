@@ -46,41 +46,62 @@ export class CallChannel {
   private nextCall = 1;
   private closed = false;
 
+  /** The channel closes by itself when the stream ends, such as when Studio crashes or reloads. */
   constructor(stream: NdjsonStream) {
     this.stream = stream;
+    // Nobody could answer a call once the stream is gone, so none may keep waiting.
+    void stream.ended.then(() => this.close());
   }
 
   /**
    * Asks Studio and waits for its answer.
    *
-   * @throws {StudioCallError} when Studio answers with an error, or the channel closes first
+   * `timeLimitMs` is for calls Studio answers at once, such as a lookup: when
+   * it runs out, Studio is told to stop and the call fails. Leave it out for a
+   * call that rightly waits long, such as one for a person's approval.
+   *
+   * @throws {StudioCallError} when Studio answers with an error, the time limit runs out, or the channel closes first
    * @throws the signal's reason when it aborts first; Studio is told to stop
    */
-  call(method: string, params: unknown, options: { signal?: AbortSignal } = {}): Promise<unknown> {
-    const { signal } = options;
+  call(
+    method: string,
+    params: unknown,
+    options: { signal?: AbortSignal; timeLimitMs?: number } = {},
+  ): Promise<unknown> {
+    const { signal, timeLimitMs } = options;
     if (this.closed) return Promise.reject(closedError(method));
     if (signal?.aborted) return Promise.reject(signal.reason);
     const call = String(this.nextCall++);
     return new Promise((resolve, reject) => {
-      const onAbort = (): void => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const stopWatching = (): void => {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
+      };
+      /** Stops waiting before Studio answers; a late answer then finds no call. */
+      const giveUp = (reason: unknown): void => {
         this.pending.delete(call);
+        stopWatching();
         const line: ChannelCancelLine = { type: "cancel", call };
         this.stream.send(line);
-        reject(signal?.reason);
+        reject(reason);
       };
-      const settle = (): void => signal?.removeEventListener("abort", onAbort);
+      const onAbort = (): void => giveUp(signal?.reason);
       this.pending.set(call, {
         method,
         resolve: (result) => {
-          settle();
+          stopWatching();
           resolve(result);
         },
         reject: (error) => {
-          settle();
+          stopWatching();
           reject(error);
         },
       });
       signal?.addEventListener("abort", onAbort, { once: true });
+      if (timeLimitMs !== undefined) {
+        timer = setTimeout(() => giveUp(timedOutError(method, timeLimitMs)), timeLimitMs);
+      }
       const line: ChannelCallLine = { type: "call", call, method, params };
       this.stream.send(line);
     });
@@ -117,4 +138,8 @@ export class CallChannel {
 
 function closedError(method: string): StudioCallError {
   return new StudioCallError(`The channel to Studio closed before it answered ${method}.`);
+}
+
+function timedOutError(method: string, timeLimitMs: number): StudioCallError {
+  return new StudioCallError(`Studio didn't answer ${method} within ${timeLimitMs} ms.`);
 }

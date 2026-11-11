@@ -21,6 +21,15 @@ export const studioMethods = {
   getSecret: "secrets.get",
 } as const;
 
+/**
+ * How long Studio may take to answer a call it can answer at once: recording
+ * an event, listing or checking tools, and reading a secret. A Studio that
+ * hangs then fails the bridge's request instead of holding it forever. A
+ * tool's run and a person's approval rightly take longer and have no limit.
+ */
+export const quickCallLimitMs = 30_000;
+const quick = { timeLimitMs: quickCallLimitMs };
+
 const toolList = s.array(
   s.object({
     name: s.string(),
@@ -48,13 +57,13 @@ export function studioServices(channel: CallChannel): {
   return {
     recorder: {
       record: async (event) => {
-        await channel.call(studioMethods.record, event);
+        await channel.call(studioMethods.record, event, quick);
       },
     },
     tools: {
-      list: async () => checked(toolList, await channel.call(studioMethods.listTools, {})),
+      list: async () => checked(toolList, await channel.call(studioMethods.listTools, {}, quick)),
       check: async (name, args) =>
-        checked(toolCheck, await channel.call(studioMethods.checkTool, { name, args })),
+        checked(toolCheck, await channel.call(studioMethods.checkTool, { name, args }, quick)),
       call: async (name, args, { signal }) =>
         checked(toolResult, await channel.call(studioMethods.callTool, { name, args }, { signal })),
     },
@@ -84,7 +93,7 @@ export function studioSecrets(
   return {
     get: async (name) =>
       named.has(name)
-        ? checked(secretValue, await channel.call(studioMethods.getSecret, { name }))
+        ? checked(secretValue, await channel.call(studioMethods.getSecret, { name }, quick))
         : null,
   };
 }
