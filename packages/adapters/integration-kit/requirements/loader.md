@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-135 (the loader for built-in and local integrations; provider mapping decided with Ravi on 8 Nov), plan 15.2 I5 (a local integration runs only after you approve its permission sheet)
+- Source: HAL-135 (the loader for built-in and local integrations; provider mapping decided with Ravi on 8 Nov), plan 15.2 I5 (a local integration runs only after you approve its permission sheet), HAL-958 §3.5 / A32 (a local integration declares no `tokens`)
 
-The kit's loader shall build an integration's host only when its permission sheet passes the sheet's schema and checks, the code declares exactly the sheet's kit version, name, version and tools (text, arguments, `risk` and `untrusted`), every need is available, the workspace's secret picks name only declared secrets, every `{ fromSetting }` host resolves, and, for a local integration, the sheet is the one the user approved. It shall give the kit the sheet's limits, and read each secret only through the workspace secret the user picked for it. A provider's `baseUrl` and secret shall map onto the sheet's one `{ fromSetting }` host and one secret.
+The kit's loader shall build an integration's host only when its permission sheet passes the sheet's schema and checks, the code declares exactly the sheet's kit version, name, version and tools (text, arguments, `risk` and `untrusted`), every need is available, the workspace's secret picks name only declared secrets, every `{ fromSetting }` host resolves, and, for a local integration, the sheet is the one the user approved and declares no `tokens`. It shall give the kit the sheet's limits, and read each secret only through the workspace secret the user picked for it. A provider's `baseUrl` and secret shall map onto the sheet's one `{ fromSetting }` host and one secret.
 
 ## Examples
 
@@ -23,6 +23,9 @@ The kit's loader shall build an integration's host only when its permission shee
 - Given a local integration without an approved sheet, or whose sheet gained a host since it was approved,
   when it is loaded,
   then it fails with `sheet-not-approved`; with the same sheet approved, it loads.
+- Given a local integration whose approved sheet declares `tokens`,
+  when it is loaded,
+  then it fails with `tokens-not-allowed` and the fix "Use an API key, or ask for sign-in support."; the same sheet loads as built-in.
 - Given `needs: [process]` on a runtime without `process`,
   when it is loaded,
   then it fails with `need-not-available` at `needs[0]`.
