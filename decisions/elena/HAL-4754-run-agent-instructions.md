@@ -28,8 +28,14 @@ run. This closes the instructions half of the parity gap HAL-4754.
 No test was weakened. The workspace test now also checks the skills a run starts with. The new
 behaviour has its own tests in `packages/core/engine/src/run/local-runs-instructions.test.ts`.
 
+The golden files sit in `apps/cli`, so the guard also compares the `expect` count of
+`cli.commands.routines.watch` (227 on this branch, 250 and 255 on main in two runs). This pull
+request changes no routines code or test. The count is measured at run time and its polling tests
+drift between runs (see HAL-5568), so the note covers it.
+
 ## Covers
 
 - workspace.run-definitions
 - apps/cli/src/commands/run/golden/support-reply-approved.txt
 - apps/cli/src/commands/run/golden/support-reply-waiting.txt
+- cli.commands.routines.watch
