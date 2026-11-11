@@ -6,11 +6,7 @@
 // catalogue; this file only decides which sentence goes where.
 
 import type { TrustCheck } from "@halonicjs/app";
-import type {
-  ConnectorTrustContent,
-  IntegrationTrustContent,
-  TrustChanges,
-} from "@halonicjs/workspace";
+import type { ConnectorTrustContent, TrustChanges } from "@halonicjs/workspace";
 import { dayInWords, localDay } from "../messages/dates.ts";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase } from "../messages/phrase.ts";
@@ -19,6 +15,7 @@ import {
   addressRow,
   agentFieldChanges,
   agentRow,
+  integrationChanges,
   integrationRows,
   programRow,
   providerRow,
@@ -129,8 +126,6 @@ function changedLines(
       tagged(show(row), changedRow),
     ),
   ];
-  const integrationsOf = (rows: readonly IntegrationTrustContent[], tag: Message) =>
-    rows.flatMap((row) => tagged(integrationRows(row), tag));
   return [
     trustMessages.changedHeading(facts.name, trustedOn).phrase,
     ...(hasChanges(changeCounts)
@@ -148,11 +143,8 @@ function changedLines(
     ]),
     ...section(trustMessages.addressesHeading(), [
       ...rowsOf(addresses, (row) => [addressRow(row)]),
-      ...integrationsOf(changes.integrations.added, newRow),
-      ...integrationsOf(
-        changes.integrations.changed.map((row) => row.after),
-        changedRow,
-      ),
+      ...changes.integrations.added.flatMap((row) => tagged(integrationRows(row), newRow)),
+      ...changes.integrations.changed.flatMap(integrationChanges),
       ...changes.providers.added.map((row) => withTag(providerRow(row), newRow)),
       ...changes.providers.changed.map((row) => withTag(providerRow(row.after), changedRow)),
     ]),

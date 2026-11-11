@@ -123,6 +123,14 @@ export const trustMessages = defineMessages("trust", {
    * after Agents, as Studio's Addresses section (microcopy 4.3; team, HAL-3468).
    */
   addressesHeading: () => phrase`Addresses`,
+  /**
+   * A changed local integration whose files changed, the sheet's wording
+   * included: the files aren't named (trust build plan item 3a, HAL-188).
+   */
+  integrationCodeChanged: () => phrase`code changed`,
+  /** A local integration that moved: "folder integrations/crm → integrations/my-crm". */
+  integrationFolderChanged: (before: string, after: string) =>
+    phrase`folder ${dim(before)} → ${dim(after)}`,
   /** A local integration's setting with no address in it yet. */
   settingNotSet: () => phrase`not set`,
   /**

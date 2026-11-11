@@ -3,9 +3,15 @@
 // they all compute one fingerprint for the same files on the same computer.
 
 import { realpath } from "node:fs/promises";
+import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { TrustService, type TrustSubject } from "@halonicjs/app";
 import type { Clock, TrustGrant, TrustStore } from "@halonicjs/ports";
-import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  type LocalIntegrationInput,
+  loadWorkspace,
+} from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import type { Message } from "./messages/define.ts";
 import { runMessages } from "./messages/run.ts";
@@ -15,12 +21,15 @@ import { trustChangesDocument } from "./output/trust-changes-json.ts";
 import { trustCheckLines } from "./output/trust-check.ts";
 import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
+import { readLocalIntegrations } from "./workspace-integrations.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 
 /** What {@link trustSubjectOf} reads. */
 export interface TrustSubjectInput {
   /** The workspace, loaded. Files with an error are left out, as `loadWorkspace` does. */
   readonly workspace: LoadedWorkspace;
+  /** The workspace's local integrations, from {@link workspaceIntegrations}. */
+  readonly integrations: readonly LocalIntegrationInput[];
   /** The workspace's resolved real path: the trust record's key. */
   readonly location: string;
   /** The absolute path each connector's command resolves to on this computer. */
@@ -29,33 +38,47 @@ export interface TrustSubjectInput {
 
 /**
  * Every connector, agent and model provider of the workspace, of the root
- * and of every hub, as the trust check fingerprints them.
+ * and of every hub, and its local integrations, as the trust check
+ * fingerprints them.
  */
 export function trustSubjectOf(input: TrustSubjectInput): TrustSubject {
   return {
     location: input.location,
-    ...trustContentInputOf(input.workspace),
+    ...trustContentInputOf(input.workspace, input.integrations),
     commandPaths: input.commandPaths,
   };
 }
 
 /**
- * The connectors, agents, local integrations and model providers of the
- * workspace, of the root and of every hub: what its trust content is built
- * from, apart from where the programs are on this computer.
+ * The connectors, agents and model providers of the workspace, of the root
+ * and of every hub, and its local integrations: what its trust content is
+ * built from, apart from where the programs are on this computer.
  */
 export function trustContentInputOf(
   workspace: LoadedWorkspace,
+  integrations: readonly LocalIntegrationInput[],
 ): Pick<TrustSubject, "connectors" | "agents" | "integrations" | "providers"> {
   return {
     connectors: filesOf(workspace, "connector").map((file) => file.value),
     agents: filesOf(workspace, "agent").map((file) => file.value),
-    // A workspace doesn't load its local integrations yet; when it does,
-    // they go here with their settings, so every command checks the same
-    // fingerprint and the trust skip of `run` sees them.
-    integrations: [],
+    integrations,
     providers: filesOf(workspace, "provider").map((file) => file.value),
   };
+}
+
+/**
+ * The local integrations in the workspace folder `root`, read without
+ * following links and hashed as a runner start hashes them. Every command
+ * that checks trust reads them this way, so they all see the same code.
+ *
+ * @param root - the workspace folder
+ * @param shown - the folder as the user typed it, such as `./acme`
+ */
+export async function workspaceIntegrations(
+  root: string,
+  shown: string,
+): Promise<LocalIntegrationInput[]> {
+  return await readLocalIntegrations(new FileSystemFolderReader(root, shown), webCryptoDigest);
 }
 
 /**
@@ -78,9 +101,10 @@ export interface WorkspaceTrust {
 }
 
 /**
- * Loads the workspace in `dir` and finds each connector's program on this
- * computer, for a trust check. A run passes the workspace it starts, the
- * live version, so trust is checked on what runs, not on the saved files.
+ * Loads the workspace in `dir`, reads its local integrations and finds each
+ * connector's program on this computer, for a trust check. A run passes the
+ * workspace it starts, the live version, so trust is checked on what runs,
+ * not on the saved files.
  *
  * @example
  * await readWorkspaceTrust(await openWorkspaceDir(input, io), nodeCommandSearch());
@@ -96,6 +120,7 @@ export async function readWorkspaceTrust(
   const connectors = filesOf(workspace, "connector").map((file) => file.value);
   const subject = trustSubjectOf({
     workspace,
+    integrations: await workspaceIntegrations(dir.root, dir.shown),
     location: await realpath(dir.root),
     commandPaths: await commandPaths(connectors, search),
   });

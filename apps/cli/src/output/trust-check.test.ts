@@ -303,6 +303,35 @@ verifies("cli.trust-check", () => {
     ]);
   });
 
+  it("shows a moved local integration with changed files as its folder, then code changed", () => {
+    const before = { id: "my-crm", ...integrationBase, addresses: {} };
+    const after = { ...before, folder: "integrations/crm", code: "sha256:01" };
+    const changes: TrustChanges = {
+      ...noChanges,
+      agents: noChanges,
+      integrations: {
+        ...noChanges,
+        changed: [{ id: "my-crm", before, after, fields: ["code", "folder"] }],
+      },
+      providers: noChanges,
+      onlyRemoves: false,
+    };
+    const check: TrustCheck = {
+      status: "changed",
+      content: { connectors: [], integrations: [after] },
+      ...current,
+      changes,
+      trustedAt,
+    };
+    expect(lines(check).slice(1, 6)).toEqual([
+      "1 changed address since you trusted this on 3 Nov.",
+      "",
+      "Addresses",
+      "  my-crm        folder integrations/my-crm → integrations/crm   Changed",
+      "  my-crm        code changed   Changed",
+    ]);
+  });
+
   it("leaves out the change summary when there is nothing to name", () => {
     const changes: TrustChanges = {
       ...noChanges,

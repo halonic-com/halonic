@@ -4,7 +4,11 @@ import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { Provider } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import {
+  type LoadedWorkspace,
+  type LocalIntegrationInput,
+  loadWorkspace,
+} from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { doctorProvider, doctorWorkspace } from "./doctor-workspace.ts";
 
@@ -37,7 +41,7 @@ const providerFiles = {
 };
 
 verifies("cli.doctor-workspace", () => {
-  it("names the workspace and gives the trust check every connector and agent", async () => {
+  it("names the workspace and gives the trust check every connector, agent and local integration", async () => {
     const workspace = await workspaceOf({
       "workspace.yaml": acmeSettings,
       "library/connectors/files.connector.yaml":
@@ -47,9 +51,11 @@ verifies("cli.doctor-workspace", () => {
         "id: writer\nname: Writer\ninstructions: Write.\nharness: claude-code\n",
     });
     const commandPaths = new Map([["acme-files", "/usr/bin/acme-files"]]);
+    const integrations: LocalIntegrationInput[] = [];
 
     const doctor = doctorWorkspace({
       workspace,
+      integrations,
       location: "/work/acme",
       fallbackName: "./acme",
       commandPaths,
@@ -58,6 +64,7 @@ verifies("cli.doctor-workspace", () => {
     expect(doctor.name).toBe("Acme");
     expect(doctor.trust.location).toBe("/work/acme");
     expect(doctor.trust.commandPaths).toBe(commandPaths);
+    expect(doctor.trust.integrations).toBe(integrations);
     expect(doctor.trust.connectors.map((connector) => connector.id)).toEqual(["files"]);
     expect(doctor.trust.agents.map((agent) => [agent.id, agent.harness])).toEqual([
       ["writer", "claude-code"],
@@ -68,6 +75,7 @@ verifies("cli.doctor-workspace", () => {
     const workspace = await workspaceOf({ "workspace.yaml": "name: [\n" });
     const doctor = doctorWorkspace({
       workspace,
+      integrations: [],
       location: root,
       fallbackName: "./acme",
       commandPaths: new Map(),
@@ -96,6 +104,7 @@ verifies("cli.doctor-workspace", () => {
 
     const doctor = doctorWorkspace({
       workspace,
+      integrations: [],
       location: root,
       fallbackName: "./acme",
       commandPaths: new Map(),
@@ -126,6 +135,7 @@ verifies("cli.doctor-workspace", () => {
 
     const doctor = doctorWorkspace({
       workspace,
+      integrations: [],
       location: root,
       fallbackName: "./acme",
       commandPaths: new Map(),

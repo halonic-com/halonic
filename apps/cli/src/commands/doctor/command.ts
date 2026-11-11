@@ -21,6 +21,7 @@ import {
   type WorkspaceDir,
   workspaceDir,
 } from "../../workspace-dir.ts";
+import { workspaceIntegrations } from "../../workspace-trust.ts";
 
 /**
  * `halonic doctor [--dir <folder>]` on the computer `machine` reads, so tests
@@ -86,6 +87,7 @@ async function readWorkspace(
   const connectors = filesOf(loaded, "connector").map((file) => file.value);
   const workspace = doctorWorkspace({
     workspace: loaded,
+    integrations: await workspaceIntegrations(dir.root, dir.shown),
     location: await realpath(dir.root),
     fallbackName: dir.shown,
     commandPaths: await commandPaths(connectors, nodeCommandSearch()),

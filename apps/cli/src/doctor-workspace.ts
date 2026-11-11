@@ -4,7 +4,12 @@
 
 import type { AliasProvider, DoctorProvider, DoctorWorkspace } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
-import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  type LocalIntegrationInput,
+  modelAliases,
+} from "@halonicjs/workspace";
 import { trustSubjectOf } from "./workspace-trust.ts";
 
 /**
@@ -21,6 +26,8 @@ const defaultAddresses: Readonly<Record<string, string>> = {
 export interface DoctorWorkspaceInput {
   /** The workspace, loaded. Files with an error are left out, as `loadWorkspace` does. */
   readonly workspace: LoadedWorkspace;
+  /** The workspace's local integrations, as every command that checks trust reads them. */
+  readonly integrations: readonly LocalIntegrationInput[];
   /** The workspace's resolved real path: the trust record's key. */
   readonly location: string;
   /** The name to show when `workspace.yaml` didn't parse, such as the folder as typed. */
@@ -42,7 +49,7 @@ export interface DoctorWorkspaceInput {
  *   aliases: `halonic validate` reports it.
  *
  * @example
- * doctorWorkspace({ workspace, location: "/work/acme", fallbackName: "./acme", commandPaths });
+ * doctorWorkspace({ workspace, integrations: [], location: "/work/acme", fallbackName: "./acme", commandPaths });
  * // { name: "Acme", trust: { … }, aliases: [{ alias: "smart", provider: "anthropic" }], providers: [ … ] }
  */
 export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {

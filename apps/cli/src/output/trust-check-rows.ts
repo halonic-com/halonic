@@ -1,14 +1,15 @@
 // The rows of the trust check (cli-output 3.5, revision 40): a program with
 // its command, secrets and ! line, an address, a model provider's address,
-// a local integration with the address each of its settings holds, an agent with its sites and folder,
-// and a changed agent's one row per field. `trust-check.ts` puts
-// them in sections.
+// a local integration with the address each of its settings holds, an agent
+// with its sites and folder, and a changed agent's or local integration's
+// rows for what changed. `trust-check.ts` puts them in sections.
 
 import { programName } from "@halonicjs/app";
 import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
   AgentTrustContent,
   ChangedAgent,
+  ChangedIntegration,
   ConnectorTrustContent,
   IntegrationTrustContent,
   ProviderTrustContent,
@@ -76,6 +77,31 @@ export function integrationRows(integration: IntegrationTrustContent): Phrase[] 
     const detail = phrase`${name.padEnd(width + columnGap)}${settingAddress(address)}`;
     return index === 0 ? row(integration.id, detail) : phrase`${underRow}${detail}`;
   });
+}
+
+/**
+ * A changed local integration's Changed rows: its setting addresses when one
+ * changed, then its folder when it moved, then "code changed" when a file
+ * in it changed. Every other field is in the sheet, so a change to one is a
+ * change to the code too.
+ */
+export function integrationChanges(integration: ChangedIntegration): Phrase[] {
+  const { id, before, after, fields } = integration;
+  const changedRow = trustMessages.changedRow();
+  return [
+    ...(fields.includes("addresses") ? tagged(integrationRows(after), changedRow) : []),
+    ...(fields.includes("folder")
+      ? [
+          withTag(
+            row(id, trustMessages.integrationFolderChanged(before.folder, after.folder).phrase),
+            changedRow,
+          ),
+        ]
+      : []),
+    ...(fields.includes("code")
+      ? [withTag(row(id, trustMessages.integrationCodeChanged().phrase), changedRow)]
+      : []),
+  ];
 }
 
 /** The address a setting holds, "not set", or why it can't be trusted. */

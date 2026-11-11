@@ -16,6 +16,7 @@ import {
   trustContentInputOf,
   trustedGrant,
   type WorkspaceTrustMachine,
+  workspaceIntegrations,
 } from "../../workspace-trust.ts";
 
 /** What the trust check reads on this computer, so tests can hand it a memory store. */
@@ -43,7 +44,8 @@ export async function checkRunTrust(
   nothingDone: Message = runMessages.nothingRan(),
   harness?: string,
 ): Promise<void> {
-  if (!startsAProgram(harness) && reachesOnlyTheTestModel(trustContentInputOf(workspace))) {
+  const integrations = await workspaceIntegrations(dir.root, dir.shown);
+  if (!startsAProgram(harness) && reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations))) {
     return;
   }
   await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
