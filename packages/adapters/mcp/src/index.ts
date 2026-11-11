@@ -35,8 +35,15 @@ export type {
   ProgramStarter,
   RunningProgram,
 } from "./stdio/program.ts";
-export { defaultRestartLimits, type RestartLimits } from "./stdio/restart-limit.ts";
+export {
+  defaultRestartLimits,
+  RestartLimit,
+  type RestartLimits,
+} from "./stdio/restart-limit.ts";
 export { McpStdioConnectorFactory, type McpStdioOptions } from "./stdio/stdio-connector.ts";
-export { defaultStdioLimits, type StdioLimits } from "./stdio/stdio-transport.ts";
+// The transport, restart limit and tool mapping are shared with
+// `@halonicjs/adapter-connector-stdio-sandbox`, which starts the program in a
+// sandbox session instead of on this computer and speaks the same MCP to it.
+export { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio/stdio-transport.ts";
 export { ConnectorStoppedError } from "./stdio/stopped-error.ts";
-export { ConnectorToolError } from "./stdio/tool-mapping.ts";
+export { ConnectorToolError, resultText, toConnectorTool } from "./stdio/tool-mapping.ts";

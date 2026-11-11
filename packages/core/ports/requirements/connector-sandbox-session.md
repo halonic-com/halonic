@@ -1,12 +1,12 @@
 # ports.connector-sandbox-session
 
-- Status: draft
+- Status: active
 - Since: 0.1.0
 - Source: HAL-1738 (plugins P5), plugins ADR sections 3 and 4: a plugin's local tool runs only in a `SandboxSession`, never directly on this computer; HAL-3386 test plan C2: a yes to run without the sandbox covers plugin backends and integrations, never programs
 
 When `ConnectorFactoryContext.sandbox` is set, the `stdio` connector shall start its program in that session and nowhere else. A factory that starts programs on this computer shall refuse such a context when it creates the connector, before it reads a secret or starts anything. A factory that starts programs through the session shall start nothing while the session's fence proof isn't `fenced`, whatever the person said about running without the sandbox, and shall not fall back to this computer.
 
-It stays draft until `adapters/connector-stdio-sandbox` exists and its tests prove the fence rule; the host factory's refusal is tested now.
+The host factory's refusal is tested in `adapters/mcp`, the fence rule in `adapters/connector-stdio-sandbox`.
 
 ## Examples
 
