@@ -71,14 +71,18 @@ export class ManualTimers {
 
 /**
  * The shared in-memory record store, with two additions for tests:
- * `failNextAppend` makes the next write reject, and `failNextCompact` the
- * next compaction.
+ * `failNextAppend` makes the next write reject, `failAppends` every write
+ * until it is set back, and `failNextCompact` the next compaction.
  */
 export class FlakyRecordStore extends MemoryRecordStore {
   failNextAppend = false;
+  failAppends = false;
   failNextCompact = false;
 
   override async append(changes: readonly RecordChange[]): Promise<void> {
+    if (this.failAppends) {
+      throw new Error("the record store is unavailable");
+    }
     if (this.failNextAppend) {
       this.failNextAppend = false;
       throw new Error("the record store is unavailable");
