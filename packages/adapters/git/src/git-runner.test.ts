@@ -171,8 +171,11 @@ verifies("git.runner-close", () => {
     });
 
     // HAL-4428: when `create` refuses the program, nobody gets a runner to close.
-    it.runIf(process.platform !== "win32")(
-      "removes the hooks folder it made when it refuses the git program",
+    // The refused program is a `/bin/sh` wrapper, as in find-git's HAL-4373
+    // test; a wrapper on Windows has to be a compiled git.exe, which this test
+    // can't build. The clean-up after a refusal is the same code on Windows.
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] HAL-4428: a wrapper there is a compiled git.exe, not a script this test can write: removes the hooks folder it made when it refuses the git program",
       async () => {
         const folder = await scratch.folder();
         const wrapper = join(folder, "git");
