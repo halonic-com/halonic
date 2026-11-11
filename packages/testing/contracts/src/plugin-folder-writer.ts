@@ -95,7 +95,7 @@ function takenCases(make: MakePluginFolderWriter): void {
     expect(await writer.place("weather", weather, { replace: false })).toBe("taken");
     expect(await writer.place("weather", weather, { replace: true })).toBe("taken");
     // macOS ignores a zero-width non-joiner, so this opens as `Weather` too.
-    expect(await writer.place("weat‌her", weather, { replace: true })).toBe("taken");
+    expect(await writer.place("weat\u200Cher", weather, { replace: true })).toBe("taken");
     expect(await pathsOf(reader)).toEqual(["Weather", "Weather/plugin.yaml"]);
   });
 
