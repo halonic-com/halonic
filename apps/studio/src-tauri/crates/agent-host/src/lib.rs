@@ -6,6 +6,7 @@
 //! the shell. Nothing here knows Tauri, so it builds and tests anywhere.
 
 mod handshake;
+mod routes;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -14,6 +15,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 pub use handshake::{Handshake, read_handshake};
+pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
 
 /// The host's executable name, without the `.exe` Windows adds.
 pub const EXECUTABLE_NAME: &str = "halonic-agent-host";

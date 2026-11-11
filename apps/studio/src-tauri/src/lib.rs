@@ -4,10 +4,12 @@
 //! (capabilities/desktop-git.json), the `secret_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`
 //! commands (capabilities/desktop-trust.json) and the `run_*` commands
-//! (capabilities/desktop-runs.json); the Studio it then opens is
+//! (capabilities/desktop-runs.json) and the `agent_host_*` commands
+//! (capabilities/desktop-agent-host.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
+mod agent_host;
 mod connect;
 mod git;
 mod native_dialogs;
@@ -37,6 +39,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(secrets::SecretsState::default())
         .manage(halonic_trust_grant::TrustState::default())
         .manage(runs::RunState::default())
+        .manage(agent_host::AgentHostState::default())
         // The opener is used only from Rust: the navigation guard hands
         // outside links to the browser with it. Its click script stays off.
         // That script would run in every page, the served Studio too, and
@@ -63,6 +66,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             runs::run_events,
             runs::run_snapshot,
             runs::run_logs,
+            agent_host::agent_host_request,
+            agent_host::agent_host_stream,
+            agent_host::agent_host_stream_end,
         ])
 }
 

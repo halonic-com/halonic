@@ -2,7 +2,8 @@
 //! checklist): every app and plugin command the shell knows is refused when
 //! the request comes from the computer's address, while the connect page
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
-//! commands, `pick_folder`, the `trust_*` commands and the `run_*` commands.
+//! commands, `pick_folder`, the `trust_*` commands, the `run_*` commands
+//! and the `agent_host_*` commands.
 
 use serde_json::{Value, json};
 use tauri::WebviewUrl;
@@ -106,6 +107,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "run_events",
         "run_snapshot",
         "run_logs",
+        "agent_host_request",
+        "agent_host_stream",
+        "agent_host_stream_end",
         "plugin:opener|open_url",
         "plugin:event|listen",
     ] {
@@ -215,6 +219,48 @@ fn served_page_test_sees_the_connect_page_allowed_the_run_commands_on_desktop() 
         let refusal = answer.expect_err("no folder is opened yet");
         assert_eq!(refusal["kind"], "folder_not_open", "{command}: {refusal}");
     }
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_the_agent_host_commands_on_desktop() {
+    // The call gets through to the command, which refuses a name that isn't
+    // one of the host's routes before it starts the host.
+    let window = app_window();
+    let answer = invoke(
+        &window,
+        CONNECT_PAGE,
+        "agent_host_request",
+        json!({"route": "GET http://example.com/", "body": null}),
+    );
+    let refusal = answer.expect_err("not a route");
+    assert_eq!(refusal["kind"], "unknown_route", "{refusal}");
+    let ended = invoke(
+        &window,
+        CONNECT_PAGE,
+        "agent_host_stream_end",
+        json!({"stream": 7}),
+    );
+    assert_eq!(ended, Ok(Value::Null));
+}
+
+#[test]
+fn served_page_test_sees_the_agent_host_granted_to_the_local_main_window_only() {
+    // A remote page must never reach the agent host: the served Studio could
+    // then open sandbox sessions and bridges on this computer.
+    let text = include_str!("../capabilities/desktop-agent-host.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([
+            "allow-agent-host-request",
+            "allow-agent-host-stream",
+            "allow-agent-host-stream-end"
+        ])
+    );
 }
 
 #[test]

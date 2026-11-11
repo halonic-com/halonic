@@ -21,6 +21,9 @@ fn main() {
         "run_events",
         "run_snapshot",
         "run_logs",
+        "agent_host_request",
+        "agent_host_stream",
+        "agent_host_stream_end",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

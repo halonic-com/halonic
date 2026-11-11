@@ -29,6 +29,7 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
+halonic-agent-host = { path = "crates/agent-host" }
 halonic-connect = { path = "crates/connect" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-keychain = { path = "crates/keychain" }

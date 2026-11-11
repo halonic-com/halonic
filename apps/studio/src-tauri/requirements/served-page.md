@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-196 section 3, HAL-1375, HAL-192, HAL-2612, HAL-2701
+- Source: HAL-196 section 3, HAL-1375, HAL-192, HAL-2612, HAL-2701, HAL-4878
 
-The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_set`, `secret_delete`, `pick_folder`, `trust_get`, `trust_list`, `trust_grant`, `trust_revoke`, `run_append`, `run_events`, `run_snapshot` and `run_logs`. The Studio the computer serves shall get no native access.
+The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_set`, `secret_delete`, `pick_folder`, `trust_get`, `trust_list`, `trust_grant`, `trust_revoke`, `run_append`, `run_events`, `run_snapshot`, `run_logs`, `agent_host_request`, `agent_host_stream` and `agent_host_stream_end`. The Studio the computer serves shall get no native access.
 
 ## Examples
 

@@ -1549,6 +1549,7 @@ version = "0.1.0"
 name = "halonic-studio"
 version = "0.1.0"
 dependencies = [
+ "halonic-agent-host",
  "halonic-connect",
  "halonic-git-guard",
  "halonic-keychain",
