@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
+import { heavyTestTimeout } from "../../test/golden.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import {
@@ -133,7 +134,9 @@ async function trustAcme(): Promise<void> {
 }
 
 verifies("cli.commands.runs.send", () => {
-  describe("a run that's waiting for you", () => {
+  // Each test starts Support reply and then sends to it: 3–10 s in CI at
+  // worst (HAL-5473).
+  describe("a run that's waiting for you", { timeout: heavyTestTimeout }, () => {
     it("sends the event, says the run goes on, and follows it to its end", async () => {
       await startWaitingRun();
 
@@ -164,7 +167,9 @@ verifies("cli.commands.runs.send", () => {
     });
   });
 
-  describe("before anything is sent", () => {
+  // Each test starts Support reply, then changes the workspace and tries to
+  // send: about 3.5 s in CI at worst (HAL-5473).
+  describe("before anything is sent", { timeout: heavyTestTimeout }, () => {
     it("refuses a workspace that was never trusted here, and sends nothing", async () => {
       await startWaitingRun();
       const before = await eventsOfTheRun();

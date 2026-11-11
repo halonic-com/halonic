@@ -7,7 +7,7 @@ import { type RunDetail, RunEvents, shortRunId, WorkflowRuns } from "@halonicjs/
 import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import type { CommandContext } from "../../command.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { type Phrase, plainText } from "../../messages/phrase.ts";
@@ -30,7 +30,9 @@ let waiting: RunDetail;
 /** The same run after `approve`, to its end. */
 let approved: RunDetail;
 
-beforeEach(async () => {
+// One run for the whole file: the tests only read it. Running it before each
+// test took up to 4 s a test in CI (HAL-5473).
+beforeAll(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-cli-run-live-"));
   const acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
@@ -72,7 +74,7 @@ beforeEach(async () => {
   workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
 });
 
-afterEach(async () => {
+afterAll(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 

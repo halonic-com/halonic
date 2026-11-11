@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
-import { goldenText, runGolden } from "../../test/golden.ts";
+import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
 import { initCommand } from "./command.ts";
 import { initExamples } from "./examples.ts";
@@ -275,7 +275,8 @@ verifies("cli.commands.init.copy-example", () => {
     });
   });
 
-  it("has golden output for a copy of the example", async () => {
+  // It copies the whole example once per mode: up to 3 s on Linux and 16 s on Windows in CI (HAL-5473).
+  it("has golden output for a copy of the example", { timeout: heavyTestTimeout }, async () => {
     const args = ["init", "--example", "acme"];
     // Each mode starts from the same empty folder.
     const run = await runGolden(

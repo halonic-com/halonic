@@ -10,6 +10,16 @@ import { manualClock } from "./manual-clock.ts";
  */
 export const goldenModes = ["colour", "noColour", "json"] as const;
 
+/**
+ * Room for a test that runs whole workflows or several commands, such as a
+ * golden run (one run per mode). Those take 1–3 s on a quiet machine and
+ * passed Vitest's 5 s default on a loaded runner (HAL-5399, HAL-5473). It is
+ * 30 s, not 20 s, because a test's own timeout replaces the 30 s CI gives
+ * every test on Windows, where one golden run took 16 s. A real hang still
+ * fails.
+ */
+export const heavyTestTimeout = 30_000;
+
 /** One of {@link goldenModes}. */
 export type GoldenMode = (typeof goldenModes)[number];
 

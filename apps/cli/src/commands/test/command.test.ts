@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
-import { goldenText, runGolden } from "../../test/golden.ts";
+import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
 import { testCommandWith } from "./command.ts";
 
@@ -154,7 +154,8 @@ verifies("cli.commands.test.run-tests", () => {
     });
   });
 
-  describe("golden output", () => {
+  // Each golden test runs the Acme tests once per mode: 1–4 s in CI (HAL-5473).
+  describe("golden output", { timeout: heavyTestTimeout }, () => {
     const golden = async (name: string, args: readonly string[]) => {
       const run = await runGolden(args, commands, acme);
       expect(checklistProblems(run, { reportOnStdout: true })).toEqual([]);

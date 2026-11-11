@@ -7,7 +7,7 @@ import { type RunDetail, WorkflowRuns } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { stoppedResult } from "../../follow-run.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
@@ -23,8 +23,11 @@ let workspace: LoadedWorkspace;
 let run: RunDetail;
 let events: readonly RunEvent[];
 
-/** Support reply on Sam's email, run to its wait in the Acme example. */
-beforeEach(async () => {
+/**
+ * Support reply on Sam's email, run to its wait in the Acme example, once for the whole file:
+ * the tests only read it. Running it before each test took up to 3 s a test in CI (HAL-5473).
+ */
+beforeAll(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-cli-run-stopped-"));
   acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
@@ -54,7 +57,7 @@ beforeEach(async () => {
   }
 });
 
-afterEach(async () => {
+afterAll(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
@@ -127,7 +130,10 @@ verifies("cli.run", () => {
       workflowFile,
       workflow.replace("name: Support reply", 'name: "\\e[2JSupport reply"'),
     );
-    const renamed = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+    // The folder is the whole file's, so it gets its workflow back.
+    const renamed = await loadWorkspace(new FolderDefinitionStore(acme, "./acme")).finally(() =>
+      writeFile(workflowFile, workflow),
+    );
 
     const result = runResult(run, {
       workspace: renamed,
