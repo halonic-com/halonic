@@ -54,6 +54,12 @@ optional and come with a requirement.
   so far (a later event replaces an earlier count). A step's log
   names at most `maxBlockedTargetsPerStep` (100) targets; the rest are counted
   as `others` (requirement `sandbox-blocked`).
+- `blockedSites(events, { limit })`: the sites each step's sandbox refused,
+  each named once with its tries (the ports of a site added up), most tries
+  first, cut at `limit` with the rest counted in `moreSites` and `moreTries`.
+  A step is one visit of a state, per branch and item. Data only; a screen
+  words it and shows each host with `siteName` from std (requirement
+  `blocked-sites`).
 
 ## Example
 
