@@ -18,6 +18,18 @@ export {
   type TauriFileShell,
 } from "./file-commands.ts";
 export {
+  type HostSettingsRefusal,
+  type HostSettingsRefusalKind,
+  hostSettingsCommands,
+  hostSettingsRefusalKinds,
+  isHostSettingsRefusal,
+} from "./host-settings-commands.ts";
+export {
+  hostSettingsPollMs,
+  TauriHostSettingsStore,
+  type TauriHostSettingsStoreOptions,
+} from "./host-settings-store.ts";
+export {
   isRecordRefusal,
   type RecordRefusal,
   type RecordRefusalKind,

@@ -1,6 +1,6 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore` and `DefinitionStore` ports for the Studio desktop app.
+The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore` and `HostSettingsStore` ports for the Studio desktop app.
 
 - `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
@@ -21,6 +21,10 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore` and `DefinitionStore` p
 - `TauriDefinitionStore`: every call goes to the shell's `fs_list`, `fs_read`, `fs_write` or
   `fs_remove` command, on the plain files of a folder the person opened, the files the CLI's
   `FolderDefinitionStore` reads and writes. `watch()` hears the shell's `fs_watch`.
+- `TauriHostSettingsStore`: every call goes to the shell's `host_settings_read`,
+  `host_settings_set` or `host_settings_remove` command. The shell keeps the settings in the
+  profile's `settings/host.json`, as `FileHostSettingsStore` in `fs-node` keeps them, so the CLI and
+  the desktop app share them. See [Host settings](#host-settings).
 
 - **Layer:** adapters
 - **Owner:** priya
@@ -195,6 +199,36 @@ The package exports `TauriDefinitionStore`, `TauriFileShell`, `TauriChannelHandl
 `isFileRefusal`. The tests run the definition-store contract against a fake shell; the comparing,
 the rename and the link checks on real files are proved by the Rust tests of the file commands
 (in `apps/studio/src-tauri`).
+
+## Host settings
+
+`new TauriHostSettingsStore(shell)` keeps the settings kept where Halonic runs: the assistant and the
+sandbox default, for every workspace on this computer. The page gives a key and a value, never a
+path; the shell (`apps/studio/src-tauri/crates/host-settings`) finds `host.json` in the CLI's
+profile, keeps the file rules and lets saves from every window take turns.
+
+The adapter checks a save with the port's own rules before it calls the shell: IPC sends JSON, which
+turns a number that isn't finite into `null`, so only the page can refuse it. The shell checks the
+key and the size again, with the other saved keys.
+
+The shell has no file watch. `watch()` reads the settings once, then every 2 seconds
+(`hostSettingsPollMs`) while it is open and right after each save through the store, and calls the
+listener only when they differ from the last read, compared as canonical JSON. A read that fails is
+told once, as a change, so the caller reads again and hears the error.
+
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `invalid_key`, `too_large` | a `RangeError`, as the port asks |
+| `unreadable` | an `Error` with the shell's message, as `FileHostSettingsStore` throws (a link, or a file the system won't read) |
+| `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
+
+An answer that isn't the settings also rejects with `unavailable`. The package exports
+`TauriHostSettingsStore`, `TauriHostSettingsStoreOptions`, `hostSettingsPollMs`,
+`hostSettingsCommands`, `hostSettingsRefusalKinds`, the types `HostSettingsRefusal` and
+`HostSettingsRefusalKind`, and `isHostSettingsRefusal`. The tests run the host settings contract
+against a fake shell; the file rules on real files are proved by the Rust tests of
+`crates/host-settings`.
 
 ## Example
 
