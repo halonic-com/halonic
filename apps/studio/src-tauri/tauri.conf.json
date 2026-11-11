@@ -16,7 +16,8 @@
     "windows": [
       {
         "title": "Halonic",
-        "url": "studio.html"
+        "url": "studio.html",
+        "create": false
       }
     ],
     "security": {

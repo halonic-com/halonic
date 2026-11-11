@@ -8,6 +8,7 @@
     "windows": [
       {
         "title": "Halonic",
+        "create": false,
         "url": "connect.html"
       }
     ]

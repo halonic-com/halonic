@@ -1,6 +1,7 @@
 //! The Studio shell. It opens one window: the Studio page on desktop
 //! (tauri.conf.json) and the connect page on Android
-//! (tauri.android.conf.json). The page may call the `connect` command
+//! (tauri.android.conf.json). `window::open` opens it, so its native title
+//! follows the page's title. The page may call the `connect` command
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`
@@ -19,6 +20,7 @@ mod profile;
 mod runs;
 mod secrets;
 mod trust;
+mod window;
 
 use tauri::webview::PageLoadEvent;
 use tauri::{Builder, Manager, Runtime, WindowEvent};
@@ -53,6 +55,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 .build(),
         )
         .plugin(navigation::guard())
+        .setup(|app| {
+            window::open(app.handle())?;
+            Ok(())
+        })
         // A page that reloads or closes can't end its agent host streams
         // itself, so the shell ends them.
         .on_page_load(|webview, payload| {
