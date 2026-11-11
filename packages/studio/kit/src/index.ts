@@ -194,6 +194,7 @@ export {
 } from "./radio/radio-group.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 export { Select, type SelectOption, type SelectProps } from "./select/select.tsx";
+export { SheetFrame, type SheetFrameProps } from "./sheet/sheet-frame.tsx";
 export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
 export {
   SkeletonBar,

@@ -363,6 +363,37 @@ return (
 );
 ```
 
+### On a phone
+
+The top bar's Search opens the same palette as a phone sheet (`shell.phone-search`, component specs
+24.3 "On a phone", VK T2-F15 to F19). `PhoneSearchSheet` draws it in the kit's `SheetFrame`:
+**Close** and the title "Search", the field with the focus in it, its clear button and
+`enterkeyhint="search"`, then the palette's groups with 56px rows that put the kind line under the
+name. There is no footer and no Kbd. Enter opens the first row; the active row's bar shows only
+once an external keyboard's arrow keys moved it, since touch has no active row. While providers
+look, screen readers hear "Searching". `ShellPhoneSearch` joins it to a workspace like
+`ShellPalette`, with no Open tabs group: every pick closes the sheet, then opens the place or item
+with `onOpenLocation` or runs the action. **See all** and the Search page on a phone come with text
+search, since their count is of text matches (T2-F16, F20).
+
+```tsx
+{searchOpen ? (
+  <ShellPhoneSearch
+    recent={recent}
+    providers={shell.contributions.search.providers()}
+    commands={shell.contributions.commands.list()}
+    kinds={shell.contributions.itemKinds}
+    contextFor={contextFor}
+    announcer={shell.announcer}
+    toasts={shell.toasts}
+    notAnswering={shell.engine.words.notAnswering}
+    platform={platform}
+    onOpenLocation={places.open}
+    onClose={() => setSearchOpen(false)}
+  />
+) : null}
+```
+
 ## Search page
 
 The Search page finds anything in the workspace by its name or by the words inside it (VK T2-F7).

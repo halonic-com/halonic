@@ -21,6 +21,12 @@ export interface PaletteResultsProps {
   /** A click on a row; `inNewTab` with Ctrl (⌘ on macOS) or the middle button. */
   readonly onOpen: (row: PaletteRow, event: MouseEvent) => void;
   readonly onTryAgain: () => void;
+  /**
+   * The phone's Search sheet (component specs 24.3 "On a phone", VK T2-F15 to F19): 56px rows with
+   * the kind line under the name (48px without one), and "Searching" for screen readers while the
+   * skeleton rows show. Default: the desktop palette's 40px rows.
+   */
+  readonly phone?: boolean;
 }
 
 /** The id of a row's option, for the search box's `aria-activedescendant`. */
@@ -40,6 +46,8 @@ export function paletteOptionId(listId: string, row: PaletteRow): string {
 export function PaletteResults(props: PaletteResultsProps) {
   const { id, content, searching } = props;
   const words = props.words.trim();
+  // A phone's rows are flush with the sheet's edges, so its group titles line up with them.
+  const phone = props.phone === true;
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       {content.couldNotSearch ? (
@@ -50,14 +58,20 @@ export function PaletteResults(props: PaletteResultsProps) {
         // Search page (PR 12), so the line never points to a page that isn't there.
         <p className="px-4 pt-3 pb-2 text-body text-fg-muted">Nothing matches “{words}”.</p>
       ) : null}
-      <div id={id} role="listbox" aria-label="Results" aria-busy={searching} className="p-2">
+      <div
+        id={id}
+        role="listbox"
+        aria-label="Results"
+        aria-busy={searching}
+        className={phone ? "pb-2" : "p-2"}
+      >
         {content.groups.map((group) => (
           // biome-ignore lint/a11y/useSemanticElements: a listbox's groups are `group`s, not fieldsets.
           <div key={group.id} role="group" aria-labelledby={`${id}-${group.id}`}>
             <div
               id={`${id}-${group.id}`}
               role="presentation"
-              className="px-2 pt-2 pb-1 text-caption text-fg-muted"
+              className={`${phone ? "px-4" : "px-2"} pt-2 pb-1 text-caption text-fg-muted`}
             >
               {group.title}
             </div>
@@ -66,8 +80,9 @@ export function PaletteResults(props: PaletteResultsProps) {
             ))}
           </div>
         ))}
-        {searching ? <SearchingRows /> : null}
+        {searching ? <SearchingRows phone={phone} /> : null}
       </div>
+      {searching && phone ? <p className="sr-only">Searching</p> : null}
     </div>
   );
 }
@@ -80,6 +95,14 @@ const rowClasses = {
   other: `${rowBase} hover:bg-surface-subtle`,
 } as const;
 
+// On a phone: a dense flush List row, padded 8px 16px, 56px with the kind line and 48px without.
+// Touch has no active row, so the bar shows only once an external keyboard moved it.
+const phoneRowBase = "flex cursor-default items-center gap-3 px-4 py-2 text-body text-fg";
+const phoneRowClasses = {
+  active: `${phoneRowBase} bg-surface-muted selected-bar selected-forced`,
+  other: `${phoneRowBase} active:bg-surface-subtle`,
+} as const;
+
 function Row({
   id,
   row,
@@ -87,10 +110,13 @@ function Row({
   kinds,
   iconFor,
   onOpen,
+  phone,
 }: PaletteResultsProps & {
   readonly row: PaletteRow;
 }) {
   const active = row.key === activeKey;
+  const classes = phone === true ? phoneRowClasses : rowClasses;
+  const height = phone === true ? phoneRowHeight(row) : "";
   return (
     // The search box keeps the focus and takes the keys for every option (aria-activedescendant).
     // biome-ignore lint/a11y/useFocusableInteractive: options of a combobox's listbox never take focus.
@@ -101,7 +127,7 @@ function Row({
       aria-selected={active}
       aria-label={paletteOptionName(row, kinds)}
       data-fill={active ? "muted" : undefined}
-      className={active ? rowClasses.active : rowClasses.other}
+      className={(active ? classes.active : classes.other) + height}
       // The box keeps the focus, so typing goes on after a press.
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => onOpen(row, event)}
@@ -114,17 +140,33 @@ function Row({
       <span aria-hidden="true" className="size-icon-md shrink-0 text-fg-muted *:size-full">
         {iconFor?.(row)}
       </span>
-      <span className="min-w-0 truncate">
-        <MarkedText text={row.label} found={row.match} />
-        {row.detail === undefined ? null : (
-          <span className="ms-2 text-small text-fg-muted">{row.detail}</span>
-        )}
-      </span>
+      {phone === true ? (
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate">
+            <MarkedText text={row.label} found={row.match} />
+          </span>
+          {row.detail === undefined ? null : (
+            <span className="truncate text-small text-fg-muted">{row.detail}</span>
+          )}
+        </span>
+      ) : (
+        <span className="min-w-0 truncate">
+          <MarkedText text={row.label} found={row.match} />
+          {row.detail === undefined ? null : (
+            <span className="ms-2 text-small text-fg-muted">{row.detail}</span>
+          )}
+        </span>
+      )}
       {row.open ? (
         <span className="ms-auto shrink-0 text-small text-fg-muted">Switch to tab</span>
       ) : null}
     </div>
   );
+}
+
+/** On a phone, 56px with the kind line under the name and 48px without. */
+function phoneRowHeight(row: PaletteRow): string {
+  return row.detail === undefined ? " min-h-touch" : " min-h-14";
 }
 
 /** "Couldn't search", the reason and **Try again**, start-aligned (VK T2-F25). */
@@ -153,12 +195,15 @@ function CouldNotSearch({
   );
 }
 
-/** Two still skeleton rows, no spinner (microcopy 3.5, kit 19.3). */
-function SearchingRows() {
+/** Two still skeleton rows, no spinner (microcopy 3.5 and 3.6, kit 19.3), as tall as the rows. */
+function SearchingRows({ phone }: { readonly phone: boolean }) {
+  const rowClasses = phone
+    ? "flex min-h-14 items-center gap-3 px-4"
+    : "flex h-10 items-center gap-2 px-2";
   return (
     <div aria-hidden="true">
       {[0, 1].map((index) => (
-        <div key={index} className="flex h-10 items-center gap-2 px-2">
+        <div key={index} className={rowClasses}>
           <SkeletonBar kind="icon" />
           <span className="w-24">
             <SkeletonBar kind="title" />

@@ -624,6 +624,21 @@ width a tab renders at 40px with a 48px hit area.
 keeps a 1px `CanvasText` outline instead (with more contrast, a 1px `border-control` one). A
 disabled tab turns `GrayText` (`text-forced-disabled`).
 
+## SheetFrame
+
+The frame the picker, text and form sheets share (component specs 15.3), for a phone sheet of
+the screen's own, such as the shell's Search sheet: a full-screen `<dialog>` opened with
+`showModal()`, with the phone top bar as its header (**Close** at the left, the title, an actions
+slot) and a body that scrolls on its own. Mount it to open it and unmount it to close it. Focus
+starts on its title, or on `initialFocus`, and goes back to the opener; Escape and Android back
+call `onCancel`.
+
+```tsx
+<SheetFrame title="Search" onClose={close} onCancel={close} initialFocus={() => box.current}>
+  …
+</SheetFrame>
+```
+
 ## PickerSheet
 
 The phone's picker (component specs 15.3): a full-screen sheet with **Close** at the top left and

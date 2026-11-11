@@ -153,7 +153,7 @@ function isKeyK(event: KeyboardEvent): boolean {
 }
 
 /** Runs a command with its own feature's context; a failure becomes a danger toast. */
-function runAction(
+export function runAction(
   commands: readonly Registered<CommandContribution>[],
   id: string,
   contextFor: (featureId: string) => WorkspaceContext,
@@ -179,7 +179,10 @@ function useOpenTabs(tabs: TabSet): readonly TabLocation[] {
   return state.tabs.map(currentLocation);
 }
 
-function useRecentPlaces(recent: RecentPlaces): readonly TabLocation[] {
+/** The recent places' list, drawn again whenever it changes. */
+export function useRecentPlaces(
+  recent: Pick<RecentPlaces, "list" | "subscribe">,
+): readonly TabLocation[] {
   const subscribe = useCallback((listener: () => void) => recent.subscribe(listener), [recent]);
   return useSyncExternalStore(subscribe, () => recent.list);
 }

@@ -125,6 +125,10 @@ export {
   resultCountDelayMs,
   resultCountText,
 } from "./palette/palette-options.ts";
+export {
+  PhoneSearchSheet,
+  type PhoneSearchSheetProps,
+} from "./palette/phone-search-sheet.tsx";
 export { RecentPlaces, recentPlacesKept } from "./palette/recent-places.ts";
 export { type FoundItems, searchProviders } from "./palette/search-providers.ts";
 export {
@@ -132,6 +136,10 @@ export {
   type ShellPaletteProps,
   usePaletteKey,
 } from "./palette/shell-palette.tsx";
+export {
+  ShellPhoneSearch,
+  type ShellPhoneSearchProps,
+} from "./palette/shell-phone-search.tsx";
 export { type PaletteSearch, usePaletteSearch } from "./palette/use-palette-search.ts";
 export {
   CHAT_MIN_WIDTH,
