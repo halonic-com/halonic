@@ -150,10 +150,11 @@ jobs:
       - name: CLI installs from source
         env:
           PNPM_HOME: ${{ runner.temp }}/pnpm-home
-        run: |
+        # Links a folder in this checkout and downloads nothing.
+        run: | # zizmor: ignore[adhoc-packages]
           node_bin="$(dirname "$(pnpm --silent exec node -p process.execPath | tail -n 1)")"
           export PATH="$PNPM_HOME/bin:$node_bin:$PATH"
-          pnpm add -g ./apps/cli # zizmor: ignore[adhoc-packages] links a folder in this checkout, downloads nothing
+          pnpm add -g ./apps/cli
           halonic --help
           halonic --version
       - id: pr
