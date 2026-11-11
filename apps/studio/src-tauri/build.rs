@@ -30,6 +30,11 @@ fn main() {
         "fs_remove",
         "fs_watch",
         "fs_unwatch",
+        "blob_put",
+        "blob_get",
+        "record_append",
+        "record_read",
+        "record_replace",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

@@ -3,7 +3,8 @@
 //! the request comes from the computer's address, while the connect page
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
 //! commands, `pick_folder`, the `trust_*` commands, the `run_*` commands,
-//! the `agent_host_*` commands and the `fs_*` commands.
+//! the `agent_host_*` commands, the `fs_*` commands and the `blob_*` and
+//! `record_*` commands.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -104,6 +105,11 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "run_events",
         "run_snapshot",
         "run_logs",
+        "blob_put",
+        "blob_get",
+        "record_append",
+        "record_read",
+        "record_replace",
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
@@ -221,6 +227,55 @@ fn served_page_test_sees_the_connect_page_allowed_the_run_commands_on_desktop() 
         let answer = invoke(&window, CONNECT_PAGE, command, body);
         let refusal = answer.expect_err("no folder is opened yet");
         assert_eq!(refusal["kind"], "folder_not_open", "{command}: {refusal}");
+    }
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_the_blob_and_record_commands_on_desktop() {
+    // Each call gets through to its command, which refuses the workspace
+    // before it reads or writes anything: no folder is opened yet.
+    let window = app_window();
+    let hash = "0".repeat(64);
+    for (command, body) in [
+        ("blob_put", json!({"workspace": ".", "data": "aGVsbG8"})),
+        ("blob_get", json!({"workspace": ".", "hash": hash})),
+        ("record_append", json!({"workspace": ".", "appends": []})),
+        ("record_read", json!({"workspace": ".", "collection": "leads"})),
+        (
+            "record_replace",
+            json!({"workspace": ".", "collection": "leads", "version": "", "lines": ""}),
+        ),
+    ] {
+        let answer = invoke(&window, CONNECT_PAGE, command, body);
+        let refusal = answer.expect_err("no folder is opened yet");
+        assert_eq!(refusal["kind"], "folder_not_open", "{command}: {refusal}");
+    }
+}
+
+#[test]
+fn served_page_test_sees_blobs_and_records_granted_to_the_local_main_window_only() {
+    // A remote page must never reach the blobs or records: the served
+    // Studio could then read every opened workspace's data.
+    for (text, permissions) in [
+        (
+            include_str!("../capabilities/desktop-blobs.json"),
+            json!(["allow-blob-put", "allow-blob-get"]),
+        ),
+        (
+            include_str!("../capabilities/desktop-records.json"),
+            json!([
+                "allow-record-append",
+                "allow-record-read",
+                "allow-record-replace"
+            ]),
+        ),
+    ] {
+        let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+        assert_eq!(capability["local"], true);
+        assert_eq!(capability["windows"], json!(["main"]));
+        assert!(capability.get("remote").is_none(), "{capability}");
+        assert_eq!(capability["permissions"], permissions);
     }
 }
 

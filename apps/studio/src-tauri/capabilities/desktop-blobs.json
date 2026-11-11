@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-blobs",
+  "description": "On desktop, the app's own page may keep a workspace's blobs in the profile through the blob_* commands, in the same files as the CLI (crates/blob-store). The page names a workspace the person opened, never a path. It is local only, so the Studio the computer serves gets no blobs.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-blob-put",
+    "allow-blob-get"
+  ]
+}

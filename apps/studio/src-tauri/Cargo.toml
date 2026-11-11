@@ -30,12 +30,14 @@ tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
 halonic-agent-host = { path = "crates/agent-host" }
+halonic-blob-store = { path = "crates/blob-store" }
 halonic-connect = { path = "crates/connect" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-keychain = { path = "crates/keychain" }
 halonic-login-shell = { path = "crates/login-shell" }
 halonic-process-probe = { path = "crates/process-probe" }
 halonic-profile = { path = "crates/profile" }
+halonic-record-store = { path = "crates/record-store" }
 halonic-run-store = { path = "crates/run-store" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-trust-grant = { path = "crates/trust-grant" }

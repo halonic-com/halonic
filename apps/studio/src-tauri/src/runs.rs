@@ -27,9 +27,10 @@ pub struct RunState {
 }
 
 /// This computer as the operating system describes it, with the same calls
-/// Node makes for the CLI, so both judge a run lock alike.
+/// Node makes for the CLI, so both judge a run lock alike. The record
+/// commands judge the record folder's write lock with it too.
 #[derive(Debug, Default)]
-struct OperatingSystem;
+pub(crate) struct OperatingSystem;
 
 impl ThisComputer for OperatingSystem {
     fn host_name(&self) -> Option<String> {

@@ -8,21 +8,26 @@
 //! commands (capabilities/desktop-trust.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `agent_host_*` commands
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
-//! (capabilities/desktop-files.json); the Studio it then opens is
+//! (capabilities/desktop-files.json) and the `blob_*` commands
+//! (capabilities/desktop-blobs.json) and the `record_*` commands
+//! (capabilities/desktop-records.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
 mod agent_host;
+mod blobs;
 mod connect;
 mod files;
 mod git;
 mod native_dialogs;
 mod navigation;
 mod profile;
+mod records;
 mod runs;
 mod secrets;
 mod trust;
 mod window;
+mod workspace_data;
 
 use tauri::webview::PageLoadEvent;
 use tauri::{Builder, Manager, Runtime, WindowEvent};
@@ -45,6 +50,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(secrets::SecretsState::default())
         .manage(halonic_trust_grant::TrustState::default())
         .manage(runs::RunState::default())
+        .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
         .manage(files::FileState::default())
         // The navigation guard hands outside links to the browser with the
@@ -100,6 +106,11 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             files::fs_remove,
             files::fs_watch,
             files::fs_unwatch,
+            blobs::blob_put,
+            blobs::blob_get,
+            records::record_append,
+            records::record_read,
+            records::record_replace,
         ])
 }
 
