@@ -91,14 +91,16 @@ export function ItemPage<Id extends string>({
   const page = useRef<HTMLDivElement>(null);
   const idBase = useId();
   const tabWidth = useElementWidth(page);
-  const [choices, setChoices] = useState<ItemLayoutChoices>(() => ({
-    chatOpen: chat?.startsOpen ?? false,
-    panelClosed: false,
-    panelScreen: false,
-  }));
+  // Until the user opens or closes the chat, it follows `startsOpen`, so a chat that arrives after
+  // the first render still starts open.
+  const [choices, setChoices] = useState<ChosenLayout>({ panelClosed: false, panelScreen: false });
   const [focus, setFocus] = useState<FocusTarget | undefined>(undefined);
   const layout = itemLayout(
-    { hasChat: chat !== undefined, ...choices },
+    {
+      hasChat: chat !== undefined,
+      ...choices,
+      chatOpen: choices.chatOpen ?? chat?.startsOpen ?? false,
+    },
     PANEL_DEFAULT_WIDTH,
     tabWidth,
   );
@@ -111,37 +113,24 @@ export function ItemPage<Id extends string>({
     }
   }, [focus, idBase]);
 
-  const change = (next: Partial<ItemLayoutChoices>, then: FocusTarget) => {
+  const change = (next: Partial<ChosenLayout>, then: FocusTarget) => {
     setChoices((current) => ({ ...current, ...next }));
     setFocus(then);
   };
   const viewLabel = views.find((candidate) => candidate.id === view)?.label ?? views[0].label;
-  const panel = (
-    <TabPanel ids={tabIds} tabs={views} selected={view}>
-      {children(view)}
-    </TabPanel>
-  );
-  const chatColumn =
-    chat === undefined ? null : (
-      <section aria-label="Chat" data-item-chat="" tabIndex={-1} className={chatClasses(layout)}>
-        {chat.render(() => change({ chatOpen: false }, "ask"))}
-      </section>
-    );
+  const shown = shownParts(layout);
 
   return (
     // The tab's page is the scroller (TabPages), so the header stays at its top while a full-width
-    // view scrolls under it. Beside a chat, the chat and the panel each scroll on their own.
-    <div
-      ref={page}
-      className={layout.shows === "view" ? "flex min-h-full flex-col" : "flex h-full flex-col"}
-    >
+    // view scrolls under it. Where the chat shows, the chat and the panel each scroll on their own.
+    <div ref={page} className={shown.chat ? "flex h-full flex-col" : "flex min-h-full flex-col"}>
       <ItemHeader
         {...header}
         views={views}
         view={view}
         onPickView={pick}
         tabIds={tabIds}
-        viewsShown={layout.shows !== "chat"}
+        viewsShown={shown.panel}
         end={
           <>
             {end}
@@ -159,28 +148,70 @@ export function ItemPage<Id extends string>({
           </>
         }
       />
-      {layout.shows === "view" || layout.shows === "panel-screen" ? panel : null}
-      {layout.shows === "chat" ? chatColumn : null}
-      {layout.shows === "chat-and-panel" ? (
-        <div className="flex min-h-0 flex-1">
-          {chatColumn}
-          <div
-            className="min-h-0 shrink-0 overflow-y-auto border-s border-border"
-            style={{ width: layout.panelWidth }}
+      {/* The chat and the panel keep their places in every layout and are hidden rather than
+          moved, so switching layouts keeps a half-typed message or the canvas's zoom. */}
+      <div className={bodyClasses(layout)}>
+        {chat === undefined ? null : (
+          <section
+            aria-label="Chat"
+            data-item-chat=""
+            tabIndex={-1}
+            hidden={!shown.chat}
+            className={chatClasses(layout)}
           >
-            {panel}
-          </div>
+            {chat.render(() => change({ chatOpen: false }, "ask"))}
+          </section>
+        )}
+        <div
+          hidden={!shown.panel}
+          className={shown.split ? "min-h-0 shrink-0 overflow-y-auto border-s border-border" : ""}
+          style={layout.shows === "chat-and-panel" ? { width: layout.panelWidth } : undefined}
+        >
+          <TabPanel ids={tabIds} tabs={views} selected={view}>
+            {children(view)}
+          </TabPanel>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
 
+/** What the user chose for the chat and the panel; `chatOpen` is unset until they open or close it. */
+type ChosenLayout = Omit<ItemLayoutChoices, "chatOpen"> & { readonly chatOpen?: boolean };
+
+/** Which of the chat and the panel `layout` shows, and whether they share the tab side by side. */
+function shownParts(layout: ItemLayout): {
+  readonly chat: boolean;
+  readonly panel: boolean;
+  readonly split: boolean;
+} {
+  return {
+    chat: layout.shows === "chat" || layout.shows === "chat-and-panel",
+    panel: layout.shows !== "chat",
+    split: layout.shows === "chat-and-panel",
+  };
+}
+
+function bodyClasses(layout: ItemLayout): string {
+  switch (layout.shows) {
+    case "chat-and-panel":
+      return "flex min-h-0 flex-1";
+    case "chat":
+      return "flex min-h-0 flex-1 flex-col";
+    default:
+      return "flex flex-1 flex-col";
+  }
+}
+
 function chatClasses(layout: ItemLayout): string {
-  // Without the panel the chat takes the middle of the tab at reading width.
+  if (layout.shows === "chat-and-panel") {
+    return "flex min-h-0 min-w-0 flex-1 flex-col outline-none";
+  }
+  // Without the panel the chat takes the middle of the tab at reading width. While hidden it sets
+  // no display, so the `hidden` attribute hides it.
   return layout.shows === "chat"
     ? "mx-auto flex min-h-0 w-full max-w-reading flex-1 flex-col outline-none"
-    : "flex min-h-0 min-w-0 flex-1 flex-col outline-none";
+    : "outline-none";
 }
 
 interface PanelControlsProps {

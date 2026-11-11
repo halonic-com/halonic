@@ -539,6 +539,9 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   - A tab with no room for a 420px panel beside the chat shows only the chat with the same button,
     which opens the panel as the tab's own screen with **← Chat**.
   - Focus moves to what took the pressed control's place.
+  - The chat and the view stay mounted through every switch, hidden rather than moved, so a
+    half-typed message or the canvas's zoom survives. A chat provided after the first render still
+    starts open until the user opens or closes it.
 - **Not yet:** the panel's edge and Maximise, the stacked cards, and the "Changes not live yet"
   line (24.9).
 

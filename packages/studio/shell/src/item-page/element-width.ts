@@ -11,6 +11,9 @@ export function useElementWidth(element: RefObject<HTMLElement | null>): number 
     if (target === null || typeof ResizeObserver === "undefined") {
       return;
     }
+    // Measured before the browser paints, so a narrow tab never shows the wide layout for a frame
+    // while it waits for the observer's first report.
+    setWidth(target.getBoundingClientRect().width);
     const observer = new ResizeObserver(([entry]) => {
       if (entry !== undefined) {
         setWidth(entry.contentRect.width);
