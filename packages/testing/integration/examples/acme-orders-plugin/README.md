@@ -19,4 +19,4 @@ What it shows:
 - **Errors carry only the status.** The shop's error text could hold anything, so the backend doesn't
   pass it on.
 - **The UI is data.** Studio draws the key field, the **Find an Acme order** command with its form,
-  and the **Open orders** card in the plugin's panel. No plugin code runs in Studio.
+  and the **Open orders** card on Home and in the plugin's panel. No plugin code runs in Studio.

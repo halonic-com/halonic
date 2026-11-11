@@ -20,7 +20,7 @@ When a `plugin.yaml` passes its schema, the format shall fail it unless it has a
 - Given a `secret` field whose `secret` no part declares, when it is parsed, then it fails with `secret-not-declared`.
 - Given a choice setting or form field whose `default` isn't one of its `choices`, when it is parsed, then it fails with `default-not-a-choice`.
 - Given a command or card whose tool neither the backend nor a local tool declares, when it is parsed, then it fails with `tool-not-found` at its `tool`.
-- Given cards or commands and no `panel`, when it is parsed, then it passes: cards show on Home and commands in Ctrl K, so a panel is optional (board decision D3, HAL-1801).
+- Given cards or commands and no `panel`, when it is parsed, then it passes: cards show on Home and commands in the command palette, so a panel is optional (board decision D3, HAL-1801).
 - Given each of the `knowledge-mcp`, `model-gemini`, `tool-google-drive` and `tool-google-gmail` sheets, when `pluginFromIntegrationSheet` converts it, then the plugin is named by the sheet's id, has an empty description and the default `entry` unless the loader gives one, passes `checkPlugin`, and `backendSheet` gives back a value deep-equal to the sheet.
 - Given a plugin with no backend, when `backendSheet` reads it, then it gives `undefined`.
 

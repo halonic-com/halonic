@@ -10,9 +10,11 @@
 
 `format.plugin-checks` no longer fails a plugin that has `ui.cards` and no `ui.panel`. The check
 `cards-need-panel` came from the plugins ADR, where cards showed only in the plugin's panel. The
-board's decision D3 puts cards on Home, so a plugin with cards and no panel is valid. The ADR
-(sections 1.3, 1.4 and 5) now says the same, with D2: the panel opens in its own tab and lists the
-plugin's commands, then its cards, as in the approved design on HAL-1739.
+board's decision D3 puts cards on Home, so a plugin with cards and no panel is valid. A new ADR,
+[plugin cards on Home](../../docs/adr/2026-11-11-plugin-cards-on-home.md), records this with D2:
+the panel opens in its own tab and lists the plugin's commands, then its cards, as in the approved
+design on HAL-1739. It replaces the cards and panel parts of the plugins ADR (sections 1.3, 1.4 and
+5), which are marked as replaced and otherwise unchanged.
 
 ## Tests
 

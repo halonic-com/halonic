@@ -267,7 +267,7 @@ const Command = s
   })
   .strict();
 
-/** A card on Home and in the plugin's panel, filled by one `read` tool call with fixed arguments. */
+/** A card on Home and in the plugin's panel, if it has one, filled by one `read` tool call with fixed arguments. */
 const Card = s
   .object({
     id: name,
