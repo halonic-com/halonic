@@ -10,7 +10,8 @@ import {
   hit,
   sourceFile,
 } from "./knowledge/knowledge-test-kit.test-helper.ts";
-import { LocalExecutor, type LocalExecutorOptions } from "./local-executor.ts";
+import { LocalExecutor } from "./local-executor.ts";
+import type { LocalExecutorOptions } from "./local-executor-options.ts";
 import {
   call,
   callAnswer,

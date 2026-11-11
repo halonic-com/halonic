@@ -8,7 +8,8 @@ import {
   workspaceRoutineScheduler,
 } from "@halonicjs/app";
 import type { Scheduler, SchedulerListener } from "@halonicjs/ports";
-import { LocalExecutor, type LocalExecutorOptions } from "./local-executor.ts";
+import { LocalExecutor } from "./local-executor.ts";
+import type { LocalExecutorOptions } from "./local-executor-options.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 
 /** A scheduler the host may stop, such as `NodeScheduler`, whose `close` waits for its deliveries. */

@@ -13,7 +13,7 @@ import { agentIn } from "./kernel/kept-definitions.ts";
 import type { RunState } from "./kernel/run-state.ts";
 import type { AgentKnowledge } from "./knowledge/agent-knowledge.ts";
 import { runTurnMessages } from "./run/agent-system-prompt.ts";
-import { runConnectorsOf } from "./run/connector-calls.ts";
+import { openRunConnectorsOf } from "./run/connector-calls.ts";
 import type { DelegatedTask, SubagentOutcome } from "./tools/subagents/subagent-tools.ts";
 
 /**
@@ -44,8 +44,11 @@ export interface LocalSubagentContext {
   resolveModel(request: ChatTurnRequest): Promise<ResolvedModel>;
   readonly secrets: Secrets;
   readonly clock: Clock;
-  /** The connected servers; the subagent gets their tools only with `effects`. */
-  readonly connectors: readonly ConnectorClient[];
+  /**
+   * The run's connectors, opened when the subagent's file lists one; the
+   * subagent gets their tools only with `effects`.
+   */
+  connectorsOfRun(): Promise<readonly ConnectorClient[]>;
   /** Where the turn hands over connector calls that can change things; set with `runs.connectorCalls`. */
   readonly effects?: EffectBoundary;
   /** Whether the workspace is local only, as `LocalExecutorOptions.localOnly` says. */
@@ -91,13 +94,16 @@ export async function runLocalSubagent(
   });
   const knowledge = context.knowledgeOf(task.agent);
   const lists = turn.definitions.connectorTools ?? {};
-  const connectors = runConnectorsOf(context.connectors, subagent, lists, turn.alongsideOthers);
+  const connectors =
+    context.effects === undefined
+      ? []
+      : await openRunConnectorsOf(context.connectorsOfRun, subagent, lists, turn.alongsideOthers);
   const outcome = await runAgentTurn({
     model,
     secrets: context.secrets,
     messages,
     halonicTools: context.toolsOf(task.agent, task.depth, knowledge),
-    connectors: context.effects === undefined ? [] : connectors,
+    connectors,
     ...(context.effects === undefined ? {} : { effects: context.effects }),
     ...agentParamsOf(subagent),
     maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,

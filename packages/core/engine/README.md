@@ -301,6 +301,16 @@ folder the call fails before it opens a bridge or a sandbox. When the top-level 
 ends, the engine stops the harness calls still going and then ends the folder; a child run's end
 doesn't. A run with no harness agent gets no folder (requirement `engine.run-proposal-folder`).
 
+Connectors follow the same lifecycle when the host gives the local executor the connectors of runs
+(`runs.runConnectors`, a `RunConnectors` opened for a `ConnectorsRun`). The engine opens a top-level
+run's connectors at the first step that needs one, with the version its definitions were read from,
+and a child run and a `foreach` item use their top-level run's. A run whose agents list no connector
+opens none, and a run resumed after the host started again opens them again at its next step that
+needs one. When they can't start, that step fails: a model call fails the run, and a recorded
+connector call ends with the outcome `error` without being made. When the top-level run ends, its
+connectors end after its proposal folder. Without `runs.runConnectors`, every run calls the
+executor's `connectors` (requirement `engine.run-connectors`).
+
 A chat turn with an agent that runs in a harness is one harness call in the agent's sandbox, with
 the same sandbox, bridge and start limits (`ChatHarnessTurns`, requirement `engine.chat-harness-turn`).
 Each message starts a new call whose prompt carries the earlier messages; the caller's tools aren't

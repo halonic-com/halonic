@@ -32,6 +32,7 @@ import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
 import type { RunProposalFolders } from "./proposal-folders.ts";
+import type { RunConnectors } from "./run-connectors.ts";
 
 /**
  * Timers in a map that a test delivers with {@link TestScheduler.runDue},
@@ -133,7 +134,9 @@ export interface RunsSetup {
   readonly proposalFolders?: RunProposalFolders;
   /** The params of the alias the scripted model answers as; none when left out. */
   readonly aliasParams?: ChatParams;
-  /** Whether the workspace is local only; it isn't when left out. */
+  /** The connectors of top-level runs; every run calls `connectors` when left out. */
+  readonly runConnectors?: RunConnectors;
+  /** Whether the workspace is local only; the scripted model is `local` then. */
   readonly localOnly?: boolean;
 }
 
@@ -166,14 +169,15 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       provider: model,
       model: "scripted-1",
       ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
+      ...(setup.localOnly === true ? { local: true } : {}),
     }),
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: setup.connectors ?? [],
+    ...(setup.localOnly === undefined ? {} : { localOnly: setup.localOnly }),
     ...(setup.knowledgeOptions === undefined ? {} : { knowledge: setup.knowledgeOptions }),
     secrets: secretsWith(),
     clock,
-    ...(setup.localOnly === undefined ? {} : { localOnly: setup.localOnly }),
     chatAgentOf: async ({ agentId }) =>
       agentId !== undefined && agents !== undefined && Object.hasOwn(agents, agentId)
         ? agents[agentId]
@@ -187,6 +191,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
       ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
       ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
+      ...(setup.runConnectors === undefined ? {} : { runConnectors: setup.runConnectors }),
       definitionsOf: async (hubId, workflowId, version) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         versionsAsked.push(version);

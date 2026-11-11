@@ -10,6 +10,7 @@ import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import type { Effect, RunDefinitions } from "../kernel/decide-types.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
 import type { RunProposalFolders } from "./proposal-folders.ts";
+import type { RunConnectors } from "./run-connectors.ts";
 
 /** What the local executor needs to run workflows, on top of what chat turns need. */
 export interface LocalRunsOptions {
@@ -59,6 +60,12 @@ export interface LocalRunsOptions {
    * offers no connector's tools, and a `call-tool` effect fails the run.
    */
   readonly connectorCalls?: RunConnectorCalls;
+  /**
+   * The connectors of top-level runs, started for each run at the version
+   * its definitions were read from. Without them, every run calls the
+   * executor's `connectors`, started once for all runs.
+   */
+  readonly runConnectors?: RunConnectors;
 }
 
 /**

@@ -2,24 +2,20 @@
 // `runs` set, workflow runs through the run kernel.
 
 import type { RunSummary } from "@halonicjs/events";
-import type { Agent, Connector } from "@halonicjs/format";
+import type { Agent } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
   ChatTurnResponse,
-  Clock,
   ConnectorClient,
-  RecordStore,
   RunEventListener,
   RunExecutor,
   RunSubscription,
   ScheduledTimer,
-  Secrets,
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
 import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
-import type { ResolvedModel } from "./agent/model-chain.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
@@ -29,11 +25,11 @@ import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import {
   type AgentKnowledge,
-  type AgentKnowledgeOptions,
   agentKnowledge,
   noKnowledge,
   openSources,
 } from "./knowledge/agent-knowledge.ts";
+import type { LocalExecutorOptions } from "./local-executor-options.ts";
 import { defaultRunMaxRounds, type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import { runTurnMessages } from "./run/agent-system-prompt.ts";
 import { callAlongsideOthers } from "./run/alongside-others.ts";
@@ -41,75 +37,17 @@ import {
   allowedToolsOf,
   connectorsOf,
   effectBoundary,
-  makeConnectorCall,
-  runConnectorsOf,
+  makeRunConnectorCall,
+  openRunConnectorsOf,
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
-import { type LocalRunsOptions, runsOptionsOf } from "./run/local-runs-options.ts";
+import { runsOptionsOf } from "./run/local-runs-options.ts";
 import { refusalLog } from "./run/refusal-log.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
+import { RunsConnectors } from "./run/run-connectors.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
-
-/** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
-export interface LocalExecutorOptions {
-  /**
-   * Picks the model of a chat turn from its request: `alias`, `agentId` and
-   * the unsaved `agent` settings, with the alias's own fallbacks. The
-   * workspace package plugs in here once it has model aliases.
-   *
-   * @throws when no model fits; `chatTurn` then rejects with that error
-   */
-  resolveModel(request: ChatTurnRequest): Promise<ResolvedModel>;
-  /** Halonic's own tools, offered after the caller's. */
-  readonly halonicTools: readonly HalonicTool[];
-  /**
-   * Where agents keep their notes and their collections' records. With it,
-   * a run's model call, and a chat turn that names an agent, also offer that
-   * agent's memory tools, after the other Halonic tools; and a run's agent
-   * with `collections` gets its records tools.
-   */
-  readonly memory?: RecordStore;
-  /**
-   * Builds agents' knowledge sources. With it, a run's agent and a chat
-   * turn's agent get the sources their `knowledge` lists; without it, none.
-   */
-  readonly knowledge?: AgentKnowledgeOptions;
-  /** The connected servers, whose tools are offered last. */
-  readonly connectors: readonly ConnectorClient[];
-  /** Where a turn checks that a model's key is set, to skip the model before calling it when it isn't. */
-  readonly secrets: Secrets;
-  readonly clock: Clock;
-  /** The most model calls one chat turn makes; 20 when left out. */
-  readonly maxRounds?: number;
-  /** What runs need. Without it, the executor runs chat turns only and refuses runs. */
-  readonly runs?: LocalRunsOptions;
-  /**
-   * The file of a chat turn's agent as the workspace has it now; `undefined`
-   * for an agent that has none. With it, a chat with an agent whose file
-   * names a harness program runs in that harness, with `runs.harnesses`;
-   * without it, every chat turn runs in Halonic's own loop.
-   */
-  chatAgentOf?(request: ChatTurnRequest): Promise<Agent | undefined>;
-  /**
-   * Each connector file's `tools` lists by connector id, as the workspace
-   * has them now, for a chat turn. With it, a chat offers each connector
-   * only the tools its file's `allow` names, and refuses a call to one its
-   * `approve` names, as a run does (HAL-5503); a connector with no lists
-   * here isn't offered. Without it, a chat turn offers every tool its
-   * connectors list and checks only the risk the servers give.
-   */
-  chatConnectorToolsOf?(
-    request: ChatTurnRequest,
-  ): Promise<Readonly<Record<string, Connector["tools"]>>>;
-  /**
-   * Local-only workspace (`privacy.localOnly`): Halonic's own loop skips models that aren't
-   * `local` (a run left with none fails `local-only`) and uses only `local` connectors. An agent
-   * in a harness program (`runs.harnesses`) is refused before it starts.
-   */
-  readonly localOnly?: boolean;
-}
 
 /** The round limit of a chat turn when the options don't set one. */
 export const defaultMaxRounds = 20;
@@ -133,6 +71,8 @@ export class LocalExecutor implements RunExecutor {
   private readonly options: LocalExecutorOptions;
   private readonly maxRounds: number;
   private readonly runs: LocalRuns | undefined;
+  /** The connectors runs call: their own with `runs.runConnectors`, else `connectors`. */
+  private readonly runConnectors: RunsConnectors | undefined;
   private readonly chatHarnesses: ChatHarnessTurns | undefined;
 
   /**
@@ -149,6 +89,10 @@ export class LocalExecutor implements RunExecutor {
     this.maxRounds = maxRounds;
     const runs = runsOptionsOf(options.runs, options.localOnly === true);
     const connectorCalls = runs?.connectorCalls;
+    this.runConnectors =
+      runs === undefined
+        ? undefined
+        : new RunsConnectors(runs.store, runs.runConnectors, connectors, options.localOnly === true);
     this.runs =
       runs === undefined
         ? undefined
@@ -158,7 +102,13 @@ export class LocalExecutor implements RunExecutor {
             (run, call) => this.callModel(run, call),
             connectorCalls === undefined
               ? undefined
-              : (effect) => makeConnectorCall(connectors, effectBoundary(connectorCalls), effect),
+              : (effect, run) =>
+                  makeRunConnectorCall(
+                    () => this.connectorsOfRun(run),
+                    effectBoundary(connectorCalls),
+                    effect,
+                  ),
+            this.runConnectors,
           );
     this.chatHarnesses =
       runs?.harnesses === undefined
@@ -397,7 +347,7 @@ export class LocalExecutor implements RunExecutor {
             resolveModel: (request) => this.options.resolveModel(request),
             secrets: this.options.secrets,
             clock: this.options.clock,
-            connectors: this.options.connectors,
+            connectorsOfRun: () => this.connectorsOfRun(turn.run),
             ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
             localOnly: this.options.localOnly === true,
             knowledgeOf: (id) => this.runKnowledgeOf(turn, id),
@@ -413,7 +363,7 @@ export class LocalExecutor implements RunExecutor {
    * A run's model call: the state's prompt to its agent's model, with Halonic's tools, the
    * agent's memory and knowledge tools, the tools its file grants ({@link LocalExecutor.runToolsOf})
    * and, with `runs.connectorCalls`, the tools of the connected servers its kept file lists that
-   * their kept files allow ({@link runConnectorsOf}), through the same turn loop a chat turn uses.
+   * their kept files allow ({@link openRunConnectorsOf}), through the same turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first, and a connector call its kept file puts
    * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
    * round limit: a turn that reaches it while the model still calls tools fails the call. The model
@@ -422,7 +372,7 @@ export class LocalExecutor implements RunExecutor {
    *
    * A `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item
    * started or below it ({@link callAlongsideOthers}), is offered only the connector tools whose
-   * listing says they read and their kept file doesn't put under `approve` ({@link runConnectorsOf}):
+   * listing says they read and their kept file doesn't put under `approve` ({@link openRunConnectorsOf}):
    * none can make a call that changes things, because a run records one effect at a time, and a
    * call that waits for a person would only end the branch or fail the run.
    *
@@ -452,12 +402,15 @@ export class LocalExecutor implements RunExecutor {
     });
     const connectorCalls = this.options.runs?.connectorCalls;
     const connectorTools = turn.definitions.connectorTools ?? {};
-    const connectors = runConnectorsOf(
-      this.options.connectors,
-      agent,
-      connectorTools,
-      turn.alongsideOthers,
-    );
+    const connectors =
+      connectorCalls === undefined
+        ? []
+        : await openRunConnectorsOf(
+            () => this.connectorsOfRun(run),
+            agent,
+            connectorTools,
+            turn.alongsideOthers,
+          );
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
     const maxRounds = agent?.maxSteps ?? defaultRunMaxRounds;
@@ -466,7 +419,7 @@ export class LocalExecutor implements RunExecutor {
       secrets: this.options.secrets,
       messages,
       halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
-      connectors: connectorCalls === undefined ? [] : connectors,
+      connectors,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
       ...agentParamsOf(agent),
       maxRounds,
@@ -486,6 +439,12 @@ export class LocalExecutor implements RunExecutor {
       );
     }
     return { type: "model", output: outcome.result.content };
+  }
+
+  /** The connectors a run calls: its top-level run's ({@link RunsConnectors.of}). */
+  private async connectorsOfRun(run: RunState): Promise<readonly ConnectorClient[]> {
+    if (this.runConnectors === undefined) throw noRuns();
+    return await this.runConnectors.of(run);
   }
 
   /** The definitions the run started with. */

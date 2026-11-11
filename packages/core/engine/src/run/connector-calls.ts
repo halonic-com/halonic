@@ -127,6 +127,25 @@ export async function makeConnectorCall(
   }
 }
 
+/**
+ * As {@link makeConnectorCall}, on the run's connectors, which `open` gives.
+ * When they can't start, the call isn't made, as for a connector that isn't
+ * connected, so its outcome is `error`, and the model hears why.
+ */
+export async function makeRunConnectorCall(
+  open: () => Promise<readonly ConnectorClient[]>,
+  boundary: EffectBoundary,
+  effect: CallToolEffect,
+): Promise<ToolResult> {
+  let connectors: readonly ConnectorClient[];
+  try {
+    connectors = await open();
+  } catch (error) {
+    return notMade(`the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`);
+  }
+  return makeConnectorCall(connectors, boundary, effect);
+}
+
 function notMade(why: string): ToolResult {
   return { type: "tool", result: `The call wasn't made: ${why}.`, outcome: "error" };
 }
@@ -161,6 +180,34 @@ export function runConnectorsOf(
 ): readonly ConnectorClient[] {
   const allowed = allowedToolsOf(connectorsOf(connectors, agent), lists);
   return readOnly ? allowed.map((connector) => readToolsOf(connector, lists)) : allowed;
+}
+
+/**
+ * As {@link runConnectorsOf}, on the run's connectors, which `open` gives.
+ * It opens them only when the agent's file lists a connector, so a turn that
+ * can call none starts none.
+ *
+ * @throws when `open` throws, with the agent's name: the turn fails
+ */
+export async function openRunConnectorsOf(
+  open: () => Promise<readonly ConnectorClient[]>,
+  agent: Agent | undefined,
+  lists: Readonly<Record<string, Connector["tools"]>>,
+  readOnly: boolean,
+): Promise<readonly ConnectorClient[]> {
+  if (agent === undefined || agent.connectors.length === 0) return [];
+  let connectors: readonly ConnectorClient[];
+  try {
+    connectors = await open();
+  } catch (error) {
+    throw new Error(
+      `The connectors of agent "${agent.id}" couldn't start: ${errorMessage(error)}`,
+      {
+        cause: error,
+      },
+    );
+  }
+  return runConnectorsOf(connectors, agent, lists, readOnly);
 }
 
 /**

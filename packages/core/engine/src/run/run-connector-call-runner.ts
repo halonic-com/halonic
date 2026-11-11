@@ -6,6 +6,7 @@
 import type { RunStore } from "@halonicjs/ports";
 import type { CallToolEffect, DecideInput, ToolResult } from "../kernel/decide-types.ts";
 import { brokeOff } from "../kernel/requested-effect.ts";
+import type { RunState } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
 import { connectorCallTimeoutMs } from "../states/task/effect.ts";
 import type { StartDeadlines } from "./start-deadlines.ts";
@@ -19,7 +20,7 @@ export const stoppedDuringCall =
  * Makes a connector call a run recorded, and gives its result. It never
  * throws: a call that fails gives the outcome it had.
  */
-export type CallTool = (effect: CallToolEffect) => Promise<ToolResult>;
+export type CallTool = (effect: CallToolEffect, run: RunState) => Promise<ToolResult>;
 
 /** Without `connectorCalls`, no `call-tool` effect gets this far; this answers one anyway. */
 export const noConnectorCalls: CallTool = async () => ({
@@ -89,8 +90,9 @@ export class RunConnectorCallRunner {
     const record = (input: DecideInput) => this.#options.record(runId, input);
     try {
       if (await this.#unrecorded.recordKept(slot, record)) return;
-      const effect = (await readRun(this.#options.store, runId))?.effect;
-      if (effect == null || effect.unknown || effect.callId !== callId) return;
+      const run = await readRun(this.#options.store, runId);
+      const effect = run?.effect;
+      if (run == null || effect == null || effect.unknown || effect.callId !== callId) return;
       // Only the call's own fields: the host never gets the prompt or the conversation.
       const { idempotencyKey, state, agent, connector, tool, args } = effect;
       const call: CallToolEffect = {
@@ -104,7 +106,7 @@ export class RunConnectorCallRunner {
         args,
         timeoutMs: connectorCallTimeoutMs,
       };
-      const result = await this.#withinLimit(runId, call);
+      const result = await this.#withinLimit(run, call);
       if (this.#options.isClosed()) return;
       const done: DecideInput = { type: "effect-done", at: this.#options.now(), callId, result };
       await this.#unrecorded.record(slot, done, record);
@@ -113,14 +115,14 @@ export class RunConnectorCallRunner {
     }
   }
 
-  #withinLimit(runId: string, call: CallToolEffect): Promise<ToolResult> {
+  #withinLimit(run: RunState, call: CallToolEffect): Promise<ToolResult> {
     const limit = {
       timeoutMs: call.timeoutMs,
-      start: () => this.#options.callTool(call),
+      start: () => this.#options.callTool(call, run),
       timedOut: () => new Error(`it took longer than ${call.timeoutMs / 1000} seconds`),
     };
     return this.#options.deadlines
-      .connectorCall(runId, call.callId, limit)
+      .connectorCall(run.runId, call.callId, limit)
       .catch((error: unknown): ToolResult => {
         const why = error instanceof Error ? error.message : String(error);
         return { type: "tool", result: brokeOff(why), outcome: "unknown" };
