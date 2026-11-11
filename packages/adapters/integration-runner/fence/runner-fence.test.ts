@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +6,7 @@ import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
 import { socketFolders } from "../src/halonic/runner-profile.ts";
 import { type StartedRunner, startRunner } from "../src/halonic/start-runner.ts";
 import { bridgeOptions, fakeRunnerProcess } from "../src/pipes.test-helper.ts";
+import { fenceTestBase } from "./attack-session.ts";
 
 // The built runner, started the way Halonic starts it when the fence is
 // there: `startRunner` through a real `sandbox-srt` session with the untrusted
@@ -27,8 +27,8 @@ let folder: string;
 let runner: RunnerFile;
 
 beforeAll(async () => {
-  // Real paths, as the runner gets in production: tmpdir() is a symlink on macOS.
-  folder = await realpath(await mkdtemp(join(tmpdir(), "runner-fence-")));
+  folder = await fenceTestBase("rf-");
+  await mkdir(join(folder, "home"));
   runner = await buildRunnerFile(join(folder, "dist", "runner.mjs"));
 });
 
@@ -39,8 +39,8 @@ afterAll(async () => {
 /** Starts the built runner for `source` in a fresh srt session. */
 async function startInFence(source: string): Promise<StartedRunner> {
   const name = Math.random().toString(36).slice(2);
-  const integrationFolder = join(folder, `integration-${name}`);
-  const tempFolder = join(folder, `temp-${name}`);
+  const integrationFolder = join(folder, `i-${name}`);
+  const tempFolder = join(folder, `t-${name}`);
   await mkdir(integrationFolder);
   await mkdir(tempFolder);
   await writeFile(join(integrationFolder, "index.mjs"), source);
@@ -56,7 +56,9 @@ async function startInFence(source: string): Promise<StartedRunner> {
     },
     entry: { file: join(integrationFolder, "index.mjs"), exportName: "weather" },
     machine: {
-      homeFolder: homedir(),
+      // A home folder of its own: in CI the checkout, and with it srt's own
+      // seccomp helper, is inside the real one, and hiding it stops srt.
+      homeFolder: join(folder, "home"),
       socketFolders: socketFolders(process.env),
       tempFolder,
       timeLimitMs: 60_000,

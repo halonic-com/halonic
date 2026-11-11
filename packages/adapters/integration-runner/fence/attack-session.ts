@@ -10,7 +10,7 @@
 // So a test can tell an attempt that ran and was refused from one that never
 // ran (HAL-180 finding 13).
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Sandbox, SandboxCommand } from "@halonicjs/ports";
 import {
@@ -58,6 +58,16 @@ process.on("beforeExit", () => {
 });
 `;
 
+/**
+ * A fresh base folder for fence tests, at its real place. srt puts its socket
+ * in the session's temp folder, and a socket path may be only 104 bytes on
+ * macOS, where `tmpdir()` is already a long path under `/var/folders`. So the
+ * base goes in `/tmp`, with a short name.
+ */
+export async function fenceTestBase(prefix: string): Promise<string> {
+  return realpath(await mkdtemp(join("/tmp", prefix)));
+}
+
 /** The folders one attack run uses. */
 export interface AttackFolders {
   /** The integration's folder; the attack script is written into it. */
@@ -68,8 +78,9 @@ export interface AttackFolders {
 
 /** Creates a fresh integration folder and temp folder under `base`. */
 export async function attackFolders(base: string, name: string): Promise<AttackFolders> {
-  const integrationFolder = join(base, `integration-${name}`);
-  const tempFolder = join(base, `temp-${name}`);
+  // Short names, for the socket path (see `fenceTestBase`).
+  const integrationFolder = join(base, `i-${name}`);
+  const tempFolder = join(base, `t-${name}`);
   await mkdir(integrationFolder, { recursive: true });
   await mkdir(tempFolder, { recursive: true });
   return { integrationFolder, tempFolder };
