@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { heavyTestTimeout } from "./test/golden.ts";
 
 /** The `halonic` command's first file, which checks the Node version. */
 const launcher = fileURLToPath(new URL("../bin/halonic.cjs", import.meta.url));
@@ -17,7 +18,10 @@ require(${JSON.stringify(launcher)});`;
 }
 
 verifies("cli.node-version", () => {
-  it("refuses an older Node with one line naming it and how to get a newer one", () => {
+  // A new Node process: slow to start on a loaded runner.
+  it("refuses an older Node with one line naming it and how to get a newer one", {
+    timeout: heavyTestTimeout,
+  }, () => {
     const run = launchAs("18.19.1", ["--help"]);
 
     expect(run.stderr).toBe(
@@ -28,14 +32,18 @@ verifies("cli.node-version", () => {
     expect(run.status).toBe(1);
   });
 
-  it("refuses 26.11, the minor version before the one it needs", () => {
+  // A new Node process: slow to start on a loaded runner.
+  it("refuses 26.11, the minor version before the one it needs", {
+    timeout: heavyTestTimeout,
+  }, () => {
     const run = launchAs("26.11.0", ["--help"]);
 
     expect(run.stderr).toContain("but this is Node.js 26.11.0.");
     expect(run.status).toBe(1);
   });
 
-  it("runs the command line on 26.12", () => {
+  // Loads the whole command line from TypeScript: 9 s on a loaded CI runner.
+  it("runs the command line on 26.12", { timeout: heavyTestTimeout }, () => {
     const run = launchAs("26.12.0", ["--help"]);
 
     expect(run.stdout).toContain("Run and check Halonic workspaces from the command line.");
