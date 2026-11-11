@@ -153,7 +153,7 @@ export function ResizeEdge({
       onPointerCancel={endDrag}
       onDoubleClick={onDoubleClick}
     >
-      <span className="pointer-events-none absolute inset-y-0 left-[3px] w-0.5 bg-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-data-dragging:opacity-100 forced-colors:bg-[Highlight]" />
+      <span className="pointer-events-none absolute inset-0 mx-auto w-0.5 bg-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-data-dragging:opacity-100 forced-colors:bg-[Highlight]" />
     </div>
   );
 }

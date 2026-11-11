@@ -195,7 +195,8 @@ verifies("shell.sidebar-resize", () => {
     const { edge } = renderEdge();
     const line = edge.firstElementChild as HTMLElement;
 
-    expect(line.className).toContain("w-0.5 bg-accent opacity-0");
+    // Centred in the 8px hit area by classes, not by an arbitrary px offset.
+    expect(line.className).toContain("inset-0 mx-auto w-0.5 bg-accent opacity-0");
     expect(line.className).toContain("group-hover:opacity-100");
     expect(line.className).toContain("group-focus-visible:opacity-100");
     expect(line.className).toContain("group-data-dragging:opacity-100");

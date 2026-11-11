@@ -20,9 +20,11 @@
   --character-5a: #f08cf5; /* orchid */
   --character-5b: #8d50f2;
 
-  /* Stacked cards (the side panel's stack on the agent and workflow pages). Each card behind sits
-     --stack-peek higher and --stack-inset narrower on each side, one shade darker per step back.
+  /* Stacked cards (the side panel's stack on the agent and workflow pages). The stack sits
+     --stack-gap in from the panel's edges; each card behind sits --stack-peek higher and
+     --stack-inset narrower on each side, one shade darker per step back.
      Not spacing tokens: they must never become p- or m- classes. */
+  --stack-gap: 16px;
   --stack-peek: 10px;
   --stack-inset: 12px;
   --stack-shade-1: var(--color-surface-subtle); /* one card behind */

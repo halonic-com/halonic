@@ -87,7 +87,8 @@ verifies("kit.agent-page-tokens", () => {
       });
     }
 
-    it("offsets each card behind in px, outside @theme so they never become classes", () => {
+    it("places the stack and offsets each card behind in px, outside @theme so they never become classes", () => {
+      expect(plainVariables.get("--stack-gap")).toBe("16px");
       expect(plainVariables.get("--stack-peek")).toBe("10px");
       expect(plainVariables.get("--stack-inset")).toBe("12px");
       expect([...themeTokens.keys()].filter((name) => name.includes("stack"))).toEqual([]);

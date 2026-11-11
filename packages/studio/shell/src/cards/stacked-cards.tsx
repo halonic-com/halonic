@@ -151,15 +151,17 @@ function useCloseLayer(
   }, [stack, look, closeStack, layer, onChange]);
 }
 
-/** Where the stack sits in the panel, 16px in from its edges, room left above for the bands. */
-const stackGap = 16;
-
-/** The position of a card `depth` steps behind the top one, with `behind` cards behind the top. */
+/**
+ * The position of a card `depth` steps behind the top one, with `behind` cards behind the top. The
+ * stack sits `--stack-gap` in from the panel's edges, with room left above for the bands.
+ */
 function cardPlace(depth: number, behind: number, fullWidth: boolean): CSSProperties {
-  const side = fullWidth ? `${stackGap}px` : `calc(${stackGap}px + var(--stack-inset) * ${depth})`;
+  const side = fullWidth
+    ? "var(--stack-gap)"
+    : `calc(var(--stack-gap) + var(--stack-inset) * ${depth})`;
   return {
-    top: `calc(${stackGap}px + var(--stack-peek) * ${behind - depth})`,
-    bottom: `${stackGap}px`,
+    top: `calc(var(--stack-gap) + var(--stack-peek) * ${behind - depth})`,
+    bottom: "var(--stack-gap)",
     insetInline: side,
   };
 }
