@@ -59,6 +59,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  * @throws NoWorkspaceError when the folder holds no workspace
  * @throws OwnLineError `conflict` when the workspace has history but nothing
  *   is live yet; nothing ran
+ * @throws HistoryUnavailableError when the workspace has history but git
+ *   can't start; nothing ran
  * @throws NotTrustedError when the run could reach more than the test model
  *   and the workspace isn't trusted here; nothing ran
  * @throws RunInputError when `--input` isn't a JSON object

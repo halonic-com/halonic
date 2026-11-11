@@ -73,6 +73,8 @@ interface SendArguments {
  * @throws KindedError when the run isn't waiting (`conflict`), or its step
  *   doesn't take the event (`invalid_input`)
  * @throws NoWorkspaceError when the folder holds no workspace
+ * @throws HistoryUnavailableError when the workspace has history but git
+ *   can't start; nothing was sent (exit 9)
  * @throws NotTrustedError when the run could reach more than the test model
  *   and the workspace isn't trusted here; nothing was sent (exit 3)
  */

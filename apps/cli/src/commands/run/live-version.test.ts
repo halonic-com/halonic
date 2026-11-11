@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import {
+  loadRunWorkspace,
   loadSendWorkspace,
   type OpenWorkspaceHistory,
   openGitHistory,
@@ -55,8 +56,12 @@ afterEach(async () => {
 const history: OpenWorkspaceHistory = async (root) =>
   openGitHistory(root, { git: await testGit() });
 
-/** Commits every file in the workspace folder: the workspace's first version. */
-async function makeLive(): Promise<void> {
+/** Opens no history: git can't start, as when it isn't installed. */
+const noGit: OpenWorkspaceHistory = () =>
+  Promise.reject(new Error("git wasn't found on the PATH."));
+
+/** Commits every file in the workspace folder: the workspace's first version, by its hash. */
+async function makeLive(): Promise<string> {
   // Listed before git makes its own folder.
   const entries = await readdir(acme, { recursive: true, withFileTypes: true });
   const files = entries
@@ -64,7 +69,7 @@ async function makeLive(): Promise<void> {
     .map((entry) => relative(acme, join(entry.parentPath, entry.name)).replaceAll("\\", "/"));
   await vcs.init();
   await vcs.stage(files);
-  await vcs.commit("First version");
+  return await vcs.commit("First version");
 }
 
 /** Saves a change to Support reply's name that isn't in a version. */
@@ -74,9 +79,11 @@ async function saveNewName(name: string): Promise<void> {
   await writeFile(path, text.replace("name: Support reply", `name: ${name}`));
 }
 
-async function run(): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
+async function run(
+  opener: OpenWorkspaceHistory = history,
+): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
   const io = captureIo(acme);
-  const command = runCommandWith({ ...testRunSetup(folder, profile), history });
+  const command = runCommandWith({ ...testRunSetup(folder, profile), history: opener });
   const code = await runCli(["run", "support-reply", ...samsEmail], io, [command]);
   return { code, stdout: io.stdout, stderr: io.stderr };
 }
@@ -85,6 +92,14 @@ async function storedRuns(): Promise<number> {
   const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
   return listed.runs.length;
 }
+
+/** The workspace folder as the CLI opens it. */
+const dirOf = () => ({
+  root: acme,
+  shown: ".",
+  name: "acme",
+  store: new FolderDefinitionStore(acme, "."),
+});
 
 verifies("cli.run-live-version", () => {
   it("starts the live version, not a saved change that isn't in a version", async () => {
@@ -96,6 +111,18 @@ verifies("cli.run-live-version", () => {
     expect(code).toBe(exitCode.ok);
     expect(stdout.join("\n")).toContain("Running Support reply in acme");
     expect(stdout.join("\n")).not.toContain("Saved reply");
+    expect(await storedRuns()).toBe(1);
+  });
+
+  it("loads the live version with its commit as the workspace's version", async () => {
+    const commit = await makeLive();
+    await saveNewName("Saved reply");
+
+    // The run keeps the definitions it loaded; their version is this commit.
+    expect(await loadRunWorkspace(dirOf(), history)).toMatchObject({
+      found: "loaded",
+      workspace: { version: commit },
+    });
   });
 
   it("starts the saved files when the folder isn't a git repository", async () => {
@@ -120,13 +147,20 @@ verifies("cli.run-live-version", () => {
     expect(await storedRuns()).toBe(0);
   });
 
+  it("refuses when the workspace has history but git can't start, and stores no run", async () => {
+    await makeLive();
+
+    const { code, stderr } = await run(noGit);
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(stderr).toEqual([
+      "✕ Couldn't run support-reply: git can't start on this computer, so the live version can't be read. Nothing ran.",
+      "  Install git and make sure it's on your PATH, then try again.",
+    ]);
+    expect(await storedRuns()).toBe(0);
+  });
+
   describe("runs send", () => {
-    const dirOf = () => ({
-      root: acme,
-      shown: ".",
-      name: "acme",
-      store: new FolderDefinitionStore(acme, "."),
-    });
     const nameOf = async () =>
       filesOf(await loadSendWorkspace(dirOf(), history), "workflow").find(
         (file) => file.value.id === "support-reply",
@@ -144,6 +178,18 @@ verifies("cli.run-live-version", () => {
       await saveNewName("Saved reply");
 
       expect(await nameOf()).toBe("Saved reply");
+    });
+
+    it("refuses when git can't start, rather than check the saved files", async () => {
+      await makeLive();
+
+      await expect(loadSendWorkspace(dirOf(), noGit)).rejects.toMatchObject({
+        kind: "unavailable",
+        message:
+          "git can't start on this computer, so the live version can't be read. Nothing was sent.",
+        fix: "Install git and make sure it's on your PATH, then try again.",
+        cause: new Error("git wasn't found on the PATH."),
+      });
     });
   });
 });

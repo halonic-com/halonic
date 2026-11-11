@@ -10,7 +10,12 @@ import { join } from "node:path";
 import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
 import { type LiveVersionReader, liveVersionOf, runSourceFor } from "@halonicjs/app";
 import type { Vcs } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import type { Message } from "./messages/define.ts";
+import { plainText } from "./messages/phrase.ts";
+import { runMessages } from "./messages/run.ts";
+import { sandboxMessages } from "./messages/sandbox.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 
 /** What a run's workspace needs of version control: which version is live, and its files. */
@@ -36,15 +41,34 @@ export type RunWorkspace =
   | { readonly found: "nothing-live" };
 
 /**
+ * A run refused because the workspace's history can't be opened, such as
+ * when git isn't installed: `unavailable`, exit 9. The saved files are no
+ * fallback, since they may hold changes that aren't live. The opener's own
+ * error is the `cause`, so it shows with `--debug` and nowhere else.
+ */
+export class HistoryUnavailableError extends KindedError {
+  constructor(nothingDone: Message, cause: unknown) {
+    super("unavailable", plainText(runMessages.gitWontStart(nothingDone.phrase).phrase), {
+      fix: plainText(runMessages.gitWontStartFix().phrase),
+      cause,
+    });
+  }
+}
+
+/**
  * Loads the workspace `halonic run` starts: the live version, or the saved
  * files with history off (requirement `cli.run-live-version`). The run
  * records the loaded workspace's version, the commit for the live version.
+ * `nothingDone` ends line 1 of a refusal: "Nothing ran." by default.
+ *
+ * @throws HistoryUnavailableError when the workspace has history but it can't be opened
  */
 export async function loadRunWorkspace(
   dir: OpenWorkspaceDir,
   openHistory: OpenWorkspaceHistory = openGitHistory,
+  nothingDone: Message = runMessages.nothingRan(),
 ): Promise<RunWorkspace> {
-  const history = await openHistory(dir.root);
+  const history = await openOrRefuse(dir.root, openHistory, nothingDone);
   try {
     const vcs = history?.vcs ?? null;
     const live = await liveVersionOf(vcs);
@@ -65,13 +89,28 @@ export async function loadRunWorkspace(
  * the version `halonic run` would start now. A waiting run can be answered
  * while nothing is live yet, so then it is the saved files, as for a run
  * started before the workspace had history.
+ *
+ * @throws HistoryUnavailableError ending "Nothing was sent." when the workspace has history but it can't be opened
  */
 export async function loadSendWorkspace(
   dir: OpenWorkspaceDir,
   openHistory: OpenWorkspaceHistory = openGitHistory,
 ): Promise<LoadedWorkspace> {
-  const run = await loadRunWorkspace(dir, openHistory);
+  const run = await loadRunWorkspace(dir, openHistory, sandboxMessages.nothingSent());
   return run.found === "loaded" ? run.workspace : await loadWorkspace(dir.store);
+}
+
+/** Opens the history with `openHistory`, or refuses the run when it can't. */
+async function openOrRefuse(
+  root: string,
+  openHistory: OpenWorkspaceHistory,
+  nothingDone: Message,
+): Promise<OpenedHistory | null> {
+  try {
+    return await openHistory(root);
+  } catch (error) {
+    throw new HistoryUnavailableError(nothingDone, error);
+  }
 }
 
 /**
