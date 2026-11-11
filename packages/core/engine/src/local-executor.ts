@@ -34,11 +34,10 @@ import {
   openSources,
 } from "./knowledge/agent-knowledge.ts";
 import {
-  allowedToolsOf,
   connectorsOf,
   effectBoundary,
   makeConnectorCall,
-  readToolsOf,
+  runConnectorsOf,
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
@@ -387,8 +386,10 @@ export class LocalExecutor implements RunExecutor {
 
   /**
    * A subagent's own turn on a task, one level deeper, on its own model and
-   * with its own tools. Its calls are checked as a run's are, except that
-   * one that needs a person's OK is refused ({@link checkSubagentToolCall}).
+   * with its own tools: with `runs.connectorCalls`, the connector tools a
+   * `parallel` branch gets, because it can't stop the run either. Its calls
+   * are checked as a run's are, except that one that needs a person's OK is
+   * refused ({@link checkSubagentToolCall}).
    *
    * @returns the subagent's answer
    */
@@ -402,13 +403,15 @@ export class LocalExecutor implements RunExecutor {
       tools: [],
     });
     const knowledge = this.runKnowledgeOf(turn, task.agent);
+    const lists = turn.definitions.connectorTools ?? {};
+    const connectors = runConnectorsOf(this.options.connectors, subagent, lists, true);
     const result = await runModelTurn({
       model,
       secrets: this.options.secrets,
       messages,
       callerTools: [],
       halonicTools: this.runToolsOf(turn, task.agent, task.depth, knowledge),
-      connectors: [],
+      connectors: this.options.runs?.connectorCalls === undefined ? [] : connectors,
       maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
       agent: task.agent,
       clock: this.options.clock,
@@ -421,16 +424,16 @@ export class LocalExecutor implements RunExecutor {
   /**
    * A run's model call: the state's prompt to its agent's model, with Halonic's tools, the
    * agent's memory and knowledge tools, the tools its file grants ({@link LocalExecutor.runToolsOf})
-   * and, with `runs.connectorCalls`, the tools of the connected servers its kept file lists
-   * ({@link connectorsOf}) that their kept files allow ({@link allowedToolsOf}), through the
-   * same turn loop a chat turn uses. Every call is checked with `checkToolCall` first, and a
-   * connector call its kept file puts under `approve` asks a person ({@link runToolCheckOf}),
-   * and the agent's `maxSteps` is the round limit. The agent's own prompt and the turn's full
-   * run log come in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
+   * and, with `runs.connectorCalls`, the tools of the connected servers its kept file lists that
+   * their kept files allow ({@link runConnectorsOf}), through the same turn loop a chat turn uses.
+   * Every call is checked with `checkToolCall` first, and a connector call its kept file puts
+   * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
+   * round limit. The agent's own prompt and the turn's full run log come in step 4; until then
+   * it logs only `tool.refused` ({@link refusalLog}).
    *
    * A `parallel` branch's call is offered only the connector tools whose
    * listing says they read and their kept file doesn't put under `approve`
-   * ({@link readToolsOf}): a branch can't make a call that changes things,
+   * ({@link runConnectorsOf}): a branch can't make a call that changes things,
    * because a run records one effect at a time, and a call that waits for
    * a person would only end the branch.
    *
@@ -456,10 +459,7 @@ export class LocalExecutor implements RunExecutor {
     const connectorCalls = this.options.runs?.connectorCalls;
     const inBranch = branchOfCall(run.parallel, call.callId) !== null;
     const connectorTools = turn.definitions.connectorTools ?? {};
-    const listed = allowedToolsOf(connectorsOf(this.options.connectors, agent), connectorTools);
-    const connectors = inBranch
-      ? listed.map((connector) => readToolsOf(connector, connectorTools))
-      : listed;
+    const connectors = runConnectorsOf(this.options.connectors, agent, connectorTools, inBranch);
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
     const outcome = await runAgentTurn({

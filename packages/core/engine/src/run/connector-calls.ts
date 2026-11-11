@@ -142,6 +142,23 @@ export function connectorsOf(
 }
 
 /**
+ * The connectors an agent's model call in a run is offered: the ones its
+ * file lists ({@link connectorsOf}), with the tools their files allow
+ * ({@link allowedToolsOf}). With `readOnly`, each keeps only the tools that
+ * read and wait for no one ({@link readToolsOf}): what a `parallel` branch
+ * and a subagent get, because neither can stop the run (HAL-3361).
+ */
+export function runConnectorsOf(
+  connectors: readonly ConnectorClient[],
+  agent: Agent | undefined,
+  lists: Readonly<Record<string, Connector["tools"]>>,
+  readOnly: boolean,
+): readonly ConnectorClient[] {
+  const allowed = allowedToolsOf(connectorsOf(connectors, agent), lists);
+  return readOnly ? allowed.map((connector) => readToolsOf(connector, lists)) : allowed;
+}
+
+/**
  * The connectors as a run offers them: each with only the tools its file's
  * `allow` names, under the name its server lists them under, as the
  * outside-run gate reads the list. A connector with no `tools` lists in the
