@@ -4,9 +4,15 @@
 
 import { realpath } from "node:fs/promises";
 import { TrustService, type TrustSubject } from "@halonicjs/app";
-import type { Clock, TrustStore } from "@halonicjs/ports";
+import type { Clock, TrustGrant, TrustStore } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
+import type { Message } from "./messages/define.ts";
+import { runMessages } from "./messages/run.ts";
+import { trustMessages } from "./messages/trust.ts";
+import { NotTrustedError } from "./not-trusted.ts";
+import { trustChangesDocument } from "./output/trust-changes-json.ts";
+import { trustCheckLines } from "./output/trust-check.ts";
 import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
@@ -96,4 +102,46 @@ export async function readWorkspaceTrust(
 /** The trust service over `store`, with the CLI's digest and version. */
 export function cliTrustService(store: TrustStore, clock: Clock): TrustService {
   return new TrustService({ store, digest: webCryptoDigest, clock, appVersion: halonicVersion });
+}
+
+/** What a trust check reads on this computer, so tests can hand it a memory store. */
+export interface WorkspaceTrustMachine {
+  /** The trust records in the user's profile. */
+  readonly trustStore: TrustStore;
+  readonly clock: Clock;
+  /** Where the connectors' programs are looked for. */
+  readonly commandSearch: CommandSearch;
+}
+
+/**
+ * The grant for the workspace in `dir` as it is now, which a connector
+ * needs to start (`ports.connector-trust-enforcement`). A trust record that
+ * can't be read counts as no trust, so this fails closed.
+ *
+ * @param nothingDone - the end of line 1 saying nothing happened, such as
+ *   `runMessages.nothingRan()`
+ * @throws NotTrustedError when the workspace was never trusted here, or
+ *   changed since; its check and fingerprint are shown (exit 3)
+ */
+export async function trustedGrant(
+  dir: OpenWorkspaceDir,
+  machine: WorkspaceTrustMachine,
+  typedDir: string | undefined,
+  nothingDone: Message,
+): Promise<TrustGrant> {
+  const { name, subject } = await readWorkspaceTrust(dir, machine.commandSearch);
+  const check = await cliTrustService(machine.trustStore, machine.clock).check(subject);
+  if (check.status === "trusted") {
+    return check.grant;
+  }
+  const changed = check.status === "changed";
+  throw new NotTrustedError({
+    problem: changed
+      ? runMessages.changedSinceTrusted(name, nothingDone.phrase)
+      : runMessages.notTrusted(name, nothingDone.phrase),
+    fix: trustMessages.reviewThenTrust(typedDir),
+    fingerprint: check.fingerprint,
+    check: trustCheckLines(check, { name, folder: dir.shown }),
+    changes: changed ? trustChangesDocument(check.changes, check.trustedAt) : undefined,
+  });
 }

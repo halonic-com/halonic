@@ -314,6 +314,15 @@ importers:
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-http-kit':
+        specifier: workspace:*
+        version: link:../../packages/adapters/http-kit
+      '@halonicjs/adapter-http-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/http-node
+      '@halonicjs/adapter-mcp':
+        specifier: workspace:*
+        version: link:../../packages/adapters/mcp
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../../packages/adapters/memory

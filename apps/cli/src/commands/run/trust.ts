@@ -7,26 +7,18 @@
 // `init --example acme` runs straight away. The service that starts the run
 // doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
 
-import type { Clock, TrustStore } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
-import type { CommandSearch } from "../../command-paths.ts";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
-import { trustMessages } from "../../messages/trust.ts";
-import { NotTrustedError } from "../../not-trusted.ts";
-import { trustChangesDocument } from "../../output/trust-changes-json.ts";
-import { trustCheckLines } from "../../output/trust-check.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
-import { cliTrustService, readWorkspaceTrust, trustContentInputOf } from "../../workspace-trust.ts";
+import {
+  trustContentInputOf,
+  trustedGrant,
+  type WorkspaceTrustMachine,
+} from "../../workspace-trust.ts";
 
 /** What the trust check reads on this computer, so tests can hand it a memory store. */
-export interface RunTrustMachine {
-  /** The trust records in the user's profile. */
-  readonly trustStore: TrustStore;
-  readonly clock: Clock;
-  /** Where the connectors' programs are looked for. */
-  readonly commandSearch: CommandSearch;
-}
+export type RunTrustMachine = WorkspaceTrustMachine;
 
 /**
  * Refuses to go on unless the workspace is trusted on this computer, or
@@ -50,19 +42,5 @@ export async function checkRunTrust(
   if (reachesOnlyTheTestModel({ providers, ...trustContentInputOf(workspace) })) {
     return;
   }
-  const { name, subject } = await readWorkspaceTrust(dir, machine.commandSearch);
-  const check = await cliTrustService(machine.trustStore, machine.clock).check(subject);
-  if (check.status === "trusted") {
-    return;
-  }
-  const changed = check.status === "changed";
-  throw new NotTrustedError({
-    problem: changed
-      ? runMessages.changedSinceTrusted(name, nothingDone.phrase)
-      : runMessages.notTrusted(name, nothingDone.phrase),
-    fix: trustMessages.reviewThenTrust(typedDir),
-    fingerprint: check.fingerprint,
-    check: trustCheckLines(check, { name, folder: dir.shown }),
-    changes: changed ? trustChangesDocument(check.changes, check.trustedAt) : undefined,
-  });
+  await trustedGrant(dir, machine, typedDir, nothingDone);
 }

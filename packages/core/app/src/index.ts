@@ -61,6 +61,11 @@ export {
   type SendingSettings,
 } from "./connection-settings.ts";
 export {
+  ConnectorFactories,
+  type ConnectorKind,
+  connectorConfigOf,
+} from "./connector-factories.ts";
+export {
   checkPinVersion,
   checkResolvedVersion,
   type PinnedPackage,
