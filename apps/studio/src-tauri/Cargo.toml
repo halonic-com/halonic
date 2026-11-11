@@ -39,6 +39,7 @@ halonic-run-store = { path = "crates/run-store" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-trust-grant = { path = "crates/trust-grant" }
 halonic-trust-store = { path = "crates/trust-store" }
+halonic-workspace-files = { path = "crates/workspace-files" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "=2.12.5", features = [] }

@@ -7,12 +7,14 @@
 //! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`
 //! commands (capabilities/desktop-trust.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `agent_host_*` commands
-//! (capabilities/desktop-agent-host.json); the Studio it then opens is
+//! (capabilities/desktop-agent-host.json) and the `fs_*` commands
+//! (capabilities/desktop-files.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
 mod agent_host;
 mod connect;
+mod files;
 mod git;
 mod native_dialogs;
 mod navigation;
@@ -44,6 +46,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(halonic_trust_grant::TrustState::default())
         .manage(runs::RunState::default())
         .manage(agent_host::AgentHostState::default())
+        .manage(files::FileState::default())
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
         // every page, the served Studio too, and make the page call
@@ -60,15 +63,17 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
-        // itself, so the shell ends them.
+        // and file watches itself, so the shell ends them.
         .on_page_load(|webview, payload| {
             if payload.event() == PageLoadEvent::Started {
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
+                files::end_page_watches(webview.app_handle(), webview.label());
             }
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {
                 agent_host::end_page_streams(window.app_handle(), window.label());
+                files::end_page_watches(window.app_handle(), window.label());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -89,6 +94,12 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::agent_host_request,
             agent_host::agent_host_stream,
             agent_host::agent_host_stream_end,
+            files::fs_list,
+            files::fs_read,
+            files::fs_write,
+            files::fs_remove,
+            files::fs_watch,
+            files::fs_unwatch,
         ])
 }
 

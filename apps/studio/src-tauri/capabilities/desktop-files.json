@@ -1,0 +1,21 @@
+{
+  "identifier": "desktop-files",
+  "description": "On desktop, the app's own page may list, read, write, remove and watch the files of a workspace the person opened through the fs_* commands, as the CLI keeps them (crates/workspace-files). Every path is checked in Rust: no private path and no link. It is local only, so the Studio the computer serves gets no files.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-fs-list",
+    "allow-fs-read",
+    "allow-fs-write",
+    "allow-fs-remove",
+    "allow-fs-watch",
+    "allow-fs-unwatch"
+  ]
+}

@@ -2,8 +2,8 @@
 //! checklist): every app and plugin command the shell knows is refused when
 //! the request comes from the computer's address, while the connect page
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
-//! commands, `pick_folder`, the `trust_*` commands, the `run_*` commands
-//! and the `agent_host_*` commands.
+//! commands, `pick_folder`, the `trust_*` commands, the `run_*` commands,
+//! the `agent_host_*` commands and the `fs_*` commands.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -107,6 +107,12 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
+        "fs_list",
+        "fs_read",
+        "fs_write",
+        "fs_remove",
+        "fs_watch",
+        "fs_unwatch",
         "plugin:opener|open_url",
         "plugin:event|listen",
     ] {
@@ -239,6 +245,50 @@ fn served_page_test_sees_the_connect_page_allowed_the_agent_host_commands_on_des
         json!({"stream": 7}),
     );
     assert_eq!(ended, Ok(Value::Null));
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_the_file_commands_on_desktop() {
+    // Each call gets through to its command, which refuses the workspace
+    // before it reads or writes anything: no folder is opened yet.
+    let window = app_window();
+    let file = json!({"workspace": ".", "path": "a.yaml"});
+    let write = json!({"workspace": ".", "path": "a.yaml", "text": "x", "expected": null});
+    for (command, body) in [
+        ("fs_list", json!({"workspace": ".", "dir": null})),
+        ("fs_read", file.clone()),
+        ("fs_write", write),
+        ("fs_remove", file),
+    ] {
+        let answer = invoke(&window, CONNECT_PAGE, command, body);
+        let refusal = answer.expect_err("no folder is opened yet");
+        assert_eq!(refusal["kind"], "folder_not_open", "{command}: {refusal}");
+    }
+    let ended = invoke(&window, CONNECT_PAGE, "fs_unwatch", json!({"watchId": 7}));
+    assert_eq!(ended, Ok(Value::Null));
+}
+
+#[test]
+fn served_page_test_sees_files_granted_to_the_local_main_window_only() {
+    // A remote page must never reach the files: the served Studio could
+    // then read and change every opened workspace.
+    let text = include_str!("../capabilities/desktop-files.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([
+            "allow-fs-list",
+            "allow-fs-read",
+            "allow-fs-write",
+            "allow-fs-remove",
+            "allow-fs-watch",
+            "allow-fs-unwatch"
+        ])
+    );
 }
 
 #[test]
