@@ -95,6 +95,31 @@ verifies("fs-node.tool-approval-files", () => {
       expect(await readFile(join(folder, "notes.txt"), "utf8")).toBe("mine");
     });
 
+    it.each([
+      [
+        "noting a waiting version",
+        (store: FileToolApprovalStore) => store.noteWaiting(lookup, waitingVersion(1)),
+      ],
+      ["revoking", (store: FileToolApprovalStore) => store.revoke(lookup)],
+    ])(
+      "removes the temporary files a crashed write left, and nothing else, when %s",
+      async (_, write) => {
+        const { root, store, file } = await storeWithLookup();
+        const folder = folderFor(root, lookup);
+        const leftApproval = `${file}.6f0b4c1e-2d3a-4b5c-8d9e-0a1b2c3d4e5f.tmp`;
+        const leftWaiting = join(folder, "waiting.json.0b5e7a9c-1d2e-4f3a-9b8c-7d6e5f4a3b2c.tmp");
+        await writeFile(leftApproval, "{", "utf8");
+        await writeFile(leftWaiting, "{", "utf8");
+        await writeFile(join(folder, "notes.txt"), "mine", "utf8");
+
+        await write(store);
+
+        const left = await readdir(folder);
+        expect(left.filter((name) => name.endsWith(".tmp"))).toEqual([]);
+        expect(left).toContain("notes.txt");
+      },
+    );
+
     it("loses no waiting tool when several are noted at once", async () => {
       const root = await tempFolder();
       const store = new FileToolApprovalStore(root);
