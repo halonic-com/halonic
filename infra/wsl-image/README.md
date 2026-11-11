@@ -7,6 +7,7 @@ release and needs the board's yes.
 - `snapshot.conf`: the pinned Debian suite and snapshot date.
 - `build.sh <dir>`: builds `halonic-wsl.tar.gz` with `mmdebstrap --variant=minbase`,
   and writes `sizes.json` (download and on-disk size) and `packages.txt`.
+- `customize.sh`: the step inside the build that adds our files, the user and the notices.
 - `check.sh <image>`: checks config, packages, licence notice and that the tools start.
 - `files/`: `/etc/wsl.conf` (interop off, automount off, user `halonic`, systemd off),
   the empty `/opt/halonic` runtime slot, and the licence notice.

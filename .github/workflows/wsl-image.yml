@@ -26,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck
-          shellcheck infra/wsl-image/build.sh infra/wsl-image/check.sh
+          shellcheck infra/wsl-image/build.sh infra/wsl-image/customize.sh infra/wsl-image/check.sh
       # In a Debian container, so mmdebstrap and the archive keyring are
       # new enough for the current stable release (Ubuntu's are not).
       - name: Build and check
