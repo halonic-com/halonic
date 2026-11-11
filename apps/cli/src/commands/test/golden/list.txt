@@ -1,0 +1,59 @@
+## colour: halonic test --list
+exit 0
+stdout:
+  support-reply › Sam's refund question is approved             \e[2mhubs/support/workflows/support-reply.test.yaml:3\e[22m
+  support-reply › Alex's threat is rejected and gets no reply   \e[2mhubs/support/workflows/support-reply.test.yaml:18\e[22m
+  support-reply › A reply nobody has reviewed yet waits         \e[2mhubs/support/workflows/support-reply.test.yaml:32\e[22m
+  support-reply › A question gets an approved reply             \e[2mhubs/support/workflows/support-reply.test.yaml:44\e[22m
+  support-reply › Spam ends without a draft or a review         \e[2mhubs/support/workflows/support-reply.test.yaml:57\e[22m
+  
+  5 tests in acme.
+stderr:
+
+## NO_COLOR: halonic test --list
+exit 0
+stdout:
+  support-reply › Sam's refund question is approved             hubs/support/workflows/support-reply.test.yaml:3
+  support-reply › Alex's threat is rejected and gets no reply   hubs/support/workflows/support-reply.test.yaml:18
+  support-reply › A reply nobody has reviewed yet waits         hubs/support/workflows/support-reply.test.yaml:32
+  support-reply › A question gets an approved reply             hubs/support/workflows/support-reply.test.yaml:44
+  support-reply › Spam ends without a draft or a review         hubs/support/workflows/support-reply.test.yaml:57
+  
+  5 tests in acme.
+stderr:
+
+## --json: halonic test --list
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "cases": [
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Sam's refund question is approved"
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Alex's threat is rejected and gets no reply"
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "A reply nobody has reviewed yet waits"
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "A question gets an approved reply"
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Spam ends without a draft or a review"
+      }
+    ]
+  }
+stderr:

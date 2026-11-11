@@ -293,6 +293,9 @@ importers:
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../packages/adapters/memory
       '@halonicjs/adapter-model-anthropic':
         specifier: workspace:*
         version: link:../../packages/adapters/model-anthropic
@@ -335,6 +338,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/test-runner':
+        specifier: workspace:*
+        version: link:../../packages/core/test-runner
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../../packages/core/workspace

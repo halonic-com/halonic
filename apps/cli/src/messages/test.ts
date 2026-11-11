@@ -1,3 +1,4 @@
+import type { RunStatus } from "@halonicjs/events";
 import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { bold, dim, markPart, type Phrase, phrase } from "./phrase.ts";
@@ -10,9 +11,18 @@ import { suggestedCommand } from "./suggested-command.ts";
  */
 export const testMessages = defineMessages("test", {
   summary: () => phrase`Run a workspace's workflow tests with the test model`,
+  /** What `test` was doing, for "✕ Couldn't test ./downloads: …". */
+  action: (folder: string) => phrase`test ${folder}`,
+  /** The help line of `--filter`, as the CLI reference words the option. */
+  filterOption: () => phrase`Run only the tests whose hub/workflow/name contains this text.`,
+  /** The help line of `--list`. */
+  listOption: () => phrase`List the tests without running them.`,
   /** The first line, saying what `test` does and doesn't do: the most common worry. */
   testing: (workspace: string) =>
     phrase`Testing ${workspace} with the test model. Nothing is sent anywhere.`,
+  /** The last line of `--list`: "3 tests in acme." */
+  listed: (tests: number, workspace: string) =>
+    phrase`${counted(tests, "test", "tests")} in ${workspace}.`,
   /** A test as the test file names it: "support-reply › answers a refund question". */
   name: (workflow: string, test: string) => phrase`${workflow} ${markPart("studioPath")} ${test}`,
   /** How long one test took, dimmed at the end of its line: "0.4 s". */
@@ -49,6 +59,29 @@ export const testMessages = defineMessages("test", {
   unscriptedProgram: (step: string) =>
     phrase`The step ${step} would start a program, and tests never start programs. Script its result in the test file.`,
 
+  /**
+   * The run called a connector tool the case has no scripted result for;
+   * the tool as the test file's `tools` key names it: "files.read_file".
+   */
+  unscriptedTool: (tool: string) =>
+    phrase`The run called the tool ${bold(tool)}, and the test has no result for it. Script its result in the test file.`,
+  /** Scripted model replies the run never asked for. */
+  unusedReplies: (agent: string, count: number) =>
+    phrase`The test scripted ${counted(count, "reply", "replies")} for the agent ${bold(agent)} that the run never asked for.`,
+  /** Scripted tool results the run never used. */
+  unusedToolResults: (tool: string, count: number) =>
+    phrase`The test scripted ${counted(count, "result", "results")} for the tool ${bold(tool)} that the run never used.`,
+  /** An event of the test the run didn't take; the events after it weren't sent. */
+  eventNotTaken: (event: string, status: RunStatus) =>
+    phrase`The run didn't take the event ${bold(event)}, because ${notTakenWords[status]}.`,
+  /** The run stopped at steps it couldn't try, with no `status` that allows it; none named when the whole workflow couldn't be tried. */
+  cantTry: (steps: readonly string[]) =>
+    steps.length === 0
+      ? phrase`The run couldn't try this workflow: it needs changes you haven't accepted yet.`
+      : phrase`The run couldn't try ${listInWords(steps)}: they need changes you haven't accepted yet.`,
+  /** The run failed with no expectation that allows it, or the engine stopped it: its own error, as the run log has it. */
+  runError: (error: string) => phrase`The run failed: ${error}`,
+
   allPassed: (tests: number, seconds: number) =>
     phrase`${counted(tests, "test", "tests")} passed in ${inSeconds(seconds)}.`,
   /** The last line when a test failed: "2 passed, 1 failed. 3 tests in 0.9 s." */
@@ -68,10 +101,13 @@ export const testMessages = defineMessages("test", {
 /** The `status` a test file can expect. */
 export type TestStatus = "completed" | "waiting" | "failed";
 
-/** How a tested run ended, with the step it waits or failed in. */
+/**
+ * How a tested run ended, with the step it waits, failed or couldn't try
+ * in when there is one.
+ */
 export type RunOutcome =
-  | { readonly status: "completed" }
-  | { readonly status: "waiting" | "failed"; readonly step: string };
+  | { readonly status: "completed" | "running" }
+  | { readonly status: "waiting" | "failed" | "cant-try"; readonly step?: string };
 
 const expectedStatusWords: Record<TestStatus, string> = {
   completed: "to finish",
@@ -87,12 +123,31 @@ function outcomeInWords(outcome: RunOutcome): Phrase {
   switch (outcome.status) {
     case "completed":
       return phrase`it finished`;
+    case "running":
+      return phrase`it was still running`;
     case "waiting":
-      return phrase`it's waiting for an answer in the step ${bold(outcome.step)}`;
+      return outcome.step === undefined
+        ? phrase`it's waiting for an answer`
+        : phrase`it's waiting for an answer in the step ${bold(outcome.step)}`;
     case "failed":
-      return phrase`it failed in the step ${bold(outcome.step)}`;
+      return outcome.step === undefined
+        ? phrase`it failed`
+        : phrase`it failed in the step ${bold(outcome.step)}`;
+    case "cant-try":
+      return outcome.step === undefined
+        ? phrase`it couldn't try everything`
+        : phrase`it couldn't try the step ${bold(outcome.step)}`;
   }
 }
+
+/** Why the run didn't take an event, by the status it was in. */
+const notTakenWords: Record<RunStatus, string> = {
+  completed: "it had finished",
+  failed: "it had failed",
+  waiting: "it waits for another event",
+  running: "it was still running",
+  "cant-try": "it couldn't try everything",
+};
 
 /**
  * A step id from the test file that isn't a step of the workflow, shown as

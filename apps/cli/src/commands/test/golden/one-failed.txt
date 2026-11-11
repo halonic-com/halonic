@@ -1,0 +1,107 @@
+## colour: halonic test
+exit 1
+stdout:
+  Testing acme with the test model. Nothing is sent anywhere.
+  
+  \e[32m✓\e[39m support-reply › Sam's refund question is approved             \e[2m0.0 s\e[22m
+  \e[32m✓\e[39m support-reply › Alex's threat is rejected and gets no reply   \e[2m0.0 s\e[22m
+  \e[32m✓\e[39m support-reply › A reply nobody has reviewed yet waits         \e[2m0.0 s\e[22m
+  \e[32m✓\e[39m support-reply › A question gets an approved reply             \e[2m0.0 s\e[22m
+  \e[32m✓\e[39m support-reply › Spam ends without a draft or a review         \e[2m0.0 s\e[22m
+  \e[31m✕\e[39m support-reply › Spam gets a reply                             \e[2m0.0 s\e[22m
+      Expected the run to end in the step \e[1mFinished with the reply approved\e[22m, but it ended in \e[1mFinished without a reply, because nobody needs to answer spam\e[22m.
+      Expected \e[1mkind\e[22m to be "refund" when the run ended, but it was "spam".
+      \e[2mhubs/support/workflows/support-reply.test.yaml:68\e[22m
+  
+  \e[31m✕\e[39m 5 passed, \e[1m1 failed\e[22m. 6 tests in 0.0 s.
+stderr:
+
+## NO_COLOR: halonic test
+exit 1
+stdout:
+  Testing acme with the test model. Nothing is sent anywhere.
+  
+  ✓ support-reply › Sam's refund question is approved             0.0 s
+  ✓ support-reply › Alex's threat is rejected and gets no reply   0.0 s
+  ✓ support-reply › A reply nobody has reviewed yet waits         0.0 s
+  ✓ support-reply › A question gets an approved reply             0.0 s
+  ✓ support-reply › Spam ends without a draft or a review         0.0 s
+  ✕ support-reply › Spam gets a reply                             0.0 s
+      Expected the run to end in the step Finished with the reply approved, but it ended in Finished without a reply, because nobody needs to answer spam.
+      Expected kind to be "refund" when the run ended, but it was "spam".
+      hubs/support/workflows/support-reply.test.yaml:68
+  
+  ✕ 5 passed, 1 failed. 6 tests in 0.0 s.
+stderr:
+
+## --json: halonic test
+exit 1
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "passed": 5,
+    "failed": 1,
+    "cases": [
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Sam's refund question is approved",
+        "status": "passed",
+        "durationMs": 0,
+        "failures": []
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Alex's threat is rejected and gets no reply",
+        "status": "passed",
+        "durationMs": 0,
+        "failures": []
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "A reply nobody has reviewed yet waits",
+        "status": "passed",
+        "durationMs": 0,
+        "failures": []
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "A question gets an approved reply",
+        "status": "passed",
+        "durationMs": 0,
+        "failures": []
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Spam ends without a draft or a review",
+        "status": "passed",
+        "durationMs": 0,
+        "failures": []
+      },
+      {
+        "hub": "support",
+        "workflow": "support-reply",
+        "name": "Spam gets a reply",
+        "status": "failed",
+        "durationMs": 0,
+        "failures": [
+          {
+            "message": "Expected the run to end in the step Finished with the reply approved, but it ended in Finished without a reply, because nobody needs to answer spam.",
+            "file": "hubs/support/workflows/support-reply.test.yaml",
+            "line": 68
+          },
+          {
+            "message": "Expected kind to be \"refund\" when the run ended, but it was \"spam\".",
+            "file": "hubs/support/workflows/support-reply.test.yaml",
+            "line": 68
+          }
+        ]
+      }
+    ]
+  }
+stderr:

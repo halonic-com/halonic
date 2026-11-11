@@ -19,6 +19,7 @@
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-harness-claude-code": "workspace:*",
     "@halonicjs/adapter-harness-codex": "workspace:*",
+    "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/adapter-model-anthropic": "workspace:*",
     "@halonicjs/adapter-model-mock": "workspace:*",
     "@halonicjs/adapter-model-openai": "workspace:*",
@@ -33,6 +34,7 @@
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/test-runner": "workspace:*",
     "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
