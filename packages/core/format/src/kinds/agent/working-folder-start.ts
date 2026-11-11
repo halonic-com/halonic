@@ -243,14 +243,16 @@ function foldersUpTo(folder: string, root: string, lookup: PathLookup): string[]
 /**
  * The scripts a start runs (see rule 4): the program and each piece of an
  * argument when it is a file, and each argument and `-m` module also when
- * it is a file once an ending is added, or a folder.
+ * it is a file once an ending is added, or a folder. An empty argument
+ * names nothing, as in `pathsIn`, though it would resolve to the start folder.
  */
 async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<Script[]> {
   const exact = [
     start.program,
     ...start.args.flatMap((arg) => pathsIn(arg).filter((piece) => piece !== arg)),
   ];
-  const filled = start.args.flatMap((arg, index) => [
+  const named = start.args.flatMap((arg, index) => (arg === "" ? [] : [{ arg, index }]));
+  const filled = named.flatMap(({ arg, index }) => [
     { shown: arg, path: arg },
     ...moduleIn(start.args, index).map((path) => ({ shown: arg, path })),
   ]);

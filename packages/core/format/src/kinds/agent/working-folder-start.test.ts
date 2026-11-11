@@ -210,6 +210,7 @@ verifies("format.working-folder-start", () => {
         start("node", ["tools/mail/server.js", "--port", "8080"]),
         [coder],
       ],
+      ["an empty argument", start("node", ["-e", ""]), [coder]],
     ])("allows %s", async (_, fine, workingFolders) => {
       expect(await reach(fine, workingFolders)).toBeNull();
     });
