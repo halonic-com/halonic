@@ -8,6 +8,7 @@ import type {
   SandboxSession,
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
+import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
@@ -31,20 +32,37 @@ export class SrtSandbox implements Sandbox {
   readonly #machine: Machine;
   readonly #runner: Runner;
   readonly #journalFolder: string | null;
+  readonly #grants: KeptGrants;
+  readonly #runsFolder: string | null;
+  readonly #warn: (message: string) => void;
+  #swept: Promise<void> | null = null;
 
   /**
    * @param journalFolder where each session keeps its `commondir` snapshot so
    *   `recoverGitFolders` can undo it after a host crash. Give a folder only this
    *   user can write (it is created with mode 0700); without one, nothing is kept.
+   * @param options.runsFolder on Windows, the folder that holds the sessions'
+   *   run folders: the first `open` takes back the kept grants inside it that
+   *   no live session holds (sessions that crashed before they closed).
+   * @param options.grants takes back srt's kept Windows grants; a test passes a fake
+   * @param options.warn where a failure that no caller can get is logged; stderr by default
    */
   constructor(
     machine: Machine = systemMachine,
     runner: Runner = srtRunner,
     journalFolder: string | null = null,
+    options: {
+      runsFolder?: string | null;
+      grants?: KeptGrants;
+      warn?: (message: string) => void;
+    } = {},
   ) {
     this.#machine = machine;
     this.#runner = runner;
     this.#journalFolder = journalFolder;
+    this.#grants = options.grants ?? new KeptGrants();
+    this.#runsFolder = options.runsFolder ?? null;
+    this.#warn = options.warn ?? ((message) => void process.stderr.write(`${message}\n`));
   }
 
   /** Whether the sandbox can start here; when it can't, the first reason and one sentence on what is missing. Never throws. */
@@ -101,7 +119,10 @@ export class SrtSandbox implements Sandbox {
     if (bridge !== null && !isLoopback(bridge.host)) {
       throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
     }
-    if (this.#machine.platform === "win32") {
+    const windows = this.#machine.platform === "win32";
+    if (windows) {
+      this.#grants.assertSupported();
+      await this.#sweepOnce();
       // The temp folder's parents are only there once it is.
       await mkdir(profile.tempFolder, { recursive: true });
       await this.#machine.letSandboxReadParents(grantedPaths(profile));
@@ -109,7 +130,29 @@ export class SrtSandbox implements Sandbox {
     return SrtSession.open(profile, this.#runner, {
       ...options,
       journalFolder: this.#journalFolder,
+      grants: windows ? this.#grants : null,
+      warn: this.#warn,
     });
+  }
+
+  /** The sweep of kept grants runs once, when the host first opens a session; a failure is logged, never thrown. */
+  #sweepOnce(): Promise<void> {
+    this.#swept ??= this.sweepKeptGrants().then((result) => {
+      if (result.failed.length > 0) this.#warn(describeForgetFailures(result.failed));
+    });
+    return this.#swept;
+  }
+
+  /**
+   * On Windows, forgets the kept grants inside the run folder that no live
+   * session holds. Elsewhere, or without a run folder, it does nothing.
+   * Never rejects.
+   */
+  async sweepKeptGrants(): Promise<ForgetResult> {
+    if (this.#machine.platform !== "win32" || this.#runsFolder === null) {
+      return { heldByOthers: [], failed: [] };
+    }
+    return this.#grants.sweep(this.#runsFolder);
   }
 
   /** The first reason, in the order the port lists them, because its fix comes first. */

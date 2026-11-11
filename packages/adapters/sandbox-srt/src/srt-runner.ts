@@ -1,5 +1,6 @@
 import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
@@ -91,6 +92,15 @@ export const nodePaths: PathLookup = { resolve, realpath };
 /** Where the `srt` command line of sandbox-runtime lives. */
 function srtCliPath(): string {
   return createRequire(import.meta.url).resolve("@anthropic-ai/sandbox-runtime/dist/cli.js");
+}
+
+/** The installed version of sandbox-runtime. @throws when it can't be read. */
+export function installedSrtVersion(): string {
+  const path = createRequire(import.meta.url).resolve("@anthropic-ai/sandbox-runtime/package.json");
+  const { version } = JSON.parse(readFileSync(path, "utf8")) as { version?: unknown };
+  if (typeof version !== "string")
+    throw new Error("the version of sandbox-runtime is not readable");
+  return version;
 }
 
 /**

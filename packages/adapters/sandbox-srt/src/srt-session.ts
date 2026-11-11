@@ -21,6 +21,7 @@ import {
   snapshotGitFolder,
   writeJournal,
 } from "./git-folder-check.ts";
+import { describeForgetFailures, type ForgetFailure, type KeptGrants } from "./kept-grants.ts";
 import { makeLauncherTemp } from "./launcher-temp.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
@@ -237,6 +238,7 @@ export class SrtSession implements SandboxSession {
   readonly #gitFolder: GitFolderSnapshot | null;
   readonly #nestedGit: NestedGitSnapshot | null;
   readonly #journal: string | null;
+  readonly #grants: KeptGrants | null;
   #fence: SandboxFence;
   #closing: Promise<void> | null = null;
   #timedOut = false;
@@ -251,6 +253,7 @@ export class SrtSession implements SandboxSession {
     signal: AbortSignal | undefined,
     git: { folder: GitFolderSnapshot | null; nested: NestedGitSnapshot | null },
     journal: string | null,
+    grants: KeptGrants | null,
   ) {
     this.profile = profile;
     this.#runner = runner;
@@ -261,6 +264,7 @@ export class SrtSession implements SandboxSession {
     this.#gitFolder = git.folder;
     this.#nestedGit = git.nested;
     this.#journal = journal;
+    this.#grants = grants;
     this.#launcherEnv = launcherEnv(profile, process.env, folder, launcherTemp);
     this.#programEnv = programEnv(profile, process.env, folder);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
@@ -280,9 +284,18 @@ export class SrtSession implements SandboxSession {
   static async open(
     profile: SandboxProfile,
     runner: Runner,
-    options: { signal?: AbortSignal; journalFolder?: string | null } = {},
+    options: {
+      signal?: AbortSignal;
+      journalFolder?: string | null;
+      /** On Windows: takes back the grants srt keeps on the session's folders. Without it nothing is forgotten. */
+      grants?: KeptGrants | null;
+      /** Where a failure to forget is logged when no caller can get it. */
+      warn?: (message: string) => void;
+    } = {},
   ): Promise<SrtSession> {
     const startedAt = Date.now();
+    const grants = options.grants ?? null;
+    grants?.assertSupported();
     assertVariableNames(profile);
     await mkdir(profile.tempFolder, { recursive: true });
     await checkCommondirs(profile.workingFolder);
@@ -331,12 +344,18 @@ export class SrtSession implements SandboxSession {
         options.signal,
         git,
         journal,
+        grants,
       );
       return session;
     } catch (error) {
       await rm(folder, { recursive: true, force: true });
       if (launcherTemp !== null) await rm(launcherTemp, { recursive: true, force: true });
       if (journal !== null) await rm(journal, { force: true });
+      // The fence proof ran a program on the folders, so srt may have kept grants on them.
+      const forgotten = await grants?.forget([profile.workingFolder, profile.tempFolder]);
+      if (forgotten !== undefined && forgotten.failed.length > 0) {
+        (options.warn ?? (() => undefined))(describeForgetFailures(forgotten.failed));
+      }
       throw error;
     }
   }
@@ -412,15 +431,35 @@ export class SrtSession implements SandboxSession {
     this.#detach();
     await Promise.all([...this.#started].map((started) => this.#stop(started, timedOut)));
     const failed = await this.#checkGitFolder();
+    const notForgotten = await this.#forgetGrants();
     this.#fence = { state: "stopped" };
     this.#listeners.clear();
     await rm(this.#folder, { recursive: true, force: true });
     if (this.#launcherTemp !== null) await rm(this.#launcherTemp, { recursive: true, force: true });
     // A journal whose undo failed stays, so a later `recoverGitFolders` tries again.
     if (this.#journal !== null && failed.length === 0) await rm(this.#journal, { force: true });
+    const problems: string[] = [];
     if (failed.length > 0) {
-      throw new Error(`Could not undo a change to the git folder: ${failed.join(", ")}`);
+      problems.push(`Could not undo a change to the git folder: ${failed.join(", ")}`);
     }
+    if (notForgotten.length > 0) problems.push(describeForgetFailures(notForgotten));
+    if (problems.length > 0) throw new Error(problems.join("; "));
+  }
+
+  /**
+   * Takes back the write grants srt kept on the working and temp folders
+   * (Windows), once nothing the session started is left. A grant another
+   * live session holds stays and is left to a later sweep.
+   *
+   * @returns the folders it could not free, so `close()` can reject with them.
+   */
+  async #forgetGrants(): Promise<ForgetFailure[]> {
+    if (this.#grants === null) return [];
+    const { failed } = await this.#grants.forget([
+      this.profile.workingFolder,
+      this.profile.tempFolder,
+    ]);
+    return failed;
   }
 
   /**
