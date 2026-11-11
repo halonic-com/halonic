@@ -22,6 +22,8 @@ export const bridgeAnswerLimitBytes = 1024 * 1024;
 const tooLargeMessage =
   "Studio's answer to this call is larger than the agent host takes (1 MiB), so it wasn't sent.";
 const unsendableMessage = "Studio's answer to this call couldn't be sent to the agent host.";
+const unencodableMessage = "Studio's answer to this call couldn't be encoded as JSON.";
+const unreadableFailureMessage = "Studio's service failed with an error it couldn't read.";
 const malformedCallMessage = "The bridge's call wasn't of the expected shape.";
 
 /**
@@ -77,6 +79,9 @@ const callLineSchema = s.discriminatedUnion("type", [
 const callIdSchema = s.object({ type: s.literal("call"), call: s.string().min(1) }).passthrough();
 
 const openRoute = "POST /v1/bridge/open";
+
+/** What Studio answers one call: the service's result, or why it has none. */
+type CallOutcome = { result: unknown } | { error: string };
 
 /**
  * The engine's bridge host (`HarnessBridgeHost` in the engine), as a
@@ -164,14 +169,28 @@ export class AgentHostBridges {
     await serving;
   }
 
-  /** Answers the bridge's calls until its stream ends. Calls run side by side: an approval may wait long. */
+  /**
+   * Answers the bridge's calls until its stream ends. Calls run side by side:
+   * an approval may wait long. When the stream ends, the calls still waiting
+   * are aborted and this returns once the answers already on their way are
+   * sent. It doesn't wait for a service that ignores the abort, since nobody
+   * is left to take its answer, so closing the bridge never hangs on one.
+   */
   async #serve(
     id: string,
     lines: AsyncIterator<unknown>,
     services: BridgeServices & { readonly recorder: BridgeRecorder },
   ): Promise<void> {
     const waiting = new Map<string, AbortController>();
-    const answering = new Set<Promise<void>>();
+    const sending = new Set<Promise<void>>();
+    const send = (call: string, outcome: CallOutcome) => {
+      const sent = this.#sendAnswer(id, call, outcome)
+        // A backstop: #sendAnswer handles its own failures, and nothing
+        // here may become an unhandled rejection in the page.
+        .catch(() => {})
+        .finally(() => sending.delete(sent));
+      sending.add(sent);
+    };
     try {
       for (let next = await lines.next(); !next.done; next = await lines.next()) {
         const parsed = parse(callLineSchema, next.value);
@@ -179,13 +198,7 @@ export class AgentHostBridges {
           // The host waits for a call it sent, however malformed, so it gets an error.
           // Any other line isn't a call or a cancel: it is skipped, not taken for one.
           const call = parse(callIdSchema, next.value);
-          if (call.ok) {
-            const error = { error: malformedCallMessage };
-            const done = this.#sendAnswer(id, call.value.call, error).finally(() =>
-              answering.delete(done),
-            );
-            answering.add(done);
-          }
+          if (call.ok) send(call.value.call, { error: malformedCallMessage });
           continue;
         }
         const line = parsed.value;
@@ -197,35 +210,18 @@ export class AgentHostBridges {
         if (waiting.has(line.call)) continue;
         const cancelled = new AbortController();
         waiting.set(line.call, cancelled);
-        const done = this.#answerCall(id, line, services, cancelled.signal).finally(() => {
+        void answerCall(line, services, cancelled.signal).then((outcome) => {
           waiting.delete(line.call);
-          answering.delete(done);
+          // An aborted call: the bridge stopped waiting for it.
+          if (!cancelled.signal.aborted) send(line.call, outcome);
         });
-        answering.add(done);
       }
     } catch {
       // The stream broke off: the host has closed the bridge, or gone.
     } finally {
       for (const call of waiting.values()) call.abort();
-      await Promise.all(answering);
+      await Promise.all(sending);
     }
-  }
-
-  async #answerCall(
-    id: string,
-    line: { call: string; method: string; params: unknown },
-    services: BridgeServices & { readonly recorder: BridgeRecorder },
-    signal: AbortSignal,
-  ): Promise<void> {
-    let outcome: { result: unknown } | { error: string };
-    try {
-      const result = await answerBridgeCall(line.method, line.params, services, signal);
-      outcome = { result: result ?? null };
-    } catch (error) {
-      outcome = { error: error instanceof Error ? error.message : String(error) };
-    }
-    if (signal.aborted) return; // The bridge stopped waiting for it.
-    await this.#sendAnswer(id, line.call, outcome);
   }
 
   /**
@@ -234,16 +230,12 @@ export class AgentHostBridges {
    * is refused for any other reason, is replaced by an error for that call,
    * so the call doesn't wait for an answer that never arrives (HAL-4730).
    */
-  async #sendAnswer(
-    bridge: string,
-    call: string,
-    outcome: { result: unknown } | { error: string },
-  ): Promise<void> {
+  async #sendAnswer(bridge: string, call: string, outcome: CallOutcome): Promise<void> {
     const route = "POST /v1/bridge/answer";
     const errorAnswer = (error: string) => ({ bridge, call, error });
     const answerJson = asWellFormedJson({ bridge, call, ...outcome });
     let first: unknown;
-    if (answerJson === undefined) first = errorAnswer(unsendableMessage);
+    if (answerJson === undefined) first = errorAnswer(unencodableMessage);
     else if (!fitsAnswerLimit(answerJson.text)) first = errorAnswer(tooLargeMessage);
     else first = answerJson.data;
     const sentAsIs = first === answerJson?.data;
@@ -256,6 +248,32 @@ export class AgentHostBridges {
     } catch {
       // The host has gone; its bridge with it.
     }
+  }
+}
+
+/** Answers one call with its service. Never rejects: a failure becomes an error outcome. */
+async function answerCall(
+  line: { method: string; params: unknown },
+  services: BridgeServices & { readonly recorder: BridgeRecorder },
+  signal: AbortSignal,
+): Promise<CallOutcome> {
+  try {
+    const result = await answerBridgeCall(line.method, line.params, services, signal);
+    return { result: result ?? null };
+  } catch (error) {
+    return { error: failureMessage(error) };
+  }
+}
+
+/**
+ * What a service's failure says, for an error answer. Whatever was thrown,
+ * this doesn't throw itself: a value with no prototype has no `toString`.
+ */
+function failureMessage(error: unknown): string {
+  try {
+    return error instanceof Error ? String(error.message) : String(error);
+  } catch {
+    return unreadableFailureMessage;
   }
 }
 

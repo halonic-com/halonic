@@ -47,7 +47,10 @@ export type AgentHostStreamAnswer =
  */
 export interface AgentHostTransport {
   /**
-   * Calls a JSON route: a `GET` without a body, a `POST` with one.
+   * Calls a JSON route: a `GET` without a body, a `POST` with one. The body
+   * goes to the host as compact JSON, the text `JSON.stringify(body)` makes,
+   * with nothing added: the bridge measures its answers against the host's
+   * 1 MiB limit that way.
    *
    * @throws when the host can't be reached, or `signal` aborts the call
    */
