@@ -1,6 +1,6 @@
 import { type KeyboardEvent, type RefObject, useId, useRef, useState } from "react";
 import { keyShortcutsLabel } from "../kbd/kbd.tsx";
-import type { MenuEntry, MenuItem } from "./menu.tsx";
+import { isMenuItem, type MenuEntry, type MenuItem } from "./menu.tsx";
 import { findIndex, isTypedLetter, nextIndex, TYPE_TO_FIND_MS } from "./menu-keys.ts";
 import { MenuRow } from "./menu-row.tsx";
 
@@ -16,6 +16,11 @@ export const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
 
 // Padding 8px 8px 6px, at most 300px wide, wrapping (component specs 20.2).
 const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-muted";
+
+// The caption-caps label of a group (component specs 24.4, "Group labels"). Exported for the states
+// page's static copy.
+export const menuHeadingClasses =
+  "px-2 pt-2 pb-1 text-caption uppercase tracking-label text-fg-subtle";
 
 /** What names the menu: the button that opens it, or a label of its own (a context menu). */
 export type MenuNaming = { readonly labelledBy: string } | { readonly label: string };
@@ -118,22 +123,37 @@ export function MenuList({ id, listRef, naming, entries, description, onClose }:
           <hr className={dividerClasses} />
         </>
       )}
-      {rows.map((row, position) => {
-        if (row === "divider") {
+      {sectionsOf(rows).map((section, position) => {
+        if (section === "divider") {
           return <hr key={`divider-${position}`} className={dividerClasses} />;
         }
-        index += 1;
-        const itemIndex = index;
+        const row = (item: MenuItem) => {
+          index += 1;
+          const itemIndex = index;
+          return (
+            <MenuRow
+              key={item.id}
+              item={item}
+              active={itemIndex === active}
+              keyShortcuts={item.keys === undefined ? undefined : keyShortcutsLabel(item.keys)}
+              onFocus={() => setActive(itemIndex)}
+              onBlur={() => setActive(-1)}
+              onPick={() => pick(item)}
+            />
+          );
+        };
+        if (isMenuItem(section)) {
+          return row(section);
+        }
+        const headingId = `${id}-heading-${position}`;
         return (
-          <MenuRow
-            key={row.id}
-            item={row}
-            active={itemIndex === active}
-            keyShortcuts={row.keys === undefined ? undefined : keyShortcutsLabel(row.keys)}
-            onFocus={() => setActive(itemIndex)}
-            onBlur={() => setActive(-1)}
-            onPick={() => pick(row)}
-          />
+          // biome-ignore lint/a11y/useSemanticElements: a menu's groups are `group`s, not fieldsets.
+          <div key={headingId} role="group" aria-labelledby={headingId}>
+            <div id={headingId} role="presentation" className={menuHeadingClasses}>
+              {section.heading}
+            </div>
+            {section.items.map(row)}
+          </div>
         );
       })}
     </div>
@@ -152,15 +172,51 @@ export function focusFirstItem(menu: HTMLElement, entries: readonly MenuEntry[])
 }
 
 function itemsOf(rows: readonly MenuEntry[]): readonly MenuItem[] {
-  return rows.filter((row): row is MenuItem => row !== "divider");
+  return rows.filter(isMenuItem);
+}
+
+/** A heading with the items under it, up to the next divider or heading. */
+interface MenuGroup {
+  readonly heading: string;
+  readonly items: readonly MenuItem[];
+}
+
+/** The rows as drawn: items and dividers, and each heading with its items as one group. */
+function sectionsOf(rows: readonly MenuEntry[]): readonly (MenuItem | "divider" | MenuGroup)[] {
+  const sections: (MenuItem | "divider" | MenuGroup)[] = [];
+  let group: { heading: string; items: MenuItem[] } | undefined;
+  for (const row of rows) {
+    if (row === "divider") {
+      group = undefined;
+      sections.push(row);
+    } else if (isMenuItem(row)) {
+      if (group === undefined) {
+        sections.push(row);
+      } else {
+        group.items.push(row);
+      }
+    } else {
+      group = { heading: row.heading, items: [] };
+      sections.push(group);
+    }
+  }
+  // A heading with nothing under it says nothing.
+  return sections;
 }
 
 /**
- * The entries with danger items moved to the end, below one divider, and no divider at the
- * start, at the end or twice in a row.
+ * The entries with danger items moved to the end, below one divider, no divider at the start, at
+ * the end or twice in a row, and no heading without an item under it.
  */
-function dangerLast(entries: readonly MenuEntry[]): readonly MenuEntry[] {
-  const isDanger = (entry: MenuEntry) => entry !== "divider" && entry.danger === true;
+function dangerLast(menuEntries: readonly MenuEntry[]): readonly MenuEntry[] {
+  // A heading with no item under it says nothing.
+  const entries = menuEntries.filter(
+    (entry, position) =>
+      isMenuItem(entry) ||
+      entry === "divider" ||
+      isMenuItem(menuEntries[position + 1] ?? "divider"),
+  );
+  const isDanger = (entry: MenuEntry) => isMenuItem(entry) && entry.danger === true;
   const ordered = [
     ...entries.filter((entry) => !isDanger(entry)),
     "divider" as const,

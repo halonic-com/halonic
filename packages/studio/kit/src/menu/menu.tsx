@@ -7,6 +7,11 @@ export interface MenuItem {
   /** Unique in the menu. */
   readonly id: string;
   readonly label: string;
+  /**
+   * A second line under the label, one line ending in "…": the folder under a workspace's name
+   * in the workspace menu. It describes the item: its name stays the label.
+   */
+  readonly detail?: string | undefined;
   /** An optional 16px icon before the label (20px on a phone). */
   readonly icon?: ReactNode;
   /** Its shortcut, shown on the right as a Kbd and named with `aria-keyshortcuts`. */
@@ -34,8 +39,22 @@ export interface MenuItem {
   readonly onSelect: () => void;
 }
 
-/** An item, or a 1px line between two groups of items. */
-export type MenuEntry = MenuItem | "divider";
+/**
+ * The name of the group of items under it, up to the next divider or heading: the workspace
+ * menu's "Recent". Not an item: the arrows and type-to-find pass it by, and a screen reader hears
+ * it as the group's name.
+ */
+export interface MenuHeading {
+  readonly heading: string;
+}
+
+/** An item, a 1px line between two groups of items, or a group's heading. */
+export type MenuEntry = MenuItem | "divider" | MenuHeading;
+
+/** Whether an entry is an item, not a divider or a heading. */
+export function isMenuItem(entry: MenuEntry): entry is MenuItem {
+  return entry !== "divider" && !("heading" in entry);
+}
 
 /** What the menu's `trigger` spreads on its button: a kit `Button` takes all of them. */
 export interface MenuTriggerProps {
@@ -64,7 +83,7 @@ export interface MenuProps {
 /** The menu sits this far below (or above) its trigger. */
 const TRIGGER_GAP = 4;
 
-export { dividerClasses, menuClasses } from "./menu-list.tsx";
+export { dividerClasses, menuClasses, menuHeadingClasses } from "./menu-list.tsx";
 
 /**
  * A short list of actions that opens from a button: a row's ⋮ More button or a title bar. A menu

@@ -24,6 +24,9 @@ const toneClasses = {
   unavailable: "cursor-not-allowed py-1.5 text-fg focus:bg-surface-muted phone:py-3 touch:py-3",
 } as const;
 
+// An item with a detail line grows to two lines the same way.
+const twoLineClasses = "py-1.5 phone:py-3 touch:py-3";
+
 const iconSlot =
   "inline-grid size-icon-sm shrink-0 place-items-center *:size-full phone:size-icon-md touch:size-icon-md";
 
@@ -45,6 +48,7 @@ interface MenuRowProps {
  */
 export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }: MenuRowProps) {
   const reasonId = useId();
+  const detailId = useId();
   const disabled = item.disabled === true;
   const unavailable = item.unavailable !== undefined;
   const tone = rowTone(item);
@@ -56,11 +60,14 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       {...roleOf(item)}
       tabIndex={-1}
       aria-disabled={disabled || unavailable ? true : undefined}
-      aria-describedby={unavailable ? reasonId : undefined}
+      aria-describedby={describedBy([
+        item.detail === undefined ? undefined : detailId,
+        unavailable ? reasonId : undefined,
+      ])}
       aria-keyshortcuts={keyShortcuts}
       // The Kbd on the active item's muted fill steps up to the border fill (specs 10, 14).
       data-fill={active ? "muted" : undefined}
-      className={`${rowClasses} ${toneClasses[tone]}`}
+      className={`${rowClasses} ${toneClasses[tone]} ${item.detail === undefined || unavailable ? "" : twoLineClasses}`.trim()}
       onClick={onPick}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -82,6 +89,16 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       )}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className={faded}>{item.label}</span>
+        {item.detail === undefined ? null : (
+          // Out of the item's name, which stays the label: a screen reader reads it as its description.
+          <span
+            id={detailId}
+            aria-hidden="true"
+            className={`truncate text-caption text-fg-subtle ${faded}`.trim()}
+          >
+            {item.detail}
+          </span>
+        )}
         {unavailable ? (
           <span id={reasonId} className="text-small text-fg-muted">
             {item.unavailable?.reason}
@@ -117,6 +134,12 @@ function AttentionDot({ words }: { readonly words: string }) {
       <span className="sr-only">, {words}</span>
     </span>
   );
+}
+
+/** The ids the item is described by, or none. */
+function describedBy(ids: readonly (string | undefined)[]): string | undefined {
+  const present = ids.filter((id) => id !== undefined);
+  return present.length === 0 ? undefined : present.join(" ");
 }
 
 /** A plain item, or one choice of several with its state. */

@@ -171,8 +171,10 @@ export {
   type ContextMenuTarget,
 } from "./menu/context-menu.tsx";
 export {
+  isMenuItem,
   Menu,
   type MenuEntry,
+  type MenuHeading,
   type MenuItem,
   type MenuProps,
   type MenuTriggerProps,
