@@ -31,7 +31,8 @@ const BROKEN_FILE: &str = "host.json.broken";
 /// A file that isn't JSON, or doesn't have the shape, reads as none saved,
 /// and the first save over it renames it to `host.json.broken` first. A
 /// file that is a link, a hard link or not a plain file can't be read, so
-/// `read` fails; a save replaces it.
+/// `read` fails; a save replaces it, except a folder (or a junction on
+/// Windows), which makes the save fail without writing anything.
 #[derive(Debug, Clone)]
 pub struct FileHostSettingsStore {
     root: PathBuf,

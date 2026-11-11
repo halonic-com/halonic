@@ -143,6 +143,16 @@ fn host_settings_file_refuses_a_hard_link_and_a_folder() {
         panic!("a folder must not be read");
     };
     assert_eq!(reason, "it isn't a plain file");
+    let Err(HostSettingsError::Io { .. }) = store.set("assistant.turn-limit", &json!(30)) else {
+        panic!("a save over a folder must fail");
+    };
+    assert!(scratch.file().is_dir(), "the folder stays");
+    let mut left: Vec<_> = fs::read_dir(scratch.settings())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    left.sort();
+    assert_eq!(left, ["host.json"], "the temporary file is removed");
 }
 
 #[cfg(unix)]
