@@ -2,6 +2,7 @@ import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
 import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
+import { checkLocalOnly } from "./local-only.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkRoutines } from "./routines.ts";
 import { checkSubflowLoops, checkWorkflows } from "./workflows.ts";
@@ -24,6 +25,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkWorkflows,
   checkSubflowLoops,
   checkRoutines,
+  checkLocalOnly,
 ];
 
 /**

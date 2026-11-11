@@ -20,14 +20,17 @@ import { goldenText, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
 import { extractCommand } from "./command.ts";
 
-/** A made-up home workspace: `family` uses a shared skill and connector; `investing` is left behind. */
+/**
+ * A made-up local-only home workspace: `family` uses a shared skill;
+ * `investing` and its bank, a server on this computer, are left behind.
+ */
 const homeFiles: Record<string, string> = {
   "workspace.yaml": "# Made up for this test.\nid: home\nname: Home\nprivacy:\n  localOnly: true\n",
   "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
   "providers/mock.yaml": "id: mock\nname: Mock\ntype: mock\nlocal: true\n",
   "library/skills/tone/SKILL.md": "---\nname: Tone\ndescription: Kind and short.\n---\nBe kind.\n",
   "library/connectors/bank.connector.yaml":
-    "name: Bank\ntransport:\n  http:\n    url: https://bank.example.com/mcp\n",
+    "name: Bank\ntransport:\n  http:\n    url: http://localhost:8700/mcp\n",
   "hubs/family/hub.yaml": "id: family\nname: Family affairs\n",
   "hubs/family/agents/helper.agent.yaml":
     "id: helper\nname: Helper\nmodel: default\ninstructions: Help out.\nskills: [tone]\n",

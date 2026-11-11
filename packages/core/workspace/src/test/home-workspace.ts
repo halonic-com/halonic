@@ -4,6 +4,8 @@ import { MemorySource } from "./memory-source.ts";
  * A made-up home workspace with two hubs that share it, as in the old
  * `studio extract` test: `family` names shared items from its agents and
  * routines and has no `uses`; `investing` lists only the bank in `uses`.
+ * It is local only, so its connectors count as local: the bank's server is
+ * on this computer, and the mailbox says `local: true`.
  */
 export const homeFiles: Record<string, string> = {
   "workspace.yaml": [
@@ -22,9 +24,9 @@ export const homeFiles: Record<string, string> = {
   ".gitignore": ".env\nnode_modules/\n",
   "README.md": "About our home.\n",
   "library/connectors/mailbox.connector.yaml":
-    "name: Mailbox\ntransport:\n  google:\n    account: family@example.com\n",
+    "name: Mailbox\nlocal: true\ntransport:\n  google:\n    account: family@example.com\n",
   "library/connectors/bank.connector.yaml":
-    "name: Bank\ntransport:\n  http:\n    url: https://bank.example.com/mcp\n",
+    "name: Bank\ntransport:\n  http:\n    url: http://localhost:8700/mcp\n",
   "library/skills/tone/SKILL.md": "---\nname: Tone\ndescription: Kind and short.\n---\nBe kind.\n",
   "library/skills/tone/examples.md": "Thanks, that helps.\n",
   "library/skills/unused/SKILL.md": "---\nname: Unused\ndescription: Nobody uses it.\n---\nNo.\n",

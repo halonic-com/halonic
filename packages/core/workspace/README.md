@@ -75,6 +75,10 @@ export async function runExample(): Promise<{
   name. A file that failed its own checks counts as missing, so whatever names it is unknown.
   `src/parity.test.ts` compares these messages, file by file, with the old loader's on every
   parity fixture; the parity package's `allowed-differences.json` lists where they differ.
+- **Local only.** A workspace with `privacy.localOnly: true` in `workspace.yaml` gets an error for
+  every model alias or `provider/model` setting whose provider isn't local (`local: true`, or the
+  mock model) and every connector that `connectorIsLocal` doesn't count as local. Each message says
+  how to turn it off: `privacy.localOnly: false` (ADR `docs/adr/2026-11-08-local-first.md`).
 - **Where names are looked up:** an agent's skills, knowledge, collections and connectors are its
   hub's own or shared at the root; a hub with `uses` may use only the shared items it lists. Model
   aliases come from `models.yaml` and the hub's `models`. Subagents and a test's workflow come from
