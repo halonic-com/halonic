@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "prepare": "node tooling/check/src/cli/install-hooks.ts",
+    "prepare": "node tooling/check/src/cli/install-hooks.ts && node tooling/discover/src/cli/prepare.ts",
     "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
     "turbo:prune": "node tooling/check/src/cli/prune-turbo-cache.ts",
