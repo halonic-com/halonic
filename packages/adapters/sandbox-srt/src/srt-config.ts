@@ -1,8 +1,8 @@
 import { existsSync, lstatSync, realpathSync } from "node:fs";
 import { isIP } from "node:net";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
-import type { SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
-import type { SandboxProfile } from "@halonicjs/ports";
+import type { NetworkConfig, SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
+import type { SandboxNetwork, SandboxProfile } from "@halonicjs/ports";
 
 /** A path the way sandbox-runtime wants a plain path: marked literal, so a `*` in it is never read as a pattern. */
 function literalPath(path: string): { path: string; literal: true } {
@@ -108,6 +108,26 @@ function withResolved(paths: string[]): string[] {
 /** The bridge as srt wants a host and port: an IPv6 host goes in brackets (`[::1]:4100`). */
 function bridgeDomain(host: string, port: number): string {
   return isIP(host) === 6 ? `[${host}]:${port}` : `${host}:${port}`;
+}
+
+/**
+ * srt's network settings for the bridge. A loopback bridge is one allowed
+ * address with its port. A socket bridge is its name on port 80, which srt's
+ * proxy (outside the fence) hands to the socket instead of the network, so the
+ * program reaches it with plain `http://<name>/`. srt checks the allowed list
+ * first, so another name or port never reaches the socket.
+ */
+export function bridgeNetwork(
+  bridge: SandboxNetwork["bridge"],
+): Pick<NetworkConfig, "allowedDomains" | "mitmProxy"> {
+  if (bridge === null) return { allowedDomains: [] };
+  if (bridge.kind === "socket") {
+    return {
+      allowedDomains: [`${bridge.name}:80`],
+      mitmProxy: { socketPath: bridge.socketPath, domains: [bridge.name] },
+    };
+  }
+  return { allowedDomains: [bridgeDomain(bridge.host, bridge.port)] };
 }
 
 /**
@@ -267,15 +287,14 @@ export async function assertSrtDeniesKeychain(profile: SandboxProfile): Promise<
  *
  * Only the bridge and the allowed sites are reachable, and an allowed site is
  * refused when its name resolves to a local or private address (such as
- * `127.0.0.1.nip.io`). The bridge is an address with its port, so a name that
- * resolves to it reaches only the bridge. A profile without a bridge allows
+ * `127.0.0.1.nip.io`). A loopback bridge is an address with its port, so a
+ * name that resolves to it reaches only the bridge; a socket bridge is a name
+ * srt's proxy hands to the socket (see `bridgeNetwork`). A profile without a bridge allows
  * the sites alone; with no sites either, the list is empty, which srt reads
  * as "no network at all".
  *
  * A profile with `keyStore: "denied"` gets the Keychain's Mach services
  * denied (see {@link keychainMachServices}).
- *
- * @throws for a bridge on a Unix socket, which has no rule here yet (HAL-6348)
  */
 export function buildSrtConfig(
   profile: SandboxProfile,
@@ -302,13 +321,11 @@ export function buildSrtConfig(
     ...(sharedFolders.length > 0 ? [...writableFolders, ...profile.readOnlyPaths] : []),
   ];
   const { bridge, allowedSites } = profile.network;
-  if (bridge?.kind === "socket") {
-    throw new Error("srt's config has no rule yet for a bridge on a Unix socket");
-  }
-  const bridgeDomains = bridge === null ? [] : [bridgeDomain(bridge.host, bridge.port)];
+  const { allowedDomains: bridgeDomains, mitmProxy } = bridgeNetwork(bridge);
   return {
     network: {
       allowedDomains: [...bridgeDomains, ...allowedSites],
+      ...(mitmProxy === undefined ? {} : { mitmProxy }),
       deniedDomains: [],
       deniedResolvedAddresses: [...DENIED_RESOLVED_ADDRESSES],
       strictAllowlist: true,
