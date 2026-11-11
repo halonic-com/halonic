@@ -3,10 +3,14 @@
 // The public suffix list, from https://publicsuffix.org/list/public_suffix_list.dat
 // Downloaded 2026-11-11, SHA-256 of the downloaded text b726c0248a4b6bbb2ece1a9cf98644afaf90469f9508435e3901ebe85655ebee.
 // Both sections (ICANN and private), one rule per line, each in ASCII form.
-//
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+/*!
+ * @license MPL-2.0
+ * The public suffix list (https://publicsuffix.org/).
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 /** The rules of the public suffix list, one per line: `name`, `*.name` or `!name`. */
 export const publicSuffixRules = `

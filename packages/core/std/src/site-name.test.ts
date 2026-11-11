@@ -75,6 +75,18 @@ verifies("std.site-name", () => {
       });
     });
 
+    it("finds a public suffix written in Unicode, and keeps it escaped", () => {
+      expect(siteName("foo.evil.\u516c\u53f8.cn")).toEqual({
+        prefix: "foo.",
+        domain: "evil.\\u{516c}\\u{53f8}.cn",
+        cut: false,
+      });
+    });
+
+    it("lowercases only A to Z, so the Kelvin sign stays escaped", () => {
+      expect(siteName("\u212Aorse.com").domain).toBe("\\u{212a}orse.com");
+    });
+
     it("shows a Punycode name as it is, never decoded", () => {
       expect(siteName("xn--bcher-kva.example")).toEqual({
         prefix: "",
@@ -114,6 +126,16 @@ verifies("std.site-name", () => {
       expect(name.cut).toBe(true);
       expect(name.prefix.length + name.domain.length).toBeLessThanOrEqual(siteNameMaxLength);
       expect(name.prefix).toMatch(/^(?:\\u\{430\})+…(?:\\u\{430\})*\.$/);
+    });
+
+    it("keeps a domain of exactly 64 characters whole, without its prefix", () => {
+      const domain = `${"z".repeat(60)}.com`;
+      expect(siteName(`api.${domain}`)).toEqual({ prefix: "", domain, cut: true });
+    });
+
+    it("keeps only a … of the prefix next to a domain of 63 characters", () => {
+      const domain = `${"z".repeat(59)}.com`;
+      expect(siteName(`api.${domain}`)).toEqual({ prefix: "…", domain, cut: true });
     });
 
     it("cuts the start of a domain too long by itself", () => {
