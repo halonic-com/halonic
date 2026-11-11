@@ -21,7 +21,7 @@ export interface WelcomeWindowProps extends WelcomeProps {
  * @example
  * <WelcomeWindow shell={shell} language="en" onOpenFolder={openFolder} />
  */
-export function WelcomeWindow({ shell, language, onOpenFolder }: WelcomeWindowProps) {
+export function WelcomeWindow({ shell, language, ...welcome }: WelcomeWindowProps) {
   useEffect(() => {
     document.title = appName;
   }, []);
@@ -33,7 +33,7 @@ export function WelcomeWindow({ shell, language, onOpenFolder }: WelcomeWindowPr
       toasts={shell.toasts}
       language={language}
     >
-      <Welcome onOpenFolder={onOpenFolder} />
+      <Welcome {...welcome} />
     </ShellFrame>
   );
 }

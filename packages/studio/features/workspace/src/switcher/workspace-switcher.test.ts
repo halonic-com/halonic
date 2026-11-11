@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
 import {
   folderName,
+  MENU_BUSY_AFTER_MS,
   type OpenedWorkspace,
   WorkspaceSwitcher,
   type WorkspaceSwitcherOptions,
@@ -222,6 +223,85 @@ verifies("workspace.failed-open-leaves-no-slot", () => {
       expect.stringContaining("Can't open /work/acme\nTypeError: services is undefined"),
     );
     vi.unstubAllGlobals();
+  });
+});
+
+verifies("workspace.busy-switcher", () => {
+  function slowOpen() {
+    let finish: (workspace: OpenedWorkspace) => void = () => {};
+    const setupResult = setup({
+      openFolder: vi.fn(
+        () =>
+          new Promise<OpenedWorkspace>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    });
+    return { ...setupResult, finish: (workspace: OpenedWorkspace) => finish(workspace) };
+  }
+
+  it("turns busy 300 ms into an open and back when the workspace shows", async () => {
+    vi.useFakeTimers();
+    const { switcher, finish } = slowOpen();
+    const changed = vi.fn();
+    switcher.subscribe(changed);
+
+    const opening = switcher.fromMenu(() => switcher.openLocation("/work/acme"));
+    vi.advanceTimersByTime(MENU_BUSY_AFTER_MS - 1);
+    expect(switcher.busy).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(switcher.busy).toBe(true);
+    expect(changed).toHaveBeenCalledOnce();
+
+    finish(opened("acme"));
+    await opening;
+    expect(switcher.busy).toBe(false);
+    expect(changed).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("never turns busy for an open faster than 300 ms", async () => {
+    vi.useFakeTimers();
+    const { switcher } = setup();
+    const changed = vi.fn();
+    switcher.subscribe(changed);
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/acme"));
+    vi.advanceTimersByTime(MENU_BUSY_AFTER_MS);
+    expect(switcher.busy).toBe(false);
+    expect(changed).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("stops being busy when the open fails, as its toast appears", async () => {
+    vi.useFakeTimers();
+    let fail: (error: unknown) => void = () => {};
+    const { switcher, toasts } = setup({
+      openFolder: () =>
+        new Promise<OpenedWorkspace>((_, reject) => {
+          fail = reject;
+        }),
+    });
+
+    const opening = switcher.fromMenu(() => switcher.openLocation("/work/old"));
+    vi.advanceTimersByTime(MENU_BUSY_AFTER_MS);
+    expect(switcher.busy).toBe(true);
+    fail(new KindedError("not_found", "No folder /work/old"));
+    await opening;
+    expect(switcher.busy).toBe(false);
+    expect(titles(toasts)).toEqual(["Can't open /work/old: the folder is gone."]);
+    vi.useRealTimers();
+  });
+
+  it("ignores another open from the menu meanwhile", async () => {
+    const { switcher, options, finish } = slowOpen();
+
+    const first = switcher.fromMenu(() => switcher.openLocation("/work/acme"));
+    await switcher.fromMenu(() => switcher.pickAndOpen());
+    finish(opened("acme"));
+    await first;
+    expect(options.openFolder).toHaveBeenCalledOnce();
+    expect(options.pickFolder).not.toHaveBeenCalled();
   });
 });
 

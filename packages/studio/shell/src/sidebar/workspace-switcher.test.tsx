@@ -31,6 +31,31 @@ describe("WorkspaceSwitcher", () => {
     expect(name?.textContent).toBe("acme");
     expect(folder?.textContent).toBe("~/Work/acme");
   });
+
+  it("while busy, shows a spinner for the chevron, says aria-busy and ignores presses", () => {
+    const container = render(
+      <WorkspaceSwitcher workspace={{ name: "Acme", folder: "~/Work/acme" }} menu={menu} busy />,
+    );
+    const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
+    expect(switcher.getAttribute("aria-busy")).toBe("true");
+    expect(switcher.disabled).toBe(false);
+    expect(switcher.querySelector("svg.animate-spin")).not.toBeNull();
+
+    const press = new MouseEvent("click", { bubbles: true, cancelable: true });
+    switcher.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+  });
+
+  it("at rest, lets a press through to open the menu", () => {
+    const container = render(
+      <WorkspaceSwitcher workspace={{ name: "Acme", folder: "~/Work/acme" }} menu={menu} />,
+    );
+    const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
+    expect(switcher.hasAttribute("aria-busy")).toBe(false);
+    const press = new MouseEvent("click", { bubbles: true, cancelable: true });
+    switcher.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(false);
+  });
 });
 
 describe("letterMark", () => {

@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
 import { createShell, type Shell, StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type MountedWorkspaceWindow, mountWorkspaceWindow } from "./mount-workspace-window.tsx";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
-import { folderName, WorkspaceSwitcher } from "./workspace-switcher.ts";
+import { folderName, MENU_BUSY_AFTER_MS, WorkspaceSwitcher } from "./workspace-switcher.ts";
 import { workspaceKeyPosition } from "./workspace-window.tsx";
 
 // Tells React this is a test, so it checks that updates happen inside act().
@@ -54,12 +55,19 @@ function noServices() {
   };
 }
 
-function start(picks: string[]): { shell: Shell; switcher: WorkspaceSwitcher } {
+/** Starts the window; a folder in `gone` fails to open as not found. */
+function start(
+  picks: string[],
+  gone: string[] = [],
+): { shell: Shell; switcher: WorkspaceSwitcher } {
   const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
   const storage = new Map<string, string>();
   const switcher = new WorkspaceSwitcher({
     pickFolder: async () => picks.shift(),
     openFolder: async (location) => {
+      if (gone.includes(location)) {
+        throw new KindedError("not_found", `No folder ${location}`);
+      }
       const name = folderName(location);
       const workspace = new StudioWorkspace({
         toasts: createToastStore(),
@@ -140,6 +148,54 @@ verifies("workspace.workspace-window", () => {
 
     await act(() => switcher.closeShown());
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
+  });
+
+  it("lists Recent on Welcome, and a row opens its workspace", async () => {
+    const { switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.closeShown());
+
+    const row = element.querySelector<HTMLButtonElement>('button[aria-label="acme, /work/acme"]');
+    expect(element.querySelector("h2")?.textContent).toBe("Recent");
+    await act(async () => row?.click());
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
+  });
+
+  it("forgets a Recent row whose folder is gone from Welcome's Remove from Recent", async () => {
+    const { switcher } = start([], ["/work/old"]);
+    act(() => switcher.recent.remember({ location: "/work/old", name: "old" }));
+
+    const row = element.querySelector<HTMLButtonElement>('button[aria-label="old, /work/old"]');
+    await act(async () => row?.click());
+    const remove = [...element.querySelectorAll("button")].find(
+      (each) => each.textContent === "Remove from Recent",
+    );
+    await act(async () => remove?.click());
+    expect(switcher.recent.list()).toEqual([]);
+    expect(element.querySelector("h2")).toBeNull();
+  });
+
+  it("shows the switcher busy while the switcher says so (workspace.busy-switcher)", async () => {
+    vi.useFakeTimers();
+    let finish: () => void = () => {};
+    const { switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    const slow = new Promise<undefined>((resolve) => {
+      finish = () => resolve(undefined);
+    });
+
+    let opening: Promise<void> = Promise.resolve();
+    act(() => {
+      opening = switcher.fromMenu(() => slow);
+    });
+    act(() => vi.advanceTimersByTime(MENU_BUSY_AFTER_MS));
+    expect(switcherButton()?.getAttribute("aria-busy")).toBe("true");
+    await act(async () => {
+      finish();
+      await opening;
+    });
+    expect(switcherButton()?.hasAttribute("aria-busy")).toBe(false);
+    vi.useRealTimers();
   });
 });
 

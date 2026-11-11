@@ -40,6 +40,10 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     (onChange) => switcher.recent.subscribe(onChange),
     () => switcher.recent.version,
   );
+  const busy = useSyncExternalStore(
+    (onChange) => switcher.subscribe(onChange),
+    () => switcher.busy,
+  );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const position = workspaceKeyPosition(event, platform);
@@ -58,6 +62,11 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
         shell={shell}
         language={language}
         onOpenFolder={() => switcher.pickAndOpen()}
+        recent={{
+          workspaces: switcher.recent.list(),
+          onOpen: (location) => switcher.openLocation(location),
+          onRemove: (location) => switcher.recent.forget(location),
+        }}
       />
     );
   }
@@ -79,7 +88,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
       host="desktop-app"
       platform={platform}
       language={language}
-      switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu }}
+      switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
     />
   );
 }

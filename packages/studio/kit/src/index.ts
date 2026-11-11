@@ -19,6 +19,7 @@ export {
   type ButtonUnavailable,
   type ButtonVariant,
 } from "./button/button.tsx";
+export { Spinner } from "./button/spinner.tsx";
 export {
   CALLOUT_FILES_SHOWN,
   Callout,

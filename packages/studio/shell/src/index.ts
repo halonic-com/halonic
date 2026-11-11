@@ -346,7 +346,16 @@ export {
   cantOpenWords,
   type WelcomeOpenProblem,
 } from "./welcome/cant-open.ts";
-export { Welcome, type WelcomeProps } from "./welcome/welcome.tsx";
+export {
+  removeFromRecentLabel,
+  Welcome,
+  type WelcomeProps,
+  type WelcomeRecentList,
+} from "./welcome/welcome.tsx";
+export {
+  WELCOME_RECENT_ROWS,
+  type WelcomeRecentWorkspace,
+} from "./welcome/welcome-recent.tsx";
 export { WelcomeWindow, type WelcomeWindowProps } from "./welcome/welcome-window.tsx";
 export {
   type MountedStudioWindow,

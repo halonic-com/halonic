@@ -3,6 +3,7 @@ import {
   cantOpenProblem,
   copyDetails,
   copyDetailsWords,
+  removeFromRecentLabel,
   type StudioWorkspace,
   type WelcomeOpenProblem,
 } from "@halonicjs/studio-shell";
@@ -47,11 +48,29 @@ export class WorkspaceSwitcher {
   readonly open = new OpenWorkspaces<OpenedWorkspace>();
   readonly recent: RecentWorkspaces;
   readonly #options: WorkspaceSwitcherOptions;
+  readonly #listeners = new Set<() => void>();
   #busy = false;
+  #buttonBusy = false;
 
   constructor(options: WorkspaceSwitcherOptions) {
     this.#options = options;
     this.recent = options.recent;
+  }
+
+  /**
+   * Whether the switcher button shows busy: from {@link MENU_BUSY_AFTER_MS} into an open from the
+   * menu until the workspace shows or the toast appears (states-flow-map O7, D9).
+   */
+  get busy(): boolean {
+    return this.#buttonBusy;
+  }
+
+  /** Calls `listener` whenever {@link busy} changes; returns the way to stop. */
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
   }
 
   /**
@@ -91,13 +110,25 @@ export class WorkspaceSwitcher {
    * As {@link pickAndOpen} or {@link openLocation} from the workspace menu: a folder that fails
    * to open says why in a danger toast over the workspace still shown, which stays until closed
    * (states-flow-map E1 to E4). A Recent row whose folder is gone offers **Remove from Recent**
-   * (E2); a reason Halonic can't explain offers **Copy details** (E4).
+   * (E2); a reason Halonic can't explain offers **Copy details** (E4). After
+   * {@link MENU_BUSY_AFTER_MS} the switcher button is {@link busy} until then (D9). Does nothing
+   * while another folder is opening.
    */
   async fromMenu(
     open: () => Promise<WelcomeOpenProblem | undefined>,
     fromRecent = false,
   ): Promise<void> {
-    const problem = await open();
+    if (this.#busy) {
+      return;
+    }
+    const timer = setTimeout(() => this.#setButtonBusy(true), MENU_BUSY_AFTER_MS);
+    let problem: WelcomeOpenProblem | undefined;
+    try {
+      problem = await open();
+    } finally {
+      clearTimeout(timer);
+      this.#setButtonBusy(false);
+    }
     if (problem === undefined) {
       return;
     }
@@ -162,9 +193,19 @@ export class WorkspaceSwitcher {
       return { label: copyDetailsWords.label, onClick: () => void copyDetails(details, toasts) };
     }
     if (fromRecent && problem.kind === "not_found") {
-      return { label: removeFromRecent, onClick: () => this.recent.forget(problem.folder) };
+      return { label: removeFromRecentLabel, onClick: () => this.recent.forget(problem.folder) };
     }
     return undefined;
+  }
+
+  #setButtonBusy(busy: boolean): void {
+    if (this.#buttonBusy === busy) {
+      return;
+    }
+    this.#buttonBusy = busy;
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 
   #remember(): void {
@@ -175,8 +216,8 @@ export class WorkspaceSwitcher {
   }
 }
 
-/** The toast action that drops a Recent row whose folder is gone (microcopy 3.2). */
-const removeFromRecent = "Remove from Recent";
+/** How long an open from the menu runs before the switcher button shows busy (kit busy rule). */
+export const MENU_BUSY_AFTER_MS = 300;
 
 /**
  * A workspace's name from its folder's location, until the workspace's own name is read from its

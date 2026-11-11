@@ -2,7 +2,7 @@
 
 import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createShell } from "../shell.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
@@ -130,6 +130,166 @@ verifies("shell.welcome-cant-open", () => {
     );
     await act(async () => copyLink()?.click());
     expect(writeClipboard).toHaveBeenCalledWith("Can't open /work/old\nTypeError: x is undefined");
+  });
+});
+
+verifies("shell.welcome-recent", () => {
+  const workspaces = ["acme", "beta", "gamma", "delta", "eps", "zeta", "eta"].map((name) => ({
+    location: `/work/${name}`,
+    name,
+  }));
+
+  function recentRow(root: HTMLElement, name: string): HTMLButtonElement | null {
+    return root.querySelector<HTMLButtonElement>(`button[aria-label="${name}, /work/${name}"]`);
+  }
+
+  function removeLink(root: HTMLElement): HTMLButtonElement | undefined {
+    return [...root.querySelectorAll("button")].find(
+      (each) => each.textContent === "Remove from Recent",
+    );
+  }
+
+  it("shows Recent and the five most recent, each its name over its folder", () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{ workspaces, onOpen: async () => undefined, onRemove: () => {} }}
+      />,
+    );
+
+    expect(root.querySelector("h2")?.textContent).toBe("Recent");
+    const rows = [...root.querySelectorAll("li button")];
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "acme, /work/acme",
+      "beta, /work/beta",
+      "gamma, /work/gamma",
+      "delta, /work/delta",
+      "eps, /work/eps",
+    ]);
+    expect(rows[0]?.textContent).toBe("acme/work/acme");
+    expect(document.activeElement).toBe(openButton(root));
+  });
+
+  it("hides the heading while nothing is remembered", () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{ workspaces: [], onOpen: async () => undefined, onRemove: () => {} }}
+      />,
+    );
+
+    expect(root.querySelector("h2")).toBeNull();
+    expect(root.textContent).not.toContain("Recent");
+  });
+
+  it("opens a row, busy meanwhile, and ignores presses until it's done", async () => {
+    let finish: () => void = () => {};
+    const onOpen = vi.fn(
+      () =>
+        new Promise<undefined>((resolve) => {
+          finish = () => resolve(undefined);
+        }),
+    );
+    const onOpenFolder = vi.fn(async () => undefined);
+    const root = render(
+      <Welcome onOpenFolder={onOpenFolder} recent={{ workspaces, onOpen, onRemove: () => {} }} />,
+    );
+
+    await act(async () => recentRow(root, "beta")?.click());
+    expect(onOpen).toHaveBeenCalledWith("/work/beta");
+    expect(recentRow(root, "beta")?.getAttribute("aria-busy")).toBe("true");
+    expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
+
+    await act(async () => recentRow(root, "acme")?.click());
+    await act(async () => openButton(root).click());
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(onOpenFolder).not.toHaveBeenCalled();
+
+    await act(async () => finish());
+    expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
+  });
+
+  it("says a row's folder is gone, offers Remove from Recent and keeps the row", async () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces,
+          onOpen: async (location) => ({
+            folder: location,
+            kind: "not_found",
+            reason: "the folder is gone.",
+          }),
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    await act(async () => recentRow(root, "acme")?.click());
+    expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+      "Can't open /work/acme: the folder is gone.",
+    );
+    expect(removeLink(root)).toBeDefined();
+    expect(recentRow(root, "acme")).not.toBeNull();
+  });
+
+  it("offers no Remove from Recent for a picked folder or another reason", async () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => ({
+          folder: "/work/old",
+          kind: "not_found",
+          reason: "the folder is gone.",
+        })}
+        recent={{
+          workspaces,
+          onOpen: async (location) => ({
+            folder: location,
+            kind: "denied",
+            reason: "you don't have permission to read it.",
+          }),
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    await act(async () => openButton(root).click());
+    expect(removeLink(root)).toBeUndefined();
+    await act(async () => recentRow(root, "acme")?.click());
+    expect(removeLink(root)).toBeUndefined();
+  });
+
+  it("removes the row and moves focus to the next row, else to Open folder", async () => {
+    function Harness() {
+      const [remembered, setRemembered] = useState(workspaces.slice(0, 2));
+      return (
+        <Welcome
+          onOpenFolder={async () => undefined}
+          recent={{
+            workspaces: remembered,
+            onOpen: async (location) => ({
+              folder: location,
+              kind: "not_found",
+              reason: "the folder is gone.",
+            }),
+            onRemove: (location) =>
+              setRemembered((rows) => rows.filter((row) => row.location !== location)),
+          }}
+        />
+      );
+    }
+    const root = render(<Harness />);
+
+    await act(async () => recentRow(root, "acme")?.click());
+    await act(async () => removeLink(root)?.click());
+    expect(recentRow(root, "acme")).toBeNull();
+    expect(document.activeElement).toBe(recentRow(root, "beta"));
+    expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+
+    await act(async () => recentRow(root, "beta")?.click());
+    await act(async () => removeLink(root)?.click());
+    expect(root.querySelector("h2")).toBeNull();
+    expect(document.activeElement).toBe(openButton(root));
   });
 });
 

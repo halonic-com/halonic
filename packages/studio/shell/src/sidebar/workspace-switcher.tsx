@@ -1,4 +1,5 @@
-import { ChevronDownIcon, Menu, type MenuEntry } from "@halonicjs/studio-kit";
+import { ChevronDownIcon, Menu, type MenuEntry, Spinner } from "@halonicjs/studio-kit";
+import type { MouseEvent } from "react";
 
 /** The open workspace, as its switcher shows it. */
 export interface SwitcherWorkspace {
@@ -13,17 +14,29 @@ export interface WorkspaceSwitcherProps {
   readonly workspace: SwitcherWorkspace;
   /** The workspace menu's rows: Recent, Open a folder…, and the rest (T3, UX 1.3, G5 part 13). */
   readonly menu: readonly MenuEntry[];
+  /**
+   * A workspace is opening from the menu and has taken a while: a spinner takes the chevron's
+   * place, `aria-busy` is set and presses are ignored. Never `disabled`, so focus stays (D9).
+   */
+  readonly busy?: boolean;
 }
 
 /**
  * The sidebar's first block (component specs 24.4): the workspace's letter mark, its name over its
  * folder, each one line ending in "…", and a chevron. It is one button, named "Workspace: Acme",
- * that opens the workspace menu.
+ * that opens the workspace menu. While {@link WorkspaceSwitcherProps.busy} it keeps focus and
+ * ignores presses, as a busy kit `Button` does.
  *
  * @example
  * <WorkspaceSwitcher workspace={{ name: "Acme", folder: "~/Work/acme" }} menu={workspaceMenu} />
  */
-export function WorkspaceSwitcher({ workspace, menu }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({ workspace, menu, busy = false }: WorkspaceSwitcherProps) {
+  const ignoreWhileBusy = (event: MouseEvent<HTMLButtonElement>) => {
+    if (busy) {
+      // Also stops the native popover target from opening the menu.
+      event.preventDefault();
+    }
+  };
   return (
     <Menu
       entries={menu}
@@ -32,7 +45,9 @@ export function WorkspaceSwitcher({ workspace, menu }: WorkspaceSwitcherProps) {
           {...props}
           type="button"
           aria-label={`Workspace: ${workspace.name}`}
+          aria-busy={busy || undefined}
           className={switcherClasses}
+          onClick={ignoreWhileBusy}
         >
           <span
             aria-hidden="true"
@@ -45,7 +60,7 @@ export function WorkspaceSwitcher({ workspace, menu }: WorkspaceSwitcherProps) {
             <span className="truncate text-caption text-fg-subtle">{workspace.folder}</span>
           </span>
           <span aria-hidden="true" className="size-icon-sm shrink-0 text-fg-subtle *:size-full">
-            <ChevronDownIcon />
+            {busy ? <Spinner /> : <ChevronDownIcon />}
           </span>
         </button>
       )}
