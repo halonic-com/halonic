@@ -19,7 +19,8 @@ mod runs;
 mod secrets;
 mod trust;
 
-use tauri::{Builder, Runtime};
+use tauri::webview::PageLoadEvent;
+use tauri::{Builder, Manager, Runtime, WindowEvent};
 
 /// Starts the shell. Android calls this through the generated entry point;
 /// on desktop, `main` calls it.
@@ -51,6 +52,18 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 .build(),
         )
         .plugin(navigation::guard())
+        // A page that reloads or closes can't end its agent host streams
+        // itself, so the shell ends them.
+        .on_page_load(|webview, payload| {
+            if payload.event() == PageLoadEvent::Started {
+                agent_host::end_page_streams(webview.app_handle(), webview.label());
+            }
+        })
+        .on_window_event(|window, event| {
+            if matches!(event, WindowEvent::Destroyed) {
+                agent_host::end_page_streams(window.app_handle(), window.label());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             connect::connect,
             git::git,
