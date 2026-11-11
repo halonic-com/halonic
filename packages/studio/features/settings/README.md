@@ -16,7 +16,7 @@ They are kept behind the `DisplayPrefs` port. `BrowserDisplayPrefs` keeps them i
 the desktop app's profile adapter follows when the app wires features in.
 
 `DisplaySettings` reads and saves them. A change shows at once and is stored straight away. If
-storing fails, the value from before comes back and the failure stays on that setting until it
+storing fails, the stored value comes back and the failure stays on that setting until it
 next saves (`settings.failed-save`), so Settings can show it under the control and say it in the
 dialog, never in a toast. A stored value the setting doesn't accept starts from the default.
 
@@ -33,7 +33,8 @@ const theme: DisplayPref<"system" | "light" | "dark"> = {
 
 const settings = new DisplaySettings(new BrowserDisplayPrefs(window.localStorage, window));
 const outcome = await settings.set(theme, "dark");
-if (!outcome.saved) {
-  // The theme is back to outcome.back, and settings.failure(theme) says why.
+if (!outcome.saved && !outcome.superseded) {
+  // The theme is back to outcome.back, and settings.failure(theme) says why. A superseded save
+  // went nowhere back: a newer change to the theme came in, and its outcome is the one to tell.
 }
 ```

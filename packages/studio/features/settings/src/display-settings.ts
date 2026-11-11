@@ -1,9 +1,19 @@
 import type { DisplayPref, DisplayPrefs } from "./display-prefs.ts";
 
-/** How a save ended. A failed one has put the value from before back. */
+/**
+ * How a save ended. A failed one has put the stored value back in `back`, unless a newer change to
+ * the same setting came in meanwhile (`superseded`): then nothing went back, and the newer change's
+ * outcome is the one to tell the user.
+ */
 export type SaveOutcome<Value> =
   | { readonly saved: true }
-  | { readonly saved: false; readonly reason: unknown; readonly back: Value };
+  | {
+      readonly saved: false;
+      readonly superseded: false;
+      readonly reason: unknown;
+      readonly back: Value;
+    }
+  | { readonly saved: false; readonly superseded: true; readonly reason: unknown };
 
 /**
  * The display settings as Settings and the rest of the window read them, saving by themselves
@@ -15,13 +25,14 @@ export type SaveOutcome<Value> =
  * @example
  * const settings = new DisplaySettings(new BrowserDisplayPrefs(window.localStorage, window));
  * const outcome = await settings.set(theme, "dark");
- * if (!outcome.saved) announce(`Couldn't save the theme on this computer. Theme is back to ${outcome.back}.`);
+ * if (!outcome.saved && !outcome.superseded) announce(`Couldn't save the theme on this computer. Theme is back to ${outcome.back}.`);
  */
 export class DisplaySettings {
   private readonly prefs: DisplayPrefs;
   /**
    * Each setting's value as this window shows it: read once from the store, so `get` gives the
    * same object each time (as `useSyncExternalStore` needs), and ahead of the store while saving.
+   * Only kept up to date while someone listens, so it is read again when listening starts or stops.
    */
   private readonly shown = new Map<string, unknown>();
   private readonly failures = new Map<string, unknown>();
@@ -52,11 +63,11 @@ export class DisplaySettings {
   }
 
   /**
-   * Shows `value` at once and stores it. On a failure the value from before comes back, unless a
-   * newer change to the same setting came in meanwhile.
+   * Shows `value` at once and stores it. On a failure the stored value comes back (the value from
+   * before, or one another window stored meanwhile), unless a newer change to the same setting came
+   * in meanwhile.
    */
   async set<Value>(pref: DisplayPref<Value>, value: Value): Promise<SaveOutcome<Value>> {
-    const back = this.get(pref);
     const save = ++this.saves;
     this.latest.set(pref.key, save);
     this.shown.set(pref.key, value);
@@ -64,12 +75,16 @@ export class DisplaySettings {
     try {
       await this.prefs.write(pref.key, value);
     } catch (reason) {
-      if (this.ended(pref.key, save)) {
-        this.shown.set(pref.key, back);
-        this.failures.set(pref.key, reason);
-        this.changed();
+      if (!this.ended(pref.key, save)) {
+        return { saved: false, superseded: true, reason };
       }
-      return { saved: false, reason, back };
+      // Not the value shown before this change: that may be an earlier change that never got
+      // stored, or hide one another window stored while this one was saving.
+      this.shown.delete(pref.key);
+      const back = this.get(pref);
+      this.failures.set(pref.key, reason);
+      this.changed();
+      return { saved: false, superseded: false, reason, back };
     }
     if (this.ended(pref.key, save)) {
       this.failures.delete(pref.key);
@@ -86,14 +101,27 @@ export class DisplaySettings {
    */
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    this.stopListening ??= this.prefs.subscribe((key) => this.changedElsewhere(key));
+    if (this.stopListening === undefined) {
+      this.stopListening = this.prefs.subscribe((key) => this.changedElsewhere(key));
+      this.forgetShown();
+    }
     return () => {
       this.listeners.delete(listener);
       if (this.listeners.size === 0) {
         this.stopListening?.();
         this.stopListening = undefined;
+        this.forgetShown();
       }
     };
+  }
+
+  /** Drops the shown values that aren't saving, which may have changed elsewhere unheard. */
+  private forgetShown(): void {
+    for (const key of this.shown.keys()) {
+      if (!this.latest.has(key)) {
+        this.shown.delete(key);
+      }
+    }
   }
 
   /** Whether `save` was the latest of `key`; if so, the key is no longer saving. */

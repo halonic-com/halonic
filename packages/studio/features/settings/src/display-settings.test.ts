@@ -60,6 +60,16 @@ verifies("settings.display-prefs", () => {
     prefs.changeElsewhere(theme.key, "dark");
     expect(settings.get(theme)).toBe("dark");
   });
+
+  it("reads the store again when listening starts after a change nobody heard", () => {
+    const prefs = new MemoryDisplayPrefs();
+    const settings = new DisplaySettings(prefs);
+    settings.subscribe(() => undefined)();
+    expect(settings.get(theme)).toBe("system");
+    prefs.changeElsewhere(theme.key, "dark");
+    settings.subscribe(() => undefined);
+    expect(settings.get(theme)).toBe("dark");
+  });
 });
 
 verifies("settings.failed-save", () => {
@@ -78,6 +88,7 @@ verifies("settings.failed-save", () => {
     prefs.failNext(readOnly);
     expect(await settings.set(theme, "dark")).toEqual({
       saved: false,
+      superseded: false,
       reason: readOnly,
       back: "system",
     });
@@ -102,8 +113,32 @@ verifies("settings.failed-save", () => {
     const light = settings.set(theme, "light");
     prefs.release(1, 0);
     expect(await light).toEqual({ saved: true });
-    expect((await dark).saved).toBe(false);
+    expect(await dark).toMatchObject({ saved: false, superseded: true });
     expect(settings.get(theme)).toBe("light");
     expect(settings.failure(theme)).toBeUndefined();
+  });
+
+  it("goes back to the stored value when both of two changes fail", async () => {
+    const { prefs, settings } = setup();
+    prefs.holdWrites();
+    prefs.failNext(new Error("full"));
+    prefs.failNext(new Error("full"));
+    const dark = settings.set(theme, "dark");
+    const light = settings.set(theme, "light");
+    prefs.release(0, 1);
+    expect(await dark).toMatchObject({ saved: false, superseded: true });
+    expect(await light).toMatchObject({ saved: false, superseded: false, back: "system" });
+    expect(settings.get(theme)).toBe("system");
+  });
+
+  it("goes back to a value another window stored while it was saving", async () => {
+    const { prefs, settings } = setup();
+    prefs.holdWrites();
+    prefs.failNext(new Error("full"));
+    const dark = settings.set(theme, "dark");
+    prefs.changeElsewhere(theme.key, "light");
+    prefs.release(0);
+    expect(await dark).toMatchObject({ saved: false, superseded: false, back: "light" });
+    expect(settings.get(theme)).toBe("light");
   });
 });
