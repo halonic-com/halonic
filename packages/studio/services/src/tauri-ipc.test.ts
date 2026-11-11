@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { tauriIpc } from "./tauri-ipc.ts";
+import { tauriChannelIpc, tauriIpc } from "./tauri-ipc.ts";
 
 verifies("services.tauri-ipc", () => {
   describe("tauriIpc", () => {
@@ -31,6 +31,31 @@ verifies("services.tauri-ipc", () => {
       ["that isn't an object", null],
     ])("throws, naming the lookup, for internals %s", (_, internals) => {
       expect(() => tauriIpc({ __TAURI_INTERNALS__: internals })).toThrow(/tauriIpc/);
+    });
+  });
+
+  describe("tauriChannelIpc", () => {
+    const functions = {
+      invoke: async () => null,
+      transformCallback: () => 7,
+      unregisterCallback: () => {},
+    };
+
+    it("finds nothing on a page outside the shell", () => {
+      expect(tauriChannelIpc({})).toBeUndefined();
+    });
+
+    it("finds the shell's invoke with its callback table", () => {
+      expect(tauriChannelIpc({ __TAURI_INTERNALS__: functions })?.transformCallback(() => {})).toBe(
+        7,
+      );
+    });
+
+    it("throws, naming the lookup and the function, for internals without unregisterCallback", () => {
+      const { unregisterCallback: _, ...internals } = functions;
+      expect(() => tauriChannelIpc({ __TAURI_INTERNALS__: internals })).toThrow(
+        /no unregisterCallback function.*tauriChannelIpc/,
+      );
     });
   });
 });

@@ -74,13 +74,30 @@ export async function runExample(): Promise<{
 ## Tauri's internal object
 
 The shell puts its IPC on the page as `window.__TAURI_INTERNALS__`. That is Tauri's internal object,
-not a public API, so only `tauriIpc` (`src/tauri-ipc.ts`) reads it, and the rest of the Studio,
-including the Android connect page, asks `tauriIpc`. If a Tauri upgrade moves it, `tauriIpc` throws
-an error naming itself instead of running as if outside the shell, and the fix is one line there.
+not a public API, so only `src/tauri-ipc.ts` reads it, and the rest of the Studio, including the
+Android connect page, asks `tauriIpc` (or `tauriChannelIpc`, for a channel). If a Tauri upgrade
+moves it, the lookup throws an error naming itself instead of running as if outside the shell, and
+the fix is there.
 
 `provideShellSecrets(services, page)` returns whether the page is in the shell, and throws a
 `ServiceError` when `secretsKey` or `tokenStoreKey` is already provided. `tauriIpc(page)` gives a
-`TauriIpc` (just `invoke`), or `undefined` outside the shell.
+`TauriIpc` (just `invoke`), or `undefined` outside the shell. `tauriChannelIpc(page)` adds Tauri's
+callback table (`TauriCallbacks`), which a channel needs.
+
+## The agent host
+
+`tauriAgentHostTransport(page)` gives the engine's agent host stand-ins
+(`@halonicjs/adapter-agent-host-client`) their `AgentHostTransport` in the desktop shell, or
+`undefined` outside it. It calls the shell's `agent_host_request`, `agent_host_stream` and
+`agent_host_stream_end` commands, so the shell starts the host and keeps its launch token, and the
+page only names routes. A stream's lines come on a Tauri channel, which this package reads itself
+(`src/tauri-channel.ts`, Tauri 2.12's protocol) rather than taking `@tauri-apps/api`.
+
+- A refusal from the shell (`unknown_route`, `host_unavailable`, `stream_in_use`, ...) is an
+  `AgentHostError` with status `0` and the shell's kind. The host's own refusals stay answers.
+- A stream ends and hangs up when the caller aborts or stops reading. The shell also ends every
+  stream of a page that reloads or closes.
+- Aborting a JSON call only stops waiting: the shell's call runs to its own time limit.
 
 ## Limits
 

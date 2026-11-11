@@ -76,7 +76,10 @@ export interface AgentHostTransport {
 /** What the host refused, with its status and `kind` (`unknown_session`, `send_failed`, ...). */
 export class AgentHostError extends Error {
   override readonly name = "AgentHostError";
-  /** The HTTP status the host answered with; `200` for a problem inside a good answer. */
+  /**
+   * The HTTP status the host answered with; `200` for a problem inside a good
+   * answer, `0` when the call never reached the host (the transport refused it).
+   */
   readonly status: number;
   readonly kind: string;
 

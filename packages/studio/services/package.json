@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/adapter-agent-host-client": "workspace:*",
     "@halonicjs/adapter-secrets-tauri": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/ports": "workspace:*"
