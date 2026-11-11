@@ -2,7 +2,12 @@ import { request } from "node:http";
 import { connect, type Socket } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { healthRoute } from "./health-route.ts";
-import { type HostRoute, type HostServer, startHostServer } from "./host-server.ts";
+import {
+  type HostRoute,
+  type HostServer,
+  type HostServerLimits,
+  startHostServer,
+} from "./host-server.ts";
 import { bearerMatches, randomLaunchToken } from "./launch-token.ts";
 import { startNdjsonStream } from "./ndjson-stream.ts";
 
@@ -167,9 +172,11 @@ describe("startHostServer, with a caller that holds connections open", () => {
     },
   };
 
-  async function startedWithLimits(): Promise<{ port: number; host: string }> {
+  async function startedWithLimits(
+    use: HostServerLimits = limits,
+  ): Promise<{ port: number; host: string }> {
     const routes = [healthRoute("1.2.3"), slowStream(1_000), readsBody];
-    server = await startHostServer(token, routes, limits);
+    server = await startHostServer(token, routes, use);
     const host = new URL(server.url).host;
     return { port: Number(host.split(":")[1]), host };
   }
@@ -239,18 +246,34 @@ describe("startHostServer, with a caller that holds connections open", () => {
   });
 
   it("takes no more connections than its cap", async () => {
-    const { port } = await startedWithLimits();
+    // Long time limits: the held connections must stay open however slow the
+    // machine is, or the host frees a slot and takes the extra connection too.
+    const { port, host } = await startedWithLimits({
+      ...limits,
+      headersTimeoutMs: 60_000,
+      requestTimeoutMs: 60_000,
+    });
     const held: Socket[] = [];
     try {
       for (let index = 0; index < limits.maxConnections; index++) {
-        held.push(
-          await new Promise<Socket>((resolve) => {
-            const socket = connect(port, "127.0.0.1", () => resolve(socket));
-          }),
+        const socket = connect(port, "127.0.0.1");
+        held.push(socket);
+        // A connect only means the system queued it. An answer proves the host
+        // accepted it and counts it against the cap.
+        socket.write(
+          [
+            "GET /v1/health HTTP/1.1",
+            `Host: ${host}`,
+            `Authorization: Bearer ${token}`,
+            "",
+            "",
+          ].join("\r\n"),
         );
+        await new Promise<void>((resolve, reject) => {
+          socket.once("error", reject);
+          socket.once("data", () => resolve());
+        });
       }
-      // Give the server time to count the held connections before the next one.
-      await new Promise((resolve) => setTimeout(resolve, 50));
       const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
       expect(answer).toBe("");
     } finally {
