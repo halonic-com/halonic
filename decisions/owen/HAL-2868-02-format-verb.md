@@ -2,6 +2,7 @@
 
 - Approval: [HAL-2868](/HAL/issues/HAL-2868), from Sofia's wording call on [HAL-2848](/HAL/issues/HAL-2848) and her note on HAL-2868 (team decisions); Liam agreed to the capital first letter on [HAL-6051](/HAL/issues/HAL-6051); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:b26FeAQ2+NzUvjt7TTUOPUVobta0DCtWathGAKbA6lh72PWlYmvSSsS6zkUD1oyvmOwmRwGb5MmQpFuhRrk+Cw==
 - Task: HAL-2868, a follow-up to [HAL-2836](/HAL/issues/HAL-2836)
 
 ## What changes
