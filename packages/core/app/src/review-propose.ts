@@ -6,7 +6,7 @@
 import type { ExpectedContent } from "@halonicjs/ports";
 import { catchUp } from "./review-catch-up.ts";
 import type { ReviewFiles } from "./review-files.ts";
-import { proposalRefusal } from "./review-gate.ts";
+import { proposalRefusal, refused, storeRefusing } from "./review-gate.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type { ProposedDelete, ProposedWrite, ProposeOutcome } from "./review-types.ts";
 
@@ -184,23 +184,4 @@ function writtenOutcome(
     file: { before: file.before, after: file.after },
   };
   return { status: "written", step: { files: [reviewed] }, replaced };
-}
-
-/** What {@link storeRefusing} gives when the store refused the path. */
-const refused = Symbol("refused");
-
-/**
- * Runs one store call, giving {@link refused} for the `RangeError` the
- * `DefinitionStore` port throws for a path it won't serve, such as one
- * through a symlink or a junction. Any other error is thrown.
- */
-async function storeRefusing<T>(call: () => Promise<T>): Promise<T | typeof refused> {
-  try {
-    return await call();
-  } catch (error) {
-    if (error instanceof RangeError) {
-      return refused;
-    }
-    throw error;
-  }
 }
