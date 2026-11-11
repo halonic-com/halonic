@@ -158,6 +158,7 @@ export {
   type LiveVersionReader,
   liveVersionOf,
 } from "./live-version.ts";
+export { defaultCurrency, moneyAmount } from "./money-amount.ts";
 export {
   type OpenWorkspaceOptions,
   openWorkspace,
@@ -357,6 +358,7 @@ export {
   runSourceFor,
   runVersionOf,
 } from "./run-source.ts";
+export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
 export {
   type RunnerFence,
   type RunnerFenceInputs,
