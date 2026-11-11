@@ -33,7 +33,7 @@ export interface PhoneTopBarProps {
  */
 export function PhoneTopBar({ title, onBack, actions }: PhoneTopBarProps) {
   return (
-    <header className="relative z-(--layer-sticky) flex min-h-phone-bar shrink-0 items-center gap-1 border-b border-border bg-surface px-1 pt-safe">
+    <header className="relative z-(--layer-sticky) flex phone-top-bar shrink-0 items-center gap-1 border-b border-border bg-surface px-1">
       {onBack === undefined ? null : (
         <Button variant="ghost" size="lg" icon={<BackIcon />} label="Back" onClick={onBack} />
       )}

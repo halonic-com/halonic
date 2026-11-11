@@ -86,8 +86,10 @@ verifies("shell.phone-bars", () => {
     expect(bar.firstElementChild).toBe(back);
     expect(bar.querySelector("p")?.textContent).toBe("Support reply");
     expect(bar.querySelector("p")?.className).toContain("truncate");
-    expect(bar.className).toContain("min-h-phone-bar");
-    expect(bar.className).toContain("pt-safe");
+    // 56px below the notch, not 56px counting it (HAL-4676): the kit utility adds the two.
+    expect(bar.className.split(" ")).toContain("phone-top-bar");
+    expect(bar.className).not.toContain("min-h-phone-bar");
+    expect(bar.className).not.toContain("pt-safe");
     act(() => back.click());
     expect(backs).toBe(1);
   });
