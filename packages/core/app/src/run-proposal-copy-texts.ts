@@ -212,7 +212,6 @@ export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, His
   }
 }
 
-/** A byte count as a person reads it, such as "100 MB". */
 /** A count as people read it: `10,000`. */
 function countOf(count: number): string {
   return count.toLocaleString("en");
