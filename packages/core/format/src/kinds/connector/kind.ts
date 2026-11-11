@@ -19,6 +19,7 @@ export const connectorKind: FileKind<Connector> = {
     ...checkGoogleValues(connector),
     ...checkPastedKeys(connector),
     ...checkApprovedTools(connector),
+    ...checkReadTools(connector),
   ],
 };
 
@@ -125,6 +126,39 @@ function checkApprovedTools(connector: Connector): KindCheckProblem[] {
       path: ["tools", "approve", index],
       message: `Connector "${connector.id}": "${tool}" needs approval but is not in tools.allow, so agents never see it`,
     });
+  });
+  return problems;
+}
+
+/** Characters that make a name in `tools.read` look like a pattern, not a tool's name. */
+const patternCharacters = /[*?[\]{}]/;
+
+/**
+ * `tools.read` takes exact names only, so a pattern is refused rather than
+ * matching nothing in silence. A name that `tools.allow` leaves out is never
+ * offered, so say so. Without `tools.allow` the names are checked against
+ * the server's listing when a run starts, not here. Wording: Sofia, HAL-5582.
+ */
+function checkReadTools(connector: Connector): KindCheckProblem[] {
+  const { allow, read } = connector.tools;
+  const problems: KindCheckProblem[] = [];
+  read?.forEach((tool, index) => {
+    const path: Path = ["tools", "read", index];
+    if (patternCharacters.test(tool)) {
+      problems.push({
+        severity: "error",
+        code: "read-tool-pattern",
+        path,
+        message: `"read" needs exact tool names. "${tool}" looks like a pattern.`,
+      });
+    } else if (allow !== undefined && !allow.includes(tool)) {
+      problems.push({
+        severity: "warning",
+        code: "read-tool-not-allowed",
+        path,
+        message: `"read" lists "${tool}", but this connector has no tool by that name. Check the spelling.`,
+      });
+    }
   });
   return problems;
 }

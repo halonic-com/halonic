@@ -80,6 +80,8 @@ not here.
   workspace root and in each hub, which the loader skips (requirement `reserved-folder`).
 - `connectorIsLocal(connector)` says whether a connector counts as local for `privacy.localOnly`;
   `needsApproval(tools, name)` and `approveAll` (`"all"`) read a connector's `tools.approve` setting.
+  `marksRead(tools, name)` says whether its `tools.read` list marks a tool as only reading; `approve`
+  wins when both name a tool.
 - `pathsNamedBy(start)` (with the types `ProgramStart` and `NamedPath`) lists the paths a program
   start names besides its folder: the program, each argument and `env` value read in pieces (also
   the text inside quotes, and a piece without its quotes or short flag), and the folder of a

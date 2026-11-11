@@ -49,6 +49,9 @@ const GoogleTransport = s
 /** The `tools.approve` value that makes every tool of the connector ask a person first. */
 export const approveAll = "all";
 
+/** Said when `tools.read` isn't a list of tool names. Wording: Sofia, HAL-5582. */
+const readNotAList = '"read" must be a list of tool names.';
+
 /**
  * `library/connectors/<id>.connector.yaml`: tools for agents from an MCP
  * server or a built-in service. Secrets are referenced by name only.
@@ -76,6 +79,14 @@ export const Connector = s
          * adds later: a new MCP connector starts with it.
          */
         approve: s.union([s.array(s.string()), s.literal(approveAll)]).default([]),
+        /**
+         * Tools listed here run without asking. Only list tools that don't
+         * change anything. Exact names only, no patterns: every tool not
+         * listed still asks first, and a tool `approve` names asks whatever
+         * this list says. Only the person writing this file sets it; nothing
+         * a connector's server lists can add a tool to it.
+         */
+        read: s.array(s.string({ error: readNotAList }), { error: readNotAList }).optional(),
       })
       .strict()
       .default({ approve: [] }),
@@ -98,4 +109,23 @@ export type Connector = Infer<typeof Connector>;
  */
 export function needsApproval(tools: Pick<Connector["tools"], "approve">, tool: string): boolean {
   return tools.approve === approveAll || tools.approve.includes(tool);
+}
+
+/**
+ * Whether the workspace marks `tool` as only reading, as the connector's
+ * `tools.read` says: the list names it exactly, and `tools.approve` doesn't
+ * make it ask first, so `approve` wins when both name a tool. `tool` is the
+ * name the server lists the tool under. A tool this says `false` for counts
+ * as `write`, or `send` when its listing says so.
+ *
+ * @example
+ * marksRead({ approve: [], read: ["search_issues"] }, "search_issues"); // true
+ * marksRead({ approve: ["search_issues"], read: ["search_issues"] }, "search_issues"); // false
+ * marksRead({ approve: [] }, "search_issues"); // false
+ */
+export function marksRead(
+  tools: Pick<Connector["tools"], "approve" | "read">,
+  tool: string,
+): boolean {
+  return (tools.read?.includes(tool) ?? false) && !needsApproval(tools, tool);
 }

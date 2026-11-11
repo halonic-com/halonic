@@ -160,6 +160,12 @@
               "const": "all"
             }
           ]
+        },
+        "read": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false
