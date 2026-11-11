@@ -18,6 +18,7 @@ const stateWords: Readonly<Record<PluginState, string>> = {
  */
 export const pluginMessages = defineMessages("plugin", {
   summary: () => phrase`Add, list or remove plugins`,
+  addSummary: () => phrase`Add a plugin from a folder and ask whether to trust it`,
   listSummary: () => phrase`List the plugins and whether each is on`,
   /** What `plugin list` was doing, for "✕ Couldn't list the plugins: …". */
   listAction: () => phrase`list the plugins`,
@@ -47,6 +48,27 @@ export const pluginMessages = defineMessages("plugin", {
   /** T9's last line, under every plugin trust check. */
   notChecked: () =>
     phrase`Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.`,
+
+  /** A host that is the value of one of the plugin's settings, so it isn't known until it is set. */
+  hostFromSetting: (setting: string) => phrase`the address in the setting ${setting}`,
+  /** The rows of "In Studio": what Halonic draws for the plugin. */
+  studioSettings: () => phrase`Settings`,
+  studioCommands: () => phrase`Commands`,
+  studioCards: () => phrase`Cards`,
+  studioPanel: () => phrase`Panel`,
+
+  /** The refusal when a plugin with the id is already added; adding it again would be a conflict. */
+  alreadyAdded: (id: string) => phrase`${id} is already added.`,
+  alreadyAddedFix: (id: string) =>
+    phrase`To add another version, remove it first: halonic plugin remove ${id}`,
+  /** `plugin add` without a folder or git address. */
+  addNeedsSource: () => phrase`Say which plugin to add: a folder or a git address.`,
+  addUsage: () => phrase`halonic plugin add <folder or git address>[@commit]`,
+  /** `--yes` alone: the fingerprint comes from the check, which only an earlier add without it printed. */
+  yesNeedsFingerprintFix: () =>
+    phrase`Add it without --yes to see the check; the fingerprint is on its last stdout line.`,
+  /** Line 1 of a source that isn't a folder this command can read. */
+  notAFolder: (path: string) => phrase`${path} isn't a folder.`,
 
   added: (name: string, version: string) => phrase`Added ${name} ${version}. It's on.`,
   /** Answer No, or Enter, with a !: added but off, exit 3 (Studio's Not now, D4). */

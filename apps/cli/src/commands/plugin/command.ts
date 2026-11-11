@@ -1,6 +1,8 @@
 import type { CliCommand } from "../../command.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
+import { trustMessages } from "../../messages/trust.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
+import { addPlugin } from "./add.ts";
 import { listPlugins } from "./list.ts";
 
 /**
@@ -14,8 +16,27 @@ export function pluginCommandWith(setup: PluginSetup): CliCommand {
     summary: pluginMessages.summary(),
     action: () => pluginMessages.listAction(),
     options: {},
-    subcommands: [listCommandWith(setup)],
+    subcommands: [addCommandWith(setup), listCommandWith(setup)],
     run: (input, context) => listPlugins(input, context, setup),
+  };
+}
+
+/** `halonic plugin add <folder>`: copies the plugin into the profile, shows its trust check and asks (cli-output 3.6). */
+function addCommandWith(setup: PluginSetup): CliCommand {
+  return {
+    name: "add",
+    usage: "<folder> [--yes --fingerprint <fingerprint>]",
+    summary: pluginMessages.addSummary(),
+    action: () => pluginMessages.addAction(),
+    options: {
+      yes: { type: "boolean", description: trustMessages.yesOption() },
+      fingerprint: {
+        type: "string",
+        valueName: "fingerprint",
+        description: trustMessages.fingerprintOption(),
+      },
+    },
+    run: (input, context) => addPlugin(input, context, setup),
   };
 }
 
