@@ -1,9 +1,9 @@
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { HarnessAgent } from "@halonicjs/engine";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { writerAgent } from "./harness-agent.test-helper.ts";
 import {
   type HarnessAgentFile,
   type HarnessProfileHost,
@@ -50,10 +50,6 @@ afterEach(async () => {
   await rm(join(computer.home, ".."), { recursive: true, force: true });
 });
 
-function agentWith(filesFolder: string | null): HarnessAgent {
-  return { runId: "run_1", hubId: "main", agentId: "writer", filesFolder };
-}
-
 function profilesWith(
   file: Partial<HarnessAgentFile> = {},
   options: Partial<HarnessProfilesOptions> = {},
@@ -86,7 +82,7 @@ verifies("harness-kit.harness-profile", () => {
     it("builds a profile in the workspace when the agent has no proposal folder", async () => {
       const { data, home, workspace } = computer;
 
-      const { profile, deniedGroups } = await profilesWith().profileOf(agentWith(null), bridge);
+      const { profile, deniedGroups } = await profilesWith().profileOf(writerAgent(null), bridge);
 
       expect(profile.workingFolder).toBe(join(workspace, "files", "agents", "writer"));
       expect(profile.readOnlyPaths).toEqual([join(workspace, ".git"), join(workspace, "agents")]);
@@ -113,7 +109,10 @@ verifies("harness-kit.harness-profile", () => {
     it("works in the proposal folder, writes nowhere in the workspace, and denies the rest of the data", async () => {
       const { data, proposal, workspace } = computer;
 
-      const { profile, deniedGroups } = await profilesWith().profileOf(agentWith(proposal), bridge);
+      const { profile, deniedGroups } = await profilesWith().profileOf(
+        writerAgent(proposal),
+        bridge,
+      );
 
       expect(profile.workingFolder).toBe(join(proposal, "files", "agents", "writer"));
       for (const writable of [profile.workingFolder, profile.tempFolder, profile.settingsFolder]) {
@@ -194,7 +193,7 @@ verifies("harness-kit.harness-profile", () => {
       const { proposal, workspace } = computer;
       await symlink(workspace, join(proposal, "files"), "junction");
 
-      await expect(profilesWith().profileOf(agentWith(proposal), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(proposal), bridge)).rejects.toThrow(
         /leads out of/,
       );
     });
@@ -203,7 +202,7 @@ verifies("harness-kit.harness-profile", () => {
       const { workspace } = computer;
       await symlink(join(workspace, ".git", "hooks"), join(workspace, "files"), "junction");
 
-      await expect(profilesWith().profileOf(agentWith(null), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(null), bridge)).rejects.toThrow(
         /is really .*where it can't work/,
       );
     });
@@ -214,7 +213,7 @@ verifies("harness-kit.harness-profile", () => {
 
       await expect(
         profilesWith({ workingFolder: "files/hooks/post-checkout" }).profileOf(
-          agentWith(null),
+          writerAgent(null),
           bridge,
         ),
       ).rejects.toThrow(/is really .*where it can't work/);
@@ -236,14 +235,14 @@ verifies("harness-kit.harness-profile", () => {
       const { workspace } = computer;
       await symlink(join(workspace, "missing"), join(workspace, "files"), "junction");
 
-      await expect(profilesWith().profileOf(agentWith(null), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(null), bridge)).rejects.toThrow(
         /can't be made at/,
       );
     });
 
     it("refuses a working folder named into .git", async () => {
       await expect(
-        profilesWith({ workingFolder: ".git/hooks" }).profileOf(agentWith(null), bridge),
+        profilesWith({ workingFolder: ".git/hooks" }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/can't write in '.git'/);
     });
 
@@ -256,7 +255,7 @@ verifies("harness-kit.harness-profile", () => {
       };
 
       await expect(
-        profilesWith({}, { halonicData: data }, host).profileOf(agentWith(null), bridge),
+        profilesWith({}, { halonicData: data }, host).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/overlaps Halonic's data folder/);
     });
 
@@ -278,7 +277,7 @@ verifies("harness-kit.harness-profile", () => {
         {},
         { workspace, halonicData: data },
         host,
-      ).profileOf(agentWith(null), bridge);
+      ).profileOf(writerAgent(null), bridge);
 
       expect(deniedGroups.at(-1)).toEqual({ code: "halonic-data", paths: [data] });
       expect(profile.reopenedPaths).toEqual([
@@ -293,7 +292,7 @@ verifies("harness-kit.harness-profile", () => {
       const inWorkspace = join(computer.workspace, "proposal");
       await mkdir(inWorkspace);
 
-      await expect(profilesWith().profileOf(agentWith(inWorkspace), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(inWorkspace), bridge)).rejects.toThrow(
         /must be in Halonic's data folder and outside the workspace/,
       );
     });
@@ -302,7 +301,7 @@ verifies("harness-kit.harness-profile", () => {
       const tempFolder = async () => join(computer.workspace, "agents");
 
       await expect(
-        profilesWith({}, {}, { tempFolder }).profileOf(agentWith(null), bridge),
+        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/The temp folder .* must be in Halonic's data folder/);
     });
 
@@ -311,7 +310,7 @@ verifies("harness-kit.harness-profile", () => {
       await mkdir(workspace);
 
       await expect(
-        profilesWith({}, { workspace }).profileOf(agentWith(null), bridge),
+        profilesWith({}, { workspace }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/which the sandbox denies \(cloud-sign-ins\)/);
     });
 
@@ -321,7 +320,7 @@ verifies("harness-kit.harness-profile", () => {
       await writeFile(join(bin, "claude"), "");
 
       const { profile } = await profilesWith({}, { platform: "win32" }).profileOf(
-        agentWith(null),
+        writerAgent(null),
         bridge,
       );
 

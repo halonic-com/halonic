@@ -8,10 +8,10 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { plainEnvironment, testGit } from "@halonicjs/adapter-git/testing";
-import type { HarnessAgent } from "@halonicjs/engine";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { writerAgent } from "./harness-agent.test-helper.ts";
 import { HarnessProfiles } from "./harness-profiles.ts";
 import { isInsideOrSame, overlaps } from "./working-folder.ts";
 
@@ -76,10 +76,6 @@ afterEach(async () => {
   await rm(setup.top, { recursive: true, force: true });
 });
 
-function agentIn(filesFolder: string): HarnessAgent {
-  return { runId: "run_1", hubId: "main", agentId: "writer", filesFolder };
-}
-
 /** The folders a program in the sandbox may write. */
 function writableOf(profile: SandboxProfile): string[] {
   const { workingFolder, tempFolder, settingsFolder } = profile;
@@ -100,7 +96,7 @@ verifies("harness-kit.proposal-worktree-git", () => {
     it("keeps the .git file, the gitdir and the repository's hooks outside every writable folder", async () => {
       const { profiles, worktree, workspace } = setup;
 
-      const { profile } = await profiles.profileOf(agentIn(worktree), bridge);
+      const { profile } = await profiles.profileOf(writerAgent(worktree), bridge);
 
       const gitdir = await gitdirOf(worktree);
       expect(isInsideOrSame(gitdir, join(workspace, ".git"))).toBe(true);
@@ -122,7 +118,9 @@ verifies("harness-kit.proposal-worktree-git", () => {
       await mkdir(join(workspace, ".git", "hooks"), { recursive: true });
       await symlink(join(workspace, ".git", "hooks"), join(worktree, "files"), "junction");
 
-      await expect(profiles.profileOf(agentIn(worktree), bridge)).rejects.toThrow(/leads out of/);
+      await expect(profiles.profileOf(writerAgent(worktree), bridge)).rejects.toThrow(
+        /leads out of/,
+      );
     });
 
     it("refuses a working folder that a link leads to the worktree's own .git", async () => {
@@ -130,7 +128,9 @@ verifies("harness-kit.proposal-worktree-git", () => {
       const gitdir = await gitdirOf(worktree);
       await symlink(gitdir, join(worktree, "files"), "junction");
 
-      await expect(profiles.profileOf(agentIn(worktree), bridge)).rejects.toThrow(/leads out of/);
+      await expect(profiles.profileOf(writerAgent(worktree), bridge)).rejects.toThrow(
+        /leads out of/,
+      );
     });
   });
 });

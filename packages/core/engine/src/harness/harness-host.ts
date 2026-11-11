@@ -4,6 +4,7 @@
 // the harnesses and the bridge server into them.
 
 import type { DeniedPathGroup } from "@halonicjs/events";
+import type { Agent } from "@halonicjs/format";
 import type {
   BridgeRecorder,
   Harness,
@@ -33,6 +34,17 @@ export interface HarnessAgent {
   readonly runId: string;
   readonly hubId: string;
   readonly agentId: string;
+  /**
+   * The harness the call runs in: the run's own, as `halonic run --harness`
+   * sets it, or the one the agent's file names.
+   */
+  readonly harness: ProgramHarness;
+  /**
+   * The agent's file as the call reads it: the run's kept definitions, or
+   * for a chat turn the workspace's. The host reads the working folder and
+   * the allowed sites from here, never from today's files.
+   */
+  readonly file: Agent;
   /**
    * Where the agent reads and writes workspace files: its top-level run's
    * proposal folder, a worktree of the workspace in Halonic's data folder;

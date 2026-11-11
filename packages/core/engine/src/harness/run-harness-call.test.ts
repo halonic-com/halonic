@@ -79,6 +79,28 @@ verifies("engine.run-harness", () => {
     });
   });
 
+  it("asks the host about one agent, with the call's harness and the agent's file from the run", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("ok")];
+    const placed = vi.spyOn(ports.options.placement, "where");
+    const opened = vi.spyOn(ports.options.bridges, "open");
+    const built = vi.spyOn(ports.options.profiles, "profileOf");
+
+    await runOn(ports);
+
+    const agent = {
+      runId: "run_1",
+      hubId: "acme",
+      agentId: "writer",
+      harness: "claude-code",
+      file: call.agent,
+      filesFolder: null,
+    };
+    expect(placed).toHaveBeenCalledWith(agent);
+    expect(opened).toHaveBeenCalledWith(agent, expect.anything());
+    expect(built).toHaveBeenCalledWith(agent, expect.anything());
+  });
+
   it("writes what the bridge records to the same log", async () => {
     const ports = harnessPorts();
     ports.harness.events = [finished("ok")];

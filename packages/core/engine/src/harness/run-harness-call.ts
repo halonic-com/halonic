@@ -138,6 +138,8 @@ export async function runHarnessCall(
     runId: call.runId,
     hubId: call.hubId,
     agentId: effect.agent,
+    harness: effect.harness,
+    file: call.agent,
     filesFolder: call.filesFolder,
   };
   const placement = await options.placement.where(agent);
@@ -155,6 +157,7 @@ export async function runHarnessCall(
     const started: StartedCall = {
       options,
       call,
+      agent,
       harness,
       log,
       approvals,
@@ -162,7 +165,7 @@ export async function runHarnessCall(
       stop: callStop.signal,
     };
     const recorder = bridgeRecorderOf(log, call.budget ?? noCallBudget, callStop);
-    return await runInBridge(started, agent, placement, sandbox, recorder, stop);
+    return await runInBridge(started, placement, sandbox, recorder, stop);
   } finally {
     stopWithEngine();
   }
@@ -199,13 +202,12 @@ function bridgeRecorderOf(log: HarnessEventLog, budget: CallBudget, callStop: St
  */
 async function runInBridge(
   started: StartedCall,
-  agent: HarnessAgent,
   placement: PlacementAnswer,
   sandbox: Sandbox,
   recorder: BridgeRecorder,
   engineStop: StopSignal,
 ): Promise<unknown> {
-  const { options, call, harness, log, stop } = started;
+  const { options, call, agent, harness, log, stop } = started;
   const { effect } = call;
   const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
     late.close(),
@@ -262,6 +264,8 @@ async function runInBridge(
 interface StartedCall {
   readonly options: HarnessRunsOptions;
   readonly call: HarnessCall;
+  /** The agent, as the host's placement, bridge and profile are asked about it. */
+  readonly agent: HarnessAgent;
   readonly harness: Harness;
   readonly log: HarnessEventLog;
   readonly approvals: HarnessApprovals;
@@ -282,19 +286,13 @@ function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): number 
  * closed as soon as it arrives.
  */
 async function openSandbox(
-  { options, call, harness, log, limits, stop }: StartedCall,
+  { options, call, agent: subject, harness, log, limits, stop }: StartedCall,
   placement: PlacementAnswer,
   sandbox: Sandbox,
   bridge: OpenHarnessBridge,
 ): Promise<SandboxSession> {
   stop.throwIfStopped();
   const { state, agent } = call.effect;
-  const subject: HarnessAgent = {
-    runId: call.runId,
-    hubId: call.hubId,
-    agentId: agent,
-    filesFolder: call.filesFolder,
-  };
   const { profile, deniedGroups } = await options.profiles.profileOf(subject, bridge);
   const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});
   const timeoutMs = startTimeoutOf(options, "sandbox");
