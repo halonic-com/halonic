@@ -70,11 +70,16 @@ verifies("sandbox-srt.check", () => {
       await systemMachine.hasLinuxHelpers();
       await systemMachine.userNamespacesRestricted();
       // The runner is not exported: only the fixed probes above can start a program.
-      const programs = started.mock.calls.map(([file, args]) => [file, args]);
-      for (const [file, args] of programs) {
-        expect(["bwrap", "socat", "rg"]).toContain(file);
-        expect(["--version", "-V", "--ro-bind"]).toContain((args as string[])[0]);
-      }
+      // One expect for however many programs this machine started, so the test makes
+      // the same number of expect calls on every machine.
+      const unexpected = started.mock.calls
+        .map(([file, args]) => ({ file, first: (args as string[])[0] }))
+        .filter(
+          ({ file, first }) =>
+            !["bwrap", "socat", "rg"].includes(file) ||
+            !["--version", "-V", "--ro-bind"].includes(first ?? ""),
+        );
+      expect(unexpected).toEqual([]);
       expect(Object.keys(await import("./machine.ts")).sort()).toEqual([
         "cgroupNamesContainer",
         "systemMachine",
