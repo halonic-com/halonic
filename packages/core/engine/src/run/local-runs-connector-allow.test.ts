@@ -70,6 +70,9 @@ async function expectNothingLogged(runs: KernelRuns) {
   expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
 }
 
+// Built from code points: the formatter writes an escape back as the character itself.
+const char = (code: number) => String.fromCharCode(code);
+
 const onlySearch: Lists = { mail: { allow: ["search"], approve: [] } };
 
 verifies("engine.run-connector-allow", () => {
@@ -87,13 +90,13 @@ verifies("engine.run-connector-allow", () => {
       ["a space before it", " delete_all"],
       ["a space after it", "delete_all "],
       ["a newline after it", "delete_all\n"],
-      ["a zero-width space in it", "delete​_all"],
-      ["a Cyrillic е", "dеlete_all"],
-      ["a full-width low line", "delete＿all"],
-      ["a look-alike of the allowed name: Cyrillic ѕ", "ѕearch"],
+      ["a zero-width space in it", `delete${char(0x200b)}_all`],
+      ["a Cyrillic e", `d${char(0x435)}lete_all`],
+      ["a full-width low line", `delete${char(0xff3f)}all`],
+      ["a look-alike of the allowed name: a Cyrillic s", `${char(0x455)}earch`],
       ["a look-alike of the allowed name: upper case", "SEARCH"],
       ["a look-alike of the allowed name: a space after it", "search "],
-      ["a look-alike of the allowed name: full-width", "ｓearch"],
+      ["a look-alike of the allowed name: a full-width s", `${char(0xff53)}earch`],
     ];
 
     it.each(lookAlikes)("is refused by %s, and reaches no connector", async (_, name) => {
