@@ -134,7 +134,9 @@ function startRunHandler(
     stream.send({ type: "started", run: id });
     let finished = false;
     // Studio went away: nobody reads the events or can answer the agent any more.
-    void stream.ended.then(() => (finished ? undefined : run.cancel()));
+    // Nobody awaits this cancel, so a rejection is dropped here: left unhandled, it would
+    // stop the whole host, and every other session and bridge with it.
+    void stream.ended.then(() => (finished ? undefined : run.cancel())).catch(() => {});
     try {
       await sendEvents(run, stream);
     } finally {

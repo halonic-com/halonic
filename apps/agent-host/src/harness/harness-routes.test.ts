@@ -40,6 +40,8 @@ const finished: HarnessEvent = {
 class FakeRun implements HarnessRun {
   readonly sent: HarnessInput[] = [];
   cancelled = false;
+  /** When set, `cancel` ends the run but then rejects with this error. */
+  cancelError: Error | undefined;
   private readonly queue: (HarnessEvent | Error)[] = [];
   private wake: () => void = () => {};
 
@@ -80,6 +82,7 @@ class FakeRun implements HarnessRun {
   async cancel(): Promise<void> {
     this.cancelled = true;
     this.emit(new Error("The run was cancelled."));
+    if (this.cancelError !== undefined) throw this.cancelError;
   }
 }
 
@@ -217,6 +220,17 @@ describe("harness routes", () => {
     const { run } = await startRun(url, ids, caller.signal);
     caller.abort();
     await expect.poll(() => run.cancelled).toBe(true);
+  });
+
+  it("keeps serving when the cancel after Studio went away rejects", async () => {
+    const { url, ...ids } = await started();
+    const caller = new AbortController();
+    const { run } = await startRun(url, ids, caller.signal);
+    run.cancelError = new Error("The harness process could not be stopped.");
+    caller.abort();
+    await expect.poll(() => run.cancelled).toBe(true);
+    // An unhandled rejection would fail this test file; the host answers as before.
+    expect((await request(url, "/v1/harnesses")).status).toBe(200);
   });
 
   it("refuses a session, bridge or harness the host doesn't have", async () => {
