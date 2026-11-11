@@ -57,7 +57,8 @@ optional and come with a requirement.
 - `blockedSites(events, { limit })`: the sites each step's sandbox refused,
   each named once with its tries (the ports of a site added up), most tries
   first, cut at `limit` with the rest counted in `moreSites` and `moreTries`.
-  A step is one visit of a state, per branch and item. Data only; a screen
+  A step is one visit of a state, per branch and item; a step with only
+  `others` blocks and no named site isn't listed. Data only; a screen
   words it and shows each host with `siteName` from std (requirement
   `blocked-sites`).
 

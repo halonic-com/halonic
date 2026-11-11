@@ -7,7 +7,7 @@ import type { RunEvent } from "./run-event.ts";
 
 /** One site a step's sandbox refused, with how many times it was tried. */
 export interface BlockedSite {
-  /** The host, lowercase and without a trailing dot. Show it with `siteName` from std. */
+  /** The host, `A`–`Z` lowercased and without a trailing dot. Show it with `siteName` from std. */
   readonly host: string;
   /** The refused connections to it in the step, all ports together. */
   readonly tries: number;
@@ -38,7 +38,10 @@ export interface StepBlockedSites {
 
 /** How many sites {@link blockedSites} lists per step. */
 export interface BlockedSitesOptions {
-  /** 5 for a step's entry on the run page, 20 for the run log view (sandbox-screens 2.2). */
+  /**
+   * 5 for a step's entry on the run page, 20 for the run log view
+   * (sandbox-screens 2.2). A whole number, 0 or more.
+   */
   readonly limit: number;
 }
 
@@ -60,6 +63,7 @@ interface Tally {
  * @param events - one run's log, in `seq` order
  * @param options - how many sites to list per step
  * @returns the steps with blocked sites, in the order of their first one
+ * @throws RangeError when `limit` isn't a whole number, 0 or more
  *
  * @example
  * blockedSites(events, { limit: 5 });
@@ -70,6 +74,11 @@ export function blockedSites(
   events: readonly RunEvent[],
   options: BlockedSitesOptions,
 ): StepBlockedSites[] {
+  if (!Number.isInteger(options.limit) || options.limit < 0) {
+    throw new RangeError(
+      `blockedSites: limit must be a whole number, 0 or more, not ${options.limit}`,
+    );
+  }
   const visits = new Map<string, number>();
   const tallies = new Map<string, Tally>();
   const others = new Map<string, number>();
@@ -100,9 +109,14 @@ function newTally(event: Extract<RunEvent, { type: "sandbox.blocked" }>): Tally 
   return { step, counts: new Map() };
 }
 
-/** One host however the sandbox wrote it: `API.Example.com.` is `api.example.com`. */
+/**
+ * One host however the sandbox wrote it: `API.Example.com.` is
+ * `api.example.com`. Only `A`–`Z` are lowercased, as `siteName` does:
+ * Unicode lowercasing turns the Kelvin sign (U+212A) into a plain `k`, so a
+ * look-alike would pass for the real name.
+ */
 function plainHost(host: string): string {
-  const lower = host.toLowerCase();
+  const lower = host.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
   return lower.endsWith(".") ? lower.slice(0, -1) : lower;
 }
 

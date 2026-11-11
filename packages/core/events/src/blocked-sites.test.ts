@@ -66,6 +66,14 @@ verifies("events.blocked-sites", () => {
     ]);
   });
 
+  it("lowercases only A to Z, so a look-alike stays its own site", () => {
+    const events = log(site("korse.com", 1), site("\u212Aorse.com", 2));
+    expect(blockedSites(events, { limit: 5 })[0]?.sites).toEqual([
+      { host: "\u212Aorse.com", tries: 2 },
+      { host: "korse.com", tries: 1 },
+    ]);
+  });
+
   it("orders the sites by most tries first, then A to Z", () => {
     const events = log(site("b.example", 2), site("c.example", 9), site("a.example", 2));
     expect(blockedSites(events, { limit: 5 })[0]?.sites.map((each) => each.host)).toEqual([
@@ -138,6 +146,13 @@ verifies("events.blocked-sites", () => {
       ["right", undefined, 3],
       [undefined, 0, 1],
     ]);
+  });
+
+  it("refuses a limit that isn't a whole number, 0 or more", () => {
+    const events = log(site("a.example", 1));
+    expect(() => blockedSites(events, { limit: -1 })).toThrow(RangeError);
+    expect(() => blockedSites(events, { limit: 2.5 })).toThrow(RangeError);
+    expect(blockedSites(events, { limit: 0 })[0]).toMatchObject({ sites: [], moreSites: 1 });
   });
 
   it("gives nothing for a log without blocked sites", () => {
