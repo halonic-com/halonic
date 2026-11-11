@@ -41,7 +41,7 @@ and the current `event`), `StateInput` is the type of a state's `input`, and
 `ValidateOptions`, `WorkflowIssue`, `WorkflowIssueCode` and `Severity` types
 belong to `validateWorkflow`. `APPROVAL_EVENTS` lists the two approval events
 (`approve`, `reject`), and `REJECTED_TOOL_RESULT` is the text the agent reads
-after a plain rejection. `packageName` is a placeholder export.
+after a plain rejection.
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 

@@ -16,9 +16,9 @@ verifies("routines.describe-trigger", () => {
 
   it("describes intervals in the largest unit that divides them", () => {
     expect(describeTrigger({ every: "15m" })).toBe("Every 15 minutes");
-    expect(describeTrigger({ every: "1d" })).toBe("Every day");
-    expect(describeTrigger({ every: "120m" })).toBe("Every 2 hours");
-    expect(describeTrigger({ every: "48h" })).toBe("Every 2 days");
+    expect(describeTrigger({ every: "1d" })).toBe("Every day (UTC)");
+    expect(describeTrigger({ every: "120m" })).toBe("Every 2 hours (UTC)");
+    expect(describeTrigger({ every: "48h" })).toBe("Every 2 days (UTC)");
   });
 
   it("describes a manual trigger", () => {

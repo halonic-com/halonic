@@ -1,6 +1,3 @@
-/** The npm name of this package. A placeholder export, so the empty package has an API to test. */
-export const packageName = "@halonicjs/routines";
-
 export { CronError } from "./cron-error.ts";
 export { describeCron } from "./describe-cron.ts";
 export { describeTrigger } from "./describe-trigger.ts";

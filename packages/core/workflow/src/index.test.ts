@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { packageName } from "./index.ts";
+import * as api from "./index.ts";
 
-describe("packageName", () => {
-  it("is the npm name", () => {
-    expect(packageName).toBe("@halonicjs/workflow");
+describe("the package entry", () => {
+  it("has no placeholder export", () => {
+    expect(api).not.toHaveProperty("packageName");
   });
 });

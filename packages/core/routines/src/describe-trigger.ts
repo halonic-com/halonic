@@ -19,7 +19,7 @@ const DEFAULT_MAIL_QUERY = "in:inbox";
  *
  * @example
  * describeTrigger({ schedule: "0 8 * * 1-5", timezone: "Europe/Amsterdam" }); // "Weekdays at 08:00 (Europe/Amsterdam)"
- * describeTrigger({ every: "1d" }); // "Every day"
+ * describeTrigger({ every: "1d" }); // "Every day (UTC)"
  * describeTrigger({ manual: true }); // "Manual only"
  */
 export function describeTrigger(trigger: RoutineTrigger): string {
@@ -45,7 +45,11 @@ function describeSchedule(expression: string, timeZone: string | undefined): str
   }
 }
 
-/** The largest unit that divides the interval evenly: "120m" reads "Every 2 hours". */
+/**
+ * The largest unit that divides the interval evenly: "120m" reads "Every 2
+ * hours (UTC)". Slots count from the Unix epoch in UTC, so an interval of whole
+ * hours or days says so; minutes are the same in every zone.
+ */
 function describeEvery(text: string): string {
   let length: number;
   try {
@@ -54,7 +58,7 @@ function describeEvery(text: string): string {
     if (error instanceof CronError) return `Every ${text}`;
     throw error;
   }
-  if (length % DAY === 0) return everyCount(length / DAY, "day");
-  if (length % HOUR === 0) return everyCount(length / HOUR, "hour");
+  if (length % DAY === 0) return `${everyCount(length / DAY, "day")} (UTC)`;
+  if (length % HOUR === 0) return `${everyCount(length / HOUR, "hour")} (UTC)`;
   return everyCount(length / MINUTE, "minute");
 }

@@ -14,7 +14,12 @@ const ScheduleTrigger = s
 /** At a fixed interval. */
 const EveryTrigger = s
   .object({
-    every: s.string().regex(DURATION_PATTERN, 'use a number and a unit, e.g. "15m", "1h", "1d"'),
+    every: s
+      .string()
+      .regex(
+        DURATION_PATTERN,
+        'use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)',
+      ),
   })
   .strict();
 

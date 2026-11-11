@@ -93,7 +93,7 @@ describe("describeRoutineChange", () => {
       "trigger: { every: 1d }",
     );
     expect(described(lastVersion, daily)[0]?.sentence).toBe(
-      "Schedule: Weekdays at 08:00 → Every day",
+      "Schedule: Weekdays at 08:00 → Every day (UTC)",
     );
   });
 
