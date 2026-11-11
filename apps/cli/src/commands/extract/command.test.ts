@@ -69,7 +69,7 @@ verifies("cli.commands.extract.extract-hub", () => {
       expect(io.stdout).toEqual([
         `✓ Extracted the hub Family affairs to .${sep}family. home is unchanged.`,
         "  2 hub files · 1 shared file · 4 workspace files",
-        "  Shared items: skills tone",
+        "  Shared items: skills: tone",
         "",
         "Next:",
         "  cd family",

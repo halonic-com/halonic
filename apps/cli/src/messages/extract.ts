@@ -32,7 +32,7 @@ export const extractMessages = defineMessages("extract", {
   /** The dimmed line under the ✓ line. */
   counts: (counts: ExtractCounts) => countsLine(counts),
   /** The dimmed line with the shared items taken along, when there are any. */
-  shared: (uses: ExtractUses) => [dim(`Shared items: ${sharedItems(uses)}`)],
+  shared: (uses: ExtractUses) => sharedLine(uses),
 
   nextValidate: () => phrase`halonic validate`,
   nextValidateWhy: () => [dim("check the new workspace")],
@@ -92,16 +92,21 @@ function countsLine(counts: ExtractCounts): Phrase {
   );
 }
 
-/** "connectors mailbox; skills tone; collections chores, people": the kinds that have items. */
-function sharedItems(uses: ExtractUses): string {
+/**
+ * "Shared items: skills: tone · collections: chores, people", all dimmed, with the
+ * separator as a mark like the counts line: only the kinds that have items.
+ */
+function sharedLine(uses: ExtractUses): Phrase {
   const kinds: [string, readonly string[]][] = [
     ["connectors", uses.connectors],
     ["skills", uses.skills],
     ["knowledge", uses.knowledge],
     ["collections", uses.collections],
   ];
-  return kinds
+  const facts = kinds
     .filter(([, ids]) => ids.length > 0)
-    .map(([kind, ids]) => `${kind} ${ids.join(", ")}`)
-    .join("; ");
+    .map(([kind, ids]) => `${kind}: ${ids.join(", ")}`);
+  return facts.flatMap((fact, index) =>
+    index === 0 ? [dim(`Shared items: ${fact}`)] : [" ", markPart("separator"), " ", dim(fact)],
+  );
 }
