@@ -153,11 +153,13 @@ export class FileToolApprovalStore implements ToolApprovalStore {
   /**
    * Refuses a store folder inside the workspace at `location`, or the
    * workspace itself, comparing real paths, so a link can't hide it.
-   * `location` is already the workspace's resolved real path.
+   * `location` is resolved too, so a second spelling of the same folder,
+   * such as a Windows short name, can't slip past.
    */
   async #refuseInsideWorkspace(location: string): Promise<void> {
     const root = await realPathOf(this.#root);
-    const path = relative(location, root);
+    const workspace = await realPathOf(location);
+    const path = relative(workspace, root);
     const outside = path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path);
     if (!outside) {
       throw new Error(

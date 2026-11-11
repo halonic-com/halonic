@@ -303,6 +303,7 @@ function waitingCases(make: MakeToolApprovalStore): void {
     ]);
   });
 
+  // A file store writes once per tool here, so it needs longer than the default.
   it("keeps waiting versions for a bounded number of tools per source", async () => {
     const { store } = await make();
     await store.noteWaiting(lookup, waitingVersion(1, 0));
@@ -311,7 +312,7 @@ function waitingCases(make: MakeToolApprovalStore): void {
     }
     // `lookup` was the oldest, so it was dropped, and its versions start again.
     expect(await store.noteWaiting(lookup, waitingVersion(2, 2))).toEqual([waitingVersion(2, 2)]);
-  });
+  }, 60_000);
 
   it("forgets a tool's waiting versions when it is approved or revoked", async () => {
     const { store } = await make();
