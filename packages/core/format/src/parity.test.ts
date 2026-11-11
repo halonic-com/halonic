@@ -38,8 +38,19 @@ function fileCases(): FileCase[] {
   });
 }
 
+const parsedFiles = new Map<FileCase, ReturnType<typeof parseFile>>();
+
+/**
+ * Parses each fixture file once and keeps the result: the report below parses them all, and a
+ * test that parsed them all again took up to 3.5 s in CI, against Vitest's 5 s limit (HAL-5473).
+ */
 function parse(file: FileCase) {
-  return parseFile(file.kind, file.text, file.id === undefined ? {} : { id: file.id });
+  let parsed = parsedFiles.get(file);
+  if (parsed === undefined) {
+    parsed = parseFile(file.kind, file.text, file.id === undefined ? {} : { id: file.id });
+    parsedFiles.set(file, parsed);
+  }
+  return parsed;
 }
 
 const files = fileCases();
