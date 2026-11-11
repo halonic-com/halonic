@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-4564 (Tomas's decision of 10 Nov 2026, from HAL-2544 and Liam's review of halonic#1066 on HAL-3620)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/XMcgaffNp3B14R7dD0oWm8W6XDCizmFw8++0x/4E0K5slPLf/rOQMpMIB3IPKSMnqFuKbYrwITRYJ0hfwrqBg==
 
 A stdio connector whose program stopped after it started kept the dead session, so every later
 call failed until the connector was created again. HAL-4564 decides: the call that was running fails
