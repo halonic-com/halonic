@@ -60,6 +60,13 @@ verifies("workspace.trust-integration-code", () => {
       "src\\index.js",
       "src//index.js",
       "",
+      "C:/index.js",
+      "C:",
+      "src/a:b.js",
+      "index.js\u0000.txt",
+      "src/\nindex.js",
+      "index.js.",
+      "index.js ",
     ])("refuses %j", async (path) => {
       await expect(integrationCodeDigest([file(path, "")], digest)).rejects.toThrow(RangeError);
     });

@@ -9,7 +9,7 @@ import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 export interface IntegrationFile {
   /**
    * Its path relative to the integration's folder, with `/` between
-   * segments, such as `src/index.js`. No leading `/`, `.` or `..` segment.
+   * segments, such as `src/index.js`, as {@link isCleanRelativePath} accepts.
    */
   readonly path: string;
   /** Its bytes, as on disk. */
@@ -55,13 +55,37 @@ export async function integrationCodeDigest(
   return `sha256:${bytesToHex(await digest.sha256(encoded))}`;
 }
 
-/** Refuses a path that isn't relative, uses `\`, or has an empty, `.` or `..` segment. */
+/**
+ * Whether a path is relative, uses `/` between segments, and has only
+ * segments that name the same file on every system: not empty, without `\`,
+ * `:` or a control character, and not ending in `.` or a space (so no `.`,
+ * `..` or `C:`). Windows drops a trailing `.` or space, so `a.js.` and
+ * `a.js` would be one file there.
+ */
+export function isCleanRelativePath(path: string): boolean {
+  return path.split("/").every(isCleanSegment);
+}
+
+function isCleanSegment(segment: string): boolean {
+  return (
+    segment !== "" &&
+    !segment.includes("\\") &&
+    !segment.includes(":") &&
+    ![...segment].some(isControlCharacter) &&
+    !segment.endsWith(".") &&
+    !segment.endsWith(" ")
+  );
+}
+
+/** NUL to U+001F, and DEL. */
+function isControlCharacter(character: string): boolean {
+  const code = character.charCodeAt(0);
+  return code <= 0x1f || code === 0x7f;
+}
+
+/** Refuses a path that {@link isCleanRelativePath} doesn't accept. */
 function checkPath(path: string): void {
-  const segments = path.split("/");
-  const clean =
-    !path.includes("\\") &&
-    segments.every((segment) => segment !== "" && segment !== "." && segment !== "..");
-  if (!clean) {
+  if (!isCleanRelativePath(path)) {
     throw new RangeError(
       `"${path}" isn't a clean path relative to the integration's folder, such as "src/index.js".`,
     );

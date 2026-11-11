@@ -153,12 +153,25 @@ verifies("workspace.trust-integrations", () => {
       expect(contentOf([integration]).integrations?.[0]?.folder).toBe("integrations/home-station");
     });
 
-    it.each(["/srv/integrations/home-station", "../home-station", "integrations/../..", ".", ""])(
-      "refuses the folder %j, which isn't inside the workspace",
-      (folder) => {
-        expect(() => contentOf([{ ...homeStation({}), folder }])).toThrow(RangeError);
-      },
-    );
+    it.each([
+      "/srv/integrations/home-station",
+      "../home-station",
+      "integrations/../..",
+      ".",
+      "",
+      "integrations\\home-station",
+      "C:/integrations/home-station",
+      "integrations/home-station.",
+    ])("refuses the folder %j, which isn't inside the workspace", (folder) => {
+      expect(() => contentOf([{ ...homeStation({}), folder }])).toThrow(RangeError);
+    });
+
+    it("refuses two integrations with the same id, which the changes couldn't tell apart", () => {
+      const copy = { ...homeStation({}), folder: "integrations/copy" };
+      expect(() => contentOf([homeStation({}), copy])).toThrow(
+        'Two local integrations have the id "home-station".',
+      );
+    });
 
     it("adds an integration with fixed hosts only, with no addresses", () => {
       const weather = homeStation({}, { hosts: ["api.example.com"] });

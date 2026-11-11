@@ -35,6 +35,7 @@ import type {
   IntegrationSheet,
 } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
+import { isCleanRelativePath } from "./trust-integration-code.ts";
 import { secretReference } from "./trust-secret.ts";
 import { trustUrl } from "./trust-url.ts";
 
@@ -100,12 +101,12 @@ export interface SecretTrustContent {
 }
 
 /**
- * The trust content of a workspace's local integrations, sorted by id and
- * then folder. Of the sheet, only the fields that decide what the code
+ * The trust content of a workspace's local integrations, sorted by id. Of the sheet, only the fields that decide what the code
  * can do are in it on their own; its wording changes only `code`, the hash
  * of every file, `integration.yaml` included.
  *
- * @throws {RangeError} when a folder is absolute or outside the workspace.
+ * @throws {RangeError} when a folder is absolute, outside the workspace or
+ * not clean, or two integrations have the same id.
  *
  * @example
  * integrationsTrustContent([
@@ -119,11 +120,8 @@ export interface SecretTrustContent {
 export function integrationsTrustContent(
   integrations: readonly LocalIntegrationInput[],
 ): IntegrationTrustContent[] {
-  return integrations
-    .map(integrationContent)
-    .sort(
-      (left, right) => compareText(left.id, right.id) || compareText(left.folder, right.folder),
-    );
+  checkUniqueIds(integrations);
+  return integrations.map(integrationContent).sort((left, right) => compareText(left.id, right.id));
 }
 
 function integrationContent(integration: LocalIntegrationInput): IntegrationTrustContent {
@@ -147,23 +145,29 @@ function integrationContent(integration: LocalIntegrationInput): IntegrationTrus
 }
 
 /**
- * The folder, normalised and without a trailing `/`. One that is absolute or
- * leaves the workspace is a bug in whoever read it, so it is refused rather
- * than trusted.
+ * The folder, normalised and without a trailing `/`. One that is absolute,
+ * leaves the workspace or could be spelled another way (with `\`, say) is a
+ * bug in whoever read it, so it is refused rather than trusted.
  */
 function folderContent(folder: string): string {
   const normalized = posixPath.normalize(folder).replace(/\/+$/, "");
-  const outside =
-    folder.startsWith("/") ||
-    normalized === "" ||
-    normalized === "." ||
-    normalized.split("/").includes("..");
-  if (outside) {
+  if (folder.startsWith("/") || !isCleanRelativePath(normalized)) {
     throw new RangeError(
       `"${folder}" isn't a folder inside the workspace, such as "integrations/home-station".`,
     );
   }
   return normalized;
+}
+
+/** Refuses two integrations with the same id: the trust changes match them by id. */
+function checkUniqueIds(integrations: readonly LocalIntegrationInput[]): void {
+  const seen = new Set<string>();
+  for (const { sheet } of integrations) {
+    if (seen.has(sheet.id)) {
+      throw new RangeError(`Two local integrations have the id "${sheet.id}".`);
+    }
+    seen.add(sheet.id);
+  }
 }
 
 function hostsContent(sheet: IntegrationSheet): Record<string, AddressClass> {
