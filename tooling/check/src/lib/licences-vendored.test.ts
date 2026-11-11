@@ -87,6 +87,9 @@ verifies("check.licences-vendored", () => {
       undefined,
     );
     expect(thirdPartyLicenceMark("export const a = 1;\n")).toBe(undefined);
+    expect(
+      thirdPartyLicenceMark("// The licence comment holds `@license`, so bundlers keep it.\n"),
+    ).toBe(undefined);
   });
 
   test("only reads the comment block at the top, and only under packages/ and apps/", () => {

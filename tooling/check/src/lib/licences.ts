@@ -161,7 +161,9 @@ export function leadingComments(text: string): string {
 }
 
 const thirdPartyMarks: readonly { readonly pattern: RegExp; readonly label: string }[] = [
-  { pattern: /@licen[cs]e\b/i, label: "an @license tag" },
+  // A tag starts its comment line; a comment that only mentions `@license` in
+  // a sentence, like the script that writes the public suffix list, isn't one.
+  { pattern: /^[\s#*/;!<-]*@licen[cs]e\b/im, label: "an @license tag" },
   {
     pattern: new RegExp(`Mozilla${gap}Public${gap}License`, "i"),
     label: "the Mozilla Public License",
