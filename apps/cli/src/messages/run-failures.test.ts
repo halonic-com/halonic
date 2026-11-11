@@ -1,9 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { paintFor } from "../output/paint.ts";
 import { listInWords, timesInWords } from "./counts.ts";
 import { money } from "./money.ts";
-import { plainText, renderPhrase } from "./phrase.ts";
+import { plainText } from "./phrase.ts";
 import { type FailedRun, type RunFailure, runFailedLines } from "./run-failures.ts";
 
 const draftReply: FailedRun = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
@@ -27,7 +26,7 @@ verifies("cli.messages", () => {
     expect(fix.key).toBe("runFailedFix.key-refused");
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-      "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again.",
+      "Set HALONIC_SECRET_OPENAI_KEY to a key OpenAI accepts, then run again.",
     ]);
   });
 
@@ -53,7 +52,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     };
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-      "Add the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again.",
+      "Set HALONIC_SECRET_OPENAI_KEY to your OpenAI key, then run again.",
     ]);
   });
 
@@ -62,7 +61,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       lines({ reason: "signed-out", service: "Gmail", account: "fin@acme.example" }, "Read mail"),
     ).toEqual([
       "Support reply failed in the step Read mail: Gmail (fin@acme.example) is signed out. Nothing was sent.",
-      "Sign in again in Studio (Library › Gmail), then run again.",
+      "Sign in to Gmail again, then run again.",
     ]);
     expect(lines({ reason: "out-of-credit", provider: "OpenAI" })).toEqual([
       "Support reply failed in the step Draft a reply: OpenAI refused the call because the account has no credit left or reached its limit at OpenAI.",
@@ -243,16 +242,14 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     ]);
   });
 
-  it("writes a Studio place with > where the output isn't UTF-8", () => {
-    const oldConsole = paintFor({ colour: false, live: false, unicode: false });
-    const { fix } = runFailedLines(draftReply, {
-      reason: "signed-out",
-      service: "Gmail",
-      account: "fin@acme.example",
-    });
-    expect(renderPhrase(fix.phrase, oldConsole)).toBe(
-      "Sign in again in Studio (Library > Gmail), then run again.",
-    );
+  it("sends no one to Studio, which 0.1 doesn't have (HAL-6183)", () => {
+    const key = { provider: "OpenAI", secret: "openai-key", alias: "smart" };
+    const fixes = [
+      lines({ reason: "key-refused", ...key })[1],
+      lines({ reason: "no-key", ...key })[1],
+      lines({ reason: "signed-out", service: "Gmail", account: "fin@acme.example" })[1],
+    ];
+    expect(fixes.filter((fix) => fix.includes("Studio"))).toEqual([]);
   });
 });
 

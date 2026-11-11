@@ -31,7 +31,7 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
   then it reads "Expected the run to save reply.md, but it didn't. It saved summary.md.", and summary.md isn't a failure of its own, because `artifacts` means "at least these" (cli-output 3.3, HAL-2690).
 - Given a run of Support reply whose step Draft a reply failed because OpenAI refused the key in the secret openai-key,
   when its two lines are made,
-  then line 1 names the secret and its variable, HALONIC_SECRET_OPENAI_KEY, and line 2 reads "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again." (cli-output 3.4).
+  then line 1 names the secret and its variable, HALONIC_SECRET_OPENAI_KEY, and line 2 reads "Set HALONIC_SECRET_OPENAI_KEY to a key OpenAI accepts, then run again." (cli-output 3.4; no Studio in 0.1, HAL-6183).
 - Given a finished run that changed 1 file, sent 1 email, asked once and spent an estimated €0.004,
   when its receipt is made,
   then it reads "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004", and a run that sent nothing says "Sent nothing" (cli-output 3.4).

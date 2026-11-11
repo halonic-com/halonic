@@ -3,7 +3,7 @@ import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages } from "./general.ts";
 import { money } from "./money.ts";
-import { markPart, type Phrase, phrase } from "./phrase.ts";
+import { type Phrase, phrase } from "./phrase.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
@@ -241,14 +241,18 @@ const lineOne = {
   internal: (run) => cantTellCause(run),
 } satisfies ByReason;
 
-/** Line 2 by reason: the Studio button, written as a command or a Studio place. */
+/**
+ * Line 2 by reason: the one fix, as a command or a file to change. Halonic
+ * 0.1 has no Studio, so no line sends the user there (HAL-6183).
+ */
 const lineTwo = {
   "key-refused": (_run, failure) =>
-    phrase`Replace the key in Studio (${studioPlace("Settings", "Models", failure.provider)}), or set ${secretVariableName(failure.secret)}, then run again.`,
+    phrase`Set ${secretVariableName(failure.secret)} to a key ${failure.provider} accepts, then run again.`,
   "no-key": (_run, failure) =>
-    phrase`Add the key in Studio (${studioPlace("Settings", "Models", failure.provider)}), or set ${secretVariableName(failure.secret)}, then run again.`,
-  "signed-out": (_run, failure) =>
-    phrase`Sign in again in Studio (${studioPlace("Library", failure.service)}), then run again.`,
+    phrase`Set ${secretVariableName(failure.secret)} to your ${failure.provider} key, then run again.`,
+  // The CLI has no sign-in command, so it names the service only.
+  // TODO: name the CLI's sign-in command here once there is one.
+  "signed-out": (_run, failure) => phrase`Sign in to ${failure.service} again, then run again.`,
   "out-of-credit": (_run, failure) =>
     phrase`Add credit at ${failure.provider}, then run again. This isn't your Halonic budget.`,
   "provider-busy": () => tryLater(),
@@ -317,13 +321,6 @@ function asSentence(text: string): string {
 /** Every key error names the secret and the variable Halonic reads it from, the same as the reader does. */
 function namedSecret(secret: string): string {
   return `${secret} (${secretVariableName(secret)})`;
-}
-
-/** A place in Studio, such as "Settings › Models › OpenAI", with › as a mark. */
-function studioPlace(...places: readonly string[]): Phrase {
-  return places.flatMap((place, index) =>
-    index === 0 ? [place] : [" ", markPart("studioPath"), " ", place],
-  );
 }
 
 /**
