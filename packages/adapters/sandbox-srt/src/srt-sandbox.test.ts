@@ -10,6 +10,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     platform: "linux",
     insideContainer: async () => false,
     hasBubblewrap: async () => true,
+    hasLinuxHelpers: async () => true,
     userNamespacesRestricted: async () => false,
     hasSeatbelt: async () => true,
     hasWindowsSandbox: async () => false,
@@ -49,6 +50,7 @@ verifies("sandbox-srt.check", () => {
       ["container", { insideContainer: async () => true }],
       ["user-namespaces-restricted", { userNamespacesRestricted: async () => true }],
       ["bubblewrap-missing", { hasBubblewrap: async () => false }],
+      ["linux-tools-missing", { hasLinuxHelpers: async () => false }],
       ["other", { platform: "darwin" as const, hasSeatbelt: async () => false }],
     ])("gives the reason %s", async (reason, overrides) => {
       const check = await new SrtSandbox(machine(overrides)).check();
@@ -61,6 +63,7 @@ verifies("sandbox-srt.check", () => {
         insideContainer: async () => true,
         userNamespacesRestricted: async () => true,
         hasBubblewrap: async () => false,
+        hasLinuxHelpers: async () => false,
       });
       expect((await new SrtSandbox(everythingWrong).check()).reason).toBe("container");
     });

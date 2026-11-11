@@ -15,14 +15,17 @@ const { systemMachine } = await import("./machine.ts");
 
 verifies("sandbox-srt.check", () => {
   describe("what the machine probes start", () => {
-    it("is only bwrap with fixed arguments, never a skill's scripts (HAL-188)", async () => {
+    it("is only bwrap, socat and rg with fixed arguments, never a skill's scripts (HAL-188)", async () => {
       await systemMachine.insideContainer();
       await systemMachine.hasBubblewrap();
+      await systemMachine.hasLinuxHelpers();
       await systemMachine.userNamespacesRestricted();
       await systemMachine.hasSeatbelt();
       await systemMachine.hasWindowsSandbox(); // starts srt-win only on Windows
       expect(started).toEqual([
         { file: "bwrap", args: ["--version"] },
+        { file: "socat", args: ["-V"] },
+        { file: "rg", args: ["--version"] },
         { file: "bwrap", args: ["--ro-bind", "/", "/", "--unshare-user", "--", "true"] },
       ]);
     });

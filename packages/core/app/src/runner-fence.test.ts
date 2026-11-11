@@ -26,13 +26,16 @@ verifies("app.runner-fence", () => {
     });
   });
 
-  it.each(["container", "user-namespaces-restricted", "bubblewrap-missing", "other"] as const)(
-    "is not fenced with the check's reason %s",
-    (reason) => {
-      const check: SandboxCheck = { ok: false, reason, missing: ["what is missing"] };
-      expect(runnerFence({ platform: "linux", check })).toEqual({ state: "not-fenced", reason });
-    },
-  );
+  it.each([
+    "container",
+    "user-namespaces-restricted",
+    "bubblewrap-missing",
+    "linux-tools-missing",
+    "other",
+  ] as const)("is not fenced with the check's reason %s", (reason) => {
+    const check: SandboxCheck = { ok: false, reason, missing: ["what is missing"] };
+    expect(runnerFence({ platform: "linux", check })).toEqual({ state: "not-fenced", reason });
+  });
 
   it.each(["darwin", "linux"])("is fenced on %s when the check passes", (platform) => {
     expect(runnerFence({ platform, check: passes })).toEqual({ state: "fenced" });

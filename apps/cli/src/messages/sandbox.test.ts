@@ -29,6 +29,7 @@ describe("the sandbox sentences", () => {
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the runner or computer itself, not in a container. halonic validate and halonic test work in a container.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
+      "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
   });
@@ -64,6 +65,10 @@ describe("the sandbox sentences", () => {
       [
         "bubblewrap isn't installed, and the sandbox needs it.",
         "Fix: install it, for example on Ubuntu or Debian with sudo apt install bubblewrap. Then run halonic doctor again.",
+      ],
+      [
+        "socat or ripgrep isn't installed, and the sandbox needs both.",
+        "Fix: install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep. Then run halonic doctor again.",
       ],
       [
         "Halonic can't tell what the sandbox is missing.",

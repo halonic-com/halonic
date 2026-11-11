@@ -290,7 +290,8 @@ start, in this order, because its fix comes first.
 
 - **Linux** uses bubblewrap: its own user, mount and network namespaces, with
   the network reached only through srt's proxy. It needs `bubblewrap`,
-  `socat` and `ripgrep`. Inside a container (Docker, Podman) it can't nest and
+  `socat` and `ripgrep`; `check()` reports `linux-tools-missing` without
+  `socat` or `ripgrep`. Inside a container (Docker, Podman) it can't nest and
   reports `container`.
 - **Ubuntu 24.04 and later** stop programs from creating user namespaces
   (`kernel.apparmor_restrict_unprivileged_userns`). `check()` asks bubblewrap

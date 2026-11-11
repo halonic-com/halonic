@@ -13,6 +13,11 @@ export interface Machine {
   /** Whether bubblewrap (`bwrap`) can be started. */
   hasBubblewrap(): Promise<boolean>;
   /**
+   * Whether `socat` and `rg` (ripgrep) can be started: srt runs both on Linux,
+   * `socat` for the network bridge and `rg` to find the paths it fences off.
+   */
+  hasLinuxHelpers(): Promise<boolean>;
+  /**
    * Whether the system stops programs from creating user namespaces, which
    * bubblewrap needs: Ubuntu 24.04 does by default.
    */
@@ -62,6 +67,16 @@ function bubblewrapStarts(): Promise<boolean> {
   return bubblewrapProbe;
 }
 
+/** Asked once, like bubblewrap: the helpers srt starts next to it do not come and go while we run. */
+let linuxHelpersProbe: Promise<boolean> | undefined;
+function linuxHelpersStart(): Promise<boolean> {
+  linuxHelpersProbe ??= Promise.all([
+    succeeds("socat", ["-V"]),
+    succeeds("rg", ["--version"]),
+  ]).then(([socat, rg]) => socat && rg);
+  return linuxHelpersProbe;
+}
+
 /** The machine this process runs on. */
 export const systemMachine: Machine = {
   platform: process.platform,
@@ -70,6 +85,7 @@ export const systemMachine: Machine = {
     return cgroupNamesContainer(await readOrEmpty("/proc/1/cgroup"));
   },
   hasBubblewrap: bubblewrapStarts,
+  hasLinuxHelpers: linuxHelpersStart,
   async userNamespacesRestricted() {
     // With bubblewrap there, ask it: it knows better than the setting (Ubuntu 24.04
     // lets bubblewrap through its own profile). Its new root is empty, so give it ours.

@@ -18,6 +18,7 @@ export const runnerUnfencedReasons = [
   "container",
   "user-namespaces-restricted",
   "bubblewrap-missing",
+  "linux-tools-missing",
   "other",
 ] as const;
 

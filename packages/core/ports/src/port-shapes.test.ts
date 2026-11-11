@@ -409,6 +409,7 @@ verifies("ports.sandbox-check-reason", () => {
       "container",
       "user-namespaces-restricted",
       "bubblewrap-missing",
+      "linux-tools-missing",
       "other",
     ]);
   });

@@ -110,6 +110,9 @@ export class SrtSandbox implements Sandbox {
     if (!(await machine.hasBubblewrap())) {
       return { reason: "bubblewrap-missing", missing: "bubblewrap is not installed" };
     }
+    if (!(await machine.hasLinuxHelpers())) {
+      return { reason: "linux-tools-missing", missing: "socat or ripgrep is not installed" };
+    }
     return null;
   }
 }

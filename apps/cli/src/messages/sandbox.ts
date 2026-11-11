@@ -19,6 +19,8 @@ const refusedFixes: Readonly<Record<SandboxUnavailableReason, string>> = {
     "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
   "bubblewrap-missing":
     "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
+  "linux-tools-missing":
+    "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
   other:
     "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
 };
@@ -29,6 +31,7 @@ const reasons: Readonly<Record<SandboxUnavailableReason, string>> = {
   container: "Halonic is running inside a container, and the sandbox can't start there.",
   "user-namespaces-restricted": "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
   "bubblewrap-missing": "bubblewrap isn't installed, and the sandbox needs it.",
+  "linux-tools-missing": "socat or ripgrep isn't installed, and the sandbox needs both.",
   other: "Halonic can't tell what the sandbox is missing.",
 };
 
@@ -44,6 +47,8 @@ const fixes: Readonly<Record<SandboxUnavailableReason, string>> = {
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
   "bubblewrap-missing":
     "install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+  "linux-tools-missing":
+    "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
   other: "see what the sandbox needs on this computer.",
 };
 

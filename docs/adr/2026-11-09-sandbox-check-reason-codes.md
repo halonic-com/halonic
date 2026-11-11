@@ -59,3 +59,12 @@ had been written against an earlier version.
   adapter that opens a session when it can't start.
 - `ports.sandbox-check-reason` and `contracts.sandbox-check` keep the
   decision true; the port's type test fails to compile on an unlisted code.
+
+## Addendum (HAL-5034): `linux-tools-missing`
+
+srt starts `socat` and ripgrep (`rg`) next to bubblewrap on Linux, and its own
+dependency check fails without either. The check only probed `bwrap`, so
+`halonic doctor` could say ready on a machine where the first run then failed.
+The list gains `linux-tools-missing`, after `bubblewrap-missing` (one `apt`
+command fixes both, so the order costs nothing). One code covers both tools;
+`missing` stays one sentence for logs.

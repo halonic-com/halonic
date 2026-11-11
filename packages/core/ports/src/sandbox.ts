@@ -46,6 +46,7 @@ export interface SandboxCapabilities {
  * - `container`: Halonic itself runs inside a container (such as Docker), which won't nest the fence.
  * - `user-namespaces-restricted`: the system doesn't let programs create user namespaces, as Ubuntu 24.04 does by default.
  * - `bubblewrap-missing`: bubblewrap (`bwrap`) is not installed.
+ * - `linux-tools-missing`: `socat` or ripgrep (`rg`), which srt starts next to bubblewrap, is not installed.
  * - `other`: none of the above; `SandboxCheck.missing` says what.
  */
 export const sandboxUnavailableReasons = [
@@ -53,6 +54,7 @@ export const sandboxUnavailableReasons = [
   "container",
   "user-namespaces-restricted",
   "bubblewrap-missing",
+  "linux-tools-missing",
   "other",
 ] as const;
 

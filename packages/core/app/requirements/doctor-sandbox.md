@@ -12,5 +12,7 @@ The Sandbox line of `halonic doctor` shall be marked as ok, with the sandbox's c
   then the line is ✓ with that strength.
 - Given bubblewrap isn't installed,
   then the line is ✕ with `bubblewrap-missing`, so `doctor` exits 1.
+- Given bubblewrap is installed but `socat` or ripgrep isn't,
+  then the line is ✕ with `linux-tools-missing`, so `doctor` exits 1, not ✓.
 - Given the check fails with `other` and says "seccomp is unavailable",
   then the line is ✕ with `other`, and that sentence is only the debug detail.

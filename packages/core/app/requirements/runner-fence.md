@@ -12,7 +12,7 @@ The fence status of plugin and integration code shall be `not-fenced` with the r
   then the status is `not-fenced` with `windows`.
 - Given Windows and a failing sandbox check with `other`,
   then the status is still `not-fenced` with `windows`.
-- Given Linux and a check that fails with `container`, `user-namespaces-restricted`, `bubblewrap-missing` or `other`,
+- Given Linux and a check that fails with `container`, `user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing` or `other`,
   then the status is `not-fenced` with that reason.
 - Given macOS or Linux and a passing check, before the code starts,
   then the status is `fenced`.

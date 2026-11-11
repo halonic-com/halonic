@@ -8,6 +8,7 @@ export const linux = {
   platform: "linux" as const,
   insideContainer: async () => false,
   hasBubblewrap: async () => true,
+  hasLinuxHelpers: async () => true,
   userNamespacesRestricted: async () => false,
   hasSeatbelt: async () => true,
   hasWindowsSandbox: async () => false,
