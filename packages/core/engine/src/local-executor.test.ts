@@ -97,7 +97,7 @@ verifies("engine.local-chat-turn", () => {
     const response = await executor.chatTurn(request);
 
     expect(mail.calls).toEqual([]);
-    expect(response.refusals.map((refusal) => refusal.name)).toEqual(["archive"]);
+    expect((response.refusals ?? []).map((refusal) => refusal.name)).toEqual(["archive"]);
   });
 
   it("offers its Halonic tools after the caller's and names the request's agent", async () => {
