@@ -41,13 +41,27 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
 The tests include attack cases: a runner that sends malformed, oversize or out-of-order frames
 must be stopped with exactly one block, or answered without stopping, and never make Halonic throw.
 
-Not done yet: starting the runner through the `Sandbox` port, building the runner into one file,
-Node's permission flags and the module hook.
+- **Starting it, `startRunner`:** it opens a `Sandbox` session of the runner's own with the
+  untrusted profile (`runnerProfile`), starts Node in it and connects. The profile has no network
+  and no loopback bridge, writes only to a fresh temp folder, and an environment of `TMPDIR`
+  alone. It hides the home folder and the socket folders (`socketFolders`). A profile can't allow
+  a path inside a hidden one, so when Node or the integration is inside such a folder, every other
+  entry on the way is hidden instead. Node runs with `--permission`, reading only the runner and
+  the integration's folder. Each start has a fresh nonce. The connection carries the session's
+  fence proof (`fence`), what the fence refuses is reported through `onBlocked` as a `fence`
+  block, and the session closes when the runner stops for any reason.
+- **The runner process, `src/runner/main.ts`:** `node --permission … <runner> <nonce> <entry file>
+  <export>`. The console goes to stderr, so stdout carries only frames. It loads the integration
+  after `start`, and gives it a token store that refuses every call.
+
+Not done yet: building the runner into one file, the module hook, and starting through
+`sandbox-host` on the confirmed path without the fence. Whether a runner may start at all, and
+fenced or not, is decided before `startRunner` by the start gate in `core/app`.
 
 ## Example
 
 ```ts
-import { connectRunner } from "@halonicjs/adapter-integration-runner";
+import { connectRunner, socketFolders, startRunner } from "@halonicjs/adapter-integration-runner";
 
 const connection = await connectRunner({
   process, // started through the Sandbox session
@@ -59,4 +73,18 @@ const connection = await connectRunner({
   onBlocked: (block) => pauseConnector(block),
 });
 const text = await connection.callTool("forecast", { city: "Ghent" }, signal);
+
+// Or start it through a Sandbox session and connect in one step:
+const runner = await startRunner({
+  sandbox, // sandbox-srt
+  files: { node, nodeFolder, runnerFile, integrationFolder },
+  entry: { file: `${integrationFolder}/index.js`, exportName: "weather" },
+  machine: { homeFolder, socketFolders: socketFolders(env), tempFolder, timeLimitMs },
+  settings,
+  tools,
+  http,
+  secrets,
+  onBlocked,
+});
+runner.fence; // { state: "fenced" }
 ```

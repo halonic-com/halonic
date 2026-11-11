@@ -1,5 +1,5 @@
 import type { RefusalCode } from "@halonicjs/adapter-integration-kit";
-import type { SandboxExit } from "@halonicjs/ports";
+import type { SandboxBlock, SandboxExit } from "@halonicjs/ports";
 
 /**
  * What Halonic holds the runner to (design HAL-958, section 3.7). Each has a
@@ -88,12 +88,13 @@ export type RunnerStop =
 
 /**
  * Something the connector should be paused for and recorded as
- * `sandbox.blocked`: a frame outside the protocol, or a kit refusal on the
- * kit's leak list (`leakAttemptCodes`).
+ * `sandbox.blocked`: a frame outside the protocol, a kit refusal on the
+ * kit's leak list (`leakAttemptCodes`), or an access the fence refused.
  */
 export type RunnerBlock =
   | { kind: "protocol"; detail: string }
-  | { kind: "leak-attempt"; code: RefusalCode };
+  | { kind: "leak-attempt"; code: RefusalCode }
+  | { kind: "fence"; block: SandboxBlock };
 
 /** A call or a start that failed because the runner stopped. */
 export class RunnerStoppedError extends Error {
