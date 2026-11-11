@@ -137,7 +137,9 @@ async function namedPart(
  * package in one, that really lives in a working folder. Only the folders
  * from the start folder up to the workspace root are listed: anything above
  * the workspace is out of an agent's reach, and a start outside it (such as
- * a pinned package's new empty folder) has none to list.
+ * a pinned package's new empty folder) has none to list. Both are compared
+ * where they really are, as `npx` sees its start folder, so a start folder
+ * or root given through a link is still walked.
  */
 async function linkedPackage(
   cwd: string,
@@ -145,12 +147,19 @@ async function linkedPackage(
   folders: readonly Folder[],
   lookup: FolderLookup,
 ): Promise<WorkingFolderReach | null> {
-  for (const folder of foldersUpTo(cwd, workspaceRoot, lookup)) {
+  const [realCwd, realRoot] = await Promise.all([
+    realPath(cwd, lookup),
+    realPath(workspaceRoot, lookup),
+  ]);
+  for (const folder of foldersUpTo(realCwd, realRoot, lookup)) {
     const modules = lookup.resolve(folder, "node_modules");
-    for (const entry of [modules, ...(await packagesIn(modules, lookup))]) {
-      const holder = holding([await realPath(entry, lookup)], folders);
-      if (holder !== undefined) return { folder: holder, how: `loads '${entry}'` };
-    }
+    const entries = [modules, ...(await packagesIn(modules, lookup))];
+    const holders = await Promise.all(
+      entries.map(async (entry) => holding([await realPath(entry, lookup)], folders)),
+    );
+    const index = holders.findIndex((holder) => holder !== undefined);
+    const holder = holders[index];
+    if (holder !== undefined) return { folder: holder, how: `loads '${entries[index]}'` };
   }
   return null;
 }

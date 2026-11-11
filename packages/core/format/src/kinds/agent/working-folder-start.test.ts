@@ -18,6 +18,8 @@ const coder = "/w/files/agents/coder";
  */
 const links: Record<string, string> = {
   "/w/FILES~1": "/w/files",
+  "/alias": "/w",
+  "/t/link": "/w/pnpm",
   "/w/tools/run.js": "/w/files/agents/coder/run.js",
   "/w/out": "/w/files/agents/coder",
   "/w/linked": "/w/files/agents",
@@ -123,11 +125,23 @@ verifies("format.working-folder-start", () => {
       ["a .bin entry", start("npx", ["mail-mcp"], "/w/bin-link")],
       ["a scoped package", start("node", ["-e", "require('@acme/mail')"], "/w/scoped")],
       ["a package above the start folder", start("npx", ["mail-mcp"], "/w/pnpm/tools")],
+      ["a package from a start folder linked from outside", start("npx", ["mail-mcp"], "/t/link")],
     ])("finds %s linked into node_modules", async (_, bad) => {
       expect(await reach(bad)).toMatchObject({
         folder: coder,
         how: expect.stringContaining("node_modules"),
       });
+    });
+
+    it("finds a package linked into node_modules when the workspace root is given through a link", async () => {
+      expect(
+        await touchesWorkingFolder(
+          start("npx", ["mail-mcp"], "/w/pnpm"),
+          "/alias",
+          [coder],
+          lookup,
+        ),
+      ).toMatchObject({ folder: coder, how: expect.stringContaining("node_modules") });
     });
 
     it("finds a script in the workspace root, which loads files from next to it", async () => {
