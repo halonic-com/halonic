@@ -44,6 +44,8 @@ Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine;
 
 - Before you push, check what you changed: `git fetch origin`, then
   `pnpm exec turbo run typecheck lint test --filter=...[origin/main] --concurrency=2`.
+  A change under `examples/` alone selects nothing with that filter (Turborepo only maps files to packages),
+  so also add `--filter=halonic --filter=@halonicjs/workspace`, the two packages whose tests read it.
 - Before you queue a pull request, typecheck every package on top of the latest `main`:
   `pnpm exec turbo run typecheck --concurrency=2`, or run `pnpm check:enqueue`: it merges the latest
   `origin/main`, then checks the lockfile, typechecks every package, runs the `@halonicjs/format`
