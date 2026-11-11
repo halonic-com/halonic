@@ -20,8 +20,8 @@ use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, AppHandle, Manager, Webview, WebviewUrl};
 
 use super::{
-    AgentHostState, HostAnswer, HostRefusal, StreamMessage, StreamStart, agent_host_request,
-    agent_host_stream, agent_host_stream_end, end_page_streams,
+    AgentHostState, HostAnswer, HostRefusal, StreamStart, agent_host_request, agent_host_stream,
+    agent_host_stream_end, end_page_streams,
 };
 
 /// A made-up token of the right form, 43 base64url characters.
@@ -237,7 +237,8 @@ impl Shell {
 }
 
 fn page(app: &AppHandle<MockRuntime>) -> Webview<MockRuntime> {
-    app.get_webview("main").expect("the main window's page")
+    let window = app.get_webview_window("main").expect("the main window");
+    window.as_ref().clone()
 }
 
 fn request(
@@ -296,8 +297,7 @@ fn agent_host_commands_call_the_host_with_the_token_and_never_show_it() {
         }
     );
 
-    let refusal = shell
-        .request("GET /v1/harnesses", None)
+    let refusal = request(&shell.handle(), "GET /v1/harnesses", None)
         .expect_err("an answer that isn't JSON is refused");
     let refusal = as_json(&refusal);
     assert!(refusal.contains(r#""kind":"io""#), "{refusal}");
@@ -316,9 +316,12 @@ fn agent_host_commands_send_an_empty_object_for_a_post_without_a_body() {
         };
         assert_eq!(body, "{}");
     }
-    let refusal = shell
-        .request("GET /v1/health", Some(json!({"extra": true})))
-        .expect_err("a GET takes no body");
+    let refusal = request(
+        &shell.handle(),
+        "GET /v1/health",
+        Some(json!({"extra": true})),
+    )
+    .expect_err("a GET takes no body");
     assert!(as_json(&refusal).contains(r#""kind":"io""#));
 }
 
@@ -355,9 +358,8 @@ fn agent_host_commands_start_a_new_host_when_the_last_has_exited() {
 fn agent_host_commands_refuse_an_unknown_route_before_starting_a_host() {
     let fake = FakeHost::serve();
     let shell = Shell::new(&fake, AfterHandshake::WaitForInput);
-    let refusal = shell
-        .request("GET http://example.com/", None)
-        .expect_err("not a route");
+    let refusal =
+        request(&shell.handle(), "GET http://example.com/", None).expect_err("not a route");
     assert!(as_json(&refusal).contains(r#""kind":"unknown_route""#));
     let (opened, _) = open_stream(&shell.handle(), "GET /v1/health", 1);
     assert!(as_json(&opened.expect_err("not a stream route")).contains("unknown_route"));
