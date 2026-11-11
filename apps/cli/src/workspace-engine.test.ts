@@ -293,19 +293,17 @@ verifies("cli.commands.routines.watch", () => {
       () => {},
       (run) => gaveUp.push(run),
     );
-    let gaveUpAfterMs = 0;
     try {
-      while (gaveUp.length === 0 && elapsedMs() < 2 * 3_600_000) {
-        // A minute at a time while the scheduler's backoff is short, then its 15 minutes.
+      // A minute at a time while the scheduler's backoff is short, then its 15 minutes, up to the
+      // first tick past the hour. The watch doesn't give up before it.
+      while (elapsedMs() < 3_600_000) {
+        expect(gaveUp).toEqual([]);
         await nextTick(elapsedMs() < 20 * 60_000 ? 1 : 15);
-        // The give-up's cancel settles after the failure that set it off, which on a slow
-        // computer is more than a turn of the event loop: past the hour, wait for it (HAL-5648).
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        if (gaveUp.length === 0 && elapsedMs() >= 3_600_000) {
-          await vi.waitFor(() => expect(gaveUp).not.toEqual([])).catch(() => {});
-        }
-        gaveUpAfterMs = elapsedMs();
       }
+      // The give-up's cancel goes to the disk and settles after the failure that set it off, so
+      // wait for it, without moving the clock. The ceiling stays under the test timeout.
+      await vi.waitFor(() => expect(gaveUp).toHaveLength(1), { timeout: 4_000 });
+      const gaveUpAfterMs = elapsedMs();
       // The run log can be read now, so a step tried again would work and its timer go.
       const folders = await acmeFolders();
       await rm(stuckRunLog(folders), { recursive: true });
