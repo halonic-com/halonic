@@ -17,7 +17,7 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
-import { checkSubagentToolCall, runToolCheckOf } from "./agent/check-run-tool-call.ts";
+import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
@@ -33,6 +33,7 @@ import {
   noKnowledge,
   openSources,
 } from "./knowledge/agent-knowledge.ts";
+import { defaultRunMaxRounds, type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import {
   connectorsOf,
   effectBoundary,
@@ -46,7 +47,6 @@ import { runAgentTools } from "./run/run-agent-tools.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
-import type { DelegatedTask, SubagentOutcome } from "./tools/subagents/subagent-tools.ts";
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
 export interface LocalExecutorOptions {
@@ -93,21 +93,8 @@ export interface LocalExecutorOptions {
 /** The round limit of a chat turn when the options don't set one. */
 export const defaultMaxRounds = 20;
 
-/**
- * The round limit of a run's model call when the run's definitions have no
- * file for its agent: the format's default for an agent's `maxSteps`.
- */
-export const defaultRunMaxRounds = 6;
-
 /** The agent name a chat turn's model calls carry when the request names none. */
 const chatAgent = "chat";
-
-/** The run and state a run's model call is for, with the definitions the run started with. */
-interface RunTurn {
-  readonly run: RunState;
-  readonly state: string;
-  readonly definitions: RunDefinitions;
-}
 
 /**
  * The {@link RunExecutor} that runs the engine in this process. It runs chat
@@ -379,46 +366,22 @@ export class LocalExecutor implements RunExecutor {
       runs: this.options.runs.store,
       ...(this.options.memory === undefined ? {} : { records: this.options.memory }),
       clock: this.options.clock,
-      runSubagent: (task) => this.runSubagent(turn, task),
+      runSubagent: (task) =>
+        runLocalSubagent(
+          {
+            turn,
+            resolveModel: (request) => this.options.resolveModel(request),
+            secrets: this.options.secrets,
+            clock: this.options.clock,
+            connectors: this.options.connectors,
+            connectorCalls: this.options.runs?.connectorCalls !== undefined,
+            knowledgeOf: (id) => this.runKnowledgeOf(turn, id),
+            toolsOf: (id, depth, knowledge) => this.runToolsOf(turn, id, depth, knowledge),
+          },
+          task,
+        ),
     });
     return [...own, ...granted];
-  }
-
-  /**
-   * A subagent's own turn on a task, one level deeper, on its own model and
-   * with its own tools: with `runs.connectorCalls`, the connector tools a
-   * `parallel` branch gets. A call that needs a person's OK is refused
-   * ({@link checkSubagentToolCall}), so its turn doesn't stop yet. Given
-   * `task.resumeFrom`, it goes on from where it stopped.
-   */
-  private async runSubagent(turn: RunTurn, task: DelegatedTask): Promise<SubagentOutcome> {
-    const subagent = agentIn(turn.definitions, task.agent);
-    const messages = [{ role: "user" as const, content: task.task }];
-    const model = await this.options.resolveModel({
-      hubId: turn.run.hubId,
-      agentId: task.agent,
-      messages,
-      tools: [],
-    });
-    const knowledge = this.runKnowledgeOf(turn, task.agent);
-    const lists = turn.definitions.connectorTools ?? {};
-    const connectors = runConnectorsOf(this.options.connectors, subagent, lists, true);
-    const outcome = await runAgentTurn({
-      model,
-      secrets: this.options.secrets,
-      messages,
-      halonicTools: this.runToolsOf(turn, task.agent, task.depth, knowledge),
-      connectors: this.options.runs?.connectorCalls === undefined ? [] : connectors,
-      maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
-      agent: task.agent,
-      clock: this.options.clock,
-      checkCall: checkSubagentToolCall,
-      autoKnowledge: knowledge.auto,
-      ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
-    });
-    return outcome.kind === "stopped"
-      ? outcome
-      : { kind: "answer", content: outcome.result.content };
   }
 
   /**
