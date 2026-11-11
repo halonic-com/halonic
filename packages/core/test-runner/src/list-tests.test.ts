@@ -70,6 +70,17 @@ verifies("test-runner.list-tests", () => {
       expect(await listed("One day is not enough")).toEqual([]);
     });
 
+    it("keeps the cases whose hub/workflow/name contains the text, with the same case", async () => {
+      const workspace = await loadWorkspace(source);
+      const listed = async (contains: string) =>
+        (await listWorkspaceTests({ workspace, filter: { contains } })).map((test) => test.name);
+
+      expect(await listed("billing/")).toEqual(["approve", "one day is not enough"]);
+      expect(await listed("approval/approve")).toEqual(["approve"]);
+      expect(await listed("day")).toEqual(["one day is not enough"]);
+      expect(await listed("Day")).toEqual([]);
+    });
+
     it("keeps nothing when the hub or the workflow differs", async () => {
       const workspace = await loadWorkspace(source);
 

@@ -39,14 +39,21 @@ export interface TestDeps {
 
 /**
  * Which tests to run. The runner keeps a case only when every part that is
- * set equals the case's own, exactly. It never parses a filter: turning
- * `halonic test --filter` into these parts is the CLI's job.
+ * set matches: `hub`, `workflow` and `name` equal the case's own, exactly,
+ * and `contains` is part of its `hub/workflow/name`. It never parses a
+ * filter: the CLI passes `halonic test --filter <text>` as `contains`.
  */
 export interface TestFilter {
   readonly hub?: string;
   readonly workflow?: string;
   /** The case's `name` as the test file has it. */
   readonly name?: string;
+  /**
+   * Text the case's `hub/workflow/name` contains, with the same case, as the
+   * CLI reference's `--filter` has it: `support/` keeps every case of the
+   * hub `support`.
+   */
+  readonly contains?: string;
 }
 
 /** The workspace whose tests run. */

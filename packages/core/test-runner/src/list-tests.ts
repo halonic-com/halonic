@@ -49,7 +49,11 @@ function matches(ref: TestCaseRef, filter: TestFilter | undefined): boolean {
   if (filter === undefined) return true;
   if (filter.hub !== undefined && filter.hub !== ref.hub) return false;
   if (filter.workflow !== undefined && filter.workflow !== ref.workflow) return false;
-  return filter.name === undefined || filter.name === ref.name;
+  if (filter.name !== undefined && filter.name !== ref.name) return false;
+  return (
+    filter.contains === undefined ||
+    `${ref.hub}/${ref.workflow}/${ref.name}`.includes(filter.contains)
+  );
 }
 
 /** The line of each case's `name` in the file, or nothing when the text can't be had. */

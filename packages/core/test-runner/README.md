@@ -19,8 +19,8 @@ file and line. Each result also has the runs the case made, with their summaries
 shape of the parity recordings.
 
 `listWorkspaceTests` lists the cases without running them, for `halonic test --list`, with the same
-filter the run takes: hub, workflow and name, each matched exactly. Parsing `--filter` into
-those is the CLI's job.
+filter the run takes: hub, workflow and name, each matched exactly, and `contains`, text the
+case's `hub/workflow/name` holds. `halonic test --filter <text>` passes its text as `contains`.
 
 `runWorkspaceTests` runs the cases the filter keeps, one after the other, each on an engine of its
 own: fresh stores, a test clock that starts at the given clock's time and moves only on
