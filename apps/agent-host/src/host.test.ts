@@ -1,7 +1,9 @@
 import { PassThrough } from "node:stream";
 import { type Machine, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { describe, expect, it } from "vitest";
-import { type Handshake, run } from "./host.ts";
+import { type FramedHandshake, type Handshake, type HostIo, run } from "./host.ts";
+import { FrameKind } from "./stdio/frame-codec.ts";
+import { TestRelay } from "./stdio/relay.test-helper.ts";
 
 /**
  * A Windows machine whose install the test controls: nothing really runs.
@@ -31,11 +33,15 @@ function starter() {
   const input = new PassThrough();
   const lines: string[] = [];
   let lineArrived: () => void = () => {};
-  const io = {
+  const io: HostIo = {
     input,
     write: (text: string) => {
       lines.push(text);
       lineArrived();
+    },
+    writeError: () => {},
+    takeOutput: () => {
+      throw new Error("Only --stdio takes the output over.");
     },
   };
   const nextLine = () =>
@@ -104,4 +110,75 @@ describe("run", () => {
     await expect(fetch(`${handshake.url}/v1/health`)).rejects.toThrow();
     expect(lines).toHaveLength(1);
   });
+});
+
+describe("run --stdio", () => {
+  const relayPort = 50_123;
+
+  /** A relay in front of a host started with `args`, with what the host wrote to standard error. */
+  function relayed(args: readonly string[]) {
+    const relay = new TestRelay(true);
+    const errors: string[] = [];
+    const io: HostIo = {
+      input: relay.streams.input,
+      write: () => {
+        throw new Error("--stdio writes only through the output it took over.");
+      },
+      writeError: (text) => errors.push(text),
+      takeOutput: () => relay.streams.output,
+    };
+    const sandbox = new SrtSandbox(windows({ installed: true }));
+    return { relay, errors, running: run(args, "1.2.3", io, sandbox) };
+  }
+
+  it("serves every route over frames after a handshake with only the token, until its input ends", async () => {
+    const { relay, running } = relayed(["--stdio", "--relay-host", `127.0.0.1:${relayPort}`]);
+    const handshake = JSON.parse(await relay.handshakeLine()) as FramedHandshake;
+    expect(Object.keys(handshake)).toEqual(["token"]);
+    const headers = { host: `127.0.0.1:${relayPort}`, authorization: `Bearer ${handshake.token}` };
+    const post = (path: string, body: unknown) =>
+      relay.request(path, { method: "POST", headers, body: JSON.stringify(body) });
+
+    const health = await relay.request("/v1/health", { headers });
+    expect(JSON.parse(health.body)).toEqual({ ok: true, version: "1.2.3" });
+    expect((await relay.request("/v1/sandbox/capabilities", { headers })).status).toBe(200);
+    const harnesses = await relay.request("/v1/harnesses", { headers });
+    expect(JSON.parse(harnesses.body)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: expect.any(String) })]),
+    );
+    expect((await post("/v1/sandbox/sessions/close", { session: "unknown" })).status).toBe(404);
+    expect((await post("/v1/bridge/close", { bridge: "unknown" })).status).toBe(404);
+    expect((await post("/v1/harnesses/runs/cancel", { run: "unknown" })).status).toBe(404);
+
+    const otherPort = { ...headers, host: "127.0.0.1:50124" };
+    expect((await relay.request("/v1/health", { headers: otherPort })).status).toBe(421);
+    expect((await relay.request("/v1/health", { headers: { host: headers.host } })).status).toBe(
+      401,
+    );
+
+    relay.streams.input.end();
+    expect(await running).toBe(0);
+  });
+
+  it("stops with 1, and says why on standard error, when the frame stream breaks", async () => {
+    const { relay, errors, running } = relayed([
+      "--stdio",
+      "--relay-host",
+      `127.0.0.1:${relayPort}`,
+    ]);
+    await relay.handshakeLine();
+    relay.sendFrame(7, FrameKind.data, Buffer.from("x"));
+    expect(await running).toBe(1);
+    expect(errors.join("")).toMatch(/never opened/);
+  });
+
+  it.each([[[]], [["--relay-host", "localhost:50123"]], [["--relay-host", "127.0.0.1:70000"]]])(
+    "exits with 2 without a relay port on 127.0.0.1 (%j)",
+    async (relayArgs) => {
+      const { relay, errors, running } = relayed(["--stdio", ...relayArgs]);
+      expect(await running).toBe(2);
+      expect(errors.join("")).toMatch(/--relay-host 127\.0\.0\.1:<port>/);
+      expect(relay.handshake).toBeUndefined();
+    },
+  );
 });

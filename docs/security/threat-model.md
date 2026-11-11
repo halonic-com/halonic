@@ -366,7 +366,7 @@ like Studio.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| Another program or a web page on your machine uses the host | The host listens only on `127.0.0.1`, with a new 32-byte random token per launch that it prints only to Studio, on standard output, and compares in constant time. A `Host` other than loopback gets a 421 (DNS rebinding), any `Origin` header a 403, a wrong or missing token a 401, all before the path is looked at | **On `main`** (`apps/agent-host`, `src/server/host-server.ts`) |
+| Another program or a web page on your machine uses the host | The host listens only on `127.0.0.1`, with a new 32-byte random token per launch that it prints only to Studio, on standard output, and compares in constant time. A `Host` other than loopback gets a 421 (DNS rebinding), any `Origin` header a 403, a wrong or missing token a 401, all before the path is looked at. In WSL (`--stdio`) the host has no port: Studio's relay listens on Windows' loopback and passes each connection as frames over `wsl.exe`'s standard input and output, and the `Host` must name the relay's port. The host drops a frame stream that breaks the format, and stops | **On `main`** (`apps/agent-host`, `src/server/host-server.ts`) |
 | The profile Studio sends loosens the fence | The host checks every profile before `SrtSandbox` sees it: every field present, nothing extra, every path absolute | **On `main`** (`apps/agent-host`, `src/sandbox/profile-schema.ts`) |
 | The bridge's run token leaks over the host's loopback | A run names its bridge and its session by ids the host makes, so the run token crosses loopback once, when the bridge opens, and only to Studio. The host asks Studio only for the secrets the run's providers name | **On `main`** (`apps/agent-host`, `src/harness`, `src/bridge`) |
 | A caller fills the host's memory or holds it open | Bodies of at most 1 MiB, refused before reading when the length says more; a stream with more than 4 MiB unread is dropped; at most 64 sessions and 64 bridges | **On `main`** (`apps/agent-host`, `src/server`) |
@@ -393,7 +393,7 @@ routes, isn't built yet, so no app uses the host today.
 - **Same user.** The sandboxed program runs as your account. A fence escape
   lands with all your rights.
 - **The agent host is reachable by every program running as you**, like the
-  bridge. Its token is what keeps them out, and it lives only in the host's
+  bridge (in WSL, through Studio's relay). Its token is what keeps them out, and it lives only in the host's
   and Studio's memory. A program running as you can also change the host's
   unpacked files between launches, or the executable itself; the digest
   check finds the first only at the next launch.
@@ -441,7 +441,7 @@ root. What matters is the distro reaching Windows.
 | **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). The setup checks whether `halonic` became the default after import, and the trust check reports a residual when Docker's socket or its `/mnt/wsl` folder is present. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | **Planned** (HAL-5394) |
 | A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **Planned** (HAL-5396) |
 | Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record | **Planned** (HAL-5394) |
-| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the rest **Planned** (HAL-5396) |
+| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay and the bridge off its port **Planned** (HAL-5396, HAL-6316) |
 | **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first | **Planned** (HAL-5402) |
 | Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); when updates run **Planned** (HAL-5396) |
 

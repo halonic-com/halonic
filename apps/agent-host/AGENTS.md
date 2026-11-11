@@ -25,4 +25,4 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 
 - `src/main.ts` is the executable's main script: it may import only Node's own modules (and types). Everything else goes in the payload, loaded from `src/host.ts`.
 - A change to a route, the token or the loopback checks updates the README's tables and [threat model 4.6](../../docs/security/threat-model.md#46-agents-in-a-sandbox-b8) in the same pull request.
-- Every route goes through `startHostServer` (`src/server/host-server.ts`), which checks the `Host`, `Origin` and token before any route runs. Never add a listener of your own, and never print, log or store the token anywhere but the handshake line.
+- Every route goes through `startHostServer` or `serveHostOverFrames` (`src/server/host-server.ts`), which check the `Host`, `Origin` and token before any route runs. Never add a listener of your own, and never print, log or store the token anywhere but the handshake line.

@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { demuxFrames, type FrameStreams } from "../stdio/frame-demuxer.ts";
 import { bearerMatches } from "./launch-token.ts";
 
 /** Only this computer can reach the host: never another machine on the network. */
@@ -35,7 +36,7 @@ export interface HostServerLimits {
   requestTimeoutMs: number;
   /** How often Node checks open connections against the two times above. */
   checkEveryMs: number;
-  /** Open connections at most; Node drops a new one past this. */
+  /** Open connections at most; a new one past this is dropped. */
   maxConnections: number;
 }
 
@@ -83,13 +84,63 @@ export async function startHostServer(
   limits: HostServerLimits = defaultHostServerLimits,
 ): Promise<HostServer> {
   let port = 0;
+  const server = createHostServer(token, routes, limits, () => port);
+  server.maxConnections = limits.maxConnections;
+  port = await listenOnLoopback(server);
+  return { url: `http://${loopbackHost}:${port}`, close: () => stopServer(server) };
+}
+
+/** The host's server in `--stdio` mode: it has no port, and its connections arrive as frames. */
+export interface FramedHostServer {
+  /**
+   * Settles when the frame stream ends: with `undefined` when the input
+   * ended, or the error that ended it. The host stops then, as it does when
+   * its input closes in the other mode.
+   */
+  ended: Promise<Error | undefined>;
+  /** Ends every open connection, streams included. */
+  close(): Promise<void>;
+}
+
+/**
+ * Serves the same routes, with the same checks and limits, as
+ * {@link startHostServer}, but over a frame stream instead of a port
+ * (see `demuxFrames`). Studio's relay listens on Windows' loopback for the
+ * host, so the `Host` header must name the relay's port: `relayPort`.
+ */
+export function serveHostOverFrames(
+  token: string,
+  routes: readonly HostRoute[],
+  streams: FrameStreams,
+  relayPort: number,
+  limits: HostServerLimits = defaultHostServerLimits,
+): FramedHostServer {
+  const server = createHostServer(token, routes, limits, () => relayPort);
+  // Node starts checking the time limits, and keeps the list `closeAllConnections`
+  // ends, when the server starts listening. This one never does, so start them here.
+  server.emit("listening");
+  const accept = (connection: unknown) => server.emit("connection", connection);
+  const ended = demuxFrames(streams, accept, limits.maxConnections);
+  return { ended, close: () => stopServer(server) };
+}
+
+/**
+ * The server with the checks of {@link startHostServer} in front of the
+ * routes. `port` is the port the `Host` header must name.
+ */
+function createHostServer(
+  token: string,
+  routes: readonly HostRoute[],
+  limits: HostServerLimits,
+  port: () => number,
+): Server {
   const options = {
     headersTimeout: limits.headersTimeoutMs,
     requestTimeout: limits.requestTimeoutMs,
     connectionsCheckingInterval: limits.checkEveryMs,
   };
-  const server = createServer(options, (request, response) => {
-    const refusal = refusalOf(request, port, token);
+  return createServer(options, (request, response) => {
+    const refusal = refusalOf(request, port(), token);
     const route = refusal === undefined ? findRoute(routes, request) : undefined;
     if (route === undefined) {
       sendRefusal(request, response, refusal ?? "not_found");
@@ -105,9 +156,6 @@ export async function startHostServer(
         else response.destroy();
       });
   });
-  server.maxConnections = limits.maxConnections;
-  port = await listenOnLoopback(server);
-  return { url: `http://${loopbackHost}:${port}`, close: () => stopServer(server) };
 }
 
 /** Why a request may not reach any route, or `undefined` when it may. */
@@ -225,6 +273,7 @@ function listenOnLoopback(server: Server): Promise<number> {
 
 function stopServer(server: Server): Promise<void> {
   return new Promise((resolve) => {
+    // A server that never listened reports "not running" here; it is stopped all the same.
     server.close(() => resolve());
     server.closeAllConnections();
   });
