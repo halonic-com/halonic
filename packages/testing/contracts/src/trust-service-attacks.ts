@@ -23,7 +23,8 @@ export interface TrustCheckSubject {
 export interface TrustChecker {
   check(subject: TrustCheckSubject): Promise<{
     readonly status: string;
-    readonly fingerprint: string;
+    /** Missing when the check is `refused`: such content has no fingerprint. */
+    readonly fingerprint?: string;
     readonly grant?: TrustGrant;
   }>;
   grant(
@@ -65,11 +66,14 @@ export function trustServiceAttackContract(
     const { store } = await make();
     const service = checker(store);
     const subject = { location, connectors: before, commandPaths };
-    const shown = await service.check(subject);
-    expect((await service.grant(subject, shown.fingerprint, "cli")).ok).toBe(true);
+    const { fingerprint } = await service.check(subject);
+    if (fingerprint === undefined) {
+      throw new Error("The workspace before the edit has nothing to refuse.");
+    }
+    expect((await service.grant(subject, fingerprint, "cli")).ok).toBe(true);
     const record = await store.get(location);
-    expect(record?.fingerprint).toBe(shown.fingerprint);
-    return { store, service, record, grant: { location, fingerprint: shown.fingerprint } };
+    expect(record?.fingerprint).toBe(fingerprint);
+    return { store, service, record, grant: { location, fingerprint } };
   }
 
   verifies("contracts.trust-service-attacks", () => {
