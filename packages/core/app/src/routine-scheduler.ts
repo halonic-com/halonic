@@ -20,7 +20,7 @@ import {
   writeQueue,
 } from "./routine-queue.ts";
 import { type SkipRecord, SkipRecords, type TargetUnavailableWhy } from "./routine-skips.ts";
-import { checkTargets, type UnavailableTime } from "./routine-targets.ts";
+import { TargetChecks, type UnavailableTime } from "./routine-targets.ts";
 import { type DroppedRange, TickSkips } from "./routine-tick-skips.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
@@ -85,10 +85,7 @@ export interface RoutineTickResult {
    * (`overlap: skip`), or because its queue was full.
    */
   skipped: RoutineTime[];
-  /**
-   * Due times that would have started but whose target can't be started
-   * (`targetUnavailable`), recorded as `target-unavailable` skips.
-   */
+  /** Due times whose target can't be started (`targetUnavailable`), recorded as `target-unavailable` skips. */
   unavailable: UnavailableTime[];
   /** Routines whose skipped times this tick could not add to their skip records. */
   skipsNotSaved: { key: string; error: Error }[];
@@ -139,11 +136,11 @@ export interface RoutineSchedulerOptions<
   overlapOf: (run: Run) => RoutineOverlap;
   /**
    * Why a due run's target can't be started, or `null` when it can
-   * (`app.scheduler-skip-target-unavailable`): asked only for the runs the
-   * tick would start, after its own skip reasons. Such a time is a
-   * `target-unavailable` skip instead of a run that fails at once with "not
-   * found". If it throws, that run is reported as failed and not started.
-   * Left out, every target counts as available.
+   * (`app.scheduler-skip-target-unavailable`): asked once per routine with
+   * due times and no run going, before the overlap rule. Then every due time
+   * of that routine is a `target-unavailable` skip, not a run that fails at
+   * once with "not found". If it throws, those times are reported as failed
+   * and not started. Left out, every target counts as available.
    */
   targetUnavailable?: (run: Run) => Promise<TargetUnavailableWhy | null>;
   /** Receives `routines.ticked` after each tick that got as far as asking what is due. */
@@ -295,9 +292,9 @@ export class RoutineScheduler<
       await this.skipRecords.queueLost(now);
     }
     const skips = new TickSkips();
-    const plan = await this.plan(routineList, lastTick, now, queue ?? new Map(), skips);
+    const targets = new TargetChecks(this.options.targetUnavailable);
+    const plan = await this.plan(routineList, lastTick, now, queue ?? new Map(), skips, targets);
     skips.addTimes(plan.skip, "busy");
-    const targets = await checkTargets(plan.start, this.options.targetUnavailable);
     for (const time of targets.unavailable) {
       skips.addTimes([{ key: time.key, at: new Date(time.at) }], "target-unavailable", time.why);
     }
@@ -310,7 +307,7 @@ export class RoutineScheduler<
       // Before the starts, so a skip after this tick's run starts a row of its own.
       skipsNotSaved: await skips.record(this.skipRecords, this.lastRuns, now),
     };
-    for (const run of targets.start) {
+    for (const run of plan.start) {
       if (this.disposed) {
         // Not stored and not sent as `routines.ticked`: the workspace is
         // closing, so start failures from earlier in this tick go unreported.
@@ -358,6 +355,7 @@ export class RoutineScheduler<
     now: Date,
     queue: ReadonlyMap<string, readonly Date[]>,
     skips: TickSkips,
+    targets: TargetChecks<Run>,
   ): Promise<OverlapDecision<Run>> {
     const { due, policy, overlapOf, keyOf } = this.options;
     const waiting = new Map<string, Run[]>();
@@ -395,7 +393,8 @@ export class RoutineScheduler<
     for (const [key, all] of waiting) {
       // A time whose run is already going was started before, by a tick that
       // didn't get to store the last tick; it waits for nothing.
-      const runs = all.filter((run) => !goingIds.has(this.runIdOf(run)));
+      const notGoing = all.filter((run) => !goingIds.has(this.runIdOf(run)));
+      const runs = await targets.pass(notGoing, busy.has(key));
       if (runs.length === 0) {
         continue;
       }

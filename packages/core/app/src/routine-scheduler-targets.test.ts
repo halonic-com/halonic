@@ -85,6 +85,32 @@ verifies("app.scheduler-skip-target-unavailable", () => {
     ]);
   });
 
+  it("skips every due time of a tick as target-unavailable, none as busy or queued", async () => {
+    for (const overlap of ["skip", "queue"] as const) {
+      const { asked, targetUnavailable } = targets({ "support/hourly": "in-trash" });
+      const { scheduler, executor, at } = setUp([{ key: "support/hourly", minute: 0, overlap }], {
+        targetUnavailable,
+      });
+      await scheduler.tick();
+      at("2026-11-03T10:00:20Z");
+
+      const tick = await scheduler.tick();
+
+      expect(executor.requests).toEqual([]);
+      expect(asked).toEqual(["support/hourly 2026-11-03T08:00:00.000Z"]);
+      expect(tick.skipped).toEqual([]);
+      expect(tick.queued).toEqual([]);
+      expect(tick.unavailable.map((time) => time.at)).toEqual([
+        "2026-11-03T08:00:00.000Z",
+        "2026-11-03T09:00:00.000Z",
+        "2026-11-03T10:00:00.000Z",
+      ]);
+      expect(
+        (await scheduler.skippedTimes("support/hourly")).map((row) => [row.reason, row.count]),
+      ).toEqual([["target-unavailable", 3]]);
+    }
+  });
+
   it("fails only the run whose check throws, and starts the others", async () => {
     const { targetUnavailable } = targets({
       "support/broken": new Error("Can't read the version."),
