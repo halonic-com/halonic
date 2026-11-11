@@ -249,10 +249,20 @@ describe("startHostServer, with a caller that holds connections open", () => {
           }),
         );
       }
-      // Give the server time to count the held connections before the next one.
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
+      // A connect callback only says the OS finished the handshake; the host counts a
+      // connection when it accepts it, which on Windows can come later. A probe that
+      // slips in before then gets a real answer (400, no Host header) and closes again,
+      // so probe until one is refused. Without a cap none ever is, and the deadline fails.
+      const probe = "GET /v1/health HTTP/1.1\r\n\r\n";
+      const deadline = Date.now() + 5_000;
+      let answer = (await hungUp(port, probe)).answer;
+      while (answer !== "" && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        answer = (await hungUp(port, probe)).answer;
+      }
       expect(answer).toBe("");
+      // Once the host has counted them all, every further connection is refused.
+      expect((await hungUp(port, probe)).answer).toBe("");
     } finally {
       for (const socket of held) socket.destroy();
     }
