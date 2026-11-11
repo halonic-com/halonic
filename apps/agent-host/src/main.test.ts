@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,6 +18,7 @@ import {
   hostArguments,
   payloadFolder,
   payloadProgram,
+  removeOldPayloads,
   resolveWorkspace,
   unpackPayload,
 } from "./main.ts";
@@ -43,6 +45,9 @@ const assets: Record<string, string> = {
     exports: {
       ".": "./src/index.ts",
       "./node": { node: "./src/node.ts", default: "./src/web.ts" },
+      "./list": ["./src/a.ts", "./src/b.ts"],
+      "./nested": { node: { import: "./src/node.ts" } },
+      "./hidden": null,
     },
   }),
 };
@@ -125,6 +130,39 @@ describe("unpackPayload", () => {
   });
 });
 
+describe("removeOldPayloads", () => {
+  const folder = () => payloadFolder(profile, "1.2.3", manifest);
+  const parent = () => join(profile, "agent-host");
+  const leave = (name: string, ageMs = 0) => {
+    const other = join(parent(), name);
+    mkdirSync(join(other, "node_modules"), { recursive: true });
+    const at = (Date.now() - ageMs) / 1000;
+    utimesSync(other, at, at);
+  };
+
+  it("removes other versions' folders and keeps this one", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    leave("1.2.2-fedcba9876543210");
+    leave("1.2.3-fedcba9876543210");
+    removeOldPayloads(folder());
+    expect(readdirSync(parent())).toEqual(["1.2.3-0123456789abcdef"]);
+    expect(readFileSync(join(folder(), "node_modules", "srt", "dist", "cli.js"), "utf8")).toBe(
+      "cli",
+    );
+  });
+
+  it("removes a launch's unpacking folder only once it is an hour old", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    leave("1.2.4-fedcba9876543210.unpacking-new", 60 * 1000);
+    leave("1.2.4-fedcba9876543210.unpacking-old", 2 * 60 * 60 * 1000);
+    removeOldPayloads(folder());
+    expect(readdirSync(parent()).sort()).toEqual([
+      "1.2.3-0123456789abcdef",
+      "1.2.4-fedcba9876543210.unpacking-new",
+    ]);
+  });
+});
+
 describe("resolveWorkspace", () => {
   const folder = () => payloadFolder(profile, "1.2.3", manifest);
   const fileUrl = (path: string) => pathToFileURL(join(folder(), ...path.split("/"))).href;
@@ -151,6 +189,21 @@ describe("resolveWorkspace", () => {
     expect(() => resolveWorkspace(folder(), manifest.packages, "@halonicjs/ports/x")).toThrow(
       `@halonicjs/ports doesn't export "./x".`,
     );
+  });
+
+  it("names an export form it can't read", () => {
+    for (const [subpath, written] of [
+      ["list", `["./src/a.ts","./src/b.ts"]`],
+      ["nested", `{"node":{"import":"./src/node.ts"}}`],
+      ["hidden", "null"],
+    ]) {
+      expect(() =>
+        resolveWorkspace(folder(), manifest.packages, `@halonicjs/ports/${subpath}`),
+      ).toThrow(
+        `@halonicjs/ports exports "./${subpath}" as ${written}, which the agent host can't read. ` +
+          `Use a path, or conditions "node", "import" or "default" that each name a path.`,
+      );
+    }
   });
 });
 

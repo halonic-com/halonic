@@ -339,6 +339,28 @@ but those are theirs, not Halonic's fence.
 | The agent or a model takes itself out                    | Only a person's action saves the choice; the engine gets only the read side, and no tool reaches the store. An unreadable choice means sandbox                                                               | **On `main`** (`app.agent-placement`)                                                    |
 | You forget an agent runs unfenced                        | A permanent label on the agent that it runs with your full access                                                                                                                                            | **Planned** (phase 5)                                                                    |
 
+#### The agent host
+
+srt runs on Node, so the desktop app runs the sandbox, the bridge and the
+harnesses in a separate program, the agent host (`apps/agent-host`). Studio
+starts it and talks to it over loopback; the engine, budgets, approvals and
+the run log stay in Studio, and the bridge asks Studio for keys, tools and
+approvals as calls on a stream. The host runs as you, outside the sandbox,
+like Studio.
+
+| Threat                                                      | Mitigation                                                                                                                                                                                                                                                                                                              | Mark                                                               |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Another program or a web page on your machine uses the host | The host listens only on `127.0.0.1`, with a new 32-byte random token per launch that it prints only to Studio, on standard output, and compares in constant time. A `Host` other than loopback gets a 421 (DNS rebinding), any `Origin` header a 403, a wrong or missing token a 401, all before the path is looked at | **On `main`** (`apps/agent-host`, `src/server/host-server.ts`)     |
+| The profile Studio sends loosens the fence                  | The host checks every profile before `SrtSandbox` sees it: every field present, nothing extra, every path absolute                                                                                                                                                                                                      | **On `main`** (`apps/agent-host`, `src/sandbox/profile-schema.ts`) |
+| The bridge's run token leaks over the host's loopback       | A run names its bridge and its session by ids the host makes, so the run token crosses loopback once, when the bridge opens, and only to Studio. The host asks Studio only for the secrets the run's providers name                                                                                                     | **On `main`** (`apps/agent-host`, `src/harness`, `src/bridge`)     |
+| A caller fills the host's memory or holds it open           | Bodies of at most 1 MiB, refused before reading when the length says more; a stream with more than 4 MiB unread is dropped; at most 64 sessions and 64 bridges                                                                                                                                                          | **On `main`** (`apps/agent-host`, `src/server`)                    |
+| A sandboxed program outlives Studio                         | The host stops when its standard input closes. It cancels every run and then closes every session before it stops serving                                                                                                                                                                                               | **On `main`** (`apps/agent-host`, `src/host.ts`)                   |
+| The host's unpacked files are changed                       | On launch the host checks every unpacked file against the SHA-256 the executable carries, and unpacks again when one differs. It runs a program for sandbox-srt only from this version's folder, and only while that file has its digest                                                                                | **On `main`** (`apps/agent-host`, `src/main.ts`)                   |
+| A sandboxed agent changes the host's unpacked files         | The folder is in Halonic's data, so the profiles Studio builds deny it, with the rest of that data (the `halonic-data` group)                                                                                                                                                                                           | **Planned** (Studio's side of the agent host)                      |
+
+Studio's side, which starts the host and gives the engine stand-ins over its
+routes, isn't built yet, so no app uses the host today.
+
 #### Known limits
 
 - **Subscription sign-in (D43).** An agent signed in with your Claude or
@@ -353,9 +375,11 @@ but those are theirs, not Halonic's fence.
   blocked when the session opens, not that every rule holds.
 - **Same user.** The sandboxed program runs as your account. A fence escape
   lands with all your rights.
-- **The desktop app needs an agent host** (`apps/agent-host`) to run srt,
-  because srt runs on Node. It talks to Studio over loopback with a token per
-  launch, like `serve` (B6). Not built (HAL-2865, HAL-194).
+- **The agent host is reachable by every program running as you**, like the
+  bridge. Its token is what keeps them out, and it lives only in the host's
+  and Studio's memory. A program running as you can also change the host's
+  unpacked files between launches, or the executable itself; the digest
+  check finds the first only at the next launch.
 
 ## 5. `serve` (B6)
 

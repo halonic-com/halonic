@@ -13,7 +13,16 @@
 //     srt's command line this way, with `process.execPath`, which is this
 //     executable.
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire, registerHooks } from "node:module";
 import { basename, dirname, isAbsolute, join, sep } from "node:path";
 import { getRawAsset, isSea } from "node:sea";
@@ -80,6 +89,35 @@ export function unpackPayload(
   }
 }
 
+/** How old a launch's temporary unpacking folder must be before another launch removes it. */
+const staleUnpackingMs = 60 * 60 * 1000;
+
+/**
+ * Removes what other launches left next to `folder`: the payload folders of
+ * other versions, and temporary unpacking folders older than an hour (a
+ * launch that stopped halfway). Younger ones may belong to a launch that is
+ * unpacking right now, so they stay. Called after `folder` is unpacked, so
+ * an update doesn't leave the old version's files behind.
+ *
+ * Best effort: a folder that can't be removed (on Windows, a file still in
+ * use) stays, and the next launch tries again. A half-removed folder is never
+ * used, because a launch of its version checks every file and unpacks again.
+ */
+export function removeOldPayloads(folder: string, now = Date.now()): void {
+  const parent = dirname(folder);
+  for (const name of readdirSync(parent)) {
+    const other = join(parent, name);
+    if (other === folder) continue;
+    try {
+      const unpacking = name.includes(".unpacking-");
+      if (unpacking && now - statSync(other).mtimeMs < staleUnpackingMs) continue;
+      rmSync(other, { recursive: true, force: true });
+    } catch {
+      // Still in use, or already gone: the next launch tries again.
+    }
+  }
+}
+
 /** True when every payload file is in `folder` with its digest. */
 function holdsPayload(folder: string, manifest: PayloadManifest): boolean {
   return manifest.files.every((file) => holdsFile(folder, file.path, file.sha256));
@@ -129,19 +167,37 @@ export function resolveWorkspace(
   if (at === undefined) return undefined;
   const subpath = ["."].concat(parts.slice(nameLength)).join("/");
   const packageJson = JSON.parse(readFileSync(placeOf(folder, `${at}/package.json`), "utf8")) as {
-    exports?: Record<string, string | Record<string, string>>;
+    exports?: unknown;
   };
-  const target = exportTarget(packageJson.exports?.[subpath]);
-  if (target === undefined) {
+  if (!isPlainObject(packageJson.exports) || !Object.hasOwn(packageJson.exports, subpath)) {
     throw new Error(`${name} doesn't export ${JSON.stringify(subpath)}.`);
+  }
+  const entry = packageJson.exports[subpath];
+  const target = exportTarget(entry);
+  if (target === undefined) {
+    throw new Error(
+      `${name} exports ${JSON.stringify(subpath)} as ${JSON.stringify(entry)}, which the agent host can't read. ` +
+        `Use a path, or conditions "node", "import" or "default" that each name a path.`,
+    );
   }
   return pathToFileURL(placeOf(folder, `${at}/${target.replace(/^\.\//, "")}`)).href;
 }
 
-/** The file of one `exports` entry: a path, or the first of the conditions Node uses here. */
-function exportTarget(entry: string | Record<string, string> | undefined): string | undefined {
-  if (typeof entry === "string" || entry === undefined) return entry;
-  return entry["node"] ?? entry["import"] ?? entry["default"];
+/**
+ * The file of one `exports` entry: a path, or the path of the first condition
+ * Node uses here. The resolve hook reads only these two forms; a list, `null`
+ * or nested conditions give `undefined`, so the caller can say so.
+ */
+function exportTarget(entry: unknown): string | undefined {
+  if (typeof entry === "string") return entry;
+  if (!isPlainObject(entry)) return undefined;
+  const condition = ["node", "import", "default"].find((each) => Object.hasOwn(entry, each));
+  const target = condition === undefined ? undefined : entry[condition];
+  return typeof target === "string" ? target : undefined;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -193,6 +249,7 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
   }
   const folder = payloadFolder(profileFolder, version, manifest);
   unpackPayload(folder, manifest, (path) => new Uint8Array(getRawAsset(path)));
+  removeOldPayloads(folder);
   registerHooks({
     resolve(specifier, context, nextResolve) {
       const url = resolveWorkspace(folder, manifest.packages, specifier);
