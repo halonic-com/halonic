@@ -262,12 +262,27 @@ describe("sandboxRoutes", () => {
   });
 
   it("closes a session whose time limit ran out, so its id and stream end too", async () => {
-    const url = await started();
+    // The test runs out the limit by hand once the stream is open: a real
+    // timer could fire before the stream's request arrives on a busy machine.
+    const limits: { fire: () => void; ms: number }[] = [];
+    const url = await started(
+      new SessionTable({
+        setLimitTimer: (fire, ms) => {
+          limits.push({ fire, ms });
+          return () => {};
+        },
+      }),
+    );
     const answer = await post(url, "/v1/sandbox/sessions/open", {
       profile: { ...profile, timeLimitMs: 50 },
     });
     const { session: id } = (await answer.json()) as { session: string };
     const stream = await post(url, "/v1/sandbox/sessions/blocked", { session: id });
+    expect(stream.status).toBe(200);
+    expect(sandbox.opened[0]?.closed).toBe(false);
+
+    expect(limits.map((limit) => limit.ms)).toEqual([50]);
+    limits[0]?.fire();
     expect(await stream.text()).toBe("");
     expect(sandbox.opened[0]?.closed).toBe(true);
     expect((await post(url, "/v1/sandbox/sessions/close", { session: id })).status).toBe(404);

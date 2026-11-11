@@ -4,11 +4,21 @@ import type { SandboxSession } from "@halonicjs/ports";
 /** How many sessions the host keeps open at once, opening ones included. */
 export const defaultMaxSessions = 64;
 
+/** Calls `fire` after `ms`; the returned function cancels it. */
+export type LimitTimer = (fire: () => void, ms: number) => () => void;
+
+/** Node's own timer, which doesn't keep the process running by itself. */
+const systemLimitTimer: LimitTimer = (fire, ms) => {
+  const timer = setTimeout(fire, ms);
+  timer.unref();
+  return () => clearTimeout(timer);
+};
+
 interface OpenSession {
   session: SandboxSession;
   closeListeners: Set<() => void>;
-  /** Closes the session through the table when its time limit runs out. */
-  timer: ReturnType<typeof setTimeout>;
+  /** Stops the timer that closes the session when its time limit runs out. */
+  cancelLimit: () => void;
 }
 
 /**
@@ -28,11 +38,17 @@ interface OpenSession {
 export class SessionTable {
   private readonly sessions = new Map<string, OpenSession>();
   private readonly maxSessions: number;
+  private readonly setLimitTimer: LimitTimer;
   private reserved = 0;
   private stopping = false;
 
-  constructor(options: { maxSessions?: number } = {}) {
+  /**
+   * @param options.setLimitTimer the timer for the sessions' time limits;
+   *   tests fire it by hand, so the limit runs out exactly when they choose
+   */
+  constructor(options: { maxSessions?: number; setLimitTimer?: LimitTimer } = {}) {
     this.maxSessions = options.maxSessions ?? defaultMaxSessions;
+    this.setLimitTimer = options.setLimitTimer ?? systemLimitTimer;
   }
 
   /** True once {@link SessionTable.closeAll} has started. */
@@ -73,12 +89,11 @@ export class SessionTable {
     const id = randomUUID();
     // The session has ended by itself by then (its limit counts from a little
     // earlier, when it began to open): closing it here only tidies up.
-    const timer = setTimeout(
+    const cancelLimit = this.setLimitTimer(
       () => void this.close(id).catch(() => undefined),
       session.profile.timeLimitMs,
     );
-    timer.unref();
-    this.sessions.set(id, { session, closeListeners: new Set(), timer });
+    this.sessions.set(id, { session, closeListeners: new Set(), cancelLimit });
     return id;
   }
 
@@ -107,7 +122,7 @@ export class SessionTable {
     const open = this.sessions.get(id);
     if (open === undefined) return false;
     this.sessions.delete(id);
-    clearTimeout(open.timer);
+    open.cancelLimit();
     try {
       await open.session.close();
     } finally {
