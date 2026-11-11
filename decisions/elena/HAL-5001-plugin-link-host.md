@@ -4,6 +4,7 @@
   ([design-check on HAL-4990](/HAL/issues/HAL-4990#document-design-check), drift 3); Liam approves
   this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o4bPBdL5+JjDH2Xbb4m3XiC3wQYH30bPEjGNCIusgSit6//s8VXPORW9B/AhnradFgCNmoStPiO3yT+KoQWJBw==
 - Task: HAL-5001
 
 ## What changes
