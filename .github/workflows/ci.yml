@@ -1049,7 +1049,16 @@ jobs:
           persist-credentials: false
       - uses: $/.github/actions/setup
       - name: Install bubblewrap and socat
+        # The runner's apt mirror list starts with azure.archive.ubuntu.com.
+        # When a runner can't resolve that name, apt spends minutes on DNS
+        # timeouts and then fails (HAL-5834), so the step points apt straight
+        # at archive.ubuntu.com instead.
         run: |
+          if ! getent hosts azure.archive.ubuntu.com > /dev/null; then
+            echo "azure.archive.ubuntu.com does not resolve, using archive.ubuntu.com"
+            grep -rl 'mirror+file:/etc/apt/apt-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs --no-run-if-empty sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu/|'
+          fi
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends bubblewrap socat ripgrep
           sudo sysctl --write kernel.apparmor_restrict_unprivileged_userns=0
