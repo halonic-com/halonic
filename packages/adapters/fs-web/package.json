@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-fs-web",
+  "private": true,
+  "type": "module",
+  "description": "The DefinitionStore over a folder the person opens in the browser, through the File System Access API, with a watch that checks for outside changes when the page gets focus again.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-watch-kit": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "priya",
+    "coverage": {
+      "lines": 95,
+      "branches": 90
+    },
+    "runtime": "web"
+  }
+}

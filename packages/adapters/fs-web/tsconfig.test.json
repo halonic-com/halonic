@@ -1,0 +1,15 @@
+{
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "//": "Tests run in Node against a fake folder, so they need Node's types and, for the code under test, the DOM's.",
+  "compilerOptions": {
+    "lib": [
+      "es2024",
+      "dom",
+      "dom.iterable"
+    ]
+  },
+  "include": [
+    "src",
+    "vitest.config.ts"
+  ]
+}
