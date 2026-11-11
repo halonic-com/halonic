@@ -181,6 +181,14 @@ verifies("sandbox-srt.session", () => {
     it("has no PATH when the host has none", () => {
       expect(launcherEnv(profile(), {})).toEqual({ TMPDIR: join(base, "temp"), ...windowsTemp() });
     });
+
+    it("takes its own temp folder when it has one, and hands srt the session's for the program", () => {
+      expect(launcherEnv(profile(), {}, undefined, "<launcher temp>")).toEqual({
+        TMPDIR: "<launcher temp>",
+        CLAUDE_CODE_TMPDIR: join(base, "temp"),
+        ...windowsTemp(),
+      });
+    });
   });
 
   describe("the program environment", () => {
@@ -221,9 +229,17 @@ verifies("sandbox-srt.session", () => {
       const requests = [...probes, ...runs.map((run) => run.request)];
       for (const request of requests) {
         // On Windows the launcher also gets the host's system variables, which are no profile's.
-        expect(request.launcherEnv).toMatchObject({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
-        if (process.platform !== "win32") {
-          expect(request.launcherEnv).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
+        if (process.platform === "win32") {
+          expect(request.launcherEnv).toMatchObject({
+            PATH: "/usr/bin",
+            TMPDIR: join(base, "temp"),
+          });
+        } else {
+          expect(request.launcherEnv).toEqual({
+            PATH: "/usr/bin",
+            TMPDIR: expect.stringMatching(/^\/tmp\/hsrt-/),
+            CLAUDE_CODE_TMPDIR: join(base, "temp"),
+          });
         }
       }
       // The probe gets none of the profile's variables; the program gets all of them.
