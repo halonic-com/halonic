@@ -50,10 +50,11 @@ export interface TrustSubject {
    */
   readonly agents: readonly Agent[];
   /**
-   * The workspace's local integrations, with its settings for each.
-   * Required, so the address each `{ fromSetting }` host reads is always in
-   * the fingerprint, and a new one asks for trust again (design on HAL-1873,
-   * section 5).
+   * The workspace's local integrations, with its settings for each and the
+   * hash of its code. Required, so every local integration, its code and the
+   * address each `{ fromSetting }` host reads are always in the fingerprint,
+   * and a change asks for trust again (trust build plan item 3a on HAL-188;
+   * design on HAL-1873, section 5).
    */
   readonly integrations: readonly LocalIntegrationInput[];
 }

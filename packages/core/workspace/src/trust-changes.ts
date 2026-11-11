@@ -20,7 +20,7 @@ export type ChangedConnector = ChangedItem<ConnectorTrustContent>;
 /** One harness agent whose trust content differs from the trusted one. */
 export type ChangedAgent = ChangedItem<AgentTrustContent>;
 
-/** One local integration whose setting addresses differ from the trusted ones. */
+/** One local integration whose trust content differs from the trusted one. */
 export type ChangedIntegration = ChangedItem<IntegrationTrustContent>;
 
 /** What changed in one list of the trust content, matched by id. */
@@ -39,7 +39,7 @@ export interface ItemChanges<Content> {
  * What changed between the trust content a person trusted and the current
  * one, in the order the prompt shows it: New and Changed first. The
  * top-level lists are the connectors; `agents` holds the harness agents and
- * `integrations` the local integrations' setting addresses.
+ * `integrations` the local integrations.
  */
 export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
   /**
@@ -48,8 +48,8 @@ export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
    */
   agents: ItemChanges<AgentTrustContent>;
   /**
-   * The local integrations whose setting addresses changed. One whose
-   * addresses all left the content counts as removed.
+   * The local integrations that changed. A change to any file in one's
+   * folder shows as a change in `code`, without naming the files.
    */
   integrations: ItemChanges<IntegrationTrustContent>;
   /**

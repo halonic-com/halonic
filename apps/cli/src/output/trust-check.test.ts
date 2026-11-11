@@ -39,8 +39,18 @@ const coder: AgentTrustContent = {
 const current = { fingerprint, unpinned: ["mail-mcp", "notes-mcp"] };
 const content = { connectors: [mail, notes], agents: [coder] };
 
+/** What every local integration's trust content has besides its id and addresses. */
+const integrationBase = {
+  folder: "integrations/my-crm",
+  hosts: {},
+  secrets: [],
+  tools: {},
+  code: "sha256:00",
+};
+
 const crm: IntegrationTrustContent = {
   id: "my-crm",
+  ...integrationBase,
   addresses: {
     CRM_URL: "https://crm.example.com/",
     REPORTS_URL: null,
@@ -188,8 +198,16 @@ verifies("cli.trust-check", () => {
   });
 
   it("shows a changed setting address as one changed address", () => {
-    const before = { id: "my-crm", addresses: { CRM_URL: "https://old.example.com/" } };
-    const after = { id: "my-crm", addresses: { CRM_URL: "https://crm.example.com/" } };
+    const before = {
+      id: "my-crm",
+      ...integrationBase,
+      addresses: { CRM_URL: "https://old.example.com/" },
+    };
+    const after = {
+      id: "my-crm",
+      ...integrationBase,
+      addresses: { CRM_URL: "https://crm.example.com/" },
+    };
     const changes: TrustChanges = {
       ...noChanges,
       agents: noChanges,

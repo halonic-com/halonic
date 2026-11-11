@@ -68,6 +68,8 @@ const withPart: Record<keyof TrustContent, TrustSkipInput> = {
       {
         sheet: sheet("home-station", [{ fromSetting: "url", class: "private" }]),
         settings: { url: "http://192.168.1.20:8123" },
+        folder: "integrations/home-station",
+        code: "sha256:00",
       },
     ],
   },
@@ -89,9 +91,14 @@ verifies("workspace.trust-skip", () => {
     });
 
     it("is off with a local integration, even one whose hosts are all fixed", () => {
-      const weather = { sheet: sheet("weather", ["api.example.com"]), settings: {} };
+      const weather = {
+        sheet: sheet("weather", ["api.example.com"]),
+        settings: {},
+        folder: "integrations/weather",
+        code: "sha256:00",
+      };
       const input = { ...acme, integrations: [weather] };
-      expect(trustContent(input).integrations).toBeUndefined();
+      expect(trustContent(input).integrations).toHaveLength(1);
       expect(reachesOnlyTheTestModel(input)).toBe(false);
     });
 

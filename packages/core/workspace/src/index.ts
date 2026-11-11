@@ -63,17 +63,22 @@ export {
 export {
   type ConnectorTrustContent,
   type RefusedConnector,
-  secretReference,
   type TrustContent,
   type TrustContentInput,
   trustContent,
 } from "./trust-content.ts";
 export { trustFingerprint, trustFingerprintPrefix } from "./trust-fingerprint.ts";
 export {
+  type IntegrationFile,
+  integrationCodeDigest,
+} from "./trust-integration-code.ts";
+export {
   type IntegrationTrustContent,
   integrationsTrustContent,
   type LocalIntegrationInput,
+  type SecretTrustContent,
 } from "./trust-integrations.ts";
+export { secretReference } from "./trust-secret.ts";
 export { reachesOnlyTheTestModel, type TrustSkipInput } from "./trust-skip.ts";
 export { type TrustUrl, trustUrl } from "./trust-url.ts";
 export { type VersionReader, VersionSource } from "./version-source.ts";

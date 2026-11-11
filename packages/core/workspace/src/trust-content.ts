@@ -6,6 +6,7 @@ import {
   integrationsTrustContent,
   type LocalIntegrationInput,
 } from "./trust-integrations.ts";
+import { secretReference } from "./trust-secret.ts";
 import { trustUrl } from "./trust-url.ts";
 
 /**
@@ -48,9 +49,9 @@ export interface TrustContent {
    */
   agents?: AgentTrustContent[];
   /**
-   * The local integrations that read an address from the workspace's
-   * settings, sorted by id. Only there when there are some, so the content
-   * and fingerprint of a workspace without them are the same as before.
+   * The workspace's local integrations, sorted by id. Only there when there
+   * are some, so the content and fingerprint of a workspace without them are
+   * the same as before.
    */
   integrations?: IntegrationTrustContent[];
 }
@@ -96,7 +97,7 @@ export interface TrustContentInput {
   commandPaths?: ReadonlyMap<string, string>;
   /** The workspace's agents, as parsed from their files. Only harness agents add to the content. */
   agents?: readonly Agent[];
-  /** The workspace's local integrations, with its settings for each. Only `{ fromSetting }` addresses add to the content. */
+  /** The workspace's local integrations, with its settings for each and the hash of its code. */
   integrations?: readonly LocalIntegrationInput[];
 }
 
@@ -114,8 +115,9 @@ export interface TrustContentInput {
  * - **agents:** for each agent with a harness other than Halonic, the
  *   harness, its allowed sites and its working folder when it isn't the
  *   default (see {@link agentsTrustContent}).
- * - **integrations:** for each local integration with a `{ fromSetting }`
- *   host, the URL the workspace's setting holds (see
+ * - **integrations:** for each local integration, its folder, the hosts,
+ *   secrets and tool risks its sheet declares, the hash of its code and
+ *   the URL each `{ fromSetting }` setting holds (see
  *   {@link integrationsTrustContent}).
  *
  * @example
@@ -144,11 +146,6 @@ export function trustContent(input: TrustContentInput): TrustContent {
     ...(agents.length === 0 ? {} : { agents }),
     ...(integrations.length === 0 ? {} : { integrations }),
   };
-}
-
-/** Shows a secret by name only. A secret's value never goes into the content. */
-export function secretReference(name: string): string {
-  return `‹secret ${name}›`;
 }
 
 function connectorContent(

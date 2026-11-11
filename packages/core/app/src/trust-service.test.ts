@@ -43,7 +43,7 @@ function homeStation(url: string): LocalIntegrationInput {
     tools: [],
     needs: [],
   } as unknown as IntegrationSheet;
-  return { sheet, settings: { url } };
+  return { sheet, settings: { url }, folder: "integrations/home-station", code: "sha256:00" };
 }
 
 /** An agent that runs in Claude Code and may reach the given sites. */

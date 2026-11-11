@@ -11,4 +11,4 @@ The workspace package shall say a workspace's runs can only reach the test model
 - Given the Acme example (the `mock` provider, agents without a harness or with `halonic`, no connector), then the skip holds.
 - Given the Acme example plus a provider of another type, such as `anthropic`, then the skip is off.
 - Given the Acme example plus a connector, a connector whose URL is refused, an agent with the harness `claude-code`, or a local integration with a `{ fromSetting }` host, then the skip is off.
-- Given the Acme example plus a local integration whose hosts are all fixed, then the skip is off, even though the integration adds nothing to the trust content.
+- Given the Acme example plus a local integration whose hosts are all fixed, then the skip is off, and the integration is in the trust content.
