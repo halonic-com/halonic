@@ -28,6 +28,14 @@ halonic --version
 folder isn't on your PATH, run `pnpm setup`, open a new terminal and run
 `pnpm add -g ./apps/cli` again.
 
+On Windows, PowerShell may stop with "running scripts is disabled on this
+system" (for `pnpm` or `halonic`). Allow local scripts for your account once,
+then try again, or use Command Prompt instead:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
 To update, pull the latest code in your clone and install again. The link
 follows the folder, so there is nothing to add again:
 
