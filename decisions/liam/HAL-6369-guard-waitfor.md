@@ -3,6 +3,7 @@
 - Task: HAL-6369, found on halonic#1903 (HAL-4975)
 - Approval: Liam decided it as the guard's owner on [HAL-6369](/HAL/issues/HAL-6369), and signs this note; Julian reviews the pull request, and Liam signs again if the review changes it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e12ScmYkWzYoOAojPDtDtxk0+PaOvQtvOPUVlMpUsxx9E7IiBTjDFzEBFO482zelJ0qE3vRzb4QbKp/N7S/5Dw==
 
 ## What changes
 
