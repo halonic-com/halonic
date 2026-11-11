@@ -200,7 +200,7 @@ describe("tooling/check: allowed overrides", () => {
   });
 
   it("still refuses the other tree rewrites", () => {
-    for (const setting of ["packageExtensions", "patchedDependencies", "catalogs"]) {
+    for (const setting of ["packageExtensions", "catalogs"]) {
       const workspaceYaml = (yaml: string) => `${yaml}\n${setting}:\n  a: b\n`;
       const found = messages([], { workspaceYaml, overridesAllowed: allowing() });
       expect(found.some((m) => m.startsWith(`"${setting}" rewrites`))).toBe(true);

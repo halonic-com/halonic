@@ -21,6 +21,7 @@ Imports are read with the TypeScript parser, not regular expressions.
   `dependencies.json` (approved external dependencies),
   `licences.json` (licence allow-lists),
   `overrides-allowed.json` (approved pnpm overrides),
+  `patches-allowed.json` (approved pnpm patches, each with its file's hash),
   `process-starters.json` (approved process starters),
   `approvers.json` (the keys that sign decision notes, by kind),
   `advisories-ignored.json` (ignored security advisories, each with a reason and expiry),

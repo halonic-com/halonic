@@ -55,6 +55,7 @@ const listFiles: ReadonlySet<string> = new Set([
   "tooling/check/advisories-ignored.json",
   "tooling/check/process-starters.json",
   "tooling/check/overrides-allowed.json",
+  "tooling/check/patches-allowed.json",
   "tooling/check/licences.json",
 ]);
 

@@ -59,6 +59,8 @@ export interface FixtureOptions {
   readonly workspaceYaml?: (yaml: string) => string;
   /** The text of `overrides-allowed.json`; the real file when absent. */
   readonly overridesAllowed?: string;
+  /** The text of `patches-allowed.json`; the real file when absent. */
+  readonly patchesAllowed?: string;
   /** The rules to run. Without it, the ones a plain `pnpm check` runs, so not `trace`. */
   readonly rules?: readonly string[];
 }
@@ -100,11 +102,7 @@ export function writeFixtureRepo(
     "tooling/check/advisories-ignored.json",
     readFileSync(join(realRoot, "tooling/check/advisories-ignored.json"), "utf8"),
   );
-  write(
-    "tooling/check/overrides-allowed.json",
-    options.overridesAllowed ??
-      readFileSync(join(realRoot, "tooling/check/overrides-allowed.json"), "utf8"),
-  );
+  writeTreeRewriteLists(write, options);
   // Empty, because the real list names files that a fixture repo doesn't have.
   write("tooling/check/process-starters.json", JSON.stringify({ starters: {} }));
   write(
@@ -127,6 +125,18 @@ export function writeFixtureRepo(
   }
   execFileSync("git", ["init", "-q"], { cwd: root });
   return root;
+}
+
+/** The allow-lists for `overrides:` and `patchedDependencies:`: the fixture's own text, or the real files. */
+function writeTreeRewriteLists(
+  write: (path: string, text: string) => void,
+  options: FixtureOptions,
+): void {
+  const real = (file: string): string => readFileSync(join(realRoot, file), "utf8");
+  const overrides = "tooling/check/overrides-allowed.json";
+  write(overrides, options.overridesAllowed ?? real(overrides));
+  const patches = "tooling/check/patches-allowed.json";
+  write(patches, options.patchesAllowed ?? real(patches));
 }
 
 /** The real policy.json with `coreOrder` set, for a fixture repo. */

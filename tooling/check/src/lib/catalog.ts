@@ -12,11 +12,13 @@ export interface CatalogEntry {
   readonly line: number;
 }
 
-/** The catalog, the `overrides:` lines, the settings that rewrite the tree, and the lines this can't read. */
+/** The catalog, the `overrides:` and `patchedDependencies:` lines, the settings that rewrite the tree, and the lines this can't read. */
 export interface WorkspaceVersions {
   readonly catalog: readonly CatalogEntry[];
   /** `selector: version` lines under `overrides:`; `name` is the selector. */
   readonly overrides: readonly CatalogEntry[];
+  /** `name@version: file` lines under `patchedDependencies:`; `name` is `name@version`, `version` the patch file. */
+  readonly patches: readonly CatalogEntry[];
   readonly treeRewrites: readonly { readonly setting: string; readonly line: number }[];
   readonly unreadableLines: readonly number[];
 }
@@ -26,7 +28,8 @@ export interface WorkspaceVersions {
  * package contains. Each would bypass the catalog and `dependencies.json`.
  * `catalogs:` (named catalogs) is here too: we keep one version line.
  * `overrides:` is read line by line and allowed only for the selectors in
- * `overrides-allowed.json`; the other settings are always refused.
+ * `overrides-allowed.json`, and `patchedDependencies:` only for the patches
+ * in `patches-allowed.json`; the other settings are always refused.
  */
 export const treeRewriteSettings = [
   "overrides",
@@ -42,9 +45,10 @@ export function readWorkspaceVersions(yaml: string): WorkspaceVersions {
   const versions: WorkspaceVersions & {
     catalog: CatalogEntry[];
     overrides: CatalogEntry[];
+    patches: CatalogEntry[];
     treeRewrites: { setting: string; line: number }[];
     unreadableLines: number[];
-  } = { catalog: [], overrides: [], treeRewrites: [], unreadableLines: [] };
+  } = { catalog: [], overrides: [], patches: [], treeRewrites: [], unreadableLines: [] };
   let block: Block = "other";
   yaml.split("\n").forEach((line, index) => {
     const lineNumber = index + 1;
@@ -66,7 +70,14 @@ export function readWorkspaceVersions(yaml: string): WorkspaceVersions {
 }
 
 /** The top-level block a line belongs to. */
-type Block = "catalog" | "overrides" | "other";
+type Block = "catalog" | "overrides" | "patches" | "other";
+
+/** The top-level settings whose lines are read one by one, and the block each opens. */
+const listBlocks: Readonly<Record<string, Block>> = {
+  catalog: "catalog",
+  overrides: "overrides",
+  patchedDependencies: "patches",
+};
 
 /** Reads a top-level line; returns the block it opens. */
 function readSettingLine(
@@ -78,21 +89,20 @@ function readSettingLine(
   },
 ): Block {
   const setting = /^["']?([\w-]+)["']?:(?:\s|$)/.exec(line)?.[1];
-  const opensCatalog = setting === "catalog";
-  if (setting === undefined || (opensCatalog && !/^catalog:\s*(?:#.*)?$/.test(line))) {
+  if (setting === undefined) {
+    versions.unreadableLines.push(lineNumber);
+    return "other";
+  }
+  const block = Object.hasOwn(listBlocks, setting) ? listBlocks[setting] : undefined;
+  // A list block holds its entries on the lines below; a value on the same
+  // line (such as `overrides: {}`) would hide entries from this reader.
+  if (block !== undefined && !new RegExp(`^${setting}:\\s*(?:#.*)?$`).test(line)) {
     versions.unreadableLines.push(lineNumber);
   }
-  const opensOverrides = setting === "overrides";
-  if (opensOverrides && !/^overrides:\s*(?:#.*)?$/.test(line)) {
-    versions.unreadableLines.push(lineNumber);
-  }
-  if (setting !== undefined && !opensOverrides && treeRewriteSettings.includes(setting)) {
+  if (block === undefined && treeRewriteSettings.includes(setting)) {
     versions.treeRewrites.push({ setting, line: lineNumber });
   }
-  if (opensOverrides) {
-    return "overrides";
-  }
-  return opensCatalog ? "catalog" : "other";
+  return block ?? "other";
 }
 
 function readCatalogEntry(line: string, lineNumber: number): CatalogEntry | undefined {

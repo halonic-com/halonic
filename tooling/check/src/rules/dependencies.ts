@@ -9,6 +9,7 @@ import {
 } from "../lib/context.ts";
 import type { Layer } from "../lib/layout.ts";
 import { overrideProblems, readAllowedOverrides } from "../lib/overrides.ts";
+import { patchProblems, readAllowedPatches } from "../lib/patches.ts";
 import { Report } from "../lib/problems.ts";
 import type { DependencyField, WorkspacePackage } from "../lib/workspace.ts";
 
@@ -16,6 +17,7 @@ const guide = "See docs/guides/dependencies.md.";
 const cloudRuntimeCategories = new Set(["core-exception", "outside-world"]);
 const workspaceFile = "pnpm-workspace.yaml";
 export const overridesAllowedPath = "tooling/check/overrides-allowed.json";
+export const patchesAllowedPath = "tooling/check/patches-allowed.json";
 
 /** `package.json` fields that rewrite the dependency tree, like `overrides:` in the workspace file. */
 const manifestTreeRewrites = ["overrides", "resolutions", "pnpm"];
@@ -174,7 +176,7 @@ function checkList(context: CheckContext, used: ReadonlySet<string>, report: Rep
  * name, and no setting rewrites the tree around the catalog.
  */
 function checkWorkspaceVersions(context: CheckContext, report: Report): void {
-  const { catalog, overrides, treeRewrites, unreadableLines } = readWorkspaceVersions(
+  const { catalog, overrides, patches, treeRewrites, unreadableLines } = readWorkspaceVersions(
     context.read(workspaceFile),
   );
   for (const line of unreadableLines) {
@@ -208,6 +210,7 @@ function checkWorkspaceVersions(context: CheckContext, report: Report): void {
     );
   }
   checkOverrides(context, catalog, overrides, report);
+  checkPatches(context, catalog, patches, report);
 }
 
 /** `overrides:` pass only as a parent-scoped selector in `overrides-allowed.json`, at the catalog version. */
@@ -234,5 +237,39 @@ function checkOverrides(
   }
   for (const message of found.stale) {
     report.error(overridesAllowedPath, `${message} ${guide}`);
+  }
+}
+
+/**
+ * `patchedDependencies:` pass only when `patches-allowed.json` lists the
+ * package at its catalog version, with this file and this file's hash.
+ */
+function checkPatches(
+  context: CheckContext,
+  catalog: readonly CatalogEntry[],
+  patches: readonly CatalogEntry[],
+  report: Report,
+): void {
+  if (!context.files.includes(patchesAllowedPath)) {
+    report.error(
+      patchesAllowedPath,
+      `The file is missing. Keep it, with an empty list when nothing is allowed. ${guide}`,
+    );
+    return;
+  }
+  const reading = readAllowedPatches(context.read(patchesAllowedPath));
+  for (const problem of reading.problems) {
+    report.error(patchesAllowedPath, `${problem}. ${guide}`);
+  }
+  const readPatch = (file: string): string | undefined =>
+    context.files.includes(file) ? context.read(file) : undefined;
+  const found = patchProblems(patches, reading.entries, catalog, readPatch);
+  for (const { message, line } of found.problems) {
+    report.error(workspaceFile, `${message} ${guide}`, line);
+  }
+  // A warning, like an unused entry in dependencies.json: the entry lands
+  // before its patch, because CI reads the list from the base commit.
+  for (const message of found.unused) {
+    report.warning(patchesAllowedPath, `${message} ${guide}`);
   }
 }

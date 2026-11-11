@@ -108,10 +108,9 @@ target yet (`packages/targets/` doesn't exist), so these rules and
   its trusted-publisher status, a common sign of a hijack.
 - **`registries`**: the `@halonicjs` scope always comes from npm.
 
-`packageExtensions`, `patchedDependencies` and named `catalogs:` in
-`pnpm-workspace.yaml`, and `overrides`, `resolutions` or `pnpm` in a
-`package.json`, fail the check: they change the tree around the catalog
-and this list.
+`packageExtensions` and named `catalogs:` in `pnpm-workspace.yaml`, and
+`overrides`, `resolutions` or `pnpm` in a `package.json`, fail the check:
+they change the tree around the catalog and this list.
 
 `overrides:` in `pnpm-workspace.yaml` is allowed for one case: a security
 fix for one parent's copy of a package. List it in
@@ -125,6 +124,21 @@ entry to these rules:
   catalog stays the one place for versions.
 - An entry with no matching override fails, so a fix that is no longer
   needed gets removed.
+
+`patchedDependencies:` in `pnpm-workspace.yaml` is allowed only for a patch
+listed in `tooling/check/patches-allowed.json`, again in its own pull
+request, with a reason and a `remove-when` condition. Make the patch with
+`pnpm patch` and `pnpm patch-commit`. The check holds each patch to these
+rules:
+
+- The key is `name@version` with the catalog version, so a new version of
+  the package needs its patch reviewed again.
+- The value is the file the entry lists, directly in `patches/`.
+- The file's SHA-256 (with `\n` line ends) is the one the entry lists, so a
+  changed patch needs a changed list. CI reads the list from the base
+  commit, so the entry merges before its patch.
+- An entry with no matching patch is a warning, so the entry can land
+  first. Remove it once the patch is gone.
 
 Internal dependencies always use `"workspace:*"`. A version range would let
 pnpm look the name up on the registry. Add one with

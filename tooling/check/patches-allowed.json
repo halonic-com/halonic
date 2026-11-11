@@ -1,0 +1,11 @@
+{
+  "allowed": [
+    {
+      "package": "@anthropic-ai/sandbox-runtime@0.0.81",
+      "file": "patches/@anthropic-ai__sandbox-runtime@0.0.81.patch",
+      "sha256": "4e58dc3cce14663a8ce612411a95e8c02370b85c6ffd3f5a8ae51017c1464f42",
+      "reason": "Adds network.denyMachLookup: macOS Mach services denied at the end of the Seatbelt profile, where they win over srt's built-in allows. sandbox-srt uses it to deny com.apple.SecurityServer and com.apple.securityd.xpc to the untrusted profile, so code in the fence can't read the Keychain (attack case A36, design HAL-958 section 6, HAL-6346). srt has allowMachLookup but no way to take a service away.",
+      "remove-when": "srt can deny a Mach service itself (proposed upstream), or sandbox-srt no longer runs on Seatbelt"
+    }
+  ]
+}
