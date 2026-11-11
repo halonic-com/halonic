@@ -924,6 +924,9 @@ come in a later part, so on a phone it shows only the page.
 
 `StudioWorkspace` is the window's state for one workspace: its `tabs`, `recent` (Ctrl K's Recent),
 `saving` and `services`. Create one when the workspace opens and `dispose()` it when it closes.
+Give it the workspace's `name`, once the app knows it, for the window's title: the window keeps
+`document.title` as "Home · Acme · Halonic", the active tab, the workspace and the app, following
+switches and renames, and leaves the workspace out while it has no name (`shell.window-title`).
 
 ```tsx
 shell.services.instantiate(registry);

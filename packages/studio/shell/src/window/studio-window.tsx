@@ -17,6 +17,7 @@ import type { WorkspaceContext } from "../workspace-context.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { useWindowTitle } from "./window-title.ts";
 
 /** Props for {@link StudioWindow}. */
 export interface StudioWindowProps {
@@ -57,6 +58,7 @@ export function StudioWindow(props: StudioWindowProps) {
   const palette = usePaletteOpening(platform);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
   useEffect(() => announceSaveNotes(workspace.saving, announcer), [workspace, announcer]);
+  useWindowTitle(tabs, workspace.name);
 
   return (
     <ShellFrame

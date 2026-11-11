@@ -10,6 +10,8 @@ export interface StudioWorkspaceOptions {
   readonly toasts: ToastStore;
   /** The workspace's service registry, already holding the host's and the features' services. */
   readonly services: ServiceTarget;
+  /** The workspace's name, such as "Acme", for the window's title; absent until T3 opens workspaces by name. */
+  readonly name?: string | undefined;
 }
 
 /**
@@ -32,11 +34,14 @@ export class StudioWorkspace {
   readonly saving: SaveState;
   /** The workspace's services, for `shell.services.contextFor`. */
   readonly services: ServiceTarget;
+  /** The workspace's name, such as "Acme", when the window knows it. */
+  readonly name: string | undefined;
 
   constructor(options: StudioWorkspaceOptions) {
     this.recent = new RecentPlaces(this.tabs);
     this.saving = new SaveState(options.toasts);
     this.services = options.services;
+    this.name = options.name;
   }
 
   /** Stops following the tabs. Call it once, when the workspace closes. */
