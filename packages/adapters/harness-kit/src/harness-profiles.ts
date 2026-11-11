@@ -7,10 +7,11 @@
 // A program in the sandbox writes only its working folder, its temp folder
 // and its settings folder. With a proposal folder (`filesFolder`), the
 // working folder is in that folder, so the program writes nowhere in the
-// workspace. Halonic's data folder is denied as a whole, and the run's own
-// folders in it are reopened, so a folder another run makes there later is
-// denied too (HAL-5644). The person's keys, sign-ins and their own harness
-// settings in the home folder are denied as well.
+// workspace. On Linux and macOS, Halonic's data folder is denied as a whole,
+// and the run's own folders in it are reopened, so a folder another run makes
+// there later is denied too (HAL-5644). On Windows its other entries are
+// denied by name (see `#dataDenied`). The person's keys, sign-ins and their
+// own harness settings in the home folder are denied as well.
 
 import { dirname, join } from "node:path";
 import type { HarnessAgent, HarnessProfile, HarnessProfileBuilder } from "@halonicjs/engine";
@@ -130,12 +131,17 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // that matters. The workspace is never reopened: when it holds the data
     // folder (a workspace in the home folder), the whole data folder would
     // be readable.
+    // On Windows the data folder itself isn't denied, so nothing of the run's
+    // lies in a denied path and nothing is reopened.
     const writable = [tempFolder, ...(settingsFolder ? [settingsFolder] : [])];
     if (agent.filesFolder !== null) writable.unshift(workingFolder);
-    const reopenedPaths = [
-      ...(agent.filesFolder === null ? [] : await this.#entriesOfRoot(root, workingFolder)),
-      ...writable,
-    ];
+    const reopenedPaths =
+      this.#platform === "win32"
+        ? []
+        : [
+            ...(agent.filesFolder === null ? [] : await this.#entriesOfRoot(root, workingFolder)),
+            ...writable,
+          ];
     const deniedGroups: DeniedPathGroup[] = [
       ...(await homeDeniedGroups(this.#options.home, this.#platform, disk)),
       { code: "halonic-data", paths: await this.#dataDenied(data, [root, ...writable]) },
@@ -179,19 +185,24 @@ export class HarnessProfiles implements HarnessProfileBuilder {
   }
 
   /**
-   * The paths that deny Halonic's data folder: the folder as a whole. On
-   * Windows also its entries around the run's own folders, by name: srt
-   * keeps a write grant on each writable folder between sessions there, and
-   * any sandboxed session may read a folder with one, because a grant set on
-   * a folder ranks above a deny it inherits from the data folder. A deny set
-   * on the folder itself still ranks above the grant. A run folder that
-   * another session makes after this one opens is not named, and stays
-   * readable on Windows (threat model 4.6, Known limits).
+   * The paths that deny Halonic's data folder. On Linux and macOS, the folder
+   * as a whole.
+   *
+   * On Windows, its entries around the run's own folders, by name. A deny on
+   * the data folder itself would also take the right to look at the folders
+   * on the way to the run's own folders, and Node looks at each of them to
+   * resolve a script's path, so no Node program could start in a run folder,
+   * the fence's own probe included. What the list doesn't name is kept out
+   * by the data folder's own access list: it is in the user profile, which
+   * the sandbox reads only where a grant names. srt keeps a write grant on
+   * each writable folder between sessions, though, and any sandboxed session
+   * may read a folder with one, so a run folder that another session makes
+   * and writes after this one opens stays readable (threat model 4.6, Known
+   * limits).
    */
   async #dataDenied(data: string, own: readonly string[]): Promise<string[]> {
     if (this.#platform !== "win32") return [data];
-    const around = await entriesAround(data, own, this.#disk);
-    return around.includes(data) ? around : [data, ...around];
+    return await entriesAround(data, own, this.#disk);
   }
 
   /**

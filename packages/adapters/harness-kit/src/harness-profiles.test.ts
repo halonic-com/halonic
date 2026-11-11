@@ -160,21 +160,26 @@ verifies("harness-kit.harness-profile", () => {
       expect(profile.reopenedPaths).not.toContain(join(proposal, "host"));
     });
 
-    it("also denies the data folder's other entries by name on Windows", async () => {
+    it("denies the data folder's other entries by name on Windows, not the folder, and reopens nothing", async () => {
       const { data, home, proposal } = computer;
       await mkdir(join(home, ".local", "bin"), { recursive: true });
       await writeFile(join(home, ".local", "bin", "claude"), "");
 
-      const { deniedGroups } = await profilesWith({}, { platform: "win32" }).profileOf(
+      const { profile, deniedGroups } = await profilesWith({}, { platform: "win32" }).profileOf(
         agentWith(proposal),
         bridge,
       );
 
+      // A deny on the data folder itself would keep Node from resolving a path in a run folder.
       const denied = deniedGroups.find(({ code }) => code === "halonic-data")?.paths ?? [];
-      expect(denied[0]).toBe(data);
+      expect(denied).not.toContain(data);
       expect(denied).toContain(join(data, "agent-host"));
       expect(denied).toContain(join(data, "workspaces", "k1", "proposals", "run_2"));
-      expect(denied.some((path) => path !== data && proposal.startsWith(path))).toBe(false);
+      expect(denied.some((path) => proposal.startsWith(path))).toBe(false);
+      expect(profile.reopenedPaths).toEqual([]);
+      expect(profile.readOnlyPaths).toEqual(
+        expect.arrayContaining([join(proposal, ".git"), join(proposal, "agents")]),
+      );
     });
 
     it("refuses a temp folder that isn't there", async () => {
