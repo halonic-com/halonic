@@ -179,9 +179,6 @@ verifies("shell.palette-options", () => {
       expect(paletteOptionName(refundChecker, kindNames)).toBe("Refund checker, agent");
       expect(paletteOptionName(inbox, kindNames)).toBe("Inbox");
       expect(paletteOptionName(newTab, kindNames)).toBe("New tab");
-      expect(paletteOptionName({ ...newTab, source: "Weather plugin" }, kindNames)).toBe(
-        "New tab, Weather plugin",
-      );
     });
 
     it("reads an item's kind by the name it was registered with, never its id", () => {
@@ -203,5 +200,13 @@ verifies("shell.palette-options", () => {
     it("says it couldn't search when a failed provider left nothing to show", () => {
       expect(resultCountText(content([], true))).toBe("Couldn't search");
     });
+  });
+});
+
+verifies("shell.command-sources", () => {
+  it("names an action with its source after its title", () => {
+    expect(paletteOptionName({ ...newTab, source: "Weather plugin" }, kindNames)).toBe(
+      "New tab, Weather plugin",
+    );
   });
 });

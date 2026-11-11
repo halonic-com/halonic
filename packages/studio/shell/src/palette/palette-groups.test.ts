@@ -116,23 +116,6 @@ verifies("shell.palette-groups", () => {
     expect(content.groups[0]?.rows[0]?.target).toEqual({ kind: "action", command: "shell.tables" });
   });
 
-  it("keeps an action's source on its row", () => {
-    const content = palette({
-      words: "forecast",
-      actions: [
-        {
-          id: "plugins.commands.weather.forecast",
-          title: "Show forecast",
-          source: "Weather plugin",
-        },
-      ],
-    });
-    expect(content.groups[0]?.rows[0]).toMatchObject({
-      label: "Show forecast",
-      source: "Weather plugin",
-    });
-  });
-
   it("keeps each group's best 5 rows", () => {
     const content = palette({
       words: "run",
@@ -187,5 +170,24 @@ verifies("shell.palette-groups", () => {
 
   it("shows no group for a source that isn't built yet", () => {
     expect(palette({})).toEqual({ groups: [], nothingFound: false, couldNotSearch: false });
+  });
+});
+
+verifies("shell.command-sources", () => {
+  it("keeps an action's source on its row", () => {
+    const content = palette({
+      words: "forecast",
+      actions: [
+        {
+          id: "plugins.commands.weather.forecast",
+          title: "Show forecast",
+          source: "Weather plugin",
+        },
+      ],
+    });
+    expect(content.groups[0]?.rows[0]).toMatchObject({
+      label: "Show forecast",
+      source: "Weather plugin",
+    });
   });
 });

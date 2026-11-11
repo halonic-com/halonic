@@ -149,23 +149,6 @@ verifies("shell.palette-dialog", () => {
     expect(palette.view.textContent).toContain("Switch to tab");
   });
 
-  it("shows an action's source beside its title, whole on hover, and reads it after the title", () => {
-    const palette = renderPalette();
-    palette.show({
-      words: "forecast",
-      actions: [
-        {
-          id: "plugins.commands.weather.forecast",
-          title: "Show forecast",
-          source: "Weather plugin",
-        },
-      ],
-    });
-    expect(palette.activeName()).toBe("Show forecast, Weather plugin");
-    const source = palette.view.querySelector('[title="Weather plugin"]');
-    expect(source?.textContent).toBe("Weather plugin");
-  });
-
   it("moves the active option with ↓ and ↑ through every group, wrapping", () => {
     const palette = renderPalette();
     palette.show({ words: "re", found: [refundChecker, refundPolicy] });
@@ -287,5 +270,24 @@ verifies("shell.palette-dialog", () => {
       palette.box().dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(palette.typed).toEqual(["ref"]);
+  });
+});
+
+verifies("shell.command-sources", () => {
+  it("shows an action's source beside its title, whole on hover, and reads it after the title", () => {
+    const palette = renderPalette();
+    palette.show({
+      words: "forecast",
+      actions: [
+        {
+          id: "plugins.commands.weather.forecast",
+          title: "Show forecast",
+          source: "Weather plugin",
+        },
+      ],
+    });
+    expect(palette.activeName()).toBe("Show forecast, Weather plugin");
+    const source = palette.view.querySelector('[title="Weather plugin"]');
+    expect(source?.textContent).toBe("Weather plugin");
   });
 });
