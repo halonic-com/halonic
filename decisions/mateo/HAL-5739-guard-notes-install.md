@@ -2,6 +2,7 @@
 
 - Approval: Mateo fixed it on [HAL-5739](/HAL/issues/HAL-5739); Liam reviewed the pull request on [HAL-5742](/HAL/issues/HAL-5742) and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6Kz3VS2eXTpTIzLCm1JWXfYlrTY/KpHn0HHFZWvbQkWcnPPF9kyOd84cX/0/PLL4TOG08ZCtSWj4wk7BkOsTBg==
 - Task: HAL-5739
 
 ## What changes
