@@ -80,7 +80,8 @@ export interface LocalExecutorOptions {
    * Gives a run's model call an `AbortSignal` for its stop, so a cancel, the
    * run's end or the engine's stop aborts the request to the provider. Core
    * code can't make one, so the host passes it. Without it, a stopped model
-   * call runs to its end, and the run takes its answer no more.
+   * call runs to its end, `cancel()` and `close()` wait for it, and the run
+   * takes its answer no more.
    */
   readonly abortOnStop?: AbortOnStop;
 }

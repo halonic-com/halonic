@@ -63,6 +63,11 @@ export interface LocalSubagentContext {
   knowledgeOf(agentId: string): AgentKnowledge;
   /** The Halonic tools of an agent in the turn's run, at a depth, with its knowledge. */
   toolsOf(agentId: string, depth: number, knowledge: AgentKnowledge): readonly HalonicTool[];
+  /**
+   * The stop of the turn that delegated the task. The subagent's turn stops
+   * with it, so a cancel doesn't wait for the subagent's whole turn.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -121,6 +126,7 @@ export async function runLocalSubagent(
     log: turn.log,
     ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
     localOnly: context.localOnly,
+    ...(context.signal === undefined ? {} : { signal: context.signal }),
   });
   return outcome.kind === "stopped" ? outcome : { kind: "answer", content: outcome.result.content };
 }

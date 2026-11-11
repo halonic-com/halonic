@@ -321,13 +321,15 @@ export class LocalExecutor implements RunExecutor {
    * The tools of an agent in a run: Halonic's tools, its memory tools and
    * its knowledge tools, then the run-log, records and subagent tools its
    * kept file grants. An agent the definitions have no file for gets the
-   * first two only, because its knowledge comes from that file too.
+   * first two only, because its knowledge comes from that file too. A
+   * subagent's turn stops with `signal`, the stop of the turn that delegated.
    */
   private runToolsOf(
     turn: RunTurn,
     agentId: string,
     depth: number,
     knowledge: AgentKnowledge,
+    signal?: AbortSignal,
   ): readonly HalonicTool[] {
     const own = [
       ...this.halonicToolsOf(agentId, turn.run.runId),
@@ -360,7 +362,8 @@ export class LocalExecutor implements RunExecutor {
             ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
             localOnly: this.options.localOnly === true,
             knowledgeOf: (id) => this.runKnowledgeOf(turn, id),
-            toolsOf: (id, depth, knowledge) => this.runToolsOf(turn, id, depth, knowledge),
+            toolsOf: (id, depth, knowledge) => this.runToolsOf(turn, id, depth, knowledge, signal),
+            ...(signal === undefined ? {} : { signal }),
           },
           task,
         ),
@@ -439,7 +442,7 @@ export class LocalExecutor implements RunExecutor {
         model,
         secrets: this.options.secrets,
         messages,
-        halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
+        halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge, signal),
         connectors,
         connectorTools,
         ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
@@ -455,8 +458,7 @@ export class LocalExecutor implements RunExecutor {
         ...(signal === undefined ? {} : { signal }),
       });
     const { abortOnStop } = this.options;
-    const outcome =
-      abortOnStop === undefined ? await agentTurn() : await abortOnStop(stop, agentTurn);
+    const outcome = await (abortOnStop?.(stop, agentTurn) ?? agentTurn());
     // A call stopped while it ran gives nothing, even when it ran to its end.
     stop.throwIfStopped();
     if (outcome.kind === "stopped") return outcome.stop;

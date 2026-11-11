@@ -2,7 +2,6 @@
 
 - Approval: the plan was approved by Liam on [HAL-5556](/HAL/issues/HAL-5556) for finding 658 on [HAL-5216](/HAL/issues/HAL-5216); Liam approves this note in review
 - Kind: internal
-- Signature: pending
 - Task: HAL-5216
 
 ## What changes
@@ -27,8 +26,10 @@ met:
 
 One change from the plan: core code can't make an `AbortSignal` (it sees the Web types but not
 their values), so the bridge from the engine's `StopSignal` lives in the host, as the executor
-option `abortOnStop`. The CLI passes it. Without it, the engine still stops the call: it drops the
-answer and records nothing.
+option `abortOnStop`. The CLI passes it. Without it (test-runner and the examples), the call runs
+to its end, and the engine drops its answer and records nothing; `cancel()` and `close()` wait for
+it to end. The stop reaches a subagent's turn under the run's model call as well, so a cancel
+during a `delegate_*` call doesn't wait for the subagent's whole turn.
 
 ## Covers
 

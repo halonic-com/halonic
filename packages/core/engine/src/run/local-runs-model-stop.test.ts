@@ -1,3 +1,4 @@
+import type { Agent } from "@halonicjs/format";
 import {
   type ChatRequest,
   type ChatResponse,
@@ -6,7 +7,8 @@ import {
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { textAnswer } from "../testing/scripted-model.ts";
+import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
+import { call, callAnswer, textAnswer } from "../testing/scripted-model.ts";
 import type { AbortOnStop } from "./abort-on-stop.ts";
 import { modelRunCancelledMessage } from "./live-calls.ts";
 import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
@@ -28,17 +30,30 @@ function hostAbortOnStop() {
   return { abortOnStop, listening: () => listening };
 }
 
-/** A provider that answers only when its call is aborted, and then throws the abort's reason. */
+/**
+ * A provider that gives `answers` first, one per call, and then answers only
+ * when its call is aborted, and then throws the abort's reason.
+ */
 class WaitingModel implements LlmProvider {
   readonly id = "waiting";
   readonly type = "test";
   readonly capabilities = { tools: true, jsonOutput: false, vision: false, streaming: false };
   readonly aborted: unknown[] = [];
+  /** The agent of the call that waits, once it is made. */
+  waitingFor: string | undefined;
+  readonly #answers: ChatResponse[];
   #called = Promise.withResolvers<void>();
-  /** Resolves once the first call has been made. */
+  /** Resolves once the first call that waits has been made. */
   readonly called = this.#called.promise;
 
+  constructor(answers: ChatResponse[] = []) {
+    this.#answers = [...answers];
+  }
+
   chat(request: ChatRequest): Promise<ChatResponse> {
+    const answer = this.#answers.shift();
+    if (answer !== undefined) return Promise.resolve(answer);
+    this.waitingFor = request.meta?.agentId;
     this.#called.resolve();
     return new Promise((_resolve, reject) => {
       request.signal?.addEventListener("abort", () => {
@@ -63,8 +78,17 @@ class CountingModel implements LlmProvider {
   }
 }
 
-function stoppableRun() {
-  const waiting = new WaitingModel();
+/** An agent of the `acme` hub with the writer's defaults. */
+function agent(id: string, fields: Partial<Agent> = {}): Agent {
+  return { ...writerAgent(), id, name: id, ...fields };
+}
+
+/**
+ * A run whose model call waits on the provider until it is aborted, with a
+ * fallback model behind it. With `answers`, the provider gives those first.
+ */
+function stoppableRun(answers: ChatResponse[] = [], agents?: Readonly<Record<string, Agent>>) {
+  const waiting = new WaitingModel(answers);
   const fallback = new CountingModel();
   const host = hostAbortOnStop();
   const setup = runsOn([], undefined, {
@@ -74,6 +98,7 @@ function stoppableRun() {
       fallback: [{ provider: fallback, model: "fallback-1" }],
     },
     abortOnStop: host.abortOnStop,
+    ...(agents === undefined ? {} : { agents }),
   });
   return { ...setup, waiting, fallback, host };
 }
@@ -96,6 +121,26 @@ verifies("engine.model-call-stop", () => {
       expect(types).not.toContain("llm.fallback");
       expect(types.filter((type) => type === "run.failed")).toHaveLength(1);
       expect(types.at(-1)).toBe("run.failed");
+      expect(await runs.get("run_1")).toMatchObject({ reason: "cancelled" });
+      expect(host.listening()).toBe(0);
+    });
+
+    it("is aborted in a subagent's turn when the run is cancelled, without waiting for that turn", async () => {
+      const { executor, runs, scheduler, waiting, fallback, host } = stoppableRun(
+        [callAnswer(call("d-1", "delegate_checker", { task: "Check the reply to support" }))],
+        { writer: agent("writer", { subagents: ["checker"] }), checker: agent("checker") },
+      );
+      await executor.start(replyStart);
+      const due = scheduler.runDue();
+      await waiting.called;
+      expect(waiting.waitingFor).toBe("checker");
+
+      await executor.cancel("run_1");
+      await due;
+
+      expect(waiting.aborted).toHaveLength(1);
+      expect(fallback.calls).toBe(0);
+      expect(typesOf(runs.logs.get("run_1"))).not.toContain("llm.fallback");
       expect(await runs.get("run_1")).toMatchObject({ reason: "cancelled" });
       expect(host.listening()).toBe(0);
     });
