@@ -69,7 +69,7 @@ verifies("fs-node.tool-approval-files", () => {
     });
 
     it.skipIf(process.platform === "win32")(
-      "makes the folders and the files private to the user",
+      "[platform:win32] needs POSIX modes: makes the folders and the files private to the user",
       async () => {
         const root = join(await tempFolder(), "tool-approvals");
         const store = new FileToolApprovalStore(root);
@@ -131,16 +131,19 @@ verifies("fs-node.tool-approval-files", () => {
       expect(await readdir(workspace)).toEqual([]);
     });
 
-    it.skipIf(process.platform === "win32")("is refused behind a link too", async () => {
-      const folder = await tempFolder();
-      const workspace = join(folder, "acme");
-      await mkdir(join(workspace, "approvals"), { recursive: true });
-      await symlink(join(workspace, "approvals"), join(folder, "profile"));
-      const store = new FileToolApprovalStore(join(folder, "profile", "tool-approvals"));
-      await expect(store.get({ ...lookup, location: workspace })).rejects.toThrow(
-        "inside the workspace",
-      );
-    });
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs POSIX links: is refused behind a link too",
+      async () => {
+        const folder = await tempFolder();
+        const workspace = join(folder, "acme");
+        await mkdir(join(workspace, "approvals"), { recursive: true });
+        await symlink(join(workspace, "approvals"), join(folder, "profile"));
+        const store = new FileToolApprovalStore(join(folder, "profile", "tool-approvals"));
+        await expect(store.get({ ...lookup, location: workspace })).rejects.toThrow(
+          "inside the workspace",
+        );
+      },
+    );
 
     it("is allowed next to the workspace, even with a name that starts the same", async () => {
       const folder = await tempFolder();
