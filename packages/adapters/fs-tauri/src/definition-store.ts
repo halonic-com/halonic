@@ -89,6 +89,7 @@ export class TauriDefinitionStore implements DefinitionStore {
           expected: options.expected ?? null,
         });
         result = checkedWrite(answer);
+        return result.status === "written";
       });
       return result;
     });
@@ -99,6 +100,7 @@ export class TauriDefinitionStore implements DefinitionStore {
     await this.#writes.run(path, async () => {
       await this.#ownChange(path, null, async () => {
         await this.#call(fileCommands.remove, { path });
+        return true;
       });
     });
   }
@@ -146,14 +148,15 @@ export class TauriDefinitionStore implements DefinitionStore {
 
   /**
    * Runs one of the store's own changes to `path`, which leaves `content`
-   * there (`null` for a remove), so no open watch reports it. A write the
-   * shell refused as changed on disk leaves the file as it was, which the
-   * watches read back too.
+   * there (`null` for a remove), so no open watch reports it. `apply` says
+   * whether it changed the file: a write the shell refused as changed on
+   * disk didn't, and what is there is someone else's change, which the
+   * watches must still report, so they don't read it back.
    */
   async #ownChange(
     path: string,
     content: string | null,
-    apply: () => Promise<void>,
+    apply: () => Promise<boolean>,
   ): Promise<void> {
     const watches = [...this.#watches];
     if (watches.length > 0) {
@@ -163,11 +166,13 @@ export class TauriDefinitionStore implements DefinitionStore {
         watch.beginOwnChange(path, change);
       }
     }
+    // A change that failed may have reached the disk or not, so the watches read it back.
+    let changed = true;
     try {
-      await apply();
+      changed = await apply();
     } finally {
       for (const watch of watches) {
-        await watch.endOwnChange(path);
+        await (changed ? watch.endOwnChange(path) : watch.dropOwnChange(path));
       }
     }
   }

@@ -120,6 +120,15 @@ export class ShellWatch implements DefinitionWatch {
     }
   }
 
+  /**
+   * The store's change to `path` didn't happen: the shell found the file
+   * changed on disk. What is there is a change from outside, which the next
+   * batch reports, so the watch forgets the mark without reading the file.
+   */
+  async dropOwnChange(path: string): Promise<void> {
+    this.#own.delete(path);
+  }
+
   /** Stops the shell's watch, lets a batch already being read finish, then reports nothing more. */
   async close(): Promise<void> {
     if (this.#stopping) {

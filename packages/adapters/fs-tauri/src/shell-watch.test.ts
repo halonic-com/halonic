@@ -1,5 +1,5 @@
 import type { DefinitionWatch, WorkspaceFileChange } from "@halonicjs/ports";
-import { errorKindOf } from "@halonicjs/std";
+import { contentDigest, errorKindOf } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { TauriDefinitionStore } from "./definition-store.ts";
@@ -7,6 +7,12 @@ import { FakeFileShell } from "./fake-file-shell.test-helper.ts";
 import { ShellWatch } from "./shell-watch.ts";
 
 const acme = "/workspaces/acme";
+
+const sha256 = {
+  async sha256(data: Uint8Array) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};
 
 /** A listener that keeps what it hears and lets a test wait for the next batch or failure. */
 class Heard {
@@ -78,6 +84,16 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       });
       await heard.until(1);
       expect(heard.batches).toEqual([[{ path: "c.yaml", kind: "changed" }]]);
+    });
+
+    it("still reports an outside change that made its own write come back changed on disk", async () => {
+      const { shell, store, heard } = await watched({ "a.yaml": "1" });
+      // Another editor saves before the shell's next batch says so.
+      shell.files.set("a.yaml", "3");
+      await store.write("a.yaml", "2", { expected: await contentDigest("1", sha256) });
+      shell.send({ type: "changed", paths: ["a.yaml"] });
+      await heard.until(1);
+      expect(heard.batches).toEqual([[{ path: "a.yaml", kind: "changed" }]]);
     });
 
     it("reports a file that became a link as removed", async () => {
