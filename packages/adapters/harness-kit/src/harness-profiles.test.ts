@@ -335,7 +335,7 @@ verifies("harness-kit.harness-profile", () => {
       const install = { program: join(local, "claude"), packageFolder: null };
 
       await expect(
-        profilesWith({ install }, { platform: "win32" }).profileOf(agentWith(null), bridge),
+        profilesWith({ install }, { platform: "win32" }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(
         /can't start the harness from `.*local`\. That folder is inside `.*\.claude`, which the sandbox hides from every agent because it holds your own Claude Code .*Install the harness somewhere else.*native installer.*\nSandbox group: agent-settings$/,
       );
@@ -349,7 +349,7 @@ verifies("harness-kit.run-folders", () => {
       ["temp folder", { tempFolder: async () => join(computer.data, "tmp") }],
       ["settings folder", { settingsFolder: async () => join(computer.data, "settings") }],
     ])("refuses a %s that is a top-level folder of Halonic's data folder", async (name, host) => {
-      await expect(profilesWith({}, {}, host).profileOf(agentWith(null), bridge)).rejects.toThrow(
+      await expect(profilesWith({}, {}, host).profileOf(writerAgent(null), bridge)).rejects.toThrow(
         new RegExp(`The ${name} .* is a top-level folder of Halonic's data folder`),
       );
     });
@@ -358,7 +358,7 @@ verifies("harness-kit.run-folders", () => {
       const settingsFolder = async () => join(computer.data, "tmp", "run_1");
 
       await expect(
-        profilesWith({}, {}, { settingsFolder }).profileOf(agentWith(null), bridge),
+        profilesWith({}, {}, { settingsFolder }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/The temp folder .* overlaps the settings folder/);
     });
 
@@ -371,7 +371,7 @@ verifies("harness-kit.run-folders", () => {
       const host = { [key]: async () => inProposal };
 
       await expect(
-        profilesWith({}, {}, host).profileOf(agentWith(computer.proposal), bridge),
+        profilesWith({}, {}, host).profileOf(writerAgent(computer.proposal), bridge),
       ).rejects.toThrow(new RegExp(`The ${name} .* overlaps the proposal folder`));
     });
 
@@ -379,7 +379,7 @@ verifies("harness-kit.run-folders", () => {
       const tempFolder = async () => join(computer.data, "workspaces", "k1");
 
       await expect(
-        profilesWith({}, {}, { tempFolder }).profileOf(agentWith(computer.proposal), bridge),
+        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(computer.proposal), bridge),
       ).rejects.toThrow(/The temp folder .* overlaps the proposal folder/);
     });
   });
