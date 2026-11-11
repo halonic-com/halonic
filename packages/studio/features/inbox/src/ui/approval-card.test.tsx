@@ -35,6 +35,7 @@ function openCard(overrides: Partial<ApprovalCardProps> = {}) {
   const props: ApprovalCardProps = {
     item: createNoteItem(),
     agentName: "Sorter",
+    subagentName: null,
     decisions: {
       approve: async () => {
         sent.push("approve");

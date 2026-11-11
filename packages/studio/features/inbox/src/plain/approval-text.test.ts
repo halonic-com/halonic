@@ -48,4 +48,9 @@ verifies("inbox.approval-title", () => {
       "checker, for Sorter, wants to use create_note (notes-mcp)",
     );
   });
+
+  it("marks hidden characters in a subagent's id when its file is gone", () => {
+    const item = { ...approvalFor("publish"), subagent: `chec${String.fromCodePoint(0x202e)}ker` };
+    expect(approvalTitle(item, "Sorter")).toBe("chec⟦U+202E⟧ker, for Sorter, wants to use publish");
+  });
 });
