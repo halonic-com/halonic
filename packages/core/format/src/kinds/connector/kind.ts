@@ -1,5 +1,6 @@
 import { passesNameRule } from "@halonicjs/ports";
 import type { Path } from "@halonicjs/schema-kit";
+import { isSecretVariableName } from "@halonicjs/std";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
 import { checkSecretName, looksLikeKey } from "../../shared/secret-name.ts";
@@ -19,6 +20,7 @@ export const connectorKind: FileKind<Connector> = {
     ...checkSecretNames(connector),
     ...checkGoogleValues(connector),
     ...checkPastedKeys(connector),
+    ...checkInheritedNames(connector),
     ...checkApprovedTools(connector),
     ...checkReadTools(connector),
   ],
@@ -88,6 +90,44 @@ function checkPastedKeys(connector: Connector): KindCheckProblem[] {
     ];
   }
   return [];
+}
+
+/** A variable name a program can be given: letters, digits and `_`, not starting with a digit. */
+const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/*
+ * The words are the team's (HAL-6266), next to the placeholders of
+ * `secret-name.ts` and `key-in-value.ts` that wait on the board.
+ */
+const inheritWords = {
+  "inherit-env-name": (name: string) =>
+    `"${name}" isn't a variable name. Use only letters, digits and _, not starting with a digit.`,
+  "inherit-env-secret": (name: string) =>
+    `"${name}" looks like it holds a secret, so it can't be taken from your environment. Store the value as a secret and set this variable under secretEnv to the secret's name instead.`,
+} as const;
+
+/**
+ * `inheritEnv` names variables a local program takes from the app's own
+ * environment. A name that says it holds a secret, such as
+ * `ANTHROPIC_API_KEY`, is refused: a workspace file must not reach for a
+ * key in the person's shell, and `secretEnv` names the secret openly.
+ */
+function checkInheritedNames(connector: Connector): KindCheckProblem[] {
+  if (!("stdio" in connector.transport)) {
+    return [];
+  }
+  const problems: KindCheckProblem[] = [];
+  (connector.transport.stdio.inheritEnv ?? []).forEach((name, index) => {
+    const path: Path = ["transport", "stdio", "inheritEnv", index];
+    if (!variableName.test(name)) {
+      const code = "inherit-env-name";
+      problems.push({ severity: "error", code, path, message: inheritWords[code](name) });
+    } else if (isSecretVariableName(name)) {
+      const code = "inherit-env-secret";
+      problems.push({ severity: "error", code, path, message: inheritWords[code](name) });
+    }
+  });
+  return problems;
 }
 
 /**

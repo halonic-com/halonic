@@ -125,6 +125,14 @@ verifies("app.package-runner-launch", () => {
     }
   });
 
+  it("refuses a blocked variable taken from the app's environment as if the connector set it", () => {
+    expect(refused(stdio({ pin, inheritEnv: ["AWS_PROFILE", "npm_config_registry"] }))).toContain(
+      "sets npm_config_registry",
+    );
+    expect(refused(stdio({ pin, inheritEnv: ["HTTPS_PROXY"] }))).toContain("another server");
+    expect(checkPackageRunnerLaunch(stdio({ pin, inheritEnv: ["AWS_PROFILE"] })).ok).toBe(true);
+  });
+
   it("refuses a pinned runner with an option that fetches from another registry", () => {
     expect(
       refused(stdio({ pin, args: ["--registry=https://evil.test", "-y", "@acme/mail-mcp"] })),

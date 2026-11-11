@@ -201,6 +201,8 @@ function transportContent(
       cwd: posixPath.normalize(stdio.cwd ?? "."),
       env: { ...stdio.env },
       secretEnv: mapValues(stdio.secretEnv ?? {}, secretReference),
+      // Only when written, so a connector without it keeps the content it was trusted with.
+      ...(stdio.inheritEnv === undefined ? {} : { inheritEnv: sorted(stdio.inheritEnv) }),
       ...(path === undefined ? {} : { path }),
     };
     return { kind: "stdio", settings: withUnknown(settings, stdio, stdioFields) };
@@ -238,7 +240,7 @@ function toolsContent(tools: Connector["tools"]): Record<string, unknown> {
   return withUnknown({ approve, ...allow }, tools, toolsFields);
 }
 
-const stdioFields = new Set(["command", "args", "env", "secretEnv", "cwd"]);
+const stdioFields = new Set(["command", "args", "env", "secretEnv", "inheritEnv", "cwd"]);
 const httpFields = new Set(["url", "headers"]);
 const googleFields = new Set(["account", "client"]);
 const toolsFields = new Set(["allow", "approve"]);

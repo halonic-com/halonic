@@ -99,7 +99,7 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
     };
   }
   if ("stdio" in transport) {
-    const { command, args, env, secretEnv, cwd } = transport.stdio;
+    const { command, args, env, secretEnv, inheritEnv, cwd } = transport.stdio;
     return {
       id: connector.id,
       transport: {
@@ -107,6 +107,7 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
         command,
         args,
         env: env ?? {},
+        ...(inheritEnv === undefined ? {} : { inheritEnv: [...inheritEnv] }),
         ...(cwd === undefined ? {} : { cwd }),
       },
       secretEnv: secretEnv ?? {},

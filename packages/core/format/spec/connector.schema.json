@@ -87,6 +87,12 @@
                     "type": "string"
                   }
                 },
+                "inheritEnv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "cwd": {
                   "type": "string"
                 }

@@ -21,6 +21,12 @@ const StdioTransport = s
         env: s.record(s.string(), s.string()).optional(),
         /** Environment variable → secret name. */
         secretEnv: s.record(s.string(), s.string()).optional(),
+        /**
+         * Variables taken from the app's own environment by name, such as
+         * `AWS_PROFILE`, on top of the base every program gets. No secret:
+         * a key goes in `secretEnv`.
+         */
+        inheritEnv: s.array(s.string()).optional(),
         /** Working directory, relative to the workspace root. */
         cwd: s.string().optional(),
       })

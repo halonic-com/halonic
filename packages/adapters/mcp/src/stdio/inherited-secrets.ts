@@ -1,22 +1,4 @@
-/**
- * Words in a variable's name that say its value is a secret, such as
- * `API_KEY`, `NODE_AUTH_TOKEN` or `npm_config__authToken`. Only whole words
- * count, so `KEYMAP` or `AUTHOR` don't.
- */
-const secretWords = new Set([
-  "APIKEY",
-  "AUTH",
-  "COOKIE",
-  "CREDENTIAL",
-  "CREDENTIALS",
-  "KEY",
-  "PASSPHRASE",
-  "PASSWD",
-  "PASSWORD",
-  "PRIVATE",
-  "SECRET",
-  "TOKEN",
-]);
+import { isSecretVariableName } from "@halonicjs/std";
 
 /**
  * Values this short are left alone: under a secret-looking name they are
@@ -55,7 +37,7 @@ export function inheritedSecrets(env: Readonly<Record<string, string | undefined
   const secrets: string[] = [];
   for (const [name, value] of Object.entries(env)) {
     if (value === undefined || value.length < shortestSecret) continue;
-    if (hasSecretName(name)) {
+    if (isSecretVariableName(name)) {
       secrets.push(value);
       continue;
     }
@@ -63,12 +45,6 @@ export function inheritedSecrets(env: Readonly<Record<string, string | undefined
     if (urlSecret !== undefined) secrets.push(urlSecret);
   }
   return secrets;
-}
-
-/** Whether a name such as `NODE_AUTH_TOKEN` or `authToken` holds one of the {@link secretWords}. */
-function hasSecretName(name: string): boolean {
-  const words = name.split(/[^A-Za-z0-9]+|(?<=[a-z0-9])(?=[A-Z])/);
-  return words.some((word) => secretWords.has(word.toUpperCase()));
 }
 
 /**

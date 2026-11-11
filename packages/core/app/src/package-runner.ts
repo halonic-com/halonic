@@ -141,11 +141,13 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
 export function checkPackageRunnerLaunch(
   transport: StdioTransport,
 ): Result<ConnectorPin | null, string> {
-  const { command, args, env, pin } = transport;
+  const { command, args, env, inheritEnv, pin } = transport;
   if (pin === undefined) {
     return ok(null);
   }
-  const variables = findBlockedVariables(env);
+  // A variable taken from the app's environment moves the registry as much as one set here.
+  const inherited = Object.fromEntries((inheritEnv ?? []).map((name) => [name, ""]));
+  const variables = findBlockedVariables({ ...env, ...inherited });
   if (variables !== undefined) {
     return err(
       `the connector's environment sets ${variables.names.join(", ")}, which ${variables.reason}`,

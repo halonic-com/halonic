@@ -73,6 +73,19 @@ verifies("workspace.trust-content", () => {
       expect(same([stdio()], [stdio({ secretEnv: { NODE_OPTIONS: "files-key" } })])).toBe(false);
     });
 
+    it("holds the names taken from the app's environment, sorted, only when written", () => {
+      const settingsOf = (connector: ReturnType<typeof stdio>) =>
+        trustContent({ connectors: [connector], commandPaths: new Map() }).connectors[0]?.settings;
+      expect(settingsOf(stdio({ inheritEnv: ["KUBECONFIG", "AWS_PROFILE"] }))).toMatchObject({
+        inheritEnv: ["AWS_PROFILE", "KUBECONFIG"],
+      });
+      expect(settingsOf(stdio())).not.toHaveProperty("inheritEnv");
+      expect(same([stdio()], [stdio({ inheritEnv: ["AWS_PROFILE"] })])).toBe(false);
+      expect(same([stdio({ inheritEnv: ["A", "B"] })], [stdio({ inheritEnv: ["B", "A"] })])).toBe(
+        true,
+      );
+    });
+
     it("changes when the folder, the command or an argument changes", () => {
       expect(same([stdio()], [stdio({ cwd: "./tools/../scripts" })])).toBe(false);
       expect(same([stdio()], [stdio({ command: "bash" })])).toBe(false);

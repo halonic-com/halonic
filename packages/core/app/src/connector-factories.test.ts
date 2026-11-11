@@ -118,6 +118,7 @@ verifies("app.connector-factories", () => {
           args: ["@acme/notes-mcp"],
           env: { LOG: "1" },
           secretEnv: { NOTES_TOKEN: "notes-token" },
+          inheritEnv: ["AWS_PROFILE"],
           cwd: "tools",
         },
       };
@@ -128,6 +129,7 @@ verifies("app.connector-factories", () => {
           command: "npx",
           args: ["@acme/notes-mcp"],
           env: { LOG: "1" },
+          inheritEnv: ["AWS_PROFILE"],
           cwd: "tools",
         },
         secretEnv: { NOTES_TOKEN: "notes-token" },

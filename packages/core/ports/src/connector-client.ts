@@ -157,6 +157,12 @@ export type ConnectorTransport =
       command: string;
       args: string[];
       env: Record<string, string>;
+      /**
+       * Variables the program takes from the app's own environment by name,
+       * on top of the base every program gets (`app.connector-base-env`).
+       * Never a secret's name: the format refuses one (`format.connector-inherit-env`).
+       */
+      inheritEnv?: string[];
       cwd?: string;
       /**
        * The version to start, for package-runner connectors. The app fills it

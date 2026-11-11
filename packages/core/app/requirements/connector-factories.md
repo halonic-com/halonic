@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4846 (Liam's decision on HAL-2824: one host-side factory the CLI uses now and the engine's turn assembly later, HAL-998); `ConnectorFactory` port v1
+- Source: HAL-6266 (`inheritEnv`); HAL-4846 (Liam's decision on HAL-2824: one host-side factory the CLI uses now and the engine's turn assembly later, HAL-998); `ConnectorFactory` port v1
 
-The connector factories shall take at most one factory per transport kind, refusing a second one for the same kind. They shall create each connector with the factory for its transport, passing the context, its trust grant included, unchanged, and refuse a connector whose transport no factory serves, naming the connector. Listing a connector's tools shall close the connector afterwards, also when the listing fails. A workspace's connector file shall become the factories' config with its transport, headers, environment, `secretEnv` and `cwd` as written, an `http` connector's `secret` as its secret, and no `pin`.
+The connector factories shall take at most one factory per transport kind, refusing a second one for the same kind. They shall create each connector with the factory for its transport, passing the context, its trust grant included, unchanged, and refuse a connector whose transport no factory serves, naming the connector. Listing a connector's tools shall close the connector afterwards, also when the listing fails. A workspace's connector file shall become the factories' config with its transport, headers, environment, `secretEnv`, `inheritEnv` and `cwd` as written, an `http` connector's `secret` as its secret, and no `pin`.
 
 ## Examples
 
