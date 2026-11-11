@@ -54,7 +54,7 @@ const blockSchema = s.discriminatedUnion("kind", [
 /**
  * The engine's `Sandbox`, as a stand-in for the one the agent host runs
  * (`SrtSandbox`). Opening a session opens it in the host; the programs in
- * it are started there too, by a harness the host runs.
+ * it are started there too, by a harness the host runs ({@link AgentHostHarness}).
  * Create it with {@link AgentHostSandbox.connect}, which reads the
  * capabilities once, because the port answers them without waiting.
  */
