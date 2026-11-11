@@ -99,6 +99,8 @@ export class FrameStores {
         add: (section) => {
           guard("settings.add");
           // The store checks first that it is a plain object with a valid id, so the scope can be read.
+          // A bad scope is stored before it throws, but the throw aborts `createShell`, so no shell
+          // ever lists it.
           this.settings.add(featureId, section);
           checkSettingsScope(featureId, section);
         },
