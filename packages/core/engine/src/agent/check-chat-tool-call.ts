@@ -15,8 +15,9 @@ export const chatApprovalReason =
 /**
  * Checks a call in a chat turn as {@link checkRunToolCall} does, and refuses
  * the calls it would ask a person about: a connector's tool that can change
- * things (`write` or `send`, and every listed tool without a risk) never
- * runs in a chat. The model gets the reason as the call's result.
+ * things (`write` or `send`, which is every connector tool until a workspace
+ * can mark one `read`, see `countedRisk`) never runs in a chat. The model
+ * gets the reason as the call's result.
  */
 export function checkChatToolCall(tool: TurnTool, call: ToolCall): CallCheck {
   const check = checkRunToolCall(tool, call);

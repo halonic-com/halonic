@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, ScriptedConnector } from "../testing/scripted-model.ts";
 import { chatApprovalReason, checkChatToolCall } from "./check-chat-tool-call.ts";
+import { countedRisk } from "./offer-listed-tools.ts";
 import { halonicTool } from "./turn-test-kit.test-helper.ts";
 import type { TurnTool } from "./turn-tools.ts";
 
@@ -13,31 +14,32 @@ const lookup: TurnTool = {
   tool: halonicTool("lookup", async () => "found"),
 };
 
-/** The `mail` connector's `send` tool, listed with `risk`, or without one. */
-function mailTool(risk: ToolRisk | undefined): TurnTool {
+/**
+ * The `mail` connector's `send` tool, listed with `listed` as its risk, or
+ * without one, and counted the way `offerListedTools` counts it.
+ */
+function mailTool(listed: ToolRisk | undefined): TurnTool {
   return {
     kind: "server",
     source: "mail",
     definition: { name: "mail__send", description: "Sends", parameters: {} },
     listedName: "send",
     connector: new ScriptedConnector("mail", []),
-    ...(risk === undefined ? {} : { risk }),
+    risk: countedRisk(listed),
+    ...(listed === undefined ? {} : { listedRisk: listed }),
   };
 }
 
 const refusedForApproval = { kind: "refused", reason: chatApprovalReason };
 
 verifies("engine.local-chat-turn", () => {
-  it("runs a call to a Halonic tool, and to a connector's tool whose listing says it only reads", () => {
+  it("runs a call to a Halonic tool", () => {
     expect(checkChatToolCall(lookup, call("c-1", "lookup"))).toEqual({ kind: "run" });
-    expect(checkChatToolCall(mailTool("read"), call("c-1", "mail__send"))).toEqual({
-      kind: "run",
-    });
   });
 
   it("refuses a call a run would ask a person about, since nobody in a chat can answer", () => {
-    for (const risk of ["write", "send", undefined] as const) {
-      expect(checkChatToolCall(mailTool(risk), call("c-1", "mail__send"))).toEqual(
+    for (const listed of ["read", "write", "send", undefined] as const) {
+      expect(checkChatToolCall(mailTool(listed), call("c-1", "mail__send"))).toEqual(
         refusedForApproval,
       );
     }
