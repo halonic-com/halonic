@@ -31,7 +31,7 @@ export function startInputOf(
   definitionsVersion: string,
   at: string,
 ): StartInput {
-  const { hubId, workflowId, input, trigger, harness, cantTry = [] } = request;
+  const { hubId, workflowId, input, trigger, harness, cantTry = [], version } = request;
   return {
     type: "start",
     at,
@@ -44,5 +44,6 @@ export function startInputOf(
     ...(trigger === undefined ? {} : { trigger }),
     ...(harness === undefined ? {} : { harness }),
     cantTry,
+    ...(version === undefined ? {} : { version }),
   };
 }

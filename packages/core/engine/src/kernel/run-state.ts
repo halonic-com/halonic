@@ -5,6 +5,7 @@ import type {
   RunKind,
   RunParent,
   RunStatus,
+  RunVersion,
 } from "@halonicjs/events";
 import {
   type RequestedEffect,
@@ -94,6 +95,11 @@ export interface RunState {
    * other run.
    */
   readonly cantTry: readonly CantTryStep[];
+  /**
+   * Which version of the workspace the run read, as `run.started` names
+   * it, or `null` when it wasn't recorded, as in older logs.
+   */
+  readonly version: RunVersion | null;
   readonly status: RunStatus;
   /** The state the run is in, or `null` before the first `state.entered`. */
   readonly state: string | null;
@@ -197,6 +203,7 @@ function startedState(event: RunEvent): RunState {
     parent: event.parent ?? null,
     harness: event.harness ?? null,
     cantTry: event.cantTry ?? [],
+    version: event.version ?? null,
     status: "running",
     state: null,
     enteredAt: null,

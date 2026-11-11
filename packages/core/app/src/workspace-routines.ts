@@ -1,3 +1,4 @@
+import type { RunVersion } from "@halonicjs/events";
 import {
   DEFAULT_TICK_POLICY,
   type DueRun,
@@ -22,6 +23,14 @@ export interface WorkspaceRoutineSchedulerOptions
    * whose zone is UTC; a host passes the machine's zone, which core can't read.
    */
   policy?: TickPolicy;
+  /**
+   * The version of the workspace a routine run reads, asked as each
+   * workflow run starts and recorded on its `run.started`, such as
+   * `LiveRoutines.runVersion` (requirement `app.run-records-its-version`).
+   * Give the version of the files the executor's `definitionsOf` reads.
+   * Not recorded when absent or `null`.
+   */
+  runVersion?: () => Promise<RunVersion | null>;
 }
 
 /**
@@ -46,7 +55,7 @@ export function workspaceRoutineScheduler(
     policy: options.policy ?? DEFAULT_TICK_POLICY,
     keyOf: routineKey,
     due: dueWithSkips,
-    startOf: startOfDueRun,
+    startOf: async (run, lastRun) => withVersion(startOfDueRun(run, lastRun), options.runVersion),
     overlapOf: (run) => run.placed.routine.overlap,
   });
 }
@@ -67,6 +76,18 @@ export function startOfDueRun(run: DueRun, lastRun: Date | null): RoutineStart {
     return { workflow: { hubId: start.hub, workflowId: start.workflow, input: start.input } };
   }
   return { agent: { hubId: start.hub, agentId: start.agent, prompt: start.prompt } };
+}
+
+/** A workflow start with the version its run reads; an agent's start is as it was. */
+async function withVersion(
+  start: RoutineStart,
+  runVersion: WorkspaceRoutineSchedulerOptions["runVersion"],
+): Promise<RoutineStart> {
+  if (!("workflow" in start) || runVersion === undefined) {
+    return start;
+  }
+  const version = await runVersion();
+  return version === null ? start : { workflow: { ...start.workflow, version } };
 }
 
 /**

@@ -4,6 +4,7 @@
 // whether the routine is there at all, from its saved file, since stopping
 // a routine must never wait for a version.
 
+import type { RunVersion } from "@halonicjs/events";
 import { parseFile } from "@halonicjs/format";
 import type { DefinitionSource, Vcs } from "@halonicjs/ports";
 import type { DueRun, PlacedRoutine } from "@halonicjs/routines";
@@ -16,6 +17,7 @@ import {
 } from "@halonicjs/workspace";
 import { liveVersionOf } from "./live-version.ts";
 import type { TargetUnavailableWhy } from "./routine-skips.ts";
+import { runSourceFor, runVersionOf } from "./run-source.ts";
 import { placedRoutines } from "./workspace-routines.ts";
 
 /** What {@link LiveRoutines} reads. */
@@ -72,6 +74,7 @@ interface KeptVersion {
  *   ...options,
  *   routines: () => live.list(),
  *   targetUnavailable: (run) => live.targetUnavailable(run),
+ *   runVersion: () => live.runVersion(),
  * });
  */
 export class LiveRoutines {
@@ -136,6 +139,22 @@ export class LiveRoutines {
       return "never-live";
     }
     return (await saved.read(path)) === null ? "in-trash" : null;
+  }
+
+  /**
+   * The version a routine run started now reads, for the scheduler's
+   * `runVersion` (requirement `app.run-records-its-version`): the live
+   * version, with its commit and date, or the saved files with history
+   * off. `null` while nothing is live, when no routine is scheduled.
+   */
+  async runVersion(): Promise<RunVersion | null> {
+    const { vcs, saved } = this.#options;
+    const live = await liveVersionOf(vcs);
+    if (live.kind === "history-off" || vcs === null) {
+      return { reads: "saved-files" };
+    }
+    const picked = runSourceFor("routine", { live, vcs, saved });
+    return picked.reads === "nothing-live" ? null : runVersionOf(picked);
   }
 
   /** The routines and targets of the live version at `commit`, read once per commit. */

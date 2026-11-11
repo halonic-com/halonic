@@ -4,7 +4,7 @@
 // engine. Sending an event to a waiting run is `RunEvents.sendEvent`; this
 // service only follows the run again afterwards.
 
-import { type RunEvent, summarize } from "@halonicjs/events";
+import { type RunEvent, type RunVersion, summarize } from "@halonicjs/events";
 import type { RunExecutor, RunSubscription } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -49,6 +49,16 @@ export interface FollowOptions {
    *   surface that keeps it must copy it.
    */
   readonly onEvent?: (event: RunEvent, events: readonly RunEvent[]) => void;
+}
+
+/** Options for starting a run with {@link WorkflowRuns.startRun}: a follow's, and what the run read. */
+export interface StartRunOptions extends Omit<FollowOptions, "after"> {
+  /**
+   * Which version of the workspace the run reads, recorded on its
+   * `run.started`: `runVersionOf` the `RunSource` the workspace was loaded
+   * from. Not recorded when absent.
+   */
+  readonly version?: RunVersion;
 }
 
 /** The executor calls {@link WorkflowRuns} makes; `cancel` is optional, as on the port. */
@@ -125,7 +135,8 @@ export class WorkflowRuns {
    * @param typed - the workflow as typed, looked up as `lookUpWorkflow` does
    * @param input - the run's input
    * @param options - `signal` stops following and cancels the run; aborted before the start, nothing starts.
-   *   `onEvent` sees each event while the run goes, as for {@link WorkflowRuns.follow}
+   *   `onEvent` sees each event while the run goes, as for {@link WorkflowRuns.follow}.
+   *   `version` is recorded on the run's `run.started`
    * @throws what the executor's `start` throws, such as for a refused input
    * @throws the signal's reason, an `AbortError` by default, when
    *   `options.signal` was aborted before the start: nothing started
@@ -140,7 +151,7 @@ export class WorkflowRuns {
     workspace: LoadedWorkspace,
     typed: string,
     input: Record<string, unknown>,
-    options: Omit<FollowOptions, "after"> = {},
+    options: StartRunOptions = {},
   ): Promise<StartedRun> {
     const lookup = lookUpWorkflow(hubWorkflows(workspace), typed);
     if (lookup.found !== "one") {
@@ -151,6 +162,7 @@ export class WorkflowRuns {
       hubId: lookup.hubId,
       workflowId: lookup.workflow.id,
       input,
+      ...(options.version === undefined ? {} : { version: options.version }),
     });
     return { found: "one", run: await this.follow(started.id, options) };
   }

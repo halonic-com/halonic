@@ -13,6 +13,7 @@ export type {
   RunParent,
   RunStatus,
   RunTrigger,
+  RunVersion,
   StoredBlob,
   ToolNoun,
   ToolOutcome,

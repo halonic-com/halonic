@@ -9,6 +9,7 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  RunVersion,
   StoredBlob,
   ToolNoun,
   ToolOutcome,
@@ -99,6 +100,8 @@ verifies("events.run-log-contract", () => {
       harness?: string;
       // Added after the reference by events.run-cant-try (HAL-4285).
       cantTry?: CantTryStep[];
+      // Added after the reference by events.run-started-version (HAL-5173).
+      version?: RunVersion;
     }>();
     expectTypeOf<EventOf<"state.entered">>().toEqualTypeOf<{
       type: "state.entered";

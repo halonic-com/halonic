@@ -158,7 +158,17 @@ function checkRunTakesSend(run: RunState, input: SendInput): void {
 
 function start(input: StartInput, definitions: RunDefinitions): Decision {
   const workflow = definitions.workflow;
-  const { type: _type, at, runId, trigger, parent, harness, cantTry = [], ...fields } = input;
+  const {
+    type: _type,
+    at,
+    runId,
+    trigger,
+    parent,
+    harness,
+    cantTry = [],
+    version,
+    ...fields
+  } = input;
   const started: DecidedEvent = {
     type: "run.started",
     ...fields,
@@ -166,6 +176,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     ...(parent === undefined ? {} : { parent }),
     ...(harness === undefined ? {} : { harness }),
     ...(cantTry.length === 0 ? {} : { cantTry: [...cantTry] }),
+    ...(version === undefined ? {} : { version }),
   };
   const draft: Draft = {
     run: evolve(null, { ...started, runId, seq: 1, at }),

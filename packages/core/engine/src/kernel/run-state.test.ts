@@ -50,6 +50,7 @@ verifies("engine.run-state-fold", () => {
       parent: null,
       harness: null,
       cantTry: [],
+      version: null,
       status: "running",
       state: "draft",
       enteredAt: "2026-11-09T09:00:01.000Z",

@@ -339,6 +339,7 @@ export {
   type RunSourceInput,
   type RunStartedBy,
   runSourceFor,
+  runVersionOf,
 } from "./run-source.ts";
 export {
   type RunnerFence,
@@ -429,6 +430,7 @@ export {
   type FollowOptions,
   RunFollowStopped,
   type StartedRun,
+  type StartRunOptions,
   WorkflowRuns,
 } from "./workflow-runs.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";

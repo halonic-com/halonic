@@ -129,9 +129,9 @@ export interface RoutineSchedulerOptions<
   /**
    * Turns a due run into what to start, given the due time of the routine's
    * last run that started (`null` if none did). May throw, such as for a
-   * routine without a hub.
+   * routine without a hub, and may be async, such as to read the version.
    */
-  startOf: (run: Run, lastRun: Date | null) => RoutineStart;
+  startOf: (run: Run, lastRun: Date | null) => RoutineStart | Promise<RoutineStart>;
   /** The overlap rule of a due run's routine. */
   overlapOf: (run: Run) => RoutineOverlap;
   /**
@@ -464,7 +464,7 @@ export class RoutineScheduler<
     // A repeated start (see the class notes) finds its own time stored and
     // fills a different `lastRun`, but the executor returns the run that
     // exists, so the input it started with stays.
-    const what = startOf(run, lastRun);
+    const what = await startOf(run, lastRun);
     const trigger = {
       type: run.trigger,
       routineId: run.key,

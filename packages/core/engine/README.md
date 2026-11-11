@@ -210,7 +210,9 @@ waits, the parent records `run.waiting` with `child` and the child's events, and
 sent to itself: the executor passes such an event to the child.
 
 The local executor starts a child run at once, in the parent's hub and of its kind, with the
-parent's kept definitions (the child's workflow as the one it runs). A parent hears from its child
+parent's kept definitions (the child's workflow as the one it runs), and its `run.started` records
+the parent's `version`, the version of the workspace the parent read (`engine.run-records-its-version`;
+a start's `version` is recorded as given). A parent hears from its child
 in the same call: `send` to a parent whose child waits passes the event to the child, unchanged,
 and returns the parent once it has gone on. The telling is backed by a scheduler timer on the
 parent (`child:<childRunId>`), set first and cancelled once the parent has heard, so a telling a

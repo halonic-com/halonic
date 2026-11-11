@@ -14,7 +14,8 @@ import { maxChildDepth } from "../states/workflow/state.ts";
  * parent's hub and of its kind, with the parent's kept definitions and the
  * child's workflow as the one it runs. The child keeps those definitions
  * as its own, so it never reads the workspace's files either. A parent that
- * runs all its task agents in one harness has its child do the same.
+ * runs all its task agents in one harness has its child do the same, and
+ * the child records the version of the workspace its parent read.
  *
  * @param parent - the parent run as its step left it
  * @throws when the parent's definitions are missing or don't have the workflow
@@ -47,6 +48,7 @@ export async function childStart(
     definitionsVersion,
     parent: { runId: parent.runId, state: effect.state, depth: effect.depth },
     ...(parent.harness === null ? {} : { harness: parent.harness }),
+    ...(parent.version === null ? {} : { version: parent.version }),
   };
 }
 
