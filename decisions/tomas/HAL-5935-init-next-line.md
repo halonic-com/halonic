@@ -1,10 +1,11 @@
 # Decision: `halonic init --example` no longer points to the Studio Inbox
 
 - Requirement: `cli.commands.init.copy-example` (`apps/cli/src/commands/init/requirements/copy-example.md`)
-- Task: HAL-5935; the wording was decided by the team on HAL-5932
+- Task: HAL-5935; the wording was decided by the team on HAL-5932 (HAL-2282 rule), so it is an
+  internal note the CTO signs
 - Approval: Liam approves this note in his review of this pull request on
   [HAL-5935](/HAL/issues/HAL-5935)
-- Kind: user-visible
+- Kind: internal
 
 ## What changes
 
