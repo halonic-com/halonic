@@ -261,6 +261,17 @@ verifies("app.review-try-it-cant-try", () => {
     ]);
     expect((await review.tryItSource()).leftOut.total).toBe(1);
   });
+
+  it("counts a changed file that isn't an item for every run, and can still try it", async () => {
+    const { review, propose } = acme();
+    await propose("scripts/send.sh", "#!/bin/sh\necho sent\n");
+    const { leftOut, cantTry } = await review.tryItSource({ item: triage });
+    expect(leftOut.files).toEqual([
+      { path: "scripts/send.sh", reason: "trust-and-sandbox", changes: 1 },
+    ]);
+    expect(cantTry).toEqual([]);
+  });
+
   it("maps only codes the workspace checks give as errors", async () => {
     expect(Object.keys(breaksFor).sort()).toEqual(Object.keys(missingKinds).sort());
     for (const [code, files] of Object.entries(breaksFor)) {

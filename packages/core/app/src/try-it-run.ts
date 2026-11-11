@@ -2,9 +2,9 @@
 // that run, and the steps it can't try because of that, found before the
 // run starts so they go on its `run.started` event.
 
-import { loadWorkspace } from "@halonicjs/workspace";
+import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import type { ReviewFiles } from "./review-files.ts";
-import type { TryItSource } from "./review-types.ts";
+import type { LeftOutFile, TryItSource } from "./review-types.ts";
 import { cantTryAtLoad } from "./try-it-cant-try.ts";
 import { runFilesOf } from "./try-it-run-files.ts";
 import { buildTryItSource, leftOutOf } from "./try-it-source.ts";
@@ -23,9 +23,13 @@ export async function buildTryItRun(files: ReviewFiles, item: string): Promise<T
   const workspace = await loadWorkspace(files.store);
   const tried = await loadWorkspace(source);
   const runFiles = runFilesOf([workspace, tried], item);
+  // A file that isn't an item may be read by any command the run starts,
+  // so it is counted for every run.
+  const readByRun = (file: LeftOutFile) =>
+    runFiles.all.has(file.path) || placeOf(file.path) === undefined;
   return {
     source,
-    leftOut: leftOutOf(leftOut.files.filter((file) => runFiles.all.has(file.path))),
+    leftOut: leftOutOf(leftOut.files.filter(readByRun)),
     cantTry: cantTryAtLoad({ item, workspace, tried, runFiles, leftOut: leftOut.files }),
   };
 }

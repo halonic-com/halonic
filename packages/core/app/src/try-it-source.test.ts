@@ -211,6 +211,71 @@ verifies("app.review-try-it-holds-back", () => {
   });
 });
 
+verifies("app.review-try-it-holds-back", () => {
+  describe("a file that isn't a Halonic item, such as a script a connector runs", () => {
+    const script = "scripts/mail.sh";
+    const before = "#!/bin/sh\ncurl https://mail.example.test\n";
+    const after = "#!/bin/sh\ncurl https://other.example.test\n";
+
+    it("is read from its baseline while the connector is unchanged, and counted", async () => {
+      const mail = "id: mail\ntransport:\n  stdio: { command: [sh, scripts/mail.sh] }\n";
+      const { store, review, propose } = workspace({ [connector]: mail, [script]: before });
+      await propose(script, after);
+      const { source, leftOut } = await review.tryItSource();
+      expect(await source.read(script)).toBe(before);
+      expect(await source.read(connector)).toBe(store.files.get(connector));
+      expect(leftOut.files).toEqual([{ path: script, reason: "trust-and-sandbox", changes: 1 }]);
+    });
+
+    it("isn't there when it is new", async () => {
+      const { review, propose } = workspace();
+      await propose(script, after);
+      const { source, leftOut } = await review.tryItSource();
+      expect(await source.read(script)).toBeNull();
+      expect(await source.list()).toEqual([agent, models, workflow]);
+      expect(leftOut.files).toEqual([{ path: script, reason: "trust-and-sandbox", changes: 1 }]);
+    });
+
+    it("is put back when it is deleted, since a script may check the file", async () => {
+      const allowlist = "scripts/allowlist.txt";
+      const { store, review } = workspace({ [allowlist]: "mail.example.test\n" });
+      const expected = await contentDigest("mail.example.test\n", digest);
+      const deleted = await review.proposeDelete({ path: allowlist, expected, card: k1 });
+      expect(deleted.status).toBe("written");
+      expect(store.files.has(allowlist)).toBe(false);
+      const { source } = await review.tryItSource();
+      expect(await source.read(allowlist)).toBe("mail.example.test\n");
+      expect(await source.list("scripts")).toEqual([allowlist]);
+    });
+
+    it("in a hidden folder gets a record too, so it is held back", async () => {
+      const hidden = ".tools/run.sh";
+      const { records, review, propose } = workspace({ [hidden]: before });
+      const recordsBefore = records.files.size;
+      await propose(hidden, after);
+      expect(records.files.size).toBe(recordsBefore + 1);
+      const { source } = await review.tryItSource();
+      expect(await source.read(hidden)).toBe(before);
+    });
+
+    it("changes the version Try it records", async () => {
+      const { store, review, propose } = workspace({ [script]: before });
+      await propose(script, after);
+      const { source } = await review.tryItSource();
+      expect(await source.version()).toMatch(/^.+\+held-back\.sha256:[0-9a-f]{64}$/u);
+      expect(await source.version()).not.toBe(await store.version());
+    });
+
+    it("leaves an item with no held-back change as it is", async () => {
+      const { store, review, propose } = workspace({ [script]: before });
+      await propose(script, after);
+      await propose(workflow, `${intake}description: Sorts mail.\n`);
+      const { source } = await review.tryItSource();
+      expect(await source.read(workflow)).toBe(store.files.get(workflow));
+    });
+  });
+});
+
 verifies("app.untrusted-changes-held", () => {
   describe("a change the assistant wrote while the workspace was untrusted", () => {
     it("stays out whole after the workspace is trusted, and is counted", async () => {

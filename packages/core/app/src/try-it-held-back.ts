@@ -1,11 +1,13 @@
 // What Try it and Test leave out of the assistant's changes to review
 // (HAL-65 section F, `workspace.trust.try-it-leaves-out`, HAL-3277): the
 // parts of each kind that give an item more reach. Try it takes the
-// baseline's value for them until the person accepts the change.
+// baseline's value for them until the person accepts the change. Files
+// that aren't items are held back whole.
 
 import type { LeftOutReason } from "@halonicjs/events";
 import type { KindName } from "@halonicjs/format";
 import { isPlainObject } from "@halonicjs/std";
+import { placeOf } from "@halonicjs/workspace";
 import { readYaml } from "@halonicjs/yaml";
 import type { ItemPath } from "./changes/revert-parts.ts";
 
@@ -116,9 +118,19 @@ const heldBackByKind: Partial<Record<KindName, HeldBack>> = {
   provider: { kind: "whole", group: "models" },
 };
 
-/** What Try it holds back in a file of `kind`; `null` when it uses all of it. */
-export function heldBackFor(kind: KindName): HeldBack | null {
-  return heldBackByKind[kind] ?? null;
+/**
+ * A file that isn't a Halonic item, such as a script a connector or a
+ * harness agent runs, or a file one of those reads, is held back whole
+ * (Julian, HAL-4663). We can't tell which files a command reads, and a
+ * list of extensions would be easy to get round. Deleting one is held
+ * back too: a script may check an allowlist or a lock file.
+ */
+const notAnItem: HeldBack = { kind: "whole", group: "trust-and-sandbox" };
+
+/** What Try it holds back in the file at `path`; `null` when it uses all of it. */
+export function heldBackAt(path: string): HeldBack | null {
+  const kind = placeOf(path)?.kind;
+  return kind === undefined ? notAnItem : (heldBackByKind[kind] ?? null);
 }
 
 /** The first group, in the fixed order, that one of `groups` is. */

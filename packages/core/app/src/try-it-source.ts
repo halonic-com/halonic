@@ -8,13 +8,12 @@
 import type { LeftOutReason } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { deepEqual, diffLines, isPlainObject } from "@halonicjs/std";
-import { placeOf } from "@halonicjs/workspace";
 import { readYaml } from "@halonicjs/yaml";
 import { type ItemPath, revertParts } from "./changes/revert-parts.ts";
 import type { ReviewFiles } from "./review-files.ts";
 import type { ReviewRecord } from "./review-record.ts";
 import type { LeftOut, LeftOutFile, TryItSource } from "./review-types.ts";
-import { firstGroup, type HeldBackPart, heldBackFor } from "./try-it-held-back.ts";
+import { firstGroup, type HeldBackPart, heldBackAt } from "./try-it-held-back.ts";
 
 /** What Try it reads for one file instead of the file, and why. */
 interface UsedInstead {
@@ -73,7 +72,8 @@ function readNow(files: ReviewFiles, path: string): Promise<FileNow> {
  * What Try it reads instead of a file with changes to review, or `null`
  * when it reads the file:
  * - written while the workspace was untrusted: the baseline, whole;
- * - a kind held back whole, such as `models.yaml`: the baseline;
+ * - a kind held back whole, such as `models.yaml`, or a file that isn't a
+ *   Halonic item, such as a script a connector runs: the baseline;
  * - otherwise, when the change touches a held-back part: the file with
  *   those parts set back to the baseline's. For a new file, or a baseline
  *   that doesn't read as YAML, there is nothing to set the parts in, so
@@ -85,8 +85,7 @@ function usedInstead(record: ReviewRecord, text: string | null): UsedInstead | n
   if (record.writtenUntrusted === true) {
     return { text: baseline, reason: "before-trust" };
   }
-  const kind = placeOf(record.path)?.kind;
-  const heldBack = kind === undefined ? null : heldBackFor(kind);
+  const heldBack = heldBackAt(record.path);
   if (heldBack === null) {
     return null;
   }
