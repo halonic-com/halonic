@@ -287,21 +287,22 @@ export {
 } from "./run-history.ts";
 export type { PartlyDecided, ProposedRecord, Settled } from "./run-proposal-record.ts";
 export { isProposalFinished, type SettleResult } from "./run-proposal-settle.ts";
-export type {
-  AcceptResult,
-  CompareTexts,
-  Decision,
-  FileBase,
-  InFileProposalTarget,
-  InFileResult,
-  ProposalFileParts,
-  ProposedFile,
-  RefusalReason,
-  RejectResult,
-  RunProposal,
-  UndoFileWrite,
-  UndoSource,
-  UndoStep,
+export {
+  type AcceptResult,
+  type CompareTexts,
+  type Decision,
+  type FileBase,
+  type InFileProposalTarget,
+  type InFileResult,
+  type ProposalFileParts,
+  ProposalUnavailableError,
+  type ProposedFile,
+  type RefusalReason,
+  type RejectResult,
+  type RunProposal,
+  type UndoFileWrite,
+  type UndoSource,
+  type UndoStep,
 } from "./run-proposal-types.ts";
 export {
   type ProposalVcs,

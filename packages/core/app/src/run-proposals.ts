@@ -214,7 +214,7 @@ export class RunProposals {
    * @returns what was written, with the decisions record, as one undo
    *   step; `undo` is `null` when no file was written, even if decisions
    *   changed (a refused file, or one already as the run left it)
-   * @throws when the run has no proposal, or its ref is gone
+   * @throws when the run has no proposal; `ProposalUnavailableError` when its ref is gone
    */
   accept(runId: string, target: ProposalTarget): Promise<AcceptResult> {
     return this.decisions.accept(runId, target);
@@ -241,7 +241,7 @@ export class RunProposals {
    * @returns `null` when the file has no parts to decide: it is decided,
    *   the run added or deleted it, Accept may never write it, or the person
    *   changed it since (Accept lists it under `changedOnDisk`, for Compare)
-   * @throws when the run has no proposal, its ref is gone, or it doesn't propose the file
+   * @throws when the run has no proposal, or it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
    */
   parts(runId: string, path: string): Promise<ProposalFileParts | null> {
     return this.inFile.parts(runId, path);
@@ -277,7 +277,7 @@ export class RunProposals {
    * The texts Compare shows for a file of the proposal: the run's base,
    * the saved file and the run's, less what the person rejected of it.
    *
-   * @throws when the run has no proposal, its ref is gone, or it doesn't propose the file
+   * @throws when the run has no proposal, or it doesn't propose the file; `ProposalUnavailableError` when its ref is gone
    */
   compare(runId: string, path: string): Promise<CompareTexts> {
     return this.decisions.compare(runId, path);
@@ -312,6 +312,31 @@ export class RunProposals {
    */
   settle(runId: string): Promise<SettleResult> {
     return this.settling.settle(runId);
+  }
+
+  /**
+   * Whether an open proposal's ref is gone, deleted outside Halonic
+   * (`app.run-proposal-unavailable`): its texts can't be shown, and Accept,
+   * `parts` and Compare throw `ProposalUnavailableError`. The Inbox then
+   * offers only {@link removeUnavailable}. A settled proposal is never
+   * unavailable: its ref goes on purpose.
+   *
+   * @throws when the run has no proposal
+   */
+  isUnavailable(runId: string): Promise<boolean> {
+    return this.settling.isUnavailable(runId);
+  }
+
+  /**
+   * Removes a proposal whose ref is gone (`app.run-proposal-unavailable`):
+   * its record is kept, settled as unavailable, and files still undecided
+   * were not reviewed. Then drop the run's undo steps from the history, as
+   * for {@link settle}.
+   *
+   * @throws when the run has no proposal, it is settled, or its ref is still there
+   */
+  removeUnavailable(runId: string): Promise<void> {
+    return this.settling.removeUnavailable(runId);
   }
 
   /**

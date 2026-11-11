@@ -16,17 +16,18 @@ import {
   serializeRunProposalRecord,
 } from "./run-proposal-record.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
-import type {
-  AcceptResult,
-  CompareTexts,
-  Decision,
-  ProposalTarget,
-  ProposedFile,
-  RefusalReason,
-  RejectResult,
-  RestoreResult,
-  UndoFileWrite,
-  UndoStep,
+import {
+  type AcceptResult,
+  type CompareTexts,
+  type Decision,
+  type ProposalTarget,
+  ProposalUnavailableError,
+  type ProposedFile,
+  type RefusalReason,
+  type RejectResult,
+  type RestoreResult,
+  type UndoFileWrite,
+  type UndoStep,
 } from "./run-proposal-types.ts";
 
 /** The decisions on the proposals of one workspace's runs. */
@@ -132,13 +133,11 @@ export class ProposalDecisions {
     return (await restoreFile(this.context, entry, to)) ? "restored" : "changed-on-disk";
   }
 
-  /** @throws when the proposal's ref is gone */
+  /** @throws ProposalUnavailableError when the proposal's ref is gone */
   async commitOf(record: ProposedRecord): Promise<string> {
     const commit = await this.context.vcs.readRef(record.proposal.ref);
     if (commit === null) {
-      throw new Error(
-        `The proposal of run ${record.proposal.runId} is unavailable: its ref is gone.`,
-      );
+      throw new ProposalUnavailableError(record.proposal.runId);
     }
     return commit;
   }

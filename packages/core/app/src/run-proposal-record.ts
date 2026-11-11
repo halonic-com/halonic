@@ -46,9 +46,11 @@ export interface Settled {
   /**
    * `decided`: no file was left to decide once the person could no longer
    * undo. `expired`: 30 days after the run finished; files still undecided
+   * then were not reviewed. `unavailable`: the person removed it because its
+   * ref was gone (`app.run-proposal-unavailable`); files still undecided
    * then were not reviewed.
    */
-  readonly why: "decided" | "expired";
+  readonly why: "decided" | "expired" | "unavailable";
 }
 
 /** Where a file stands once some of its parts or changes are decided. */
@@ -167,7 +169,7 @@ function readProposed(
   return ok(record);
 }
 
-const settledReasons: ReadonlySet<unknown> = new Set(["decided", "expired"]);
+const settledReasons: ReadonlySet<unknown> = new Set(["decided", "expired", "unavailable"]);
 
 function readSettled(json: unknown): Settled | null {
   if (!isPlainObject(json)) {

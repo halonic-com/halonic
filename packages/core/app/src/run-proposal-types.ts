@@ -144,6 +144,21 @@ export type InFileResult =
    */
   | { readonly status: "cant-separate"; readonly path: string; readonly message: string };
 
+/**
+ * Thrown when a call needs the run's texts and its proposal ref is gone,
+ * deleted outside Halonic (`app.run-proposal-unavailable`). The Inbox shows
+ * the proposal as unavailable and offers `removeUnavailable`.
+ */
+export class ProposalUnavailableError extends Error {
+  readonly runId: string;
+
+  constructor(runId: string) {
+    super(`The proposal of run ${runId} is unavailable: its ref is gone.`);
+    this.name = "ProposalUnavailableError";
+    this.runId = runId;
+  }
+}
+
 /** What an Undo or Redo of a proposal's step did. */
 export interface RestoreResult {
   /** Entries left alone because they changed since the step, by path. */

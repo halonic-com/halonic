@@ -1,8 +1,9 @@
 // Settling a run's proposal (HAL-3248, `app.run-proposal-done`): once the
 // person decided every file and can no longer undo, or 30 days after the
 // run finished, the proposal's ref goes and its record stays, so the Inbox
-// can still show what was decided. Internal to `core/app`; `RunProposals`
-// hands its calls here.
+// can still show what was decided. A proposal whose ref was deleted outside
+// Halonic is unavailable, and the person removes it (`app.run-proposal-unavailable`).
+// Internal to `core/app`; `RunProposals` hands its calls here.
 
 import type { Clock } from "@halonicjs/ports";
 import type { ProposedRecord, Settled } from "./run-proposal-record.ts";
@@ -56,6 +57,36 @@ export class ProposalSettling {
       }
       await this.settleRecord(record, "decided");
       return "settled";
+    });
+  }
+
+  /** See `RunProposals.isUnavailable`. */
+  isUnavailable(runId: string): Promise<boolean> {
+    return this.records.inTurn(runId, async () => {
+      const record = await this.records.read(runId);
+      if (record?.state !== "proposed") {
+        throw new Error(`Run ${runId} has no proposal.`);
+      }
+      if (record.settled !== undefined) {
+        // A settled proposal's ref is gone by design: the Inbox shows its decisions, not its texts.
+        return false;
+      }
+      return (await this.vcs.readRef(record.proposal.ref)) === null;
+    });
+  }
+
+  /** See `RunProposals.removeUnavailable`. */
+  removeUnavailable(runId: string): Promise<void> {
+    return this.records.inTurn(runId, async () => {
+      const record = await this.records.proposed(runId);
+      if ((await this.vcs.readRef(record.proposal.ref)) !== null) {
+        // Only a proposal nobody can decide any more goes without a decision; Reject is for the rest.
+        throw new Error(`The proposal of run ${runId} is still available.`);
+      }
+      await this.records.save({
+        ...record,
+        settled: { at: this.clock.now().toISOString(), why: "unavailable" },
+      });
     });
   }
 
