@@ -203,7 +203,6 @@ class LocalRunners {
     if (this.#declared !== undefined) {
       const links = this.#linkProblems();
       if (links.length > 0) {
-        this.#current = undefined;
         throw this.#refuse(new Error(links.map((problem) => problem.message).join("; ")));
       }
     }
