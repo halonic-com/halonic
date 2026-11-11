@@ -28,6 +28,8 @@ import { runCommandWith } from "./command.ts";
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 const workflowFile = "hubs/support/workflows/support-reply.workflow.yaml";
 const samsEmail = ["--input", "examples/refund-question.json"];
+/** Each test runs git itself, which is slow on a busy runner, as in the git adapter's own tests. */
+const gitTimeout = 30_000;
 
 let folder: string;
 let acme: string;
@@ -112,7 +114,7 @@ verifies("cli.run-live-version", () => {
     expect(stdout.join("\n")).toContain("Running Support reply in acme");
     expect(stdout.join("\n")).not.toContain("Saved reply");
     expect(await storedRuns()).toBe(1);
-  });
+  }, gitTimeout);
 
   it("loads the live version with its commit as the workspace's version", async () => {
     const commit = await makeLive();
@@ -123,7 +125,7 @@ verifies("cli.run-live-version", () => {
       found: "loaded",
       workspace: { version: commit },
     });
-  });
+  }, gitTimeout);
 
   it("starts the saved files when the folder isn't a git repository", async () => {
     await saveNewName("Saved reply");
@@ -132,7 +134,7 @@ verifies("cli.run-live-version", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(stdout.join("\n")).toContain("Running Saved reply in acme");
-  });
+  }, gitTimeout);
 
   it("refuses when the workspace has history but nothing is live yet, and stores no run", async () => {
     await vcs.init();
@@ -145,7 +147,7 @@ verifies("cli.run-live-version", () => {
       "  Make the workspace live in the Studio, then run again.",
     ]);
     expect(await storedRuns()).toBe(0);
-  });
+  }, gitTimeout);
 
   it("refuses when the workspace has history but git can't start, and stores no run", async () => {
     await makeLive();
@@ -158,7 +160,7 @@ verifies("cli.run-live-version", () => {
       "  Install git and make sure it's on your PATH, then try again.",
     ]);
     expect(await storedRuns()).toBe(0);
-  });
+  }, gitTimeout);
 
   describe("runs send", () => {
     const nameOf = async () =>
@@ -171,14 +173,14 @@ verifies("cli.run-live-version", () => {
       await saveNewName("Saved reply");
 
       expect(await nameOf()).toBe("Support reply");
-    });
+    }, gitTimeout);
 
     it("checks it on the saved files while nothing is live yet", async () => {
       await vcs.init();
       await saveNewName("Saved reply");
 
       expect(await nameOf()).toBe("Saved reply");
-    });
+    }, gitTimeout);
 
     it("refuses when git can't start, rather than check the saved files", async () => {
       await makeLive();
@@ -190,6 +192,6 @@ verifies("cli.run-live-version", () => {
         fix: "Install git and make sure it's on your PATH, then try again.",
         cause: new Error("git wasn't found on the PATH."),
       });
-    });
+    }, gitTimeout);
   });
 });
