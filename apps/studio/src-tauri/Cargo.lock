@@ -1527,6 +1527,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-record-store"
+version = "0.1.0"
+dependencies = [
+ "halonic-run-lock",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "halonic-run-lock"
 version = "0.1.0"
 dependencies = [
