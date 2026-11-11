@@ -16,7 +16,11 @@ Our own MCP client, for servers over HTTP and programs on the person's computer.
   new session (requirements `mcp.http-connector`, `mcp.http-transport`).
 - `src/stdio/` holds `McpStdioConnectorFactory`, the `ConnectorFactory` for `stdio` connectors. It
   starts the program of a trusted workspace on the first call and talks MCP over its standard input
-  and output.
+  and output. Before anything starts, the starter refuses a launch that reaches a skill's `scripts/`
+  folder, and, when the factory's context gives `workingFolders` (the harness agents' working
+  folders), one that would run or load a file from one of them; it checks the program it found on
+  the `PATH` the same way, and reads only the connector file's own `env` as paths (requirements
+  `mcp.program-starter`, `mcp.stdio-connector`).
 - `src/pinned/` holds the pinned launcher for package runners (`npx`, `uvx` …) with a `pin`.
   It also holds `findRunner`, which finds a pinned connector's runner and its Node from the
   app's own environment (its `PATH`, on macOS the login shell's, then the usual install folders)
