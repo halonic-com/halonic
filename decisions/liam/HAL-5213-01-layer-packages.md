@@ -2,6 +2,7 @@
 
 - Approval: the board said yes to one npm package per layer on [HAL-45](/HAL/issues/HAL-45) (11 Nov) and Liam planned it on [HAL-5213](/HAL/issues/HAL-5213); Priya reviewed the pull request on [HAL-5349](/HAL/issues/HAL-5349), then Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p5hKDXlJfYViAhql6OGHLNode8FBPQAyLT1pvxuI1Ubf0kf1rHQnjs/mdhhGvmAyKdg5ijRBC4GVxDd8oWGXDw==
 - Task: HAL-5213
 
 ## What changes
