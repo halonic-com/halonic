@@ -17,6 +17,7 @@
     "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-plugins": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
+    "@halonicjs/studio-feature-settings": "workspace:*",
     "@halonicjs/studio-feature-workspace": "workspace:*",
     "@halonicjs/studio-services": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*"
