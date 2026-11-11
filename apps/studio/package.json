@@ -13,6 +13,7 @@
   "dependencies": {
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
+    "@halonicjs/studio-feature-plugins": "workspace:*",
     "@halonicjs/studio-services": "workspace:*"
   },
   "devDependencies": {

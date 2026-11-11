@@ -1,0 +1,38 @@
+{
+  "name": "@halonicjs/studio-feature-plugins",
+  "private": true,
+  "type": "module",
+  "description": "The Plugins feature of the Studio.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "elena",
+    "coverage": {
+      "lines": 85
+    }
+  }
+}
