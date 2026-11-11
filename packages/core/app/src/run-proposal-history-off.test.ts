@@ -56,18 +56,46 @@ verifies("app.run-proposal-history-off", () => {
   });
 
   describe("a workspace too big to copy", () => {
-    const workspace = new TestDefinitionStore({ "a.md": "12345", "b.md": "67890", "c.md": "x" });
+    const megabyte = 1024 * 1024;
 
     it.each([
-      ["files", { files: 2, bytes: 1000 }, "more than 2 files"],
-      ["bytes", { files: 100, bytes: 8 }, "more than 8 bytes"],
-    ])("fails at start past the limit of %s, and leaves no copy", async (_limit, limits, says) => {
-      const copies = new TestRunCopies(digest);
-      const texts = new CopyProposalTexts(copies, workspace, digest, limits);
-      const opening = texts.open("01JD8Q");
-      await expect(opening).rejects.toBeInstanceOf(WorkspaceTooBigToCopyError);
-      await expect(opening).rejects.toThrow(says);
-      expect(copies.copies.size).toBe(0);
+      [
+        "files",
+        { "a.md": "1", "b.md": "2", "c.md": "3" },
+        { files: 2, bytes: megabyte },
+        "more than 2 files",
+      ],
+      [
+        "bytes",
+        { "a.md": "x".repeat(megabyte), "b.md": "y" },
+        { files: 100, bytes: megabyte },
+        "more than 1 MB",
+      ],
+    ])(
+      "fails at start past the limit of %s, and leaves no copy",
+      async (_limit, files, limits, says) => {
+        const copies = new TestRunCopies(digest);
+        const workspace = new TestDefinitionStore(files);
+        const texts = new CopyProposalTexts(copies, workspace, digest, limits);
+        const opening = texts.open("01JD8Q");
+        await expect(opening).rejects.toBeInstanceOf(WorkspaceTooBigToCopyError);
+        await expect(opening).rejects.toThrow(says);
+        expect(copies.copies.size).toBe(0);
+      },
+    );
+
+    it("says the default limits as people read them, and what to do", async () => {
+      const files = Object.fromEntries(
+        Array.from({ length: 10_001 }, (_, index) => [`notes/${index}.md`, ""]),
+      );
+      const texts = new CopyProposalTexts(
+        new TestRunCopies(digest),
+        new TestDefinitionStore(files),
+        digest,
+      );
+      await expect(texts.open("01JD8Q")).rejects.toThrow(
+        "too big to run with history off (more than 10,000 files). Turn history on, or open a smaller folder.",
+      );
     });
   });
 

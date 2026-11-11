@@ -42,6 +42,8 @@ export interface RunCopies {
   list(): Promise<string[]>;
 }
 
+const MEGABYTE = 1024 * 1024;
+
 /** How big a workspace may be to run with history off. */
 export interface CopyLimits {
   readonly files: number;
@@ -53,7 +55,7 @@ export interface CopyLimits {
  * Past these, a copy per run would fill the disk unnoticed, so the run
  * doesn't start.
  */
-export const copyLimits: CopyLimits = { files: 10_000, bytes: 100 * 1024 * 1024 };
+export const copyLimits: CopyLimits = { files: 10_000, bytes: 100 * MEGABYTE };
 
 /** The texts of runs in copies of the workspace. */
 export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, HistoryOffProposal> {
@@ -113,7 +115,7 @@ export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, His
       files += 1;
       bytes += encodeUtf8(text).length;
       if (files > this.limits.files) {
-        throw new WorkspaceTooBigToCopyError(runId, `${this.limits.files} files`);
+        throw new WorkspaceTooBigToCopyError(runId, `${countOf(this.limits.files)} files`);
       }
       if (bytes > this.limits.bytes) {
         throw new WorkspaceTooBigToCopyError(runId, sizeOf(this.limits.bytes));
@@ -211,7 +213,12 @@ export class CopyProposalTexts implements KeptTexts<HistoryOffRunningRecord, His
 }
 
 /** A byte count as a person reads it, such as "100 MB". */
+/** A count as people read it: `10,000`. */
+function countOf(count: number): string {
+  return count.toLocaleString("en");
+}
+
+/** A size limit in whole megabytes: `100 MB`. Limits are whole megabytes. */
 function sizeOf(bytes: number): string {
-  const megabyte = 1024 * 1024;
-  return bytes >= megabyte ? `${Math.floor(bytes / megabyte)} MB` : `${bytes} bytes`;
+  return `${countOf(Math.floor(bytes / MEGABYTE))} MB`;
 }

@@ -189,7 +189,7 @@ export class WorkspaceTooBigToCopyError extends Error {
 
   constructor(runId: string, limit: string) {
     super(
-      `Run ${runId} can't start: the workspace is too big to run with history off (more than ${limit}).`,
+      `Run ${runId} can't start: the workspace is too big to run with history off (more than ${limit}). Turn history on, or open a smaller folder.`,
     );
     this.name = "WorkspaceTooBigToCopyError";
     this.runId = runId;
