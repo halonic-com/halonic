@@ -37,7 +37,7 @@ const shownPlaces = [
 /** The phone's bars and pages joined as the Studio joins them, with a page per location. */
 function PhoneStudio({ closeStack }: { readonly closeStack: CloseStack }) {
   const places = usePhonePlaces();
-  usePhoneBackButton(true, closeStack, places.back);
+  usePhoneBackButton(true, closeStack, places);
   return (
     <>
       <PhoneTopBar {...places.topBar} />
@@ -80,7 +80,12 @@ function renderPhone(closeStack = createCloseStack()) {
     act(() => found.click());
   };
   const tapPlace = (name: string) => tap(`nav[aria-label="Places"] a[aria-label^="${name}"]`);
-  const pressBack = () => act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+  // As the browser does: the shell's entry comes off, and `popstate` fires on the one under it.
+  const pressBack = () =>
+    act(() => {
+      window.history.replaceState(null, "");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
   return { container, title, hasBack, hasNavigation, tap, tapPlace, pressBack };
 }
 
@@ -136,6 +141,20 @@ verifies("shell.phone-back", () => {
     expect(sheetOpen).toBe(true);
   });
 
+  it("cancels the innermost dialog when one is open inside another", () => {
+    const form = document.createElement("dialog");
+    form.setAttribute("open", "");
+    const picker = document.createElement("dialog");
+    picker.setAttribute("open", "");
+    form.append(picker);
+    document.body.append(form);
+    const cancelled: string[] = [];
+    form.addEventListener("cancel", () => cancelled.push("form"));
+    picker.addEventListener("cancel", () => cancelled.push("picker"));
+    pressPhoneBack(createCloseStack(), () => true);
+    expect(cancelled).toEqual(["picker"]);
+  });
+
   it("goes one page up, then to the place's top, then Home, and leaves from Home's top", () => {
     const phone = renderPhone();
     phone.tapPlace("More");
@@ -156,6 +175,20 @@ verifies("shell.phone-back", () => {
     expect(phone.title()).toBe("Home");
     expect(stepsBack).not.toHaveBeenCalled();
 
+    phone.pressBack();
+    expect(phone.title()).toBe("Home");
+    expect(stepsBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("puts its entry back on the next move when leaving from Home's top didn't leave", () => {
+    const phone = renderPhone();
+    phone.pressBack();
+    expect(stepsBack).toHaveBeenCalledTimes(1);
+    // The Studio is the first page in the tab, so the step back did nothing.
+    expect(window.history.state).toBeNull();
+
+    phone.tapPlace("Inbox");
+    expect(window.history.state).toEqual({ halonicPhoneBack: true });
     phone.pressBack();
     expect(phone.title()).toBe("Home");
     expect(stepsBack).toHaveBeenCalledTimes(1);

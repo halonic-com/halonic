@@ -572,15 +572,17 @@ top bar's title and Back (only under a place's top), the bottom navigation's pro
 on an opened item, where it hides), and `open`, `openPlace`, `openIn` and `back`. Every move that
 changes the page takes focus to the new page's `h1`, as on the desktop.
 
-`usePhoneBackButton(enabled, closeStack, back)` handles Android's back, and the browser's when the
-Studio is served on a phone. The press arrives as a step back in the page's history, so the shell
-keeps one entry of its own on top and puts it back after each press. `pressPhoneBack` decides what
-a press does: an open modal dialog cancels first, then the close stack's first layer closes, and
-only then the app goes back. At the top of Home it lets the press through, and the Studio is left.
+`usePhoneBackButton(enabled, closeStack, places)` handles Android's back, and the browser's when
+the Studio is served on a phone. The press arrives as a step back in the page's history, so the
+shell keeps one entry of its own on top and puts it back after each press. `pressPhoneBack` decides
+what a press does: an open modal dialog cancels first (the innermost, when one is open inside
+another), then the close stack's first layer closes, and only then the app goes back. At the top of
+Home it lets the press through, and the Studio is left. When the Studio is the first page in its
+browser tab, that press can't leave, so the next page move puts the entry back.
 
 ```tsx
 const places = usePhonePlaces();
-usePhoneBackButton(presentation === "phone", shell.closeStack, places.back);
+usePhoneBackButton(presentation === "phone", shell.closeStack, places);
 
 <ShellFrame
   phoneTopBar={<PhoneTopBar {...places.topBar} />}

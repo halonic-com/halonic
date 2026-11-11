@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { CloseStack } from "../close-stack/close-stack.ts";
+import type { PhonePlaces } from "./use-phone-places.ts";
 
 /** What a back press did: it closed something or moved, or there was nowhere to go. */
 export type PhoneBackResult = "handled" | "leave";
@@ -15,8 +16,8 @@ export type PhoneBackResult = "handled" | "leave";
  * Back reaches it the same way Esc does, as the dialog's `cancel` event.
  */
 export function pressPhoneBack(closeStack: CloseStack, goBack: () => boolean): PhoneBackResult {
-  const dialog = document.querySelector<HTMLDialogElement>("dialog[open]");
-  if (dialog !== null) {
+  const dialog = innermostOpenDialog();
+  if (dialog !== undefined) {
     dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
     return "handled";
   }
@@ -24,6 +25,15 @@ export function pressPhoneBack(closeStack: CloseStack, goBack: () => boolean): P
     return "handled";
   }
   return goBack() ? "handled" : "leave";
+}
+
+/**
+ * The open dialog the user sees on top. A dialog opened from another one (a phone `Select` picker
+ * in a `FormSheet`) is nested in it, so it comes later in the page than the dialog under it.
+ */
+function innermostOpenDialog(): HTMLDialogElement | undefined {
+  const open = document.querySelectorAll<HTMLDialogElement>("dialog[open]");
+  return open[open.length - 1];
 }
 
 /** The history entry the shell keeps on top while it handles back; see {@link usePhoneBackButton}. */
@@ -40,32 +50,41 @@ function isBackGuard(state: unknown): boolean {
  * press and puts the entry back. At the top of Home it doesn't put it back but steps back once
  * more, so the browser leaves the Studio, and in the app the next press is the system's own.
  *
+ * That step back does nothing when the Studio is the first page in its browser tab, and the
+ * Studio stays without its entry. So every page move puts the entry back if it's missing;
+ * otherwise the next back press would close the tab from wherever the user is.
+ *
  * Only one entry is ever added, so the browser's history doesn't fill up as the user moves. When
  * the window widens to the desktop layout the entry stays and a back press there is ignored once:
  * taking it off from code would race with a remount.
  *
  * @example
- * usePhoneBackButton(presentation === "phone", shell.closeStack, places.back);
+ * usePhoneBackButton(presentation === "phone", shell.closeStack, places);
  */
 export function usePhoneBackButton(
   enabled: boolean,
   closeStack: CloseStack,
-  goBack: () => boolean,
+  places: Pick<PhonePlaces, "stacks" | "back">,
 ): void {
-  const latestGoBack = useRef(goBack);
+  const { stacks, back } = places;
+  const latestBack = useRef(back);
   useEffect(() => {
-    latestGoBack.current = goBack;
-  }, [goBack]);
+    latestBack.current = back;
+  }, [back]);
+
+  // Runs when the phone layout starts and after every page move.
+  useEffect(() => {
+    if (enabled && !isBackGuard(window.history.state)) {
+      window.history.pushState(backGuard, "");
+    }
+  }, [enabled, stacks]);
 
   useEffect(() => {
     if (!enabled) {
       return;
     }
-    if (!isBackGuard(window.history.state)) {
-      window.history.pushState(backGuard, "");
-    }
     function onPopState() {
-      if (pressPhoneBack(closeStack, () => latestGoBack.current()) === "handled") {
+      if (pressPhoneBack(closeStack, () => latestBack.current()) === "handled") {
         window.history.pushState(backGuard, "");
       } else {
         window.history.back();

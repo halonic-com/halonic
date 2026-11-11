@@ -40,8 +40,8 @@ export interface PhonePlaces {
   /** Follows a link to another place's page, so Back comes back (`openPhonePageIn`). */
   readonly openIn: (place: PhonePlace, location: TabLocation, options?: PhoneOpenOptions) => void;
   /**
-   * Back: one page up, or to Home. Returns `false` at the top of Home, where nothing moved, so it
-   * fits `usePhoneBackButton` as it is.
+   * Back: one page up, or to Home. Returns `false` at the top of Home, where nothing moved, as
+   * `usePhoneBackButton` needs.
    */
   readonly back: () => boolean;
 }
@@ -55,7 +55,7 @@ export interface PhonePlaces {
  *
  * @example
  * const places = usePhonePlaces();
- * usePhoneBackButton(presentation === "phone", shell.closeStack, places.back);
+ * usePhoneBackButton(presentation === "phone", shell.closeStack, places);
  * <ShellFrame
  *   phoneTopBar={<PhoneTopBar {...places.topBar} />}
  *   phoneNavigation={places.navigation && <BottomNavigation places={shownPlaces} {...places.navigation} />}
