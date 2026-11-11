@@ -66,7 +66,11 @@ says, and `kill` to end its process tree. It works outside the user's profile, b
 inside the profile of the user who ran the install. A second test
 (`fence/profile-folders.windows.test.ts`) puts the session's folders where the host keeps them, under
 `%LOCALAPPDATA%`, and checks that Node starts there, resolves its script and writes both
-folders. The same fence tests for Linux and macOS run
+folders. The same job also checks that a program
+makes no connection to a site the profile doesn't allow, over srt's proxy (HTTP CONNECT, plain
+HTTP, SOCKS) or straight at its address, while an allowed site at the same address gets through
+(`fence/srt-blocked-site.windows.test.ts`). It counts only connections: the Windows DNS Client
+service still looks the name up for the program. The same fence tests for Linux and macOS run
 with `pnpm test:fence`.
 
 The report-only `sandbox-windows-spike` CI workflow also runs `scripts/windows-isolation-probe.mjs` when that

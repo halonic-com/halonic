@@ -1314,10 +1314,19 @@ jobs:
             node scripts/windows-fence-probe.mjs || rc=$?
           fi
           exit "$rc"
+      # Two names for 127.0.0.1, for the blocked-site test (HAL-6219): the
+      # blocked and the allowed site then differ only in their name.
+      - name: Names for the blocked-site test
+        shell: pwsh
+        run: |
+          Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "`r`n127.0.0.1 blocked.example`r`n127.0.0.1 allowed.example"
+          ipconfig /flushdns
       # The same fence through SandboxSession (HAL-4347): the session must say
       # `fenced`, and a program it starts must see the hidden file, the blocked
       # port and its own variables as the profile says, and kill must end its
       # process tree. Runs after the canary probes, which stay the plain proof.
+      # The blocked-site test (HAL-6219) checks that a program makes no
+      # connection to a site the profile doesn't allow.
       - name: Fence test through SandboxSession
         working-directory: packages/adapters/sandbox-srt
         shell: bash
