@@ -1,7 +1,7 @@
 [
   {
     "id": "initial-context-unlogged",
-    "task": "HAL-1541",
+    "task": "HAL-4752",
     "area": "run logs: a workflow initial context",
     "old": "784f78d wrote one context.updated for each key of the workflow context before the first state.entered, so a run summary held the initial context from the start.",
     "new": "The engine lays the initial context under the run context only in run.completed, so a running or waiting run summary has none of it (the approval run waits with context {} instead of { outcome: pending }).",
@@ -18,7 +18,7 @@
   },
   {
     "id": "workflow-model-calls-unlogged",
-    "task": "HAL-1541",
+    "task": "HAL-4754",
     "area": "workflow runs: the model call",
     "old": "784f78d sent the agent instructions and skills as a system message with the step prompt, and wrote llm.request and llm.response, with usage and cost, for each model call of a workflow step.",
     "new": "The engine sends only the step prompt and writes neither event, so a run summary has no usage or cost.",
@@ -32,7 +32,7 @@
   },
   {
     "id": "json-output-stays-text",
-    "task": "HAL-1541",
+    "task": "HAL-4756",
     "area": "workflow runs: an agent JSON output",
     "old": "784f78d parsed the answer of an agent whose output is json (checker) into data, for agent.finished and the context.",
     "new": "The engine keeps the answer as text, so later paths such as {{context.fields.amount}} find nothing.",
@@ -46,7 +46,7 @@
   },
   {
     "id": "task-method-ignored",
-    "task": "HAL-1541",
+    "task": "HAL-4757",
     "area": "workflow runs: a task step method and with",
     "old": "784f78d built the prompt of the extract step from the clerk extract method and its with values, and used the method model, steps, tools and output fields.",
     "new": "The engine ignores method and with: the clerk gets the run input as JSON.",
@@ -59,7 +59,7 @@
   },
   {
     "id": "step-signal-and-conversation-ignored",
-    "task": "HAL-1541",
+    "task": "HAL-4758",
     "area": "workflow runs: a step signal and conversation",
     "old": "784f78d wrote signal.sent for the notify step signal and kept the turn in the context under its conversation name (chat).",
     "new": "The engine writes neither.",
