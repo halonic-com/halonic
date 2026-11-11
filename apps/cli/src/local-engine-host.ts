@@ -34,6 +34,7 @@ import type {
   HttpClient,
   IdGenerator,
   RunStore,
+  ScheduledTimer,
   Secrets,
 } from "@halonicjs/ports";
 import {
@@ -77,6 +78,14 @@ export interface LocalEngineInput {
   reportError(error: unknown, source: EngineErrorSource): void;
   /** Hears each scheduler wake-up that worked, so a count of failed wake-ups can start again. */
   onWokeUp?(): void;
+  /** Hears each timer the engine handled, so a count of its failures can start again. */
+  onTimerDone?(timer: ScheduledTimer): void;
+  /**
+   * Whether to leave a timer untried: it fails at once, and the scheduler
+   * keeps it, so the next engine on the workspace tries it again. For a run
+   * `routines watch` gave up on and couldn't cancel (HAL-5294).
+   */
+  holdsTimer?(timer: ScheduledTimer): boolean;
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
   /** The time; the computer's clock by default. */
@@ -192,7 +201,12 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
         // The scheduler retries the timer once the executor is there.
         throw new Error("The engine is still starting; the timer is tried again.");
       }
+      if (input.holdsTimer?.(timer) === true) {
+        // Rejected, not resolved: the scheduler would remove a timer that resolved.
+        throw new Error("The watch gave up on this run; its timer waits for the next engine.");
+      }
       await executor.onTimer(timer);
+      input.onTimerDone?.(timer);
     },
     // Without routines, as for `halonic run`, a tick does nothing. A tick
     // before they are built is missed; the next one catches up.

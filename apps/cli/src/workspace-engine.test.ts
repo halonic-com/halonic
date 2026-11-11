@@ -11,7 +11,7 @@ import type { CommandContext } from "./command.ts";
 import { type RoutineTicks, runTimerCollection } from "./local-engine-host.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
-import type { StuckTimer } from "./stuck-timers.ts";
+import type { GaveUpRun, StuckTimer } from "./stuck-timers.ts";
 import { engineStart } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
@@ -89,13 +89,15 @@ verifies("cli.run", () => {
 /**
  * Routines whose ticks fail or work as `outcomes` says, one per tick, on an
  * engine whose clock and wake-ups the test moves: {@link nextTick} moves the
- * clock a minute on and wakes the scheduler until that tick has run.
+ * clock a minute on, or the minutes given, and wakes the scheduler until
+ * that tick has run.
  * {@link failNextWakeUp} makes the wake-up after the next tick fail: the
  * scheduler can't set its next one. The `--debug` lines are in `debugLines`.
  */
 async function openWithTicks(
   outcomes: readonly ("fail" | "ok")[],
   onStuck?: (stuck: StuckTimer) => void,
+  onGaveUp?: (gaveUp: GaveUpRun) => void,
 ) {
   let now = engineStart;
   /** The wake-ups set, with the time each is due. */
@@ -138,11 +140,12 @@ async function openWithTicks(
       ending: runMessages.nothingRan(),
       routines: () => routines,
       ...(onStuck === undefined ? {} : { onStuck }),
+      ...(onGaveUp === undefined ? {} : { onGaveUp }),
     },
   );
-  const nextTick = async () => {
+  const nextTick = async (minutes = 1) => {
     const count = ticks.length + 1;
-    now += 60_000;
+    now += minutes * 60_000;
     await vi.waitFor(() => {
       for (const [callback, at] of [...wakeUps]) {
         if (at > now) continue;
@@ -157,7 +160,8 @@ async function openWithTicks(
   const failNextWakeUp = () => {
     failingWakeUps += 1;
   };
-  return { engine, nextTick, failNextWakeUp, debugLines };
+  const elapsedMs = () => now - engineStart;
+  return { engine, nextTick, failNextWakeUp, debugLines, elapsedMs };
 }
 
 /** The timer {@link plantStuckTimer} sets: a step of a run, due as the engine starts. */
@@ -167,18 +171,23 @@ const failingTimer = {
   at: new Date(engineStart).toISOString(),
 };
 
+async function acmeFolders() {
+  return workspaceFolders(profileFolder(profile()), await realpath(acme), webCryptoDigest);
+}
+
+/** Where {@link failingTimer}'s run keeps its log. */
+function stuckRunLog(folders: Awaited<ReturnType<typeof acmeFolders>>): string {
+  return join(folders.runsFolder(), `${failingTimer.key}.jsonl`);
+}
+
 /**
  * Sets {@link failingTimer} in the engine's timers, with its run's log a
  * folder that can't be read as a file, so each time the engine carries out
  * that step it fails: the run is stuck. Call it before the engine opens.
  */
 async function plantStuckTimer(): Promise<void> {
-  const folders = await workspaceFolders(
-    profileFolder(profile()),
-    await realpath(acme),
-    webCryptoDigest,
-  );
-  await mkdir(join(folders.runsFolder(), `${failingTimer.key}.jsonl`), { recursive: true });
+  const folders = await acmeFolders();
+  await mkdir(stuckRunLog(folders), { recursive: true });
   await new FileRecordStore(folders.recordsFolder()).append([
     {
       at: failingTimer.at,
@@ -263,5 +272,50 @@ verifies("cli.commands.routines.watch", () => {
 
     expect(stuck).toEqual([{ error: expect.any(Error), timer: failingTimer }]);
     expect(engine.stuck.aborted).toBe(false);
+  });
+
+  it("gives up on a run whose step kept failing for an hour, once, and keeps watching (HAL-5294)", async () => {
+    await plantStuckTimer();
+    const gaveUp: GaveUpRun[] = [];
+    const { engine, nextTick, elapsedMs } = await openWithTicks(
+      [],
+      () => {},
+      (run) => gaveUp.push(run),
+    );
+    let gaveUpAfterMs = 0;
+    try {
+      while (gaveUp.length === 0 && elapsedMs() < 2 * 3_600_000) {
+        // A minute at a time while the scheduler's backoff is short, then its 15 minutes.
+        await nextTick(elapsedMs() < 20 * 60_000 ? 1 : 15);
+        // The give-up's cancel settles after the failure that set it off.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        gaveUpAfterMs = elapsedMs();
+      }
+      // The run log can be read now, so a step tried again would work and its timer go.
+      const folders = await acmeFolders();
+      await rm(stuckRunLog(folders), { recursive: true });
+      // Another hour: the watch goes on, and the held step is never tried.
+      for (let tick = 0; tick < 4; tick += 1) await nextTick(15);
+
+      expect(engine.stuck.aborted).toBe(false);
+      expect(gaveUpAfterMs).toBeGreaterThanOrEqual(3_600_000);
+      expect(gaveUpAfterMs).toBeLessThan(3_600_000 + 16 * 60_000);
+      // The run log can't be written, so cancelling the run failed too.
+      expect(gaveUp).toEqual([
+        {
+          error: expect.any(Error),
+          timer: failingTimer,
+          cancelled: false,
+          cancelError: expect.any(Error),
+        },
+      ]);
+    } finally {
+      await engine.close();
+    }
+    // Still set, for the next engine on the workspace.
+    const changes = await new FileRecordStore((await acmeFolders()).recordsFolder()).changes(
+      runTimerCollection,
+    );
+    expect(changes.map((change) => change.op)).not.toContain("remove");
   });
 });

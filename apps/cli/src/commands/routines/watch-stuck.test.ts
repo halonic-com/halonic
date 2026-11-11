@@ -15,7 +15,7 @@ import {
   writeFiles,
 } from "../../test/acme-runs.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
-import { reportStuck } from "./watch-stuck.ts";
+import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
 
 /** Starts Follow up at the top of every hour. */
 const hourly = [
@@ -104,5 +104,46 @@ verifies("cli.commands.routines.watch", () => {
     expect(debug[0]).toBe(
       "Couldn't read which routine started run run_mfx3k2a1_09d9f0: Error: disk",
     );
+  });
+
+  it("prints a ✕ line for a routine's run it gave up on, and that it was cancelled under --debug (HAL-5294)", async () => {
+    await storeRuns(acmeRuns, {
+      id: stuckTimer.timer.key,
+      start: "2026-11-10T15:00:01.000Z",
+      trigger: {
+        type: "every",
+        routineId: "support/hourly-follow-up",
+        at: "2026-11-10T15:00:00.000Z",
+      },
+    });
+    const { context, lines, debug } = stuckContext();
+    const runs = await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile);
+
+    await reportGaveUp(context, await acmeRoutines(), runs, { ...stuckTimer, cancelled: true });
+
+    expect(lines).toEqual([
+      "✕ Gave up on Hourly follow-up after an hour · run 09d9f0 · see why with --debug",
+    ]);
+    expect(debug).toEqual([
+      "Gave up on run run_mfx3k2a1_09d9f0: its timer call:draft kept failing for an hour, so the run was cancelled: model refused",
+    ]);
+  });
+
+  it("says under --debug when cancelling the run it gave up on failed too", async () => {
+    await storeRuns(acmeRuns, running);
+    const { context, lines, debug } = stuckContext();
+    const runs = await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile);
+
+    await reportGaveUp(context, await acmeRoutines(), runs, {
+      ...stuckTimer,
+      timer: { ...stuckTimer.timer, key: running.id },
+      cancelled: false,
+      cancelError: new Error("disk full"),
+    });
+
+    expect(lines).toEqual(["✕ Gave up on a run after an hour · run 09d9c0 · see why with --debug"]);
+    expect(debug).toEqual([
+      `Gave up on run ${running.id}: its timer call:draft kept failing for an hour: model refused. Cancelling the run failed too, so its step isn't tried again until the next watch or run: disk full`,
+    ]);
   });
 });

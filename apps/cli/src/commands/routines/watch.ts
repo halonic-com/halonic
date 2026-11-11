@@ -25,7 +25,7 @@ import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
 import { watchReport } from "./watch-report.ts";
-import { reportStuck } from "./watch-stuck.ts";
+import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
 
 /**
  * Watches until Ctrl C or SIGTERM, then returns that it stopped: exit 130
@@ -59,6 +59,10 @@ export async function watchRoutines(
     // A run that gets stuck is reported, and the other routines go on starting.
     onStuck: (stuck) => {
       void reportStuck(context, routines, runStore, stuck);
+    },
+    // After an hour the engine gives up on it, so each try no longer pays for a model call.
+    onGaveUp: (gaveUp) => {
+      void reportGaveUp(context, routines, runStore, gaveUp);
     },
     routines: (parts) => {
       runStore = parts.runs;

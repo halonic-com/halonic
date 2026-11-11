@@ -9,6 +9,7 @@
 
 import type { HttpClient } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
+import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext } from "./command.ts";
 import {
@@ -26,6 +27,7 @@ import {
   sandboxGateMachine,
 } from "./sandbox-gate-machine.ts";
 import {
+  type GaveUpRun,
   retriedLine,
   type StuckTimer,
   type StuckTimerWatch,
@@ -65,6 +67,12 @@ export interface WorkspaceEngineTarget {
    * such a run stops the command with the step's error.
    */
   readonly onStuck?: (stuck: StuckTimer) => void;
+  /**
+   * Hears, with `onStuck`, a run whose step kept failing for an hour: the
+   * engine cancelled it, or, when that failed too, leaves its step untried
+   * until it closes (HAL-5294).
+   */
+  readonly onGaveUp?: (gaveUp: GaveUpRun) => void;
 }
 
 /** A workspace's engine, open until {@link LocalEngine.close}, with the signal to follow its runs with. */
@@ -114,21 +122,41 @@ export async function openWorkspaceEngine(
       unsandboxed.set(agent.name, agent);
     }
   }
-  const stuck = stuckTimerWatch((failure) => context.debug(retriedLine(failure)), target.onStuck);
+  let opened: LocalEngine | undefined;
+  const { onStuck, onGaveUp = () => {} } = target;
+  const stuck = stuckTimerWatch(
+    (failure) => context.debug(retriedLine(failure)),
+    onStuck === undefined
+      ? undefined
+      : {
+          clock: setup.engine?.clock ?? systemClock,
+          onStuck,
+          cancel: async (runId) => {
+            // A timer is delivered only once the engine is open, so this is for types' sake.
+            if (opened === undefined) throw new Error("The engine is still starting.");
+            await opened.executor.cancel(runId);
+          },
+          onGaveUp,
+        },
+  );
   const engine = await openLocalEngine({
     workspace: target.workspace,
     workspaceRoot: target.dir.root,
     secrets: context.secrets,
     http: setup.http,
     // The scheduler retries a failed step; one that keeps failing stops the command with its
-    // error, or goes to `onStuck`.
+    // error, or goes to `onStuck`, and after an hour to `onGaveUp`.
     reportError: stuck.report,
     // Only failed wake-ups in a row count, as for ticks (HAL-5164).
     onWokeUp: () => stuck.succeeded("wake-up"),
+    // The same for a timer: only an hour of failures in a row gives up on its run.
+    onTimerDone: (timer) => stuck.succeeded(timer),
+    holdsTimer: (timer) => stuck.holds(timer),
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
     ...(target.routines === undefined ? {} : { routines: countedTicks(target.routines, stuck) }),
     ...setup.engine,
   });
+  opened = engine;
   return {
     executor: engine.executor,
     runs: engine.runs,

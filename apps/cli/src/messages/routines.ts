@@ -71,6 +71,21 @@ export const routinesMessages = defineMessages("routines", {
   /** The `--debug` line under {@link stuck}: the run, its timer, and the step's last error. */
   stuckWhy: (runId: string, timer: string, failures: number, reason: string) =>
     phrase`Run ${runId} is stuck: its timer ${timer} failed ${failures} times, and the engine keeps retrying it: ${reason}`,
+  /**
+   * A run of a routine whose step kept failing for an hour, which the watch
+   * cancelled: "✕ Gave up on Hourly follow-up after an hour · run 01jd8q · see why with --debug".
+   */
+  gaveUp: (name: string, runId: string) =>
+    phrase`${markPart("failed")} Gave up on ${name} after an hour ${markPart("separator")} run ${runId} ${markPart("separator")} ${dim("see why with --debug")}`,
+  /** The same for a run no routine started. */
+  runGaveUp: (runId: string) =>
+    phrase`${markPart("failed")} Gave up on a run after an hour ${markPart("separator")} run ${runId} ${markPart("separator")} ${dim("see why with --debug")}`,
+  /** The `--debug` line under {@link gaveUp} when the run was cancelled. */
+  gaveUpCancelled: (runId: string, timer: string, reason: string) =>
+    phrase`Gave up on run ${runId}: its timer ${timer} kept failing for an hour, so the run was cancelled: ${reason}`,
+  /** The `--debug` line under {@link gaveUp} when cancelling the run failed too. */
+  gaveUpHeld: (runId: string, timer: string, reason: string, cancelReason: string) =>
+    phrase`Gave up on run ${runId}: its timer ${timer} kept failing for an hour: ${reason}. Cancelling the run failed too, so its step isn't tried again until the next watch or run: ${cancelReason}`,
   /** The `--debug` line when the run log can't say which routine started a stuck run. */
   stuckRoutineUnknown: (runId: string, reason: string) =>
     phrase`Couldn't read which routine started run ${runId}: ${reason}`,
