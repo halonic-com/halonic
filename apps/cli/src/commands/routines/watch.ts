@@ -9,6 +9,7 @@
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 
 import { placedRoutines, type RoutineScheduler, workspaceRoutineScheduler } from "@halonicjs/app";
+import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
@@ -24,6 +25,7 @@ import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
 import { watchReport } from "./watch-report.ts";
+import { reportStuck } from "./watch-stuck.ts";
 
 /**
  * Watches until Ctrl C or SIGTERM, then returns that it stopped: exit 130
@@ -35,7 +37,6 @@ import { watchReport } from "./watch-report.ts";
  * @throws SandboxRefusedError when a routine's agent needs the sandbox and it
  *   can't start here; nothing ran (exit 9)
  * @throws KindedError `conflict` when another engine is open on the workspace
- * @throws the step's last error, when a run's step keeps failing
  * @throws the tick's last error, when three ticks in a row fail
  */
 export async function watchRoutines(
@@ -49,12 +50,18 @@ export async function watchRoutines(
   const routines = placedRoutines(workspace);
   const report = watchReport(context, () => setup.clock(), routines);
   let scheduler: RoutineScheduler | undefined;
+  let runStore: RunStore | undefined;
   const engine = await openWorkspaceEngine(context, setup, {
     dir,
     workspace,
     runs: workflowsOf(routines),
     ending: runMessages.nothingRan(),
+    // A run that gets stuck is reported, and the other routines go on starting.
+    onStuck: (stuck) => {
+      void reportStuck(context, routines, runStore, stuck);
+    },
     routines: (parts) => {
+      runStore = parts.runs;
       scheduler = routineScheduler(parts, workspace, routines, dir.name, setup);
       const built = scheduler;
       return {
@@ -132,7 +139,7 @@ function workspaceIdOf(workspace: LoadedWorkspace, folderName: string): string {
   return filesOf(workspace, "workspace")[0]?.value.id ?? folderName;
 }
 
-/** Resolves once `signal` is aborted: at Ctrl C or SIGTERM, or when a run's step keeps failing. */
+/** Resolves once `signal` is aborted: at Ctrl C or SIGTERM, or when three ticks or wake-ups in a row fail. */
 function stopped(signal: AbortSignal): Promise<void> {
   if (signal.aborted) return Promise.resolve();
   return new Promise((resolve) =>

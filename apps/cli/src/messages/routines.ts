@@ -59,4 +59,19 @@ export const routinesMessages = defineMessages("routines", {
     phrase`${markPart("failed")} ${name} didn't start ${markPart("separator")} due ${startedInWords(due)} ${markPart("separator")} ${dim("see why with --debug")}`,
   /** The `--debug` line under {@link notStarted}: the routine's key and the start's own error. */
   notStartedWhy: (key: string, reason: string) => phrase`Routine ${key} didn't start: ${reason}`,
+  /**
+   * A run of a routine whose step keeps failing: "✕ Hourly follow-up got stuck · run 01jd8q · see why with --debug".
+   * The watch goes on, and the engine keeps retrying the step.
+   */
+  stuck: (name: string, runId: string) =>
+    phrase`${markPart("failed")} ${name} got stuck ${markPart("separator")} run ${runId} ${markPart("separator")} ${dim("see why with --debug")}`,
+  /** The same for a run no routine started, such as one `halonic run` left waiting. */
+  runStuck: (runId: string) =>
+    phrase`${markPart("failed")} A run got stuck ${markPart("separator")} run ${runId} ${markPart("separator")} ${dim("see why with --debug")}`,
+  /** The `--debug` line under {@link stuck}: the run, its timer, and the step's last error. */
+  stuckWhy: (runId: string, timer: string, failures: number, reason: string) =>
+    phrase`Run ${runId} is stuck: its timer ${timer} failed ${failures} times, and the engine keeps retrying it: ${reason}`,
+  /** The `--debug` line when the run log can't say which routine started a stuck run. */
+  stuckRoutineUnknown: (runId: string, reason: string) =>
+    phrase`Couldn't read which routine started run ${runId}: ${reason}`,
 });

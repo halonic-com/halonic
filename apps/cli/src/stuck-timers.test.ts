@@ -6,6 +6,7 @@ import {
   failuresBeforeStuck,
   type RetriedFailure,
   retriedLine,
+  type StuckTimer,
   stuckTimerWatch,
 } from "./stuck-timers.ts";
 
@@ -68,6 +69,32 @@ verifies("cli.run", () => {
 
   it("counts the scheduler's own wake-up failures the same way", () => {
     const watch = stuckTimerWatch();
+
+    for (let count = 0; count < failuresBeforeStuck; count += 1) {
+      watch.report(new Error("disk"), "wake-up");
+    }
+
+    expect(watch.signal.aborted).toBe(true);
+  });
+});
+
+verifies("cli.commands.routines.watch", () => {
+  it("hands a timer's third failure to onStuck, once, and keeps the signal as it is", () => {
+    const stuck: StuckTimer[] = [];
+    const watch = stuckTimerWatch(undefined, (timer) => stuck.push(timer));
+    const third = new Error("third");
+
+    watch.report(new Error("first"), timer("run_a"));
+    watch.report(new Error("second"), timer("run_a"));
+    watch.report(third, timer("run_a"));
+    watch.report(new Error("fourth"), timer("run_a"));
+
+    expect(stuck).toEqual([{ error: third, timer: timer("run_a") }]);
+    expect(watch.signal.aborted).toBe(false);
+  });
+
+  it("still stops at the scheduler's third wake-up failure with onStuck", () => {
+    const watch = stuckTimerWatch(undefined, () => {});
 
     for (let count = 0; count < failuresBeforeStuck; count += 1) {
       watch.report(new Error("disk"), "wake-up");
