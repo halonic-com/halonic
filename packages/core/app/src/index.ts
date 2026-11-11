@@ -134,6 +134,12 @@ export {
   writtenDigest,
 } from "./listed-tool-fingerprint.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
+export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
+export {
+  type LiveVersion,
+  type LiveVersionReader,
+  liveVersionOf,
+} from "./live-version.ts";
 export {
   type OpenWorkspaceOptions,
   openWorkspace,
