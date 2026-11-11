@@ -124,6 +124,13 @@ export {
   workflowIn,
 } from "./hub-workflows.ts";
 export {
+  type IntegrationFolder,
+  type IntegrationFolderProblem,
+  MAX_INTEGRATION_BYTES,
+  MAX_INTEGRATION_ENTRIES,
+  readIntegrationFolder,
+} from "./integration-folder.ts";
+export {
   knowledgeDocForModel,
   knowledgeHitForModel,
   maxKnowledgeRefLength,
@@ -397,6 +404,13 @@ export {
   type TrustShrink,
   type TrustSubject,
 } from "./trust-service.ts";
+export {
+  IntegrationNotTrustedError,
+  type IntegrationTrustReason,
+  TrustedRunnerStart,
+  type TrustedRunnerStartOptions,
+  type TrustedRunnerSubject,
+} from "./trusted-runner-start.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
 export {
   type StopUnfencedRun,
