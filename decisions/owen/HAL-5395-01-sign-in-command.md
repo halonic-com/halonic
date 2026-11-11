@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5395](/HAL/issues/HAL-5395)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/hXILaM9vzClDvvTjbR7SG9Xh7dQY/d2YbvWRnByFGyMVlKs1YJD4cf0S38qivED2euMM133mYnFkugVR4vIBQ==
 
 The board chose a "Sign in for this agent" button in Studio (HAL-5355,
 option 1): it runs the program's own sign-in in a terminal the person can
