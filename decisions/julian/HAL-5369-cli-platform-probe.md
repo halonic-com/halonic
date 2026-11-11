@@ -3,6 +3,7 @@
 - Task: HAL-5369
 - Approval: assigned by Liam on [HAL-5369](/HAL/issues/HAL-5369); Liam approves this note in review there
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:E9brY2yRgB+jtOPZTIBkHRmMQ2ardQVpRzhwuzpSr4JAQIddYdzBSat+vf98JC/kT6EJnRmijbIv2JljSTXZCg==
 
 ## What changes
 
