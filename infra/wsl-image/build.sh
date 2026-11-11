@@ -33,12 +33,13 @@ mmdebstrap \
 gzip -9 -n -f "$tarball"
 
 # Sizes Noah needs: what people download, and what the distro takes on disk.
-tar -xzf "$tarball.gz" --one-top-level="$out/rootfs" --numeric-owner
+rootfs="$(mktemp -d)"
+trap 'rm -rf "$rootfs"' EXIT
+tar -xzf "$tarball.gz" -C "$rootfs" --numeric-owner
 download_bytes="$(stat -c %s "$tarball.gz")"
-disk_bytes="$(du -sb "$out/rootfs" | cut -f1)"
+disk_bytes="$(du -sb "$rootfs" | cut -f1)"
 sha256="$(sha256sum "$tarball.gz" | cut -d' ' -f1)"
 tar -xzOf "$tarball.gz" ./usr/share/doc/halonic-image/packages.txt > "$out/packages.txt"
-rm -rf "$out/rootfs"
 cat > "$out/sizes.json" <<JSON
 {
   "suite": "$DEBIAN_SUITE",
