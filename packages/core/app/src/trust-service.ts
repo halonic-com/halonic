@@ -142,6 +142,7 @@ export type TrustCheck =
  * @example
  * const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
  * const check = await trust.check({ location, connectors, commandPaths, agents, integrations, providers });
+ * if (check.status === "refused") return fixFiles(check.refused); // exit code 2
  * if (check.status !== "trusted") return refuse(check.fingerprint); // exit code 3
  */
 export class TrustService {

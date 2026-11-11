@@ -302,7 +302,7 @@ verifies("cli.trust-check", () => {
       baseUrl: "http://localhost:11434/v1",
       local: true,
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "new",
       content: { connectors: [], providers: [claude, ollama] },
       fingerprint,
@@ -338,7 +338,7 @@ verifies("cli.trust-check", () => {
       },
       onlyRemoves: false,
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "changed",
       content: { connectors: [], providers: [after] },
       ...current,

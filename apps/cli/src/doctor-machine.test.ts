@@ -122,6 +122,9 @@ describe("doctorService", () => {
     const trustStore = new FileTrustStore(join(profile, "trust"));
     const service = cliTrustService(trustStore, systemClock);
     const check = await service.check(studio.workspace.trust);
+    if (check.status === "refused") {
+      throw new Error("LM Studio's address has nothing to refuse.");
+    }
     expect((await service.grant(studio.workspace.trust, check.fingerprint, "cli")).ok).toBe(true);
 
     const doctor = await doctorService({ ...trusting, trustStore }, noSecrets, studio);

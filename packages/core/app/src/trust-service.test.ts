@@ -283,6 +283,21 @@ verifies("app.trust-service", () => {
     expect((await store.get(location))?.content).not.toHaveProperty("refused");
   });
 
+  it("refuses a provider whose baseUrl has user info, also after the workspace was trusted", async () => {
+    const { service } = setup();
+    await trustAsPerson(service, { ...subject(program("files")), providers: [provider()] });
+
+    const check = await service.check({
+      ...subject(program("files")),
+      providers: [provider({ baseUrl: "https://ops:pw@models.example.net/v1" })],
+    });
+
+    expectStatus(check, "refused");
+    expect(check.refused).toEqual([{ id: "claude", reason: "the URL has user info" }]);
+    expect(check).not.toHaveProperty("grant");
+    expect(JSON.stringify(check)).not.toContain("pw");
+  });
+
   it("never shrinks a record whose content was edited to list refused connectors", async () => {
     const { service, store } = setup();
     await trustAsPerson(service, subject(program("files"), program("mail")));
