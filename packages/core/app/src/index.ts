@@ -243,6 +243,7 @@ export {
 } from "./plugin-trust-content.ts";
 export {
   ProgramCopies,
+  type ProgramCopyLease,
   ProgramCopyUnavailableError,
   type ProgramCopyVcs,
 } from "./program-copies.ts";
