@@ -23,10 +23,19 @@ own folders, so Node can't resolve a script's path there and the fence probe
 can't start. A folder made later is kept out by the data folder's access list
 in the user profile instead. The deny by name doesn't keep out the folders
 srt has granted to other sessions, running or earlier: srt sets those grants
-on the folders themselves, so they win over the inherited deny. Threat model
-4.6 (Known limits) says so, and HAL-5882 decides the fix.
+on the folders themselves, so they win over the inherited deny. Liam decided
+in HAL-5882 to land this with both limits written in threat model 4.6 (Known
+limits): a run can read the folders of every other sandboxed run running at
+the same time, until srt keeps sessions' reads apart, and the folders of
+every earlier run, until HAL-5884 forgets srt's grants when a session closes.
+
+`srt-config.test.ts` skips one new case on Windows: a reopened path reached
+through a link is named in both spellings on Linux and macOS, but on Windows
+srt resolves links itself, so the path is named as given, as in the link case
+next to it.
 
 ## Covers
 
 - harness-kit.harness-profile
 - packages/adapters/harness-kit/src/harness-profiles.test.ts
+- packages/adapters/sandbox-srt/src/srt-config.test.ts
