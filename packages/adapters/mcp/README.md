@@ -119,7 +119,7 @@ with these rules that only moves files and changes this one entry.
 MCP has no field for what a tool can do, so a server may write it in the tool's `_meta`:
 `"com.halonic/risk": "read" | "write" | "send"` and `"com.halonic/untrusted": true`. The connector
 passes them on as the server wrote them. They are only the server's claim: the host treats every
-tool of a `stdio` connector as `write` unless the workspace sets a lower risk.
+tool of an `http` or `stdio` connector as `write` unless a trusted workspace sets a lower risk.
 
 ## Example
 
