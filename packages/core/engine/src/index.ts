@@ -23,6 +23,7 @@ export type {
   ApprovalNeeded,
   CallModelEffect,
   CallToolEffect,
+  CancelChildEffect,
   ChildInput,
   ChildRunNow,
   Decide,

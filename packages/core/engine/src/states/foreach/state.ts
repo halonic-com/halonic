@@ -25,7 +25,8 @@ import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
  * with `done`. The first item that fails fails the run, as does an item
  * whose agent answers none of its `choice` options; an item's child run
  * its budget stopped stops this run for its budget too. An item's agent
- * can't pause for an approval, and an item's child run can't wait.
+ * can't pause for an approval, and an item's child run can't wait: when one
+ * does, the run fails and every item's child run still going is cancelled.
  */
 export const foreachState: StateHandler<"foreach"> = {
   type: "foreach",
@@ -109,9 +110,8 @@ function takeChildNews(context: StateContext, input: ChildInput): StateStep {
   const { item, childRunId, workflow } = running;
   const where = `item ${item} of for-each state "${context.stateId}"`;
   if (input.status === "waiting") {
-    return failed(
-      `Workflow "${workflow}" in ${where} waits for ${input.events.join(", ")}; an item's child run must finish without waiting.`,
-    );
+    const error = `Workflow "${workflow}" in ${where} waits for ${input.events.join(", ")}; an item's child run must finish without waiting.`;
+    return { events: [], effects: cancelItemChildren(context), outcome: { type: "fail", error } };
   }
   const base = {
     type: "workflow.finished" as const,
@@ -207,6 +207,17 @@ function runningItem(
   matches: (item: RunningItem) => boolean,
 ): RunningItem | undefined {
   return run.foreach?.state === stateId ? run.foreach.running.find(matches) : undefined;
+}
+
+/**
+ * Cancels the child run of every item still going, the one that waits too:
+ * the run fails, so no one would ever end them.
+ */
+function cancelItemChildren({ run, stateId }: StateContext): Effect[] {
+  const running = run.foreach?.state === stateId ? run.foreach.running : [];
+  return running.flatMap((item) =>
+    "childRunId" in item ? [{ type: "cancel-child", childRunId: item.childRunId }] : [],
+  );
 }
 
 function stillRunning({ run, stateId }: StateContext): number {

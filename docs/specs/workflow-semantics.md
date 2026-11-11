@@ -187,7 +187,9 @@ A state with `type: foreach` runs once for each item of a list.
 - **Failure.** The first item that fails fails the state and the run, with that
   item's reason. Items still running end on their own, and what they give is
   not recorded (HAL-1537).
-- **Limits.** A child run for an item must finish without waiting. An item agent
+- **Limits.** A child run for an item must finish without waiting: when one
+  waits, the run fails, and that child and every other item's child run still
+  going end as cancelled, so none is left waiting (HAL-6090). An item agent
   can't pause for an approval.
 - **Log.** An event from an item carries `item`.
 

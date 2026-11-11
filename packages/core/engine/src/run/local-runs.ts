@@ -209,16 +209,26 @@ export class LocalRuns {
    */
   async cancel(runId: string): Promise<RunSummary> {
     await this.#ready();
-    const runs = await runAndChildren(this.#options.store, runId);
-    if (runs.length === 0)
+    if (!(await this.#cancelDown(runId)))
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
+    // Only now: its children are cancelled, so a call it stops records nothing in them.
+    await this.#ended(runId);
+    return this.#summary(runId);
+  }
+
+  /**
+   * Ends the run and the child run it waits on, all the way down, with
+   * `reason: "cancelled"`, and stops their harness calls.
+   *
+   * @returns whether the run has a log
+   */
+  async #cancelDown(runId: string): Promise<boolean> {
+    const runs = await runAndChildren(this.#options.store, runId);
     for (const id of runs) {
       await this.#fail(id, cancelledError, "cancelled");
       await this.#harnessCalls.stop(id);
     }
-    // Only now: its children are cancelled, so a call it stops records nothing in them.
-    await this.#ended(runId);
-    return this.#summary(runId);
+    return runs.length > 0;
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
@@ -426,14 +436,20 @@ export class LocalRuns {
       await scheduler.schedule(effect.parentRunId, timerId, this.#now());
       await this.#hearFromChild(effect.parentRunId, effect.childRunId);
       await scheduler.cancel(effect.parentRunId, timerId);
+    } else if (effect.type === "cancel-child") {
+      await this.#cancelDown(effect.childRunId);
     }
   }
 
   /**
    * Starts a child run; one that can't start fails its parent with the
    * reason. An error after the child's start is recorded goes to the caller.
+   * A parent that ended while its earlier children started, as when one of
+   * them waits in a `foreach` state, starts none: no one would end it.
    */
   async #startChild(parent: RunState, effect: StartChildEffect): Promise<void> {
+    const parentNow = await this.#options.store.get(parent.runId);
+    if (parentNow !== null && hasEnded(parentNow.status)) return;
     try {
       const start = await childStart(this.#options.blobs, parent, effect, this.#now());
       await this.#record(effect.childRunId, start);
