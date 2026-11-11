@@ -79,7 +79,6 @@ export type { Runtime } from "./kinds/runtime/schema.ts";
 export type { Skill } from "./kinds/skill/schema.ts";
 export {
   type PathLookup,
-  type ProgramStart,
   skillScriptsRefusal,
   touchesSkillScripts,
 } from "./kinds/skill/scripts-folder.ts";
@@ -102,4 +101,5 @@ export { fileKinds, isKindName, type KindName, type KindValues, kindNames } from
 export { isReservedPath, RESERVED_FOLDER } from "./reserved.ts";
 export { SCHEMA_VERSION } from "./shared/fields.ts";
 export type { Guard } from "./shared/guard.ts";
+export { type NamedPath, type ProgramStart, pathsNamedBy } from "./shared/program-start.ts";
 export { foldName } from "./shared/relative-path.ts";

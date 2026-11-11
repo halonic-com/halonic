@@ -4,15 +4,10 @@
  * every adapter that starts a program so they all refuse the same starts.
  */
 
+import { type ProgramStart, pathsNamedBy } from "../../shared/program-start.ts";
+
 /** Why a start was refused. */
 export const skillScriptsRefusal = "Halonic never runs a file under a skill's scripts/ folder";
-
-/** What a start would run: the program, its arguments and the folder it starts in. */
-export interface ProgramStart {
-  cwd: string;
-  program: string;
-  args: readonly string[];
-}
 
 /**
  * How to find where a path leads. Core has no file system, so an adapter
@@ -34,35 +29,21 @@ export interface PathLookup {
 const skillScripts = /(^|[\\/=])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/i;
 
 /**
- * Whether the program, an argument or the folder it starts in points under a
- * skill's `scripts/` folder: as written, resolved against `cwd`, or through
- * symbolic links to where the file really is.
+ * Whether the folder a start begins in, or a path it names (the program,
+ * every path its arguments and `env` values name, read as
+ * {@link pathsNamedBy} reads them) points under a skill's `scripts/`
+ * folder: as written, resolved against `cwd`, or through symbolic links to
+ * where the file really is.
  */
 export async function touchesSkillScripts(
   start: ProgramStart,
   paths: PathLookup,
 ): Promise<boolean> {
-  for (const part of partsOf(start)) {
+  const parts = [start.cwd, ...pathsNamedBy(start).map((named) => named.path)];
+  for (const part of new Set(parts)) {
     if (await pointsAtSkillScripts(start.cwd, part, paths)) return true;
   }
   return false;
-}
-
-/**
- * Every part of a start that could name a file: the folder, the program, each
- * argument, and the value of an argument joined with `=`, which the program
- * may read as a path of its own. Only the value after the first `=` is
- * followed through links; a later `=` value, as in `--define=KEY=value`, is
- * caught only as written, by the pattern above.
- */
-function partsOf({ cwd, program, args }: ProgramStart): string[] {
-  return [cwd, program, ...args, ...args.flatMap(joinedValue)];
-}
-
-/** The text after the first `=` of `--name=value`, or nothing. */
-function joinedValue(arg: string): string[] {
-  const equals = arg.indexOf("=");
-  return equals === -1 ? [] : [arg.slice(equals + 1)];
 }
 
 async function pointsAtSkillScripts(

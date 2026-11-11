@@ -10,8 +10,9 @@
  * program loads from next to its script without naming them.
  */
 
+import { moduleIn, type ProgramStart, pathsIn, pathsNamedBy } from "../../shared/program-start.ts";
 import { foldName } from "../../shared/relative-path.ts";
-import type { PathLookup, ProgramStart } from "../skill/scripts-folder.ts";
+import type { PathLookup } from "../skill/scripts-folder.ts";
 
 /** What a connector starts, with the environment its program gets. */
 export interface ConnectorStart extends ProgramStart {
@@ -130,18 +131,12 @@ async function namedPart(
   folders: readonly Folder[],
   lookup: FolderLookup,
 ): Promise<WorkingFolderReach | null> {
+  // A path written as the program is checked once, as what the start runs.
+  const used = pathsNamedBy(start).filter(({ path }) => path !== start.program);
   const named: { shown: string; how: string }[] = [
     { shown: start.cwd, how: "starts in" },
     { shown: start.program, how: "runs" },
-    ...start.args.flatMap((arg, index) =>
-      [...pathsIn(arg), ...moduleIn(start.args, index)].map((path) => ({
-        shown: path,
-        how: "uses",
-      })),
-    ),
-    ...Object.values(start.env).flatMap((value) =>
-      pathsIn(value).map((path) => ({ shown: path, how: "uses" })),
-    ),
+    ...used.map(({ path }) => ({ shown: path, how: "uses" })),
   ];
   for (const { shown, how } of named) {
     const folder = holding(await formsOf(start.cwd, shown, lookup), folders);
@@ -373,32 +368,4 @@ function comparable(path: string): string {
     .map((part) => (part === "." || part === ".." ? part : part.replace(/[. ]+$/, "")))
     .join("/")
     .replace(/\/+$/, "");
-}
-
-/**
- * The paths an argument or `env` value may name, as in the static check:
- * the whole text, each piece between `;` and spaces (a Windows `PATH` keeps
- * its drive letters), each piece between `=`, `:`, `;`, `@` and spaces (as
- * in `--config=tools/mail.json`, `PATH=tools/bin:/usr/bin`, `file:tools/x`
- * or `@tools/args.txt`), and each piece without its short flag, as in
- * `-ctools/mail.json`.
- */
-function pathsIn(text: string): string[] {
-  const pieces = [text, ...text.split(/[;\s]+/), ...text.split(/[=:;@\s]+/)];
-  const withoutFlags = pieces.flatMap((piece) =>
-    /^-[^-]./.test(piece) ? [piece, piece.slice(2)] : [piece],
-  );
-  return [...new Set(withoutFlags.filter((piece) => piece !== ""))];
-}
-
-/** The folder path of a module `python -m` runs: `-m tools.mail` or `-mtools.mail` reads `tools/mail`. */
-function moduleIn(args: readonly string[], index: number): string[] {
-  const name = moduleName(args[index - 1], args[index] ?? "");
-  return name === "" ? [] : [name.replaceAll(".", "/")];
-}
-
-/** The module an argument names after `-m`, or with `-m` in front of it; otherwise empty. */
-function moduleName(before: string | undefined, arg: string): string {
-  if (before === "-m") return arg;
-  return arg.startsWith("-m") ? arg.slice(2) : "";
 }

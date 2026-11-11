@@ -10,6 +10,7 @@ import {
   defaultWorkingFolder,
   foldName,
   isInWorkingFolder,
+  pathsNamedBy,
 } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
@@ -116,54 +117,21 @@ function loadFolders(path: string): string[] {
 
 /**
  * For a connector that starts a program on this computer: the folder it
- * starts in, its program, and every path its arguments and plain `env`
- * values name, each read from the start folder. A bare program name such as
- * `node` reads as a file in the start folder, so it is inside a working
- * folder only when that folder is. `secretEnv` holds secret names, not
- * paths, so it isn't read. A connector that starts no program has no parts.
+ * starts in, and its program and every path its arguments and plain `env`
+ * values name, as `pathsNamedBy` reads them, each read from the start
+ * folder. A bare program name such as `node` reads as a file in the start
+ * folder, so it is inside a working folder only when that folder is.
+ * `secretEnv` holds secret names, not paths, so it isn't read. A connector
+ * that starts no program has no parts.
  */
 function startParts(connector: Connector): StartPart[] {
   if (!("stdio" in connector.transport)) return [];
-  const { cwd = ".", command, args, env = {} } = connector.transport.stdio;
-  const named = (shown: string, paths: readonly string[]): StartPart[] =>
-    paths.map((path) => ({ path: inFolder(cwd, path), shown }));
+  const { cwd = ".", command, args, env } = connector.transport.stdio;
+  const named = pathsNamedBy({ cwd, program: command, args, env });
   return [
     { path: cwd, shown: cwd },
-    ...named(command, [command]),
-    ...args.flatMap((arg, index) => named(arg, [...pathsIn(arg), ...moduleIn(args, index)])),
-    ...Object.entries(env).flatMap(([name, value]) => named(`${name}=${value}`, pathsIn(value))),
+    ...named.map(({ path, shown }) => ({ path: inFolder(cwd, path), shown })),
   ];
-}
-
-/**
- * The paths an argument or `env` value may name: the whole text, each piece
- * between `=`, `:`, `;`, `@` and spaces (as in `--config=tools/mail.json`,
- * `PATH=tools/bin:/usr/bin`, `file:tools/x` or `@tools/args.txt`), and each
- * piece without its short flag, as in `-ctools/mail.json`. Reading too many
- * pieces as paths only makes the check stricter.
- */
-function pathsIn(text: string): string[] {
-  const pieces = [text, ...text.split(/[=:;@\s]+/)];
-  const withoutFlags = pieces.flatMap((piece) =>
-    /^-[^-]./.test(piece) ? [piece, piece.slice(2)] : [piece],
-  );
-  return [...new Set(withoutFlags.filter((piece) => piece !== ""))];
-}
-
-/**
- * The folder path of a module that `python -m` runs, from the argument after
- * `-m` or one written together with it as `-mtools.mail`: Python reads
- * `tools.mail` as `tools/mail`.
- */
-function moduleIn(args: readonly string[], index: number): string[] {
-  const name = moduleName(args[index - 1], args[index] ?? "");
-  return name === "" ? [] : [name.replaceAll(".", "/")];
-}
-
-/** The module an argument names after `-m`, or with `-m` in front of it; otherwise empty. */
-function moduleName(before: string | undefined, arg: string): string {
-  if (before === "-m") return arg;
-  return arg.startsWith("-m") ? arg.slice(2) : "";
 }
 
 /** Whether a connector's `cwd` is the workspace root, written as `.`, `./` or the like. */
