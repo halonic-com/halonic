@@ -86,14 +86,17 @@ describe("collectPayload", () => {
     });
   });
 
-  it.skipIf(process.platform === "win32")("marks the files anyone may run", () => {
-    typicalRepo();
-    const program = ".pnpm/srt@1.0.0/node_modules/@scope/srt/vendor/seccomp/x64/apply-seccomp";
-    chmodSync(join(repo, program), 0o755);
-    const payload = collectPayload(join(repo, "apps/agent-host"), repo);
-    const executable = payload.files.filter((file) => file.executable).map((file) => file.path);
-    expect(executable).toEqual(["node_modules/@scope/srt/vendor/seccomp/x64/apply-seccomp"]);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] Windows has no executable file mode: marks the files anyone may run",
+    () => {
+      typicalRepo();
+      const program = ".pnpm/srt@1.0.0/node_modules/@scope/srt/vendor/seccomp/x64/apply-seccomp";
+      chmodSync(join(repo, program), 0o755);
+      const payload = collectPayload(join(repo, "apps/agent-host"), repo);
+      const executable = payload.files.filter((file) => file.executable).map((file) => file.path);
+      expect(executable).toEqual(["node_modules/@scope/srt/vendor/seccomp/x64/apply-seccomp"]);
+    },
+  );
 
   it("points each file at its real place on disk", () => {
     typicalRepo();

@@ -79,12 +79,15 @@ describe("unpackPayload", () => {
     expect(readdirSync(join(profile, "agent-host"))).toEqual(["1.2.3-0123456789abcdef"]);
   });
 
-  it.skipIf(process.platform === "win32")("keeps programs runnable", () => {
-    unpackPayload(folder(), manifest, readAsset);
-    const mode = (path: string) => statSync(join(folder(), ...path.split("/"))).mode & 0o111;
-    expect(mode("node_modules/srt/vendor/apply-seccomp")).not.toBe(0);
-    expect(mode("node_modules/srt/dist/cli.js")).toBe(0);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] Windows has no executable file mode: keeps programs runnable",
+    () => {
+      unpackPayload(folder(), manifest, readAsset);
+      const mode = (path: string) => statSync(join(folder(), ...path.split("/"))).mode & 0o111;
+      expect(mode("node_modules/srt/vendor/apply-seccomp")).not.toBe(0);
+      expect(mode("node_modules/srt/dist/cli.js")).toBe(0);
+    },
+  );
 
   it("leaves a whole earlier folder as it is", () => {
     unpackPayload(folder(), manifest, readAsset);
