@@ -407,8 +407,8 @@ routes, isn't built yet, so no app uses the host today.
   and Studio's memory. A program running as you can also change the host's
   unpacked files between launches, or the executable itself; the digest
   check finds the first only at the next launch.
-- **On Windows, another run's folder made after the session opened can be
-  readable.** On Linux and macOS the `halonic-data` group denies the data
+- **On Windows, a program can read the folders srt has granted to other
+  runs.** On Linux and macOS the `halonic-data` group denies the data
   folder as a whole and reopens only the run's own folders, so a folder
   another run makes there later is denied too (HAL-5644). On Windows a deny
   on the data folder itself would also keep a program from looking at the
@@ -417,10 +417,12 @@ routes, isn't built yet, so no app uses the host today.
   opens. What is made later is kept out by the data folder's own access list:
   it is in the user profile, which the sandbox reads only where a grant names
   (with `HALONIC_HOME` elsewhere, that folder's access list decides). But srt
-  keeps the write grant on each writable folder between sessions, and any
-  sandboxed session may read a folder that has one. So a run folder that
-  another session makes and writes after this one opened stays readable until
-  this session ends.
+  runs every sandboxed program under one account, and sets its grants on the
+  folders themselves, where they win over the deny a folder inherits from a
+  denied parent. So, whatever its profile denies, a program can read the
+  folders of every other sandboxed session running at the same time, and the
+  working and temp folders of every earlier session, whose write grants srt
+  keeps until `srt-win acl forget` removes them (HAL-5882).
 
 ### 4.7 Sandbox backends on Windows (B8)
 

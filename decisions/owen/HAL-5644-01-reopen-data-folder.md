@@ -21,7 +21,10 @@ folder itself isn't denied. The Windows fence job showed that a deny on the
 data folder takes the right to look at the folders on the way to a run's
 own folders, so Node can't resolve a script's path there and the fence probe
 can't start. A folder made later is kept out by the data folder's access list
-in the user profile instead (threat model 4.6, Known limits).
+in the user profile instead. The deny by name doesn't keep out the folders
+srt has granted to other sessions, running or earlier: srt sets those grants
+on the folders themselves, so they win over the inherited deny. Threat model
+4.6 (Known limits) says so, and HAL-5882 decides the fix.
 
 ## Covers
 
