@@ -54,9 +54,9 @@ export interface PluginFolder {
 const manifestNames = ["plugin.yaml", "integration.yaml"] as const;
 type ManifestName = (typeof manifestNames)[number];
 
-/** The ADR's sentence for a backend with `tokens`, the same as for a local integration. */
+/** The ADR's sentence for a backend with `tokens`: the local integration's message, with the fix naming the backend. */
 const noTokensMessage =
-  "An integration you build or change can't hold sign-in secrets yet. Use an API key, or ask for sign-in support.";
+  "An integration you build or change can't hold sign-in secrets yet. Remove tokens from its backend and use an API key, or ask for sign-in support.";
 
 /**
  * Reads the plugin folder `folder` of `reader`, the profile's plugin folder.
