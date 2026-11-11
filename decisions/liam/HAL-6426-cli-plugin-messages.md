@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on [HAL-6426](/HAL/issues/HAL-6426) (Kim's docs check on HAL-6402), small wording on an approved screen, a team decision with no board card; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tPHQgpXMw0VEMSXEW/hmMwIpAuuyDF+8D2sUS8+H1Rnz8yJrnMfAyrV1O9OQvrA9uVcYpFxk24xdmThHcZePCA==
 - Task: HAL-6426
 
 ## What changes
