@@ -3,6 +3,7 @@
 - Task: HAL-5568 (follow-up to HAL-5221)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-5568](/HAL/issues/HAL-5568)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zCP2LOB7RrXxAWpxfhb6zMeyZ8h3AI+NreHeQ/zJpFPCN6Y0/RPAjIf9Qpxh2m1ZpRklNn9r2l7CXHgCBecRAA==
 
 ## What changes
 
