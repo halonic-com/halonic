@@ -214,6 +214,17 @@ export interface ConnectorFactoryContext {
   /** The workspace folder, for stdio connectors that run in it. Absent where programs can't start. */
   workspaceRoot?: string;
   /**
+   * The absolute working folder of every harness agent in the workspace,
+   * resolved to real paths by the caller. A harness agent writes there from
+   * inside its sandbox, so a `stdio` connector refuses, right before its
+   * program starts, a start that would run or load a file from one of them
+   * (requirement `format.working-folder-start`).
+   *
+   * Absent, or empty, when the workspace has no harness agent with a
+   * working folder: there is nothing to protect.
+   */
+  workingFolders?: readonly string[];
+  /**
    * The trust grant for the connector's workspace, or `null` when it isn't
    * trusted. Required, so a caller can't forget it.
    *

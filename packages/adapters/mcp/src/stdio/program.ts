@@ -12,6 +12,16 @@ export interface ProgramLaunch {
    */
   readonly checkedEnv: Readonly<Record<string, string>>;
   readonly cwd: string;
+  /** The harness agents' working folders the program must not run or load from, when there are any. */
+  readonly workingFolders?: AgentWorkingFolders;
+}
+
+/** The working folders of a workspace's harness agents, as the starter checks them. */
+export interface AgentWorkingFolders {
+  /** The workspace's absolute path. */
+  readonly workspaceRoot: string;
+  /** The absolute working folder of every harness agent in the workspace. */
+  readonly folders: readonly string[];
 }
 
 /** How a program ended. */

@@ -15,7 +15,7 @@ import { McpError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
 import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
 import { inheritedSecrets } from "./inherited-secrets.ts";
-import type { ProgramLaunch, ProgramStarter } from "./program.ts";
+import type { AgentWorkingFolders, ProgramLaunch, ProgramStarter } from "./program.ts";
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 import { ConnectorStoppedError } from "./stopped-error.ts";
@@ -261,6 +261,7 @@ class McpStdioConnector implements ConnectorClient {
       throw new Error(`Halonic didn't start the connector "${this.id}": ${pin.error}.`);
     }
     const inheritedEnv = this.#inheritedEnv();
+    const guard = this.#workingFolders(workspaceRoot);
     if (pin.value === null) {
       const env = { ...inheritedEnv, ...this.#stdio.env, ...(await this.#secretEnv()) };
       const cwd = resolve(workspaceRoot, this.#stdio.cwd ?? ".");
@@ -271,6 +272,7 @@ class McpStdioConnector implements ConnectorClient {
           env,
           checkedEnv: this.#stdio.env,
           cwd,
+          ...guard,
         },
         folder: undefined,
       };
@@ -288,7 +290,17 @@ class McpStdioConnector implements ConnectorClient {
     const folder = await this.#options.folders.create();
     const place = { folder, runner: runner.found, platform: runners.platform };
     const launch = pinnedLaunch(this.#stdio, pin.value, inheritedEnv, place);
-    return { launch: { ...launch, env: { ...launch.env, ...secretEnv } }, folder };
+    return { launch: { ...launch, env: { ...launch.env, ...secretEnv }, ...guard }, folder };
+  }
+
+  /**
+   * The harness agents' working folders for the starter to check, or
+   * nothing when there are none. A pinned launch gets them too: it starts
+   * outside the workspace, but its runner or an argument may still name one.
+   */
+  #workingFolders(workspaceRoot: string): { workingFolders?: AgentWorkingFolders } {
+    const folders = this.#context.workingFolders ?? [];
+    return folders.length === 0 ? {} : { workingFolders: { workspaceRoot, folders } };
   }
 
   #inheritedEnv(): Record<string, string> {

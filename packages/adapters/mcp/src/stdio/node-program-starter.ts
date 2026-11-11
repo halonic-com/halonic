@@ -1,23 +1,49 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { realpath } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import { resolve, win32 } from "node:path";
 import { findProgram } from "@halonicjs/adapter-system-node";
-import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
-import type { ProgramExit, ProgramLaunch, ProgramStarter, RunningProgram } from "./program.ts";
+import {
+  type ConnectorStart,
+  type FolderLookup,
+  type PathLookup,
+  skillScriptsRefusal,
+  touchesSkillScripts,
+  touchesWorkingFolder,
+  workingFolderRefusal,
+} from "@halonicjs/format";
+import type {
+  AgentWorkingFolders,
+  ProgramExit,
+  ProgramLaunch,
+  ProgramStarter,
+  RunningProgram,
+} from "./program.ts";
 
 const isWindows = process.platform === "win32";
 
 /** Node's way to find where a path leads, for the shared skill `scripts/` check. */
 const nodePaths: PathLookup = { resolve, realpath };
 
+/** Node's way to look at folders, for the shared working folder check. */
+const nodeFolders: FolderLookup = {
+  ...nodePaths,
+  list: (folder) => readdir(folder).catch(() => []),
+  isFile: (path) =>
+    stat(path).then(
+      (found) => found.isFile(),
+      () => false,
+    ),
+};
+
 /**
  * Starts a stdio connector's program with Node: array arguments, no shell,
  * and only the environment it is given. A bare program name is first found
  * in the absolute folders of that environment's `PATH` (on Windows only as
  * `<name>.exe`), so neither Node nor Windows ever looks in the current
- * folder. It refuses a program it can't find, and a program, argument,
- * folder or value of `checkedEnv` under a skill's `scripts/` folder, before
- * anything starts.
+ * folder. It refuses a program it can't find, a program, argument, folder
+ * or value of `checkedEnv` under a skill's `scripts/` folder, and a start
+ * that would run or load a file from a harness agent's working folder,
+ * before anything starts.
  *
  * On macOS and Linux the program gets its own process group, so a signal
  * reaches everything it started, such as the server under `npx`, and
@@ -26,15 +52,20 @@ const nodePaths: PathLookup = { resolve, realpath };
  */
 export const nodeProgramStarter: ProgramStarter = {
   async start(launch) {
+    // Only the connector file's own env is read as paths (HAL-4777).
     const { cwd, program: named, args, checkedEnv } = launch;
-    if (await touchesSkillScripts({ cwd, program: named, args, env: checkedEnv }, nodePaths)) {
+    const checked = { cwd, program: named, args, env: checkedEnv };
+    if (await touchesSkillScripts(checked, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
+    await refuseWorkingFolders(checked, launch.workingFolders);
     const program = await absoluteProgram(launch);
-    // A PATH folder may be a skill's scripts/ folder too.
-    if (await touchesSkillScripts({ cwd: launch.cwd, program, args: [] }, nodePaths)) {
+    // A PATH folder may be a skill's scripts/ folder or a working folder too.
+    const found = { cwd, program, args: [], env: {} };
+    if (await touchesSkillScripts(found, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
+    await refuseWorkingFolders(found, launch.workingFolders);
     const child = spawn(program, [...launch.args], {
       cwd: launch.cwd,
       env: { ...launch.env },
@@ -47,6 +78,22 @@ export const nodeProgramStarter: ProgramStarter = {
     return runningProgram(child);
   },
 };
+
+/**
+ * Refuses a start that would run or load a file from a harness agent's
+ * working folder, on the real file system (`format.working-folder-start`).
+ * Does nothing when the launch names no working folders.
+ *
+ * @throws the refusal, naming the working folder and how the start reaches it
+ */
+async function refuseWorkingFolders(
+  start: ConnectorStart,
+  guard: AgentWorkingFolders | undefined,
+): Promise<void> {
+  if (guard === undefined) return;
+  const reach = await touchesWorkingFolder(start, guard.workspaceRoot, guard.folders, nodeFolders);
+  if (reach !== null) throw new Error(workingFolderRefusal(reach));
+}
 
 /**
  * The absolute path of the launch's program, found in the `PATH` of the

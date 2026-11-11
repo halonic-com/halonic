@@ -87,6 +87,22 @@ verifies("mcp.stdio-connector", () => {
       await client.close();
     });
 
+    it("gives the starter the harness agents' working folders to check, and none when there are none", async () => {
+      const { starter, factory, context } = setUp();
+      const coder = join(workspaceRoot, "files/agents/coder");
+      const guarded = factory.create(config, { ...context, workingFolders: [coder] });
+      await guarded.listTools();
+      expect(starter.programs[0]?.launch.workingFolders).toEqual({
+        workspaceRoot,
+        folders: [coder],
+      });
+      const open = factory.create(config, { ...context, workingFolders: [] });
+      await open.listTools();
+      expect(starter.programs[1]?.launch).not.toHaveProperty("workingFolders");
+      await guarded.close();
+      await open.close();
+    });
+
     it("refuses a secret that isn't set, by name, and tries again on the next call", async () => {
       const { starter, factory, context } = setUp(new MemorySecrets());
       const client = factory.create(config, context);
