@@ -25,7 +25,7 @@ function mailTool(listed: ToolRisk | undefined): TurnTool {
     definition: { name: "mail__send", description: "Sends", parameters: {} },
     listedName: "send",
     connector: new ScriptedConnector("mail", []),
-    risk: countedRisk(listed),
+    risk: countedRisk(listed, false),
     ...(listed === undefined ? {} : { listedRisk: listed }),
   };
 }

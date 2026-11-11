@@ -35,6 +35,9 @@ function eventLine(event: RunEvent): string | null {
       return `  tool ${event.tool} ${shortText(event.args, maxValueText)}`;
     case "tool.result":
       return `    -> ${shortText(event.result, maxValueText)}`;
+    // Wording: Sofia, HAL-5582.
+    case "tool.unasked":
+      return `  Ran without asking: \`${event.tool}\` is in your workspace's \`read\` list.`;
     case "approval.requested":
       return `  waits for approval of ${event.tool}`;
     case "approval.resolved":

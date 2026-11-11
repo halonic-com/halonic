@@ -151,6 +151,13 @@ verifies("engine.run-log-tools", () => {
         { type: "tool.called", agent: "checker", tool: "lookup", args: { invoice: "INV-7" } },
         { type: "tool.result", agent: "checker", tool: "lookup", result: "x".repeat(250) },
         {
+          type: "tool.unasked",
+          agent: "checker",
+          connector: "tracker",
+          tool: "search_issues",
+          reason: "read-list",
+        },
+        {
           type: "approval.requested",
           state: "review",
           agent: "checker",
@@ -181,6 +188,7 @@ verifies("engine.run-log-tools", () => {
         "  model acme-1: 10+5 tokens, cost 0.5000, 300 ms",
         '  tool lookup {"invoice":"INV-7"}',
         `    -> ${"x".repeat(200)}…`,
+        "  Ran without asking: `search_issues` is in your workspace's `read` list.",
         "  waits for approval of send",
         "  rejected with comment",
         "waiting for approve, reject",

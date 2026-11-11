@@ -3,9 +3,9 @@
 // `readListedTool` and `toolForModel` from `@halonicjs/app`, so its
 // description, and every `description` and `title` in its parameters, reach
 // the model only inside the untrusted fence (`ports.untrusted-tool-listings`).
-// Its risk is the listing's, which a server can raise but never lower. The
-// tool keeps the name the server listed; naming it after its source is left
-// to HAL-998.
+// Its risk is the listing's, which a server can raise but never lower, and
+// only the connector file's `read` list marks as reading. The tool keeps the
+// name the server listed; naming it after its source is left to HAL-998.
 
 import {
   escapeListedText,
@@ -13,6 +13,7 @@ import {
   readListedTool,
   toolForModel,
 } from "@halonicjs/app";
+import { type Connector, marksRead } from "@halonicjs/format";
 import type { ChatTurnRefusal, ConnectorTool, ToolDefinition, ToolRisk } from "@halonicjs/ports";
 
 /** One connector's listing, and the names already offered in the same turn. */
@@ -23,6 +24,12 @@ export interface ListedToolsInput {
   readonly listed: readonly ConnectorTool[];
   /** The names of the tools offered before this listing, as the model sees them. */
   readonly otherNames: ReadonlySet<string>;
+  /**
+   * The `tools` lists of the connector's file, which a person wrote: a tool
+   * its `read` list names counts as reading ({@link marksRead}). Absent
+   * outside a run, or when the run kept no file for the connector.
+   */
+  readonly lists?: Pick<Connector["tools"], "approve" | "read">;
 }
 
 /** A listed tool to offer. */
@@ -33,6 +40,8 @@ export interface OfferedListedTool {
   readonly listedName: string;
   /** What the engine counts a call to it as doing: {@link countedRisk} of its listing's risk. */
   readonly risk: ToolRisk;
+  /** Set when it counts as `read` only because the connector file's `read` list names it. */
+  readonly markedRead?: true;
   /**
    * What calling it can do, as the listing says; absent when it doesn't say.
    * It only goes into the call's `tool.result` (requirement
@@ -78,12 +87,14 @@ export function offerListedTools(input: ListedToolsInput): OfferedListing {
       const reason = `dropped the keyword at ${path}`;
       refusals.push({ source: input.source, name, refused: "keyword", reason });
     }
+    // The app's `listedRisk` would count `send` as `write` and skip the
+    // "allow sending" check, so the risk comes from `countedRisk` (HAL-5199).
+    const risk = countedRisk(tool.risk, isMarkedRead(input.lists, read.name));
     tools.push({
       definition: fencedDefinition(read),
       listedName: read.name,
-      // The app's `listedRisk` would count `send` as `write` and skip the
-      // "allow sending" check, so the risk comes from `countedRisk` (HAL-5199).
-      risk: countedRisk(tool.risk),
+      risk,
+      ...(risk === "read" ? { markedRead: true } : {}),
       ...(tool.risk === undefined ? {} : { listedRisk: tool.risk }),
     });
   }
@@ -116,19 +127,33 @@ function nameForRefusal(name: unknown): string {
 }
 
 /**
+ * Whether the connector file's `read` list marks the tool a server listed
+ * under `name` as reading. Only the file's lists are asked: nothing in the
+ * listing, its `risk` included, can add a tool to them.
+ */
+export function isMarkedRead(
+  lists: Pick<Connector["tools"], "approve" | "read"> | undefined,
+  name: string,
+): boolean {
+  return lists !== undefined && marksRead(lists, name);
+}
+
+/**
  * What the engine counts a call to a connector's tool as doing, given the
  * risk its listing says. The server wrote the listing, so it can raise the
  * risk but never lower it below `write` (requirement
  * `ports.untrusted-tool-listings`): a tool listed as `send` stays `send`, so
  * the "allow sending" check still applies to it, and every other tool,
- * one listed as `read` too, counts as `write`. Only a risk the workspace
- * sets may count a tool as `read`, and a run's definitions don't hold one.
+ * one listed as `read` too, counts as `write`. Only the workspace counts a
+ * tool as `read`, by naming it in the `read` list of the connector's file
+ * (`markedRead`), and even then a tool its server lists as `send` stays `send`.
  *
  * @example
- * countedRisk("read"); // "write"
- * countedRisk("send"); // "send"
- * countedRisk(undefined); // "write"
+ * countedRisk("read", false); // "write"
+ * countedRisk(undefined, true); // "read"
+ * countedRisk("send", true); // "send"
  */
-export function countedRisk(listed: ToolRisk | undefined): ToolRisk {
-  return listed === "send" ? "send" : "write";
+export function countedRisk(listed: ToolRisk | undefined, markedRead: boolean): ToolRisk {
+  if (listed === "send") return "send";
+  return markedRead ? "read" : "write";
 }

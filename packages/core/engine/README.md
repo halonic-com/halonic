@@ -208,12 +208,13 @@ A `parallel` state records `agent.started` with `branch` for every branch in nam
 branch's model call at once and joins the results under the branch names (requirement
 `engine.parallel-state`). A run records one effect at a time, so a branch can't make a connector call that
 changes things: its model call is offered only the tools that count as reading, through `readToolsOf`.
-The engine counts a connector's tool itself and never takes the risk its listing gives: every connector
-tool counts as at least `write` (a listing can raise it to `send`, never lower it), so for now a branch is
-offered no connector tools. The same count means a call to a connector's tool always waits for a person's
-OK in a run (`engine.run-connector-calls`). Tools that wait for a person, such as one the connector's file
-puts under `approve` (`engine.parallel-connector-approve`), are left out too, so the agent never sees a
-tool it can't use there. A branch whose agent stops for an approval ends with `output: null` and an
+The engine counts a connector's tool itself and never takes the risk its listing gives: a connector tool
+counts as `read` only when the `read` list of the connector's file names it and its listing doesn't say
+`send` (requirement `engine.run-connector-read`); every other one counts as at least `write` (a listing can
+raise it to `send`, never lower it). The same count means a call to any other connector tool waits for a
+person's OK in a run (`engine.run-connector-calls`). Tools that wait for a person, such as one the
+connector's file puts under `approve` (`engine.parallel-connector-approve`), are left out too, so the agent
+never sees a tool it can't use there. A branch whose agent stops for an approval ends with `output: null` and an
 `error`; the run goes on.
 A branch whose agent's output is a `choice` must answer with one of its options (the whitespace
 around it is trimmed, nothing else is forgiven); any other answer ends that branch the same way, with

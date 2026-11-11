@@ -186,6 +186,7 @@ async function carryOutCall(
   tool: TurnTool,
   call: ToolCall,
 ): Promise<ChatMessage | SubagentStopped> {
+  await logUnasked(context, tool, call);
   await context.log?.append({
     type: "tool.called",
     agent: context.agent,
@@ -224,6 +225,23 @@ export async function goOnInSubagent(
     await runTool(call, () => goOn(call.arguments, agent, answer)),
   );
   return "kind" in carried ? carried : answered(carried);
+}
+
+/**
+ * Logs `tool.unasked` before a call to a connector's tool that runs without
+ * a person's OK only because the `read` list of its connector's file names
+ * it (requirement `events.tool-unasked`), so the run's record says why no
+ * one was asked. Written before the call, so it shows even when the call fails.
+ */
+async function logUnasked(context: ToolCallContext, tool: TurnTool, call: ToolCall) {
+  if (tool.kind !== "server" || tool.markedRead !== true) return;
+  await context.log?.append({
+    type: "tool.unasked",
+    agent: context.agent,
+    connector: tool.source,
+    tool: call.name,
+    reason: "read-list",
+  });
 }
 
 /**

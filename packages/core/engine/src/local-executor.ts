@@ -375,9 +375,10 @@ export class LocalExecutor implements RunExecutor {
    * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
    * turn's full run log comes in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
    *
-   * A `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item
-   * started or below it ({@link callAlongsideOthers}), is offered only the connector tools whose
-   * listing says they read and their kept file doesn't put under `approve` ({@link openRunConnectorsOf}):
+   * A connector tool its kept file lists under `read`, and not under `approve`, counts as reading:
+   * its calls run without a person's OK, and the run log gets a `tool.unasked` before each one. A
+   * `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item started
+   * or below it ({@link callAlongsideOthers}), is offered only those tools ({@link openRunConnectorsOf}):
    * none can make a call that changes things, because a run records one effect at a time, and a
    * call that waits for a person would only end the branch or fail the run.
    *
@@ -425,6 +426,7 @@ export class LocalExecutor implements RunExecutor {
       messages,
       halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
       connectors,
+      connectorTools,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
       ...agentParamsOf(agent),
       maxRounds,

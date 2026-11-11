@@ -2,16 +2,19 @@
 // the turn its full log (requirement `engine.run-connector-allow`).
 
 import type { Clock, RunStore } from "@halonicjs/ports";
-import type { TurnLog } from "../agent/turn-log.ts";
+import type { TurnEvent, TurnLog } from "../agent/turn-log.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
 import { branchOfCall } from "../kernel/run-branches.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
 
+/** The turn's events a run logs before step 4. */
+const keptTypes: ReadonlySet<TurnEvent["type"]> = new Set(["tool.refused", "tool.unasked"]);
+
 /**
- * The log of a run's model call: it writes the turn's `tool.refused` events
- * to the run's log while the run waits on the call, in the call's `foreach`
- * item or `parallel` branch, and drops the turn's other events, which a run
- * doesn't log yet.
+ * The log of a run's model call: it writes the turn's `tool.refused` and
+ * `tool.unasked` events to the run's log while the run waits on the call,
+ * in the call's `foreach` item or `parallel` branch, and drops the turn's
+ * other events, which a run doesn't log yet.
  *
  * @param store - the run's store; `undefined` only for an executor without runs, which makes no run's call
  * @throws when there is no store
@@ -39,6 +42,6 @@ export function refusalLog(
     branch?.name ?? null,
   );
   return {
-    append: (event) => (event.type === "tool.refused" ? log.append(event) : Promise.resolve()),
+    append: (event) => (keptTypes.has(event.type) ? log.append(event) : Promise.resolve()),
   };
 }

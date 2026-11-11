@@ -14,7 +14,8 @@ export type TurnEvent = Extract<
       | "knowledge.searched"
       | "tool.called"
       | "tool.result"
-      | "tool.refused";
+      | "tool.refused"
+      | "tool.unasked";
   }
 >;
 

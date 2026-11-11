@@ -33,7 +33,13 @@ import {
   type TurnStopped,
 } from "./turn-approval.ts";
 import type { TurnLog } from "./turn-log.ts";
-import { collectTurnTools, type HalonicTool, halonicSource, type TurnTools } from "./turn-tools.ts";
+import {
+  collectTurnTools,
+  type HalonicTool,
+  halonicSource,
+  type TurnToolSources,
+  type TurnTools,
+} from "./turn-tools.ts";
 
 /** What one model turn needs. */
 export interface ModelTurnInput {
@@ -49,6 +55,8 @@ export interface ModelTurnInput {
   readonly halonicTools: readonly HalonicTool[];
   /** The connected servers, whose listed tools are offered last and run by the turn. */
   readonly connectors: readonly ConnectorClient[];
+  /** The `tools` lists of the connectors' files, by connector id; see {@link TurnToolSources}. */
+  readonly connectorTools?: NonNullable<TurnToolSources["connectorTools"]>;
   /**
    * The params of the turn's calls, laid over each model's own alias params:
    * the agent's, then a chat turn's request's on top (see `layeredParams`).

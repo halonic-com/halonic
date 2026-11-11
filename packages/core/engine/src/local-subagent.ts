@@ -104,6 +104,7 @@ export async function runLocalSubagent(
     messages,
     halonicTools: context.toolsOf(task.agent, task.depth, knowledge),
     connectors,
+    connectorTools: lists,
     ...(context.effects === undefined ? {} : { effects: context.effects }),
     ...agentParamsOf(subagent),
     maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,

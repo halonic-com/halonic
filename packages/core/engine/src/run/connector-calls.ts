@@ -4,10 +4,10 @@
 // key, and only then does the engine make it, here.
 
 import type { SendingSettings } from "@halonicjs/app";
-import { type Agent, type Connector, needsApproval } from "@halonicjs/format";
+import type { Agent, Connector } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
-import { countedRisk } from "../agent/offer-listed-tools.ts";
+import { countedRisk, isMarkedRead } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
 import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
@@ -52,25 +52,23 @@ export function effectBoundary(calls: RunConnectorCalls): EffectBoundary {
 /**
  * The connector with only the tools that count as reading: what a
  * `parallel` branch's model call is offered. A listing can't lower a tool's
- * risk ({@link countedRisk}), so until the workspace can set one, none of a
- * connector's tools counts as reading, and a branch is offered none. A tool
- * the `approve` list of the connector's file in `lists` names, under the
- * name its server lists it under, or every tool when that list is `all`
- * (HAL-4630), is left out too: it waits for a person, which would only end
- * the branch. Calls go to the connector itself.
+ * risk ({@link countedRisk}), so only the tools the `read` list of the
+ * connector's file in `lists` names, under the name its server lists them
+ * under, count as reading. A tool the file's `approve` list names, or every
+ * tool when that list is `all` (HAL-4630), doesn't count, even when `read`
+ * names it: it waits for a person, which would only end the branch. Calls
+ * go to the connector itself.
  */
 export function readToolsOf(
   connector: ConnectorClient,
-  lists: Readonly<Record<string, Pick<Connector["tools"], "approve">>>,
+  lists: Readonly<Record<string, Pick<Connector["tools"], "approve" | "read">>>,
 ): ConnectorClient {
   const tools = Object.hasOwn(lists, connector.id) ? lists[connector.id] : undefined;
   return {
     id: connector.id,
     listTools: async () =>
       (await connector.listTools()).filter(
-        (tool) =>
-          countedRisk(tool.risk) === "read" &&
-          (tools === undefined || !needsApproval(tools, tool.name)),
+        (tool) => countedRisk(tool.risk, isMarkedRead(tools, tool.name)) === "read",
       ),
     callTool: (name, args, options) => connector.callTool(name, args, options),
     close: () => connector.close(),
