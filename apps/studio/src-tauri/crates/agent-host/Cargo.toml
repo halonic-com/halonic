@@ -1,0 +1,16 @@
+[package]
+name = "halonic-agent-host"
+description = "Starts the agent host (apps/agent-host) for the Studio shell, reads its handshake and keeps it running for as long as the shell holds it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Reads the host's handshake line, `{"url","token"}`.
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true
