@@ -48,6 +48,10 @@ function pluginFrom(manifest: string): Plugin {
 interface FakeOptions {
   readonly values?: Record<string, PluginSettingValue>;
   readonly problems?: readonly PluginSettingProblem[];
+  /** Refuses only the records this finds problems in. */
+  readonly check?: (values: Record<string, unknown>) => readonly PluginSettingProblem[];
+  /** Each save waits until the test calls `release`. */
+  readonly held?: boolean;
   readonly hostFails?: boolean;
   readonly stored?: Record<string, string>;
   readonly locked?: boolean;
@@ -58,14 +62,22 @@ interface FakeOptions {
 function fakes(options: FakeOptions = {}) {
   const saved: Record<string, unknown>[] = [];
   const keychain = new Map(Object.entries(options.stored ?? {}));
+  const waiting: (() => void)[] = [];
+  const release = async () => {
+    waiting.shift()?.();
+    await settle();
+  };
   const host: PluginSettingsReader = {
     settings: async () => {
       if (options.unreadable === true) throw new Error("The profile can't be read.");
       return { city: "Oslo", units: "metric", alerts: false, ...options.values };
     },
     saveSettings: async (_plugin, values) => {
+      if (options.held === true) await new Promise<void>((resolve) => waiting.push(resolve));
       if (options.hostFails === true) throw new Error("The disk is full.");
       if (options.problems !== undefined) return { ok: false, error: options.problems };
+      const problems = options.check?.(values) ?? [];
+      if (problems.length > 0) return { ok: false, error: problems };
       saved.push({ ...values });
       return { ok: true };
     },
@@ -82,7 +94,7 @@ function fakes(options: FakeOptions = {}) {
       keychain.delete(name);
     },
   };
-  return { host, secrets, saved, keychain };
+  return { host, secrets, saved, keychain, release };
 }
 
 async function show(options: FakeOptions = {}, off?: { reason: string }) {
@@ -186,6 +198,47 @@ verifies("plugins.plugin-settings", () => {
       act(() => alerts?.click());
       await settle();
       expect(saved[0]).toMatchObject({ alerts: true });
+    });
+
+    it("runs quick saves one after the other, so the last keeps both values", async () => {
+      const { view, saved, release } = await show({ held: true });
+      await typeAndLeave(fieldNamed(view, "City"), "Bergen");
+      const alerts = view.querySelector<HTMLInputElement>('[role="switch"]');
+      act(() => alerts?.click());
+      await settle();
+      await release();
+      await release();
+      expect(saved).toEqual([
+        { city: "Bergen", units: "metric", alerts: false },
+        { city: "Bergen", units: "metric", alerts: true },
+      ]);
+    });
+
+    it("saves a switch flipped back while its first save is still going", async () => {
+      const { view, saved, release } = await show({ held: true });
+      const alerts = view.querySelector<HTMLInputElement>('[role="switch"]');
+      act(() => alerts?.click());
+      await settle();
+      act(() => alerts?.click());
+      await settle();
+      await release();
+      await release();
+      expect(alerts?.checked).toBe(false);
+      expect(saved.at(-1)).toMatchObject({ alerts: false });
+    });
+
+    it("keeps another field's error when a later save succeeds", async () => {
+      const check = (values: Record<string, unknown>) =>
+        values["city"] === undefined ? [{ setting: "city", message: "fill this in" }] : [];
+      const { view, saved } = await show({ check });
+      const city = fieldNamed(view, "City");
+      await typeAndLeave(city, "");
+      const alerts = view.querySelector<HTMLInputElement>('[role="switch"]');
+      act(() => alerts?.click());
+      await settle();
+      expect(saved).toEqual([{ city: "Oslo", units: "metric", alerts: true }]);
+      expect(lineUnder(city)).toBe("Fill this in.");
+      expect(city.value).toBe("");
     });
 
     it("saves a secret under the plugin's own name, then empties the field and says Set", async () => {

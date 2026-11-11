@@ -81,6 +81,9 @@ export function PluginSettingsSection({
   const [attempt, setAttempt] = useState(0);
   // The values the host holds now: a refused or failed save doesn't change them.
   const saved = useRef<Values>({});
+  // Saves run one at a time: the host replaces the whole record, so each
+  // builds it from `saved` only once the one before has finished.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
     let current = true;
@@ -119,9 +122,24 @@ export function PluginSettingsSection({
 
   /**
    * Saves `setting`'s new value with every other saved one, because the
-   * host keeps a plugin's values as one record. Returns whether it saved.
+   * host keeps a plugin's values as one record, after any save still going.
+   * Returns whether it saved.
    */
-  async function save(setting: string, value: PluginSettingValue | undefined, secret?: string) {
+  function save(
+    setting: string,
+    value: PluginSettingValue | undefined,
+    secret?: string,
+  ): Promise<boolean> {
+    const done = queue.current.then(() => saveNow(setting, value, secret));
+    queue.current = done.catch(() => undefined);
+    return done;
+  }
+
+  async function saveNow(setting: string, value: PluginSettingValue | undefined, secret?: string) {
+    if (secret === undefined && value === saved.current[setting]) {
+      setErrors((now) => without(now, setting));
+      return true;
+    }
     const next: Record<string, unknown> = { ...saved.current, [setting]: value };
     if (secret !== undefined) {
       next[setting] = secret;
@@ -140,16 +158,18 @@ export function PluginSettingsSection({
       const failure = outcome.failed[0];
       if (failure !== undefined) {
         const line = secretNotSavedLine(reasonOf(failure.error), secretSet[setting] === true);
-        setErrors({ [setting]: line });
+        setErrors((now) => ({ ...now, [setting]: line }));
         onSaveState?.("failed");
         return false;
       }
-      setErrors({});
+      // Only this field's error goes: another field's unsaved text keeps its own.
+      setErrors((now) => without(now, setting));
       onSaveState?.("saved");
       return true;
     } catch (error) {
       const label = plugin.ui?.settings[setting]?.label ?? setting;
-      setErrors({ [setting]: settingNotSavedLine(label, reasonOf(error)) });
+      const line = settingNotSavedLine(label, reasonOf(error));
+      setErrors((now) => ({ ...now, [setting]: line }));
       onSaveState?.("failed");
       return false;
     }
@@ -184,11 +204,11 @@ export function PluginSettingsSection({
             field={field}
             value={values[setting]}
             onSave={async (value) => {
-              if (off !== undefined || value === saved.current[setting]) return;
-              setValues(withValue(values, setting, value));
+              if (off !== undefined) return;
+              setValues((now) => withValue(now ?? {}, setting, value));
               // A pick or a switch goes back when it couldn't be saved; typed text stays.
               if (!(await save(setting, value)) && typeof value !== "string") {
-                setValues(saved.current);
+                setValues((now) => withValue(now ?? {}, setting, saved.current[setting]));
               }
             }}
           />
@@ -218,6 +238,8 @@ interface SettingRowProps extends RowProps {
 function SettingRow({ field, value, error, off, onSave }: SettingRowProps) {
   const [draft, setDraft] = useState(value === undefined ? "" : String(value));
   const hint = field.help;
+  // Kit gap: `Field` sets `aria-describedby`, so an Input or a Select can't
+  // point at `off.reason` the way the Switch does.
   const unavailable = off === undefined ? {} : { readOnly: true, "aria-disabled": true };
 
   switch (field.type) {
@@ -363,6 +385,12 @@ function withValue(values: Values, setting: string, value: PluginSettingValue | 
     next[setting] = value;
   }
   return next;
+}
+
+function without(lines: Readonly<Record<string, string>>, setting: string) {
+  if (!Object.hasOwn(lines, setting)) return lines;
+  const { [setting]: _, ...rest } = lines;
+  return rest;
 }
 
 /**
