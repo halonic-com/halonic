@@ -90,6 +90,34 @@ verifies("engine.foreach-connector-tools", () => {
     }
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
+
+  it("offers the agents of an item's child run only the tools a parallel branch gets", async () => {
+    const mail = new ScriptedConnector(
+      "mail",
+      [mailTool("search", "read"), mailTool("send_mail", "send")],
+      () => "done",
+    );
+    const { executor, model, runs, scheduler } = runsOn(
+      [textAnswer("Hi Acme"), textAnswer("Hi Globex")],
+      new KernelRuns(),
+      {
+        workflow: foreachOf({ workflow: "reply" }),
+        workflows: { reply: replyWorkflow },
+        agents: agentsUsing(["mail"], "writer"),
+        connectors: [mail],
+        connectorCalls: sendingOn,
+      },
+    );
+    await executor.start(greetStart);
+
+    await scheduler.runDue();
+
+    expect(model.requests).toHaveLength(2);
+    for (const request of model.requests) {
+      expect(request.tools?.map((tool) => tool.name) ?? []).toEqual([]);
+    }
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
 });
 
 verifies("engine.child-runs-end-with-run", () => {
