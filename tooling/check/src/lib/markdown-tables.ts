@@ -50,7 +50,8 @@ function shortDelimiter(cell: string): string {
 
 function compactRow(line: string, delimiter: boolean): string {
   const cells = cellsOf(line).map((cell) => (delimiter ? shortDelimiter(cell) : cell));
-  return `| ${cells.join(" | ")} |`;
+  const indent = line.match(/^\s*/)?.[0] ?? "";
+  return `${indent}| ${cells.join(" | ")} |`;
 }
 
 /**

@@ -25,6 +25,11 @@ describe("tooling/check: markdown tables", () => {
     expect(compactTables(once)).toBe(once);
   });
 
+  it("keeps the indent of a table nested in a list", () => {
+    const nested = "- item\n\n  | a  | b |\n  | -- | -- |\n  | 1  | 2 |\n";
+    expect(compactTables(nested)).toBe("- item\n\n  | a | b |\n  | --- | --- |\n  | 1 | 2 |\n");
+  });
+
   it("names the first padded line, or none", () => {
     expect(firstPaddedLine("text\n\n| a | b |\n| --- | --- |\n| 1 | 2 |")).toBeUndefined();
     expect(firstPaddedLine("text\n\n| a | b |\n| --- | --- |\n| 1   | 2 |")).toBe(5);
