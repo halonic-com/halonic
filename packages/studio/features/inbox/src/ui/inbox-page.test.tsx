@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import type { RunSummary } from "@halonicjs/events";
-import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
+import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InboxRunsService, InboxService } from "../api.ts";
+import { fakeRuns, WorkspaceServices } from "../fake-runs.test-helper.ts";
 import { inboxFeature } from "../feature.ts";
 import { Inbox, type InboxRuns } from "../inbox.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
@@ -29,37 +29,6 @@ const review = waitingRun("r2", {
   waitingFor: { title: "Approve this reply?", body: "" },
   nextTimer: at(14, 0),
 });
-
-/** Runs whose waiting list and failures a test sets. */
-function fakeRuns(initial: readonly RunSummary[]) {
-  let waiting = initial;
-  let failure: unknown;
-  const listeners = new Set<() => void>();
-  const runs: InboxRuns = {
-    waiting: async () => {
-      if (failure !== undefined) throw failure;
-      return waiting;
-    },
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    send: vi.fn(async (runId: string) => waitingRun(runId)),
-  };
-  return {
-    runs,
-    fail: (error: unknown) => {
-      failure = error;
-    },
-    answer: () => {
-      failure = undefined;
-    },
-    change: (next: readonly RunSummary[]) => {
-      waiting = next;
-      for (const listener of listeners) listener();
-    },
-  };
-}
 
 async function settled(): Promise<void> {
   await act(async () => {
@@ -106,20 +75,6 @@ function nameOf(root: HTMLElement, element: Element | null): string {
   const label = root.querySelector(`[id="${id}"]`)?.cloneNode(true) as Element | undefined;
   for (const hidden of label?.querySelectorAll('[aria-hidden="true"]') ?? []) hidden.remove();
   return label?.textContent ?? "";
-}
-
-/** A minimal workspace registry; the Studio uses `ServiceRegistry` from `@halonicjs/app`. */
-class WorkspaceServices implements ServiceTarget {
-  readonly #services = new Map<string, unknown>();
-  provide<Service>(key: ServiceKey<Service>, service: Service): void {
-    this.#services.set(key.name, service);
-  }
-  get<Service>(key: ServiceKey<Service>): Service {
-    return this.#services.get(key.name) as Service;
-  }
-  has(key: ServiceKey<unknown>): boolean {
-    return this.#services.has(key.name);
-  }
 }
 
 verifies("inbox.page", () => {
