@@ -27,6 +27,16 @@ export const WHICH_READS = ", which reads";
 /** A required field left empty. The settings section shows the same line. */
 export const FILL_THIS_IN = "Fill this in: it is required.";
 
+/** The reason when a tool doesn't answer in time: "the plugin didn't answer in 30 seconds". */
+export function noAnswerReason(ms: number): string {
+  return `the plugin didn't answer in ${Math.round(ms / 1000)} seconds`;
+}
+
+/** Where a plugin's command comes from, beside its title in Ctrl K: "Weather plugin". */
+export function commandSource(name: string): string {
+  return `${name} plugin`;
+}
+
 /**
  * The command failed: "Couldn't run Show forecast: the service didn't answer." (G5, microcopy
  * 1.1). A reason that ends in a full stop doesn't get a second one.

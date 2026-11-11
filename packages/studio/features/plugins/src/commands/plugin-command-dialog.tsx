@@ -111,14 +111,12 @@ export function PluginCommandDialog({
     void start(checked.args);
   }
 
-  // A command without a form runs as soon as it opens.
-  const ranOnOpen = useRef(false);
+  // A command without a form runs as soon as it opens. The cleanup that drops its answer sits in
+  // the same effect, so a second mount (React's StrictMode) starts the run again.
   useEffect(() => {
-    if (fields.length > 0 || ranOnOpen.current) return;
-    ranOnOpen.current = true;
-    void start({});
-  });
-  useEffect(() => () => void ++latest.current, []);
+    if (fields.length === 0) void start({});
+    return () => void ++latest.current;
+  }, []);
   useEffect(() => {
     if (run.kind === "done") resultHeading.current?.focus();
   }, [run]);

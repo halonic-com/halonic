@@ -2,8 +2,8 @@
 
 import { parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { act, Fragment, StrictMode } from "react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import {
@@ -12,6 +12,7 @@ import {
   PluginCommandDialog,
   type PluginToolCaller,
 } from "./plugin-command-dialog.tsx";
+import { timedToolCaller } from "./tool-call-timeout.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -73,17 +74,20 @@ function callerAnswering(...answers: (string | Error)[]) {
   return { caller, calls };
 }
 
-function open(command: PluginCommand, caller: PluginToolCaller) {
+function open(command: PluginCommand, caller: PluginToolCaller, strict = false) {
   let closed = 0;
+  const Wrap = strict ? StrictMode : Fragment;
   render(
-    <PluginCommandDialog
-      plugin={{ id: "weather", name: "Weather" }}
-      command={command}
-      caller={caller}
-      onClose={() => {
-        closed += 1;
-      }}
-    />,
+    <Wrap>
+      <PluginCommandDialog
+        plugin={{ id: "weather", name: "Weather" }}
+        command={command}
+        caller={caller}
+        onClose={() => {
+          closed += 1;
+        }}
+      />
+    </Wrap>,
   );
   return { closed: () => closed };
 }
@@ -235,5 +239,35 @@ verifies("plugins.plugin-commands", () => {
     open(named as PluginCommand, callerAnswering().caller);
     expect(buttonWords()).toContain("Run command");
     expect(buttonWords()).not.toContain("Delete everything");
+  });
+});
+
+verifies("plugins.palette-commands", () => {
+  it("runs a command without a form once mounted in StrictMode, and shows its answer", async () => {
+    const { caller } = callerAnswering("Sunny", "Sunny");
+    open(today, caller, true);
+    await settle();
+    expect(dialog().querySelector("section")?.textContent).toContain("Sunny");
+    expect(buttonWords()).toContain("Close");
+  });
+
+  it("fails a call the tool doesn't answer in 30 seconds, with Try again", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const never: PluginToolCaller = { call: () => new Promise<string>(() => {}) };
+      open(forecast, timedToolCaller(never));
+      type(fieldNamed("Place"), "Ghent");
+      act(() => button("Run command").click());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+    await settle();
+    expect(dialog().textContent).toContain(
+      "Couldn't run Show the forecast: the plugin didn't answer in 30 seconds.",
+    );
+    expect(button("Try again")).toBeDefined();
   });
 });
