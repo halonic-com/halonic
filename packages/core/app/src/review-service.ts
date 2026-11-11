@@ -5,6 +5,7 @@
 
 import { catchUp } from "./review-catch-up.ts";
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
+import { isNeverWritten } from "./review-gate.ts";
 import { type FileWriter, ReviewWriteHook } from "./review-hook.ts";
 import { decideInFile, fileReview, type InFileTarget } from "./review-parts.ts";
 import { proposeDelete, proposeWrite, sameCard } from "./review-propose.ts";
@@ -152,6 +153,12 @@ export class ReviewService {
    * left alone and listed in `held`, with its record. That includes a
    * step that only changed the record, such as an Accept: its record comes
    * back only while the file is still as that record last saw it.
+   *
+   * A step comes back from the history, so the paths the assistant may
+   * never write (`app.assistant-no-git-or-halonic`) are held too, and
+   * nothing of them is touched. A file written back while the workspace is
+   * untrusted marks its record as written untrusted
+   * (`app.untrusted-changes-held`), as a write would.
    */
   async restore(step: ReviewStep, to: "before" | "after"): Promise<ReviewOutcome> {
     const from = to === "before" ? "after" : "before";
@@ -159,20 +166,24 @@ export class ReviewService {
     const done: ReviewedFile[] = [];
     const held: string[] = [];
     for (const entry of files) {
-      const restored = await this.files.turn(entry.path, async () => {
-        if (entry.file !== undefined) {
-          const expected = await this.files.digestOf(entry.file[from]);
-          if (!(await this.files.putFile(entry.path, expected, entry.file[to]))) {
-            return false;
-          }
-        } else if (!(await this.stillAsSeen(entry.path, entry.record[to]))) {
-          return false;
-        }
-        await this.files.putRecord(entry.path, entry.record[to]);
-        return true;
-      });
-      if (restored) {
-        done.push(swapSides(entry, to));
+      const restored = isNeverWritten(entry.path)
+        ? null
+        : await this.files.turn(entry.path, async () => {
+            let record = entry.record[to];
+            if (entry.file !== undefined) {
+              const expected = await this.files.digestOf(entry.file[from]);
+              if (!(await this.files.putFile(entry.path, expected, entry.file[to]))) {
+                return null;
+              }
+              record = markedIfUntrusted(record, this.files.isTrusted());
+            } else if (!(await this.stillAsSeen(entry.path, record))) {
+              return null;
+            }
+            await this.files.putRecord(entry.path, record);
+            return withRecord(entry, to, record);
+          });
+      if (restored !== null) {
+        done.push(swapSides(restored, to));
       } else {
         held.push(entry.path);
       }
@@ -339,6 +350,24 @@ function covers(target: FilesTarget, record: ReviewRecord): boolean {
     case "chat":
       return record.card.chatId === target.chatId;
   }
+}
+
+/** The record of a file written while the workspace is untrusted carries the mark. */
+function markedIfUntrusted(record: ReviewRecord | null, trusted: boolean): ReviewRecord | null {
+  return record === null || trusted ? record : { ...record, writtenUntrusted: true };
+}
+
+/** The entry with `record` on its `to` side, as it was put back. */
+function withRecord(
+  entry: ReviewedFile,
+  to: "before" | "after",
+  record: ReviewRecord | null,
+): ReviewedFile {
+  const records =
+    to === "before"
+      ? { before: record, after: entry.record.after }
+      : { before: entry.record.before, after: record };
+  return { ...entry, record: records };
 }
 
 /** The entry for the step a restore made: what was `to` is now its `after`. */
