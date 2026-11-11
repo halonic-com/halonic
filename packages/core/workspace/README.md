@@ -189,7 +189,8 @@ The types in the API go with these functions: `LoadedWorkspace`, `LoadedFile`, `
 and the trust types listed below (`TrustContent`, `TrustContentInput`, `ConnectorTrustContent`,
 `RefusedConnector`, `AgentTrustContent`, `IntegrationTrustContent`, `LocalIntegrationInput`,
 `TrustSkipInput`, `TrustUrl`, `TrustChanges`, `ItemChanges`, `ChangedItem`, `ChangedConnector`,
-`ChangedAgent` and `ChangedIntegration`).
+`ChangedAgent`, `ChangedIntegration`, `ChangedProvider`, `ProviderTrustContent`, `ProvidersTrustContent`
+and `RefusedProvider`).
 
 ## Trust content
 
@@ -249,8 +250,7 @@ local integration and the trust content is empty, so nothing starts outside Halo
 When the fingerprint no longer matches, `trustChanges` compares the trusted content with the current
 one and lists the new, changed and removed connectors, harness agents, integrations and providers, so
 the prompt can show New and Changed first. Only removing whole connectors, harness agents, integrations
-or providers lets
-the record shrink without asking (HAL-65 decision 9). Any change
+or providers lets the record shrink without asking (HAL-65 decision 9). Any change
 inside a connector asks again, even one that takes something out of the file, because dropping a
 tool from `approve`, the `allow` list or a variable can let the connector do more.
 

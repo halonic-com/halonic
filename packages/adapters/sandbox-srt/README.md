@@ -45,6 +45,11 @@ says, and `kill` to end its process tree. It works outside the user's profile, b
 inside the profile of the user who ran the install. The same fence tests for Linux and macOS run
 with `pnpm test:fence`.
 
+The report-only `sandbox-windows-spike` CI workflow also runs `scripts/windows-isolation-probe.mjs` when that
+script changes. Among its results, it checks that a session on project B can neither write in nor
+delete from a project A whose grant an earlier session kept (`kept-roots-writable`). It writes
+`windows-isolation-results.json`; it doesn't gate a merge.
+
 ## Exports
 
 | Export | What it is |
