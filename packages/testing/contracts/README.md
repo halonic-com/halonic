@@ -59,4 +59,13 @@ refuseRealConnections();
 connectorClientContract("google", "google", makeGoogleConnector);
 ```
 
+Two suites take a harness instead of a `make` function, because they need a peer or a session the
+adapter can't build by itself. `httpClientContract(name, harness)` checks that an `HttpClient` passes
+`init.redirect` and `init.signal` through: a redirect it was told to refuse throws or comes back as it
+is, and is never followed, and an aborted request throws without waiting for the answer
+(`contracts.http-client`); the harness gives it a local `HttpPeer`. `sandboxFenceContract(name,
+harness)` checks that a `Sandbox` session whose fence proof is `not-fenced` gives a reason in words and
+that its `start` throws and starts no program (`contracts.sandbox-fence`); the harness opens such a
+session and counts the programs the adapter started.
+
 A read-only adapter, such as a deployed snapshot, runs `definitionSourceContract` instead of `definitionStoreContract`.
