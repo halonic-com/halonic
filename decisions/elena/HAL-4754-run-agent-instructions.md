@@ -4,7 +4,6 @@
 - Task: HAL-4754
 - Approval: [HAL-4754](/HAL/issues/HAL-4754), the CTO's review of this pull request
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5I5dVYPHvKtZqvQui7J3qwm/X7SYQcgL1uvejZxpGltoWyY4kCBWKRnge/bDMnzjtf4htVWJ98da7wf+vW/yBA==
 
 ## What changes
 
