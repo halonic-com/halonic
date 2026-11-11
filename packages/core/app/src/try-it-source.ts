@@ -26,13 +26,18 @@ interface UsedInstead {
  * Builds the Try it source from the workspace's files and their records.
  * `leftOut` is what is held back now. A file the assistant writes later is
  * held back too, when the source reads it ({@link HeldBackSource}).
+ *
+ * @param reads - how the source reads the files; by default each read is live
  */
-export async function buildTryItSource(files: ReviewFiles): Promise<TryItSource> {
+export async function buildTryItSource(
+  files: ReviewFiles,
+  reads: FileReads = new FileReads(files),
+): Promise<TryItSource> {
   const { records } = await files.list();
   const used = new Map<string, string | null>();
   const leftOutFiles: LeftOutFile[] = [];
   for (const { path } of records) {
-    const { text, instead } = await readNow(files, path);
+    const { text, instead } = await reads.now(path);
     if (instead === null) {
       continue;
     }
@@ -44,7 +49,7 @@ export async function buildTryItSource(files: ReviewFiles): Promise<TryItSource>
     }
   }
   return {
-    source: new HeldBackSource(files, used),
+    source: new HeldBackSource(files, reads, used),
     leftOut: leftOutOf(leftOutFiles),
     cantTry: [],
   };
@@ -54,6 +59,71 @@ export async function buildTryItSource(files: ReviewFiles): Promise<TryItSource>
 interface FileNow {
   readonly text: string | null;
   readonly instead: UsedInstead | null;
+}
+
+/**
+ * How Try it reads the workspace's files. By default each read is live.
+ * While shared ({@link FileReads.shared}), each path is read once, with its
+ * record in its turn, and the workspace as it is ({@link asIs}) and as Try
+ * it reads it give that same read. So a save between the two loads can't
+ * show up as a difference between them. {@link close} makes reads live
+ * again, so a file the assistant writes after the build is still held back.
+ */
+export class FileReads {
+  readonly #files: ReviewFiles;
+  #shared: boolean;
+  readonly #reads = new Map<string, Promise<FileNow>>();
+  readonly #lists = new Map<string | undefined, Promise<string[]>>();
+
+  constructor(files: ReviewFiles, shared = false) {
+    this.#files = files;
+    this.#shared = shared;
+  }
+
+  /** Reads that each path gives once, until {@link close}. */
+  static shared(files: ReviewFiles): FileReads {
+    return new FileReads(files, true);
+  }
+
+  /** The file at `path` now, and what Try it reads instead of it. */
+  now(path: string): Promise<FileNow> {
+    return this.#once(this.#reads, path, () => readNow(this.#files, path));
+  }
+
+  /** The workspace's paths under `dir`, as its store lists them. */
+  list(dir?: string): Promise<string[]> {
+    return this.#once(this.#lists, dir, () => this.#files.store.list(dir));
+  }
+
+  /** The workspace as it is, from the same reads as Try it's. */
+  asIs(): DefinitionSource {
+    const store = this.#files.store;
+    return {
+      location: store.location,
+      list: (dir) => this.list(dir),
+      read: async (path) => (await this.now(path)).text,
+      version: () => store.version(),
+    };
+  }
+
+  /** Ends the shared reads: from now on each read is live. */
+  close(): void {
+    this.#shared = false;
+    this.#reads.clear();
+    this.#lists.clear();
+  }
+
+  #once<K, T>(cache: Map<K, Promise<T>>, key: K, read: () => Promise<T>): Promise<T> {
+    if (!this.#shared) {
+      return read();
+    }
+    let found = cache.get(key);
+    if (found === undefined) {
+      found = read();
+      cache.set(key, found);
+    }
+    return found;
+  }
 }
 
 /**
@@ -176,17 +246,19 @@ export function leftOutOf(files: readonly LeftOutFile[]): LeftOut {
 class HeldBackSource implements DefinitionSource {
   readonly location: string;
   readonly #files: ReviewFiles;
+  readonly #reads: FileReads;
   readonly #used: Map<string, string | null>;
 
-  constructor(files: ReviewFiles, used: Map<string, string | null>) {
+  constructor(files: ReviewFiles, reads: FileReads, used: Map<string, string | null>) {
     this.location = files.store.location;
     this.#files = files;
+    this.#reads = reads;
     this.#used = used;
   }
 
   async list(dir?: string): Promise<string[]> {
     // The workspace's own list first: it refuses an unsafe `dir`.
-    const listed = await this.#files.store.list(dir);
+    const listed = await this.#reads.list(dir);
     const prefix = dir === undefined ? null : `${dir.replace(/\/+$/u, "")}/`;
     const within = (path: string) => prefix === null || path.startsWith(prefix);
     const { records } = await this.#files.list();
@@ -211,7 +283,7 @@ class HeldBackSource implements DefinitionSource {
     if (held !== undefined) {
       return held;
     }
-    const { text, instead } = await readNow(this.#files, path);
+    const { text, instead } = await this.#reads.now(path);
     if (instead === null) {
       return text;
     }

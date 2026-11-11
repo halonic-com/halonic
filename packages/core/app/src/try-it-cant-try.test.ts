@@ -272,6 +272,55 @@ verifies("app.review-try-it-cant-try", () => {
     expect(cantTry).toEqual([]);
   });
 
+  it("loads both from one read of each file, so a save between the loads isn't a difference", async () => {
+    const { store, review, propose } = acme();
+    await propose(sorter, agent("sorter", "maxSteps: 50\n"));
+    // The person saves writer with an alias no file has, right after Try it first reads it.
+    const broken = agent("writer").replace("model: fast", "model: large");
+    const readFile = store.read.bind(store);
+    let writerReads = 0;
+    store.read = async (path) => {
+      const text = await readFile(path);
+      if (path === writer && ++writerReads === 1) {
+        store.files.set(writer, broken);
+      }
+      return text;
+    };
+    const { cantTry, source } = await review.tryItSource({ item: triage });
+    expect(cantTry).toEqual([]);
+    expect(writerReads).toBe(1);
+    // After the build, the source reads the file as it is now.
+    expect(await source.read(writer)).toBe(broken);
+  });
+
+  it("tries every step when an alias the run doesn't use needs a left-out provider", async () => {
+    const { store, review, propose } = acme();
+    await propose("providers/cloud.yaml", "id: cloud\nname: Cloud\ntype: mock\nlocal: true\n");
+    await store.write("models.yaml", `${fast}  spare:\n    provider: cloud\n    model: echo\n`);
+    const { cantTry, leftOut } = await review.tryItSource({ item: triage });
+    expect(cantTry).toEqual([]);
+    expect(leftOut.files.map((file) => file.path)).toEqual(["providers/cloud.yaml"]);
+  });
+
+  it("can't try the item when an alias it falls back to needs a left-out provider", async () => {
+    const { store, review, propose } = acme();
+    await propose("providers/cloud.yaml", "id: cloud\nname: Cloud\ntype: mock\nlocal: true\n");
+    const models = `${fast}    fallback: [spare]\n  spare:\n    provider: cloud\n    model: echo\n`;
+    await store.write("models.yaml", models);
+    expect((await review.tryItSource({ item: triage })).cantTry).toEqual([
+      {
+        status: "cant-try",
+        item: triage,
+        step: null,
+        reason: {
+          kind: "needs-left-out-change",
+          path: "providers/cloud.yaml",
+          leftOut: "models",
+        },
+      },
+    ]);
+  });
+
   it("maps only codes the workspace checks give as errors", async () => {
     expect(Object.keys(breaksFor).sort()).toEqual(Object.keys(missingKinds).sort());
     for (const [code, files] of Object.entries(breaksFor)) {

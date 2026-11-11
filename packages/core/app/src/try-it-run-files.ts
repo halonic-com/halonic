@@ -11,6 +11,12 @@ export interface RunFiles {
   readonly all: ReadonlySet<string>;
   /** For a workflow, the files each step reads, by step id; empty for an agent. */
   readonly byStep: ReadonlyMap<string, ReadonlySet<string>>;
+  /**
+   * The model names the run may use: its agents' and their methods', the
+   * hub's and the workspace's default, and the aliases those fall back to,
+   * all the way down. It may hold more than the run uses, never less.
+   */
+  readonly models: ReadonlySet<string>;
 }
 
 /** The kinds every run reads, whatever it calls. */
@@ -48,7 +54,58 @@ export function runFilesOf(workspaces: readonly LoadedWorkspace[], item: string)
   for (const [step, calls] of stepCalls(files.at(item))) {
     byStep.set(step, files.reach(calls, hub));
   }
-  return { all: new Set([...files.reach([item], hub), ...settings]), byStep };
+  const all = new Set([...files.reach([item], hub), ...settings]);
+  return { all, byStep, models: modelsOf(workspaces, all) };
+}
+
+/**
+ * The model names a run reading the files `all` may use, see
+ * {@link RunFiles.models}. `default` is always among them: it is the
+ * workspace's default model when `workspace.yaml` doesn't parse.
+ */
+function modelsOf(workspaces: readonly LoadedWorkspace[], all: ReadonlySet<string>): Set<string> {
+  const read = workspaces
+    .flatMap((workspace) => workspace.files)
+    .filter((file) => all.has(file.path));
+  const names = new Set(["default"]);
+  const add = (name: string | undefined) => {
+    if (name !== undefined) {
+      names.add(name);
+    }
+  };
+  const fallbacks = new Map<string, string[]>();
+  const addFallbacks = (aliases: Record<string, { readonly fallback: readonly string[] }>) => {
+    for (const [name, alias] of Object.entries(aliases)) {
+      fallbacks.set(name, [...(fallbacks.get(name) ?? []), ...alias.fallback]);
+    }
+  };
+  for (const file of read) {
+    switch (file.kind) {
+      case "agent":
+        add(file.value.model);
+        for (const method of Object.values(file.value.methods)) {
+          add(method.model);
+        }
+        break;
+      case "hub":
+        add(file.value.defaults.model);
+        addFallbacks(file.value.models);
+        break;
+      case "workspace":
+        add(file.value.defaults.model);
+        break;
+      case "models":
+        addFallbacks(file.value.aliases);
+        break;
+    }
+  }
+  // Each name's fallbacks, then theirs, until none are new.
+  for (const name of names) {
+    for (const next of fallbacks.get(name) ?? []) {
+      names.add(next);
+    }
+  }
+  return names;
 }
 
 /** What one reference names: a file of `kind` with `id`, in the referring file's hub or at the root. */
