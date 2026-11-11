@@ -11,6 +11,7 @@ import { createHostSandbox } from "./host-sandbox.ts";
 // itself, told what to do with `-e <code>`, so these run on Windows too.
 
 const node = process.execPath;
+const windows = process.platform === "win32";
 let work = "";
 
 beforeAll(async () => {
@@ -50,11 +51,31 @@ async function runNode(code: string, overrides: Partial<SandboxProfile> = {}) {
   }
 }
 
-/** What the operating system adds to every process: Windows its folders, macOS the text encoding. */
-const addedBySystem = ["SYSTEMROOT", "SystemRoot", "WINDIR", "windir", "__CF_USER_TEXT_ENCODING"];
+/**
+ * What the system adds to every process, whatever environment it is given.
+ * On Windows, libuv copies these names from the launcher into every child
+ * (its `required_vars`); macOS adds the text encoding.
+ */
+const addedBySystem = windows
+  ? [
+      "HOMEDRIVE",
+      "HOMEPATH",
+      "LOGONSERVER",
+      "PATH",
+      "SYSTEMDRIVE",
+      "SYSTEMROOT",
+      "TEMP",
+      "USERDOMAIN",
+      "USERNAME",
+      "USERPROFILE",
+      "WINDIR",
+    ]
+  : ["__CF_USER_TEXT_ENCODING"];
 
 /** Resolves once `pid` is gone, or rejects after a few seconds. */
 async function gone(pid: number): Promise<void> {
+  // `kill(0)` would signal our own process group, which never goes.
+  expect(pid).toBeGreaterThan(0);
   for (let tries = 0; tries < 100; tries++) {
     try {
       process.kill(pid, 0);
@@ -109,7 +130,7 @@ verifies("sandbox-host.start", () => {
         );
         expect(exit).toEqual({ code: 0, signal: null, reason: "exited" });
         const names = (JSON.parse(stdout) as string[]).filter(
-          (name) => !addedBySystem.includes(name),
+          (name) => !addedBySystem.includes(windows ? name.toUpperCase() : name),
         );
         expect(names).toEqual(["TMPDIR"]);
       } finally {
@@ -171,13 +192,14 @@ verifies("sandbox-host.start", () => {
     });
 
     it("stops its programs when the time limit runs out", async () => {
-      const session = await createHostSandbox().open(profile({ timeLimitMs: 300 }));
+      // Long enough for Node to start twice and print the child's id on a busy runner.
+      const session = await createHostSandbox().open(profile({ timeLimitMs: 3_000 }));
       const program = await session.start({ program: node, args: ["-e", parentOfChild] });
       const child = Number(await firstLine(program));
       expect((await program.exited).reason).toBe("timeout");
       await gone(child);
       expect(session.fence).toEqual({ state: "stopped" });
-    });
+    }, 15_000);
 
     it("closes when the open signal aborts, and refuses to open on one already aborted", async () => {
       const controller = new AbortController();
