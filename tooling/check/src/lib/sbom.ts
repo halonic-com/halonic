@@ -38,6 +38,15 @@ export interface NoticeEntry {
   readonly text?: string;
 }
 
+/** One vendored file for the notices: its `vendored` entry and its licence text. */
+export interface VendoredNotice {
+  readonly name: string;
+  readonly path: string;
+  readonly licence: string;
+  readonly source: string;
+  readonly text: string;
+}
+
 /** The full package name of a component: `@scope/name` or `name`. */
 export function componentName(component: SbomComponent): string {
   return component.group === undefined || component.group === ""
@@ -128,8 +137,15 @@ export function withProduct(sbom: Sbom, name: string, version: string): Sbom {
 
 const rule = "=".repeat(72);
 
-/** Renders THIRD-PARTY-NOTICES.txt: one block per package, sorted, with its licence text. */
-export function renderNotices(product: string, entries: readonly NoticeEntry[]): string {
+/**
+ * Renders THIRD-PARTY-NOTICES.txt: one block per package, sorted, with its
+ * licence text, then one block per vendored file.
+ */
+export function renderNotices(
+  product: string,
+  entries: readonly NoticeEntry[],
+  vendored: readonly VendoredNotice[] = [],
+): string {
   const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
   const blocks = sorted.map((entry) => {
     const lines = [`${entry.name} ${entry.versions.join(", ")}`, `Licence: ${entry.licence}`];
@@ -142,6 +158,17 @@ export function renderNotices(product: string, entries: readonly NoticeEntry[]):
     lines.push("", entry.text?.trim() ?? "(This package ships no licence file. See its homepage.)");
     return lines.join("\n");
   });
+  const files = [...vendored]
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((file) =>
+      [
+        `${file.name} (${file.path})`,
+        `Licence: ${file.licence}`,
+        `Source: ${file.source}`,
+        "",
+        file.text.trim(),
+      ].join("\n"),
+    );
   const header = `${product} includes the third-party software listed below.\n`;
-  return `${[header, ...blocks].join(`\n${rule}\n\n`)}\n`;
+  return `${[header, ...blocks, ...files].join(`\n${rule}\n\n`)}\n`;
 }

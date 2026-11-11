@@ -2,11 +2,13 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DependencyList } from "../lib/config-files.ts";
+import { type LicencePolicy, licenceTextPath } from "../lib/licences.ts";
 import {
   findSbomProblems,
   type NoticeEntry,
   renderNotices,
   type Sbom,
+  type VendoredNotice,
   withProduct,
 } from "../lib/sbom.ts";
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
@@ -19,7 +21,8 @@ import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.
  * package, or of the whole workspace when `--package` is left out. The SBOM
  * names `<product>` at `<v>` as the product it describes. Fails when
  * a library in it is not on `tooling/check/dependencies.json`. With
- * `--notices` it also writes `THIRD-PARTY-NOTICES.txt` for the same set.
+ * `--notices` it also writes `THIRD-PARTY-NOTICES.txt` for the same set,
+ * plus the vendored files in `tooling/check/licences.json`.
  * Needs `pnpm install` first: licence texts are read from the install.
  */
 
@@ -78,6 +81,18 @@ function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
   );
 }
 
+/** The vendored files of `licences.json`, each with its licence text. */
+function vendoredNotices(root: string): VendoredNotice[] {
+  const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
+  return (policy.vendored ?? []).map((entry) => ({
+    name: entry.name,
+    path: entry.path,
+    licence: entry.licence,
+    source: entry.source,
+    text: readFileSync(join(root, licenceTextPath(entry.licence)), "utf8"),
+  }));
+}
+
 function main(argv: readonly string[]): number {
   const version = option(argv, "--version");
   const out = option(argv, "--out");
@@ -110,8 +125,14 @@ function main(argv: readonly string[]): number {
   );
   if (argv.includes("--notices")) {
     const entries = noticeEntries(root, scope);
-    writeFileSync(join(out, "THIRD-PARTY-NOTICES.txt"), renderNotices("Halonic", entries));
-    console.log(`check:sbom: notices for ${entries.length} package(s).`);
+    const vendored = vendoredNotices(root);
+    writeFileSync(
+      join(out, "THIRD-PARTY-NOTICES.txt"),
+      renderNotices("Halonic", entries, vendored),
+    );
+    console.log(
+      `check:sbom: notices for ${entries.length} package(s) and ${vendored.length} vendored file(s).`,
+    );
   }
   return problems.length === 0 ? 0 : 1;
 }

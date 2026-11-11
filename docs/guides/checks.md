@@ -12,7 +12,7 @@ machine](#running-checks-on-your-machine).
 | `pnpm check [rule …]` | our own repo checks (table below) except `trace`; with rule names, only those |
 | `pnpm check:enqueue` | before you queue a PR: merges the latest `origin/main`, checks the subject that will land (the title, and a one-commit branch's commit subject), then lockfile, typecheck of every package, format spec tests, process-starts and requirement guards |
 | `pnpm check:leaks` | the leak guard over the working tree; see [leak-guard.md](leak-guard.md) |
-| `pnpm check:licences` | every installed package's licence against `tooling/check/licences.json` |
+| `pnpm check:licences` | every installed package's licence, and every vendored file, against `tooling/check/licences.json` |
 | `pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]` | release only: writes the CycloneDX SBOM (of one package, or of the workspace without `--package`), and with `--notices` also `THIRD-PARTY-NOTICES.txt`; fails on a library that isn't in `tooling/check/dependencies.json` and that no listed package depends on |
 | `pnpm check:audit [options]` | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
@@ -462,6 +462,18 @@ list. `OR` needs one allowed side, `AND` both. A package whose licence
 field is wrong upstream goes under `corrections` as `name@version`, after
 Julian has checked that version by hand. A correction without a version is
 an error.
+
+The same check reads the comment block at the top of every file under
+`packages/` and `apps/`. A file whose header carries a third-party licence
+(an `@license` tag, the Mozilla or a GNU General Public License, or an
+`SPDX-License-Identifier` other than `Apache-2.0`) is a vendored file: it
+fails the check until Julian has reviewed it and it has its own entry under
+`vendored` in `licences.json`, with its path, name, SPDX ID, source and the
+task that accepted it. The check also fails when an entry's file is gone, or
+when `tooling/check/licence-texts/<SPDX ID>.txt` has no full text of its
+licence. `pnpm check:sbom --notices` adds one block per vendored file to
+`THIRD-PARTY-NOTICES.txt`. A vendored entry is an exception for that one
+file only: `MPL-2.0` stays on `devOnly` for packages.
 
 ## Package names and layers
 

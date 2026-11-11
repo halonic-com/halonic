@@ -22,5 +22,14 @@
     "CC-BY-4.0",
     "MIT-0"
   ],
-  "corrections": {}
+  "corrections": {},
+  "vendored": [
+    {
+      "path": "packages/core/std/src/public-suffixes.generated.ts",
+      "name": "Public Suffix List",
+      "licence": "MPL-2.0",
+      "source": "https://publicsuffix.org/list/public_suffix_list.dat",
+      "task": "HAL-6165"
+    }
+  ]
 }
