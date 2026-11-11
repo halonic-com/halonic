@@ -1,8 +1,7 @@
 # Decision: the CLI words the nine reason codes of `Sandbox` port version 6
 
-- Requirement: `cli.sandbox-gate` (`apps/cli/requirements/sandbox-gate.md`), `cli.messages`
 - Task: HAL-5900; asked for by Liam in his review of #1836 (HAL-5750)
-- Approval: Liam approves this note in review
+- Approval: Liam approved the change in review on [HAL-5926](/HAL/issues/HAL-5926) and signs this note
 - Kind: internal
 
 ## What changes
@@ -50,3 +49,8 @@ saying why, and its test covers the new codes. `not-supported` would say this bu
 can't run it, which isn't true of any build. And the saved yes to run without the sandbox is
 kept per reason (`UnfencedRuns`), so a new code would ask everyone on Windows again for no
 change in risk. `windows` as "has no Windows mode" fits the runner as well as a backend.
+
+## Covers
+
+- cli.sandbox-gate
+- cli.messages
