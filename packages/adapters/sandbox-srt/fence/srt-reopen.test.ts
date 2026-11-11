@@ -62,10 +62,8 @@ describe("SrtSandbox with Halonic's data folder denied and a run's folders reope
   }
 
   beforeAll(async () => {
-    // srt puts its socket in the session's temp folder, and a socket path may have at most
-    // 104 bytes on macOS: the system's own per-user temp folder is too deep for that.
-    const parent = process.platform === "darwin" ? "/tmp" : tmpdir();
-    const base = await realpath(await mkdtemp(join(parent, "srt-reopen-")));
+    // The system's own temp folder, deep on macOS: the launcher's socket goes to a short folder of its own (HAL-5885).
+    const base = await realpath(await mkdtemp(join(tmpdir(), "srt-reopen-")));
     data = join(base, "data");
     for (const folder of [
       "host",

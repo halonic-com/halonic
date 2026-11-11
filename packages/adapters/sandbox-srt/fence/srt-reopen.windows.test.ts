@@ -18,10 +18,10 @@ import { SrtSandbox } from "../src/srt-sandbox.ts";
  * What is made later is kept out by the data folder's own access list, which
  * in the user profile names only the user. This test works outside the
  * profile (RUNNER_TEMP), so the folder another run makes later gets such an
- * access list of its own. srt keeps the write grant on each writable folder
- * between sessions, and any sandboxed session may read a folder that has
- * one; the last case checks that the deny by name keeps an earlier session's
- * folder unreadable.
+ * access list of its own. srt sets its grants on the folders themselves, and
+ * any sandboxed session may read a folder that has one, whatever its profile
+ * denies: the last case shows this, and is expected to fail until srt keeps
+ * sessions' reads apart (threat model 4.6, Known limits; HAL-5882).
  *
  * Run by the `sandbox-windows` CI job, like `srt-fence.windows.test.ts`;
  * the programs are Node scripts.
@@ -161,8 +161,13 @@ console.log(JSON.stringify(result));`,
     expect(await isThere(inData("host", "secret.txt"))).toBe(true);
   });
 
-  it("denies a later session the folder an earlier one wrote, which keeps srt's grant", async () => {
-    // run_1's working folder now carries a kept write grant; run_2's session names it denied.
+  // Fails on purpose: srt runs every sandboxed program under one account and
+  // grants run_1's working folder on the folder itself, which wins over the
+  // deny run_2's profile names, so run_2 reads it while run_1 is running.
+  // Decided in HAL-5882 to land as a known limit until srt keeps sessions'
+  // reads apart (the read-separation request tracked on HAL-5644); when it
+  // does, this case passes, `it.fails` fails, and it turns back into `it`.
+  it.fails("denies a later session the folder a running one wrote, which srt has granted", async () => {
     const later = await sandbox.open(profileOf("run_2", ["run_1", "run_3"]));
     try {
       const result = await runScript(
