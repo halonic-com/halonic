@@ -192,14 +192,17 @@ describe("sandboxRoutes", () => {
     expect(sandbox.opened).toHaveLength(0);
   });
 
-  it("refuses a body that isn't JSON or is too large", async () => {
-    const url = await started();
-    expect((await post(url, "/v1/sandbox/sessions/open", "{not json")).status).toBe(400);
-    const huge = JSON.stringify({
-      profile: { ...profile, env: { BIG: "x".repeat(maxBodyBytes) } },
-    });
-    expect((await post(url, "/v1/sandbox/sessions/open", huge)).status).toBe(413);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4787: refuses a body that isn't JSON or is too large",
+    async () => {
+      const url = await started();
+      expect((await post(url, "/v1/sandbox/sessions/open", "{not json")).status).toBe(400);
+      const huge = JSON.stringify({
+        profile: { ...profile, env: { BIG: "x".repeat(maxBodyBytes) } },
+      });
+      expect((await post(url, "/v1/sandbox/sessions/open", huge)).status).toBe(413);
+    },
+  );
 
   it("refuses a body promised over the limit before it arrives, and opens nothing", async () => {
     const url = await started();

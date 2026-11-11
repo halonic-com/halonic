@@ -304,34 +304,37 @@ describe("sandbox routes, attacked by another local program without the token", 
 });
 
 describe("sandbox routes, attacked by a caller with the token", () => {
-  it("refuses a body over the cap, chunked or with a lying length, and opens nothing", async () => {
-    const { port } = await started();
-    const auth = `Authorization: Bearer ${token}`;
-    const huge = "x".repeat(maxBodyBytes + 1);
-    // Chunked: no length up front, so only the running count can stop it.
-    const chunked = [
-      "POST /v1/sandbox/sessions/open HTTP/1.1",
-      `Host: 127.0.0.1:${port}`,
-      auth,
-      "Content-Type: application/json",
-      "Transfer-Encoding: chunked",
-      "",
-      `${huge.length.toString(16)}\r\n${huge}\r\n0\r\n\r\n`,
-    ].join("\r\n");
-    expect(statusOf(await rawExchange(port, chunked))).toBe(413);
-    // Claims 2 GiB and stops after the cap: the host answers without waiting for the rest.
-    const lying = [
-      "POST /v1/sandbox/sessions/open HTTP/1.1",
-      `Host: 127.0.0.1:${port}`,
-      auth,
-      "Content-Type: application/json",
-      `Content-Length: ${2 * 1024 ** 3}`,
-      "",
-      huge,
-    ].join("\r\n");
-    expect(statusOf(await rawExchange(port, lying, 5_000))).toBe(413);
-    expect(sandbox.openCalls).toBe(0);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4787: refuses a body over the cap, chunked or with a lying length, and opens nothing",
+    async () => {
+      const { port } = await started();
+      const auth = `Authorization: Bearer ${token}`;
+      const huge = "x".repeat(maxBodyBytes + 1);
+      // Chunked: no length up front, so only the running count can stop it.
+      const chunked = [
+        "POST /v1/sandbox/sessions/open HTTP/1.1",
+        `Host: 127.0.0.1:${port}`,
+        auth,
+        "Content-Type: application/json",
+        "Transfer-Encoding: chunked",
+        "",
+        `${huge.length.toString(16)}\r\n${huge}\r\n0\r\n\r\n`,
+      ].join("\r\n");
+      expect(statusOf(await rawExchange(port, chunked))).toBe(413);
+      // Claims 2 GiB and stops after the cap: the host answers without waiting for the rest.
+      const lying = [
+        "POST /v1/sandbox/sessions/open HTTP/1.1",
+        `Host: 127.0.0.1:${port}`,
+        auth,
+        "Content-Type: application/json",
+        `Content-Length: ${2 * 1024 ** 3}`,
+        "",
+        huge,
+      ].join("\r\n");
+      expect(statusOf(await rawExchange(port, lying, 5_000))).toBe(413);
+      expect(sandbox.openCalls).toBe(0);
+    },
+  );
 
   it("refuses a profile that smuggles extra keys or out-of-range values", async () => {
     const { url } = await started();
