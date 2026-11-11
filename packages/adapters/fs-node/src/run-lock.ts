@@ -147,10 +147,13 @@ export function ownRecord(): RunLockRecord {
   };
 }
 
-/** Creates `file` holding `text`, or gives `false` when it is already there. */
+/**
+ * Creates `file` holding `text`, or gives `false` when it is already there.
+ * Only the user may read it: it names this computer and process (HAL-5215).
+ */
 export async function createExclusive(file: string, text: string): Promise<boolean> {
   try {
-    await writeFile(file, text, { encoding: "utf8", flag: "wx" });
+    await writeFile(file, text, { encoding: "utf8", flag: "wx", mode: 0o600 });
     return true;
   } catch (error) {
     if ((error as { code?: unknown }).code === "EEXIST") {

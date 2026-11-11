@@ -8,7 +8,7 @@
 // In 0.1 it has no Halonic tools, no connectors and no harnesses: a run whose
 // agent names a harness fails at that step with the engine's own error.
 
-import { mkdir, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { NodeCoordination, randomLeaseToken } from "@halonicjs/adapter-coordination-node";
 import {
@@ -18,6 +18,7 @@ import {
   type HeldLock,
   holdLock,
   LockHeldError,
+  makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import {
   type NodeScheduler,
@@ -148,7 +149,8 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     await realpath(input.workspaceRoot),
     webCryptoDigest,
   );
-  await mkdir(folders.folder, { recursive: true });
+  // Private like the run files in it, which hold prompts and model output (HAL-5215).
+  await makePrivateFolder(folders.folder);
   let engine: LocalEngine | undefined;
   const lock = await holdEngineLock(join(folders.folder, engineLockFile), {
     onLost: (error) => {

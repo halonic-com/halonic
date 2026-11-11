@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
@@ -134,6 +134,22 @@ verifies("fs-node.held-lock", () => {
     await lock.release();
     await expect(readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
     expect(planned.at(-1)?.cancelled).toBe(true);
+  });
+
+  // The record names this computer and process; another account has no use for it (HAL-5215).
+  it("keeps the lock private to the user, when taken and when renewed", async () => {
+    // Windows has no file modes: Node reports `666` there for a file that isn't read-only.
+    const privateMode = process.platform === "win32" ? 0o666 : 0o600;
+    const file = await lockFile();
+    const lock = await hold(file);
+    expect((await stat(file)).mode & 0o777).toBe(privateMode);
+    const taken = await heldRecord(file);
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.parse(taken.takenAt) + heldLockRenewEveryMs });
+
+    await renewNow();
+
+    expect((await stat(file)).mode & 0o777).toBe(privateMode);
+    await lock.release();
   });
 
   it("tells the holder when another process took the lock over, and leaves that lock alone", async () => {

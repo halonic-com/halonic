@@ -177,7 +177,9 @@ async function renew(file: string, ownText: string, system: BusySystem): Promise
   const renewedText = JSON.stringify(ownRecord());
   const next = `${file}.${randomUUID()}.renew`;
   try {
-    await writeFile(next, renewedText, "utf8");
+    // Private, as when it was taken. Not flushed: a lock from before a power
+    // cut is stale by the time anything reads it again.
+    await writeFile(next, renewedText, { encoding: "utf8", flag: "wx", mode: 0o600 });
     await retryWhileBusy(() => rename(next, file), system);
   } finally {
     await rm(next, { force: true });

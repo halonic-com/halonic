@@ -52,6 +52,23 @@ export async function readUnlinkedFile(file: string): Promise<string> {
  * @throws RangeError when the file is a link or not a plain file
  */
 export async function readUnlinkedBytes(file: string): Promise<Uint8Array> {
+  const handle = await openUnlinkedForRead(file);
+  try {
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * Opens a store's file to read part of it, with the same refusals as
+ * {@link readUnlinkedFile}. The caller closes the handle.
+ *
+ * @throws the file system's error when the file can't be opened, with code
+ *   `ENOENT` when there is none
+ * @throws RangeError when the file is a link or not a plain file
+ */
+export async function openUnlinkedForRead(file: string): Promise<FileHandle> {
   const entry = await lstat(file);
   if (entry.isSymbolicLink()) {
     throw linked(file);
@@ -68,10 +85,11 @@ export async function readUnlinkedBytes(file: string): Promise<Uint8Array> {
   }
   try {
     refuseUnlessPlain(file, await handle.stat());
-    return await handle.readFile();
-  } finally {
+  } catch (error) {
     await handle.close();
+    throw error;
   }
+  return handle;
 }
 
 /**

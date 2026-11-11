@@ -1,9 +1,10 @@
 // When a run started, read from its log's first line alone, so a list
 // filtered by `startedSince` skips an older run without reading its log.
 
-import { open } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { parseEventLine, type RunEvent } from "@halonicjs/events";
 import { isMissing } from "./links.ts";
+import { openUnlinkedForRead } from "./private-files.ts";
 
 /** How much of the log one read takes while looking for the first line break. */
 const chunkBytes = 4096;
@@ -11,8 +12,8 @@ const lineBreak = 0x0a;
 
 /**
  * The time of the first event in the log at `file`, or `undefined` when it
- * can't be told from the first line: the log is missing, has no whole first
- * line yet, or the line is broken. The caller then reads the log whole, which
+ * can't be told from the first line: the log is missing, is a link, has no
+ * whole first line yet, or the line is broken. The caller then reads the log whole, which
  * reports a broken log with its file and line.
  */
 export async function readLogStart(file: string): Promise<string | undefined> {
@@ -35,11 +36,12 @@ export function parseFirstLine(line: Uint8Array): RunEvent | undefined {
 
 /** The bytes of the log's first line, without its line break, or `undefined` when it has none. */
 async function readFirstLine(file: string): Promise<Uint8Array | undefined> {
-  let handle: Awaited<ReturnType<typeof open>>;
+  let handle: FileHandle;
   try {
-    handle = await open(file, "r");
+    handle = await openUnlinkedForRead(file);
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    // A link, or not a plain file: the whole read that follows refuses it.
+    if (isMissing(error) || error instanceof RangeError) return undefined;
     throw error;
   }
   try {

@@ -1,13 +1,4 @@
-import {
-  appendFile,
-  mkdir,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  truncate,
-  writeFile,
-} from "node:fs/promises";
+import { lstat, readdir, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
 import {
@@ -25,7 +16,15 @@ import {
   startedAtOrAfter,
 } from "@halonicjs/ports";
 import { KeyedQueue, KindedError } from "@halonicjs/std";
+import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
+import {
+  makePrivateFolder,
+  openUnlinkedForAppend,
+  openUnlinkedForCut,
+  readUnlinkedBytes,
+  readUnlinkedFile,
+} from "./private-files.ts";
 import { renameOver } from "./rename-over.ts";
 import { type LockedOutcome, settleUnderRunLock } from "./run-lock.ts";
 import { isLogOfOtherCase, parseRunLog, type RunLog } from "./run-log.ts";
@@ -76,7 +75,13 @@ interface LogEnd {
  * while it checks `expectedSeq` and writes, following the port's
  * `RunLockRecord` rules, so a CLI and a desktop app on one folder can't both
  * win. An append that fails stores nothing, but one cut off by a crash of
- * the program may leave the first events of its batch stored.
+ * the program may leave the first events of its batch stored. An append
+ * reports success only once its events are flushed to disk.
+ *
+ * The files hold prompts, tool results and model output, so they are
+ * private to the user, as the profile's other stores are: the folder is
+ * made with mode `700` and the files with `600`, and a log or snapshot that
+ * is a link or has a second name is refused, never followed (HAL-5215).
  */
 export class FolderRunStore implements RunStore {
   readonly #root: string;
@@ -117,7 +122,7 @@ export class FolderRunStore implements RunStore {
         ? undefined
         : JSON.stringify({ seq: lastSeq, state: options.snapshot } satisfies RunSnapshot);
     return await this.#queue.run(runId, async () => {
-      await mkdir(this.#root, { recursive: true });
+      await makePrivateFolder(this.#root);
       const outcome = await settleUnderRunLock(this.#file(runId, lockSuffix), () =>
         this.#appendLocked(runId, expectedSeq, lastSeq, lines, snapshot),
       );
@@ -223,9 +228,9 @@ export class FolderRunStore implements RunStore {
   async #readSnapshot(runId: string): Promise<RunSnapshot | null> {
     let text: string;
     try {
-      text = await readFile(this.#file(runId, snapshotSuffix), "utf8");
+      text = await readUnlinkedFile(this.#file(runId, snapshotSuffix));
     } catch {
-      // Missing or not readable: either way the cache can't be used.
+      // Missing, not readable or a link: either way the cache can't be used.
       return null;
     }
     const snapshot = parseSnapshot(text);
@@ -268,15 +273,15 @@ export class FolderRunStore implements RunStore {
       throw otherCaseClash(runId);
     }
     if (log.torn) {
-      await truncate(this.#file(runId, logSuffix), log.intactBytes);
+      await cutTo(this.#file(runId, logSuffix), log.intactBytes);
     }
     return { lastSeq: log.events.length, bytes: log.intactBytes };
   }
 
-  /** The log's size in bytes, 0 when it is missing. */
+  /** The log's size in bytes, 0 when it is missing; a link's own size, so a link is read and refused. */
   async #logSize(runId: string): Promise<number> {
     try {
-      return (await stat(this.#file(runId, logSuffix))).size;
+      return (await lstat(this.#file(runId, logSuffix))).size;
     } catch (error) {
       if (isMissing(error)) {
         return 0;
@@ -294,7 +299,7 @@ export class FolderRunStore implements RunStore {
     const file = `${runId}${logSuffix}`;
     let bytes: Uint8Array;
     try {
-      bytes = await readFile(join(this.#root, file));
+      bytes = await readUnlinkedBytes(join(this.#root, file));
     } catch (error) {
       if (isMissing(error)) {
         return { events: [], intactBytes: 0, torn: false };
@@ -329,15 +334,22 @@ export class FolderRunStore implements RunStore {
   }
 
   /**
-   * Adds the lines to the log, all of them or none. A write can fail part-way
-   * (a full disk, an I/O error) after some whole lines are out, and those
-   * would count as stored; so on a failure the log is cut back to
-   * `intactBytes`, its size before this append, and the error is passed on.
+   * Adds the lines to the log, all of them or none, and flushes them to
+   * disk. A write can fail part-way (a full disk, an I/O error) after some
+   * whole lines are out, and those would count as stored; so on a failure
+   * the log is cut back to `intactBytes`, its size before this append, and
+   * the error is passed on.
    */
   async #appendLines(runId: string, lines: string, intactBytes: number): Promise<void> {
     const file = this.#file(runId, logSuffix);
     try {
-      await appendFile(file, lines, "utf8");
+      const handle = await openUnlinkedForAppend(file);
+      try {
+        await handle.appendFile(lines, "utf8");
+        await handle.datasync();
+      } finally {
+        await handle.close();
+      }
     } catch (error) {
       await cutBack(file, intactBytes);
       throw error;
@@ -345,20 +357,22 @@ export class FolderRunStore implements RunStore {
   }
 
   /**
-   * Replaces the snapshot through a temporary file and a rename, so a reader
-   * sees the old snapshot or the new one, never half of one. The events are
-   * already stored by then, and the log is the truth: when this fails, the
-   * older snapshot stays, the engine replays the events after it, and the
-   * append still succeeds. The error goes to the `onSnapshotError` hook.
+   * Replaces the snapshot through a private temporary file, flushed to disk,
+   * and a rename, so a reader sees the old snapshot or the new one, never
+   * half of one. The events are already stored by then, and the log is the
+   * truth: when this fails, the older snapshot stays, the engine replays the
+   * events after it, and the append still succeeds. The error goes to the `onSnapshotError` hook.
    */
   async #writeSnapshot(runId: string, text: string): Promise<void> {
     const file = this.#file(runId, snapshotSuffix);
     const temporary = `${file}.tmp`;
     try {
-      await writeFile(temporary, text, "utf8");
+      // One left by a crash goes first, so a fresh private file is made.
+      // The run's lock is held, so no other write is using it.
+      await rm(temporary, { force: true });
+      await writeFlushedFile(temporary, text, { mode: 0o600 });
       await renameOver(temporary, file);
     } catch (error) {
-      // A temporary file left behind is replaced by the next snapshot.
       await rm(temporary, { force: true }).catch(() => {});
       this.#onSnapshotError(runId, error);
     }
@@ -376,9 +390,23 @@ export class FolderRunStore implements RunStore {
  */
 async function cutBack(file: string, size: number): Promise<void> {
   try {
-    await truncate(file, size);
+    await cutTo(file, size);
   } catch {
     // Missing (the write failed before creating it) or not writable.
+  }
+}
+
+/**
+ * Cuts a log to `size` bytes. It opens the log again rather than cutting
+ * through the append's handle: on Windows a file opened to append can't be
+ * cut shorter (HAL-4361).
+ */
+async function cutTo(file: string, size: number): Promise<void> {
+  const handle = await openUnlinkedForCut(file);
+  try {
+    await handle.truncate(size);
+  } finally {
+    await handle.close();
   }
 }
 

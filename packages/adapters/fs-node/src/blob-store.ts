@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { BlobRef, BlobStore } from "@halonicjs/ports";
+import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing, lstatOrNull } from "./links.ts";
 import { makePrivateFolder, readUnlinkedBytes } from "./private-files.ts";
 import { renameOver } from "./rename-over.ts";
@@ -80,7 +81,7 @@ export class FolderBlobStore implements BlobStore {
     await makePrivateFolder(this.#root);
     await makePrivateFolder(folder);
     try {
-      await writeFile(temporary, bytes, { mode: 0o600 });
+      await writeFlushedFile(temporary, bytes, { mode: 0o600 });
       await renameOver(temporary, file);
     } catch (error) {
       await rm(temporary, { force: true });

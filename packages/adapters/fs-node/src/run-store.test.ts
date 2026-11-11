@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
+import { type FileHandle, mkdir, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import type { RunEvent } from "@halonicjs/events";
@@ -29,8 +29,44 @@ const failingRelease = vi.hoisted(() => ({ code: undefined as string | undefined
 
 vi.mock("node:fs/promises", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs/promises")>();
+  /**
+   * A log's handle that counts whole reads and can make an append fail
+   * part-way; the store reads and appends to a log through one.
+   */
+  const logHandle = (handle: FileHandle): FileHandle =>
+    new Proxy(handle, {
+      get(target, property) {
+        if (property === "readFile") {
+          return async () => {
+            logReads.count += 1;
+            return await target.readFile();
+          };
+        }
+        if (property === "appendFile") {
+          return async (text: string, encoding: BufferEncoding) => {
+            await failingWrite.onWrite?.();
+            failingWrite.onWrite = undefined;
+            const bytesOut = failingWrite.bytesOut;
+            if (bytesOut === undefined) {
+              return await target.appendFile(text, encoding);
+            }
+            failingWrite.bytesOut = undefined;
+            await target.appendFile(Buffer.from(text, encoding).subarray(0, bytesOut));
+            failingWrite.onBytesOut?.();
+            await failingWrite.hold;
+            throw Object.assign(new Error("ENOSPC: no space left on device"), { code: "ENOSPC" });
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
   return {
     ...fs,
+    open: (async (file: string, ...rest: []) => {
+      const handle = await fs.open(file, ...rest);
+      return String(file).endsWith(".jsonl") ? logHandle(handle) : handle;
+    }) as typeof fs.open,
     rm: (async (file: string, ...rest: []) => {
       const code = failingRelease.code;
       if (code !== undefined && String(file).endsWith(".lock")) {
@@ -38,25 +74,6 @@ vi.mock("node:fs/promises", async (importOriginal) => {
       }
       return await fs.rm(file, ...rest);
     }) as typeof fs.rm,
-    readFile: (async (file: string, ...rest: []) => {
-      if (String(file).endsWith(".jsonl")) {
-        logReads.count += 1;
-      }
-      return await fs.readFile(file, ...rest);
-    }) as typeof fs.readFile,
-    appendFile: async (file: string, text: string, encoding: BufferEncoding) => {
-      await failingWrite.onWrite?.();
-      failingWrite.onWrite = undefined;
-      const bytesOut = failingWrite.bytesOut;
-      if (bytesOut === undefined) {
-        return await fs.appendFile(file, text, encoding);
-      }
-      failingWrite.bytesOut = undefined;
-      await fs.appendFile(file, Buffer.from(text, encoding).subarray(0, bytesOut));
-      failingWrite.onBytesOut?.();
-      await failingWrite.hold;
-      throw Object.assign(new Error("ENOSPC: no space left on device"), { code: "ENOSPC" });
-    },
   };
 });
 

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   type AgentPlacementKey,
@@ -7,6 +7,7 @@ import {
   type AgentPlacementStore,
   isAgentPlacementFor,
 } from "@halonicjs/ports";
+import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
 import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
 import { renameOver } from "./rename-over.ts";
@@ -57,7 +58,7 @@ export class FileAgentPlacementStore implements AgentPlacementStore {
     const temporary = `${file}.${randomUUID()}.tmp`;
     await makePrivateFolder(this.#root);
     try {
-      await writeFile(temporary, text, { encoding: "utf8", mode: 0o600 });
+      await writeFlushedFile(temporary, text, { mode: 0o600 });
       await renameOver(temporary, file);
     } catch (error) {
       await rm(temporary, { force: true });

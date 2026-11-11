@@ -1,5 +1,5 @@
 import type { Dirent } from "node:fs";
-import { chmod, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   checkPublicWorkspacePath,
@@ -13,6 +13,7 @@ import {
   type WriteResult,
 } from "@halonicjs/ports";
 import { bytesToHex, contentDigest, KeyedQueue, matchesExpected } from "@halonicjs/std";
+import { writeFlushedFile } from "./flushed-write.ts";
 import {
   type FolderEvents,
   FolderWatch,
@@ -127,7 +128,7 @@ export class FolderDefinitionStore implements DefinitionStore {
     });
   }
 
-  /** Writes `content` to a temporary file next to `path` and renames it over the file. */
+  /** Writes `content` to a temporary file next to `path`, flushed to disk, and renames it over the file. */
   async #replace(path: string, content: string): Promise<void> {
     // Checks the folders on the way and the file itself, so the write can't land behind a link.
     const existing = await entryAt(this.#root, path);
@@ -139,7 +140,7 @@ export class FolderDefinitionStore implements DefinitionStore {
     await mkdir(folder, { recursive: true });
     const temporary = join(folder, temporaryWriteFileName());
     try {
-      await writeFile(temporary, content, { encoding: "utf8", flag: "wx" });
+      await writeFlushedFile(temporary, content);
       if (existing !== null) {
         // A replaced file keeps its permissions, such as a script's execute bit.
         await chmod(temporary, existing.mode & 0o7777);

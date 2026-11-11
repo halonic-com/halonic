@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
-import { open, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compactedChanges, type RecordChange, type RecordStore } from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
+import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
 import {
   makePrivateFolder,
@@ -111,7 +112,7 @@ export class FileRecordStore implements RecordStore {
 
   /**
    * Adds lines to a log, after cutting off a torn last line a crash left,
-   * so the new lines aren't glued onto it. Notes the log's size before in
+   * so the new lines aren't glued onto it, and flushes them to disk. Notes the log's size before in
    * `before`, so a failed append can cut it back.
    */
   async #appendLines(file: string, lines: string, before: LogBefore[]): Promise<void> {
@@ -124,6 +125,8 @@ export class FileRecordStore implements RecordStore {
       }
       before.push({ file, bytes });
       await writeAll(handle, file, new TextEncoder().encode(lines));
+      // On disk before the append reports success (HAL-5215).
+      await handle.datasync();
     } finally {
       await handle.close();
     }
@@ -245,13 +248,7 @@ async function cutBack(file: string, bytes: number): Promise<void> {
 async function replaceFile(file: string, text: string): Promise<void> {
   const temporary = `${file}.${randomUUID()}.tmp`;
   try {
-    const handle = await open(temporary, "wx", 0o600);
-    try {
-      await handle.writeFile(text, "utf8");
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
+    await writeFlushedFile(temporary, text, { mode: 0o600 });
     await renameOver(temporary, file);
   } catch (error) {
     await rm(temporary, { force: true });

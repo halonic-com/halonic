@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -104,6 +104,26 @@ verifies("cli.local-engine", () => {
     const listed = await history.listRuns({});
 
     expect(listed.runs.map((run) => run.id)).toEqual([started.run.summary.id]);
+  });
+
+  // Run logs hold prompts, tool results and model output (HAL-5215).
+  it("keeps the workspace's folder in the profile, its run files and the engine lock private to the user", async () => {
+    // Windows has no file modes: Node reports `666` there for any folder or file that isn't read-only.
+    const [folderMode, fileMode] = process.platform === "win32" ? [0o666, 0o666] : [0o700, 0o600];
+    const engine = await openEngine();
+    await new WorkflowRuns(engine.executor).startRun(workspace, "support-reply", await samsEmail());
+
+    const lock = await acmeEngineLock();
+    const workspaceFolder = join(lock, "..");
+    const runs = join(workspaceFolder, "runs");
+    expect((await stat(workspaceFolder)).mode & 0o777).toBe(folderMode);
+    expect((await stat(runs)).mode & 0o777).toBe(folderMode);
+    expect((await stat(lock)).mode & 0o777).toBe(fileMode);
+    const files = await readdir(runs);
+    expect(files.some((name) => name.endsWith(".jsonl"))).toBe(true);
+    for (const name of files) {
+      expect([name, (await stat(join(runs, name))).mode & 0o777]).toEqual([name, fileMode]);
+    }
   });
 
   it("finishes a waiting run in the next engine on the same workspace", async () => {
