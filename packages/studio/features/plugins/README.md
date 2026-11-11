@@ -34,6 +34,10 @@ A plugin's `secret` setting is saved to the keychain under the plugin's own name
 
 `PluginCommandDialog` shows a plugin command from `ui.commands` in a dialog (requirement `plugins.plugin-commands`): the command's title, the line "From the *name* plugin · uses the tool *tool*, which reads", its form, and Cancel and Run command. A required field left empty or a value of the wrong kind gets a line under it ("Fill this in: it is required."), the first such field takes focus, and no tool is called. The tool is called through a `PluginToolCaller`; its answer shows in a Result box with Copy, drawn like `PluginResult`, and the buttons become Run again and Close. A failure reads "Couldn't run *title*: *reason*." with Try again, and the form keeps what was typed. A command without a form runs as soon as the dialog opens.
 
+## Cards on Home
+
+`pluginHomeCards` is Home's Cards section, which the feature adds with `studio.home.addCard` (requirement `plugins.plugin-cards`, design 8.2 and D3). It shows every card of every installed plugin from a `PluginCardFeed`, after Recent runs, two per row on desktop and one on a phone, and renders `HomeSectionEmpty` when no plugin has a card, so the section isn't there. Each `PluginCard` shows the card's title, the tool's answer drawn like `PluginResult`, and the footer "From the *name* plugin". The title and footer show at once; while the answer loads, only it has a skeleton. ↻ ("Refresh *title*") calls the tool again and keeps the old answer until the new one comes. A failure reads "Couldn't get *title*: *reason*." with Try again, and is the only thing announced. A plugin that isn't trusted or can't load keeps its cards in place, empty, with Review or Details, and calls nothing.
+
 ## Exports
 
 - `@halonicjs/studio-feature-plugins`: `pluginsFeature`, the feature's id and title (`plugins`, "Plugins"). It is a placeholder until the shell's `defineFeature()` replaces it.
