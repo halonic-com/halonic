@@ -34,7 +34,9 @@ start. No option skips it. The engine `run` opens has no harness adapter yet, so
 `halonic doctor` shows the same check as its Sandbox line, ✕ with exit 1 when the sandbox can't
 start. Each reason code (`windows`, `container`, `user-namespaces-restricted`, `bubblewrap-missing`,
 `linux-tools-missing` when `socat` or ripgrep is missing, `other`) has its own words and fix in
-`src/messages/sandbox.ts`; the check's own sentence shows only with `--debug`.
+`src/messages/sandbox.ts`; the codes the `Sandbox` port added in version 6 (setup, WSL, company
+policy and sign-in) read as `other` until the sandbox design words them. The check's own sentence
+shows only with `--debug`.
 
 Every `halonic plugin` command opens the plugin service with `openPluginService`
 (`src/plugin-host.ts`): the profile's plugins folder and records, and the trust records plugins share

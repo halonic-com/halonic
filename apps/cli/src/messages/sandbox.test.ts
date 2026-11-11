@@ -7,6 +7,16 @@ import { sandboxMessages } from "./sandbox.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
+/** The codes the CLI words itself, in the port's order. */
+const worded = [
+  "windows",
+  "container",
+  "user-namespaces-restricted",
+  "bubblewrap-missing",
+  "linux-tools-missing",
+  "other",
+] as const;
+
 verifies("cli.messages", () => {
   it("has a refused run's sandbox lines word for word, from cli-output 3.8", () => {
     expect(sandboxMessages.refusedFix("container").key).toBe("sandbox.refusedFix");
@@ -21,10 +31,8 @@ verifies("cli.messages", () => {
 });
 
 describe("the sandbox sentences", () => {
-  it("has line 2 for every reason the port knows", () => {
-    expect(
-      sandboxUnavailableReasons.map((code) => words(sandboxMessages.refusedFix(code))),
-    ).toEqual([
+  it("has line 2 for every reason it words", () => {
+    expect(worded.map((code) => words(sandboxMessages.refusedFix(code)))).toEqual([
       "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the runner or computer itself, not in a container. halonic validate and halonic test work in a container.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
@@ -32,6 +40,24 @@ describe("the sandbox sentences", () => {
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
+  });
+
+  it("words version 6's codes as other until the sandbox design words them", () => {
+    const unworded = sandboxUnavailableReasons.filter(
+      (code) => !(worded as readonly string[]).includes(code),
+    );
+    expect(unworded).toHaveLength(9);
+    for (const code of unworded) {
+      expect([
+        words(sandboxMessages.refusedFix(code)),
+        words(sandboxMessages.reason(code)),
+        words(sandboxMessages.doctorFix(code)),
+      ]).toEqual([
+        words(sandboxMessages.refusedFix("other")),
+        words(sandboxMessages.reason("other")),
+        words(sandboxMessages.doctorFix("other")),
+      ]);
+    }
   });
 
   it("words a code it doesn't know as other, never with the check's own sentence", () => {
@@ -43,9 +69,9 @@ describe("the sandbox sentences", () => {
     );
   });
 
-  it("has doctor's reason and fix for every reason the port knows", () => {
+  it("has doctor's reason and fix for every reason it words", () => {
     expect(
-      sandboxUnavailableReasons.map((code) => [
+      worded.map((code) => [
         words(sandboxMessages.reason(code)),
         words(sandboxMessages.doctorFix(code)),
       ]),

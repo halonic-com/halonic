@@ -424,9 +424,18 @@ verifies("ports.sandbox-check-reason", () => {
     expect(sandboxUnavailableReasons).toEqual([
       "windows",
       "container",
+      "not-supported",
+      "blocked-by-policy",
+      "virtualisation-off",
+      "wsl-missing",
+      "restart-needed",
+      "distro-missing",
+      "setup-conflict",
+      "setup-needed",
       "user-namespaces-restricted",
       "bubblewrap-missing",
       "linux-tools-missing",
+      "sign-in-needed",
       "other",
     ]);
   });
@@ -439,6 +448,21 @@ verifies("ports.sandbox-check-reason", () => {
     };
     const works: SandboxCheck = { ok: true, reason: null, missing: [] };
     expect([refused.reason, works.reason]).toEqual(["user-namespaces-restricted", null]);
+  });
+
+  it("takes version 6's codes for setup, WSL, company policy and sign-in", () => {
+    const refusals: SandboxCheck[] = [
+      { ok: false, reason: "setup-needed", missing: ["srt's Windows install is missing"] },
+      { ok: false, reason: "distro-missing", missing: ["Halonic's WSL distro isn't imported"] },
+      { ok: false, reason: "blocked-by-policy", missing: ["a group policy turns WSL off"] },
+      { ok: false, reason: "sign-in-needed", missing: ["no Docker account is signed in"] },
+    ];
+    expect(refusals.map((check) => check.reason)).toEqual([
+      "setup-needed",
+      "distro-missing",
+      "blocked-by-policy",
+      "sign-in-needed",
+    ]);
   });
 
   it("doesn't compile with a reason that isn't listed", () => {

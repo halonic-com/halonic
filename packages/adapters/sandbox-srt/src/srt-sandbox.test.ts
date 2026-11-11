@@ -47,7 +47,7 @@ verifies("sandbox-srt.check", () => {
     });
 
     it.each([
-      ["windows", { platform: "win32" as const }],
+      ["setup-needed", { platform: "win32" as const }],
       ["container", { insideContainer: async () => true }],
       ["user-namespaces-restricted", { userNamespacesRestricted: async () => true }],
       ["bubblewrap-missing", { hasBubblewrap: async () => false }],
@@ -80,7 +80,7 @@ verifies("sandbox-srt.check", () => {
         await new SrtSandbox(machine({ ...windows, hasWindowsSandbox: async () => true })).check(),
       ).toEqual({ ok: true, reason: null, missing: [] });
       const missing = await new SrtSandbox(machine(windows)).check();
-      expect(missing).toMatchObject({ ok: false, reason: "windows" });
+      expect(missing).toMatchObject({ ok: false, reason: "setup-needed" });
       expect(missing.missing[0]).toContain("windows-install");
     });
 

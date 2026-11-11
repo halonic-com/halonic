@@ -91,7 +91,8 @@ export type MxcStatus = {
 export interface SandboxChoice {
   /**
    * The backend agent steps run in, or `null` for none: then they don't run
-   * (on plain Windows, the `windows` reason and the D44 path).
+   * (such as srt on Windows without its setup, `setup-needed`, and the D44
+   * path).
    */
   active: SandboxBackendId | null;
   mxc: MxcStatus;
