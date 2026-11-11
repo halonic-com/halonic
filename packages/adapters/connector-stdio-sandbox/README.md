@@ -34,15 +34,25 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 - `SandboxStdioConnectorFactory`: the `ConnectorFactory` for the `stdio` transport. `create(config,
   context)` throws for another transport or a context without `sandbox`, and otherwise returns a
   `ConnectorClient` that starts its program on the first call, through `context.sandbox` only.
-- `SandboxStdioOptions`: `clientInfo` and `onBlocked`, and optionally `limits`, `restartLimits`
-  and `clock`.
+- `SandboxStdioOptions`: `clientInfo`, `localTools` (what the host set up for each connector id,
+  as a `LocalToolSetup`; a connector it didn't set up doesn't start) and `onBlocked`, and
+  optionally `limits`, `restartLimits` and `clock`.
+- `LocalToolSetup`: what the host set up for one local tool, its `place`.
 - `ConnectorBlock`: what `onBlocked` hears, `{ connectorId, block }`.
+- `localToolLaunch(stdio, place, pin, secretEnv)`: builds the `LocalToolLaunch` (`profile` and
+  `command`) the host opens the session with, and the connector rebuilds to check it. With the
+  types it takes and returns: `StdioConfig`, `LocalToolPlace` (where the tool runs) and
+  `PinnedRunner` (the runner found for a pinned package, and its platform). A pinned package
+  starts as the pinned launcher starts it on this computer, and its registry's host joins the
+  sites.
+- `readSecretEnv(connectorId, secretEnv, secrets)`: a connector's secret values by variable name,
+  for the host to build the profile; it throws naming the first secret that isn't set.
 - `SandboxNotFencedError` (with its `reason`) and `SandboxSessionEndedError`: the two typed
   refusals the host checks for.
 - `sandboxProgram(process)`: a session's `SandboxProcess` as the MCP stdio transport's
   `RunningProgram`. `terminate` and `kill` both call the sandbox's one `kill`.
 
-Requirements: `session-start`, `session-ended` and `blocked-events`.
+Requirements: `session-start`, `session-ended`, `blocked-events` and `local-tool-profile`.
 
 ## Example
 

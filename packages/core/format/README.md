@@ -81,9 +81,10 @@ not here.
 - `connectorIsLocal(connector)` says whether a connector counts as local for `privacy.localOnly`;
   `needsApproval(tools, name)` and `approveAll` (`"all"`) read a connector's `tools.approve` setting.
 - `pathsNamedBy(start)` (with the types `ProgramStart` and `NamedPath`) lists the paths a program
-  start names besides its folder: the program, each argument and `env` value read in pieces, and
-  the folder of a `python -m` module. Every guard below reads a start through it, so they all find
-  the same paths (requirement `program-start-paths`).
+  start names besides its folder: the program, each argument and `env` value read in pieces (also
+  the text inside quotes, and a piece without its quotes or short flag), and the folder of a
+  `python -m` module, with `-m` alone or among other short flags such as `-Im`.
+  Every guard below reads a start through it, so they all find the same paths (requirement `program-start-paths`).
 - `touchesSkillScripts(start, paths)` and `skillScriptsRefusal` let every adapter that starts a
   program refuse files under a skill's `scripts/` folder.
 - `touchesWorkingFolder(start, workspaceRoot, workingFolders, lookup)` and `workingFolderRefusal`
