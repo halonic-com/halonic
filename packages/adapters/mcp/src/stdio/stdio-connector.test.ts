@@ -1,7 +1,12 @@
 import { join, resolve } from "node:path";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
-import type { ConnectorConfig, ConnectorFactoryContext } from "@halonicjs/ports";
-import { contractGrant, type ReachedCall } from "@halonicjs/testing-contracts";
+import type { ConnectorConfig, ConnectorFactoryContext, SandboxProfile } from "@halonicjs/ports";
+import {
+  contractGrant,
+  FakeSandboxSession,
+  idleProgram,
+  type ReachedCall,
+} from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { unusedRunners } from "../pinned/fake-runners.spec.ts";
@@ -42,6 +47,18 @@ function setUp(secrets = new MemorySecrets({ "notes-token": "value-from-secrets"
   };
   return { starter, factory, context, reached, secrets };
 }
+
+/** A profile for a session no program is started in. */
+const unusedProfile: SandboxProfile = {
+  workingFolder: join(workspaceRoot, "tools"),
+  tempFolder: join(workspaceRoot, "tmp"),
+  settingsFolder: null,
+  readOnlyPaths: [],
+  deniedPaths: [],
+  env: {},
+  network: { bridge: null, allowedSites: [] },
+  timeLimitMs: 60_000,
+};
 
 verifies("mcp.stdio-connector", () => {
   describe("before the program starts", () => {
@@ -95,7 +112,23 @@ verifies("mcp.stdio-connector", () => {
       );
     });
   });
+});
 
+verifies("ports.connector-sandbox-session", () => {
+  it("refuses a context with a sandbox session, so the program can't start outside the fence", async () => {
+    const { starter, factory, context, secrets } = setUp();
+    const read = vi.spyOn(secrets, "get");
+    const sandbox = new FakeSandboxSession({ profile: unusedProfile, program: idleProgram });
+    expect(() => factory.create(config, { ...context, sandbox })).toThrow(
+      'Connector "notes" must start in its sandbox session, and this factory starts programs outside the sandbox.',
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(starter.counts().started).toBe(0);
+    expect(sandbox.started).toEqual([]);
+  });
+});
+
+verifies("mcp.stdio-connector", () => {
   describe("starting the program", () => {
     it("puts secrets only in the environment, next to the inherited and configured variables", async () => {
       const { starter, factory, context } = setUp();

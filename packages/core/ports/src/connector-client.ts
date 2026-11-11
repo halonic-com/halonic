@@ -1,4 +1,5 @@
 import type { HttpClient } from "./http-client.ts";
+import type { SandboxSession } from "./sandbox.ts";
 import type { Secrets } from "./secrets.ts";
 import type { TokenStore } from "./token-store.ts";
 
@@ -231,6 +232,22 @@ export interface ConnectorFactoryContext {
    * (requirement `ports.connector-trust-enforcement`).
    */
   trust: TrustGrant | null;
+  /**
+   * The sandbox session a `stdio` connector starts its program in, for a
+   * plugin's local tool (plugins ADR, sections 3 and 4). Halonic opens it
+   * with a profile it builds itself, never the plugin.
+   *
+   * When it is set, the program starts in this session and nowhere else:
+   * - only a factory that starts programs through a session takes it; a
+   *   factory that starts programs on this computer refuses the context, so
+   *   a wiring mistake can't run a plugin's program outside the fence;
+   * - a session whose fence proof isn't `fenced` starts nothing, and there
+   *   is no fallback to this computer. A person's yes to run without the
+   *   sandbox doesn't cover programs.
+   *
+   * Absent for a workspace's own connectors, which start as before.
+   */
+  sandbox?: SandboxSession;
 }
 
 /** Creates connector clients for one transport kind. */

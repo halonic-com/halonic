@@ -73,6 +73,13 @@ export class McpStdioConnectorFactory implements ConnectorFactory {
         `Connector "${config.id}" uses ${config.transport.kind}, but this factory serves stdio.`,
       );
     }
+    // This factory starts programs on this computer. A context with a sandbox
+    // must start its program in that session only, so it is refused here.
+    if (context.sandbox !== undefined) {
+      throw new Error(
+        `Connector "${config.id}" must start in its sandbox session, and this factory starts programs outside the sandbox.`,
+      );
+    }
     return new McpStdioConnector(config, config.transport, context, this.#options);
   }
 }
