@@ -16,6 +16,7 @@ on:
       - packages/adapters/sandbox-srt/scripts/windows-probe-kit.mjs
       - packages/adapters/sandbox-srt/scripts/windows-verdict-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-isolation-probe.mjs
+      - packages/adapters/sandbox-srt/scripts/windows-wsl-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-token-probe.ps1
 
 permissions:
@@ -23,8 +24,23 @@ permissions:
 
 jobs:
   spike:
-    name: Native srt on Windows (spike)
-    runs-on: windows-2025
+    name: Native srt on Windows (spike, ${{ matrix.runner }})
+    # windows-11-arm is desktop Windows: it has the WebClient (WebDAV) service
+    # the server runner lacks (HAL-5407). Best effort, it never fails the run.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            rootfs: x86_64
+            rootfs-sha256: 412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be
+            best-effort: false
+          - runner: windows-11-arm
+            rootfs: aarch64
+            rootfs-sha256: 6bf491907b705caa5fc65773fbbc1d0954530b6c455d4446f670a4c1fdcea489
+            best-effort: true
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.best-effort }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -73,12 +89,30 @@ jobs:
         working-directory: packages/adapters/sandbox-srt
         shell: bash
         run: node scripts/windows-isolation-probe.mjs
+      # A pinned Alpine root file system (3.6 MB) for the WSL probes (HAL-5407).
+      - name: Download a small Linux root file system
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          ARCH: ${{ matrix.rootfs }}
+          SHA256: ${{ matrix.rootfs-sha256 }}
+        run: |
+          url="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/$ARCH/alpine-minirootfs-3.22.2-$ARCH.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/rootfs.tar.gz" "$url"
+          echo "$SHA256  $RUNNER_TEMP/rootfs.tar.gz" | sha256sum -c -
+      - name: WSL probes (sandbox-account distro, WSL 2)
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: HALONIC_PROBE_ROOTFS="$RUNNER_TEMP/rootfs.tar.gz" node scripts/windows-wsl-probe.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: windows-spike-results
+          name: windows-spike-results-${{ matrix.runner }}
           path: |
             packages/adapters/sandbox-srt/windows-spike-results.json
             packages/adapters/sandbox-srt/windows-verdict-results.json
             packages/adapters/sandbox-srt/windows-isolation-results.json
+            packages/adapters/sandbox-srt/windows-wsl-results.json
           if-no-files-found: warn
