@@ -42,7 +42,7 @@ export class HomeErrorReasons {
   #update(reports: readonly Report[]): void {
     this.#reports = reports;
     const reasons = [...new Set(reports.map((entry) => entry.reason))];
-    if (reasons.join("\n") === this.#reasons.join("\n")) {
+    if (sameReasons(reasons, this.#reasons)) {
       return;
     }
     this.#reasons = reasons;
@@ -50,4 +50,9 @@ export class HomeErrorReasons {
       listener();
     }
   }
+}
+
+/** Whether both lists hold the same reasons in the same order, compared one by one. */
+function sameReasons(first: readonly string[], second: readonly string[]): boolean {
+  return first.length === second.length && first.every((reason, index) => reason === second[index]);
 }

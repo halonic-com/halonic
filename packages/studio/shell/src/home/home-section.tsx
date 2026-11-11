@@ -122,8 +122,10 @@ function SectionError({
   const title = homeSectionErrors[section];
   const reason = errorMessageFor(error, { title }).body;
   // The error isn't a live region: the page says the reason once for every section (a11y 1.5).
+  // A kinded error without a message has no reason to say; reporting it would only hide "Loading
+  // Home" while other sections still load.
   const report = useContext(HomeErrorReport);
-  useEffect(() => report(reason), [report, reason]);
+  useEffect(() => (reason === "" ? undefined : report(reason)), [report, reason]);
   return (
     <>
       <EmptyState

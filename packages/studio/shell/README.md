@@ -58,7 +58,8 @@ view suspends while it loads (as with React's `use`) and throws when it fails. T
 skeleton (none for Get set up), says "Loading Home" once for the page, and puts the section's
 "Couldn't load" error with Try again in place of its rows. The errors aren't live regions: the page
 says each reason once, so when the engine isn't answering, screen readers hear it once, not once per
-section (`shell.home-states`). Get set up's card
+section, and the reasons take the place of "Loading Home" while other sections still load
+(`shell.home-states`). Get set up's card
 throws only once it knows setup isn't finished: if it can't tell, it shows nothing, so a workspace
 that is set up never sees "Couldn't load setup". On a phone, the `h1` is for screen readers only
 (the top bar shows "Home"), the sections run edge to edge 8px apart, and a loading section shows two

@@ -185,6 +185,39 @@ verifies("shell.home-states", () => {
     expect(status(container)).toBe(notAnswering);
   });
 
+  it("says why a section failed instead of Loading Home while another still loads", async () => {
+    const inbox = new PendingRows();
+    const runs = new PendingRows();
+    const container = renderHome([card("needs-you", inbox), card("recent-runs", runs)]);
+    await settle();
+    const notAnswering = "Halonic on your computer isn't answering.";
+    await fail(inbox, new KindedError("unavailable", notAnswering));
+
+    await wait(300);
+    expect(
+      sectionNamed(container, "Recent runs").querySelector('div[aria-hidden="true"]'),
+    ).not.toBe(null);
+    expect(status(container)).toBe(notAnswering);
+  });
+
+  it("keeps saying Loading Home when a section fails without a reason", async () => {
+    const inbox = new PendingRows();
+    const runs = new PendingRows();
+    const container = renderHome([card("needs-you", inbox), card("recent-runs", runs)]);
+    await wait(300);
+    expect(status(container)).toBe("Loading Home");
+
+    await fail(inbox, new KindedError("unavailable", ""));
+    expect(sectionNamed(container, "Needs you").querySelector("h3")?.textContent).toBe(
+      "Couldn't load what needs you",
+    );
+    expect(status(container)).toBe("Loading Home");
+
+    const notAnswering = "Halonic on your computer isn't answering.";
+    await fail(runs, new KindedError("unavailable", notAnswering));
+    expect(status(container)).toBe(notAnswering);
+  });
+
   it("stops saying a reason once no section fails for it", async () => {
     const runs = new PendingRows();
     const container = renderHome([card("recent-runs", runs)]);

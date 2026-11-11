@@ -22,7 +22,8 @@ export interface HomePageProps {
  * Home's fixed order. A section whose feature hasn't landed isn't there, so Home never shows a
  * section with nothing behind it. Each section loads and fails on its own; while any shows its
  * skeleton, screen readers hear "Loading Home" once. When sections fail, they hear each reason
- * once, so an engine that isn't answering is said once, not once per section.
+ * once, so an engine that isn't answering is said once, not once per section. The reasons take
+ * the place of "Loading Home" while other sections still load.
  *
  * On a phone (PH 2.1, T2-F12) the top bar already shows "Home", so the `h1` is for screen readers
  * only, and the sections run edge to edge as headings over flush lists, 8px apart.
