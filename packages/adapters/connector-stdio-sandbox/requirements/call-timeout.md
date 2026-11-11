@@ -11,3 +11,6 @@ When a tool call takes longer than the local tool's `callTimeoutMs`, the sandbox
 - Given a local tool with a `callTimeoutMs` of 50 whose first call is never answered,
   when it is called twice,
   then the first call fails after 0.05 seconds, the program is stopped, and the second call starts a new program that answers.
+- Given a local tool with a `callTimeoutMs` of 1000 and a stdio `requestTimeoutMs` of 50,
+  when a call is answered after 0.15 seconds,
+  then the call succeeds: the manifest's value bounds it, not the request timeout.

@@ -1,3 +1,4 @@
+import { defaultStdioLimits } from "@halonicjs/adapter-mcp";
 import type { FakeProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -103,6 +104,46 @@ verifies("connector-stdio-sandbox.call-timeout", () => {
     await vi.waitFor(() => expect(sandbox.running).toBe(0));
     expect(await client.callTool("read_note", {})).toBe("done");
     expect(sandbox.started).toHaveLength(2);
+    await client.close();
+  });
+
+  it("lets a call take longer than the transport's request timeout when callTimeoutMs allows it", async () => {
+    const program = mcpProgram(({ method }, { answer }) => {
+      if (method === "initialize") {
+        answer({ protocolVersion: "2025-11-25", capabilities: { tools: {} } });
+      } else if (method === "tools/call") {
+        // Slower than requestTimeoutMs, faster than callTimeoutMs.
+        setTimeout(() => answer({ content: [{ type: "text", text: "done" }] }), 150);
+      }
+      return undefined;
+    });
+    const { sandbox, factory, context } = setUp({
+      program,
+      factory: {
+        localTools: () => ({ ...testSetup, callTimeoutMs: 1000 }),
+        limits: { ...defaultStdioLimits, requestTimeoutMs: 50 },
+      },
+    });
+    const client = factory.create(config, context);
+    expect(await client.callTool("read_note", {})).toBe("done");
+    expect(sandbox.started).toHaveLength(1);
+    await client.close();
+  });
+
+  it("still bounds starting the program by requestTimeoutMs when callTimeoutMs is longer", async () => {
+    // The program never answers `initialize`.
+    const program = mcpProgram(() => undefined);
+    const { factory, context } = setUp({
+      program,
+      factory: {
+        localTools: () => ({ ...testSetup, callTimeoutMs: 60_000 }),
+        limits: { ...defaultStdioLimits, requestTimeoutMs: 50 },
+      },
+    });
+    const client = factory.create(config, context);
+    await expect(client.callTool("read_note", {})).rejects.toThrow(
+      `Connector "notes"'s program didn't start its MCP session within 0.05 seconds, so Halonic stopped it.`,
+    );
     await client.close();
   });
 });

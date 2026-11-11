@@ -24,7 +24,9 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
   in the manifest's words with its `risk` and `untrusted`, and the server's parameters. A tool the
   server adds is left out and reported to `onUndeclaredTool`; calling one is refused.
 - **`callTimeoutMs` bounds one call.** A call that takes longer fails, and its program is stopped;
-  the next call starts it again.
+  the next call starts it again. Any other call running on that program at the same moment fails
+  too, as a call whose program stopped. The manifest's value holds whether it is shorter or longer
+  than the stdio `requestTimeoutMs`, which bounds starting the program and listing its tools.
 - **A program that stops starts again** on the next call, in the same session, up to the restart
   limit, as on this computer. Its error output is read and dropped, never kept: the profile gave
   it secrets.

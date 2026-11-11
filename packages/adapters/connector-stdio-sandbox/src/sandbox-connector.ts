@@ -33,6 +33,13 @@ import { sandboxProgram } from "./sandbox-program.ts";
 const noFenceReason =
   "the session has no fence at all. A local tool runs only inside the sandbox, even when running without it is allowed.";
 
+/**
+ * How much longer than the connector's own deadlines the transport waits
+ * before it ends the session itself, so the connector's deadline always
+ * comes first and says what happened.
+ */
+const transportDeadlineMarginMs = 1000;
+
 /** An access the sandbox refused while a connector's program ran, and whose program it was. */
 export interface ConnectorBlock {
   readonly connectorId: string;
@@ -71,6 +78,11 @@ export interface SandboxStdioOptions {
   readonly onBlocked: (blocked: ConnectorBlock) => void;
   /** Hears each tool a server listed that its manifest doesn't declare, for the host's log. */
   readonly onUndeclaredTool: (undeclared: UndeclaredTool) => void;
+  /**
+   * The stdio limits, `defaultStdioLimits` unless given. `requestTimeoutMs`
+   * bounds starting the program and listing its tools; a tool call is
+   * bounded by the manifest's `callTimeoutMs` instead, longer or shorter.
+   */
   readonly limits?: StdioLimits;
   /** How often a program that stopped may start again, `defaultRestartLimits` unless given. */
   readonly restartLimits?: RestartLimits;
@@ -180,8 +192,15 @@ class SandboxStdioConnector implements ConnectorClient {
   /** The tools the server lists that the manifest declares, in the manifest's words. */
   async listTools(): Promise<ConnectorTool[]> {
     const setup = this.#setup();
-    const { session } = await this.#connect();
-    return offeredTools(setup.tools, await session.listTools(), (toolName) =>
+    const connection = await this.#connect();
+    const listed = await this.#within(
+      connection.transport,
+      this.#limits().requestTimeoutMs,
+      (signal) => connection.session.listTools(signal),
+      (seconds) =>
+        `Connector "${this.id}"'s program didn't list its tools within ${seconds} seconds, so Halonic stopped it. The next call starts it again.`,
+    );
+    return offeredTools(setup.tools, listed, (toolName) =>
       this.#options.onUndeclaredTool({ connectorId: this.id, toolName }),
     );
   }
@@ -264,10 +283,7 @@ class SandboxStdioConnector implements ConnectorClient {
     });
     // Counted once it runs: a program that can't start at all hasn't crashed.
     this.#restarts.recordStart();
-    const transport = new StdioTransport(
-      sandboxProgram(process),
-      this.#options.limits ?? defaultStdioLimits,
-    );
+    const transport = new StdioTransport(sandboxProgram(process), this.#transportLimits());
     this.#transport = transport;
     if (this.#closed) {
       await transport.close();
@@ -275,7 +291,13 @@ class SandboxStdioConnector implements ConnectorClient {
     }
     const session = new McpSession(transport, { clientInfo: this.#options.clientInfo });
     try {
-      await session.initialize();
+      await this.#within(
+        transport,
+        this.#limits().requestTimeoutMs,
+        (signal) => session.initialize(signal),
+        (seconds) =>
+          `Connector "${this.id}"'s program didn't start its MCP session within ${seconds} seconds, so Halonic stopped it.`,
+      );
     } catch (error) {
       // The next call starts a new program, so this one must not keep running.
       await transport.close();
@@ -318,7 +340,8 @@ class SandboxStdioConnector implements ConnectorClient {
   /**
    * One call, failed once it takes longer than `timeoutMs`. Then the
    * program may be stuck, so it is stopped too, and the next call starts it
-   * again, within the restart limit.
+   * again, within the restart limit. Any other call running on the same
+   * program at that moment fails too, as one whose program stopped.
    */
   async #callWithin(
     connection: Connection,
@@ -326,27 +349,64 @@ class SandboxStdioConnector implements ConnectorClient {
     args: Record<string, unknown>,
     timeoutMs: number,
   ): Promise<McpToolResult> {
+    try {
+      return await this.#within(
+        connection.transport,
+        timeoutMs,
+        (signal) => connection.session.callTool(name, args, signal),
+        (seconds) =>
+          `Connector "${this.id}"'s tool "${name}" didn't answer within ${seconds} seconds, so Halonic stopped its program. The next call starts it again.`,
+      );
+    } catch (error) {
+      if (error instanceof DeadlinePassedError) throw error;
+      throw this.#lostDuringCall(connection, name, error);
+    }
+  }
+
+  /**
+   * Runs one request to the program, failed with `timeoutMessage` once it
+   * takes longer than `timeoutMs`. The program is then stopped, as it may
+   * be stuck. The connector owns these deadlines, not the transport: see
+   * {@link #transportLimits}.
+   */
+  async #within<T>(
+    transport: StdioTransport,
+    timeoutMs: number,
+    run: (signal: AbortSignal) => Promise<T>,
+    timeoutMessage: (seconds: number) => string,
+  ): Promise<T> {
     const cancel = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       cancel.abort();
-      void connection.transport.close();
+      void transport.close();
     }, timeoutMs);
     try {
-      return await connection.session.callTool(name, args, cancel.signal);
+      return await run(cancel.signal);
     } catch (error) {
-      if (!timedOut) throw this.#lostDuringCall(connection, name, error);
-      throw (
-        this.#sessionEnded() ??
-        new McpError(
-          "unavailable",
-          `Connector "${this.id}"'s tool "${name}" didn't answer within ${timeoutMs / 1000} seconds, so Halonic stopped its program. The next call starts it again.`,
-        )
-      );
+      if (!timedOut) throw error;
+      throw this.#sessionEnded() ?? new DeadlinePassedError(timeoutMessage(timeoutMs / 1000));
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** The stdio limits the host gave, or the defaults. */
+  #limits(): StdioLimits {
+    return this.#options.limits ?? defaultStdioLimits;
+  }
+
+  /**
+   * The limits for the program's transport. Its own request timer is only a
+   * backstop: it waits a little longer than the longest deadline the
+   * connector sets ({@link #within}), so a `callTimeoutMs` above
+   * `requestTimeoutMs` still takes effect.
+   */
+  #transportLimits(): StdioLimits {
+    const limits = this.#limits();
+    const longest = Math.max(limits.requestTimeoutMs, this.#setup().callTimeoutMs);
+    return { ...limits, requestTimeoutMs: longest + transportDeadlineMarginMs };
   }
 
   /** The error for every call once the session has ended, or `undefined` while it is open. */
@@ -369,5 +429,12 @@ class SandboxStdioConnector implements ConnectorClient {
       "unavailable",
       `Connector "${this.id}" lost its program while its tool "${toolName}" ran.${reason} Halonic didn't try the call again, because it may already have had an effect. The next call starts the program again.`,
     );
+  }
+}
+
+/** A request to the program took longer than the connector allows, so it stopped the program. */
+class DeadlinePassedError extends McpError {
+  constructor(message: string) {
+    super("unavailable", message);
   }
 }
