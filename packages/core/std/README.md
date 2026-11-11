@@ -46,6 +46,13 @@ prints (`0.169.0-alpha.6` comes before `0.169.0`).
 `asciiHost` writes a host name the way the trust prompt shows and hashes it:
 lowercase, with non-ASCII labels in Punycode (`xn--…`), so a look-alike host
 never passes for the real one.
+`siteName` writes a host the way a screen shows a blocked or allowed site:
+plain text, any character outside `a`–`z`, `0`–`9`, `.`, `-`, `:`, `[` and `]`
+escaped as `\u{…}`, Punycode left as it is, at most 64 characters
+(`siteNameMaxLength`), and split into a `prefix` and the registrable `domain`
+so the real domain can stand out. The domain comes from a pinned copy of the
+public suffix list in `src/public-suffixes.generated.ts` (MPL 2.0), which
+`scripts/refresh-public-suffixes.ts` rewrites; nothing is downloaded at run time.
 
 Errors a person can see carry one of eight kinds (`ErrorKind`): `invalid_input`,
 `not_found`, `conflict`, `unauthenticated`, `denied`, `limit_reached`,
