@@ -8,7 +8,9 @@ hostSettingsStoreContract("kernel test fake", async () => {
   const elsewhere = new TestHostSettingsStore(store);
   return {
     store,
-    damage: async () => store.damage(),
+    saved: async () => store.savedText(),
+    brokenCopy: async () => store.brokenText(),
+    writeSaved: async (text) => store.writeText(text),
     changeElsewhere: (key, value) => elsewhere.set(key, value),
   };
 });

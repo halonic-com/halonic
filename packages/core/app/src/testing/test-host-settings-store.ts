@@ -1,14 +1,14 @@
 import {
+  changeSavedHostSettings,
   type HostSettingsStore,
   type HostSettingValue,
   type HostSettingValues,
-  hostSettingsMaxBytes,
-  isHostSettingKey,
+  readSavedHostSettings,
 } from "@halonicjs/ports";
-import { encodeUtf8 } from "@halonicjs/std";
 
 interface Shared {
-  text: string;
+  text: string | undefined;
+  broken: string | undefined;
   readonly listeners: Set<() => void>;
 }
 
@@ -22,35 +22,28 @@ export class TestHostSettingsStore implements HostSettingsStore {
   readonly #shared: Shared;
   /** When set, `read` throws it. */
   readError: Error | undefined;
-  /** When set, `set` throws it and saves nothing. */
+  /** When set, `set` and `remove` throw it and save nothing. */
   saveError: Error | undefined;
 
   constructor(sharedWith?: TestHostSettingsStore) {
     this.#shared =
-      sharedWith === undefined ? { text: "{}", listeners: new Set() } : sharedWith.#shared;
+      sharedWith === undefined
+        ? { text: undefined, broken: undefined, listeners: new Set() }
+        : sharedWith.#shared;
   }
 
   async read(): Promise<HostSettingValues> {
     if (this.readError !== undefined) throw this.readError;
-    return this.#parsed();
+    const { text } = this.#shared;
+    return (text === undefined ? undefined : readSavedHostSettings(text)) ?? {};
   }
 
-  async set(key: string, value: HostSettingValue | undefined): Promise<void> {
-    if (this.saveError !== undefined) throw this.saveError;
-    if (!isHostSettingKey(key)) throw new RangeError(`${key} can't name a setting.`);
-    if (value !== undefined && !finiteOnly(value)) {
-      throw new RangeError(`The value for ${key} has a number that isn't finite.`);
-    }
-    // Without waiting in between, so saves made together land one after the other.
-    const values: Record<string, HostSettingValue> = { ...this.#parsed() };
-    if (value === undefined) delete values[key];
-    else values[key] = value;
-    const text = JSON.stringify(values);
-    if (encodeUtf8(text).byteLength > hostSettingsMaxBytes) {
-      throw new RangeError(`The settings would be over ${hostSettingsMaxBytes} bytes.`);
-    }
-    this.#shared.text = text;
-    this.#changed();
+  async set(key: string, value: HostSettingValue): Promise<void> {
+    this.#save(key, value);
+  }
+
+  async remove(key: string): Promise<void> {
+    this.#save(key, undefined);
   }
 
   watch(listener: () => void): () => void {
@@ -61,27 +54,32 @@ export class TestHostSettingsStore implements HostSettingsStore {
     };
   }
 
-  /** Makes the saved settings unparsable, and tells the watchers. */
-  damage(): void {
-    this.#shared.text = this.#shared.text.slice(0, -1);
+  /** The saved settings' text, as `host.json` would hold it. */
+  savedText(): string | undefined {
+    return this.#shared.text;
+  }
+
+  /** The broken copy, as `host.json.broken` would hold it. */
+  brokenText(): string | undefined {
+    return this.#shared.broken;
+  }
+
+  /** Replaces the saved settings' text, such as with unparsable text, and tells the watchers. */
+  writeText(text: string): void {
+    this.#shared.text = text;
     this.#changed();
   }
 
-  #parsed(): HostSettingValues {
-    try {
-      return JSON.parse(this.#shared.text) as HostSettingValues;
-    } catch {
-      return {};
-    }
+  #save(key: string, value: HostSettingValue | undefined): void {
+    if (this.saveError !== undefined) throw this.saveError;
+    // Without waiting in between, so saves made together land one after the other.
+    const change = changeSavedHostSettings(this.#shared.text, key, value);
+    if (change.broken) this.#shared.broken = this.#shared.text;
+    this.#shared.text = change.text;
+    this.#changed();
   }
 
   #changed(): void {
     for (const listener of [...this.#shared.listeners]) listener();
   }
-}
-
-function finiteOnly(value: HostSettingValue): boolean {
-  if (typeof value === "number") return Number.isFinite(value);
-  if (typeof value !== "object" || value === null) return true;
-  return Object.values(value).every(finiteOnly);
 }

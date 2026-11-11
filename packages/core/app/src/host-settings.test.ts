@@ -57,7 +57,7 @@ verifies("app.host-settings", () => {
     it("gives every fallback when the saved settings can't be parsed", async () => {
       const store = new TestHostSettingsStore();
       await store.set("assistant.turn-limit", 20);
-      store.damage();
+      store.writeText("{");
       const settings = new HostSettings(store);
       await settings.load();
       expect(settings.get(turnLimit)).toBe(16);
@@ -126,7 +126,7 @@ verifies("app.host-settings", () => {
       const listener = vi.fn();
       settings.onChange(listener);
 
-      void elsewhere.set("assistant.turn-limit", undefined);
+      void elsewhere.remove("assistant.turn-limit");
       void elsewhere.set("assistant.connector-tools", false);
       await settle();
       expect(read).toHaveBeenCalledOnce();
@@ -137,20 +137,45 @@ verifies("app.host-settings", () => {
       expect(settings.get(turnLimit)).toBe(16);
     });
 
-    it("keeps the values from before when a re-read fails, and reads again on the next change", async () => {
-      const { store, elsewhere, settings } = await loaded();
+    it("keeps the values from before when a re-read fails, reports it, and reads again on the next change", async () => {
+      const store = new TestHostSettingsStore();
+      const elsewhere = new TestHostSettingsStore(store);
+      const onRefreshError = vi.fn();
+      const settings = new HostSettings(store, { onRefreshError });
+      await settings.load();
       const listener = vi.fn();
       settings.onChange(listener);
-      store.readError = new Error("permission denied");
+      const failure = new Error("permission denied");
+      store.readError = failure;
       await elsewhere.set("assistant.turn-limit", 20);
       await settle();
       expect(settings.get(turnLimit)).toBe(16);
+      expect(listener).not.toHaveBeenCalled();
+      expect(onRefreshError).toHaveBeenCalledExactlyOnceWith(failure);
 
       store.readError = undefined;
       await elsewhere.set("assistant.turn-limit", 24);
       await settle();
       expect(settings.get(turnLimit)).toBe(24);
       expect(listener).toHaveBeenCalledExactlyOnceWith(["assistant.turn-limit"]);
+    });
+
+    it("keeps watching when the error report itself throws", async () => {
+      const store = new TestHostSettingsStore();
+      const elsewhere = new TestHostSettingsStore(store);
+      const settings = new HostSettings(store, {
+        onRefreshError: () => {
+          throw new Error("no log");
+        },
+      });
+      await settings.load();
+      store.readError = new Error("busy");
+      await elsewhere.set("assistant.turn-limit", 20);
+      await settle();
+      store.readError = undefined;
+      await elsewhere.set("assistant.turn-limit", 24);
+      await settle();
+      expect(settings.get(turnLimit)).toBe(24);
     });
 
     it("tells the other listeners when one throws, and none after it is stopped", async () => {

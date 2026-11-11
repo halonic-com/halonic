@@ -121,6 +121,7 @@ export {
   type HostSetting,
   HostSettings,
   type HostSettingsListener,
+  type HostSettingsOptions,
   hostSetting,
 } from "./host-settings.ts";
 export {

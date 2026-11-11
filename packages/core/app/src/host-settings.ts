@@ -42,6 +42,16 @@ export function hostSetting<T extends HostSettingValue>(
 /** Called with the keys whose saved value changed elsewhere: the CLI or another window. */
 export type HostSettingsListener = (keys: readonly string[]) => void;
 
+/** How a {@link HostSettings} reports what it can't throw. */
+export interface HostSettingsOptions {
+  /**
+   * Called when a re-read after a change fails, such as while the file is
+   * busy; the values from before stay and no listener is called. Studio
+   * and the CLI log it. Nothing by default.
+   */
+  readonly onRefreshError?: (error: unknown) => void;
+}
+
 /**
  * The host settings for Studio and the CLI, over a {@link HostSettingsStore}.
  * A saved value that doesn't pass its setting's check reads as the
@@ -50,7 +60,8 @@ export type HostSettingsListener = (keys: readonly string[]) => void;
  *
  * Saves and re-reads run one at a time, in order, so this object's own
  * saves are never reported as changes. A re-read that fails keeps the
- * values from before; the next change reads again.
+ * values from before, calls no listener and goes to `onRefreshError`; the
+ * next change reads again.
  *
  * @example
  * const settings = new HostSettings(store);
@@ -61,6 +72,7 @@ export type HostSettingsListener = (keys: readonly string[]) => void;
  */
 export class HostSettings {
   readonly #store: HostSettingsStore;
+  readonly #onRefreshError: (error: unknown) => void;
   readonly #listeners = new Set<HostSettingsListener>();
   #values: Readonly<Record<string, HostSettingValue>> = {};
   #loaded = false;
@@ -68,8 +80,9 @@ export class HostSettings {
   #refreshQueued = false;
   #stopWatching: (() => void) | undefined;
 
-  constructor(store: HostSettingsStore) {
+  constructor(store: HostSettingsStore, options: HostSettingsOptions = {}) {
     this.#store = store;
+    this.#onRefreshError = options.onRefreshError ?? (() => undefined);
   }
 
   /**
@@ -151,7 +164,13 @@ export class HostSettings {
           // One failing listener doesn't keep the change from the others.
         }
       }
-    }).catch(() => undefined);
+    }).catch((error: unknown) => {
+      try {
+        this.#onRefreshError(error);
+      } catch {
+        // A failing report doesn't make the watch fail.
+      }
+    });
   }
 
   #enqueue(work: () => Promise<void>): Promise<void> {
