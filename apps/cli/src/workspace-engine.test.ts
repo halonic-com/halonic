@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
+import type { RecordChange } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -90,7 +91,7 @@ verifies("cli.run", () => {
  * Routines whose ticks fail or work as `outcomes` says, one per tick, on an
  * engine whose clock and wake-ups the test moves: {@link nextTick} moves the
  * clock a minute on, or the minutes given, and wakes the scheduler until
- * that tick has run.
+ * that tick has run and each timer due has been delivered.
  * {@link failNextWakeUp} makes the wake-up after the next tick fail: the
  * scheduler can't set its next one. The `--debug` lines are in `debugLines`.
  */
@@ -143,17 +144,23 @@ async function openWithTicks(
       ...(onGaveUp === undefined ? {} : { onGaveUp }),
     },
   );
+  const timerLog = new FileRecordStore((await acmeFolders()).recordsFolder());
   const nextTick = async (minutes = 1) => {
     const count = ticks.length + 1;
     now += minutes * 60_000;
-    await vi.waitFor(() => {
+    // Each timer due now is delivered and then set again or removed: one change more in
+    // its log. Moving the clock on before that would leave its delivery behind (HAL-5639).
+    const changes = await timerLog.changes(runTimerCollection);
+    const settled = changes.length + dueTimers(changes, now);
+    await vi.waitFor(async () => {
       for (const [callback, at] of [...wakeUps]) {
         if (at > now) continue;
         wakeUps.delete(callback);
         callback();
       }
       expect(ticks).toHaveLength(count);
-    });
+      expect(await timerLog.changes(runTimerCollection)).toHaveLength(settled);
+    }, settleTimeout);
   };
   // The scheduler sets its first wake-up once it has read its timers; only later ones may fail.
   await vi.waitFor(() => expect(wakeUps.size).toBe(1));
@@ -162,6 +169,20 @@ async function openWithTicks(
   };
   const elapsedMs = () => now - engineStart;
   return { engine, nextTick, failNextWakeUp, debugLines, elapsedMs };
+}
+
+/** How long a wake-up may take to settle: a slow disk (Windows) needs more than a second. */
+const settleTimeout = { timeout: 10_000 };
+
+/** How many of the timers in the scheduler's log `changes` are due by `now`. */
+function dueTimers(changes: readonly RecordChange[], now: number): number {
+  const dueAt = new Map<string, number>();
+  for (const change of changes) {
+    const at = change.values?.["dueAt"];
+    if (change.op === "remove") dueAt.delete(change.id);
+    else if (typeof at === "string") dueAt.set(change.id, Date.parse(at));
+  }
+  return [...dueAt.values()].filter((at) => at <= now).length;
 }
 
 /** The timer {@link plantStuckTimer} sets: a step of a run, due as the engine starts. */
