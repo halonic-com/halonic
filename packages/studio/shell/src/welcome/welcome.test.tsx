@@ -46,6 +46,7 @@ verifies("shell.welcome-open", () => {
     expect(root.textContent).toContain("Your workspace is a folder of plain files.");
     expect(root.textContent).toContain("Local first, private, and yours.");
     expect(openButton(root).textContent).toContain("Open folder");
+    expect(document.activeElement).toBe(openButton(root));
   });
 
   it("is busy while the folder opens and ignores more presses", async () => {

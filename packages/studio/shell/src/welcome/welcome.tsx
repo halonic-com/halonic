@@ -1,5 +1,5 @@
 import { Button } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Why a folder didn't open: its folder as the user knows it and the reason, "the folder is gone." */
 export interface WelcomeOpenProblem {
@@ -22,7 +22,7 @@ export interface WelcomeProps {
  * sidebar and no tabs. While the folder opens the button reads "Opening…" and is busy: it keeps
  * focus and ignores presses. A folder that fails to open says why under the text in the danger
  * colour, and the button works again (`shell.welcome.cant-open`). Cancelling the picker changes
- * nothing.
+ * nothing. Focus starts on **Open folder** (accessibility pass 1.3).
  *
  * @example
  * <Welcome onOpenFolder={openFolder} />
@@ -30,6 +30,10 @@ export interface WelcomeProps {
 export function Welcome({ onOpenFolder }: WelcomeProps) {
   const [opening, setOpening] = useState(false);
   const [problem, setProblem] = useState<WelcomeOpenProblem | undefined>(undefined);
+  const openButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    openButton.current?.focus();
+  }, []);
 
   const open = async () => {
     setOpening(true);
@@ -52,7 +56,13 @@ export function Welcome({ onOpenFolder }: WelcomeProps) {
             Local first, private, and yours.
           </p>
         </div>
-        <Button variant="primary" busy={opening} busyLabel="Opening…" onClick={open}>
+        <Button
+          ref={openButton}
+          variant="primary"
+          busy={opening}
+          busyLabel="Opening…"
+          onClick={open}
+        >
           Open folder
         </Button>
         <p role="alert" className="text-body text-danger empty:hidden">
