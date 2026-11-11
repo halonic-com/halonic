@@ -305,10 +305,10 @@ verifies("cli.help", () => {
 });
 
 verifies("cli.version", () => {
-  it("prints halonic and the version, and exits with 0", async () => {
+  it("prints Halonic and the version, and exits with 0", async () => {
     const io = captureIo("/work");
     expect(await runCli(["--version"], io, commands)).toBe(exitCode.ok);
-    expect(io.stdout).toEqual([`halonic ${halonicVersion}`]);
+    expect(io.stdout).toEqual([`Halonic ${halonicVersion}`]);
     expect(io.stderr).toEqual([]);
   });
 
@@ -323,7 +323,7 @@ verifies("cli.version", () => {
   it("answers instead of the command, wherever it stands", async () => {
     const io = captureIo("/work");
     expect(await runCli(["greet", "Ada", "--version"], io, commands)).toBe(exitCode.ok);
-    expect(io.stdout).toEqual([`halonic ${halonicVersion}`]);
+    expect(io.stdout).toEqual([`Halonic ${halonicVersion}`]);
   });
 
   it("is an argument after --", async () => {

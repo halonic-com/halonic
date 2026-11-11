@@ -132,7 +132,7 @@ describe("the general sentences", () => {
     );
     expect(words(helpMessages.commandUsage("doctor", ""))).toBe("Usage: halonic doctor");
     expect(words(helpMessages.optionsHeading())).toBe("Options:");
-    expect(words(helpMessages.version("0.1.0"))).toBe("halonic 0.1.0");
+    expect(words(helpMessages.version("0.1.0"))).toBe("Halonic 0.1.0");
   });
 
   it("has a bug's two lines as approved, with and without the command's action", () => {

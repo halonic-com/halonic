@@ -12,8 +12,8 @@ export const helpMessages = defineMessages("help", {
   /** A further line of the options, when the first would pass 80 columns. */
   globalOptionsMore: (options: readonly string[], continues: boolean) =>
     phrase`${options.join(", ")}${continues ? "," : ""}`,
-  /** What `halonic --version` prints: "halonic 0.1.0". */
-  version: (version: string) => phrase`halonic ${version}`,
+  /** What `halonic --version` prints: "Halonic 0.1.0", the name as doctor's first line gives it. */
+  version: (version: string) => phrase`Halonic ${version}`,
   /** The exit codes, on four lines as the design sets them, so each fits an 80-column terminal. */
   exitCodes: (line: ExitCodeLine) => exitCodeLine(line),
   commandHelpHint: () =>
