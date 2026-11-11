@@ -43,7 +43,28 @@ export function sendBridgeError(response: ServerResponse, error: unknown): void 
   const kind = errorKindOf(error);
   const message =
     error instanceof KindedError && kind !== "internal" ? error.message : internalMessage;
+  writeError(response, { status: statusOf(kind), kind, message });
+}
+
+/**
+ * Why the bridge turns a request away before it even checks the run token,
+ * with a status of its own that no error kind maps to, such as 421.
+ */
+export interface BridgeRefusal {
+  status: number;
+  kind: ErrorKind;
+  /** What the program reads: fixed text, safe to show. */
+  message: string;
+}
+
+/** Answers a request with one of the bridge's refusals, in the same shape as its errors. */
+export function sendBridgeRefusal(response: ServerResponse, refusal: BridgeRefusal): void {
+  writeError(response, refusal);
+}
+
+/** Writes the whole error reply. */
+function writeError(response: ServerResponse, { status, kind, message }: BridgeRefusal): void {
   const body = JSON.stringify({ type: "error", error: { type: kind, message } });
-  response.writeHead(statusOf(kind), { "content-type": "application/json" });
+  response.writeHead(status, { "content-type": "application/json" });
   response.end(body);
 }

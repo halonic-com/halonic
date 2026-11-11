@@ -129,6 +129,50 @@ verifies("harness-bridge.server", () => {
       }
     });
 
+    it("answers 421 to a request addressed to another host, even with the token", async () => {
+      const bridge = await open();
+      const { port } = new URL(bridge.url);
+      for (const host of ["attacker.example", `attacker.example:${port}`, "127.0.0.1:1"]) {
+        for (const path of ["/echo", "/nowhere"]) {
+          const reply = await send(bridge, path, { token: bridge.token, headers: { host } });
+          expect(reply.status).toBe(421);
+          expect(reply.text).not.toContain(bridge.token);
+          expect(JSON.parse(reply.text)).toMatchObject({ error: { type: "invalid_input" } });
+        }
+      }
+    });
+
+    it("serves a request addressed to localhost on its port", async () => {
+      const bridge = await open();
+      const { port } = new URL(bridge.url);
+      const reply = await send(bridge, "/echo", {
+        token: bridge.token,
+        body: "hi",
+        headers: { host: `LocalHost:${port}` },
+      });
+      expect(reply).toEqual({ status: 200, text: "hi" });
+    });
+
+    it("answers 403 to a request from a web page, even with the token", async () => {
+      const bridge = await open();
+      for (const origin of ["https://attacker.example", "null", bridge.url]) {
+        for (const path of ["/echo", "/nowhere"]) {
+          const reply = await send(bridge, path, { token: bridge.token, headers: { origin } });
+          expect(reply.status).toBe(403);
+          expect(reply.text).not.toContain(bridge.token);
+          expect(JSON.parse(reply.text)).toMatchObject({ error: { type: "denied" } });
+        }
+      }
+    });
+
+    it("checks the host before the origin, and both before the token", async () => {
+      const bridge = await open();
+      const elsewhere = { host: "attacker.example", origin: "https://attacker.example" };
+      expect((await send(bridge, "/echo", { headers: elsewhere })).status).toBe(421);
+      const fromPage = { origin: "https://attacker.example" };
+      expect((await send(bridge, "/echo", { headers: fromPage })).status).toBe(403);
+    });
+
     it("serves a request with the token, and answers 404 for a path it doesn't serve", async () => {
       const bridge = await open();
       expect(await send(bridge, "/echo?beta=true", { token: bridge.token, body: "hi" })).toEqual({

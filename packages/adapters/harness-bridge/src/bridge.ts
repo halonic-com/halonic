@@ -7,13 +7,33 @@ import {
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { sendBridgeError } from "./bridge-error.ts";
+import { type BridgeRefusal, sendBridgeError, sendBridgeRefusal } from "./bridge-error.ts";
 import { type BodyLimits, bodyTooLarge, readRequestBody } from "./read-body.ts";
 import type { BridgeRoute } from "./route.ts";
 import { randomRunToken, runTokenMatches } from "./run-token.ts";
 
 /** Only this computer can reach the bridge: never another machine on the network. */
 const loopbackHost = "127.0.0.1";
+
+/**
+ * The requests the bridge turns away before it checks the run token. The
+ * token already keeps both out; these checks are defence in depth, as on the
+ * agent host's own port.
+ */
+const refusals = {
+  /** A web page that points its own domain at 127.0.0.1 (DNS rebinding). */
+  wrongHost: {
+    status: 421,
+    kind: "invalid_input",
+    message: "The Halonic bridge answers only requests addressed to its loopback address.",
+  },
+  /** A request from a web page: the harness programs aren't browsers, so the bridge has no CORS. */
+  browserOrigin: {
+    status: 403,
+    kind: "denied",
+    message: "The Halonic bridge doesn't answer requests from web pages.",
+  },
+} as const satisfies Record<string, BridgeRefusal>;
 
 /** How one bridge is set up: its limits and the paths it serves. */
 export interface BridgeSettings {
@@ -28,9 +48,17 @@ export interface BridgeSettings {
 }
 
 /**
- * Starts one run's bridge on a free loopback port. Every request needs the
- * run's token in {@link harnessBridgeTokenHeader}; without it the answer is
- * 401, whatever the path, so a program can't even learn which paths exist.
+ * Starts one run's bridge on a free loopback port. A request gets in only
+ * when it passes three checks, in this order:
+ *
+ * 1. its `Host` header names this loopback address and port, or the answer
+ *    is 421;
+ * 2. it has no `Origin` header, or the answer is 403;
+ * 3. it carries the run's token in {@link harnessBridgeTokenHeader}, or the
+ *    answer is 401.
+ *
+ * Each answer is the same whatever the path, so a program can't even learn
+ * which paths exist.
  */
 export async function openBridge(
   run: HarnessBridgeOptions,
@@ -76,6 +104,13 @@ interface ServeContext {
 
 /** Lets one request in, or answers it with the bridge's error. */
 async function serve(context: ServeContext, request: IncomingMessage, response: ServerResponse) {
+  const refusal = refusalOf(request);
+  if (refusal !== undefined) {
+    // The caller may still be sending: close the connection once the refusal is out.
+    response.shouldKeepAlive = false;
+    sendBridgeRefusal(response, refusal);
+    return;
+  }
   const { run, settings, token, closing } = context;
   const requestEnded = new AbortController();
   response.on("close", () => requestEnded.abort());
@@ -111,6 +146,18 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
     response.shouldKeepAlive = false;
     sendBridgeError(response, error);
   }
+}
+
+/** Why the bridge turns a request away before it checks the token, or `undefined` when it doesn't. */
+function refusalOf(request: IncomingMessage): BridgeRefusal | undefined {
+  // The port the request came in on is this bridge's own port.
+  const port = request.socket.localPort;
+  const host = request.headers.host?.toLowerCase();
+  if (host !== `${loopbackHost}:${port}` && host !== `localhost:${port}`) {
+    return refusals.wrongHost;
+  }
+  if (request.headers.origin !== undefined) return refusals.browserOrigin;
+  return undefined;
 }
 
 /** The route for a request's method and path, ignoring its query. */

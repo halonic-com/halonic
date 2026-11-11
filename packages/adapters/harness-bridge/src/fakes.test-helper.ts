@@ -1,3 +1,4 @@
+import { request as httpRequest } from "node:http";
 import {
   type HarnessBridgeOptions,
   harnessBridgeTokenHeader,
@@ -29,20 +30,35 @@ export interface TestRequest {
   /** The run token to send; `undefined` sends none. */
   token?: string;
   body?: string;
+  /** More headers, such as `origin`, or a `host` other than the bridge's own. */
+  headers?: Record<string, string>;
 }
 
-/** Sends one request to the bridge and reads the whole reply. */
-export async function send(
+/**
+ * Sends one request to the bridge and reads the whole reply. It uses Node's
+ * `http` rather than `fetch`, so a test can send any `Host` header.
+ */
+export function send(
   bridge: OpenHarnessBridge,
   path: string,
   request: TestRequest = {},
 ): Promise<{ status: number; text: string }> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...request.headers };
   if (request.token !== undefined) headers[harnessBridgeTokenHeader] = request.token;
-  const response = await fetch(`${bridge.url}${path}`, {
-    method: request.method ?? "POST",
-    headers,
-    ...(request.body === undefined ? {} : { body: request.body }),
+  return new Promise((resolve, reject) => {
+    const outgoing = httpRequest(
+      new URL(path, bridge.url),
+      { method: request.method ?? "POST", headers },
+      (reply) => {
+        const chunks: Buffer[] = [];
+        reply.on("data", (chunk: Buffer) => chunks.push(chunk));
+        reply.on("end", () =>
+          resolve({ status: reply.statusCode ?? 0, text: Buffer.concat(chunks).toString() }),
+        );
+        reply.on("error", reject);
+      },
+    );
+    outgoing.on("error", reject);
+    outgoing.end(request.body);
   });
-  return { status: response.status, text: await response.text() };
 }

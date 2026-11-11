@@ -32,6 +32,11 @@ try {
 
 ## What the bridge does
 
+- **Host and origin.** A request whose `Host` isn't `127.0.0.1` or `localhost`
+  with the bridge's port gets a 421, so a web page that points its own domain
+  at 127.0.0.1 gets nothing. A request with an `Origin` header comes from a
+  web page and gets a 403. Both are checked before the token, whatever the
+  path.
 - **Token.** Any request without the run's exact token gets a 401, whatever its
   path. A path the bridge doesn't serve gets a 404.
 - **Pass-through.** The bridge sends the request's bytes to the provider and
