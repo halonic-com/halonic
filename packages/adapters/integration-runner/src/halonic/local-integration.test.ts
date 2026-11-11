@@ -108,6 +108,7 @@ function fakeDisk(
       if (target === undefined) throw new Error(`no such path ${path}`);
       return target;
     },
+    identity: (file) => ({ id: file, names: 1 }),
   };
 }
 

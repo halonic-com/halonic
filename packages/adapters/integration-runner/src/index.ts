@@ -7,10 +7,12 @@ export {
   type RunnerConnection,
 } from "./halonic/connect-runner.ts";
 export {
+  type FileIdentity,
   type FolderEntry,
   folderLinkProblems,
   type IntegrationFolderDisk,
   integrationFolderOnThisMachine,
+  maxFolderEntries,
 } from "./halonic/integration-folder.ts";
 export {
   defaultRunnerLimits,
