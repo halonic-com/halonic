@@ -9,7 +9,8 @@ The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-ru
 
 `SrtSandbox` is the whole adapter. `check()` says whether the sandbox can start on this machine and
 gives the first reason when it can't: Windows without srt's install (`srt windows-install`, once, as an administrator), inside a container (Docker or Podman), user
-namespaces refused, or bubblewrap missing. `open()` checks first, refuses a bridge that isn't a
+namespaces refused, bubblewrap missing, or `socat` or ripgrep (`rg`) missing, which srt starts next to bubblewrap
+(`linux-tools-missing`). `open()` checks first, refuses a bridge that isn't a
 loopback address, then opens a session that proves its fence (a canary file the fence hides and a
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and
 never run a file under a skill's `scripts/` folder. When a session ends, it undoes any `commondir`

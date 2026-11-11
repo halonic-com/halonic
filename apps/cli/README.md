@@ -28,6 +28,10 @@ Before it starts a run, or sends an event to one, `halonic run` and `halonic run
 sandbox (`checkRunSandbox` in `src/sandbox-gate.ts`, called from `openWorkspaceEngine`). A workflow
 with an agent that starts a program on this computer is refused with exit 9 when the sandbox can't
 start, and an agent set to "On this computer" gets one `!` line instead. No option skips it.
+`halonic doctor` shows the same check as its Sandbox line, ✕ with exit 1 when the sandbox can't
+start. Each reason code (`windows`, `container`, `user-namespaces-restricted`, `bubblewrap-missing`,
+`linux-tools-missing` when `socat` or ripgrep is missing, `other`) has its own words and fix in
+`src/messages/sandbox.ts`; the check's own sentence shows only with `--debug`.
 
 A command that starts or moves on a run opens the workspace's engine with `openWorkspaceEngine`
 (`src/workspace-engine.ts`): the stuck-step watch, and one signal that Ctrl C, SIGTERM or a step that

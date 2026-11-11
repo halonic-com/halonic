@@ -393,13 +393,18 @@ const names = searchPageNames(
 
 `SearchPage` draws it (`shell.search-page`, VK T2-F7 and F26): the title and its sentence, the
 search box, the In and Hub picker chips with Match case and Whole word, the count line
-(`searchPageCount`, "2 matches in 2 items") as a status, and the results with the words marked.
+(`searchPageCount`, "2 matches in 2 items"), and the results with the words marked. The box and chips sit
+in a `search` landmark. The count line is a status that also says "Searching…", and, when there is
+no count, the title of the state that stands in for it ("Nothing matches", "Couldn't search"), so a
+screen reader hears the search end.
 Enter with other words opens their Search page in the same tab. A result opens here, or with a
 Ctrl-click in a new tab. "Searching…" shows still skeleton rows, and the page's states are
 "Nothing matches", with **Search all hubs** while a hub is picked, and "Couldn't search" with
 `shell.engine.words.notAnswering` and **Try again**. Until the engine searches the text of files,
 there is no "Text inside" section and no Pattern chip, and the sentences say "name or description"
-rather than "the words inside it".
+rather than "the words inside it". Mount `SearchPage` fresh for each place: the box and chips start
+from `words` and their defaults only on mount, and `TabPages` does this by keying each page with its
+`location.key`.
 
 ```tsx
 <SearchPage
