@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on [HAL-6451](/HAL/issues/HAL-6451) (a team wording call on the approved HAL-2264 words, from the findings on HAL-6444); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:faypMKrydL3HLOeuefdqZpEEt3hJjdvCpWP9ARpKhYHxewECLt4HQJVJ4zOVeJPnMD0LOYto8HfUqqeLc4CDDw==
 - Task: HAL-6451
 
 ## What changes
