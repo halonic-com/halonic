@@ -6,7 +6,7 @@ import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
 import { socketFolders } from "../src/halonic/runner-profile.ts";
 import { type StartedRunner, startRunner } from "../src/halonic/start-runner.ts";
 import { bridgeOptions, fakeRunnerProcess } from "../src/pipes.test-helper.ts";
-import { fenceTestBase } from "./attack-session.ts";
+import { fenceSystemPaths, fenceTestBase } from "./attack-session.ts";
 
 // The built runner, started the way Halonic starts it when the fence is
 // there: `startRunner` through a real `sandbox-srt` session with the untrusted
@@ -61,6 +61,7 @@ async function startInFence(source: string): Promise<StartedRunner> {
       homeFolder: join(folder, "home"),
       socketFolders: socketFolders(process.env),
       tempFolder,
+      systemPaths: fenceSystemPaths(),
       timeLimitMs: 60_000,
     },
   });

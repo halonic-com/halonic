@@ -10,13 +10,19 @@ import {
   isInsideOrSame,
   type RunnerDisk,
   type RunnerFiles,
+  type RunnerMachine,
   realRunnerPaths,
   runnerProfile,
   socketFolders,
+  systemPaths,
 } from "./runner-profile.ts";
 
 /** A small file tree: each folder with its names. */
 const tree: Record<string, string[]> = {
+  "/": ["fake-home", "lib", "mnt", "opt", "run", "shared-tmp", "usr", "var"],
+  "/opt": ["halonic", "other-app"],
+  "/opt/halonic": ["runner.js", "keys"],
+  "/var": ["run", "log"],
   "/fake-home": [".ssh", ".config", "code", ".nvm"],
   "/fake-home/code": ["weather", "other-project"],
   "/fake-home/.nvm": ["versions", "alias"],
@@ -29,6 +35,7 @@ const links: Record<string, string> = {
   "/fake-home/.nvm/alias": "/fake-home/.nvm/versions/node/v26.0.0",
   "/fake-home/code/other-project": "/elsewhere/other-project",
   "/var/run": "/run",
+  "/lib": "/usr/lib",
 };
 const listFolder = (folder: string) => tree[folder] ?? [];
 const disk: RunnerDisk = { listFolder, realPath: (path) => links[path] ?? path };
@@ -39,10 +46,11 @@ const files: RunnerFiles = {
   runnerFile: "/opt/halonic/runner.js",
   integrationFolder: "/fake-home/code/weather",
 };
-const machine = {
+const machine: RunnerMachine = {
   homeFolder: "/fake-home",
   socketFolders: ["/run", "/shared-tmp"],
   tempFolder: "/shared-tmp/halonic-run-1",
+  systemPaths: null,
   timeLimitMs: 60_000,
 };
 
@@ -95,6 +103,60 @@ verifies("integration-runner.start", () => {
     });
   });
 
+  describe("runnerProfile with the root hidden", () => {
+    const profile = runnerProfile(files, { ...machine, systemPaths: ["/usr"] }, disk);
+
+    it("hides every folder off the way to the runner's files and the system paths", () => {
+      expect(profile.deniedPaths).toEqual(
+        expect.arrayContaining(["/mnt", "/opt/other-app", "/opt/halonic/keys", "/var"]),
+      );
+      for (const kept of ["/usr", "/opt", "/opt/halonic", files.runnerFile, "/fake-home"]) {
+        expect(profile.deniedPaths).not.toContain(kept);
+      }
+    });
+
+    it("leaves a link into a system path, and still hides the home and socket folders", () => {
+      expect(profile.deniedPaths).not.toContain("/lib");
+      expect(profile.deniedPaths).toEqual(
+        expect.arrayContaining(["/fake-home/.ssh", "/run", "/shared-tmp/someone-elses.sock"]),
+      );
+    });
+
+    it("denies each path once, and none inside another", () => {
+      for (const path of profile.deniedPaths) {
+        const others = profile.deniedPaths.filter((other) => other !== path);
+        expect(
+          others.some((other) => isInsideOrSame(path, other)),
+          path,
+        ).toBe(false);
+      }
+      expect(new Set(profile.deniedPaths).size).toBe(profile.deniedPaths.length);
+    });
+
+    it("hides nothing more than the home and socket folders without system paths", () => {
+      expect(runnerProfile(files, machine, disk).deniedPaths).not.toContain("/mnt");
+    });
+  });
+
+  describe("systemPaths", () => {
+    it("keeps the loader's files on Linux, not all of /etc", () => {
+      const paths = systemPaths("linux");
+      expect(paths).toEqual(expect.arrayContaining(["/usr", "/etc/ld.so.cache", "/proc"]));
+      expect(paths).not.toContain("/etc");
+    });
+
+    it("keeps the system's folders on macOS, not its data volume", () => {
+      const paths = systemPaths("darwin");
+      expect(paths).toEqual(expect.arrayContaining(["/usr", "/System/Library", "/private/etc"]));
+      expect(paths).not.toContain("/System");
+      expect(paths).not.toContain("/private");
+    });
+
+    it("is null on Windows, where the fence reads only what it names", () => {
+      expect(systemPaths("win32")).toBeNull();
+    });
+  });
+
   describe("runnerProfile refusals", () => {
     it.each([
       ["Node's folder", { ...files, nodeFolder: "/" }, machine],
@@ -140,6 +202,19 @@ verifies("integration-runner.start", () => {
       expect(real.machine.socketFolders).toEqual(["/run", "/no-xdg"]);
     });
 
+    it("resolves the system paths and leaves out the ones that don't exist", () => {
+      const missing = (path: string) => {
+        if (path === "/lib32") throw new Error("ENOENT");
+        return disk.realPath(path);
+      };
+      const real = realRunnerPaths(
+        files,
+        { ...machine, systemPaths: ["/usr/lib", "/lib", "/lib32"] },
+        { ...disk, realPath: missing },
+      );
+      expect(real.machine.systemPaths).toEqual(["/usr/lib"]);
+    });
+
     it("fails when a path the runner needs can't be resolved", () => {
       const noRunner = (path: string) => {
         if (path === files.runnerFile) throw new Error("ENOENT");
@@ -181,6 +256,7 @@ verifies("integration-runner.start", () => {
         homeFolder: home,
         socketFolders: [join(base, "run")],
         tempFolder: join(base, "run", "halonic-run-1"),
+        systemPaths: null,
         timeLimitMs: 60_000,
       },
     );

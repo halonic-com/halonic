@@ -73,6 +73,7 @@ async function startThroughLauncher(source: string): Promise<StartedRunner> {
       homeFolder: homedir(),
       socketFolders: socketFolders(process.env),
       tempFolder,
+      systemPaths: null,
       timeLimitMs: 60_000,
     },
   });

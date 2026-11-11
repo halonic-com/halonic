@@ -1,9 +1,12 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { generateProxyEnvVars } from "@anthropic-ai/sandbox-runtime/dist/sandbox/sandbox-utils.js";
 import { describe, expect, it } from "vitest";
 import {
   type RunRequest,
   srtNetworkVariables,
+  srtOwnFolders,
   stopGroup,
   windowsCommandLine,
 } from "./srt-runner.ts";
@@ -98,5 +101,18 @@ describe("srtNetworkVariables", () => {
     const listed = new Set(srtNetworkVariables.map((name) => name.toUpperCase()));
     const missing = generated.filter((name: string) => !notNetwork.has(name) && !listed.has(name));
     expect(missing).toEqual([]);
+  });
+});
+
+describe("srtOwnFolders", () => {
+  it("names the folder of the seccomp helper on Linux, where it runs inside the fence", () => {
+    const [helpers, ...more] = srtOwnFolders("linux");
+    expect(more).toEqual([]);
+    expect(existsSync(join(helpers as string, "x64", "apply-seccomp"))).toBe(true);
+  });
+
+  it("names none on macOS and Windows", () => {
+    expect(srtOwnFolders("darwin")).toEqual([]);
+    expect(srtOwnFolders("win32")).toEqual([]);
   });
 });

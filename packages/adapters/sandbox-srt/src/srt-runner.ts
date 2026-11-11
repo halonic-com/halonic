@@ -2,7 +2,7 @@ import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
 import { promisify } from "node:util";
 import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
@@ -91,6 +91,20 @@ export const nodePaths: PathLookup = { resolve, realpath };
 /** Where the `srt` command line of sandbox-runtime lives. */
 function srtCliPath(): string {
   return createRequire(import.meta.url).resolve("@anthropic-ai/sandbox-runtime/dist/cli.js");
+}
+
+/**
+ * The folders of sandbox-runtime's own files that run inside the fence: on
+ * Linux the seccomp helper the fenced shell starts the program through. A
+ * profile that hides the folder sandbox-runtime is installed in, such as the
+ * home folder, must keep these readable, or no program starts. None elsewhere.
+ */
+export function srtOwnFolders(platform: NodeJS.Platform = process.platform): string[] {
+  if (platform !== "linux") return [];
+  const packageFile = createRequire(import.meta.url).resolve(
+    "@anthropic-ai/sandbox-runtime/package.json",
+  );
+  return [join(dirname(packageFile), "vendor", "seccomp")];
 }
 
 /**

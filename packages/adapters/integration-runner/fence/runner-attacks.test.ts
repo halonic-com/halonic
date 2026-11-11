@@ -179,11 +179,12 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
     expect(foundNothing(attempts["list home"]), JSON.stringify(attempts["list home"])).toBe(true);
   });
 
-  it("A12, known gap: without Node's layer, reads a file outside the home and socket folders", async () => {
-    // srt leaves reads open on Linux and macOS and denies only the hidden
-    // folders. So once an integration is past Node's layer, a folder outside
-    // them, such as `/mnt/c` on WSL2 or a workspace outside the home folder,
-    // is readable. This package's own manifest stands in for such a file.
+  it("A12: reads no file outside the folders it needs, also without Node's layer", async () => {
+    // srt leaves reads open on Linux and macOS, so the profile hides
+    // everything but the runner's own files and the system paths Node and srt
+    // need. A folder such as `/mnt/c` on WSL2 or a workspace outside the home
+    // folder is hidden too. This package's own manifest stands in for such a
+    // file, and the list of the root shows only the way to what is kept.
     const outside = join(import.meta.dirname, "..", "package.json");
     const { attempts } = await attack(
       layer,
@@ -192,7 +193,9 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
       await attempt("outside file", () => fs.readFile(${JSON.stringify(outside)}, "utf8"));
       `,
     );
-    expect(attempts["outside file"]?.outcome).toBe(layer === "on" ? "refused" : "allowed");
+    expect(foundNothing(attempts["outside file"]), JSON.stringify(attempts["outside file"])).toBe(
+      true,
+    );
   });
 
   it("A13: writes nothing outside its temp folder, and can't replace its own code", async () => {
