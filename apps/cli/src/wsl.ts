@@ -29,7 +29,7 @@ export function nodeIsWsl(): boolean {
  * when it is in Linux's own files. WSL mounts each drive at `/mnt/<letter>`.
  *
  * @example
- * windowsDriveOf("/mnt/c/work/acme"); // "/mnt/c" (leak-guard: allow absolute-path an example WSL drive)
+ * windowsDriveOf("/mnt/c"); // "/mnt/c", and the same for every folder on it
  * windowsDriveOf("/srv/acme"); // null
  */
 export function windowsDriveOf(path: string): string | null {
