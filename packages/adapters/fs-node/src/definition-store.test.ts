@@ -162,8 +162,14 @@ verifies("fs-node.unreadable-workspace-folder", () => {
       const store = new FolderDefinitionStore(root);
       await chmod(join(root, "hubs/support"), 0o000);
       try {
-        for (const listing of [store.list(), store.list("hubs"), store.version()]) {
-          const error: unknown = await listing.catch((caught: unknown) => caught);
+        // One call at a time: a call started early could reject before its
+        // turn in the loop, and Node would report it as unhandled.
+        for (const listing of [
+          () => store.list(),
+          () => store.list("hubs"),
+          () => store.version(),
+        ]) {
+          const error: unknown = await listing().catch((caught: unknown) => caught);
           expect(isUnreadableWorkspaceFolderError(error)).toBe(true);
           expect(error).toMatchObject({ path: "hubs/support", cause: { code: "EACCES" } });
         }
