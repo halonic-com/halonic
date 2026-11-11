@@ -54,11 +54,10 @@ export const runMessages = defineMessages("run", {
    */
   nothingLive: () => phrase`Nothing is live yet, so there is nothing to run. ${nothingRan}`,
   /**
-   * Its fix. The live version is the latest commit, so a commit makes it
-   * (save model 2.2): the CLI has no make-live command, and Studio isn't in
-   * 0.1.0 (HAL-6007).
+   * Its fix. In 0.1.0 a first commit is how a workspace goes live (Sofia,
+   * HAL-6041). Once the Studio or a CLI make-live command exists, this names it.
    */
-  nothingLiveFix: () => phrase`Commit your changes with git, then run again.`,
+  nothingLiveFix: () => phrase`Make a first commit in git, then run again.`,
   /**
    * A dimmed line before the run's heading when a definition file has
    * uncommitted changes: the run starts the live version, the latest commit,
