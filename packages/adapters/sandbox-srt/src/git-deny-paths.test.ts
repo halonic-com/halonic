@@ -1,9 +1,14 @@
-import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitPathsToDeny } from "./git-deny-paths.ts";
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...real, readdir: vi.fn(real.readdir) };
+});
 
 let work: string;
 
@@ -210,18 +215,23 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       }
     });
 
-    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-      "deny a folder it can't read, as a clone could be inside",
-      async () => {
-        await mkdir(join(work, "locked"));
-        await chmod(join(work, "locked"), 0o000);
-        try {
-          expect(await gitPathsToDeny(work)).toEqual(["locked"]);
-        } finally {
-          await chmod(join(work, "locked"), 0o755);
-        }
-      },
-    );
+    it("deny a folder it can't read, as a clone could be inside", async () => {
+      await mkdir(join(work, "locked"));
+      // A refused read, the same on every platform and as root: chmod 000 is neither.
+      const real = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+      const locked = join(work, "locked");
+      // The search reads every folder with `withFileTypes`, the only form mocked here.
+      const readOrRefuse = (path: string, options: { withFileTypes: true }) =>
+        path === locked
+          ? Promise.reject(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+          : real.readdir(path, options);
+      vi.mocked(readdir).mockImplementation(readOrRefuse as typeof readdir);
+      try {
+        expect(await gitPathsToDeny(work)).toEqual(["locked"]);
+      } finally {
+        vi.mocked(readdir).mockRestore();
+      }
+    });
 
     it("never follow a link the program put in place of a folder", async () => {
       const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
