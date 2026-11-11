@@ -138,6 +138,7 @@ export {
   type BottomNavigationPlace,
   type BottomNavigationProps,
 } from "./phone/bottom-navigation.tsx";
+export { MorePage, type MorePageProps, moreRows } from "./phone/more-page.tsx";
 export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
   currentPhonePage,

@@ -543,7 +543,28 @@ next, or the same one when nothing changed:
   navigation shows (on a place or a list, never on an opened item), and `currentPhonePage` gives
   the page whose title the top bar shows.
 
-The bars themselves, the More page and Android's back come next.
+### The More page
+
+`MorePage` (`shell.more-page`, component specs 15.2) is the page at the top of More. It shows the
+workspace switcher row ("Workspace: Acme. Change workspace", which opens T3's picker sheet), the
+header badge on its own line when there is one, a flush List of the places that live under More,
+in the sidebar's order and only where a feature added them, and the line "Editing workflows is
+easier on a computer.". Changes shows its count in place of the chevron. The top bar says "More",
+so the page's `h1` is for screen readers only.
+
+```tsx
+<MorePage
+  workspace={{ name: "Acme", folder: "~/Work/acme" }}
+  onChangeWorkspace={openWorkspacePicker}
+  places={shownPlaces}
+  onOpen={(place) =>
+    setStacks(openPhonePage(stacks, { key: place, title: placeNames[place].label }, { list: true }))
+  }
+/>;
+```
+
+Not yet: Settings joins the list when T11 adds it with its icon, and Android's back (through the
+close stack, then `goBackOnPhone`) comes next.
 
 ## Item page
 

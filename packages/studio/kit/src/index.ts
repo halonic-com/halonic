@@ -121,6 +121,7 @@ export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export { AlertIcon } from "./icons/alert-icon.tsx";
 export { BackIcon } from "./icons/back-icon.tsx";
 export { ChevronDownIcon } from "./icons/chevron-down-icon.tsx";
+export { ChevronRightIcon } from "./icons/chevron-right-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
