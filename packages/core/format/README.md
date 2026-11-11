@@ -89,6 +89,8 @@ not here.
   (`HOST_PATTERN`, `MAX_TIMEOUT_MS` and the like) are exported with them.
 - Plugins: `Plugin`, `checkPlugin`, `backendSheet` and `pluginFromIntegrationSheet` read and check
   a `plugin.yaml` and convert a plugin's backend to and from an integration sheet.
+  A plugin's id is at most 48 characters and a secret it declares at most 64, so the name the app
+  keeps the secret under fits the `Secrets` port's 128.
 - The types of each kind's value (`Agent`, `Workflow`, `Routine` and so on) and `Guard`.
 
 ## Spec files
