@@ -15,40 +15,40 @@ counts as breaking. A breaking change bumps the version and comes with an
 ADR (see [the port list ADR](../../../docs/adr/2026-11-07-port-list-and-versions.md)).
 Every adapter for a port passes its contract suite in `packages/testing/contracts`.
 
-| Port                      | File                            | Version | What it does                                                                                          | Contract suite                                           |
-| ------------------------- | ------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `AgentPlacementStore`     | `agent-placement-store.ts`      | 1       | each agent's "this computer" choice in the user's profile; `AgentPlacement` decides                   | `agent-placement-store`                                  |
-| `BlobStore`               | `blob-store.ts`                 | 1       | content-addressed bytes: attachments, large payloads, exports                                         | `blob-store`                                             |
-| `Clock`                   | `clock.ts`                      | 1       | the current time                                                                                      | `clock`                                                  |
-| `ConnectionSettingsStore` | `connection-settings-store.ts`  | 1       | each connector's "allow sending" setting in the user's profile; `ConnectionSettings` decides          | `connection-settings-store`                              |
-| `ConnectorClient`         | `connector-client.ts`           | 1       | connector tools (MCP over HTTP or stdio, built-in Google), and their factory                          | `connector-client`                                       |
-| `Coordination`            | `coordination.ts`               | 1       | leases, compare-and-set values, counters and windowed counts                                          | `coordination`                                           |
-| `DefinitionStore`         | `definition-store.ts`           | 2       | the workspace files; `DefinitionSource` is its read-only side                                         | `definition-store`                                       |
-| `Digest`                  | `digest.ts`                     | 1       | SHA-256 from the platform's WebCrypto                                                                 | `digest` (with first adapter)                            |
-| `FolderReader`            | `folder-reader.ts`              | 1       | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins  | `folder-reader`                                          |
-| `Harness`                 | `harness.ts`                    | 2       | what drives an agent (Halonic, Claude Code, Codex): detect it, start it, answer it, cancel it         | `harness` (with first adapter)                           |
-| `HarnessBridgeServer`     | `harness-bridge-server.ts`      | 1       | opens one run's bridge: model requests to the provider, Halonic's tools and approvals over MCP        | `harness-bridge-server` (with first adapter)             |
-| `HttpClient`              | `http-client.ts`                | 1       | outbound HTTP, replaces `FetchLike`                                                                   | `http-client` (with first adapter)                       |
-| `IdGenerator`             | `id-generator.ts`               | 1       | unique ids                                                                                            | `id-generator`                                           |
-| `Integration`             | `integration.ts`                | 1       | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens       | `integration` (own package)                              |
-| `KnowledgeProvider`       | `knowledge-provider.ts`         | 1       | knowledge sources agents search and read, and their factory                                           | `knowledge-provider`                                     |
-| `LlmCache`                | `llm-cache.ts`                  | 1       | model answers reused by simulation re-runs                                                            | `llm-cache` (with first adapter)                         |
-| `LlmProvider`             | `llm-provider.ts`               | 1       | model providers, and their factory                                                                    | `llm-provider`, `llm-stream`                             |
-| `PasswordHasher`          | `password-hasher.ts`            | 1       | hash and check the sign-in password                                                                   | `password-hasher` (with first adapter)                   |
-| `PluginFolderWriter`      | `plugin-folder-writer.ts`       | 1       | places and removes whole plugin folders in the profile's plugins folder, never through a link         | `plugin-folder-writer`                                   |
-| `ProgramProbe`            | `program-probe.ts`              | 1       | finds a harness's program and asks it something short, such as its version                            | `program-probe` (with first adapter)                     |
-| `RecordStore`             | `record-store.ts`               | 2       | collection records as a change log; `compact` drops overwritten and removed values                    | `record-store`                                           |
-| `ResourceProbe`           | `resource-probe.ts`             | 1       | the engine's memory, the processes it started, a folder's size and free disk space                    | `resource-probe`                                         |
-| `RunExecutor`             | `run-executor.ts`               | 1       | start, send events, stream them, cancel (optional), chat turns; replaces `Runtime` and `RunHost`      | `run-executor` (with the engine)                         |
-| `RunStore`                | `run-store.ts`                  | 1       | run event logs (append with a sequence check) and run summaries                                       | `run-store`                                              |
-| `Sandbox`                 | `sandbox.ts`                    | 5       | runs programs in a fence and reports blocked accesses; its profile is Halonic's own format            | `sandbox` (check; sessions with HAL-193)                 |
-| `Scheduler`               | `scheduler.ts`                  | 1       | run timers and the routine tick; timers may arrive late or twice                                      | `scheduler`                                              |
-| `Secrets`                 | `secrets.ts`                    | 1       | configured secrets, read-only                                                                         | `secrets`                                                |
-| `TokenStore`              | `token-store.ts`                | 1       | secrets the server writes itself, such as refresh tokens                                              | `token-store`                                            |
-| `ToolApprovalStore`       | `tool-approval-store.ts`        | 1       | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter)               |
-| `TrustStore`              | `trust-store.ts`                | 1       | trust records in the user's profile, by location and fingerprint; `TrustService` decides              | `trust-store`                                            |
-| `UnfencedRunConsentStore` | `unfenced-run-consent-store.ts` | 1       | the user's yes to run plugin and integration code without the sandbox; `UnfencedRuns` decides         | `unfenced-run-consent-store`                             |
-| `Vcs`                     | `vcs.ts`                        | 2       | version control of the workspace folder                                                               | `vcs`, `vcs-safety`, `vcs-hardened` (with first adapter) |
+| Port | File | Version | What it does | Contract suite |
+| --- | --- | --- | --- | --- |
+| `AgentPlacementStore` | `agent-placement-store.ts` | 1 | each agent's "this computer" choice in the user's profile; `AgentPlacement` decides | `agent-placement-store` |
+| `BlobStore` | `blob-store.ts` | 1 | content-addressed bytes: attachments, large payloads, exports | `blob-store` |
+| `Clock` | `clock.ts` | 1 | the current time | `clock` |
+| `ConnectionSettingsStore` | `connection-settings-store.ts` | 1 | each connector's "allow sending" setting in the user's profile; `ConnectionSettings` decides | `connection-settings-store` |
+| `ConnectorClient` | `connector-client.ts` | 1 | connector tools (MCP over HTTP or stdio, built-in Google), and their factory | `connector-client` |
+| `Coordination` | `coordination.ts` | 1 | leases, compare-and-set values, counters and windowed counts | `coordination` |
+| `DefinitionStore` | `definition-store.ts` | 2 | the workspace files; `DefinitionSource` is its read-only side | `definition-store` |
+| `Digest` | `digest.ts` | 1 | SHA-256 from the platform's WebCrypto | `digest` (with first adapter) |
+| `FolderReader` | `folder-reader.ts` | 1 | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins | `folder-reader` |
+| `Harness` | `harness.ts` | 2 | what drives an agent (Halonic, Claude Code, Codex): detect it, start it, answer it, cancel it | `harness` (with first adapter) |
+| `HarnessBridgeServer` | `harness-bridge-server.ts` | 1 | opens one run's bridge: model requests to the provider, Halonic's tools and approvals over MCP | `harness-bridge-server` (with first adapter) |
+| `HttpClient` | `http-client.ts` | 1 | outbound HTTP, replaces `FetchLike` | `http-client` (with first adapter) |
+| `IdGenerator` | `id-generator.ts` | 1 | unique ids | `id-generator` |
+| `Integration` | `integration.ts` | 1 | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens | `integration` (own package) |
+| `KnowledgeProvider` | `knowledge-provider.ts` | 1 | knowledge sources agents search and read, and their factory | `knowledge-provider` |
+| `LlmCache` | `llm-cache.ts` | 1 | model answers reused by simulation re-runs | `llm-cache` (with first adapter) |
+| `LlmProvider` | `llm-provider.ts` | 1 | model providers, and their factory | `llm-provider`, `llm-stream` |
+| `PasswordHasher` | `password-hasher.ts` | 1 | hash and check the sign-in password | `password-hasher` (with first adapter) |
+| `PluginFolderWriter` | `plugin-folder-writer.ts` | 1 | places and removes whole plugin folders in the profile's plugins folder, never through a link | `plugin-folder-writer` |
+| `ProgramProbe` | `program-probe.ts` | 1 | finds a harness's program and asks it something short, such as its version | `program-probe` (with first adapter) |
+| `RecordStore` | `record-store.ts` | 2 | collection records as a change log; `compact` drops overwritten and removed values | `record-store` |
+| `ResourceProbe` | `resource-probe.ts` | 1 | the engine's memory, the processes it started, a folder's size and free disk space | `resource-probe` |
+| `RunExecutor` | `run-executor.ts` | 1 | start, send events, stream them, cancel (optional), chat turns; replaces `Runtime` and `RunHost` | `run-executor` (with the engine) |
+| `RunStore` | `run-store.ts` | 1 | run event logs (append with a sequence check) and run summaries | `run-store` |
+| `Sandbox` | `sandbox.ts` | 5 | runs programs in a fence and reports blocked accesses; its profile is Halonic's own format | `sandbox` (check; sessions with HAL-193) |
+| `Scheduler` | `scheduler.ts` | 1 | run timers and the routine tick; timers may arrive late or twice | `scheduler` |
+| `Secrets` | `secrets.ts` | 1 | configured secrets, read-only | `secrets` |
+| `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
+| `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
+| `TrustStore` | `trust-store.ts` | 1 | trust records in the user's profile, by location and fingerprint; `TrustService` decides | `trust-store` |
+| `UnfencedRunConsentStore` | `unfenced-run-consent-store.ts` | 1 | the user's yes to run plugin and integration code without the sandbox; `UnfencedRuns` decides | `unfenced-run-consent-store` |
+| `Vcs` | `vcs.ts` | 2 | version control of the workspace folder | `vcs`, `vcs-safety`, `vcs-hardened` (with first adapter) |
 
 Suites marked "with first adapter" come with the first real adapter for
 that port, and "with the engine" with the engine. The others are written
@@ -89,22 +89,22 @@ with `isCantTryError`.
 Some port rules are code, not only text, so that every adapter applies the same one. They are exported
 next to the ports:
 
-| Export                                                                                                                             | What it does                                                                                                                                                                                       | Requirement                                                     |
-| ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `isSecretName`, `secretKey`, `isQuotableSecretName`, `describeSecretName`                                                          | the `Secrets` name rule: a letter, then letters, digits, `-` or `_`, at most 128 characters; `secretKey` gives the matching form (upper case, `-` as `_`) and throws a `RangeError` for a bad name | `secret-name-rule`                                              |
-| `workspaceSecrets`, `halonicSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets, token names and plugin secrets                                                                              | `workspace-secrets`                                             |
-| `checkWorkspacePath`, `checkPublicWorkspacePath`, `isPrivateWorkspacePath`                                                         | the path rules of `DefinitionSource`: refuse unsafe paths, and private ones for the public check                                                                                                   | `workspace-path-checks`                                         |
-| `segmentAsOpened`                                                                                                                  | a path segment as the private-entry rule compares names: without the code points HFS+ ignores, case folded, without trailing dots and spaces                                                       | `segment-as-opened`                                             |
-| `checkRunAppend`, `matchesRunFilter`, `startedAtOrAfter`, `compareRunSummaries`, `runLockFormat`, `runLockStaleAfterMs`            | the append checks, list filter (`startedAtOrAfter` compares two ISO times as times), order and lock rules of `RunStore`                                                                            | `run-store-checks`                                              |
-| `foldRecords`, `compactedChanges`                                                                                                  | fold record changes into the current records, and into one `seed` each when compacting                                                                                                             | `record-fold`                                                   |
-| `checkCommitId`                                                                                                                    | refuses any `Vcs` version that is not a full commit id, with a `RangeError`                                                                                                                        | `vcs-commit-ref`                                                |
-| `isAgentPlacementFor`                                                                                                              | whether a stored agent placement is valid for its key                                                                                                                                              | `agent-placement-store`                                         |
-| `isUnreadableToolApprovalError`, `maxWaitingVersions`                                                                              | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept                                                                                       | `listed-tool-approval`                                          |
-| `priceOf`                                                                                                                          | what a model call costs from a `ModelPrice` and the tokens used                                                                                                                                    | `model-price`                                                   |
-| `addHarnessEnvironment`, `harnessBridgeTokenHeader`                                                                                | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token                                                                               | `harness-environment`                                           |
-| `bridgeCallCharge`                                                                                                                 | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour                                                                 | `harness-bridge-server`                                         |
-| `maxIntegrationWaitMs`                                                                                                             | the longest `IntegrationHost.wait`, 30 seconds                                                                                                                                                     | `integration-host`                                              |
-| `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons`                                                            | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason`                                                                                                           | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
+| Export | What it does | Requirement |
+| --- | --- | --- |
+| `isSecretName`, `secretKey`, `isQuotableSecretName`, `describeSecretName` | the `Secrets` name rule: a letter, then letters, digits, `-` or `_`, at most 128 characters; `secretKey` gives the matching form (upper case, `-` as `_`) and throws a `RangeError` for a bad name | `secret-name-rule` |
+| `workspaceSecrets`, `halonicSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets, token names and plugin secrets | `workspace-secrets` |
+| `checkWorkspacePath`, `checkPublicWorkspacePath`, `isPrivateWorkspacePath` | the path rules of `DefinitionSource`: refuse unsafe paths, and private ones for the public check | `workspace-path-checks` |
+| `segmentAsOpened` | a path segment as the private-entry rule compares names: without the code points HFS+ ignores, case folded, without trailing dots and spaces | `segment-as-opened` |
+| `checkRunAppend`, `matchesRunFilter`, `startedAtOrAfter`, `compareRunSummaries`, `runLockFormat`, `runLockStaleAfterMs` | the append checks, list filter (`startedAtOrAfter` compares two ISO times as times), order and lock rules of `RunStore` | `run-store-checks` |
+| `foldRecords`, `compactedChanges` | fold record changes into the current records, and into one `seed` each when compacting | `record-fold` |
+| `checkCommitId` | refuses any `Vcs` version that is not a full commit id, with a `RangeError` | `vcs-commit-ref` |
+| `isAgentPlacementFor` | whether a stored agent placement is valid for its key | `agent-placement-store` |
+| `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
+| `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
+| `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |
+| `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
+| `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
+| `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 
 The types these use (`RunFilter`, `RecordChange`, `ToolCall` and the rest) are exported from
 `src/index.ts` and documented where they are declared.

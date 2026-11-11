@@ -34,8 +34,8 @@ halonic-agent-host <unpacked program> [arguments]
 
 With `--version` the host prints its version. Without any of these, it serves (below). The two sandbox commands print one JSON line, and exit with 0 when it says `ok` and 1 when it doesn't, so an installer can go by the exit code alone:
 
-| Command           | Prints                                                                                         |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
+| Command | Prints |
+| --- | --- |
 | `--sandbox-check` | whether the sandbox works on this machine: `{"ok":true,"reason":null,"missing":[]}`, or `ok` false with the reason and what is missing |
 | `--sandbox-setup` | `{"ok":true}` once the one-time setup worked and the sandbox check passes, or `{"ok":false,"reason":"<one line>"}` |
 

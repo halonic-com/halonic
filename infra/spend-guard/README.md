@@ -12,11 +12,11 @@ network, no spend). Nothing here is a pnpm package; it is deployed through the C
 KV namespace **`halonic-spend-guard`**, ID **`646a6e2ba633475da4ecf9502cd8ce25`** (account
 `346227c5febeb134aaf2cee24096499b`).
 
-| Key                  | Value        | Meaning                                                                                |
-| -------------------- | ------------ | -------------------------------------------------------------------------------------- |
-| `spend_ok`           | `on` / `off` | Account-wide switch                                                                    |
-| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`)                                           |
-| `state`              | JSON         | Month, estimated cost per product and service, last good read, and `offBy` (see below) |
+| Key | Value | Meaning |
+| --- | --- | --- |
+| `spend_ok` | `on` / `off` | Account-wide switch |
+| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`) |
+| `state` | JSON | Month, estimated cost per product and service, last good read, and `offBy` (see below) |
 
 `state.offBy` is `auto` only while the guard itself holds the switch off (`offReason` is `limit` or `no-usage`); `serviceOff.<service>.by` works the same way. A **manual** stop is a `spend_ok` set to `off` by hand: the guard never writes it, so `offBy` stays absent. That is how the month reset tells them apart: it undoes `auto` stops and leaves manual ones. When the guard sees `spend_ok` back on while `offBy` is set, it logs "manual resume noticed" and clears `offBy`.
 
@@ -62,14 +62,14 @@ if (!(await checkSpend(env, "render"))) return spendOffResponse(); // 503
 
 No new Cloudflare product goes live before it is on this list and priced in `src/pricing.mjs` and `src/usage.mjs`.
 
-| Product                 | In use            | Read from                                                                 | Notes                                                                                                                                                   |
-| ----------------------- | ----------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workers (requests, CPU) | yes               | `workersInvocationsAdaptive`                                              | plan fee $5 included                                                                                                                                    |
-| R2 (storage, Class A/B) | yes               | `r2StorageAdaptiveGroups`, `r2OperationsAdaptiveGroups`                   | storage = peak size × elapsed part of month (high estimate)                                                                                             |
-| KV                      | yes               | `kvOperationsAdaptiveGroups`, `kvStorageAdaptiveGroups`                   |                                                                                                                                                         |
-| Workers AI              | no                | `aiInferenceAdaptiveGroups`                                               | read anyway                                                                                                                                             |
+| Product | In use | Read from | Notes |
+| --- | --- | --- | --- |
+| Workers (requests, CPU) | yes | `workersInvocationsAdaptive` | plan fee $5 included |
+| R2 (storage, Class A/B) | yes | `r2StorageAdaptiveGroups`, `r2OperationsAdaptiveGroups` | storage = peak size × elapsed part of month (high estimate) |
+| KV | yes | `kvOperationsAdaptiveGroups`, `kvStorageAdaptiveGroups` |  |
+| Workers AI | no | `aiInferenceAdaptiveGroups` | read anyway |
 | Durable Objects | yes (HAL-3083) | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | `activeTime` µs × 0.125 GB; counted in the render sub-budget |
-| Containers | yes (HAL-3083) | `containersUsageAdaptiveGroups`                                           | Units checked 11 Nov 2026 against real data: `cpuTimeSec` = vCPU-s, `allocatedMemory` = bytes×s (÷2³⁰ → GiB-s), `allocatedDisk` = bytes×s (÷10⁹ → GB-s). Counted in the render sub-budget |
+| Containers | yes (HAL-3083) | `containersUsageAdaptiveGroups` | Units checked 11 Nov 2026 against real data: `cpuTimeSec` = vCPU-s, `allocatedMemory` = bytes×s (÷2³⁰ → GiB-s), `allocatedDisk` = bytes×s (÷10⁹ → GB-s). Counted in the render sub-budget |
 
 Flip `live` in `src/usage.mjs` in the same pull request that ships the product (done for Containers and Durable Objects with HAL-3083). Any product not on the list (Queues, D1, Vectorize, Images, Stream, Browser Rendering...) is not covered.
 
@@ -94,10 +94,10 @@ account's billing cycle starts on another day, the estimate can be high or low b
 
 Measured on 10 Nov 2026 by sending requests to `halonic-turbo-cache` and polling GraphQL (`workersInvocationsAdaptive`, per-minute rows):
 
-| Sent                   | First visible in GraphQL                                   |
-| ---------------------- | ---------------------------------------------------------- |
-| 3 requests at 09:19:41 | within 61 s (not yet at 22 s)                              |
-| 1 request at 09:20:49  | between 33 s and 125 s (not yet at 33 s, present at 125 s) |
+| Sent | First visible in GraphQL |
+| --- | --- |
+| 3 requests at 09:19:41 | within 61 s (not yet at 22 s) |
+| 1 request at 09:20:49 | between 33 s and 125 s (not yet at 33 s, present at 125 s) |
 
 So analytics lag is **about 1 to 2 minutes**. Billing-side lag (invoices, the dashboard's billing page) can be hours, which is why the guard prices
 analytics quantities itself instead of waiting for billed amounts. KV propagation to the edge adds up to 60 s (cache TTL).

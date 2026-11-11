@@ -20,26 +20,26 @@ registry (such as `ServiceRegistry` from `@halonicjs/app`), in dependency order.
 look up services its feature lists in `needs` or `provides`; a service of its own feature is built
 first, and a cycle between them throws a `ShellError`.
 
-| Part                            | What it does                                               | Requirement               |
-| ------------------------------- | ---------------------------------------------------------- | ------------------------- |
-| `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry`  |
-| `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
-| `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
-| `WindowTabStrip`                | the window tabs in the title bar, one Tab stop             | `shell.window-tab-strip`  |
-| `hintKeys`                      | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform     | `shell.key-hints`         |
-| `TabPages`                      | the last 5 tabs' pages kept mounted, focus given back      | `shell.tab-pages`         |
-| `ShellFrame`                    | the window's frame: layers, live regions, Esc, toasts      | `shell.frame`             |
-| `StatusBarItems`                | the status bar's items, state only                         | `shell.status-bar`        |
-| `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
-| `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
-| `Toolbar`                       | Back and Forward, the path, the badges and the save state  | `shell.toolbar`           |
-| `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
-| `EngineLine`                    | the one line while the engine isn't answering              | `shell.engine-line`       |
-| `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
-| `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
-| `SaveState`                     | the toolbar's save note and the failed-save toast          | `shell.save-state`        |
-| `ToolbarSaveNote`               | the save note in the toolbar, and what it reads out        | `shell.save-note`         |
-| `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
+| Part | What it does | Requirement |
+| --- | --- | --- |
+| `defineFeature`, `createShell` | register features in dependency order; refuse bad graphs | `shell.feature-registry` |
+| `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services` |
+| `TabSet` | a workspace's window tabs, each with Back and Forward | `shell.tab-set` |
+| `WindowTabStrip` | the window tabs in the title bar, one Tab stop | `shell.window-tab-strip` |
+| `hintKeys` | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform | `shell.key-hints` |
+| `TabPages` | the last 5 tabs' pages kept mounted, focus given back | `shell.tab-pages` |
+| `ShellFrame` | the window's frame: layers, live regions, Esc, toasts | `shell.frame` |
+| `StatusBarItems` | the status bar's items, state only | `shell.status-bar` |
+| `shell.announcer` | read text to screen readers, once per window | `shell.announcer` |
+| `shell.closeStack` | close the right layer on Esc and Android's Back | `shell.close-stack` |
+| `Toolbar` | Back and Forward, the path, the badges and the save state | `shell.toolbar` |
+| `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
+| `EngineLine` | the one line while the engine isn't answering | `shell.engine-line` |
+| `shell.engine.supervise` | start the engine, restart it once, report why it failed | `shell.engine-start` |
+| `saveFailureFor` | turn a write error into a save reason | `shell.save-reasons` |
+| `SaveState` | the toolbar's save note and the failed-save toast | `shell.save-state` |
+| `ToolbarSaveNote` | the save note in the toolbar, and what it reads out | `shell.save-note` |
+| `watchResources` | read the engine's resource numbers, flag a low disk | `shell.resource-numbers` |
 
 The shell adds Home itself. The other sidebar places come from features through `places.add`,
 naming one of the fixed places (`sidebarPlaces`: Home, Inbox, Agents, Workflows, Routines, Library,
@@ -568,22 +568,22 @@ An engine that never answered isn't announced: the page that needed it shows "Co
 with `shell.engine.words.notAnswering` as the reason. The words follow `createShell`'s `host`
 (microcopy 2 and 19.2):
 
-| `host`        | `notAnswering`, the reason                            | `showingLast`, the line and the announcement                         | `answeringAgain`               |
-| ------------- | ----------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------ |
-| `desktop-app` | The engine isn't answering. It may still be starting. | The engine isn't answering. Showing what it said last.               | The engine is answering again. |
-| `served`      | Halonic on the server isn't answering.                | Halonic on the server isn't answering. Showing what it said last.    | Halonic is answering again.    |
-| `phone`       | Halonic on your computer isn't answering.             | Halonic on your computer isn't answering. Showing what it said last. | Halonic is answering again.    |
+| `host` | `notAnswering`, the reason | `showingLast`, the line and the announcement | `answeringAgain` |
+| --- | --- | --- | --- |
+| `desktop-app` | The engine isn't answering. It may still be starting. | The engine isn't answering. Showing what it said last. | The engine is answering again. |
+| `served` | Halonic on the server isn't answering. | Halonic on the server isn't answering. Showing what it said last. | Halonic is answering again. |
+| `phone` | Halonic on your computer isn't answering. | Halonic on your computer isn't answering. Showing what it said last. | Halonic is answering again. |
 
 On the desktop the app starts the engine process instead: it hands an `EngineLauncher` to
 `shell.engine.supervise(launcher)`. The shell sends `starting { attempt, since }` at once, then
 `connected` when the engine answers. A start that fails sends `failed { failure }` with one of
 three reasons, and the shell doesn't try again by itself:
 
-| Reason                     | When                                          |
-| -------------------------- | --------------------------------------------- |
-| `stopped-while-starting`   | the process ended first; `exitCode` is kept   |
-| `no-answer`                | no answer within 30 s; the process is stopped |
-| `data-folder-not-writable` | the engine reported it can't write its data   |
+| Reason | When |
+| --- | --- |
+| `stopped-while-starting` | the process ended first; `exitCode` is kept |
+| `no-answer` | no answer within 30 s; the process is stopped |
+| `data-folder-not-writable` | the engine reported it can't write its data |
 
 The engine's last log lines go to the log, not into the event. A running engine that stops sends
 `lost` and is started again once, 2 s later, as attempt 2 with `lastExitCode`. If it stops again

@@ -51,11 +51,11 @@ Code that needs a value outside CSS (a canvas, a code editor theme) reads the CS
 Each colour is written once as `light-dark(light, dark)`, so there are no `dark:` classes. The
 mode comes from `color-scheme`:
 
-| On `<html>`          | Mode                         |
-| -------------------- | ---------------------------- |
-| nothing              | follows the system setting   |
+| On `<html>` | Mode |
+| --- | --- |
+| nothing | follows the system setting |
 | `data-theme="light"` | always light (user override) |
-| `data-theme="dark"`  | always dark (user override)  |
+| `data-theme="dark"` | always dark (user override) |
 
 **Minimum webviews**, because `light-dark()` needs them: WebKit from Safari 17.5 (WebKitGTK 2.44 on
 Linux), Chromium 123 (WebView2 on Windows, Android WebView) and Firefox 120. If that turns out too
@@ -64,22 +64,22 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 
 ## What the tokens give you
 
-| Token                                                    | Classes                                           |
-| -------------------------------------------------------- | ------------------------------------------------- |
-| `--color-*`                                              | `bg-surface`, `border-border`, `text-fg-muted`    |
-| `--text-*` (size, line height and weight together)       | `text-caption` … `text-display`, `text-code`      |
-| `--spacing` (a 4px grid)                                 | `p-4` = 16px, `gap-2` = 8px                       |
-| `--spacing-control-*`, `-titlebar`, `-statusbar`, others | `h-control-md`, `h-statusbar`, `w-sidebar`        |
-| `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
-| the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
-| the halo on a start screen                               | `bg-halo-spot`, `shadow-halo-glow`                |
-| a hovered window tab, over the frame                     | `bg-tab-hover`                                    |
-| the workflow canvas                                      | `bg-canvas-grid`                                  |
-| the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
-| a selected row's mark                                    | `selected-bar`, `selected-forced`                 |
-| Windows high-contrast mode only                          | `text-forced-disabled`                            |
-| `--breakpoint-wide`                                      | `wide:`, `max-wide:` (compact)                    |
-| `--duration-*`, `--layer-*` (plain variables)            | `duration-(--duration-base)`, `z-(--layer-toast)` |
+| Token | Classes |
+| --- | --- |
+| `--color-*` | `bg-surface`, `border-border`, `text-fg-muted` |
+| `--text-*` (size, line height and weight together) | `text-caption` … `text-display`, `text-code` |
+| `--spacing` (a 4px grid) | `p-4` = 16px, `gap-2` = 8px |
+| `--spacing-control-*`, `-titlebar`, `-statusbar`, others | `h-control-md`, `h-statusbar`, `w-sidebar` |
+| `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter` |
+| the halo | `bg-halo-frame`, `-tint`, `-wash`, `-line` |
+| the halo on a start screen | `bg-halo-spot`, `shadow-halo-glow` |
+| a hovered window tab, over the frame | `bg-tab-hover` |
+| the workflow canvas | `bg-canvas-grid` |
+| the focus ring (keyboard focus only) | `focus-ring`, `focus-ring-inset` for list rows |
+| a selected row's mark | `selected-bar`, `selected-forced` |
+| Windows high-contrast mode only | `text-forced-disabled` |
+| `--breakpoint-wide` | `wide:`, `max-wide:` (compact) |
+| `--duration-*`, `--layer-*` (plain variables) | `duration-(--duration-base)`, `z-(--layer-toast)` |
 
 ## The halo on a start screen
 
@@ -95,14 +95,14 @@ utilities follow. The four presets keep every text colour at 4.5:1 on the spot a
 
 `theme-agent-pages.css` holds plain variables, so Tailwind makes no classes from them:
 
-| Variable                             | What it's for                                                              |
-| ------------------------------------ | -------------------------------------------------------------------------- |
-| `--character-1a` … `--character-5b`  | The agent orb's five colour pairs (halo, lagoon, ember, moss, orchid)      |
-| `--stack-gap`                        | How far the stack of cards sits in from the side panel's edges (16px)      |
-| `--stack-peek`, `--stack-inset`      | Each stacked card behind sits 10px higher and 12px narrower on each side   |
-| `--stack-shade-1`, `--stack-shade-2` | The fill of the card one behind, and of the cards two or more behind       |
-| `--stack-scrim`                      | Over the view under a stack of full cards; lighter than a dialog's overlay |
-| `--canvas-grid-dot`                  | The canvas's dots, only through `bg-canvas-grid`                           |
+| Variable | What it's for |
+| --- | --- |
+| `--character-1a` … `--character-5b` | The agent orb's five colour pairs (halo, lagoon, ember, moss, orchid) |
+| `--stack-gap` | How far the stack of cards sits in from the side panel's edges (16px) |
+| `--stack-peek`, `--stack-inset` | Each stacked card behind sits 10px higher and 12px narrower on each side |
+| `--stack-shade-1`, `--stack-shade-2` | The fill of the card one behind, and of the cards two or more behind |
+| `--stack-scrim` | Over the view under a stack of full cards; lighter than a dialog's overlay |
+| `--canvas-grid-dot` | The canvas's dots, only through `bg-canvas-grid` |
 
 Only the orb reads the character colours: an agent's pair comes from its `character.colors`, or is
 picked from its id. They're the same in light and dark and don't follow a frame colour preset. Each
@@ -218,17 +218,17 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 <Button variant="ghost" icon={<CloseIcon />} label="Close Support reply" onClick={close} />;
 ```
 
-| Prop          | What it is                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------------ |
-| `variant`     | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
-| `size`        | `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet    |
-| `block`       | Full width                                                                                       |
-| `icon`        | A 16px icon before the label. With `label` and no children, the button is a square icon button   |
-| `label`       | An icon button's name, saying what and which: "Close Support reply", never just "Close"          |
-| `busy`        | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored          |
-| `busyLabel`   | The label while busy ("Creating…"). Both labels share one cell, so the width never changes       |
-| `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now            |
-| `type`        | `submit` only for a form's confirming button                                                     |
+| Prop | What it is |
+| --- | --- |
+| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
+| `size` | `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
+| `block` | Full width |
+| `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
+| `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
+| `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
+| `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
+| `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now |
+| `type` | `submit` only for a form's confirming button |
 
 **There's no `disabled` prop.** A disabled button drops out of the Tab order, so someone on a
 keyboard loses their place and never hears why. A button that can't be used takes
@@ -241,14 +241,14 @@ only in a tooltip.
 <p id="updates-reason">Finish getting updates first.</p>;
 ```
 
-| State       | What shows                                                                                          |
-| ----------- | --------------------------------------------------------------------------------------------------- |
-| Default     | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger` fill       |
-| Hover       | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-hover`; a press the same |
-| Focus       | The standard focus ring                                                                             |
-| Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it                      |
-| Busy        | The spinner in the icon's place (in front of the label when there's no icon); the label stays       |
-| Error       | None: a failed action shows a toast or a field error, never a red button                            |
+| State | What shows |
+| --- | --- |
+| Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger` fill |
+| Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-hover`; a press the same |
+| Focus | The standard focus ring |
+| Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it |
+| Busy | The spinner in the icon's place (in front of the label when there's no icon); the label stays |
+| Error | None: a failed action shows a toast or a field error, never a red button |
 
 **On a phone and on a touch screen** (`phone:` and `touch:`), `sm` and `md` render at `lg` (40px),
 and every size gets a 48px hit area (`hit-touch`), drawn round the button so its look doesn't
@@ -271,13 +271,13 @@ card.
 <Card onClick={openRoutine}>…</Card>;
 ```
 
-| Prop      | What it is                                                                                   |
-| --------- | -------------------------------------------------------------------------------------------- |
-| `title`   | The header's title in `text-section`, a heading (`headingLevel`, 3 by default)               |
-| `label`   | Instead of a title: a small caption label in capitals, such as the routine's When and Starts |
-| `actions` | On the right of the header: `sm` ghost buttons or a switch. Only with a `title` or `label`   |
+| Prop | What it is |
+| --- | --- |
+| `title` | The header's title in `text-section`, a heading (`headingLevel`, 3 by default) |
+| `label` | Instead of a title: a small caption label in capitals, such as the routine's When and Starts |
+| `actions` | On the right of the header: `sm` ghost buttons or a switch. Only with a `title` or `label` |
 | `onClick` | The whole card is one `<button>`: no header, nothing clickable, only phrasing content inside |
-| `state`   | `disabled` for a Paused or Not connected card, which still says why; `error`                 |
+| `state` | `disabled` for a Paused or Not connected card, which still says why; `error` |
 
 A card with a title or a label is a `<section>` named by it. Write the label in sentence case
 ("When"): CSS draws the capitals, so a screen reader says the word, not the letters. An empty
@@ -287,13 +287,13 @@ in an unnamed `<div>`.
 Inside an interactive card put only phrasing content: text, `<span>`s and icons, never a `<div>`,
 `<p>` or heading, because it all sits inside a `<button>`.
 
-| State    | What shows                                                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------- |
-| Default  | `surface`, a 1px `border` edge, a 12px radius, no shadow                                                |
-| Hover    | Only an interactive card: a `border-strong` edge (an error card keeps its `danger` edge) and `shadow-1` |
-| Focus    | Only an interactive card: the standard focus ring                                                       |
-| Disabled | Title or label in `fg-disabled` (no header: the whole box), no hover. Still opens, to say why           |
-| Error    | A `danger` edge. The card's content says what failed, with a way to open it                             |
+| State | What shows |
+| --- | --- |
+| Default | `surface`, a 1px `border` edge, a 12px radius, no shadow |
+| Hover | Only an interactive card: a `border-strong` edge (an error card keeps its `danger` edge) and `shadow-1` |
+| Focus | Only an interactive card: the standard focus ring |
+| Disabled | Title or label in `fg-disabled` (no header: the whole box), no hover. Still opens, to say why |
+| Error | A `danger` edge. The card's content says what failed, with a way to open it |
 
 **On a phone** cards are rare: lists are flush instead. An interactive card shows the
 `surface-subtle` fill while pressed and has no hover.
@@ -323,35 +323,35 @@ screen unmounts it to close it.
 }
 ```
 
-| Prop          | What it is                                                                            |
-| ------------- | ------------------------------------------------------------------------------------- |
-| `title`       | The dialog's name, in `text-heading`                                                  |
-| `size`        | `sm` 440px (the default), `md` 560px for a form with hints, `lg` 720px for Settings   |
-| `height`      | A fixed height in px instead of one that follows the content (Settings: 640). Desktop |
-| `flush`       | No body padding, for a body that lays out and scrolls its own columns                 |
-| `form`        | The body is a form: the confirming button submits it, focus starts in the first field |
-| `confirm`     | `{ label, variant?, busyLabel, unavailable? }`: "Delete agent", `primary` or `danger` |
-| `onConfirm`   | The confirming button or a submit. Clear `error` first, then check the fields         |
-| `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now"                               |
-| `onCancel`    | Cancel, the ✕, Escape and the overlay. The screen unmounts the Dialog                 |
-| `closeButton` | `false` removes the ✕, for a decision whose cancel button says what it does           |
-| `closeLabel`  | The ✕'s name: "Close" and the title by default, without a trailing "?"                |
-| `busy`        | The request runs: the confirming button is busy and the rest of the Dialog waits      |
-| `error`       | A failed request's message, read through the alert slot at the end of the body        |
-| `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2)                |
+| Prop | What it is |
+| --- | --- |
+| `title` | The dialog's name, in `text-heading` |
+| `size` | `sm` 440px (the default), `md` 560px for a form with hints, `lg` 720px for Settings |
+| `height` | A fixed height in px instead of one that follows the content (Settings: 640). Desktop |
+| `flush` | No body padding, for a body that lays out and scrolls its own columns |
+| `form` | The body is a form: the confirming button submits it, focus starts in the first field |
+| `confirm` | `{ label, variant?, busyLabel, unavailable? }`: "Delete agent", `primary` or `danger` |
+| `onConfirm` | The confirming button or a submit. Clear `error` first, then check the fields |
+| `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now" |
+| `onCancel` | Cancel, the ✕, Escape and the overlay. The screen unmounts the Dialog |
+| `closeButton` | `false` removes the ✕, for a decision whose cancel button says what it does |
+| `closeLabel` | The ✕'s name: "Close" and the title by default, without a trailing "?" |
+| `busy` | The request runs: the confirming button is busy and the rest of the Dialog waits |
+| `error` | A failed request's message, read through the alert slot at the end of the body |
+| `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2) |
 
 Never wider than the window less 32px nor taller than the window less 64px; the body scrolls and
 the header and footer don't. When the window is short (`short:`, under 36em), the header scrolls
 with the body and only the footer stays. It fades in over the `overlay` colour with the enter
 easing, nothing else moves.
 
-| State      | What happens                                                                                  |
-| ---------- | --------------------------------------------------------------------------------------------- |
-| Open       | Focus on the first field of a form, or on Cancel in a confirmation                            |
-| Cancel     | Escape runs the same `onCancel` as Cancel. The overlay cancels only before anything was typed |
-| Incomplete | The confirming button stays pressable; the screen shows every field error, focuses the first  |
-| Busy       | The confirming button is busy; Cancel and ✕ are unavailable; Escape and the overlay wait      |
-| Error      | `error` shows a `danger` Callout as the last thing in the body. Focus stays on the button     |
+| State | What happens |
+| --- | --- |
+| Open | Focus on the first field of a form, or on Cancel in a confirmation |
+| Cancel | Escape runs the same `onCancel` as Cancel. The overlay cancels only before anything was typed |
+| Incomplete | The confirming button stays pressable; the screen shows every field error, focuses the first |
+| Busy | The confirming button is busy; Cancel and ✕ are unavailable; Escape and the overlay wait |
+| Error | `error` shows a `danger` Callout as the last thing in the body. Focus stays on the button |
 
 **The alert slot.** The body ends in an always-mounted `role="alert"` with no box of its own, so
 screen readers know it before the error arrives and it takes no room while empty. On each attempt
@@ -443,18 +443,18 @@ broke". It's centred in the space it replaces, in a 360px column (`max-w-empty`)
 <EmptyState tone="error" title="This page stopped working" action={reload} link={copyDetails} />;
 ```
 
-| Prop              | What it is                                                                        |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `title`           | A heading in `text-section` (`headingLevel`, 2 by default)                        |
-| `description`     | One or two sentences that say what the thing is for; for an error, the reason     |
-| `icon`            | A 20px icon in `accent` on a 40px tile. Without one there's no tile               |
-| `action`          | The one primary button: `{ label, onClick, busy? }`. For an error, Try again      |
-| `secondaryAction` | An optional second way in, a secondary button. Not on an error                    |
-| `link`            | Only on a centred error: a quieter step after the button, as an inline link       |
-| `plain`           | No wash and no tile: no search results, and inside small panels                   |
-| `tone`            | `error`: the `danger` alert mark in place of the icon, and Try again as secondary |
-| `align`           | `start`, only for an error: one section of a page couldn't load                   |
-| `titleRef`        | The title, which code focuses when the last row of a list goes (23 A2)            |
+| Prop | What it is |
+| --- | --- |
+| `title` | A heading in `text-section` (`headingLevel`, 2 by default) |
+| `description` | One or two sentences that say what the thing is for; for an error, the reason |
+| `icon` | A 20px icon in `accent` on a 40px tile. Without one there's no tile |
+| `action` | The one primary button: `{ label, onClick, busy? }`. For an error, Try again |
+| `secondaryAction` | An optional second way in, a secondary button. Not on an error |
+| `link` | Only on a centred error: a quieter step after the button, as an inline link |
+| `plain` | No wash and no tile: no search results, and inside small panels |
+| `tone` | `error`: the `danger` alert mark in place of the icon, and Try again as secondary |
+| `align` | `start`, only for an error: one section of a page couldn't load |
+| `titleRef` | The title, which code focuses when the last row of a list goes (23 A2) |
 
 The title has `tabindex="-1"` and draws no ring: it's where focus goes when what had it goes away,
 not a control. The tile and the alert mark are hidden from screen readers; the title says it all.
@@ -490,15 +490,15 @@ didn't load: a Callout sits above content that's there). It has no close button.
 </Callout>;
 ```
 
-| Prop       | What it is                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------- |
-| `tone`     | `info` (also the "neutral" notices), `warning` (nothing was lost), `danger` (wasn't kept)   |
-| `title`    | Optional, in `text-body-strong`                                                             |
-| `children` | The text, in `text-small` `fg`. Links in it use the normal inline link                      |
-| `files`    | File names or paths in mono, which wrap anywhere: three, then "and N more"                  |
-| `icon`     | A 16px icon in place of the tone's own, in the tone's colour. The fill never changes        |
-| `action`   | One `{ label, onClick }`, a ghost button under the text, busy while a returned promise runs |
-| `announce` | `focus` for a Callout that appears because of something you did (below)                     |
+| Prop | What it is |
+| --- | --- |
+| `tone` | `info` (also the "neutral" notices), `warning` (nothing was lost), `danger` (wasn't kept) |
+| `title` | Optional, in `text-body-strong` |
+| `children` | The text, in `text-small` `fg`. Links in it use the normal inline link |
+| `files` | File names or paths in mono, which wrap anywhere: three, then "and N more" |
+| `icon` | A 16px icon in place of the tone's own, in the tone's colour. The fill never changes |
+| `action` | One `{ label, onClick }`, a ghost button under the text, busy while a returned promise runs |
+| `announce` | `focus` for a Callout that appears because of something you did (below) |
 
 The text is `fg`, not the tone's colour: the icon and the fill carry the tone. It wraps and is
 never cut, on both sizes. The box has a transparent 1px border, so Windows high contrast, which
@@ -529,12 +529,12 @@ click is a Button or a row, never a chip.
 </StatusChip>;
 ```
 
-| Prop    | What it is                                                                                                                       |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `tone`  | `neutral` (the default), `accent`, `running`, `warning` ("Needs you"), `danger`, `success`, and `outline` for a tag such as Test |
-| `dot`   | A still 6px dot before the word, for a live state                                                                                |
-| `shape` | `count` for the round counter on a sidebar item or a tab, with tabular figures                                                   |
-| `name`  | A count's words, required with `count`: "3 waiting". Screen readers hear them instead of the bare number                         |
+| Prop | What it is |
+| --- | --- |
+| `tone` | `neutral` (the default), `accent`, `running`, `warning` ("Needs you"), `danger`, `success`, and `outline` for a tag such as Test |
+| `dot` | A still 6px dot before the word, for a live state |
+| `shape` | `count` for the round counter on a sidebar item or a tab, with tabular figures |
+| `name` | A count's words, required with `count`: "3 waiting". Screen readers hear them instead of the bare number |
 
 Always a word or a number: the colour is never the only sign. Each coloured tone is its colour on
 its own `-soft` fill. Every chip carries a 1px see-through edge, which Windows high-contrast mode
@@ -568,15 +568,15 @@ belong to the shell.
 </Tabs>;
 ```
 
-| Prop       | What it is                                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------------ |
-| `label`    | The tab list's name: "Workflow views"                                                            |
-| `tabs`     | Each tab's `id`, full `label`, optional 16px `icon`, `count` and `disabled`                      |
-| `selected` | The selected tab's `id`. The page keeps it, so it remembers its tab while it's on the stack      |
-| `onSelect` | Called with the tab's `id` when another tab is picked                                            |
-| `fill`     | Equal parts across the column, at least 48px high. On by default on a phone, off on desktop      |
-| `sticky`   | The tabs stay at the top of the scroll area, on a `surface` fill, so their counters stay in view |
-| `children` | The selected tab's view, inside the one `tabpanel`                                               |
+| Prop | What it is |
+| --- | --- |
+| `label` | The tab list's name: "Workflow views" |
+| `tabs` | Each tab's `id`, full `label`, optional 16px `icon`, `count` and `disabled` |
+| `selected` | The selected tab's `id`. The page keeps it, so it remembers its tab while it's on the stack |
+| `onSelect` | Called with the tab's `id` when another tab is picked |
+| `fill` | Equal parts across the column, at least 48px high. On by default on a phone, off on desktop |
+| `sticky` | The tabs stay at the top of the scroll area, on a `surface` fill, so their counters stay in view |
+| `children` | The selected tab's view, inside the one `tabpanel` |
 
 A `count` is `{ value, tone, name }`: an `accent` chip, `warning` when it counts what waits for
 a person ("1 needs you"), or `danger` when it counts errors. The number is hidden from screen
@@ -605,14 +605,14 @@ Without `fill`, the labels sit on one line. When the tabs are wider than their c
 the next tab and select it, wrapping round; Home and End jump to the ends. Disabled tabs are
 skipped. Switching is instant, with no sliding indicator, and never adds to Back.
 
-| State    | What shows                                                                 |
-| -------- | -------------------------------------------------------------------------- |
-| Default  | `fg-muted` text on the `surface-muted` track, 28px high                    |
-| Selected | A `surface` fill, `fg` text at weight 500, `shadow-1`                      |
-| Hover    | Text `fg`, no fill change                                                  |
-| Focus    | The standard focus ring                                                    |
+| State | What shows |
+| --- | --- |
+| Default | `fg-muted` text on the `surface-muted` track, 28px high |
+| Selected | A `surface` fill, `fg` text at weight 500, `shadow-1` |
+| Hover | Text `fg`, no fill change |
+| Focus | The standard focus ring |
 | Disabled | `fg-disabled`, clicks ignored, skipped by the arrow keys (`aria-disabled`) |
-| Error    | A `danger` counter on the tab whose view has errors                        |
+| Error | A `danger` counter on the tab whose view has errors |
 
 **On a phone** (`fill`, from the presentation context) the track spans the page column and the
 tabs share it equally, each at least 48px high with 4px 8px padding. A label wraps between words
@@ -720,13 +720,13 @@ alone for a list the kit doesn't draw, such as the shell's Settings nav.
 <ListHeading name="Acme" detail="Workspace settings" id="settings-acme" layout="stacked" />;
 ```
 
-| Prop           | What it is                                                                 |
-| -------------- | -------------------------------------------------------------------------- |
-| `name`         | The group's name, in sentence case: CSS draws the capitals. It may be cut  |
-| `detail`       | Says which group: "Workspace settings". Never cut                          |
-| `headingLevel` | 2 by default; 3 or 4 where the list sits under a panel's own headings      |
-| `id`           | So the list it names can point `aria-labelledby` at it                     |
-| `layout`       | `inline` (the default): name · detail. `stacked`: the name over the detail |
+| Prop | What it is |
+| --- | --- |
+| `name` | The group's name, in sentence case: CSS draws the capitals. It may be cut |
+| `detail` | Says which group: "Workspace settings". Never cut |
+| `headingLevel` | 2 by default; 3 or 4 where the list sits under a panel's own headings |
+| `id` | So the list it names can point `aria-labelledby` at it |
+| `layout` | `inline` (the default): name · detail. `stacked`: the name over the detail |
 
 `text-caption` in capitals, `tracking-label`, `fg-muted`, padded 16px 16px 4px so its text starts
 where the rows' text does. The "·" is hidden from screen readers, which hear a comma instead:
@@ -747,13 +747,13 @@ open.
 </Disclosure>;
 ```
 
-| Prop          | What it is                                                                                         |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| `summary`     | The row's words. They wrap; they're never cut                                                      |
-| `tone`        | `label` (the default) in `text-body-strong`, or `value` in `text-body`                             |
-| `defaultOpen` | Open when it first renders; after that the user opens and closes it                                |
-| `label`       | A caption above the row, for a summary that's only a value                                         |
-| `children`    | What opens, in `text-small` `fg-muted` in the 16px inset. Nothing clickable goes in the row itself |
+| Prop | What it is |
+| --- | --- |
+| `summary` | The row's words. They wrap; they're never cut |
+| `tone` | `label` (the default) in `text-body-strong`, or `value` in `text-body` |
+| `defaultOpen` | Open when it first renders; after that the user opens and closes it |
+| `label` | A caption above the row, for a summary that's only a value |
+| `children` | What opens, in `text-small` `fg-muted` in the 16px inset. Nothing clickable goes in the row itself |
 
 The row is at least 48px, padded 0 16px, with a 20px chevron in `fg-subtle` at the right: down
 when closed, up when open, flipped with no animation. Hover is `surface-subtle` and focus is the
@@ -781,22 +781,22 @@ List draws them.
 />;
 ```
 
-| Prop             | What it is                                                                               |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| `rows`           | The rows, each with a stable `id` (never the index) and the parts below                  |
-| `heading`        | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it    |
-| `headingLevel`   | 2 by default                                                                             |
-| `label`          | The list's name when it has no heading: "Agents". A list needs one of the two            |
-| `onOpen`         | Called with a row's `id` on Enter or a click                                             |
-| `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click                 |
-| `selection`      | `{ selected, onToggle, multiple, verb }`: the screen keeps the set, Space toggles a row  |
-| `dense`          | 32px rows, for menus and pickers                                                         |
-| `flush`          | No outer border or radius, lines from 16px. On by default on a phone                     |
-| `empty`          | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
-| `loading`        | Skeleton rows in place of the rows; see **Loading** below                                |
-| `skeleton`       | `{ leading: "icon" \| "avatar", trailing }`: the shape of the rows that are coming       |
-| `loadingLabel`   | What screen readers hear while it loads: "Loading skills". Needed with `loading`         |
-| `onRetry`        | Try again, offered once it has loaded for 10 seconds                                     |
+| Prop | What it is |
+| --- | --- |
+| `rows` | The rows, each with a stable `id` (never the index) and the parts below |
+| `heading` | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it |
+| `headingLevel` | 2 by default |
+| `label` | The list's name when it has no heading: "Agents". A list needs one of the two |
+| `onOpen` | Called with a row's `id` on Enter or a click |
+| `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click |
+| `selection` | `{ selected, onToggle, multiple, verb }`: the screen keeps the set, Space toggles a row |
+| `dense` | 32px rows, for menus and pickers |
+| `flush` | No outer border or radius, lines from 16px. On by default on a phone |
+| `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
+| `loading` | Skeleton rows in place of the rows; see **Loading** below |
+| `skeleton` | `{ leading: "icon" \| "avatar", trailing }`: the shape of the rows that are coming |
+| `loadingLabel` | What screen readers hear while it loads: "Loading skills". Needed with `loading` |
+| `onRetry` | Try again, offered once it has loaded for 10 seconds |
 
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
@@ -845,14 +845,14 @@ goes to the row that took its place, else the one before. When the last row goes
 put. It's a `grid`, not a `listbox`, because
 rows hold a button.
 
-| State       | What shows                                                                                                                                                                                          |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Default     | A `surface` fill; 56px with a meta line, 40px without, 32px `dense`; padded 16px                                                                                                                    |
-| Hover       | `surface-subtle`, faded in over 120ms. The More button is always there, in `fg-muted`                                                                                                               |
-| Focus       | An inset 2px `accent` ring, which the list's edge can't clip                                                                                                                                        |
-| Unavailable | Title and icon `fg-disabled` (`GrayText` in high contrast), avatar at 45%, the reason in `fg-muted`. No hover, a `not-allowed` cursor. Still focusable, but doesn't open                            |
-| Error       | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens                                                                                                               |
-| Selected    | `accent-soft` and a 2px `accent` bar at the start (8px from a bordered box's corners), and an outline in high contrast; `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
+| State | What shows |
+| --- | --- |
+| Default | A `surface` fill; 56px with a meta line, 40px without, 32px `dense`; padded 16px |
+| Hover | `surface-subtle`, faded in over 120ms. The More button is always there, in `fg-muted` |
+| Focus | An inset 2px `accent` ring, which the list's edge can't clip |
+| Unavailable | Title and icon `fg-disabled` (`GrayText` in high contrast), avatar at 45%, the reason in `fg-muted`. No hover, a `not-allowed` cursor. Still focusable, but doesn't open |
+| Error | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens |
+| Selected | `accent-soft` and a 2px `accent` bar at the start (8px from a bordered box's corners), and an outline in high contrast; `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
 
 **On a phone** the list is `flush` and rows are at least 56px, padded 12px 16px; `dense` rows are
 48px, with a 20px icon. The More button is always there at 48px, and
@@ -919,14 +919,14 @@ the grey fill is dropped.
 <SkeletonBar kind="meta" width="7/10" />;
 ```
 
-| `kind`     | Size                                   |
-| ---------- | -------------------------------------- |
-| `title`    | 10px high, at `width` of its column    |
-| `meta`     | 8px high, at `width` of its column     |
-| `trailing` | 10px by 80px, for a value or a chip    |
-| `heading`  | 8px by 48px, in a List heading's place |
-| `icon`     | 20px square                            |
-| `avatar`   | 28px and round                         |
+| `kind` | Size |
+| --- | --- |
+| `title` | 10px high, at `width` of its column |
+| `meta` | 8px high, at `width` of its column |
+| `trailing` | 10px by 80px, for a value or a chip |
+| `heading` | 8px by 48px, in a List heading's place |
+| `icon` | 20px square |
+| `avatar` | 28px and round |
 
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
@@ -950,25 +950,25 @@ panel fills what it's given and never sets its own width.
 </div>;
 ```
 
-| Prop           | What it is                                                                       |
-| -------------- | -------------------------------------------------------------------------------- |
-| `title`        | The heading, `text-section`; focus goes here when the panel opens                |
-| `label`        | The region's name when the title changes (the Assistant passes "Assistant")      |
-| `actions`      | The header's right side, filled by the shell: maximise when allowed, then close  |
-| `footer`       | Actions under a divider, right-aligned `sm` buttons                              |
-| `loading`      | What screen readers hear ("Loading Sort the inbox"); the body shows still lines  |
-| `halo`         | The halo wash at the top of the body. The Assistant only                         |
-| `facing`       | The side facing the main view, which gets the 1px line: `start` (default), `end` |
-| `initialFocus` | A field to focus instead of the title, for a panel you open to type in           |
-| `onClose`      | The phone's Back. On desktop, close is in `actions` and the shell binds Escape   |
+| Prop | What it is |
+| --- | --- |
+| `title` | The heading, `text-section`; focus goes here when the panel opens |
+| `label` | The region's name when the title changes (the Assistant passes "Assistant") |
+| `actions` | The header's right side, filled by the shell: maximise when allowed, then close |
+| `footer` | Actions under a divider, right-aligned `sm` buttons |
+| `loading` | What screen readers hear ("Loading Sort the inbox"); the body shows still lines |
+| `halo` | The halo wash at the top of the body. The Assistant only |
+| `facing` | The side facing the main view, which gets the 1px line: `start` (default), `end` |
+| `initialFocus` | A field to focus instead of the title, for a panel you open to type in |
+| `onClose` | The phone's Back. On desktop, close is in `actions` and the shell binds Escape |
 
-| State   | What happens                                                                             |
-| ------- | ---------------------------------------------------------------------------------------- |
-| Default | 48px header, a body that scrolls on its own (12px 16px), an optional 48px footer         |
-| Hover   | Belongs to the header buttons                                                            |
-| Focus   | Title on open, or `initialFocus` when it's there; back to the opener on close, else `h1` |
-| Error   | The body holds an `EmptyState` with `tone="error"`; the header keeps working             |
-| Loading | Still title and meta bar pairs (`SkeletonBar`), `aria-busy`, a status line says why      |
+| State | What happens |
+| --- | --- |
+| Default | 48px header, a body that scrolls on its own (12px 16px), an optional 48px footer |
+| Hover | Belongs to the header buttons |
+| Focus | Title on open, or `initialFocus` when it's there; back to the opener on close, else `h1` |
+| Error | The body holds an `EmptyState` with `tone="error"`; the header keeps working |
+| Loading | Still title and meta bar pairs (`SkeletonBar`), `aria-busy`, a status line says why |
 
 It's a `complementary` region (`<aside>`) named by its title, or by `label`. On desktop it's docked:
 a 1px line on the side facing the main view, no radius and no shadow. The header is 48px with the
@@ -995,24 +995,24 @@ when it stands without words, as in a List row.
 <Checkbox label="Select Sorter" checked={selected} onChange={toggleSorter} />;
 ```
 
-| Prop            | What it is                                                                   |
-| --------------- | ---------------------------------------------------------------------------- |
-| `checked`       | On or off                                                                    |
-| `onChange`      | Called with the new value on a click or Space. Not while `unavailable`       |
-| `indeterminate` | Some, not all: a dash in place of the check, read as "mixed"                 |
-| `unavailable`   | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop |
-| `children`      | Its words: "Run on a schedule". Or `label`, its name when it has no words    |
-| `tabIndex`      | `-1` only inside a grid, which moves focus with the arrow keys               |
+| Prop | What it is |
+| --- | --- |
+| `checked` | On or off |
+| `onChange` | Called with the new value on a click or Space. Not while `unavailable` |
+| `indeterminate` | Some, not all: a dash in place of the check, read as "mixed" |
+| `unavailable` | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop |
+| `children` | Its words: "Run on a schedule". Or `label`, its name when it has no words |
+| `tabIndex` | `-1` only inside a grid, which moves focus with the arrow keys |
 
-| State         | What shows                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------- |
-| Default       | A 16px box, radius 4px, a `border-control` edge on `surface`                                                |
-| Hover         | The edge turns `fg-muted`, over the box or a label round it                                                 |
-| Focus         | The standard ring round the box                                                                             |
-| Checked       | `primary` fill with an `on-primary` check; mixed shows a dash                                               |
-| Unavailable   | 45% (60% for more contrast), an `fg-disabled` edge, `GrayText` in high contrast. Focusable; keeps its value |
-| Error         | In a Field with an error: a `danger` edge, `aria-invalid` and the Field's error line                        |
-| High contrast | A checked or mixed box fills `Highlight` with a `HighlightText` mark (`checkbox-forced`)                    |
+| State | What shows |
+| --- | --- |
+| Default | A 16px box, radius 4px, a `border-control` edge on `surface` |
+| Hover | The edge turns `fg-muted`, over the box or a label round it |
+| Focus | The standard ring round the box |
+| Checked | `primary` fill with an `on-primary` check; mixed shows a dash |
+| Unavailable | 45% (60% for more contrast), an `fg-disabled` edge, `GrayText` in high contrast. Focusable; keeps its value |
+| Error | In a Field with an error: a `danger` edge, `aria-invalid` and the Field's error line |
+| High contrast | A checked or mixed box fills `Highlight` with a `HighlightText` mark (`checkbox-forced`) |
 
 **On a phone or a touch screen** the box stays 16px, and a checkbox with words is at least 48px
 high, words included. A box without words takes taps in a 48px square round it (`hit-touch`).
@@ -1036,21 +1036,21 @@ its target, or a `label` when it stands without words.
 <Switch label="Turn on Sorter" checked={on} onChange={setOn} />;
 ```
 
-| Prop          | What it is                                                                   |
-| ------------- | ---------------------------------------------------------------------------- |
-| `checked`     | On or off                                                                    |
-| `onChange`    | Called with the new value on a click or Space. Not while `unavailable`       |
+| Prop | What it is |
+| --- | --- |
+| `checked` | On or off |
+| `onChange` | Called with the new value on a click or Space. Not while `unavailable` |
 | `unavailable` | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop |
-| `children`    | Its sentence: "Send a summary every morning". Or `label`, its name           |
+| `children` | Its sentence: "Send a summary every morning". Or `label`, its name |
 
-| State         | What shows                                                                                         |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| Off           | A 32×18 `surface-muted` track with a `border-control` edge, a 14px `on-primary` thumb at the start |
-| On            | A `primary` track, the thumb at the end. It jumps; it doesn't slide                                |
-| Hover         | An off track's edge turns `fg-muted`, an on track `primary-hover`, over the switch or its sentence |
-| Focus         | The standard ring round the track                                                                  |
-| Unavailable   | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value               |
-| Error         | In a Field with an error: the Field's error line under it, which describes it                      |
+| State | What shows |
+| --- | --- |
+| Off | A 32×18 `surface-muted` track with a `border-control` edge, a 14px `on-primary` thumb at the start |
+| On | A `primary` track, the thumb at the end. It jumps; it doesn't slide |
+| Hover | An off track's edge turns `fg-muted`, an on track `primary-hover`, over the switch or its sentence |
+| Focus | The standard ring round the track |
+| Unavailable | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value |
+| Error | In a Field with an error: the Field's error line under it, which describes it |
 | High contrast | A `CanvasText` thumb; an on track fills `Highlight` with a `HighlightText` thumb (`switch-forced`) |
 
 **The row.** The sentence comes first and the switch sits at the end of a row of at most 360px, so
@@ -1082,24 +1082,24 @@ screen reader behaviour. Put it in a Field, whose label names it.
 </Field>;
 ```
 
-| Prop                 | What it is                                                                        |
-| -------------------- | --------------------------------------------------------------------------------- |
-| `min`, `max`, `step` | The range; `step` is 1 unless given                                               |
-| `value`              | Where the thumb is                                                                |
-| `onChange`           | Called with every value while it moves. Pass it back as `value`, or it won't move |
-| `onCommit`           | Called to save: once when a drag lets go, and on every key step                   |
-| `format`             | The value as shown to the right and as its `aria-valuetext`: `(v) => v + "%"`     |
-| `unavailable`        | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop      |
+| Prop | What it is |
+| --- | --- |
+| `min`, `max`, `step` | The range; `step` is 1 unless given |
+| `value` | Where the thumb is |
+| `onChange` | Called with every value while it moves. Pass it back as `value`, or it won't move |
+| `onCommit` | Called to save: once when a drag lets go, and on every key step |
+| `format` | The value as shown to the right and as its `aria-valuetext`: `(v) => v + "%"` |
+| `unavailable` | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop |
 
-| State         | What shows                                                                                                                |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Default       | A 6px track: `surface-muted` with a `border-control` edge, `primary` with no edge up to the thumb                         |
-| Thumb         | A 16px `primary` circle in a 2px `surface-raised` ring; the value 12px right, tabular, at least 4ch wide                  |
-| Hover         | The thumb turns `primary-hover`, also while pressed                                                                       |
-| Focus         | The standard focus ring round the thumb, in place of its ring                                                             |
-| Unavailable   | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value; no hover; drags and keys do nothing |
-| Error         | In a Field with an error: the Field's error line under it, which describes it                                             |
-| High contrast | A `CanvasText` edge round the track; the filled part and the thumb `Highlight`                                            |
+| State | What shows |
+| --- | --- |
+| Default | A 6px track: `surface-muted` with a `border-control` edge, `primary` with no edge up to the thumb |
+| Thumb | A 16px `primary` circle in a 2px `surface-raised` ring; the value 12px right, tabular, at least 4ch wide |
+| Hover | The thumb turns `primary-hover`, also while pressed |
+| Focus | The standard focus ring round the thumb, in place of its ring |
+| Unavailable | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value; no hover; drags and keys do nothing |
+| Error | In a Field with an error: the Field's error line under it, which describes it |
+| High contrast | A `CanvasText` edge round the track; the filled part and the thumb `Highlight` |
 
 **Saving.** A drag shows each value at once through `onChange` and saves once, when you let go.
 The arrow keys, Page Up and Down, Home and End save on every step, because each one is a pick.
@@ -1139,27 +1139,27 @@ group and its hint or error sits under it.
 </Field>;
 ```
 
-| Prop       | What it is                                                             |
-| ---------- | ---------------------------------------------------------------------- |
-| `options`  | `{ value, label, note?, field?, unavailable? }` for each choice        |
-| `value`    | The picked option's value, or `null` while none is picked              |
-| `onChange` | Called with the value the user picks                                   |
-| `label`    | Its name outside a Field. In a Field the Field's label names the group |
+| Prop | What it is |
+| --- | --- |
+| `options` | `{ value, label, note?, field?, unavailable? }` for each choice |
+| `value` | The picked option's value, or `null` while none is picked |
+| `onChange` | Called with the value the user picks |
+| `label` | Its name outside a Field. In a Field the Field's label names the group |
 
 An option's **`note`** is a line under its label in `fg-subtle`: what it means, or why it can't be
 picked. An **`unavailable`** option needs one. Its **`field`** shows under its label, 24px in, only
 while it's picked; the screen keeps what was typed in the others. A radio is named by its label's
 words alone and described by its note, so a screen reader reads the note once.
 
-| State         | What shows                                                                                               |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| Default       | A 16px circle with a `border-control` edge on `surface`, 2px down to line up with the label's first line |
-| Picked        | A 5px `primary` ring round an `on-primary` centre                                                        |
-| Hover         | An empty edge turns `fg-muted`, a ring `primary-hover`, over the circle or its label                     |
-| Focus         | The standard ring round the circle                                                                       |
-| Unavailable   | Circle and words at 45% (60% for more contrast), the note at full strength. Listed; the arrows skip it   |
-| Error         | In a Field with an error and nothing picked: a `danger` edge on every circle and the Field's error line  |
-| High contrast | A picked circle's ring in `Highlight` (`radio-forced`); an unavailable one `GrayText`                    |
+| State | What shows |
+| --- | --- |
+| Default | A 16px circle with a `border-control` edge on `surface`, 2px down to line up with the label's first line |
+| Picked | A 5px `primary` ring round an `on-primary` centre |
+| Hover | An empty edge turns `fg-muted`, a ring `primary-hover`, over the circle or its label |
+| Focus | The standard ring round the circle |
+| Unavailable | Circle and words at 45% (60% for more contrast), the note at full strength. Listed; the arrows skip it |
+| Error | In a Field with an error and nothing picked: a `danger` edge on every circle and the Field's error line |
+| High contrast | A picked circle's ring in `Highlight` (`radio-forced`); an unavailable one `GrayText` |
 
 Options are 8px apart, 12px while the picked option shows a field. **On a phone or a touch
 screen** every option is at least 48px high, label included, and the options are 0px apart,
@@ -1286,23 +1286,23 @@ menu and let the browser open it. Divide groups with `"divider"`.
 />;
 ```
 
-| Prop          | What it is                                                                       |
-| ------------- | -------------------------------------------------------------------------------- |
-| `trigger`     | Renders the button that opens it; a kit `Button` takes every prop it gets        |
-| `entries`     | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
-|               | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
-|               | and `attention` (the needs-you dot and its words)                                |
-| `description` | Optional: a sentence that explains the menu, shown above the items               |
-| `align`       | `start` (the default) lines up with the trigger's left edge, `end` its right     |
+| Prop | What it is |
+| --- | --- |
+| `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets |
+| `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
+|  | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked` |
+|  | and `attention` (the needs-you dot and its words) |
+| `description` | Optional: a sentence that explains the menu, shown above the items |
+| `align` | `start` (the default) lines up with the trigger's left edge, `end` its right |
 
-| State            | What shows                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------- |
-| Default          | `surface-raised`, radius 12px, `shadow-2`, 4px padding, at least 180px wide; 32px items     |
-| Hover and active | The item under the pointer or the keyboard has focus and the `surface-muted` fill; no ring  |
-| Danger           | `danger` text, always last, below a divider                                                 |
-| Disabled         | `fg-disabled`; still listed, but the arrow keys and type-to-find skip it                    |
-| Unavailable      | Label and icon at 45%, its reason underneath at full strength; in the arrow order, no Enter |
-| Error            | None: an action that fails reports through a toast                                          |
+| State | What shows |
+| --- | --- |
+| Default | `surface-raised`, radius 12px, `shadow-2`, 4px padding, at least 180px wide; 32px items |
+| Hover and active | The item under the pointer or the keyboard has focus and the `surface-muted` fill; no ring |
+| Danger | `danger` text, always last, below a divider |
+| Disabled | `fg-disabled`; still listed, but the arrow keys and type-to-find skip it |
+| Unavailable | Label and icon at 45%, its reason underneath at full strength; in the arrow order, no Enter |
+| Error | None: an action that fails reports through a toast |
 
 It's a native `popover`, so it sits on top of everything and closes on an outside click. The kit
 places it 4px below the trigger, above it when there's no room, and 8px from the window's edges
@@ -1395,24 +1395,24 @@ it reads as a state but can be clicked. The slot holds one at a time; the trust 
 </HeaderBadge>;
 ```
 
-| Prop          | What it is                                                                         |
-| ------------- | ---------------------------------------------------------------------------------- |
-| `as`          | `menu`: opens a Menu. `button`: does one thing, such as opening the trust check    |
-| `children`    | The words: "Sample · test model", "Not trusted yet"                                |
-| `description` | `menu` only: the Menu's description line                                           |
-| `entries`     | `menu` only: the Menu's items                                                      |
-| `onOpenSheet` | `menu` only: on a phone, opens the panel sheet with the same line and items        |
-| `action`      | `button` only: where it leads, after a middle dot in `accent-text`: "Review"       |
-| `label`       | `button` only: its name, when it isn't "words. action" ("Not trusted yet. Review") |
-| `onClick`     | `button` only                                                                      |
+| Prop | What it is |
+| --- | --- |
+| `as` | `menu`: opens a Menu. `button`: does one thing, such as opening the trust check |
+| `children` | The words: "Sample · test model", "Not trusted yet" |
+| `description` | `menu` only: the Menu's description line |
+| `entries` | `menu` only: the Menu's items |
+| `onOpenSheet` | `menu` only: on a phone, opens the panel sheet with the same line and items |
+| `action` | `button` only: where it leads, after a middle dot in `accent-text`: "Review" |
+| `label` | `button` only: its name, when it isn't "words. action" ("Not trusted yet. Review") |
+| `onClick` | `button` only |
 
-| State            | What shows                                                                                   |
-| ---------------- | -------------------------------------------------------------------------------------------- |
-| Default          | 24px high, radius 4px, `surface-muted`, `text-caption` 500 in `fg-muted`, 14px icon, 6px gap |
-| Hover            | Fill `border`, text `fg`                                                                     |
-| Focus            | The standard focus ring                                                                      |
-| Open (menu only) | A 2px `accent` ring while its Menu is open; not the focus ring, which is in the Menu         |
-| Disabled, error  | None: a badge that can't do anything isn't shown                                             |
+| State | What shows |
+| --- | --- |
+| Default | 24px high, radius 4px, `surface-muted`, `text-caption` 500 in `fg-muted`, 14px icon, 6px gap |
+| Hover | Fill `border`, text `fg` |
+| Focus | The standard focus ring |
+| Open (menu only) | A 2px `accent` ring while its Menu is open; not the focus ring, which is in the Menu |
+| Disabled, error | None: a badge that can't do anything isn't shown |
 
 It's **always neutral**, never `warning`, even for "Not trusted yet". The sample chip has the info
 icon and a trailing chevron, `aria-haspopup="menu"` and `aria-expanded`, and opens its Menu lined
@@ -1457,19 +1457,19 @@ Spread the props `children` gets on the control: they link it to the tooltip.
 </Tooltip>;
 ```
 
-| Prop       | What it is                                                                       |
-| ---------- | -------------------------------------------------------------------------------- |
-| `text`     | A few words. Never anything you click                                            |
-| `keys`     | The control's shortcut, shown after the words and set as its `aria-keyshortcuts` |
-| `isName`   | The text is the control's name, as on an icon button: it doesn't describe it too |
-| `showIf`   | Asked each time it would show; it stays hidden when this says no                 |
-| `children` | Renders the control; a kit `Button` takes every prop it gets                     |
+| Prop | What it is |
+| --- | --- |
+| `text` | A few words. Never anything you click |
+| `keys` | The control's shortcut, shown after the words and set as its `aria-keyshortcuts` |
+| `isName` | The text is the control's name, as on an icon button: it doesn't describe it too |
+| `showIf` | Asked each time it would show; it stays hidden when this says no |
+| `children` | Renders the control; a kit `Button` takes every prop it gets |
 
-| State    | What shows                                                                                 |
-| -------- | ------------------------------------------------------------------------------------------ |
-| Hidden   | Nothing                                                                                    |
-| Shown    | `fg` fill, `surface` text (so it inverts in dark mode), `text-caption`, radius 4px, ≤240px |
-| Shortcut | The keys 8px after the words, `font-mono`, 6px apart, without the Kbd's box                |
+| State | What shows |
+| --- | --- |
+| Hidden | Nothing |
+| Shown | `fg` fill, `surface` text (so it inverts in dark mode), `text-caption`, radius 4px, ≤240px |
+| Shortcut | The keys 8px after the words, `font-mono`, 6px apart, without the Kbd's box |
 
 It shows after 500ms of hover or at once on keyboard focus, and hides on leave, blur or Escape;
 that Escape goes no further, so a Dialog round it stays open. A press hides it too, and it doesn't
@@ -1572,14 +1572,14 @@ them by hand.
 </Field>;
 ```
 
-| Prop        | What it is                                                                  |
-| ----------- | --------------------------------------------------------------------------- |
-| `label`     | Always there, above the control, in `text-caption` `fg-muted`               |
-| `hideLabel` | Hides the label from sight only. Just for a search in a toolbar             |
-| `hint`      | A short line under the control in `fg-subtle`                               |
-| `error`     | A sentence that says what to do: "Give the agent a name." Replaces the hint |
-| `required`  | Writes "Required" after the label in `fg-subtle`. No asterisk               |
-| `prefix`    | `{ symbol, name }`: a currency outside the box, such as "€", "in euros"     |
+| Prop | What it is |
+| --- | --- |
+| `label` | Always there, above the control, in `text-caption` `fg-muted` |
+| `hideLabel` | Hides the label from sight only. Just for a search in a toolbar |
+| `hint` | A short line under the control in `fg-subtle` |
+| `error` | A sentence that says what to do: "Give the agent a name." Replaces the hint |
+| `required` | Writes "Required" after the label in `fg-subtle`. No asterisk |
+| `prefix` | `{ symbol, name }`: a currency outside the box, such as "€", "in euros" |
 
 Screen readers hear "required" once, from the control's `aria-required`: the visible word is
 hidden from them.
@@ -1619,12 +1619,12 @@ takes `layout="side"` from it, so a screen never writes the prop.
 </FormRows>;
 ```
 
-| Prop                | What it is                                                                   |
-| ------------------- | ---------------------------------------------------------------------------- |
-| `inCard` (FormRows) | A routine card's rows: a 120px label column, 12px gaps and no lines          |
-| `layout` (Field)    | `"side"` for one side-label Field outside FormRows; `"stack"` to opt one out |
-| `align` (Field)     | `"text"` when the value is text, not a control: the label isn't moved down   |
-| `wide` (Field)      | Drops the value column's 560px limit, for long text such as Instructions     |
+| Prop | What it is |
+| --- | --- |
+| `inCard` (FormRows) | A routine card's rows: a 120px label column, 12px gaps and no lines |
+| `layout` (Field) | `"side"` for one side-label Field outside FormRows; `"stack"` to opt one out |
+| `align` (Field) | `"text"` when the value is text, not a control: the label isn't moved down |
+| `wide` (Field) | Drops the value column's 560px limit, for long text such as Instructions |
 
 The label is `text-small`, weight 500, `fg-muted`, 6px down so it sits on a 32px control's text
 line. The hint or error sits under the value, not under the label, and an error never colours the
@@ -1644,14 +1644,14 @@ A one-line text field.
 <Input aria-label="Search agents" leadingIcon={<SearchIcon />} trailing={clearButton} />;
 ```
 
-| State     | What shows                                                                              |
-| --------- | --------------------------------------------------------------------------------------- |
-| Default   | `surface` fill, a `border-control` edge, the placeholder in `fg-subtle`                 |
-| Hover     | The edge turns `fg-muted`                                                               |
-| Focus     | An `accent` edge and a 3px `accent-soft` ring (`focus-field`), while the text has focus |
-| Disabled  | `surface-subtle` fill, a `border` edge, the text in `fg-disabled`, cursor `not-allowed` |
-| Error     | A `danger` edge, and a `danger-soft` ring with focus; the sentence comes from the Field |
-| Read-only | Like the default on `surface-subtle`, with no hover; the text stays selectable          |
+| State | What shows |
+| --- | --- |
+| Default | `surface` fill, a `border-control` edge, the placeholder in `fg-subtle` |
+| Hover | The edge turns `fg-muted` |
+| Focus | An `accent` edge and a 3px `accent-soft` ring (`focus-field`), while the text has focus |
+| Disabled | `surface-subtle` fill, a `border` edge, the text in `fg-disabled`, cursor `not-allowed` |
+| Error | A `danger` edge, and a `danger-soft` ring with focus; the sentence comes from the Field |
+| Read-only | Like the default on `surface-subtle`, with no hover; the text stays selectable |
 
 `Input` takes `size` (`md` 32px or `sm` 28px), a 16px `leadingIcon` and a `trailing` button (a
 `sm` ghost icon `Button`, such as Clear). A button inside the box keeps the general focus ring, so
@@ -1687,13 +1687,13 @@ colour field's swatch, which opens its popover. The type takes one or the other,
 </Field>;
 ```
 
-| `leadingButton` | What it is                                                                                     |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| `label`         | Its name, with the feature's verb and the value read with it                                   |
-| `onClick`       | Called on a click, Enter or Space. The text doesn't take focus                                 |
-| `children`      | The glyph, 16px at most, drawn by the feature; hidden from screen readers                      |
-| `expanded`      | Whether what it opens is open; adds `aria-haspopup="dialog"`. Leave it out if it opens nothing |
-| `controls`      | The `id` of what it opens, set as `aria-controls` while it's open                              |
+| `leadingButton` | What it is |
+| --- | --- |
+| `label` | Its name, with the feature's verb and the value read with it |
+| `onClick` | Called on a click, Enter or Space. The text doesn't take focus |
+| `children` | The glyph, 16px at most, drawn by the feature; hidden from screen readers |
+| `expanded` | Whether what it opens is open; adds `aria-haspopup="dialog"`. Leave it out if it opens nothing |
+| `controls` | The `id` of what it opens, set as `aria-controls` while it's open |
 
 The kit draws the slot, the hit area and the focus; the feature draws what's inside. The hit area
 is 24px square, 4px from the box's left edge, and the text starts 8px after it (36px in). On a
@@ -1724,26 +1724,26 @@ keyboard depends on its version. The screen owns `open` and the colour; the word
 />;
 ```
 
-| Prop                                   | What it is                                                                                         |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `id`                                   | For the opener's `aria-controls`                                                                   |
-| `open`, `onClose`                      | Shown while `open`. `onClose` on Escape, a press outside or focus leaving it                       |
-| `opener`                               | A ref to the button that opens it; it lines up with the box the button is in                       |
-| `label`                                | Its name, in the feature's verb                                                                    |
-| `presets`                              | `{ value, name }` for each colour, four to a row                                                   |
-| `value`, `onChange`                    | The last good colour; `onChange` with a pick or a typed six-digit hex                              |
+| Prop | What it is |
+| --- | --- |
+| `id` | For the opener's `aria-controls` |
+| `open`, `onClose` | Shown while `open`. `onClose` on Escape, a press outside or focus leaving it |
+| `opener` | A ref to the button that opens it; it lines up with the box the button is in |
+| `label` | Its name, in the feature's verb |
+| `presets` | `{ value, name }` for each colour, four to a row |
+| `value`, `onChange` | The last good colour; `onChange` with a pick or a typed six-digit hex |
 | `presetsLabel`, `hexLabel`, `hexError` | The heading over the presets, the hex field's label, and what it says when the text isn't a colour |
 
-| State         | What shows                                                                                      |
-| ------------- | ----------------------------------------------------------------------------------------------- |
-| Open          | 4px under the field's box, 244px, `surface-raised`, radius 12px, `shadow-2`, padding 12px       |
-| Swatch        | 24px, its colour, a 1px `border-control` edge; `fg-muted` edge on hover                         |
-| Picked        | A 2px `accent` ring with a 2px gap and a 14px check: white on a dark colour, ink on a light one |
-| Focus         | The standard ring with a `surface-raised` gap; the arrows move the pick, as in a radio group    |
-| Typed hex     | Applies as soon as it's six digits; a colour that isn't a preset leaves none picked             |
-| Hex error     | Nothing changes; leaving the field or Enter shows `hexError` under it                           |
-| More contrast | The popover's edge turns `border-control`                                                       |
-| High contrast | Swatches keep their colour and a `CanvasText` edge; the pick and focus are `Highlight`          |
+| State | What shows |
+| --- | --- |
+| Open | 4px under the field's box, 244px, `surface-raised`, radius 12px, `shadow-2`, padding 12px |
+| Swatch | 24px, its colour, a 1px `border-control` edge; `fg-muted` edge on hover |
+| Picked | A 2px `accent` ring with a 2px gap and a 14px check: white on a dark colour, ink on a light one |
+| Focus | The standard ring with a `surface-raised` gap; the arrows move the pick, as in a radio group |
+| Typed hex | Applies as soon as it's six digits; a colour that isn't a preset leaves none picked |
+| Hex error | Nothing changes; leaving the field or Enter shows `hexError` under it |
+| More contrast | The popover's edge turns `border-control` |
+| High contrast | Swatches keep their colour and a `CanvasText` edge; the pick and focus are `Highlight` |
 
 **Focus.** It opens with focus on the picked preset, or the first. Escape closes it and gives
 focus back to the button. A press outside closes it; a press on its button doesn't, so the
@@ -1796,23 +1796,23 @@ it.
 </Field>;
 ```
 
-| Prop          | What it is                                                                     |
-| ------------- | ------------------------------------------------------------------------------ |
-| `options`     | `{ value, label, disabled?, reason? }` in list order. A `disabled` one is grey |
-| `value`       | The picked value                                                               |
-| `onChange`    | Called with the new value as soon as the user picks it                         |
-| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked   |
-| `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen  |
-| `emptyText`   | The phone's picker sheet with no options: what's missing and where to add it   |
-| `ref`         | The control you focus: the `<select>`, or the picker button on a phone         |
+| Prop | What it is |
+| --- | --- |
+| `options` | `{ value, label, disabled?, reason? }` in list order. A `disabled` one is grey |
+| `value` | The picked value |
+| `onChange` | Called with the new value as soon as the user picks it |
+| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked |
+| `size` | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen |
+| `emptyText` | The phone's picker sheet with no options: what's missing and where to add it |
+| `ref` | The control you focus: the `<select>`, or the picker button on a phone |
 
-| State    | What shows                                                                               |
-| -------- | ---------------------------------------------------------------------------------------- |
-| Default  | The Input's box, the value in `fg`, a 16px `fg-muted` chevron with 32px of room          |
-| Hover    | The edge turns `fg-muted`                                                                |
-| Focus    | An `accent` edge and a 3px `accent-soft` ring (`focus-field`)                            |
+| State | What shows |
+| --- | --- |
+| Default | The Input's box, the value in `fg`, a 16px `fg-muted` chevron with 32px of room |
+| Hover | The edge turns `fg-muted` |
+| Focus | An `accent` edge and a 3px `accent-soft` ring (`focus-field`) |
 | Disabled | `surface-subtle` fill, a `border` edge, the value in `fg-disabled`, cursor `not-allowed` |
-| Error    | A `danger` edge; typically the placeholder in `fg-subtle`, for a value that's gone       |
+| Error | A `danger` edge; typically the placeholder in `fg-subtle`, for a value that's gone |
 
 There's no read-only Select: a native select has none, and a view-only page shows the value as
 text. A list with icons, descriptions or search is a different component, not a Select.
@@ -1838,17 +1838,17 @@ It copies the text and says "Copied" in place for two seconds (`COPIED_FOR_MS`).
 <CopyButton text="Halonic (own app)" label="Copy the app name" />;
 ```
 
-| Prop    | What it is                                                               |
-| ------- | ------------------------------------------------------------------------ |
-| `text`  | The text to copy. Plain text only: never a secret (below)                |
+| Prop | What it is |
+| --- | --- |
+| `text` | The text to copy. Plain text only: never a secret (below) |
 | `label` | The name screen readers hear, saying what it copies: "Copy the app name" |
 
-| State        | What shows                                                                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Ready        | The secondary button at the small size (28px; 48px on a phone), saying "Copy"                                                              |
-| Copied       | "Copied" in place, with no change in width. Screen readers hear "Copied" through a status region next to the button, which is always there |
-| Failed       | The button still says "Copy". A caption under the row says "Couldn't copy. Select the text and copy it yourself."                          |
-| Hover, focus | A `surface-subtle` fill on hover; the standard focus ring                                                                                  |
+| State | What shows |
+| --- | --- |
+| Ready | The secondary button at the small size (28px; 48px on a phone), saying "Copy" |
+| Copied | "Copied" in place, with no change in width. Screen readers hear "Copied" through a status region next to the button, which is always there |
+| Failed | The button still says "Copy". A caption under the row says "Couldn't copy. Select the text and copy it yourself." |
+| Hover, focus | A `surface-subtle` fill on hover; the standard focus ring |
 
 **Where it goes.** Beside what it copies, in a wrapping flex row. The button and its caption have
 no box of their own, so they join that row: the caption goes on the line under the whole row, at
@@ -1883,10 +1883,10 @@ passing anything. The CommandBox uses both.
 </ClipboardProvider>;
 ```
 
-| Provider             | What it gives                                                        |
-| -------------------- | -------------------------------------------------------------------- |
-| `ClipboardProvider`  | How to copy: Tauri's clipboard. Resolves `true` or `false`, no throw |
-| `ToastStoreProvider` | The window's toast store, the one its `ToastRegion` shows            |
+| Provider | What it gives |
+| --- | --- |
+| `ClipboardProvider` | How to copy: Tauri's clipboard. Resolves `true` or `false`, no throw |
+| `ToastStoreProvider` | The window's toast store, the one its `ToastRegion` shows |
 
 Without a `ClipboardProvider`, parts copy with `navigator.clipboard`, which needs a secure
 context, and fall back to the browser's copy command for a phone that reaches the computer over
@@ -1966,12 +1966,12 @@ address, that tab is sent Studio's origin as its referrer, because Studio's page
 The promise `openExternal` returns rejects only when a pending address fails; that goes to
 `onError`. For a known address there's nobody to tell, so the shell reports its own errors.
 
-| State   | What shows                                                          |
-| ------- | ------------------------------------------------------------------- |
-| Default | `accent-text`, like every inline link                               |
-| Hover   | Underlined                                                          |
-| Focus   | The standard focus ring                                             |
-| Phone   | At least 48px high (`min-h-touch`), so the whole line is the target |
+| State | What shows |
+| --- | --- |
+| Default | `accent-text`, like every inline link |
+| Hover | Underlined |
+| Focus | The standard focus ring |
+| Phone | At least 48px high (`min-h-touch`), so the whole line is the target |
 
 ## WindowBar and Window
 
@@ -2057,12 +2057,12 @@ toasts.show({
 <ToastRegion store={toasts} />;
 ```
 
-| Store method          | What it does                                                         |
-| --------------------- | -------------------------------------------------------------------- |
-| `show(message)`       | Adds `{ tone, title, text?, action? }` at the bottom; returns its id |
-| `close(id)`           | Takes it away at once, with no fade                                  |
-| `focus()`             | Focus to the newest toast's first button. The shell binds F6 to it   |
-| `list()`, `subscribe` | Every toast, oldest first, and a listener for changes                |
+| Store method | What it does |
+| --- | --- |
+| `show(message)` | Adds `{ tone, title, text?, action? }` at the bottom; returns its id |
+| `close(id)` | Takes it away at once, with no fade |
+| `focus()` | Focus to the newest toast's first button. The shell binds F6 to it |
+| `list()`, `subscribe` | Every toast, oldest first, and a listener for changes |
 
 Bottom right, 16px in, 360px wide (`w-toast`), 8px apart, newest at the bottom, at
 `--layer-toast`. A card is `surface-raised`, 12px radius, `shadow-2`: the tone's icon, the title,
@@ -2072,13 +2072,13 @@ the Status chip: `success`, `info` (accent), `running`, `warning`, `danger`. Onl
 the tone; the box is the same for all. It fades in and out in 120ms; nothing slides. In forced
 colours a transparent outline becomes its edge.
 
-| State   | What happens                                                                               |
-| ------- | ------------------------------------------------------------------------------------------ |
-| Default | `success` and `info` close after 5s, 10s with an action. `running` and `warning` stay      |
-| Hover   | No change in look; the timer pauses. A finger on it pauses it too                          |
-| Focus   | The action and close button take the ring; the timer pauses. Pressing the action closes it |
-| Error   | `danger`: `role="alert"`, stays until closed. The other tones are `role="status"`          |
-| Many    | On desktop at most three; a fourth closes the oldest                                       |
+| State | What happens |
+| --- | --- |
+| Default | `success` and `info` close after 5s, 10s with an action. `running` and `warning` stay |
+| Hover | No change in look; the timer pauses. A finger on it pauses it too |
+| Focus | The action and close button take the ring; the timer pauses. Pressing the action closes it |
+| Error | `danger`: `role="alert"`, stays until closed. The other tones are `role="status"` |
+| Many | On desktop at most three; a fourth closes the oldest |
 
 **While a kit Dialog is open,** everything outside it is inert, so toasts wait and show when it
 closes; their timers wait too. They're in the page, visually hidden, from the moment they arrive.
@@ -2103,17 +2103,17 @@ they sit in gives them their size.
 names a `PlaceIcon` knows. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
-| Export                              | Value     | What it is                                                  |
-| ----------------------------------- | --------- | ----------------------------------------------------------- |
-| `CALLOUT_FILES_SHOWN`               | 3         | Files a Callout names before "and N more"                   |
-| `COMMAND_COPIED`                    | "Copied"  | What a CommandBox says once the command is on the clipboard |
-| `COMMAND_NOT_COPIED`                | a message | What it says when neither way of copying worked             |
-| `SKELETON_AFTER_MS`                 | 300       | A loading List waits this long before it shows its skeleton |
-| `STILL_LOADING_AFTER_MS`            | 10000     | After this the List says it's still loading, with Try again |
-| `TOASTS_SHOWN`                      | 3         | Toasts on screen at once on desktop                         |
-| `TOAST_CLOSES_AFTER_MS`             | 5000      | A success or info toast stays this long                     |
-| `TOAST_WITH_ACTION_CLOSES_AFTER_MS` | 10000     | The same, when it has an action                             |
-| `TOOLTIP_DELAY_MS`                  | 500       | How long the pointer rests before a Tooltip shows           |
+| Export | Value | What it is |
+| --- | --- | --- |
+| `CALLOUT_FILES_SHOWN` | 3 | Files a Callout names before "and N more" |
+| `COMMAND_COPIED` | "Copied" | What a CommandBox says once the command is on the clipboard |
+| `COMMAND_NOT_COPIED` | a message | What it says when neither way of copying worked |
+| `SKELETON_AFTER_MS` | 300 | A loading List waits this long before it shows its skeleton |
+| `STILL_LOADING_AFTER_MS` | 10000 | After this the List says it's still loading, with Try again |
+| `TOASTS_SHOWN` | 3 | Toasts on screen at once on desktop |
+| `TOAST_CLOSES_AFTER_MS` | 5000 | A success or info toast stays this long |
+| `TOAST_WITH_ACTION_CLOSES_AFTER_MS` | 10000 | The same, when it has an action |
+| `TOOLTIP_DELAY_MS` | 500 | How long the pointer rests before a Tooltip shows |
 
 ## Testing a component
 

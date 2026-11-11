@@ -4,45 +4,45 @@ Every pull request runs the same checks as `pnpm verify --full`. Run
 `pnpm verify` before you ask for review: it runs the fast checks and then
 typecheck, lint and test for the packages your change affects.
 
-| Command                                                      | What it does                                                                                                                                                |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm verify`                                                | everything below, for the affected packages (`--full` for every package, as CI does)                                                                        |
-| `pnpm check [rule …]`                                        | our own repo checks (table below) except `trace`; with rule names, only those                                                                               |
-| `pnpm check:enqueue`                                         | before you queue a PR: merges the latest `origin/main`, checks the subject that will land (the title, and a one-commit branch's commit subject), then lockfile, typecheck of every package, format spec tests, process-starts and requirement guards |
-| `pnpm check:leaks`                                           | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                                    |
-| `pnpm check:licences`                                        | every installed package's licence against `tooling/check/licences.json`                                                                                     |
-| `pnpm check:sbom --name <product> --version <v> --out <dir>` | release only: writes the CycloneDX SBOM and `THIRD-PARTY-NOTICES.txt`, and fails on a library missing from `tooling/check/dependencies.json`                |
-| `pnpm check:audit [options]`                                 | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it       |
-| `pnpm check:bundle --target <t> <metafile>`                  | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles))            |
-| `pnpm check:pr-title`                                        | the pull request title as a Conventional Commits title (`PR_TITLE` when run locally); CI runs it                                                            |
-| `pnpm check:coverage-floors <base-sha> <head-sha>`           | fails when the change lowers a package's coverage floor; CI runs it (see [Coverage floors](#coverage-floors))                                               |
-| `pnpm discover [--fix \| --check]`                           | writes the generated files (`pnpm install` runs it too); `--fix` also rewrites the Studio's feature list and the folder-discovery globs in `turbo.json`                                  |
-| `pnpm new package <layer>/<name>`                            | creates an empty package that passes every check (adapters: add `--runtime <r>`)                                                                            |
-| `pnpm new feature <name>`                                    | creates an empty Studio feature and adds it to the Studio's feature list                                                                                    |
-| `pnpm who-touches [<package>]`                               | the open pull requests that change a package; run it before you start                                                                                       |
+| Command | What it does |
+| --- | --- |
+| `pnpm verify` | everything below, for the affected packages (`--full` for every package, as CI does) |
+| `pnpm check [rule …]` | our own repo checks (table below) except `trace`; with rule names, only those |
+| `pnpm check:enqueue` | before you queue a PR: merges the latest `origin/main`, checks the subject that will land (the title, and a one-commit branch's commit subject), then lockfile, typecheck of every package, format spec tests, process-starts and requirement guards |
+| `pnpm check:leaks` | the leak guard over the working tree; see [leak-guard.md](leak-guard.md) |
+| `pnpm check:licences` | every installed package's licence against `tooling/check/licences.json` |
+| `pnpm check:sbom --name <product> --version <v> --out <dir>` | release only: writes the CycloneDX SBOM and `THIRD-PARTY-NOTICES.txt`, and fails on a library missing from `tooling/check/dependencies.json` |
+| `pnpm check:audit [options]` | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
+| `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
+| `pnpm check:pr-title` | the pull request title as a Conventional Commits title (`PR_TITLE` when run locally); CI runs it |
+| `pnpm check:coverage-floors <base-sha> <head-sha>` | fails when the change lowers a package's coverage floor; CI runs it (see [Coverage floors](#coverage-floors)) |
+| `pnpm discover [--fix \| --check]` | writes the generated files (`pnpm install` runs it too); `--fix` also rewrites the Studio's feature list and the folder-discovery globs in `turbo.json` |
+| `pnpm new package <layer>/<name>` | creates an empty package that passes every check (adapters: add `--runtime <r>`) |
+| `pnpm new feature <name>` | creates an empty Studio feature and adds it to the Studio's feature list |
+| `pnpm who-touches [<package>]` | the open pull requests that change a package; run it before you start |
 
 ## `pnpm check` rules
 
-| Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages`             | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder`; `apiTypes` lists a package that isn't core             |
-| `agents-md`            | a package has no `AGENTS.md`, its `Owner:` or `Layer:` line differs from `package.json`, or its purpose line is still the `pnpm new` placeholder                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `layers`               | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`); a feature uses another feature other than through its `/api`                                                                                        |
-| `dependencies`         | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages or `layers`, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`; an entry doesn't fit its category; a catalog version isn't a plain version (`1.2.3`, `^1.2.3`, `~1.2.3`); an `overrides:` key isn't in `overrides-allowed.json` (or isn't `parent>child` at the catalog version, or has no override); `resolutions`, `packageExtensions`, `patchedDependencies` or named catalogs are used. See [dependencies.md](dependencies.md) |
-| `deny-toml`            | `apps/studio/src-tauri/deny.toml`: `[licenses] allow` differs from `shipped` in `licences.json`, or an `[advisories] ignore` entry has no reason, no or several expiry dates in its reason, a date that has passed or is more than 90 days out, or repeats an ID                                                                                                                                                                                                                                                                                                           |
-| `advisories`           | `tooling/check/advisories-ignored.json` has an unknown field, a missing or thin reason, a bad advisory ID or date, a repeated advisory, an expired entry or one expiring more than 90 days out; or an advisory is ignored anywhere else (`auditConfig` and `ignoreGhsas` in the workspace file, an `--ignore` on an audit command in a workflow or `package.json`)                                                                                                                                                                                                         |
-| `names`                | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `features`             | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install`                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `file-size`            | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `lockfile`             | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                                                                                                                                                                                                                                                       |
-| `absolute-paths`       | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `versions`             | the Studio app's version in `apps/studio/src-tauri/tauri.conf.json`, the `[workspace.package]` table of its `Cargo.toml` or a workspace crate in `Cargo.lock` differs from `apps/studio/package.json`, or a crate sets its own version instead of `version.workspace = true`. Fix with `pnpm version:sync`                                                                                                                                                                                                                                                                 |
-| `invisible-characters` | docs, code, config or tests hold a character nobody can see: a format character (zero-width, bidi control, tag letter, byte order mark), a variation selector, or a control character other than tab, line feed and carriage return. Emoji with their joiners and selectors, and other visible non-ASCII such as umlauts or CJK, are fine. Write such a character as an escape (`\u202E`) in code; name it in words in docs                                                                                                                                                |
+| Rule | Fails when |
+| --- | --- |
+| `packages` | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder`; `apiTypes` lists a package that isn't core |
+| `agents-md` | a package has no `AGENTS.md`, its `Owner:` or `Layer:` line differs from `package.json`, or its purpose line is still the `pnpm new` placeholder |
+| `layers` | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`); a feature uses another feature other than through its `/api` |
+| `dependencies` | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages or `layers`, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`; an entry doesn't fit its category; a catalog version isn't a plain version (`1.2.3`, `^1.2.3`, `~1.2.3`); an `overrides:` key isn't in `overrides-allowed.json` (or isn't `parent>child` at the catalog version, or has no override); `resolutions`, `packageExtensions`, `patchedDependencies` or named catalogs are used. See [dependencies.md](dependencies.md) |
+| `deny-toml` | `apps/studio/src-tauri/deny.toml`: `[licenses] allow` differs from `shipped` in `licences.json`, or an `[advisories] ignore` entry has no reason, no or several expiry dates in its reason, a date that has passed or is more than 90 days out, or repeats an ID |
+| `advisories` | `tooling/check/advisories-ignored.json` has an unknown field, a missing or thin reason, a bad advisory ID or date, a repeated advisory, an expired entry or one expiring more than 90 days out; or an advisory is ignored anywhere else (`auditConfig` and `ignoreGhsas` in the workspace file, an `--ignore` on an audit command in a workflow or `package.json`) |
+| `names` | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else |
+| `features` | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install` |
+| `file-size` | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt |
+| `lockfile` | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform |
+| `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt |
+| `versions` | the Studio app's version in `apps/studio/src-tauri/tauri.conf.json`, the `[workspace.package]` table of its `Cargo.toml` or a workspace crate in `Cargo.lock` differs from `apps/studio/package.json`, or a crate sets its own version instead of `version.workspace = true`. Fix with `pnpm version:sync` |
+| `invisible-characters` | docs, code, config or tests hold a character nobody can see: a format character (zero-width, bidi control, tag letter, byte order mark), a variation selector, or a control character other than tab, line feed and carriage return. Emoji with their joiners and selectors, and other visible non-ASCII such as umlauts or CJK, are fine. Write such a character as an escape (`\u202E`) in code; name it in words in docs |
 | `markdown-tables` | a Markdown table is padded to equal column widths, so one longer cell rewrites every row and two pull requests that each add a row conflict in the merge queue. Fix with `pnpm check:tables`, which writes `\| a \| b \|` rows |
-| `native-disabled`      | a `.tsx` or `.jsx` file outside `packages/studio/kit` gives a `<button>` a native `disabled` attribute. A disabled button loses focus and hides why it can't be used; use the kit's Button with `unavailable={{ reason }}` (component specs 23, A1). Tests are exempt                                                                                                                                                                                                                                                                                                      |
-| `readme-examples`      | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block                                                                                                                                                                                                                                                                                         |
-| `process-starts`       | a product file imports `child_process`, `worker_threads` or `cluster` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts)                                                                                                                                                                                                                                                                 |
-| `api-specs`            | a public API's `spec/<name>.schema.json` breaks its newest copy in `spec/released/` but its `$id` still names the same API version; bump the version or keep the change additive                                                                                                                                                                                                                                                                                                                                                                                           |
+| `native-disabled` | a `.tsx` or `.jsx` file outside `packages/studio/kit` gives a `<button>` a native `disabled` attribute. A disabled button loses focus and hides why it can't be used; use the kit's Button with `unavailable={{ reason }}` (component specs 23, A1). Tests are exempt |
+| `readme-examples` | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block |
+| `process-starts` | a product file imports `child_process`, `worker_threads` or `cluster` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts) |
+| `api-specs` | a public API's `spec/<name>.schema.json` breaks its newest copy in `spec/released/` but its `$id` still names the same API version; bump the version or keep the change additive |
 
 ### The DCO sign-off
 
@@ -160,15 +160,15 @@ base, including both sides' test results. It runs on pull requests only:
 the merge queue holds the same change, so it would give the same verdict. It fails on any of these, unless the branch's decision note
 covers it:
 
-| Change                                                                                                                                                                                                                        | The note lists             |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| an active requirement is edited, retired, demoted to draft, renamed or deleted                                                                                                                                                | the requirement ID         |
-| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls                                                                                                                  | the requirement ID         |
-| a test file is deleted, or fewer of its tests ran                                                                                                                                                                             | the test file              |
-| a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config                                                                                              | the file                   |
-| a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about                                                                                                                                 | the test file              |
-| a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed                                                                                                                 | the golden/test file       |
-| a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings                                                                                                           | the changed file           |
+| Change | The note lists |
+| --- | --- |
+| an active requirement is edited, retired, demoted to draft, renamed or deleted | the requirement ID |
+| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls | the requirement ID |
+| a test file is deleted, or fewer of its tests ran | the test file |
+| a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config | the file |
+| a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about | the test file |
+| a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed | the golden/test file |
+| a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings | the changed file |
 | a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
 
 A package with tests but no readable result file on either side always
@@ -331,12 +331,12 @@ and generated files) and fails below the floor. `pnpm new package` writes
 the default for the layer; `pnpm check` fails when a floor is missing or
 below the minimum:
 
-| Layer            | Minimum                                 |
-| ---------------- | --------------------------------------- |
-| core             | 90% of lines, 85% branches              |
-| studio           | 85% of lines                            |
-| adapters, host   | 80% of lines                            |
-| apps (CLI)       | 80% of lines                            |
+| Layer | Minimum |
+| --- | --- |
+| core | 90% of lines, 85% branches |
+| studio | 85% of lines |
+| adapters, host | 80% of lines |
+| apps (CLI) | 80% of lines |
 | testing, tooling | none set; new packages get 80% of lines |
 
 A testing package whose code only runs inside another package's tests, such as
@@ -401,33 +401,33 @@ an error.
 A package's layer and npm name follow from its folder, so nobody has to
 invent a name:
 
-| Folder                            | Layer    | Name                                  |
-| --------------------------------- | -------- | ------------------------------------- |
-| `packages/core/<name>`            | core     | `@halonicjs/<name>`                   |
-| `packages/adapters/<name>`        | adapters | `@halonicjs/adapter-<name>`           |
-| `packages/host/<name>`            | host     | `@halonicjs/host-<name>`              |
-| `packages/targets/<t>/runtime`    | targets  | `@halonicjs/target-<t>-runtime`       |
-| `packages/targets/<t>/deploy`     | targets  | `@halonicjs/target-<t>-deploy`        |
-| `packages/targets/<t>/testing`    | testing  | `@halonicjs/target-<t>-testing`       |
-| `packages/studio/<name>`          | studio   | `@halonicjs/studio-<name>`            |
-| `packages/studio/features/<name>` | studio   | `@halonicjs/studio-feature-<name>`    |
-| `packages/testing/<name>`         | testing  | `@halonicjs/testing-<name>`           |
-| `apps/cli`                        | apps     | `halonic` (published without staging) |
-| `apps/<name>`                     | apps     | `@halonicjs/app-<name>`               |
-| `tooling/<name>`                  | tooling  | `@halonicjs/tooling-<name>`           |
+| Folder | Layer | Name |
+| --- | --- | --- |
+| `packages/core/<name>` | core | `@halonicjs/<name>` |
+| `packages/adapters/<name>` | adapters | `@halonicjs/adapter-<name>` |
+| `packages/host/<name>` | host | `@halonicjs/host-<name>` |
+| `packages/targets/<t>/runtime` | targets | `@halonicjs/target-<t>-runtime` |
+| `packages/targets/<t>/deploy` | targets | `@halonicjs/target-<t>-deploy` |
+| `packages/targets/<t>/testing` | testing | `@halonicjs/target-<t>-testing` |
+| `packages/studio/<name>` | studio | `@halonicjs/studio-<name>` |
+| `packages/studio/features/<name>` | studio | `@halonicjs/studio-feature-<name>` |
+| `packages/testing/<name>` | testing | `@halonicjs/testing-<name>` |
+| `apps/cli` | apps | `halonic` (published without staging) |
+| `apps/<name>` | apps | `@halonicjs/app-<name>` |
+| `tooling/<name>` | tooling | `@halonicjs/tooling-<name>` |
 
 Who may use what:
 
-| Layer    | May use                                                                                                              | Never                                                                                |
-| -------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| core     | core packages listed **before** it in `coreOrder`; its `core-exception` libraries                                    | other third-party code, Node APIs, browser APIs                                      |
-| adapters | core, other adapters' public entry points, its approved libraries; Node APIs only with `"runtime": "node"`           | Studio packages                                                                      |
-| host     | core; Web-standard APIs                                                                                              | Node APIs, adapters, third-party code, Studio packages                               |
-| targets  | runtime: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime never uses a deploy package or another target's runtime   |
-| studio   | core, other Studio packages, React, Tauri, Vite                                                                      | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps     | the public entry point of any package                                                                                | —                                                                                    |
-| testing  | anything                                                                                                             | being a runtime dependency                                                           |
-| tooling  | other tooling packages                                                                                               | being a runtime dependency                                                           |
+| Layer | May use | Never |
+| --- | --- | --- |
+| core | core packages listed **before** it in `coreOrder`; its `core-exception` libraries | other third-party code, Node APIs, browser APIs |
+| adapters | core, other adapters' public entry points, its approved libraries; Node APIs only with `"runtime": "node"` | Studio packages |
+| host | core; Web-standard APIs | Node APIs, adapters, third-party code, Studio packages |
+| targets | runtime: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime never uses a deploy package or another target's runtime |
+| studio | core, other Studio packages, React, Tauri, Vite | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
+| apps | the public entry point of any package | — |
+| testing | anything | being a runtime dependency |
+| tooling | other tooling packages | being a runtime dependency |
 
 `node:*` is allowed in adapters with `"runtime": "node"`, in
 `targets/node/runtime` and in every deploy package. `cloudflare:*` is allowed only in
@@ -536,13 +536,13 @@ on Node, Workers and in the browser (multi-cloud ADR 5.1). The presets
 in `tooling/config/tsconfig/` make that a compile error, not a review
 comment:
 
-| Preset        | Used by                                                 | Can name the Web types | Can call `fetch`, `new Request()`, timers | DOM (`document`, `window`) | Node (`process`, `Buffer`, `node:*`) |
-| ------------- | ------------------------------------------------------- | ---------------------- | ----------------------------------------- | -------------------------- | ------------------------------------ |
-| `core.json`   | core packages                                           | yes                    | no                                        | no                         | no                                   |
-| `host.json`   | host packages, Workers code, adapters that run anywhere | yes                    | yes                                       | no                         | no                                   |
-| `node.json`   | Node adapters, CLI, tests, tools                        | yes                    | yes                                       | no                         | yes                                  |
-| `web.json`    | browser adapters                                        | yes                    | yes                                       | yes                        | no                                   |
-| `studio.json` | Studio packages                                         | yes                    | yes                                       | yes                        | no                                   |
+| Preset | Used by | Can name the Web types | Can call `fetch`, `new Request()`, timers | DOM (`document`, `window`) | Node (`process`, `Buffer`, `node:*`) |
+| --- | --- | --- | --- | --- | --- |
+| `core.json` | core packages | yes | no | no | no |
+| `host.json` | host packages, Workers code, adapters that run anywhere | yes | yes | no | no |
+| `node.json` | Node adapters, CLI, tests, tools | yes | yes | no | yes |
+| `web.json` | browser adapters | yes | yes | yes | no |
+| `studio.json` | Studio packages | yes | yes | yes | no |
 
 "The Web types" are `Request`, `Response`, `Headers`, `URL`,
 `URLSearchParams`, `ReadableStream`, `WritableStream`, `TransformStream`,
@@ -604,24 +604,24 @@ title and coverage-floor checks, the merge base's tests and the
 requirement guard, and the workflow lint unless the group changes
 `.github/`.
 
-| Job                          | What                                                                                                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                 |
-| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                   |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                           |
-| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes                     |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does      |
-| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                            |
-| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                      |
-| Tauri shell (Rust checks)    | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny`                      |
-| Tauri shell on Windows       | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths                                            |
-| Coverage floors              | pull requests only: `pnpm check:coverage-floors`; the `coverage-floor-lowered` label allows a lower floor                                               |
-| Sandbox fence                | when the sandbox adapter changes: bubblewrap (Linux) and Seatbelt (macOS) fence tests, and canary probes on Windows                                     |
-| Sandbox packages             | when sandbox adapters or the ports change: typecheck and test on macOS and Windows                                                                      |
-| Agent host executable        | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows, runs it and reports its size                                         |
-| Android shell                | when the Tauri shell or Studio's connect page changes: builds the debug APK                                                                             |
-| End-to-end, docs             | stubs that run only when their area changes; real once the Studio and `apps/docs` exist                                                                 |
+| Job | What |
+| --- | --- |
+| Fast gates | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
+| Leak guard | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
+| Secret scan | `gitleaks` over the pull request's commits, checksum-verified |
+| Workflow lint | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does |
+| Merge base's tests | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline |
+| Requirement guard | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results |
+| Empty package and feature | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full` |
+| Tauri shell (Rust checks) | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny` |
+| Tauri shell on Windows | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths |
+| Coverage floors | pull requests only: `pnpm check:coverage-floors`; the `coverage-floor-lowered` label allows a lower floor |
+| Sandbox fence | when the sandbox adapter changes: bubblewrap (Linux) and Seatbelt (macOS) fence tests, and canary probes on Windows |
+| Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows |
+| Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows, runs it and reports its size |
+| Android shell | when the Tauri shell or Studio's connect page changes: builds the debug APK |
+| End-to-end, docs | stubs that run only when their area changes; real once the Studio and `apps/docs` exist |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history
