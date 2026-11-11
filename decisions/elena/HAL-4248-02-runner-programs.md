@@ -2,6 +2,7 @@
 
 - Approval: the [HAL-4248 proposal](/HAL/issues/HAL-4248#document-proposal), approved by Liam on HAL-4258; his note on HAL-4313 (a blank `fails` message)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FElvgFVFVQdm0HrcgQAWVlPJ4OR/86I0rT0JguYBth2yt3PMSxo6jlBrYzlMiVRPjVAQN9OvZNdz9Oh1VfdODA==
 - Task: HAL-4248
 
 ## What changes
