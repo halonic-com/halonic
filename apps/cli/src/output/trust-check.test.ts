@@ -366,7 +366,7 @@ verifies("cli.trust-check", () => {
       providers: noChanges,
       onlyRemoves: false,
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "changed",
       content: { connectors: [], integrations: [after] },
       ...current,

@@ -26,7 +26,12 @@ import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { readLocalIntegrations } from "./workspace-integrations.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust, workspaceIntegrations } from "./workspace-trust.ts";
+import {
+  assertTrustable,
+  cliTrustService,
+  readWorkspaceTrust,
+  workspaceIntegrations,
+} from "./workspace-trust.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
 const clock = fixedClock(Date.UTC(2026, 10, 11, 9));
@@ -78,10 +83,15 @@ async function addStation(): Promise<void> {
 async function acmeTrust() {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const service = cliTrustService(new FileTrustStore(join(folder, "trust")), clock);
-  const check = async () => service.check((await readWorkspaceTrust(dir, noCommands)).subject);
+  const check = async () => {
+    const read = await readWorkspaceTrust(dir, noCommands);
+    const shown = await service.check(read.subject);
+    assertTrustable(shown, read);
+    return shown;
+  };
   const trust = async () => {
     const { subject } = await readWorkspaceTrust(dir, noCommands);
-    const shown = await service.check(subject);
+    const shown = await check();
     expect((await service.grant(subject, shown.fingerprint, "cli")).ok).toBe(true);
   };
   return { check, trust };
