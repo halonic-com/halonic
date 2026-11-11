@@ -4,7 +4,8 @@ What Halonic protects, from whom, and where the lines are drawn. Read it before
 you change anything that touches a boundary in [section 3](#3-trust-boundaries).
 To report a problem, see the [security policy](../../SECURITY.md).
 
-Every mitigation carries one of two marks:
+Every mitigation carries one of these marks, or one per part when only part of
+it is built:
 
 - **On `main`**: the code is merged and tested. This is library code. No app or
   command-line tool uses it yet, so it isn't a protection you get today.
@@ -12,6 +13,9 @@ Every mitigation carries one of two marks:
   merges, read it as **Planned**.
 - **Planned (HAL-n)**: decided, not built. Don't rely on it. The number is the
   task that builds it.
+- **Probed**: no code of ours; a probe on a real machine showed the platform
+  refuses the attack. It holds only on the system the row names, and the row
+  names the probe.
 
 A **known limit** is a risk we accept and say so. Nothing on this page is a
 promise about a mitigation marked **Planned**.
@@ -155,7 +159,7 @@ Its text is attacker text. The rules are the requirement
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
 | A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
-| A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | **Partly on `main`**: the bridge is on `main`; the app using it is Planned (HAL-2952) |
+| A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | The bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
 
 **Known limits.**
 
@@ -497,7 +501,7 @@ Plugins stay unfenced on Windows (`packages/core/app`, `runner-fence.ts`).
 | **[gate]** A crash between a grant and its record leaves a folder granted forever | The folder is recorded before srt grants it and confirmed after. Removing the setup and uninstalling forget every grant, recorded or not | **Planned** (HAL-5398, HAL-5404) |
 | A rollback to an older setup version keeps grants under the old account | A rollback that can't uninstall first is refused | **Planned** (HAL-5404) |
 | Another program's srt shares the machine-wide sandbox account and reads our kept folders | The trust check reports it when another program's srt setup is present, not only a second Halonic user | **Planned** (HAL-5398) |
-| The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | Probed (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
+| The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | **Probed** (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
 
 The DNS leak is what keeps native srt experimental.
 
