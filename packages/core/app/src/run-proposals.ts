@@ -37,6 +37,12 @@ export interface RunProposalsOptions {
   readonly digest: Digest;
   /** Dates a proposal, so its ref can go after 30 days. */
   readonly clock: Clock;
+  /**
+   * Receives the error of an `end` that couldn't finish. `end` never
+   * throws: the engine calls it after the run has ended, in the middle of
+   * a cancel or a parent's step. What it left is cleared at the next start.
+   */
+  readonly onEndFailed: (runId: string, error: unknown) => void;
 }
 
 /** What `open` gives the harness. */
@@ -50,8 +56,9 @@ export interface RunWorktree {
  * its workflow steps and calls to other agents share it.
  *
  * @example
- * const proposals = new RunProposals({ vcs, records, digest, clock });
+ * const proposals = new RunProposals({ vcs, records, digest, clock, onEndFailed });
  * const { folder } = await proposals.open("01JD8Q", version); // the harness writes only here
+ * await proposals.folderOf("01JD8Q"); // the same folder, after a restart too
  * const proposal = await proposals.end("01JD8Q"); // emit run.proposal when not null
  */
 export class RunProposals {
@@ -59,12 +66,14 @@ export class RunProposals {
   private readonly records: ProposalRecordStore;
   private readonly digest: Digest;
   private readonly clock: Clock;
+  private readonly onEndFailed: (runId: string, error: unknown) => void;
 
   constructor(options: RunProposalsOptions) {
     this.vcs = options.vcs;
     this.records = new ProposalRecordStore(options.records);
     this.digest = options.digest;
     this.clock = options.clock;
+    this.onEndFailed = options.onEndFailed;
   }
 
   /**
@@ -87,36 +96,69 @@ export class RunProposals {
   }
 
   /**
+   * The folder of a run whose worktree is open, also after a restart: a
+   * run can wait for a person across one, and its next step needs the same
+   * folder (`app.run-proposal-worktree`).
+   *
+   * @returns the folder, or `null` when the run has no open worktree
+   * @throws RangeError for a run id that can't name a proposal ref
+   */
+  folderOf(runId: string): Promise<string | null> {
+    return this.records.inTurn(runId, async () => {
+      const record = await this.records.read(runId);
+      if (record?.state !== "running") {
+        return null;
+      }
+      const worktrees = await this.vcs.listWorktrees();
+      return worktrees.find((worktree) => worktree.id === record.worktreeId)?.path ?? null;
+    });
+  }
+
+  /**
    * Ends the run's worktree, whether the run finished, failed or was
    * cancelled (`app.run-proposal-end`). When it changed files, they are
    * committed onto the run's proposal ref, with its version as parent, and
    * the proposal is recorded with every file undecided. The worktree goes
-   * either way.
+   * either way. Never throws: an end that can't finish goes to
+   * `onEndFailed`, and the next start clears what it left.
    *
-   * @returns the proposal, for `run.proposal`, or `null` when nothing changed
-   * @throws when the run has no worktree
+   * @returns the proposal, for `run.proposal`, or `null` when nothing
+   * changed, the run has no worktree, or the end couldn't finish
    */
-  end(runId: string): Promise<RunProposal | null> {
-    return this.records.inTurn(runId, async () => {
-      const record = await this.records.read(runId);
-      if (record?.state !== "running") {
-        throw new Error(`Run ${runId} has no worktree to end.`);
-      }
-      const proposal = await this.commitChanges(record.runId, record.base, record.worktreeId);
-      if (proposal === null) {
-        await this.records.remove(runId);
-      } else {
-        await this.records.save({
-          state: "proposed",
-          proposal,
-          finishedAt: this.clock.now().toISOString(),
-          decisions: Object.fromEntries(proposal.files.map((file) => [file.path, "undecided"])),
-        });
-      }
-      // The record is saved first: a crash now leaves only the worktree, which `removeLeftovers` removes.
+  async end(runId: string): Promise<RunProposal | null> {
+    try {
+      return await this.records.inTurn(runId, () => this.endWorktree(runId));
+    } catch (error) {
+      this.onEndFailed(runId, error);
+      return null;
+    }
+  }
+
+  private async endWorktree(runId: string): Promise<RunProposal | null> {
+    const record = await this.records.read(runId);
+    if (record?.state !== "running") {
+      // A run that never had a folder, or one that already ended.
+      return null;
+    }
+    const proposal = await this.commitChanges(record.runId, record.base, record.worktreeId);
+    if (proposal === null) {
+      await this.records.remove(runId);
+    } else {
+      await this.records.save({
+        state: "proposed",
+        proposal,
+        finishedAt: this.clock.now().toISOString(),
+        decisions: Object.fromEntries(proposal.files.map((file) => [file.path, "undecided"])),
+      });
+    }
+    // The record is saved first: a crash now leaves only the worktree, which `removeLeftovers` removes.
+    try {
       await this.vcs.removeWorktree(record.worktreeId);
-      return proposal;
-    });
+    } catch (error) {
+      // The proposal is saved, so the run still reports it.
+      this.onEndFailed(runId, error);
+    }
+    return proposal;
   }
 
   /** The proposal of a run that ended with changes, or `null`. */
@@ -126,20 +168,35 @@ export class RunProposals {
   }
 
   /**
-   * Removes what runs left when Halonic closed while they ran: every
-   * worktree, the records of runs that never ended and their proposal refs.
-   * Call it at start, before any run can open a worktree.
+   * Removes what runs left that the engine has ended, from a crash or an
+   * `end` that couldn't finish: their worktrees, records and proposal refs,
+   * and every worktree no open run records. The worktrees of `openRuns`
+   * stay for `folderOf`. Call it at start, before any run can open a
+   * worktree.
+   *
+   * @param openRuns - the runs the engine hasn't ended: those waiting for a
+   * person, and those it will end as interrupted
    */
-  async removeLeftovers(): Promise<void> {
-    for (const worktree of await this.vcs.listWorktrees()) {
-      await this.vcs.removeWorktree(worktree.id);
-    }
+  async removeLeftovers(openRuns: ReadonlySet<string>): Promise<void> {
+    const kept = new Set<string>();
     for (const runId of await this.records.running()) {
+      if (openRuns.has(runId)) {
+        const record = await this.records.read(runId);
+        if (record?.state === "running") {
+          kept.add(record.worktreeId);
+        }
+        continue;
+      }
       const ref = proposalRefOf(runId);
       if ((await this.vcs.readRef(ref)) !== null) {
         await this.vcs.deleteRef(ref);
       }
       await this.records.remove(runId);
+    }
+    for (const worktree of await this.vcs.listWorktrees()) {
+      if (!kept.has(worktree.id)) {
+        await this.vcs.removeWorktree(worktree.id);
+      }
     }
   }
 

@@ -19,18 +19,20 @@ const old = "name: Old\n";
 function setUp() {
   const vcs = new TestProposalVcs();
   const records = new TestDefinitionStore();
+  const endFailures: { runId: string; error: unknown }[] = [];
   const proposals = new RunProposals({
     vcs,
     records,
     digest,
     clock: { now: () => new Date("2026-11-11T09:00:00.000Z") },
+    onEndFailed: (runId, error) => endFailures.push({ runId, error }),
   });
   const version = vcs.commit({
     "agents/clerk.agent.yaml": clerk,
     "agents/old.agent.yaml": old,
     "README.md": "# Acme\n",
   });
-  return { vcs, records, proposals, version };
+  return { vcs, records, proposals, version, endFailures };
 }
 
 verifies("app.run-proposal-worktree", () => {
@@ -65,6 +67,40 @@ verifies("app.run-proposal-worktree", () => {
     });
   });
 
+  describe("finding a run's folder again", () => {
+    it("gives the folder open gave, until the run ends", async () => {
+      const { proposals, version } = setUp();
+      expect(await proposals.folderOf("01JD8Q")).toBeNull();
+      const { folder } = await proposals.open("01JD8Q", version);
+      expect(await proposals.folderOf("01JD8Q")).toBe(folder);
+      await proposals.end("01JD8Q");
+      expect(await proposals.folderOf("01JD8Q")).toBeNull();
+    });
+
+    it("gives it after a restart, for a run waiting for a person", async () => {
+      const { vcs, records, proposals, version } = setUp();
+      const { folder } = await proposals.open("01JD8Q", version);
+      vcs.filesOf(folder).set("notes/today.md", "Step 1.\n");
+      const restarted = new RunProposals({
+        vcs,
+        records,
+        digest,
+        clock: { now: () => new Date("2026-11-11T10:00:00.000Z") },
+        onEndFailed: () => {},
+      });
+      await restarted.removeLeftovers(new Set(["01JD8Q"]));
+      expect(await restarted.folderOf("01JD8Q")).toBe(folder);
+      expect(vcs.filesOf(folder).get("notes/today.md")).toBe("Step 1.\n");
+    });
+
+    it("gives null when the worktree is gone", async () => {
+      const { vcs, proposals, version } = setUp();
+      await proposals.open("01JD8Q", version);
+      await vcs.removeWorktree("wt1");
+      expect(await proposals.folderOf("01JD8Q")).toBeNull();
+    });
+  });
+
   describe("removing leftovers at start", () => {
     it("removes runs that never ended and keeps the proposals of runs that did", async () => {
       const { vcs, records, proposals, version } = setUp();
@@ -73,7 +109,7 @@ verifies("app.run-proposal-worktree", () => {
       await proposals.end("7KQ2MX");
       await proposals.open("01JD8Q", version);
       records.files.set("notes.txt", "not a record");
-      await proposals.removeLeftovers();
+      await proposals.removeLeftovers(new Set());
       expect(vcs.worktrees.size).toBe(0);
       expect(records.files.has("01JD8Q.json")).toBe(false);
       expect(await proposals.get("7KQ2MX")).not.toBeNull();
@@ -84,14 +120,25 @@ verifies("app.run-proposal-worktree", () => {
       const { vcs, proposals, version } = setUp();
       await proposals.open("01JD8Q", version);
       await vcs.commitWorktreeTo("wt1", "refs/halonic/proposals/01JD8Q", { parent: version });
-      await proposals.removeLeftovers();
+      await proposals.removeLeftovers(new Set());
       expect(vcs.refs.size).toBe(0);
+    });
+
+    it("keeps the worktrees of open runs and removes any no record holds", async () => {
+      const { vcs, records, proposals, version } = setUp();
+      await proposals.open("01JD8Q", version);
+      await proposals.open("7KQ2MX", version);
+      await vcs.addWorktree(version); // added before a crash, never recorded
+      await proposals.removeLeftovers(new Set(["01JD8Q"]));
+      expect([...vcs.worktrees.keys()]).toEqual(["wt1"]);
+      expect(records.files.has("01JD8Q.json")).toBe(true);
+      expect(records.files.has("7KQ2MX.json")).toBe(false);
     });
 
     it("leaves a record it can't read for get to report", async () => {
       const { records, proposals } = setUp();
       records.files.set("01JD8Q.json", "{");
-      await proposals.removeLeftovers();
+      await proposals.removeLeftovers(new Set());
       expect(records.files.get("01JD8Q.json")).toBe("{");
       await expect(proposals.get("01JD8Q")).rejects.toThrow(
         "The proposal record of run 01JD8Q can't be read: it isn't valid JSON.",
@@ -171,14 +218,48 @@ verifies("app.run-proposal-end", () => {
   });
 
   describe("ending a run without a worktree", () => {
-    it("refuses, for a run never opened or one that already ended", async () => {
-      const { vcs, proposals, version } = setUp();
-      await expect(proposals.end("01JD8Q")).rejects.toThrow("Run 01JD8Q has no worktree to end.");
+    it("does nothing, for a run never opened or one that already ended", async () => {
+      const { vcs, proposals, version, endFailures } = setUp();
+      expect(await proposals.end("01JD8Q")).toBeNull();
       const { folder } = await proposals.open("01JD8Q", version);
       vcs.filesOf(folder).set("notes/today.md", "Done.\n");
-      await proposals.end("01JD8Q");
-      await expect(proposals.end("01JD8Q")).rejects.toThrow("Run 01JD8Q has no worktree to end.");
-      expect(await proposals.get("7KQ2MX")).toBeNull();
+      const proposal = await proposals.end("01JD8Q");
+      expect(await proposals.end("01JD8Q")).toBeNull();
+      expect((await proposals.get("01JD8Q"))?.proposal).toEqual(proposal);
+      expect(endFailures).toEqual([]);
+    });
+  });
+
+  describe("an end that can't finish", () => {
+    it("reports the error instead of throwing, and the next start clears what it left", async () => {
+      const { vcs, records, proposals, version, endFailures } = setUp();
+      const { folder } = await proposals.open("01JD8Q", version);
+      vcs.filesOf(folder).set("notes/today.md", "Done.\n");
+      const failure = new Error("disk full");
+      vcs.diffBetween = () => Promise.reject(failure);
+
+      expect(await proposals.end("01JD8Q")).toBeNull();
+
+      expect(endFailures).toEqual([{ runId: "01JD8Q", error: failure }]);
+      await proposals.removeLeftovers(new Set());
+      expect(vcs.worktrees.size).toBe(0);
+      expect(records.files.size).toBe(0);
+    });
+
+    it("still gives the proposal when only removing the worktree fails", async () => {
+      const { vcs, proposals, version, endFailures } = setUp();
+      const { folder } = await proposals.open("01JD8Q", version);
+      vcs.filesOf(folder).set("notes/today.md", "Done.\n");
+      const failure = new Error("folder in use");
+      vcs.removeWorktree = () => Promise.reject(failure);
+
+      const proposal = await proposals.end("01JD8Q");
+
+      expect(proposal?.files).toEqual([
+        { path: "notes/today.md", change: "added", base: "absent" },
+      ]);
+      expect(endFailures).toEqual([{ runId: "01JD8Q", error: failure }]);
+      expect(await proposals.get("01JD8Q")).not.toBeNull();
     });
   });
 });
