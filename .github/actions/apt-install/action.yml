@@ -28,8 +28,10 @@ runs:
         key: ${{ steps.key.outputs.key }}
     # A cache hit installs without the network. A miss, or a cached set that
     # doesn't install, downloads from the mirror. Each attempt is capped,
-    # because a mirror that can't be resolved stalls apt for minutes; after a
-    # failed attempt the runner is pointed at archive.ubuntu.com instead.
+    # because a mirror that can't be resolved stalls apt for minutes. After a
+    # failed attempt the runner is pointed at the next mirror: archive.ubuntu.com,
+    # then kernel.org's copy, which still answered on 11 Nov while every
+    # ubuntu.com name failed to resolve.
     - id: install
       name: Install
       shell: bash
@@ -43,7 +45,11 @@ runs:
         fi
         rm -rf "$DEBS" && mkdir -p "$DEBS/partial"
         apt_opts=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o "Dir::Cache::archives=$DEBS")
+        fallbacks=("" "http://archive.ubuntu.com/ubuntu/" "https://mirrors.edge.kernel.org/ubuntu/")
         for attempt in 1 2 3; do
+          if [ -n "${fallbacks[attempt - 1]}" ] && [ -f /etc/apt/apt-mirrors.txt ]; then
+            echo "${fallbacks[attempt - 1]}" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
           if sudo timeout 180 apt-get "${apt_opts[@]}" update &&
             sudo timeout 300 apt-get "${apt_opts[@]}" install --yes --no-install-recommends --download-only $PACKAGES &&
             sudo apt-get "${apt_opts[@]}" install --yes --no-install-recommends $PACKAGES; then
@@ -53,9 +59,6 @@ runs:
             exit 0
           fi
           echo "::warning::apt install failed (attempt $attempt of 3)"
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
-          fi
           sleep $((attempt * 20))
         done
         exit 1
