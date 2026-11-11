@@ -26,7 +26,7 @@ Which local check did you run, and why was it enough? Don't run plain
 Either way, run `pnpm check:enqueue` once before queueing.
 -->
 
-Local check: 
+Local check:
 
 ## Docs
 
