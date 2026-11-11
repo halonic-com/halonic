@@ -8,9 +8,12 @@ The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-ru
 - **Public API:** `@halonicjs/adapter-sandbox-srt`
 
 `SrtSandbox` is the whole adapter. `check()` says whether the sandbox can start on this machine and
-gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator), inside a container (Docker or Podman), user
-namespaces refused, bubblewrap missing, or `socat` or ripgrep (`rg`) missing, which srt starts next to bubblewrap
-(`linux-tools-missing`). `open()` checks first, refuses a bridge that isn't a
+gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator), inside a container (Docker or Podman), WSL 1
+(`not-supported`), bubblewrap missing, user namespaces refused by AppArmor (asked only once bubblewrap is
+there), or `socat` or ripgrep (`rg`) missing, which srt starts next to bubblewrap (`linux-tools-missing`).
+On Linux it is ready only once srt has started its smallest real sandbox and run `true` in it, once per
+process and within 10 seconds; anything else that stops it is `other`, with bubblewrap's or srt's own
+line. `open()` checks first, refuses a bridge that isn't a
 loopback address, then opens a session that proves its fence (a canary file the fence hides and a
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and
 never run a file under a skill's `scripts/` folder. When a session ends, it undoes any `commondir`

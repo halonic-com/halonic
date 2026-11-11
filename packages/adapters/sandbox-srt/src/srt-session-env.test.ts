@@ -44,11 +44,14 @@ verifies("sandbox-srt.session", () => {
 
     it("is not on the PATH any request of a session carries", async () => {
       const { runner, runs, probes } = fakeRunner();
+      const sandbox = new SrtSandbox(linux, runner);
+      // The ready check makes its own folders, once: done before the session's is set.
+      expect((await sandbox.check()).ok).toBe(true);
       // Make the session's folder known in advance, so it can be put on the PATH.
       const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
       vi.mocked(fsPromises.mkdtemp).mockResolvedValueOnce(folder);
       vi.stubEnv("PATH", ["/usr/bin", folder].join(delimiter));
-      const session = await new SrtSandbox(linux, runner).open(profile({ env: { PATH: folder } }));
+      const session = await sandbox.open(profile({ env: { PATH: folder } }));
       await session.start(command);
       expect(probes.length).toBeGreaterThan(0);
       for (const request of [...probes, ...runs.map((run) => run.request)]) {

@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { readyCheckTimeoutMs, startSmallestSandbox } from "../src/ready-check.ts";
+import { srtRunner } from "../src/srt-runner.ts";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
 
 /**
@@ -54,6 +56,16 @@ describe("SrtSandbox with the real fence", () => {
   afterAll(async () => {
     await session?.close();
     await rm(base, { recursive: true, force: true });
+  });
+
+  it("starts srt's smallest sandbox for the ready check, within its time limit (HAL-6518)", async () => {
+    const started = performance.now();
+    const answer = await startSmallestSandbox(srtRunner);
+    const tookMs = Math.round(performance.now() - started);
+    // What the ready check adds to `halonic doctor`, for the CI log.
+    console.log(`ready check: ${tookMs} ms`);
+    expect(answer).toBeNull();
+    expect(tookMs).toBeLessThan(readyCheckTimeoutMs);
   });
 
   it("can start on this machine", async () => {

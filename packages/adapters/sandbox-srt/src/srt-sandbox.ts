@@ -10,6 +10,7 @@ import type {
 } from "@halonicjs/ports";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
+import { startSmallestSandbox } from "./ready-check.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
 
@@ -18,6 +19,12 @@ interface Unavailable {
   reason: SandboxUnavailableReason;
   missing: string;
 }
+
+/**
+ * The ready check's answer for each runner, asked once per process: what the
+ * machine can run doesn't change while Halonic runs, and `open()` checks too.
+ */
+const readyChecks = new WeakMap<Runner, Promise<string | null>>();
 
 /** What setting up the sandbox gave: done, or why not, in one line. */
 export type SandboxSetup = { ok: true } | { ok: false; reason: string };
@@ -261,7 +268,18 @@ export class SrtSandbox implements Sandbox {
     if (bubblewrapError !== null) {
       return { reason: "other", missing: `bubblewrap can't start: ${bubblewrapError}` };
     }
-    return null;
+    // Bubblewrap starting proves the user namespace, not srt's network
+    // namespace and bridge: start what a session starts, once.
+    const runner = this.#runner;
+    let ready = readyChecks.get(runner);
+    if (ready === undefined) {
+      ready = startSmallestSandbox(runner);
+      readyChecks.set(runner, ready);
+    }
+    const srtError = await ready;
+    return srtError === null
+      ? null
+      : { reason: "other", missing: `srt can't start a sandbox: ${srtError}` };
   }
 }
 

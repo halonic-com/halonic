@@ -59,8 +59,13 @@ export const fenced: Probe = { control: "readable", canary: "hidden", port: "blo
 export function fakeRunner(probe: Probe = fenced) {
   const runs: FakeRun[] = [];
   const probes: RunRequest[] = [];
+  const readyChecks: RunRequest[] = [];
   const runner: Runner = {
     async run(request) {
+      if (isReadyCheck(request)) {
+        readyChecks.push(request);
+        return endedProgram(0);
+      }
       if (basename(request.args[0] ?? "").startsWith(probeFilePrefix)) {
         probes.push(request);
         if (probe.launchFails) throw new Error("spawn bwrap ENOENT");
@@ -105,7 +110,23 @@ export function fakeRunner(probe: Probe = fenced) {
       return run.program;
     },
   };
-  return { runner, runs, probes };
+  return { runner, runs, probes, readyChecks };
+}
+
+/** Whether `request` is the sandbox's ready check, which runs `true` once. */
+export function isReadyCheck(request: RunRequest): boolean {
+  return request.program === "true" && request.args.length === 0;
+}
+
+/** A program that has already ended with `code`, having written `errors`. */
+export function endedProgram(code: number, errors = ""): RunningProgram {
+  return {
+    stdin: new WritableStream(),
+    stdout: stream(""),
+    stderr: stream(errors),
+    ended: Promise.resolve({ code, signal: null }),
+    killTree: () => {},
+  };
 }
 
 export function makeProfile(base: string, overrides: Partial<SandboxProfile> = {}): SandboxProfile {

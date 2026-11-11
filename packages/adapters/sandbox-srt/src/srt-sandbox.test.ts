@@ -5,7 +5,9 @@ import { sandboxCheckContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { cgroupNamesContainer, type Machine } from "./machine.ts";
+import type { Runner } from "./srt-runner.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
+import { endedProgram } from "./srt-session.test-helper.ts";
 
 /** A Linux machine that can start the sandbox; each test spoils one thing. */
 function machine(overrides: Partial<Machine> = {}): Machine {
@@ -27,15 +29,25 @@ function machine(overrides: Partial<Machine> = {}): Machine {
   };
 }
 
+/** A runner whose every program, the ready check's `true` among them, ends at once with code 0. */
+function runsTrue(): Runner {
+  return { run: async () => endedProgram(0) };
+}
+
+/** The sandbox on `machine`, with a runner that runs nothing for real. */
+function srt(on: Machine, runner: Runner = runsTrue()): SrtSandbox {
+  return new SrtSandbox(on, runner);
+}
+
 sandboxCheckContract("srt", {
-  make: async () => new SrtSandbox(machine()),
-  makeUnavailable: async () => new SrtSandbox(machine({ hasBubblewrap: async () => false })),
+  make: async () => srt(machine()),
+  makeUnavailable: async () => srt(machine({ hasBubblewrap: async () => false })),
 });
 
 verifies("sandbox-srt.check", () => {
   describe("SrtSandbox.check", () => {
     it("can start on a Linux machine with bubblewrap and user namespaces", async () => {
-      expect(await new SrtSandbox(machine()).check()).toEqual({
+      expect(await srt(machine()).check()).toEqual({
         ok: true,
         reason: null,
         missing: [],
@@ -48,7 +60,7 @@ verifies("sandbox-srt.check", () => {
           throw new Error("boom");
         },
       });
-      const check = await new SrtSandbox(broken).check();
+      const check = await srt(broken).check();
       expect(check.ok).toBe(false);
       expect(check.reason).toBe("other");
       expect(check.missing).toHaveLength(1);
@@ -72,7 +84,7 @@ verifies("sandbox-srt.check", () => {
       ["other", bubblewrapRefused],
       ["other", { platform: "darwin" as const, hasSeatbelt: async () => false }],
     ])("gives the reason %s", async (reason, overrides) => {
-      const check = await new SrtSandbox(machine(overrides)).check();
+      const check = await srt(machine(overrides)).check();
       expect(check.reason).toBe(reason);
       expect(check.missing).toHaveLength(1);
     });
@@ -86,12 +98,12 @@ verifies("sandbox-srt.check", () => {
         hasBubblewrap: async () => false,
         missingLinuxHelpers: async () => ["socat", "ripgrep"],
       });
-      expect((await new SrtSandbox(everythingWrong).check()).reason).toBe("container");
+      expect((await srt(everythingWrong).check()).reason).toBe("container");
     });
 
     it("tells WSL 1 to switch the distro to WSL 2, before it asks about bubblewrap", async () => {
       const wsl1 = machine({ isWsl1: async () => true, hasBubblewrap: async () => false });
-      expect(await new SrtSandbox(wsl1).check()).toEqual({
+      expect(await srt(wsl1).check()).toEqual({
         ok: false,
         reason: "not-supported",
         missing: ["WSL 1 can't run bubblewrap; switch the distro to WSL 2"],
@@ -105,7 +117,7 @@ verifies("sandbox-srt.check", () => {
         appArmorRestrictsUserNamespaces: async () => true,
         missingLinuxHelpers: async () => ["socat", "ripgrep"],
       });
-      expect(await new SrtSandbox(ubuntu).check()).toEqual({
+      expect(await srt(ubuntu).check()).toEqual({
         ok: false,
         reason: "bubblewrap-missing",
         missing: ["bubblewrap is not installed"],
@@ -114,16 +126,16 @@ verifies("sandbox-srt.check", () => {
 
     it("blames AppArmor only when bubblewrap fails and the setting is on", async () => {
       const bubblewrapThrough = machine({ appArmorRestrictsUserNamespaces: async () => true });
-      expect((await new SrtSandbox(bubblewrapThrough).check()).ok).toBe(true);
+      expect((await srt(bubblewrapThrough).check()).ok).toBe(true);
       const restricted = machine({
         ...bubblewrapRefused,
         appArmorRestrictsUserNamespaces: async () => true,
       });
-      expect((await new SrtSandbox(restricted).check()).reason).toBe("user-namespaces-restricted");
+      expect((await srt(restricted).check()).reason).toBe("user-namespaces-restricted");
     });
 
     it("gives bubblewrap's own words when it fails for another reason", async () => {
-      expect(await new SrtSandbox(machine(bubblewrapRefused)).check()).toEqual({
+      expect(await srt(machine(bubblewrapRefused)).check()).toEqual({
         ok: false,
         reason: "other",
         missing: ["bubblewrap can't start: bwrap: setting up uid map: Permission denied"],
@@ -132,8 +144,7 @@ verifies("sandbox-srt.check", () => {
 
     it("names the helpers that are missing", async () => {
       const missing = async (helpers: ("socat" | "ripgrep")[]) =>
-        (await new SrtSandbox(machine({ missingLinuxHelpers: async () => helpers })).check())
-          .missing;
+        (await srt(machine({ missingLinuxHelpers: async () => helpers })).check()).missing;
       expect(await missing(["socat"])).toEqual(["socat is not installed"]);
       expect(await missing(["ripgrep"])).toEqual(["ripgrep is not installed"]);
       expect(await missing(["socat", "ripgrep"])).toEqual(["socat and ripgrep are not installed"]);
@@ -141,26 +152,67 @@ verifies("sandbox-srt.check", () => {
 
     it("asks for the helpers before it calls a bubblewrap failure `other`, which comes last", async () => {
       const both = machine({ ...bubblewrapRefused, missingLinuxHelpers: async () => ["ripgrep"] });
-      expect((await new SrtSandbox(both).check()).reason).toBe("linux-tools-missing");
+      expect((await srt(both).check()).reason).toBe("linux-tools-missing");
+    });
+
+    it("is not ready when srt can't start its smallest sandbox, though bubblewrap can (HAL-6518)", async () => {
+      const failing: Runner = {
+        run: async () => endedProgram(1, "Error: failed to start the socat bridge\n"),
+      };
+      expect(await srt(machine(), failing).check()).toEqual({
+        ok: false,
+        reason: "other",
+        missing: ["srt can't start a sandbox: Error: failed to start the socat bridge"],
+      });
+    });
+
+    it("starts the smallest sandbox once per process, not on every check", async () => {
+      const started: string[] = [];
+      const runner: Runner = {
+        run: async (request) => {
+          started.push(request.program);
+          return endedProgram(0);
+        },
+      };
+      await srt(machine(), runner).check();
+      await srt(machine(), runner).check();
+      expect(started).toEqual(["true"]);
+    });
+
+    it("starts no sandbox when an earlier reason applies, or off Linux", async () => {
+      const started: string[] = [];
+      const runner: Runner = {
+        run: async (request) => {
+          started.push(request.program);
+          return endedProgram(0);
+        },
+      };
+      await srt(machine({ hasBubblewrap: async () => false }), runner).check();
+      await srt(machine({ platform: "darwin" }), runner).check();
+      await srt(
+        machine({ platform: "win32", hasWindowsSandbox: async () => true }),
+        runner,
+      ).check();
+      expect(started).toEqual([]);
     });
 
     it("starts on macOS with Seatbelt", async () => {
-      const check = await new SrtSandbox(machine({ platform: "darwin" })).check();
+      const check = await srt(machine({ platform: "darwin" })).check();
       expect(check.ok).toBe(true);
     });
 
     it("starts on Windows only when srt's Windows install is there", async () => {
       const windows = { platform: "win32" as const };
       expect(
-        await new SrtSandbox(machine({ ...windows, hasWindowsSandbox: async () => true })).check(),
+        await srt(machine({ ...windows, hasWindowsSandbox: async () => true })).check(),
       ).toEqual({ ok: true, reason: null, missing: [] });
-      const missing = await new SrtSandbox(machine(windows)).check();
+      const missing = await srt(machine(windows)).check();
       expect(missing).toMatchObject({ ok: false, reason: "setup-needed" });
       expect(missing.missing[0]).toContain("windows-install");
     });
 
     it("opens nothing on Windows without srt's install", async () => {
-      const sandbox = new SrtSandbox(machine({ platform: "win32" }));
+      const sandbox = srt(machine({ platform: "win32" }));
       const profile = {
         workingFolder: "/contract/work",
         tempFolder: "/contract/temp",
@@ -178,7 +230,7 @@ verifies("sandbox-srt.check", () => {
       const base = await mkdtemp(join(tmpdir(), "halonic-srt-parents-"));
       try {
         const asked: (readonly string[])[] = [];
-        const sandbox = new SrtSandbox(
+        const sandbox = srt(
           machine({
             platform: "win32",
             hasWindowsSandbox: async () => true,
@@ -211,7 +263,7 @@ verifies("sandbox-srt.check", () => {
     });
 
     it("says files are shared and the fence is the operating system's", () => {
-      expect(new SrtSandbox(machine()).capabilities()).toEqual({ files: "shared", strength: "os" });
+      expect(srt(machine()).capabilities()).toEqual({ files: "shared", strength: "os" });
     });
   });
 
@@ -274,19 +326,19 @@ verifies("sandbox-srt.setup", () => {
     }
 
     it("installs on Windows and is done once the sandbox passes its check", async () => {
-      const sandbox = new SrtSandbox(windowsMachine(async () => "installed"));
+      const sandbox = srt(windowsMachine(async () => "installed"));
       expect(await sandbox.setUp()).toEqual({ ok: true });
       expect((await sandbox.check()).ok).toBe(true);
     });
 
     it("is done again when run again", async () => {
-      const sandbox = new SrtSandbox(windowsMachine(async () => "installed"));
+      const sandbox = srt(windowsMachine(async () => "installed"));
       await sandbox.setUp();
       expect(await sandbox.setUp()).toEqual({ ok: true });
     });
 
     it("says the administrator prompt was cancelled", async () => {
-      const sandbox = new SrtSandbox(windowsMachine(async () => "cancelled"));
+      const sandbox = srt(windowsMachine(async () => "cancelled"));
       expect(await sandbox.setUp()).toEqual({
         ok: false,
         reason: "the administrator prompt was cancelled; nothing changed",
@@ -294,7 +346,7 @@ verifies("sandbox-srt.setup", () => {
     });
 
     it("gives the install's own words on one line when it fails", async () => {
-      const sandbox = new SrtSandbox(
+      const sandbox = srt(
         windowsMachine(async () => {
           throw new Error("srt-win install: WFP filter install failed:\r\n  access denied\r\n");
         }),
@@ -306,7 +358,7 @@ verifies("sandbox-srt.setup", () => {
     });
 
     it("gives the check's words when the sandbox still can't start after the install", async () => {
-      const sandbox = new SrtSandbox(machine({ platform: "win32" }));
+      const sandbox = srt(machine({ platform: "win32" }));
       const setup = await sandbox.setUp();
       expect(setup.ok).toBe(false);
       expect(setup.ok ? "" : setup.reason).toContain("windows-install");
@@ -320,7 +372,7 @@ verifies("sandbox-srt.setup", () => {
           return "installed";
         },
       });
-      expect(await new SrtSandbox(linux).setUp()).toEqual({
+      expect(await srt(linux).setUp()).toEqual({
         ok: false,
         reason: "only Windows has a sandbox setup, not linux",
       });
