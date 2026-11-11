@@ -313,11 +313,19 @@ action closes the palette and runs with its own feature's context; one that fail
 toast "Couldn't run _New agent_." with the reason from `errorMessageFor`. `usePaletteKey` opens it on
 Mod K, in the desktop app and served alike, but not over a modal dialog.
 
-```tsx
-const [paletteOpen, setPaletteOpen] = useState(false);
-usePaletteKey(platform, () => setPaletteOpen(true));
+`usePaletteOpening` keeps whether the palette is open and binds Mod K; its `show` goes to
+everything else that opens it (`shell.palette-entry`). `SidebarSearch` is the sidebar's Search box,
+under the workspace switcher: a button that looks like a field, with the Kbd Mod K at its right and
+in its `aria-keyshortcuts`. **+** and Ctrl T (desktop app only) open a new tab on Home and call
+`onNewTab`, so passing `show` there opens the palette over the new tab, as UX 1.2 asks.
 
-if (!paletteOpen) return null;
+```tsx
+const palette = usePaletteOpening(platform);
+useWindowKeys({ host, platform, tabs: workspace.tabs, toasts: shell.toasts, onNewTab: palette.show });
+<WindowTabStrip tabs={workspace.tabs} onNewTab={palette.show} />;
+<SidebarSearch platform={platform} onOpen={palette.show} />;
+
+if (!palette.open) return null;
 return (
   <ShellPalette
     tabs={workspace.tabs}
@@ -330,7 +338,7 @@ return (
     toasts={shell.toasts}
     notAnswering={shell.engine.words.notAnswering}
     platform={platform}
-    onClose={() => setPaletteOpen(false)}
+    onClose={palette.close}
   />
 );
 ```

@@ -108,6 +108,7 @@ export {
   paletteGroups,
   paletteGroupTitles,
 } from "./palette/palette-groups.ts";
+export { type PaletteOpening, usePaletteOpening } from "./palette/palette-opening.ts";
 export {
   type ActiveRowChange,
   keptActive,
@@ -265,6 +266,7 @@ export {
   SidebarResizeEdge,
   type SidebarResizeEdgeProps,
 } from "./sidebar/sidebar-resize-edge.tsx";
+export { SidebarSearch, type SidebarSearchProps } from "./sidebar/sidebar-search.tsx";
 export {
   clampSidebarWidth,
   SIDEBAR_DEFAULT_WIDTH,
