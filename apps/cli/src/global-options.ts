@@ -10,6 +10,8 @@ export interface GlobalOptions {
   readonly debug: boolean;
   /** `--help` or `-h`: the help instead of the command. */
   readonly help: boolean;
+  /** `--version`: Halonic's version instead of the command. */
+  readonly version: boolean;
 }
 
 /** The global options, and the command line without them. */
@@ -26,6 +28,7 @@ const spellings: Readonly<Record<keyof GlobalOptions, readonly string[]>> = {
   verbose: ["--verbose"],
   debug: ["--debug"],
   help: ["--help", "-h"],
+  version: ["--version"],
 };
 
 /**
@@ -67,6 +70,7 @@ export function readGlobalOptions(args: readonly string[]): ReadGlobalOptions {
       verbose: given("verbose"),
       debug: given("debug"),
       help: given("help"),
+      version: given("version"),
     },
     args: [...options.filter((arg) => !globalOptionSpellings.includes(arg)), ...rest],
   };

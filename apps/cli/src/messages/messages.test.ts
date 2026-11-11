@@ -111,13 +111,20 @@ describe("the general sentences", () => {
       words(helpMessages.tagline()),
       words(helpMessages.usage()),
       words(helpMessages.commandsHeading()),
-      words(helpMessages.globalOptions(["--json", "--no-color", "--verbose", "--debug", "--help"])),
+      words(
+        helpMessages.globalOptions(
+          ["--json", "--no-color", "--verbose", "--debug", "--help"],
+          true,
+        ),
+      ),
+      words(helpMessages.globalOptionsMore(["--version"], false)),
       words(helpMessages.commandHelpHint()),
     ]).toEqual([
       "Run and check Halonic workspaces from the command line.",
       "Usage: halonic <command> [arguments]",
       "Commands:",
-      "Options for every command: --json, --no-color, --verbose, --debug, --help",
+      "Options for every command: --json, --no-color, --verbose, --debug, --help,",
+      "--version",
       "Run halonic <command> --help for a command's arguments and options.",
     ]);
     expect(words(helpMessages.commandUsage("schema", "[folder]"))).toBe(
@@ -125,6 +132,7 @@ describe("the general sentences", () => {
     );
     expect(words(helpMessages.commandUsage("doctor", ""))).toBe("Usage: halonic doctor");
     expect(words(helpMessages.optionsHeading())).toBe("Options:");
+    expect(words(helpMessages.version("0.1.0"))).toBe("halonic 0.1.0");
   });
 
   it("has a bug's two lines as approved, with and without the command's action", () => {

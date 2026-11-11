@@ -15,6 +15,7 @@ import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
 import type { Message } from "./messages/define.ts";
 import { usageMessages } from "./messages/general.ts";
+import { helpMessages } from "./messages/help.ts";
 import type { Phrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
 import { type Printer, printerFor } from "./output/printer.ts";
@@ -25,6 +26,7 @@ import { type SignalSource, type StopWatch, stopExitCode, watchForStop } from ".
 import { decideStyle, type Environment, type OutputStyle } from "./output/style.ts";
 import { readInput } from "./read-input.ts";
 import { noSecrets, rememberedSecrets } from "./remembered-secrets.ts";
+import { halonicVersion } from "./version.ts";
 
 /** What the CLI needs to know about where it runs, to decide colour, live lines and marks. */
 export interface Terminal {
@@ -144,6 +146,15 @@ async function runCommandLine(
   setup: CliSetup,
   { printer, options, scrubber }: Prepared,
 ): Promise<CliExit> {
+  if (options.version) {
+    // Wherever `--version` stands, it answers instead of any command.
+    printer.result({
+      exitCode: exitCode.ok,
+      lines: [helpMessages.version(halonicVersion).phrase],
+      json: { version: halonicVersion },
+    });
+    return exitCode.ok;
+  }
   const [name, ...commandArgs] = commandLine;
   if (name === undefined && !options.help) {
     return noCommandToRun(printer, options, overallHelp(commands), usageMessages.seeEveryCommand());

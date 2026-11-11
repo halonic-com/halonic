@@ -6,8 +6,14 @@ export const helpMessages = defineMessages("help", {
   tagline: () => phrase`Run and check Halonic workspaces from the command line.`,
   usage: () => phrase`Usage: halonic <command> [arguments]`,
   commandsHeading: () => phrase`Commands:`,
-  globalOptions: (options: readonly string[]) =>
-    phrase`Options for every command: ${options.join(", ")}`,
+  /** The first line of the options; `continues` ends it with a comma when the list goes on. */
+  globalOptions: (options: readonly string[], continues: boolean) =>
+    phrase`Options for every command: ${options.join(", ")}${continues ? "," : ""}`,
+  /** A further line of the options, when the first would pass 80 columns. */
+  globalOptionsMore: (options: readonly string[], continues: boolean) =>
+    phrase`${options.join(", ")}${continues ? "," : ""}`,
+  /** What `halonic --version` prints: "halonic 0.1.0". */
+  version: (version: string) => phrase`halonic ${version}`,
   /** The exit codes, on four lines as the design sets them, so each fits an 80-column terminal. */
   exitCodes: (line: ExitCodeLine) => exitCodeLine(line),
   commandHelpHint: () =>

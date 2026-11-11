@@ -13,6 +13,7 @@ const none: GlobalOptions = {
   verbose: false,
   debug: false,
   help: false,
+  version: false,
 };
 
 describe("globalOptionFlags", () => {
@@ -43,6 +44,13 @@ describe("readGlobalOptions", () => {
     });
     expect(readGlobalOptions(["test", "-h"]).options.help).toBe(true);
     expect(readGlobalOptions(["--help"]).options.help).toBe(true);
+  });
+
+  it("takes --version out wherever it stands", () => {
+    expect(readGlobalOptions(["test", "--version"])).toEqual({
+      options: { ...none, version: true },
+      args: ["test"],
+    });
   });
 
   it("leaves the command line as it is without a global option", () => {

@@ -142,6 +142,20 @@ jobs:
       # the launcher refuses; pnpm runs the devEngines Node 26.
       - name: CLI runs on a fresh install
         run: pnpm exec node apps/cli/bin/halonic.js --help
+      # The README's source install (HAL-6000): `pnpm add -g` links the
+      # folder and puts a `halonic` shim in $PNPM_HOME/bin, which runs
+      # bin/halonic.js with the `node` on the PATH. That has to be the
+      # devEngines Node 26, not the runner's Node 22, which the launcher
+      # refuses (HAL-6414).
+      - name: CLI installs from source
+        env:
+          PNPM_HOME: ${{ runner.temp }}/pnpm-home
+        run: |
+          node_bin="$(dirname "$(pnpm --silent exec node -p process.execPath | tail -n 1)")"
+          export PATH="$PNPM_HOME/bin:$node_bin:$PATH"
+          pnpm add -g ./apps/cli
+          halonic --help
+          halonic --version
       - id: pr
         uses: $/.github/actions/pull-request
       # Reads the title from a file: an `env:` block is printed in the log.
