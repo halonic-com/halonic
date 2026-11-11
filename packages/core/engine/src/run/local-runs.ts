@@ -18,7 +18,6 @@ import type {
   StartRunRequest,
 } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
-import { BudgetReachedError } from "../budget/call-budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
@@ -325,17 +324,6 @@ export class LocalRuns {
           : { type: "harness" as const, output: await this.#harnessCalls.run(run, call, waitedOn) };
       return { type: "effect-done", at: this.#now(), callId: waitedOn.callId, result };
     } catch (error) {
-      if (error instanceof BudgetReachedError) {
-        // As `step` stops a run for its budget: the reason is the engine's own, not an error's.
-        const at = this.#now();
-        return {
-          type: "effect-failed",
-          at,
-          callId: waitedOn.callId,
-          error: error.message,
-          reason: "budget",
-        };
-      }
       return failedCallInput(error, { callId: waitedOn.callId, at: this.#now(), step: call.state });
     }
   }
