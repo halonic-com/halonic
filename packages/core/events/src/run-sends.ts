@@ -9,7 +9,7 @@ export interface SendCount {
 
 /**
  * What one verb did, noun by noun, in the order of each noun's first call:
- * "sent" with 1 email and 2 invites reads "sent 1 email, 2 invites".
+ * "sent" with 1 email and 2 invites reads "sent 1 email and 2 invites".
  */
 export interface SendGroup {
   verb: ToolVerb;
