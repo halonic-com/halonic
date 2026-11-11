@@ -335,10 +335,12 @@ jobs:
     name: Typecheck, lint, test, build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    # The write token for the remote cache lives in the environment
-    # `turbo-cache-write`, which only `main` and the merge queue may use
-    # (deployment branch rule). A pull request gets the empty `turbo-cache-read`
-    # and the read-only token, whatever its ci.yml says.
+    # The write token for the remote cache and the key that signs its entries
+    # live in the environment `turbo-cache-write`, which only `main` and the
+    # merge queue may use (deployment branch rule). A pull request gets the
+    # empty `turbo-cache-read`, whatever its ci.yml says, so it holds neither
+    # secret and uses the local cache only (HAL-5220: the signing key was a
+    # repository secret, readable by any pull request's own workflow).
     environment: ${{ github.event_name == 'pull_request' && 'turbo-cache-read' || 'turbo-cache-write' }}
     permissions:
       contents: read
@@ -362,8 +364,9 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
       # Remote cache (Cloudflare, infra/turbo-cache). Only main and the merge
-      # queue hold the write token; pull requests get a read-only one, so the
-      # cache can't be written from an unreviewed branch. Without the
+      # queue hold the write token and the signing key; a pull request gets
+      # neither and uses the local cache, so the cache can't be read as
+      # trusted or written from an unreviewed branch. Without the
       # secrets (a fork), the step falls back to the local cache.
       # The cache hands out a 30-minute write token only against this run's
       # GitHub OIDC token, and only when GitHub says the event is the merge
@@ -386,14 +389,12 @@ jobs:
         env:
           TURBO_API: ${{ vars.TURBO_API }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-          TURBO_TOKEN: ${{ github.event_name == 'pull_request' && secrets.TURBO_TOKEN_READ || steps.cache-token.outputs.token }}
-          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          TURBO_TOKEN: ${{ steps.cache-token.outputs.token }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ github.event_name != 'pull_request' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY || '' }}
           EVENT: ${{ github.event_name }}
         run: |
           if [ -z "$TURBO_TOKEN" ] || [ -z "$TURBO_REMOTE_CACHE_SIGNATURE_KEY" ]; then
             cache=local:rw
-          elif [ "$EVENT" = "pull_request" ]; then
-            cache=local:rw,remote:r
           else
             cache=local:rw,remote:rw
           fi

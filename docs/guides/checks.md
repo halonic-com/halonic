@@ -651,15 +651,16 @@ never pushes; the pull request's own CI checks the lockfile.
 ## The remote cache in CI
 
 CI shares Turbo results through a remote cache: a small Cloudflare Worker with
-an R2 bucket (`infra/turbo-cache`). The `build` job reads it on pull requests
-and writes to it only on `main` and in the merge queue, so a pull request can't
-put anything into the cache that other runs trust. This is enforced by the
-tokens, not by a flag: the Worker has a read token (reads and queries only) and
-a write token (also uploads). The write token `TURBO_TOKEN` is a secret of the
-GitHub environment `turbo-cache-write`, whose deployment branches are `main`
-and `gh-readonly-queue/main/*`, so no pull request can read it. Pull requests
-get the read token `TURBO_TOKEN_READ`, a repository secret. Entries are signed
-(`remoteCache.signature` in `turbo.json`) and expire after 30 days. A run
-without the secrets, such as a fork, uses the local cache only. Local runs and
-agents don't use the remote cache: they have no token. `base-tests` stays
-uncached (`--force`). `actions/cache` stays as the fallback.
+an R2 bucket (`infra/turbo-cache`). The `build` job uses it only on `main` and
+in the merge queue. A pull request uses the local cache, so it can't put
+anything into the cache that other runs trust, and it holds none of the cache's
+secrets. On `main` and in the merge queue, the job gets a 30-minute write token
+from the Worker against its GitHub OIDC token, which the Worker only grants for
+those events. Entries are signed (`remoteCache.signature` in `turbo.json`) with
+`TURBO_REMOTE_CACHE_SIGNATURE_KEY`, a secret of the GitHub environment
+`turbo-cache-write`, whose deployment branches are `main` and
+`gh-readonly-queue/main/*`, so no pull request can read it. Don't keep that key
+as a repository secret: a pull request's own workflow can read those. Entries
+expire after 30 days. A run without the secrets, such as a fork, uses the local
+cache only. Local runs and agents don't use the remote cache: they have no
+token. `base-tests` stays uncached (`--force`). `actions/cache` stays as the fallback.
