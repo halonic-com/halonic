@@ -165,6 +165,10 @@ export {
 } from "./phone/bottom-navigation.tsx";
 export { MorePage, type MorePageProps, moreRows } from "./phone/more-page.tsx";
 export { type PhoneBackResult, pressPhoneBack, usePhoneBackButton } from "./phone/phone-back.ts";
+export {
+  PhoneSearchButton,
+  type PhoneSearchButtonProps,
+} from "./phone/phone-search-button.tsx";
 export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
   currentPhonePage,

@@ -399,6 +399,23 @@ search, since their count is of text matches (T2-F16, F20).
 ) : null}
 ```
 
+`PhoneSearchButton` is the top bar's **Search** (`shell.phone-search-button`, component specs
+15.1): a 48px icon button that opens `ShellPhoneSearch` and closes it itself. It takes the focus
+when pressed, since a tap doesn't focus a button in every browser, so the sheet gives the focus
+back to it on Close, Android back or a pick, before a picked page takes it. It goes in the top
+bar's `actions` at the top of a place:
+
+```tsx
+<PhoneTopBar
+  {...places.topBar}
+  actions={
+    places.topBar.onBack === undefined ? (
+      <PhoneSearchButton {...searchProps} onOpenLocation={places.open} />
+    ) : undefined
+  }
+/>
+```
+
 ## Search page
 
 The Search page finds anything in the workspace by its name or by the words inside it (VK T2-F7).
