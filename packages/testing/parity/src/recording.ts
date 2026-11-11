@@ -117,11 +117,12 @@ const clockOrId = [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, /\b(?:run|test)_[a-z0-9]{6,}
 
 /**
  * Replaces the scratch folder with "<workspace>" so recordings don't depend on
- * where they were made, and refuses output that carries a time or a run ID:
+ * where they were made (and on which system: Windows line endings become
+ * "\n"), and refuses output that carries a time or a run ID:
  * those would need a fixed clock or fixed IDs first.
  */
 export function normalise(value: string, workspaceDirs: readonly string[]): string {
-  let out = value;
+  let out = value.replaceAll("\r\n", "\n");
   for (const dir of workspaceDirs) {
     out = out.split(dir).join("<workspace>");
   }
