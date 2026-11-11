@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds Halonic's WSL image: Debian stable minbase from a pinned snapshot.
-# Needs root (or fakechroot-style rights) and mmdebstrap, tar, gzip.
+# Needs root and mmdebstrap (a recent one: use Debian trixie or newer), tar, gzip.
 # Usage: build.sh <output-dir>
 # Writes <output-dir>/halonic-wsl.tar.gz, packages.txt and sizes.json.
 set -euo pipefail
