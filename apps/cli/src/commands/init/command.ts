@@ -20,6 +20,7 @@ import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.
 import { nearMatch } from "../../near-match.ts";
 import { type NextStep, nextSteps } from "../../output/next-steps.ts";
 import { printable } from "../../output/printable.ts";
+import { shellWord } from "../../output/shell-word.ts";
 import { shownPath } from "../../shown-path.ts";
 import { writeFailure } from "../../write-failure.ts";
 import { type InitExample, initExamples } from "./examples.ts";
@@ -249,16 +250,6 @@ function changeFolder(folder: InitFolder, cwd: string): NextStep[] {
   return isHere(folder, cwd)
     ? []
     : [{ command: initMessages.nextChangeFolder(shellWord(relative(cwd, folder.root))).phrase }];
-}
-
-/**
- * The path as one word a shell reads back as it is: in double quotes when it
- * holds a space or a character a shell would read, so `cd "my agents"` can
- * be copied and run.
- */
-function shellWord(path: string): string {
-  const shown = printable(path);
-  return /^[\w./\\:-]+$/u.test(shown) ? shown : `"${shown}"`;
 }
 
 /**

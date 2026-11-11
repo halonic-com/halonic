@@ -1,0 +1,27 @@
+## colour: halonic extract famly family --dir home
+exit 4
+stdout:
+stderr:
+  \e[31m✕\e[39m There's no hub called "famly" in home. Did you mean family?
+    Hubs: family, investing
+
+## NO_COLOR: halonic extract famly family --dir home
+exit 4
+stdout:
+stderr:
+  ✕ There's no hub called "famly" in home. Did you mean family?
+    Hubs: family, investing
+
+## --json: halonic extract famly family --dir home
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "message": "There's no hub called \"famly\" in home. Did you mean family?",
+      "fix": "Hubs: family, investing"
+    }
+  }
+stderr:
