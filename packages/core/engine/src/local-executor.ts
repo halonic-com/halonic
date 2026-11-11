@@ -474,7 +474,7 @@ export class LocalExecutor implements RunExecutor {
       clock: this.options.clock,
       checkCall: runToolCheckOf(connectorTools),
       autoKnowledge: knowledge.auto,
-      log: refusalLog(this.options.runs?.store, run, call, this.options.clock),
+      log: refusalLog(this.runs?.store, run, call, this.options.clock),
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
       localOnly: this.options.localOnly === true,
     });

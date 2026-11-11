@@ -3,16 +3,15 @@
 // step per timer, and a timer that is late or repeated changes nothing.
 
 import type { RunEvent, RunFailureReason, RunSummary } from "@halonicjs/events";
-import { AGENT_HARNESSES } from "@halonicjs/format";
 import type {
   Clock,
   RunEventListener,
+  RunStore,
   RunSubscription,
   ScheduledTimer,
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
-import { encodeUtf8 } from "@halonicjs/std";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
@@ -44,6 +43,7 @@ import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest, startInputOf } from "./start-request.ts";
 import { resumeTimer, UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
+import { WatchedRuns } from "./watched-runs.ts";
 
 /**
  * Carries out a model call a run waits on, and gives the model's answer, or
@@ -78,6 +78,8 @@ type CallKind = "model" | "harness";
 
 /** Runs workflows in this process for the local executor. */
 export class LocalRuns {
+  /** The runs' store: every append through it that lands tells the subscribers, whoever makes it. */
+  readonly store: RunStore;
   readonly #options: LocalRunsOptions;
   readonly #clock: Clock;
   readonly #callModel: CallModel;
@@ -108,12 +110,13 @@ export class LocalRuns {
     this.#clock = clock;
     this.#callModel = callModel;
     this.#feed = new RunFeed(options.store);
+    this.store = new WatchedRuns(options.store, (runId) => this.#feed.notify(runId));
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
-    this.#folders = new RunsProposalFolders(options.store, options.proposalFolders);
+    this.#folders = new RunsProposalFolders(this.store, options.proposalFolders);
     this.#builtEffects = builtEffectsOf(options);
     this.#budget = budgetCheckOf(options);
     this.#harnessCalls = new LocalHarnessCalls({
-      store: options.store,
+      store: this.store,
       blobs: options.blobs,
       harnesses: options.harnesses,
       folders: this.#folders,
@@ -123,14 +126,14 @@ export class LocalRuns {
       record: (runId, input) => this.#record(runId, input),
     });
     this.#effects = new UnfinishedEffects({
-      store: options.store,
+      store: this.store,
       scheduler: options.scheduler,
       carryOut: (run, effect) => this.#carryOut(run, effect),
       ended: (runId) => this.#ended(runId),
       now: () => this.#now(),
     });
     this.#connectorCalls = new RunConnectorCallRunner({
-      store: options.store,
+      store: this.store,
       deadlines: this.#startDeadlines,
       callTool,
       record: (runId, input) => this.#recordIfTaken(runId, input),
@@ -151,7 +154,7 @@ export class LocalRuns {
     checkStartRequest(request);
     await this.#ready();
     const runId = request.runId ?? this.#options.ids.next("run");
-    const existing = await this.#options.store.get(runId);
+    const existing = await this.store.get(runId);
     if (existing !== null) return existing;
     const { hubId, workflowId, harness } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId);
@@ -164,7 +167,7 @@ export class LocalRuns {
       if (error instanceof InputRefused && error.code === "engine.run-exists") {
         return this.#summary(runId);
       }
-      if (opened && (await this.#options.store.get(runId)) === null) {
+      if (opened && (await this.store.get(runId)) === null) {
         await this.#folders.notStarted(runId);
       }
       throw error;
@@ -186,7 +189,7 @@ export class LocalRuns {
     options?: SendOptions,
   ): Promise<RunSummary> {
     await this.#ready();
-    await this.#record(await receiverOf(this.#options.store, runId), {
+    await this.#record(await receiverOf(this.store, runId), {
       type: "send",
       at: this.#now(),
       event,
@@ -207,7 +210,7 @@ export class LocalRuns {
    */
   async cancel(runId: string): Promise<RunSummary> {
     await this.#ready();
-    if ((await this.#options.store.get(runId)) === null)
+    if ((await this.store.get(runId)) === null)
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
     await this.#cancelDown(runId);
     return this.#summary(runId);
@@ -281,10 +284,9 @@ export class LocalRuns {
    */
   async #endInterruptedRuns(): Promise<void> {
     await this.#connectorCalls.markCutShort();
-    const ended = await endInterruptedRuns(this.#options.store, this.#clock);
-    for (const runId of ended) this.#feed.notify(runId);
+    const ended = await endInterruptedRuns(this.store, this.#clock);
     for (const runId of ended) {
-      const parent = (await readRun(this.#options.store, runId))?.parent;
+      const parent = (await readRun(this.store, runId))?.parent;
       if (parent == null) continue;
       await this.#options.scheduler.schedule(parent.runId, `${childTimer}${runId}`, this.#now());
     }
@@ -300,7 +302,7 @@ export class LocalRuns {
     const record = (input: DecideInput) => this.#recordIfTaken(runId, input);
     try {
       if (await this.#unrecorded.recordKept(slot, record)) return;
-      const run = await readRun(this.#options.store, runId);
+      const run = await readRun(this.store, runId);
       const call = run == null ? null : callOf(run, callId);
       if (run == null || call === null) return;
       const result = await this.#callResult(run, call, kind);
@@ -355,20 +357,19 @@ export class LocalRuns {
   }
 
   /**
-   * Steps the run with the input, tells the subscribers, and carries out or
-   * schedules the effects; those it can't are kept for the run's next timer.
+   * Steps the run with the input (the store tells the subscribers), and carries out
+   * or schedules the effects; those it can't are kept for the run's next timer.
    *
    * @returns the events the step stored; none when the input changed nothing
    */
   async #record(runId: string, input: DecideInput): Promise<readonly RunEvent[]> {
-    const { store, blobs } = this.#options;
+    const { blobs } = this.#options;
     const ports = {
-      runs: store,
+      runs: this.store,
       blobs,
       ...(this.#budget === undefined ? {} : { budget: this.#budget }),
     };
     const { run, events, effects } = await step(ports, runId, input);
-    if (events.length > 0) this.#feed.notify(runId);
     const unbuilt = effects.find((effect) => !this.#builtEffects.has(effect.type));
     if (unbuilt !== undefined) {
       // The events are stored, so throwing would leave the run going with no
@@ -398,7 +399,7 @@ export class LocalRuns {
    */
   async #ended(runId: string, childError = parentEndedError): Promise<void> {
     const end = (childRunId: string) => this.#cancelOne(childRunId, childError);
-    await endChildrenOf(this.#options.store, runId, end);
+    await endChildrenOf(this.store, runId, end);
     await this.#folders.ended(runId, (topLevelRunId) =>
       this.#harnessCalls.stopUnder(topLevelRunId),
     );
@@ -441,7 +442,7 @@ export class LocalRuns {
    * them waits in a `foreach` state, starts none: no one would end it.
    */
   async #startChild(parent: RunState, effect: StartChildEffect): Promise<void> {
-    const parentNow = await this.#options.store.get(parent.runId);
+    const parentNow = await this.store.get(parent.runId);
     if (parentNow !== null && hasEnded(parentNow.status)) return;
     try {
       const start = await childStart(this.#options.blobs, parent, effect, this.#now());
@@ -450,7 +451,7 @@ export class LocalRuns {
       // The child was already started, by a start asked for twice.
       if (error instanceof InputRefused && error.code === "engine.run-exists") return;
       // A child whose start is recorded runs: the error came after its start.
-      if ((await this.#options.store.get(effect.childRunId)) !== null) throw error;
+      if ((await this.store.get(effect.childRunId)) !== null) throw error;
       const message = error instanceof Error ? error.message : String(error);
       await this.#recordIfTaken(parent.runId, {
         type: "child",
@@ -464,14 +465,14 @@ export class LocalRuns {
 
   /** Gives the parent a `child` input with how its child is now. */
   async #hearFromChild(parentRunId: string, childRunId: string): Promise<void> {
-    const now = await childNow(this.#options.store, childRunId);
+    const now = await childNow(this.store, childRunId);
     if (now === null) return;
     await this.#recordIfTaken(parentRunId, { type: "child", at: this.#now(), childRunId, ...now });
   }
 
   /** Tells a run's parent, if it has one, how the run is now. */
   async #tellParentOf(runId: string): Promise<void> {
-    const parent = (await readRun(this.#options.store, runId))?.parent;
+    const parent = (await readRun(this.store, runId))?.parent;
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
   }
 
@@ -481,15 +482,14 @@ export class LocalRuns {
     await this.#harnessCalls.stop(runId);
   }
 
-  /** Ends a run that hasn't ended with `run.failed`, and tells its feed and its parent. */
+  /** Ends a run that hasn't ended with `run.failed`, and tells its parent. */
   async #fail(runId: string, error: string, reason: RunFailureReason = "error"): Promise<void> {
-    if (!(await appendFailed(this.#options.store, runId, error, reason, () => this.#now()))) return;
-    this.#feed.notify(runId);
+    if (!(await appendFailed(this.store, runId, error, reason, () => this.#now()))) return;
     await this.#tellParentOf(runId);
   }
 
   async #summary(runId: string): Promise<RunSummary> {
-    const summary = await this.#options.store.get(runId);
+    const summary = await this.store.get(runId);
     if (summary === null) throw new Error(`Run "${runId}" has no log after it was recorded.`);
     return summary;
   }
