@@ -30,7 +30,7 @@ jobs:
             Say "### $label"
             Say '```'
             $out = & $exe @argv 2>&1 | Out-String
-            Say ($out.Trim())
+            Say ("$out".Trim())
             Say "exit: $LASTEXITCODE"
             Say '```'
           }
@@ -38,6 +38,11 @@ jobs:
           Say ('```' + "`n" + (Get-ExecutionPolicy -List | Out-String).Trim() + "`n" + '```')
           Say "PNPM_HOME from setup: '$env:PNPM_HOME'"
           Say "pnpm: $(pnpm --version), node: $(node --version)"
+
+          # action-setup puts pnpm itself in PNPM_HOME, so keep its full path
+          # before taking that folder off Path.
+          $pnpm = (Get-Command pnpm -CommandType Application | Select-Object -First 1).Source
+          Say "pnpm used: $pnpm"
 
           # (b) A user with no pnpm global bin folder: drop what action-setup set.
           $setupHome = $env:PNPM_HOME
@@ -47,22 +52,22 @@ jobs:
           Remove-Item Env:PNPM_HOME -ErrorAction SilentlyContinue
           [Environment]::SetEnvironmentVariable('PNPM_HOME', $null, 'User')
           Say "## (b) pnpm setup"
-          Run 'pnpm add -g before pnpm setup' 'pnpm' @('add', '-g', './apps/cli')
-          Run 'pnpm setup' 'pnpm' @('setup')
+          Run 'pnpm add -g before pnpm setup' $pnpm @('add', '-g', './apps/cli')
+          Run 'pnpm setup' $pnpm @('setup')
           $userHome = [Environment]::GetEnvironmentVariable('PNPM_HOME', 'User')
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
           Say "User PNPM_HOME after setup: '$userHome'"
           Say "User Path has it: $([bool](($userPath -split ';') | Where-Object { $_ -and $_.StartsWith($userHome) }))"
           Say "This terminal's PNPM_HOME: '$env:PNPM_HOME'"
           Say "This terminal's Path has it: $([bool](($env:Path -split ';') | Where-Object { $userHome -and $_.StartsWith($userHome) }))"
-          Run 'pnpm add -g in the same terminal, right after pnpm setup' 'pnpm' @('add', '-g', './apps/cli')
+          Run 'pnpm add -g in the same terminal, right after pnpm setup' $pnpm @('add', '-g', './apps/cli')
           Run 'halonic in the same terminal' 'pwsh' @('-NoProfile', '-Command', 'halonic --version')
 
           # A new terminal reads PNPM_HOME and Path from the registry.
           $env:PNPM_HOME = $userHome
           $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $userPath
           Say "## New terminal (environment read again from the registry)"
-          Run 'pnpm add -g ./apps/cli' 'pnpm' @('add', '-g', './apps/cli')
+          Run 'pnpm add -g ./apps/cli' $pnpm @('add', '-g', './apps/cli')
 
           Say "## (a) The shims pnpm wrote"
           Say ('```' + "`n" + (Get-ChildItem -Recurse -Depth 1 $userHome -Include 'halonic*' | ForEach-Object { $_.FullName } | Out-String).Trim() + "`n" + '```')
