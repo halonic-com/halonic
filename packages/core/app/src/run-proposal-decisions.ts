@@ -2,7 +2,13 @@
 // Reject, Compare, and Undo and Redo of those decisions. Internal to
 // `core/app`; `RunProposals` hands its calls here.
 
-import { acceptFiles, type DecideContext, refusalOf, restoreFile } from "./run-proposal-decide.ts";
+import {
+  acceptFiles,
+  type DecideContext,
+  expectedOf,
+  refusalOf,
+  restoreFile,
+} from "./run-proposal-decide.ts";
 import {
   type PartlyDecided,
   type ProposedRecord,
@@ -58,7 +64,7 @@ export class ProposalDecisions {
       const decisions: Record<string, Decision> = { ...record.decisions };
       for (const file of record.proposal.files) {
         if (covers(target, file) && decisions[file.path] === "undecided") {
-          decisions[file.path] = "rejected";
+          decisions[file.path] = settledOnReject(file, record.partly?.[file.path]);
         }
       }
       return { undo: stepOf(runId, await this.saveDecisions(record, decisions)) };
@@ -162,6 +168,18 @@ export class ProposalDecisions {
  */
 export function decisionsPathOf(runId: string): string {
   return `.halonic/proposals/${runId}.json`;
+}
+
+/**
+ * How Reject settles an undecided file, as a whole or with its last part:
+ * accepted if the person accepted any part of it, which the saved file then
+ * holds instead of the run's base; rejected if not.
+ */
+export function settledOnReject(
+  file: ProposedFile,
+  partly: PartlyDecided | undefined,
+): "accepted" | "rejected" {
+  return partly !== undefined && partly.saved !== expectedOf(file) ? "accepted" : "rejected";
 }
 
 /** The record with `partly` kept for its undecided files only, and left out when none are. */

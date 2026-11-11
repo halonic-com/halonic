@@ -218,7 +218,9 @@ export class RunProposals {
 
   /**
    * Rejects what the target covers (`app.run-proposal-reject`): each
-   * undecided file becomes rejected; the saved files stay as they are.
+   * undecided file becomes rejected, or accepted when the person accepted
+   * some of its parts (`app.run-proposal-accept-reject-part`); the saved
+   * files stay as they are.
    *
    * @returns the decisions record, before and after, as one undo step
    * @throws when the run has no proposal

@@ -187,6 +187,16 @@ verifies("app.run-proposal-accept-reject-part", () => {
       expect(setup.store.files.get(path)).toBe(modelOnly);
       expect(await setup.decisionOf()).toBe("accepted");
     });
+
+    it("accepts the file on Reject when a part of it was accepted", async () => {
+      const setup = await setUpRun();
+      const { seen } = await setup.partsOf();
+      await setup.proposals.acceptInFile("01JD8Q", { kind: "part", file: path, part: 0, seen });
+      await setup.proposals.reject("01JD8Q", { file: path });
+      expect(setup.store.files.get(path)).toBe(nameOnly);
+      expect(await setup.decisionOf()).toBe("accepted");
+      expect((await setup.proposals.get("01JD8Q"))?.partly).toBeUndefined();
+    });
   });
 });
 
@@ -229,6 +239,19 @@ verifies("app.run-proposal-accept-reject-change", () => {
         seen,
       });
       expect(result).toMatchObject({ status: "cant-separate", path });
+      expect(setup.store.files.get(path)).toBe(before);
+    });
+
+    it("answers stale on a change whose item paths change nothing", async () => {
+      const setup = await setUpRun();
+      const { seen } = await setup.partsOf();
+      const result = await setup.proposals.acceptInFile("01JD8Q", {
+        kind: "change",
+        file: path,
+        parts: [["description"]],
+        seen,
+      });
+      expect(result).toEqual({ status: "stale", path });
       expect(setup.store.files.get(path)).toBe(before);
     });
   });

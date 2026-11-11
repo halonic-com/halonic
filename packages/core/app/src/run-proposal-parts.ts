@@ -7,7 +7,7 @@ import { applyLineChanges, contentDigest, diffLines, matchesExpected } from "@ha
 import { type ItemPath, revertParts } from "./changes/revert-parts.ts";
 import { refused, storeRefusing } from "./review-gate.ts";
 import { type DecideContext, expectedOf, refusalOf } from "./run-proposal-decide.ts";
-import { type ProposalDecisions, stepOf } from "./run-proposal-decisions.ts";
+import { type ProposalDecisions, settledOnReject, stepOf } from "./run-proposal-decisions.ts";
 import type { PartlyDecided, ProposedRecord } from "./run-proposal-record.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
 import type {
@@ -126,11 +126,8 @@ export class ProposalParts {
     run: string,
   ): Promise<InFileResult> {
     const { path, saved } = state.view;
-    // Rejecting the last part settles the file: accepted if any part was, rejected if none.
-    let settled: Decision | null = null;
-    if (run === saved) {
-      settled = state.expected === expectedOf(state.file) ? "rejected" : "accepted";
-    }
+    // Rejecting the last part settles the file as a whole-file Reject would.
+    const settled = run === saved ? settledOnReject(state.file, record.partly?.[path]) : null;
     const entries = await this.saveFile(record, path, { saved: state.expected, run }, settled);
     return { status: "done", ...nothingWritten, undo: stepOf(record.proposal.runId, entries) };
   }
@@ -258,6 +255,11 @@ function decidedChange(
     return cantSeparate(
       "Couldn't split this change into parts, so accept or reject it as a whole.",
     );
+  }
+  // Item paths that change nothing name a change that isn't there (any more).
+  const unchanged = decision === "accept" ? view.saved : view.run;
+  if (reverted.value === unchanged) {
+    return { status: "stale", path: view.path };
   }
   return { status: "text", text: reverted.value };
 }
