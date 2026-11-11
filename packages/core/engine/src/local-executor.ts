@@ -387,13 +387,9 @@ export class LocalExecutor implements RunExecutor {
   /**
    * A subagent's own turn on a task, one level deeper, on its own model and
    * with its own tools: with `runs.connectorCalls`, the connector tools a
-   * `parallel` branch gets, because it can't stop the run either. Its calls
-   * are checked as a run's are, except that one that needs a person's OK is
-   * refused ({@link checkSubagentToolCall}).
-   *
-   * Given `task.resumeFrom`, its turn goes on from where it stopped.
-   *
-   * @returns the subagent's answer, or where its turn stopped; with no effect step and every call that asks refused, it doesn't stop yet
+   * `parallel` branch gets. A call that needs a person's OK is refused
+   * ({@link checkSubagentToolCall}), so its turn doesn't stop yet. Given
+   * `task.resumeFrom`, it goes on from where it stopped.
    */
   private async runSubagent(turn: RunTurn, task: DelegatedTask): Promise<SubagentOutcome> {
     const subagent = agentIn(turn.definitions, task.agent);
