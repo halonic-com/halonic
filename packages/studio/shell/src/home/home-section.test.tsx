@@ -218,6 +218,15 @@ verifies("shell.home-states", () => {
     expect(status(container)).toBe(notAnswering);
   });
 
+  it("doesn't say a reason that is only spaces", async () => {
+    const inbox = new PendingRows();
+    const runs = new PendingRows();
+    const container = renderHome([card("needs-you", inbox), card("recent-runs", runs)]);
+    await wait(300);
+    await fail(inbox, new KindedError("unavailable", "  "));
+    expect(status(container)).toBe("Loading Home");
+  });
+
   it("ends each reason in a full stop, so two reasons don't run together", async () => {
     const inbox = new PendingRows();
     const runs = new PendingRows();
