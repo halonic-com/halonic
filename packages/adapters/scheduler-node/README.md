@@ -104,9 +104,15 @@ export async function runExample(): Promise<{
   isn't a valid time, makes `schedule` reject with a `RangeError` and change
   nothing.
 - **Wake-ups:** the scheduler wakes itself with `setTimer`, set for the earlier
-  of the next due timer and the next tick, so nothing has to call it. After
-  `close` it sets no more wake-ups and delivers nothing more, and `close`
-  resolves once the deliveries in progress have settled.
+  of the next due timer and the next tick, so nothing has to call it. It sets
+  the next wake-up as a delivery starts and again as each one settles, so one
+  slow listener call holds back no other timer. A timer or tick still being
+  delivered is left out of the wake-up, so an overdue one can't wake the
+  scheduler in a loop; a tick that is still running when the next is due waits
+  for it to settle and then starts the next at once (requirement
+  `scheduler-node.slow-delivery`). After `close` it sets no more wake-ups and
+  delivers nothing more, and `close` resolves once the deliveries in progress
+  have settled.
 - **Failed wake-ups:** a wake-up that fails is reported as `"wake-up"`, and
   the next one waits as a timer's retry would: 1 second, doubling up to 15
   minutes, or longer when nothing is due sooner. After each wake-up that

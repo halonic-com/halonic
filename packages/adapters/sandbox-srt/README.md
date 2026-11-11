@@ -47,7 +47,9 @@ with `pnpm test:fence`.
 
 The report-only `sandbox-windows-spike` CI workflow also runs `scripts/windows-isolation-probe.mjs` when that
 script changes. Among its results, it checks that a session on project B can neither write in nor
-delete from a project A whose grant an earlier session kept (`kept-roots-writable`). It writes
+delete from a project A whose grant an earlier session kept (`kept-roots-writable`). Session B's
+checks pass only on an explicit `blocked:` answer; a crash, empty output or any other text is
+`INCONCLUSIVE`, not a pass. It writes
 `windows-isolation-results.json`; it doesn't gate a merge.
 
 ## Exports

@@ -58,7 +58,9 @@ profile's `readOnlyPaths`: the real folder of the program the sandbox starts
 that runs on Node, its package folder under `%APPDATA%\npm\node_modules`.
 Each is named only when it is inside `%USERPROFILE%`; an install in
 `%ProgramFiles%` adds nothing. It never names the user profile itself, and
-refuses a folder that is the profile or overlaps Halonic's data folder.
+refuses a folder that is the profile or overlaps Halonic's data folder. A data
+folder that doesn't exist yet is compared at its real place, so a program at
+the target of a junction that leads into where it will be is refused too.
 Tests pass a `RealPath` that resolves links without a disk.
 
 ## Example
