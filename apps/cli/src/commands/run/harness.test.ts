@@ -21,7 +21,7 @@ import {
   openWorkspaceRuns,
   webCryptoDigest,
 } from "../../workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { runCommandWith } from "./command.ts";
 import { RunHarnessError, runHarnessOf } from "./harness.ts";
 
@@ -69,9 +69,11 @@ afterEach(async () => {
 /** Acme trusted as it is now. */
 async function trustAcme(): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const { subject } = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands);
+  const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(now));
   const check = await trust.check(subject);
+  assertTrustable(check, read);
   expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
 }
 
