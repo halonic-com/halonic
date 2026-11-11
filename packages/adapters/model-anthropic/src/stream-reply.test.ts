@@ -174,6 +174,16 @@ verifies("model-anthropic.stream-errors", () => {
     ["a delta for a block that never started", [messageStart, text(0, "Hi")], /never started/],
     ["a block event without an index", [messageStart, { type: "content_block_stop" }], /no index/],
     [
+      "a block that starts far ahead of the next one",
+      [messageStart, start(4_000_000_000, { type: "text", text: "" })],
+      /block 4000000000 started, but block 0 was next/,
+    ],
+    [
+      "a block that starts twice",
+      [messageStart, start(0, { type: "text", text: "" }), start(0, { type: "text", text: "" })],
+      /block 0 started, but block 1 was next/,
+    ],
+    [
       "a tool input that isn't a JSON object",
       [messageStart, start(0, { type: "tool_use", id: "t", name: "n" }), json(0, "[1]"), stop(0)],
       /isn't a JSON object/,

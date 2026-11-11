@@ -171,6 +171,8 @@ async function callProvider(
       method: "POST",
       headers: upstream.headers,
       body: upstream.body,
+      // A redirect would carry the key to another address.
+      redirect: "error",
       signal,
     });
   } catch (cause) {

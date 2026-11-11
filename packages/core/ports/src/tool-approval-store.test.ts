@@ -31,7 +31,9 @@ const approval: ToolApproval = {
       package: "@acme/notes-mcp",
       version: "2.3.1",
     },
+    cwd: ".",
     env: null,
+    secretEnv: null,
   },
   fingerprint: "htl1:ab",
   tool: {
@@ -112,7 +114,31 @@ verifies("ports.listed-tool-approval", () => {
     const withoutEnv: ToolApproval = {
       ...approval,
       // @ts-expect-error: a stdio server's environment is part of its address
-      server: { kind: "stdio", command: "notes-mcp", args: [], pin: null },
+      server: {
+        kind: "stdio",
+        command: "notes-mcp",
+        args: [],
+        pin: null,
+        cwd: ".",
+        secretEnv: null,
+      },
+    };
+    const withoutSecretEnv: ToolApproval = {
+      ...approval,
+      // @ts-expect-error: a stdio server's secret environment is part of its address
+      server: { kind: "stdio", command: "notes-mcp", args: [], pin: null, cwd: ".", env: null },
+    };
+    const withoutCwd: ToolApproval = {
+      ...approval,
+      // @ts-expect-error: the folder a stdio server starts in is part of its address
+      server: {
+        kind: "stdio",
+        command: "notes-mcp",
+        args: [],
+        pin: null,
+        env: null,
+        secretEnv: null,
+      },
     };
     const withoutSettings: ToolApproval = {
       ...approval,
@@ -127,9 +153,11 @@ verifies("ports.listed-tool-approval", () => {
       withoutServer,
       withHeaderText,
       withoutEnv,
+      withoutSecretEnv,
+      withoutCwd,
       withoutSettings,
       unversioned,
-    ]).toHaveLength(6);
+    ]).toHaveLength(8);
   });
 
   typeTest("types the fingerprint as htl1: text", () => {
@@ -144,6 +172,9 @@ verifies("ports.listed-tool-approval", () => {
     >().toEqualTypeOf<WrittenDigest | null>();
     expectTypeOf<
       Extract<ToolServer, { kind: "stdio" }>["env"]
+    >().toEqualTypeOf<WrittenDigest | null>();
+    expectTypeOf<
+      Extract<ToolServer, { kind: "stdio" }>["secretEnv"]
     >().toEqualTypeOf<WrittenDigest | null>();
   });
 

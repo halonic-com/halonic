@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1734, the plugins ADR (`docs/adr/2026-11-09-plugins.md`, Accepted, sections 1.1, 1.4, 1.5 and 3); HAL-4540 (the length limits, so a plugin's stored secret names fit `Secrets`)
+- Source: HAL-1734, the plugins ADR (`docs/adr/2026-11-09-plugins.md`, Accepted, sections 1.1, 1.4, 1.5 and 3); HAL-4540 (the length limits, so a plugin's stored secret names fit `Secrets`); HAL-5453 (cards without a panel, after board decision D3 on HAL-1801)
 
-When a `plugin.yaml` passes its schema, the format shall fail it unless it has a `backend` or `localTools`, its id is at most 48 characters and every secret it declares is named in at most 64, its backend passes the integration sheet's own checks and doesn't need `process`, no local tool id, tool name within one local tool, command id or card id is listed twice, no tool name and no secret name is in two parts, every local tool `env` secret names one of that tool's own secrets, every `env` setting names a setting that isn't a `secret` field, every local tool secret goes only to hosts in that tool's `network`, every `secret` field names a secret the backend or a local tool declares, every choice's `default` is one of its `choices`, every command and card names a tool the plugin declares, and a plugin with cards has a panel; and `backendSheet` and `pluginFromIntegrationSheet`, offered by the main entry point and by `@halonicjs/format/integration`, shall convert between a plugin's backend and an integration sheet without losing anything.
+When a `plugin.yaml` passes its schema, the format shall fail it unless it has a `backend` or `localTools`, its id is at most 48 characters and every secret it declares is named in at most 64, its backend passes the integration sheet's own checks and doesn't need `process`, no local tool id, tool name within one local tool, command id or card id is listed twice, no tool name and no secret name is in two parts, every local tool `env` secret names one of that tool's own secrets, every `env` setting names a setting that isn't a `secret` field, every local tool secret goes only to hosts in that tool's `network`, every `secret` field names a secret the backend or a local tool declares, every choice's `default` is one of its `choices`, and every command and card names a tool the plugin declares; and `backendSheet` and `pluginFromIntegrationSheet`, offered by the main entry point and by `@halonicjs/format/integration`, shall convert between a plugin's backend and an integration sheet without losing anything.
 
 ## Examples
 
@@ -20,7 +20,7 @@ When a `plugin.yaml` passes its schema, the format shall fail it unless it has a
 - Given a `secret` field whose `secret` no part declares, when it is parsed, then it fails with `secret-not-declared`.
 - Given a choice setting or form field whose `default` isn't one of its `choices`, when it is parsed, then it fails with `default-not-a-choice`.
 - Given a command or card whose tool neither the backend nor a local tool declares, when it is parsed, then it fails with `tool-not-found` at its `tool`.
-- Given cards and no `panel`, when it is parsed, then it fails with `cards-need-panel` at `ui.cards`; commands without a panel pass.
+- Given cards or commands and no `panel`, when it is parsed, then it passes: cards show on Home and commands in the command palette, so a panel is optional (board decision D3, HAL-1801).
 - Given each of the `knowledge-mcp`, `model-gemini`, `tool-google-drive` and `tool-google-gmail` sheets, when `pluginFromIntegrationSheet` converts it, then the plugin is named by the sheet's id, has an empty description and the default `entry` unless the loader gives one, passes `checkPlugin`, and `backendSheet` gives back a value deep-equal to the sheet.
 - Given a plugin with no backend, when `backendSheet` reads it, then it gives `undefined`.
 

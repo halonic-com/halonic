@@ -72,12 +72,23 @@ export function parseArguments(text: string): Record<string, unknown> {
   return { input: text };
 }
 
-/** The token counts in a reply's `usage`; a missing count is 0. */
+/**
+ * The token counts in a reply's `usage`; a missing count is 0. Unlike
+ * Anthropic's, `prompt_tokens` also counts the tokens read from the prompt
+ * cache, which `prompt_tokens_details.cached_tokens` gives. Those are taken
+ * out of the input and counted as cache reads, because spend prices them at
+ * their own price, as the harness bridge does.
+ */
 export function readUsage(value: unknown): ChatResponse["usage"] {
   const usage = isPlainObject(value) ? value : {};
+  const prompt = countOf(usage["prompt_tokens"]);
+  const details = usage["prompt_tokens_details"];
+  const cached = isPlainObject(details) ? countOf(details["cached_tokens"]) : 0;
+  const cacheReadTokens = Math.min(cached, prompt);
   return {
-    inputTokens: countOf(usage["prompt_tokens"]),
+    inputTokens: prompt - cacheReadTokens,
     outputTokens: countOf(usage["completion_tokens"]),
+    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
   };
 }
 

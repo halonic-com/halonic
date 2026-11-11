@@ -127,6 +127,21 @@ verifies("model-anthropic.reply-cache-usage", () => {
     });
   });
 
+  it("gives 1-hour cache writes apart from 5-minute ones, by the API's split", () => {
+    const usage = {
+      input_tokens: 40,
+      output_tokens: 9,
+      cache_creation_input_tokens: 1_200,
+      cache_creation: { ephemeral_5m_input_tokens: 200, ephemeral_1h_input_tokens: 1_000 },
+    };
+    expect(readUsage(usage)).toEqual({
+      inputTokens: 40,
+      outputTokens: 9,
+      cacheWriteTokens: 200,
+      cacheWrite1hTokens: 1_000,
+    });
+  });
+
   it("leaves a cache count out when there was none, or when it isn't a count", () => {
     expect(
       readUsage({

@@ -255,14 +255,11 @@ verifies("format.plugin-checks", () => {
     );
   });
 
-  it("fails cards without a panel, and takes commands without one", () => {
-    expect(
-      found(...head, ...backend, "ui:", "  cards: [{ id: now, title: N, tool: forecast }]"),
-    ).toEqual(["ui.cards cards-need-panel"]);
-    const plugin = parsedValue(
-      "plugin",
-      yaml(...head, ...backend, "ui:", "  commands: [{ id: show, title: S, tool: forecast }]"),
-    );
+  it.each([
+    ["cards", "  cards: [{ id: now, title: N, tool: forecast }]"],
+    ["commands", "  commands: [{ id: show, title: S, tool: forecast }]"],
+  ])("takes %s without a panel", (_part, line) => {
+    const plugin = parsedValue("plugin", yaml(...head, ...backend, "ui:", line));
     expect(checkPlugin(plugin)).toEqual([]);
   });
 

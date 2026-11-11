@@ -8,7 +8,7 @@ import type { ScheduledTimer } from "@halonicjs/ports";
  */
 export interface StoredTimer {
   readonly timer: ScheduledTimer;
-  /** How many deliveries in a row the listener rejected. */
+  /** How many deliveries in a row failed: the listener rejected, or the store failed to record the outcome. */
   readonly failures: number;
   /** When it is next delivered, in ms: the set time, or the retry time after a failure. */
   readonly dueAt: number;

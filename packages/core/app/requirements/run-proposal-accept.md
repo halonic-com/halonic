@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: save model 7 and 1.7; engine answer 2 on HAL-3267 ("Accept"); HAL-4121; HAL-3248
+- Source: save model 7 and 1.7; engine answer 2 on HAL-3267 ("Accept"); HAL-4121; HAL-3248; HAL-5218
 
-When the person accepts a file of a run's proposal, or all of it, the proposal service shall write each undecided file it covers with `expected` set to the file's digest at the run's base (`absent` for a file the run added), moving a file the run deleted to Halonic's trash the same way, and mark it accepted. If the saved file is no longer the run's base, the proposal service shall write nothing for that file, keep it undecided and list it under `changedOnDisk`, and `compare` shall give its base, saved and run texts. The proposal service shall give back the files it wrote and the decisions record, before and after, as one undo step, or no step when it wrote no file, even if decisions changed (a refused file becoming not applicable, or a file already as the run left it becoming accepted): Undo brings back files, and a refused file stays not applicable. When the person undoes or redoes that step, the proposal service shall write each entry back only while it still holds what the step left, and list any other under `changedOnDisk`.
+When the person accepts a file of a run's proposal, or all of it, the proposal service shall write each undecided file it covers with `expected` set to the file's digest at the run's base (`absent` for a file the run added), moving a file the run deleted to Halonic's trash the same way, and mark it accepted. If the saved file is no longer the run's base, the proposal service shall write nothing for that file, keep it undecided and list it under `changedOnDisk`, and `compare` shall give its base, saved and run texts. The proposal service shall give back the files it wrote and the decisions record, before and after, as one undo step, or no step when it wrote no file, even if decisions changed (a refused file becoming not applicable, or a file already as the run left it becoming accepted): Undo brings back files, and a refused file stays not applicable. When the person undoes or redoes that step, the proposal service shall write each entry back only while it still holds what the step left, and list any other under `changedOnDisk`; while the run's decisions record no longer holds what the step left, the proposal service shall write nothing of the step and list every entry under `changedOnDisk`.
 
 ## Examples
 
@@ -26,3 +26,6 @@ When the person accepts a file of a run's proposal, or all of it, the proposal s
 - Given the person accepted `agents/clerk.agent.yaml` and edited it again,
   when they undo the Accept,
   then their edit stays and the file is listed under `changedOnDisk`.
+- Given the person accepted `agents/clerk.agent.yaml` and then rejected `notes/today.md` of the same run,
+  when they undo the Accept,
+  then nothing is written, the file keeps the run's text, its decision still says accepted, and both entries of the step are listed under `changedOnDisk`.

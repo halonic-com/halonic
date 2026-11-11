@@ -125,12 +125,23 @@ export class RunProposals {
    *   `null` when history is off (`liveVersionOf` says `history-off`)
    * @throws RangeError for a run id that can't name a proposal ref
    * @throws WorkspaceTooBigToCopyError with history off, when the workspace is too big to copy
-   * @throws when the run already has a record
+   * Opening a run that is open gives its folder again, as the engine's
+   * `RunProposalFolders` port has it, so two starts of one run both get it.
+   *
+   * @throws when the run already has a proposal, or its open folder is gone
    */
   async open(runId: string, version: string | null): Promise<RunWorktree> {
     return await this.records.inTurn(runId, async () => {
-      if ((await this.records.read(runId)) !== null) {
-        throw new Error(`Run ${runId} already has a worktree or a proposal.`);
+      const existing = await this.records.read(runId);
+      if (existing?.state === "running") {
+        const folder = await this.texts.folderOf(existing);
+        if (folder === null) {
+          throw new Error(`Run ${runId} has a worktree record, but its folder is gone.`);
+        }
+        return { folder };
+      }
+      if (existing !== null) {
+        throw new Error(`Run ${runId} already has a proposal.`);
       }
       const { folder, record } = await this.texts.open(runId, version);
       await this.records.save(record);
@@ -293,7 +304,9 @@ export class RunProposals {
    * {@link reject} back as they were `before` it (Undo) or `after` it
    * (Redo). Each entry is written only while it is still as the step left
    * it, so an edit made since is never lost: it is listed in `changedOnDisk`.
-   * Trust rule A holds as for Accept (`app.run-proposal-trust`): an entry
+   * While the run's decisions record isn't as the step left it, nothing of
+   * the step is written and every entry is listed there, so a file never
+   * comes back without its decision. Trust rule A holds as for Accept (`app.run-proposal-trust`): an entry
    * Accept could never write is listed under `refused` and left alone.
    *
    * @throws when the run has no proposal, or it is settled

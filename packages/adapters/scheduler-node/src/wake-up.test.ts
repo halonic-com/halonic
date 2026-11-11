@@ -53,7 +53,7 @@ verifies("scheduler-node.wake-up", () => {
       expect(s.listener.ticks).toEqual([]);
     });
 
-    it("reports a store that fails while a delivery is recorded, and delivers the timer again", async () => {
+    it("reports a store that fails while a delivery is recorded, and delivers the timer again a retry later", async () => {
       const s = startScheduler();
       const at = s.inMs(0);
       await s.scheduler.schedule("run_1", "step", at);
@@ -61,7 +61,10 @@ verifies("scheduler-node.wake-up", () => {
       await s.wait(0);
       expect(s.errors).toHaveLength(1);
       expect(await s.scheduler.pending("run_1")).toEqual([{ key: "run_1", timerId: "step", at }]);
+      // Not at once (HAL-5615): the timer waits a retry's 1 second.
       await s.wait(0);
+      expect(s.listener.timers).toHaveLength(1);
+      await s.wait(1000);
       expect(s.listener.timers).toEqual([
         { key: "run_1", timerId: "step", at },
         { key: "run_1", timerId: "step", at },

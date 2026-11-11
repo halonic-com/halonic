@@ -1,5 +1,7 @@
 import ts from "@typescript/typescript6";
 
+export { isSourceFile, isTestFile, sourceExtensions } from "./source-paths.ts";
+
 /** One import, export-from, dynamic import or `require` in a source file. */
 export interface ImportReference {
   readonly specifier: string;
@@ -30,25 +32,9 @@ export interface SourceFacts {
   readonly functions: readonly FunctionSpan[];
 }
 
-/** File endings the parser reads. */
-export const sourceExtensions = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
-
-/** True when the file is TypeScript or JavaScript source. */
-export function isSourceFile(file: string): boolean {
-  return sourceExtensions.some((extension) => file.endsWith(extension));
-}
-
 /** True when the file is code, docs or config that people read and review as text. */
 export function isTextFile(file: string): boolean {
   return /\.(?:[cm]?[jt]sx?|md|mdx|json|jsonc|ya?ml|toml|astro|css|html|svg|rs|sh|txt)$/.test(file);
-}
-
-/**
- * Test files may use dev tooling such as Vitest. They end in `.test.ts` or
- * `.spec.ts`; a `test/` folder alone doesn't make a file a test.
- */
-export function isTestFile(file: string): boolean {
-  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file);
 }
 
 /** True when an import path names a test file, with or without its file ending. */
@@ -164,6 +150,10 @@ function hiddenLoadOf(node: ts.Node): string | undefined {
     }
     return undefined;
   }
+  const global = globalEscape(node);
+  if (global !== undefined) {
+    return global;
+  }
   const name = memberName(node);
   if (name === "createRequire" || name === "getBuiltinModule") {
     return name;
@@ -174,6 +164,81 @@ function hiddenLoadOf(node: ts.Node): string | undefined {
     return "require other than a direct require() call";
   }
   return undefined;
+}
+
+const globalObjects = new Set(["globalThis", "global", "self", "window"]);
+/** What a global object can hand out without an import: Node's own APIs and code from a string. */
+const globalEscapes = new Set(["process", "require", "Buffer", "eval", "Function"]);
+/** The members of `process` that load native code or start a process without an import. */
+const processEscapes = new Set(["binding", "_linkedBinding", "dlopen"]);
+
+/**
+ * Names the way a node reaches a Node API or runs code from a string without
+ * importing anything: `eval(…)`, `Function(…)`, a global object's `process`,
+ * `require`, `Buffer`, `eval` or `Function` (also destructured or by a computed
+ * name), and `process.binding`, `process._linkedBinding`, `process.dlopen`.
+ */
+function globalEscape(node: ts.Node): string | undefined {
+  if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+    const callee = node.expression;
+    if (ts.isIdentifier(callee) && (callee.text === "eval" || callee.text === "Function")) {
+      return `${callee.text}(), which runs code from a string`;
+    }
+  }
+  if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+    const base = unwrap(node.expression);
+    const key = memberName(node);
+    if (ts.isIdentifier(base) && globalObjects.has(base.text)) {
+      if (key === undefined) {
+        return `${base.text}[…] with a computed name`;
+      }
+      return globalEscapes.has(key)
+        ? `${base.text}.${key}, which reaches a Node API or code from a string`
+        : undefined;
+    }
+    if (
+      ts.isIdentifier(base) &&
+      base.text === "process" &&
+      key !== undefined &&
+      processEscapes.has(key)
+    ) {
+      return `process.${key}, which loads native code`;
+    }
+  }
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isObjectBindingPattern(node.name) &&
+    node.initializer !== undefined
+  ) {
+    const init = unwrap(node.initializer);
+    const takesEscape = node.name.elements.some((element) => {
+      const key = element.propertyName ?? element.name;
+      return (
+        element.dotDotDotToken !== undefined ||
+        ts.isComputedPropertyName(key) ||
+        (ts.isIdentifier(key) && globalEscapes.has(key.text))
+      );
+    });
+    if (takesEscape && ts.isIdentifier(init) && globalObjects.has(init.text)) {
+      return `a destructured ${init.text}, which can reach a Node API or code from a string`;
+    }
+  }
+  return undefined;
+}
+
+/** The expression inside parentheses, casts, `satisfies` and `!`. */
+function unwrap(node: ts.Expression): ts.Expression {
+  let inner = node;
+  while (
+    ts.isParenthesizedExpression(inner) ||
+    ts.isAsExpression(inner) ||
+    ts.isSatisfiesExpression(inner) ||
+    ts.isNonNullExpression(inner) ||
+    ts.isTypeAssertionExpression(inner)
+  ) {
+    inner = inner.expression;
+  }
+  return inner;
 }
 
 /** The name an identifier, `a.name` or `a["name"]` refers to. */

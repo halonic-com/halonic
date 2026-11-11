@@ -189,16 +189,38 @@ export class NodeScheduler implements Scheduler {
     }
     await this.#change(async (timers) => {
       if (timers.get(slot) !== stored) return;
-      if (!failed) {
-        await this.#log.remove(stored.timer.key, stored.timer.timerId);
-        timers.delete(slot);
-        return;
+      try {
+        await this.#recordDelivery(slot, stored, failed, timers);
+      } catch (error) {
+        // The timer is still due in memory, so it would be delivered again at
+        // once, and the failing store hit in a loop. Give it a retry's wait in
+        // memory only; the store keeps the older, earlier try.
+        timers.set(slot, this.#retryOf(stored));
+        throw error;
       }
-      const retryAt = this.#clock.now().getTime() + retryWait(stored.failures + 1);
-      const retry = failedTimer(stored, retryAt);
-      await this.#log.put(retry, false);
-      timers.set(slot, retry);
     });
+  }
+
+  /** Removes a delivered timer, or sets the retry of one the listener rejected, in the store and then in memory. */
+  async #recordDelivery(
+    slot: string,
+    stored: StoredTimer,
+    failed: boolean,
+    timers: Map<string, StoredTimer>,
+  ): Promise<void> {
+    if (!failed) {
+      await this.#log.remove(stored.timer.key, stored.timer.timerId);
+      timers.delete(slot);
+      return;
+    }
+    const retry = this.#retryOf(stored);
+    await this.#log.put(retry, false);
+    timers.set(slot, retry);
+  }
+
+  /** The timer after one more failure, next tried after a retry's wait from now. */
+  #retryOf(stored: StoredTimer): StoredTimer {
+    return failedTimer(stored, this.#clock.now().getTime() + retryWait(stored.failures + 1));
   }
 
   #startTick(now: number): void {

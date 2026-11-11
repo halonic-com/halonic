@@ -67,12 +67,30 @@ function isThinking(block: Record<string, unknown>): boolean {
 export function readUsage(value: unknown): ChatResponse["usage"] {
   const usage = isPlainObject(value) ? value : {};
   const cacheReadTokens = countOf(usage["cache_read_input_tokens"]);
-  const cacheWriteTokens = countOf(usage["cache_creation_input_tokens"]);
+  const writes = cacheWrites(usage);
   return {
     inputTokens: countOf(usage["input_tokens"]),
     outputTokens: countOf(usage["output_tokens"]),
     ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
-    ...(cacheWriteTokens > 0 ? { cacheWriteTokens } : {}),
+    ...(writes.short > 0 ? { cacheWriteTokens: writes.short } : {}),
+    ...(writes.oneHour > 0 ? { cacheWrite1hTokens: writes.oneHour } : {}),
+  };
+}
+
+/**
+ * Splits the cache writes into 5-minute and 1-hour writes, which cost
+ * different prices, as the harness bridge does. Without the `cache_creation`
+ * split, every write counts as a 5-minute write: that is the default
+ * lifetime, and the cheaper price.
+ */
+function cacheWrites(usage: Record<string, unknown>): { short: number; oneHour: number } {
+  const split = usage["cache_creation"];
+  if (!isPlainObject(split)) {
+    return { short: countOf(usage["cache_creation_input_tokens"]), oneHour: 0 };
+  }
+  return {
+    short: countOf(split["ephemeral_5m_input_tokens"]),
+    oneHour: countOf(split["ephemeral_1h_input_tokens"]),
   };
 }
 

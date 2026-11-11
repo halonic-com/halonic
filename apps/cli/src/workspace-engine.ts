@@ -41,8 +41,12 @@ export interface WorkspaceEngineSetup {
   readonly http: HttpClient;
   /** Where the profile folder is; this process's by default. */
   readonly profile?: ProfileEnvironment;
-  /** The engine's clock and ids; the computer's own by default. */
-  readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer">;
+  /**
+   * The engine's clock and ids; the computer's own by default. `onWokeUp`
+   * hears each wake-up once its deliveries have settled, so a test that
+   * moves the clock can wait for them.
+   */
+  readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer" | "onWokeUp">;
   /** The sandbox and the "On this computer" choices; this computer's, in `profile`, by default. */
   readonly sandboxGate?: () => SandboxGateHost;
 }
@@ -147,14 +151,17 @@ export async function openWorkspaceEngine(
     // The scheduler retries a failed step; one that keeps failing stops the command with its
     // error, or goes to `onStuck`, and after an hour to `onGaveUp`.
     reportError: stuck.report,
-    // Only failed wake-ups in a row count, as for ticks (HAL-5164).
-    onWokeUp: () => stuck.succeeded("wake-up"),
-    // The same for a timer: only an hour of failures in a row gives up on its run.
+    // A timer that worked starts over: only an hour of failures in a row gives up on its run.
     onTimerDone: (timer) => stuck.succeeded(timer),
     holdsTimer: (timer) => stuck.holds(timer),
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
     ...(target.routines === undefined ? {} : { routines: countedTicks(target.routines, stuck) }),
     ...setup.engine,
+    // Only failed wake-ups in a row count, as for ticks (HAL-5164).
+    onWokeUp: () => {
+      stuck.succeeded("wake-up");
+      setup.engine?.onWokeUp?.();
+    },
   });
   opened = engine;
   return {

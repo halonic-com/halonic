@@ -104,15 +104,47 @@ verifies("app.review-accept-reject-part", () => {
     expect(store.files.get(path)).toBe(lines({ 8: "line 8 by the assistant" }));
   });
 
+  it("says stale for a part from the list before another part was accepted", async () => {
+    const store = new TestDefinitionStore({ [path]: lines() }, digest);
+    const recordStore = new TestDefinitionStore({}, digest);
+    const review = new ReviewService({
+      store,
+      records: recordStore,
+      digest,
+      isTrusted: () => true,
+    });
+    const threeParts = lines({
+      3: "line 3 by the assistant",
+      6: "line 6 by the assistant",
+      8: "line 8 by the assistant",
+    });
+    await review.propose({
+      path,
+      content: threeParts,
+      expected: await contentDigest(lines(), digest),
+      card: k1,
+    });
+    const before = await review.changesIn(path);
+    expect(before?.parts).toHaveLength(3);
+    const seen = before?.seen ?? "absent";
+    expect((await review.accept({ kind: "part", path, part: 0, seen })).status).toBe("done");
+    // Part 1 of the old list is line 6; in the new list it would be line 8.
+    expect(await review.reject({ kind: "part", path, part: 1, seen })).toEqual({
+      status: "stale",
+      path,
+    });
+    expect(store.files.get(path)).toBe(threeParts);
+  });
+
   it("holds a file changed outside Halonic instead of rejecting a part over it", async () => {
-    const { store, review } = await withTwoParts();
+    const { store, review, changes } = await withTwoParts();
     const outside = lines({
       1: "outside",
       3: "line 3 by the assistant",
       8: "line 8 by the assistant",
     });
     store.files.set(path, outside);
-    const seen = await contentDigest(outside, digest);
+    const { seen } = await changes();
     expect(await review.reject({ kind: "part", path, part: 0, seen })).toEqual({
       status: "done",
       step: { files: [] },
@@ -143,7 +175,7 @@ verifies("app.review-accept-reject-part", () => {
 
 verifies("app.review-changes-in", () => {
   it("works the parts out from the editor's unsaved text when it's given", async () => {
-    const { review, changes } = await withTwoParts();
+    const { store, review, changes } = await withTwoParts();
     expect((await changes()).parts).toHaveLength(2);
     const typing = lines({
       3: "line 3 by the assistant",
@@ -152,7 +184,13 @@ verifies("app.review-changes-in", () => {
     });
     const found = await review.changesIn(path, typing);
     expect(found?.parts).toHaveLength(3);
-    expect(found?.seen).toBe(await contentDigest(typing, digest));
+    // Parts from unsaved text are for showing only: deciding one says stale.
+    const seen = found?.seen ?? "absent";
+    expect(await review.accept({ kind: "part", path, part: 2, seen })).toEqual({
+      status: "stale",
+      path,
+    });
+    expect(store.files.get(path)).toBe(byAssistant);
   });
 
   it("gives nothing for a file without changes to review", async () => {

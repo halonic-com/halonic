@@ -215,10 +215,12 @@ note <sha256 of the note without its signature line>
 object <git object ID at the pull request's head, or missing> <path>
 ```
 
-with one `object` line per covered path and per covered requirement's file,
-sorted by path. So a signature can't be reused on another pull request (a
-fork's branch with the same name included), and editing the note or a
-covered file after signing breaks it. Editing other files or rebasing
+with one `object` line per covered path, per covered requirement's file and
+per test file at the head that calls `verifies()` with a covered requirement
+ID, sorted by path. So a signature can't be reused on another pull request (a
+fork's branch with the same name included), and editing the note, a
+covered file or a test that verifies a covered requirement after signing
+(or removing one) breaks it. Editing other files or rebasing
 doesn't. The note fails when it has no signature or more than one, when the
 signature isn't in the header (the `- ` lines above the first paragraph),
 when it has a carriage return (save it with LF line endings), and when the

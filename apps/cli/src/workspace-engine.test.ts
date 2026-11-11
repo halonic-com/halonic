@@ -90,7 +90,8 @@ verifies("cli.run", () => {
  * Routines whose ticks fail or work as `outcomes` says, one per tick, on an
  * engine whose clock and wake-ups the test moves: {@link nextTick} moves the
  * clock a minute on, or the minutes given, and wakes the scheduler until
- * that tick has run.
+ * that tick has run; with `onStuck`, also until every wake-up it called
+ * has settled, failed deliveries included.
  * {@link failNextWakeUp} makes the wake-up after the next tick fail: the
  * scheduler can't set its next one. The `--debug` lines are in `debugLines`.
  */
@@ -104,6 +105,9 @@ async function openWithTicks(
   const wakeUps = new Map<() => void, number>();
   let failingWakeUps = 0;
   let wakeUpFailures = 0;
+  /** The wake-ups {@link nextTick} called, and those whose deliveries have settled. */
+  let wakeUpsCalled = 0;
+  let wakeUpsSettled = 0;
   const ticks: string[] = [];
   const debugLines: string[] = [];
   const routines: RoutineTicks = {
@@ -131,6 +135,9 @@ async function openWithTicks(
           wakeUps.set(callback, now + delayMs);
           return () => wakeUps.delete(callback);
         },
+        onWokeUp: () => {
+          wakeUpsSettled += 1;
+        },
       },
     },
     {
@@ -150,9 +157,13 @@ async function openWithTicks(
       for (const [callback, at] of [...wakeUps]) {
         if (at > now) continue;
         wakeUps.delete(callback);
+        wakeUpsCalled += 1;
         callback();
       }
       expect(ticks).toHaveLength(count);
+      // A stuck run's step reads its log from disk, which can outlast the tick on a slow
+      // computer: the clock moves on only once that failure is in (HAL-5648).
+      if (onStuck !== undefined) expect(wakeUpsSettled).toBe(wakeUpsCalled);
     });
   };
   // The scheduler sets its first wake-up once it has read its timers; only later ones may fail.
@@ -287,8 +298,12 @@ verifies("cli.commands.routines.watch", () => {
       while (gaveUp.length === 0 && elapsedMs() < 2 * 3_600_000) {
         // A minute at a time while the scheduler's backoff is short, then its 15 minutes.
         await nextTick(elapsedMs() < 20 * 60_000 ? 1 : 15);
-        // The give-up's cancel settles after the failure that set it off.
+        // The give-up's cancel settles after the failure that set it off, which on a slow
+        // computer is more than a turn of the event loop: past the hour, wait for it (HAL-5648).
         await new Promise((resolve) => setTimeout(resolve, 0));
+        if (gaveUp.length === 0 && elapsedMs() >= 3_600_000) {
+          await vi.waitFor(() => expect(gaveUp).not.toEqual([])).catch(() => {});
+        }
         gaveUpAfterMs = elapsedMs();
       }
       // The run log can be read now, so a step tried again would work and its timer go.

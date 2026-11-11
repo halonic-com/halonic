@@ -112,6 +112,10 @@ export async function runExample(): Promise<{
   minutes, or longer when nothing is due sooner. After each wake-up that
   worked, the scheduler calls `onWokeUp`, so a caller that counts failed
   wake-ups can start again.
+- **Store failures during a delivery:** when the store fails to record how a
+  delivery went, the error is reported with the timer as its source, and the
+  timer is delivered again after a retry's wait (1 second, doubling up to 15
+  minutes), not at once.
 - **Start-up:** the scheduler compacts the collection when it starts, so
   delivered, cancelled and replaced timers leave the store. If the store
   fails the compaction, it still starts from the timers it read and reports

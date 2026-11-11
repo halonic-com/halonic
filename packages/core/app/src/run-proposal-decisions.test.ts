@@ -136,6 +136,21 @@ verifies("app.run-proposal-accept", () => {
       expect((await decisionsOf(setup))?.[clerkPath]).toBe("undecided");
     });
 
+    it("keeps a step whose decisions changed since, so the file and its decision agree", async () => {
+      const setup = await setUpRun();
+      const { undo } = await setup.proposals.accept("01JD8Q", { file: clerkPath });
+      if (undo === null) {
+        throw new Error("Accept wrote nothing.");
+      }
+      await setup.proposals.reject("01JD8Q", { file: "notes/today.md" });
+      expect(await setup.proposals.restore(undo, "before")).toEqual({
+        changedOnDisk: [".halonic/proposals/01JD8Q.json", clerkPath],
+        refused: [],
+      });
+      expect(setup.store.files.get(clerkPath)).toBe(smart);
+      expect((await decisionsOf(setup))?.[clerkPath]).toBe("accepted");
+    });
+
     it("refuses a step that isn't a run proposal's", async () => {
       const setup = setUpProposals(digest);
       await expect(

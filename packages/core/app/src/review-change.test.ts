@@ -148,14 +148,14 @@ verifies("app.review-accept-reject-change", () => {
   });
 
   it("holds the file when it changed outside Halonic since it was last seen", async () => {
-    const { store, review } = await withTwoChanges();
+    const { store, review, changes } = await withTwoChanges();
     const outside = "# Sorts new tickets.\nname: Outside\nmodel: large # cheap is fine\n";
     store.files.set(path, outside);
     const outcome = await review.reject({
       kind: "change",
       path,
       parts: [["model"]],
-      seen: await contentDigest(outside, digest),
+      seen: (await changes()).seen,
     });
     expect(outcome).toEqual({ status: "done", step: { files: [] }, held: [path] });
     expect(store.files.get(path)).toBe(outside);

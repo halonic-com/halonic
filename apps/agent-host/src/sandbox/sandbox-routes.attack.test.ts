@@ -10,8 +10,8 @@ import type {
   SandboxProfile,
   SandboxSession,
 } from "@halonicjs/ports";
-import { afterEach, describe, expect, it } from "vitest";
-import { type HostServer, startHostServer } from "../server/host-server.ts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { type HostRoute, type HostServer, startHostServer } from "../server/host-server.ts";
 import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { sandboxRoutes } from "./sandbox-routes.ts";
@@ -106,6 +106,8 @@ async function eventually(condition: () => boolean): Promise<void> {
 let server: HostServer | undefined;
 let sandbox: FakeSandbox;
 let sessions: SessionTable;
+/** How many open requests' connections the server has seen close. */
+let openConnectionsClosed: number;
 
 afterEach(async () => {
   await sessions.closeAll();
@@ -116,8 +118,23 @@ afterEach(async () => {
 async function started(): Promise<{ url: string; port: number }> {
   sandbox = new FakeSandbox();
   sessions = new SessionTable();
-  server = await startHostServer(token, sandboxRoutes(sandbox, sessions));
+  openConnectionsClosed = 0;
+  server = await startHostServer(token, sandboxRoutes(sandbox, sessions).map(heardClosing));
   return { url: server.url, port: Number(new URL(server.url).port) };
+}
+
+/** The route, counting in `openConnectionsClosed` when an open request's connection closes. */
+function heardClosing(route: HostRoute): HostRoute {
+  if (route.path !== "/v1/sandbox/sessions/open") return route;
+  return {
+    ...route,
+    handle: (request, response) => {
+      response.once("close", () => {
+        openConnectionsClosed += 1;
+      });
+      return route.handle(request, response);
+    },
+  };
 }
 
 /**
@@ -424,8 +441,9 @@ describe("sandbox routes, attacked by a caller with the token", () => {
     await sandbox.openCalled.promise;
     abort.abort();
     await expect(answer).rejects.toThrow();
-    // Let the server see the closed connection before the session arrives.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The server sees the closed connection before the session arrives. The ceiling stays under
+    // the test timeout, so a close the server never sees fails here and not on "Test timed out".
+    await vi.waitFor(() => expect(openConnectionsClosed).toBe(1), { timeout: 4_000 });
     release.settle();
     await eventually(() => sandbox.opened[0]?.closeCount === 1);
     // Nobody can name it: the table holds nothing to close at stop.

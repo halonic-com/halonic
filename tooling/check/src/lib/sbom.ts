@@ -46,18 +46,40 @@ export function componentName(component: SbomComponent): string {
 }
 
 /**
- * Lists every npm component of the SBOM that is neither one of our own
- * workspace packages nor on `tooling/check/dependencies.json`. Components
- * without an npm purl are reported too, so nothing slips past unnamed.
+ * Lists every npm component of the SBOM that is neither approved nor pulled in
+ * by an approved one. A component is approved when it is one of our own
+ * workspace packages or is on `tooling/check/dependencies.json`. Transitive
+ * packages are accepted when the CycloneDX dependency graph reaches them from
+ * an approved component, so the list only names what we choose to depend on.
+ * Components without an npm purl are reported too, so nothing slips past
+ * unnamed.
  */
 export function findSbomProblems(
   sbom: Sbom,
   list: DependencyList,
   workspacePackages: ReadonlySet<string>,
 ): string[] {
+  const components = sbom.components ?? [];
+  const refOf = (component: SbomComponent): string =>
+    component["bom-ref"] ?? component.purl ?? `${componentName(component)}@${component.version}`;
+  const isApproved = (component: SbomComponent): boolean => {
+    const name = componentName(component);
+    return workspacePackages.has(name) || list.dependencies[name] !== undefined;
+  };
+  const edges = new Map(
+    (sbom.dependencies ?? []).map((entry) => [entry.ref, entry.dependsOn ?? []] as const),
+  );
+  const reached = new Set<string>();
+  const queue = components.filter(isApproved).map(refOf);
+  for (let ref = queue.pop(); ref !== undefined; ref = queue.pop()) {
+    if (!reached.has(ref)) {
+      reached.add(ref);
+      queue.push(...(edges.get(ref) ?? []));
+    }
+  }
   const problems: string[] = [];
   const seen = new Set<string>();
-  for (const component of sbom.components ?? []) {
+  for (const component of components) {
     const name = componentName(component);
     const label = `${name}@${component.version ?? "?"}`;
     if (seen.has(label)) {
@@ -66,8 +88,10 @@ export function findSbomProblems(
     seen.add(label);
     if (component.purl !== undefined && !component.purl.startsWith("pkg:npm/")) {
       problems.push(`${label} is not an npm package and cannot be matched to the dependency list`);
-    } else if (!workspacePackages.has(name) && list.dependencies[name] === undefined) {
-      problems.push(`${label} is in the SBOM but not in tooling/check/dependencies.json`);
+    } else if (!reached.has(refOf(component))) {
+      problems.push(
+        `${label} is in the SBOM but not in tooling/check/dependencies.json, and no listed package depends on it`,
+      );
     }
   }
   return problems;
