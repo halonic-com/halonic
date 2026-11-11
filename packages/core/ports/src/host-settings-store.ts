@@ -1,3 +1,5 @@
+import golden from "./golden/host-settings-limits.json" with { type: "json" };
+
 /** Version of the {@link HostSettingsStore} port. A breaking change bumps it and comes with an ADR. */
 export const hostSettingsStoreVersion = 1;
 
@@ -96,6 +98,14 @@ export interface HostSettingsStore {
    */
   watch(listener: () => void): () => void;
 }
+
+/**
+ * The golden cases every adapter and the desktop shell's Rust side agree
+ * on: keys allowed and refused, sizes at the limit, and saved texts with
+ * what they read as and hold after a save. For tests and the contract
+ * suite; the Rust side reads the same file, `src/golden/host-settings-limits.json`.
+ */
+export const hostSettingsGoldenCases = golden;
 
 /** Saved settings that can be parsed: their values, and every other field as it was saved. */
 interface SavedHostSettings {

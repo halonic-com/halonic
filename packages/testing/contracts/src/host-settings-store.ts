@@ -1,5 +1,8 @@
-import type { HostSettingsStore, HostSettingValue } from "@halonicjs/ports";
-import golden from "@halonicjs/ports/golden/host-settings-limits.json" with { type: "json" };
+import {
+  hostSettingsGoldenCases as golden,
+  type HostSettingsStore,
+  type HostSettingValue,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 
