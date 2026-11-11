@@ -46,7 +46,7 @@ Paths go to git as arguments, since the runner can't give git a list on stdin or
 
 ## Versions
 
-A version is a full commit id (port v2). `snapshot` commits the public files on disk through a copy of the index in `.git`, so the person's branch, index and working tree don't change and the commit is on no branch; `.env` and the other private entries stay out even when `.gitignore` lets them in. `readAt` and `listAt` read a commit's regular files with `ls-tree` and `cat-file blob`, never the working tree, and run no filter. `rename` uses `git mv` for what the repository tracks, so the history follows the file.
+A version is a full commit id (port v2). `snapshot` commits the public files on disk through a copy of the index in `.git`, so the person's branch, index and working tree don't change and the commit is on no branch; `.env` and the other private entries stay out even when `.gitignore` lets them in. `readAt` and `listAt` read a commit's regular files with `ls-tree` and `cat-file blob`, never the working tree, and run no filter. Both check their input before they open the repository, so a version that isn't a full commit id, or a path the port refuses, throws a `RangeError` without running git. `rename` uses `git mv` for what the repository tracks, so the history follows the file.
 
 ## Worktrees and patches
 
@@ -57,6 +57,8 @@ A version is a full commit id (port v2). `snapshot` commits the public files on 
 ## Create version and proposal refs
 
 `commitVersion` builds the version's tree in a temporary index under `.git`, from HEAD: every change on disk goes in, then every change out of scope (outside `include`, under `exclude`, private, or under `.halonic/review`) goes back to HEAD's content. It never runs `git commit -- <paths>`, which would take the working tree's content of every tracked path it names. The commit is made with `commit-tree`, and HEAD moves with `update-ref` from the commit it was at, so a commit made in between is never lost. Then the real index takes the new commit's content for the paths the version changed, so a change left out stays staged as it was.
+
+`commitVersion` checks the paths of `include` and `exclude` the way the port says before it runs git, and refuses an unsafe or private one.
 
 `commitWorktreeTo` commits a worktree's files the same way, through a temporary index in git's record of the worktree, and creates `refs/halonic/proposals/<id>` only if it isn't there. `readRef` reads exactly that ref with `show-ref --verify`, and `deleteRef` deletes it from the commit it points at. Nothing pushes these refs.
 
