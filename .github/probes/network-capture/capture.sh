@@ -8,7 +8,9 @@
 # that isn't loopback fails the job.
 # macOS: tcpdump listens on all interfaces, and its packet metadata names the
 # process. Packets of `node` (the CLI and anything it starts) that aren't
-# loopback fail the job; the rest is listed for review.
+# loopback fail the job; the rest is listed for review. A packet without a
+# process (a reset after its socket closed) takes the process of its
+# connection; one with no connection (ARP, ICMP) is listed for review.
 #
 # Usage: capture.sh <artifacts folder>. IDLE_MINUTES (default 10) is how long
 # it keeps listening after the session.
@@ -30,10 +32,12 @@ in_ns() { sudo ip netns exec "$ns" sudo -u "$user" env "PATH=$PATH" "HALONIC_CLI
 linux_network() {
   sudo ip netns add "$ns"
   sudo ip link add hc-host type veth peer name hc-ns
+  # No IPv6 on either end of the link: the router and neighbour messages each
+  # end sends when it comes up would show up as traffic. Every host name is
+  # still looked up over IPv4 first.
+  sudo sysctl -qw net.ipv6.conf.hc-host.disable_ipv6=1 net.ipv6.conf.hc-ns.disable_ipv6=1
   sudo ip link set hc-ns netns "$ns"
-  # No IPv6 inside: its router and neighbour messages would show up as
-  # traffic. Every host name is still looked up over IPv4 first.
-  sudo ip netns exec "$ns" sysctl -qw net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1
+  sudo ip netns exec "$ns" sysctl -qw net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1 net.ipv6.conf.hc-ns.disable_ipv6=1
   sudo ip addr add 10.203.0.1/30 dev hc-host
   sudo ip link set hc-host up
   sudo ip netns exec "$ns" ip addr add 10.203.0.2/30 dev hc-ns
