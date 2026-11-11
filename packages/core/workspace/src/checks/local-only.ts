@@ -2,6 +2,7 @@ import { connectorIsLocal, type ModelAlias, type Provider } from "@halonicjs/for
 import type { WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 import { isAliasName } from "./model-aliases.ts";
+import { runsInHarness } from "./working-folders.ts";
 
 /** The key path of a model setting, and how the message names its owner. */
 interface ModelSetting {
@@ -19,10 +20,12 @@ const turnOff = "or set privacy.localOnly: false in workspace.yaml";
  * A workspace whose `workspace.yaml` sets `privacy.localOnly: true` keeps
  * everything on this computer (ADR `2026-11-08-local-first`). This reports
  * as an error each model alias, each `provider/model` setting and each
- * connector that would reach past it. A provider is local when its file says
- * `local: true`, or when it is the mock model, as the engine counts it; a
- * connector as `connectorIsLocal` says. A provider no file has is left to
- * the reference checks.
+ * connector that would reach past it, and each agent that runs in a harness
+ * program (Claude Code or Codex), because such a program sends the work to
+ * its own cloud model. A provider is local when its file says `local: true`,
+ * or when it is the mock model, as the engine counts it; a connector as
+ * `connectorIsLocal` says. A provider no file has is left to the reference
+ * checks.
  */
 export function checkLocalOnly(context: CheckContext): WorkspaceIssue[] {
   const workspace = context.filesOf("workspace")[0];
@@ -40,6 +43,7 @@ export function checkLocalOnly(context: CheckContext): WorkspaceIssue[] {
     ...aliasIssues(context, cloud),
     ...modelSettingIssues(context, cloud),
     ...connectorIssues(context),
+    ...harnessIssues(context),
   ];
 }
 
@@ -82,6 +86,17 @@ function connectorIssues(context: CheckContext): WorkspaceIssue[] {
       const path = connector.value.local === undefined ? ["transport"] : ["local"];
       const message = `Connector "${connector.value.id}" isn't local, and the workspace is local only: set local: true if it runs on this computer, ${turnOff}`;
       return context.error(connector.path, path, "local-only-connector", message);
+    });
+}
+
+/** The agents that run in a harness program, which calls its own model, not the workspace's. */
+function harnessIssues(context: CheckContext): WorkspaceIssue[] {
+  return context
+    .filesOf("agent")
+    .filter(runsInHarness)
+    .map((agent) => {
+      const message = `Agent "${agent.value.id}" runs in ${agent.value.harness}, which sends its work to its own cloud model, and the workspace is local only: remove harness to run it in Halonic's own loop, ${turnOff}`;
+      return context.error(agent.path, ["harness"], "local-only-harness", message);
     });
 }
 

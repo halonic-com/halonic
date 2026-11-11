@@ -63,7 +63,7 @@ export function checkWorkingFolders(context: CheckContext): WorkspaceIssue[] {
 type AgentFile = LoadedFileOf<"agent">;
 
 /** An agent that runs in Claude Code, Codex or another program, not in Halonic's own loop. */
-function runsInHarness(agent: AgentFile): boolean {
+export function runsInHarness(agent: AgentFile): boolean {
   return agent.value.harness !== undefined && agent.value.harness !== "halonic";
 }
 

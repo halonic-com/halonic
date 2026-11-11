@@ -71,3 +71,24 @@ verifies("workspace.local-only", () => {
     expect(await issuesIn(true, local)).toEqual([]);
   });
 });
+
+verifies("workspace.local-only-harness", () => {
+  it("refuses an agent that runs in a harness program, but not one in Halonic's own loop", async () => {
+    const issues = await issuesIn(true, {
+      ...local,
+      "agents/writer.agent.yaml": "name: Writer\nmodel: ollama/llama3.2\nharness: claude-code\n",
+      "agents/coder.agent.yaml": "name: Coder\nmodel: ollama/llama3.2\nharness: codex\n",
+      "agents/sorter.agent.yaml": "name: Sorter\nmodel: ollama/llama3.2\nharness: halonic\n",
+    });
+    const harness = `which sends its work to its own cloud model, and the workspace is local only: remove harness to run it in Halonic's own loop, ${turnOff}`;
+    expect(issues).toEqual([
+      `error agents/coder.agent.yaml harness: Agent "coder" runs in codex, ${harness}`,
+      `error agents/writer.agent.yaml harness: Agent "writer" runs in claude-code, ${harness}`,
+    ]);
+  });
+
+  it("lets a harness agent run in a workspace that isn't local only", async () => {
+    const writer = "name: Writer\nmodel: ollama/llama3.2\nharness: claude-code\n";
+    expect(await issuesIn(false, { ...local, "agents/writer.agent.yaml": writer })).toEqual([]);
+  });
+});
