@@ -1,4 +1,4 @@
-import type { RefusalCode } from "@halonicjs/integration-kit";
+import type { RefusalCode } from "@halonicjs/adapter-integration-kit";
 import type { SandboxBlock, SandboxExit } from "@halonicjs/ports";
 
 /**

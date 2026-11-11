@@ -1,4 +1,4 @@
-import type { RequestLogEntry } from "@halonicjs/integration-kit";
+import type { RequestLogEntry } from "@halonicjs/adapter-integration-kit";
 import type { Integration, TokenStore } from "@halonicjs/ports";
 import { fakeWait } from "./fake-wait.ts";
 import { loadSubject } from "./load.ts";

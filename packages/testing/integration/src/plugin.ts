@@ -3,8 +3,8 @@
 // integration, so the suite then runs every integration check on it.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { pluginLoadProblems } from "@halonicjs/adapter-integration-kit";
 import { backendSheet, type Plugin } from "@halonicjs/format";
-import { pluginLoadProblems } from "@halonicjs/integration-kit";
 import type { Integration } from "@halonicjs/ports";
 import { fail } from "./failure.ts";
 import { backendSources, readPluginFolder } from "./plugin-folder.ts";

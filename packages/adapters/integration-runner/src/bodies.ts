@@ -2,8 +2,8 @@
 // a body the way the kit accepts it in-process (text, a form or bytes), and
 // Halonic turns it back into the same kind, so the kit checks it the same way.
 
-import { maxRequestBodyBytes } from "@halonicjs/integration-kit";
-import { IntegrationRefusedError } from "@halonicjs/integration-kit/integration";
+import { maxRequestBodyBytes } from "@halonicjs/adapter-integration-kit";
+import { IntegrationRefusedError } from "@halonicjs/adapter-integration-kit/integration";
 import type { FrameBody } from "./frames.ts";
 
 const utf8 = new TextEncoder();

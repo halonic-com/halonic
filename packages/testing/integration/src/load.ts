@@ -1,14 +1,14 @@
 import {
+  type LoadedIntegration,
+  type LoadProblem,
+  loadIntegration,
+} from "@halonicjs/adapter-integration-kit";
+import {
   type IntegrationPolicy,
   type IntegrationSheet,
   integrationPolicy,
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
-import {
-  type LoadedIntegration,
-  type LoadProblem,
-  loadIntegration,
-} from "@halonicjs/integration-kit";
 import type { HttpClient, TokenStore } from "@halonicjs/ports";
 import { canarySecrets } from "./canaries.ts";
 import { fail } from "./failure.ts";

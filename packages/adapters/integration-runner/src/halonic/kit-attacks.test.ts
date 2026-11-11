@@ -5,7 +5,11 @@
 // bridge's own tests use a kit that accepts everything, so these run the
 // kit's `createLimitedHttpClient` over a recording transport instead.
 
-import { createLimitedHttpClient, RequestLog, secretForms } from "@halonicjs/integration-kit";
+import {
+  createLimitedHttpClient,
+  RequestLog,
+  secretForms,
+} from "@halonicjs/adapter-integration-kit";
 import type { HttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";

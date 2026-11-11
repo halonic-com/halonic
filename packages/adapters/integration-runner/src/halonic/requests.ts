@@ -10,7 +10,7 @@ import {
   IntegrationRefusedError,
   leakAttemptCodes,
   type RefusalCode,
-} from "@halonicjs/integration-kit";
+} from "@halonicjs/adapter-integration-kit";
 import type { IntegrationHttpClient, SecretPlacement } from "@halonicjs/ports";
 import { decodeRequestBody, toBase64 } from "../bodies.ts";
 import { FrameTooLargeError } from "../frame-lines.ts";

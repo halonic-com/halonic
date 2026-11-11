@@ -3,7 +3,7 @@
 // flood can't fill Halonic's memory or block the runner (A21), and counted,
 // so the log says how much is missing.
 
-import { removeSecretsStream, type SecretForms } from "@halonicjs/integration-kit";
+import { removeSecretsStream, type SecretForms } from "@halonicjs/adapter-integration-kit";
 
 /** Passes the runner's stderr on, filtered and cut. */
 export class StderrLog {

@@ -1,7 +1,7 @@
 // A runner process made of in-memory streams, and a hand-driven runner that
 // writes whatever frames a test wants, to play a hostile integration.
 
-import { secretForms } from "@halonicjs/integration-kit";
+import { secretForms } from "@halonicjs/adapter-integration-kit";
 import type {
   IntegrationHttpClient,
   IntegrationRequestInit,

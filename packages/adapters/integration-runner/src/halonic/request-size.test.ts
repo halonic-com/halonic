@@ -5,7 +5,7 @@ import {
   createLimitedHttpClient,
   IntegrationRefusedError,
   RequestLog,
-} from "@halonicjs/integration-kit";
+} from "@halonicjs/adapter-integration-kit";
 import type { IntegrationHttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";

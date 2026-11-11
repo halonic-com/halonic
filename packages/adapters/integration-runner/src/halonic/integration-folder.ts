@@ -10,7 +10,7 @@
 
 import { type Dirent, lstatSync, readdirSync, realpathSync } from "node:fs";
 import { join, relative } from "node:path";
-import type { LoadProblem } from "@halonicjs/integration-kit";
+import type { LoadProblem } from "@halonicjs/adapter-integration-kit";
 import { isInsideOrSame } from "./runner-profile.ts";
 
 /** One entry in a folder, without following it if it is a link. */

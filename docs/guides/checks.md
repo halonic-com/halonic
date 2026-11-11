@@ -399,9 +399,7 @@ an error.
 ## Package names and layers
 
 A package's layer and npm name follow from its folder, so nobody has to
-invent a name. A package staged for npm (`halonic.publish`) is the one
-exception: its workspace name is its published name, in the `@halonicjs`
-scope, so the two never differ:
+invent a name:
 
 | Folder                            | Layer    | Name                                  |
 | --------------------------------- | -------- | ------------------------------------- |

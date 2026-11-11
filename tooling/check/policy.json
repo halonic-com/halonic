@@ -22,7 +22,7 @@
   ],
   "published": [
     "halonic",
-    "@halonicjs/integration-kit",
+    "@halonicjs/adapter-integration-kit",
     "@halonicjs/testing-integration"
   ],
   "adapterGateways": [
@@ -32,7 +32,7 @@
     "@halonicjs/adapter-git": [
       "./testing"
     ],
-    "@halonicjs/integration-kit": [
+    "@halonicjs/adapter-integration-kit": [
       "./integration"
     ],
     "@halonicjs/adapter-mcp": [
