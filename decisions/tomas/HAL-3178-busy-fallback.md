@@ -2,6 +2,7 @@
 
 - Approval: the board chose B on HAL-3118 (the question from HAL-3116): a busy provider falls back to the next model. Liam owns `engine`, so he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:libLbj1e4za09+Gumgffi/Gs4zOV/zBCBpr1waPJGRsxE73UOubQ3SmsrmZP+jbmUpw2s4jb5a/VuKA7SaybAQ==
 - Task: HAL-3178
 
 ## What changes
