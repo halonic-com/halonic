@@ -3,6 +3,7 @@
 - Task: HAL-6030
 - Approval: the task asks for a checked AppArmor profile for the sandbox guide; Liam reviews the pull request and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xBb8SiRqKj/7fGY72HikDSMSjIDJsy2qucUN4WKbhy/skSUJOMit4pxbSJMEGemSlJkosa+w4UdOsSw8QBQvAw==
 
 ## What changes
 
