@@ -14,5 +14,6 @@ When a number is read from a value, the workflow rules shall return a finite num
 - Given `12`, when a number is read, then the result is 12.
 - Given `1.234.567`, when a number is read, then the result is 1,234,567.
 - Given `1,5`, when a number is read, then the result is 1.5.
+- Given `0.125` or `3.14159`, when a number is read, then the result is 125 and 314,159: three or more digits after the only separator make it a thousands separator, not a decimal. A caller that may get such decimals must not read them with this rule.
 - Given `€-12,50`, when a number is read, then the result is -12.5.
 - Given any finite number, when a number is read from it, then the result is that number.

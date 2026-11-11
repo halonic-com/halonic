@@ -21,10 +21,16 @@ const ANY_SEPARATOR = /[.,]/g;
  *   dot or comma separates thousands and is dropped.
  * - Anything else, including text without a digit, gives `null`.
  *
+ * Because three digits after a separator read as thousands, a decimal with
+ * three or more places is not a decimal here: `"0.125"` gives 125 and
+ * `"3.14159"` gives 314159. A guard that compares such values must not use
+ * this rule.
+ *
  * @example
  * toNumber("1.200,50"); // 1200.5
  * toNumber("1,200.50"); // 1200.5
  * toNumber("€ 18.400"); // 18400
+ * toNumber("0.125"); // 125, not 0.125
  * toNumber("n/a"); // null
  */
 export function toNumber(value: unknown): number | null {

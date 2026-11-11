@@ -40,6 +40,11 @@ verifies("workflow.to-number", () => {
     expect(toNumber("0.001")).toBe(1);
   });
 
+  it("reads a lone separator before three or more digits as thousands, even in a decimal", () => {
+    expect(toNumber("0.125")).toBe(125);
+    expect(toNumber("3.14159")).toBe(314_159);
+  });
+
   it("keeps a leading minus sign", () => {
     expect(toNumber("-5")).toBe(-5);
     expect(toNumber("€-12,50")).toBe(-12.5);
