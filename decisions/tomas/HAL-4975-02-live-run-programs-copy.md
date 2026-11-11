@@ -19,7 +19,11 @@ in a copy of the workspace at the run's commit instead, as the plan on HAL-4975 
 - When the copy can't be made, the program doesn't start. The saved folder is never used in its
   place.
 - The copy is removed when the engine closes; one left by an engine that was stopped or lost power
-  is removed when the next engine opens on the workspace.
+  is removed when the next engine opens on the workspace. A leftover git can't sweep, such as when
+  history was turned off or git is gone from the `PATH`, is reported and removed as a plain folder:
+  it never stops the engine from opening.
+- A new line says that in 0.1 no run starts a program from the workspace yet, and that whoever wires
+  connectors or harnesses into the engine takes their folder from the engine's program folders.
 
 The CLI's engine gets `programFolders` (`apps/cli/src/program-folders.ts`), on the
 `ProgramCopies` service of PR 1793, with the copies in a new folder of the workspace's folder in
@@ -28,7 +32,8 @@ folder, so no other engine owns a copy in it.
 
 Worth knowing: the CLI's engine still starts no connector or harness program in a run
 (`connectors: []`). When they are wired in, they take their folder from
-`programFolders.folderFor(<the run's version>)`, never the workspace folder.
+`programFolders.folderFor(<the run's version>)`, never the workspace folder, and the test in
+`live-version-programs.test.ts` changes to go through the engine; the requirement's new line says so.
 
 ## Tests
 
@@ -36,8 +41,10 @@ No test was weakened. The test in `live-version-programs.test.ts` recorded the k
 expected a live run's connector to answer "the saved script". It now starts the connector in the
 folder `programFolders` gives the live run and expects "the live script", and its example in the
 requirement changes with it. `program-folders.test.ts` adds the copy without private files, the
-saved files with history off, the refusal without falling back, and the clean-up on close and on
-the next open.
+saved files with history off, the refusal without falling back, the clean-up on close and on
+the next open (also of a folder git has no record of, and with no history at all), and a second try
+at starting git after it failed. `local-engine-host.test.ts` adds an engine that opens despite a
+leftover copy in a workspace without history.
 
 ## Covers
 

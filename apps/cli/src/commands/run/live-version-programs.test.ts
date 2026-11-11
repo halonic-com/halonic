@@ -110,6 +110,10 @@ async function askNotesFromALiveRun(): Promise<string> {
     workspaceRoot: acme,
     copiesFolder: join(folder, "program-copies"),
     git: { git: await testGit() },
+    // A new copies folder has nothing to sweep, so nothing to report.
+    reportError: (error) => {
+      throw error;
+    },
   });
   try {
     const version = {

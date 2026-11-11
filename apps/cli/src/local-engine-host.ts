@@ -70,8 +70,11 @@ export const routineStateCollection = "halonic.routine-state";
 /** The file in the workspace's folder in the profile that the one engine on it holds. */
 export const engineLockFile = "engine.lock";
 
-/** What an error the engine handles itself came from: the scheduler, or the engine's lock. */
-export type EngineErrorSource = SchedulerErrorSource | "engine-lock";
+/**
+ * What an error the engine handles itself came from: the scheduler, the
+ * engine's lock, or a leftover program copy it couldn't sweep.
+ */
+export type EngineErrorSource = SchedulerErrorSource | "engine-lock" | "program-copies";
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -196,6 +199,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     programFolders = await openProgramFolders({
       workspaceRoot: input.workspaceRoot,
       copiesFolder: folders.programCopiesFolder(),
+      reportError: (error) => input.reportError(error, "program-copies"),
       ...(input.git === undefined ? {} : { git: input.git }),
     });
     engine = engineOn(input, folders, lock, programFolders);

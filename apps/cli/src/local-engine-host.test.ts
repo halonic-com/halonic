@@ -238,6 +238,30 @@ describe("openLocalEngine", () => {
       }),
     ).rejects.toThrow(/ENOENT/);
   });
+  it("opens anyway when a leftover program copy can't be swept, and empties the copies folder", async () => {
+    // Acme here has no history, so git can't sweep the copy a stopped engine left.
+    const first = await openEngine();
+    await first.close();
+    const workspaces = join(profileFolder(profile).root, "workspaces");
+    const [key] = await readdir(workspaces);
+    const copies = join(workspaces, key ?? "", "program-copies");
+    await mkdir(join(copies, "leftover"));
+    await writeFile(join(copies, "leftover", "server.js"), "old");
+    const reported: unknown[] = [];
+
+    const engine = await openLocalEngine({
+      workspace,
+      workspaceRoot: acme,
+      secrets,
+      http,
+      environment: profile,
+      reportError: (_error, source) => reported.push(source),
+    });
+    opened.push(engine);
+
+    expect(await readdir(copies)).toEqual([]);
+    expect(reported).toEqual(["program-copies"]);
+  });
 });
 
 // The attack tests of HAL-4045 for the engine lock.

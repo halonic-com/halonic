@@ -1,7 +1,7 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { dirname, join } from "node:path";
+import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { ProgramCopyUnavailableError } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
@@ -38,6 +38,7 @@ beforeEach(async () => {
   // Saved after the version: neither may reach a live run's programs.
   await writeFile(join(workspace, "server.js"), "saved");
   await writeFile(join(workspace, ".env"), "TOKEN=not-for-programs");
+  reported = [];
 });
 
 afterEach(async () => {
@@ -46,11 +47,14 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-async function open(): Promise<ProgramFolders> {
+let reported: unknown[];
+
+async function open(workspaceRoot = workspace): Promise<ProgramFolders> {
   const programs = await openProgramFolders({
-    workspaceRoot: workspace,
+    workspaceRoot,
     copiesFolder,
     git: { git: await testGit() },
+    reportError: (error) => reported.push(error),
   });
   opened.push(programs);
   return programs;
@@ -62,7 +66,8 @@ verifies("app.runs-read-latest-version", () => {
     async () => {
       const programs = await open();
       const copy = await programs.folderFor(live);
-      expect(copy.path.startsWith(copiesFolder)).toBe(true);
+      // Real paths: on Windows the temporary folder can come back in its short form.
+      expect(await realpath(dirname(copy.path))).toBe(await realpath(copiesFolder));
       expect(await readFile(join(copy.path, "server.js"), "utf8")).toBe("live");
       expect(await readdir(copy.path)).not.toContain(".env");
     },
@@ -109,6 +114,51 @@ verifies("app.runs-read-latest-version", () => {
 
       await open();
       expect(await readdir(copiesFolder)).toEqual([]);
+    },
+    gitTimeout,
+  );
+  it(
+    "removes a leftover folder git has no record of, such as after a re-clone",
+    async () => {
+      await mkdir(join(copiesFolder, "unrecorded"), { recursive: true });
+      await open();
+      expect(await readdir(copiesFolder)).toEqual([]);
+      expect(reported).toEqual([]);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "opens, reports the error and empties the folder when the workspace has no history to sweep with",
+    async () => {
+      const withoutHistory = join(folder, "no-history");
+      await mkdir(withoutHistory);
+      await mkdir(join(copiesFolder, "leftover"), { recursive: true });
+      await open(withoutHistory);
+      expect(await readdir(copiesFolder)).toEqual([]);
+      expect(reported).toHaveLength(1);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "tries git again for the next live run after it failed to start",
+    async () => {
+      // Git that can't start for the first run, as when the runner is short
+      // of processes, and can for the next.
+      const git: GitRunnerOptions = { git: join(folder, "no-such-git") };
+      const programs = await openProgramFolders({
+        workspaceRoot: workspace,
+        copiesFolder,
+        git,
+        reportError: (error) => reported.push(error),
+      });
+      opened.push(programs);
+      await expect(programs.folderFor(live)).rejects.toBeInstanceOf(ProgramCopyUnavailableError);
+
+      git.git = await testGit();
+      const copy = await programs.folderFor(live);
+      expect(await readFile(join(copy.path, "server.js"), "utf8")).toBe("live");
     },
     gitTimeout,
   );

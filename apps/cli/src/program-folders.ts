@@ -6,7 +6,8 @@
 // reads the saved files, with history off, starts them in the workspace
 // folder itself.
 
-import { readdir } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
 import { ProgramCopies, type ProgramCopyLease, ProgramCopyUnavailableError } from "@halonicjs/app";
@@ -24,6 +25,19 @@ export interface ProgramFoldersInput {
   readonly copiesFolder: string;
   /** Which git; the one on the `PATH` by default. */
   readonly git?: GitRunnerOptions;
+  /**
+   * Hears a leftover copy git couldn't sweep, such as when the workspace has
+   * no history any more. The engine still opens: leftovers are clean-up,
+   * never a reason to refuse a run.
+   */
+  reportError(error: unknown): void;
+}
+
+/** The copies on the workspace's git history, once git has started. */
+interface CopiesOnGit {
+  readonly copies: ProgramCopies;
+  readonly vcs: GitVcs;
+  readonly runner: GitRunner;
 }
 
 /** The folders of one engine's programs, open until {@link ProgramFolders.close}. */
@@ -49,19 +63,21 @@ export interface ProgramFolders {
  *
  * Call it only while holding the workspace's engine lock.
  *
- * @throws when the copies folder can't be made, or a leftover copy is there and git can't start
+ * @throws when the copies folder can't be made or emptied
  */
 export async function openProgramFolders(input: ProgramFoldersInput): Promise<ProgramFolders> {
   await makePrivateFolder(input.copiesFolder);
-  let opened: Promise<{ copies: ProgramCopies; runner: GitRunner }> | undefined;
-  const copiesOnGit = (): Promise<{ copies: ProgramCopies; runner: GitRunner }> => {
-    opened ??= openCopies(input);
+  let opened: Promise<CopiesOnGit> | undefined;
+  const copiesOnGit = (): Promise<CopiesOnGit> => {
+    // A git that failed to start (say the runner was short of processes)
+    // is tried again by the next run, not held against every run after it.
+    opened ??= openCopies(input).catch((error: unknown) => {
+      opened = undefined;
+      throw error;
+    });
     return opened;
   };
-  if ((await readdir(input.copiesFolder)).length > 0) {
-    const { copies } = await copiesOnGit();
-    await copies.sweep();
-  }
+  await removeLeftovers(input, copiesOnGit);
   let closing: Promise<void> | undefined;
   return {
     folderFor: async (version) => {
@@ -69,7 +85,7 @@ export async function openProgramFolders(input: ProgramFoldersInput): Promise<Pr
         return { path: input.workspaceRoot, release: async () => {} };
       }
       const copies = await copiesOnGit().then(
-        (opened) => opened.copies,
+        (started) => started.copies,
         (error: unknown) => {
           throw new ProgramCopyUnavailableError(version.commit, error);
         },
@@ -95,10 +111,39 @@ export async function openProgramFolders(input: ProgramFoldersInput): Promise<Pr
   };
 }
 
-/** The copies on the workspace's git history, with the copies folder as the only worktrees folder. */
-async function openCopies(
+/**
+ * Empties the copies folder of what a stopped engine left: git removes the
+ * copies it still has a record of, and anything else goes as a plain
+ * folder, such as a copy whose record is gone after a re-clone, or every
+ * copy when the workspace has no history any more. Otherwise those stay in
+ * the profile for good and make git start on every open. A copy git lists
+ * but couldn't remove is left for the next open.
+ */
+async function removeLeftovers(
   input: ProgramFoldersInput,
-): Promise<{ copies: ProgramCopies; runner: GitRunner }> {
+  copiesOnGit: () => Promise<CopiesOnGit>,
+): Promise<void> {
+  if ((await readdir(input.copiesFolder)).length === 0) {
+    return;
+  }
+  let stillListed = new Set<string>();
+  try {
+    const { copies, vcs } = await copiesOnGit();
+    await copies.sweep();
+    // A copy's folder in the copies folder is named after its id.
+    stillListed = new Set((await vcs.listWorktrees()).map((worktree) => worktree.id));
+  } catch (error) {
+    input.reportError(error);
+  }
+  for (const entry of await readdir(input.copiesFolder)) {
+    if (!stillListed.has(entry)) {
+      await rm(join(input.copiesFolder, entry), { recursive: true, force: true });
+    }
+  }
+}
+
+/** The copies on the workspace's git history, with the copies folder as the only worktrees folder. */
+async function openCopies(input: ProgramFoldersInput): Promise<CopiesOnGit> {
   const runner = await GitRunner.create(input.git ?? {});
   // Copies only check versions out, so they never commit as this author.
   const vcs = new GitVcs(input.workspaceRoot, {
@@ -106,5 +151,5 @@ async function openCopies(
     author: { name: "Halonic", email: "halonic@localhost" },
     worktrees: input.copiesFolder,
   });
-  return { copies: new ProgramCopies(vcs), runner };
+  return { copies: new ProgramCopies(vcs), vcs, runner };
 }
