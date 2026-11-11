@@ -13,6 +13,10 @@ export {
   type RenewTimer,
 } from "./held-lock.ts";
 export {
+  FileHostSettingsStore,
+  type FileHostSettingsStoreOptions,
+} from "./host-settings-store.ts";
+export {
   FileSystemPluginFolder,
   type FileSystemPluginFolderOptions,
 } from "./plugin-folder.ts";

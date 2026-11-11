@@ -1,7 +1,7 @@
 # @halonicjs/adapter-fs-node
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
-`AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`,
+`AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`, `HostSettingsStore`,
 `BlobStore` and `FolderReader` ports on the local file system with Node: workspace files are
 plain files under a root folder, each run and each collection of records is a
 JSONL log, each trust record, each agent's "this computer" choice, each
@@ -247,6 +247,26 @@ sending on. The setting survives a restart. It passes the shared
   never quotes the file's text. `ConnectionSettings` in `core/app` then
   treats sending as off and tells the person why; switching sending on or
   off again replaces the file.
+
+## The settings kept where Halonic runs, in the profile
+
+`new FileHostSettingsStore(root)` keeps the settings that belong to the
+computer Halonic runs on (the assistant, the sandbox default) as
+`host.json` in `root`, `settingsFolder(profile)` from `@halonicjs/profile`,
+never inside a workspace. The file holds `{"version":1,"values":{…}}`, one
+JSON value per setting key. It passes the shared `HostSettingsStore`
+contract suite.
+
+- **Writes** read the file, change one key and go through a flushed
+  temporary file and a rename, with the same modes as trust records. Saves
+  through one store run one at a time.
+- **Shape:** a file that isn't JSON or isn't that shape reads as none
+  saved, so every setting starts from its default; a key no setting can
+  have is left out. A link or a file that isn't plain makes `read` throw,
+  naming the file; a save replaces it.
+- **Watch:** `node:fs.watch` on the folder, which it creates, private;
+  only changes to `host.json` reach the listener, so the CLI's and other
+  windows' saves are heard.
 
 ## The yes to run without the sandbox, in the profile
 
