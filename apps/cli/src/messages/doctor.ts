@@ -35,6 +35,7 @@ export const doctorMessages = defineMessages("doctor", {
   modelsLabel: () => phrase`Models`,
   sandboxLabel: () => phrase`Sandbox`,
   harnessesLabel: () => phrase`Harnesses`,
+  nodeLabel: () => phrase`Node.js`,
   diskLabel: () => phrase`Disk`,
 
   /** Workspace ✓. */
@@ -118,6 +119,17 @@ export const doctorMessages = defineMessages("doctor", {
   /** Harnesses !, with no fix line: the reason is the harness's own. */
   harnessVersionFailed: (harness: string, reason: string) =>
     phrase`Halonic found ${harness} but couldn't ask its version: ${reason}`,
+
+  // The Node.js line (HAL-6517): shown only with one of these problems.
+  /** Node.js ! on Windows, when the working folder is a WSL folder. */
+  windowsNodeInWsl: () => phrase`This is Windows' Node.js, running in a WSL folder.`,
+  /** Under {@link windowsNodeInWsl}. */
+  installNodeInWsl: () => phrase`Fix: install Node.js inside WSL and run halonic there.`,
+  /** Node.js ! inside WSL: "pnpm on the PATH is Windows' one: /mnt/c/…/pnpm". */
+  windowsPnpm: (path: string) => phrase`pnpm on the PATH is Windows' one: ${path}`,
+  /** Under {@link windowsPnpm}. */
+  installPnpmInWsl: () =>
+    phrase`Fix: install pnpm inside WSL, for example with npm install -g pnpm, then run halonic doctor again.`,
 
   noProblems: () => phrase`No problems.`,
   problems: (count: number) => phrase`${counted(count, "problem", "problems")}.`,

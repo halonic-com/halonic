@@ -109,6 +109,40 @@ export function sandboxLine(check: SandboxCheck, capabilities: SandboxCapabiliti
   return { check: "sandbox", status: "failed", reason: check.reason, missing: [...check.missing] };
 }
 
+/**
+ * What is wrong with the Node.js that runs Halonic, as the host found it
+ * (HAL-6517, from the WSL2 first-run research on HAL-6504):
+ *
+ * - `windows-node-in-wsl`: Windows' Node.js runs Halonic in a WSL folder,
+ *   as Windows reaches it, instead of Node.js inside WSL.
+ * - `windows-pnpm`: inside WSL, the `pnpm` on the `PATH` is Windows' one, at
+ *   `pnpm`, under `/mnt/`.
+ */
+export type NodeProblem =
+  | { problem: "windows-node-in-wsl" }
+  | { problem: "windows-pnpm"; pnpm: string };
+
+/** The Node.js line: shown only when the host found a {@link NodeProblem}. */
+export type NodeLine = DoctorLine & {
+  check: "node";
+  /** Never `failed`: Halonic still starts, it only runs in the wrong place. */
+  status: "warning";
+} & NodeProblem;
+
+/**
+ * The Node.js line of `halonic doctor` (requirement `app.doctor-node`): a
+ * warning with the problem the host found, or no line without one.
+ *
+ * @example
+ * nodeLine({ problem: "windows-node-in-wsl" });
+ * // { check: "node", status: "warning", problem: "windows-node-in-wsl" }
+ * nodeLine(null); // undefined
+ */
+export function nodeLine(problem: NodeProblem | null): NodeLine | undefined {
+  if (problem === null) return undefined;
+  return { check: "node", status: "warning", ...problem };
+}
+
 /** What Halonic's own data takes on the disk. */
 export interface DataSpace {
   /** All of Halonic's data folders together. */

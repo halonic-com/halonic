@@ -179,3 +179,24 @@ verifies("cli.doctor-windows-drive", () => {
     expect(JSON.parse(io.stdout.join("\n")).checks[0]).not.toHaveProperty("windowsDrive");
   });
 });
+
+verifies("cli.doctor-node", () => {
+  it("adds the Node.js line the machine found, and still exits 0", async () => {
+    const io = captureIo(folder);
+    const inWslFolder: DoctorMachine = {
+      ...machine(),
+      node: async () => ({ problem: "windows-node-in-wsl" }),
+    };
+
+    const code = await runCli(["doctor", "--json"], io, [createDoctorCommand(() => inWslFolder)]);
+
+    expect(code).toBe(exitCode.ok);
+    const document = JSON.parse(io.stdout.join("\n"));
+    expect(document.checks).toContainEqual({
+      check: "node",
+      status: "warning",
+      problem: "windows-node-in-wsl",
+    });
+    expect(document.warnings).toBe(1);
+  });
+});

@@ -16,6 +16,9 @@ import {
 import {
   type DiskLine,
   diskLine,
+  type NodeLine,
+  type NodeProblem,
+  nodeLine,
   type SandboxLine,
   sandboxLine,
   type WorkspaceLine,
@@ -96,6 +99,11 @@ export interface DoctorServiceOptions {
   harnesses: readonly Pick<Harness, "id" | "name" | "detect">[];
   /** The store the providers' keys are in, as `runCli` wrapped it. */
   secrets: Secrets;
+  /**
+   * What is wrong with the Node.js that runs Halonic, for the Node.js line.
+   * Left out where the host checks nothing: then there is no such line.
+   */
+  node?: () => Promise<NodeProblem | null>;
 }
 
 /** Everything `halonic doctor` shows. A line that doesn't apply is left out. */
@@ -109,6 +117,8 @@ export interface DoctorReport {
   mxc?: MxcLine;
   /** Only when a harness is ready or an agent uses one. */
   harnesses?: HarnessesLine;
+  /** Only when the host found a problem with the Node.js that runs Halonic. */
+  node?: NodeLine;
   disk: DiskLine;
   /** The counts under the lines, and whether `doctor` exits 1. */
   summary: DoctorSummary;
@@ -143,7 +153,7 @@ export class DoctorService {
    */
   async check(workspace: DoctorWorkspace | null): Promise<DoctorReport> {
     const { sandbox } = this.options;
-    const [trust, sandboxCheck, resources, harnesses, keys] = await Promise.all([
+    const [trust, sandboxCheck, resources, harnesses, keys, node] = await Promise.all([
       workspace === null || workspace.testModelOnly === true
         ? null
         : this.options.trust.check(workspace.trust),
@@ -151,6 +161,7 @@ export class DoctorService {
       this.options.resources.read(),
       this.detectHarnesses(),
       this.storedKeys(workspace?.providers ?? []),
+      this.options.node?.() ?? null,
     ]);
 
     const report: Omit<DoctorReport, "summary"> = {
@@ -174,6 +185,8 @@ export class DoctorService {
     if (mxc !== undefined) report.mxc = mxc;
     const harnessLine = harnessesLine(harnesses, harnessAgents(workspace));
     if (harnessLine !== undefined) report.harnesses = harnessLine;
+    const runtime = nodeLine(node);
+    if (runtime !== undefined) report.node = runtime;
 
     return { ...report, summary: doctorSummary(linesOf(report)) };
   }
@@ -244,6 +257,8 @@ function harnessAgents(workspace: DoctorWorkspace | null): HarnessAgent[] {
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, sandbox, mxc, harnesses, disk } = report;
-  return [workspace, models, sandbox, mxc, harnesses, disk].filter((line) => line !== undefined);
+  const { workspace, models, sandbox, mxc, harnesses, node, disk } = report;
+  return [workspace, models, sandbox, mxc, harnesses, node, disk].filter(
+    (line) => line !== undefined,
+  );
 }

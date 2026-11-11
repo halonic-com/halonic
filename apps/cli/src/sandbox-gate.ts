@@ -15,7 +15,7 @@ import { dayInWords, localDay } from "./messages/dates.ts";
 import type { Message } from "./messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
-import { sandboxDocsLink, sandboxMessages } from "./messages/sandbox.ts";
+import { sandboxDocsLink, sandboxMessages, windowsNodeInWsl } from "./messages/sandbox.ts";
 
 /** What the sandbox check reads on this computer, so tests can hand it fakes. */
 export interface SandboxGateMachine {
@@ -27,6 +27,12 @@ export interface SandboxGateMachine {
   readonly location: string;
   /** The raw bytes of a workspace file, by its workspace-relative path. */
   readFile(path: string): Promise<Uint8Array>;
+  /**
+   * Whether Windows' Node.js runs Halonic with the workspace in a WSL
+   * folder: then a refusal says so, whatever the sandbox's own reason
+   * (HAL-6517). Left out, it doesn't.
+   */
+  readonly windowsNodeInWsl?: boolean;
 }
 
 /** An agent set to "On this computer": `halonic run` prints one ! line for it before the run. */
@@ -155,7 +161,10 @@ export async function checkRunSandbox(
   }
   if (needsSandbox) {
     const check = await machine.sandbox.check();
-    if (!check.ok) throw new SandboxRefusedError(check.reason, ending, check.missing);
+    if (!check.ok) {
+      const code = machine.windowsNodeInWsl === true ? windowsNodeInWsl : check.reason;
+      throw new SandboxRefusedError(code, ending, check.missing);
+    }
   }
   return unsandboxed;
 }

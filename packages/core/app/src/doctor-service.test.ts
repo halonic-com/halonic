@@ -3,6 +3,7 @@ import type { HarnessDetection, SandboxCheck, Secrets } from "@halonicjs/ports";
 import { err, ok } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import type { NodeProblem } from "./doctor-lines.ts";
 import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
 import type { SandboxChoice } from "./sandbox-choice.ts";
@@ -72,6 +73,8 @@ interface Machine {
   /** The sandbox choice; the host has none when left out. */
   choice?: SandboxChoice | null;
   secrets?: Record<string, string>;
+  /** What the host found wrong with Node.js; the host checks nothing when left out. */
+  node?: NodeProblem | null;
 }
 
 /** A doctor on a machine with plenty of disk and a working sandbox, unless told otherwise. */
@@ -108,6 +111,7 @@ function doctor(machine: Machine = {}) {
     ...(machine.choice === undefined
       ? {}
       : { sandboxChoice: { current: () => machine.choice ?? null } }),
+    ...(machine.node === undefined ? {} : { node: async () => machine.node ?? null }),
   });
   return { service, asked };
 }
@@ -310,5 +314,35 @@ verifies("app.doctor-workspace-drive", () => {
       windowsDrive: "/mnt/c",
     });
     expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+});
+
+verifies("app.doctor-node", () => {
+  it("warns on a Node.js line when the host found Windows' Node.js in a WSL folder", async () => {
+    const report = await doctor({ node: { problem: "windows-node-in-wsl" } }).service.check(null);
+
+    expect(report.node).toEqual({
+      check: "node",
+      status: "warning",
+      problem: "windows-node-in-wsl",
+    });
+    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+
+  it("names Windows' pnpm when the host found it on the PATH inside WSL", async () => {
+    const pnpm = "/mnt/c/nodejs/pnpm"; // leak-guard: allow absolute-path an example WSL drive
+    const report = await doctor({ node: { problem: "windows-pnpm", pnpm } }).service.check(null);
+
+    expect(report.node).toEqual({
+      check: "node",
+      status: "warning",
+      problem: "windows-pnpm",
+      pnpm,
+    });
+  });
+
+  it("has no Node.js line when the host found nothing, or checks nothing", async () => {
+    expect((await doctor({ node: null }).service.check(null)).node).toBeUndefined();
+    expect((await doctor().service.check(null)).node).toBeUndefined();
   });
 });

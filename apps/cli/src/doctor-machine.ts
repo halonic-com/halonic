@@ -14,6 +14,7 @@ import {
   type DoctorServiceOptions,
   type DoctorWorkspace,
   type LoadedModelSource,
+  type NodeProblem,
   ResourceReport,
   type TrustService,
 } from "@halonicjs/app";
@@ -28,6 +29,7 @@ import type {
 } from "@halonicjs/ports";
 import { type ProfileFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { findCommand, nodeCommandSearch } from "./command-paths.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
 import {
   isOnThisComputer,
@@ -37,7 +39,7 @@ import {
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
-import { nodeIsWsl, windowsDriveOf } from "./wsl.ts";
+import { nodeIsWsl, nodeProblemOf, windowsDriveOf } from "./wsl.ts";
 
 /** What `doctor` asks on this computer. */
 export interface DoctorMachine {
@@ -58,6 +60,8 @@ export interface DoctorMachine {
    * isn't on one. Only under WSL; left out elsewhere.
    */
   readonly windowsDrive?: (folder: string) => string | null;
+  /** What is wrong with the Node.js that runs Halonic, for the Node.js line; left out, no line. */
+  readonly node?: () => Promise<NodeProblem | null>;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -86,7 +90,8 @@ const runFolderNames = ["runs", "deployments", "blobs"];
 /**
  * This computer: the profile from `HALONIC_HOME` or the system's data
  * folder, the srt sandbox, Node's resource probe, Claude Code and Codex as
- * `PATH` finds them, `fetch`, and under WSL the Windows drives.
+ * `PATH` finds them, `fetch`, under WSL the Windows drives, and what is
+ * wrong with the Node.js that runs it.
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
@@ -103,6 +108,13 @@ export function nodeDoctorMachine(): DoctorMachine {
     http: { fetch: (url, init) => fetch(url, init) },
     system: `${systemNames[system] ?? system} ${arch()}`,
     ...(nodeIsWsl() ? { windowsDrive: windowsDriveOf } : {}),
+    node: () =>
+      nodeProblemOf({
+        platform: process.platform,
+        cwd: process.cwd(),
+        wsl: nodeIsWsl,
+        findPnpm: () => findCommand("pnpm", nodeCommandSearch()),
+      }),
   };
 }
 
@@ -136,6 +148,7 @@ export async function doctorService(
     resources,
     harnesses: machine.harnesses,
     secrets,
+    ...(machine.node === undefined ? {} : { node: machine.node }),
   });
 }
 

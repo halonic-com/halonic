@@ -4,6 +4,7 @@ import {
   doctorSummary,
   type HarnessesLine,
   type ModelsLine,
+  type NodeLine,
   type SandboxLine,
   type WorkspaceLine,
 } from "@halonicjs/app";
@@ -54,8 +55,10 @@ const diskFree: DiskLine = {
 
 /** A report from its lines, with the summary `DoctorService` would add. */
 function reportOf(lines: Omit<DoctorReport, "summary">): DoctorReport {
-  const { workspace, models, sandbox, harnesses, disk } = lines;
-  const all = [workspace, models, sandbox, harnesses, disk].filter((line) => line !== undefined);
+  const { workspace, models, sandbox, harnesses, node, disk } = lines;
+  const all = [workspace, models, sandbox, harnesses, node, disk].filter(
+    (line) => line !== undefined,
+  );
   return { ...lines, summary: doctorSummary(all) };
 }
 
@@ -170,6 +173,33 @@ verifies("cli.doctor-windows-drive", () => {
       "              More: https://docs.halonic.dev/sandbox#wsl2-folder",
     ]);
     expect(lines.at(-1)).toBe("No problems. 1 warning.");
+  });
+});
+
+verifies("cli.doctor-node", () => {
+  it("says Windows' Node.js runs in a WSL folder, with the fix, between Harnesses and Disk", () => {
+    const node: NodeLine = { check: "node", status: "warning", problem: "windows-node-in-wsl" };
+    const lines = printed(reportOf({ sandbox: sandboxReady, node, disk: diskFree }));
+
+    expect(lines.slice(2, 6)).toEqual([
+      "✓ Sandbox     ready · bubblewrap",
+      "! Node.js     This is Windows' Node.js, running in a WSL folder.",
+      "              Fix: install Node.js inside WSL and run halonic there.",
+      "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
+    ]);
+    expect(lines.at(-1)).toBe("No problems. 1 warning.");
+  });
+
+  it("names Windows' pnpm by its path", () => {
+    const pnpm = "/mnt/c/nodejs/pnpm"; // leak-guard: allow absolute-path an example WSL drive
+    const node: NodeLine = { check: "node", status: "warning", problem: "windows-pnpm", pnpm };
+
+    expect(
+      check(printed(reportOf({ sandbox: sandboxReady, node, disk: diskFree })), "Node.js"),
+    ).toEqual([
+      `! Node.js     pnpm on the PATH is Windows' one: ${pnpm}`,
+      "              Fix: install pnpm inside WSL, for example with npm install -g pnpm, then run halonic doctor again.",
+    ]);
   });
 });
 

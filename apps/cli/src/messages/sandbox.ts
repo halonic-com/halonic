@@ -7,16 +7,25 @@ import { type Phrase, phrase } from "./phrase.ts";
  * The reason codes the CLI has its own words for. The codes the `Sandbox`
  * port added in version 6 (setup, WSL, company policy and sign-in, HAL-5389)
  * read as `other` until the sandbox design words them.
+ *
+ * `windows-node-in-wsl` is the CLI's own, not the port's: the sandbox check
+ * refuses Windows' Node.js in a WSL folder with it (HAL-6517), because the
+ * fix is Node.js inside WSL, whatever the Windows sandbox says.
  */
-type WordedReason = Extract<
-  SandboxUnavailableReason,
-  | "windows"
-  | "container"
-  | "user-namespaces-restricted"
-  | "bubblewrap-missing"
-  | "linux-tools-missing"
-  | "other"
->;
+type WordedReason =
+  | Extract<
+      SandboxUnavailableReason,
+      | "windows"
+      | "container"
+      | "user-namespaces-restricted"
+      | "bubblewrap-missing"
+      | "linux-tools-missing"
+      | "other"
+    >
+  | typeof windowsNodeInWsl;
+
+/** The CLI's own reason code for Windows' Node.js running in a WSL folder. */
+export const windowsNodeInWsl = "windows-node-in-wsl";
 
 /**
  * Line 2 of a run refused because the sandbox can't start, by reason code
@@ -29,6 +38,8 @@ type WordedReason = Extract<
 const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
     "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
+  [windowsNodeInWsl]:
+    "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start there. Install Node.js inside WSL and run halonic there.",
   container:
     "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
   "user-namespaces-restricted":
@@ -44,6 +55,8 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
 /** sandbox-screens 3.1's reason, by code: what's wrong, for `halonic doctor`'s Sandbox line. */
 const reasons: Readonly<Record<WordedReason, string>> = {
   windows: "The sandbox doesn't work on Windows in this version of Halonic.",
+  [windowsNodeInWsl]:
+    "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start there.",
   container: "Halonic is running inside a container, and the sandbox can't start there.",
   "user-namespaces-restricted": "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
   "bubblewrap-missing": "bubblewrap isn't installed, and the sandbox needs it.",
@@ -58,6 +71,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
  */
 const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
+  [windowsNodeInWsl]: "install Node.js inside WSL and run halonic there.",
   container: "run Halonic on the computer itself, not in a container.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",

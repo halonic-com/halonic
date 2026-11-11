@@ -59,7 +59,12 @@ export async function commandPaths(
   return paths;
 }
 
-async function findCommand(command: string, search: CommandSearch): Promise<string | null> {
+/**
+ * Where the system would start `command` from: the first program of that
+ * name in an absolute folder of `PATH`, or `null` when there's none or the
+ * command holds a folder.
+ */
+export async function findCommand(command: string, search: CommandSearch): Promise<string | null> {
   if (command === "" || /[\\/]/.test(command)) return null;
   const names = candidateNames(command, search.endings);
   for (const folder of (search.path ?? "").split(delimiter)) {

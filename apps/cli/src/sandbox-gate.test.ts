@@ -314,3 +314,32 @@ verifies("cli.sandbox-gate", () => {
     });
   });
 });
+
+verifies("cli.run-windows-node-in-wsl", () => {
+  it("says it's Windows' Node.js in a WSL folder, whatever the sandbox's own reason", async () => {
+    const workspace = await workspaceOf();
+    const { machine } = machineWith({ ok: false, reason: "setup-needed", missing: ["no srt-win"] });
+
+    const error = await refusal(
+      checkRunSandbox(workspace, supportReply, { ...machine, windowsNodeInWsl: true }),
+    );
+
+    expect(exitCodeOfError(error)).toBe(9);
+    expect(printed(error)).toEqual([
+      "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
+      "  This is Windows' Node.js, running in a WSL folder, and the sandbox can't start there. Install Node.js inside WSL and run halonic there.",
+      "  More: https://docs.halonic.com/sandbox (windows-node-in-wsl)",
+    ]);
+  });
+
+  it("keeps the sandbox's own reason outside a WSL folder", async () => {
+    const workspace = await workspaceOf();
+    const { machine } = machineWith(bubblewrapMissing);
+
+    const error = await refusal(
+      checkRunSandbox(workspace, supportReply, { ...machine, windowsNodeInWsl: false }),
+    );
+
+    expect(error.code).toBe("bubblewrap-missing");
+  });
+});

@@ -13,6 +13,7 @@ import { systemClock } from "@halonicjs/std";
 import type { SandboxGateMachine } from "./sandbox-gate.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
+import { isWslShare } from "./wsl.ts";
 
 /** What the sandbox check reads that isn't the workspace's: the sandbox and the person's choices. */
 export type SandboxGateHost = Pick<SandboxGateMachine, "sandbox" | "placement">;
@@ -47,17 +48,19 @@ export function nodeSandboxGateHost(
 
 /**
  * The machine for the workspace in `root`: the host's sandbox and choices,
- * the choices keyed by the workspace's real path, and its files read from
- * the folder.
+ * the choices keyed by the workspace's real path, its files read from the
+ * folder, and whether Windows' Node.js reaches it in a WSL folder.
  */
 export async function sandboxGateMachine(
   host: SandboxGateHost,
   root: string,
+  platform: NodeJS.Platform = process.platform,
 ): Promise<SandboxGateMachine> {
   const location = await realpath(root);
   return {
     ...host,
     location,
     readFile: async (path) => new Uint8Array(await readFile(join(location, path))),
+    windowsNodeInWsl: platform === "win32" && isWslShare(location),
   };
 }
