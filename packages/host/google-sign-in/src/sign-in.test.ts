@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   fakeAccountRef,
   fakeClient,
@@ -41,6 +41,7 @@ verifies("google-sign-in.exchange", () => {
     expect(request?.method).toBe("POST");
     // A 307 or 308 would send the same form, secrets and all, somewhere else.
     expect(request?.redirect).toBe("error");
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
     expect(Object.fromEntries(request?.form ?? [])).toEqual({
       grant_type: "authorization_code",
       code: fakeCode,
@@ -112,6 +113,19 @@ verifies("google-sign-in.exchange", () => {
       accountRef: fakeAccountRef,
       status: 200,
     });
+  });
+
+  it("waits 10 seconds at most for the token endpoint", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    try {
+      const { google } = await signInOnce(() => tokenSuccess());
+
+      expect(google.requests[0]?.url).toBe(tokenEndpoint);
+      expect(timeout.mock.calls[0]).toEqual([10_000]);
+      expect(google.requests[0]?.signal).toBe(timeout.mock.results[0]?.value);
+    } finally {
+      timeout.mockRestore();
+    }
   });
 
   it("gives unreachable when the network fails, without the HttpClient's error", async () => {

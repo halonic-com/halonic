@@ -175,7 +175,8 @@ verifies("google-sign-in.check-request", () => {
     try {
       await signInOnce(() => tokenSuccess());
 
-      expect(timeout.mock.calls).toEqual([[10_000]]);
+      // One for the token exchange, one for the check.
+      expect(timeout.mock.calls).toEqual([[10_000], [10_000]]);
     } finally {
       timeout.mockRestore();
     }

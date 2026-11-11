@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   fakeAccountRef,
   fakeGoogle,
@@ -31,6 +31,9 @@ verifies("google-sign-in.revoke", () => {
     expect(request?.url).toBe("https://oauth2.googleapis.com/revoke");
     expect(request?.method).toBe("POST");
     expect(request?.form.get("token")).toBe(fakeRefreshToken);
+    // A redirect would carry the refresh token elsewhere; the time limit keeps a stalled Google from hanging a disconnect.
+    expect(request?.redirect).toBe("error");
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
     expect(tokens.values.has(refreshName)).toBe(false);
   });
 
@@ -54,6 +57,19 @@ verifies("google-sign-in.revoke", () => {
       googleConfirmed: false,
     });
     expect(offline.tokens.values.size).toBe(0);
+  });
+
+  it("waits 10 seconds at most for Google", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    try {
+      const { tokens, google } = connected(() => new Response("{}", { status: 200 }));
+      await revokeGoogleSignIn(fakeAccountRef, { http: google, tokens });
+
+      expect(timeout.mock.calls).toEqual([[10_000]]);
+      expect(google.requests[0]?.signal).toBe(timeout.mock.results[0]?.value);
+    } finally {
+      timeout.mockRestore();
+    }
   });
 
   it("sends nothing when the account has no refresh token", async () => {

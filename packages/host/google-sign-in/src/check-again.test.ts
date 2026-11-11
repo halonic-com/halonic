@@ -100,6 +100,7 @@ verifies("google-sign-in.check-again", () => {
     const [refresh, check] = http.requests;
     expect(refresh?.method).toBe("POST");
     expect(refresh?.redirect).toBe("error");
+    expect(refresh?.signal).toBeInstanceOf(AbortSignal);
     expect(Object.fromEntries(refresh?.form ?? [])).toEqual({
       grant_type: "refresh_token",
       refresh_token: fakeRefreshToken,
