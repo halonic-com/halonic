@@ -93,7 +93,7 @@ pub async fn agent_host_request<R: Runtime>(
 ) -> Result<HostAnswer, HostRefusal> {
     let route = named_route(&route, Answer::Json)?;
     let response = send(&app, route, body).await?;
-    Ok(read_answer(response).await)
+    read_answer(response).await
 }
 
 /// Calls a stream route of the host. Its lines go to `channel` until the
@@ -108,7 +108,7 @@ pub async fn agent_host_stream<R: Runtime>(
     let route = named_route(&route, Answer::Stream)?;
     let response = send(&app, route, Some(body)).await?;
     if response.status() != reqwest::StatusCode::OK {
-        let answer = read_answer(response).await;
+        let answer = read_answer(response).await?;
         return Ok(StreamStart::Refused { answer });
     }
     let state = app.state::<AgentHostState>();
@@ -217,18 +217,28 @@ async fn send<R: Runtime>(
         .map_err(|_| unavailable("the agent host didn't answer"))
 }
 
-/// Reads a whole JSON answer, up to [`ANSWER_LIMIT`].
-async fn read_answer(mut response: reqwest::Response) -> HostAnswer {
+/// Reads a whole JSON answer, up to [`ANSWER_LIMIT`]. An answer that is
+/// larger or breaks off is an `io` refusal, so a cut-off answer can't pass
+/// for the host's whole answer.
+async fn read_answer(mut response: reqwest::Response) -> Result<HostAnswer, HostRefusal> {
     let status = response.status().as_u16();
     let mut bytes = Vec::new();
-    while let Ok(Some(chunk)) = response.chunk().await {
+    loop {
+        let chunk = match response.chunk().await {
+            Ok(Some(chunk)) => chunk,
+            Ok(None) => break,
+            Err(_) => return Err(HostRefusal::new("io", "the agent host's answer broke off")),
+        };
         if bytes.len() + chunk.len() > ANSWER_LIMIT {
-            break;
+            return Err(HostRefusal::new(
+                "io",
+                "the agent host's answer is larger than Studio takes (16 MiB)",
+            ));
         }
         bytes.extend_from_slice(&chunk);
     }
     let body = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
-    HostAnswer { status, body }
+    Ok(HostAnswer { status, body })
 }
 
 /// Passes the stream's lines to the page, then how it ended, and forgets
