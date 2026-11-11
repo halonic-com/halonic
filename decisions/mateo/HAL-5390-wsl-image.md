@@ -6,7 +6,7 @@
 
 ## What changes
 
-A new workflow `.github/workflows/wsl-image.yml` builds the image from `infra/wsl-image/` with mmdebstrap on an Ubuntu runner, checks it, writes its download and on-disk size into the job summary, and keeps it as a build artifact for 7 days. It runs by hand and on changes to its own files only. It has read-only repository rights and no secrets. It publishes nothing: publishing the image is a release and needs the board's yes.
+A new workflow `.github/workflows/wsl-image.yml` builds the image from `infra/wsl-image/` with mmdebstrap inside a privileged `debian:trixie` container on an Ubuntu runner (mmdebstrap needs root and a current Debian keyring), checks it, writes its download and on-disk size into the job summary, and keeps it as a build artifact for 7 days. It runs by hand and on changes to its own files only. It has read-only repository rights and no secrets. It publishes nothing: publishing the image is a release and needs the board's yes.
 
 ## Why
 
