@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1290 (T2, PR 8); UX checklist part 1, 1.5 and 1.9 (HAL-1323); microcopy 3.3; kit 19.3; HAL-3926; HAL-3924
+- Source: HAL-1290 (T2, PR 8); UX checklist part 1, 1.5 and 1.9 (HAL-1323); microcopy 3.3; kit 19.3; HAL-3926; HAL-3924; a11y 1.5 (HAL-1290 15b)
 
-The shell shall load and fail each of Home's sections on its own. While a section's card loads, the shell shall show nothing for 300 ms, then skeleton rows hidden from screen readers, except for Get set up, which shows nothing until it has loaded. While any section shows its skeleton, the page shall say "Loading Home" once to screen readers, not once per section. If a section's card fails to load or to draw, then the shell shall show, in place of its rows, the start-aligned error with the section's "Couldn't load" title, the reason and **Try again**, and shall keep the other sections. When **Try again** works, the shell shall move focus to the section's heading; when it fails again, to the error's title. The shell shall move focus only right after **Try again**: when the section later loads again, focus shall stay where it is.
+The shell shall load and fail each of Home's sections on its own. While a section's card loads, the shell shall show nothing for 300 ms, then skeleton rows hidden from screen readers, except for Get set up, which shows nothing until it has loaded. While any section shows its skeleton, the page shall say "Loading Home" once to screen readers, not once per section. If a section's card fails to load or to draw, then the shell shall show, in place of its rows, the start-aligned error with the section's "Couldn't load" title, the reason and **Try again**, and shall keep the other sections. The section's error shall not be a live region: while sections show their errors, the page shall say each of their reasons once to screen readers, not once per section, and shall not say a reason again when another section fails for it too. When **Try again** works, the shell shall move focus to the section's heading; when it fails again, to the error's title. The shell shall move focus only right after **Try again**: when the section later loads again, focus shall stay where it is.
 
 ## Examples
 
@@ -17,6 +17,9 @@ The shell shall load and fail each of Home's sections on its own. While a sectio
 - Given Recent runs fails with an internal error and Needs you loads,
   when Home shows,
   then Recent runs shows "Couldn't load recent runs" with Try again, without the error's own message, and Needs you shows its rows.
+- Given Needs you and Recent runs both fail because Halonic on your computer isn't answering,
+  when Home shows,
+  then both show their errors and screen readers hear "Halonic on your computer isn't answering." once.
 - Given Recent runs failed,
   when Try again is pressed and it loads,
   then focus is on the heading "Recent runs".

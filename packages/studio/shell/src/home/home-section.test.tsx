@@ -165,6 +165,39 @@ verifies("shell.home-states", () => {
     );
   });
 
+  it("says why sections failed once, not once per section", async () => {
+    const inbox = new PendingRows();
+    const runs = new PendingRows();
+    const container = renderHome([card("needs-you", inbox), card("recent-runs", runs)]);
+    await settle();
+    const notAnswering = "Halonic on your computer isn't answering.";
+    await fail(inbox, new KindedError("unavailable", notAnswering));
+    expect(status(container)).toBe(notAnswering);
+
+    await fail(runs, new KindedError("unavailable", notAnswering));
+    expect(sectionNamed(container, "Needs you").querySelector("h3")?.textContent).toBe(
+      "Couldn't load what needs you",
+    );
+    expect(sectionNamed(container, "Recent runs").querySelector("h3")?.textContent).toBe(
+      "Couldn't load recent runs",
+    );
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(status(container)).toBe(notAnswering);
+  });
+
+  it("stops saying a reason once no section fails for it", async () => {
+    const runs = new PendingRows();
+    const container = renderHome([card("recent-runs", runs)]);
+    await settle();
+    await fail(runs, new KindedError("unavailable", "Halonic on your computer isn't answering."));
+
+    runs.reset();
+    act(() => sectionNamed(container, "Recent runs").querySelector("button")?.click());
+    await settle();
+    await arrive(runs, "5 runs");
+    expect(status(container)).toBe("");
+  });
+
   it("focuses the heading when Try again works, and the error's title when it fails again", async () => {
     const runs = new PendingRows();
     const container = renderHome([card("recent-runs", runs)]);

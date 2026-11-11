@@ -56,9 +56,13 @@ section no feature added. A card's view is a named export that gets `HomeCardPro
 the feature that added it (`shell.home-sections`). Each section loads and fails on its own: a card's
 view suspends while it loads (as with React's `use`) and throws when it fails. The shell shows the
 skeleton (none for Get set up), says "Loading Home" once for the page, and puts the section's
-"Couldn't load" error with Try again in place of its rows (`shell.home-states`). Get set up's card
+"Couldn't load" error with Try again in place of its rows. The errors aren't live regions: the page
+says each reason once, so when the engine isn't answering, screen readers hear it once, not once per
+section (`shell.home-states`). Get set up's card
 throws only once it knows setup isn't finished: if it can't tell, it shows nothing, so a workspace
-that is set up never sees "Couldn't load setup".
+that is set up never sees "Couldn't load setup". On a phone, the `h1` is for screen readers only
+(the top bar shows "Home"), the sections run edge to edge 8px apart, and a loading section shows two
+flush skeleton rows (`shell.phone-home`).
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds

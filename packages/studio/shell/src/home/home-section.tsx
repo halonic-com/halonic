@@ -5,6 +5,8 @@ import {
   type RefObject,
   Suspense,
   useCallback,
+  useContext,
+  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -17,6 +19,7 @@ import type { Registered } from "../points/point-store.ts";
 import { loadView } from "../view.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { HomeErrorReport } from "./home-errors.ts";
 import { SectionSkeleton } from "./home-loading.tsx";
 
 /** What a Home card's view gets: the context of the feature that added the card. */
@@ -117,6 +120,10 @@ function SectionError({
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const title = homeSectionErrors[section];
+  const reason = errorMessageFor(error, { title }).body;
+  // The error isn't a live region: the page says the reason once for every section (a11y 1.5).
+  const report = useContext(HomeErrorReport);
+  useEffect(() => report(reason), [report, reason]);
   return (
     <>
       <EmptyState
@@ -125,7 +132,7 @@ function SectionError({
         headingLevel={3}
         titleRef={titleRef}
         title={title}
-        description={errorMessageFor(error, { title }).body}
+        description={reason}
         action={{ label: "Try again", onClick: onRetry }}
       />
       {focus ? <FocusOnShow target={titleRef} onFocused={onFocused} /> : null}

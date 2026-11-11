@@ -1,4 +1,9 @@
-import { SKELETON_AFTER_MS, SkeletonBar, type SkeletonBarWidth } from "@halonicjs/studio-kit";
+import {
+  SKELETON_AFTER_MS,
+  SkeletonBar,
+  type SkeletonBarWidth,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { createContext, useContext, useEffect, useState } from "react";
 
 /**
@@ -17,9 +22,11 @@ const rows: readonly { title: SkeletonBarWidth; meta: SkeletonBarWidth }[] = [
 /**
  * A section while its card loads (kit 19.3): nothing for the first 300ms, so a fast load doesn't
  * flash, then still rows in the rows' shape. Hidden from screen readers, which hear the page's one
- * "Loading Home" instead.
+ * "Loading Home" instead. On a phone it's two rows, flush with the screen's edges like the lists
+ * they stand in for (PH 2.6).
  */
 export function SectionSkeleton() {
+  const phone = usePresentation() === "phone";
   const showing = useShowingAfter(SKELETON_AFTER_MS);
   const report = useContext(HomeLoadingReport);
   useEffect(() => {
@@ -34,8 +41,11 @@ export function SectionSkeleton() {
     return null;
   }
   return (
-    <div aria-hidden="true" className="overflow-hidden rounded-md border border-border">
-      {rows.map((widths, index) => (
+    <div
+      aria-hidden="true"
+      className={phone ? "overflow-hidden" : "overflow-hidden rounded-md border border-border"}
+    >
+      {(phone ? rows.slice(0, 2) : rows).map((widths, index) => (
         <div
           key={widths.title}
           className={`flex min-h-14 flex-col justify-center gap-2 bg-surface px-4 ${index === 0 ? "" : "border-t border-border"}`}
