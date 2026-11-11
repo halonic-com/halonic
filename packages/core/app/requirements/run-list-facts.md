@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2742; cli-output revision 27, section 3.4 (HAL-1981)
+- Source: HAL-2742; cli-output revision 27, section 3.4 (HAL-1981); what a run sent, revision 38 (HAL-2868)
 
-The run history shall tell whether the workspace has test runs, so an empty run list can say it has only test runs, and whether a run made a tool call.
+The run history shall tell whether the workspace has test runs, so an empty run list can say it has only test runs, and what a run sent and may have sent, and whether it made a tool call, as `sendsOf` reads them from its log.
 
 ## Examples
 
@@ -14,3 +14,6 @@ The run history shall tell whether the workspace has test runs, so an empty run 
 - Given a run whose log has a tool call and a run whose log has none,
   when each is asked about,
   then the first made tool calls and the second didn't.
+- Given a run whose log has a send tool's result with the noun email,
+  when it is asked about,
+  then it sent 1 email.

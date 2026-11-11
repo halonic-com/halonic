@@ -5,6 +5,9 @@ import {
   type RunEventBody,
   type RunSummary,
   summarize,
+  type ToolNoun,
+  type ToolOutcome,
+  type ToolVerb,
 } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -351,9 +354,37 @@ verifies("cli.run-view", () => {
     ]);
     expect(receiptOf(events, summarizeOrThrow(events))).toEqual({
       changedFiles: 0,
+      sends: { sent: [], maySend: [], madeToolCalls: true },
       askedYou: 0,
     });
     expect(receiptText(events)).toBe("");
+  });
+
+  it("says what the log says the run sent, one phrase per verb in call order", () => {
+    const email = { one: "email", many: "emails" };
+    const driveFile = { one: "Drive file", many: "Drive files" };
+    const sendResult = (tool: string, noun: ToolNoun, outcome: ToolOutcome, verb?: ToolVerb) =>
+      ({
+        type: "tool.result",
+        agent: "writer",
+        tool,
+        result: "done",
+        outcome,
+        risk: "send",
+        noun,
+        ...(verb === undefined ? {} : { verb }),
+      }) satisfies RunEventBody;
+    const events = logOf([
+      ["14:00:00", entered("read")],
+      ["14:00:01", sendResult("drive_create_file", driveFile, "ok", "saved")],
+      ["14:00:02", sendResult("gmail_send", email, "ok")],
+      ["14:00:03", sendResult("drive_move_file", driveFile, "unknown", "moved")],
+      ["14:00:04", sendResult("gmail_send_draft", email, "ok")],
+      ...finishedAt("14:00:05"),
+    ]);
+    expect(receiptText(events, 0.004)).toBe(
+      "Saved 1 Drive file · sent 2 emails · may have moved 1 Drive file · estimated cost €0.004",
+    );
   });
 });
 

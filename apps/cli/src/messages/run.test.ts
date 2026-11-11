@@ -1,3 +1,4 @@
+import type { RunSends } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { paintFor } from "../output/paint.ts";
@@ -8,11 +9,23 @@ import { stopMessages } from "./stop.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
+/** A run without a tool call, which "sent nothing". */
+const noToolCalls: RunSends = { sent: [], maySend: [], madeToolCalls: false };
+
+/** A run whose tool calls sent nothing, so its receipt has no sent part. */
+const toolCallsOnly: RunSends = { sent: [], maySend: [], madeToolCalls: true };
+
+const driveFile = { one: "Drive file", many: "Drive files" };
+
 verifies("cli.messages", () => {
   it("has the receipt in three lines, from cli-output 3.4", () => {
     const receipt = {
       changedFiles: 1,
-      sent: [{ count: 1, one: "email", many: "emails" }],
+      sends: {
+        sent: [{ verb: "sent", counts: [{ noun: { one: "email", many: "emails" }, calls: 1 }] }],
+        maySend: [],
+        madeToolCalls: true,
+      } satisfies RunSends,
       askedYou: 1,
       estimatedCost: 0.004,
     };
@@ -118,17 +131,27 @@ describe("run's sentences", () => {
   });
 
   it("leaves out what doesn't apply in the receipt, and says sent nothing only without a tool call", () => {
-    expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 1 }))).toBe(
+    const sends = noToolCalls;
+    expect(words(runMessages.receipt({ changedFiles: 0, sends, askedYou: 1 }))).toBe(
       "Sent nothing · asked you once",
     );
     expect(
-      words(runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedCost: 0.03 })),
+      words(runMessages.receipt({ changedFiles: 2, sends, askedYou: 2, estimatedCost: 0.03 })),
     ).toBe("Changed 2 files · sent nothing · asked you twice · estimated cost €0.03");
-    // Tool calls whose log doesn't say what they sent: no sent part, never a guess.
-    expect(words(runMessages.receipt({ changedFiles: 1, askedYou: 0, estimatedCost: 0.004 }))).toBe(
-      "Changed 1 file · estimated cost €0.004",
+    // Tool calls that sent nothing: no sent part.
+    expect(
+      words(
+        runMessages.receipt({
+          changedFiles: 1,
+          sends: toolCallsOnly,
+          askedYou: 0,
+          estimatedCost: 0.004,
+        }),
+      ),
+    ).toBe("Changed 1 file · estimated cost €0.004");
+    expect(words(runMessages.receipt({ changedFiles: 0, sends: toolCallsOnly, askedYou: 0 }))).toBe(
+      "",
     );
-    expect(words(runMessages.receipt({ changedFiles: 0, askedYou: 0 }))).toBe("");
   });
 
   it("has the line for an agent that runs without the sandbox", () => {
@@ -137,18 +160,41 @@ describe("run's sentences", () => {
     );
   });
 
-  it("says a run that only sent nothing, and counts and joins what it sent", () => {
-    expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 0 }))).toBe(
+  it("says a run that only sent nothing, and says what it sent, one phrase per verb in call order", () => {
+    expect(words(runMessages.receipt({ changedFiles: 0, sends: noToolCalls, askedYou: 0 }))).toBe(
       "Sent nothing",
     );
-    const sent = [
-      { count: 1, one: "email", many: "emails" },
-      { count: 2, one: "message", many: "messages" },
-      { count: 3, one: "file", many: "files" },
-    ];
-    expect(words(runMessages.receipt({ changedFiles: 0, sent, askedYou: 0 }))).toBe(
-      "Sent 1 email, 2 messages and 3 files",
+    const sends: RunSends = {
+      sent: [
+        {
+          verb: "sent",
+          counts: [
+            { noun: { one: "email", many: "emails" }, calls: 1 },
+            { noun: { one: "invite", many: "invites" }, calls: 2 },
+            { noun: { one: "cancellation", many: "cancellations" }, calls: 1 },
+          ],
+        },
+        { verb: "saved", counts: [{ noun: driveFile, calls: 1 }] },
+      ],
+      maySend: [{ verb: "moved", counts: [{ noun: driveFile, calls: 1 }] }],
+      madeToolCalls: true,
+    };
+    expect(
+      words(runMessages.receipt({ changedFiles: 1, sends, askedYou: 1, estimatedCost: 0.004 })),
+    ).toBe(
+      "Changed 1 file · sent 1 email, 2 invites and 1 cancellation · saved 1 Drive file · may have moved 1 Drive file · asked you once · estimated cost €0.004",
     );
+  });
+
+  it("starts with what a run saved when it only saved, with the capital on it", () => {
+    const sends: RunSends = {
+      sent: [{ verb: "saved", counts: [{ noun: driveFile, calls: 1 }] }],
+      maySend: [],
+      madeToolCalls: true,
+    };
+    expect(
+      words(runMessages.receipt({ changedFiles: 0, sends, askedYou: 0, estimatedCost: 0.004 })),
+    ).toBe("Saved 1 Drive file · estimated cost €0.004");
   });
 
   it("repeats the user's --dir in the run log line", () => {

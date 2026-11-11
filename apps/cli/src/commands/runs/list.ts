@@ -237,9 +237,12 @@ async function runRows(
   return Promise.all(
     runs.map(async (summary) => {
       // Only a finished run's What column asks; the others skip reading the log.
-      const madeToolCalls =
-        summary.status === "completed" ? await history.madeToolCalls(summary.id) : false;
-      const row = listedRun({ summary, madeToolCalls }, findWorkflow, clock);
+      const sends = summary.status === "completed" ? await history.sends(summary.id) : undefined;
+      const row = listedRun(
+        { summary, ...(sends === undefined ? {} : { sends }) },
+        findWorkflow,
+        clock,
+      );
       return [
         runsListMessages.status(row.status).phrase,
         phrase`${row.runId}`,

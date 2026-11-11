@@ -3,7 +3,13 @@
 // read runs through this one service, so both list the same runs in the same
 // order and cut the list at the same place.
 
-import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
+import {
+  type RunEvent,
+  type RunSends,
+  type RunSummary,
+  sendsOf,
+  summarize,
+} from "@halonicjs/events";
 import type { RunFilter, RunStore } from "@halonicjs/ports";
 
 /** How many runs a list shows when the caller doesn't say: the 20 newest. */
@@ -96,16 +102,16 @@ export class RunHistory {
   }
 
   /**
-   * Whether the run's log has a tool call. A run "sent nothing" only when it
-   * made none (cli-output 3.4, revision 32); the summary doesn't say
-   * (requirement `app.run-list-facts`).
+   * What the run sent, may have sent, and whether it made a tool call, read
+   * from its log by `sendsOf`; the summary doesn't say (requirement
+   * `app.run-list-facts`). The list's ✓ Done row says it as the receipt does.
    *
    * @example
-   * await history.madeToolCalls("run_mfx3k2a1_a1b2c3d4"); // true
+   * await history.sends("run_mfx3k2a1_a1b2c3d4");
+   * // { sent: [{ verb: "sent", counts: [{ noun: { one: "email", many: "emails" }, calls: 1 }] }], maySend: [], madeToolCalls: true }
    */
-  async madeToolCalls(runId: string): Promise<boolean> {
-    const events = await this.#runs.events(runId);
-    return events.some((event) => event.type === "tool.called");
+  async sends(runId: string): Promise<RunSends> {
+    return sendsOf(await this.#runs.events(runId));
   }
 
   /**

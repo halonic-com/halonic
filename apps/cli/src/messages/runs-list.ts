@@ -3,7 +3,7 @@ import type { Mark } from "../output/paint.ts";
 import { counted } from "./counts.ts";
 import { type CalendarDay, dayInWords } from "./dates.ts";
 import { defineMessages } from "./define.ts";
-import { dim, markPart, phrase } from "./phrase.ts";
+import { dim, lineOfFacts, markPart, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** The four values `--status` takes, as the run log stores a run's status. */
@@ -133,14 +133,13 @@ export const runsListMessages = defineMessages("runsList", {
   /** What: a waiting run with no approval, child run, event or timer to wait for. */
   waitingIn: (step: string) => phrase`Waiting in ${step}`,
   /**
-   * What: a completed run without a tool call (revision 32), then its
-   * estimated cost when it made a priced call: "Sent nothing · estimated
-   * cost €0.02". On the test model just "Sent nothing".
+   * What: a completed run by what it sent, as `sendsInWords` words it
+   * (revision 38), then its estimated cost when it made a priced call:
+   * "Sent 1 email · saved 1 Drive file · estimated cost €0.02". On the test
+   * model just "Sent nothing".
    */
-  sentNothing: (money?: string) =>
-    money === undefined
-      ? phrase`Sent nothing`
-      : phrase`Sent nothing ${markPart("separator")} estimated cost ${money}`,
+  whatItSent: (sends: readonly string[], money?: string) =>
+    lineOfFacts(money === undefined ? sends : [...sends, `estimated cost ${money}`]),
   /** What: a completed run with tool calls and a priced call. */
   estimatedCost: (money: string) => phrase`Estimated cost ${money}`,
   /** What: a completed run with tool calls but no priced call, by the step it finished in. */

@@ -4,11 +4,12 @@
 // words themselves come from `runsListMessages`, so this file holds no text.
 
 import { shortRunId, type WorkflowDefinition } from "@halonicjs/app";
-import type { RunSummary } from "@halonicjs/events";
+import type { RunSends, RunSummary } from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { money } from "../../messages/money.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { type ListedStatus, runsListMessages } from "../../messages/runs-list.ts";
+import { sendsInWords } from "../../messages/sends.ts";
 import { stepName } from "../../messages/step-name.ts";
 import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
@@ -23,11 +24,11 @@ export type FindWorkflow = (hubId: string, workflowId: string) => WorkflowDefini
 export interface RunToList {
   readonly summary: RunSummary;
   /**
-   * Whether the run's log has a tool call, as `sendsOf` in `@halonicjs/events`
-   * works it out. The summary doesn't say, and a run "sent nothing" only when
-   * it made none (cli-output 3.4, revision 32).
+   * What the run sent, as `sendsOf` in `@halonicjs/events` reads it from the
+   * log; the summary doesn't say. Only a completed run's row reads it, so the
+   * list reads the log only for those.
    */
-  readonly madeToolCalls: boolean;
+  readonly sends?: RunSends;
 }
 
 /** One run, as its row in the list shows it. */
@@ -46,7 +47,7 @@ export interface ListedRun {
  * The row of one run.
  *
  * @example
- * listedRun({ summary, madeToolCalls: true }, findWorkflow, { now: new Date() });
+ * listedRun({ summary, sends: sendsOf(events) }, findWorkflow, { now: new Date() });
  * // { status: "done", runId: "01jd8q", workflow: "Support reply", what: […"Estimated cost €0.004"], when: […"10:31 · took 18 s"] }
  */
 export function listedRun(run: RunToList, findWorkflow: FindWorkflow, clock: RunClock): ListedRun {
@@ -147,15 +148,17 @@ function whatColumn(
 }
 
 /**
- * A completed run, never an empty column (cli-output 3.4, revision 32). The
- * log doesn't record what a tool sent yet, so "Sent nothing" only for a run
- * without a tool call. Otherwise its estimated cost, or for a run that had
- * no priced call (a subscription), the step it finished in.
+ * A completed run, never an empty column (cli-output 3.4, revisions 32 and
+ * 38): what it sent and its estimated cost, as the receipt says them. A run
+ * whose tool calls sent nothing has no sent part, so then its estimated cost,
+ * or for a run that had no priced call (a subscription), the step it
+ * finished in.
  */
 function doneWhat(run: RunToList, step: string): Phrase {
   const cost = run.summary.cost > 0 ? money(run.summary.cost) : undefined;
-  if (!run.madeToolCalls) {
-    return runsListMessages.sentNothing(cost).phrase;
+  const sends = run.sends === undefined ? [] : sendsInWords(run.sends);
+  if (sends.length > 0) {
+    return runsListMessages.whatItSent(sends, cost).phrase;
   }
   return cost === undefined
     ? runsListMessages.finishedIn(step).phrase

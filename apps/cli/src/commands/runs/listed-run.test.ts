@@ -1,5 +1,5 @@
 import type { WorkflowDefinition } from "@halonicjs/app";
-import { type RunEventBody, type RunSummary, summarize } from "@halonicjs/events";
+import { type RunEventBody, type RunSends, type RunSummary, summarize } from "@halonicjs/events";
 import { describe, expect, it } from "vitest";
 import { plainText } from "../../messages/phrase.ts";
 import type { RunClock } from "../../run-times.ts";
@@ -53,9 +53,15 @@ function runOf(bodies: readonly RunEventBody[], startedAt: string, stepMs = 1000
   return summary;
 }
 
-/** The row as plain text; `madeToolCalls` only matters for a completed run. */
-function row(summary: RunSummary, madeToolCalls = true) {
-  const listed = listedRun({ summary, madeToolCalls }, findWorkflow, clock);
+/** A run whose tool calls sent nothing, so its row has no sent part. */
+const toolCallsOnly: RunSends = { sent: [], maySend: [], madeToolCalls: true };
+
+/** A run without a tool call, which "sent nothing". */
+const noToolCalls: RunSends = { sent: [], maySend: [], madeToolCalls: false };
+
+/** The row as plain text; `sends` only matters for a completed run. */
+function row(summary: RunSummary, sends = toolCallsOnly) {
+  const listed = listedRun({ summary, sends }, findWorkflow, clock);
   return {
     runId: listed.runId,
     status: listed.status,
@@ -251,13 +257,52 @@ describe("listedRun", () => {
       today,
     );
 
-    expect(row(summary, false).what).toBe("Sent nothing · estimated cost €0.02");
+    expect(row(summary, noToolCalls).what).toBe("Sent nothing · estimated cost €0.02");
+  });
+
+  it("says what a completed run sent and may have sent, as the receipt does, then its cost", () => {
+    const summary = runOf(
+      [
+        started,
+        {
+          type: "llm.response",
+          agent: "writer",
+          provider: "anthropic",
+          model: "smart",
+          usage: { inputTokens: 10, outputTokens: 10 },
+          latencyMs: 900,
+          text: "Hello",
+          cost: 0.004,
+        },
+        { type: "run.completed", state: "draft", context: {} },
+      ],
+      today,
+    );
+    const driveFile = { one: "Drive file", many: "Drive files" };
+    const sends: RunSends = {
+      sent: [
+        {
+          verb: "sent",
+          counts: [
+            { noun: { one: "email", many: "emails" }, calls: 2 },
+            { noun: { one: "invite", many: "invites" }, calls: 2 },
+          ],
+        },
+        { verb: "saved", counts: [{ noun: driveFile, calls: 1 }] },
+      ],
+      maySend: [{ verb: "moved", counts: [{ noun: driveFile, calls: 1 }] }],
+      madeToolCalls: true,
+    };
+
+    expect(row(summary, sends).what).toBe(
+      "Sent 2 emails and 2 invites · saved 1 Drive file · may have moved 1 Drive file · estimated cost €0.004",
+    );
   });
 
   it("says just Sent nothing for a run on the test model without a tool call", () => {
     const summary = runOf([started, { type: "run.completed", state: "draft", context: {} }], today);
 
-    expect(row(summary, false).what).toBe("Sent nothing");
+    expect(row(summary, noToolCalls).what).toBe("Sent nothing");
   });
 
   it("names the step a completed run finished in when it had tool calls but no priced call", () => {
@@ -270,7 +315,7 @@ describe("listedRun", () => {
       today,
     );
 
-    expect(row(summary, true).what).toBe("Finished in Draft a reply");
+    expect(row(summary, toolCallsOnly).what).toBe("Finished in Draft a reply");
   });
 
   it("shows a run stopped at its budget as Stopped, in the step it reached", () => {

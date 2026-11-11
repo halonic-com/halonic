@@ -1,9 +1,11 @@
+import type { RunSends } from "@halonicjs/events";
 import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { oldestSupported } from "./doctor.ts";
 import { money } from "./money.ts";
-import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
+import { dim, joinedFacts, lineOfFacts, markPart, type Phrase, phrase } from "./phrase.ts";
+import { sendsInWords } from "./sends.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 import { trustMessages } from "./trust.ts";
 import { countInWords } from "./words.ts";
@@ -14,23 +16,14 @@ const nothingRan = phrase`Nothing ran.`;
 /** What `--input` takes, in the usage line and the help (cli-output 3.4). */
 export const inputValueName = "file or JSON";
 
-/** Things a run sent, of one kind, such as 1 email: the count and the noun's two forms. */
-export interface SentItems {
-  readonly count: number;
-  readonly one: string;
-  readonly many: string;
-}
-
 /** What a finished run did, for its receipt line. Only the parts that apply are shown. */
 export interface RunReceipt {
   readonly changedFiles: number;
   /**
-   * What it sent, by kind. Empty only when the run made no tool call, which
-   * reads "sent nothing". Left out when it made tool calls whose log doesn't
-   * say what they sent: the receipt then has no sent part rather than a guess
-   * (cli-output 3.4, revision 32).
+   * What it sent and may have sent, read from its log by `sendsOf`. Its parts
+   * are worded by `sendsInWords` (cli-output 3.4, "What it sent").
    */
-  readonly sent?: readonly SentItems[];
+  readonly sends: RunSends;
   readonly askedYou: number;
   /** The estimated cost in euros; left out for a run on the test model. */
   readonly estimatedCost?: number;
@@ -235,12 +228,6 @@ export const runMessages = defineMessages("run", {
     phrase`The run ${runId} wasn't cancelled, only no longer followed, so it may go on. See where it is: ${suggestedCommand("runs show", dir, runId)}`,
 });
 
-function joinedFacts(facts: readonly string[]): Phrase {
-  return facts.flatMap((fact, index) =>
-    index === 0 ? [fact] : [" ", markPart("separator"), " ", fact],
-  );
-}
-
 /**
  * "Answer with: halonic runs send 01jd8q approve (or reject)". No Inbox until the Studio shows one
  * (HAL-5915).
@@ -287,30 +274,19 @@ function repeatsEvent(label: string, event: string): boolean {
   return bare(label) === bare(event);
 }
 
-/** "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004". */
+/** "Changed 1 file · sent 1 email · saved 1 Drive file · asked you once · estimated cost €0.004". */
 function receiptLine(receipt: RunReceipt): Phrase {
   const parts: string[] = [];
   if (receipt.changedFiles > 0) {
     parts.push(`changed ${counted(receipt.changedFiles, "file", "files")}`);
   }
   // "Sent nothing" is what people check, so it's there whenever it's known.
-  if (receipt.sent !== undefined) {
-    parts.push(receipt.sent.length === 0 ? "sent nothing" : `sent ${sentInWords(receipt.sent)}`);
-  }
+  parts.push(...sendsInWords(receipt.sends));
   if (receipt.askedYou > 0) {
     parts.push(`asked you ${timesInWords(receipt.askedYou)}`);
   }
   if (receipt.estimatedCost !== undefined) {
     parts.push(`estimated cost ${money(receipt.estimatedCost)}`);
   }
-  const [first, ...rest] = parts;
-  if (first === undefined) {
-    return [];
-  }
-  return joinedFacts([first.charAt(0).toUpperCase() + first.slice(1), ...rest]);
-}
-
-/** "1 email and 2 messages". */
-function sentInWords(sent: readonly SentItems[]): string {
-  return listInWords(sent.map((items) => counted(items.count, items.one, items.many)));
+  return lineOfFacts(parts);
 }

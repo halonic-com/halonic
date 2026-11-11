@@ -6,7 +6,7 @@
 // holds no text.
 
 import { hubWorkflows, shortRunId, type WorkflowDefinition, workflowIn } from "@halonicjs/app";
-import type { RunEvent, RunSummary } from "@halonicjs/events";
+import { type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { columns, columnsAs, columnWidths, paddingAfter } from "./messages/columns.ts";
@@ -126,21 +126,19 @@ export function stepDoing(
 
 /**
  * The receipt of a run (cli-output 3.4): what it changed, sent, asked and
- * cost. "Sent nothing" only when the run made no tool call: the log doesn't
- * yet say what a tool sent, so a run with tool calls leaves the part out
- * rather than guess (revision 32), as the `runs` list does. The cost is left
- * out when no call had a price, such as a run on the test model.
+ * cost. What it sent comes from `sendsOf`, as the `runs` list's does, so the
+ * two say the same about a run. The cost is left out when no call had a
+ * price, such as a run on the test model.
  *
  * @example
  * receiptOf(events, summary);
- * // { changedFiles: 0, sent: [], askedYou: 1, estimatedCost: 0.004 }
+ * // { changedFiles: 0, sends: { sent: [], maySend: [], madeToolCalls: false }, askedYou: 1, estimatedCost: 0.004 }
  */
 export function receiptOf(events: readonly RunEvent[], summary: RunSummary): RunReceipt {
-  const madeToolCalls = events.some((event) => event.type === "tool.called");
   return {
     // No event says which workspace files a run changed yet.
     changedFiles: 0,
-    ...(madeToolCalls ? {} : { sent: [] }),
+    sends: sendsOf(events),
     askedYou: events.filter(askedTheUser).length,
     ...(summary.cost > 0 ? { estimatedCost: summary.cost } : {}),
   };

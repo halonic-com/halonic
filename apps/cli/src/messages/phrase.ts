@@ -75,6 +75,32 @@ export function markPart(mark: Mark): Part {
   return { mark };
 }
 
+/**
+ * Facts joined with the separator mark, as a step's facts and the receipt
+ * show them: "Writer · smart".
+ */
+export function joinedFacts(facts: readonly string[]): Phrase {
+  return facts.flatMap((fact, index) =>
+    index === 0 ? [fact] : [" ", markPart("separator"), " ", fact],
+  );
+}
+
+/**
+ * A line made of facts, such as the receipt or the ✓ Done row of `halonic
+ * runs`: joined as {@link joinedFacts} does, with a capital on the first,
+ * whatever it is. Empty for no facts.
+ *
+ * @example
+ * plainText(lineOfFacts(["sent nothing", "asked you once"])); // "Sent nothing · asked you once"
+ */
+export function lineOfFacts(facts: readonly string[]): Phrase {
+  const [first, ...rest] = facts;
+  if (first === undefined) {
+    return [];
+  }
+  return joinedFacts([first.charAt(0).toUpperCase() + first.slice(1), ...rest]);
+}
+
 /** The phrase as a stream with `paint` shows it. */
 export function renderPhrase(value: Phrase, paint: Paint): string {
   return value

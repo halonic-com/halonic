@@ -115,8 +115,8 @@ verifies("app.run-list-facts", () => {
     });
   });
 
-  describe("madeToolCalls", () => {
-    it("says whether a run's log has a tool call", async () => {
+  describe("sends", () => {
+    it("says whether a run's log has a tool call, and what it sent", async () => {
       const store = new MemoryRuns();
       const toolCall: RunEventBody = {
         type: "tool.called",
@@ -124,12 +124,29 @@ verifies("app.run-list-facts", () => {
         tool: "gmail_send",
         args: {},
       };
-      store.add("run_sent", at(1), [started("support-reply"), toolCall, completed]);
+      const toolResult: RunEventBody = {
+        type: "tool.result",
+        agent: "writer",
+        tool: "gmail_send",
+        result: "sent",
+        outcome: "ok",
+        risk: "send",
+        noun: { one: "email", many: "emails" },
+      };
+      store.add("run_sent", at(1), [started("support-reply"), toolCall, toolResult, completed]);
       store.add("run_quiet", at(2), [started("support-reply"), completed]);
       const history = new RunHistory(store);
 
-      expect(await history.madeToolCalls("run_sent")).toBe(true);
-      expect(await history.madeToolCalls("run_quiet")).toBe(false);
+      expect(await history.sends("run_sent")).toEqual({
+        sent: [{ verb: "sent", counts: [{ noun: { one: "email", many: "emails" }, calls: 1 }] }],
+        maySend: [],
+        madeToolCalls: true,
+      });
+      expect(await history.sends("run_quiet")).toEqual({
+        sent: [],
+        maySend: [],
+        madeToolCalls: false,
+      });
     });
   });
 });
