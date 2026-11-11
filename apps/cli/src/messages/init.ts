@@ -47,7 +47,7 @@ export const initMessages = defineMessages("init", {
   nextStudio: () => [dim("Or open the folder in Studio to add your first agent.")],
   /** The example's last `Next:` line, with the title of the workflow to start, such as "Support reply". */
   nextStudioExample: (workflowTitle: string) => [
-    dim(`Or open the folder in Studio and start ${workflowTitle} from the Inbox.`),
+    dim(`Or open the folder in Studio and start ${workflowTitle}.`),
   ],
 
   /** The help line for `--example <name>`. */

@@ -21,7 +21,7 @@ verifies("cli.messages", () => {
       "halonic run support-reply --input examples/refund-question.json",
     );
     expect(words(initMessages.nextStudioExample("Support reply"))).toBe(
-      "Or open the folder in Studio and start Support reply from the Inbox.",
+      "Or open the folder in Studio and start Support reply.",
     );
   });
 
