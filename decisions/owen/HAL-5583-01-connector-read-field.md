@@ -2,7 +2,6 @@
 
 - Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approved this note in review on [HAL-5616](/HAL/issues/HAL-5616)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Nbu2L6lI5OZG+rdGeSKdWKyBMsVpydYN9Q99nUIGPPQ0UdbtK84almcNgn4QpPr4lf6PYIp4C5eQ6byvn42FBg==
 
 The board chose to let a workspace mark safe connector tools as read-only by
 name, in the connector file (HAL-5522, option A). This part adds the field,
@@ -25,6 +24,9 @@ pinned yet (HAL-3434); the change itself is the board's decision above.
   asking because of the list.
 - `events.run-log-contract`: lists `tool.unasked` among the events added
   since the reference. The type test gained the one name.
+- `ports.untrusted-tool-listings`: says a listed tool whose listing says
+  `send` counts as `send` and the workspace can't lower it, with an example
+  for it (HAL-5673).
 - `@halonicjs/app` gains `workspaceRisksOf`, which builds the
   `workspaceRisks` that `readToolListing` already takes from the same list.
 
@@ -33,4 +35,5 @@ No test was skipped or loosened.
 ## Covers
 
 - events.run-log-contract
+- ports.untrusted-tool-listings
 - packages/core/format/spec/connector.schema.json
