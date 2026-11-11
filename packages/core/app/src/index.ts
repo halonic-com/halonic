@@ -262,6 +262,26 @@ export {
   shortRunId,
   shortRunIdLength,
 } from "./run-history.ts";
+export type { ProposedRecord } from "./run-proposal-record.ts";
+export type {
+  AcceptResult,
+  CompareTexts,
+  Decision,
+  FileBase,
+  ProposedFile,
+  RefusalReason,
+  RejectResult,
+  RunProposal,
+  UndoFileWrite,
+  UndoSource,
+  UndoStep,
+} from "./run-proposal-types.ts";
+export {
+  type ProposalVcs,
+  RunProposals,
+  type RunProposalsOptions,
+  type RunWorktree,
+} from "./run-proposals.ts";
 export {
   type RunnerFence,
   type RunnerFenceInputs,

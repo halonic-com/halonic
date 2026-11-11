@@ -1,0 +1,206 @@
+// Run proposals (save model 7, AI changes 2, HAL-3248): a run that can
+// change workspace files changes them in a worktree of its own, and what it
+// changed becomes a proposal the person accepts or rejects from the Inbox.
+// Nothing here commits to a branch, pushes or makes anything live (7.6).
+
+import type { Clock, DefinitionStore, Digest, Vcs } from "@halonicjs/ports";
+import { contentDigest } from "@halonicjs/std";
+import { placeOf } from "@halonicjs/workspace";
+import { type ProposedRecord, proposalRefOf } from "./run-proposal-record.ts";
+import { ProposalRecordStore } from "./run-proposal-store.ts";
+import type { ProposedFile, RunProposal } from "./run-proposal-types.ts";
+
+/** The part of the `Vcs` port the proposal service uses. */
+export type ProposalVcs = Pick<
+  Vcs,
+  | "addWorktree"
+  | "removeWorktree"
+  | "listWorktrees"
+  | "diffBetween"
+  | "readAt"
+  | "commitWorktreeTo"
+  | "readRef"
+  | "deleteRef"
+>;
+
+/** What the run proposal service needs from the host. */
+export interface RunProposalsOptions {
+  /** The workspace's version control. Its worktrees go in Halonic's data folder, never in the workspace. */
+  readonly vcs: ProposalVcs;
+  /**
+   * The records' own store, in the workspace's folder in the profile, as
+   * for review records. Never the workspace's store: git could bring a
+   * record in from there (HAL-3417).
+   */
+  readonly records: DefinitionStore;
+  /** Hashes each file's base for the write-if-unchanged check. */
+  readonly digest: Digest;
+  /** Dates a proposal, so its ref can go after 30 days. */
+  readonly clock: Clock;
+}
+
+/** What `open` gives the harness. */
+export interface RunWorktree {
+  /** The only folder the run may write workspace files in: absolute, outside the workspace. */
+  readonly folder: string;
+}
+
+/**
+ * The proposals of one workspace's runs. One worktree per top-level run:
+ * its workflow steps and calls to other agents share it.
+ *
+ * @example
+ * const proposals = new RunProposals({ vcs, records, digest, clock });
+ * const { folder } = await proposals.open("01JD8Q", version); // the harness writes only here
+ * const proposal = await proposals.end("01JD8Q"); // emit run.proposal when not null
+ */
+export class RunProposals {
+  private readonly vcs: ProposalVcs;
+  private readonly records: ProposalRecordStore;
+  private readonly digest: Digest;
+  private readonly clock: Clock;
+
+  constructor(options: RunProposalsOptions) {
+    this.vcs = options.vcs;
+    this.records = new ProposalRecordStore(options.records);
+    this.digest = options.digest;
+    this.clock = options.clock;
+  }
+
+  /**
+   * Adds the run's worktree at its version (`app.run-proposal-worktree`)
+   * and records it, so a worktree left by a crash is found at start.
+   *
+   * @param version - the commit the run's definitions are read from
+   * @throws RangeError for a run id that can't name a proposal ref
+   * @throws when the run already has a record
+   */
+  async open(runId: string, version: string): Promise<RunWorktree> {
+    return await this.records.inTurn(runId, async () => {
+      if ((await this.records.read(runId)) !== null) {
+        throw new Error(`Run ${runId} already has a worktree or a proposal.`);
+      }
+      const worktree = await this.vcs.addWorktree(version);
+      await this.records.save({ state: "running", runId, base: version, worktreeId: worktree.id });
+      return { folder: worktree.path };
+    });
+  }
+
+  /**
+   * Ends the run's worktree, whether the run finished, failed or was
+   * cancelled (`app.run-proposal-end`). When it changed files, they are
+   * committed onto the run's proposal ref, with its version as parent, and
+   * the proposal is recorded with every file undecided. The worktree goes
+   * either way.
+   *
+   * @returns the proposal, for `run.proposal`, or `null` when nothing changed
+   * @throws when the run has no worktree
+   */
+  end(runId: string): Promise<RunProposal | null> {
+    return this.records.inTurn(runId, async () => {
+      const record = await this.records.read(runId);
+      if (record?.state !== "running") {
+        throw new Error(`Run ${runId} has no worktree to end.`);
+      }
+      const proposal = await this.commitChanges(record.runId, record.base, record.worktreeId);
+      if (proposal === null) {
+        await this.records.remove(runId);
+      } else {
+        await this.records.save({
+          state: "proposed",
+          proposal,
+          finishedAt: this.clock.now().toISOString(),
+          decisions: Object.fromEntries(proposal.files.map((file) => [file.path, "undecided"])),
+        });
+      }
+      // The record is saved first: a crash now leaves only the worktree, which `removeLeftovers` removes.
+      await this.vcs.removeWorktree(record.worktreeId);
+      return proposal;
+    });
+  }
+
+  /** The proposal of a run that ended with changes, or `null`. */
+  async get(runId: string): Promise<ProposedRecord | null> {
+    const record = await this.records.read(runId);
+    return record?.state === "proposed" ? record : null;
+  }
+
+  /**
+   * Removes what runs left when Halonic closed while they ran: every
+   * worktree, the records of runs that never ended and their proposal refs.
+   * Call it at start, before any run can open a worktree.
+   */
+  async removeLeftovers(): Promise<void> {
+    for (const worktree of await this.vcs.listWorktrees()) {
+      await this.vcs.removeWorktree(worktree.id);
+    }
+    for (const runId of await this.records.running()) {
+      const ref = proposalRefOf(runId);
+      if ((await this.vcs.readRef(ref)) !== null) {
+        await this.vcs.deleteRef(ref);
+      }
+      await this.records.remove(runId);
+    }
+  }
+
+  /**
+   * Commits the worktree onto the run's ref and works out the proposal
+   * from that commit, not from the worktree's diff: the commit leaves out
+   * files the repository ignores, and so does the proposal.
+   */
+  private async commitChanges(
+    runId: string,
+    base: string,
+    worktreeId: string,
+  ): Promise<RunProposal | null> {
+    const changed = await this.vcs.diffBetween(base, worktreeId);
+    if (changed.length === 0) {
+      return null;
+    }
+    const ref = proposalRefOf(runId);
+    const commit = await this.vcs.commitWorktreeTo(worktreeId, ref, { parent: base });
+    const files: ProposedFile[] = [];
+    for (const { path } of changed) {
+      const file = await this.proposedFile(path, base, commit);
+      if (file !== null) {
+        files.push(file);
+      }
+    }
+    if (files.length === 0) {
+      await this.vcs.deleteRef(ref);
+      return null;
+    }
+    return { runId, base, ref, files, items: itemsOf(files) };
+  }
+
+  /** How a file differs between the base and the run's commit; `null` when it doesn't. */
+  private async proposedFile(
+    path: string,
+    base: string,
+    commit: string,
+  ): Promise<ProposedFile | null> {
+    const before = await this.vcs.readAt(base, path);
+    const after = await this.vcs.readAt(commit, path);
+    if (before === after) {
+      return null;
+    }
+    if (before === null) {
+      return { path, change: "added", base: "absent" };
+    }
+    const digest = await contentDigest(before, this.digest);
+    return { path, change: after === null ? "deleted" : "modified", base: { digest } };
+  }
+}
+
+/** The ids of the items the files belong to, each once, in path order. */
+function itemsOf(files: readonly ProposedFile[]): string[] {
+  const items = new Set<string>();
+  for (const { path } of files) {
+    // A file no kind places (a README), or one with no id of its own, belongs to no item.
+    const placeId = placeOf(path)?.placeId;
+    if (placeId !== undefined) {
+      items.add(placeId);
+    }
+  }
+  return [...items];
+}

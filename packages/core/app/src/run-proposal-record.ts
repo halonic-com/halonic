@@ -1,0 +1,216 @@
+// The record the run proposal service keeps for each run with a worktree
+// (HAL-3248): while it runs, where its worktree is; once it has proposed,
+// the proposal and each file's decision. Kept as JSON in a store of its
+// own, like the review records (HAL-3417), so git can never bring one in.
+
+import { checkCommitId, checkProposalRef } from "@halonicjs/ports";
+import { err, isPlainObject, ok, type Result } from "@halonicjs/std";
+import type { Decision, FileBase, ProposedFile, RunProposal } from "./run-proposal-types.ts";
+
+/** The version of the record's JSON. A record of another version counts as unreadable. */
+const recordFormat = 1;
+
+/** A run that is still running, in its worktree. */
+export interface RunningRecord {
+  readonly state: "running";
+  readonly runId: string;
+  /** The commit the worktree was added at. */
+  readonly base: string;
+  readonly worktreeId: string;
+}
+
+/** A run that ended with changes, and what the person decided so far. */
+export interface ProposedRecord {
+  readonly state: "proposed";
+  readonly proposal: RunProposal;
+  /** When the run ended, as an ISO date, for the ref's 30 days. */
+  readonly finishedAt: string;
+  /** One decision per proposed file, by path. */
+  readonly decisions: Readonly<Record<string, Decision>>;
+}
+
+/** The record of one run. */
+export type RunProposalRecord = RunningRecord | ProposedRecord;
+
+/** Where the proposal ref of a run lives. */
+export function proposalRefOf(runId: string): string {
+  const ref = `refs/halonic/proposals/${runId}`;
+  checkProposalRef(ref);
+  return ref;
+}
+
+/**
+ * The name of a run's record in the records' store. A run id is a proposal
+ * ref's id, so it is a safe file name.
+ *
+ * @throws RangeError for a run id that can't be a proposal ref's id
+ */
+export function recordPathOf(runId: string): string {
+  proposalRefOf(runId);
+  return `${runId}.json`;
+}
+
+/** A record as JSON, the way {@link parseRunProposalRecord} reads it back. */
+export function serializeRunProposalRecord(record: RunProposalRecord): string {
+  return `${JSON.stringify({ format: recordFormat, ...record }, null, 2)}\n`;
+}
+
+/**
+ * Reads a record that {@link serializeRunProposalRecord} wrote, checking
+ * every field, because a person or a sync tool may have changed the file.
+ *
+ * @param runId - the run the record's name says it is about
+ * @returns the record, or what is wrong with it
+ */
+export function parseRunProposalRecord(
+  text: string,
+  runId: string,
+): Result<RunProposalRecord, string> {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return err("it isn't valid JSON");
+  }
+  if (!isPlainObject(json) || json["format"] !== recordFormat) {
+    return err(`it isn't a JSON object of format ${recordFormat}`);
+  }
+  if (json["state"] === "running") {
+    return readRunning(json, runId);
+  }
+  if (json["state"] === "proposed") {
+    return readProposed(json, runId);
+  }
+  return err("its state is neither running nor proposed");
+}
+
+function readRunning(json: Record<string, unknown>, runId: string): Result<RunningRecord, string> {
+  const { base, worktreeId } = json;
+  if (json["runId"] !== runId) {
+    return err("its runId isn't the run its name says");
+  }
+  if (!isCommitId(base)) {
+    return err("its base isn't a full commit id");
+  }
+  if (typeof worktreeId !== "string" || worktreeId === "") {
+    return err("its worktreeId isn't text");
+  }
+  return ok({ state: "running", runId, base, worktreeId });
+}
+
+function readProposed(
+  json: Record<string, unknown>,
+  runId: string,
+): Result<ProposedRecord, string> {
+  const { proposal: proposalJson, finishedAt, decisions: decisionsJson } = json;
+  const proposal = readProposal(proposalJson, runId);
+  if (!proposal.ok) {
+    return proposal;
+  }
+  if (typeof finishedAt !== "string" || Number.isNaN(Date.parse(finishedAt))) {
+    return err("its finishedAt isn't a date");
+  }
+  const decisions = readDecisions(decisionsJson, proposal.value.files);
+  if (!decisions.ok) {
+    return decisions;
+  }
+  return ok({
+    state: "proposed",
+    proposal: proposal.value,
+    finishedAt,
+    decisions: decisions.value,
+  });
+}
+
+function readProposal(json: unknown, runId: string): Result<RunProposal, string> {
+  if (!isPlainObject(json) || json["runId"] !== runId) {
+    return err("its proposal isn't about the run its name says");
+  }
+  const { base, ref, files: filesJson, items } = json;
+  if (!isCommitId(base)) {
+    return err("its proposal's base isn't a full commit id");
+  }
+  if (ref !== proposalRefOf(runId)) {
+    return err("its proposal's ref isn't the run's proposal ref");
+  }
+  if (!Array.isArray(items) || !items.every((item) => typeof item === "string")) {
+    return err("its proposal's items aren't a list of ids");
+  }
+  if (!Array.isArray(filesJson)) {
+    return err("its proposal's files aren't a list");
+  }
+  const files: ProposedFile[] = [];
+  for (const fileJson of filesJson) {
+    const file = readProposedFile(fileJson);
+    if (file === null) {
+      return err("its proposal has a file without a path, change and base");
+    }
+    files.push(file);
+  }
+  return ok({ runId, base, ref, files, items });
+}
+
+const changes: ReadonlySet<unknown> = new Set(["added", "modified", "deleted"]);
+const digestPattern = /^sha256:[0-9a-f]{64}$/u;
+
+function readProposedFile(json: unknown): ProposedFile | null {
+  if (!isPlainObject(json)) {
+    return null;
+  }
+  const { path, change, base: baseJson } = json;
+  if (typeof path !== "string" || path === "" || !changes.has(change)) {
+    return null;
+  }
+  const base = readFileBase(baseJson);
+  if (base === null || (base === "absent") !== (change === "added")) {
+    return null;
+  }
+  return { path, change: change as ProposedFile["change"], base };
+}
+
+function readFileBase(json: unknown): FileBase | null {
+  if (json === "absent") {
+    return "absent";
+  }
+  const digest = isPlainObject(json) ? json["digest"] : undefined;
+  return typeof digest === "string" && digestPattern.test(digest)
+    ? { digest: digest as `sha256:${string}` }
+    : null;
+}
+
+const decisionValues: ReadonlySet<unknown> = new Set([
+  "accepted",
+  "rejected",
+  "undecided",
+  "not-applicable",
+]);
+
+function readDecisions(
+  json: unknown,
+  files: readonly ProposedFile[],
+): Result<Record<string, Decision>, string> {
+  if (!isPlainObject(json)) {
+    return err("its decisions aren't a JSON object");
+  }
+  const decisions: Record<string, Decision> = {};
+  for (const { path } of files) {
+    const decision = json[path];
+    if (!decisionValues.has(decision)) {
+      return err(`its decision for ${JSON.stringify(path)} isn't one it knows`);
+    }
+    decisions[path] = decision as Decision;
+  }
+  return ok(decisions);
+}
+
+function isCommitId(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+  try {
+    checkCommitId(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
