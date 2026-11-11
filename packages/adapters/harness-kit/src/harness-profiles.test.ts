@@ -154,6 +154,17 @@ verifies("harness-kit.harness-profile", () => {
       await expect(readdir(join(workspace, ".git", "hooks"))).resolves.toEqual([]);
     });
 
+    it("makes no folder before it refuses a missing part whose real place is refused (HAL-5949)", async () => {
+      const { workspace } = computer;
+      await rm(join(workspace, "agents"), { recursive: true });
+      await symlink(workspace, join(workspace, "files"), "junction");
+
+      await expect(
+        profilesWith({ workingFolder: "files/agents/writer" }).profileOf(agentWith(null), bridge),
+      ).rejects.toThrow(/is really .*where it can't work/);
+      expect(await readdir(workspace)).not.toContain("agents");
+    });
+
     it("refuses a working folder through a link to a folder that isn't there", async () => {
       const { workspace } = computer;
       await symlink(join(workspace, "missing"), join(workspace, "files"), "junction");

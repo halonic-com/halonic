@@ -56,7 +56,7 @@ export async function realWorkingFolder(
   if (namedProblem !== null) throw new Error(namedProblem);
   let current = root;
   for (const part of workingFolder.split("/")) {
-    current = await realOrMade(join(current, part), workingFolder, disk);
+    current = await realOrMade(root, join(current, part), workingFolder, disk);
     // Checked before the next part is made, so a link on the way into `.git`
     // or a definition folder is refused before anything is made in there.
     refuseRealPlace(root, current, workingFolder, { atEnd: false });
@@ -95,12 +95,21 @@ function refuseRealPlace(
  * The real place of `path`, after making it when it isn't there. A link to
  * a place that isn't there is refused, not followed.
  */
-async function realOrMade(path: string, workingFolder: string, disk: ProfileDisk): Promise<string> {
+async function realOrMade(
+  root: string,
+  path: string,
+  workingFolder: string,
+  disk: ProfileDisk,
+): Promise<string> {
   try {
     return await disk.realPath(path);
   } catch {
     // Not there yet: made below.
   }
+  // The folder before `path` is already real and its last part is a plain
+  // name, so `path` is exactly where the new folder would be. Check it before
+  // making it, so a refused place doesn't get an empty folder (HAL-5949).
+  refuseRealPlace(root, path, workingFolder, { atEnd: false });
   try {
     await disk.makeFolder(path);
     return await disk.realPath(path);
