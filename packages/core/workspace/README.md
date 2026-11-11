@@ -103,6 +103,17 @@ definitions under the run's `definitionsVersion` and a waiting run goes on with 
 started with, whatever happens to the files
 ([ADR](../../../docs/adr/2026-11-08-runs-are-stored-separately.md)).
 
+## The files as a version holds them
+
+`new VersionSource(vcs, commit, location)` is a read-only `DefinitionSource` over one commit
+(`workspace.definition-source-at-version`). It reads and lists only through `Vcs.readAt` and
+`Vcs.listAt` at that commit, never the files on disk, so a saved change that isn't in the version
+isn't there. It refuses unsafe and private paths before it asks the version control, refuses a
+version that isn't a full commit id, and gives the commit id as its `version()`, so a run loaded
+from it records the commit. It needs only `VersionReader`, the `readAt` and `listAt` part of `Vcs`.
+Run, routines, triggers and calls read the live version through it (save model 2.2); `@halonicjs/app`
+picks the source for each run.
+
 ## A new workspace
 
 `initWorkspace` lays out a new workspace through a `DefinitionStore` and returns what it wrote as

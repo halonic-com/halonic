@@ -269,6 +269,12 @@ export {
   shortRunIdLength,
 } from "./run-history.ts";
 export {
+  type RunSource,
+  type RunSourceInput,
+  type RunStartedBy,
+  runSourceFor,
+} from "./run-source.ts";
+export {
   type RunnerFence,
   type RunnerFenceInputs,
   type RunnerUnfencedReason,

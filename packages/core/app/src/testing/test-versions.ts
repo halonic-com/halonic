@@ -1,7 +1,7 @@
-import type { Vcs, VcsCommit, VcsStatus } from "@halonicjs/ports";
+import { isPrivateWorkspacePath, type Vcs, type VcsCommit, type VcsStatus } from "@halonicjs/ports";
 
-/** The part of `Vcs` the live version and live state read. */
-export type TestVersionsVcs = Pick<Vcs, "status" | "log" | "readAt">;
+/** The part of `Vcs` the live version, live state and run source read. */
+export type TestVersionsVcs = Pick<Vcs, "status" | "log" | "readAt" | "listAt">;
 
 /**
  * A workspace's commits held in memory, for the kernel's own tests. A
@@ -37,10 +37,26 @@ export class TestVersions implements TestVersionsVcs {
   }
 
   async readAt(version: string, path: string): Promise<string | null> {
+    return this.#filesAt(version).get(path) ?? null;
+  }
+
+  async listAt(version: string, dir?: string): Promise<string[] | null> {
+    // Like the port, a commit's private entries are never listed.
+    const paths = [...this.#filesAt(version).keys()]
+      .filter((path) => !isPrivateWorkspacePath(path))
+      .sort();
+    if (dir === undefined) {
+      return paths;
+    }
+    const inside = paths.filter((path) => path.startsWith(`${dir}/`));
+    return inside.length === 0 ? null : inside;
+  }
+
+  #filesAt(version: string): ReadonlyMap<string, string> {
     const entry = this.#commits.find((candidate) => candidate.commit.hash === version);
     if (entry === undefined) {
       throw new Error(`Unknown version ${version}`);
     }
-    return entry.files.get(path) ?? null;
+    return entry.files;
   }
 }
