@@ -159,6 +159,12 @@ console.log(JSON.stringify(r));
 }
 
 // ---- C3: write grants kept across sessions --------------------------------
+// Only an explicit "blocked:" answer proves the fence held. A crash, empty
+// output or unexpected text says nothing either way (HAL-5560).
+function keptStatus(answer, got) {
+  if (got) return "FAIL";
+  return answer?.startsWith("blocked:") ? "PASS" : "INCONCLUSIVE";
+}
 {
   const a = kit.dir("project-a");
   const b = kit.dir("project-b");
@@ -218,20 +224,20 @@ catch (e) { console.log("blocked:" + e.code); }
     record(
       "C3 kept grants",
       "kept-roots-readable: a session on B reads A",
-      s2?.startsWith("read:") ? "FAIL" : "PASS",
+      keptStatus(s2, s2?.startsWith("read:")),
       detail,
     );
     const writeDetail = `write: ${s2w}, file in A: ${wroteA}; delete: ${s2d}, file gone: ${deletedA}`;
     record(
       "C3 kept grants",
       "kept-roots-writable: a session on B writes in A",
-      s2w === "ok" || wroteA ? "FAIL" : "PASS",
+      keptStatus(s2w, s2w === "ok" || wroteA),
       writeDetail,
     );
     record(
       "C3 kept grants",
       "kept-roots-writable: a session on B deletes in A",
-      s2d === "ok" || deletedA ? "FAIL" : "PASS",
+      keptStatus(s2d, s2d === "ok" || deletedA),
       writeDetail,
     );
     record(
