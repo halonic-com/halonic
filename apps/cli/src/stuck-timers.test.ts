@@ -40,6 +40,32 @@ verifies("cli.run", () => {
     expect(watch.signal.reason).toBe(third);
   });
 
+  it("counts only failures in a row: one that worked starts the count again", () => {
+    const watch = stuckTimerWatch();
+
+    for (let count = 0; count < failuresBeforeStuck; count += 1) {
+      watch.report(new Error("busy"), "tick");
+      watch.report(new Error("busy"), "tick");
+      watch.succeeded("tick");
+    }
+    watch.report(new Error("busy"), "tick");
+
+    expect(watch.signal.aborted).toBe(false);
+  });
+
+  it("starts only the count of the source that worked again", () => {
+    const watch = stuckTimerWatch();
+    const third = new Error("third");
+
+    watch.report(new Error("first"), timer("run_a"));
+    watch.report(new Error("second"), timer("run_a"));
+    watch.succeeded("tick");
+    watch.succeeded(timer("run_b"));
+    watch.report(third, timer("run_a"));
+
+    expect(watch.signal.reason).toBe(third);
+  });
+
   it("counts the scheduler's own wake-up failures the same way", () => {
     const watch = stuckTimerWatch();
 

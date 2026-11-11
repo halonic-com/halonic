@@ -4,9 +4,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { CommandContext } from "./command.ts";
+import type { RoutineTicks } from "./local-engine-host.ts";
 import { runMessages } from "./messages/run.ts";
+import { engineStart } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -72,5 +74,78 @@ verifies("cli.run", () => {
     await engine.close();
 
     expect(engine.signal.aborted).toBe(false);
+  });
+});
+
+/**
+ * Routines whose ticks fail or work as `outcomes` says, one per tick, on an
+ * engine whose clock and wake-ups the test moves: {@link nextTick} moves the
+ * clock a minute on and wakes the scheduler until that tick has run.
+ */
+async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
+  let now = engineStart;
+  let wakeUps = new Set<() => void>();
+  const ticks: string[] = [];
+  const routines: RoutineTicks = {
+    onTick: async (at) => {
+      const outcome = outcomes[ticks.length];
+      ticks.push(at);
+      if (outcome === "fail") throw new Error(`tick ${ticks.length} failed`);
+    },
+    dispose: async () => {},
+  };
+  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
+  const workspace = await loadWorkspace(dir.store);
+  const engine = await openWorkspaceEngine(
+    context(new AbortController().signal),
+    {
+      ...setup(),
+      engine: {
+        clock: { now: () => new Date(now) },
+        setTimer: (callback) => {
+          wakeUps.add(callback);
+          return () => wakeUps.delete(callback);
+        },
+      },
+    },
+    { dir, workspace, runs: [], ending: runMessages.nothingRan(), routines: () => routines },
+  );
+  const nextTick = async () => {
+    const count = ticks.length + 1;
+    now += 60_000;
+    await vi.waitFor(() => {
+      const due = wakeUps;
+      wakeUps = new Set();
+      for (const callback of due) callback();
+      expect(ticks).toHaveLength(count);
+    });
+  };
+  return { engine, nextTick };
+}
+
+verifies("cli.commands.routines.watch", () => {
+  it("keeps watching through failed ticks that a tick that worked separates", async () => {
+    const { engine, nextTick } = await openWithTicks(["fail", "ok", "fail", "ok", "fail"]);
+    try {
+      for (let tick = 0; tick < 5; tick += 1) await nextTick();
+      // The last failure is reported once its tick has settled.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(engine.stuck.aborted).toBe(false);
+    } finally {
+      await engine.close();
+    }
+  });
+
+  it("stops at the third failed tick in a row, with its error", async () => {
+    const { engine, nextTick } = await openWithTicks(["ok", "fail", "fail", "fail"]);
+    try {
+      for (let tick = 0; tick < 4; tick += 1) await nextTick();
+
+      await vi.waitFor(() => expect(engine.stuck.aborted).toBe(true));
+      expect(engine.stuck.reason).toEqual(new Error("tick 4 failed"));
+    } finally {
+      await engine.close();
+    }
   });
 });

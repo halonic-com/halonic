@@ -157,6 +157,36 @@ verifies("cli.commands.routines.watch", () => {
     expect(io.stderr).toEqual(["Stopped."]);
   });
 
+  it("prints a ✕ line for a routine whose run didn't start, and keeps watching", async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
+        "workflow: follow-up",
+        "workflow: gone",
+      ),
+    });
+    const time = fakeTime(engineStart);
+    const io = captureIo(acmeRuns.acme);
+    const signals = fakeSignals();
+    const watching = runCli(["routines", "watch", "--debug"], io, [watchCommand(time)], {
+      stop: { signals, exitNow: () => undefined },
+    });
+    await vi.waitFor(() => expect(io.stdout).toHaveLength(1));
+
+    time.set("2026-11-10T15:00:10.000Z");
+    await vi.waitFor(
+      () =>
+        wokenUp(time) &&
+        expect(io.stdout[1]).toBe(
+          "✕ Hourly follow-up didn't start · due 15:00 · see why with --debug",
+        ),
+    );
+    expect(io.stderr.join("\n")).toContain("Routine support/hourly-follow-up didn't start:");
+    expect(await storedRuns()).toEqual([]);
+
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
+  });
+
   it("ends with 143 at SIGTERM", async () => {
     const time = fakeTime(engineStart);
     const io = captureIo(acmeRuns.acme);

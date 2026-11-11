@@ -25,7 +25,7 @@ import {
   type SandboxGateHost,
   sandboxGateMachine,
 } from "./sandbox-gate-machine.ts";
-import { retriedLine, stuckTimerWatch } from "./stuck-timers.ts";
+import { retriedLine, type StuckTimerWatch, stuckTimerWatch } from "./stuck-timers.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 
 /** What opening a workspace's engine uses on this computer, so tests can fix it. */
@@ -108,7 +108,7 @@ export async function openWorkspaceEngine(
     // The scheduler retries a failed step; one that keeps failing stops the command with its error.
     reportError: stuck.report,
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
-    ...(target.routines === undefined ? {} : { routines: target.routines }),
+    ...(target.routines === undefined ? {} : { routines: countedTicks(target.routines, stuck) }),
     ...setup.engine,
   });
   return {
@@ -118,5 +118,26 @@ export async function openWorkspaceEngine(
     signal: AbortSignal.any([context.signal, stuck.signal]),
     stuck: stuck.signal,
     unsandboxed: [...unsandboxed.values()],
+  };
+}
+
+/**
+ * The routines' ticks, with each tick that worked starting the count of
+ * tick failures again: only three failed ticks in a row stop a watch that
+ * runs for days (Liam, HAL-5077).
+ */
+function countedTicks(
+  routines: (engine: RoutineEngine) => RoutineTicks,
+  stuck: StuckTimerWatch,
+): (engine: RoutineEngine) => RoutineTicks {
+  return (engine) => {
+    const ticks = routines(engine);
+    return {
+      onTick: async (at) => {
+        await ticks.onTick(at);
+        stuck.succeeded("tick");
+      },
+      dispose: () => ticks.dispose(),
+    };
   };
 }

@@ -50,6 +50,7 @@ interface StartedRoutineRun {
  *   can't start here; nothing ran (exit 9)
  * @throws KindedError `conflict` when another engine is open on the workspace
  * @throws the step's last error, when a run's step keeps failing
+ * @throws the tick's last error, when three ticks in a row fail
  */
 export async function watchRoutines(
   input: CommandInput,
@@ -78,10 +79,10 @@ export async function watchRoutines(
   });
   try {
     for (const agent of engine.unsandboxed) context.printAhead(unsandboxedWarning(agent));
-    // Straight away, so the times missed since the last watch start now, not a minute from now.
-    if (scheduler !== undefined) report.tick(await scheduler.tick());
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
     context.printAhead(routinesMessages.watching(onAClock.length, printable(dir.name)).phrase);
+    // Straight away, so the times missed since the last watch start now, not a minute from now.
+    if (scheduler !== undefined) report.tick(await scheduler.tick());
     await stopped(engine.signal);
   } finally {
     await engine.close();

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-4844, HAL-187 item 7; Ctrl C and SIGTERM from cli-output 1.5 (HAL-2022); the trust check of cli-output 3.4. cli-output has no section for `routines`; the words are team wording built on the `halonic run` lines, as HAL-2282 allows
 
-The `halonic routines watch` command shall start the workspace's routines when they are due, in the foreground, with the routine scheduler on the local engine's tick, until Ctrl C or SIGTERM. It shall first refuse a workspace that isn't trusted on this computer and whose runs could reach more than the test model, with exit 3 and nothing written to the run log, and check the sandbox for the workflows the routines start. Its first line shall say how many routines are on a clock and how to stop. For each run it starts, it shall print one finished line with the routine's name, the run's short id and the due time; for a run that didn't start, a ✕ line, with the reason under `--debug`. While it watches, the timers of waiting runs shall fire when they are due. Ctrl C shall stop it with "Stopped." and exit 130, SIGTERM with exit 143, and the engine shall be closed either way.
+The `halonic routines watch` command shall start the workspace's routines when they are due, in the foreground, with the routine scheduler on the local engine's tick, until Ctrl C or SIGTERM. It shall first refuse a workspace that isn't trusted on this computer and whose runs could reach more than the test model, with exit 3 and nothing written to the run log, and check the sandbox for the workflows the routines start. Its first line shall say how many routines are on a clock and how to stop. For each run it starts, it shall print one finished line with the routine's name, the run's short id and the due time; for a run that didn't start, a ✕ line, with the reason under `--debug`. While it watches, the timers of waiting runs shall fire when they are due. A run whose step keeps failing (its timer fails three times) shall stop the watch with that error, as it stops `halonic run`; so shall three failed ticks in a row, and a tick that works starts that count again. Ctrl C shall stop it with "Stopped." and exit 130, SIGTERM with exit 143, and the engine shall be closed either way.
 
 ## Examples
 
@@ -16,6 +16,11 @@ The `halonic routines watch` command shall start the workspace's routines when t
 - Given that run waits at a step that moves on after 5 minutes,
   when the clock passes the timer's due time,
   then the timer fires and the run finishes.
+- Given a watch whose tick fails, works, fails, works and fails,
+  then it keeps watching; three failed ticks in a row stop it with the last error.
+- Given a routine whose workflow isn't in its hub,
+  when it is due,
+  then the watch prints "✕ <name> didn't start · due 15:00 · see why with --debug" and keeps watching.
 - Given a watch that is running,
   when Ctrl C is pressed,
   then it prints "Stopped." and exits 130; on SIGTERM it exits 143.

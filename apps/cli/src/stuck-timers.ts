@@ -16,6 +16,12 @@ export const failuresBeforeStuck = 3;
 export interface StuckTimerWatch {
   /** Pass it as the engine's `reportError`. */
   report(error: unknown, source: SchedulerErrorSource): void;
+  /**
+   * Forgets the failures of `source` once it worked again, so only failures
+   * in a row count: a long `routines watch` isn't stopped by three tick
+   * errors days apart.
+   */
+  succeeded(source: SchedulerErrorSource): void;
   /** Aborted, with the last error as its reason, once a timer has failed {@link failuresBeforeStuck} times. */
   readonly signal: AbortSignal;
 }
@@ -30,7 +36,8 @@ export interface RetriedFailure {
 
 /**
  * Counts each timer's failures, and the scheduler's own wake-up and tick
- * failures, and aborts `signal` with the error at the third of any one.
+ * failures, and aborts `signal` with the error at the third of any one in
+ * a row: {@link StuckTimerWatch.succeeded} starts a source's count again.
  * Each failure before that goes to `onRetry`, so `--debug` can show a run
  * that is retrying before it counts as stuck.
  *
@@ -47,7 +54,7 @@ export function stuckTimerWatch(
   return {
     signal: stuck.signal,
     report(error, source) {
-      const key = typeof source === "string" ? source : `${source.key}\u0000${source.timerId}`;
+      const key = keyOf(source);
       const count = (failures.get(key) ?? 0) + 1;
       failures.set(key, count);
       if (count < failuresBeforeStuck) {
@@ -56,7 +63,14 @@ export function stuckTimerWatch(
         stuck.abort(error);
       }
     },
+    succeeded(source) {
+      failures.delete(keyOf(source));
+    },
   };
+}
+
+function keyOf(source: SchedulerErrorSource): string {
+  return typeof source === "string" ? source : `${source.key}\u0000${source.timerId}`;
 }
 
 /**
