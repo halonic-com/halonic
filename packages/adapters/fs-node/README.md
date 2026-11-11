@@ -75,8 +75,10 @@ and passes the shared `DefinitionStore` contract suite.
 - **Run ids:** 1 to 128 letters, digits, `_`, `-` or `.`, not starting with
   a dot and not a Windows device name such as `NUL`. Anything else is a
   `RangeError`, so a run id can't leave the root. On macOS and Windows,
-  `Run_1` and `run_1` are the same file, and reading one after writing the
-  other is a "Broken run log" error; the engine's run ids are lower case.
+  `Run_1` and `run_1` are the same file. Run ids are case-sensitive, so the
+  store checks the run id on the log's first line: a read under the other
+  spelling finds no run (no events, `get` gives `null`), and an append under
+  it throws and leaves the stored run alone. The engine's run ids are lower case.
 - **Two processes:** an append holds `<runId>.lock` while it checks
   `expectedSeq` and writes, so a CLI and a desktop app writing to one run
   folder can't both win; one gets `conflict`. The lock file's format and
