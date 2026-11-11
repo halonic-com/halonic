@@ -62,4 +62,21 @@ verifies("shell.palette-groups", () => {
     expect(read("t r", "Support \t reply")).toBe("contains: t \t r");
     expect(read("reply", "Support   reply")).toBe("word-starts-with: reply");
   });
+
+  it("counts only the places the Search page's options allow", () => {
+    const matchCase = { matchCase: true, wholeWord: false };
+    const wholeWord = { matchCase: false, wholeWord: true };
+    expect(matchName("Refund", "refund Refund", matchCase)).toEqual({
+      rank: "word-starts-with",
+      start: 7,
+      end: 13,
+    });
+    expect(matchName("refund", "Refund", matchCase)).toBeUndefined();
+    expect(matchName("triage", "Triaged triage", wholeWord)).toEqual({
+      rank: "word-starts-with",
+      start: 8,
+      end: 14,
+    });
+    expect(matchName("triage", "Triaged", wholeWord)).toBeUndefined();
+  });
 });

@@ -56,8 +56,11 @@ export interface NameResult {
   /** The kind and hub, such as "Agent · acme". */
   readonly detail?: string;
   readonly description?: string;
-  /** Where the words are in `label`, to highlight them; none when only the description matches. */
-  readonly labelMatch?: WordsFound;
+  /**
+   * Where the words are in `label` and how well they match, to highlight and rank it; none when
+   * only the description matches.
+   */
+  readonly labelMatch?: NameMatch;
   /** Where the words are in `description`. */
   readonly descriptionMatch?: WordsFound;
 }
@@ -84,9 +87,11 @@ export interface SearchPageNames {
 /**
  * The "Names and descriptions" section of the Search page (VK T2-F7): every found item whose name
  * or description contains the words, read as plain text and narrowed by Match case, Whole word
- * and the In and Hub chips. An item found twice shows once. Items whose name matches come first,
- * best match first in the same order as Ctrl K, then items whose description alone matches; equal
- * ones keep the providers' order. A provider's own looser match doesn't count: the words must be
+ * and the In and Hub chips. An item found twice shows once, with the description any provider
+ * gave. Items whose name matches come first, ranked as Ctrl K ranks names (the whole name, its
+ * start, a word's start, anywhere) with the same options, then items whose description alone
+ * matches; equal ones keep the providers' order. Unlike Ctrl K, recently opened items don't come
+ * first among equals. A provider's own looser match doesn't count: the words must be
  * in the name or the description as the options say.
  *
  * @param found what the search providers found for the words, in provider order
@@ -97,10 +102,10 @@ export function searchPageNames(
   found: readonly SearchResult[],
   searchFailed: boolean,
 ): SearchPageNames {
-  const matching = withoutRepeats(found)
+  const matching = mergeRepeats(found)
     .map((result) => nameResult(query, result))
     .filter((result) => result !== undefined);
-  const results = ranked(query.words, matching.filter(inScope(query.scope)));
+  const results = ranked(matching.filter(inScope(query.scope)));
   const nothingInScope = query.words.trim() !== "" && results.length === 0;
   return {
     results,
@@ -114,7 +119,7 @@ export function searchPageNames(
 
 /** The result with where the words are, or `undefined` when neither its name nor description has them. */
 function nameResult(query: SearchPageQuery, result: SearchResult): NameResult | undefined {
-  const labelMatch = findWords(query.words, result.label, query.options);
+  const labelMatch = matchName(query.words, result.label, query.options);
   const descriptionMatch =
     result.description === undefined
       ? undefined
@@ -140,14 +145,12 @@ function inScope(scope: SearchScope): (result: NameResult) => boolean {
 }
 
 /**
- * The results with a name match first, ranked as Ctrl K ranks names, then those whose description
- * alone matches. The rank only orders: the options already decided what matches.
+ * The results with a name match first, best first, then those whose description alone matches.
+ * The rank comes from the highlighted match, so the order agrees with what the page highlights.
  */
-function ranked(words: string, results: readonly NameResult[]): NameResult[] {
-  const rank = (result: NameResult): NameMatch | undefined =>
-    result.labelMatch === undefined ? undefined : matchName(words, result.label);
+function ranked(results: readonly NameResult[]): NameResult[] {
   // Array sort is stable, so equal results keep the providers' order.
-  return [...results].sort((left, right) => compareRanks(rank(left), rank(right)));
+  return [...results].sort((left, right) => compareRanks(left.labelMatch, right.labelMatch));
 }
 
 /** Compares two name ranks, a missing one (description only) last. */
@@ -158,17 +161,20 @@ function compareRanks(left: NameMatch | undefined, right: NameMatch | undefined)
   return compareNameMatches(left, right);
 }
 
-/** The results with the first of each item, so an item two providers found shows once. */
-function withoutRepeats(found: readonly SearchResult[]): SearchResult[] {
-  const seen = new Set<string>();
-  return found.filter((result) => {
+/**
+ * One result for each item, so an item two providers found shows once. The first provider's
+ * result counts, and a later one only adds the detail or description the first one left out, so
+ * an item found by its name in one provider is still found by its description from another.
+ */
+function mergeRepeats(found: readonly SearchResult[]): SearchResult[] {
+  const byKey = new Map<string, SearchResult>();
+  for (const result of found) {
     const key = itemLocationKey(result.item);
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
+    const first = byKey.get(key);
+    byKey.set(key, first === undefined ? result : { ...result, ...first });
+  }
+  // A map keeps the order its keys were first set in, so the providers' order stays.
+  return [...byKey.values()];
 }
 
 function distinct(values: readonly string[]): string[] {

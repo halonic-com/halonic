@@ -18,56 +18,71 @@ export interface NameMatch {
 const letterOrDigit = /[\p{L}\p{N}]/u;
 const whiteSpace = /\s/u;
 
-/**
- * Whether `name` matches the typed `words`, and how well. The words are plain text, never a
- * pattern, so `workspace.yaml`, `{ input` and `(EU)` match exactly those characters
- * (`search.files.plain-text-is-literal`). Case doesn't matter, Greek final sigma included, and a
- * run of spaces matches one space. There is no typo matching, so the results stay predictable.
- * Leading and trailing spaces in the words are ignored.
- *
- * @returns the match, or `undefined` when the name doesn't contain the words or nothing is typed
- *
- * @example
- * matchName("sup", "Support reply"); // { rank: "starts-with", start: 0, end: 3 }
- * matchName("rep", "Support reply"); // { rank: "word-starts-with", start: 8, end: 11 }
- */
-export function matchName(words: string, name: string): NameMatch | undefined {
-  const query = fold(words.trim()).text;
-  if (query === "") {
-    return undefined;
-  }
-  const folded = fold(name);
-  // Where a character of the folded name starts in the name itself.
-  const inName = (at: number) => folded.at[at] ?? name.length;
-  if (folded.text === query) {
-    return { rank: "exact", start: 0, end: name.length };
-  }
-  const first = folded.text.indexOf(query);
-  if (first === -1) {
-    return undefined;
-  }
-  const found = (rank: NameMatchRank, at: number): NameMatch => ({
-    rank,
-    start: inName(at),
-    end: inName(at + query.length),
-  });
-  if (first === 0) {
-    return found("starts-with", 0);
-  }
-  for (let at = first; at !== -1; at = folded.text.indexOf(query, at + 1)) {
-    if (startsWord(name, inName(at))) {
-      return found("word-starts-with", at);
-    }
-  }
-  return found("contains", first);
-}
-
 /** How the Search page's option chips narrow a match (microcopy 3.5): both off by default. */
 export interface WordsOptions {
   /** "Match case": the words match only with the same capitals. */
   readonly matchCase: boolean;
   /** "Whole word": no letter or digit may touch the words on either side. */
   readonly wholeWord: boolean;
+}
+
+/** Both options off: what Ctrl K matches with. */
+const anyWords: WordsOptions = { matchCase: false, wholeWord: false };
+
+/**
+ * Whether `name` matches the typed `words`, and how well. The words are plain text, never a
+ * pattern, so `workspace.yaml`, `{ input` and `(EU)` match exactly those characters
+ * (`search.files.plain-text-is-literal`). Case doesn't matter, Greek final sigma included, and a
+ * run of spaces matches one space. There is no typo matching, so the results stay predictable.
+ * Leading and trailing spaces in the words are ignored. The Search page passes its `options`, so
+ * "Match case" and "Whole word" decide which places in the name count; Ctrl K passes none.
+ *
+ * @returns the best match, or `undefined` when the name doesn't contain the words or nothing is typed
+ *
+ * @example
+ * matchName("sup", "Support reply"); // { rank: "starts-with", start: 0, end: 3 }
+ * matchName("rep", "Support reply"); // { rank: "word-starts-with", start: 8, end: 11 }
+ * matchName("Rep", "Support reply", { matchCase: true, wholeWord: false }); // undefined
+ */
+export function matchName(
+  words: string,
+  name: string,
+  options: WordsOptions = anyWords,
+): NameMatch | undefined {
+  const query = fold(words.trim(), options.matchCase).text;
+  if (query === "") {
+    return undefined;
+  }
+  const folded = fold(name, options.matchCase);
+  if (folded.text === query) {
+    return { rank: "exact", start: 0, end: name.length };
+  }
+  // Where a character of the folded name starts in the name itself.
+  const inName = (at: number) => folded.at[at] ?? name.length;
+  let best: NameMatch | undefined;
+  for (let at = folded.text.indexOf(query); at !== -1; at = folded.text.indexOf(query, at + 1)) {
+    const found = { start: inName(at), end: inName(at + query.length) };
+    if (options.wholeWord && !isWholeWord(name, found)) {
+      continue;
+    }
+    const rank = rankAt(name, found.start);
+    if (best === undefined || compareRanks(rank, best.rank) < 0) {
+      best = { rank, ...found };
+    }
+    // Only the first place found can be the name's start, so nothing after a word's start beats it.
+    if (rank !== "contains") {
+      break;
+    }
+  }
+  return best;
+}
+
+/** How well a match that isn't the whole name ranks, by where it starts. */
+function rankAt(name: string, start: number): NameMatchRank {
+  if (start === 0) {
+    return "starts-with";
+  }
+  return startsWord(name, start) ? "word-starts-with" : "contains";
 }
 
 /** Where the words were found in a text, in UTF-16 code units, the end exclusive. */
@@ -109,7 +124,11 @@ export function findWords(
 
 /** Compares two matches: below zero when `left` is the better one. */
 export function compareNameMatches(left: NameMatch, right: NameMatch): number {
-  return nameMatchRanks.indexOf(left.rank) - nameMatchRanks.indexOf(right.rank);
+  return compareRanks(left.rank, right.rank);
+}
+
+function compareRanks(left: NameMatchRank, right: NameMatchRank): number {
+  return nameMatchRanks.indexOf(left) - nameMatchRanks.indexOf(right);
 }
 
 /** Whether no letter or digit touches the found text on either side. */

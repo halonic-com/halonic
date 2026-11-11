@@ -74,6 +74,25 @@ verifies("shell.search-page-names", () => {
       ]);
     });
 
+    it("ranks a name by where Match case finds the words, as it highlights them", () => {
+      // Without Match case, "refund Refund" would start with the words and rank first.
+      const found = [agent("twice", "refund Refund"), agent("checker", "Refund checker")];
+      const page = searchPageNames(query("Refund", { matchCase: true }), found, false);
+      expect(labels(page.results)).toEqual(["Refund checker", "refund Refund"]);
+      expect(page.results[1]?.labelMatch).toEqual({ rank: "word-starts-with", start: 7, end: 13 });
+    });
+
+    it("ranks a name by where Whole word finds the words", () => {
+      // Without Whole word, "Triaged triage" would start with the words and rank first.
+      const found = [agent("mail", "Mail triage"), agent("late", "Triaged triage")];
+      const page = searchPageNames(query("triage", { wholeWord: true }), found, false);
+      expect(page.results.map((result) => result.labelMatch?.rank)).toEqual([
+        "word-starts-with",
+        "word-starts-with",
+      ]);
+      expect(labels(page.results)).toEqual(["Mail triage", "Triaged triage"]);
+    });
+
     it("reads the words as plain text", () => {
       const found = [agent("eu", "Billing (EU)"), agent("x", "workspaceXyaml")];
       expect(labels(searchPageNames(query("(EU)"), found, false).results)).toEqual([
@@ -120,6 +139,16 @@ verifies("shell.search-page-names", () => {
     it("lists an item two providers found once", () => {
       const found = [agent("checker", "Refund checker"), agent("checker", "Refund checker")];
       expect(searchPageNames(query("refund"), found, false).results).toHaveLength(1);
+    });
+
+    it("finds an item by the description a later provider gave", () => {
+      const found = [
+        agent("checker", "Refund checker"),
+        agent("checker", "Refund checker", "Checks requests against the policy."),
+      ];
+      const page = searchPageNames(query("policy"), found, false);
+      expect(labels(page.results)).toEqual(["Refund checker"]);
+      expect(highlighted(page.results[0])).toBe("policy");
     });
 
     it("says nothing matches, and offers all hubs while a hub is picked", () => {
