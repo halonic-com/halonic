@@ -12,6 +12,7 @@ import { checkFileSize } from "./file-size.ts";
 import { checkInvisibleCharacters } from "./invisible-characters.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
+import { checkMarkdownTables } from "./markdown-tables.ts";
 import { checkNames } from "./names.ts";
 import { checkNativeDisabled } from "./native-disabled.ts";
 import { checkPackages } from "./packages.ts";
@@ -35,6 +36,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "absolute-paths": checkAbsolutePaths,
   "process-starts": checkProcessStarts,
   "invisible-characters": checkInvisibleCharacters,
+  "markdown-tables": checkMarkdownTables,
   "native-disabled": checkNativeDisabled,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,
