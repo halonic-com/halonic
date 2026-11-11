@@ -2,12 +2,7 @@
 // then carries out the effects through the scheduler, so a run moves on one
 // step per timer, and a timer that is late or repeated changes nothing.
 
-import {
-  type RunEvent,
-  type RunFailureReason,
-  type RunSummary,
-  summarize,
-} from "@halonicjs/events";
+import type { RunEvent, RunFailureReason, RunSummary } from "@halonicjs/events";
 import { AGENT_HARNESSES } from "@halonicjs/format";
 import type {
   Clock,
@@ -34,6 +29,7 @@ import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
+import { appendFailed } from "./append-failed.ts";
 import { childNow, childStart, receiverOf, runAndChildren } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
@@ -482,23 +478,9 @@ export class LocalRuns {
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
   }
 
-  /** Ends a run that hasn't ended with `run.failed`, reading again when another write got there first. */
+  /** Ends a run that hasn't ended with `run.failed`, and tells its feed and its parent. */
   async #fail(runId: string, error: string, reason: RunFailureReason = "error"): Promise<void> {
-    const store = this.#options.store;
-    for (;;) {
-      const summary = summarize(await store.events(runId));
-      if (summary === null || hasEnded(summary.status)) return;
-      const failed: RunEvent = {
-        runId,
-        seq: summary.lastSeq + 1,
-        at: this.#now(),
-        type: "run.failed",
-        state: summary.state,
-        error,
-        reason,
-      };
-      if ((await store.append(runId, summary.lastSeq, [failed])).ok) break;
-    }
+    if (!(await appendFailed(this.#options.store, runId, error, reason, () => this.#now()))) return;
     this.#feed.notify(runId);
     await this.#tellParentOf(runId);
   }
