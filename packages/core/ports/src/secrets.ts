@@ -99,7 +99,7 @@ export function describeSecretName(name: string): string {
 // share one namespace with Halonic's own secrets, and on desktop with the
 // tokens too (one keychain backs both stores). So every name a workspace
 // picks goes through `workspaceSecrets`, which refuses the ones that belong
-// to Halonic, whatever their case or `-`/`_` spelling.
+// to Halonic or to a plugin, whatever their case or `-`/`_` spelling.
 
 /**
  * Halonic's own secrets: the key of the encrypted token store and the hash of
@@ -134,23 +134,52 @@ export function isHalonicSecretName(name: string): boolean {
 }
 
 /**
- * The secrets as a workspace may read them: by any name it picks, except the
- * ones that belong to Halonic ({@link isHalonicSecretName}). Pass this, never
- * the raw store, wherever a workspace's choice of name reaches `Secrets`.
+ * The prefix of every secret a plugin declares: the app keeps a plugin's
+ * secret under `plugin__<id>__<secret>`. A secret name with this prefix
+ * belongs to a plugin, so no workspace may pick it.
+ */
+export const pluginSecretNamePrefix = "plugin__";
+
+const pluginKeyPrefix = secretKey(pluginSecretNamePrefix);
+
+/**
+ * Whether a secret name belongs to a plugin: it starts with
+ * {@link pluginSecretNamePrefix}. Names are compared in their `secretKey`
+ * form, so `Plugin-_weather` counts too.
  *
- * @throws RangeError from `get`, for a name of Halonic's own; the message
- *   never repeats the name
+ * @throws RangeError when the name breaks the rule of the `Secrets` port
+ *
+ * @example
+ * isPluginSecretName("plugin__weather__acme-key"); // true
+ * isPluginSecretName("plugin-key"); // false
+ */
+export function isPluginSecretName(name: string): boolean {
+  return secretKey(name).startsWith(pluginKeyPrefix);
+}
+
+/**
+ * The secrets as a workspace may read them: by any name it picks, except the
+ * ones that belong to Halonic ({@link isHalonicSecretName}) or to a plugin
+ * ({@link isPluginSecretName}). Pass this, never the raw store, wherever a
+ * workspace's choice of name reaches `Secrets`.
+ *
+ * @throws RangeError from `get`, for a name of Halonic's own or a plugin's;
+ *   the message never repeats the name
  *
  * @example
  * const picks = workspaceSecrets(secrets);
  * await picks.get("openai-key"); // the configured key, or null
  * await picks.get("token-key"); // throws a RangeError
+ * await picks.get("plugin__weather__acme-key"); // throws a RangeError
  */
 export function workspaceSecrets(secrets: Secrets): Secrets {
   return {
     get: async (name) => {
       if (isHalonicSecretName(name)) {
         throw new RangeError("A workspace can't pick a secret that belongs to Halonic.");
+      }
+      if (isPluginSecretName(name)) {
+        throw new RangeError("A workspace can't pick a secret that belongs to a plugin.");
       }
       return await secrets.get(name);
     },
