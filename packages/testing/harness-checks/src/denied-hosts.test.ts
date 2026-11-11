@@ -43,6 +43,7 @@ const request: RunRequest = {
   cwd: "<scratch>/work",
   launcherEnv: { PATH: "/usr/bin" },
   programEnv: { PATH: "/usr/bin" },
+  withoutSrtEnv: false,
 };
 
 verifies("harness-checks.denied-hosts", () => {
