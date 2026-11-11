@@ -2,6 +2,7 @@
 
 - Approval: security follow-up S1 from the review of #1626 ([HAL-5046](/HAL/issues/HAL-5046#document-review)), task [HAL-5052](/HAL/issues/HAL-5052); the wording builds on the approved Inbox card, so it is a team decision (HAL-2282), checked with Sofia on [HAL-5065](/HAL/issues/HAL-5065); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4xZzGEik+iAYMHRezP9vcvCgc8exe4NNZUDUv1bFqwl/Hfdnpu2uIYW2ZHh6pLSqVQVTA2GONm0uzizMO1IECw==
 
 ## What changes
 
