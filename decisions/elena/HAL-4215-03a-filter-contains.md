@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4215](/HAL/issues/HAL-4215); the reviewer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n4Im9GIdf/ExZC8qI5fWiHnDmgYF5YdC+oxkXTYBE140WDWA8eUgBWmo0yVeg7TtlwOcGYs7x+0Z9CfIqiVQAw==
 - Task: HAL-4215
 
 ## What changes
