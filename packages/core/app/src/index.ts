@@ -404,7 +404,12 @@ export {
   serviceKey,
 } from "./service-registry.ts";
 export { checkToolCall, type ToolCallCheck } from "./tool-call-check.ts";
-export { listedToolsNotice, toolForModel, toolResultForModel } from "./tool-for-model.ts";
+export {
+  type FencedTextsRequest,
+  fencedTextsNotice,
+  toolForModel,
+  toolResultForModel,
+} from "./tool-for-model.ts";
 export {
   listedToolName,
   type OfferedDeclaredTool,
