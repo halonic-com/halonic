@@ -1,6 +1,6 @@
 import type { SandboxExit, SandboxProcess } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { sandboxProgram } from "./sandbox-program.ts";
 
 /**
@@ -58,6 +58,27 @@ verifies("connector-stdio-sandbox.session-start", () => {
       program.signal("kill");
       expect(await program.exited).toEqual({ code: null, signal: "SIGKILL" });
       expect(stuck.kills()).toBe(2);
+    });
+
+    it("reads standard error to its end itself and hands the transport none of it", async () => {
+      // A stream fills its queue by itself once; only a reader makes it pull to the end.
+      let pulls = 0;
+      const stuck = stuckProcess();
+      const process: SandboxProcess = {
+        ...stuck.process,
+        stderr: new ReadableStream({
+          pull: (controller) => {
+            pulls += 1;
+            if (pulls > 3) return controller.close();
+            controller.enqueue(new TextEncoder().encode("token=not-for-anyone\n"));
+          },
+        }),
+      };
+      const program = sandboxProgram(process);
+      const handedOn: Uint8Array[] = [];
+      for await (const chunk of program.stderr) handedOn.push(chunk);
+      expect(handedOn).toEqual([]);
+      await vi.waitFor(() => expect(pulls).toBe(4));
     });
 
     it("hands on the output as it comes, and cancels it when the reader stops early", async () => {

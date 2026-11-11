@@ -9,7 +9,10 @@ import type { SandboxProcess } from "@halonicjs/ports";
  * - a write always settles: one waiting on a full input rejects once the
  *   program has ended, even when the sandbox's stream doesn't reject it;
  * - ending the input and signalling never throw;
- * - a reader that stops early cancels that output, so the sandbox can drop it.
+ * - a reader that stops early cancels that output, so the sandbox can drop it;
+ * - standard error is read and dropped here, and the transport gets an empty
+ *   stream: the program's environment holds the local tool's secrets, which
+ *   it may print, so none of its error output is kept, not even in memory.
  *
  * A sandbox has one way to stop a program, `kill`, which stops everything it
  * started. So both `terminate` and `kill` use it, and the transport's gentle
@@ -33,7 +36,9 @@ class SandboxRunningProgram implements RunningProgram {
     this.#process = process;
     this.#input = process.stdin.getWriter();
     this.stdout = chunksOf(process.stdout);
-    this.stderr = chunksOf(process.stderr);
+    this.stderr = noChunks();
+    // Read to its end so a program that writes much to it never blocks on a full pipe.
+    void drain(process.stderr);
     this.exited = process.exited.then(({ code, signal }) => ({ code, signal }));
     this.#ended = process.exited.then(() => {
       throw new Error("The program has ended and reads no more input.");
@@ -56,6 +61,19 @@ class SandboxRunningProgram implements RunningProgram {
 
   signal(_kind: "terminate" | "kill"): void {
     this.#process.kill().catch(() => undefined);
+  }
+}
+
+/** An output that ends at once, for the transport's view of standard error. */
+async function* noChunks(): AsyncGenerator<Uint8Array> {}
+
+/** Reads a stream to its end and drops what it read. Never rejects. */
+async function drain(stream: ReadableStream<Uint8Array>): Promise<void> {
+  const reader = stream.getReader();
+  try {
+    while (!(await reader.read()).done) {}
+  } catch {
+    // A stream that breaks has nothing more to drop.
   }
 }
 

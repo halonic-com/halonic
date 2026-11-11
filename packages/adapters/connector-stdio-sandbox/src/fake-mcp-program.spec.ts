@@ -1,4 +1,4 @@
-import type { SandboxProfile } from "@halonicjs/ports";
+import type { ConnectorConfig, SandboxProfile } from "@halonicjs/ports";
 import {
   brokenToolName,
   contractServerAnswer,
@@ -7,6 +7,7 @@ import {
   type FakeProgramIo,
   type ReachedCall,
 } from "@halonicjs/testing-contracts";
+import { type LocalToolPlace, localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 
 /** The contract's tools as an MCP server lists them, risk and untrusted in `_meta`. */
 const contractMcpTools = contractServerTools.map((tool) => ({
@@ -84,14 +85,29 @@ export function contractProgram(reached: ReachedCall[]): FakeProgram {
   });
 }
 
-/** A local tool's profile, as Halonic would build it; the fake session only hands it to the program. */
-export const testProfile: SandboxProfile = {
+/** A local tool started by a script with a program the person has, as its stdio config. */
+export const scriptConfig: ConnectorConfig = {
+  id: "notes",
+  transport: { kind: "stdio", command: "node", args: ["server.js", "--serve"], env: {} },
+  secretEnv: {},
+};
+
+/** Where the host set the local tool up: made-up folders, no runner. */
+export const testPlace: LocalToolPlace = {
   workingFolder: "/halonic/local-tools/notes",
   tempFolder: "/halonic/tmp/notes",
-  settingsFolder: null,
-  readOnlyPaths: [],
-  deniedPaths: [],
-  env: { PATH: "/usr/bin" },
-  network: { bridge: null, allowedSites: [] },
+  readOnlyPaths: ["/halonic/plugins/acme-notes"],
+  deniedPaths: ["/halonic/data"],
+  bridge: null,
+  sites: ["notes.acme.test"],
   timeLimitMs: 60_000,
+  path: "/usr/bin",
 };
+
+/** The profile Halonic builds for {@link scriptConfig} at {@link testPlace}, without secrets. */
+export const testProfile: SandboxProfile = localToolLaunch(
+  scriptConfig.transport as StdioConfig,
+  testPlace,
+  null,
+  {},
+).profile;

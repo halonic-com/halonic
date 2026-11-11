@@ -19,16 +19,14 @@ import type {
   ConnectorFactory,
   ConnectorFactoryContext,
   ConnectorTool,
-  ConnectorTransport,
   SandboxBlock,
   SandboxSession,
-  TrustGrant,
 } from "@halonicjs/ports";
 import { type Clock, systemClock } from "@halonicjs/std";
 import { SandboxNotFencedError, SandboxSessionEndedError } from "./errors.ts";
+import type { LocalToolPlace, StdioConfig } from "./local-tool-launch.ts";
+import { planLaunch } from "./plan-launch.ts";
 import { sandboxProgram } from "./sandbox-program.ts";
-
-type StdioConfig = Extract<ConnectorTransport, { kind: "stdio" }>;
 
 /** An access the sandbox refused while a connector's program ran, and whose program it was. */
 export interface ConnectorBlock {
@@ -36,10 +34,21 @@ export interface ConnectorBlock {
   readonly block: SandboxBlock;
 }
 
+/** What the host set up for one local tool before it opened the tool's session. */
+export interface LocalToolSetup {
+  /** Where the tool runs: the place the host built the session's profile from. */
+  readonly place: LocalToolPlace;
+}
+
 /** What a sandboxed stdio connector factory needs besides each connector's config and context. */
 export interface SandboxStdioOptions {
   /** How Halonic introduces itself to the server. */
   readonly clientInfo: ClientInfo;
+  /**
+   * What the host set up for each local tool, by connector id, or
+   * `undefined` for a connector it didn't set up, which then doesn't start.
+   */
+  readonly localTools: (connectorId: string) => LocalToolSetup | undefined;
   /**
    * Hears every access the sandbox refused a connector's program. The host
    * turns each into the run's `sandbox.blocked` event.
@@ -65,10 +74,12 @@ export interface SandboxStdioOptions {
  *   {@link SandboxSessionEndedError}; the host opens a new session and
  *   connector.
  *
- * Halonic opens the session with the profile it built for the local tool,
- * so the program's environment, network and working folder come from the
- * profile, never from the plugin. The connector doesn't close the session:
- * the host that opened it does.
+ * Halonic opens the session with the profile `localToolLaunch` built for
+ * the local tool, so the program's environment, network and working folder
+ * come from Halonic, never from the plugin. Before each start the connector
+ * checks the launch again (`planLaunch`): the pin rules, the secrets, and
+ * that the session's profile is exactly that one. The connector doesn't
+ * close the session: the host that opened it does.
  *
  * As on this computer, a program that stops fails the call that waited, and
  * the next call starts it again in the same session, up to the restart limit.
@@ -93,19 +104,16 @@ export class SandboxStdioConnectorFactory implements ConnectorFactory {
       );
     }
     return new SandboxStdioConnector(
-      config.id,
+      config,
       config.transport,
-      { session: context.sandbox, trust: context.trust },
+      { ...context, sandbox: context.sandbox },
       this.#options,
     );
   }
 }
 
-/** Where a connector's program runs, and whether the person trusted it. */
-interface Place {
-  readonly session: SandboxSession;
-  readonly trust: TrustGrant | null;
-}
+/** A factory context that has its session. */
+type SandboxContext = ConnectorFactoryContext & { readonly sandbox: SandboxSession };
 
 /** A started program and the MCP session with it. */
 interface Connection {
@@ -115,8 +123,9 @@ interface Connection {
 
 class SandboxStdioConnector implements ConnectorClient {
   readonly id: string;
+  readonly #config: ConnectorConfig;
   readonly #stdio: StdioConfig;
-  readonly #place: Place;
+  readonly #context: SandboxContext;
   readonly #options: SandboxStdioOptions;
   readonly #restarts: RestartLimit;
   readonly #stopBlockReports: () => void;
@@ -129,16 +138,23 @@ class SandboxStdioConnector implements ConnectorClient {
   /** Set once the restart limit is reached; the connector never starts again. */
   #stopped: ConnectorStoppedError | undefined;
 
-  constructor(id: string, stdio: StdioConfig, place: Place, options: SandboxStdioOptions) {
+  constructor(
+    config: ConnectorConfig,
+    stdio: StdioConfig,
+    context: SandboxContext,
+    options: SandboxStdioOptions,
+  ) {
+    const id = config.id;
     this.id = id;
+    this.#config = config;
     this.#stdio = stdio;
-    this.#place = place;
+    this.#context = context;
     this.#options = options;
     this.#restarts = new RestartLimit(
       options.restartLimits ?? defaultRestartLimits,
       options.clock ?? systemClock,
     );
-    this.#stopBlockReports = place.session.onBlocked((block) =>
+    this.#stopBlockReports = context.sandbox.onBlocked((block) =>
       options.onBlocked({ connectorId: id, block }),
     );
   }
@@ -170,6 +186,9 @@ class SandboxStdioConnector implements ConnectorClient {
    */
   #connect(): Promise<Connection> {
     if (this.#closed) return Promise.reject(new Error(`Connector "${this.id}" is closed.`));
+    // Before the restart limit: an ended session is what the host must hear, to open a new one.
+    const ended = this.#sessionEnded();
+    if (ended !== undefined) return Promise.reject(ended);
     if (this.#stopped !== undefined) return Promise.reject(this.#stopped);
     if (this.#connection?.transport.ended === true) {
       this.#connection = undefined;
@@ -183,7 +202,18 @@ class SandboxStdioConnector implements ConnectorClient {
   }
 
   async #start(): Promise<Connection> {
-    this.#checkMayStart();
+    this.#checkSession();
+    const command = await planLaunch({
+      config: this.#config,
+      stdio: this.#stdio,
+      place: this.#options.localTools(this.id)?.place,
+      session: this.#context.sandbox,
+      context: this.#context,
+    });
+    // The registry lookup takes a while; a connector closed meanwhile starts nothing.
+    if (this.#closed) {
+      throw new Error(`Connector "${this.id}" was closed while its launch was checked.`);
+    }
     // A program that stopped was stopped all the way by its transport; this waits for it.
     await this.#transport?.close();
     if (!this.#restarts.allowsStart()) {
@@ -195,10 +225,7 @@ class SandboxStdioConnector implements ConnectorClient {
       );
       throw this.#stopped;
     }
-    const process = await this.#place.session.start({
-      program: this.#stdio.command,
-      args: [...this.#stdio.args],
-    });
+    const process = await this.#context.sandbox.start(command);
     // Counted once it runs: a program that can't start at all hasn't crashed.
     this.#restarts.recordStart();
     const transport = new StdioTransport(
@@ -223,34 +250,25 @@ class SandboxStdioConnector implements ConnectorClient {
   }
 
   /**
-   * Every check before the program may start, in the order they matter:
-   * nothing is started, in the session or on this computer, unless all pass.
+   * The checks of the trust grant and the session, before anything else:
+   * without a grant or a proven fence nothing is read, looked up or
+   * started, in the session or on this computer.
    */
-  #checkMayStart(): void {
-    if (this.#place.trust === null) {
+  #checkSession(): void {
+    if (this.#context.trust === null) {
       throw new Error(
         `Connector "${this.id}" starts a program, so it starts only once its plugin is trusted.`,
       );
     }
     const ended = this.#sessionEnded();
     if (ended !== undefined) throw ended;
-    const fence = this.#place.session.fence;
+    const fence = this.#context.sandbox.fence;
     if (fence.state === "not-fenced") throw new SandboxNotFencedError(this.id, fence.reason);
-    // Both arrive with the profile Halonic builds for a local tool (HAL-1738, PR 3);
-    // until then such a connector is refused rather than started unchecked.
-    if (this.#stdio.pin !== undefined) {
-      throw new Error(`Connector "${this.id}" has a pinned package, which can't start here yet.`);
-    }
-    if (this.#stdio.cwd !== undefined) {
-      throw new Error(
-        `Connector "${this.id}" names a folder to start in, but a local tool starts in the working folder Halonic chose for it.`,
-      );
-    }
   }
 
   /** The error for every call once the session has ended, or `undefined` while it is open. */
   #sessionEnded(): SandboxSessionEndedError | undefined {
-    return this.#place.session.fence.state === "stopped"
+    return this.#context.sandbox.fence.state === "stopped"
       ? new SandboxSessionEndedError(this.id)
       : undefined;
   }

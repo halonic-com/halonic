@@ -21,10 +21,13 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
   The host closes that session and opens a new session and connector for the next call. The
   connector never closes the session itself.
 - **A program that stops starts again** on the next call, in the same session, up to the restart
-  limit, as on this computer. Its error output isn't kept: the profile gave it secrets.
-
-Halonic builds the session's profile (working folder, environment, network, time limit) itself,
-never the plugin. Until that lands, a config with a `pin` or a `cwd` is refused (HAL-1738).
+  limit, as on this computer. Its error output is read and dropped, never kept: the profile gave
+  it secrets.
+- **Halonic builds the profile, never the plugin.** `localToolLaunch` builds the session's profile
+  (working folder, environment, network, time limit) and the command from the place the host set
+  up, the stdio config, the pin and the secrets. The host opens the session with it. Before each
+  start the connector runs the pin check, reads the secrets, builds it again and refuses a session
+  whose profile differs, naming the fields, never a value.
 
 ## Example
 
@@ -33,6 +36,7 @@ import { SandboxStdioConnectorFactory } from "@halonicjs/adapter-connector-stdio
 
 const factory = new SandboxStdioConnectorFactory({
   clientInfo: { name: "halonic", version: "0.1.0" },
+  localTools: (connectorId) => setUpLocalTools.get(connectorId),
   onBlocked: ({ connectorId, block }) =>
     events.push({ type: "sandbox.blocked", connectorId, block }),
 });

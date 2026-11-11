@@ -1,60 +1,16 @@
 import { ConnectorStoppedError } from "@halonicjs/adapter-mcp";
-import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
-import type {
-  ConnectorConfig,
-  ConnectorFactoryContext,
-  SandboxBlock,
-  SandboxFence,
-} from "@halonicjs/ports";
-import {
-  contractGrant,
-  type FakeProgram,
-  FakeSandboxSession,
-  type ReachedCall,
-} from "@halonicjs/testing-contracts";
+import type { ConnectorConfig, SandboxBlock, SandboxFence } from "@halonicjs/ports";
+import type { FakeProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
+import { config, setUp } from "./connector-setup.spec.ts";
 import { SandboxNotFencedError, SandboxSessionEndedError } from "./errors.ts";
-import { contractProgram, mcpProgram, testProfile } from "./fake-mcp-program.spec.ts";
-import { type ConnectorBlock, SandboxStdioConnectorFactory } from "./sandbox-connector.ts";
-
-const config: ConnectorConfig = {
-  id: "notes",
-  transport: { kind: "stdio", command: "notes-mcp", args: ["--serve"], env: {} },
-  secretEnv: {},
-};
+import { mcpProgram } from "./fake-mcp-program.spec.ts";
 
 const notFenced: SandboxFence = {
   state: "not-fenced",
   reason: "The probe reached a loopback port the fence should block.",
 };
-
-interface SetUpOptions {
-  readonly program?: FakeProgram;
-  readonly fence?: SandboxFence;
-}
-
-function setUp(options: SetUpOptions = {}) {
-  const reached: ReachedCall[] = [];
-  const sandbox = new FakeSandboxSession({
-    profile: testProfile,
-    program: options.program ?? contractProgram(reached),
-    ...(options.fence === undefined ? {} : { fence: options.fence }),
-  });
-  const blocked: ConnectorBlock[] = [];
-  const factory = new SandboxStdioConnectorFactory({
-    clientInfo: { name: "halonic", version: "0.1.0" },
-    onBlocked: (block) => blocked.push(block),
-  });
-  const context: ConnectorFactoryContext = {
-    secrets: new MemorySecrets(),
-    tokens: new MemoryTokenStore(),
-    http: { fetch: () => Promise.reject(new Error("a local tool reaches no network here")) },
-    trust: contractGrant,
-    sandbox,
-  };
-  return { sandbox, factory, context, reached, blocked };
-}
 
 verifies("ports.connector-sandbox-session", () => {
   it("starts nothing while the fence isn't proven, whatever the person said about running without the sandbox", async () => {
@@ -93,24 +49,12 @@ verifies("connector-stdio-sandbox.session-start", () => {
     const { sandbox, factory, context } = setUp();
     const client = factory.create(config, context);
     await client.listTools();
-    expect(sandbox.started).toEqual([{ program: "notes-mcp", args: ["--serve"] }]);
+    expect(sandbox.started).toEqual([{ program: "node", args: ["server.js", "--serve"] }]);
     await client.close();
   });
 
-  it("refuses a pinned package and a folder to start in, until the profile carries them", async () => {
+  it("refuses a folder to start in: a local tool starts in its working folder", async () => {
     const { sandbox, factory, context } = setUp();
-    const pinned = {
-      ...config.transport,
-      pin: {
-        registry: "npm",
-        registryUrl: "https://registry.npmjs.org",
-        package: "@acme/notes-mcp",
-        version: "1.2.3",
-      },
-    } as const;
-    await expect(
-      factory.create({ ...config, transport: pinned }, context).listTools(),
-    ).rejects.toThrow("pinned package");
     const elsewhere = { ...config.transport, cwd: "../other" };
     await expect(
       factory.create({ ...config, transport: elsewhere }, context).listTools(),
@@ -157,11 +101,9 @@ verifies("connector-stdio-sandbox.session-start", () => {
       io.writeError("token=not-for-the-log\n");
       return 1;
     };
-    const { sandbox, context } = setUp({ program });
-    const factory = new SandboxStdioConnectorFactory({
-      clientInfo: { name: "halonic", version: "0.1.0" },
-      onBlocked: () => undefined,
-      restartLimits: { maxRestarts: 1, windowMs: 60_000 },
+    const { sandbox, factory, context } = setUp({
+      program,
+      factory: { restartLimits: { maxRestarts: 1, windowMs: 60_000 } },
     });
     const client = factory.create(config, context);
     await expect(client.listTools()).rejects.toThrow();
@@ -212,6 +154,19 @@ verifies("connector-stdio-sandbox.session-ended", () => {
     await callArrived;
     await sandbox.close();
     await expect(waiting).rejects.toThrow(SandboxSessionEndedError);
+  });
+
+  it("reports the ended session, not the restart limit, once both apply", async () => {
+    const crashes: FakeProgram = async () => 1;
+    const { sandbox, factory, context } = setUp({
+      program: crashes,
+      factory: { restartLimits: { maxRestarts: 0, windowMs: 60_000 } },
+    });
+    const client = factory.create(config, context);
+    await expect(client.listTools()).rejects.toThrow();
+    await expect(client.listTools()).rejects.toThrow(ConnectorStoppedError);
+    await sandbox.close();
+    await expect(client.listTools()).rejects.toThrow(SandboxSessionEndedError);
   });
 
   it("stops its program on close and leaves the session to its owner", async () => {

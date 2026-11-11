@@ -5,7 +5,7 @@ import {
   type ReachedCall,
 } from "@halonicjs/testing-contracts";
 import { refuseRealConnections } from "@halonicjs/testing-contracts/node";
-import { contractProgram, testProfile } from "./fake-mcp-program.spec.ts";
+import { contractProgram, scriptConfig, testPlace, testProfile } from "./fake-mcp-program.spec.ts";
 import { SandboxStdioConnectorFactory } from "./sandbox-connector.ts";
 
 refuseRealConnections();
@@ -20,12 +20,9 @@ connectorClientContract("connector-stdio-sandbox", "stdio", async () => {
     factory: new SandboxStdioConnectorFactory({
       clientInfo: { name: "halonic", version: "0.1.0" },
       onBlocked: () => undefined,
+      localTools: () => ({ place: testPlace }),
     }),
-    config: {
-      id: "notes",
-      transport: { kind: "stdio", command: "notes-mcp", args: ["--serve"], env: {} },
-      secretEnv: {},
-    },
+    config: scriptConfig,
     context: {
       secrets: new MemorySecrets(),
       tokens: new MemoryTokenStore(),
