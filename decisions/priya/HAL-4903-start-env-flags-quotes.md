@@ -2,6 +2,7 @@
 
 - Approval: follow-up from Julian's security check of halonic#1587 on [HAL-4884](/HAL/issues/HAL-4884) (points 3 and 4); planned on [HAL-4903](/HAL/issues/HAL-4903), with Julian's security check and Liam's review of the pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+mETP1LG11EfaCxhhDYq4lo6hV1G+h14D31EfQgf/OBlJpIykTDGrbsfE9EpOhOOhd5woM7COg0Ye+6EfD9rDw==
 - Task: HAL-4903
 
 ## What changes
