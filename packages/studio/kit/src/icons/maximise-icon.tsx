@@ -1,6 +1,7 @@
 /**
  * The maximise mark ⤢: two arrows pointing out to opposite corners, outline style, in the text
- * colour. Used by the side panel's Maximise button (req-shell `panels.maximise`).
+ * colour. Used by the side panel's Maximise button (`shell.panel-maximise`, from req-shell
+ * `panels.maximise`).
  */
 export function MaximiseIcon() {
   return (

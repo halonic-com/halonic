@@ -1,7 +1,7 @@
 /**
  * The restore mark: two arrows pointing in from opposite corners, outline style, in the text
  * colour. Used by a maximised side panel's button that puts it back in its place
- * (req-shell `panels.maximise`).
+ * (`shell.panel-maximise`, from req-shell `panels.maximise`).
  */
 export function RestoreIcon() {
   return (
