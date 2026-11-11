@@ -130,6 +130,11 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - uses: $/.github/actions/setup
+      # Right after install, before any turbo task or `pnpm discover`: a fresh
+      # clone must run the CLI as `pnpm install` left it (HAL-5009). The
+      # gitignored src/generated/ files come from the root `prepare` script.
+      - name: CLI runs on a fresh install
+        run: node apps/cli/src/main.ts --help
       - id: pr
         uses: $/.github/actions/pull-request
       # Reads the title from a file: an `env:` block is printed in the log.
