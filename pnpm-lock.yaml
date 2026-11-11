@@ -940,6 +940,9 @@ importers:
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../sandbox-host
+      '@halonicjs/adapter-sandbox-srt':
+        specifier: workspace:*
+        version: link:../sandbox-srt
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
