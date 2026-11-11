@@ -6,7 +6,8 @@ import {
   readAllowedChecks,
   readAllowedFixtures,
 } from "./compare/allowed-fixtures.ts";
-import { runRule, runRules } from "./compare/run-rules.ts";
+import { cliRules } from "./compare/cli-rules.ts";
+import { runRules } from "./compare/run-rules.ts";
 
 /** The statuses an allowed difference can have, in order. */
 export const differenceStatuses = ["proposed", "signed-off"] as const;
@@ -44,6 +45,11 @@ export interface AllowedDifference {
    * the base fixture's workflow tests. Left out when the run logs don't show it.
    */
   readonly runRules?: readonly string[];
+  /**
+   * The CLI rules (`src/compare/cli-rules.ts`) this difference allows in the
+   * base fixture's CLI calls. Left out when the CLI calls don't show it.
+   */
+  readonly cliRules?: readonly string[];
 }
 
 /** The package's own allowed-differences file. */
@@ -52,8 +58,12 @@ export const allowedDifferencesFile = fileURLToPath(
 );
 
 const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-/** A requirement ID: the package's short name, a dot, and the requirement's kebab-case name. */
-const requirementPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/**
+ * A requirement ID: the package's short name, a dot, and the requirement's
+ * kebab-case name, with the folders of a command's own requirements between
+ * them (`cli.commands.test.run-tests`).
+ */
+const requirementPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+$/;
 const fields = [
   "id",
   "requirement",
@@ -65,17 +75,23 @@ const fields = [
   "fixtures",
   "checks",
   "runRules",
+  "cliRules",
 ] as const;
 
-/** An entry's `runRules`: a list of known rule ids. */
-function readRunRules(raw: unknown, where: string): string[] {
+/** An entry's `runRules` or `cliRules`: a list of known rule ids. */
+function readRules(
+  raw: unknown,
+  where: string,
+  field: "runRules" | "cliRules",
+  rules: readonly { readonly id: string }[],
+): string[] {
   if (!Array.isArray(raw) || raw.length === 0) {
-    throw new Error(`${where}: "runRules" must list at least one rule`);
+    throw new Error(`${where}: "${field}" must list at least one rule`);
   }
   for (const id of raw) {
-    if (typeof id !== "string" || runRule(id) === undefined) {
+    if (!rules.some((rule) => rule.id === id)) {
       throw new Error(
-        `${where}: unknown run rule ${JSON.stringify(id)} (rules: ${runRules.map((rule) => rule.id).join(", ")})`,
+        `${where}: unknown ${field === "runRules" ? "run" : "CLI"} rule ${JSON.stringify(id)} (rules: ${rules.map((rule) => rule.id).join(", ")})`,
       );
     }
   }
@@ -130,7 +146,10 @@ function readEntry(raw: unknown, where: string): AllowedDifference {
     ...(entry["checks"] === undefined ? {} : { checks: readAllowedChecks(entry["checks"], where) }),
     ...(entry["runRules"] === undefined
       ? {}
-      : { runRules: readRunRules(entry["runRules"], where) }),
+      : { runRules: readRules(entry["runRules"], where, "runRules", runRules) }),
+    ...(entry["cliRules"] === undefined
+      ? {}
+      : { cliRules: readRules(entry["cliRules"], where, "cliRules", cliRules) }),
   };
 }
 
@@ -149,6 +168,14 @@ function noFileTwice(
   }
 }
 
+/** Throws when two entries, or one twice, name one rule. */
+function noRuleTwice(rules: readonly string[], seen: Set<string>, where: string): void {
+  for (const rule of rules) {
+    if (seen.has(rule)) throw new Error(`${where} "${rule}" is listed twice`);
+    seen.add(rule);
+  }
+}
+
 /**
  * Checks the allowed differences and returns them. Throws naming the entry
  * when one is malformed or an id repeats, so a difference is never allowed by
@@ -162,6 +189,7 @@ export function parseAllowedDifferences(raw: unknown): AllowedDifference[] {
   const seenFixtures = new Set<string>();
   const seenChecks = new Set<string>();
   const seenRules = new Set<string>();
+  const seenCliRules = new Set<string>();
   return raw.map((item, index) => {
     const where = `allowed difference ${index + 1}`;
     const difference = readEntry(item, where);
@@ -171,10 +199,8 @@ export function parseAllowedDifferences(raw: unknown): AllowedDifference[] {
     seen.add(difference.id);
     noFileTwice(difference.fixtures ?? [], seenFixtures, where);
     noFileTwice(difference.checks ?? [], seenChecks, `${where}: checks`);
-    for (const rule of difference.runRules ?? []) {
-      if (seenRules.has(rule)) throw new Error(`${where}: run rule "${rule}" is listed twice`);
-      seenRules.add(rule);
-    }
+    noRuleTwice(difference.runRules ?? [], seenRules, `${where}: run rule`);
+    noRuleTwice(difference.cliRules ?? [], seenCliRules, `${where}: CLI rule`);
     return difference;
   });
 }

@@ -31,6 +31,20 @@ verifies("parity.known-gaps-checked", () => {
     );
   });
 
+  it("reads a gap that names only CLI calls, and refuses one that names neither tests nor calls", () => {
+    const { tests: _tests, ...rest } = gap;
+    const onCalls = { ...rest, calls: ["run an agent with the echo model"] };
+    expect(parseKnownGaps([onCalls])).toEqual([onCalls]);
+    expect(() => parseKnownGaps([rest])).toThrow(/known gap 1: list the tests or the calls/);
+  });
+
+  it("refuses an empty list of calls, or a call cli-calls.ts doesn't have", () => {
+    expect(() => parseKnownGaps([{ ...gap, calls: [] }])).toThrow(/"calls" must list calls/);
+    expect(() => parseKnownGaps([{ ...gap, calls: ["run echo"] }])).toThrow(
+      /"calls" must list calls by their name in cli-calls.ts/,
+    );
+  });
+
   it("refuses an unknown field, an id that isn't kebab-case and an empty text", () => {
     expect(() => parseKnownGaps([{ ...gap, taks: "HAL-1" }])).toThrow(/unknown field "taks"/);
     expect(() => parseKnownGaps([{ ...gap, id: "Json" }])).toThrow(/must be kebab-case/);
@@ -48,7 +62,7 @@ verifies("parity.known-gaps-checked", () => {
     const tests = new Set(base.tests.map(testName));
     for (const known of readKnownGaps(knownGapsFile)) {
       expect(
-        known.tests.filter((test) => !tests.has(test)),
+        (known.tests ?? []).filter((test) => !tests.has(test)),
         known.id,
       ).toEqual([]);
     }

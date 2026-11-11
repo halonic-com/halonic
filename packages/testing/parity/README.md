@@ -140,25 +140,29 @@ What the calls show:
 
 ### Where the old CLI output meets an allowed difference
 
-The new `halonic test` and `halonic run` are compared against `cli.json`
-later (HAL-187 item 9). Where the old output depends on something already
-listed as a difference:
+The new `halonic test` and `halonic run` are compared against `cli.json` (see
+[CLI calls](#cli-calls) under The compare). Where the old output depends on
+something listed as a difference or a gap:
 
 - **Trust (`not-trusted`, exit code 3).** The old CLI has no trust gate: every
   recorded run starts without a trust check. The parity run trusts the
-  fixture through the memory `TrustStore`, so no recorded call should meet
-  exit code 3 or a `not-trusted` step.
+  fixture through the memory `TrustStore`, so no call meets exit code 3 or a
+  `not-trusted` step, and the compare never turns a 3 into anything else.
 - **Approvals routed by `callId` (E5).** None of the recorded calls approves a
   tool call, so no `callId` and no approval list appear in `cli.json`.
 - **The three optional event fields.** The 3 `run.failed` events have no
-  `reason`; the new engine adds `run.failed.reason`. No tool results or
+  `reason`; the new engine adds it (`failed-run-says-why`). No tool results or
   resolved approvals appear.
-- **Exit codes.** The old CLI exits 1 for a usage error (`run without a
-  workflow`); the new one exits 2.
-
-Other differences the compare will likely need to list: `definitionsVersion`
-in `run.started` (a hash of the old definitions), the run and test IDs (the
-renamed old IDs above), and the wording of stdout and stderr.
+- **Exit codes.** The old CLI exits 1 for every error; the new one exits 2
+  for a wrong command line or input and 4 for an unknown workflow
+  (`cli-exit-codes-by-error-kind`).
+- **The words.** stdout and stderr come from the new message catalogue, so
+  none of the old words is compared (`cli-output-from-the-catalogue`).
+- **`studio test` stored its runs; `halonic test` stores none**
+  (`test-runs-stay-in-memory`). Those runs are compared test by test in the
+  run-log compare.
+- **The signed-out connector** is a known gap: the old CLI refused to start
+  the `invoice` workflow, the new one starts it (HAL-5285).
 
 ## The compare
 
@@ -225,8 +229,8 @@ const report = judgeRunLogs(
 
 Tests are paired by `<hub>/<workflow>/<name>` and compared exactly: pass or
 fail, the number of failures (the old ones are sentences, the new ones data;
-the CLI's compare checks the words), and every run's summary and events in
-order. Before that, the compare applies the **run-log rules** that allowed
+the CLI's message catalogue checks the words), and every run's summary and
+events in order. Before that, the compare applies the **run-log rules** that allowed
 differences name in `runRules`. Each rule, in `src/compare/run-rules.ts`,
 takes out or reorders one thing on the side it names, such as the run IDs
 (`run-ids-by-start` names both sides' runs `run_1`, `run_2`, ... in start
@@ -237,6 +241,34 @@ gap** is a place where the new engine is still wrong, with the task that fixes
 it: unlike an allowed difference, it says the new behaviour has to change. A
 gap whose tests match is stale, so each fix removes its gap and the list only
 shrinks.
+
+### CLI calls
+
+For the base, the compare also checks the new CLI against `cli.json`. The
+CLI's `parity.test.ts` (`apps/cli`) makes each call of
+[`src/cli-calls.ts`](src/cli-calls.ts) again, as its `halonic` arguments say,
+on a fresh copy of the base with a profile of its own: the clock stands at the
+old fixed time, IDs count from 1, the fixture is trusted through the memory
+`TrustStore`, and nothing goes online. It feeds the results in:
+
+```ts
+const report = judgeCliCalls(
+  pairCliCalls(readCliRecording(base), calls),
+  readAllowedDifferences(allowedDifferencesFile),
+  readKnownGaps(knownGapsFile),
+);
+// Passes only when report.unexplained and report.stale are both empty.
+```
+
+Calls are paired by name and compared exactly: the exit code, stdout, stderr,
+and every run the call stored, with all its events in order. The new runs come
+from the profile's run store and are put in the order they started: each run
+nothing stored started, then the runs it started. Before that, the compare
+applies the **CLI rules** that allowed differences name in `cliRules`, from
+`src/compare/cli-rules.ts`: the CLI's own (the words, the exit codes, the
+test runs, the failure words) and every run-log rule, applied to a call's
+runs. A call that still differs is judged as a test is: a gap when a known gap
+names it in `calls`, and different otherwise; stale rules and gaps fail.
 
 ## Allowed differences
 
@@ -261,6 +293,8 @@ behave differently from the old one. Each entry has:
 - `runRules`, only where the difference shows in the base's run logs: the ids
   of the run-log rules it allows. A rule the compare doesn't have, or one two
   entries name, is refused
+- `cliRules`, only where the difference shows in the base's CLI calls: the ids
+  of the CLI rules it allows, checked the same way
 
 Every fixture, the base's valid file of each kind and at least one invalid case
 per kind, has a recording from the reference commit.
@@ -380,3 +414,4 @@ export function runExample(): string[] {
 - [`parity.allowed-fixture-differences`](requirements/allowed-fixture-differences.md)
 - [`parity.compare-run-logs`](requirements/compare-run-logs.md)
 - [`parity.known-gaps-checked`](requirements/known-gaps-checked.md)
+- [`parity.compare-cli-calls`](requirements/compare-cli-calls.md)

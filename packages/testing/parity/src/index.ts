@@ -15,8 +15,22 @@ export {
   type ParityCase,
   readCase,
 } from "./cases.ts";
-export { baseCliCalls, type CliCall } from "./cli-calls.ts";
+export { type BaseCliCall, baseCliCalls, type CliCall } from "./cli-calls.ts";
 export type { AllowedCheck, AllowedFixture } from "./compare/allowed-fixtures.ts";
+export {
+  type CliCallReport,
+  type CliCallResult,
+  judgeCliCalls,
+} from "./compare/cli-judge.ts";
+export {
+  type CliComparison,
+  type ComparedCall,
+  type NewCliCall,
+  pairCliCalls,
+  readCliRecording,
+  type StoredRun,
+} from "./compare/cli-output.ts";
+export { type CliRule, cliRules } from "./compare/cli-rules.ts";
 export {
   type Comparison,
   compareFile,

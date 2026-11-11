@@ -387,6 +387,9 @@ importers:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../packages/testing/contracts
+      '@halonicjs/testing-parity':
+        specifier: workspace:*
+        version: link:../../packages/testing/parity
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec

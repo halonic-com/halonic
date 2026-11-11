@@ -7,6 +7,7 @@ import { parseAllowedDifferences, readAllowedDifferences } from "./allowed-diffe
 
 const file = fileURLToPath(new URL("../allowed-differences.json", import.meta.url));
 const packagesFolder = fileURLToPath(new URL("../../..", import.meta.url));
+const appsFolder = fileURLToPath(new URL("../../../../apps", import.meta.url));
 
 /** The subfolders of a folder, as full paths. */
 function subfolders(folder: string): string[] {
@@ -24,12 +25,26 @@ function markdownFiles(folder: string): string[] {
   }
 }
 
-/** Adds the "# <id>" heading of each requirements/*.md file in a package to `ids`. */
+/** The subfolders of a folder, or none when the folder doesn't exist. */
+function subfoldersIfAny(folder: string): string[] {
+  try {
+    return subfolders(folder);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Adds the "# <id>" heading of each requirements/*.md file in a package to
+ * `ids`, and of each command's own, in src/commands/<command>/requirements.
+ */
 function addRequirementIds(pkg: string, ids: Set<string>): void {
-  const folder = join(pkg, "requirements");
-  for (const name of markdownFiles(folder)) {
-    const heading = /^# (\S+)/.exec(readFileSync(join(folder, name), "utf8"));
-    if (heading?.[1]) ids.add(heading[1]);
+  const commands = subfoldersIfAny(join(pkg, "src", "commands"));
+  for (const folder of [pkg, ...commands].map((place) => join(place, "requirements"))) {
+    for (const name of markdownFiles(folder)) {
+      const heading = /^# (\S+)/.exec(readFileSync(join(folder, name), "utf8"));
+      if (heading?.[1]) ids.add(heading[1]);
+    }
   }
 }
 
@@ -39,6 +54,7 @@ function requirementIds(): Set<string> {
   for (const group of subfolders(packagesFolder)) {
     for (const pkg of subfolders(group)) addRequirementIds(pkg, ids);
   }
+  for (const app of subfolders(appsFolder)) addRequirementIds(app, ids);
   return ids;
 }
 
@@ -72,6 +88,11 @@ verifies("parity.allowed-differences-checked", () => {
     expect(() => parseAllowedDifferences([{ ...difference, requirement: "run-store" }])).toThrow(
       /requirement "run-store" must look like "package.name"/,
     );
+  });
+
+  it("reads a requirement ID with a command's folders, such as cli.commands.test.run-tests", () => {
+    const nested = { ...difference, requirement: "cli.commands.test.run-tests" };
+    expect(parseAllowedDifferences([nested])).toEqual([nested]);
   });
 
   it("refuses an empty explanation", () => {
@@ -123,6 +144,27 @@ verifies("parity.allowed-differences-checked", () => {
     );
   });
 
+  it("reads the CLI rules an entry names, and refuses one the compare doesn't have", () => {
+    const withRules = { ...difference, cliRules: ["output-words", "run-ids-by-start"] };
+    expect(parseAllowedDifferences([withRules])).toEqual([withRules]);
+    expect(() => parseAllowedDifferences([{ ...difference, cliRules: ["words"] }])).toThrow(
+      /unknown CLI rule "words" \(rules: output-words, /,
+    );
+    expect(() => parseAllowedDifferences([{ ...difference, cliRules: [] }])).toThrow(
+      /"cliRules" must list at least one rule/,
+    );
+  });
+
+  it("refuses a CLI rule two entries name, but lets a run rule of the same id be named apart", () => {
+    const first = { ...difference, runRules: ["run-ids-by-start"] };
+    const second = { ...difference, id: "another-difference", cliRules: ["run-ids-by-start"] };
+    expect(parseAllowedDifferences([first, second])).toEqual([first, second]);
+    const third = { ...second, id: "a-third-difference" };
+    expect(() => parseAllowedDifferences([first, second, third])).toThrow(
+      /allowed difference 3: CLI rule "run-ids-by-start" is listed twice/,
+    );
+  });
+
   it("refuses a file that isn't a list", () => {
     expect(() => parseAllowedDifferences({ differences: [] })).toThrow(/must hold a list/);
   });
@@ -160,6 +202,12 @@ verifies("parity.allowed-differences-checked", () => {
       "events.workflow-finished-context",
       "events.summary-approvals-and-signals",
       "engine.foreach-state",
+      "cli.messages",
+      "cli.exit-codes",
+      "cli.commands.test.run-tests",
+      "events.run-failed-reason",
+      "engine.task-json-answer",
+      "engine.budget-composite-stops",
     ]);
   });
 

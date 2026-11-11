@@ -11,6 +11,10 @@
       "billing/invoice/a rejection with a comment ends in rejected",
       "billing/invoice/an approval nobody answers expires after two days",
       "billing/invoice/without a decision the run waits"
+    ],
+    "calls": [
+      "run an agent with the echo model",
+      "run a foreach over a nested workflow"
     ]
   },
   {
@@ -34,6 +38,16 @@
     "new": "The engine writes neither.",
     "tests": [
       "billing/invoice/an approved invoice is paid and announced"
+    ]
+  },
+  {
+    "id": "run-starts-with-signed-out-connector",
+    "task": "HAL-5285",
+    "area": "CLI runs: a connector that isn't signed in",
+    "old": "784f78d's studio run refused to start the invoice workflow, whose hub has a Google connector for billing@example.com that wasn't signed in: \"Not started: Sign in billing@example.com first (Inbox).\", exit code 1, no run stored.",
+    "new": "halonic run starts the run without the connector's tools and stores it; with the echo model it then fails at the lines step, whose checker doesn't answer JSON.",
+    "calls": [
+      "run with a signed-out connector"
     ]
   }
 ]
