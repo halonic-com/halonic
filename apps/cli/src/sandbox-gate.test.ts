@@ -261,7 +261,7 @@ verifies("cli.sandbox-gate", () => {
       expect(exitCodeOfError(error)).toBe(9);
       expect(printed(error)).toEqual([
         "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
-        "  The sandbox's one-time setup isn't done for this version of Halonic. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there.",
+        "  The sandbox's one-time setup isn't done for this version of Halonic. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there, then run it again.",
         "  More: https://docs.halonic.com/sandbox (setup-needed)",
       ]);
     });

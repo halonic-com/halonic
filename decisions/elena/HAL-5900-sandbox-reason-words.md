@@ -39,6 +39,9 @@ the meanings in the design (HAL-3779 section 2.5) and these rules:
   where another can't (onboarding's "You can use another option instead").
 - `wsl-missing` says `wsl --install --no-distribution`: plain `wsl --install` also installs
   Ubuntu and asks for a Linux user, which Halonic's own Linux system doesn't need.
+- Every line of a refused `run` whose fix the person does first ends with "then run it again",
+  after any note such as the virtual machine one, so the three Studio-setup fixes read alike
+  (Liam's review, HAL-5926).
 
 ## `runnerFence` on Windows keeps `windows`
 
