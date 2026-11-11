@@ -127,19 +127,20 @@ verifies("mcp.http-transport", () => {
     const typed = (text: string, type: string) =>
       new Response(text, { headers: { "content-type": type } });
 
+    /** Text that stands for the server's own words: no error may repeat it. */
+    const serverText = "sk-acme-secret";
+    const overLimit = `${serverText} ${"x".repeat(5000)}`;
+
     it.each([
-      ["a JSON answer over the limit", () => Response.json({ text: "x".repeat(5000) })],
-      ["an event over the limit", () => eventStreamResponse([{ text: "x".repeat(5000) }])],
-      [
-        "an unended line over the limit",
-        () => typed(`data: ${"x".repeat(5000)}`, "text/event-stream"),
-      ],
-      ["an answer that isn't JSON", () => typed("<html>", "application/json")],
-      ["an answer of another type", () => typed("hi", "text/plain")],
-    ])("refuses %s", async (_name, answer) => {
-      await expect(collect(transportFor(answering(answer)).send(listTools))).rejects.toMatchObject({
-        code: "unexpected-response",
-      });
+      ["a JSON answer over the limit", () => Response.json({ text: overLimit })],
+      ["an event over the limit", () => eventStreamResponse([{ text: overLimit }])],
+      ["an unended line over the limit", () => typed(`data: ${overLimit}`, "text/event-stream")],
+      ["an answer that isn't JSON", () => typed(`<html>${serverText}`, "application/json")],
+      ["an answer of another type", () => typed(serverText, "text/plain")],
+    ])("refuses %s without the server's text", async (_name, answer) => {
+      const failure = collect(transportFor(answering(answer)).send(listTools));
+      await expect(failure).rejects.toMatchObject({ code: "unexpected-response" });
+      await expect(failure).rejects.not.toThrow(serverText);
     });
   });
 

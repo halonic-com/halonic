@@ -55,11 +55,11 @@ export async function* eventData(
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) return;
-      for (const line of lines.read(value)) {
+      for (const line of done ? lines.end() : lines.read(value)) {
         const data = event.read(line);
         if (data !== undefined) yield data;
       }
+      if (done) return;
       if (lines.restLength > maxMessageBytes) throw tooLarge(maxMessageBytes);
     }
   } finally {
@@ -87,6 +87,16 @@ class LineSplitter {
     const lines = text.split(/\r\n|\r|\n/);
     this.#rest = (lines.pop() ?? "") + heldCr;
     return lines;
+  }
+
+  /**
+   * The line a CR held back at the end of the stream completes. A line
+   * without an end is dropped, as the spec drops the event it belongs to.
+   */
+  end(): string[] {
+    const text = this.#rest + this.#decoder.decode();
+    this.#rest = "";
+    return text.endsWith("\r") ? [text.slice(0, -1)] : [];
   }
 }
 
