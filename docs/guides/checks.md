@@ -726,7 +726,7 @@ requirement guard, and the workflow lint unless the group changes
 | Tauri shell (Rust checks) | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny` |
 | Tauri shell on Windows | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths |
 | Coverage floors | pull requests only: `pnpm check:coverage-floors`; the `coverage-floor-lowered` label allows a lower floor |
-| Sandbox fence | when the sandbox adapter changes: bubblewrap (Linux) and Seatbelt (macOS) fence tests, and canary probes on Windows (required; it retries only when the probes didn't run) |
+| Sandbox fence | when `sandbox-srt`, the integration runner, the integration kit or the ports change: bubblewrap (Linux) and Seatbelt (macOS) fence tests for `sandbox-srt` and the integration runner, and canary probes on Windows (required; it retries only when the probes didn't run) |
 | Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows. The Windows leg also tests the changed packages (and their dependants) among those that touch paths, files and processes, such as the CLI, the agent host and the file and system adapters |
 | Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows, runs it and reports its size |
 | Keychain contract on macOS | when `apps/studio/src-tauri` changes: the keychain crate's contract test against a real macOS Keychain |

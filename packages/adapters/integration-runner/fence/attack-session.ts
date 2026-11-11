@@ -6,9 +6,10 @@
 // integration has once it gets past the module hook and Node's layer.
 //
 // An attack script prints one JSON object: for each attempt its name and
-// whether it was `refused` or `allowed`, with the error code or what it got.
-// So a test can tell an attempt that ran and was refused from one that never
-// ran (HAL-180 finding 13).
+// whether it was `refused`, `allowed` or `timed out`, with the error code or
+// what it got. So a test can tell an attempt that ran and was refused from one
+// that never ran (HAL-180 finding 13). A timeout is not a refusal: the request
+// may have left and gone unanswered, so it never counts as `refused`.
 
 import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -27,8 +28,8 @@ export type NodeLayer = "on" | "off";
 
 /** What happened to one attempt. */
 export interface Attempt {
-  readonly outcome: "refused" | "allowed";
-  /** The error code when refused, or what the attempt got when allowed. */
+  readonly outcome: "refused" | "allowed" | "timed out";
+  /** The error code when refused or timed out, or what the attempt got when allowed. */
   readonly detail: string;
 }
 
@@ -42,16 +43,22 @@ export interface AttackResult {
 /**
  * The helper every attack script starts with. `attempt` runs one try and
  * records `allowed` with what it got, or `refused` with the error's code.
+ * An error a script raises with the code `TIMEOUT`, or an abort signal's
+ * `TimeoutError`, is recorded as `timed out` instead.
  * The script prints the record when it ends.
  */
 const attemptHelper = `
 const attempts = {};
+function timedOut(error) {
+  return [error, error?.cause].some((e) => e?.code === "TIMEOUT" || e?.name === "TimeoutError");
+}
 async function attempt(name, run) {
   try {
     const got = await run();
     attempts[name] = { outcome: "allowed", detail: String(got).slice(0, 200) };
   } catch (error) {
-    attempts[name] = { outcome: "refused", detail: String(error?.code ?? error?.cause?.code ?? error?.message ?? error) };
+    const detail = String(error?.code ?? error?.cause?.code ?? error?.message ?? error);
+    attempts[name] = { outcome: timedOut(error) ? "timed out" : "refused", detail };
   }
 }
 process.on("beforeExit", () => {

@@ -320,8 +320,13 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
     expect(attempts["agent socket"]?.outcome).toBe("refused");
     expect(attempts["agent socket"]?.detail).not.toContain(canary);
     expect(agentConnections).toBe(connectionsBefore);
-    // Missing where Docker isn't installed; refused either way.
-    expect(attempts["docker socket"]?.outcome).toBe("refused");
+    // Where Docker isn't installed the socket is missing, and a refusal says
+    // nothing about the fence, so it counts only where the socket is there
+    // (Linux CI runners). There bubblewrap hides `/var/run`, so `ENOENT` is
+    // the fence's answer too.
+    if (existsSync(dockerSocket)) {
+      expect(attempts["docker socket"]?.outcome).toBe("refused");
+    }
   });
 });
 

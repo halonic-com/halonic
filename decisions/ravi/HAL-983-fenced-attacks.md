@@ -13,6 +13,9 @@
   changes.
 - `packages/adapters/integration-runner/fence/runner-attacks.test.ts` skips one block,
   attack case A36, everywhere but macOS (`describe.skipIf(!isMac)`).
+- `packages/adapters/integration-runner` gets `@halonicjs/adapter-sandbox-srt` as a
+  devDependency, so its fence tests can open real srt sessions. It is our own package; nothing
+  from outside comes in with it.
 
 ## Why
 
@@ -23,7 +26,27 @@ runner's fence tests run there, next to `sandbox-srt`'s own, and not in `pnpm te
 A36 asks securityd for a keychain item through the system's `security` tool. Keychains and
 securityd exist only on macOS. On Linux the same attack goes to the Secret Service over a
 D-Bus socket in a socket folder, which A35 (sockets on disk) and A17 (no bus address in the
-environment) already cover in the same file, so the skip leaves no platform untested.
+environment) cover in the same file.
+
+## Known gaps
+
+Corrected in [HAL-6301](/HAL/issues/HAL-6301). This note first said the A36 skip "leaves no
+platform untested". That was wrong: the first A36 named the keychain by its path in the hidden
+home folder, so the file fence refused it and securityd was never asked, and any error counted
+as a refusal. The cases below pass because they expect what happens today, so a fix in either
+direction fails them and the gap stays written down.
+
+- **A36, macOS, Node's layer off:** asked by name, without a path, securityd hands the keychain
+  item out inside the fence. srt 0.0.81 always allows `com.apple.SecurityServer` and
+  `com.apple.securityd.xpc` and can't be told not to. The case expects `allowed` until
+  `sandbox-srt` denies those services ([HAL-6346](/HAL/issues/HAL-6346)), which must land
+  before I5 ships.
+- **A12, Node's layer off:** srt leaves reads open apart from the hidden folders, so a file
+  outside the home and socket folders is readable, although the design says it must be refused.
+  The case expects `allowed` with the layer off.
+- **Only Node's layer stops these:** with the layer off, A14 starts a process, and A15 starts a
+  worker and creates a WASI instance, and its add-on attempt reaches the loader. The fence still
+  holds what they run (A4, A12, A13), but nothing below Node refuses the start itself.
 
 ## Covers
 
