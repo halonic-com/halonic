@@ -12,8 +12,8 @@ export const recentPlacesKept = 50;
 /**
  * The places opened lately in one workspace, the latest first, for the palette's Recent group and
  * its ranking. A place counts as opened when it becomes what the active tab shows, so going Back
- * to it counts too. Each place is listed once, and a rename on a tab renames it here as well.
- * The list lives as long as the workspace is open.
+ * to it counts too. Each place is listed once, and `TabSet.rename` renames it here as well, even
+ * when its tab was closed. The list lives as long as the workspace is open.
  *
  * @example
  * const recent = new RecentPlaces(workspace.tabs);
@@ -22,11 +22,14 @@ export const recentPlacesKept = 50;
 export class RecentPlaces {
   private current: readonly TabLocation[];
   private readonly listeners = new Set<() => void>();
-  private readonly stopFollowing: () => void;
+  private readonly stopFollowing: (() => void)[];
 
   constructor(tabs: TabSet) {
     this.current = [shownBy(tabs.state)];
-    this.stopFollowing = tabs.subscribe(() => this.follow(tabs.state));
+    this.stopFollowing = [
+      tabs.subscribe(() => this.change(withVisit(this.current, shownBy(tabs.state)))),
+      tabs.subscribeToRenames((key, title) => this.change(renamed(this.current, key, title))),
+    ];
   }
 
   /** The places, the latest first. Every change makes a new list, so React can compare it. */
@@ -41,13 +44,15 @@ export class RecentPlaces {
 
   /** Stops following the tabs, when the workspace closes. */
   dispose(): void {
-    this.stopFollowing();
+    for (const stop of this.stopFollowing) {
+      stop();
+    }
     this.listeners.clear();
   }
 
-  private follow(state: TabSetState): void {
-    const next = renamedFrom(state, withVisit(this.current, shownBy(state)));
-    if (!sameList(next, this.current)) {
+  /** Keeps `next` and tells the listeners, when it isn't the list already kept. */
+  private change(next: readonly TabLocation[]): void {
+    if (next !== this.current) {
       this.current = next;
       for (const listener of this.listeners) {
         listener();
@@ -75,21 +80,14 @@ export function withVisit(
   return [location, ...others].slice(0, recentPlacesKept);
 }
 
-/** The list with each place's title as the tabs name it now, so a rename shows here too. */
-function renamedFrom(state: TabSetState, recent: readonly TabLocation[]): readonly TabLocation[] {
-  const titles = new Map<string, string>();
-  for (const tab of state.tabs) {
-    for (const place of tab.history) {
-      titles.set(place.key, place.title);
-    }
+/** The list with the place `key` titled `title`; the same list when nothing changes. */
+function renamed(
+  recent: readonly TabLocation[],
+  key: string,
+  title: string,
+): readonly TabLocation[] {
+  if (!recent.some((place) => place.key === key && place.title !== title)) {
+    return recent;
   }
-  const renamed = recent.map((place) => {
-    const title = titles.get(place.key);
-    return title === undefined || title === place.title ? place : { ...place, title };
-  });
-  return sameList(renamed, recent) ? recent : renamed;
-}
-
-function sameList(left: readonly TabLocation[], right: readonly TabLocation[]): boolean {
-  return left.length === right.length && left.every((place, index) => place === right[index]);
+  return recent.map((place) => (place.key === key ? { ...place, title } : place));
 }

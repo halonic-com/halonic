@@ -110,7 +110,8 @@ export function ShellPalette(props: ShellPaletteProps) {
 }
 
 /**
- * Opens the palette on Mod K (Ctrl K, or Cmd K on macOS), in the desktop app and served alike.
+ * Opens the palette on Mod K (Ctrl K, or Cmd K on macOS), in the desktop app and served alike, and
+ * on keyboard layouts without Latin letters too.
  * It is left alone while a modal dialog is open (the palette's own Mod K selects its words),
  * while an input method composes, and when a part of the page has already handled it.
  *
@@ -136,7 +137,20 @@ export function usePaletteKey(platform: KeyboardPlatform, open: () => void): voi
 function isPaletteKey(event: KeyboardEvent, platform: KeyboardPlatform): boolean {
   const mod = platform === "macos" ? event.metaKey : event.ctrlKey;
   const otherMod = platform === "macos" ? event.ctrlKey : event.metaKey;
-  return mod && !otherMod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k";
+  return mod && !otherMod && !event.shiftKey && !event.altKey && isKeyK(event);
+}
+
+const latinLetterPattern = /^[a-z]$/i;
+
+/**
+ * Whether the key pressed is K. Like the window's letter keys, it is read by the character it
+ * types, so K is K on Dvorak too, and the key that types T there stays Mod T. Only a key that
+ * types no Latin letter, as on a Russian or Greek layout, is read by its place on the keyboard.
+ */
+function isKeyK(event: KeyboardEvent): boolean {
+  return latinLetterPattern.test(event.key)
+    ? event.key.toLowerCase() === "k"
+    : event.code === "KeyK";
 }
 
 /** The place that shows an item a provider found, named as the row names it. */

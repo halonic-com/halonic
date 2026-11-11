@@ -77,7 +77,8 @@ there. Closing the active tab activates the one to its right, else
 its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
 last of up to 20 closed tabs with their history. `closeOthers` keeps one tab and closes the rest,
 which Ctrl Shift T brings back one by one in their places; `canReopenClosed` says whether any can
-come back. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
+come back. `rename` updates a place's title in every tab, closed ones too, and tells
+`subscribeToRenames` listeners, so a list that keeps places of its own renames them too. `back` and `forward` return `false`
 at either end. `activate`, `cycle` (Ctrl Tab, wraps), `activateAt` (`-1` is the last tab), `move` and
 `close` do what they say.
 
@@ -306,12 +307,14 @@ const content = paletteGroups({
 `ShellPalette` joins all of this to a workspace (`shell.palette-wiring`). It owns the words and asks
 the providers as they change through `usePaletteSearch`, which uses only the answer to the latest
 words and keeps what was found for earlier words while it waits. `RecentPlaces` follows a tab set:
-each place the active tab comes to show goes first, once, with the name its tab gives it now. A
+each place the active tab comes to show goes first, once, and a rename renames it there too, even
+after its tab was closed. A
 place or an item opens here, which closes the palette, or with Mod in a new tab through
 `openLocation`, which keeps the palette open and says "Opened _Refund checker_ in a new tab." An
 action closes the palette and runs with its own feature's context; one that fails shows the danger
 toast "Couldn't run _New agent_." with the reason from `errorMessageFor`. `usePaletteKey` opens it on
-Mod K, in the desktop app and served alike, but not over a modal dialog.
+Mod K, in the desktop app and served alike, but not over a modal dialog. K is read by the character
+it types, or by its place on the keyboard on a layout without Latin letters, such as Russian.
 
 ```tsx
 const [paletteOpen, setPaletteOpen] = useState(false);

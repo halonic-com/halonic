@@ -60,6 +60,7 @@ export class TabSet {
   private current: TabSetState;
   private readonly closed: { tab: WindowTab; index: number }[] = [];
   private readonly listeners = new Set<() => void>();
+  private readonly renameListeners = new Set<(key: string, title: string) => void>();
   private nextId = 1;
 
   constructor() {
@@ -81,6 +82,16 @@ export class TabSet {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Calls `listener` after every rename, also of a place no open tab shows, so a list that keeps
+   * places of its own, like the palette's recent places, can rename them too. Returns a function
+   * that stops it.
+   */
+  subscribeToRenames(listener: (key: string, title: string) => void): () => void {
+    this.renameListeners.add(listener);
+    return () => this.renameListeners.delete(listener);
   }
 
   /**
@@ -253,6 +264,9 @@ export class TabSet {
     const tabs = this.current.tabs.map((tab) => renamed(tab, key, title));
     if (tabs.some((tab, index) => tab !== this.current.tabs[index])) {
       this.update({ ...this.current, tabs });
+    }
+    for (const listener of this.renameListeners) {
+      listener(key, title);
     }
   }
 
