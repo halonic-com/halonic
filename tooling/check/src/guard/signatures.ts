@@ -1,6 +1,8 @@
 import { createHash, createPublicKey, type KeyObject, sign, verify } from "node:crypto";
 import { posix } from "node:path";
 import { expectedRequirementId, isRequirementFile } from "../lib/requirements.ts";
+import { isSourceFile, isTestFile } from "../lib/source-files.ts";
+import { findVerifiesCalls } from "../lib/verifies-calls.ts";
 import type { DecisionKind } from "./decision-notes.ts";
 
 /**
@@ -120,8 +122,10 @@ export function signedText(facts: SignedFacts): string {
 
 /**
  * The paths whose contents a note's signature covers: each Covers path as
- * written, and each covered requirement ID's file at the head (or, if the
- * head deleted it, at the merge base). An entry is a path when it has a
+ * written, each covered requirement ID's file at the head (or, if the
+ * head deleted it, at the merge base), and each test file at the head that
+ * calls `verifies()` with a covered ID, so removing or editing a test the
+ * note excuses breaks the signature. An entry is a path when it has a
  * `/` or names a file at the head or the base, as `turbo.json` does.
  */
 export function coveredPaths(
@@ -146,8 +150,27 @@ export function coveredPaths(
       const file = files.get(id) ?? baseFiles.get(id);
       paths.add(file ?? `requirement:${id}`);
     }
+    for (const file of testFilesVerifying(ids, git, head)) {
+      paths.add(file);
+    }
   }
   return [...paths];
+}
+
+/** The test files at `head` that call `verifies()` with one of the IDs. */
+function testFilesVerifying(ids: readonly string[], git: GitObjects, head: string): string[] {
+  const files: string[] = [];
+  for (const file of git.listFiles(head).filter((f) => isSourceFile(f) && isTestFile(f))) {
+    const text = git.readFile(head, file);
+    if (
+      text !== undefined &&
+      ids.some((id) => text.includes(id)) &&
+      findVerifiesCalls(file, text).some((call) => call.id !== undefined && ids.includes(call.id))
+    ) {
+      files.push(file);
+    }
+  }
+  return files;
 }
 
 /** The object ID at `head` of each covered path, `missing` when it's gone. */
