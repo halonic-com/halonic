@@ -274,9 +274,19 @@ async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<
 /** The flags that take inline code as their next argument: Node's `-e` and `-p`, and `-c` for Python and shells. */
 const INLINE_CODE_FLAGS = new Set(["-e", "--eval", "-p", "--print", "-c"]);
 
+/**
+ * Python flags that take the next argument as their value. In `python -W -c ""`
+ * the `-c` is the value of `-W`, so the `""` is the script, not inline code.
+ */
+const VALUE_FLAGS = new Set(["-W", "-X"]);
+
 /** Whether the argument at `index` is empty inline code, such as the `""` in `node -e ""`. */
 function isEmptyInlineCode(args: readonly string[], index: number): boolean {
-  return args[index] === "" && index > 0 && INLINE_CODE_FLAGS.has(args[index - 1] ?? "");
+  return (
+    args[index] === "" &&
+    INLINE_CODE_FLAGS.has(args[index - 1] ?? "") &&
+    !VALUE_FLAGS.has(args[index - 2] ?? "")
+  );
 }
 
 /** The real folder of the first of `paths` that is a file, or `null`. */
