@@ -103,10 +103,11 @@ export interface LocalExecutorOptions {
   ): Promise<Readonly<Record<string, Connector["tools"]>>>;
   /**
    * Whether the workspace is local only (`privacy.localOnly: true`, ADR
-   * 2026-11-08-local-first). Then nothing leaves this computer: a turn skips
-   * every model that isn't `local` before calling it, a run with no local
-   * model left fails with `local-only`, and only the connectors that are
-   * `local` are used.
+   * 2026-11-08-local-first). Then a turn in Halonic's own loop skips every
+   * model that isn't `local` before calling it, a run with no local model
+   * left fails with `local-only`, and only the connectors that are `local`
+   * are used. An agent that runs in a harness program (`runs.harnesses`)
+   * isn't covered yet: its turns run as before (HAL-5922).
    */
   readonly localOnly?: boolean;
 }
