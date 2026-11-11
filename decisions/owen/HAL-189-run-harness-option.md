@@ -4,6 +4,7 @@
 - Task: HAL-189, step 6b (the CLI side of `halonic run --harness`)
 - Approval: Liam's decision on HAL-3789 asks for `--harness` as an optional `harness` on `StartRunRequest`; the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xngGBc7NhuzhGBdfSpsPZxEZBwVfqA7jTwfD0FvCcugfB/z/mR/3CG7/KXkExza/U78xLPjl/KfJJXtYsNwQBg==
 
 ## What changes
 
