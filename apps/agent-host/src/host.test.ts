@@ -23,6 +23,7 @@ function windows(state: { installed: boolean; prompt?: "installed" | "cancelled"
       state.installed ||= answer === "installed";
       return answer;
     },
+    letSandboxReadParents: async () => undefined,
   };
 }
 

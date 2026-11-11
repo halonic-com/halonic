@@ -56,7 +56,7 @@ async function readSddl(folder: string, start: RunProgram): Promise<string> {
   try {
     const saved = join(scratch, "acl.txt");
     await start("icacls.exe", [folder, "/save", saved]);
-    return (await readFile(saved, "utf16le")).replace(/^﻿/, "");
+    return (await readFile(saved, "utf16le")).replace(/^\uFEFF/, "");
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }

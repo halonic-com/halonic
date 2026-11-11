@@ -56,7 +56,7 @@ describe("letSandboxReadParents", () => {
       const [folder = "", action, target = ""] = args;
       if (action === "/save") {
         const text = `${folder}\r\n${sddl[folder] ?? "D:AI"}\r\n`;
-        await writeFile(target, `﻿${text}`, "utf16le");
+        await writeFile(target, `\uFEFF${text}`, "utf16le");
       } else {
         grants.push(args);
       }
