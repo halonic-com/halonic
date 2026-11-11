@@ -3,6 +3,7 @@
 - Task: HAL-5407
 - Approval: Liam approves this note in review on the review task of HAL-5407
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KHIZ4hk/57wc+SYXccw6O/IjqC8m1+CKIziXvtW8VRkjMTswhP7HVNqgT8YxRLTnB90pMpH0T+gzb8tABezWCg==
 
 ## What changes
 
