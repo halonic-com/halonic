@@ -540,6 +540,9 @@ importers:
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../memory
+      '@halonicjs/adapter-sandbox-srt':
+        specifier: workspace:*
+        version: link:../sandbox-srt
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

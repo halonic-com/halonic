@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "dependencies": {
     "@halonicjs/adapter-mcp": "workspace:*",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

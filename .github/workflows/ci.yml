@@ -61,7 +61,7 @@ jobs:
         run: |
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
-            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|integration-runner)/|pnpm-lock\.yaml$)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|integration-runner|connector-stdio-sandbox)/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
@@ -1048,7 +1048,8 @@ jobs:
 
   sandbox-fence:
     # The real fence: the tests under packages/adapters/sandbox-srt/fence run
-    # the actual sandbox-runtime (bubblewrap) and try to get out. Ubuntu 24.04
+    # the actual sandbox-runtime (bubblewrap) and try to get out, and so does
+    # a plugin's local tool through connector-stdio-sandbox (HAL-1738). Ubuntu 24.04
     # refuses unprivileged user namespaces through AppArmor by default, so the
     # job adds the AppArmor profile for bwrap from the sandbox guide first, the
     # same fix we give users (HAL-6030), and leaves the restriction on for
@@ -1097,6 +1098,9 @@ jobs:
         # stops (I5 attack cases), with Node's layer on and off.
         working-directory: packages/adapters/integration-runner
         run: pnpm test:fence
+      - name: Local tool attacks through the fence
+        working-directory: packages/adapters/connector-stdio-sandbox
+        run: pnpm test:fence
 
   sandbox-fence-macos:
     # The same fence tests on macOS, where sandbox-runtime uses Seatbelt
@@ -1123,6 +1127,9 @@ jobs:
         # The built runner in a real session, and the escapes only the fence
         # stops (I5 attack cases), with Node's layer on and off.
         working-directory: packages/adapters/integration-runner
+        run: pnpm test:fence
+      - name: Local tool attacks through the fence
+        working-directory: packages/adapters/connector-stdio-sandbox
         run: pnpm test:fence
 
   sandbox-os:
