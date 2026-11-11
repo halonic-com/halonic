@@ -40,18 +40,22 @@ export async function snapshotCommit(
 
 /**
  * A file's text at a commit, or `null` when the commit has no such file.
+ * It checks the version and the path before it opens the repository, so a
+ * refused input never runs git.
  *
+ * @param open - opens the repository, which runs git to check it
  * @throws RangeError for a version that isn't a full commit id, a full id that
  *   names a tree or a file rather than a commit, or a path the port refuses
  * @throws Error `Unknown version <id>` when the repository has no such commit
  */
 export async function readAtCommit(
-  repository: Repository,
+  open: () => Promise<Repository>,
   version: string,
   path: string,
 ): Promise<string | null> {
   checkCommitId(version);
   checkPublicWorkspacePath(path);
+  const repository = await open();
   await checkKnownVersion(repository, version);
   const entry = (await filesAt(repository, version, path)).find((file) => file.path === path);
   if (entry === undefined) return null;
@@ -61,17 +65,19 @@ export async function readAtCommit(
 
 /**
  * Every public file under `dir` at a commit (the whole tree without one),
- * as sorted paths, or `null` when there is none.
+ * as sorted paths, or `null` when there is none. Like {@link readAtCommit},
+ * it checks its input before it opens the repository.
  *
  * @throws as {@link readAtCommit}
  */
 export async function listAtCommit(
-  repository: Repository,
+  open: () => Promise<Repository>,
   version: string,
   dir?: string,
 ): Promise<string[] | null> {
   checkCommitId(version);
   if (dir !== undefined) checkPublicWorkspacePath(dir);
+  const repository = await open();
   await checkKnownVersion(repository, version);
   const paths = (await filesAt(repository, version, dir))
     .map((file) => file.path)

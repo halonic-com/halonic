@@ -2,7 +2,7 @@ import { readdir, readFile, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   plainGit,
   repositoryWith,
@@ -145,6 +145,22 @@ verifies("git.vcs-versions", () => {
       await expect(vcs.readAt("HEAD", "a.yaml")).rejects.toThrow(RangeError);
       await expect(vcs.listAt("main")).rejects.toThrow(RangeError);
       await expect(vcs.readAt(await headOf(vcs), ".env")).rejects.toThrow(RangeError);
+    });
+
+    it("refuse an unsafe path or version before running git at all", async () => {
+      const { vcs } = await repoWith({ "a.yaml": "1\n" });
+      const head = await headOf(vcs);
+      const run = vi.spyOn(await runner(), "run");
+      try {
+        await expect(vcs.readAt(head, "../outside.yaml")).rejects.toThrow(RangeError);
+        await expect(vcs.readAt(head, ".git/config")).rejects.toThrow(RangeError);
+        await expect(vcs.readAt("HEAD", "a.yaml")).rejects.toThrow(RangeError);
+        await expect(vcs.listAt(head, "../outside")).rejects.toThrow(RangeError);
+        await expect(vcs.listAt("main")).rejects.toThrow(RangeError);
+        expect(run).not.toHaveBeenCalled();
+      } finally {
+        run.mockRestore();
+      }
     });
   });
 

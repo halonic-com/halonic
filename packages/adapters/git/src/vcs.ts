@@ -187,11 +187,11 @@ export class GitVcs implements Vcs {
   }
 
   async readAt(version: string, path: string): Promise<string | null> {
-    return readAtCommit(await this.#repository(), version, path);
+    return readAtCommit(() => this.#repository(), version, path);
   }
 
   async listAt(version: string, dir?: string): Promise<string[] | null> {
-    return listAtCommit(await this.#repository(), version, dir);
+    return listAtCommit(() => this.#repository(), version, dir);
   }
 
   async rename(from: string, to: string): Promise<void> {
