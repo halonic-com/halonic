@@ -161,11 +161,22 @@ verifies("profile.harness-settings-folder", () => {
     );
   });
 
-  it.each(["../writer", "Writer", "", "con", "a".repeat(65)])("refuses %j", async (badId) => {
+  it("accepts an id of 64 characters", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
-    expect(() => folders.harnessSettingsFolder(badId, "claude-code")).toThrow(RangeError);
-    expect(() => folders.harnessSettingsFolder("writer", badId)).toThrow(RangeError);
+    const longest = "a".repeat(64);
+    expect(folders.harnessSettingsFolder(longest, longest)).toBe(
+      `${folders.folder}/harness-settings/${longest}/${longest}`,
+    );
   });
+
+  it.each(["../writer", "Writer", "", "con", "a".repeat(65), "a/b", "a\\b", "c:", "c:writer"])(
+    "refuses %j",
+    async (badId) => {
+      const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+      expect(() => folders.harnessSettingsFolder(badId, "claude-code")).toThrow(RangeError);
+      expect(() => folders.harnessSettingsFolder("writer", badId)).toThrow(RangeError);
+    },
+  );
 
   it("names the kind of id it refuses", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);

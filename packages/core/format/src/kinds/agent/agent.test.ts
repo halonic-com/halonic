@@ -107,6 +107,33 @@ verifies("format.agent-file", () => {
     ]);
   });
 
+  it("accepts an agent id of 64 characters", () => {
+    const longest = "a".repeat(64);
+    expect(parsedValue("agent", yaml(`id: ${longest}`, "name: Long")).id).toBe(longest);
+  });
+
+  it("refuses an agent id over 64 characters, saying why", () => {
+    const problems = problemsOf("agent", yaml(`id: ${"a".repeat(65)}`, "name: Long"));
+    expect(summary(problems)).toEqual(["id too_big 1"]);
+    expect(problems[0]?.message).toContain("so the agent's folder fits in a Windows path");
+  });
+
+  it.each(["con", "prn", "aux", "nul", "com0", "com9", "lpt1"])(
+    "refuses the Windows device name %s as an agent id, saying why",
+    (deviceName) => {
+      const problems = problemsOf("agent", yaml(`id: ${deviceName}`, "name: D"));
+      expect(summary(problems)).toEqual(["id invalid_format 1"]);
+      expect(problems[0]?.message).toContain("Windows doesn't keep for a device");
+    },
+  );
+
+  it.each(["console", "auxiliary", "com10", "lpt", "nul-1"])(
+    "accepts %s, which only starts like a Windows device name",
+    (name) => {
+      expect(parsedValue("agent", yaml(`id: ${name}`, "name: N")).id).toBe(name);
+    },
+  );
+
   it("refuses a method without instructions", () => {
     const text = yaml("id: clerk", "name: Clerk", "methods:", "  extract:", "    input: [file]");
     expect(summary(problemsOf("agent", text))).toEqual([

@@ -12,30 +12,41 @@ export const id = s
   .regex(/^[a-z0-9][a-z0-9-_]*$/, "use lowercase letters, digits, '-' or '_'");
 
 /**
- * The most characters a deployment id may have. Each deployment's runs live
- * in a folder named after it (`deployments/<id>/runs` in the profile), and
- * 64 keeps that path well under Windows' 260-character limit.
+ * The most characters an id that names a folder may have. A deployment's runs
+ * live in `deployments/<id>/runs` and an agent's harness settings in
+ * `harness-settings/<id>/<harness>` in the profile, and 64 keeps those paths
+ * well under Windows' 260-character limit.
  */
-const DEPLOYMENT_ID_MAX_LENGTH = 64;
+const FOLDER_ID_MAX_LENGTH = 64;
 
 /** Names Windows keeps for devices, as pattern alternatives; no file or folder can have them. */
 const WINDOWS_DEVICE_NAMES = "con|prn|aux|nul|com[0-9]|lpt[0-9]";
 
 /**
- * A deployment's id: an {@link id} of at most 64 characters that isn't a
- * Windows device name, because it names the deployment's runs folder.
- * The device names are refused through a pattern, not a refinement, so the
- * JSON Schema carries the rule too.
+ * An {@link id} that names a folder in the profile: at most 64 characters
+ * and not a Windows device name. `owner` says whose folder it is in the
+ * message. The device names are refused through a pattern, not a
+ * refinement, so the JSON Schema carries the rule too. `@halonicjs/profile`
+ * keeps the same rule, and a test in each kind that uses it holds the two
+ * together.
  */
-export const deploymentId = id
-  .max(
-    DEPLOYMENT_ID_MAX_LENGTH,
-    `use at most ${DEPLOYMENT_ID_MAX_LENGTH} characters, so the deployment's folder fits in a Windows path`,
-  )
-  .regex(
-    new RegExp(`^(?!(?:${WINDOWS_DEVICE_NAMES})$)`),
-    "use a name Windows doesn't keep for a device (con, prn, aux, nul, com0-com9, lpt0-lpt9)",
-  );
+function folderId(owner: string) {
+  return id
+    .max(
+      FOLDER_ID_MAX_LENGTH,
+      `use at most ${FOLDER_ID_MAX_LENGTH} characters, so the ${owner}'s folder fits in a Windows path`,
+    )
+    .regex(
+      new RegExp(`^(?!(?:${WINDOWS_DEVICE_NAMES})$)`),
+      "use a name Windows doesn't keep for a device (con, prn, aux, nul, com0-com9, lpt0-lpt9)",
+    );
+}
+
+/** A deployment's id, which names the deployment's runs folder. */
+export const deploymentId = folderId("deployment");
+
+/** An agent's id, which names the agent's harness settings folder. */
+export const agentId = folderId("agent");
 
 /**
  * A workspace collection's id: lowercase letters, digits and `-`, starting

@@ -25,10 +25,11 @@ const workspacesFolderName = "workspaces";
 const keyLength = 32;
 
 /**
- * A deployment id, as `deployments.yaml` allows it: at most 64 characters,
- * which keeps the runs folder's path under Windows' 260-character limit.
- * The format's own test checks that both rules accept the same ids.
- * Agent and harness ids name folders too, so they follow the same rule.
+ * An id that names a folder: at most 64 characters, which keeps the path
+ * under Windows' 260-character limit. It is the rule the format gives
+ * deployment ids in `deployments.yaml` and agent ids in agent files, and the
+ * format's own tests check that both sides accept the same ids. Harness ids
+ * name folders too, so they follow the same rule.
  */
 const folderIdPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 

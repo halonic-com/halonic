@@ -1,5 +1,5 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
-import { collectionId, id, ModelParams, version } from "../../shared/fields.ts";
+import { agentId, collectionId, id, ModelParams, version } from "../../shared/fields.ts";
 import { AgentHarness, AllowedSite, MAX_ALLOWED_SITES, WorkingFolder } from "./sandbox-fields.ts";
 
 /** The shape of an agent's reply: free text, one of a list of options, or JSON. */
@@ -80,7 +80,7 @@ export const AgentCharacter = s
 export const Agent = s
   .object({
     version,
-    id,
+    id: agentId,
     name: s.string().min(1),
     description: s.string().optional(),
     /** Model alias (preferred) or "provider/model". */
