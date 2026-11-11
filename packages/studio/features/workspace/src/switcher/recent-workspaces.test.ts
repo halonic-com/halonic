@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { RECENT_WORKSPACES, type RecentStorage, RecentWorkspaces } from "./recent-workspaces.ts";
 
 /** A `localStorage` stand-in that keeps its items in a map. */
@@ -86,5 +86,35 @@ verifies("workspace.recent-workspaces", () => {
 
     expect(() => recent.remember(acme)).not.toThrow();
     expect(recent.list()).toEqual([]);
+  });
+
+  it("tells its listeners when the list changes, and not when storage refuses", () => {
+    let full = false;
+    const storage = memoryStorage();
+    const recent = new RecentWorkspaces({
+      getItem: (key) => storage.getItem(key),
+      setItem: (key, value) => {
+        if (full) {
+          throw new Error("QuotaExceededError");
+        }
+        storage.setItem(key, value);
+      },
+    });
+    const listener = vi.fn();
+    const stop = recent.subscribe(listener);
+
+    recent.remember(acme);
+    recent.forget(acme.location);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(recent.version).toBe(2);
+
+    full = true;
+    recent.remember(beta);
+    expect(recent.version).toBe(2);
+
+    full = false;
+    stop();
+    recent.remember(beta);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });

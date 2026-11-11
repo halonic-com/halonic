@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
+import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createShell } from "../shell.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { Welcome, type WelcomeOpenProblem } from "./welcome.tsx";
+import type { WelcomeOpenProblem } from "./cant-open.ts";
+import { Welcome } from "./welcome.tsx";
 import { WelcomeWindow } from "./welcome-window.tsx";
 
 afterEach(() => {
@@ -75,7 +77,11 @@ verifies("shell.welcome-cant-open", () => {
   it("says why under the text and lets the user try again", async () => {
     const root = render(
       <Welcome
-        onOpenFolder={async () => ({ folder: "/work/old", reason: "the folder is gone." })}
+        onOpenFolder={async () => ({
+          folder: "/work/old",
+          kind: "not_found",
+          reason: "the folder is gone.",
+        })}
       />,
     );
 
@@ -90,11 +96,40 @@ verifies("shell.welcome-cant-open", () => {
     const opener = pendingOpener();
     const root = render(<Welcome onOpenFolder={opener.onOpenFolder} />);
     await act(async () => openButton(root).click());
-    await opener.finish({ folder: "/work/old", reason: "the folder is gone." });
+    await opener.finish({ folder: "/work/old", kind: "not_found", reason: "the folder is gone." });
 
     await act(async () => openButton(root).click());
     expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
     await opener.finish();
+  });
+
+  it("offers Copy details only when Halonic can't explain the reason", async () => {
+    const writeClipboard = vi.fn(async () => true);
+    const opener = pendingOpener();
+    const root = render(
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <Welcome onOpenFolder={opener.onOpenFolder} />
+      </ClipboardProvider>,
+    );
+    const copyLink = () =>
+      [...root.querySelectorAll("button")].find((each) => each.textContent === "Copy details");
+
+    await act(async () => openButton(root).click());
+    await opener.finish({ folder: "/work/old", kind: "not_found", reason: "the folder is gone." });
+    expect(copyLink()).toBeUndefined();
+
+    await act(async () => openButton(root).click());
+    await opener.finish({
+      folder: "/work/old",
+      kind: "internal",
+      reason: "Halonic ran into a problem it can't explain yet.",
+      details: "Can't open /work/old\nTypeError: x is undefined",
+    });
+    expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+      "Can't open /work/old: Halonic ran into a problem it can't explain yet.",
+    );
+    await act(async () => copyLink()?.click());
+    expect(writeClipboard).toHaveBeenCalledWith("Can't open /work/old\nTypeError: x is undefined");
   });
 });
 

@@ -1,3 +1,4 @@
+import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -105,48 +106,122 @@ verifies("workspace.failed-open-leaves-no-slot", () => {
   it("adds no slot for a folder that fails, and says why", async () => {
     const { switcher } = setup({
       openFolder: async () => {
-        throw new Error("the folder is gone");
+        throw new KindedError("not_found", "No folder /work/old");
       },
     });
 
     expect(await switcher.openLocation("/work/old")).toEqual({
       folder: "/work/old",
+      kind: "not_found",
       reason: "the folder is gone.",
     });
     expect(switcher.open.all).toEqual([]);
     expect(switcher.recent.list()).toEqual([]);
   });
 
-  it("says why when the picker itself fails", async () => {
+  it("says why when the picker itself fails, with details when it can't explain", async () => {
     const { switcher } = setup({
       pickFolder: async () => {
-        throw "The folder picker didn't open.";
+        throw "pick_folder: no window";
       },
     });
 
-    expect(await switcher.pickAndOpen()).toEqual({
+    expect(await switcher.pickAndOpen()).toMatchObject({
       folder: "the folder",
-      reason: "The folder picker didn't open.",
+      kind: "internal",
+      reason: "Halonic ran into a problem it can't explain yet.",
+      details: "Can't open the folder\nThrown: pick_folder: no window",
     });
   });
 
-  it("shows a failure from the workspace menu as an error toast over the shown workspace", async () => {
+  it("shows a failure from the workspace menu as a danger toast over the shown workspace", async () => {
     const { switcher, toasts } = setup({
       openFolder: async (location) => {
-        if (location === "/missing") {
-          throw new Error("No folder /missing");
+        if (location === "/locked") {
+          throw new KindedError("denied", "No access");
         }
         return opened("acme");
       },
     });
     await switcher.openLocation("/work/acme");
 
-    await switcher.fromMenu(() => switcher.openLocation("/missing"));
+    await switcher.fromMenu(() => switcher.openLocation("/locked"));
     expect(switcher.open.shown?.location).toBe("/work/acme");
-    expect(toasts.list().at(-1)).toMatchObject({
+    const toast = toasts.list().at(-1);
+    expect(toast).toMatchObject({
       tone: "danger",
-      title: "Can't open /missing: No folder /missing.",
+      title: "Can't open /locked: you don't have permission to read it.",
     });
+    expect(toast?.action).toBeUndefined();
+  });
+
+  it("offers Remove from Recent when a Recent row's folder is gone", async () => {
+    const { switcher, toasts } = setup({
+      openFolder: async (location) => {
+        if (location === "/work/old") {
+          throw new KindedError("not_found", "No folder /work/old");
+        }
+        return opened(folderName(location));
+      },
+    });
+    switcher.recent.remember({ location: "/work/old", name: "old" });
+    await switcher.openLocation("/work/acme");
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/old"), true);
+    const toast = toasts.list().at(-1);
+    expect(toast?.title).toBe("Can't open /work/old: the folder is gone.");
+    expect(toast?.action?.label).toBe("Remove from Recent");
+    expect(switcher.recent.list().map((each) => each.location)).toContain("/work/old");
+
+    toast?.action?.onClick();
+    expect(switcher.recent.list().map((each) => each.location)).toEqual(["/work/acme"]);
+  });
+
+  it("offers no Remove from Recent for a picked folder that's gone", async () => {
+    const { switcher, toasts } = setup({
+      pickFolder: async () => "/work/old",
+      openFolder: async () => {
+        throw new KindedError("not_found", "No folder /work/old");
+      },
+    });
+
+    await switcher.fromMenu(() => switcher.pickAndOpen());
+    expect(toasts.list().at(-1)?.action).toBeUndefined();
+  });
+
+  it("says the engine's own reason for any other kind", async () => {
+    const { switcher, toasts } = setup({
+      openFolder: async () => {
+        throw new KindedError("unavailable", "The engine isn't answering");
+      },
+    });
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/acme"));
+    expect(toasts.list().at(-1)?.title).toBe("Can't open /work/acme: The engine isn't answering.");
+  });
+
+  it("offers Copy details when it can't explain the failure", async () => {
+    const writeText = vi.fn(async () => {});
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const { switcher, toasts } = setup({
+      openFolder: async () => {
+        throw new TypeError("services is undefined");
+      },
+    });
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/acme"));
+    const toast = toasts.list().at(-1);
+    expect(toast?.title).toBe(
+      "Can't open /work/acme: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(toast?.action?.label).toBe("Copy details");
+
+    toast?.action?.onClick();
+    await vi.waitFor(() => expect(titles(toasts)).toContain("Copied. Paste it into a bug report."));
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining("Can't open /work/acme\nTypeError: services is undefined"),
+    );
+    vi.unstubAllGlobals();
   });
 });
 

@@ -30,6 +30,8 @@ const storageKey = "halonic.workspace.recent";
  */
 export class RecentWorkspaces {
   readonly #storage: RecentStorage;
+  readonly #listeners = new Set<() => void>();
+  #version = 0;
 
   constructor(storage: RecentStorage) {
     this.#storage = storage;
@@ -57,11 +59,29 @@ export class RecentWorkspaces {
     this.#write(this.list().filter((each) => each.location !== location));
   }
 
+  /** Goes up by one on every change, so a screen can tell the list changed without reading it. */
+  get version(): number {
+    return this.#version;
+  }
+
+  /** Calls `listener` after every change; returns the way to stop. */
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
+  }
+
   #write(list: readonly RememberedWorkspace[]): void {
     try {
       this.#storage.setItem(storageKey, JSON.stringify(list.slice(0, RECENT_WORKSPACES)));
     } catch {
       // Full or blocked storage: Recent keeps what it had.
+      return;
+    }
+    this.#version += 1;
+    for (const listener of this.#listeners) {
+      listener();
     }
   }
 }

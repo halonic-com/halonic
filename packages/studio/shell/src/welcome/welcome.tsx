@@ -1,11 +1,8 @@
-import { Button } from "@halonicjs/studio-kit";
+import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
-
-/** Why a folder didn't open: its folder as the user knows it and the reason, "the folder is gone." */
-export interface WelcomeOpenProblem {
-  readonly folder: string;
-  readonly reason: string;
-}
+import { copyDetailsWords } from "../errors/copy-details-words.ts";
+import { useCopyDetails } from "../page/copy-details.ts";
+import type { WelcomeOpenProblem } from "./cant-open.ts";
 
 /** Props for {@link Welcome}. */
 export interface WelcomeProps {
@@ -21,7 +18,8 @@ export interface WelcomeProps {
  * Studio", what a workspace is, and **Open folder**, the one primary button, centred with no
  * sidebar and no tabs. While the folder opens the button reads "Opening…" and is busy: it keeps
  * focus and ignores presses. A folder that fails to open says why under the text in the danger
- * colour, and the button works again (`shell.welcome.cant-open`). Cancelling the picker changes
+ * colour, and the button works again (`shell.welcome.cant-open`); a reason Halonic can't explain
+ * comes with **Copy details**. Cancelling the picker changes
  * nothing. Focus starts on **Open folder** (accessibility pass 1.3).
  *
  * @example
@@ -31,6 +29,7 @@ export function Welcome({ onOpenFolder }: WelcomeProps) {
   const [opening, setOpening] = useState(false);
   const [problem, setProblem] = useState<WelcomeOpenProblem | undefined>(undefined);
   const openButton = useRef<HTMLButtonElement>(null);
+  const copyDetails = useCopyDetails();
   useEffect(() => {
     openButton.current?.focus();
   }, []);
@@ -68,6 +67,15 @@ export function Welcome({ onOpenFolder }: WelcomeProps) {
         <p role="alert" className="text-body text-danger empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
         </p>
+        {problem?.details === undefined ? null : (
+          <button
+            type="button"
+            className={`text-body ${inlineLinkClasses}`}
+            onClick={() => copyDetails(problem.details ?? "")}
+          >
+            {copyDetailsWords.label}
+          </button>
+        )}
       </div>
     </div>
   );

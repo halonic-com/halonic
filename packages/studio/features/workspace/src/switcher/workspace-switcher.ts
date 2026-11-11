@@ -1,5 +1,11 @@
-import type { ToastStore } from "@halonicjs/studio-kit";
-import type { StudioWorkspace, WelcomeOpenProblem } from "@halonicjs/studio-shell";
+import type { ToastAction, ToastStore } from "@halonicjs/studio-kit";
+import {
+  cantOpenProblem,
+  copyDetails,
+  copyDetailsWords,
+  type StudioWorkspace,
+  type WelcomeOpenProblem,
+} from "@halonicjs/studio-shell";
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
 
@@ -17,7 +23,10 @@ export interface OpenedWorkspace {
 export interface WorkspaceSwitcherOptions {
   /** Shows the folder picker; resolves with the folder's location, or `undefined` when cancelled. */
   readonly pickFolder: () => Promise<string | undefined>;
-  /** Opens the workspace in a folder; rejects with why it can't. */
+  /**
+   * Opens the workspace in a folder; rejects with why it can't, a `not_found` or `denied` kind for
+   * a folder that's gone or can't be read.
+   */
   readonly openFolder: (location: string) => Promise<OpenedWorkspace>;
   readonly recent: RecentWorkspaces;
   /** The window's toasts, for "Opened Acme" and a menu's failed open. */
@@ -59,7 +68,7 @@ export class WorkspaceSwitcher {
       const location = await this.#options.pickFolder();
       return location === undefined ? undefined : await this.#open(location);
     } catch (error) {
-      return { folder: "the folder", reason: reasonOf(error) };
+      return cantOpenProblem("the folder", error);
     } finally {
       this.#busy = false;
     }
@@ -80,16 +89,24 @@ export class WorkspaceSwitcher {
 
   /**
    * As {@link pickAndOpen} or {@link openLocation} from the workspace menu: a folder that fails
-   * to open says why in an error toast over the workspace still shown.
+   * to open says why in a danger toast over the workspace still shown, which stays until closed
+   * (states-flow-map E1 to E4). A Recent row whose folder is gone offers **Remove from Recent**
+   * (E2); a reason Halonic can't explain offers **Copy details** (E4).
    */
-  async fromMenu(open: () => Promise<WelcomeOpenProblem | undefined>): Promise<void> {
+  async fromMenu(
+    open: () => Promise<WelcomeOpenProblem | undefined>,
+    fromRecent = false,
+  ): Promise<void> {
     const problem = await open();
-    if (problem !== undefined) {
-      this.#options.toasts.show({
-        tone: "danger",
-        title: `Can't open ${problem.folder}: ${problem.reason}`,
-      });
+    if (problem === undefined) {
+      return;
     }
+    const action = this.#cantOpenAction(problem, fromRecent);
+    this.#options.toasts.show({
+      tone: "danger",
+      title: `Can't open ${problem.folder}: ${problem.reason}`,
+      ...(action === undefined ? {} : { action }),
+    });
   }
 
   /** Closes the shown workspace and stops its services (`workspace.switcher.close-keeps-a-slot`). */
@@ -129,11 +146,24 @@ export class WorkspaceSwitcher {
     try {
       opened = await this.#options.openFolder(location);
     } catch (error) {
-      return { folder: location, reason: reasonOf(error) };
+      return cantOpenProblem(location, error);
     }
     this.open.add(location, opened);
     this.#remember();
     this.#options.toasts.show({ tone: "success", title: `Opened ${opened.name}` });
+    return undefined;
+  }
+
+  /** The failed open's toast action: Copy details, Remove from Recent, or none. */
+  #cantOpenAction(problem: WelcomeOpenProblem, fromRecent: boolean): ToastAction | undefined {
+    const { details } = problem;
+    if (details !== undefined) {
+      const { toasts } = this.#options;
+      return { label: copyDetailsWords.label, onClick: () => void copyDetails(details, toasts) };
+    }
+    if (fromRecent && problem.kind === "not_found") {
+      return { label: removeFromRecent, onClick: () => this.recent.forget(problem.folder) };
+    }
     return undefined;
   }
 
@@ -145,11 +175,8 @@ export class WorkspaceSwitcher {
   }
 }
 
-/** The reason in "Can't open *folder*: *reason*", from what the opener rejected with. */
-function reasonOf(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.endsWith(".") ? message : `${message}.`;
-}
+/** The toast action that drops a Recent row whose folder is gone (microcopy 3.2). */
+const removeFromRecent = "Remove from Recent";
 
 /**
  * A workspace's name from its folder's location, until the workspace's own name is read from its

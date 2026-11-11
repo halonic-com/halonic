@@ -35,6 +35,11 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     (onChange) => open.subscribe(onChange),
     () => open.shown,
   );
+  // The menu reads Recent as it draws, so a row removed from a toast goes at once.
+  useSyncExternalStore(
+    (onChange) => switcher.recent.subscribe(onChange),
+    () => switcher.recent.version,
+  );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const position = workspaceKeyPosition(event, platform);
@@ -61,7 +66,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     open: open.all.map((slot) => slot.location),
     shown: shown.location,
     platform,
-    onOpen: (location) => void switcher.fromMenu(() => switcher.openLocation(location)),
+    onOpen: (location) => void switcher.fromMenu(() => switcher.openLocation(location), true),
     onOpenFolder: () => void switcher.fromMenu(() => switcher.pickAndOpen()),
     onClose: () => void switcher.closeShown(),
   });
