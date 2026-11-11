@@ -45,6 +45,7 @@ merged). Run `pwsh windows/build-installer.ps1` in `src-tauri` on Windows x64:
 it builds the agent host as one executable, builds the installer with
 `tauri.installer.conf.json` (kept apart so plain `cargo` builds don't need the
 host binary) and leaves `dist/Halonic-<version>-windows-x64-setup.exe` at the
-repo root. It installs per user, with no admin rights. The `installer-windows`
+repo root. It installs per user, with no admin rights, and puts the repo's
+`LICENSE` and `NOTICE` next to the app. The `installer-windows`
 CI job builds it, installs it silently into a temporary folder and uninstalls
 it again. The screens, the sandbox step and signing are not built yet.
