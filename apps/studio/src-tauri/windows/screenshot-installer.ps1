@@ -48,6 +48,7 @@ function Wait-Button([IntPtr]$h, [string]$text, [int]$seconds) {
     if ((Button-Text $h) -eq $text -and [W]::IsWindowEnabled([W]::GetDlgItem($h, 1))) { return }
     Start-Sleep -Milliseconds 500
   }
+  Save-Picture $h "stuck-waiting-for-$($text -replace '\W', '')"
   throw "The button never said '$text'; it says '$(Button-Text $h)'"
 }
 
