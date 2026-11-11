@@ -27,6 +27,7 @@ import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
+import { itemCallOf } from "./kernel/run-items.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import {
   type AgentKnowledge,
@@ -420,11 +421,11 @@ export class LocalExecutor implements RunExecutor {
    * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
    * turn's full run log comes in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
    *
-   * A `parallel` branch's call is offered only the connector tools whose
+   * A `parallel` branch's or a `foreach` item's call is offered only the connector tools whose
    * listing says they read and their kept file doesn't put under `approve`
-   * ({@link runConnectorsOf}): a branch can't make a call that changes things,
+   * ({@link runConnectorsOf}): neither can make a call that changes things,
    * because a run records one effect at a time, and a call that waits for
-   * a person would only end the branch.
+   * a person would only end the branch or fail the run.
    *
    * A call that needs a person's OK ends the call with `{ type: "approval",
    * tool, args, resume }`, and the run waits. A connector call that can
@@ -440,7 +441,9 @@ export class LocalExecutor implements RunExecutor {
       run,
       state: call.state,
       definitions: await this.keptDefinitions(run),
-      inBranch: branchOfCall(run.parallel, call.callId) !== null,
+      alongsideOthers:
+        branchOfCall(run.parallel, call.callId) !== null ||
+        itemCallOf(run.foreach, call.callId) !== null,
     };
     const agent = agentIn(turn.definitions, call.agent);
     const messages = runTurnMessages(agent, turn.definitions, call.prompt);
@@ -456,7 +459,7 @@ export class LocalExecutor implements RunExecutor {
       this.options.connectors,
       agent,
       connectorTools,
-      turn.inBranch,
+      turn.alongsideOthers,
     );
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);

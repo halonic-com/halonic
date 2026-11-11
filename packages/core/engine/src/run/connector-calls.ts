@@ -150,7 +150,8 @@ export function connectorsOf(
  * file lists ({@link connectorsOf}), with the tools their files allow
  * ({@link allowedToolsOf}). With `readOnly`, each keeps only the tools that
  * read and wait for no one ({@link readToolsOf}): what a `parallel` branch,
- * and a subagent under one, get, because neither can stop the run (HAL-4630).
+ * a `foreach` item and a subagent under one get, because none of them can
+ * stop the run (HAL-4630).
  */
 export function runConnectorsOf(
   connectors: readonly ConnectorClient[],

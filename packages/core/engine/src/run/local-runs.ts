@@ -28,7 +28,7 @@ import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { appendFailed } from "./append-failed.ts";
-import { childNow, childStart, receiverOf, runAndChildren } from "./child-runs.ts";
+import { childNow, childStart, endChildrenOf, parentEndedError, receiverOf } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
@@ -197,36 +197,26 @@ export class LocalRuns {
   }
 
   /**
-   * Cancels a run that hasn't ended, and the child run it waits on, all the
-   * way down: each ends with `run.failed` and `reason: "cancelled"`, the run
-   * first, so it doesn't take its child's end for its own failure. Their
-   * harness calls are stopped; a model or connector call going on finishes,
-   * and the run takes its result no more. A run that has ended stays as it is.
+   * Cancels a run that hasn't ended, and its child runs, all the way down:
+   * each ends with `run.failed` and `reason: "cancelled"`, the run first, so
+   * it doesn't take its child's end for its own failure. Their harness calls
+   * are stopped; a model or connector call going on finishes, and the run
+   * takes its result no more. A run that has ended stays as it is.
    *
    * @throws InputRefused when the run doesn't exist
    */
   async cancel(runId: string): Promise<RunSummary> {
     await this.#ready();
-    if (!(await this.#cancelDown(runId)))
+    if ((await this.#options.store.get(runId)) === null)
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
-    // Only now: its children are cancelled, so a call it stops records nothing in them.
-    await this.#ended(runId);
+    await this.#cancelDown(runId);
     return this.#summary(runId);
   }
 
-  /**
-   * Ends the run and the child run it waits on, all the way down, with
-   * `reason: "cancelled"`, and stops their harness calls.
-   *
-   * @returns whether the run has a log
-   */
-  async #cancelDown(runId: string): Promise<boolean> {
-    const runs = await runAndChildren(this.#options.store, runId);
-    for (const id of runs) {
-      await this.#fail(id, cancelledError, "cancelled");
-      await this.#harnessCalls.stop(id);
-    }
-    return runs.length > 0;
+  /** Ends the run as cancelled and, as for any run that ends, its child runs still going. */
+  async #cancelDown(runId: string): Promise<void> {
+    await this.#cancelOne(runId, cancelledError);
+    await this.#ended(runId, cancelledError);
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
@@ -399,12 +389,16 @@ export class LocalRuns {
   }
 
   /**
-   * A run has just ended: when it is a top-level run, its harness calls and
-   * its child runs' stop, and then its proposal folder ends. It waits on those
-   * calls, so no input recorded inside a harness call may end its run (today
-   * that is only `harness-asked`, which never does).
+   * A run has just ended: the child runs it started that are still going are
+   * cancelled with `childError`, all the way down. Then, when it is a
+   * top-level run, its harness calls and its child runs' stop, and its
+   * proposal folder ends. It waits on those calls, so no input recorded
+   * inside a harness call may end its run or any run above it (today that
+   * is only `harness-asked`, which never does).
    */
-  async #ended(runId: string): Promise<void> {
+  async #ended(runId: string, childError = parentEndedError): Promise<void> {
+    const end = (childRunId: string) => this.#cancelOne(childRunId, childError);
+    await endChildrenOf(this.#options.store, runId, end);
     await this.#folders.ended(runId, (topLevelRunId) =>
       this.#harnessCalls.stopUnder(topLevelRunId),
     );
@@ -479,6 +473,12 @@ export class LocalRuns {
   async #tellParentOf(runId: string): Promise<void> {
     const parent = (await readRun(this.#options.store, runId))?.parent;
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
+  }
+
+  /** Ends a run as cancelled, with `error`, and stops its harness calls. */
+  async #cancelOne(runId: string, error: string): Promise<void> {
+    await this.#fail(runId, error, "cancelled");
+    await this.#harnessCalls.stop(runId);
   }
 
   /** Ends a run that hasn't ended with `run.failed`, and tells its feed and its parent. */

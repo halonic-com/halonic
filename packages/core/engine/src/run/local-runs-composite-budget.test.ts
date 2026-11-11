@@ -5,6 +5,7 @@ import type { Budget } from "../budget/budget.ts";
 import { addPricedCall, putSpentRun } from "../budget/budget-test-kit.test-helper.ts";
 import { KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
+import { parentEndedError } from "./child-runs.ts";
 import { runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 /** A workflow whose `work` state is `state`, after a `draft` task state when `drafted`. */
@@ -157,7 +158,7 @@ verifies("engine.budget-composite-stops", () => {
     ]);
   });
 
-  it("stops a for-each state, and every item's child run, when one item's child reaches the run budget", async () => {
+  it("stops a for-each state, and cancels the other items' child runs, when one item's child reaches the run budget", async () => {
     const { executor, runs, scheduler } = budgetRuns(
       around("triage", foreach({ workflow: "draft-twice" })),
       perRun,
@@ -168,10 +169,12 @@ verifies("engine.budget-composite-stops", () => {
     await scheduler.runDue();
 
     const stop = "Run budget reached: 0.60 of 0.50 EUR spent.";
-    // Child runs spend from their top-level run's budget, so the other
-    // item's child stops at its next call too.
+    // The other item's child is cancelled with the run, before its next call.
     expect(await runs.get("run_1.2.0")).toMatchObject({ reason: "budget", error: stop });
-    expect(await runs.get("run_1.2.1")).toMatchObject({ reason: "budget", error: stop });
+    expect(await runs.get("run_1.2.1")).toMatchObject({
+      reason: "cancelled",
+      error: parentEndedError,
+    });
     expect(await runs.get("run_1.2.2")).toBeNull();
     expect(await runs.get("run_1")).toMatchObject({
       status: "failed",

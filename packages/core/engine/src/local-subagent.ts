@@ -28,11 +28,12 @@ export interface RunTurn {
   readonly state: string;
   readonly definitions: RunDefinitions;
   /**
-   * Whether the turn is a `parallel` branch's, or a subagent's under one.
-   * Such a turn is offered only the connector tools that read and wait for
-   * no one, because a branch can't stop the run (HAL-4630).
+   * Whether the turn runs alongside others in its state: a `parallel`
+   * branch's or a `foreach` item's, or a subagent's under one. Such a turn
+   * is offered only the connector tools that read and wait for no one,
+   * because it can't stop the run (HAL-4630, HAL-5214).
    */
-  readonly inBranch: boolean;
+  readonly alongsideOthers: boolean;
 }
 
 /** What a subagent's turn takes from the `LocalExecutor` that runs it. */
@@ -59,7 +60,7 @@ export interface LocalSubagentContext {
  * A subagent's own turn on a task, one level deeper, on its own model and
  * with its own tools: with `runs.connectorCalls`, the connector tools its
  * own file lists, as the state's agent gets them, or as a `parallel` branch
- * gets them when the turn is under one. Its calls are checked as a run's
+ * gets them when the turn is under one or a `foreach` item. Its calls are checked as a run's
  * are ({@link runToolCheckOf}), so a call that needs a person's OK, or one
  * the engine must make, stops the subagent's turn, and the turn that
  * delegated to it stops at the `delegate_*` call (HAL-3361). The model gets
@@ -90,7 +91,7 @@ export async function runLocalSubagent(
   });
   const knowledge = context.knowledgeOf(task.agent);
   const lists = turn.definitions.connectorTools ?? {};
-  const connectors = runConnectorsOf(context.connectors, subagent, lists, turn.inBranch);
+  const connectors = runConnectorsOf(context.connectors, subagent, lists, turn.alongsideOthers);
   const outcome = await runAgentTurn({
     model,
     secrets: context.secrets,

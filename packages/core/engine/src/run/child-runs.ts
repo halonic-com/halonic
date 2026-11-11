@@ -91,21 +91,30 @@ export async function receiverOf(
   return receiver;
 }
 
+/** The `error` of a child run that was going on when the run that started it ended. */
+export const parentEndedError = "The run that started this one ended, so this one was cancelled.";
+
 /**
- * The run and the child runs it waits on, all the way down, the run first:
- * the runs a cancel of `runId` ends. A run with no log gives none.
+ * Ends the child runs a run started and hasn't heard end, all the way down,
+ * each before its own children: the one a `workflow` state waits on, and
+ * those a `foreach` state's items run. They are read from the log, because
+ * the run's state forgets them once the run has ended.
+ *
+ * @param end - ends one child run
  */
-export async function runAndChildren(
-  runs: Pick<RunStore, "events" | "snapshot">,
+export async function endChildrenOf(
+  runs: Pick<RunStore, "events">,
   runId: string,
-): Promise<string[]> {
-  const chain: string[] = [];
-  let next: string | undefined = runId;
-  while (next !== undefined && chain.length <= maxChildDepth) {
-    const run = await readRun(runs, next);
-    if (run === null) break;
-    chain.push(next);
-    next = run.child?.runId;
+  end: (childRunId: string) => Promise<void>,
+): Promise<void> {
+  const going = new Set<string>();
+  // From 0, as every read of the engine's names its position.
+  for (const event of await runs.events(runId, 0)) {
+    if (event.type === "workflow.started") going.add(event.childRunId);
+    if (event.type === "workflow.finished") going.delete(event.childRunId);
   }
-  return chain;
+  for (const childRunId of going) {
+    await end(childRunId);
+    await endChildrenOf(runs, childRunId, end);
+  }
 }
