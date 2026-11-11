@@ -209,7 +209,7 @@ function refuseHarnessAgents(workspace: LoadedWorkspace, workflow: SandboxGateRu
   if (agent === undefined) return;
   const reason = runMessages.harnessNotAvailable(
     printable(agent.value.name),
-    printable(agent.value.harness ?? ""),
+    printable(workflow.harness ?? agent.value.harness ?? ""),
   );
   throw new KindedError("unavailable", plainText(reason.phrase), {
     fix: plainText(runMessages.harnessNotAvailableFix().phrase),
