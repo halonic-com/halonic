@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5395](/HAL/issues/HAL-5395)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MYrD/V+8RVP+YOgpj+gNQtt4JHHXzCorNFHZKpdnOvuJEvYjpuCNrAyaBN1kPE3UDiD429xhG/mCijdDODGvBw==
 
 The board chose a "Sign in for this agent" button in Studio (HAL-5355,
 option 1). It runs the program's own sign-in, such as `claude auth login`,
