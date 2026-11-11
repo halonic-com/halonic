@@ -54,102 +54,78 @@ async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }>
 const samsEmail = ["--input", "examples/refund-question.json"];
 
 verifies("cli.run", () => {
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: follows Support reply until it waits for the reply's approval, in every mode",
-    async () => {
-      const args = ["run", "support-reply", ...samsEmail];
-      const output = await runGolden(args, () => [runCommand()], acme);
+  it("follows Support reply until it waits for the reply's approval, in every mode", async () => {
+    const args = ["run", "support-reply", ...samsEmail];
+    const output = await runGolden(args, () => [runCommand()], acme);
 
-      expect(output.noColour.exit).toBe(exitCode.ok);
-      expect(checklistProblems(output)).toEqual([]);
-      expect(goldenText(args, output)).toBe(
-        await readFile(golden("support-reply-waiting.txt"), "utf8"),
-      );
-    },
-  );
+    expect(output.noColour.exit).toBe(exitCode.ok);
+    expect(checklistProblems(output)).toEqual([]);
+    expect(goldenText(args, output)).toBe(
+      await readFile(golden("support-reply-waiting.txt"), "utf8"),
+    );
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: answers the wait with --event and ends with the receipt",
-    async () => {
-      const args = ["run", "support-reply", ...samsEmail, "--event", "approve"];
-      const output = await runGolden(args, () => [runCommand()], acme);
+  it("answers the wait with --event and ends with the receipt", async () => {
+    const args = ["run", "support-reply", ...samsEmail, "--event", "approve"];
+    const output = await runGolden(args, () => [runCommand()], acme);
 
-      expect(output.noColour.exit).toBe(exitCode.ok);
-      expect(checklistProblems(output)).toEqual([]);
-      expect(goldenText(args, output)).toBe(
-        await readFile(golden("support-reply-approved.txt"), "utf8"),
-      );
-    },
-  );
+    expect(output.noColour.exit).toBe(exitCode.ok);
+    expect(checklistProblems(output)).toEqual([]);
+    expect(goldenText(args, output)).toBe(
+      await readFile(golden("support-reply-approved.txt"), "utf8"),
+    );
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: says which --event the run ended before it took",
-    async () => {
-      const { code, io } = await run(
-        "support-reply",
-        ...samsEmail,
-        "--event",
-        "approve",
-        "--event",
-        "reject",
-      );
+  it("says which --event the run ended before it took", async () => {
+    const { code, io } = await run(
+      "support-reply",
+      ...samsEmail,
+      "--event",
+      "approve",
+      "--event",
+      "reject",
+    );
 
-      expect(code).toBe(exitCode.ok);
-      expect(io.stdout.slice(-2)).toEqual([
-        "",
-        "! Didn't use --event reject: the run ended first.",
-      ]);
-    },
-  );
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout.slice(-2)).toEqual(["", "! Didn't use --event reject: the run ended first."]);
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: keeps the run where halonic runs reads it",
-    async () => {
-      const profile = freshProfile();
-      const io = captureIo(acme);
-      await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
+  it("keeps the run where halonic runs reads it", async () => {
+    const profile = freshProfile();
+    const io = captureIo(acme);
+    await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
 
-      const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
-      expect(listed.runs.map((each) => [each.workflowId, each.status])).toEqual([
-        ["support-reply", "waiting"],
-      ]);
-    },
-  );
+    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
+    expect(listed.runs.map((each) => [each.workflowId, each.status])).toEqual([
+      ["support-reply", "waiting"],
+    ]);
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: refuses an event the wait doesn't take, with the one that's close",
-    async () => {
-      const { code, io } = await run("support-reply", ...samsEmail, "--event", "aprove");
+  it("refuses an event the wait doesn't take, with the one that's close", async () => {
+    const { code, io } = await run("support-reply", ...samsEmail, "--event", "aprove");
 
-      expect(code).toBe(exitCode.usage);
-      expect(io.stderr).toEqual([
-        "✕ Couldn't send aprove to run 01jd8q: the step Approve this reply? takes approve or reject.",
-        "  Did you mean approve?",
-      ]);
-    },
-  );
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't send aprove to run 01jd8q: the step Approve this reply? takes approve or reject.",
+      "  Did you mean approve?",
+    ]);
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: ends a failed run with its two lines and exit 1",
-    async () => {
-      // Writer's model alias isn't in the workspace, so the first step's model call fails.
-      const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
-      await writeFile(writer, `${await readFile(writer, "utf8")}model: gone\n`);
+  it("ends a failed run with its two lines and exit 1", async () => {
+    // Writer's model alias isn't in the workspace, so the first step's model call fails.
+    const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
+    await writeFile(writer, `${await readFile(writer, "utf8")}model: gone\n`);
 
-      const { code, io } = await run("support-reply", ...samsEmail);
+    const { code, io } = await run("support-reply", ...samsEmail);
 
-      expect(code).toBe(exitCode.failed);
-      const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
-      expect(io.stdout[failed]).toMatch(
-        /^✕ Support reply failed in the step Read the email\. Halonic can't tell the cause yet: /,
-      );
-      // The fix, then the receipt, as `halonic runs show` ends the same run.
-      expect(io.stdout.slice(failed + 1).map((line) => line.startsWith("  "))).toEqual([
-        true,
-        true,
-      ]);
-    },
-  );
+    expect(code).toBe(exitCode.failed);
+    const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+    expect(io.stdout[failed]).toMatch(
+      /^✕ Support reply failed in the step Read the email\. Halonic can't tell the cause yet: /,
+    );
+    // The fix, then the receipt, as `halonic runs show` ends the same run.
+    expect(io.stdout.slice(failed + 1).map((line) => line.startsWith("  "))).toEqual([true, true]);
+  });
 });
 
 describe("halonic run's refusals", () => {

@@ -386,18 +386,15 @@ verifies("cli.commands.runs.show", () => {
   });
 
   describe("which run", () => {
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] HAL-4406: takes the short id in any case, or the full id",
-      async () => {
-        await storeRuns(done);
+    it("takes the short id in any case, or the full id", async () => {
+      await storeRuns(done);
 
-        for (const typed of ["A1B2C3", done.id, done.id.toUpperCase()]) {
-          const { code, io } = await showIn(acme, typed);
-          expect(code).toBe(exitCode.ok);
-          expect(io.stdout[0]).toContain("run a1b2c3");
-        }
-      },
-    );
+      for (const typed of ["A1B2C3", done.id, done.id.toUpperCase()]) {
+        const { code, io } = await showIn(acme, typed);
+        expect(code).toBe(exitCode.ok);
+        expect(io.stdout[0]).toContain("run a1b2c3");
+      }
+    });
 
     it("says there's no such run, and points to the list with the user's --dir", async () => {
       await storeRuns(done);

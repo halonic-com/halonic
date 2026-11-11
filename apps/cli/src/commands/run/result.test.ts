@@ -72,55 +72,40 @@ function stopped(events: readonly RunEvent[], cancelled = true) {
 }
 
 verifies("cli.run", () => {
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: says the run was cancelled after the last step that finished",
-    () => {
-      const result = stoppedResult(stopped(until("draft")), workspace);
+  it("says the run was cancelled after the last step that finished", () => {
+    const result = stoppedResult(stopped(until("draft")), workspace);
 
-      expect(plainText(result.meaning ?? [])).toMatch(
-        /^The run \w{6} was cancelled after the step Classify it\. Nothing after it ran\.$/,
-      );
-    },
-  );
+    expect(plainText(result.meaning ?? [])).toMatch(
+      /^The run \w{6} was cancelled after the step Classify it\. Nothing after it ran\.$/,
+    );
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: says a run it couldn't cancel wasn't cancelled, and how to see it",
-    () => {
-      const result = stoppedResult(stopped(until("draft"), false), workspace);
+  it("says a run it couldn't cancel wasn't cancelled, and how to see it", () => {
+    const result = stoppedResult(stopped(until("draft"), false), workspace);
 
-      expect(plainText(result.meaning ?? [])).toMatch(
-        /^The run (\w{6}) wasn't cancelled, only no longer followed, so it may go on\. See where it is: halonic runs show \1$/,
-      );
-      expect(result.json).toEqual({
-        run: expect.objectContaining({ id: run.summary.id }),
-        events: until("draft"),
-      });
-    },
-  );
+    expect(plainText(result.meaning ?? [])).toMatch(
+      /^The run (\w{6}) wasn't cancelled, only no longer followed, so it may go on\. See where it is: halonic runs show \1$/,
+    );
+    expect(result.json).toEqual({
+      run: expect.objectContaining({ id: run.summary.id }),
+      events: until("draft"),
+    });
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: says a run it couldn't cancel wasn't cancelled, even before any step finished",
-    () => {
-      const result = stoppedResult(stopped([], false), workspace);
+  it("says a run it couldn't cancel wasn't cancelled, even before any step finished", () => {
+    const result = stoppedResult(stopped([], false), workspace);
 
-      expect(plainText(result.meaning ?? [])).toMatch(/^The run \w{6} wasn't cancelled,/);
-      expect(result.json).toEqual({});
-    },
-  );
+    expect(plainText(result.meaning ?? [])).toMatch(/^The run \w{6} wasn't cancelled,/);
+    expect(result.json).toEqual({});
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: says only Stopped. when no step had finished yet",
-    () => {
-      expect(stoppedResult(stopped(until("read")), workspace).meaning).toBeUndefined();
-    },
-  );
+  it("says only Stopped. when no step had finished yet", () => {
+    expect(stoppedResult(stopped(until("read")), workspace).meaning).toBeUndefined();
+  });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: says only Stopped. when the run hadn't started",
-    () => {
-      expect(stoppedResult(stopped([]), workspace)).toEqual({ stopped: true, json: {} });
-    },
-  );
+  it("says only Stopped. when the run hadn't started", () => {
+    expect(stoppedResult(stopped([]), workspace)).toEqual({ stopped: true, json: {} });
+  });
 
   it("exits as a failure for a run that couldn't try every step (HAL-4285)", () => {
     const facts = {
@@ -135,27 +120,24 @@ verifies("cli.run", () => {
     expect(runResult(run, facts).exitCode).toBe(exitCode.ok);
   });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4406: shows an escape code in the workflow's name as its code",
-    async () => {
-      const workflowFile = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
-      const workflow = await readFile(workflowFile, "utf8");
-      await writeFile(
-        workflowFile,
-        workflow.replace("name: Support reply", 'name: "\\e[2JSupport reply"'),
-      );
-      const renamed = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+  it("shows an escape code in the workflow's name as its code", async () => {
+    const workflowFile = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
+    const workflow = await readFile(workflowFile, "utf8");
+    await writeFile(
+      workflowFile,
+      workflow.replace("name: Support reply", 'name: "\\e[2JSupport reply"'),
+    );
+    const renamed = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
 
-      const result = runResult(run, {
-        workspace: renamed,
-        workspaceName: "acme",
-        dir: undefined,
-        clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
-      });
+    const result = runResult(run, {
+      workspace: renamed,
+      workspaceName: "acme",
+      dir: undefined,
+      clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
+    });
 
-      expect(plainText(result.lines[0] ?? [])).toMatch(
-        /^Running \\u001b\[2JSupport reply in acme · run \w{6}$/,
-      );
-    },
-  );
+    expect(plainText(result.lines[0] ?? [])).toMatch(
+      /^Running \\u001b\[2JSupport reply in acme · run \w{6}$/,
+    );
+  });
 });
