@@ -27,7 +27,7 @@ lives in its own folder.
 Before it starts a run, or sends an event to one, `halonic run` and `halonic runs send` check the
 sandbox (`checkRunSandbox` in `src/sandbox-gate.ts`, called from `openWorkspaceEngine`). A workflow
 with an agent that starts a program on this computer is refused with exit 9 when the sandbox can't
-start, and an agent set to "On this computer" gets one `!` line instead. No option skips it.
+start. No option skips it. The engine `run` opens has no harness adapter yet, so `run` also refuses, with exit 9 and before anything starts, a workflow with an agent in a harness (an agent set to "On this computer" included).
 `halonic doctor` shows the same check as its Sandbox line, ✕ with exit 1 when the sandbox can't
 start. Each reason code (`windows`, `container`, `user-namespaces-restricted`, `bubblewrap-missing`,
 `linux-tools-missing` when `socat` or ripgrep is missing, `other`) has its own words and fix in

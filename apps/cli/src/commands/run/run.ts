@@ -13,6 +13,7 @@ import {
   RunEvents,
   WorkflowRuns,
 } from "@halonicjs/app";
+import { KindedError } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
@@ -24,14 +25,14 @@ import {
 } from "../../command.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
-import type { Phrase } from "../../messages/phrase.ts";
+import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
 import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
-import { type SandboxGateRun, unsandboxedWarning } from "../../sandbox-gate.ts";
+import { programAgentsOf, type SandboxGateRun, unsandboxedWarning } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "../../workspace-engine.ts";
 import { runInputOf } from "./input.ts";
@@ -67,6 +68,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  * @throws OwnLineError when no hub, or more than one, has the workflow
  * @throws SandboxRefusedError when an agent needs the sandbox and it can't
  *   start here; nothing ran. No option skips this check
+ * @throws KindedError `unavailable` when an agent is in a harness, which
+ *   this computer's engine can't run yet; nothing ran
  * @throws OwnLineError when the run doesn't take an `--event` at its wait,
  *   or is gone when one is sent
  */
@@ -89,6 +92,13 @@ export async function runWorkflow(
     runs: [workflow],
     ending: runMessages.nothingRan(),
   });
+  try {
+    // After the sandbox check, so a computer that can't start the sandbox says so first.
+    refuseHarnessAgents(workspace, workflow);
+  } catch (error) {
+    await engine.close();
+    throw error;
+  }
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = engine.unsandboxed.map(unsandboxedWarning);
   for (const line of warnings) context.printAhead(line);
@@ -184,6 +194,26 @@ function workflowToRun(workspace: LoadedWorkspace, typed: string, name: string):
     throw noWorkflow(workspace, typed, name);
   }
   return { hubId: lookup.hubId, workflowId: lookup.workflow.id };
+}
+
+/**
+ * Refuses a workflow with an agent in a harness before anything starts: the
+ * engine `run` opens has no harness adapter, so the run would fail at that
+ * agent's step.
+ *
+ * @throws KindedError `unavailable` when an agent of the workflow, or of a
+ *   workflow it starts, is in a harness; nothing ran
+ */
+function refuseHarnessAgents(workspace: LoadedWorkspace, workflow: SandboxGateRun): void {
+  const [agent] = programAgentsOf(workspace, workflow);
+  if (agent === undefined) return;
+  const reason = runMessages.harnessNotAvailable(
+    printable(agent.value.name),
+    printable(agent.value.harness ?? ""),
+  );
+  throw new KindedError("unavailable", plainText(reason.phrase), {
+    fix: plainText(runMessages.harnessNotAvailableFix().phrase),
+  });
 }
 
 /** "✕ There's no workflow called "suport-reply" in acme." with the near one when there is one. */

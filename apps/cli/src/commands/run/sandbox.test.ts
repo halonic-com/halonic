@@ -140,18 +140,29 @@ verifies("cli.run-sandbox-gate", () => {
     expect(checks).toBe(0);
   });
 
-  it("prints the ! line before the run for an agent set to On this computer", async () => {
+  it("refuses an agent in a harness once the sandbox is fine, since this engine has no harness adapter", async () => {
+    await writerWith("harness: claude-code\n");
+
+    const { code, io } = await run({ ok: true, reason: null, missing: [] });
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't run support-reply: this computer's engine can't run agents in a harness yet, and Writer is in claude-code. Nothing ran.",
+    );
+    expect(io.stdout).toEqual([]);
+    expect(await runsKept()).toBe(0);
+  });
+
+  it("refuses an agent set to On this computer the same way, and starts nothing", async () => {
     await writerWith("harness: claude-code\n");
     await chooseThisComputer();
 
-    const { io } = await run(bubblewrapMissing);
+    const { code, io } = await run(bubblewrapMissing);
 
+    expect(code).toBe(exitCode.unavailable);
     expect(checks).toBe(0);
-    expect(io.stdout[0]).toBe(
-      "! Writer runs on this computer without the sandbox, as chosen on 9 Nov.",
-    );
-    expect(io.stdout[1]).toMatch(/^Running Support reply in acme · run /);
-    expect(await runsKept()).toBe(1);
+    expect(io.stderr[0]).toContain("can't run agents in a harness yet");
+    expect(await runsKept()).toBe(0);
   });
 
   it("has no option that runs without the sandbox (Julian, HAL-1673)", async () => {

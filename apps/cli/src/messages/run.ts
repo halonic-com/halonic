@@ -65,6 +65,16 @@ export const runMessages = defineMessages("run", {
     phrase`git can't start on this computer, so the live version can't be read. ${nothingDone}`,
   /** Its fix. */
   gitWontStartFix: () => phrase`Install git and make sure it's on your PATH, then try again.`,
+  /**
+   * The reason after "Couldn't run support-reply:" when an agent of the
+   * workflow is in a harness (Claude Code or Codex), which this computer's
+   * engine has no adapter for yet: `unavailable`, exit 9. Nothing ran.
+   */
+  harnessNotAvailable: (agent: string, harness: string) =>
+    phrase`this computer's engine can't run agents in a harness yet, and ${agent} is in ${harness}. ${nothingRan}`,
+  /** Its fix. */
+  harnessNotAvailableFix: () =>
+    phrase`Set the agent to Halonic's own harness to run it with halonic run.`,
   /** `--input`'s line in the help. */
   inputOption: () => phrase`The run's input: a JSON file, or the JSON itself.`,
   /** `--event`'s line in the help. */
