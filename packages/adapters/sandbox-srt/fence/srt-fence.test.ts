@@ -266,46 +266,43 @@ describe("SrtSandbox with the real fence", () => {
   // is why the bridge moves to a Unix socket on Linux (HAL-6316), and it stays
   // as a W9 guard: no direct path to the host's loopback. On macOS the fence
   // shares the host's loopback, so this holds on Linux only.
-  it.runIf(process.platform === "linux")(
-    "on Linux, a client that follows NO_PROXY can't reach a loopback bridge",
-    async () => {
-      let connections = 0;
-      const server = await new Promise<Server>((resolve) => {
-        const listening = createServer((_request, response) => response.end("reached"));
-        listening.on("connection", () => {
-          connections += 1;
-        });
-        listening.listen(0, "127.0.0.1", () => resolve(listening));
+  it("a client that follows NO_PROXY can't reach a loopback bridge", async () => {
+    let connections = 0;
+    const server = await new Promise<Server>((resolve) => {
+      const listening = createServer((_request, response) => response.end("reached"));
+      listening.on("connection", () => {
+        connections += 1;
       });
-      const port = (server.address() as AddressInfo).port;
-      const bridged = await sandbox.open({
-        ...profile(),
-        network: { bridge: { host: "127.0.0.1", port }, allowedSites: [] },
+      listening.listen(0, "127.0.0.1", () => resolve(listening));
+    });
+    const port = (server.address() as AddressInfo).port;
+    const bridged = await sandbox.open({
+      ...profile(),
+      network: { bridge: { host: "127.0.0.1", port }, allowedSites: [] },
+    });
+    const ask = async (options: string): Promise<string> => {
+      const started = await bridged.start({
+        program: "sh",
+        args: ["-c", `curl -s --max-time 10 ${options} http://127.0.0.1:${port}/`],
       });
-      const ask = async (options: string): Promise<string> => {
-        const started = await bridged.start({
-          program: "sh",
-          args: ["-c", `curl -s --max-time 10 ${options} http://127.0.0.1:${port}/`],
-        });
-        const body = await read(started.stdout);
-        await started.exited;
-        return body.trim();
-      };
-      try {
-        const env = await bridged.start({ program: "env", args: [] });
-        const [variables] = await Promise.all([read(env.stdout), env.exited]);
-        expect(variables).toMatch(/^no_proxy=.*\b127\.0\.0\.1\b/m);
-        // As the program would: srt's proxy variables and its NO_PROXY.
-        expect(await ask("")).not.toBe("reached");
-        // Directly, whatever the variables say.
-        expect(await ask("--noproxy '*'")).not.toBe("reached");
-        expect(connections).toBe(0);
-      } finally {
-        await bridged.close();
-        server.close();
-      }
-    },
-  );
+      const body = await read(started.stdout);
+      await started.exited;
+      return body.trim();
+    };
+    try {
+      const env = await bridged.start({ program: "env", args: [] });
+      const [variables] = await Promise.all([read(env.stdout), env.exited]);
+      expect(variables).toMatch(/^no_proxy=.*\b127\.0\.0\.1\b/m);
+      // As the program would: srt's proxy variables and its NO_PROXY.
+      expect(await ask("")).not.toBe("reached");
+      // Directly, whatever the variables say.
+      expect(await ask("--noproxy '*'")).not.toBe("reached");
+      expect(connections).toBe(0);
+    } finally {
+      await bridged.close();
+      server.close();
+    }
+  });
 
   it("without a bridge, reaches no loopback port and gets no proxy variable", async () => {
     let connections = 0;
