@@ -57,6 +57,10 @@
       "reason": "On Windows only, limits the journal folder to the current user (HAL-3896). It starts only whoami.exe and icacls.exe from the system folder, with fixed arguments and the folder the host chose, no shell. It never loads a skill.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/journal-acl.starts.test.ts"
     },
+    "packages/adapters/sandbox-srt/src/kept-grants.ts": {
+      "reason": "On Windows only, takes back the write grants srt keeps on a session's folders (HAL-5884). It starts only srt-win.exe from sandbox-runtime's own vendored folder, with the fixed arguments `acl forget <folder>` or `user status`, no shell. It never loads a skill.",
+      "scriptsTest": "packages/adapters/sandbox-srt/src/kept-grants.starts.test.ts"
+    },
     "packages/adapters/sandbox-srt/src/machine.ts": {
       "reason": "Probes whether bubblewrap starts and may create user namespaces. It runs only bwrap with fixed arguments.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/machine.starts.test.ts"
