@@ -12,7 +12,9 @@ as plain files in your own git repository.
 
 For 0.1.0 the `halonic` command installs from this repository. You need
 [git](https://git-scm.com/), [Node.js](https://nodejs.org/) 26.12 or later and
-[pnpm](https://pnpm.io/installation) 12.18 or later.
+[pnpm](https://pnpm.io/installation) 12.18 or later. On Windows, run all of
+this inside [WSL2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
+not in PowerShell or Command Prompt.
 
 ```sh
 git clone https://github.com/halonic-com/halonic.git
@@ -27,14 +29,6 @@ halonic --version
 `halonic` always runs the code in that folder. If pnpm says its global bin
 folder isn't on your PATH, run `pnpm setup`, open a new terminal and run
 `pnpm add -g ./apps/cli` again.
-
-On Windows, PowerShell may stop with "running scripts is disabled on this
-system" (for `pnpm` or `halonic`). Allow local scripts for your account once,
-then try again, or use Command Prompt instead:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
 
 To update, pull the latest code in your clone and install again. The link
 follows the folder, so there is nothing to add again:
