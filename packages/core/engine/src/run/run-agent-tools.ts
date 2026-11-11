@@ -9,7 +9,11 @@ import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { RunDefinitions } from "../kernel/decide-types.ts";
 import { recordTools } from "../tools/records/record-tools.ts";
 import { runLogTools } from "../tools/run-log/run-log-tools.ts";
-import { type DelegatedTask, subagentTools } from "../tools/subagents/subagent-tools.ts";
+import {
+  type DelegatedTask,
+  type SubagentOutcome,
+  subagentTools,
+} from "../tools/subagents/subagent-tools.ts";
 
 /** What {@link runAgentTools} needs: the agent, the run it is in, and the stores its tools read. */
 export interface RunAgentToolsOptions {
@@ -27,8 +31,8 @@ export interface RunAgentToolsOptions {
   /** Where records live; without it, an agent with `collections` gets no records tools. */
   readonly records?: RecordStore;
   readonly clock: Clock;
-  /** Runs a subagent's own turn on a task and gives its answer. */
-  runSubagent(task: DelegatedTask): Promise<unknown>;
+  /** Runs a subagent's own turn on a task and gives its answer, or where it stopped. */
+  runSubagent(task: DelegatedTask): Promise<SubagentOutcome>;
 }
 
 /**

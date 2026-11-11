@@ -244,6 +244,8 @@ verifies("events.run-log-contract", () => {
       args: unknown;
       callId: string;
       resume: AgentResume;
+      // Added after the reference by events.agent-resume-inner (HAL-3361).
+      subagent?: string;
     }>();
     expectTypeOf<EventOf<"approval.resolved">>().toEqualTypeOf<{
       type: "approval.resolved";
@@ -315,6 +317,8 @@ verifies("events.run-log-contract", () => {
       messages: unknown[];
       calls: { id: string; name: string; arguments: Record<string, unknown> }[];
       step: number;
+      // Added after the reference by events.agent-resume-inner (HAL-3361).
+      inner?: { agent: string; resume: AgentResume };
     }>();
   });
 });

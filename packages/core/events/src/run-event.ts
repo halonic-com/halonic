@@ -222,6 +222,8 @@ export type RunEventBody =
       callId: string;
       idempotencyKey: string;
       resume: AgentResume;
+      /** The subagent whose call it is (requirement `events.agent-resume-inner`); absent for the state's own agent. */
+      subagent?: string;
     }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
@@ -254,6 +256,8 @@ export type RunEventBody =
       args: unknown;
       callId: string;
       resume: AgentResume;
+      /** The subagent whose call it is (requirement `events.agent-resume-inner`); absent for the state's own agent. */
+      subagent?: string;
     }
   | {
       type: "approval.resolved";

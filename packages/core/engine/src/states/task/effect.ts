@@ -20,6 +20,7 @@ import {
   unknownOutcomeEvents,
 } from "../../kernel/requested-effect.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
+import { stoppedSubagentOf } from "../../kernel/stopped-subagent.ts";
 
 /**
  * How long the engine waits for a connector's answer, in milliseconds: the
@@ -131,6 +132,7 @@ function makeCall(effect: RequestedEffect): StateStep {
       callId,
       idempotencyKey,
       resume,
+      ...stoppedSubagentOf(resume),
     },
     { type: "connector.started", state, agent, connector, timeoutMs },
     { type: "tool.called", agent, tool, args },

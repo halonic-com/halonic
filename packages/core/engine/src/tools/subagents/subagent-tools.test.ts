@@ -5,6 +5,7 @@ import { call, callAnswer, textAnswer } from "../../testing/scripted-model.ts";
 import {
   type DelegatedTask,
   delegateToolName,
+  type SubagentOutcome,
   type SubagentToolsOptions,
   subagentTools,
 } from "./subagent-tools.ts";
@@ -25,9 +26,13 @@ function options(overrides: Partial<SubagentToolsOptions> = {}): SubagentToolsOp
     hubAgents,
     depth: 0,
     state: "review",
-    runSubagent: async () => "Totals add up",
+    runSubagent: async () => answer("Totals add up"),
     ...overrides,
   };
+}
+
+function answer(content: unknown): SubagentOutcome {
+  return { kind: "answer", content };
 }
 
 verifies("engine.subagent-tools", () => {
@@ -73,7 +78,7 @@ verifies("engine.subagent-tools", () => {
           depth: 1,
           runSubagent: async (task) => {
             tasks.push(task);
-            return "Totals add up";
+            return answer("Totals add up");
           },
         }),
       );
@@ -125,7 +130,7 @@ verifies("engine.subagent-tools", () => {
     });
 
     it("answers with JSON when the subagent's answer isn't text", async () => {
-      const [tool] = subagentTools(options({ runSubagent: async () => ({ ok: true }) }));
+      const [tool] = subagentTools(options({ runSubagent: async () => answer({ ok: true }) }));
 
       expect(await tool?.run({ task: "Check INV-7" })).toBe('{"ok":true}');
     });
@@ -134,7 +139,9 @@ verifies("engine.subagent-tools", () => {
       "refuses %j without running the subagent",
       async (args) => {
         const tasks: DelegatedTask[] = [];
-        const [tool] = subagentTools(options({ runSubagent: async (task) => tasks.push(task) }));
+        const [tool] = subagentTools(
+          options({ runSubagent: async (task) => answer(tasks.push(task)) }),
+        );
 
         await expect(tool?.run(args)).rejects.toThrow('"task" is required');
         expect(tasks).toEqual([]);
@@ -152,7 +159,8 @@ verifies("engine.subagent-tools", () => {
           options({
             agent: hubAgents[agentId],
             depth,
-            runSubagent: (task) => delegateAll(task.agent as "reviewer" | "checker", task.depth),
+            runSubagent: async (task) =>
+              answer(await delegateAll(task.agent as "reviewer" | "checker", task.depth)),
           }),
         );
         const [tool] = tools;

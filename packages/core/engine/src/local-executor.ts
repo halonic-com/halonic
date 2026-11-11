@@ -46,7 +46,7 @@ import { runAgentTools } from "./run/run-agent-tools.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
-import type { DelegatedTask } from "./tools/subagents/subagent-tools.ts";
+import type { DelegatedTask, SubagentOutcome } from "./tools/subagents/subagent-tools.ts";
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
 export interface LocalExecutorOptions {
@@ -391,9 +391,9 @@ export class LocalExecutor implements RunExecutor {
    * are checked as a run's are, except that one that needs a person's OK is
    * refused ({@link checkSubagentToolCall}).
    *
-   * @returns the subagent's answer
+   * @returns the subagent's answer; its turn doesn't stop yet
    */
-  private async runSubagent(turn: RunTurn, task: DelegatedTask): Promise<string> {
+  private async runSubagent(turn: RunTurn, task: DelegatedTask): Promise<SubagentOutcome> {
     const subagent = agentIn(turn.definitions, task.agent);
     const messages = [{ role: "user" as const, content: task.task }];
     const model = await this.options.resolveModel({
@@ -418,7 +418,7 @@ export class LocalExecutor implements RunExecutor {
       checkCall: checkSubagentToolCall,
       autoKnowledge: knowledge.auto,
     });
-    return result.content;
+    return { kind: "answer", content: result.content };
   }
 
   /**

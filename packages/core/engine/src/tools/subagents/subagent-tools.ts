@@ -3,8 +3,9 @@
 // the conversation, so the tool asks for everything it needs.
 
 import type { Agent } from "@halonicjs/format";
+import type { TurnStop } from "../../agent/turn-approval.ts";
 import type { TurnLog } from "../../agent/turn-log.ts";
-import type { HalonicTool } from "../../agent/turn-tools.ts";
+import type { HalonicTool, SubagentStopped } from "../../agent/turn-tools.ts";
 
 /** How deep delegation goes when the caller sets no limit: an agent's subagent's subagent's subagent. */
 export const defaultMaxDelegationDepth = 3;
@@ -24,6 +25,14 @@ export interface DelegatedTask {
   readonly depth: number;
 }
 
+/**
+ * How a subagent's turn ended: with its answer, or stopped at a call that
+ * waits for a person's OK or for the engine, as a run's turn stops.
+ */
+export type SubagentOutcome =
+  | { readonly kind: "answer"; readonly content: unknown }
+  | { readonly kind: "stopped"; readonly stop: TurnStop };
+
 /** What the subagent tools need: who delegates, to whom, and how a subagent runs. */
 export interface SubagentToolsOptions {
   /** The agent that delegates. */
@@ -40,11 +49,11 @@ export interface SubagentToolsOptions {
   readonly log?: TurnLog;
   /**
    * Runs the subagent's own turn on the task, with its own model, tools and
-   * instructions, and gives its answer.
+   * instructions, and gives its answer, or where it stopped.
    *
    * @throws when the subagent fails; the delegating model gets the error
    */
-  runSubagent(task: DelegatedTask): Promise<unknown>;
+  runSubagent(task: DelegatedTask): Promise<SubagentOutcome>;
 }
 
 /**
@@ -84,6 +93,7 @@ function delegateTool(
   subagent: Pick<Agent, "id" | "name" | "description">,
 ): HalonicTool {
   const about = subagent.description ? `: ${subagent.description}` : "";
+  const runOrStop = (args: Record<string, unknown>) => delegate(options, subagent.id, args);
   return {
     definition: {
       name: delegateToolName(subagent.id),
@@ -100,21 +110,43 @@ function delegateTool(
       },
     },
     run: async (args) => {
-      const task = args["task"];
-      if (typeof task !== "string" || task.trim() === "") {
-        throw new Error('"task" is required: say what the agent should do');
+      const done = await runOrStop(args);
+      if (typeof done !== "string") {
+        throw new Error(`the "${subagent.name}" agent stopped to wait, which only a run can do`);
       }
-      const parent = options.agent.id;
-      const named = { state: options.state, agent: subagent.id, parent };
-      await options.log?.append({ type: "agent.started", ...named, prompt: task });
-      const output = await options.runSubagent({
-        agent: subagent.id,
-        task,
-        parent,
-        depth: options.depth + 1,
-      });
-      await options.log?.append({ type: "agent.finished", ...named, output });
-      return typeof output === "string" ? output : (JSON.stringify(output) ?? "");
+      return done;
     },
+    runOrStop,
   };
+}
+
+/**
+ * Hands the task to the subagent and gives its answer as text. A subagent
+ * that stopped gives its stop, and its `agent.finished` waits until it
+ * answers, because it hasn't finished.
+ */
+async function delegate(
+  options: SubagentToolsOptions,
+  subagentId: string,
+  args: Record<string, unknown>,
+): Promise<string | SubagentStopped> {
+  const task = args["task"];
+  if (typeof task !== "string" || task.trim() === "") {
+    throw new Error('"task" is required: say what the agent should do');
+  }
+  const parent = options.agent.id;
+  const named = { state: options.state, agent: subagentId, parent };
+  await options.log?.append({ type: "agent.started", ...named, prompt: task });
+  const outcome = await options.runSubagent({
+    agent: subagentId,
+    task,
+    parent,
+    depth: options.depth + 1,
+  });
+  if (outcome.kind === "stopped") {
+    return { kind: "subagent-stopped", agent: subagentId, stop: outcome.stop };
+  }
+  const output = outcome.content;
+  await options.log?.append({ type: "agent.finished", ...named, output });
+  return typeof output === "string" ? output : (JSON.stringify(output) ?? "");
 }

@@ -21,6 +21,7 @@ import {
   type ResumeAfterApproval,
   type WaitingApproval,
 } from "../../kernel/run-state.ts";
+import { stoppedSubagentOf } from "../../kernel/stopped-subagent.ts";
 
 /** The events a run waiting for an approval takes. */
 const approvalEvents: readonly string[] = ["approve", "reject"];
@@ -39,6 +40,7 @@ export function askForApproval(
     args,
     callId: nextCallId(run),
     resume,
+    ...stoppedSubagentOf(resume),
   };
   const waiting: DecidedEvent = {
     type: "run.waiting",

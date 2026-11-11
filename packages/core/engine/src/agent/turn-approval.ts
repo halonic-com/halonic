@@ -16,7 +16,7 @@ import {
   stopKindOf,
   type ToolCallContext,
 } from "./run-tool-call.ts";
-import type { TurnTools } from "./turn-tools.ts";
+import type { SubagentStopped, TurnTools } from "./turn-tools.ts";
 
 /**
  * The turn stopped before a tool call: one that needs a person's OK, or a
@@ -30,7 +30,10 @@ export type TurnStop = StopAt & {
   readonly resume: AgentResume;
 };
 
-/** Why the turn stopped: `effect` names the connector the call goes to. */
+/**
+ * Why the turn stopped: `effect` names the connector the call goes to. At a
+ * `delegate_*` call whose subagent stopped, it is why the subagent stopped.
+ */
 type StopAt =
   | { readonly type: "approval" }
   | { readonly type: "effect"; readonly connector: string };
@@ -97,6 +100,12 @@ export async function goOnAfterApproval(
   if (waiting === undefined) {
     throw new Error("The agent can't go on after the approval: where it stopped names no call.");
   }
+  if (resume.inner !== undefined) {
+    // Going on inside the subagent comes next (HAL-3361); until then no run stops there.
+    throw new Error(
+      `The agent can't go on yet: it stopped inside its subagent "${resume.inner.agent}".`,
+    );
+  }
   const answered = await answerWaitingCall(context, tools, waiting, answer);
   if (answered.kind !== "answered") {
     return stopAt(resume.calls, history, resume.step, stopKindOf(answered));
@@ -110,7 +119,8 @@ export async function goOnAfterApproval(
 }
 
 /**
- * The stop before `waiting[0]`, which needs a person's OK or the engine.
+ * The stop before `waiting[0]`, which needs a person's OK or the engine, or
+ * delegates to a subagent that stopped ({@link stopAtDelegate}).
  *
  * @param messages - the whole conversation so far, with the answer that made the calls
  * @param step - the round of the answer that made the calls
@@ -121,13 +131,37 @@ export function stopAt(
   step: number,
   at: StopKind,
 ): TurnStopped {
-  const calls = waiting.map(loggedCall);
-  const [call] = calls;
-  if (call === undefined) {
-    throw new Error("A turn can only stop at a call.");
+  if (at.type === "subagent") {
+    return stopAtDelegate(waiting, messages, step, at.inner);
   }
-  const resume: AgentResume = { messages: [...messages], calls, step };
+  const [call, ...calls] = loggedCalls(waiting);
+  const resume: AgentResume = { messages: [...messages], calls: [call, ...calls], step };
   return { kind: "stopped", stop: { ...at, tool: call.name, args: call.arguments, resume } };
+}
+
+/**
+ * The stop at a `delegate_*` call, `waiting[0]`, whose subagent stopped. It
+ * says what the subagent stopped for, with the subagent's tool and
+ * arguments, so the engine and the person see one ordinary stop; `resume`
+ * keeps where the subagent goes on from in `inner`.
+ *
+ * @param messages - the whole conversation so far, with the answer that made the calls
+ * @param step - the round of the answer that made the calls
+ */
+export function stopAtDelegate(
+  waiting: readonly ToolCall[],
+  messages: readonly ChatMessage[],
+  step: number,
+  { agent, stop }: SubagentStopped,
+): TurnStopped {
+  const { resume: subagentResume, ...why } = stop;
+  const resume: AgentResume = {
+    messages: [...messages],
+    calls: loggedCalls(waiting),
+    step,
+    inner: { agent, resume: subagentResume },
+  };
+  return { kind: "stopped", stop: { ...why, resume } };
 }
 
 /**
@@ -165,7 +199,19 @@ function rejection(comment: string | undefined): string {
     : `a person rejected the call and wrote: ${comment}`;
 }
 
-/** A copy of a call with only what the log keeps, so the stop holds plain data. */
-function loggedCall(call: ToolCall): LoggedToolCall {
-  return { id: call.id, name: call.name, arguments: call.arguments };
+/**
+ * Copies of the calls with only what the log keeps, so the stop holds plain data.
+ *
+ * @throws when there is no call, because a turn only stops at one
+ */
+function loggedCalls(waiting: readonly ToolCall[]): [LoggedToolCall, ...LoggedToolCall[]] {
+  const [first, ...rest] = waiting.map(({ id, name, arguments: args }) => ({
+    id,
+    name,
+    arguments: args,
+  }));
+  if (first === undefined) {
+    throw new Error("A turn can only stop at a call.");
+  }
+  return [first, ...rest];
 }

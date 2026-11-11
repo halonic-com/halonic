@@ -122,6 +122,7 @@ export {
   defaultMaxDelegationDepth,
   delegateToolName,
   delegationHint,
+  type SubagentOutcome,
   type SubagentToolsOptions,
   subagentTools,
 } from "./tools/subagents/subagent-tools.ts";

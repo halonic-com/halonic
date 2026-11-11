@@ -17,6 +17,8 @@ verifies("events.effect-requested", () => {
       callId: string;
       idempotencyKey: string;
       resume: AgentResume;
+      // Added by events.agent-resume-inner (HAL-3361).
+      subagent?: string;
     }>();
   });
 

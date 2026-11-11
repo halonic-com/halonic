@@ -2,7 +2,13 @@ import type { ChatMessage, ChatTurnRefusal, ToolCall, ToolRisk } from "@halonicj
 import type { CallChecker } from "./check-call-before-run.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import type { TurnLog } from "./turn-log.ts";
-import { errorMessage, halonicSource, type TurnTool, type TurnTools } from "./turn-tools.ts";
+import {
+  errorMessage,
+  halonicSource,
+  type SubagentStopped,
+  type TurnTool,
+  type TurnTools,
+} from "./turn-tools.ts";
 
 /** What running one call needs from its turn. */
 export interface ToolCallContext {
@@ -44,7 +50,9 @@ export type CallStep =
   /** The check asks a person first; the turn stops before this call. */
   | { readonly kind: "ask" }
   /** The call changes things on the connector `connector`; the engine makes it. */
-  | { readonly kind: "effect"; readonly connector: string };
+  | { readonly kind: "effect"; readonly connector: string }
+  /** The call is a `delegate_*` call whose subagent's turn stopped; the turn stops at it too. */
+  | SubagentStopped;
 
 /**
  * Checks one call to a tool the turn runs itself, and runs it. A call to a
@@ -87,7 +95,8 @@ export async function makeOrHandOver(
   call: ToolCall,
 ): Promise<CallStep> {
   if (context.effects === undefined || tool.kind !== "server" || tool.risk === "read") {
-    return answered(await carryOutCall(context, tool, call));
+    const carried = await carryOutCall(context, tool, call);
+    return "kind" in carried ? carried : answered(carried);
   }
   return (await refuseUnsent(context, tool, call)) ?? { kind: "effect", connector: tool.source };
 }
@@ -114,10 +123,14 @@ export type CallsStep =
   /** The turn stops: `waiting` is the call it stopped before, then the calls after it. */
   | { readonly kind: "stop"; readonly at: StopKind; readonly waiting: ToolCall[] };
 
-/** Why a turn stopped before a call: for a person's OK, or for the engine to make it. */
+/**
+ * Why a turn stopped before a call: for a person's OK, for the engine to
+ * make it, or because the subagent the call delegates to stopped.
+ */
 export type StopKind =
   | { readonly type: "approval" }
-  | { readonly type: "effect"; readonly connector: string };
+  | { readonly type: "effect"; readonly connector: string }
+  | { readonly type: "subagent"; readonly inner: SubagentStopped };
 
 /**
  * Runs the calls of one answer in order, adding each answer to `turn`,
@@ -150,26 +163,39 @@ export async function runCalls(
 
 /** Why the turn stops at a call that wasn't answered. */
 export function stopKindOf(step: Exclude<CallStep, { kind: "answered" }>): StopKind {
-  return step.kind === "ask" ? { type: "approval" } : { type: "effect", connector: step.connector };
+  switch (step.kind) {
+    case "ask":
+      return { type: "approval" };
+    case "effect":
+      return { type: "effect", connector: step.connector };
+    case "subagent-stopped":
+      return { type: "subagent", inner: step };
+  }
 }
 
 /**
  * Runs a call the check already let through, or a person approved, and
  * gives the tool message that answers it. A tool that throws gives the
- * model the error, and the error is logged as the call's result.
+ * model the error, and the error is logged as the call's result. A
+ * `delegate_*` call whose subagent stopped gives that stop, and logs no
+ * result yet.
  */
-export async function carryOutCall(
+async function carryOutCall(
   context: ToolCallContext,
   tool: TurnTool,
   call: ToolCall,
-): Promise<ChatMessage> {
+): Promise<ChatMessage | SubagentStopped> {
   await context.log?.append({
     type: "tool.called",
     agent: context.agent,
     tool: call.name,
     args: call.arguments,
   });
-  const { result, outcome } = await runTool(tool, call);
+  const ran = await runTool(tool, call);
+  if (ran.kind === "subagent-stopped") {
+    return ran;
+  }
+  const { result, outcome } = ran;
   await context.log?.append({
     type: "tool.result",
     agent: context.agent,
@@ -203,6 +229,7 @@ export async function refuseUnoffered(
 
 /** A tool's text result, and whether the tool answered or threw. */
 interface ToolRun {
+  readonly kind: "ran";
   readonly result: string;
   readonly outcome: "ok" | "error";
 }
@@ -216,18 +243,20 @@ function riskOf(tool: TurnTool): { risk?: ToolRisk } {
   return tool.kind === "server" && tool.risk !== undefined ? { risk: tool.risk } : {};
 }
 
-async function runTool(tool: TurnTool, call: ToolCall): Promise<ToolRun> {
+async function runTool(tool: TurnTool, call: ToolCall): Promise<ToolRun | SubagentStopped> {
   try {
-    return { result: await startTool(tool, call), outcome: "ok" };
+    const result = await startTool(tool, call);
+    return typeof result === "string" ? { kind: "ran", result, outcome: "ok" } : result;
   } catch (error) {
-    return { result: `The tool ${call.name} failed: ${errorMessage(error)}`, outcome: "error" };
+    const result = `The tool ${call.name} failed: ${errorMessage(error)}`;
+    return { kind: "ran", result, outcome: "error" };
   }
 }
 
-function startTool(tool: TurnTool, call: ToolCall): Promise<string> {
+function startTool(tool: TurnTool, call: ToolCall): Promise<string | SubagentStopped> {
   switch (tool.kind) {
     case "halonic":
-      return tool.tool.run(call.arguments);
+      return tool.tool.runOrStop?.(call.arguments) ?? tool.tool.run(call.arguments);
     case "server":
       return tool.connector.callTool(tool.listedName, call.arguments);
     case "caller":

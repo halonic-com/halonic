@@ -13,4 +13,10 @@ export interface AgentResume {
   calls: LoggedToolCall[];
   /** Model step the agent was on. */
   step: number;
+  /**
+   * Set when `calls[0]` is a `delegate_*` call whose subagent stopped: the
+   * subagent, and where its own turn goes on from, nested at most 3 deep
+   * (requirement `events.agent-resume-inner`). Absent in older logs.
+   */
+  inner?: { agent: string; resume: AgentResume };
 }
