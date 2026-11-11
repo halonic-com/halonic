@@ -21,7 +21,7 @@ verifies("integration-runner.start", () => {
       const fake = fakeRunnerProcess();
       const imported: string[] = [];
       const running = runRunner(
-        [testNonce, "/work/weather/index.js", "weather"],
+        [testNonce, "/work/weather", "/work/weather/index.js", "weather"],
         { input: fake.runnerInput, output: fake.runnerOutput },
         async (url) => {
           imported.push(url);
@@ -38,7 +38,7 @@ verifies("integration-runner.start", () => {
     it("fails when the module has no integration under that name", async () => {
       const fake = fakeRunnerProcess();
       const running = runRunner(
-        [testNonce, "/work/weather/index.js", "forecast"],
+        [testNonce, "/work/weather", "/work/weather/index.js", "forecast"],
         { input: fake.runnerInput, output: fake.runnerOutput },
         async () => ({ weather, forecast: "not an integration" }),
       );
@@ -58,7 +58,7 @@ verifies("integration-runner.start", () => {
         }),
       };
       const running = runRunner(
-        [testNonce, "/work/weather/index.js", "weather"],
+        [testNonce, "/work/weather", "/work/weather/index.js", "weather"],
         { input: fake.runnerInput, output: fake.runnerOutput },
         async () => ({ weather: asksForAToken }),
       );
@@ -74,7 +74,7 @@ verifies("integration-runner.start", () => {
       const fake = fakeRunnerProcess();
       await expect(
         runRunner([testNonce], { input: fake.runnerInput, output: fake.runnerOutput }),
-      ).rejects.toThrow(/three arguments/);
+      ).rejects.toThrow(/four arguments/);
     });
   });
 });

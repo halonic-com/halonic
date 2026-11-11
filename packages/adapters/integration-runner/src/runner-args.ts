@@ -7,6 +7,8 @@
 export interface RunnerArgs {
   /** The fresh nonce of this start, sent back in `ready`. */
   readonly nonce: string;
+  /** The integration's folder: Node may read it, and the module hook keeps imports inside it. */
+  readonly folder: string;
   /** The integration's module file, inside its folder. */
   readonly entryFile: string;
   /** The name the module exports the integration under, such as `weather`. */
@@ -15,18 +17,20 @@ export interface RunnerArgs {
 
 /** The runner's arguments as a list, in the order {@link readRunnerArgs} reads them. */
 export function runnerArgList(args: RunnerArgs): string[] {
-  return [args.nonce, args.entryFile, args.exportName];
+  return [args.nonce, args.folder, args.entryFile, args.exportName];
 }
 
 /**
  * Reads the runner's arguments.
  *
- * @throws {Error} when there aren't exactly three, or one is empty
+ * @throws {Error} when there aren't exactly four, or one is empty
  */
 export function readRunnerArgs(list: readonly string[]): RunnerArgs {
-  const [nonce, entryFile, exportName] = list;
-  if (list.length !== 3 || !nonce || !entryFile || !exportName) {
-    throw new Error("the runner takes three arguments: the nonce, the entry file and the export");
+  const [nonce, folder, entryFile, exportName] = list;
+  if (list.length !== 4 || !nonce || !folder || !entryFile || !exportName) {
+    throw new Error(
+      "the runner takes four arguments: the nonce, the folder, the entry file and the export",
+    );
   }
-  return { nonce, entryFile, exportName };
+  return { nonce, folder, entryFile, exportName };
 }

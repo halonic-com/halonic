@@ -32,10 +32,12 @@ verifies("integration-runner.start", () => {
       await chmod(script, 0o755);
 
       const fake = fakeRunnerProcess();
-      const running = runRunner([testNonce, script, "acme"], {
-        input: fake.runnerInput,
-        output: fake.runnerOutput,
-      });
+      // A plain import: the module hook would stay registered in this test's worker.
+      const running = runRunner(
+        [testNonce, folder, script, "acme"],
+        { input: fake.runnerInput, output: fake.runnerOutput },
+        (url) => import(url),
+      );
       await connectRunner(bridgeOptions(fake));
       await expect(running).rejects.toThrow();
       await expect(readFile(marker, "utf8")).rejects.toThrow();
@@ -50,7 +52,12 @@ verifies("integration-runner.start", () => {
           runnerFile: "/opt/halonic/runner.js",
           integrationFolder: "/work/weather",
         },
-        { nonce: "n-1", entryFile: "/work/weather/index.js", exportName: "weather" },
+        {
+          nonce: "n-1",
+          folder: "/work/weather",
+          entryFile: "/work/weather/index.js",
+          exportName: "weather",
+        },
       );
       expect(args).toContain("--permission");
       for (const flag of [

@@ -52,16 +52,21 @@ must be stopped with exactly one block, or answered without stopping, and never 
   the integration's folder. Each start has a fresh nonce. The connection carries the session's
   fence proof (`fence`), what the fence refuses is reported through `onBlocked` as a `fence`
   block, and the session closes when the runner stops for any reason.
-- **The runner process, `src/runner/main.ts`:** `node --permission … <runner> <nonce> <entry file>
-  <export>`. The console goes to stderr, so stdout carries only frames. It loads the integration
-  after `start`, and gives it a token store that refuses every call.
+- **The runner process, `src/runner/main.ts`:** `node --permission … <runner> <nonce> <folder>
+  <entry file> <export>`. The console goes to stderr, so stdout carries only frames. It loads the
+  integration after `start`, and gives it a token store that refuses every call.
+- **The module hook, `src/runner/module-fence.ts`:** before the integration loads, the runner
+  registers a hook that lets an import or require through only when it names a file, or `zod`,
+  and resolves to a file inside the integration's folder. Node's own modules by any name
+  (`node:fs`, `fs`, `node:module`), `data:` and `blob:` URLs, other packages and `../` out of
+  the folder are refused, and `process.getBuiltinModule` is removed (attack case A34). It holds
+  with Node's permission layer off too. `zod` must resolve inside the folder.
 - **The runner file, `pnpm build` (`esbuild.config.ts`):** writes the runner and everything it
   imports (our packages and Zod) to `dist/runner.mjs`, the one file Node may read inside the fence
   besides the integration's folder. The build fails if that file would import anything but Node's
   own modules. esbuild does the build and never ships.
 
-Not done yet: the module hook, and starting through `sandbox-host` on the confirmed path without
-the fence. Whether a runner may start at all, and fenced or not, is decided before `startRunner`
+Not done yet: starting through `sandbox-host` on the confirmed path without the fence. Whether a runner may start at all, and fenced or not, is decided before `startRunner`
 by the start gate in `core/app`.
 
 ## Example

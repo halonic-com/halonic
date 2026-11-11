@@ -240,6 +240,7 @@ verifies("integration-runner.start", () => {
     it("starts Node with its permission model reading only the runner and the integration", () => {
       const args = {
         nonce: "n-1",
+        folder: "/fake-home/code/weather",
         entryFile: "/fake-home/code/weather/index.js",
         exportName: "weather",
       };
@@ -251,6 +252,7 @@ verifies("integration-runner.start", () => {
         "--allow-fs-read=/fake-home/code/weather",
         "/opt/halonic/runner.js",
         "n-1",
+        "/fake-home/code/weather",
         "/fake-home/code/weather/index.js",
         "weather",
       ]);
@@ -258,9 +260,10 @@ verifies("integration-runner.start", () => {
     });
 
     it("refuses runner arguments that are missing or extra", () => {
-      expect(() => readRunnerArgs(["n-1", "/a.js"])).toThrow(/three arguments/);
-      expect(() => readRunnerArgs(["n-1", "/a.js", "x", "y"])).toThrow(/three arguments/);
-      expect(() => readRunnerArgs(["", "/a.js", "x"])).toThrow(/three arguments/);
+      expect(() => readRunnerArgs(["n-1", "/a", "/a/b.js"])).toThrow(/four arguments/);
+      expect(() => readRunnerArgs(["n-1", "/a", "/a/b.js", "x", "y"])).toThrow(/four arguments/);
+      expect(() => readRunnerArgs(["", "/a", "/a/b.js", "x"])).toThrow(/four arguments/);
+      expect(() => readRunnerArgs(["n-1", "", "/a/b.js", "x"])).toThrow(/four arguments/);
     });
   });
 });

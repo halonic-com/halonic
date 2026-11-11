@@ -1,7 +1,8 @@
-// The runner process: `node --permission … <runner file> <nonce> <entry file>
-// <export>`. It speaks the protocol on its stdin and stdout, so nothing else
-// may write to stdout: the console goes to stderr, which Halonic reads as
-// the runner's log. It loads the integration only after `start` has arrived.
+// The runner process: `node --permission … <runner file> <nonce> <folder>
+// <entry file> <export>`. It speaks the protocol on its stdin and stdout, so
+// nothing else may write to stdout: the console goes to stderr, which Halonic
+// reads as the runner's log. It loads the integration only after `start` has
+// arrived, and only behind the module hook.
 
 import { Console } from "node:console";
 import process from "node:process";
@@ -9,6 +10,7 @@ import { Readable, Writable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import type { Integration, TokenStore } from "@halonicjs/ports";
 import { readRunnerArgs } from "../runner-args.ts";
+import { fenceModules } from "./module-fence.ts";
 import { serveRunner } from "./serve-runner.ts";
 
 /** The streams the runner speaks on. */
@@ -17,12 +19,27 @@ export interface RunnerStdio {
   output: WritableStream<Uint8Array>;
 }
 
-/** Loads a module by its file URL. */
+/** Loads the integration's module by its file URL. */
 export type ImportModule = (url: string) => Promise<Record<string, unknown>>;
 
 /**
+ * Puts the module hook in place for the integration's folder and removes
+ * `process.getBuiltinModule`, which would hand out Node's modules without an
+ * import (attack case A34), then imports. Both last for the rest of the
+ * process, so they cover every import the integration makes later too.
+ */
+export function fencedImport(folder: string): ImportModule {
+  return (url) => {
+    fenceModules(folder);
+    delete (process as { getBuiltinModule?: unknown }).getBuiltinModule;
+    return import(url);
+  };
+}
+
+/**
  * Serves the integration named by the runner's arguments until Halonic closes
- * its stdin.
+ * its stdin. Without `importModule`, the integration is imported behind the
+ * module hook ({@link fencedImport}); tests pass their own.
  *
  * @throws {Error} when the arguments are wrong, or the module doesn't export an integration under that name
  * @throws {RunnerProtocolError} when Halonic's frames break the protocol
@@ -30,14 +47,15 @@ export type ImportModule = (url: string) => Promise<Record<string, unknown>>;
 export async function runRunner(
   argList: readonly string[],
   stdio: RunnerStdio,
-  importModule: ImportModule = (url) => import(url),
+  importModule?: ImportModule,
 ): Promise<void> {
   const args = readRunnerArgs(argList);
+  const load = importModule ?? fencedImport(args.folder);
   await serveRunner({
     ...stdio,
     nonce: args.nonce,
     connect: async (host) => {
-      const module = await importModule(pathToFileURL(args.entryFile).href);
+      const module = await load(pathToFileURL(args.entryFile).href);
       return integrationIn(module, args.exportName).connect({ ...host, tokens: noTokens });
     },
   });

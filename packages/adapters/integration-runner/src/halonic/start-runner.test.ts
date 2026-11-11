@@ -242,6 +242,7 @@ verifies("integration-runner.start", () => {
         `--allow-fs-read=${folder}`,
         "/opt/halonic/runner.js",
         sandbox.lastNonce(),
+        folder,
         `${folder}/index.js`,
         "weather",
       ]);
