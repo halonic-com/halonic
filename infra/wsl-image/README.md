@@ -10,7 +10,35 @@ release and needs the board's yes.
 - `customize.sh`: the step inside the build that adds our files, the user and the notices.
 - `check.sh <image>`: checks config, packages, licence notice and that the tools start.
 - `files/`: `/etc/wsl.conf` (interop off, automount off, user `halonic`, systemd off),
-  the empty `/opt/halonic` runtime slot, and the licence notice.
+  the empty `/opt/halonic` runtime slot, the runtime updater and the licence notice.
+
+## The runtime updater
+
+`/usr/local/sbin/halonic-runtime` (HAL-5396, design section 5.3) puts the Halonic
+runtime in `/opt/halonic/<version>` and points `/opt/halonic/current` at it. Studio
+runs it as root from Windows, with `wsl.exe` by its full path and no shell:
+
+```
+%SystemRoot%\System32\wsl.exe -d halonic -u root --exec /usr/local/sbin/halonic-runtime install <version> <sha256> < runtime.tar.gz
+```
+
+| Command | What it does |
+| --- | --- |
+| `install <version> <sha256>` | reads the archive on standard input, checks its SHA-256, unpacks it as root's files, switches `current`, keeps the version before as `previous` and removes older ones |
+| `rollback` | swaps `current` and `previous` |
+| `security-update` | `apt-get upgrade` from Debian's security archive only, at most once a day, and never while a sandbox session (`bwrap`) runs |
+| `status` | prints `{"current":"<version>","previous":"<version>"}`; any user may run it |
+
+Exit codes: 0 done, 2 wrong use (also: not root), 3 a sandbox session runs, 4 the
+SHA-256 differs, 5 the archive is refused (no `bin` folder, or device, pipe or
+socket files), 6 nothing to roll back to.
+
+It runs as root, so it never runs or sources a file the `halonic` user can write
+(security review W2 on HAL-5407): it ships in the image, root-owned, and every
+runtime file ends up root's, with no setuid bit and no group or other write.
+Studio checks the archive's SHA-256 on Windows before it sends it, and the script
+checks it again. `check.sh` installs, rolls back and updates three test runtimes
+and checks owners and modes after each step.
 
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.
