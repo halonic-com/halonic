@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { SandboxSession } from "@halonicjs/ports";
+import { OpenLimit } from "../server/open-limit.ts";
 
 /** How many sessions the host keeps open at once, opening ones included. */
 export const defaultMaxSessions = 64;
@@ -37,9 +38,8 @@ interface OpenSession {
  */
 export class SessionTable {
   private readonly sessions = new Map<string, OpenSession>();
-  private readonly maxSessions: number;
+  private readonly openLimit: OpenLimit;
   private readonly setLimitTimer: LimitTimer;
-  private reserved = 0;
   private stopping = false;
 
   /**
@@ -47,7 +47,8 @@ export class SessionTable {
    *   tests fire it by hand, so the limit runs out exactly when they choose
    */
   constructor(options: { maxSessions?: number; setLimitTimer?: LimitTimer } = {}) {
-    this.maxSessions = options.maxSessions ?? defaultMaxSessions;
+    const maxSessions = options.maxSessions ?? defaultMaxSessions;
+    this.openLimit = new OpenLimit(maxSessions, () => this.sessions.size);
     this.setLimitTimer = options.setLimitTimer ?? systemLimitTimer;
   }
 
@@ -65,14 +66,7 @@ export class SessionTable {
    * @returns undefined when the table is full
    */
   reserve(): (() => void) | undefined {
-    if (this.sessions.size + this.reserved >= this.maxSessions) return undefined;
-    this.reserved += 1;
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      this.reserved -= 1;
-    };
+    return this.openLimit.reserve();
   }
 
   /**

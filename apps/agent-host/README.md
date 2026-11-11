@@ -93,6 +93,8 @@ The first line is `opened`, or `{"type":"failed","message"}` when the bridge cou
 
 The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
 
+Each bridge listens on a port of its own, so the host keeps at most 64 bridges open, counting those still opening and those still closing; past that, opening one answers `429 too_many_bridges` before any stream starts.
+
 ## The harnesses over loopback
 
 Studio gives the engine a stand-in `Harness` for each one the host lists, and the host runs the real one inside a sandbox session and with a bridge Studio opened here first. Studio starts a run with `{ harness, task, session, bridge }`, naming the session and the bridge by their ids, so the bridge's token never travels again. The answer stays open as a stream:

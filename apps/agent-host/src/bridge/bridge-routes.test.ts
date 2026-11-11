@@ -1,5 +1,5 @@
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
-import { harnessBridgeTokenHeader, type Secrets } from "@halonicjs/ports";
+import { type HarnessBridgeServer, harnessBridgeTokenHeader, type Secrets } from "@halonicjs/ports";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ChannelCallLine } from "../server/call-channel.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
@@ -26,15 +26,36 @@ const providerKeys: (string | null)[] = [];
 let server: HostServer | undefined;
 let bridges: BridgeTable;
 
+/** A promise the test settles by hand. */
+function signal(): { promise: Promise<void>; settle: () => void } {
+  let settle: () => void = () => {};
+  const promise = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  return { promise, settle };
+}
+
+/** How the bridge servers the tests make open. */
+const opening = {
+  refuse: false,
+  /** When set, `open` waits for it before it listens: a bridge still opening. */
+  hold: undefined as Promise<void> | undefined,
+  /** Settles when `open` is called. */
+  called: signal(),
+};
+
 afterEach(async () => {
   await bridges.closeAll();
   await server?.close();
   server = undefined;
   providerKeys.length = 0;
+  opening.refuse = false;
+  opening.hold = undefined;
+  opening.called = signal();
 });
 
-async function started(): Promise<string> {
-  bridges = new BridgeTable();
+async function started(table = new BridgeTable()): Promise<string> {
+  bridges = table;
   const fetch = async (_input: unknown, init?: RequestInit): Promise<Response> => {
     providerKeys.push(new Headers(init?.headers).get("x-api-key"));
     const reply = {
@@ -44,8 +65,17 @@ async function started(): Promise<string> {
     };
     return new Response(JSON.stringify(reply), { headers: { "content-type": "application/json" } });
   };
-  const serverFor = (secrets: Secrets) =>
-    new NodeHarnessBridgeServer({ secrets, fetch, closeTimeoutMs: 1_000 });
+  const serverFor = (secrets: Secrets): HarnessBridgeServer => {
+    const real = new NodeHarnessBridgeServer({ secrets, fetch, closeTimeoutMs: 1_000 });
+    return {
+      open: async (options) => {
+        opening.called.settle();
+        if (opening.refuse) throw new Error("no free port");
+        await opening.hold;
+        return real.open(options);
+      },
+    };
+  };
   server = await startHostServer(token, bridgeRoutes(serverFor, bridges));
   return server.url;
 }
@@ -211,5 +241,38 @@ describe("bridgeRoutes", () => {
     expect(((await answer.json()) as { error: { message: string } }).error.message).toContain(
       "providers",
     );
+  });
+
+  it("keeps no more bridges than its limit, counting those still opening", async () => {
+    const url = await started(new BridgeTable({ maxBridges: 2 }));
+    const release = signal();
+    opening.hold = release.promise;
+    const stillOpening = post(url, "/v1/bridge/open", openBody);
+    await opening.called.promise;
+    opening.hold = undefined;
+    const open = await FakeStudio.open(url, {});
+
+    const refused = await post(url, "/v1/bridge/open", openBody);
+    expect(refused.status).toBe(429);
+    const { error } = (await refused.json()) as { error: { kind: string } };
+    expect(error.kind).toBe("too_many_bridges");
+
+    release.settle();
+    const opened = readLines(await stillOpening);
+    expect(await opened.next()).toMatchObject({ value: { type: "opened" } });
+    expect((await post(url, "/v1/bridge/open", openBody)).status).toBe(429);
+    await post(url, "/v1/bridge/close", { bridge: open.bridge.bridge });
+    const again = await FakeStudio.open(url, {});
+    expect(again.bridge).toMatchObject({ type: "opened" });
+  });
+
+  it("frees the place of a bridge that failed to open", async () => {
+    const url = await started(new BridgeTable({ maxBridges: 1 }));
+    opening.refuse = true;
+    const failed = await FakeStudio.open(url, {});
+    expect(failed.bridge).toMatchObject({ type: "failed", message: "no free port" });
+    opening.refuse = false;
+    const open = await FakeStudio.open(url, {});
+    expect(open.bridge).toMatchObject({ type: "opened" });
   });
 });
