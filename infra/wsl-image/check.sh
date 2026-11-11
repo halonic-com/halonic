@@ -42,13 +42,15 @@ chroot "$root" su halonic -s /bin/sh -c 'id -un' | grep -qx halonic || fail "can
 # root's and not writable by halonic, after an update and after a rollback.
 updater=/usr/local/sbin/halonic-runtime
 [ "$(stat -c '%U %a' "$root$updater")" = "root 755" ] || fail "$updater must be root's, mode 755"
-runtime() { # <version>: a runtime archive owned by uid 1000, with a setuid and a group-writable file
+runtime() { # <version> [<link target>]: a runtime archive owned by uid 1000, with a setuid
+  # and a group-writable file, and lib/link pointing at <link target> (lib/data's name by default)
   local dir; dir="$(mktemp -d)"
   mkdir -p "$dir/bin" "$dir/lib"
   printf '#!/bin/sh\necho %s\n' "$1" > "$dir/bin/engine"
   chmod 4775 "$dir/bin/engine"
   echo data > "$dir/lib/data"
   chmod 0666 "$dir/lib/data"
+  ln -s "${2:-data}" "$dir/lib/link"
   tar -czf "$root/tmp/$1.tar.gz" -C "$dir" --owner=1000 --group=1000 .
   rm -rf "$dir"
   sha256sum "$root/tmp/$1.tar.gz" | cut -d' ' -f1
@@ -83,11 +85,30 @@ code=0; install_runtime 1.2.0 "$first" 2>/dev/null || code=$?
 install_runtime 1.2.0 "$third"
 [ "$(links)" = "1.2.0 1.0.0" ] || fail "after the next update: $(links)"
 [ ! -e "$root/opt/halonic/1.1.0" ] || fail "older runtimes are not removed"
+[ "$(cat "$root/opt/halonic/current/lib/link")" = data ] || fail "a link inside the runtime is not kept"
 owned_by_root
-[ "$(chroot "$root" su halonic -s /bin/sh -c "$updater status")" = '{"current":"1.2.0","previous":"1.0.0"}' ] ||
-  fail "status is wrong"
+# A link that leaves the version folder could reach a file halonic can write.
+for outside in /srv/x ../../x ../bin/../../x; do
+  sum="$(runtime 1.3.0 "$outside")"
+  code=0; install_runtime 1.3.0 "$sum" 2>/dev/null || code=$?
+  [ "$code" -eq 5 ] || fail "a link to $outside gave exit $code, not 5"
+  [ -z "$(find "$root/opt/halonic" -maxdepth 1 -name '*1.3.0')" ] || fail "a refused archive left files"
+done
+[ "$(chroot "$root" su halonic -s /bin/sh -c "$updater status")" = \
+  '{"current":"1.2.0","previous":"1.0.0","securityUpdated":""}' ] || fail "status is wrong"
 code=0; chroot "$root" su halonic -s /bin/sh -c "$updater rollback" 2>/dev/null || code=$?
 [ "$code" -eq 2 ] || fail "halonic could roll back (exit $code)"
-touch "$root/var/lib/halonic/security-update.stamp"
+# Security updates, with a stand-in apt-get (first on the updater's PATH) whose
+# upgrade brings a new setuid program: its bit must go, and stay gone.
+cat > "$root/usr/sbin/apt-get" <<'APT'
+#!/bin/sh
+case " $* " in *" upgrade "*) printf '#!/bin/sh\n' > /usr/bin/new-suid; chmod 4755 /usr/bin/new-suid ;; esac
+APT
+chmod 0755 "$root/usr/sbin/apt-get"
+chroot "$root" "$updater" security-update | grep -q '^security updates installed' || fail "security updates didn't run"
+rm "$root/usr/sbin/apt-get"
+[ "$(stat -c %a "$root/usr/bin/new-suid")" = 755 ] || fail "an upgrade left a setuid program"
+chroot "$root" dpkg-statoverride --list /usr/bin/new-suid | grep -q ' 755 ' || fail "no statoverride keeps it off"
+chroot "$root" "$updater" status | grep -q '"securityUpdated":"[0-9]\{4\}-' || fail "status doesn't say when updates ran"
 chroot "$root" "$updater" security-update | grep -q '^skipped' || fail "security updates ran twice in a day"
 echo "OK: image checks passed"

@@ -26,19 +26,21 @@ runs it as root from Windows, with `wsl.exe` by its full path and no shell:
 | --- | --- |
 | `install <version> <sha256>` | reads the archive on standard input, checks its SHA-256, unpacks it as root's files, switches `current`, keeps the version before as `previous` and removes older ones |
 | `rollback` | swaps `current` and `previous` |
-| `security-update` | `apt-get upgrade` from Debian's security archive only, at most once a day, and never while a sandbox session (`bwrap`) runs |
-| `status` | prints `{"current":"<version>","previous":"<version>"}`; any user may run it |
+| `security-update` | `apt-get upgrade` from Debian's security archive only, at most once a day, and never while a sandbox session (`bwrap`) runs; then drops the setuid and setgid bit from any file the upgrade brought, with a `dpkg-statoverride` that keeps it off |
+| `status` | prints `{"current":"<version>","previous":"<version>","securityUpdated":"<UTC time>"}`; any user may run it, but only root sees when security updates last ran. Any process named `bwrap` holds them off, so Studio warns when that is long ago |
 
 Exit codes: 0 done, 2 wrong use (also: not root), 3 a sandbox session runs, 4 the
-SHA-256 differs, 5 the archive is refused (no `bin` folder, or device, pipe or
-socket files), 6 nothing to roll back to.
+SHA-256 differs, 5 the archive is refused (no `bin` folder, device, pipe or
+socket files, or a link that is absolute or leads out of the version folder), 6 nothing to roll back to.
 
 It runs as root, so it never runs or sources a file the `halonic` user can write
 (security review W2 on HAL-5407): it ships in the image, root-owned, and every
 runtime file ends up root's, with no setuid bit and no group or other write.
 Studio checks the archive's SHA-256 on Windows before it sends it, and the script
 checks it again. `check.sh` installs, rolls back and updates three test runtimes
-and checks owners and modes after each step.
+and checks owners and modes after each step, refuses archives with links that
+leave the version folder, and runs `security-update` with a stand-in `apt-get`
+that brings a new setuid program.
 
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.

@@ -7,7 +7,9 @@
 #                               puts it in /opt/halonic/<version> and points `current` at it
 #   rollback                    points `current` back at the version before it
 #   security-update             Debian security updates, at most once a day
-#   status                      prints {"current":...,"previous":...}
+#   status                      prints {"current":...,"previous":...,"securityUpdated":...}
+#                               (when security updates last ran, UTC; empty if never,
+#                               or when not run as root)
 #
 # It runs as root, so it never runs or sources a file the halonic user can write
 # (security review W2): it lives in the image, root-owned, reads nothing from
@@ -55,7 +57,9 @@ valid_version() {
   [ "${#1}" -le 64 ]
 }
 
-# Updates while a sandboxed agent runs could change tools under it.
+# Updates while a sandboxed agent runs could change tools under it. Any
+# process named bwrap counts, so halonic can hold updates off: `status` shows
+# when they last ran, so Studio can warn when that is long ago.
 not_busy() {
   for comm in /proc/[0-9]*/comm; do
     if [ "$(cat "$comm" 2>/dev/null)" = bwrap ]; then fail 3 "a sandbox session is running"; fi
@@ -95,6 +99,10 @@ do_install() {
     rm -rf "$unpack"
     fail 5 "the archive has no bin folder"
   fi
+  if ! links_stay_inside "$unpack"; then
+    rm -rf "$unpack"
+    fail 5 "the archive holds a link that leaves its folder"
+  fi
   chown -R -h root:root "$unpack"
   find "$unpack" ! -type l -exec chmod go-w,ug-s {} +
 
@@ -105,6 +113,18 @@ do_install() {
   if [ -n "$old" ]; then point previous "$old"; fi
   prune
   echo "installed $version"
+}
+
+# A link that leaves the version folder could point at a file halonic can
+# write, which would make that runtime file writable in effect. Only relative
+# links that resolve inside $1 are kept.
+links_stay_inside() {
+  find "$1" -type l -exec sh -c '
+    inside="$(realpath -- "$0")"
+    for link do
+      case "$(readlink -- "$link")" in /*) exit 1 ;; esac
+      case "$(realpath -m -- "$link")" in "$inside" | "$inside"/*) ;; *) exit 1 ;; esac
+    done' "$1" {} +
 }
 
 do_rollback() {
@@ -155,12 +175,35 @@ SRC
   apt-get "$@" -q update
   apt-get "$@" -q -y upgrade
   apt-get clean
+  drop_setuid
   touch "$stamp"
   echo "security updates installed"
 }
 
+# The image has no setuid or setgid programs (HAL-5845), and dpkg-statoverride
+# keeps the bit off when a package is upgraded. A file an upgrade brings in
+# new has no override yet: drop its bit and add one, as the image build does.
+drop_setuid() {
+  find / -xdev -type f -perm /6000 | while IFS= read -r file; do
+    mode="$(printf '%o' $(( 0$(stat -c %a "$file") & 0777 )))"
+    if ! dpkg-statoverride --list "$file" >/dev/null; then
+      dpkg-statoverride --update --add "$(stat -c %U "$file")" "$(stat -c %G "$file")" "$mode" "$file"
+    fi
+    chmod ug-s "$file"
+    echo "dropped setuid/setgid from $file"
+  done
+}
+
+# When security updates last ran, UTC, or nothing. Only root can read the stamp.
+security_updated() {
+  if [ -r "$state/security-update.stamp" ]; then
+    date -u -r "$state/security-update.stamp" +%Y-%m-%dT%H:%M:%SZ
+  fi
+}
+
 do_status() {
-  printf '{"current":"%s","previous":"%s"}\n' "$(target current)" "$(target previous)"
+  printf '{"current":"%s","previous":"%s","securityUpdated":"%s"}\n' \
+    "$(target current)" "$(target previous)" "$(security_updated)"
 }
 
 command="${1:-}"
