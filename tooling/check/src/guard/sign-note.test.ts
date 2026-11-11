@@ -31,14 +31,14 @@ const baseFiles: Files = {
   [approversFile]: approvers({ internal: [cto.publicKey] }),
 };
 
-async function sign(text: string, privatePem = cto.privatePem, onBase: Files = baseFiles) {
+function sign(text: string, privatePem = cto.privatePem, onBase: Files = baseFiles) {
   const git = fakeGit({ [base]: onBase, [head]: { ...baseFiles, [noteFile]: text } });
-  return { git, signed: await signNote(pull, branch, git, privatePem) };
+  return { git, signed: signNote(pull, branch, git, privatePem) };
 }
 
 verifies("check.decision-sign", () => {
   test("prints the signed text and a line the guard then verifies", async () => {
-    const { signed } = await sign(note);
+    const { signed } = sign(note);
     expect(signed.ok && signed.text.split("\n").slice(0, 3)).toEqual([
       "halonic-decision-v1",
       "repo halonic-com/halonic",
@@ -90,8 +90,8 @@ verifies("check.decision-sign", () => {
       { ...baseFiles, [approversFile]: "{ not json" },
       /can't be read/,
     ],
-  ])("refuses %s", async (_case, text, privatePem, onBase, reason) => {
-    const { signed } = await sign(text, privatePem, onBase);
+  ])("refuses %s", (_case, text, privatePem, onBase, reason) => {
+    const { signed } = sign(text, privatePem, onBase);
     expect(signed.ok ? "signed" : signed.reason).toMatch(reason);
   });
 });

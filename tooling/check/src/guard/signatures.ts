@@ -123,16 +123,16 @@ export function signedText(facts: SignedFacts): string {
  * The paths whose contents a note's signature covers: each Covers path as
  * written, each covered requirement ID's file at the head (or, if the
  * head deleted it, at the merge base), and each test file at the head that
- * calls `verifies()` with a covered ID, so removing or editing a test the
+ * names a covered ID as a quoted string, so removing or editing a test the
  * note excuses breaks the signature. An entry is a path when it has a
  * `/` or names a file at the head or the base, as `turbo.json` does.
  */
-export async function coveredPaths(
+export function coveredPaths(
   covers: readonly string[],
   git: GitObjects,
   head: string,
   base: string,
-): Promise<readonly string[]> {
+): readonly string[] {
   const paths = new Set<string>();
   const isPath = (entry: string): boolean =>
     entry.includes("/") ||
@@ -149,30 +149,26 @@ export async function coveredPaths(
       const file = files.get(id) ?? baseFiles.get(id);
       paths.add(file ?? `requirement:${id}`);
     }
-    for (const file of await testFilesVerifying(ids, git, head)) {
+    for (const file of testFilesVerifying(ids, git, head)) {
       paths.add(file);
     }
   }
   return [...paths];
 }
 
-/** The test files at `head` that call `verifies()` with one of the IDs. */
-async function testFilesVerifying(
-  ids: readonly string[],
-  git: GitObjects,
-  head: string,
-): Promise<string[]> {
-  // Loaded only here: the TypeScript parser is an npm package, and the
-  // guard-notes job runs without an install (HAL-5613).
-  const { findVerifiesCalls } = await import("../lib/verifies-calls.ts");
+/**
+ * The test files at `head` that name one of the IDs as a quoted string.
+ * That is every file that can call `verifies()` with the ID, found without
+ * the TypeScript parser: the guard-notes job runs without an install, so
+ * nothing it reaches may load an npm package (HAL-5613). A file that only
+ * quotes the ID, say in a comment, is covered too, which is the safe side.
+ */
+function testFilesVerifying(ids: readonly string[], git: GitObjects, head: string): string[] {
+  const quoted = ids.flatMap((id) => [`"${id}"`, `'${id}'`, `\`${id}\``]);
   const files: string[] = [];
   for (const file of git.listFiles(head).filter((f) => isSourceFile(f) && isTestFile(f))) {
     const text = git.readFile(head, file);
-    if (
-      text !== undefined &&
-      ids.some((id) => text.includes(id)) &&
-      findVerifiesCalls(file, text).some((call) => call.id !== undefined && ids.includes(call.id))
-    ) {
+    if (text !== undefined && quoted.some((id) => text.includes(id))) {
       files.push(file);
     }
   }

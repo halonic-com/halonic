@@ -15,7 +15,7 @@ const usage = "Usage: pnpm decision sign <pull request number>";
  * the pull request's code, hooks or config runs while the key is loaded. It
  * never writes the key anywhere.
  */
-async function main(argv: readonly string[]): Promise<number> {
+function main(argv: readonly string[]): number {
   const number = Number(argv[1]);
   if (argv[0] !== "sign" || !Number.isSafeInteger(number) || number < 1) {
     console.error(usage);
@@ -54,7 +54,7 @@ async function main(argv: readonly string[]): Promise<number> {
     return 1;
   }
   const pull = { repo, number, head: pr.headRefOid, base };
-  const signed = await signNote(pull, pr.headRefName, git, key);
+  const signed = signNote(pull, pr.headRefName, git, key);
   if (!signed.ok) {
     console.error(`decision: not signed: ${signed.reason}.`);
     return 1;
@@ -64,4 +64,4 @@ async function main(argv: readonly string[]): Promise<number> {
   return 0;
 }
 
-process.exitCode = await main(process.argv.slice(2));
+process.exitCode = main(process.argv.slice(2));

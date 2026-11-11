@@ -21,12 +21,12 @@ export type SignedNote =
  * return or doesn't parse, a key the base doesn't pin for its kind and a
  * base whose approvers file can't be read.
  */
-export async function signNote(
+export function signNote(
   pull: PullRequest,
   branch: string,
   git: GitObjects,
   privateKeyPem: string,
-): Promise<SignedNote> {
+): SignedNote {
   const file = decisionNoteFile(branch);
   const text = git.readFile(pull.head, file);
   if (text === undefined) {
@@ -62,6 +62,6 @@ export async function signNote(
       reason: `your key ${keyId} isn't pinned for ${parsed.note.kind} notes in the base's ${approversFile}`,
     };
   }
-  const signed = await noteSignedText(parsed.note, text, pull, git);
+  const signed = noteSignedText(parsed.note, text, pull, git);
   return { ok: true, text: signed, line: signatureLine(signed, privateKeyPem) };
 }
