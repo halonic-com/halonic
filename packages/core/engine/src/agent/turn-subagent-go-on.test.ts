@@ -1,3 +1,4 @@
+import { fenceUntrusted } from "@halonicjs/app";
 import type { AgentResume } from "@halonicjs/events";
 import type { ChatMessage, ChatResponse } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -185,7 +186,10 @@ verifies("engine.turn-subagent-go-on", () => {
 
     expect(outcome).toMatchObject({ kind: "answered", result: { content: "Done" } });
     expect(hub.mail.calls).toEqual([]);
-    expect(lastToolMessage(hub.models.reader)).toMatchObject({ toolCallId: "m1", content: "Sent" });
+    expect(lastToolMessage(hub.models.reader)).toMatchObject({
+      toolCallId: "m1",
+      content: fenceUntrusted("Sent"),
+    });
   });
 
   it("stops again where the same subagent stops again", async () => {

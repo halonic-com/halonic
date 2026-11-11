@@ -79,6 +79,7 @@ Device-wide settings such as the theme live outside any scope.
 | `ConnectionSettings` | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only | `app.connection-settings` |
 | `ConnectorFactories` | the connector factories a host serves, one per transport kind (a second for the same kind is refused): `create` connects a workspace's connector with the factory for its transport, trust grant unchanged, and names the connector when none serves it; `listTools` reads what a connector lists, then closes it, also when the listing fails; `connectorConfigOf` turns a connector file into the factories' config, with no `pin` | `app.connector-factories` |
 | `readToolListing` | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
+| `readListedTool` | one listed tool checked and rebuilt, with its texts marked untrusted, or why it is refused; for a caller that keeps the server's names | `ports.untrusted-tool-listings` |
 | `toolForModel` | the tool definition the model gets, with every text a server wrote inside the untrusted fence | `ports.untrusted-tool-listings` |
 | `listedToolsNotice` | the fixed system prompt line saying an outside server wrote the fenced tool texts, when a listed tool is offered | `ports.untrusted-tool-listings` |
 | `checkToolCall` | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs | `ports.untrusted-tool-listings` |

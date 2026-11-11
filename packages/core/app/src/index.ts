@@ -136,6 +136,11 @@ export {
   maxKnowledgeRefLength,
 } from "./knowledge-for-model.ts";
 export {
+  type KeptListedTool,
+  type RefusedListedTool,
+  readListedTool,
+} from "./listed-tool.ts";
+export {
   httpToolServer,
   listedToolFingerprint,
   listedToolFingerprintPrefix,
@@ -145,7 +150,7 @@ export {
   strictCanonicalJson,
   writtenDigest,
 } from "./listed-tool-fingerprint.ts";
-export { UntrustedText } from "./listed-tool-rules.ts";
+export { escapeListedText, UntrustedText } from "./listed-tool-rules.ts";
 export { LiveRoutines, type LiveRoutinesOptions } from "./live-routines.ts";
 export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
 export {

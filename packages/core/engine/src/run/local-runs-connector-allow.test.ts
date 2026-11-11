@@ -4,6 +4,7 @@
 // (`engine.turn-logs-events`), ask no person and record no effect, and the
 // model gets the refusal.
 
+import { fenceUntrusted } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import type { Connector } from "@halonicjs/format";
 import type { ChatResponse, ConnectorTool, ToolRisk } from "@halonicjs/ports";
@@ -152,7 +153,7 @@ verifies("engine.run-connector-allow", () => {
       const { model, runs } = await approvedRunOf([mail], onlySearch, [both, textAnswer("Done")]);
 
       expect(mail.calls).toEqual([{ name: "search", args: {} }]);
-      expect(resultsIn(model)).toEqual(["search done", unoffered]);
+      expect(resultsIn(model)).toEqual([fenceUntrusted("search done"), unoffered]);
       expect(refusalsIn(runs)).toEqual([refused("d-1", "delete_all")]);
     });
 

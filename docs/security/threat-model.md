@@ -108,7 +108,7 @@ rule is that a steered model must not be able to do more than you approved.
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
 | Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once | Planned (HAL-998 for listed tools; see 4.3) |
-| A tool result carries instructions | Results from tools marked untrusted reach the model only inside a fence | Planned (HAL-998; see 4.3) |
+| A tool result carries instructions | Results from tools marked untrusted reach the model only inside a fence | **On `main`**: every result of a server's tool, in chat turns and runs (HAL-5205) |
 | Knowledge or documents carry instructions | Knowledge reaches a model only through the engine's `knowledge_search` and `knowledge_read` tools, which fence the titles, snippets and texts of any source not marked `untrusted: false` (`ports.untrusted-knowledge`, `engine.knowledge-tools`). The ref the model sends back stays unfenced, so a hit or a document whose ref is longer than 512 characters is dropped (`knowledgeHitForModel`, `knowledgeDocForModel`). Agents don't get these tools in runs yet (HAL-4174) | **On `main`** |
 | A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). On `main` there is the `RunStore` port and a memory adapter only; the durable log is not built | **Planned** (phase 1, plan HAL-9) |
 
@@ -133,7 +133,7 @@ Its text is attacker text. The rules are the requirement
 | A server swaps a reviewed tool's text | A declared tool keeps its declared description, parameters and risk; the listing can't change them | **On `main`** |
 | A listed tool lowers its own risk or marks itself trusted | Its `risk` and `untrusted` are ignored; it counts as `write` unless a trusted workspace sets another risk (`read`, `write` or `send`) | **On `main`** |
 | Two tools share a name | Every clashing listed tool is refused | **On `main`** |
-| The description reaches the model as an instruction | Descriptions and titles come back as `UntrustedText`, whose `toJSON` throws, so they can't be serialised to JSON without the fence. `toString` doesn't throw: a template string gives `[object Object]`, which doesn't leak the text. `structuredClone` or IPC turns it into a plain object and loses the guard. The fence itself is rendered when tools are assembled | **On `main`** as functions; used once the engine puts turns together (HAL-998) |
+| The description reaches the model as an instruction | Descriptions and titles come back as `UntrustedText`, whose `toJSON` throws, so they can't be serialised to JSON without the fence. `toString` doesn't throw: a template string gives `[object Object]`, which doesn't leak the text. `structuredClone` or IPC turns it into a plain object and loses the guard. The fence itself is rendered when tools are assembled | **On `main`**: the engine fences every listed tool it offers (HAL-5205) |
 | A call uses arguments the listing never declared | Refused at call time; a listed tool is `write` unless a trusted workspace sets another risk, so it needs approval unless that risk is `read` | **On `main`** as functions; used once the engine puts turns together (HAL-998) |
 | A server changes its tools after you looked | Pinning and approving listings | Planned (HAL-520) |
 

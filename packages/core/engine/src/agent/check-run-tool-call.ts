@@ -50,8 +50,11 @@ export function runToolCheckOf(
   };
 }
 
-/** The tool as `checkToolCall` reads it, or `null` for the caller's, which a run never offers. */
-function offeredTool(tool: TurnTool): OfferedTool | null {
+/**
+ * The tool as `checkToolCall` and `listedToolsNotice` read it, or `null` for
+ * the caller's, which a run never offers.
+ */
+export function offeredTool(tool: TurnTool): OfferedTool | null {
   switch (tool.kind) {
     case "halonic":
       return declaredTool(tool.tool);
