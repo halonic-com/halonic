@@ -8,7 +8,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { command, fakeRunner, fenced, linux, makeProfile } from "./srt-session.test-helper.ts";
-import { launcherEnv, programEnv } from "./srt-session.ts";
+import { launcherEnv, programEnv } from "./srt-session-env.ts";
 
 let base: string;
 
