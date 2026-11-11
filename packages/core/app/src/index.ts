@@ -74,6 +74,12 @@ export {
   type PinRegistry,
 } from "./connector-pin.ts";
 export {
+  type ConnectorToolCheckInput,
+  checkConnectorTools,
+  type NamedToolRevoke,
+  revokeNamedTool,
+} from "./connector-tool-check.ts";
+export {
   type DetectedHarness,
   type DoctorLine,
   type DoctorStatus,

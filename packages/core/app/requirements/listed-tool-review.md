@@ -10,6 +10,8 @@ The app shall let a person approve one waiting listed tool by the name its serve
 
 The app shall list what changed in a waiting tool since it was approved, one entry per text that differs, with the approved and the current text. It shall mark a change a person can't see on screen: the same text in another Unicode normal form, a difference only in white space such as a trailing space, and a difference only where one side has a character outside ASCII, such as a Cyrillic look-alike. A change in a value that isn't text, such as `required`, `enum` or a limit, is listed too.
 
+The app shall check one connector's listed tools against its approvals outside a run, as a run would, at the server address the connector is written with: its URL and headers, or its command, arguments, working folder, environment and secret variables. A connector whose tools are built into Halonic has no listed tools to check. The app shall remove one listed tool's approval by name, an approval that can't be read included, and say when the tool had no approval, with nothing changed.
+
 ## Examples
 
 - Given `lookup` waiting at fingerprint A,
@@ -45,3 +47,9 @@ The app shall list what changed in a waiting tool since it was approved, one ent
 - Given an approved tool and a new one whose description says more, and whose parameters gained an `enum` and lost a `required`,
   when the changes are listed,
   then each of the three is listed, unmarked, with its text before and after.
+- Given a stdio connector `notes-mcp` that lists `lookup`, approved at its command, and `archive`, never approved,
+  when its listing is checked outside a run,
+  then `lookup` is on and `archive` waits.
+- Given `lookup` approved, and an approval of `send` that can't be read,
+  when the person removes the approval of `lookup`, then of `send`, then of `archive`,
+  then `lookup` and `send` are no longer approved, and `archive` is reported as not approved.
