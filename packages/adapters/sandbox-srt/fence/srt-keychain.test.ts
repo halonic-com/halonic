@@ -71,9 +71,11 @@ describe.skipIf(!isMac)("a program in the fence asking the macOS Keychain (A36)"
   beforeAll(async () => {
     base = await mkdtemp(join(tmpdir(), "srt-keychain-"));
     await mkdir(join(base, "work"), { recursive: true });
-    keychain = join(base, "attack.keychain-db");
+    const created = join(base, "attack.keychain-db");
     const password = randomUUID();
-    execFileSync("security", ["create-keychain", "-p", password, keychain]);
+    execFileSync("security", ["create-keychain", "-p", password, created]);
+    // Set only once it exists, so `afterAll` doesn't delete a missing keychain and hide the error.
+    keychain = created;
     execFileSync("security", [
       "add-generic-password",
       "-s",
