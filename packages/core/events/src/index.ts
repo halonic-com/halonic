@@ -19,6 +19,7 @@ export type {
   ToolOutcome,
   ToolRefusalReason,
   ToolRisk,
+  ToolUnaskedReason,
   ToolVerb,
   Usage,
 } from "./run-basics.ts";

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: old app `packages/core/events/src/index.ts` at commit 784f78d; `llm.response.paidBy` from HAL-2311; `usage` cache tokens, 1-hour cache writes included, from HAL-2688; `providerText` from HAL-3119; `run.waiting.labels` from HAL-4014; `run.failed.sandboxReason` from HAL-1709; `cantTry` and `run.cant-try` from HAL-4285; `tool.refused` from HAL-4658; `AgentResume.inner`, `approval.requested.subagent` and `effect.requested.subagent` from HAL-3361; `run.started.version` from HAL-5173
+- Source: old app `packages/core/events/src/index.ts` at commit 784f78d; `llm.response.paidBy` from HAL-2311; `usage` cache tokens, 1-hour cache writes included, from HAL-2688; `providerText` from HAL-3119; `run.waiting.labels` from HAL-4014; `run.failed.sandboxReason` from HAL-1709; `cantTry` and `run.cant-try` from HAL-4285; `tool.refused` from HAL-4658; `tool.unasked` from HAL-5583; `AgentResume.inner`, `approval.requested.subagent` and `effect.requested.subagent` from HAL-3361; `run.started.version` from HAL-5173
 
 The events package shall describe every run log event with the same type name and the same fields, required or optional, as the reference run log, so run logs written by the old repo and by the new one read the same.
 
@@ -10,7 +10,7 @@ The events package shall describe every run log event with the same type name an
 
 - Given the reference run log types,
   when the event types of the events package are listed,
-  then they are exactly the 23 reference names, from `run.started` to `run.failed`, plus the events added since, each with its own requirement (`sandbox.opened`, `events.sandbox-opened`; `sandbox.off`, `events.sandbox-off`; `llm.skipped`, `events.llm-skipped`; `sandbox.started` and `harness.started`, `events.started-events`; `sandbox.blocked`, `events.sandbox-blocked`; `connector.started`, `events.connector-started`; `effect.requested`, `events.effect-requested`; `run.cant-try`, `events.run-cant-try`; `tool.refused`, `events.tool-refused`).
+  then they are exactly the 23 reference names, from `run.started` to `run.failed`, plus the events added since, each with its own requirement (`sandbox.opened`, `events.sandbox-opened`; `sandbox.off`, `events.sandbox-off`; `llm.skipped`, `events.llm-skipped`; `sandbox.started` and `harness.started`, `events.started-events`; `sandbox.blocked`, `events.sandbox-blocked`; `connector.started`, `events.connector-started`; `effect.requested`, `events.effect-requested`; `run.cant-try`, `events.run-cant-try`; `tool.refused`, `events.tool-refused`; `tool.unasked`, `events.tool-unasked`).
 - Given the reference fields of `llm.response`,
   when the events package's `llm.response` event is compared with them,
   then it has the same required fields (`agent`, `provider`, `model`, `usage`, `latencyMs`, `text`) and the same optional ones (`thoughts`, `cost`, `cached`), plus the optional `toolCallAsText` that came with the engine and the optional `paidBy` that came with the harness bridge.

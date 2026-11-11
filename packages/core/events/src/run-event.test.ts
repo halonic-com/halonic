@@ -40,6 +40,8 @@ verifies("events.run-log-contract", () => {
       | "tool.called"
       // Added after the reference by events.tool-refused (HAL-4658).
       | "tool.refused"
+      // Added after the reference by events.tool-unasked (HAL-5583).
+      | "tool.unasked"
       // Added after the reference by events.started-events (HAL-189).
       | "sandbox.started"
       | "harness.started"

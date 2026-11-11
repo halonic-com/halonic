@@ -14,6 +14,7 @@ import type {
   ToolOutcome,
   ToolRefusalReason,
   ToolRisk,
+  ToolUnaskedReason,
   ToolVerb,
   Usage,
 } from "./run-basics.ts";
@@ -161,6 +162,20 @@ export type RunEventBody =
       tool: string;
       toolCallId: string;
       reason: ToolRefusalReason;
+    }
+  /**
+   * A connector's tool call is about to run without asking a person,
+   * because the `read` list of the connector's file names the tool
+   * (requirement `events.tool-unasked`). `connector`: the connector's id.
+   * `tool`: the name the model called. Written before the call, so it shows
+   * even when the call fails.
+   */
+  | {
+      type: "tool.unasked";
+      agent: string;
+      connector: string;
+      tool: string;
+      reason: ToolUnaskedReason;
     }
   /**
    * A step's sandbox is being opened (requirement `events.started-events`).

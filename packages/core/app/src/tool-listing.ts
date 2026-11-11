@@ -2,6 +2,7 @@
 // model and the refusals shown in the workspace's integration status, as
 // `ports.untrusted-tool-listings` asks.
 
+import { type Connector, marksRead } from "@halonicjs/format";
 import type { ConnectorTool, IntegrationTool, ToolRisk, TrustGrant } from "@halonicjs/ports";
 import { readListedTool } from "./listed-tool.ts";
 import {
@@ -45,9 +46,27 @@ export interface ToolListingInput {
   readonly trust: TrustGrant | null;
   /**
    * The risk the workspace sets for a listed tool, by the name the server
-   * lists it under, without the source's id. Used only with a grant.
+   * lists it under, without the source's id. Used only with a grant. Build
+   * it from the connector's file with {@link workspaceRisksOf}.
    */
   readonly workspaceRisks?: ReadonlyMap<string, ToolRisk>;
+}
+
+/**
+ * The risks a connector's file sets for its tools: `read` for each tool its
+ * `tools.read` list marks (`marksRead`, so not one `approve` names). Only
+ * the file, which a person wrote, is read: nothing a server lists can add
+ * a tool here.
+ *
+ * @example
+ * workspaceRisksOf({ approve: [], read: ["search_issues"] });
+ * // Map { "search_issues" => "read" }
+ */
+export function workspaceRisksOf(
+  tools: Pick<Connector["tools"], "approve" | "read">,
+): ReadonlyMap<string, ToolRisk> {
+  const marked = (tools.read ?? []).filter((name) => marksRead(tools, name));
+  return new Map(marked.map((name) => [name, "read"]));
 }
 
 /** A tool to offer the model. */

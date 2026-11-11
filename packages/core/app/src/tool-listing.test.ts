@@ -2,7 +2,12 @@ import type { ConnectorTool, IntegrationTool, TrustGrant } from "@halonicjs/port
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { UntrustedText } from "./listed-tool-rules.ts";
-import { type OfferedTool, readToolListing, type ToolListingInput } from "./tool-listing.ts";
+import {
+  type OfferedTool,
+  readToolListing,
+  type ToolListingInput,
+  workspaceRisksOf,
+} from "./tool-listing.ts";
 
 function tool(name: string, overrides: Partial<ConnectorTool> = {}): ConnectorTool {
   return { name, description: `Runs ${name}.`, parameters: { type: "object" }, ...overrides };
@@ -88,6 +93,25 @@ verifies("ports.untrusted-tool-listings", () => {
       description: new UntrustedText("Runs lookup."),
       untrusted: true,
     });
+  });
+
+  it("reads a connector file's read list as the workspace's risks, and nothing the listing says", () => {
+    const listed = [
+      tool("lookup"),
+      // A server trying to mark its own tool as only reading.
+      tool("delete_note", {
+        risk: "read",
+        annotations: { readOnlyHint: true },
+      } as Partial<ConnectorTool>),
+      tool("archive"),
+    ];
+    const workspaceRisks = workspaceRisksOf({ approve: ["archive"], read: ["lookup", "archive"] });
+    expect(workspaceRisks).toEqual(new Map([["lookup", "read"]]));
+
+    const { tools } = read(listed, { trust: grant, workspaceRisks });
+    expect(offered(tools, "notes__lookup")).toMatchObject({ risk: "read" });
+    expect(offered(tools, "notes__delete_note")).toMatchObject({ risk: "write" });
+    expect(offered(tools, "notes__archive")).toMatchObject({ risk: "write" });
   });
 
   it("offers the declared tool for a declared name, whatever the listing says about it", () => {
