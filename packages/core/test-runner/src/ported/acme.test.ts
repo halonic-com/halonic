@@ -147,6 +147,7 @@ cases:
   - name: searches the tracker
     input: { q: login }
     mocks: { clerk: ['tool:search_issues {"q": "login"}', done] }
+    events: [approve]
     tools: { tracker.search_issues: ['[#12 Login fails]'] }
     expect: { final: end, context: { answer: done } }
 `,

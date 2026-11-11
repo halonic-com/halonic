@@ -34,6 +34,7 @@ const files = {
 cases:
   - name: reads the mailbox
     mocks: { helper: ['tool:list_mail {}', Two letters] }
+    events: [approve]
     tools: { mailbox.list_mail: ['[school, bank]'] }
     expect: { final: end, context: { summary: Two letters } }
 `,

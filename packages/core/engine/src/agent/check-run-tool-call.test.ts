@@ -13,15 +13,18 @@ const lookup: TurnTool = {
   tool: halonicTool("lookup", async () => "found"),
 };
 
-/** The `mail` connector's `search` tool, listed with `risk`, or without one. */
-function mailTool(risk: ToolRisk | undefined): TurnTool {
+/**
+ * The `mail` connector's `search` tool, which the engine counts as `risk`.
+ * Only a risk the workspace sets could make that `read`; a listing can't.
+ */
+function mailTool(risk: ToolRisk): TurnTool {
   return {
     kind: "server",
     source: "mail",
     definition: { name: "mail__search", description: "Searches", parameters: {} },
     listedName: "search",
     connector: new ScriptedConnector("mail", []),
-    ...(risk === undefined ? {} : { risk }),
+    risk,
   };
 }
 
@@ -38,7 +41,7 @@ verifies("engine.run-tool-calls", () => {
     });
   });
 
-  it("runs a call to a connector's tool whose listing says it only reads", () => {
+  it("runs a call to a connector's tool the engine counts as only reading", () => {
     expect(checkRunToolCall(mailTool("read"), call("c-1", "mail__search"))).toEqual({
       kind: "run",
     });
@@ -66,11 +69,11 @@ verifies("engine.run-tool-calls", () => {
     }
   });
 
-  it("asks a person about a connector's tool that can change things, or whose listing doesn't say", () => {
+  it("asks a person about a connector's tool the engine counts as changing things", () => {
     expect(checkRunToolCall(mailTool("send"), call("c-1", "mail__search"))).toEqual({
       kind: "ask",
     });
-    expect(checkRunToolCall(mailTool(undefined), call("c-1", "mail__search"))).toEqual({
+    expect(checkRunToolCall(mailTool("write"), call("c-1", "mail__search"))).toEqual({
       kind: "ask",
     });
   });

@@ -36,6 +36,7 @@ verifies("test-runner.scripted-tools", () => {
         agent("clerk", "connectors: [crm]\n"),
         lookupWorkflow,
         lookupCase(`    mocks: { clerk: ['tool:lookup {"name": "Acme Paper"}', Found it.] }
+    events: [approve]
     tools: { crm.lookup: ['{"vendor": "Acme Paper"}'] }
     expect: { final: done, context: { answer: Found it. } }
 `),
@@ -53,7 +54,7 @@ verifies("test-runner.scripted-tools", () => {
       const [test] = (await runWorkspaceTests(input, deps)).tests;
 
       expect(test?.failures).toEqual([]);
-      // The run log doesn't record a turn's read calls yet, so the model's second request shows it.
+      // The model's second request holds the scripted result.
       const answered = models[0]?.requests[1]?.messages.at(-1);
       expect(answered).toMatchObject({ role: "tool", content: '{"vendor": "Acme Paper"}' });
     });
@@ -63,13 +64,15 @@ verifies("test-runner.scripted-tools", () => {
         crm,
         agent("clerk", "connectors: [crm]\n"),
         lookupWorkflow,
-        lookupCase(`    mocks: { clerk: ['tool:lookup {"name": "Acme Paper"}', Not found.] }
-    expect: { final: done }
+        lookupCase(`    mocks: { clerk: ['tool:lookup {"name": "Acme Paper"}'] }
+    events: [approve]
+    expect: { status: waiting }
 `),
       );
 
       const [test] = (await runWorkspaceTests(input, fakeDeps())).tests;
 
+      // The approved call fails with no result, so the run waits for `retry` or `skip`.
       expect(test?.failures).toEqual([{ kind: "unscripted-tool", tool: "crm.lookup" }]);
     });
 
