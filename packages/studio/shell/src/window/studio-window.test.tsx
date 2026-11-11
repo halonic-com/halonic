@@ -166,6 +166,19 @@ verifies("shell.studio-window", () => {
     expect(container.querySelector("main h1.inbox-view")?.textContent).toBe("Inbox");
   });
 
+  it("moves focus to the h1 of a place a view opens, once its view loads", async () => {
+    const { container } = renderWindow(
+      createShell({ features: [inboxFeature, openerFeature], timers: new FakeTimers() }),
+    );
+    await settle();
+
+    act(() => container.querySelector<HTMLButtonElement>("button.open-inbox")?.click());
+    expect(container.querySelector("main h1.inbox-view")).toBeNull();
+    await settle();
+
+    expect(document.activeElement?.className).toBe("inbox-view");
+  });
+
   it("shows the Search page for a tab on a search", () => {
     const { container, workspace } = renderWindow();
 
