@@ -4,10 +4,7 @@ import { execFile } from "node:child_process";
 const defaultEntries = ["S-1-5-18", "S-1-5-32-544"];
 
 /** What {@link restrictToThisUser} starts; a test hands in a fake. */
-export type RunProgram = (
-  file: string,
-  args: string[],
-) => Promise<{ stdout: string }>;
+export type RunProgram = (file: string, args: string[]) => Promise<{ stdout: string }>;
 
 /** The system folder, from the environment Windows always sets. */
 function system32(): string {
@@ -41,25 +38,15 @@ export async function restrictToThisUser(
 ): Promise<void> {
   const { stdout } = await start("whoami.exe", ["/user", "/fo", "csv", "/nh"]);
   const sid = /"(S-1-[0-9-]+)"/.exec(stdout)?.[1];
-  if (sid === undefined)
-    throw new Error("the current user's SID could not be read");
+  if (sid === undefined) throw new Error("the current user's SID could not be read");
   // The owner can always change the access list again, so take the ownership first: this fails
   // (and the session keeps no journal) when the folder belongs to someone who won't hand it over.
   await start("icacls.exe", [folder, "/setowner", `*${sid}`]);
-  await start("icacls.exe", [
-    folder,
-    "/inheritance:r",
-    "/grant:r",
-    `*${sid}:(OI)(CI)F`,
-  ]);
+  await start("icacls.exe", [folder, "/inheritance:r", "/grant:r", `*${sid}:(OI)(CI)F`]);
   // A new folder also carries the entries of the user's default access list (the system and the
   // administrators); `/grant:r` leaves those, so take them off unless one of them is this user.
   const others = defaultEntries.filter((entry) => entry !== sid);
   if (others.length > 0) {
-    await start("icacls.exe", [
-      folder,
-      "/remove:g",
-      ...others.map((entry) => `*${entry}`),
-    ]);
+    await start("icacls.exe", [folder, "/remove:g", ...others.map((entry) => `*${entry}`)]);
   }
 }

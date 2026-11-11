@@ -97,9 +97,7 @@ describe("the journal folder on Windows", () => {
       .map((line) => line.trim());
     expect(entries, stdout).toHaveLength(1);
     expect(entries[0]).not.toContain("(I)");
-    expect(entries[0]?.toLowerCase()).toContain(
-      (process.env["USERNAME"] ?? "").toLowerCase(),
-    );
+    expect(entries[0]?.toLowerCase()).toContain((process.env["USERNAME"] ?? "").toLowerCase());
   });
 
   it("is owned by the current user", async () => {
@@ -111,10 +109,7 @@ describe("the journal folder on Windows", () => {
     ]);
     expect(code).toBe(0);
     const owner = stdout.trim().toLowerCase();
-    expect(
-      owner.endsWith(`\\${(process.env["USERNAME"] ?? "").toLowerCase()}`),
-      owner,
-    ).toBe(true);
+    expect(owner.endsWith(`\\${(process.env["USERNAME"] ?? "").toLowerCase()}`), owner).toBe(true);
   });
 
   it("is taken over when another account owns it, with the access list still reset", async () => {
@@ -137,8 +132,6 @@ describe("the journal folder on Windows", () => {
   it("is reachable by another local account neither to read nor to write", async () => {
     expect(await asOther("exit 0")).toBe(0); // the account works at all
     expect(await asOther(`dir "${folder}"`)).not.toBe(0);
-    expect(
-      await asOther(`echo x > "${join(folder, "planted.json")}"`),
-    ).not.toBe(0);
+    expect(await asOther(`echo x > "${join(folder, "planted.json")}"`)).not.toBe(0);
   });
 });
