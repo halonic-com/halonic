@@ -169,6 +169,32 @@ verifies("harness-kit.harness-profile", () => {
       ).rejects.toThrow(/overlaps Halonic's data folder/);
     });
 
+    it.each([
+      ["the home folder holds it", ".local/share/halonic"],
+      ["it is a folder of the workspace", ".halonic"],
+    ])("denies Halonic's data folder in a workspace when %s", async (_, inWorkspace) => {
+      const workspace = computer.home;
+      const data = join(workspace, ...inWorkspace.split("/"));
+      for (const folder of ["agent-host", join("tmp", "run_1"), join("settings", "writer")]) {
+        await mkdir(join(data, folder), { recursive: true });
+      }
+      const host = {
+        tempFolder: async () => join(data, "tmp", "run_1"),
+        settingsFolder: async () => join(data, "settings", "writer"),
+      };
+
+      const { deniedGroups } = await profilesWith(
+        {},
+        { workspace, halonicData: data },
+        host,
+      ).profileOf(agentWith(null), bridge);
+
+      const hidden = deniedGroups.find(({ code }) => code === "halonic-data")?.paths ?? [];
+      expect(hidden).toContain(join(data, "agent-host"));
+      expect(hidden).not.toContain(join(data, "tmp", "run_1"));
+      expect(hidden).not.toContain(join(data, "settings", "writer"));
+    });
+
     it("refuses a proposal folder in the workspace", async () => {
       const inWorkspace = join(computer.workspace, "proposal");
       await mkdir(inWorkspace);

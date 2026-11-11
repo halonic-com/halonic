@@ -28,3 +28,6 @@ When the engine asks for a harness call's sandbox profile, the harness kit shall
 - Given a workspace inside `~/.aws`,
   when a profile is built,
   then it is refused.
+- Given a workspace that holds Halonic's data folder, such as the home folder,
+  when a profile is built without a proposal folder,
+  then the data folder is still denied but for the run's temp and settings folders.

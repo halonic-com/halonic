@@ -115,12 +115,21 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       ...(await this.#installPaths(file.install, data)),
     ];
 
-    const kept = [root, workingFolder, tempFolder, ...(settingsFolder ? [settingsFolder] : [])];
+    // Only a proposal folder is kept as a whole. The workspace isn't: when it
+    // holds the data folder (a workspace in the home folder), keeping it
+    // would leave the whole data folder readable.
+    const keptRoot = agent.filesFolder === null ? [] : [root];
+    const kept = [
+      ...keptRoot,
+      workingFolder,
+      tempFolder,
+      ...(settingsFolder ? [settingsFolder] : []),
+    ];
     const deniedGroups: DeniedPathGroup[] = [
       ...(await homeDeniedGroups(this.#options.home, this.#platform, disk)),
       { code: "halonic-data", paths: await hiddenAround(data, kept, disk) },
     ];
-    refuseDeniedHolding(deniedGroups, [...kept, ...readOnlyPaths]);
+    refuseDeniedHolding(deniedGroups, [root, ...kept, ...readOnlyPaths]);
     const profile: SandboxProfile = {
       workingFolder,
       tempFolder,

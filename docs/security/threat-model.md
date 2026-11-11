@@ -390,6 +390,14 @@ routes, isn't built yet, so no app uses the host today.
   and Studio's memory. A program running as you can also change the host's
   unpacked files between launches, or the executable itself; the digest
   check finds the first only at the next launch.
+- **Halonic's data folder is denied as it was when the session opened.** The
+  `halonic-data` group lists every entry of the data folder that isn't on the
+  way to the run's own folders, once. srt can't allow a folder inside a denied
+  one, so the folders on the way stay readable, and a folder made there later
+  stays readable for the rest of the session: another run's proposal folder, a
+  later temp folder or a new agent's settings folder. **Planned** fix: one
+  folder per run in the data folder, so nothing another run makes lands on the
+  way (HAL-5644).
 
 ## 5. `serve` (B6)
 
