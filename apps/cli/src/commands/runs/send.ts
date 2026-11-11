@@ -181,7 +181,8 @@ class EngineOnSend implements Pick<RunExecutor, "send"> {
     this.engine = await openWorkspaceEngine(this.context, this.setup, {
       dir,
       workspace,
-      run: { ...run, ending: nothingSent },
+      runs: [run],
+      ending: nothingSent,
     });
     return this.engine.executor.send(runId, event);
   }

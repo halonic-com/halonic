@@ -1,3 +1,4 @@
+import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
 import {
@@ -10,7 +11,7 @@ import {
 } from "./runs-list.ts";
 
 /**
- * The sentences of `halonic routines` (HAL-4844). cli-output has no section
+ * The sentences of `halonic routines` and `halonic routines watch` (HAL-4844). cli-output has no section
  * for it yet, so these are team wording built on the `halonic runs` list, as
  * HAL-2282 allows: the same columns, times and status words. The trigger's
  * own words come from `describeTrigger` in `@halonicjs/routines`, as the
@@ -39,4 +40,23 @@ export const routinesMessages = defineMessages("routines", {
     ...phrase`No routines in ${workspace} yet. `,
     dim("Add one as workflows/routines/<id>.routine.yaml in a hub."),
   ],
+
+  /** `watch`'s line in `halonic routines --help`. */
+  watchSummary: () => phrase`Start the routines on time until you stop it`,
+  /** What `watch` was doing, for "✕ Couldn't watch the routines in acme: …". */
+  watchAction: (place: string) => phrase`watch the routines in ${place}`,
+  /**
+   * The first line of `watch`: how many routines are on a clock, and how to
+   * stop. The runs that wait for a time move on while it watches too.
+   */
+  watching: (onAClock: number, workspace: string) =>
+    phrase`Watching ${counted(onAClock, "routine", "routines")} in ${workspace}. Stop with Ctrl C.`,
+  /** A routine run that started: "✓ Started Weekly report · run 01jd8q · due 09:00". */
+  started: (name: string, runId: string, due: StartedAt) =>
+    phrase`${markPart("done")} Started ${name} ${markPart("separator")} run ${runId} ${markPart("separator")} due ${startedInWords(due)}`,
+  /** A routine run that didn't start; its error shows with `--debug`, as a step's retries do. */
+  notStarted: (name: string, due: StartedAt) =>
+    phrase`${markPart("failed")} ${name} didn't start ${markPart("separator")} due ${startedInWords(due)} ${markPart("separator")} ${dim("see why with --debug")}`,
+  /** The `--debug` line under {@link notStarted}: the routine's key and the start's own error. */
+  notStartedWhy: (key: string, reason: string) => phrase`Routine ${key} didn't start: ${reason}`,
 });

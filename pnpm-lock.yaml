@@ -302,6 +302,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/adapter-coordination-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/coordination-node
       '@halonicjs/adapter-env-secrets':
         specifier: workspace:*
         version: link:../../packages/adapters/env-secrets
@@ -365,6 +368,9 @@ importers:
       '@halonicjs/profile':
         specifier: workspace:*
         version: link:../../packages/core/profile
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../packages/core/routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std

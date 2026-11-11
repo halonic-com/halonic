@@ -51,7 +51,8 @@ async function open(signal: AbortSignal) {
   return openWorkspaceEngine(context(signal), setup(), {
     dir,
     workspace,
-    run: { hubId: "support", workflowId: "support-reply", ending: runMessages.nothingRan() },
+    runs: [{ hubId: "support", workflowId: "support-reply" }],
+    ending: runMessages.nothingRan(),
   });
 }
 

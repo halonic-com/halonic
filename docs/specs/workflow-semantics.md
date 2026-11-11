@@ -109,15 +109,17 @@ on an event.
 - **Start.** Entering the `wait` state starts its timers. Each is due at the
   `state.entered` time plus its delay. The due times are recorded in
   `run.waiting.timers` and in `summary.nextTimer`.
-- **Firing is pull-based.** `fireTimers(runId)` compares the engine's clock with
-  the due times and takes the earliest timer that is due and whose guard
-  passes. When two are due at the same time, file order decides. It logs
-  `timer.fired` and then a transition with the event `after <delay>`.
+- **Firing.** Each timer is set with the `Scheduler` port. When it is
+  delivered, the engine compares its clock with the due times and takes the
+  earliest timer that is due and whose guard passes. When two are due at the
+  same time, file order decides. It logs `timer.fired` and then a transition
+  with the event `after <delay>`.
 - **Cancel.** Leaving the state, by any event, cancels its timers. Entering the
   state again starts them again.
-- **Who calls it.** The scheduler (the `@halonicjs/app` tick, or
-  `halonic routines watch`) calls `fireTimers` for runs whose `nextTimer` has
-  passed. A timer missed while nothing was running fires on the next tick.
+- **Who delivers it.** The scheduler of the engine that is open on the
+  workspace: the Studio's, or the CLI's while `halonic run` or
+  `halonic routines watch` runs. It keeps its timers in the profile, so a
+  timer missed while nothing was running fires as soon as an engine opens.
 - **Task states have no timeout.** An agent is limited by `maxSteps`.
 
 The functions are `stateTimers` (the timers and their due times) and

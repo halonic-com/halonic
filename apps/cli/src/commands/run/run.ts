@@ -79,7 +79,8 @@ export async function runWorkflow(
   const engine = await openWorkspaceEngine(context, setup, {
     dir,
     workspace,
-    run: { ...workflow, ending: runMessages.nothingRan() },
+    runs: [workflow],
+    ending: runMessages.nothingRan(),
   });
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = engine.unsandboxed.map(unsandboxedWarning);

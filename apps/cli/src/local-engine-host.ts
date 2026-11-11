@@ -10,6 +10,7 @@
 
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
+import { NodeCoordination, randomLeaseToken } from "@halonicjs/adapter-coordination-node";
 import {
   FileRecordStore,
   FolderBlobStore,
@@ -26,7 +27,14 @@ import {
   systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
 import { LocalExecutor } from "@halonicjs/engine";
-import type { Clock, HttpClient, IdGenerator, RunStore, Secrets } from "@halonicjs/ports";
+import type {
+  Clock,
+  Coordination,
+  HttpClient,
+  IdGenerator,
+  RunStore,
+  Secrets,
+} from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
   profileFolder,
@@ -40,6 +48,9 @@ import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 /** The collection of the workspace's record store that keeps the run timers. */
 export const runTimerCollection = "halonic.run-timers";
+
+/** The collection of the workspace's record store that keeps what the routine scheduler shares between ticks. */
+export const routineStateCollection = "halonic.routine-state";
 
 /** The file in the workspace's folder in the profile that the one engine on it holds. */
 export const engineLockFile = "engine.lock";
@@ -71,6 +82,28 @@ export interface LocalEngineInput {
   readonly ids?: IdGenerator;
   /** How the scheduler wakes itself up; Node's own timers by default. */
   readonly setTimer?: SetTimer;
+  /**
+   * Starts the workspace's routines on the scheduler's tick, once a minute,
+   * as `halonic routines watch` does. Left out, a tick does nothing, as for
+   * `halonic run`.
+   */
+  readonly routines?: (engine: RoutineEngine) => RoutineTicks;
+}
+
+/** What the routine scheduler is built on: the engine's own parts. */
+export interface RoutineEngine {
+  readonly executor: LocalExecutor;
+  readonly runs: RunStore;
+  readonly clock: Clock;
+  /** Kept in the workspace's folder in the profile, so the last tick and queues survive a restart. */
+  readonly coordination: Coordination;
+}
+
+/** The routine scheduler as the engine drives it, such as `RoutineScheduler` of `@halonicjs/app`. */
+export interface RoutineTicks {
+  onTick(at: string): Promise<void>;
+  /** Stops it starting runs, once a tick in progress has settled; called first when the engine closes. */
+  dispose(): Promise<void>;
 }
 
 /** The engine of one workspace, open until {@link LocalEngine.close}. */
@@ -138,9 +171,10 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
   const clock = input.clock ?? systemClock;
   const runs = new FolderRunStore(folders.runsFolder());
 
-  // The scheduler's listener needs the executor, and the executor needs the
-  // scheduler, so the listener looks the executor up when a timer is due.
+  // The scheduler's listener needs the executor and the routines, and they
+  // need the scheduler, so the listener looks them up when it is called.
   let executor: LocalExecutor | undefined;
+  let routines: RoutineTicks | undefined;
   const scheduler: NodeScheduler = nodeSchedulerFactory({
     store: new FileRecordStore(folders.recordsFolder()),
     collection: runTimerCollection,
@@ -155,8 +189,11 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
       }
       await executor.onTimer(timer);
     },
-    // A run started with `halonic run` has no routines to tick.
-    onTick: async () => {},
+    // Without routines, as for `halonic run`, a tick does nothing. A tick
+    // before they are built is missed; the next one catches up.
+    onTick: async (at) => {
+      await routines?.onTick(at);
+    },
   });
   executor = new LocalExecutor({
     resolveModel: workspaceModelResolver(input),
@@ -174,6 +211,18 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
     },
   });
   const opened = executor;
+  routines = input.routines?.({
+    executor: opened,
+    runs,
+    clock,
+    coordination: new NodeCoordination({
+      store: new FileRecordStore(folders.recordsFolder()),
+      collection: routineStateCollection,
+      clock,
+      newToken: randomLeaseToken,
+    }),
+  });
+  const ticks = routines;
   let closing: Promise<void> | undefined;
   return {
     executor: opened,
@@ -181,6 +230,8 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
     close: () => {
       closing ??= (async () => {
         try {
+          // First, so no routine run starts on an executor that is closing.
+          await ticks?.dispose();
           // Before the scheduler: its close waits for the deliveries in progress.
           await opened.close();
           await scheduler.close();

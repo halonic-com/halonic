@@ -101,6 +101,6 @@ function routineJson(routine: ListedRoutine): Record<string, unknown> {
 }
 
 /** This computer's IANA time zone, which a schedule without its own zone runs in. */
-function computerTimeZone(): string {
+export function computerTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }

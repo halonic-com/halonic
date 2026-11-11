@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/adapter-coordination-node": "workspace:*",
     "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-harness-claude-code": "workspace:*",
@@ -36,6 +37,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",
+    "@halonicjs/routines": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/test-runner": "workspace:*",
     "@halonicjs/workspace": "workspace:*"
