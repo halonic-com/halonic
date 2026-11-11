@@ -140,7 +140,7 @@ function integrationContent(integration: LocalIntegrationInput): IntegrationTrus
     ),
     needs: [...sheet.needs].sort(compareText),
     code: integration.code,
-    addresses: settingAddresses(integration),
+    addresses: integrationSettingAddresses(sheet, integration.settings),
   };
 }
 
@@ -216,11 +216,20 @@ function settingReference(name: string): string {
   return `‹setting ${name}›`;
 }
 
-/** The address each setting a `{ fromSetting }` host reads holds, by setting name, sorted. */
-function settingAddresses({
-  sheet,
-  settings,
-}: LocalIntegrationInput): Record<string, string | null> {
+/**
+ * The address each setting a `{ fromSetting }` host of `sheet` reads holds,
+ * by setting name, sorted, as {@link IntegrationTrustContent.addresses} has
+ * it. The check before a runner starts compares the settings it would start
+ * with against the trusted ones this way.
+ *
+ * @example
+ * integrationSettingAddresses(homeStation, { url: "HTTP://192.168.1.20:8123" });
+ * // { url: "http://192.168.1.20:8123/" }
+ */
+export function integrationSettingAddresses(
+  sheet: IntegrationSheet,
+  settings: Readonly<Record<string, unknown>>,
+): Record<string, string | null> {
   const names = sheet.hosts.flatMap((host) => (typeof host === "string" ? [] : [host.fromSetting]));
   const addresses: Record<string, string | null> = {};
   for (const name of [...new Set(names)].sort(compareText)) {

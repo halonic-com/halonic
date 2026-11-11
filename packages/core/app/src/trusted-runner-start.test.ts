@@ -8,7 +8,11 @@ import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { TestUnfencedRunConsentStore } from "./testing/test-unfenced-run-consent-store.ts";
 import { type TrustCheck, TrustService, type TrustSubject } from "./trust-service.ts";
-import { IntegrationNotTrustedError, TrustedRunnerStart } from "./trusted-runner-start.ts";
+import {
+  IntegrationNotTrustedError,
+  TrustedRunnerStart,
+  type TrustedRunnerSubject,
+} from "./trusted-runner-start.ts";
 import { UnfencedRuns } from "./unfenced-runs.ts";
 
 /** SHA-256 from Web Crypto, as the platforms' `Digest` adapters give it. */
@@ -29,7 +33,7 @@ const radarSheet = `id: radar
 version: 0.3.0
 kit: 1
 provides: [connector]
-hosts: [radar.example.com]
+hosts: [radar.example.com, { fromSetting: url, class: private }]
 tools:
   - { name: radar-map, description: The rain radar., risk: read, untrusted: true }
 `;
@@ -59,7 +63,18 @@ class FakeRunner implements GatedRunner {
   async close(): Promise<void> {}
 }
 
-async function setup(check: SandboxCheck = passes) {
+/** The radar's settings when the person trusted the workspace. */
+const trustedSettings = { url: "http://192.168.1.20:8123" };
+
+/** The radar's start, with the settings it was trusted with. */
+function radar(trust: TrustCheck): TrustedRunnerSubject {
+  return { trust, folder, settings: trustedSettings };
+}
+
+async function setup(
+  check: SandboxCheck = passes,
+  settings: Record<string, unknown> = trustedSettings,
+) {
   const workspace = new TestFolderReader().putFiles({
     [`${folder}/integration.yaml`]: radarSheet,
     [`${folder}/src/index.js`]: "export default {};\n",
@@ -91,7 +106,7 @@ async function setup(check: SandboxCheck = passes) {
     if (!read.ok) throw new Error(JSON.stringify(read.error));
     const radar: LocalIntegrationInput = {
       sheet: read.value.sheet,
-      settings: {},
+      settings,
       folder,
       code: read.value.code,
     };
@@ -123,7 +138,7 @@ verifies("app.trusted-runner-start", () => {
   describe("TrustedRunnerStart", () => {
     it("starts the runner through the gate when the trust covers the folder as it is", async () => {
       const { starts, started, startIn, trusted } = await setup();
-      const start = await starts.start({ trust: await trusted(), folder }, startIn);
+      const start = await starts.start(radar(await trusted()), startIn);
       expect(start.run).toBe("fenced");
       expect(started.map((runner) => runner.startedIn)).toEqual(["fenced"]);
     });
@@ -132,7 +147,7 @@ verifies("app.trusted-runner-start", () => {
       const { trust, starts, started, startIn, subject } = await setup();
       const check = await trust.check(await subject());
       expect(check.status).toBe("new");
-      const error = await refusal(starts.start({ trust: check, folder }, startIn));
+      const error = await refusal(starts.start(radar(check), startIn));
       expect(error.reason).toBe("workspace-not-trusted");
       expect(started).toEqual([]);
     });
@@ -140,7 +155,10 @@ verifies("app.trusted-runner-start", () => {
     it("starts nothing for a folder the trusted content doesn't name", async () => {
       const { starts, started, startIn, trusted } = await setup();
       const error = await refusal(
-        starts.start({ trust: await trusted(), folder: "integrations/other" }, startIn),
+        starts.start(
+          { trust: await trusted(), folder: "integrations/other", settings: trustedSettings },
+          startIn,
+        ),
       );
       expect(error.reason).toBe("not-in-trust");
       expect(started).toEqual([]);
@@ -150,7 +168,7 @@ verifies("app.trusted-runner-start", () => {
       const { workspace, starts, started, startIn, trusted } = await setup();
       const check = await trusted();
       workspace.putFiles({ [`${folder}/src/index.js`]: "export default {};\r" });
-      const error = await refusal(starts.start({ trust: check, folder }, startIn));
+      const error = await refusal(starts.start(radar(check), startIn));
       expect(error.reason).toBe("code-changed");
       expect(started).toEqual([]);
     });
@@ -159,7 +177,7 @@ verifies("app.trusted-runner-start", () => {
       const { workspace, starts, started, startIn, trusted } = await setup();
       const check = await trusted();
       workspace.putLink(`${folder}/src/keys`);
-      const error = await refusal(starts.start({ trust: check, folder }, startIn));
+      const error = await refusal(starts.start(radar(check), startIn));
       expect(error.reason).toBe("folder-refused");
       expect(error.problems).toEqual([expect.objectContaining({ code: "link", file: "src/keys" })]);
       expect(started).toEqual([]);
@@ -168,22 +186,57 @@ verifies("app.trusted-runner-start", () => {
     it("checks the folder again at every start, such as the restart after an idle stop", async () => {
       const { workspace, starts, started, startIn, trusted } = await setup();
       const check = await trusted();
-      expect((await starts.start({ trust: check, folder }, startIn)).run).toBe("fenced");
+      expect((await starts.start(radar(check), startIn)).run).toBe("fenced");
       workspace.putFiles({ [`${folder}/src/extra.js`]: "" });
-      const error = await refusal(starts.start({ trust: check, folder }, startIn));
+      const error = await refusal(starts.start(radar(check), startIn));
       expect(error.reason).toBe("code-changed");
+      expect(started).toHaveLength(1);
+    });
+
+    it("names the folder as the trust content does, a trailing slash or not", async () => {
+      const { starts, startIn, trusted } = await setup();
+      const start = await starts.start(
+        { trust: await trusted(), folder: `${folder}/`, settings: trustedSettings },
+        startIn,
+      );
+      expect(start.run).toBe("fenced");
+    });
+
+    it("starts nothing when a setting's address changed since the trust, even with the earlier check in hand", async () => {
+      const { starts, started, startIn, trusted } = await setup();
+      const check = await trusted();
+      const error = await refusal(
+        starts.start(
+          { trust: check, folder, settings: { url: "http://192.168.1.99:8123" } },
+          startIn,
+        ),
+      );
+      expect(error.reason).toBe("settings-changed");
+      expect(started).toEqual([]);
+    });
+
+    it("starts with a setting still unset as trusted, and refuses it once set without a new trust", async () => {
+      const { starts, started, startIn, trusted } = await setup(passes, {});
+      const check = await trusted();
+      if (check.status !== "trusted") throw new Error("expected a trusted check");
+      expect(check.content.integrations?.[0]?.addresses).toEqual({ url: null });
+      expect((await starts.start({ trust: check, folder, settings: {} }, startIn)).run).toBe(
+        "fenced",
+      );
+      const error = await refusal(starts.start(radar(check), startIn));
+      expect(error.reason).toBe("settings-changed");
       expect(started).toHaveLength(1);
     });
 
     it("takes the same trust whether the run is fenced or not: the fence status isn't in it", async () => {
       const { runs, starts, started, startIn, trusted } = await setup(inContainer);
       const check = await trusted();
-      expect(await starts.start({ trust: check, folder }, startIn)).toEqual({
+      expect(await starts.start(radar(check), startIn)).toEqual({
         run: "needs-yes",
         reason: "container",
       });
       await runs.allow("container");
-      expect((await starts.start({ trust: check, folder }, startIn)).run).toBe("unfenced");
+      expect((await starts.start(radar(check), startIn)).run).toBe("unfenced");
       expect(started.map((runner) => runner.startedIn)).toEqual(["launcher"]);
     });
   });

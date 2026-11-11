@@ -9,37 +9,42 @@ import {
   parseFile,
   pluginFromIntegrationSheet,
 } from "@halonicjs/format";
-import {
-  type Digest,
-  type FolderEntry,
-  type FolderReader,
-  integrationVersion,
-} from "@halonicjs/ports";
+import { type Digest, type FolderReader, integrationVersion } from "@halonicjs/ports";
 import { bytesToHex, decodeUtf8, err, ok, type Result } from "@halonicjs/std";
+import {
+  CountingReader,
+  changedWhileReadProblem,
+  type FolderNoun,
+  type FolderProblem,
+  folderProblem,
+  inFolder,
+  listingProblems,
+  MAX_FOLDER_BYTES,
+  MAX_FOLDER_ENTRIES,
+} from "./folder-listing.ts";
 import type { PluginFileHash } from "./plugin-trust-content.ts";
 
 /** At most this many files and folders in one plugin folder (D3), so hashing stays cheap. */
-export const MAX_PLUGIN_ENTRIES = 2_000;
+export const MAX_PLUGIN_ENTRIES = MAX_FOLDER_ENTRIES;
 
 /** At most this many bytes in one plugin folder's files together (D3). */
-export const MAX_PLUGIN_BYTES = 50 * 1024 * 1024;
+export const MAX_PLUGIN_BYTES = MAX_FOLDER_BYTES;
 
 /**
  * Something wrong with a plugin folder. Studio shows it on the plugin's row,
  * and the CLI prints it.
  */
-export interface PluginProblem {
-  /** Names the rule, such as `folder-name` or a manifest problem's own code. */
-  readonly code: string;
-  /** The file it is about, from the plugin folder, such as `plugin.yaml`; `""` for the folder itself. */
-  readonly file: string;
-  /** Where in the manifest, as keys and list indexes; `[]` when it isn't about one value. */
-  readonly path: readonly (string | number)[];
-  readonly message: string;
-  /** For a problem in the manifest: its 1-based line and column. */
-  readonly line?: number;
-  readonly col?: number;
-}
+export type PluginProblem = FolderProblem;
+
+/** How the folder checks' messages name a plugin folder. */
+const pluginNoun: FolderNoun = {
+  theFolder: "The plugin folder",
+  aFolder: "A plugin folder",
+  theFiles: "The plugin folder's files",
+  one: "a plugin",
+  it: "the plugin",
+  withoutGit: "install the plugin without it",
+};
 
 /** A plugin folder that was read and checked: what its trust check needs. */
 export interface PluginFolder {
@@ -90,7 +95,7 @@ export async function readPluginFolder(
   options: ReadPluginFolderOptions = {},
 ): Promise<Result<PluginFolder, PluginProblem[]>> {
   const entries = await reader.entries(folder, { limit: MAX_PLUGIN_ENTRIES });
-  const listed = listingProblems(entries, folder);
+  const listed = listingProblems(entries, folder, pluginNoun);
   if (listed.length > 0) return err(listed);
 
   const files = entries.filter((entry) => entry.kind === "file");
@@ -123,37 +128,27 @@ export async function readPluginFolder(
   }
 
   const location = await reader.locationOf(folder);
-  if (location === null) return err([changedWhileReadProblem("")]);
+  if (location === null) return err([changedWhileReadProblem("", pluginNoun)]);
   return ok({ location, plugin, files: hashing.hashes() });
 }
 
-/**
- * Reads files of one plugin folder and keeps the hash of each. It counts
- * the bytes it read, because the listing's sizes can be out of date: a file
- * that grew after the listing stops the reads that follow it once the
- * folder's files pass the limit.
- */
+/** Reads files of one plugin folder, counting the bytes as {@link CountingReader} does, and keeps the hash of each. */
 class HashingReader {
-  readonly #reader: FolderReader;
+  readonly #files: CountingReader;
   readonly #digest: Digest;
-  readonly #folder: string;
   readonly #hashes = new Map<string, string>();
-  #bytesRead = 0;
 
   constructor(reader: FolderReader, digest: Digest, folder: string) {
-    this.#reader = reader;
+    this.#files = new CountingReader(reader, folder, pluginNoun);
     this.#digest = digest;
-    this.#folder = folder;
   }
 
   /** The bytes of `path`, from the plugin folder, hashed; or why they can't be used. */
   async read(path: string): Promise<Result<Uint8Array, PluginProblem>> {
-    const bytes = await this.#reader.read(`${this.#folder}/${path}`);
-    if (bytes === null) return err(changedWhileReadProblem(path));
-    this.#bytesRead += bytes.length;
-    if (this.#bytesRead > MAX_PLUGIN_BYTES) return err(tooLargeProblem());
-    this.#hashes.set(path, bytesToHex(await this.#digest.sha256(bytes)));
-    return ok(bytes);
+    const bytes = await this.#files.read(path);
+    if (!bytes.ok) return bytes;
+    this.#hashes.set(path, bytesToHex(await this.#digest.sha256(bytes.value)));
+    return bytes;
   }
 
   /** The hash of every file read, sorted by path in plain code-unit order, as the port lists them. */
@@ -162,52 +157,6 @@ class HashingReader {
       .sort(([left], [right]) => (left < right ? -1 : 1))
       .map(([path, sha256]) => ({ path, sha256 }));
   }
-}
-
-/** Problems the listing alone shows: past a limit, or a link or special file anywhere (checks 6 and 7). */
-function listingProblems(entries: readonly FolderEntry[], folder: string): PluginProblem[] {
-  if (entries.length > MAX_PLUGIN_ENTRIES) {
-    return [
-      folderProblem(
-        "too-many-files",
-        `The plugin folder holds more than ${MAX_PLUGIN_ENTRIES.toLocaleString("en")} files and folders, the most a plugin may have. A .git folder inside it counts too: install the plugin without it.`,
-      ),
-    ];
-  }
-  const bytes = entries.reduce(
-    (total, entry) => total + (entry.kind === "file" ? entry.size : 0),
-    0,
-  );
-  if (bytes > MAX_PLUGIN_BYTES) return [tooLargeProblem()];
-  return entries.flatMap((entry): PluginProblem[] => {
-    const file = inFolder(entry.path, folder);
-    if (entry.kind === "link") {
-      return [
-        fileProblem(
-          "link",
-          file,
-          `${file} is a link. A plugin folder holds only files and folders, so a link can't point Halonic at a file it didn't check.`,
-        ),
-      ];
-    }
-    if (entry.kind === "other") {
-      return [
-        fileProblem(
-          "special-file",
-          file,
-          `${file} is a special file, such as a pipe or a socket. A plugin folder holds only files and folders.`,
-        ),
-      ];
-    }
-    return [];
-  });
-}
-
-function tooLargeProblem(): PluginProblem {
-  return folderProblem(
-    "too-large",
-    `The plugin folder's files come to more than ${MAX_PLUGIN_BYTES / (1024 * 1024)} MB, the most a plugin may have. A .git folder inside it counts too: install the plugin without it.`,
-  );
 }
 
 function manifestCountProblem(count: number): PluginProblem {
@@ -220,14 +169,6 @@ function manifestCountProblem(count: number): PluginProblem {
         "manifest-twice",
         "The plugin folder has both plugin.yaml and integration.yaml. Keep one: a plugin.yaml can hold the integration as its backend.",
       );
-}
-
-function changedWhileReadProblem(file: string): PluginProblem {
-  return fileProblem(
-    "changed-while-read",
-    file,
-    `${file === "" ? "The plugin folder" : file} was removed while Halonic read the plugin. Load it again.`,
-  );
 }
 
 /** The manifest as a plugin: a `plugin.yaml` as it is, an `integration.yaml` as a plugin with only a backend. */
@@ -314,19 +255,6 @@ function pluginProblems(
     }
   }
   return problems;
-}
-
-/** `path` from the plugin folder: `weather/backend/index.js` is `backend/index.js` in `weather`. */
-function inFolder(path: string, folder: string): string {
-  return path.slice(folder.length + 1);
-}
-
-function folderProblem(code: string, message: string): PluginProblem {
-  return { code, file: "", path: [], message };
-}
-
-function fileProblem(code: string, file: string, message: string): PluginProblem {
-  return { code, file, path: [], message };
 }
 
 /** A problem at a value of a `plugin.yaml`; `inManifest` moves it to an `integration.yaml`. */

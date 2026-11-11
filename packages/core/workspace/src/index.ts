@@ -74,6 +74,7 @@ export {
 } from "./trust-integration-code.ts";
 export {
   type IntegrationTrustContent,
+  integrationSettingAddresses,
   integrationsTrustContent,
   type LocalIntegrationInput,
   type SecretTrustContent,

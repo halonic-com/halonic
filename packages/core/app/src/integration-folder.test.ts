@@ -94,8 +94,12 @@ verifies("app.integration-folder", () => {
     ]);
   });
 
-  it("names the sheet's own problems in integration.yaml", async () => {
+  it("names the sheet's own problems in integration.yaml, before reading any other file", async () => {
     const reader = radarFolder().putFiles({ [`${folder}/integration.yaml`]: "id: radar\n" });
+    reader.beforeRead = (path) => {
+      if (path !== `${folder}/integration.yaml`)
+        throw new Error(`read ${path} past a broken sheet`);
+    };
     const problems = await problemsOf(reader);
     expect(problems.length).toBeGreaterThan(0);
     expect(problems.every((problem) => problem.file === "integration.yaml")).toBe(true);
