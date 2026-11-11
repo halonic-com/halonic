@@ -4,6 +4,7 @@
   for this; Liam approves this note in his review of this pull request on
   [HAL-3246](/HAL/issues/HAL-3246)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0+TbpGhWYggFRzfWN8yP/lDxRKiis3KRmVQOOO/DkpOEY2+1pUZmHOkRxGMiYd1GcsARI4OBuoFCVKfyMo0RCQ==
 - Task: HAL-3246
 
 ## What changes
