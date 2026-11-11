@@ -33,6 +33,11 @@ latter from `@halonicjs/adapter-harness-kit`) and the constants around them (`co
 exported, are the client that talks to `codex app-server`, the reader that
 turns its notifications into run events and the `config.toml` text.
 
+`codexEnvironment`, `CodexFolders` and `codexRunTokenVariable` are also their
+own entry point, `@halonicjs/adapter-harness-codex/environment`. Studio runs
+harnesses in the agent host but computes the environment on its own page, and
+that entry imports only `@halonicjs/ports`, never Node, so a page can load it.
+
 ## Talking to `codex app-server`
 
 Codex runs as `codex app-server`, which speaks JSON-RPC over its standard

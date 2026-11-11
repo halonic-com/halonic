@@ -3,7 +3,13 @@ import {
   harnessBridgeTokenHeader,
   type SandboxProfile,
 } from "@halonicjs/ports";
-import { claudeCodeRunTokenVariable } from "./settings.ts";
+
+/**
+ * The variable that carries the run token for the bridge's MCP server. The
+ * MCP settings name it in the server's header, and Claude Code fills it in
+ * from its environment, so the token is never written into a file.
+ */
+export const claudeCodeRunTokenVariable = "HALONIC_RUN_TOKEN";
 
 /** The folders of the sandbox profile the environment points Claude Code at. */
 export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolder">;
