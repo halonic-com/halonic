@@ -1,7 +1,7 @@
-import { vi } from "vitest";
+import { setTimeout as sleep } from "node:timers/promises";
 
 /**
- * Waits until `ready` says yes, trying again on `vi.waitFor`'s interval.
+ * Waits until `ready` says yes, checking every 50 ms like `vi.waitFor`.
  *
  * Use it instead of `vi.waitFor(() => expect(...))`: that makes one more
  * `expect` call for every try, so a test's `expect` count (which the
@@ -15,7 +15,9 @@ export async function waitUntil(
   ready: () => boolean | Promise<boolean>,
   options: { timeout?: number } = {},
 ): Promise<void> {
-  await vi.waitFor(async () => {
-    if (!(await ready())) throw new Error("Not ready yet.");
-  }, options);
+  const deadline = Date.now() + (options.timeout ?? 1000);
+  while (!(await ready())) {
+    if (Date.now() >= deadline) throw new Error("Timed out waiting for the check to pass.");
+    await sleep(50);
+  }
 }

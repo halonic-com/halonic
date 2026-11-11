@@ -14,7 +14,7 @@ import {
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { engineStart } from "../../test/run-setup.ts";
-import { waitUntil } from "../../test/wait-until.ts";
+import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { routinesCommandWith } from "./command.ts";
 
