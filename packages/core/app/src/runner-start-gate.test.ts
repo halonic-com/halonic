@@ -30,12 +30,14 @@ class FakeRunner implements GatedRunner {
   readonly fence: SandboxFence;
   readonly stopped: Promise<void>;
   #stop!: () => void;
+  #crash!: (error: Error) => void;
 
   constructor(startedIn: string, fence: SandboxFence) {
     this.startedIn = startedIn;
     this.fence = fence;
-    this.stopped = new Promise((resolve) => {
+    this.stopped = new Promise((resolve, reject) => {
       this.#stop = resolve;
+      this.#crash = reject;
     });
   }
 
@@ -47,6 +49,11 @@ class FakeRunner implements GatedRunner {
   /** The runner stops by itself. */
   end(): void {
     this.#stop();
+  }
+
+  /** The runner stops with an error. */
+  crash(error: Error): void {
+    this.#crash(error);
   }
 }
 
@@ -153,10 +160,30 @@ verifies("app.runner-start-gate", () => {
       await gate.start(startIn);
       started[0]?.end();
       await started[0]?.stopped;
-      // Let the gate's `finally` unregister it.
+      // Let the gate's handler unregister it.
       await Promise.resolve();
       await runs.takeBack();
       expect(started[0]?.closed).toBe(0);
+    });
+
+    it("forgets a runner that stopped with an error, and leaves no unhandled rejection", async () => {
+      const { gate, runs, started, startIn } = setup({ check: inContainer });
+      await runs.allow("container");
+      await gate.start(startIn);
+      const unhandled: unknown[] = [];
+      const record = (reason: unknown) => unhandled.push(reason);
+      process.on("unhandledRejection", record);
+      try {
+        started[0]?.crash(new Error("the runner crashed"));
+        await started[0]?.stopped.catch(() => undefined);
+        // Give Node a turn to report a rejection nobody handled.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await runs.takeBack();
+        expect(started[0]?.closed).toBe(0);
+        expect(unhandled).toEqual([]);
+      } finally {
+        process.off("unhandledRejection", record);
+      }
     });
   });
 });

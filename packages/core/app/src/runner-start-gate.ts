@@ -8,13 +8,12 @@
 // The trust check (a `TrustGrant` for the code) comes before this gate, so a
 // saved yes for running without the fence never stands in for trust.
 
-import type { Sandbox, SandboxFence } from "@halonicjs/ports";
+import type { Sandbox, SandboxCheck, SandboxFence } from "@halonicjs/ports";
 import { type RunnerFence, type RunnerUnfencedReason, runnerFence } from "./runner-fence.ts";
+import type { UnfencedRunDecision, UnfencedRuns } from "./unfenced-runs.ts";
 
 /** A decision that lets code run without the sandbox. */
 type Allowed = Extract<UnfencedRunDecision, { run: "allowed" }>;
-
-import type { UnfencedRunDecision, UnfencedRuns } from "./unfenced-runs.ts";
 
 /** What the gate needs from a started runner. */
 export interface GatedRunner {
@@ -111,7 +110,7 @@ export class RunnerStartGate {
 
   async #startFenced<Runner extends GatedRunner>(
     startIn: StartInSandbox<Runner>,
-    check: Awaited<ReturnType<Sandbox["check"]>>,
+    check: SandboxCheck,
   ): Promise<GatedStart<Runner>> {
     const runner = await startIn(this.#fenced);
     const proven = runnerFence({ platform: this.#platform, check, proof: runner.fence });
@@ -136,7 +135,9 @@ export class RunnerStartGate {
       );
     }
     const unregister = this.#runs.registerUnfencedRun(() => runner.close());
-    void runner.stopped.finally(unregister);
+    // Forget the run however it stops. A `stopped` that rejects is handled
+    // here too, so it never becomes an unhandled rejection.
+    void runner.stopped.then(unregister, unregister);
     // Take back may have run while the runner was starting, after it had
     // collected the runs to stop. Asking again now catches that start.
     const now = await this.#runs.decide(fence);
