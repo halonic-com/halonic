@@ -153,7 +153,7 @@ jobs:
         run: |
           node_bin="$(dirname "$(pnpm --silent exec node -p process.execPath | tail -n 1)")"
           export PATH="$PNPM_HOME/bin:$node_bin:$PATH"
-          pnpm add -g ./apps/cli
+          pnpm add -g ./apps/cli # zizmor: ignore[adhoc-packages] links a folder in this checkout, downloads nothing
           halonic --help
           halonic --version
       - id: pr
