@@ -1597,9 +1597,33 @@ jobs:
         with:
           persist-credentials: false
       - uses: $/.github/actions/setup
+      # Not `install --with-deps`: that runs apt-get itself, and stalled until
+      # the job timed out when the Ubuntu mirrors were down (HAL-5765). The
+      # dry run asks `apt-get install -s` which of Playwright's packages are
+      # missing; a stand-in apt-get that reports every one turns that into
+      # Playwright's own list, without the network.
+      - id: playwright-deps
+        name: List the Linux packages Playwright needs
+        working-directory: packages/studio/shell
+        run: |
+          shim="$RUNNER_TEMP/apt-get-list"
+          mkdir -p "$shim"
+          printf '#!/bin/sh\nfor p; do case "$p" in -*|install) ;; *) echo "Inst $p ";; esac; done\n' > "$shim/apt-get"
+          chmod +x "$shim/apt-get"
+          out=$(PATH="$shim:$PATH" pnpm exec playwright install-deps --dry-run chromium webkit) || true
+          packages=$(sed -n 's/^  //p' <<< "$out" | tr '\n' ' ')
+          if [ -z "${packages// }" ]; then
+            echo "::error::Couldn't list Playwright's Linux packages:"$'\n'"$out"
+            exit 1
+          fi
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+      - name: Install the Linux libraries Playwright needs
+        uses: $/.github/actions/apt-install
+        with:
+          packages: ${{ steps.playwright-deps.outputs.packages }}
       - name: Install Chromium and WebKit for Playwright
         working-directory: packages/studio/shell
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
       - name: Shell end-to-end tests
         working-directory: packages/studio/shell
         run: pnpm e2e
