@@ -1,7 +1,7 @@
 // The shapes the review service takes and gives (HAL-3277), apart from the
 // service, so the Studio can use them without reading the service.
 
-import type { LeftOutReason } from "@halonicjs/events";
+import type { CantTryStep, LeftOutReason } from "@halonicjs/events";
 import type { DefinitionSource, ExpectedContent } from "@halonicjs/ports";
 import type { LineChange } from "@halonicjs/std";
 import type { ItemPath } from "./changes/revert-parts.ts";
@@ -194,7 +194,14 @@ export interface LeftOut {
 export interface TryItSource {
   /** The whole workspace, with the left-out changes' baseline values instead. */
   readonly source: DefinitionSource;
+  /** For one item's run, only the files that run reads. */
   readonly leftOut: LeftOut;
+  /**
+   * For one item's run, the steps it can't try because a change is left
+   * out: pass them as the run start's `cantTry`, so they never run and the
+   * run ends as `cant-try`. Empty without an item.
+   */
+  readonly cantTry: readonly CantTryStep[];
 }
 
 /** What `ReviewService.check` found. */

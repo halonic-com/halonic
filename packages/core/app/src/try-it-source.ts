@@ -47,6 +47,7 @@ export async function buildTryItSource(files: ReviewFiles): Promise<TryItSource>
   return {
     source: new HeldBackSource(files, used),
     leftOut: leftOutOf(leftOutFiles),
+    cantTry: [],
   };
 }
 
@@ -153,7 +154,8 @@ function valueAt(data: Record<string, unknown>, path: ItemPath): unknown {
   return value;
 }
 
-function leftOutOf(files: readonly LeftOutFile[]): LeftOut {
+/** The left-out files with their sums. */
+export function leftOutOf(files: readonly LeftOutFile[]): LeftOut {
   const sum = (some: readonly LeftOutFile[]) =>
     some.reduce((total, file) => total + file.changes, 0);
   return {

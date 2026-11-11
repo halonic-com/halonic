@@ -22,6 +22,7 @@ import type {
   ReviewTarget,
   TryItSource,
 } from "./review-types.ts";
+import { buildTryItRun } from "./try-it-run.ts";
 import { buildTryItSource } from "./try-it-source.ts";
 
 export type { ReviewServiceOptions } from "./review-files.ts";
@@ -228,12 +229,21 @@ export class ReviewService {
    * for a file the assistant wrote while the workspace was untrusted, until
    * the person accepts them. `leftOut` counts what that leaves out.
    *
+   * With `item`, for a run of that workflow or agent
+   * (`app.review-try-it-cant-try`): `leftOut` keeps only the files that run
+   * reads, and `cantTry` lists the steps it can't try without a left-out
+   * change. Pass them to the run's start.
+   *
    * Built in memory, from the records as they are now: call it again on
    * {@link onDidChange}. It writes nothing, starts nothing and never reads
    * or changes trust.
+   *
+   * @param options - `item`: the path of the workflow or agent being tried
    */
-  tryItSource(): Promise<TryItSource> {
-    return buildTryItSource(this.files);
+  tryItSource(options: { readonly item?: string } = {}): Promise<TryItSource> {
+    return options.item === undefined
+      ? buildTryItSource(this.files)
+      : buildTryItRun(this.files, options.item);
   }
 
   /**
