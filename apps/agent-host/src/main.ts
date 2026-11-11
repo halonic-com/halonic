@@ -20,7 +20,6 @@ import {
   readFileSync,
   renameSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { createRequire, registerHooks } from "node:module";
@@ -89,33 +88,103 @@ export function unpackPayload(
   }
 }
 
-/** How old a launch's temporary unpacking folder must be before another launch removes it. */
-const staleUnpackingMs = 60 * 60 * 1000;
+/**
+ * A folder `unpackPayload` makes under the profile's `agent-host` folder:
+ * `<version>-<digest>`, or one of its temporary `.unpacking-<id>` folders.
+ */
+const payloadFolderPattern = /^[0-9A-Za-z.+-]+-[0-9a-f]{16}(\.unpacking-[0-9a-f-]{36})?$/;
 
 /**
- * Removes what other launches left next to `folder`: the payload folders of
- * other versions, and temporary unpacking folders older than an hour (a
- * launch that stopped halfway). Younger ones may belong to a launch that is
- * unpacking right now, so they stay. Called after `folder` is unpacked, so
- * an update doesn't leave the old version's files behind.
- *
- * Best effort: a folder that can't be removed (on Windows, a file still in
- * use) stays, and the next launch tries again. A half-removed folder is never
- * used, because a launch of its version checks every file and unpacks again.
+ * Where each running host names the payload folder it uses: one file per
+ * host, named after its process id, holding the folder's name. More than
+ * one host can run on a profile (Studio launched twice, or the CLI next to
+ * it), so a launch removes only folders no running host has claimed.
  */
-export function removeOldPayloads(folder: string, now = Date.now()): void {
-  const parent = dirname(folder);
-  for (const name of readdirSync(parent)) {
-    const other = join(parent, name);
-    if (other === folder) continue;
+function claimsFolder(payloadFolderPath: string): string {
+  return join(dirname(payloadFolderPath), "running");
+}
+
+/**
+ * Claims `folder` for the host with process id `pid`, before it unpacks
+ * there, so another launch's clean-up leaves the folder and its temporary
+ * `.unpacking-*` folders alone.
+ *
+ * @returns a function that gives up the claim, for when the host exits. A
+ *   claim left by a host that crashed is dropped by the next clean-up.
+ */
+export function claimPayload(folder: string, pid: number = process.pid): () => void {
+  const claims = claimsFolder(folder);
+  mkdirSync(claims, { recursive: true });
+  const claim = join(claims, String(pid));
+  writeFileSync(claim, basename(folder));
+  return () => rmSync(claim, { force: true });
+}
+
+/**
+ * The payload folder names other running hosts have claimed. This host's own
+ * claim doesn't count: its unpacking is done, so a temporary folder of its
+ * version is a halfway launch's. Claims of hosts that no longer run are
+ * removed on the way.
+ */
+function claimedPayloads(folder: string, isRunning: (pid: number) => boolean): Set<string> {
+  const claims = claimsFolder(folder);
+  const claimed = new Set<string>();
+  const names = existsSync(claims) ? readdirSync(claims) : [];
+  for (const name of names) {
+    if (!/^[0-9]+$/.test(name) || Number(name) === process.pid) continue;
+    const claim = join(claims, name);
     try {
-      const unpacking = name.includes(".unpacking-");
-      if (unpacking && now - statSync(other).mtimeMs < staleUnpackingMs) continue;
-      rmSync(other, { recursive: true, force: true });
+      if (isRunning(Number(name))) claimed.add(readFileSync(claim, "utf8"));
+      else rmSync(claim, { force: true });
     } catch {
-      // Still in use, or already gone: the next launch tries again.
+      // Given up while being read; its host has gone.
     }
   }
+  return claimed;
+}
+
+/** Whether process `pid` runs: signal 0 checks without sending anything. */
+function processIsRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: it runs, as another user's process.
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/**
+ * Removes the payload folders other launches left next to `folder`: other
+ * versions, and temporary folders of launches that stopped halfway. A folder
+ * a running host has claimed (see `claimPayload`) is kept, and so are its
+ * temporary folders, since that host may still be unpacking. A process id
+ * the system has given to another program only keeps a folder longer. A
+ * folder that can't be removed (on Windows, one whose files are still open)
+ * is left for the next launch. Anything else in that folder is never touched.
+ *
+ * @param isRunning - whether a process id still runs; tests pass their own
+ * @returns the names of the folders it removed
+ */
+export function removeOldPayloads(
+  folder: string,
+  isRunning: (pid: number) => boolean = processIsRunning,
+): string[] {
+  const parent = dirname(folder);
+  const claimed = claimedPayloads(folder, isRunning);
+  const removed: string[] = [];
+  for (const name of readdirSync(parent)) {
+    if (name === basename(folder) || !payloadFolderPattern.test(name)) continue;
+    const unpacksInto = name.replace(/\.unpacking-[0-9a-f-]{36}$/, "");
+    if (claimed.has(unpacksInto)) continue;
+    try {
+      rmSync(join(parent, name), { recursive: true, force: true });
+      removed.push(name);
+    } catch {
+      // Still in use; the next launch tries again.
+    }
+  }
+  return removed;
 }
 
 /** True when every payload file is in `folder` with its digest. */
@@ -248,6 +317,7 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
     return 2;
   }
   const folder = payloadFolder(profileFolder, version, manifest);
+  process.once("exit", claimPayload(folder));
   unpackPayload(folder, manifest, (path) => new Uint8Array(getRawAsset(path)));
   removeOldPayloads(folder);
   registerHooks({

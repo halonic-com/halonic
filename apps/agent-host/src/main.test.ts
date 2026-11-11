@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -7,7 +8,6 @@ import {
   readFileSync,
   rmSync,
   statSync,
-  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,6 +15,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  claimPayload,
   hostArguments,
   payloadFolder,
   payloadProgram,
@@ -132,35 +133,106 @@ describe("unpackPayload", () => {
 
 describe("removeOldPayloads", () => {
   const folder = () => payloadFolder(profile, "1.2.3", manifest);
-  const parent = () => join(profile, "agent-host");
-  const leave = (name: string, ageMs = 0) => {
-    const other = join(parent(), name);
-    mkdirSync(join(other, "node_modules"), { recursive: true });
-    const at = (Date.now() - ageMs) / 1000;
-    utimesSync(other, at, at);
+  const inAgentHost = (name: string) => join(profile, "agent-host", name);
+  const leftBehind = (name: string) => {
+    mkdirSync(join(inAgentHost(name), "node_modules"), { recursive: true });
+    writeFileSync(join(inAgentHost(name), "node_modules", "cli.js"), "old");
   };
 
-  it("removes other versions' folders and keeps this one", () => {
+  it("removes other versions and halfway unpacks, and keeps this launch's folder", () => {
+    leftBehind("1.2.2-fedcba9876543210");
+    leftBehind("1.2.3-fedcba9876543210");
+    leftBehind("1.2.3-0123456789abcdef.unpacking-6f1c2a4e-9b3d-4c5e-8f7a-1b2c3d4e5f60");
     unpackPayload(folder(), manifest, readAsset);
-    leave("1.2.2-fedcba9876543210");
-    leave("1.2.3-fedcba9876543210");
-    removeOldPayloads(folder());
-    expect(readdirSync(parent())).toEqual(["1.2.3-0123456789abcdef"]);
-    expect(readFileSync(join(folder(), "node_modules", "srt", "dist", "cli.js"), "utf8")).toBe(
-      "cli",
+
+    expect(removeOldPayloads(folder()).sort()).toEqual([
+      "1.2.2-fedcba9876543210",
+      "1.2.3-0123456789abcdef.unpacking-6f1c2a4e-9b3d-4c5e-8f7a-1b2c3d4e5f60",
+      "1.2.3-fedcba9876543210",
+    ]);
+    expect(readdirSync(join(profile, "agent-host"))).toEqual(["1.2.3-0123456789abcdef"]);
+    expect(readFileSync(join(folder(), ...manifest.entry.split("/")), "utf8")).toBe(
+      assets[manifest.entry],
     );
   });
 
-  it("removes a launch's unpacking folder only once it is an hour old", () => {
+  it("never touches anything that isn't a payload folder", () => {
     unpackPayload(folder(), manifest, readAsset);
-    leave("1.2.4-fedcba9876543210.unpacking-new", 60 * 1000);
-    leave("1.2.4-fedcba9876543210.unpacking-old", 2 * 60 * 60 * 1000);
-    removeOldPayloads(folder());
-    expect(readdirSync(parent()).sort()).toEqual([
+    leftBehind("notes");
+    writeFileSync(inAgentHost("host.lock"), "");
+
+    expect(removeOldPayloads(folder())).toEqual([]);
+    expect(readdirSync(join(profile, "agent-host")).sort()).toEqual([
       "1.2.3-0123456789abcdef",
-      "1.2.4-fedcba9876543210.unpacking-new",
+      "host.lock",
+      "notes",
     ]);
   });
+
+  it("keeps the folder a running host of another version has claimed", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    const older = payloadFolder(profile, "1.2.2", manifest);
+    claimPayload(older, 222);
+    leftBehind("1.2.2-0123456789abcdef");
+    const running = (pid: number) => pid === 222;
+
+    expect(removeOldPayloads(folder(), running)).toEqual([]);
+    expect(existsSync(older)).toBe(true);
+  });
+
+  it("keeps the temporary folder of a launch of the same version that is still unpacking", () => {
+    claimPayload(folder(), 111);
+    const unpacking = "1.2.3-0123456789abcdef.unpacking-6f1c2a4e-9b3d-4c5e-8f7a-1b2c3d4e5f60";
+    leftBehind(unpacking);
+    unpackPayload(folder(), manifest, readAsset);
+
+    expect(removeOldPayloads(folder(), (pid) => pid === 111)).toEqual([]);
+    expect(existsSync(inAgentHost(unpacking))).toBe(true);
+  });
+
+  it("removes a halfway launch's temporary folder of its own version despite its own claim", () => {
+    claimPayload(folder(), process.pid);
+    const unpacking = "1.2.3-0123456789abcdef.unpacking-6f1c2a4e-9b3d-4c5e-8f7a-1b2c3d4e5f60";
+    leftBehind(unpacking);
+    unpackPayload(folder(), manifest, readAsset);
+
+    expect(removeOldPayloads(folder(), () => true)).toEqual([unpacking]);
+  });
+
+  it("drops the claims of hosts that stopped and removes their folders", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    claimPayload(payloadFolder(profile, "1.2.2", manifest), 222);
+    leftBehind("1.2.2-0123456789abcdef");
+
+    expect(removeOldPayloads(folder(), () => false)).toEqual(["1.2.2-0123456789abcdef"]);
+    expect(readdirSync(inAgentHost("running"))).toEqual([]);
+  });
+
+  it("gives up a claim when the host exits", () => {
+    const giveUp = claimPayload(folder(), 333);
+    expect(readFileSync(inAgentHost("running/333"), "utf8")).toBe("1.2.3-0123456789abcdef");
+
+    giveUp();
+    expect(readdirSync(inAgentHost("running"))).toEqual([]);
+  });
+
+  // A folder whose entries can't be deleted stands in for one still open on
+  // Windows. Permissions don't stop root, and Windows ignores the mode.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] Windows ignores folder modes: leaves a folder it can't remove for the next launch",
+    () => {
+      unpackPayload(folder(), manifest, readAsset);
+      leftBehind("1.2.2-fedcba9876543210");
+      leftBehind("1.2.1-fedcba9876543210");
+      chmodSync(inAgentHost("1.2.2-fedcba9876543210/node_modules"), 0o555);
+      try {
+        expect(removeOldPayloads(folder())).toEqual(["1.2.1-fedcba9876543210"]);
+        expect(existsSync(inAgentHost("1.2.2-fedcba9876543210"))).toBe(true);
+      } finally {
+        chmodSync(inAgentHost("1.2.2-fedcba9876543210/node_modules"), 0o755);
+      }
+    },
+  );
 });
 
 describe("resolveWorkspace", () => {
