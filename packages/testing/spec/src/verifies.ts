@@ -86,6 +86,9 @@ function countPassingWaitForOnly(context: TestContext): () => void {
       const own = (context as { _local?: boolean })._local === true ? context.expect : undefined;
       const local = own?.getState().assertionCalls ?? 0;
       const global = expect.getState().assertionCalls;
+      // An attempt still pending when vi.waitFor times out can reject later and
+      // reset the count of the test running then. The timed-out test has
+      // already failed, so that can't hide a failure.
       const forget = (error: unknown): never => {
         own?.setState({ assertionCalls: local });
         expect.setState({ assertionCalls: global });
