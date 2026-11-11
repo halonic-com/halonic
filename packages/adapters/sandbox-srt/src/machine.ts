@@ -47,6 +47,18 @@ export interface Machine {
    * @throws when the sandbox account is unknown or an access list can't be read or changed
    */
   letSandboxReadParents(folders: readonly string[]): Promise<void>;
+  /**
+   * Runs srt's Windows uninstall (`srt windows-uninstall`): the sandbox
+   * account and its profile, the sandbox group, the network filters, the
+   * `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants this user's
+   * sessions kept on their folders. It asks for an administrator once, unless
+   * this process already runs as one. With nothing installed it changes
+   * nothing, so running it again is safe.
+   *
+   * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
+   * @throws with srt's own words when the uninstall fails, also while a sandboxed program runs
+   */
+  uninstallWindowsSandbox(): Promise<"removed" | "cancelled">;
 }
 
 /** The sysctl that restricts user namespaces on Ubuntu 24.04 and later. */
@@ -154,5 +166,16 @@ export const systemMachine: Machine = {
     });
     if (sid === undefined) throw new Error("srt's sandbox account is not set up");
     await letSandboxReadParents(parents, sid);
+  },
+  async uninstallWindowsSandbox() {
+    const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
+      "@anthropic-ai/sandbox-runtime"
+    );
+    // srt has only a synchronous uninstall; it blocks while the prompt is up,
+    // which is fine for the one-shot command that runs it.
+    const uninstall = uninstallWindowsSandbox({
+      srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+    });
+    return uninstall.cancelled === true ? "cancelled" : "removed";
   },
 };

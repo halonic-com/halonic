@@ -19,6 +19,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     hasWindowsSandbox: async () => false,
     installWindowsSandbox: async () => "installed" as const,
     letSandboxReadParents: async () => undefined,
+    uninstallWindowsSandbox: async () => "removed" as const,
     ...overrides,
   };
 }
@@ -221,6 +222,69 @@ verifies("sandbox-srt.setup", () => {
         reason: "only Windows has a sandbox setup, not linux",
       });
       expect(installs).toBe(0);
+    });
+  });
+});
+
+verifies("sandbox-srt.remove", () => {
+  describe("SrtSandbox.remove", () => {
+    /** Windows with the sandbox set up, where each uninstall answers as `uninstall` does. */
+    function windowsMachine(uninstall: Machine["uninstallWindowsSandbox"]) {
+      let installed = true;
+      return machine({
+        platform: "win32",
+        hasWindowsSandbox: async () => installed,
+        uninstallWindowsSandbox: async () => {
+          const result = await uninstall();
+          installed &&= result !== "removed";
+          return result;
+        },
+      });
+    }
+
+    it("removes the Windows install, so the sandbox needs its setup again", async () => {
+      const sandbox = new SrtSandbox(windowsMachine(async () => "removed"));
+      expect(await sandbox.remove()).toEqual({ ok: true });
+      expect(await sandbox.check()).toMatchObject({ ok: false, reason: "setup-needed" });
+    });
+
+    it("is done again when run again", async () => {
+      const sandbox = new SrtSandbox(windowsMachine(async () => "removed"));
+      await sandbox.remove();
+      expect(await sandbox.remove()).toEqual({ ok: true });
+    });
+
+    it("says the administrator prompt was cancelled, and the sandbox stays", async () => {
+      const sandbox = new SrtSandbox(windowsMachine(async () => "cancelled"));
+      expect(await sandbox.remove()).toEqual({
+        ok: false,
+        reason: "the administrator prompt was cancelled; nothing changed",
+      });
+      expect((await sandbox.check()).ok).toBe(true);
+    });
+
+    it("gives the uninstall's own words on one line when it fails", async () => {
+      const sandbox = new SrtSandbox(
+        windowsMachine(async () => {
+          throw new Error("srt-win uninstall failed (exit 22):\r\n  kept_grants_in_use\r\n");
+        }),
+      );
+      expect(await sandbox.remove()).toEqual({
+        ok: false,
+        reason: "srt-win uninstall failed (exit 22): kept_grants_in_use",
+      });
+    });
+
+    it("removes nothing on other systems, where there is nothing to remove", async () => {
+      let uninstalls = 0;
+      const linux = machine({
+        uninstallWindowsSandbox: async () => {
+          uninstalls++;
+          return "removed";
+        },
+      });
+      expect(await new SrtSandbox(linux).remove()).toEqual({ ok: true });
+      expect(uninstalls).toBe(0);
     });
   });
 });

@@ -60,10 +60,11 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * - `--version` prints its version;
  * - `--sandbox-check` prints whether the sandbox works on this machine, as JSON;
  * - `--sandbox-setup` sets the sandbox up, once, for the installer (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON;
+ * - `--sandbox-remove` removes what the setup left, for the uninstaller (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
  *
- * The two sandbox commands exit with 0 when the answer is `ok`, and 1 when it
+ * The three sandbox commands exit with 0 when the answer is `ok`, and 1 when it
  * isn't, so the installer needn't read the JSON.
  *
  * @param sandbox - the sandbox on this machine; tests pass one on a fake machine
@@ -84,6 +85,9 @@ export async function run(
   }
   if (args.includes("--sandbox-setup")) {
     return answer(io, await sandbox.setUp());
+  }
+  if (args.includes("--sandbox-remove")) {
+    return answer(io, await sandbox.remove());
   }
   if (args.includes("--stdio")) {
     return serveOverFrames(args, version, io, sandbox);

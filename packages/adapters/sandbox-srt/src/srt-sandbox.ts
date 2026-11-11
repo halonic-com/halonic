@@ -21,6 +21,12 @@ interface Unavailable {
 /** What setting up the sandbox gave: done, or why not, in one line. */
 export type SandboxSetup = { ok: true } | { ok: false; reason: string };
 
+/** What removing the sandbox gave: done, or why not, in one line. */
+export type SandboxRemoval = SandboxSetup;
+
+/** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
+const promptCancelled = "the administrator prompt was cancelled; nothing changed";
+
 /**
  * The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on
  * macOS, a sandbox user account and network filters on Windows. Windows is
@@ -75,13 +81,34 @@ export class SrtSandbox implements Sandbox {
     }
     try {
       if ((await machine.installWindowsSandbox()) === "cancelled") {
-        return { ok: false, reason: "the administrator prompt was cancelled; nothing changed" };
+        return { ok: false, reason: promptCancelled };
       }
     } catch (error) {
-      return { ok: false, reason: oneLine(error instanceof Error ? error.message : String(error)) };
+      return { ok: false, reason: errorLine(error) };
     }
     const check = await this.check();
     return check.ok ? { ok: true } : { ok: false, reason: oneLine(check.missing.join("; ")) };
+  }
+
+  /**
+   * Removes what {@link SrtSandbox.setUp} left on this machine, for the
+   * uninstaller, as an administrator. On Windows it runs srt's uninstall: the
+   * sandbox account, its group, the network filters, srt's machine key, and
+   * the write grants kept by this user's sessions. It is `ok` when nothing
+   * was set up, and when run again. srt refuses, and nothing is removed,
+   * while a sandboxed program runs. Other systems have nothing to remove.
+   * Never throws.
+   */
+  async remove(): Promise<SandboxRemoval> {
+    if (this.#machine.platform !== "win32") return { ok: true };
+    try {
+      if ((await this.#machine.uninstallWindowsSandbox()) === "cancelled") {
+        return { ok: false, reason: promptCancelled };
+      }
+    } catch (error) {
+      return { ok: false, reason: errorLine(error) };
+    }
+    return { ok: true };
   }
 
   /** Programs share the working folder, and the fence is the operating system's. */
@@ -160,6 +187,11 @@ function grantedPaths(profile: SandboxProfile): string[] {
     ...(settingsFolder === null ? [] : [settingsFolder]),
     ...readOnlyPaths,
   ];
+}
+
+/** What `error` says, on one line. */
+function errorLine(error: unknown): string {
+  return oneLine(error instanceof Error ? error.message : String(error));
 }
 
 /** `text` on one line: srt's messages can carry srt-win's output over several. */

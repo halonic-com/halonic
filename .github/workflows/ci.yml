@@ -1285,6 +1285,14 @@ jobs:
         working-directory: packages/adapters/sandbox-srt
         shell: bash
         run: pnpm test:fence:windows
+      # Removing the sandbox, as the uninstaller's `--sandbox-remove` does
+      # (HAL-6180): the account, its group, the network filters, srt's machine
+      # key and the grants a session left must all be gone, and a second
+      # removal must be done too. Last, because it takes the install away.
+      - name: Remove the sandbox
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: pnpm test:remove:windows
 
   agent-host:
     # The agent host as one executable, built with Node's single-executable

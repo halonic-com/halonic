@@ -8,11 +8,11 @@ import { TestRelay } from "./stdio/relay.test-helper.ts";
 /**
  * A Windows machine whose install the test controls: nothing really runs.
  *
- * @param state - whether srt's install is there at first, and how the
- *   administrator prompt is answered when it installs (yes, unless given)
+ * @param state - whether srt's install is there at first, and whether the
+ *   administrator prompt is answered yes (unless given) or cancelled
  */
-function windows(state: { installed: boolean; prompt?: "installed" | "cancelled" }): Machine {
-  const answer = state.prompt ?? "installed";
+function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): Machine {
+  const cancelled = state.prompt === "cancelled";
   return {
     platform: "win32",
     insideContainer: async () => false,
@@ -22,8 +22,14 @@ function windows(state: { installed: boolean; prompt?: "installed" | "cancelled"
     hasSeatbelt: async () => false,
     hasWindowsSandbox: async () => state.installed,
     installWindowsSandbox: async () => {
-      state.installed ||= answer === "installed";
-      return answer;
+      if (cancelled) return "cancelled";
+      state.installed = true;
+      return "installed";
+    },
+    uninstallWindowsSandbox: async () => {
+      if (cancelled) return "cancelled";
+      state.installed = false;
+      return "removed";
     },
     letSandboxReadParents: async () => undefined,
   };
@@ -88,6 +94,34 @@ describe("run", () => {
     const { io, lines } = starter();
     const cancelled = new SrtSandbox(windows({ installed: false, prompt: "cancelled" }));
     expect(await run(["--sandbox-setup"], "1.2.3", io, cancelled)).toBe(1);
+    expect(lines).toEqual([
+      '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
+    ]);
+  });
+
+  it("removes the sandbox with --sandbox-remove, also when run again, on one JSON line", async () => {
+    const { io, lines } = starter();
+    const state = { installed: true };
+    const sandbox = new SrtSandbox(windows(state));
+    expect(await run(["--sandbox-remove"], "1.2.3", io, sandbox)).toBe(0);
+    expect(state.installed).toBe(false);
+    expect(await run(["--sandbox-remove"], "1.2.3", io, sandbox)).toBe(0);
+    expect(lines).toEqual(['{"ok":true}\n', '{"ok":true}\n']);
+  });
+
+  it("is done with --sandbox-remove when the sandbox was never set up", async () => {
+    const { io, lines } = starter();
+    const sandbox = new SrtSandbox(windows({ installed: false }));
+    expect(await run(["--sandbox-remove"], "1.2.3", io, sandbox)).toBe(0);
+    expect(lines).toEqual(['{"ok":true}\n']);
+  });
+
+  it("exits with 1 and gives the removal's reason when it didn't work", async () => {
+    const { io, lines } = starter();
+    const state = { installed: true, prompt: "cancelled" as const };
+    const cancelled = new SrtSandbox(windows(state));
+    expect(await run(["--sandbox-remove"], "1.2.3", io, cancelled)).toBe(1);
+    expect(state.installed).toBe(true);
     expect(lines).toEqual([
       '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
     ]);

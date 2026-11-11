@@ -5,6 +5,7 @@
     "vitest.config.ts",
     "fence",
     "vitest.fence.config.ts",
-    "vitest.fence-windows.config.ts"
+    "vitest.fence-windows.config.ts",
+    "vitest.remove-windows.config.ts"
   ]
 }

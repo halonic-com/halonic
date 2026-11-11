@@ -41,6 +41,13 @@ each folder between the user profile and the paths it grants, on that folder alo
 folder's dates and flags, never what it holds. The entry stays when the session closes, since other
 sessions share those folders; a folder that has it already is left alone.
 
+`remove()` undoes it for the uninstaller (through the agent host's `--sandbox-remove`). On Windows it
+runs srt's uninstall (what `srt windows-uninstall` runs): the sandbox account and its profile, the
+sandbox group, the network filters, the `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants
+kept on project folders by sessions of the user it runs as. It is `ok` when nothing was set up, and
+when run again. srt removes nothing while a sandboxed program runs, and leaves
+`%ProgramData%\sandbox-runtime` (its CA key folder) in place. Other systems have nothing to remove.
+
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
 program, argument or variable with a double quote, a percent sign, a line break or a NUL is refused

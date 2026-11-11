@@ -11,7 +11,8 @@
     "lint": "biome check .",
     "test": "vitest run",
     "test:fence": "vitest run --config vitest.fence.config.ts",
-    "test:fence:windows": "vitest run --config vitest.fence-windows.config.ts"
+    "test:fence:windows": "vitest run --config vitest.fence-windows.config.ts",
+    "test:remove:windows": "vitest run --config vitest.remove-windows.config.ts"
   },
   "devDependencies": {
     "@halonicjs/testing-contracts": "workspace:*",
