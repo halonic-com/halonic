@@ -174,8 +174,8 @@ A `parallel` state records `agent.started` with `branch` for every branch in nam
 branch's model call at once and joins the results under the branch names (requirement
 `engine.parallel-state`). A run records one effect at a time, so a branch can't make a connector call that
 changes things: its model call is offered only the connector tools whose listing says `read`, through
-`readToolsOf`. Write, send and unlabelled tools are left out, so the agent never sees a tool it can't use
-there. A branch whose agent stops for an approval ends with `output: null` and an `error`; the run goes on.
+`readToolsOf`. Write, send and unlabelled tools are left out, and so are read tools the connector's file puts
+under `approve` (they would wait for a person), so the agent never sees a tool it can't use there. A branch whose agent stops for an approval ends with `output: null` and an `error`; the run goes on.
 A branch whose agent's output is a `choice` must answer with one of its options (the whitespace
 around it is trimmed, nothing else is forgiven); any other answer ends that branch the same way, with
 reason `answer-not-an-option`, and `join` and `continueOnError` decide what follows. A `foreach` item

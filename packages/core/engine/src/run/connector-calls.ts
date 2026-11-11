@@ -4,7 +4,7 @@
 // key, and only then does the engine make it, here.
 
 import type { SendingSettings } from "@halonicjs/app";
-import type { Agent, Connector } from "@halonicjs/format";
+import { type Agent, type Connector, needsApproval } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
@@ -51,13 +51,23 @@ export function effectBoundary(calls: RunConnectorCalls): EffectBoundary {
 /**
  * The connector with only the tools whose listing says they read: what a
  * `parallel` branch's model call is offered. A tool whose listing gives no
- * risk counts as `write`, so it is left out too. Calls go to the connector
- * itself.
+ * risk counts as `write`, so it is left out too. So is a tool the `approve`
+ * list of the connector's file in `lists` names, under the name its server
+ * lists it under, or every tool when that list is `all` (HAL-4630): it
+ * waits for a person, which would only end the branch. Calls go to the
+ * connector itself.
  */
-export function readToolsOf(connector: ConnectorClient): ConnectorClient {
+export function readToolsOf(
+  connector: ConnectorClient,
+  lists: Readonly<Record<string, Pick<Connector["tools"], "approve">>>,
+): ConnectorClient {
+  const tools = Object.hasOwn(lists, connector.id) ? lists[connector.id] : undefined;
   return {
     id: connector.id,
-    listTools: async () => (await connector.listTools()).filter((tool) => tool.risk === "read"),
+    listTools: async () =>
+      (await connector.listTools()).filter(
+        (tool) => tool.risk === "read" && (tools === undefined || !needsApproval(tools, tool.name)),
+      ),
     callTool: (name, args, options) => connector.callTool(name, args, options),
     close: () => connector.close(),
   };

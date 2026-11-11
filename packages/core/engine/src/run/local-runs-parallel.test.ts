@@ -1,4 +1,4 @@
-import type { Workflow } from "@halonicjs/format";
+import type { Connector, Workflow } from "@halonicjs/format";
 import type { ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -121,4 +121,46 @@ verifies("engine.parallel-state", () => {
     }
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
+
+  it("leaves out a read tool its connector's file puts under approve", async () => {
+    const model = await branchesOfferedUnder(["search"]);
+
+    for (const request of model.requests) {
+      expect(request.tools?.map((tool) => tool.name)).toEqual(["list_folders"]);
+    }
+  });
+
+  it("offers a branch no connector tools when the file says approve: all", async () => {
+    const model = await branchesOfferedUnder("all");
+
+    for (const request of model.requests) {
+      expect(request.tools?.map((tool) => tool.name) ?? []).toEqual([]);
+    }
+  });
 });
+
+/** The model after both branches of a run asked, whose `mail` file has the `approve` list given. */
+async function branchesOfferedUnder(approve: Connector["tools"]["approve"]) {
+  const mail = new ScriptedConnector(
+    "mail",
+    [mailTool("search", "read"), mailTool("list_folders", "read")],
+    () => "done",
+  );
+  const { executor, model, runs, scheduler } = runsOn(
+    [textAnswer("n"), textAnswer("w")],
+    new KernelRuns(),
+    {
+      workflow: research,
+      agents: agentsUsing(["mail"], "searcher", "reader"),
+      connectors: [mail],
+      connectorTools: { mail: { approve } },
+      connectorCalls: sendingOn,
+    },
+  );
+  await executor.start(researchStart);
+  await scheduler.runDue();
+
+  expect(model.requests).toHaveLength(2);
+  expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  return model;
+}

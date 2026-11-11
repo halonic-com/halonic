@@ -430,8 +430,10 @@ export class LocalExecutor implements RunExecutor {
    * the turn's run log come later in step 4.
    *
    * A `parallel` branch's call is offered only the connector tools whose
-   * listing says they read ({@link readToolsOf}): a branch can't make a
-   * call that changes things, because a run records one effect at a time.
+   * listing says they read and their kept file doesn't put under `approve`
+   * ({@link readToolsOf}): a branch can't make a call that changes things,
+   * because a run records one effect at a time, and a call that waits for
+   * a person would only end the branch.
    *
    * A call that needs a person's OK ends the call with `{ type: "approval",
    * tool, args, resume }`, and the run waits. A connector call that can
@@ -456,7 +458,9 @@ export class LocalExecutor implements RunExecutor {
     const inBranch = branchOfCall(run.parallel, call.callId) !== null;
     const connectorTools = turn.definitions.connectorTools ?? {};
     const listed = allowedToolsOf(connectorsOf(this.options.connectors, agent), connectorTools);
-    const connectors = inBranch ? listed.map(readToolsOf) : listed;
+    const connectors = inBranch
+      ? listed.map((connector) => readToolsOf(connector, connectorTools))
+      : listed;
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
     const outcome = await runAgentTurn({
