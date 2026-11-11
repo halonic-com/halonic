@@ -462,6 +462,20 @@ cloud provider is trusted. An export folder is plain personal data on your disk.
 - Write only what ships, as in [writing docs](../guides/writing-docs.md). Say
   **Planned** for the rest.
 
-The page on the trust gate comes with phase 2. The sandbox's limits for people
-who use Halonic are on the docs site's Sandbox page; this section is the
-reference it must agree with.
+The trust gate's limits are on [workspace trust](trust.md) and the sandbox's on
+[the sandbox's limits](sandbox.md). The docs site's Sandbox page, for people who
+use Halonic, must agree with them.
+
+## 8. Limits of trust and of the sandbox
+
+The trust prompt is a list, not a sandbox: it shows what a workspace can start
+and where it can talk to, and a yes lets those programs run with your rights.
+The sandbox is a fence built from the operating system's own controls, not a
+virtual machine. It has no CPU or memory limits, on Windows it is a preview,
+and an agent you run "on this computer" has none of it. The limits are written
+out on two pages that must agree with this one:
+
+- [Workspace trust](trust.md): what the CLI asks for, what Studio doesn't ask
+  for and what trust does not protect against.
+- [The sandbox's limits](sandbox.md): the fence, its reason codes, Windows and
+  "this computer".
