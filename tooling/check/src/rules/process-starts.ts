@@ -20,6 +20,8 @@ const starterModules: readonly string[] = [
   "node:worker_threads",
   "cluster",
   "node:cluster",
+  "vm",
+  "node:vm",
 ];
 
 /** One entry of `process-starters.json`. */
@@ -111,7 +113,7 @@ function checkEntry(
   const at = `starters["${file}"]`;
   if (!starts) {
     const why = context.files.includes(file)
-      ? "no longer imports child_process, worker_threads or cluster or loads a module the check can't follow (or is exempt)"
+      ? "no longer imports child_process, worker_threads, cluster or vm or loads a module the check can't follow (or is exempt)"
       : "doesn't exist";
     report.error(startersPath, `${at}: the file ${why}. Remove the entry. ${guide}`);
   }

@@ -164,6 +164,10 @@ function hiddenLoadOf(node: ts.Node): string | undefined {
     }
     return undefined;
   }
+  const global = globalEscape(node);
+  if (global !== undefined) {
+    return global;
+  }
   const name = memberName(node);
   if (name === "createRequire" || name === "getBuiltinModule") {
     return name;
@@ -172,6 +176,66 @@ function hiddenLoadOf(node: ts.Node): string | undefined {
   const called = parent !== undefined && ts.isCallExpression(parent) && parent.expression === node;
   if (name === "require" && !(ts.isIdentifier(node) && called)) {
     return "require other than a direct require() call";
+  }
+  return undefined;
+}
+
+const globalObjects = new Set(["globalThis", "global", "self", "window"]);
+/** What a global object can hand out without an import: Node's own APIs and code from a string. */
+const globalEscapes = new Set(["process", "require", "Buffer", "eval", "Function"]);
+/** The members of `process` that load native code or start a process without an import. */
+const processEscapes = new Set(["binding", "_linkedBinding", "dlopen"]);
+
+/**
+ * Names the way a node reaches a Node API or runs code from a string without
+ * importing anything: `eval(…)`, `Function(…)`, a global object's `process`,
+ * `require`, `Buffer`, `eval` or `Function` (also destructured or by a computed
+ * name), and `process.binding`, `process._linkedBinding`, `process.dlopen`.
+ */
+function globalEscape(node: ts.Node): string | undefined {
+  if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+    const callee = node.expression;
+    if (ts.isIdentifier(callee) && (callee.text === "eval" || callee.text === "Function")) {
+      return `${callee.text}(), which runs code from a string`;
+    }
+  }
+  if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+    const base = ts.skipOuterExpressions(node.expression);
+    const key = memberName(node);
+    if (ts.isIdentifier(base) && globalObjects.has(base.text)) {
+      if (key === undefined) {
+        return `${base.text}[…] with a computed name`;
+      }
+      return globalEscapes.has(key)
+        ? `${base.text}.${key}, which reaches a Node API or code from a string`
+        : undefined;
+    }
+    if (
+      ts.isIdentifier(base) &&
+      base.text === "process" &&
+      key !== undefined &&
+      processEscapes.has(key)
+    ) {
+      return `process.${key}, which loads native code`;
+    }
+  }
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isObjectBindingPattern(node.name) &&
+    node.initializer !== undefined
+  ) {
+    const init = ts.skipOuterExpressions(node.initializer);
+    const takesEscape = node.name.elements.some((element) => {
+      const key = element.propertyName ?? element.name;
+      return (
+        element.dotDotDotToken !== undefined ||
+        ts.isComputedPropertyName(key) ||
+        (ts.isIdentifier(key) && globalEscapes.has(key.text))
+      );
+    });
+    if (takesEscape && ts.isIdentifier(init) && globalObjects.has(init.text)) {
+      return `a destructured ${init.text}, which can reach a Node API or code from a string`;
+    }
   }
   return undefined;
 }

@@ -71,6 +71,41 @@ describe("readSourceFacts: imports", () => {
   });
 });
 
+describe("readSourceFacts: ways around the import rules", () => {
+  const hidden = (text: string): string[] =>
+    readSourceFacts("a.ts", text).hiddenLoads.map((load) => load.what);
+
+  it.each([
+    "(globalThis as unknown as { process?: unknown }).process",
+    'globalThis["require"]("fs")',
+    "globalThis.Buffer.from('x')",
+    "global.process.env",
+    "const { process } = globalThis;",
+    "const { ...rest } = globalThis;",
+    "globalThis[name]",
+    'process.binding("spawn_sync")',
+    "process._linkedBinding('x')",
+    "process.dlopen(m, f)",
+    "eval(code)",
+    "new Function('return 1')",
+    "Function('return 1')()",
+  ])("flags %s", (text) => {
+    expect(hidden(text)).not.toEqual([]);
+  });
+
+  it.each([
+    "globalThis.fetch(url)",
+    "globalThis.setTimeout(fn, 1)",
+    "const { fetch } = globalThis;",
+    "type T = typeof globalThis.fetch;",
+    "process.stderr.write('x')",
+    "const o = { eval: 1 }; o.eval;",
+    "const Function2 = 1;",
+  ])("leaves %s alone", (text) => {
+    expect(hidden(text)).toEqual([]);
+  });
+});
+
 describe("readSourceFacts: functions", () => {
   it("names functions, methods and arrow functions and counts their lines", () => {
     const text = [
