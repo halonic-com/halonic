@@ -53,8 +53,17 @@ async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }>
 
 const samsEmail = ["--input", "examples/refund-question.json"];
 
+/**
+ * Room for a golden run: it runs Support reply once per golden mode, three
+ * workflow runs in one test. Answering the wait takes 1.5–3 s on a quiet
+ * machine and passed Vitest's 5 s default on a loaded runner (HAL-5399).
+ */
+const goldenTimeout = 20_000;
+
 verifies("cli.run", () => {
-  it("follows Support reply until it waits for the reply's approval, in every mode", async () => {
+  it("follows Support reply until it waits for the reply's approval, in every mode", {
+    timeout: goldenTimeout,
+  }, async () => {
     const args = ["run", "support-reply", ...samsEmail];
     const output = await runGolden(args, () => [runCommand()], acme);
 
@@ -65,7 +74,9 @@ verifies("cli.run", () => {
     );
   });
 
-  it("answers the wait with --event and ends with the receipt", async () => {
+  it("answers the wait with --event and ends with the receipt", {
+    timeout: goldenTimeout,
+  }, async () => {
     const args = ["run", "support-reply", ...samsEmail, "--event", "approve"];
     const output = await runGolden(args, () => [runCommand()], acme);
 
