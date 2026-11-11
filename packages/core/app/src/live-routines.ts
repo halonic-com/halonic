@@ -6,9 +6,16 @@
 
 import { parseFile } from "@halonicjs/format";
 import type { DefinitionSource, Vcs } from "@halonicjs/ports";
-import type { PlacedRoutine } from "@halonicjs/routines";
-import { filesOf, loadWorkspace, placeOf, VersionSource } from "@halonicjs/workspace";
+import type { DueRun, PlacedRoutine } from "@halonicjs/routines";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  placeOf,
+  VersionSource,
+} from "@halonicjs/workspace";
 import { liveVersionOf } from "./live-version.ts";
+import type { TargetUnavailableWhy } from "./routine-skips.ts";
 import { placedRoutines } from "./workspace-routines.ts";
 
 /** What {@link LiveRoutines} reads. */
@@ -23,6 +30,14 @@ export interface LiveRoutinesOptions {
 interface LiveRoutineFile {
   readonly path: string;
   readonly placed: PlacedRoutine;
+}
+
+/** What {@link LiveRoutines} keeps of one live version. */
+interface KeptVersion {
+  readonly commit: string;
+  readonly routines: readonly LiveRoutineFile[];
+  /** The file of each workflow and agent a routine can start, by {@link targetKey}. */
+  readonly targets: ReadonlyMap<string, string>;
 }
 
 /**
@@ -48,16 +63,23 @@ interface LiveRoutineFile {
  * every call, so a watch event needs no signal: Off acts by the next tick.
  * Keep one instance per open workspace, for the `enabled` values it keeps.
  *
+ * {@link targetUnavailable} is the scheduler's check that a due routine's
+ * target can start.
+ *
  * @example
  * const live = new LiveRoutines({ vcs, saved: store });
- * workspaceRoutineScheduler({ ...options, routines: () => live.list() });
+ * workspaceRoutineScheduler({
+ *   ...options,
+ *   routines: () => live.list(),
+ *   targetUnavailable: (run) => live.targetUnavailable(run),
+ * });
  */
 export class LiveRoutines {
   readonly #options: LiveRoutinesOptions;
   /** The last `enabled` read from each saved routine file, by path. */
   readonly #lastEnabled = new Map<string, boolean>();
-  /** The live version's routines, kept until the live version moves. */
-  #cached: { readonly commit: string; readonly routines: readonly LiveRoutineFile[] } | null = null;
+  /** The live version's routines and targets, kept until the live version moves. */
+  #kept: KeptVersion | null = null;
 
   constructor(options: LiveRoutinesOptions) {
     this.#options = options;
@@ -73,7 +95,7 @@ export class LiveRoutines {
     if (live.kind === "none-yet" || vcs === null) {
       return [];
     }
-    const routines = await this.#liveRoutineFiles(vcs, live.commit.hash);
+    const { routines } = await this.#liveVersion(vcs, live.commit.hash);
     const scheduled: PlacedRoutine[] = [];
     for (const { path, placed } of routines) {
       const enabled = await this.#savedEnabled(path, placed.routine.enabled);
@@ -85,12 +107,40 @@ export class LiveRoutines {
     return scheduled;
   }
 
-  /** The routines of the live version at `commit`, read once per commit. */
-  async #liveRoutineFiles(
-    vcs: Pick<Vcs, "readAt" | "listAt">,
-    commit: string,
-  ): Promise<readonly LiveRoutineFile[]> {
-    if (this.#cached?.commit !== commit) {
+  /**
+   * Why the due run's target can't start, for the scheduler's
+   * `targetUnavailable` (requirement `app.scheduler-skip-target-unavailable`):
+   * - `never-live`: the workflow or agent it starts isn't in the live version;
+   * - `in-trash`: it is, but its saved file is gone, as when it was moved to
+   *   the trash;
+   * - `null`: it can start. Also with history off, where every run reads the
+   *   saved files, and for a routine whose target has no hub: its start
+   *   fails on its own and is reported.
+   */
+  async targetUnavailable(run: DueRun): Promise<TargetUnavailableWhy | null> {
+    const { vcs, saved } = this.#options;
+    const live = await liveVersionOf(vcs);
+    if (live.kind === "history-off") {
+      return null;
+    }
+    if (live.kind === "none-yet" || vcs === null) {
+      return "never-live";
+    }
+    const target = targetOf(run.placed);
+    if (target === null) {
+      return null;
+    }
+    const { targets } = await this.#liveVersion(vcs, live.commit.hash);
+    const path = targets.get(target);
+    if (path === undefined) {
+      return "never-live";
+    }
+    return (await saved.read(path)) === null ? "in-trash" : null;
+  }
+
+  /** The routines and targets of the live version at `commit`, read once per commit. */
+  async #liveVersion(vcs: Pick<Vcs, "readAt" | "listAt">, commit: string): Promise<KeptVersion> {
+    if (this.#kept?.commit !== commit) {
       const workspace = await loadWorkspace(
         new VersionSource(vcs, commit, this.#options.saved.location),
       );
@@ -98,9 +148,9 @@ export class LiveRoutines {
         path: file.path,
         placed: { hub: file.hub, routine: file.value },
       }));
-      this.#cached = { commit, routines };
+      this.#kept = { commit, routines, targets: targetFiles(workspace) };
     }
-    return this.#cached.routines;
+    return this.#kept;
   }
 
   /**
@@ -132,4 +182,35 @@ export class LiveRoutines {
       }
     }
   }
+}
+
+/** A workflow or agent a routine can start, as `<kind>:<hub>/<id>`. */
+function targetKey(kind: "workflow" | "agent", hub: string, id: string): string {
+  return `${kind}:${hub}/${id}`;
+}
+
+/** The file of each workflow and agent in a hub, by {@link targetKey}. */
+function targetFiles(workspace: LoadedWorkspace): Map<string, string> {
+  const files = new Map<string, string>();
+  for (const file of filesOf(workspace, "workflow")) {
+    if (file.hub !== null) files.set(targetKey("workflow", file.hub, file.value.id), file.path);
+  }
+  for (const file of filesOf(workspace, "agent")) {
+    if (file.hub !== null) files.set(targetKey("agent", file.hub, file.value.id), file.path);
+  }
+  return files;
+}
+
+/**
+ * The workflow or agent the routine starts, by {@link targetKey}: in the hub
+ * its `run` names, else its own. `null` when neither names one.
+ */
+function targetOf({ hub, routine }: PlacedRoutine): string | null {
+  const targetHub = routine.run.hub ?? hub;
+  if (targetHub === null) {
+    return null;
+  }
+  return "workflow" in routine.run
+    ? targetKey("workflow", targetHub, routine.run.workflow)
+    : targetKey("agent", targetHub, routine.run.agent);
 }
