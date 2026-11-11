@@ -107,6 +107,8 @@ export async function openWorkspaceEngine(
     http: setup.http,
     // The scheduler retries a failed step; one that keeps failing stops the command with its error.
     reportError: stuck.report,
+    // Only failed wake-ups in a row count, as for ticks (HAL-5164).
+    onWokeUp: () => stuck.succeeded("wake-up"),
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
     ...(target.routines === undefined ? {} : { routines: countedTicks(target.routines, stuck) }),
     ...setup.engine,

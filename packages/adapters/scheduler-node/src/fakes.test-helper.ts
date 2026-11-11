@@ -8,12 +8,18 @@ export const fakeStart = Date.UTC(2026, 0, 1);
 /** A clock that only moves when a test moves it. */
 export class ManualClock implements Clock {
   #now: number;
+  /** Makes the next {@link now} throw, as a broken clock would. */
+  failNextNow = false;
 
   constructor(start: number = fakeStart) {
     this.#now = start;
   }
 
   now(): Date {
+    if (this.failNextNow) {
+      this.failNextNow = false;
+      throw new Error("the clock failed");
+    }
     return new Date(this.#now);
   }
 

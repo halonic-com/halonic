@@ -107,6 +107,11 @@ export async function runExample(): Promise<{
   of the next due timer and the next tick, so nothing has to call it. After
   `close` it sets no more wake-ups and delivers nothing more, and `close`
   resolves once the deliveries in progress have settled.
+- **Failed wake-ups:** a wake-up that fails is reported as `"wake-up"`, and
+  the next one waits as a timer's retry would: 1 second, doubling up to 15
+  minutes, or longer when nothing is due sooner. After each wake-up that
+  worked, the scheduler calls `onWokeUp`, so a caller that counts failed
+  wake-ups can start again.
 - **Start-up:** the scheduler compacts the collection when it starts, so
   delivered, cancelled and replaced timers leave the store. If the store
   fails the compaction, it still starts from the timers it read and reports

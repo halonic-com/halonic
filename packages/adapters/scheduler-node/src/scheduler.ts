@@ -37,6 +37,11 @@ export interface NodeSchedulerOptions {
    * silently, and nothing here stops the scheduler.
    */
   reportError: (error: unknown, source: SchedulerErrorSource) => void;
+  /**
+   * Hears each wake-up that delivered what was due without an error, so a
+   * caller that counts `"wake-up"` failures can start that count again.
+   */
+  onWokeUp?: () => void;
 }
 
 /**
@@ -55,6 +60,9 @@ export class NodeScheduler implements Scheduler {
   readonly #log: TimerLog;
   readonly #setTimer: SetTimer;
   readonly #reportError: NodeSchedulerOptions["reportError"];
+  readonly #onWokeUp: () => void;
+  /** Wake-ups that failed in a row; the next one waits as long as a timer's retry would. */
+  #wakeUpFailures = 0;
   /** The timers once they are loaded from the store. */
   readonly #loaded: Promise<Map<string, StoredTimer>>;
   #timers: Map<string, StoredTimer> | undefined;
@@ -72,6 +80,7 @@ export class NodeScheduler implements Scheduler {
     this.#clock = options.clock;
     this.#setTimer = options.setTimer;
     this.#reportError = options.reportError;
+    this.#onWokeUp = options.onWokeUp ?? (() => {});
     this.#log = new TimerLog(
       options.store,
       options.collection ?? defaultTimerCollection,
@@ -207,20 +216,44 @@ export class NodeScheduler implements Scheduler {
     this.#armWakeUp();
   }
 
-  /** Sets the one wake-up timer for the next due timer or tick, replacing the one before. */
-  #armWakeUp(): void {
+  /**
+   * Sets the one wake-up timer for the next due timer or tick, but not
+   * sooner than `notBeforeMs` from now, replacing the one before.
+   */
+  #armWakeUp(notBeforeMs = 0): void {
     if (this.#closed || this.#timers === undefined) return;
     this.#cancelWakeUp?.();
     let wakeAt = this.#nextTickAt;
     for (const [slot, stored] of this.#timers) {
       if (!this.#deliveries.has(slot)) wakeAt = Math.min(wakeAt, stored.dueAt);
     }
-    // The tick is at most a minute away, so the delay always fits setTimeout.
-    const delayMs = Math.max(0, wakeAt - this.#clock.now().getTime());
+    // The tick is at most a minute away and a retry 15 minutes, so the delay always fits setTimeout.
+    const delayMs = Math.max(notBeforeMs, wakeAt - this.#clock.now().getTime());
     this.#cancelWakeUp = this.#setTimer(() => {
       this.#cancelWakeUp = undefined;
-      this.deliverDue().catch((error: unknown) => this.#reportError(error, "wake-up"));
+      this.deliverDue().then(
+        () => {
+          this.#wakeUpFailures = 0;
+          this.#onWokeUp();
+        },
+        (error: unknown) => this.#wakeUpFailed(error),
+      );
     }, delayMs);
+  }
+
+  /**
+   * Reports a wake-up that failed and sets the next one, after the wait a
+   * timer's retry gets: a failed wake-up may not have set it, and without
+   * one the scheduler would sleep until a timer changes.
+   */
+  #wakeUpFailed(error: unknown): void {
+    this.#reportError(error, "wake-up");
+    this.#wakeUpFailures += 1;
+    try {
+      this.#armWakeUp(retryWait(this.#wakeUpFailures));
+    } catch (armError) {
+      this.#reportError(armError, "wake-up");
+    }
   }
 }
 

@@ -74,6 +74,8 @@ export interface LocalEngineInput {
    * engine's lock. Only a lost lock stops the engine, which then closes.
    */
   reportError(error: unknown, source: EngineErrorSource): void;
+  /** Hears each scheduler wake-up that worked, so a count of failed wake-ups can start again. */
+  onWokeUp?(): void;
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
   /** The time; the computer's clock by default. */
@@ -181,6 +183,7 @@ function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: Held
     clock,
     setTimer: input.setTimer ?? systemSetTimer,
     reportError: input.reportError,
+    ...(input.onWokeUp === undefined ? {} : { onWokeUp: input.onWokeUp }),
   })({
     onTimer: async (timer) => {
       if (executor === undefined) {

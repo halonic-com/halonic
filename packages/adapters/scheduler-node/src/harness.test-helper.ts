@@ -35,17 +35,21 @@ export function newWorld(): World {
 
 /**
  * Starts a scheduler in `world` and returns it with its listener, the errors
- * it reported, and `wait`: move the clock, fire the due wake-ups and let the
- * deliveries settle.
+ * it reported, how often a wake-up worked, and `wait`: move the clock, fire
+ * the due wake-ups and let the deliveries settle.
  */
 export function startScheduler(world: World = newWorld()) {
   const listener = new RecordingListener();
   const errors: { error: unknown; source: SchedulerErrorSource }[] = [];
+  const wokeUp = { count: 0 };
   const scheduler = new NodeScheduler(listener, {
     store: world.store,
     clock: world.clock,
     setTimer: world.timers.setTimer,
     reportError: (error, source) => errors.push({ error, source }),
+    onWokeUp: () => {
+      wokeUp.count += 1;
+    },
   });
   const inMs = (ms: number) => new Date(world.clock.now().getTime() + ms).toISOString();
   const wait = async (ms: number) => {
@@ -53,7 +57,7 @@ export function startScheduler(world: World = newWorld()) {
     world.timers.fireDue();
     await scheduler.deliverDue();
   };
-  return { ...world, world, scheduler, listener, errors, inMs, wait };
+  return { ...world, world, scheduler, listener, errors, wokeUp, inMs, wait };
 }
 
 /** A listener behaviour that always rejects. */

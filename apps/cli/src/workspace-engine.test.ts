@@ -7,6 +7,7 @@ import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { CommandContext } from "./command.ts";
 import type { RoutineTicks } from "./local-engine-host.ts";
+import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { engineStart } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
@@ -81,11 +82,17 @@ verifies("cli.run", () => {
  * Routines whose ticks fail or work as `outcomes` says, one per tick, on an
  * engine whose clock and wake-ups the test moves: {@link nextTick} moves the
  * clock a minute on and wakes the scheduler until that tick has run.
+ * {@link failNextWakeUp} makes the wake-up after the next tick fail: the
+ * scheduler can't set its next one. The `--debug` lines are in `debugLines`.
  */
 async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
   let now = engineStart;
-  let wakeUps = new Set<() => void>();
+  /** The wake-ups set, with the time each is due. */
+  const wakeUps = new Map<() => void, number>();
+  let failingWakeUps = 0;
+  let wakeUpFailures = 0;
   const ticks: string[] = [];
+  const debugLines: string[] = [];
   const routines: RoutineTicks = {
     onTick: async (at) => {
       const outcome = outcomes[ticks.length];
@@ -97,13 +104,18 @@ async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const workspace = await loadWorkspace(dir.store);
   const engine = await openWorkspaceEngine(
-    context(new AbortController().signal),
+    { ...context(new AbortController().signal), debug: (line) => debugLines.push(plainText(line)) },
     {
       ...setup(),
       engine: {
         clock: { now: () => new Date(now) },
-        setTimer: (callback) => {
-          wakeUps.add(callback);
+        setTimer: (callback, delayMs) => {
+          if (failingWakeUps > 0) {
+            failingWakeUps -= 1;
+            wakeUpFailures += 1;
+            throw new Error(`wake-up ${wakeUpFailures} failed`);
+          }
+          wakeUps.set(callback, now + delayMs);
           return () => wakeUps.delete(callback);
         },
       },
@@ -114,13 +126,20 @@ async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
     const count = ticks.length + 1;
     now += 60_000;
     await vi.waitFor(() => {
-      const due = wakeUps;
-      wakeUps = new Set();
-      for (const callback of due) callback();
+      for (const [callback, at] of [...wakeUps]) {
+        if (at > now) continue;
+        wakeUps.delete(callback);
+        callback();
+      }
       expect(ticks).toHaveLength(count);
     });
   };
-  return { engine, nextTick };
+  // The scheduler sets its first wake-up once it has read its timers; only later ones may fail.
+  await vi.waitFor(() => expect(wakeUps.size).toBe(1));
+  const failNextWakeUp = () => {
+    failingWakeUps += 1;
+  };
+  return { engine, nextTick, failNextWakeUp, debugLines };
 }
 
 verifies("cli.commands.routines.watch", () => {
@@ -144,6 +163,39 @@ verifies("cli.commands.routines.watch", () => {
 
       await vi.waitFor(() => expect(engine.stuck.aborted).toBe(true));
       expect(engine.stuck.reason).toEqual(new Error("tick 4 failed"));
+    } finally {
+      await engine.close();
+    }
+  });
+
+  it("keeps watching through failed wake-ups that a wake-up that worked separates", async () => {
+    const { engine, nextTick, failNextWakeUp, debugLines } = await openWithTicks([]);
+    try {
+      for (const outcome of ["fail", "ok", "fail", "ok", "fail"]) {
+        if (outcome === "fail") failNextWakeUp();
+        await nextTick();
+      }
+
+      // Each failure is the first in a row, so each is a retry --debug shows.
+      await vi.waitFor(() =>
+        expect(debugLines.filter((line) => line.includes("try 1 of 3"))).toHaveLength(3),
+      );
+      expect(engine.stuck.aborted).toBe(false);
+    } finally {
+      await engine.close();
+    }
+  });
+
+  it("stops at the third failed wake-up in a row, with its error", async () => {
+    const { engine, nextTick, failNextWakeUp } = await openWithTicks([]);
+    try {
+      for (let wakeUp = 0; wakeUp < 3; wakeUp += 1) {
+        failNextWakeUp();
+        await nextTick();
+      }
+
+      await vi.waitFor(() => expect(engine.stuck.aborted).toBe(true));
+      expect(engine.stuck.reason).toEqual(new Error("wake-up 3 failed"));
     } finally {
       await engine.close();
     }
