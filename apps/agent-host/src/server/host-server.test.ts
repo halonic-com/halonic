@@ -1,8 +1,10 @@
 import { request } from "node:http";
+import { connect, type Socket } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { healthRoute } from "./health-route.ts";
-import { type HostServer, startHostServer } from "./host-server.ts";
+import { type HostRoute, type HostServer, startHostServer } from "./host-server.ts";
 import { bearerMatches, randomLaunchToken } from "./launch-token.ts";
+import { startNdjsonStream } from "./ndjson-stream.ts";
 
 const token = randomLaunchToken();
 let server: HostServer | undefined;
@@ -128,6 +130,122 @@ describe("startHostServer", () => {
     expect(answer.status).toBe(500);
     expect(answer.body).toEqual({ error: { kind: "internal" } });
     expect((await send(server.url, "/v1/health", headers)).status).toBe(200);
+  });
+});
+
+describe("startHostServer, with a caller that holds connections open", () => {
+  const limits = {
+    headersTimeoutMs: 200,
+    requestTimeoutMs: 400,
+    checkEveryMs: 50,
+    maxConnections: 3,
+  };
+
+  /** A route whose answer streams one line after `delayMs`, then ends. */
+  function slowStream(delayMs: number): HostRoute {
+    return {
+      method: "GET",
+      path: "/v1/slow",
+      handle: async (_request, response) => {
+        const stream = startNdjsonStream(response);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        stream.send({ late: true });
+        stream.end();
+      },
+    };
+  }
+
+  /** A route that reads the whole body before it answers. */
+  const readsBody: HostRoute = {
+    method: "POST",
+    path: "/v1/read",
+    handle: async (request, response) => {
+      for await (const _chunk of request) {
+        // Only waiting for the end of the body.
+      }
+      response.end();
+    },
+  };
+
+  async function startedWithLimits(): Promise<{ port: number; host: string }> {
+    const routes = [healthRoute("1.2.3"), slowStream(1_000), readsBody];
+    server = await startHostServer(token, routes, limits);
+    const host = new URL(server.url).host;
+    return { port: Number(host.split(":")[1]), host };
+  }
+
+  /** Opens a connection, writes `raw`, and resolves with all it got once the host hangs up. */
+  function hungUp(port: number, raw: string): Promise<{ answer: string; afterMs: number }> {
+    const startedAt = Date.now();
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const socket = connect(port, "127.0.0.1", () => socket.write(raw));
+      socket.on("data", (chunk: Buffer) => chunks.push(chunk));
+      socket.on("error", reject);
+      socket.on("close", () =>
+        resolve({
+          answer: Buffer.concat(chunks).toString("utf8"),
+          afterMs: Date.now() - startedAt,
+        }),
+      );
+    });
+  }
+
+  it("hangs up on a caller that doesn't finish its headers in time", async () => {
+    const { port } = await startedWithLimits();
+    const { answer, afterMs } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n");
+    expect(answer).toMatch(/^HTTP\/1\.1 408/);
+    expect(afterMs).toBeLessThan(5_000);
+  });
+
+  it("hangs up on a caller that doesn't finish its body in time", async () => {
+    const { port, host } = await startedWithLimits();
+    const raw = [
+      "POST /v1/read HTTP/1.1",
+      `Host: ${host}`,
+      `Authorization: Bearer ${token}`,
+      "Content-Length: 100",
+      "",
+      "{",
+    ].join("\r\n");
+    const { answer, afterMs } = await hungUp(port, raw);
+    expect(answer).toMatch(/^HTTP\/1\.1 408/);
+    expect(afterMs).toBeLessThan(5_000);
+  });
+
+  it("keeps a streamed answer open past the request's time limit", async () => {
+    const { port, host } = await startedWithLimits();
+    const raw = [
+      "GET /v1/slow HTTP/1.1",
+      `Host: ${host}`,
+      `Authorization: Bearer ${token}`,
+      "Connection: close",
+      "",
+      "",
+    ].join("\r\n");
+    const { answer } = await hungUp(port, raw);
+    expect(answer).toMatch(/^HTTP\/1\.1 200/);
+    expect(answer).toContain('{"late":true}');
+  });
+
+  it("takes no more connections than its cap", async () => {
+    const { port } = await startedWithLimits();
+    const held: Socket[] = [];
+    try {
+      for (let index = 0; index < limits.maxConnections; index++) {
+        held.push(
+          await new Promise<Socket>((resolve) => {
+            const socket = connect(port, "127.0.0.1", () => resolve(socket));
+          }),
+        );
+      }
+      // Give the server time to count the held connections before the next one.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
+      expect(answer).toBe("");
+    } finally {
+      for (const socket of held) socket.destroy();
+    }
   });
 });
 

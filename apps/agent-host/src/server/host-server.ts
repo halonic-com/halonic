@@ -20,6 +20,32 @@ export interface HostServer {
   close(): Promise<void>;
 }
 
+/**
+ * How long a caller may take to send a request, and how many connections may
+ * be open at once. Another program on this computer can reach the port even
+ * without the token, so Node's defaults (60 s for the headers, 300 s for the
+ * whole request, no cap on connections) would let it hold many idle
+ * connections open. The limits are on receiving a request only: a streamed
+ * answer, such as a sandbox session's blocked accesses, stays open.
+ */
+export interface HostServerLimits {
+  /** Time to receive a request's headers. */
+  headersTimeoutMs: number;
+  /** Time to receive a whole request, body included. At least `headersTimeoutMs`. */
+  requestTimeoutMs: number;
+  /** How often Node checks open connections against the two times above. */
+  checkEveryMs: number;
+  /** Open connections at most; Node drops a new one past this. */
+  maxConnections: number;
+}
+
+export const defaultHostServerLimits: HostServerLimits = {
+  headersTimeoutMs: 10_000,
+  requestTimeoutMs: 30_000,
+  checkEveryMs: 1_000,
+  maxConnections: 256,
+};
+
 /** Why the host turned a request away, as the error's `kind` in the answer. */
 type Refusal = "wrong_host" | "browser_origin" | "unauthenticated" | "not_found";
 
@@ -48,14 +74,21 @@ const refusalMessage: Record<Refusal, string> = {
  * 3. its `Authorization` header is `Bearer <token>`.
  *
  * Without all three the answer is an error, whatever the path, so a caller
- * can't even learn which paths exist.
+ * can't even learn which paths exist. A caller that is slow to send its
+ * request, or holds too many connections, is cut off by `limits`.
  */
 export async function startHostServer(
   token: string,
   routes: readonly HostRoute[],
+  limits: HostServerLimits = defaultHostServerLimits,
 ): Promise<HostServer> {
   let port = 0;
-  const server = createServer((request, response) => {
+  const options = {
+    headersTimeout: limits.headersTimeoutMs,
+    requestTimeout: limits.requestTimeoutMs,
+    connectionsCheckingInterval: limits.checkEveryMs,
+  };
+  const server = createServer(options, (request, response) => {
     const refusal = refusalOf(request, port, token);
     const route = refusal === undefined ? findRoute(routes, request) : undefined;
     if (route === undefined) {
@@ -72,6 +105,7 @@ export async function startHostServer(
         else response.destroy();
       });
   });
+  server.maxConnections = limits.maxConnections;
   port = await listenOnLoopback(server);
   return { url: `http://${loopbackHost}:${port}`, close: () => stopServer(server) };
 }
