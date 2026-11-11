@@ -9,6 +9,11 @@ export interface LocationLinkProps {
   readonly className: string;
   /** Set on the place the user is on, as `aria-current="page"`. */
   readonly current?: boolean;
+  /**
+   * The link's name, when its text alone doesn't say everything a screen reader should hear: the
+   * phone's bottom navigation draws its count as a mark and names the link "Inbox, 3 waiting".
+   */
+  readonly label?: string;
   readonly children: ReactNode;
 }
 
@@ -22,6 +27,7 @@ export function LocationLink({
   onOpen,
   className,
   current,
+  label,
   children,
 }: LocationLinkProps) {
   const open = (event: MouseEvent<HTMLAnchorElement>, inNewTab: boolean) => {
@@ -32,6 +38,7 @@ export function LocationLink({
     <a
       href={`#${location.key}`}
       aria-current={current === true ? "page" : undefined}
+      aria-label={label}
       className={className}
       onClick={(event) => open(event, event.ctrlKey || event.metaKey)}
       onAuxClick={(event) => {

@@ -133,6 +133,12 @@ export {
   shownPanelWidth,
 } from "./panels/panel-width.ts";
 export {
+  BottomNavigation,
+  type BottomNavigationPlace,
+  type BottomNavigationProps,
+} from "./phone/bottom-navigation.tsx";
+export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
+export {
   currentPhonePage,
   goBackOnPhone,
   isAtPlaceTop,

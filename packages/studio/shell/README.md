@@ -155,7 +155,8 @@ shows `ItemGone`.
 `ShellFrame` is the Studio window, in React. On the desktop it draws the three layers of design
 direction 2: the 40px title bar on the halo, the panel with the toolbar as its first row and the
 sidebar beside the page under it, and the 24px status bar. Below `PHONE_MAX_WIDTH` it shows the
-page only (the phone's own bars come later) and switches as soon as the window crosses that width.
+page between the phone's own bars (see Phone bars) and switches as soon as the window crosses that
+width.
 The parts inside read the layout with the kit's `usePresentation()`.
 
 The frame also does the window-wide wiring once: it sets `<html lang>` (the Tabs hyphenate), mounts
@@ -183,6 +184,30 @@ it.
 >
   {page}
 </ShellFrame>;
+```
+
+## Phone bars
+
+On a phone the frame shows `phoneTopBar` above the page and `phoneNavigation` below it, with the
+engine's line between the top bar and the page (`shell.phone-bars`, component specs 15.1 and 15.2).
+There are no window tabs and no status bar.
+
+- `PhoneTopBar` is at least 56px plus the top safe area. `onBack` adds the 48px **Back** button at
+  its left; leave it out at the top of a place. The title follows on one line, ending in "…", and
+  `actions` go at the right (Search and the Assistant on a place, once they're built). The title
+  isn't a heading: the page keeps its own `h1`.
+- `BottomNavigation` is the `nav` named "Places": Home, Inbox and Runs where the features added
+  them, then More, always. Where you are has the filled icon on the halo pill. Inbox's count and
+  Runs' still dot sit at the icon's corner, and each link is named with its signal ("Inbox, 3
+  waiting"). A tap calls `onSelect` with the place. Pass it only on a place or a list: an opened
+  item leaves the bottom edge to its own bar.
+
+```tsx
+<ShellFrame
+  phoneTopBar={<PhoneTopBar title="Inbox" />}
+  phoneNavigation={<BottomNavigation places={shownPlaces} current="inbox" onSelect={switchPlace} />}
+  …
+>
 ```
 
 ## The toolbar

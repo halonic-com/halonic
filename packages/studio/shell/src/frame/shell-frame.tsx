@@ -43,6 +43,13 @@ export interface ShellFrameProps {
   readonly sidebar?: ReactNode;
   /** The status bar's content on the desktop. */
   readonly statusBar?: ReactNode;
+  /** The top bar on a phone, `PhoneTopBar`: Back, the place or page title, its actions. */
+  readonly phoneTopBar?: ReactNode;
+  /**
+   * The bottom navigation on a phone, `BottomNavigation`, while the page is a place or a list.
+   * Left out on an opened item, so the page can put its own bar at the bottom: one bar at a time.
+   */
+  readonly phoneNavigation?: ReactNode;
   /** The page. */
   readonly children: ReactNode;
 }
@@ -51,11 +58,12 @@ export interface ShellFrameProps {
  * The Studio window's frame. On the desktop it has three layers (design direction 2): the 40px
  * title bar on the halo, then the panel set into the halo with a 12px radius, holding three rows:
  * the toolbar, the sidebar beside the page, and the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
- * shows the page only, with no window tabs and no status bar; the phone's own bars come later.
+ * shows the phone's top bar, the page and the bottom navigation, with no window tabs and no
+ * status bar (component specs 15.1, 15.2).
  * In a narrow window (600 to 899px) the sidebar folds into the Places drawer, opened by a Places
  * button at the toolbar's left.
  * While the engine isn't answering, its one line sits over the sidebar and the page, under the
- * toolbar on the desktop and at the top on a phone.
+ * toolbar on the desktop and under the top bar on a phone.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and every kit
  * Dialog sends its announcements through the window's announcer. The window's one `ToastRegion`
@@ -93,9 +101,10 @@ export function ShellFrame(props: ShellFrameProps) {
 }
 
 /**
- * Both layouts are one tree: the phone leaves the desktop's bars out but keeps their places
- * (`null`), so `main` stays at the same position and React keeps the page, with its typed text,
- * scroll and focus, when the width crosses `PHONE_MAX_WIDTH`.
+ * Both layouts are one tree: the phone puts its own bars where the desktop's toolbar and status
+ * bar go, and leaves the title bar out but keeps its place (`null`), so `main` stays at the same
+ * position and React keeps the page, with its typed text, scroll and focus, when the width crosses
+ * `PHONE_MAX_WIDTH`.
  */
 function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentation }) {
   const desktop = props.presentation === "desktop";
@@ -120,7 +129,9 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
             ) : null}
             {props.toolbar}
           </div>
-        ) : null}
+        ) : (
+          props.phoneTopBar
+        )}
         <EngineLine engine={props.engine} />
         <div className="relative flex min-h-0 flex-1">
           {desktop ? (
@@ -143,7 +154,9 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
           <footer className="flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
             {props.statusBar}
           </footer>
-        ) : null}
+        ) : (
+          props.phoneNavigation
+        )}
       </div>
     </div>
   );
