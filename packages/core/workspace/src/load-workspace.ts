@@ -192,7 +192,7 @@ async function readText(source: DefinitionSource, path: string): Promise<string 
 }
 
 /** True for an error with one of the {@link unreadableCodes}. */
-function isUnreadable(error: unknown): boolean {
+export function isUnreadable(error: unknown): boolean {
   return (
     typeof error === "object" && error !== null && unreadableCodes.has(Reflect.get(error, "code"))
   );

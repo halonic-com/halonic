@@ -87,6 +87,26 @@ verifies("cli.workspace-dir", () => {
     },
   );
 
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] needs POSIX modes: names a workspace.yaml that can't be read in a folder that can",
+    async () => {
+      const acme = join(cwd, "acme");
+      makeWorkspace(acme);
+      chmodSync(join(acme, "workspace.yaml"), 0o000);
+      try {
+        const error = await openWorkspaceDir(inputWith("acme"), ioIn(cwd)).catch((e: unknown) => e);
+        expect(errorKindOf(error)).toBe("invalid_input");
+        expect(exitCodeFor(errorKindOf(error))).toBe(exitCode.usage);
+        expect(error).toMatchObject({
+          message: "the workspace file workspace.yaml can't be read.",
+          fix: "Check the file's permissions, or move it out of the workspace.",
+        });
+      } finally {
+        chmodSync(join(acme, "workspace.yaml"), 0o644);
+      }
+    },
+  );
+
   it("never uses the workspace of a parent folder", async () => {
     makeWorkspace(cwd);
     const below = join(cwd, "notes");
