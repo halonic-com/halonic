@@ -2,6 +2,7 @@
 
 - Approval: found while building `halonic routines watch` on [HAL-4844](/HAL/issues/HAL-4844); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8a0dSJX5JyZ9ztCqQeYsKx/M0keGSGVlD6j4YPjx/pdxuoqeg2Xt/5Q6K3pf3yNmNT5bswFI2X7SvpFINTkACg==
 - Task: HAL-4844
 
 ## What changes
