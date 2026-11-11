@@ -40,53 +40,51 @@ const longestSocketName = `srt-mux-${"9".repeat(10)}-${"z".repeat(4)}.sock`;
 /** What macOS allows for a socket path, the shortest limit of the platforms srt runs on. */
 const macSocketPathLimit = 104;
 
+/** Windows makes no launcher temp folder (see the last test), so there the tests check just that. */
+const onWindows = process.platform === "win32";
+const expectNoneOnWindows = async () => expect(await makeLauncherTemp()).toBeNull();
+
 verifies("sandbox-srt.session", () => {
   describe("the launcher's own temp folder", () => {
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] is short enough for srt's sockets whatever the session's temp folder, and private",
-      async () => {
-        const folder = await makeLauncherTemp();
-        expect(folder).not.toBeNull();
-        const path = folder ?? "";
-        try {
-          expect(Buffer.byteLength(join(path, longestSocketName))).toBeLessThan(macSocketPathLimit);
-          expect(statSync(path).mode & 0o777).toBe(0o700);
-        } finally {
-          await rm(path, { recursive: true, force: true });
-        }
-      },
-    );
+    it("is short enough for srt's sockets whatever the session's temp folder, and private", async () => {
+      if (onWindows) return expectNoneOnWindows();
+      const folder = await makeLauncherTemp();
+      expect(folder).not.toBeNull();
+      const path = folder ?? "";
+      try {
+        expect(Buffer.byteLength(join(path, longestSocketName))).toBeLessThan(macSocketPathLimit);
+        expect(statSync(path).mode & 0o777).toBe(0o700);
+      } finally {
+        await rm(path, { recursive: true, force: true });
+      }
+    });
 
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] is what the launcher of the probe and of every program gets, until the session closes",
-      async () => {
-        const { runner, runs, probes } = fakeRunner();
-        const session = await new SrtSandbox(linux, runner).open(profile());
-        await session.start(command);
-        const folders = new Set(
-          [...probes, ...runs.map((run) => run.request)].map(
-            (request) => request.launcherEnv["TMPDIR"],
-          ),
-        );
-        expect(folders.size).toBe(1);
-        const [folder = ""] = folders;
-        expect(existsSync(folder)).toBe(true);
-        await session.close();
-        expect(existsSync(folder)).toBe(false);
-      },
-    );
+    it("is what the launcher of the probe and of every program gets, until the session closes", async () => {
+      if (onWindows) return expectNoneOnWindows();
+      const { runner, runs, probes } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile());
+      await session.start(command);
+      const folders = new Set(
+        [...probes, ...runs.map((run) => run.request)].map(
+          (request) => request.launcherEnv["TMPDIR"],
+        ),
+      );
+      expect(folders.size).toBe(1);
+      const [folder = ""] = folders;
+      expect(existsSync(folder)).toBe(true);
+      await session.close();
+      expect(existsSync(folder)).toBe(false);
+    });
 
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] is removed when the session fails to open",
-      async () => {
-        vi.mocked(fsPromises.writeFile).mockRejectedValueOnce(new Error("disk full"));
-        const { runner } = fakeRunner();
-        await expect(new SrtSandbox(linux, runner).open(profile())).rejects.toThrow(/disk full/);
-        const made = await launcherTemps();
-        expect(made).toHaveLength(1);
-        expect(made.filter((folder) => existsSync(folder))).toEqual([]);
-      },
-    );
+    it("is removed when the session fails to open", async () => {
+      if (onWindows) return expectNoneOnWindows();
+      vi.mocked(fsPromises.writeFile).mockRejectedValueOnce(new Error("disk full"));
+      const { runner } = fakeRunner();
+      await expect(new SrtSandbox(linux, runner).open(profile())).rejects.toThrow(/disk full/);
+      const made = await launcherTemps();
+      expect(made).toHaveLength(1);
+      expect(made.filter((folder) => existsSync(folder))).toEqual([]);
+    });
   });
 
   it("is none on Windows, where srt uses a loopback port", async () => {
