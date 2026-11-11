@@ -51,6 +51,15 @@ jobs:
       - name: Install the dependencies
         run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..."
         shell: bash
+      # srt starts the sandbox account through Secondary Logon, which the
+      # windows-11-arm image leaves stopped.
+      - name: Start the Secondary Logon service
+        if: matrix.runner == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          Set-Service seclogon -StartupType Manual
+          Start-Service seclogon
+          (Get-Service seclogon).Status
       - name: Install the sandbox (srt windows-install)
         working-directory: packages/adapters/sandbox-srt
         shell: bash

@@ -28,27 +28,34 @@ const haveInputs = existsSync(wsl) && rootfsSource !== undefined && existsSync(r
 if (haveInputs) copyFileSync(rootfsSource, rootfs);
 
 // ---- D1: a distro of the sandbox account's own ------------------------------
-// WSL 1, so the probe also works on a runner without nested virtualisation.
+// Both WSL versions: WSL 1 needs no virtualisation, WSL 2 is what the sandbox
+// account's own settings default to. Each runs outside srt first as the
+// control: an import that fails for the runner's user too proves nothing.
 // The distro's folder is in the work folder, which the session may write.
-async function sandboxDistro() {
-  const group = "D1 sandbox-account distro";
-  const name = "halonic-probe-sandbox";
-  const imported = await inSrt(
-    `${wsl} --import ${name} ${join(work, "sandbox-distro")} ${rootfs} --version 1`,
-  );
-  record(group, "wsl --import inside srt", "INFO", say(imported));
+async function sandboxDistro(version) {
+  const group = `D1 sandbox-account distro (WSL ${version})`;
+  const importCommand = (name) =>
+    `${wsl} --import ${name} ${join(work, name)} ${rootfs} --version ${version}`;
+  const control = await outsideSrt(importCommand(`halonic-control-v${version}`));
+  if (control.code === 0) await outsideSrt(`${wsl} --unregister halonic-control-v${version}`);
+  const name = `halonic-sandbox-v${version}`;
+  const imported = await inSrt(importCommand(name));
   const started = await inSrt(`${wsl} -d ${name} -e /bin/true`);
   const registered = imported.code === 0 && started.code === 0;
-  record(
-    group,
-    "the sandbox account registers and starts a distro of its own",
-    registered ? "FAIL" : "PASS",
-    `import ${say(imported)} | start ${say(started)}`,
-  );
-  if (!registered) return;
+  const detail = `control ${say(control)} | import ${say(imported)} | start ${say(started)}`;
+  const question = "the sandbox account registers and starts a distro of its own";
+  if (registered) {
+    record(group, question, "FAIL", detail);
+  } else if (control.code !== 0 || kit.srtFailed(imported)) {
+    record(group, question, "INCONCLUSIVE", detail);
+    return;
+  } else {
+    record(group, question, "PASS", detail);
+    return;
+  }
 
-  // The distro started, so test what it can reach. WSL 1 mounts the drives
-  // with the calling token: the denied secret must stay unreadable.
+  // The distro started, so test what it can reach: the denied secret through
+  // the Windows drive, and the loopback canary.
   const drive = secret[0].toLowerCase();
   const linuxSecret = `/mnt/${drive}${secret.slice(2).replace(/\\/g, "/")}`;
   const read = await inSrt(`${wsl} -d ${name} -e cat ${linuxSecret}`);
@@ -66,6 +73,17 @@ async function sandboxDistro() {
     "the distro reaches the loopback canary",
     reached === 0 ? "PASS" : "FAIL",
     `${reached} connection(s). ${say(traffic)}`,
+  );
+  // A WSL 2 distro's loopback is the VM's, not Windows', so also try a public
+  // address that isn't on the allow list.
+  const outside = await inSrt(
+    `${wsl} -d ${name} -e sh -c "nc -z -w 5 1.1.1.1 443 && echo reached"`,
+  );
+  record(
+    group,
+    "the distro reaches a public address off the allow list",
+    outside.out.includes("reached") ? "FAIL" : "PASS",
+    say(outside),
   );
   const removed = await inSrt(`${wsl} --unregister ${name}`);
   record(group, "wsl --unregister inside srt", "INFO", say(removed));
@@ -95,7 +113,8 @@ async function wsl2() {
 }
 
 if (haveInputs) {
-  await sandboxDistro();
+  await sandboxDistro(1);
+  await sandboxDistro(2);
   await wsl2();
 } else {
   record(
