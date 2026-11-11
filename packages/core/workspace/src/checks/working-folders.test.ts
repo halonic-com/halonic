@@ -6,8 +6,13 @@ import { MemorySource } from "../test/memory-source.ts";
 /** An agent file's lines: its name, then the fields given. */
 const agentFile = (...lines: string[]) => ["name: Coder", ...lines, ""].join("\n");
 
-/** A local connector that runs `command` with `args`, from `cwd` when given. */
-function connectorFile(command: string, args: readonly string[], cwd?: string): string {
+/** A local connector that runs `command` with `args`, from `cwd` and with `env` when given. */
+function connectorFile(
+  command: string,
+  args: readonly string[],
+  cwd?: string,
+  env?: Readonly<Record<string, string>>,
+): string {
   return [
     "version: 1",
     "id: mail",
@@ -16,9 +21,13 @@ function connectorFile(command: string, args: readonly string[], cwd?: string): 
     `    command: ${JSON.stringify(command)}`,
     `    args: ${JSON.stringify(args)}`,
     ...(cwd === undefined ? [] : [`    cwd: ${JSON.stringify(cwd)}`]),
+    ...(env === undefined ? [] : [`    env: ${JSON.stringify(env)}`]),
     "",
   ].join("\n");
 }
+
+/** A Claude Code agent writing in `folder`. */
+const writesIn = (folder: string) => agentFile("harness: claude-code", `workingFolder: ${folder}`);
 
 /** The check's errors for a workspace with one agent and one connector, as `[file, path, message]`. */
 async function errorsFor(agent: string, connector: string): Promise<string[][]> {
@@ -45,7 +54,7 @@ verifies("workspace.working-folders", () => {
         [
           "agents/coder.agent.yaml",
           "workingFolder",
-          "Agent \"coder\" can't write in 'scripts': connector \"mail\" runs 'scripts/mail.sh' from there, outside the sandbox",
+          "Agent \"coder\" can't write in 'scripts': connector \"mail\" uses 'scripts/mail.sh' from there, outside the sandbox",
         ],
       ]);
     });
@@ -72,6 +81,37 @@ verifies("workspace.working-folders", () => {
       expect(errors).toHaveLength(1);
     });
 
+    it.each([
+      ["a module that `python -m` runs", "src", connectorFile("python", ["-m", "src.server"])],
+      ["a module written with its flag", "src", connectorFile("python", ["-msrc.server"])],
+      ["a short flag written with its value", "src", connectorFile("node", ["-csrc/x.json"])],
+      ["a file of arguments", "src", connectorFile("node", ["@src/args.txt"])],
+      ["a path after 'file:'", "src", connectorFile("node", ["file:src/x"])],
+    ])("refuses it for %s", async (_case, folder, connector) => {
+      expect(await errorsFor(writesIn(folder), connector)).toHaveLength(1);
+    });
+
+    it.each([
+      ["NODE_OPTIONS", "--require ./src/hook.js"],
+      ["NODE_OPTIONS", "--require=./src/hook.js"],
+      ["PYTHONPATH", "src"],
+      ["BASH_ENV", "src/x.sh"],
+      ["PATH", "/usr/bin:src/bin"],
+      ["PATH", "tools\\bin;src\\bin"],
+    ])("refuses it for a path in %s=%s", async (name, value) => {
+      const errors = await errorsFor(
+        writesIn("src"),
+        connectorFile("node", ["/opt/mail/server.js"], undefined, { [name]: value }),
+      );
+      expect(errors).toEqual([
+        [
+          "agents/coder.agent.yaml",
+          "workingFolder",
+          `Agent "coder" can't write in 'src': connector "mail" uses '${name}=${value}' from there, outside the sandbox`,
+        ],
+      ]);
+    });
+
     it("reports one error per agent and connector, however many parts are inside", async () => {
       const errors = await errorsFor(
         agentFile("harness: claude-code", "workingFolder: scripts"),
@@ -79,6 +119,47 @@ verifies("workspace.working-folders", () => {
       );
       expect(errors).toHaveLength(1);
     });
+  });
+
+  describe("a working folder a connector loads files from without naming them", () => {
+    it.each(["node_modules", "files/node_modules/some-mcp", "files/Node_Modules"])(
+      "refuses '%s', where npx and node find packages, with or without a connector",
+      async (folder) => {
+        const errors = await errorsFor(writesIn(folder), connectorFile("npx", ["-y", "some-mcp"]));
+        expect(errors).toEqual([
+          [
+            "agents/coder.agent.yaml",
+            "workingFolder",
+            `Agent "coder" can't write in '${folder}': programs load the packages in a node_modules folder without naming them, outside the sandbox`,
+          ],
+        ]);
+      },
+    );
+
+    it("refuses a working folder inside the folder a connector starts in", async () => {
+      const errors = await errorsFor(
+        writesIn("tools/lib"),
+        connectorFile("node", ["/opt/mail/server.js"], "tools"),
+      );
+      expect(errors).toEqual([
+        [
+          "agents/coder.agent.yaml",
+          "workingFolder",
+          "Agent \"coder\" can't write in 'tools/lib': connector \"mail\" starts in 'tools', which holds it, and reads files from there, outside the sandbox",
+        ],
+      ]);
+    });
+
+    it.each([".", "./", ""])(
+      "lets a working folder pass when the connector starts in the workspace root as '%s'",
+      async (cwd) => {
+        const errors = await errorsFor(
+          writesIn("src"),
+          connectorFile("npx", ["-y", "some-mcp"], cwd),
+        );
+        expect(errors).toEqual([]);
+      },
+    );
   });
 
   describe("a working folder that holds nothing a connector runs", () => {
@@ -94,6 +175,7 @@ verifies("workspace.working-folders", () => {
       ["a folder whose name only starts the same", "scripts-old/mail.sh"],
       ["an absolute path outside the workspace", "/opt/mail/run.sh"],
       ["a path that leaves the workspace", "../scripts/mail.sh"],
+      ["a file whose name has a dot, without '-m'", "scripts.sh"],
     ])("lets %s pass", async (_case, arg) => {
       const errors = await errorsFor(
         agentFile("harness: claude-code", "workingFolder: scripts"),
