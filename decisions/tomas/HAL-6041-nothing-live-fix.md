@@ -2,7 +2,6 @@
 
 - Approval: wording decided by Sofia (designer) on [HAL-6041](/HAL/issues/HAL-6041) (team decision under HAL-2282, no card); Liam approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:34dUrLi6xy8n+8J4N+PIIjw1mht/VmklgANjxb7A+1uKX9HTjcfyjxNF6nboNUoE8MJXyJpgrCNnPuSOVUKMAg==
 - Task: HAL-6041, found on HAL-6038 while reading website #153
 
 ## What changes
@@ -11,7 +10,7 @@ When `halonic run` refuses in a git folder with no commit yet (exit 5), the
 fix line changes from:
 
 ```text
-Make the workspace live in the Studio, then run again.
+Commit your changes with git, then run again.
 ```
 
 to:
@@ -26,10 +25,13 @@ example, and `live-version.test.ts` checks it.
 
 ## Why
 
-0.1.0 is the command line only, so the old line sent people to an app they
-don't have. In 0.1.0 a first commit is how a workspace goes live. The doc
-comment on `nothingLiveFix` says that once the Studio or a CLI make-live
-command exists, the line names it.
+0.1.0 is the command line only. The first line, "Make the workspace live in
+the Studio", sent people to an app they don't have; HAL-6007 (#1880) already
+replaced it with "Commit your changes with git", which reads as if there were
+changes to commit. In a folder with no commit yet the step that's missing is
+the first commit, so the line says that: in 0.1.0 a first commit is how a
+workspace goes live. The doc comment on `nothingLiveFix` says that once the
+Studio or a CLI make-live command exists, the line names it.
 
 No test was weakened or skipped: the one changed assertion checks the new
 wording with the same `expect` calls.
