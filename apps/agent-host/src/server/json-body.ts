@@ -33,12 +33,18 @@ export const bodyProblemStatus: Record<BodyProblem, number> = {
 };
 
 /**
- * Reads the request's body as JSON. Stops reading as soon as it passes
- * {@link maxBodyBytes}.
+ * Reads the request's body as JSON. Refuses a body whose `Content-Length` is
+ * over {@link maxBodyBytes} before reading any of it, so a caller can't hold
+ * the request open by promising a body it never sends. A body without a
+ * length (chunked) is counted as it arrives, and reading stops as soon as it
+ * passes the limit.
  *
  * @throws {BodyError} when the body is too large or not JSON
  */
 export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+  if (Number(request.headers["content-length"] ?? 0) > maxBodyBytes) {
+    throw new BodyError("body_too_large");
+  }
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request as AsyncIterable<Buffer>) {

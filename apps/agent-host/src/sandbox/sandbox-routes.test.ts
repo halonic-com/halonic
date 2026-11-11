@@ -1,3 +1,4 @@
+import { type IncomingMessage, request } from "node:http";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import type {
@@ -14,6 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
+import { maxUnsentBytes } from "../server/ndjson-stream.ts";
 import { maxTimeLimitMs } from "./profile-schema.ts";
 import { sandboxRoutes } from "./sandbox-routes.ts";
 import { SessionTable } from "./session-table.ts";
@@ -128,6 +130,30 @@ function post(url: string, path: string, body: unknown): Promise<Response> {
   });
 }
 
+/**
+ * Starts a POST whose head says `Content-Length: contentLength`, then sends
+ * only `body`, as a caller that promises more than it sends would.
+ */
+function postPromising(
+  url: string,
+  path: string,
+  contentLength: number,
+  body: string,
+): Promise<IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    const sent = request(`${url}${path}`, {
+      method: "POST",
+      headers: {
+        ...authorization,
+        "content-type": "application/json",
+        "content-length": String(contentLength),
+      },
+    });
+    sent.on("response", resolve).on("error", reject);
+    sent.write(body);
+  });
+}
+
 async function openSession(url: string): Promise<string> {
   const answer = (await (await post(url, "/v1/sandbox/sessions/open", { profile })).json()) as {
     session: string;
@@ -175,6 +201,29 @@ describe("sandboxRoutes", () => {
     expect((await post(url, "/v1/sandbox/sessions/open", huge)).status).toBe(413);
   });
 
+  it("refuses a body promised over the limit before it arrives, and opens nothing", async () => {
+    const url = await started();
+    const answer = await postPromising(url, "/v1/sandbox/sessions/open", 1024 ** 3, "");
+    expect(answer.statusCode).toBe(413);
+    expect(answer.headers.connection).toBe("close");
+    answer.resume();
+    expect(sandbox.opened).toHaveLength(0);
+  });
+
+  it("still reads a body of a declared length within the limit", async () => {
+    const url = await started();
+    const body = JSON.stringify({ profile });
+    const answer = await postPromising(
+      url,
+      "/v1/sandbox/sessions/open",
+      Buffer.byteLength(body),
+      body,
+    );
+    expect(answer.statusCode).toBe(200);
+    answer.resume();
+    expect(sandbox.opened).toHaveLength(1);
+  });
+
   it("says why the sandbox couldn't open", async () => {
     const url = await started();
     sandbox.refuseOpen = true;
@@ -204,6 +253,38 @@ describe("sandboxRoutes", () => {
     ]);
     expect(session?.closed).toBe(true);
     expect(session?.listeners.size).toBe(0);
+  });
+
+  it("ends the stream of a caller that stops reading, and stops listening", async () => {
+    const url = await started();
+    const id = await openSession(url);
+    const stream = await postPromising(
+      url,
+      "/v1/sandbox/sessions/blocked",
+      Buffer.byteLength(JSON.stringify({ session: id })),
+      JSON.stringify({ session: id }),
+    );
+    stream.pause();
+    const cutOff = new Promise((resolve) => stream.on("aborted", resolve));
+
+    const session = sandbox.opened[0];
+    const block = {
+      kind: "file",
+      path: `${root}/${"x".repeat(64 * 1024)}`,
+      access: "read",
+    } as const;
+    let sent = 0;
+    while (sent < 16 * maxUnsentBytes && (session?.listeners.size ?? 0) > 0) {
+      session?.block(block);
+      sent += block.path.length;
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    expect(sent).toBeLessThan(16 * maxUnsentBytes);
+    expect(session?.listeners.size).toBe(0);
+    stream.resume();
+    await cutOff;
+    // The session itself stays open until Studio closes it.
+    expect(session?.closed).toBe(false);
   });
 
   it("knows no session by an id it didn't make, or after it closed", async () => {
