@@ -56,19 +56,24 @@ const listFiles: ReadonlySet<string> = new Set([
   "tooling/check/process-starters.json",
   "tooling/check/overrides-allowed.json",
   "tooling/check/licences.json",
-  "apps/studio/src-tauri/deny.toml",
 ]);
 
 /**
  * Reads the repo once and returns the context every rule shares.
  *
- * @param listsRoot a checkout whose allow-lists replace the checked tree's own; a list missing there is read from the tree
+ * @param listsRoot a checkout whose allow-lists replace the checked tree's own; a list missing there is an error, never a fall back to the tree
  */
 export function loadContext(root: string, listsRoot?: string): CheckContext {
-  const listPath = (file: string): string =>
-    listsRoot !== undefined && listFiles.has(file) && existsSync(join(listsRoot, file))
-      ? join(listsRoot, file)
-      : join(root, file);
+  const listPath = (file: string): string => {
+    if (listsRoot === undefined || !listFiles.has(file)) {
+      return join(root, file);
+    }
+    const fromBase = join(listsRoot, file);
+    if (!existsSync(fromBase)) {
+      throw new Error(`${file} is missing in the lists folder ${listsRoot}; a list is never read from the checked tree.`);
+    }
+    return fromBase;
+  };
   const policyPath = "tooling/check/policy.json";
   const dependencyListPath = "tooling/check/dependencies.json";
   const packages = listWorkspacePackages(root);

@@ -1636,8 +1636,9 @@ jobs:
     # The policy rules, run from the base commit's copy: the rules and the
     # allow-lists they trust (dependencies.json, process-starters.json,
     # policy.json, advisories-ignored.json, overrides-allowed.json,
-    # licences.json, deny.toml) come from the base, and only the files under
-    # test come from the pull request. A change to a rule or a list is
+    # licences.json) come from the base, and only the files under test come
+    # from the pull request. deny.toml is one of those files: it is what the
+    # deny-toml rule checks, not a list. A change to a rule or a list is
     # checked against the old one and takes effect after it merges. `fast`
     # still runs the pull request's own copy for early feedback. The one
     # pull request that adds `--lists-from` runs the old script, which reads

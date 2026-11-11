@@ -223,8 +223,12 @@ when it has a carriage return (save it with LF line endings), and when the
 base branch already has the note: a branch name that was used before needs
 a new name. Only `internal` keys exist so far, so `user-visible` notes fail
 until the board decides how the user approves (HAL-3434). Both guards fail
-the pull request when they find an error. A change to a requirement still
-needs a `user-visible` note, so it can't pass until a user key is pinned.
+the pull request when they find an error. A change to a requirement needs a signed
+note of either kind. Until a user key is pinned, a `user-visible` note can't
+pass, so only an `internal` note signed by the CTO key can. A change to the
+guard's own paths needs a `user-visible` note too, except `.github/`,
+`tooling/check/` and `.gitattributes`, where the CTO's `internal` note is
+accepted for now (see the note guard below).
 
 **Signing.** The approver signs only from a clean worktree of
 `origin/main`, never from the pull request's checkout: there the
@@ -274,8 +278,10 @@ different workflow.
 job runs `layers`, `dependencies`, `process-starts`, `lockfile`,
 `advisories` and `deny-toml` with the base's code and the base's lists
 (`dependencies.json`, `policy.json`, `process-starters.json`,
-`advisories-ignored.json`, `overrides-allowed.json`, `licences.json` and
-`deny.toml`) over the pull request's files, with
+`advisories-ignored.json`, `overrides-allowed.json` and `licences.json`) over
+the pull request's files, including its `deny.toml`, which is what `deny-toml`
+checks and not a list. A list missing in the base fails the job,
+ with
 `pnpm check <rules> --lists-from <base checkout>`. A pull request that adds
 a dependency together with its allow-list entry fails: the base's list
 doesn't know it. The change takes effect after it merges. The `Fast gates`

@@ -19,7 +19,8 @@ import { dcoRange } from "../rules/dco.ts";
  * runs only those. Without, it runs every rule except `trace`, which reads
  * the test result files and so runs after the tests: `pnpm check trace`.
  * With --lists-from <folder> the allow-lists (dependencies.json and the
- * other files under tooling/check, deny.toml) come from that checkout, so
+ * other files under tooling/check) come from that checkout, and a missing
+ * one is an error, so
  * CI can run the base commit's rules and lists over a pull request's tree.
  * With --report it also writes each package's requirement report to
  * test-results/requirements.md. The personal-terms guard has its own
