@@ -67,6 +67,10 @@ export interface RunnerFenceInputs {
  * sandbox is set up there and its fence proof passes: the sandbox fences
  * files there, but its network filter doesn't hold, so nothing may suggest
  * a partial sandbox (I5 design 4.3.3, Julian's build condition (b)).
+ * `windows` keeps the meaning port version 6 gives it, applied to the
+ * runner: it has no Windows mode. It isn't `not-supported`, because no
+ * Windows build can run it, and the person's saved yes is kept per reason,
+ * so a new code would ask everyone on Windows again (HAL-5900).
  *
  * @example
  * runnerFence({ platform: "linux", check: { ok: false, reason: "container", missing: [] } });

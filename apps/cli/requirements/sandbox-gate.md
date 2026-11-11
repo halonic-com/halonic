@@ -11,6 +11,9 @@ When `halonic run` (or `halonic runs send`) is about to start a run, the CLI sha
 - Given Acme's support-reply, whose step runs Writer in Claude Code, on a computer without bubblewrap,
   when the check runs,
   then it refuses with "the sandbox can't start on this computer. Nothing ran.", "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again." and the docs link with `bubblewrap-missing`, and exit 9.
+- Given the same workflow on Windows, where the sandbox's one-time setup isn't done,
+  when the check runs,
+  then it refuses with "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, or set up the sandbox in Halonic Studio, under Settings > Sandbox." and the docs link with `setup-needed`, and exit 9.
 - Given a workflow whose agents all run in Halonic's own loop,
   when the check runs,
   then the sandbox isn't checked.

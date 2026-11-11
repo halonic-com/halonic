@@ -17,13 +17,16 @@ verifies("app.runner-fence", () => {
       });
     });
 
-    it("says windows whatever the check's own reason", () => {
-      const check: SandboxCheck = { ok: false, reason: "other", missing: ["seccomp"] };
-      expect(runnerFence({ platform: "win32", check })).toEqual({
-        state: "not-fenced",
-        reason: "windows",
-      });
-    });
+    it.each(["other", "setup-needed", "setup-conflict", "not-supported"] as const)(
+      "says windows whatever the check's own reason, here %s",
+      (reason) => {
+        const check: SandboxCheck = { ok: false, reason, missing: ["seccomp"] };
+        expect(runnerFence({ platform: "win32", check })).toEqual({
+          state: "not-fenced",
+          reason: "windows",
+        });
+      },
+    );
   });
 
   it.each([

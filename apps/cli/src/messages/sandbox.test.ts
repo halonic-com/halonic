@@ -7,17 +7,6 @@ import { sandboxDocsLink, sandboxMessages } from "./sandbox.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
-/** The codes the CLI words itself, in the port's order. */
-const worded = [
-  "windows",
-  "container",
-  "user-namespaces-restricted",
-  "bubblewrap-missing",
-  "linux-tools-missing",
-  "ripgrep-missing",
-  "other",
-] as const;
-
 verifies("cli.messages", () => {
   it("has a refused run's sandbox lines word for word, from cli-output 3.8", () => {
     expect(sandboxMessages.refusedFix("container").key).toBe("sandbox.refusedFix");
@@ -32,34 +21,27 @@ verifies("cli.messages", () => {
 });
 
 describe("the sandbox sentences", () => {
-  it("has line 2 for every reason it words", () => {
-    expect(worded.map((code) => words(sandboxMessages.refusedFix(code)))).toEqual([
+  it("has line 2 for every reason code, in the port's order", () => {
+    expect(
+      sandboxUnavailableReasons.map((code) => words(sandboxMessages.refusedFix(code))),
+    ).toEqual([
       "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
+      "This version or edition of the operating system can't run the sandbox. Update it, or use Halonic on another computer.",
+      "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
+      "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI), or turn on nested virtualisation in a virtual machine, then run it again.",
+      "WSL isn't installed, and the sandbox needs it. Install it with wsl --install in a terminal run as administrator, restart Windows, then run it again.",
+      "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
+      "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, then run it again.",
+      "The sandbox's setup on this computer belongs to another program, or is set up another way. Use Halonic inside WSL 2 on this computer.",
+      "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, or set up the sandbox in Halonic Studio, under Settings > Sandbox.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
+      "The sandbox needs you to sign in to its service first. Sign in, for example with docker login for Docker Sandboxes, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
-  });
-
-  it("words version 6's codes as other until the sandbox design words them", () => {
-    const unworded = sandboxUnavailableReasons.filter(
-      (code) => !(worded as readonly string[]).includes(code),
-    );
-    expect(unworded).toHaveLength(9);
-    for (const code of unworded) {
-      expect([
-        words(sandboxMessages.refusedFix(code)),
-        words(sandboxMessages.reason(code)),
-        words(sandboxMessages.doctorFix(code)),
-      ]).toEqual([
-        words(sandboxMessages.refusedFix("other")),
-        words(sandboxMessages.reason("other")),
-        words(sandboxMessages.doctorFix("other")),
-      ]);
-    }
   });
 
   it("words a code it doesn't know as other, never with the check's own sentence", () => {
@@ -71,9 +53,9 @@ describe("the sandbox sentences", () => {
     );
   });
 
-  it("has doctor's reason and fix for every reason it words", () => {
+  it("has doctor's reason and fix for every reason code, in the port's order", () => {
     expect(
-      worded.map((code) => [
+      sandboxUnavailableReasons.map((code) => [
         words(sandboxMessages.reason(code)),
         words(sandboxMessages.doctorFix(code)),
       ]),
@@ -85,6 +67,38 @@ describe("the sandbox sentences", () => {
       [
         "Halonic is running inside a container, and the sandbox can't start there.",
         "Fix: run Halonic on the computer itself, not in a container. Then run halonic doctor again. halonic validate and halonic test work in a container.",
+      ],
+      [
+        "This version or edition of the operating system can't run the sandbox.",
+        "Fix: update the operating system, or use Halonic on another computer. Then run halonic doctor again.",
+      ],
+      [
+        "A company policy on this computer blocks the sandbox.",
+        "Fix: ask whoever manages this computer to allow it. Then run halonic doctor again.",
+      ],
+      [
+        "Hardware virtualisation is turned off on this computer.",
+        "Fix: turn it on in the computer's firmware settings (BIOS or UEFI), or turn on nested virtualisation in a virtual machine. Then run halonic doctor again.",
+      ],
+      [
+        "WSL isn't installed, and the sandbox needs it.",
+        "Fix: install it with wsl --install in a terminal run as administrator, then restart Windows. Then run halonic doctor again.",
+      ],
+      [
+        "Windows needs to restart to finish setting up WSL.",
+        "Fix: restart Windows. Then run halonic doctor again.",
+      ],
+      [
+        "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
+        "Fix: set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
+      ],
+      [
+        "The sandbox's setup on this computer belongs to another program, or is set up another way.",
+        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
+      ],
+      [
+        "The sandbox's one-time setup isn't done for this version of Halonic.",
+        "Fix: use Halonic inside WSL 2 on this computer, or set up the sandbox in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
       ],
       [
         "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
@@ -101,6 +115,10 @@ describe("the sandbox sentences", () => {
       [
         "ripgrep isn't installed, and the sandbox needs it.",
         "Fix: install it, for example on macOS with brew install ripgrep. Then run halonic doctor again.",
+      ],
+      [
+        "The sandbox needs you to sign in to its service first.",
+        "Fix: sign in, for example with docker login for Docker Sandboxes. Then run halonic doctor again.",
       ],
       [
         "Halonic can't tell what the sandbox is missing.",
