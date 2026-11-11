@@ -106,13 +106,29 @@ function InlinePart({ inline }: { readonly inline: Inline }) {
         </code>
       );
     case "link":
-      // The full address on hover, so the plugin's words can't hide where it goes.
+      // The plugin writes the link's words, so they can't be trusted to say where it goes: its
+      // host shows after it for everyone, keyboard and touch included, and the full address on
+      // hover.
       return (
         <span title={inline.href}>
           <ExternalLink href={inline.href}>{inline.text}</ExternalLink>
+          <span className="text-fg-muted">
+            {" ("}
+            <bdi dir="ltr">{hostOf(inline.href)}</bdi>)
+          </span>
         </span>
       );
   }
+}
+
+/**
+ * Where a link goes, in short: its host with any port, as the URL parser writes it, so an
+ * international name shows as its `xn--` form and can't pass for a look-alike, and an IP address
+ * shows as itself. The Markdown reader only lets `http` and `https` addresses through, and the
+ * parser gives those a host every time.
+ */
+function hostOf(href: string): string {
+  return new URL(href).host;
 }
 
 function ResultTable({ table }: { readonly table: Table }) {

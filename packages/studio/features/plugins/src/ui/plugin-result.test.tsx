@@ -44,6 +44,29 @@ verifies("plugins.plugin-text", () => {
       expect(openExternal).toHaveBeenCalledWith("https://example.com/map");
     });
 
+    it("shows a link's host after it in muted text, outside the link, without a hover", () => {
+      const view = render(
+        <PluginResult show="markdown" text="See [the map](https://example.com/map?q=1)." />,
+      );
+      expect(view.textContent).toBe("See the map ↗ (opens in your browser) (example.com).");
+      const host = view.querySelector("bdi");
+      expect(host?.textContent).toBe("example.com");
+      expect(host?.closest("a")).toBeNull();
+      expect(host?.parentElement?.className).toBe("text-fg-muted");
+    });
+
+    it.each([
+      ["http://localhost:4173/", "localhost:4173"],
+      ["http://192.168.1.20/admin", "192.168.1.20"],
+      ["http://[::1]:8080/", "[::1]:8080"],
+      ["https://xn--pple-43d.com/", "xn--pple-43d.com"],
+      ["https://аpple.com/", "xn--pple-43d.com"],
+      ["https://example.org@example.com/", "example.com"],
+    ])("shows %s as %s", (href, shown) => {
+      const view = render(<PluginResult show="markdown" text={`[there](${href})`} />);
+      expect(view.querySelector("bdi")?.textContent).toBe(shown);
+    });
+
     it("draws Markdown with headings as bold lines, not page headings", () => {
       const source = "# Today\n- **Sunny**\n- *calm*\n\n1. `x`\n\n> quoted\n\n```\ncode\n```";
       const view = render(<PluginResult show="markdown" text={source} />);

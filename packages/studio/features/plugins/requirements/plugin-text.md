@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1740; ADR `docs/adr/2026-11-09-plugins.md` section 5; [plugin screens](/HAL/issues/HAL-1739#document-design) section 8.4; [UX acceptance for P7](/HAL/issues/HAL-1952#document-ux-acceptance) section 1
 
-The Studio shall show a plugin tool's answer the way its command or card says, `text`, `markdown` or `table`, and shall never turn any of it into HTML or script. `text` is plain text with its line breaks. `markdown` reads only paragraphs, headings (drawn as a bold line), bullet and numbered lists, quotes, code, bold, italics and links; an image, HTML and a link to anything but an `http` or `https` page stay as their own characters. A link opens through `ExternalLink` and shows its full address on hover. `table` reads a JSON list of objects, one row each, with a column for every key in the order it first appears; an answer that isn't such a list shows as plain text.
+The Studio shall show a plugin tool's answer the way its command or card says, `text`, `markdown` or `table`, and shall never turn any of it into HTML or script. `text` is plain text with its line breaks. `markdown` reads only paragraphs, headings (drawn as a bold line), bullet and numbered lists, quotes, code, bold, italics and links; an image, HTML and a link to anything but an `http` or `https` page stay as their own characters. A link opens through `ExternalLink`, is followed by its host in muted text, such as "(example.com)", so keyboard and touch users see where it goes too, and shows its full address on hover. The host is the one the URL parser reads, with any port: an international name shows in its `xn--` form and an IP address as itself. `table` reads a JSON list of objects, one row each, with a column for every key in the order it first appears; an answer that isn't such a list shows as plain text.
 
 ## Examples
 
@@ -16,7 +16,10 @@ The Studio shall show a plugin tool's answer the way its command or card says, `
   then it reads `[link](javascript:alert(1))` as text, with no link.
 - Given a `markdown` answer `See [the map](https://example.com/map)`,
   when Studio shows it,
-  then "the map" is an `ExternalLink` to `https://example.com/map` that shows that address on hover.
+  then "the map" is an `ExternalLink` to `https://example.com/map`, followed by "(example.com)" in muted text, and shows the full address on hover.
+- Given a `markdown` answer `[there](https://аpple.com/)` with a Cyrillic "а",
+  when Studio shows it,
+  then the link is followed by "(xn--pple-43d.com)", not by a name that looks like apple.com.
 - Given a `table` answer `[{"day":"Mon","high":21},{"day":"Tue","rain":true}]`,
   when Studio shows it,
   then it is a table with the columns day, high and rain, and two rows.
