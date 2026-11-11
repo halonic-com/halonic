@@ -71,7 +71,7 @@ function Assert-Says([IntPtr]$h, [string]$expected) {
   Write-Output "message: $said"
   if ($said -ne $expected) { throw "Expected the message '$expected'" }
 }
-# BM_CLICK on the button with this id (1 OK, 2 Cancel, 4 Retry).
+# BM_CLICK on the button with this id (2 Cancel, 4 Retry; a lone OK is 2 too).
 function Press([IntPtr]$h, [int]$id) {
   $b = [M]::GetDlgItem($h, $id)
   if ($b -eq [IntPtr]::Zero) { throw "The message has no button $id" }
@@ -121,7 +121,7 @@ try {
   $h = Wait-MessageBox $p
   Assert-Says $h "A newer Halonic (99.0.0) is already installed. To go back to $Version, uninstall Halonic first."
   Save-Picture $h '5-newer-installed'
-  Press $h 1
+  Press $h 2
   if (-not $p.WaitForExit(20000)) { $p | Stop-Process -Force; throw 'OK did not quit the installer' }
   if ($p.ExitCode -ne 2) { throw "OK quit with $($p.ExitCode), expected 2" }
 
