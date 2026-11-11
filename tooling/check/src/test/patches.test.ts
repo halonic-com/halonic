@@ -30,14 +30,25 @@ function allowing(entry: Record<string, unknown> = {}): string {
   });
 }
 
+/** The real workspace file without its own `patchedDependencies:`, so each test sets its own. */
+function withoutRealPatches(yaml: string): string {
+  return yaml.replace(/^patchedDependencies:\n(?: {2}.*\n)*/m, "");
+}
+
 /** The workspace file with one `patchedDependencies:` line, written as `pnpm patch-commit` writes it. */
 function patching(key: string, value: string): (yaml: string) => string {
   return (yaml) => `${yaml}\npatchedDependencies:\n  '${key}': ${value}\n`;
 }
 
+/** Fixture options whose workspace file starts from `withoutRealPatches`. */
+function fixture(options: FixtureOptions): FixtureOptions {
+  const edit = options.workspaceYaml ?? ((yaml: string) => yaml);
+  return { ...options, workspaceYaml: (yaml) => edit(withoutRealPatches(yaml)) };
+}
+
 /** The patch problems of the dependencies rule, warnings too (`runChecks` keeps only errors). */
 function found(options: FixtureOptions): { errors: string[]; warnings: string[] } {
-  const root = writeFixtureRepo([], { extraFiles: { [file]: patchText }, ...options });
+  const root = writeFixtureRepo([], fixture({ extraFiles: { [file]: patchText }, ...options }));
   let problems: readonly Problem[];
   try {
     problems = rules["dependencies"]?.(loadContext(root)).problems ?? [];
@@ -133,7 +144,7 @@ describe("tooling/check: allowed patches", () => {
 
   it("can't read a patchedDependencies value on the same line", () => {
     const workspaceYaml = (yaml: string) => `${yaml}\npatchedDependencies: {}\n`;
-    const problems = runChecks([], { workspaceYaml, patchesAllowed: allowing() });
+    const problems = runChecks([], fixture({ workspaceYaml, patchesAllowed: allowing() }));
     expect(problems.some((p) => p.message.startsWith("The check can't read this line"))).toBe(true);
   });
 });

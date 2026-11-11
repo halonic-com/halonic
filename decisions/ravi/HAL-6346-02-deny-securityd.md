@@ -16,6 +16,10 @@
   macOS only (`describe.skipIf(!isMac)`), because the Keychain and Seatbelt exist only there. It
   asks the Keychain from a session that allows the key store (the item comes back, as srt does
   by default) and from one that denies it (no item).
+- `tooling/check/src/test/fixture-repo.ts` and `patches.test.ts`: test setup only. Now that the
+  real `pnpm-workspace.yaml` applies the srt patch, a fixture repo built from the real files also
+  gets the patch files the real `patches-allowed.json` names, and the patch tests start from the
+  real workspace file without its own `patchedDependencies:`. The guard's code is unchanged.
 
 ## Why
 
@@ -29,3 +33,5 @@ can keep its own sign-in in the Keychain and must still read it in the fence.
 - sandbox-srt.profile-to-srt-config
 - integration-runner.start
 - packages/adapters/sandbox-srt/fence/srt-keychain.test.ts
+- tooling/check/src/test/fixture-repo.ts
+- tooling/check/src/test/patches.test.ts

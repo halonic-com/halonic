@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { loadContext } from "../lib/context.ts";
 import { defaultCoverageFloors } from "../lib/coverage.ts";
 import type { Layer } from "../lib/layout.ts";
+import { readAllowedPatches } from "../lib/patches.ts";
 import type { Problem } from "../lib/problems.ts";
 import { rules, selectRules } from "../rules/all.ts";
 
@@ -136,7 +137,15 @@ function writeTreeRewriteLists(
   const overrides = "tooling/check/overrides-allowed.json";
   write(overrides, options.overridesAllowed ?? real(overrides));
   const patches = "tooling/check/patches-allowed.json";
-  write(patches, options.patchesAllowed ?? real(patches));
+  if (options.patchesAllowed !== undefined) {
+    write(patches, options.patchesAllowed);
+    return;
+  }
+  write(patches, real(patches));
+  // The real pnpm-workspace.yaml applies the real patches, so their files come along.
+  for (const { file } of readAllowedPatches(real(patches)).entries) {
+    write(file, real(file));
+  }
 }
 
 /** The real policy.json with `coreOrder` set, for a fixture repo. */
