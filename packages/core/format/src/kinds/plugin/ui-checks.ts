@@ -14,7 +14,7 @@ const riskVerbs: Readonly<Record<string, string>> = {
 /**
  * The problems in a plugin's `ui`: an id twice, a secret field for a secret
  * no part declares, a choice default that isn't a choice, a command or card
- * whose tool isn't a declared `read` tool, and cards without a panel.
+ * whose tool isn't a declared `read` tool.
  */
 export function uiProblems(plugin: Plugin): KindCheckProblem[] {
   const ui = plugin.ui;
@@ -36,7 +36,6 @@ export function uiProblems(plugin: Plugin): KindCheckProblem[] {
     ),
     ...fieldProblems(plugin, ui),
     ...toolProblems(plugin, ui),
-    ...panelProblems(plugin, ui),
   ];
 }
 
@@ -109,13 +108,4 @@ function toolProblems(plugin: Plugin, ui: PluginUi): KindCheckProblem[] {
     }
   }
   return problems;
-}
-
-/** Cards show only in the plugin's panel, so a plugin with cards has one. */
-function panelProblems(plugin: Plugin, ui: PluginUi): KindCheckProblem[] {
-  if (ui.cards.length === 0 || ui.panel !== undefined) {
-    return [];
-  }
-  const message = "cards show only in the plugin's panel; add ui.panel with a title";
-  return [problem(plugin, "cards-need-panel", ["ui", "cards"], message)];
 }
