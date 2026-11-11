@@ -2,6 +2,7 @@
 
 - Approval: the maintainer approves this change in review of HAL-5951
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:knuXj55/t8TAgb72HtbnUfXtD1O2uUbB6EVYAcPh1EFuOa/XWzaiVFvjS2oR1ggZIKp7aFXY535VZjelxiPgBw==
 
 The requirement grows stricter; nothing it refused before is now accepted, and no test was weakened.
 
