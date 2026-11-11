@@ -3,6 +3,7 @@
 - Task: HAL-5958 (follow-up to HAL-5765 and HAL-5833: a hung Ubuntu mirror held the merge queue on 11 Nov)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l9dJCXxRVEaM7g0G+e4RrkOvxomLAyomFQayxJjPtAhGPkHZarSMVV5ssGC4yBoR0motYEqcmxQlEIEOj9UsBQ==
 
 ## What changes
 
