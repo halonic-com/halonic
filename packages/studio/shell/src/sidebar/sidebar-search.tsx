@@ -1,4 +1,5 @@
 import { Kbd, keyShortcutsLabel, SearchIcon } from "@halonicjs/studio-kit";
+import { hintKeys } from "../points/key-hints.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 
 /** Props for {@link SidebarSearch}. */
@@ -19,7 +20,7 @@ export interface SidebarSearchProps {
  * <SidebarSearch platform={platform} onOpen={palette.show} />
  */
 export function SidebarSearch({ platform, onOpen }: SidebarSearchProps) {
-  const keys = [platform === "macos" ? "⌘" : "Ctrl", "K"];
+  const keys = hintKeys("Mod+K", platform);
   return (
     <button
       type="button"

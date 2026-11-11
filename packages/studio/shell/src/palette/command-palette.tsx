@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
+import { hintKeys } from "../points/key-hints.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { PaletteContent, PaletteRow } from "./palette-groups.ts";
 import {
@@ -168,12 +169,11 @@ function SearchRow({ box, listId, activeId, words, onWordsChange, onKeyDown }: S
 
 /** The keys under the results; hidden on a phone, which has no keyboard to press them on. */
 function PaletteFooter({ platform }: { readonly platform: KeyboardPlatform }) {
-  const mod = platform === "macos" ? "⌘" : "Ctrl";
   return (
     <div className="flex shrink-0 items-center gap-6 border-t border-border bg-surface-subtle px-4 py-2 text-caption text-fg-muted phone:hidden">
-      <FooterKey keys={["Enter"]}>Open here</FooterKey>
-      <FooterKey keys={[mod, "Enter"]}>Open in a new tab</FooterKey>
-      <FooterKey keys={["Esc"]}>Close</FooterKey>
+      <FooterKey keys={hintKeys("Enter", platform)}>Open here</FooterKey>
+      <FooterKey keys={hintKeys("Mod+Enter", platform)}>Open in a new tab</FooterKey>
+      <FooterKey keys={hintKeys("Escape", platform)}>Close</FooterKey>
     </div>
   );
 }

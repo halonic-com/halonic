@@ -26,6 +26,7 @@ first, and a cycle between them throws a `ShellError`.
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
 | `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
 | `WindowTabStrip`                | the window tabs in the title bar, one Tab stop             | `shell.window-tab-strip`  |
+| `hintKeys`                      | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform     | `shell.key-hints`         |
 | `TabPages`                      | the last 5 tabs' pages kept mounted, focus given back      | `shell.tab-pages`         |
 | `ShellFrame`                    | the window's frame: layers, live regions, Esc, toasts      | `shell.frame`             |
 | `StatusBarItems`                | the status bar's items, state only                         | `shell.status-bar`        |
@@ -98,9 +99,25 @@ crosses a neighbour's middle.
 item, or with a right-click at the pointer, without making that tab active. It's the kit's
 `ContextMenu`, named after the tab's title, with **Close**, **Close other tabs** (unusable on the
 only tab) and **Reopen closed tab** (unusable until a tab has closed). After Close the focus goes to
-the tab that took its place; after Reopen, to the reopened tab. It shows no keys yet: the desktop
-app's Ctrl W and Ctrl Shift T get their hints with the shell's Kbd helper. The tooltips come in a
-later pull request.
+the tab that took its place; after Reopen, to the reopened tab. Give the strip `windowKeys`, the same
+`host` and `platform` as `useWindowKeys`: in the desktop app Close then shows Ctrl W and Reopen
+closed tab Ctrl Shift T (⌘ on macOS). Served Studio shows no keys, since the browser owns them. The
+tooltips come in a later pull request.
+
+**Key hints** come from one helper, `hintKeys(keys, platform)`, so every hint reads the same. It
+takes the keys as a keybinding writes them and returns one Kbd box per key: `Mod` is ⌘ on macOS and
+Ctrl elsewhere, the modifiers come first, `Mod` always leading (⌘ Shift T, Ctrl Shift T), and Escape and the arrows
+are drawn short (Esc, ↑). Name the same keys in `aria-keyshortcuts` with the kit's
+`keyShortcutsLabel` (`shell.key-hints`).
+
+```tsx
+const keys = hintKeys("Mod+K", platform);
+return (
+  <button aria-keyshortcuts={keyShortcutsLabel(keys)}>
+    Search <Kbd keys={keys} />
+  </button>
+);
+```
 
 In a narrow window (600 to 899px) the strip folds the tabs into one header badge, "3 open tabs ▾",
 with **+** after it (component specs 24.5 T5). It shows the 6px dot and says "3 open tabs, 1 needs

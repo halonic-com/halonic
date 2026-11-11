@@ -15,6 +15,7 @@ import { useNarrowWindow } from "../frame/frame-effects.ts";
 import { OpenTabsMenu } from "./open-tabs-menu.tsx";
 import { dragTargetIndex, TAB_DRAG_THRESHOLD, type TabSpan } from "./tab-drag.ts";
 import { currentLocation, type TabLocation, type TabSet, type WindowTab } from "./tab-set.ts";
+import type { WindowKeysOptions } from "./use-window-keys.ts";
 import { type TabMenuActions, useWindowTabMenu, WindowTabMenu } from "./window-tab-menu.tsx";
 
 /**
@@ -33,6 +34,12 @@ export interface WindowTabStripProps {
   readonly needsYou?: ((location: TabLocation) => boolean) | undefined;
   /** Called after **+** opened a new tab on Home, so the frame can open the Ctrl K palette there. */
   readonly onNewTab?: ((tab: WindowTab) => void) | undefined;
+  /**
+   * Where this Studio runs and on which platform, as given to `useWindowKeys`. In the desktop app
+   * the tab menu then shows the keys of Close and Reopen closed tab. Leave it out, or run served,
+   * and it shows none, since the browser owns those keys.
+   */
+  readonly windowKeys?: Pick<WindowKeysOptions, "host" | "platform"> | undefined;
 }
 
 /**
@@ -52,7 +59,13 @@ export interface WindowTabStripProps {
  * @example
  * <ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
  */
-export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabStripProps) {
+export function WindowTabStrip({
+  tabs,
+  iconFor,
+  needsYou,
+  onNewTab,
+  windowKeys,
+}: WindowTabStripProps) {
   const state = useSyncExternalStore(
     (listener) => tabs.subscribe(listener),
     () => tabs.state,
@@ -168,7 +181,13 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
           />
         ))}
       </div>
-      <WindowTabMenu tabs={tabs} target={menu.target} actions={menuActions} onClose={menu.close} />
+      <WindowTabMenu
+        tabs={tabs}
+        target={menu.target}
+        actions={menuActions}
+        windowKeys={windowKeys}
+        onClose={menu.close}
+      />
       <NewTabButton tabs={tabs} onNewTab={onNewTab} />
     </>
   );

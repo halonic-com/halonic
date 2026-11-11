@@ -7,6 +7,7 @@ import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { installFakePopover, isPopoverOpen } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { currentLocation, type TabLocation, TabSet } from "./tab-set.ts";
+import type { WindowKeysOptions } from "./use-window-keys.ts";
 import { WindowTabStrip } from "./window-tab-strip.tsx";
 
 const agents: TabLocation = { key: "agents", title: "Agents" };
@@ -28,13 +29,13 @@ afterEach(() => {
 });
 
 /** A strip over tabs on Agents, Support reply and Sorter, with Support reply active. */
-function renderStrip() {
+function renderStrip(windowKeys?: Pick<WindowKeysOptions, "host" | "platform">) {
   const tabs = new TabSet();
   tabs.openHere(agents);
   tabs.openInNewTab(sorter);
   tabs.openInNewTab(reply);
   tabs.activate(tabs.state.tabs[1]?.id ?? "");
-  const container = render(<WindowTabStrip tabs={tabs} />);
+  const container = render(<WindowTabStrip tabs={tabs} windowKeys={windowKeys} />);
   const menu = container.querySelector<HTMLElement>("[role=menu]") as HTMLElement;
   return { tabs, container, menu };
 }
@@ -104,14 +105,40 @@ verifies("shell.window-tab-menu", () => {
     }
   });
 
-  it("lists Close, Close other tabs and Reopen closed tab, with no keys shown", () => {
-    const { container, menu } = renderStrip();
-    rightClick(tabNamed(container, "Agents"));
-    const labels = [...menu.querySelectorAll("[role=menuitem]")].map((each) => each.textContent);
-    expect(labels).toEqual(["Close", "Close other tabs", "Reopen closed tab"]);
-    expect(menu.querySelector("kbd")).toBeNull();
-    expect(item(menu, "Reopen closed tab").getAttribute("aria-disabled")).toBe("true");
-    expect(item(menu, "Close other tabs").hasAttribute("aria-disabled")).toBe(false);
+  it("lists Close, Close other tabs and Reopen closed tab, with no keys shown when served", () => {
+    for (const windowKeys of [undefined, { host: "served", platform: "windows" }] as const) {
+      const { container, menu } = renderStrip(windowKeys);
+      rightClick(tabNamed(container, "Agents"));
+      const labels = [...menu.querySelectorAll("[role=menuitem]")].map((each) => each.textContent);
+      expect(labels).toEqual(["Close", "Close other tabs", "Reopen closed tab"]);
+      expect(menu.querySelector("kbd")).toBeNull();
+      expect(menu.querySelector("[aria-keyshortcuts]")).toBeNull();
+      expect(item(menu, "Reopen closed tab").getAttribute("aria-disabled")).toBe("true");
+      expect(item(menu, "Close other tabs").hasAttribute("aria-disabled")).toBe(false);
+      unmountAll();
+    }
+  });
+
+  it("shows the keys of Close and Reopen closed tab in the desktop app", () => {
+    for (const [platform, close, reopen] of [
+      ["windows", "Control+W", "Control+Shift+T"],
+      ["macos", "Meta+W", "Meta+Shift+T"],
+    ] as const) {
+      const { container, menu } = renderStrip({ host: "desktop-app", platform });
+      rightClick(tabNamed(container, "Agents"));
+      const items = [...menu.querySelectorAll("[role=menuitem]")];
+      expect(items.map((each) => each.getAttribute("aria-keyshortcuts"))).toEqual([
+        close,
+        null,
+        reopen,
+      ]);
+      const mod = platform === "macos" ? "⌘" : "Ctrl";
+      const shown = (index: number) =>
+        [...(items[index]?.querySelectorAll("kbd") ?? [])].map((key) => key.textContent);
+      expect(shown(0)).toEqual([mod, "W"]);
+      expect(shown(2)).toEqual([mod, "Shift", "T"]);
+      unmountAll();
+    }
   });
 
   it("opens at the pointer on a right-click without making the tab active", () => {
