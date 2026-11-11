@@ -38,7 +38,8 @@ jobs:
         env:
           CODEX_VERSION: ${{ inputs.codex_version }}
           CLAUDE_CODE_VERSION: ${{ inputs.claude_code_version }}
-        run: npm install --global "@openai/codex@$CODEX_VERSION" "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+        # The probe tests the published CLIs at the versions asked for, on a runner with no secrets.
+        run: npm install --global "@openai/codex@$CODEX_VERSION" "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" # zizmor: ignore[adhoc-packages]
       - name: Install bubblewrap (Linux)
         if: runner.os == 'Linux'
         shell: bash
