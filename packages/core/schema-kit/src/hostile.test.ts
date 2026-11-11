@@ -31,7 +31,9 @@ verifies("schema-kit.parse-result", () => {
             withSparseArray: true,
           }),
           (value) => {
-            for (const schema of schemas) expect(() => parse(schema, value)).not.toThrow();
+            // A throw fails the property with its input. One cheap expect per
+            // parse keeps the count; `.not.toThrow()` cost 4x the parse (HAL-5101).
+            for (const schema of schemas) expect(typeof parse(schema, value).ok).toBe("boolean");
           },
         ),
         { seed, numRuns: 200 },
