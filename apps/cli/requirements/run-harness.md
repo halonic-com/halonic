@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: plan v1.17 (`halonic run --harness`); 6b of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), amended by Liam on HAL-3789
 
-`halonic run <workflow> --harness <harness>` shall run every agent of the run, and of the runs it starts, in that harness instead of the one its file names, and the run's `run.started` shall record it. Before the engine opens, it shall refuse, with nothing run and nothing written to the run log:
+When `halonic run <workflow>` is given `--harness <harness>`, the command shall run every agent of the run, and of the runs it starts, in that harness instead of the one its file names, and the run's `run.started` shall record it. Before the engine opens, it shall refuse, with nothing run and nothing written to the run log:
 
 1. a name that isn't a harness (`invalid_input`, exit 2), with the harnesses there are;
 2. a harness program that `detect()` finds missing, too old, or can't ask its version (`unavailable`, exit 9). A program that is installed but signed out is allowed, because it can still run with a key Halonic holds;
