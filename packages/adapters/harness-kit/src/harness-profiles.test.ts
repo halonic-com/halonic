@@ -247,5 +247,60 @@ verifies("harness-kit.harness-profile", () => {
       expect(profile.readOnlyPaths).toContain(bin);
       expect(profile.readOnlyPaths).not.toContain(computer.home);
     });
+
+    it("says why a harness installed in ~/.claude can't start on Windows, and what to do", async () => {
+      const local = join(computer.home, ".claude", "local");
+      await mkdir(local, { recursive: true });
+      await writeFile(join(local, "claude"), "");
+      const install = { program: join(local, "claude"), packageFolder: null };
+
+      await expect(
+        profilesWith({ install }, { platform: "win32" }).profileOf(agentWith(null), bridge),
+      ).rejects.toThrow(
+        /can't start the harness from `.*local`\. That folder is inside `.*\.claude`, which the sandbox hides from every agent because it holds your own Claude Code .*Install the harness somewhere else.*native installer.*\nSandbox group: agent-settings$/,
+      );
+    });
+  });
+});
+
+verifies("harness-kit.run-folders", () => {
+  describe("HarnessProfiles, the run's own folders (HAL-5675)", () => {
+    it.each([
+      ["temp folder", { tempFolder: async () => join(computer.data, "tmp") }],
+      ["settings folder", { settingsFolder: async () => join(computer.data, "settings") }],
+    ])("refuses a %s that is a top-level folder of Halonic's data folder", async (name, host) => {
+      await expect(profilesWith({}, {}, host).profileOf(agentWith(null), bridge)).rejects.toThrow(
+        new RegExp(`The ${name} .* is a top-level folder of Halonic's data folder`),
+      );
+    });
+
+    it("refuses a settings folder that is the temp folder", async () => {
+      const settingsFolder = async () => join(computer.data, "tmp", "run_1");
+
+      await expect(
+        profilesWith({}, {}, { settingsFolder }).profileOf(agentWith(null), bridge),
+      ).rejects.toThrow(/The temp folder .* overlaps the settings folder/);
+    });
+
+    it.each([
+      ["temp folder", "tempFolder"],
+      ["settings folder", "settingsFolder"],
+    ] as const)("refuses a %s inside the proposal folder", async (name, key) => {
+      const inProposal = join(computer.proposal, "own");
+      await mkdir(inProposal);
+      const host = { [key]: async () => inProposal };
+
+      await expect(
+        profilesWith({}, {}, host).profileOf(agentWith(computer.proposal), bridge),
+      ).rejects.toThrow(new RegExp(`The ${name} .* overlaps the proposal folder`));
+    });
+
+    it("refuses a temp folder that holds the proposal folder", async () => {
+      const tempFolder = async () => join(computer.data, "workspaces", "k1");
+
+      await expect(
+        profilesWith({}, {}, { tempFolder }).profileOf(agentWith(computer.proposal), bridge),
+      ).rejects.toThrow(/The temp folder .* overlaps the proposal folder/);
+    });
   });
 });
