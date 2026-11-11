@@ -16,18 +16,18 @@ import {
   serializeRunProposalRecord,
 } from "./run-proposal-record.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
-import {
-  type AcceptResult,
-  type CompareTexts,
-  type Decision,
-  type ProposalTarget,
-  ProposalUnavailableError,
-  type ProposedFile,
-  type RefusalReason,
-  type RejectResult,
-  type RestoreResult,
-  type UndoFileWrite,
-  type UndoStep,
+import type { ProposalReader } from "./run-proposal-texts.ts";
+import type {
+  AcceptResult,
+  CompareTexts,
+  Decision,
+  ProposalTarget,
+  ProposedFile,
+  RefusalReason,
+  RejectResult,
+  RestoreResult,
+  UndoFileWrite,
+  UndoStep,
 } from "./run-proposal-types.ts";
 
 /** The decisions on the proposals of one workspace's runs. */
@@ -44,9 +44,9 @@ export class ProposalDecisions {
   accept(runId: string, target: ProposalTarget): Promise<AcceptResult> {
     return this.records.inTurn(runId, async () => {
       const record = await this.records.proposed(runId);
-      const commit = await this.commitOf(record);
+      const reader = await this.readerOf(record);
       const files = record.proposal.files.filter((file) => covers(target, file));
-      const accepted = await acceptFiles(this.context, record, files, commit);
+      const accepted = await acceptFiles(this.context, record, files, reader);
       const decisions = await this.saveDecisions(record, accepted.decisions);
       return {
         undo:
@@ -75,15 +75,15 @@ export class ProposalDecisions {
   /** See `RunProposals.compare`. */
   async compare(runId: string, path: string): Promise<CompareTexts> {
     const record = await this.records.proposed(runId);
-    const commit = await this.commitOf(record);
+    const reader = await this.readerOf(record);
     const { proposal } = record;
     if (!proposal.files.some((file) => file.path === path)) {
       throw new Error(`Run ${runId} proposes no change to ${path}.`);
     }
     return {
-      base: await this.context.vcs.readAt(proposal.base, path),
+      base: await reader.read("base", path),
       saved: await this.context.store.read(path),
-      run: record.partly?.[path]?.run ?? (await this.context.vcs.readAt(commit, path)),
+      run: record.partly?.[path]?.run ?? (await reader.read("run", path)),
     };
   }
 
@@ -133,13 +133,9 @@ export class ProposalDecisions {
     return (await restoreFile(this.context, entry, to)) ? "restored" : "changed-on-disk";
   }
 
-  /** @throws ProposalUnavailableError when the proposal's ref is gone */
-  async commitOf(record: ProposedRecord): Promise<string> {
-    const commit = await this.context.vcs.readRef(record.proposal.ref);
-    if (commit === null) {
-      throw new ProposalUnavailableError(record.proposal.runId);
-    }
-    return commit;
+  /** @throws ProposalUnavailableError when the proposal's texts are gone */
+  readerOf(record: ProposedRecord): Promise<ProposalReader> {
+    return this.context.texts.readerOf(record.proposal);
   }
 
   /**

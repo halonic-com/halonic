@@ -168,7 +168,7 @@ export class ProposalParts {
   /**
    * Where a file stands: open with its parts, or why it has none.
    *
-   * @throws when the run doesn't propose the file, or its ref is gone
+   * @throws when the run doesn't propose the file, or its texts are gone
    */
   private async stateOf(record: ProposedRecord, path: string): Promise<OpenFile | ClosedFile> {
     const file = record.proposal.files.find((proposed) => proposed.path === path);
@@ -205,8 +205,8 @@ export class ProposalParts {
 
   /** The run's text of a file it modified. */
   private async runTextOf(record: ProposedRecord, path: string): Promise<string> {
-    const commit = await this.decisions.commitOf(record);
-    const run = await this.context.vcs.readAt(commit, path);
+    const reader = await this.decisions.readerOf(record);
+    const run = await reader.read("run", path);
     if (run === null) {
       throw new Error(`The proposal of run ${record.proposal.runId} has no text for ${path}.`);
     }

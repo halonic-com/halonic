@@ -12,6 +12,7 @@ import { contentDigest, matchesExpected } from "@halonicjs/std";
 import { isNeverWritten, refused, storeRefusing } from "./review-gate.ts";
 import type { Trash } from "./review-types.ts";
 import type { PartlyDecided, ProposedRecord } from "./run-proposal-record.ts";
+import type { ProposalReader, ProposalTexts } from "./run-proposal-texts.ts";
 import type {
   AcceptResult,
   Decision,
@@ -19,11 +20,11 @@ import type {
   RefusalReason,
   UndoFileWrite,
 } from "./run-proposal-types.ts";
-import type { ProposalVcs } from "./run-proposals.ts";
 
 /** What deciding a proposal needs from the host. */
 export interface DecideContext {
-  readonly vcs: ProposalVcs;
+  /** Where the runs' texts are. */
+  readonly texts: ProposalTexts;
   /** The workspace's files. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
@@ -45,12 +46,12 @@ export type AcceptedFile =
  * a partly decided file, what is left of the run's text is written, while
  * the saved file is as the last accepted part left it.
  *
- * @param commit - the commit the proposal's ref points at
+ * @param reader - the proposal's texts
  */
 export async function acceptFile(
   context: DecideContext,
   file: ProposedFile,
-  commit: string,
+  reader: ProposalReader,
   partly?: PartlyDecided,
 ): Promise<AcceptedFile> {
   const why = refusalOf(file.path);
@@ -61,7 +62,7 @@ export async function acceptFile(
   if (saved === refused) {
     return { kind: "refused", why: "outside-workspace" };
   }
-  const run = partly?.run ?? (await context.vcs.readAt(commit, file.path));
+  const run = partly?.run ?? (await reader.read("run", file.path));
   if (saved === run) {
     return { kind: "accepted", write: null };
   }
@@ -170,7 +171,7 @@ export async function acceptFiles(
   context: DecideContext,
   record: ProposedRecord,
   files: readonly ProposedFile[],
-  commit: string,
+  reader: ProposalReader,
 ): Promise<AcceptedFiles> {
   const decisions: Record<string, Decision> = { ...record.decisions };
   const writes: UndoFileWrite[] = [];
@@ -180,7 +181,7 @@ export async function acceptFiles(
     if (decisions[file.path] !== "undecided") {
       continue;
     }
-    const outcome = await acceptFile(context, file, commit, record.partly?.[file.path]);
+    const outcome = await acceptFile(context, file, reader, record.partly?.[file.path]);
     if (outcome.kind === "changed-on-disk") {
       changedOnDisk.push(file.path);
     } else if (outcome.kind === "refused") {

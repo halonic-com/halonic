@@ -8,7 +8,7 @@
 import type { Clock } from "@halonicjs/ports";
 import type { ProposedRecord, Settled } from "./run-proposal-record.ts";
 import type { ProposalRecordStore } from "./run-proposal-store.ts";
-import type { ProposalVcs } from "./run-proposals.ts";
+import type { ProposalTexts } from "./run-proposal-texts.ts";
 
 /** How long a proposal stays open when nobody decides it. */
 const openFor = 30 * 24 * 60 * 60 * 1000;
@@ -33,12 +33,12 @@ export function isProposalFinished(record: ProposedRecord): boolean {
 /** Settles the proposals of one workspace's runs. */
 export class ProposalSettling {
   private readonly records: ProposalRecordStore;
-  private readonly vcs: ProposalVcs;
+  private readonly texts: ProposalTexts;
   private readonly clock: Clock;
 
-  constructor(records: ProposalRecordStore, vcs: ProposalVcs, clock: Clock) {
+  constructor(records: ProposalRecordStore, texts: ProposalTexts, clock: Clock) {
     this.records = records;
-    this.vcs = vcs;
+    this.texts = texts;
     this.clock = clock;
   }
 
@@ -71,7 +71,7 @@ export class ProposalSettling {
         // A settled proposal's ref is gone by design: the Inbox shows its decisions, not its texts.
         return false;
       }
-      return (await this.vcs.readRef(record.proposal.ref)) === null;
+      return !(await this.texts.isAvailable(record.proposal));
     });
   }
 
@@ -79,7 +79,7 @@ export class ProposalSettling {
   removeUnavailable(runId: string): Promise<void> {
     return this.records.inTurn(runId, async () => {
       const record = await this.records.proposed(runId);
-      if ((await this.vcs.readRef(record.proposal.ref)) !== null) {
+      if (await this.texts.isAvailable(record.proposal)) {
         // Only a proposal nobody can decide any more goes without a decision; Reject is for the rest.
         throw new Error(`The proposal of run ${runId} is still available.`);
       }
@@ -116,7 +116,7 @@ export class ProposalSettling {
       return false;
     }
     if (record.settled !== undefined) {
-      await this.deleteRef(record);
+      await this.texts.release(record.proposal);
       return false;
     }
     const age = this.clock.now().getTime() - Date.parse(record.finishedAt);
@@ -134,12 +134,6 @@ export class ProposalSettling {
    */
   private async settleRecord(record: ProposedRecord, why: Settled["why"]): Promise<void> {
     await this.records.save({ ...record, settled: { at: this.clock.now().toISOString(), why } });
-    await this.deleteRef(record);
-  }
-
-  private async deleteRef(record: ProposedRecord): Promise<void> {
-    if ((await this.vcs.readRef(record.proposal.ref)) !== null) {
-      await this.vcs.deleteRef(record.proposal.ref);
-    }
+    await this.texts.release(record.proposal);
   }
 }

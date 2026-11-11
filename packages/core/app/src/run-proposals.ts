@@ -4,14 +4,15 @@
 // Nothing here commits to a branch, pushes or makes anything live (7.6).
 
 import type { Clock, DefinitionStore, Digest, Vcs } from "@halonicjs/ports";
-import { contentDigest } from "@halonicjs/std";
 import { placeOf } from "@halonicjs/workspace";
 import type { Trash } from "./review-types.ts";
 import { ProposalDecisions } from "./run-proposal-decisions.ts";
+import { GitProposalTexts } from "./run-proposal-git-texts.ts";
 import { ProposalParts } from "./run-proposal-parts.ts";
-import { type ProposedRecord, proposalRefOf } from "./run-proposal-record.ts";
+import type { ProposedRecord, RunningRecord } from "./run-proposal-record.ts";
 import { ProposalSettling, type SettleResult } from "./run-proposal-settle.ts";
 import { ProposalRecordStore } from "./run-proposal-store.ts";
+import type { ProposalTexts } from "./run-proposal-texts.ts";
 import type {
   AcceptResult,
   CompareTexts,
@@ -85,9 +86,8 @@ export interface RunWorktree {
  * await proposals.settle("01JD8Q"); // when the toast has gone
  */
 export class RunProposals {
-  private readonly vcs: ProposalVcs;
+  private readonly texts: ProposalTexts;
   private readonly records: ProposalRecordStore;
-  private readonly digest: Digest;
   private readonly clock: Clock;
   private readonly onEndFailed: (runId: string, error: unknown) => void;
   private readonly decisions: ProposalDecisions;
@@ -95,20 +95,19 @@ export class RunProposals {
   private readonly settling: ProposalSettling;
 
   constructor(options: RunProposalsOptions) {
-    this.vcs = options.vcs;
+    this.texts = new GitProposalTexts(options.vcs, options.digest);
     this.records = new ProposalRecordStore(options.records);
-    this.digest = options.digest;
     this.clock = options.clock;
     this.onEndFailed = options.onEndFailed;
     const context = {
-      vcs: options.vcs,
+      texts: this.texts,
       store: options.store,
       digest: options.digest,
       trash: options.trash,
     };
     this.decisions = new ProposalDecisions(this.records, context);
     this.inFile = new ProposalParts(this.records, context, this.decisions);
-    this.settling = new ProposalSettling(this.records, options.vcs, options.clock);
+    this.settling = new ProposalSettling(this.records, this.texts, options.clock);
   }
 
   /**
@@ -124,9 +123,9 @@ export class RunProposals {
       if ((await this.records.read(runId)) !== null) {
         throw new Error(`Run ${runId} already has a worktree or a proposal.`);
       }
-      const worktree = await this.vcs.addWorktree(version);
-      await this.records.save({ state: "running", runId, base: version, worktreeId: worktree.id });
-      return { folder: worktree.path };
+      const { folder, record } = await this.texts.open(runId, version);
+      await this.records.save(record);
+      return { folder };
     });
   }
 
@@ -141,11 +140,7 @@ export class RunProposals {
   folderOf(runId: string): Promise<string | null> {
     return this.records.inTurn(runId, async () => {
       const record = await this.records.read(runId);
-      if (record?.state !== "running") {
-        return null;
-      }
-      const worktrees = await this.vcs.listWorktrees();
-      return worktrees.find((worktree) => worktree.id === record.worktreeId)?.path ?? null;
+      return record?.state === "running" ? await this.texts.folderOf(record) : null;
     });
   }
 
@@ -175,7 +170,8 @@ export class RunProposals {
       // A run that never had a folder, or one that already ended.
       return null;
     }
-    const proposal = await this.commitChanges(record.runId, record.base, record.worktreeId);
+    const ended = await this.texts.end(record);
+    const proposal = ended === null ? null : { ...ended, items: itemsOf(ended.files) };
     if (proposal === null) {
       await this.records.remove(runId);
     } else {
@@ -188,7 +184,7 @@ export class RunProposals {
     }
     // The record is saved first: a crash now leaves only the worktree, which `removeLeftovers` removes.
     try {
-      await this.vcs.removeWorktree(record.worktreeId);
+      await this.texts.close(record);
     } catch (error) {
       // The proposal is saved, so the run still reports it.
       this.onEndFailed(runId, error);
@@ -362,74 +358,20 @@ export class RunProposals {
    * person, and those it will end as interrupted
    */
   async removeLeftovers(openRuns: ReadonlySet<string>): Promise<void> {
-    const kept = new Set<string>();
+    const kept: RunningRecord[] = [];
     for (const runId of await this.records.running()) {
-      if (openRuns.has(runId)) {
-        const record = await this.records.read(runId);
-        if (record?.state === "running") {
-          kept.add(record.worktreeId);
-        }
+      const record = await this.records.read(runId);
+      if (record?.state !== "running") {
         continue;
       }
-      const ref = proposalRefOf(runId);
-      if ((await this.vcs.readRef(ref)) !== null) {
-        await this.vcs.deleteRef(ref);
+      if (openRuns.has(runId)) {
+        kept.push(record);
+        continue;
       }
+      await this.texts.discard(record);
       await this.records.remove(runId);
     }
-    for (const worktree of await this.vcs.listWorktrees()) {
-      if (!kept.has(worktree.id)) {
-        await this.vcs.removeWorktree(worktree.id);
-      }
-    }
-  }
-
-  /**
-   * Commits the worktree onto the run's ref and works out the proposal
-   * from that commit, not from the worktree's diff: the commit leaves out
-   * files the repository ignores, and so does the proposal.
-   */
-  private async commitChanges(
-    runId: string,
-    base: string,
-    worktreeId: string,
-  ): Promise<RunProposal | null> {
-    const changed = await this.vcs.diffBetween(base, worktreeId);
-    if (changed.length === 0) {
-      return null;
-    }
-    const ref = proposalRefOf(runId);
-    const commit = await this.vcs.commitWorktreeTo(worktreeId, ref, { parent: base });
-    const files: ProposedFile[] = [];
-    for (const { path } of changed) {
-      const file = await this.proposedFile(path, base, commit);
-      if (file !== null) {
-        files.push(file);
-      }
-    }
-    if (files.length === 0) {
-      await this.vcs.deleteRef(ref);
-      return null;
-    }
-    return { runId, base, ref, files, items: itemsOf(files) };
-  }
-
-  /** How a file differs between the base and the run's commit; `null` when it doesn't. */
-  private async proposedFile(
-    path: string,
-    base: string,
-    commit: string,
-  ): Promise<ProposedFile | null> {
-    const before = await this.vcs.readAt(base, path);
-    const after = await this.vcs.readAt(commit, path);
-    if (before === after) {
-      return null;
-    }
-    if (before === null) {
-      return { path, change: "added", base: "absent" };
-    }
-    const digest = await contentDigest(before, this.digest);
-    return { path, change: after === null ? "deleted" : "modified", base: { digest } };
+    await this.texts.removeLeftovers(kept);
   }
 }
 
