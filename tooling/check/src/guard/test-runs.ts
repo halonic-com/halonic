@@ -1,8 +1,9 @@
 import type { CheckContext } from "../lib/context.ts";
+import { expectedRequirementId } from "../lib/requirements.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
 import { readTestResults, type TestOutcome, testResultsFile } from "../lib/test-results.ts";
 import { owningPackage } from "../lib/workspace.ts";
-import type { Checkouts, GuardFinding } from "./finding.ts";
+import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
 
 /** Statuses of a test that ran; skipped and todo tests didn't. */
 const ranStatuses = ["passed", "failed"];
@@ -13,11 +14,15 @@ const ranStatuses = ["passed", "failed"];
  * - a deleted test file
  * - fewer tests that ran in a test file
  * - fewer tests that ran for a requirement, even if the total stays the same
- * - fewer `expect` calls for a requirement
+ * - fewer `expect` calls for a requirement, if the pull request changes one of
+ *   its test files or its requirement file. A test can only be weakened by
+ *   editing it; a count that drops over unchanged tests is run-to-run noise
+ *   (polling, tests that skip in some environments).
  * Both checkouts' tests must have run first. A missing or unreadable result
  * file is a finding too, so the guard fails closed.
  */
-export function checkTestRuns({ base, head }: Checkouts): GuardFinding[] {
+export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
+  const { base, head } = checkouts;
   const findings: GuardFinding[] = [];
   for (const file of testFilesIn(base)) {
     if (!head.files.includes(file)) {
@@ -37,6 +42,8 @@ export function checkTestRuns({ base, head }: Checkouts): GuardFinding[] {
     }),
   ).filter((finding) => head.files.includes(finding.file));
   const fileOf = requirementFiles(before);
+  const touched = touchedRequirements(checkouts, [...before, ...after]);
+  const edited = (id: string): boolean => touched.has(id);
   findings.push(
     ...fewerInFile,
     ...compareCounts(
@@ -52,7 +59,7 @@ export function checkTestRuns({ base, head }: Checkouts): GuardFinding[] {
       subject: id,
       file: fileOf.get(id) ?? id,
       message: `The tests of the requirement "${id}" made ${now} expect call(s), ${was} on the merge base.`,
-    })),
+    })).filter((finding) => finding.subject !== undefined && edited(finding.subject)),
   );
   return findings;
 }
@@ -143,4 +150,30 @@ function requirementFiles(tests: readonly TestOutcome[]): Map<string, string> {
     }
   }
   return files;
+}
+
+/** The requirements with a test file or a requirement file the pull request changed. */
+function touchedRequirements(
+  { base, head }: Checkouts,
+  tests: readonly TestOutcome[],
+): ReadonlySet<string> {
+  const touched = new Set<string>();
+  for (const test of tests) {
+    if (test.requirement !== undefined && changeOf(test.file, base, head) !== undefined) {
+      touched.add(test.requirement);
+    }
+  }
+  for (const file of new Set([...base.files, ...head.files])) {
+    const pkg = owningPackage(file, head.packages) ?? owningPackage(file, base.packages);
+    if (
+      pkg !== undefined &&
+      pkg.directory !== "." &&
+      file.endsWith(".md") &&
+      file.includes("/requirements/") &&
+      changeOf(file, base, head) !== undefined
+    ) {
+      touched.add(expectedRequirementId(file, pkg.directory));
+    }
+  }
+  return touched;
 }
