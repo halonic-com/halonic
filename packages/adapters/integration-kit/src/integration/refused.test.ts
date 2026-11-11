@@ -17,6 +17,7 @@ const expectedKinds: Record<RefusalCode, ErrorKind> = {
   "secret-not-allowed-for-host": "denied",
   "secret-over-plain-http": "denied",
   "secret-not-configured": "denied",
+  "secret-too-short": "denied",
   "too-many-redirects": "denied",
   "secret-in-request": "denied",
   "secret-in-redirect": "denied",

@@ -12,6 +12,7 @@ export type RefusalCode =
   | "secret-not-allowed-for-host"
   | "secret-over-plain-http"
   | "secret-not-configured"
+  | "secret-too-short"
   | "secret-needs-form-body"
   | "body-not-supported"
   | "too-many-redirects"
@@ -36,6 +37,7 @@ const refusalKinds: Readonly<Record<RefusalCode, ErrorKind>> = {
   "secret-not-allowed-for-host": "denied",
   "secret-over-plain-http": "denied",
   "secret-not-configured": "denied",
+  "secret-too-short": "denied",
   "secret-needs-form-body": "invalid_input",
   "body-not-supported": "invalid_input",
   "too-many-redirects": "denied",

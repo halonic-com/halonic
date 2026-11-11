@@ -201,6 +201,20 @@ verifies("integration-kit.loader", () => {
       ]);
     });
 
+    it("refuses to read a picked secret shorter than 8 bytes", async () => {
+      const prepared = prepareIntegration({
+        source: { origin: "local", sheet: sheet(), approvedSheet: sheet() },
+        choices: { secretNames: { "weather-key": "example-key" } },
+        transport: fakeTransport().transport,
+        secrets: { get: async () => "short" },
+        tokens: memoryTokens(),
+      });
+      if (!prepared.ok) expect.fail(JSON.stringify(prepared.error));
+      await expect(prepared.value.readSecrets()).rejects.toMatchObject({
+        code: "secret-too-short",
+      });
+    });
+
     it("reads no secret the user didn't pick", async () => {
       const prepared = prepare({});
       if (!prepared.ok) expect.fail(JSON.stringify(prepared.error));

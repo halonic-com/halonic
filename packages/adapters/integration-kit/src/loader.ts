@@ -21,6 +21,7 @@ import type { RequestLimits } from "./limited-http.ts";
 import type { LoadProblem } from "./load-problem.ts";
 import type { RequestLog } from "./request-log.ts";
 import type { SecretOnWire } from "./secret-filter.ts";
+import { checkSecretLength } from "./secret-placement.ts";
 
 /** An integration and its permission sheet, as they were found. */
 export interface IntegrationSource {
@@ -319,11 +320,17 @@ function chosenSecrets(raw: Secrets, secretNames: Readonly<Record<string, string
   };
 }
 
-/** Each declared secret with a value, and its one placement, as {@link PreparedIntegration.readSecrets} gives them. */
+/**
+ * Each declared secret with a value, and its one placement, as {@link PreparedIntegration.readSecrets} gives them.
+ *
+ * @throws {IntegrationRefusedError} `secret-too-short` for a value the filter can't safely remove
+ */
 async function secretsOnWire(sheet: IntegrationSheet, secrets: Secrets): Promise<SecretOnWire[]> {
   const read = Object.entries(sheet.secrets).map(async ([name, declared]) => {
     const value = await secrets.get(name);
-    return value === null ? [] : [{ value, placements: [placementOf(name, declared)] }];
+    if (value === null) return [];
+    checkSecretLength(sheet.id, name, value);
+    return [{ value, placements: [placementOf(name, declared)] }];
   });
   return (await Promise.all(read)).flat();
 }

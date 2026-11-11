@@ -73,9 +73,24 @@ function placed(placement: SecretPlacement, value: string): string {
  * removeSecrets(String(error), forms)
  */
 export function removeSecrets(text: string, forms: SecretForms): string {
-  let filtered = text;
-  for (const form of forms.texts) filtered = filtered.replaceAll(form, secretRemoved);
-  return filtered;
+  if (forms.longest === 0) return text;
+  // One pass over the text, the longest form first at each place, as
+  // SecretRemover does for bodies: a marker already written is never
+  // searched again, so a secret found inside it can't break it up.
+  let filtered = "";
+  let kept = 0;
+  let at = 0;
+  while (at < text.length) {
+    const form = forms.texts.find((candidate) => text.startsWith(candidate, at));
+    if (form === undefined) {
+      at++;
+      continue;
+    }
+    filtered += text.slice(kept, at) + secretRemoved;
+    at += form.length;
+    kept = at;
+  }
+  return filtered + text.slice(kept);
 }
 
 /**

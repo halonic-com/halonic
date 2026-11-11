@@ -258,6 +258,11 @@ verifies("integration-kit.secret-filter", () => {
       );
     });
 
+    it("never breaks up a marker it wrote, when a secret matches part of it", () => {
+      const both = secretForms([{ value: key }, { value: "removed]" }]);
+      expect(removeSecrets(`failed with ${key}`, both)).toBe(`failed with ${secretRemoved}`);
+    });
+
     it("removes the key from stderr that arrives one byte at a time", async () => {
       const bytes = utf8.encode(`line 1\nkey=${key}\n`);
       const pieces = [...bytes].map((byte) => Uint8Array.of(byte));

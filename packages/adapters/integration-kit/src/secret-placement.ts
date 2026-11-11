@@ -206,9 +206,28 @@ export async function readSecrets(
         `${policy.name}: the secret ${quoted(secret)} is not configured`,
       );
     }
+    checkSecretLength(policy.name, secret, value);
     values.set(secret, value);
   }
   return values;
+}
+
+/**
+ * The fewest UTF-8 bytes a secret value may have. The filter replaces every
+ * copy of a value in what the integration sees, so a shorter one would
+ * remove ordinary text, and where it was removed would give the value away.
+ */
+export const minSecretBytes = 8;
+
+/**
+ * @throws {IntegrationRefusedError} `secret-too-short` when `value` has fewer than {@link minSecretBytes} bytes
+ */
+export function checkSecretLength(integration: string, secret: string, value: string): void {
+  if (new TextEncoder().encode(value).length >= minSecretBytes) return;
+  throw new IntegrationRefusedError(
+    "secret-too-short",
+    `${integration}: the secret ${quoted(secret)} is shorter than ${minSecretBytes} bytes, too short to keep out of what the integration sees`,
+  );
 }
 
 /**
