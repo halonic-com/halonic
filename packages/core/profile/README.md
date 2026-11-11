@@ -29,6 +29,10 @@ variables) and returns a `ProfileFolder`, the `root` path and the system it belo
 desktop shell both keep their trust records. The desktop shell's Rust port must give the same
 answers for the cases in `src/golden/profile-folders.json`. `sandboxJournalFolder(profile)` names the
 `sandbox-journals` folder in the profile folder, where the sandbox keeps its crash journals.
+`pluginsFolder(profile)` and `pluginRecordsFolder(profile)` name the `plugins` and `plugin-records` folders
+in the profile folder, where the CLI and the Studio share one plugin host's plugins and their records.
+`withHomeAsTilde(platform, homeFolder, path)` writes a path inside the home folder with a leading `~`,
+for showing to a person.
 
 Inside the profile folder, each workspace has `workspaces/<key>/`, where `<key>` is the first 32 hex
 characters of the SHA-256 of the workspace's real path. The key is internal: always ask

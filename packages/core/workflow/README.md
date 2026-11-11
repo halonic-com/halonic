@@ -12,7 +12,10 @@ number stays a number; placeholders inside a text are written as text.
 
 `toNumber` reads amounts as people and models write them, in English
 (`1,200.50`) or European (`1.200,50`) style, with or without a money symbol,
-so number guards can compare them.
+so number guards can compare them. A lone dot or comma is a decimal separator when one or two, or four or
+more, digits follow it (`3.14159`, `1,5`), or when three follow it and the part before is empty or only
+zeros (`0.125`); with three digits after a non-zero whole part (`1.234`) it stays a thousands separator,
+a known limit.
 
 `evaluateGuard` decides whether a transition's `when` condition passes:
 comparisons, `contains`, `exists`, number comparisons and `not`, `all` and
