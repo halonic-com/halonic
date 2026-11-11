@@ -2,6 +2,7 @@
 
 - Approval: the team's decision on HAL-5565 (Noah's visual check of #1771, HAL-5474; small fix on an approved screen, HAL-2282), reviewed by the maintainer
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3swYZ6ZCifs8stno7SzxeLV+0NIS6MxHNoMizbokoAOyS+aJc/Vm+guYWQOWCjKsCPUK0Gvb/7usryuNvMWkCA==
 
 The requirement's "Searching…" sentence is made more exact; nothing it promised before is taken
 away, and no test was weakened. Since the results follow the typing (HAL-5474), every pause
