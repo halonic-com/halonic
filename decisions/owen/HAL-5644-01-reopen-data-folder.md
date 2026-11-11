@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5755](/HAL/issues/HAL-5755)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Xc1/19HzUJOETUPpS5a3RfCYtUinkcP+Dvuerl0R9c4bShyWZiUctXwEukoF6oLRbtztmS3AR9eCsKBHqofHBw==
 
 Liam's review of #1785 found that the `halonic-data` deny list was a
 snapshot: a folder another run made in the data folder after the session
