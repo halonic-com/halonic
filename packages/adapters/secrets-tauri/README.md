@@ -78,12 +78,12 @@ keychain and the Android Keystore (HAL-1211) never disagree:
 - **Keychain failures** reject with a `KeychainError`. Its `refusal` is the shell's own kind, and
   its `kind` tells a surface how to respond:
 
-| refusal | kind | means |
-| --- | --- | --- |
-| `unavailable` | `unavailable` | there is no keychain, or it can't be reached |
-| `denied` | `denied` | the user or the system refused access |
-| `unreadable` | `unauthenticated` | the value can't be decrypted any more; the shell deleted it |
-| `backend` | `unavailable` | any other failure, including one the shell didn't describe |
+  | refusal | kind | means |
+  | --- | --- | --- |
+  | `unavailable` | `unavailable` | there is no keychain, or it can't be reached |
+  | `denied` | `denied` | the user or the system refused access |
+  | `unreadable` | `unauthenticated` | the value can't be decrypted any more; the shell deleted it |
+  | `backend` | `unavailable` | any other failure, including one the shell didn't describe |
 
   An unreadable value is never `null`, so it never looks like "not set".
 
