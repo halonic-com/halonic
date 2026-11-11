@@ -66,7 +66,7 @@ queue.
 | `markdown-tables` | a Markdown table is padded to equal column widths, so one longer cell rewrites every row and two pull requests that each add a row conflict in the merge queue. Fix with `pnpm check:tables`, which writes `\| a \| b \|` rows |
 | `native-disabled` | a `.tsx` or `.jsx` file outside `packages/studio/kit` gives a `<button>` a native `disabled` attribute. A disabled button loses focus and hides why it can't be used; use the kit's Button with `unavailable={{ reason }}` (component specs 23, A1). Tests are exempt |
 | `readme-examples` | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block |
-| `process-starts` | a product file imports `child_process`, `worker_threads`, `cluster` or `vm` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts) |
+| `process-starts` | a product file imports `child_process`, `worker_threads`, `cluster` or `vm` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry's file no longer starts a process, or an entry has no reason or names no existing test. An entry whose file doesn't exist yet is a warning. See [process-starts](#process-starts) |
 | `api-specs` | a public API's `spec/<name>.schema.json` breaks its newest copy in `spec/released/` but its `$id` still names the same API version; bump the version or keep the change additive |
 
 ### The DCO sign-off
@@ -147,9 +147,14 @@ To let a file start processes, add an entry with its repo-relative path:
 `reason` says why the file needs to start processes, and `scriptsTest` is
 an existing test file that shows it refuses to start a file under a
 skill's `scripts/` folder. An entry needs Liam's review. The rule also
-fails when an entry's file no longer exists or no longer imports any of
-these modules (or loads one the check can't follow), so remove the entry
-with the code.
+fails when an entry's file no longer imports any of these modules (or
+loads one the check can't follow), so remove the entry with the code.
+
+CI checks a pull request against the base's list (see the policy rules
+below), so a new entry merges first, in a pull request of its own, and its
+code follows. Until the code lands, an entry whose file doesn't exist is
+only a warning, and its `scriptsTest` isn't checked yet. Remove an entry
+whose code is gone for good.
 
 ## `trace`: requirements and their tests
 

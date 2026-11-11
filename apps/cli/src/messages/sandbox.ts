@@ -29,7 +29,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
     "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
   container:
-    "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the runner or computer itself, not in a container. halonic validate and halonic test work in a container.",
+    "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
   "user-namespaces-restricted":
     "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
   "bubblewrap-missing":
@@ -57,7 +57,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
  */
 const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
-  container: "run Halonic on the runner or computer itself, not in a container.",
+  container: "run Halonic on the computer itself, not in a container.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
   "bubblewrap-missing":

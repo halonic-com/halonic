@@ -1,6 +1,13 @@
 import type { ChatResponse, ChatStreamEvent } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
-import { parseArguments, ReplyFormatError, readFinishReason, readUsage, textOf } from "./reply.ts";
+import {
+  parseArguments,
+  ReplyFormatError,
+  readFinishReason,
+  readThoughtSignature,
+  readUsage,
+  textOf,
+} from "./reply.ts";
 
 /**
  * Thrown when the server sends an error as a streamed event after it took
@@ -22,6 +29,8 @@ interface ToolCallSoFar {
   id: string;
   name: string;
   arguments: string;
+  /** Gemini's thought signature, "" until a piece brings one. */
+  signature: string;
 }
 
 /**
@@ -73,6 +82,7 @@ export class StreamedReply {
       id: call.id || `call_${index}`,
       name: call.name,
       arguments: parseArguments(call.arguments),
+      ...(call.signature === "" ? {} : { signature: call.signature }),
     }));
     return {
       content: this.#content,
@@ -107,7 +117,7 @@ export class StreamedReply {
     return pieces.filter(isPlainObject).map((piece) => {
       const index = this.#positionOf(piece["index"]);
       const fn = isPlainObject(piece["function"]) ? piece["function"] : {};
-      const call = this.#toolCalls[index] ?? { id: "", name: "", arguments: "" };
+      const call = this.#toolCalls[index] ?? { id: "", name: "", arguments: "", signature: "" };
       this.#toolCalls[index] = call;
       const id = textOf(piece["id"]);
       const name = textOf(fn["name"]);
@@ -115,6 +125,8 @@ export class StreamedReply {
       call.id ||= id;
       call.name ||= name;
       call.arguments += args;
+      // The signature only matters for the next call, so it goes into the response, not an event.
+      call.signature ||= readThoughtSignature(piece);
       return {
         type: "tool-call",
         index,

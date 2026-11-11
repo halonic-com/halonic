@@ -26,6 +26,7 @@ function alias(name: string, provider: ScriptedModel, more: Partial<ResolvedMode
 }
 
 const offline = () => new ModelCallError("offline", "acme-cloud can't be reached");
+const busy = () => new ModelCallError("provider-busy", "acme-cloud was busy (HTTP 529)");
 
 interface TurnSetup {
   secrets?: Secrets;
@@ -241,6 +242,68 @@ verifies("engine.offline-falls-back", () => {
   });
 });
 
+verifies("engine.busy-falls-back", () => {
+  it("moves on at once when the provider is busy, and no time passes", async () => {
+    vi.useFakeTimers({ now: Date.parse("2026-11-10T09:00:00.000Z") });
+    const clock: Clock = { now: () => new Date() };
+    const log = new MemoryTurnLog();
+    const smart = new ScriptedModel([busy()], "acme-cloud");
+    const local = new ScriptedModel([textAnswer("From this machine")], "acme-local");
+
+    const result = await runTurnOn(alias("smart", smart, { fallback: [alias("local", local)] }), {
+      clock,
+      log,
+    });
+
+    expect(result.content).toBe("From this machine");
+    expect(log.events.map((event) => event.type)).toEqual([
+      "llm.request",
+      "llm.fallback",
+      "llm.response",
+    ]);
+    expect(log.events[1]).toEqual({
+      type: "llm.fallback",
+      agent: "clerk",
+      from: "smart",
+      to: "local",
+      error: "provider-busy: acme-cloud was busy (HTTP 529)",
+    });
+    expect(vi.getTimerCount()).toBe(0);
+    expect(Date.now()).toBe(Date.parse("2026-11-10T09:00:00.000Z"));
+  });
+
+  it("fails as provider-busy when every model is busy, calling each once", async () => {
+    const smart = new ScriptedModel([busy()], "acme-cloud");
+    const backup = new ScriptedModel([busy()], "acme-other");
+
+    const failure = await runTurnOn(
+      alias("smart", smart, { fallback: [alias("backup", backup)] }),
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ModelCallError);
+    expect(failure).toMatchObject({
+      reason: "provider-busy",
+      message: "no model free: the last one's provider was busy (tried smart, backup)",
+    });
+    expect(smart.requests).toHaveLength(1);
+    expect(backup.requests).toHaveLength(1);
+    expect(runFailureReasonOf(failure)).toEqual({ reason: "provider-busy" });
+  });
+
+  it("fails with the last model's cause when an offline one falls back to a busy one", async () => {
+    const at = new ModelCallError("offline", "didn't answer", { host: "localhost:11434" });
+    const local = new ScriptedModel([at], "acme-local");
+    const smart = new ScriptedModel([busy()], "acme-cloud");
+
+    const failure = await runTurnOn(
+      alias("local", local, { fallback: [alias("smart", smart)] }),
+    ).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ reason: "provider-busy", host: undefined });
+    expect(runFailureReasonOf(failure)).toEqual({ reason: "provider-busy" });
+  });
+});
+
 verifies("engine.model-failure-stops", () => {
   it.each([
     ["model-no-tools", new ModelCallError("model-no-tools", "acme-local-1 does not support tools")],
@@ -255,10 +318,6 @@ verifies("engine.model-failure-stops", () => {
     [
       "out-of-credit",
       new ModelCallError("out-of-credit", "acme-local refused the call (HTTP 402)"),
-    ],
-    [
-      "provider-busy",
-      new ModelCallError("provider-busy", "acme-local refused the call (HTTP 529)"),
     ],
     ["refused", new ModelCallError("refused", "acme-local refused the call (HTTP 400)")],
     ["out-of-memory", new ModelCallError("out-of-memory", "acme-local-1 doesn't fit in memory")],

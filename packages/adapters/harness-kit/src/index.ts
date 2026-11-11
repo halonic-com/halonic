@@ -15,6 +15,12 @@ export {
   windowsInstallReadPaths,
 } from "./install-folders.ts";
 export { outputTail } from "./output-tail.ts";
+export {
+  bwrapCheckArgs,
+  type OwnSandboxCheck,
+  type OwnSandboxCheckOptions,
+  ownSandboxCheck,
+} from "./own-sandbox.ts";
 export { type ReadLinesOptions, readLines } from "./read-lines.ts";
 export {
   diskSettingsFolder,

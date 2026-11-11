@@ -41,13 +41,28 @@ function readToolCalls(value: unknown): ToolCall[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isPlainObject).map((call, index) => {
     const fn = isPlainObject(call["function"]) ? call["function"] : {};
+    const signature = readThoughtSignature(call);
     return {
       // Some local servers leave the id out; each call still needs its own.
       id: textOf(call["id"]) || `call_${index}`,
       name: textOf(fn["name"]),
       arguments: readArguments(fn["arguments"]),
+      ...(signature === "" ? {} : { signature }),
     };
   });
+}
+
+/**
+ * Gemini's thought signature on a tool call, or "" when it has none. Gemini's
+ * OpenAI-compatible API puts it in `extra_content.google.thought_signature`,
+ * on a whole call and on a streamed piece alike, and Gemini 3 refuses the
+ * next call when it doesn't come back with the call. Only the first of
+ * parallel calls has one.
+ */
+export function readThoughtSignature(call: Record<string, unknown>): string {
+  const extra = call["extra_content"];
+  const google = isPlainObject(extra) ? extra["google"] : undefined;
+  return isPlainObject(google) ? textOf(google["thought_signature"]) : "";
 }
 
 /** A tool call's arguments, sent as JSON text or, by some local servers, as an object. */

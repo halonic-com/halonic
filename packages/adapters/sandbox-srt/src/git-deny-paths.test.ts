@@ -1,9 +1,14 @@
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitPathsToDeny } from "./git-deny-paths.ts";
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...real, readdir: vi.fn(real.readdir) };
+});
 
 let work: string;
 
@@ -171,6 +176,60 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
         expect(await gitPathsToDeny(work)).toEqual([join(".git", "config.worktree")]);
       } finally {
         await rm(outside, { recursive: true, force: true });
+      }
+    });
+
+    it("hold the config, config.worktree and hooks of each nested clone no .gitmodules lists, clones in clones too (HAL-5976)", async () => {
+      await gitFolder(join("vendor", "acme", ".git"));
+      await gitFolder(join("vendor", "acme", "docs", "theme", ".git"));
+      await gitFolder(join("vendor", "acme", ".git", "modules", "theme"));
+      const paths = await gitPathsToDeny(work);
+      for (const clone of [join("vendor", "acme"), join("vendor", "acme", "docs", "theme")]) {
+        for (const file of ["config", "config.worktree", "hooks"]) {
+          expect(paths).toContain(join(clone, ".git", file));
+        }
+      }
+      expect(paths).toContain(join("vendor", "acme", ".git", "modules", "theme", "hooks"));
+      expect(new Set(paths).size).toBe(paths.length);
+    });
+
+    it("hold the .git file of a nested clone that is a linked worktree", async () => {
+      await mkdir(join(work, "vendor", "acme"), { recursive: true });
+      await writeFile(
+        join(work, "vendor", "acme", ".git"),
+        "gitdir: /elsewhere/.git/worktrees/acme\n",
+      );
+      expect(await gitPathsToDeny(work)).toEqual([join("vendor", "acme", ".git")]);
+    });
+
+    it("look for nested clones neither in node_modules nor through a link", async () => {
+      const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
+      try {
+        await gitFolder(join("node_modules", "acme", ".git"));
+        await mkdir(join(outside, "acme", ".git"), { recursive: true });
+        await writeFile(join(outside, "acme", ".git", "HEAD"), "ref: refs/heads/main\n");
+        await symlink(outside, join(work, "linked"));
+        expect(await gitPathsToDeny(work)).toEqual([]);
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
+    });
+
+    it("deny a folder it can't read, as a clone could be inside", async () => {
+      await mkdir(join(work, "locked"));
+      // A refused read, the same on every platform and as root: chmod 000 is neither.
+      const real = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+      const locked = join(work, "locked");
+      // The search reads every folder with `withFileTypes`, the only form mocked here.
+      const readOrRefuse = (path: string, options: { withFileTypes: true }) =>
+        path === locked
+          ? Promise.reject(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+          : real.readdir(path, options);
+      vi.mocked(readdir).mockImplementation(readOrRefuse as typeof readdir);
+      try {
+        expect(await gitPathsToDeny(work)).toEqual(["locked"]);
+      } finally {
+        vi.mocked(readdir).mockRestore();
       }
     });
 

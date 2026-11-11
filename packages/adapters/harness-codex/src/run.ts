@@ -1,5 +1,6 @@
 import {
   exitWithin,
+  type OwnSandboxCheck,
   outputTail,
   type SettingsFolderWriter,
   writeSettingsFiles,
@@ -18,7 +19,12 @@ import { isPlainObject, SecretScrubber } from "@halonicjs/std";
 import { AppServerClient, type AppServerMessage, type ClientInfo } from "./app-server-client.ts";
 import { AppServerEventReader, TurnFailedError } from "./app-server-events.ts";
 import { PendingApprovals } from "./approvals.ts";
-import { codexConfigArgs, codexConfigFile, codexConfigText } from "./config.ts";
+import {
+  codexConfigArgs,
+  codexConfigFile,
+  codexConfigText,
+  codexOwnSandboxArgs,
+} from "./config.ts";
 import { codexProgram } from "./detect.ts";
 import { RunEvents } from "./run-events.ts";
 
@@ -34,6 +40,8 @@ export interface CodexRunOptions {
   settings: SettingsFolderWriter;
   /** Who Halonic is, as `initialize` tells Codex. */
   clientInfo: ClientInfo;
+  /** Whether Codex's own sandbox works here; asked only for a run outside Halonic's fence. */
+  ownSandbox: OwnSandboxCheck;
 }
 
 /** Codex, once it has started its thread and the task's turn. */
@@ -86,7 +94,7 @@ export class CodexRun implements HarnessRun {
     this.#task = task;
     this.#bridgeToken = bridge.token;
     this.#scrubber.remember(bridge.token);
-    const launch = this.#launch(session, bridge, options.settings);
+    const launch = this.#launch(session, bridge, options);
     this.#launched = launch.then(
       (process) => process,
       () => undefined,
@@ -103,21 +111,23 @@ export class CodexRun implements HarnessRun {
     });
   }
 
-  /** Writes `config.toml` and starts `codex app-server` in the session. */
+  /** Writes `config.toml` and starts `codex app-server` in the session, in its own sandbox outside the fence. */
   async #launch(
     session: SandboxSession,
     bridge: HarnessBridge,
-    settings: SettingsFolderWriter,
+    { settings, ownSandbox }: CodexRunOptions,
   ): Promise<SandboxProcess> {
     const folder = session.profile.settingsFolder;
     if (folder === null) {
       throw new Error("Codex needs a settings folder, and the sandbox profile has none.");
     }
     await writeSettingsFiles(folder, { [codexConfigFile]: codexConfigText() }, settings);
+    // Outside the fence, Codex's own sandbox is the one around the commands it starts.
+    const own = session.fence.state === "off" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
     return session.start({
       program: codexProgram,
-      args: ["app-server", ...codexConfigArgs(bridge)],
+      args: ["app-server", ...codexConfigArgs(bridge), ...(own ? codexOwnSandboxArgs : [])],
     });
   }
 

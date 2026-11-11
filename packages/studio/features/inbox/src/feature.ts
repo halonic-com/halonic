@@ -23,5 +23,13 @@ export const inboxFeature = defineFeature({
       subscribeSignal: (context, listener) =>
         context.services.get(InboxService).subscribe(listener),
     });
+    studio.home.addCard({
+      id: "needs-you",
+      view: "NeedsYouCard",
+      load: () => import("./ui/needs-you-card.tsx"),
+      signal: (context) => context.services.get(InboxService).signal(),
+      subscribeSignal: (context, listener) =>
+        context.services.get(InboxService).subscribe(listener),
+    });
   },
 });

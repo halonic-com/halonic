@@ -106,8 +106,8 @@ export interface ModelTurnResult extends ChatResponse {
  * calls from the same answer); or with `finishReason: "length"` and no
  * calls at the round limit, refusing the calls it dropped.
  *
- * A model without its key is skipped, and an offline one hands the call to
- * the next model at once; see {@link ModelChain}.
+ * A model without its key is skipped, and an offline or busy one hands the
+ * call to the next model at once; see {@link ModelChain}.
  *
  * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
  * @throws when the log can't be written, or the turn stops for a person's OK or for the engine, which only a run can wait for

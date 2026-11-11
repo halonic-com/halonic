@@ -1,4 +1,9 @@
-import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import {
+  diskSettingsFolder,
+  type OwnSandboxCheck,
+  ownSandboxCheck,
+  type SettingsFolderWriter,
+} from "@halonicjs/adapter-harness-kit";
 import type { Harness, ProgramProbe } from "@halonicjs/ports";
 import { detectCodex } from "./detect.ts";
 import { codexEnvironment } from "./environment.ts";
@@ -13,6 +18,8 @@ export interface CodexHarnessOptions {
   settings?: SettingsFolderWriter;
   /** Halonic's version, which Codex puts in the user agent of its requests to the bridge. */
   halonicVersion?: string;
+  /** Whether Codex's own sandbox works here; checked on this computer with `probe` when absent. */
+  ownSandbox?: OwnSandboxCheck;
 }
 
 /**
@@ -27,6 +34,7 @@ export interface CodexHarnessOptions {
  */
 export function codexHarness(options: CodexHarnessOptions): Harness {
   const settings = options.settings ?? diskSettingsFolder;
+  const ownSandbox = options.ownSandbox ?? ownSandboxCheck({ probe: options.probe });
   const clientInfo = {
     name: "halonic",
     title: "Halonic",
@@ -37,7 +45,8 @@ export function codexHarness(options: CodexHarnessOptions): Harness {
     name: "Codex",
     detect: () => detectCodex(options.probe),
     environment: codexEnvironment,
-    start: (task, session, bridge) => new CodexRun(task, session, bridge, { settings, clientInfo }),
+    start: (task, session, bridge) =>
+      new CodexRun(task, session, bridge, { settings, clientInfo, ownSandbox }),
     signIn: codexSignIn,
   };
 }

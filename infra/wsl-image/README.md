@@ -7,9 +7,12 @@ release and needs the board's yes.
 - `snapshot.conf`: the pinned Debian suite and snapshot date.
 - `build.sh <dir>`: builds `halonic-wsl.tar.gz` with `mmdebstrap --variant=minbase`,
   and writes `sizes.json` (download and on-disk size) and `packages.txt`.
-- `customize.sh`: the step inside the build that adds our files, the user and the notices.
-- `check.sh <image>`: checks config, packages, licence notice and that the tools start.
-- `files/`: `/etc/wsl.conf` (interop off, automount off, user `halonic`, systemd off),
+- `customize.sh`: the step inside the build that adds our files, the user and the
+  notices, and removes every setuid and setgid bit (kept off on upgrades with
+  `dpkg-statoverride`): root in this distro can mount the Windows drive.
+- `check.sh <image>`: checks config, packages, licence notice, that no setuid or
+  setgid file is left, and that the tools start.
+- `files/`: `/etc/wsl.conf` (interop off, automount and `/etc/fstab` mounts off, user `halonic`, systemd off),
   the empty `/opt/halonic` runtime slot, the runtime updater and the licence notice.
 
 ## The runtime updater
@@ -43,7 +46,8 @@ and checks owners and modes after each step.
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.
 
-CI: `.github/workflows/wsl-image.yml` runs on changes here and by hand, prints
+CI: `.github/workflows/wsl-image.yml` builds in a `debian:trixie` container pinned
+by digest, runs on changes here and by hand, prints
 the sizes in the job summary, and keeps the image as a 7-day build artifact.
 The image is imported on Windows with
 `wsl --import halonic %LOCALAPPDATA%\Halonic\wsl halonic-wsl.tar.gz --version 2`.

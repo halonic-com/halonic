@@ -93,6 +93,33 @@ verifies("model-openai.request", () => {
     expect(withStop["stop"]).toEqual(["END"]);
   });
 
+  it("sends Gemini's thought signature back with its call, and nothing extra for a call without one", () => {
+    const signed = { id: "call_1", name: "search", arguments: {}, signature: "sig-a" };
+    const unsigned = { id: "call_2", name: "close", arguments: {} };
+    const body = toWireBody(
+      {
+        model: "gemini-3-flash",
+        messages: [{ role: "assistant", content: "", toolCalls: [signed, unsigned] }],
+      },
+      plain,
+    );
+    expect(body["messages"]).toEqual([
+      {
+        role: "assistant",
+        content: null,
+        tool_calls: [
+          {
+            id: "call_1",
+            type: "function",
+            function: { name: "search", arguments: "{}" },
+            extra_content: { google: { thought_signature: "sig-a" } },
+          },
+          { id: "call_2", type: "function", function: { name: "close", arguments: "{}" } },
+        ],
+      },
+    ]);
+  });
+
   it("keeps the text of an assistant turn, with or without tool calls", () => {
     const call = { id: "call_0", name: "search", arguments: {} };
     const body = toWireBody(

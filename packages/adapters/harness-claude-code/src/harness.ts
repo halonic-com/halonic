@@ -1,4 +1,9 @@
-import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import {
+  diskSettingsFolder,
+  type OwnSandboxCheck,
+  ownSandboxCheck,
+  type SettingsFolderWriter,
+} from "@halonicjs/adapter-harness-kit";
 import type { Harness, ProgramProbe } from "@halonicjs/ports";
 import { detectClaudeCode } from "./detect.ts";
 import { claudeCodeEnvironment } from "./environment.ts";
@@ -11,6 +16,8 @@ export interface ClaudeCodeHarnessOptions {
   probe: ProgramProbe;
   /** Writes the agent's settings folder; this computer's disk when absent. */
   settings?: SettingsFolderWriter;
+  /** Whether Claude Code's own sandbox works here; checked on this computer with `probe` when absent. */
+  ownSandbox?: OwnSandboxCheck;
 }
 
 /**
@@ -25,12 +32,16 @@ export interface ClaudeCodeHarnessOptions {
  */
 export function claudeCodeHarness(options: ClaudeCodeHarnessOptions): Harness {
   const settings = options.settings ?? diskSettingsFolder;
+  // Claude Code's sandbox needs socat on Linux, for its network proxy.
+  const ownSandbox =
+    options.ownSandbox ?? ownSandboxCheck({ probe: options.probe, linuxNeeds: ["socat"] });
   return {
     id: "claude-code",
     name: "Claude Code",
     detect: () => detectClaudeCode(options.probe),
     environment: claudeCodeEnvironment,
-    start: (task, session, bridge) => new ClaudeCodeRun(task, session, bridge, { settings }),
+    start: (task, session, bridge) =>
+      new ClaudeCodeRun(task, session, bridge, { settings, ownSandbox }),
     signIn: claudeCodeSignIn,
   };
 }

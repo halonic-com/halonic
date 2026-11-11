@@ -169,7 +169,7 @@ verifies("cli.commands.validate.check-workspace", () => {
       expect(io.stdout).toEqual([]);
       expect(io.stderr.slice(0, 2)).toEqual([
         `✕ Couldn't check .${sep}downloads: there's no workspace.yaml here.`,
-        "  Run it inside a workspace, or create one with halonic init.",
+        "  Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.",
       ]);
     });
 

@@ -7,6 +7,7 @@ import { claudeCodeCommand, hasInstructions, userMessageLine } from "./command.t
 const files = {
   settingsFolder: join("agents", "writer", "settings"),
   instructionsFile: join("sessions", "one", "temp", "halonic-instructions.md"),
+  ownSandbox: false,
 };
 
 const task: HarnessTask = {
@@ -43,6 +44,20 @@ verifies("harness-claude-code.command", () => {
           files.instructionsFile,
         ],
       });
+    });
+
+    it("adds Claude Code's own sandbox settings next to the agent's own when the sandbox is on", () => {
+      const { args } = claudeCodeCommand(task, { ...files, ownSandbox: true });
+      const settings = args.indexOf("--settings");
+
+      expect(args.slice(settings, settings + 2)).toEqual([
+        "--settings",
+        join(files.settingsFolder, "halonic-unfenced.json"),
+      ]);
+      expect(
+        args.slice(args.indexOf("--setting-sources"), args.indexOf("--setting-sources") + 2),
+      ).toEqual(["--setting-sources", "user"]);
+      expect(claudeCodeCommand(task, files).args).not.toContain("--settings");
     });
 
     it("keeps the prompt and the instructions out of the arguments", () => {

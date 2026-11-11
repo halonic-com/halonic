@@ -8,8 +8,12 @@ import type { DoctorLine } from "./doctor-checks.ts";
 import type { Resources } from "./resource-report.ts";
 import type { TrustCheck } from "./trust-service.ts";
 
-/** Whether this computer trusts the workspace, as `TrustService.check` found it. */
-export type WorkspaceTrust = TrustCheck["status"];
+/**
+ * Whether this computer trusts the workspace, as `TrustService.check` found
+ * it, or `not-needed` when a run there can only reach the test model, so it
+ * needs no trust (HAL-6007).
+ */
+export type WorkspaceTrust = TrustCheck["status"] | "not-needed";
 
 /** The Workspace line: shown only inside a workspace. */
 export interface WorkspaceLine extends DoctorLine {
@@ -22,13 +26,15 @@ export interface WorkspaceLine extends DoctorLine {
    * `trusted`: "trusted on this computer". `new`: "not trusted yet".
    * `changed`: "changed since you trusted it". `unreadable`: the trust
    * record couldn't be read, so Halonic treats it as not trusted.
+   * `not-needed`: "test model only, no trust needed".
    */
   trust: WorkspaceTrust;
 }
 
 /**
  * The Workspace line of `halonic doctor` (requirement `app.doctor-workspace`).
- * Only a trusted workspace is ✓; every other state is a warning, because
+ * A trusted workspace is ✓, and so is one that needs no trust, as `run`
+ * doesn't ask for it there; every other state is a warning, because
  * `halonic trust` fixes it and nothing else is stopped.
  *
  * @param name the workspace's name
@@ -41,7 +47,7 @@ export interface WorkspaceLine extends DoctorLine {
 export function workspaceLine(name: string, trust: WorkspaceTrust): WorkspaceLine {
   return {
     check: "workspace",
-    status: trust === "trusted" ? "ok" : "warning",
+    status: trust === "trusted" || trust === "not-needed" ? "ok" : "warning",
     name,
     trust,
   };

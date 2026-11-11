@@ -39,6 +39,7 @@ export { posixPath } from "./posix-path.ts";
 export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./result.ts";
 export { SecretScrubber, secretRemoved, secretTextForms } from "./secret-scrubber.ts";
 export { findSecretShape, type SecretShape } from "./secret-shape.ts";
+export { type SiteName, siteName, siteNameMaxLength } from "./site-name.ts";
 export { type StopSignal, StopSource } from "./stop-signal.ts";
 export { slugify, uniqueName } from "./text.ts";
 export { decodeUtf8, encodeUtf8 } from "./utf8.ts";

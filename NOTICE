@@ -1,1 +1,5 @@
 Halonic, Copyright 2026 The Halonic Authors
+
+This product includes a copy of the Public Suffix List
+(https://publicsuffix.org/), in packages/core/std/src/public-suffixes.generated.ts,
+under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).

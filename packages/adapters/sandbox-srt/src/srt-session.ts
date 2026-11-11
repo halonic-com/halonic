@@ -21,6 +21,7 @@ import {
   snapshotGitFolder,
   writeJournal,
 } from "./git-folder-check.ts";
+import { makeLauncherTemp } from "./launcher-temp.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
@@ -102,16 +103,23 @@ function safePath(profile: SandboxProfile, hostPath: string, privateFolder?: str
 
 /**
  * The environment of the launcher, which runs outside the fence: the safe
- * host `PATH` and the session's temp folder. Nothing from the profile, so
- * nothing the program influences (a planted `bwrap` on the path,
- * `NODE_OPTIONS`, `LD_PRELOAD`) runs before the fence exists.
+ * host `PATH` and a temp folder. Nothing from the profile, so nothing the
+ * program influences (a planted `bwrap` on the path, `NODE_OPTIONS`,
+ * `LD_PRELOAD`) runs before the fence exists. With a `launcherTemp` (see
+ * {@link makeLauncherTemp}), that is the launcher's own temp folder, and the
+ * session's is handed to srt as the one it sets for the program.
  */
 export function launcherEnv(
   profile: SandboxProfile,
   hostEnv: Record<string, string | undefined> = process.env,
   privateFolder?: string,
+  launcherTemp: string | null = null,
 ): Record<string, string> {
   const env = baseEnv(profile, hostEnv, privateFolder);
+  if (launcherTemp !== null) {
+    env["TMPDIR"] = launcherTemp;
+    env["CLAUDE_CODE_TMPDIR"] = profile.tempFolder;
+  }
   if (process.platform === "win32") {
     // Node and srt don't start without the system folder, and cmd.exe needs ComSpec and PATHEXT.
     // Windows reads names without regard to case, so find them that way.
@@ -211,13 +219,14 @@ function exitReason(started: Started): SandboxExit["reason"] {
 
 /**
  * A sandbox-runtime session. It owns a private folder (the settings file and
- * the canary of the fence proof) that the program can't read, removed when
- * the session closes.
+ * the canary of the fence proof) that the program can't read, and outside
+ * Windows the launcher's own temp folder, both removed when the session closes.
  */
 export class SrtSession implements SandboxSession {
   readonly profile: SandboxProfile;
   readonly #runner: Runner;
   readonly #folder: string;
+  readonly #launcherTemp: string | null;
   readonly #settingsPath: string;
   readonly #launcherEnv: Record<string, string>;
   readonly #programEnv: Record<string, string>;
@@ -236,6 +245,7 @@ export class SrtSession implements SandboxSession {
     profile: SandboxProfile,
     runner: Runner,
     folder: string,
+    launcherTemp: string | null,
     settingsPath: string,
     fence: SandboxFence,
     signal: AbortSignal | undefined,
@@ -245,12 +255,13 @@ export class SrtSession implements SandboxSession {
     this.profile = profile;
     this.#runner = runner;
     this.#folder = folder;
+    this.#launcherTemp = launcherTemp;
     this.#settingsPath = settingsPath;
     this.#fence = fence;
     this.#gitFolder = git.folder;
     this.#nestedGit = git.nested;
     this.#journal = journal;
-    this.#launcherEnv = launcherEnv(profile, process.env, folder);
+    this.#launcherEnv = launcherEnv(profile, process.env, folder, launcherTemp);
     this.#programEnv = programEnv(profile, process.env, folder);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
     this.#timer.unref();
@@ -282,7 +293,9 @@ export class SrtSession implements SandboxSession {
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     const { journalFolder = null } = options;
     let journal: string | null = null;
+    let launcherTemp: string | null = null;
     try {
+      launcherTemp = await makeLauncherTemp();
       if (git.folder !== null && journalFolder !== null) {
         journal = await writeJournal(journalFolder, basename(folder), git.folder);
       }
@@ -299,7 +312,7 @@ export class SrtSession implements SandboxSession {
         canaryFolder: join(folder, "canary"),
         tempFolder: profile.tempFolder,
         workingFolder: profile.workingFolder,
-        launcherEnv: launcherEnv(profile, process.env, folder),
+        launcherEnv: launcherEnv(profile, process.env, folder, launcherTemp),
         // The probe gets none of the profile's variables: it proves the fence, not the program's setup.
         programEnv: baseEnv(profile, process.env, folder),
         withoutSrtEnv: reachesNoNetwork(profile),
@@ -312,6 +325,7 @@ export class SrtSession implements SandboxSession {
         remaining,
         runner,
         folder,
+        launcherTemp,
         settingsPath,
         fence,
         options.signal,
@@ -321,6 +335,7 @@ export class SrtSession implements SandboxSession {
       return session;
     } catch (error) {
       await rm(folder, { recursive: true, force: true });
+      if (launcherTemp !== null) await rm(launcherTemp, { recursive: true, force: true });
       if (journal !== null) await rm(journal, { force: true });
       throw error;
     }
@@ -400,6 +415,7 @@ export class SrtSession implements SandboxSession {
     this.#fence = { state: "stopped" };
     this.#listeners.clear();
     await rm(this.#folder, { recursive: true, force: true });
+    if (this.#launcherTemp !== null) await rm(this.#launcherTemp, { recursive: true, force: true });
     // A journal whose undo failed stays, so a later `recoverGitFolders` tries again.
     if (this.#journal !== null && failed.length === 0) await rm(this.#journal, { force: true });
     if (failed.length > 0) {

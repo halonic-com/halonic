@@ -10,7 +10,7 @@ The `halonic init [folder] --example acme` command shall lay out a copy of the r
 
 - Given an empty folder,
   when `halonic init --example acme` runs in it,
-  then `acme` holds every file of `examples/acme` and a `.gitignore`, and it prints "✓ Created a copy of the Acme example in ./acme.", " 2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed", an empty line, "Next:", then, indented, `cd acme`, `halonic test` with "run its workflow tests (no key, nothing sent)", `halonic run support-reply --input examples/refund-question.json`, and "Or open the folder in Studio.", and exits with 0.
+  then `acme` holds every file of `examples/acme` and a `.gitignore`, and it prints "✓ Created a copy of the Acme example in ./acme.", " 2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed", an empty line, "Next:", then, indented, `cd acme`, `halonic test` with "run its workflow tests (no key, nothing sent)" and `halonic run support-reply --input examples/refund-question.json`, and exits with 0.
 - Given a folder with an `acme` folder that has files in it,
   when `halonic init --example acme` runs,
   then the copy goes in `acme-2`, `acme` is unchanged, and the first line reads "✓ Created a copy of the Acme example in ./acme-2. ./acme was already there."

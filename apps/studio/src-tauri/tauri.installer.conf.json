@@ -10,9 +10,12 @@
       "binaries/halonic-agent-host"
     ],
     "resources": {
-      "windows/sandbox-step.ps1": "sandbox-step.ps1"
+      "windows/sandbox-step.ps1": "sandbox-step.ps1",
+      "../../../LICENSE": "LICENSE",
+      "../../../NOTICE": "NOTICE"
     },
     "windows": {
+      "allowDowngrades": false,
       "nsis": {
         "template": "windows/installer.nsi",
         "installMode": "currentUser",

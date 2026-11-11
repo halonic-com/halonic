@@ -29,10 +29,11 @@ The build puts the payload's manifest (each file's SHA-256, size and executable 
 
 ```
 halonic-agent-host --profile-folder <folder> [--version | --sandbox-check | --sandbox-setup]
+halonic-agent-host --profile-folder <folder> --stdio --relay-host 127.0.0.1:<port>
 halonic-agent-host <unpacked program> [arguments]
 ```
 
-With `--version` the host prints its version. Without any of these, it serves (below). The two sandbox commands print one JSON line, and exit with 0 when it says `ok` and 1 when it doesn't, so an installer can go by the exit code alone:
+With `--version` the host prints its version. Without any of these, it serves on loopback (below); with `--stdio`, over its standard input and output. The two sandbox commands print one JSON line, and exit with 0 when it says `ok` and 1 when it doesn't, so an installer can go by the exit code alone:
 
 | Command | Prints |
 | --- | --- |
@@ -82,6 +83,29 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
+
+## Serving over standard input and output
+
+In Halonic's WSL distro the host must not listen on a port: every WSL 2 distro of a person shares one network, so a port in ours would be open to their own Ubuntu too (HAL-5396, condition W9 of HAL-5407). There Studio starts the host with `--stdio --relay-host 127.0.0.1:<port>`. Studio's relay listens on Windows' own loopback, as the host does elsewhere, and passes each connection it accepts to the host as frames over `wsl.exe`'s standard input and output. The host serves the same routes with the same checks and limits; it never calls `listen()`.
+
+The host first prints one line, `{"token":"<43 characters>"}` (no `url`: the relay has the address). After it, standard output carries frames only, in both directions:
+
+```
+[connection id: u32 big-endian][kind: u8][length: u32 big-endian][bytes]
+```
+
+| Kind | Value | Bytes | Means |
+| --- | --- | --- | --- |
+| `open` | 1 | none | the relay accepted a connection; only the relay opens them |
+| `data` | 2 | at most 64 KiB | the connection's bytes, in order |
+| `end` | 3 | none | the sender sends no more on this connection (half-close) |
+| `reset` | 4 | none | the sender dropped the connection; nothing more goes either way |
+
+- **Ids.** The relay numbers its connections 1, 2, 3, …, and never reuses an id. A frame for an id that has closed (sent before the relay saw the host's `reset`) is dropped. An `open` for an id that isn't new, any other frame for an id never opened, an unknown kind or a length over 64 KiB breaks the stream.
+- **`Host`.** A request must name the relay, `127.0.0.1:<port>` or `localhost:<port>` with the port of `--relay-host`, so DNS rebinding against the relay's port gets `421`. Without a `--relay-host` on `127.0.0.1` the host exits with 2.
+- **Limits.** The time limits apply as on loopback. The host keeps at most 256 connections open and answers an `open` past that with `reset`. All connections share one input, so the host can't make the relay wait on one: a connection with more than 4 MiB the host hasn't read yet is reset. The relay must read the host's output all the time, and keep a slow reader's backlog per connection.
+- **Standard output is frames only.** Once the host serves, anything else that would print there goes to standard error.
+- **Stop.** The host stops when its standard input ends, as on loopback, with exit code 0. When the stream breaks, it says why on standard error and exits with 1.
 
 ## The sandbox over loopback
 

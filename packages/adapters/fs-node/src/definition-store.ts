@@ -1,6 +1,7 @@
 import type { Dirent } from "node:fs";
 import { chmod, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { DigestWatch, type OwnChange } from "@halonicjs/adapter-watch-kit";
 import {
   checkPublicWorkspacePath,
   type DefinitionStore,
@@ -14,12 +15,7 @@ import {
 } from "@halonicjs/ports";
 import { bytesToHex, contentDigest, KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
-import {
-  type FolderEvents,
-  FolderWatch,
-  nodeFolderEvents,
-  type OwnChange,
-} from "./folder-watch.ts";
+import { type FolderEvents, folderWatchEvents, nodeFolderEvents } from "./folder-watch.ts";
 import { entryAt, isMissing } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
 import { isTemporaryWrite, temporaryWriteFileName } from "./temporary-write.ts";
@@ -75,7 +71,7 @@ export class FolderDefinitionStore implements DefinitionStore {
   readonly location: string;
   readonly #root: string;
   readonly #writes = new KeyedQueue();
-  readonly #watches = new Set<FolderWatch>();
+  readonly #watches = new Set<DigestWatch>();
   readonly #watchOptions: Required<FolderStoreWatchOptions>;
 
   /**
@@ -171,13 +167,14 @@ export class FolderDefinitionStore implements DefinitionStore {
    */
   async watch(listener: DefinitionWatchListener): Promise<DefinitionWatch> {
     // The watch adds itself to `#watches` once open and takes itself out when it closes or fails.
-    return await FolderWatch.open(
+    return await DigestWatch.open(
       {
-        root: this.#root,
         files: this,
         digest: webCryptoDigest,
+        events: folderWatchEvents(this.#root, this.#watchOptions.events),
+        quietMs: this.#watchOptions.quietMs,
+        isScratch: isTemporaryWrite,
         openWatches: this.#watches,
-        ...this.#watchOptions,
       },
       listener,
     );
@@ -200,11 +197,13 @@ export class FolderDefinitionStore implements DefinitionStore {
         watch.beginOwnChange(path, change);
       }
     }
+    let applied = false;
     try {
       await apply();
+      applied = true;
     } finally {
       for (const watch of watches) {
-        await watch.endOwnChange(path);
+        await watch.endOwnChange(path, applied);
       }
     }
   }

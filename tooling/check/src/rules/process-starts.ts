@@ -111,14 +111,24 @@ function checkEntry(
   report: Report,
 ): void {
   const at = `starters["${file}"]`;
-  if (!starts) {
-    const why = context.files.includes(file)
-      ? "no longer imports child_process, worker_threads, cluster or vm or loads a module the check can't follow (or is exempt)"
-      : "doesn't exist";
-    report.error(startersPath, `${at}: the file ${why}. Remove the entry. ${guide}`);
-  }
   if (starter.reason.trim() === "") {
     report.error(startersPath, `${at} needs a reason. ${guide}`);
+  }
+  // CI checks a pull request against the base's list, so a new entry has to
+  // merge before its code (HAL-5884). Until then the file and its test don't
+  // exist yet: only a warning, like an unused entry in dependencies.json.
+  if (!context.files.includes(file)) {
+    report.warning(
+      startersPath,
+      `${at}: the file doesn't exist. Remove the entry unless its code is still to come. ${guide}`,
+    );
+    return;
+  }
+  if (!starts) {
+    report.error(
+      startersPath,
+      `${at}: the file no longer imports child_process, worker_threads, cluster or vm or loads a module the check can't follow (or is exempt). Remove the entry. ${guide}`,
+    );
   }
   if (!isTestFile(starter.scriptsTest) || !context.files.includes(starter.scriptsTest)) {
     report.error(

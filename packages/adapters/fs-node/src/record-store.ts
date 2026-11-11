@@ -2,7 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { compactedChanges, type RecordChange, type RecordStore } from "@halonicjs/ports";
+import {
+  compactedChanges,
+  formatRecordLines,
+  type RecordChange,
+  type RecordStore,
+} from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
@@ -12,7 +17,7 @@ import {
   openUnlinkedForCut,
   readUnlinkedBytes,
 } from "./private-files.ts";
-import { formatRecordLines, parseRecordLog } from "./record-log.ts";
+import { parseRecordLog } from "./record-log.ts";
 import { renameOver } from "./rename-over.ts";
 import { withRunLock } from "./run-lock.ts";
 

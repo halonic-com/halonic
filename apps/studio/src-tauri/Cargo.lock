@@ -1490,6 +1490,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-blob-store"
+version = "0.1.0"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
 name = "halonic-connect"
 version = "0.1.0"
 dependencies = [
@@ -1522,6 +1529,15 @@ name = "halonic-profile"
 version = "0.1.0"
 dependencies = [
  "icu_normalizer",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "halonic-record-store"
+version = "0.1.0"
+dependencies = [
+ "halonic-run-lock",
  "serde_json",
  "sha2",
 ]
@@ -1560,6 +1576,7 @@ dependencies = [
  "halonic-secrets",
  "halonic-trust-grant",
  "halonic-trust-store",
+ "halonic-workspace-files",
  "rfd",
  "serde",
  "serde_json",

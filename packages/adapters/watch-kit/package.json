@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-watch-kit",
+  "private": true,
+  "type": "module",
+  "description": "The digest-compare watch the file-based DefinitionStores share: what each file held when last seen, the store's own changes, and batches of the files whose text really changed.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "priya",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "runtime": "any"
+  }
+}

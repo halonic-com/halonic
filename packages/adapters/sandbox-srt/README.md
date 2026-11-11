@@ -17,6 +17,12 @@ never run a file under a skill's `scripts/` folder. When a session ends, it undo
 file the program changed in the working folder's git folders and moves aside any `.git` the program
 planted at a gitlink, reporting each as a refused write.
 
+On Linux and macOS the launcher gets its own temp folder, private to the user, directly under
+`/tmp` and removed when the session ends. srt puts its Unix sockets in the launcher's temp folder,
+and a socket path holds at most 104 bytes on macOS: under the session's temp folder, which holds the
+user's name and the run id, it would be too long. The session's temp folder goes to srt as
+`CLAUDE_CODE_TMPDIR`, and stays the program's `TMPDIR`.
+
 `setUp()` is the one-time setup the installer runs as an administrator (through the agent host's
 `--sandbox-setup`). On Windows it runs srt's install (what `srt windows-install` runs), then checks:
 it is `ok` only when `check()` then passes, and otherwise gives one line on why not. Running it again
@@ -26,6 +32,14 @@ other than the person at the keyboard answered the prompt. It leaves out srt's p
 which would let every sandboxed program on the machine read the user's profile, including files that
 can hold tokens (`.npmrc`, `.gitconfig`); a session reads only the folders its profile names. Other
 systems have no setup step.
+
+srt grants a session its folders, not the folders above them, and without the profile grant the
+sandbox account can't even look at a folder inside the user profile. Node checks each folder above a
+script before it runs it, so it couldn't start from `%LOCALAPPDATA%\halonic\…` (HAL-5885). Before
+a Windows session opens, `open()` therefore gives the sandbox account read attributes (`(RA)`) on
+each folder between the user profile and the paths it grants, on that folder alone: it sees the
+folder's dates and flags, never what it holds. The entry stays when the session closes, since other
+sessions share those folders; a folder that has it already is left alone.
 
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
@@ -42,7 +56,10 @@ install: first with plain canary probes (`scripts/windows-fence-probe.mjs`), the
 (`pnpm test:fence:windows`). The session test needs the session to report `fenced`, the program
 not to be able to read the hidden file, the blocked port and its own variables as the profile
 says, and `kill` to end its process tree. It works outside the user's profile, because the sandbox account can't look
-inside the profile of the user who ran the install. The same fence tests for Linux and macOS run
+inside the profile of the user who ran the install. A second test
+(`fence/profile-folders.windows.test.ts`) puts the session's folders where the host keeps them, under
+`%LOCALAPPDATA%`, and checks that Node starts there, resolves its script and writes both
+folders. The same fence tests for Linux and macOS run
 with `pnpm test:fence`.
 
 The report-only `sandbox-windows-spike` CI workflow also runs `scripts/windows-isolation-probe.mjs` when that

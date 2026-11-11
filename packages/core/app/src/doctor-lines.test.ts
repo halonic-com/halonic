@@ -16,6 +16,15 @@ verifies("app.doctor-workspace", () => {
     });
   });
 
+  it("is ok when a run there can only reach the test model, so it needs no trust", () => {
+    expect(workspaceLine("acme", "not-needed")).toEqual({
+      check: "workspace",
+      status: "ok",
+      name: "acme",
+      trust: "not-needed",
+    });
+  });
+
   it("warns when the workspace isn't trusted yet or changed since", () => {
     expect(workspaceLine("acme", "new").status).toBe("warning");
     expect(workspaceLine("acme", "changed")).toEqual({

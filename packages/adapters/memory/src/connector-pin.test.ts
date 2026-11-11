@@ -51,13 +51,13 @@ verifies("memory.connector-client", () => {
     ]);
   });
 
-  it("spawns a program without a pin as configured, on top of everything it inherits", () => {
+  it("spawns a program without a pin as configured, on top of the base it inherits", () => {
     const { pin: _pin, ...unpinned } = npx();
-    const inherited = { PATH: "/usr/bin", npm_config_registry: "https://npm.acme.test" };
+    const inherited = { PATH: "/usr/bin", ANTHROPIC_API_KEY: "sk-ant-test" };
     expect(spawnFor({ ...unpinned, env: { MAIL_ACCOUNT: "acme" } }, null, inherited)).toEqual({
       command: "npx",
       args: ["mail-mcp"],
-      env: { ...inherited, MAIL_ACCOUNT: "acme" },
+      env: { PATH: "/usr/bin", MAIL_ACCOUNT: "acme" },
     });
   });
 

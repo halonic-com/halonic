@@ -1,7 +1,7 @@
 import { RunHistory } from "@halonicjs/app";
 import type { Clock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import {
@@ -14,6 +14,7 @@ import {
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { engineStart } from "../../test/run-setup.ts";
+import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { routinesCommandWith } from "./command.ts";
 
@@ -113,7 +114,7 @@ function fakeTime(start: number): FakeTime {
 }
 
 /**
- * Calls the scheduler's wake-ups, for a `vi.waitFor` check: the scheduler
+ * Calls the scheduler's wake-ups, for a `waitUntil` check: the scheduler
  * sets its first one once it has read its timers, so each try wakes it again.
  */
 function wokenUp(time: FakeTime): true {
@@ -153,19 +154,13 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time);
-    await vi.waitFor(
-      () => expect(io.stdout).toEqual(["Watching 1 routine in acme. Stop with Ctrl C."]),
-      slowWatch,
-    );
+    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    expect(io.stdout).toEqual(["Watching 1 routine in acme. Stop with Ctrl C."]);
 
     // The next tick after 15:00 starts the run due at 15:00.
     time.set("2026-11-10T15:00:10.000Z");
-    await vi.waitFor(
-      () =>
-        wokenUp(time) &&
-        expect(io.stdout[1]).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
-      slowWatch,
-    );
+    await waitUntil(() => wokenUp(time) && io.stdout.length > 1, slowWatch);
+    expect(io.stdout[1]).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u);
     const [started] = await storedRuns();
     expect(started).toMatchObject({
       status: "waiting",
@@ -175,8 +170,8 @@ verifies("cli.commands.routines.watch", () => {
 
     // Five minutes on, its timer moves it on by itself.
     time.set("2026-11-10T15:05:30.000Z");
-    await vi.waitFor(
-      async () => wokenUp(time) && expect((await storedRuns())[0]?.status).toBe("completed"),
+    await waitUntil(
+      async () => wokenUp(time) && (await storedRuns())[0]?.status === "completed",
       slowWatch,
     );
     const events = await (await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile)).events(
@@ -200,17 +195,12 @@ verifies("cli.commands.routines.watch", () => {
     });
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time, "--debug");
-    await vi.waitFor(() => expect(io.stdout).toHaveLength(1), slowWatch);
+    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    expect(io.stdout).toHaveLength(1);
 
     time.set("2026-11-10T15:00:10.000Z");
-    await vi.waitFor(
-      () =>
-        wokenUp(time) &&
-        expect(io.stdout[1]).toBe(
-          "✕ Hourly follow-up didn't start · due 15:00 · see why with --debug",
-        ),
-      slowWatch,
-    );
+    await waitUntil(() => wokenUp(time) && io.stdout.length > 1, slowWatch);
+    expect(io.stdout[1]).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("Routine support/hourly-follow-up didn't start:");
     expect(await storedRuns()).toEqual([]);
 
@@ -220,7 +210,8 @@ verifies("cli.commands.routines.watch", () => {
 
   it("ends with 143 at SIGTERM", { timeout: watchTestTimeout }, async () => {
     const { io, signals, watching } = startWatch(fakeTime(engineStart));
-    await vi.waitFor(() => expect(io.stdout).toHaveLength(1), slowWatch);
+    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    expect(io.stdout).toHaveLength(1);
 
     signals.send("SIGTERM");
 

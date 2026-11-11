@@ -67,6 +67,19 @@ verifies("model-openai.replies", () => {
     expect(answer.toolCalls[0]?.arguments).toEqual({ q: "acme" });
   });
 
+  it("keeps Gemini's thought signature on the call that has one", () => {
+    const signed = {
+      ...toolCall("call_1", "search", '{"q":"paris"}'),
+      extra_content: { google: { thought_signature: "sig-a" } },
+    };
+    const calls = [signed, toolCall("call_2", "search", '{"q":"london"}')];
+    const answer = readReply(replyWith({ content: null, tool_calls: calls }, "tool_calls"));
+    expect(answer.toolCalls).toEqual([
+      { id: "call_1", name: "search", arguments: { q: "paris" }, signature: "sig-a" },
+      { id: "call_2", name: "search", arguments: { q: "london" } },
+    ]);
+  });
+
   it("numbers tool calls the server sent without an id", () => {
     const calls = [
       { type: "function", function: { name: "search", arguments: "{}" } },

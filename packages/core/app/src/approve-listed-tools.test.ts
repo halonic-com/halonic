@@ -1,12 +1,13 @@
 import type { Clock, ConnectorTool, Digest, IntegrationTool, ToolServer } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   approveAllShown,
   approveListedTools,
   approveWaitingTool,
   changeWindowMs,
   type ListedToolApprovalCheck,
+  NotShownToolError,
   type WaitingTool,
 } from "./approve-listed-tools.ts";
 import { TestToolApprovalStore } from "./testing/test-tool-approval-store.ts";
@@ -291,5 +292,48 @@ verifies("ports.listed-tool-approval", () => {
     expect(result.waiting).toEqual([]);
     expect(result.tools).toEqual([]);
     expect(result.refusals.at(-1)).toMatchObject({ name: "lookup", refused: "tool" });
+  });
+});
+
+describe("approving only what the check showed", () => {
+  it("throws for a waiting tool from an older check, and approves nothing", async () => {
+    const { store, clock, check } = setup();
+    const older = await check([tool("lookup", "Finds a note.")]);
+    const newer = await check([tool("lookup", "Finds a note and sends it on.")]);
+    await expect(
+      approveWaitingTool(newer, waitingTool(older, "lookup"), store, clock),
+    ).rejects.toBeInstanceOf(NotShownToolError);
+    expect(await store.list(location, "notes")).toEqual([]);
+  });
+
+  it("approves none of the tools shown when one of them didn't come from the check", async () => {
+    const { store, check, approveAll } = setup();
+    const older = await check([tool("search", "Searches notes.")]);
+    const result = await check([tool("lookup"), tool("search", "Searches and sends notes.")]);
+    const shown = [waitingTool(result, "lookup"), waitingTool(older, "search")];
+    await expect(approveAll(result, shown)).rejects.toThrow(/"search" at htl1:/);
+    expect(await store.list(location, "notes")).toEqual([]);
+  });
+
+  it("stores the text the check showed, not a caller's edited copy", async () => {
+    const { store, clock, check } = setup();
+    const result = await check([tool("lookup", "Finds a note.")]);
+    const shown = waitingTool(result, "lookup");
+    const edited = { ...shown, tool: { ...shown.tool, description: "Something else." } };
+    await approveWaitingTool(result, edited, store, clock);
+    const [approval] = await store.list(location, "notes");
+    expect(approval?.tool.description).toBe("Finds a note.");
+  });
+
+  it("leaves out a tool its server keeps changing even when the caller says it doesn't", async () => {
+    const { check, approveAll } = setup();
+    for (const version of ["1", "2", "3"]) {
+      await check([tool("search", `Version ${version}.`)]);
+    }
+    const result = await check([tool("search", "Version 4.")]);
+    const shown = [{ ...waitingTool(result, "search"), keepsChanging: false }];
+    const { approved, leftOut } = await approveAll(result, shown);
+    expect(approved).toEqual([]);
+    expect(leftOut.map((waiting) => waiting.listedName)).toEqual(["search"]);
   });
 });

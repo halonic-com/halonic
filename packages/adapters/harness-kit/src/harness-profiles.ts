@@ -11,9 +11,9 @@
 // in it, and so are the person's keys, sign-ins and their own harness
 // settings in the home folder.
 
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { HarnessAgent, HarnessProfile, HarnessProfileBuilder } from "@halonicjs/engine";
-import type { DeniedPathGroup } from "@halonicjs/events";
+import type { DeniedPathGroup, DeniedPathGroupCode } from "@halonicjs/events";
 import { defaultWorkingFolder, PROTECTED_TOP_NAMES } from "@halonicjs/format";
 import type { HarnessBridge, SandboxProfile } from "@halonicjs/ports";
 import { hiddenAround, homeDeniedGroups } from "./denied-groups.ts";
@@ -86,7 +86,10 @@ export class HarnessProfiles implements HarnessProfileBuilder {
   /**
    * @throws when the working folder leaves the workspace or the proposal
    *   folder, or is in `.git`, a definition folder or Halonic's data folder
-   * @throws when a folder the program needs is in a denied one
+   * @throws when the temp or settings folder is a top-level folder of
+   *   Halonic's data folder, or the run's folders overlap one another
+   * @throws when a folder the program needs is in a denied one, such as
+   *   a harness installed in `~/.claude` on Windows
    */
   async profileOf(agent: HarnessAgent, bridge: HarnessBridge): Promise<HarnessProfile> {
     const { host } = this.#options;
@@ -110,10 +113,13 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     const named = await host.settingsFolder(agent);
     const settingsFolder =
       named === null ? null : await this.#ownFolder("settings folder", named, data);
-    const readOnlyPaths = [
-      ...(await this.#definitionPaths(root)),
-      ...(await this.#installPaths(file.install, data)),
-    ];
+    refuseOverlapping([
+      { name: "temp folder", path: tempFolder },
+      ...(settingsFolder ? [{ name: "settings folder", path: settingsFolder }] : []),
+      ...(agent.filesFolder === null ? [] : [{ name: "proposal folder", path: root }]),
+    ]);
+    const installPaths = await this.#installPaths(file.install, data);
+    const readOnlyPaths = [...(await this.#definitionPaths(root)), ...installPaths];
 
     // Only a proposal folder is kept as a whole. The workspace isn't: when it
     // holds the data folder (a workspace in the home folder), keeping it
@@ -129,6 +135,7 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       ...(await homeDeniedGroups(this.#options.home, this.#platform, disk)),
       { code: "halonic-data", paths: await hiddenAround(data, kept, disk) },
     ];
+    refuseDeniedInstall(deniedGroups, installPaths);
     refuseDeniedHolding(deniedGroups, [root, ...kept, ...readOnlyPaths]);
     const profile: SandboxProfile = {
       workingFolder,
@@ -155,11 +162,21 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     return folder;
   }
 
-  /** A folder of the run's own, which must be in Halonic's data folder, at its real place. */
+  /**
+   * A folder of the run's own, at its real place. It must be in Halonic's
+   * data folder, and below one of its top-level folders: those are shared,
+   * so a temp folder that is `runs/` itself would leave every run's files
+   * writable (HAL-5675).
+   */
   async #ownFolder(name: string, path: string, data: string): Promise<string> {
     const real = await this.#disk.realPath(path);
     if (!isStrictlyInside(real, data)) {
       throw new Error(`The ${name} ${real} must be in Halonic's data folder ${data}.`);
+    }
+    if (dirname(real) === data) {
+      throw new Error(
+        `The ${name} ${real} is a top-level folder of Halonic's data folder ${data}; it must be a folder of the run's own inside one.`,
+      );
     }
     return real;
   }
@@ -183,6 +200,64 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     const folders = { userProfile: this.#options.home, halonicData: data };
     return await windowsInstallReadPaths(install, folders, this.#disk.realPath);
   }
+}
+
+/**
+ * Refuses run folders that are, hold or are inside one another. The host
+ * gives each one on its own, so an overlap is a host mistake, and one
+ * folder would then be writable as another, such as a settings folder in
+ * the proposal folder, whose files a run may save.
+ */
+function refuseOverlapping(folders: ReadonlyArray<{ name: string; path: string }>): void {
+  for (const [index, folder] of folders.entries()) {
+    const other = folders.slice(index + 1).find(({ path }) => overlaps(path, folder.path));
+    if (other !== undefined) {
+      throw new Error(
+        `The ${folder.name} ${folder.path} overlaps the ${other.name} ${other.path}; each must be a folder of its own.`,
+      );
+    }
+  }
+}
+
+/**
+ * Refuses a harness installed in a denied folder, with what to do about
+ * it. On Windows the sandbox reads a harness's install folder in the user
+ * profile only when the profile names it, and a denied folder can't be
+ * named: Claude Code installed in `~/.claude/local` is in the person's own
+ * harness settings, which every harness run is denied (HAL-5675). The
+ * wording is what happened, why, then what to do, as decided with the
+ * designer in HAL-5745.
+ */
+function refuseDeniedInstall(
+  groups: readonly DeniedPathGroup[],
+  installPaths: readonly string[],
+): void {
+  for (const { code, paths } of groups) {
+    for (const denied of paths) {
+      const held = installPaths.find((path) => isInsideOrSame(path, denied));
+      if (held === undefined) continue;
+      const explanation = [
+        `Halonic can't start the harness from \`${held}\`.`,
+        `That folder is inside \`${denied}\`, which the sandbox hides from every agent${deniedBecause(code)}.`,
+        `Install the harness somewhere else and run the agent again.${installExample(code)}`,
+      ].join(" ");
+      throw new Error(`${explanation}\nSandbox group: ${code}`);
+    }
+  }
+}
+
+/** Why the sandbox hides a group, in the person's terms; empty when no reason is written for it. */
+function deniedBecause(code: DeniedPathGroupCode): string {
+  return code === "agent-settings"
+    ? " because it holds your own Claude Code or Codex settings and sign-in"
+    : "";
+}
+
+/** Where a harness can go instead, for the group whose install people hit (Claude Code's `~/.claude/local`). */
+function installExample(code: DeniedPathGroupCode): string {
+  return code === "agent-settings"
+    ? " Claude Code's native installer, for example, puts it in `.local\\bin` in your user profile."
+    : "";
 }
 
 /**

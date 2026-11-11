@@ -56,6 +56,7 @@ export class Inbox {
   readonly #answered = new Set<string>();
   #loads = 0;
   #disposed = false;
+  #toOpen: string | undefined;
 
   constructor(runs: InboxRuns) {
     this.#runs = runs;
@@ -97,6 +98,22 @@ export class Inbox {
       if (load !== this.#loads || this.#disposed) return;
       this.#set({ ...this.#state, error });
     }
+  }
+
+  /**
+   * Asks the Inbox page to open the item with this key, as Home's Needs you does before it opens
+   * the Inbox. The page takes the request when it shows, or at once if it's showing.
+   */
+  requestOpen(key: string): void {
+    this.#toOpen = key;
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** The item the page was asked to open, once: the request is cleared as it's taken. */
+  takeOpenRequest(): InboxItem | undefined {
+    const key = this.#toOpen;
+    this.#toOpen = undefined;
+    return key === undefined ? undefined : this.#state.items.find((item) => item.key === key);
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

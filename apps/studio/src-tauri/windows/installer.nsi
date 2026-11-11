@@ -607,6 +607,16 @@ Function .onInit
     ${EndIf}
   ${EndIf}
   !endif
+
+  ; Halonic change (HAL-1202, flow 2.5): an older installer stops before any
+  ; page, and so does an open Halonic until it is closed. Silent, passive and
+  ; update installs keep Tauri's behaviour above and in the Install section.
+  ${IfNot} ${Silent}
+  ${AndIf} $PassiveMode <> 1
+  ${AndIf} $UpdateMode <> 1
+    Call RefuseOlderInstaller
+    Call WaitUntilHalonicIsClosed
+  ${EndIf}
 FunctionEnd
 
 ; Step lines (flow 2.3): one line per step, and its mark changes in place
@@ -760,7 +770,16 @@ Section Install
     !insertmacro NSIS_HOOK_PREINSTALL
   !endif
 
-  !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  ; Halonic change (HAL-1202, flow 2.5): with pages, the installer never closes
+  ; Halonic by itself, because a run might be going. Asked again here, as
+  ; Halonic may have been opened while page 1 was showing.
+  ${If} ${Silent}
+  ${OrIf} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+    !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  ${Else}
+    Call WaitUntilHalonicIsClosed
+  ${EndIf}
 
   ; Keep NSIS's own file lines (Extract, Create folder) out of the list so
   ; our step lines stay in view.
@@ -1177,6 +1196,67 @@ Function TrimEol
     ${EndIf}
   Pop $R1
   Exch $R0
+FunctionEnd
+
+; "A newer Halonic is already installed" (flow 2.5), then quits: no downgrade
+; with pages. Silent ones stop in .onInit, as `allowDowngrades` is false.
+; Windows' own OK button stands in for Close (mockup V1).
+Function RefuseOlderInstaller
+  Call FindWixInstall
+  ${If} $R6 != ""
+    ReadRegStr $R1 HKLM "$R6" "DisplayVersion"
+  ${Else}
+    ReadRegStr $R1 SHCTX "${UNINSTKEY}" "DisplayVersion"
+  ${EndIf}
+  ${IfThen} $R1 == "" ${|} Return ${|}
+  nsis_tauri_utils::SemverCompare "${VERSION}" $R1
+  Pop $R0
+  ${If} $R0 = -1
+    MessageBox MB_OK|MB_ICONEXCLAMATION "A newer ${PRODUCTNAME} ($R1) is already installed. To go back to ${VERSION}, uninstall ${PRODUCTNAME} first."
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+FunctionEnd
+
+; Sets $0 to 1 when Halonic runs from $INSTDIR, else 0. Asks Windows' Restart
+; Manager, as Tauri's CheckIfAppIsRunning does, so it finds only this install.
+Function IsHalonicOpen
+  Push $R0
+  Push $1
+  Push $2
+  Push $3
+  Push $4
+  StrCpy $4 0
+  !insertmacro RestartManager_StartSession $R0
+  ${If} $R0 != ""
+    !insertmacro RestartManager_RegisterFile $R0 "$INSTDIR\${MAINBINARYNAME}.exe"
+    ${If} $0 = 0
+      System::Call 'RSTRTMGR::RmGetList(p R0, *i .r1, *i .r2, p 0, *i .r3) i .r0'
+      ${IfThen} $0 = ${ERROR_MORE_DATA} ${|} StrCpy $4 1 ${|}
+    ${EndIf}
+    !insertmacro RestartManager_EndSession $R0
+  ${EndIf}
+  StrCpy $0 $4
+  Pop $4
+  Pop $3
+  Pop $2
+  Pop $1
+  Pop $R0
+FunctionEnd
+
+; "Halonic is open" (flow 2.5): asks until Halonic is closed, or quits on
+; Cancel. Windows' Retry button stands in for Try again (mockup V1), so the
+; sentence names the button the person sees.
+Function WaitUntilHalonicIsClosed
+  Push $0
+  ${Do}
+    Call IsHalonicOpen
+    ${IfThen} $0 <> 1 ${|} ${Break} ${|}
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "${PRODUCTNAME} is open. Close it, then press Retry." IDRETRY +3
+    SetErrorLevel 1
+    Quit
+  ${Loop}
+  Pop $0
 FunctionEnd
 
 Function PageInstall

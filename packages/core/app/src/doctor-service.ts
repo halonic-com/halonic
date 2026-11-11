@@ -64,6 +64,12 @@ export interface DoctorWorkspace {
   aliases: readonly AliasProvider[];
   /** Every provider the aliases use. */
   providers: readonly DoctorProvider[];
+  /**
+   * Whether a run here can only reach the test model, as
+   * `reachesOnlyTheTestModel` finds: then it needs no trust, the trust check
+   * isn't read, and the Workspace line is ✓ (HAL-6007).
+   */
+  testModelOnly?: boolean;
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -133,7 +139,9 @@ export class DoctorService {
   async check(workspace: DoctorWorkspace | null): Promise<DoctorReport> {
     const { sandbox } = this.options;
     const [trust, sandboxCheck, resources, harnesses, keys] = await Promise.all([
-      workspace === null ? null : this.options.trust.check(workspace.trust),
+      workspace === null || workspace.testModelOnly === true
+        ? null
+        : this.options.trust.check(workspace.trust),
       sandbox.check(),
       this.options.resources.read(),
       this.detectHarnesses(),
@@ -144,8 +152,8 @@ export class DoctorService {
       sandbox: sandboxLine(sandboxCheck, sandbox.capabilities()),
       disk: diskLine(resources),
     };
-    if (workspace !== null && trust !== null) {
-      report.workspace = workspaceLine(workspace.name, trust.status);
+    if (workspace !== null) {
+      report.workspace = workspaceLine(workspace.name, trust?.status ?? "not-needed");
       const providers = workspace.providers.map((provider) =>
         providerState(provider, resources.models, keys),
       );

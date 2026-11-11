@@ -56,7 +56,9 @@ and passes the shared `DefinitionStore` contract suite.
   argument, sets `quietMs` and `events` (a `FolderEvents` function, for
   tests). If the system can't watch the folder, for example because Linux
   has used up `fs.inotify.max_user_watches`, the error says which limit it
-  is. `close()` on the returned watch stops it.
+  is. `close()` on the returned watch stops it. The digest compare and the
+  batching are `DigestWatch` from `@halonicjs/adapter-watch-kit`; this
+  package brings the events.
 
 ## Runs in a folder
 

@@ -1,4 +1,10 @@
-import type { ChatMessage, ChatParams, ChatRequest, ToolDefinition } from "@halonicjs/ports";
+import type {
+  ChatMessage,
+  ChatParams,
+  ChatRequest,
+  ToolCall,
+  ToolDefinition,
+} from "@halonicjs/ports";
 
 /** The field that limits the answer's length. OpenAI's newer models only take the second. */
 export type MaxTokensField = "max_tokens" | "max_completion_tokens";
@@ -20,6 +26,8 @@ interface WireToolCall {
   id: string;
   type: "function";
   function: { name: string; arguments: string };
+  /** Gemini's thought signature, back where its reply put it. */
+  extra_content?: { google: { thought_signature: string } };
 }
 
 interface WireTool {
@@ -61,20 +69,29 @@ function toWireMessage(message: ChatMessage): WireMessage {
   }
 }
 
-function toWireAssistant(
-  content: string,
-  toolCalls: NonNullable<Extract<ChatMessage, { role: "assistant" }>["toolCalls"]>,
-): WireMessage {
+function toWireAssistant(content: string, toolCalls: ToolCall[]): WireMessage {
   if (toolCalls.length === 0) return { role: "assistant", content };
   return {
     role: "assistant",
     // An assistant turn that only calls tools has no text; vendors expect null there.
     content: content === "" ? null : content,
-    tool_calls: toolCalls.map((call) => ({
-      id: call.id,
-      type: "function",
-      function: { name: call.name, arguments: JSON.stringify(call.arguments) },
-    })),
+    tool_calls: toolCalls.map(toWireToolCall),
+  };
+}
+
+/**
+ * A tool call as the model wrote it. A call with a signature only came from
+ * Gemini, so only Gemini ever gets `extra_content` back; other servers never
+ * see the field.
+ */
+function toWireToolCall(call: ToolCall): WireToolCall {
+  return {
+    id: call.id,
+    type: "function",
+    function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+    ...(call.signature === undefined || call.signature === ""
+      ? {}
+      : { extra_content: { google: { thought_signature: call.signature } } }),
   };
 }
 

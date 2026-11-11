@@ -163,9 +163,10 @@ export type ConnectorTransport =
        * `CURL_CA_BUNDLE`; or a preload, `LD_PRELOAD`, `LD_LIBRARY_PATH`,
        * `DYLD_INSERT_LIBRARIES` or `DYLD_LIBRARY_PATH`. It drops the
        * package-manager and language variables it inherits from its own
-       * process and sets the registry from `registryUrl` itself. It keeps an
-       * inherited proxy, certificate or preload: those are the person's own
-       * machine settings, such as a company proxy, not the workspace's.
+       * process and sets the registry from `registryUrl` itself. Of what it
+       * inherits it keeps only the base (`app.connector-base-env`), which
+       * holds a proxy, certificate or library folder: those are the person's
+       * own machine settings, such as a company proxy, not the workspace's.
        *
        * And it refuses to start when an argument is a runner option that
        * fetches from somewhere else: `--registry`, an npm scope's

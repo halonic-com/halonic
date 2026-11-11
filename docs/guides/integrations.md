@@ -50,7 +50,11 @@ The interface is decided in
    runs at once. Set `untrusted: true` on a tool whose result carries
    outside content, such as mail or web pages. Every `send` tool needs a `noun`
    in the sheet, such as `{ one: email, many: emails }`, so a run can say
-   "Sent 1 email". Use lower-case words only, never a value from the call.
+   "Sent 1 email". Use lower-case words, never a value from the call; only
+   the first letter may be a capital, and only for a product name such as
+   `Drive file`, never for an ordinary word such as `Email`. When "Sent" would overstate what a call does, add a `verb`
+   next to the noun: `saved`, `created`, `updated` or `moved`, so the run
+   says "Saved 1 Drive file". Without one, it says "Sent".
 5. **Don't pass a provider's error body on.** Throw an error with the status
    and what failed; the body may hold personal data or echo a key. You may
    include the provider's short error code (such as `rate_limit_error` or

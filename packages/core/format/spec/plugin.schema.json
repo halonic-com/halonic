@@ -370,11 +370,11 @@
                 "properties": {
                   "one": {
                     "type": "string",
-                    "pattern": "^[a-z]+(?: [a-z]+)*$"
+                    "pattern": "^[A-Za-z][a-z]*(?: [a-z]+)*$"
                   },
                   "many": {
                     "type": "string",
-                    "pattern": "^[a-z]+(?: [a-z]+)*$"
+                    "pattern": "^[A-Za-z][a-z]*(?: [a-z]+)*$"
                   }
                 },
                 "required": [
@@ -382,6 +382,16 @@
                   "many"
                 ],
                 "additionalProperties": false
+              },
+              "verb": {
+                "type": "string",
+                "enum": [
+                  "sent",
+                  "saved",
+                  "created",
+                  "updated",
+                  "moved"
+                ]
               },
               "untrusted": {
                 "type": "boolean"
@@ -729,11 +739,11 @@
                   "properties": {
                     "one": {
                       "type": "string",
-                      "pattern": "^[a-z]+(?: [a-z]+)*$"
+                      "pattern": "^[A-Za-z][a-z]*(?: [a-z]+)*$"
                     },
                     "many": {
                       "type": "string",
-                      "pattern": "^[a-z]+(?: [a-z]+)*$"
+                      "pattern": "^[A-Za-z][a-z]*(?: [a-z]+)*$"
                     }
                   },
                   "required": [
@@ -741,6 +751,16 @@
                     "many"
                   ],
                   "additionalProperties": false
+                },
+                "verb": {
+                  "type": "string",
+                  "enum": [
+                    "sent",
+                    "saved",
+                    "created",
+                    "updated",
+                    "moved"
+                  ]
                 },
                 "untrusted": {
                   "type": "boolean"

@@ -32,7 +32,7 @@ const unusedProbe = {
 };
 
 function newHarness(settings = new MemorySettingsFolder()) {
-  return codexHarness({ probe: unusedProbe, settings });
+  return codexHarness({ probe: unusedProbe, settings, ownSandbox: async () => true });
 }
 
 const task: HarnessTask = {

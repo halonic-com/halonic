@@ -20,6 +20,7 @@ export {
   keepsChanging,
   type ListedToolApprovalCheck,
   type ListedToolApprovalInput,
+  NotShownToolError,
   type UnreadableApproval,
   type WaitingTool,
 } from "./approve-listed-tools.ts";
@@ -60,6 +61,7 @@ export {
   type SendingCheck,
   type SendingSettings,
 } from "./connection-settings.ts";
+export { connectorBaseEnv } from "./connector-base-env.ts";
 export {
   ConnectorFactories,
   type ConnectorKind,
@@ -158,6 +160,7 @@ export {
   type LiveVersionReader,
   liveVersionOf,
 } from "./live-version.ts";
+export { defaultCurrency, moneyAmount } from "./money-amount.ts";
 export {
   type OpenWorkspaceOptions,
   openWorkspace,
@@ -357,6 +360,7 @@ export {
   runSourceFor,
   runVersionOf,
 } from "./run-source.ts";
+export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
 export {
   type RunnerFence,
   type RunnerFenceInputs,

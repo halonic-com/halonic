@@ -109,6 +109,8 @@ function workspaceTrust(line: WorkspaceLine, dir: string | undefined): Message {
   switch (line.trust) {
     case "trusted":
       return doctorMessages.trusted(line.name);
+    case "not-needed":
+      return doctorMessages.testModelOnly(line.name);
     case "changed":
       return doctorMessages.changedSinceTrusted(dir);
     case "new":

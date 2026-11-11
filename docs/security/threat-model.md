@@ -4,14 +4,19 @@ What Halonic protects, from whom, and where the lines are drawn. Read it before
 you change anything that touches a boundary in [section 3](#3-trust-boundaries).
 To report a problem, see the [security policy](../../SECURITY.md).
 
-Every mitigation carries one of two marks:
+Every mitigation carries one of these marks, or one per part when only part of
+it is built:
 
-- **On `main`**: the code is merged and tested. This is library code. No app or
-  command-line tool uses it yet, so it isn't a protection you get today.
+- **On `main`**: the code is merged and tested. It protects you today only
+  where the row names the `halonic` command-line tool (`apps/cli`) or code it
+  calls. Otherwise it is library code that no app uses yet.
 - **Lands with #n**: built in an open pull request, not merged yet. Until it
   merges, read it as **Planned**.
 - **Planned (HAL-n)**: decided, not built. Don't rely on it. The number is the
   task that builds it.
+- **Probed**: no code of ours; a probe on a real machine showed the platform
+  refuses the attack. It holds only on the system the row names, and the row
+  names the probe.
 
 A **known limit** is a risk we accept and say so. Nothing on this page is a
 promise about a mitigation marked **Planned**.
@@ -19,15 +24,17 @@ promise about a mitigation marked **Planned**.
 ## 1. Scope
 
 Halonic is a local-first app. The Studio and the `halonic` command-line tool
-are designed to run on your own machine, as you. Neither ships yet: `apps/studio`
-holds only a feature list and there is no command-line package. The **On
-`main`** items on this page are tested library code that no app calls yet (for
-example `readToolListing` has no caller outside its tests), not protections a
-user has today.
+are designed to run on your own machine, as you. The command-line tool
+(`apps/cli`) is part of 0.1, run from source. The Studio (`apps/studio`)
+doesn't ship yet. An **On `main`** item is a protection you have today only
+when the CLI uses it, such as the trust check in [4.1](#41-workspace-code-b1)
+and the run log in [4.2](#42-model-output-and-content-b2). The rest is tested library code that no
+app calls yet (for example `readToolListing` has no caller outside its tests).
 
 | Shape | Who can reach it | Status |
 | --- | --- | --- |
-| Studio and `halonic` on your machine | you, and programs running as you | Planned (phase 1, plan HAL-9). Not shipped |
+| `halonic` on your machine | you, and programs running as you | Part of 0.1, run from source |
+| Studio on your machine | you, and programs running as you | Planned (phase 1, plan HAL-9). Not shipped |
 | `halonic serve` on loopback | programs and web pages on your machine | Planned (phase 4, plan HAL-9) |
 | `serve` on a LAN, tunnel or VPS | everyone on that network, or the internet | Planned (phase 4). Treated as public |
 | Cloud deployments (Cloudflare, containers) | the whole internet | Planned (phase 4). See [section 6](#6-cloud-deployments-b7) |
@@ -110,7 +117,7 @@ rule is that a steered model must not be able to do more than you approved.
 | Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once | Planned (HAL-998 for listed tools; see 4.3) |
 | A tool result carries instructions | Results from tools marked untrusted reach the model only inside a fence | **On `main`**: every result of a server's tool, in chat turns and runs (HAL-5205) |
 | Knowledge or documents carry instructions | Knowledge reaches a model only through the engine's `knowledge_search` and `knowledge_read` tools, which fence the titles, snippets and texts of any source not marked `untrusted: false` (`ports.untrusted-knowledge`, `engine.knowledge-tools`). The ref the model sends back stays unfenced, so a hit or a document whose ref is longer than 512 characters is dropped (`knowledgeHitForModel`, `knowledgeDocForModel`). Agents don't get these tools in runs yet (HAL-4174) | **On `main`** |
-| A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). On `main` there is the `RunStore` port and a memory adapter only; the durable log is not built | **Planned** (phase 1, plan HAL-9) |
+| A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). `FolderRunStore` keeps it as `<runId>.jsonl` in the workspace's `runs` folder in your profile, one event per line, and only adds to it. An append names the last event it expects (`expectedSeq`), holds `<runId>.lock` so the CLI and the Studio shell can't both write, and counts as stored only once flushed to disk; a failed append is cut back and stores none of its events, though one cut off by a crash of the program may leave the first events of its batch stored. The folder is private to you (`700`, files `600`), and a log that is a link or has a second name is refused. The CLI uses it for every run; the Studio shell's run store reads and writes the same files under the same lock | **On `main`** (`packages/adapters/fs-node/src/run-store.ts`; `fs-node.run-store-files`, `run-store-lock`, `run-store-recovery`, `run-store-private-files`) |
 
 **Known limit.** Run logs have no tamper evidence. An append-only interface
 doesn't stop a program running as you from rewriting the files.
@@ -155,7 +162,7 @@ Its text is attacker text. The rules are the requirement
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
 | A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
-| A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | **Partly on `main`**: the bridge is on `main`; the app using it is Planned (HAL-2952) |
+| A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | The bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
 
 **Known limits.**
 
@@ -288,7 +295,7 @@ A leaked run token gives only what that agent may already do, for that one run.
 | The sandbox silently doesn't confine | Before a session starts anything, it proves the fence: a canary file it must hide, a canary loopback port it must block, and a control read. A session that isn't `fenced` starts nothing | **On `main`** (`ports.sandbox-fence-proof`, `sandbox-srt.session`) |
 | A process keeps running after cancel | Each program runs in its own process group; `kill`, `close`, the time limit and an aborted run stop the whole group. On macOS a program that left its group is found by a variable it carries; on Windows, which has no process groups, `taskkill /T /F` ends the tree | **On `main`** (`sandbox-srt.session`) |
 | No sandbox, so the agent runs without one | `check()` gives a listed reason; when it isn't `ok`, `open` refuses and Halonic doesn't run the step. No code path falls back to running without the fence | **On `main`** (`sandbox-srt.check`, `contracts.sandbox-check`) |
-| Claude Code's or Codex's own sandbox breaks inside ours | Inside our sandbox their own sandboxes are switched off in the settings folder Halonic gives them, and ours is the fence | **Planned** (HAL-2552, HAL-2608) |
+| Claude Code's or Codex's own sandbox breaks inside ours | Inside our sandbox their own sandboxes are switched off in the settings folder Halonic gives them, and ours is the fence. On this computer they are switched on where their own sandbox is available (see "This computer") | **On `main`** (`harness-claude-code.settings`, `harness-codex.config`) |
 | You can't see what was blocked | Each blocked access becomes a `sandbox.blocked` event in the run log. srt has no structured feed of blocked accesses, so sandbox-srt's session reports only the git files it undoes when it ends (see the session's requirement) | Event and git-file reports **on `main`** (`sandbox-srt.session`); reports of what the fence blocked **Planned** (HAL-193) |
 | An adapter passes its own tests but leaks | Attack tests every sandbox adapter must pass, on Linux, macOS and Windows: `~/.ssh` and keychain files, writes outside the working folder, the agent's own file, sites by name, address and DNS, the bridge without or with another run's token, your own harness settings, a process left after cancel | sandbox-srt's fence tests **on `main`**: on Linux and macOS in CI (`sandbox-fence`, `sandbox-fence-macos`), on Windows as canary probes and a session test (`sandbox-windows`); the full list as a suite every adapter must pass **Planned** (HAL-193) |
 
@@ -344,9 +351,12 @@ desktop app keeps secrets and tokens there (4.4, Planned), such an agent can
 read those items. On Linux (Secret Service, while it's unlocked) and Windows
 (Credential Manager) it gets them without a prompt; on macOS the keychain may
 ask you once for each app. Approvals then only hold as long as the agent keeps to
-Halonic's tools. Claude Code and Codex keep their own sandboxes and permission
-prompts, routed to Halonic's approval card (Planned, HAL-2552 and HAL-2608),
-but those are theirs, not Halonic's fence.
+Halonic's tools. Claude Code and Codex keep their permission prompts, routed
+to Halonic's approval card. They keep their own sandboxes on macOS, and on
+Linux with bubblewrap (`harness-kit.own-sandbox`). Claude Code's sandbox still
+asks before every shell command, and refuses a command it can't sandbox. On
+Windows, and on Linux without bubblewrap, Halonic's approval step is the only
+gate on this computer. Their sandboxes are theirs, not Halonic's fence.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
@@ -366,7 +376,7 @@ like Studio.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| Another program or a web page on your machine uses the host | The host listens only on `127.0.0.1`, with a new 32-byte random token per launch that it prints only to Studio, on standard output, and compares in constant time. A `Host` other than loopback gets a 421 (DNS rebinding), any `Origin` header a 403, a wrong or missing token a 401, all before the path is looked at | **On `main`** (`apps/agent-host`, `src/server/host-server.ts`) |
+| Another program or a web page on your machine uses the host | The host listens only on `127.0.0.1`, with a new 32-byte random token per launch that it prints only to Studio, on standard output, and compares in constant time. A `Host` other than loopback gets a 421 (DNS rebinding), any `Origin` header a 403, a wrong or missing token a 401, all before the path is looked at. In WSL (`--stdio`) the host has no port: Studio's relay listens on Windows' loopback and passes each connection as frames over `wsl.exe`'s standard input and output, and the `Host` must name the relay's port. The host drops a frame stream that breaks the format, and stops | **On `main`** (`apps/agent-host`, `src/server/host-server.ts`) |
 | The profile Studio sends loosens the fence | The host checks every profile before `SrtSandbox` sees it: every field present, nothing extra, every path absolute | **On `main`** (`apps/agent-host`, `src/sandbox/profile-schema.ts`) |
 | The bridge's run token leaks over the host's loopback | A run names its bridge and its session by ids the host makes, so the run token crosses loopback once, when the bridge opens, and only to Studio. The host asks Studio only for the secrets the run's providers name | **On `main`** (`apps/agent-host`, `src/harness`, `src/bridge`) |
 | A caller fills the host's memory or holds it open | Bodies of at most 1 MiB, refused before reading when the length says more; a stream with more than 4 MiB unread is dropped; at most 64 sessions and 64 bridges | **On `main`** (`apps/agent-host`, `src/server`) |
@@ -393,7 +403,7 @@ routes, isn't built yet, so no app uses the host today.
 - **Same user.** The sandboxed program runs as your account. A fence escape
   lands with all your rights.
 - **The agent host is reachable by every program running as you**, like the
-  bridge. Its token is what keeps them out, and it lives only in the host's
+  bridge (in WSL, through Studio's relay). Its token is what keeps them out, and it lives only in the host's
   and Studio's memory. A program running as you can also change the host's
   unpacked files between launches, or the executable itself; the digest
   check finds the first only at the next launch.
@@ -441,7 +451,7 @@ root. What matters is the distro reaching Windows.
 | **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). The setup checks whether `halonic` became the default after import, and the trust check reports a residual when Docker's socket or its `/mnt/wsl` folder is present. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | **Planned** (HAL-5394) |
 | A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **Planned** (HAL-5396) |
 | Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record | **Planned** (HAL-5394) |
-| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the rest **Planned** (HAL-5396) |
+| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay and the bridge off its port **Planned** (HAL-5396, HAL-6316) |
 | **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first | **Planned** (HAL-5402) |
 | Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); when updates run **Planned** (HAL-5396) |
 
@@ -497,7 +507,7 @@ Plugins stay unfenced on Windows (`packages/core/app`, `runner-fence.ts`).
 | **[gate]** A crash between a grant and its record leaves a folder granted forever | The folder is recorded before srt grants it and confirmed after. Removing the setup and uninstalling forget every grant, recorded or not | **Planned** (HAL-5398, HAL-5404) |
 | A rollback to an older setup version keeps grants under the old account | A rollback that can't uninstall first is refused | **Planned** (HAL-5404) |
 | Another program's srt shares the machine-wide sandbox account and reads our kept folders | The trust check reports it when another program's srt setup is present, not only a second Halonic user | **Planned** (HAL-5398) |
-| The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | Probed (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
+| The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | **Probed** (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
 
 The DNS leak is what keeps native srt experimental.
 

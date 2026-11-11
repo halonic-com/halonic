@@ -3,7 +3,7 @@ import { existsSync, lstatSync, readdirSync, readFileSync, writeFileSync } from 
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SandboxBlock } from "@halonicjs/ports";
+import type { SandboxBlock, SandboxSession } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { recoverGitFolders } from "./git-folder-check.ts";
@@ -228,14 +228,22 @@ verifies("sandbox-srt.session", () => {
     // `whoami` or `icacls` stops after 15 s, so 20 s still fails a real hang.
     describe("after a host crash", { timeout: 20_000 }, () => {
       let journals: string;
+      /** The sessions a test leaves open as a crashed host would, closed after it so their folders go. */
+      const opened: SandboxSession[] = [];
 
       beforeEach(() => {
         journals = join(base, "journals");
       });
 
+      afterEach(async () => {
+        await Promise.all(opened.splice(0).map((session) => session.close()));
+      });
+
       async function openJournaled() {
         const { runner } = fakeRunner();
-        return new SrtSandbox(linux, runner, journals).open(makeProfile(base));
+        const session = await new SrtSandbox(linux, runner, journals).open(makeProfile(base));
+        opened.push(session);
+        return session;
       }
 
       /** Makes the open session look like one whose host process died. */

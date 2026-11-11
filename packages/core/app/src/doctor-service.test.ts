@@ -58,6 +58,7 @@ function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}):
     },
     aliases: parts.aliases ?? [],
     providers: parts.providers ?? [],
+    ...(parts.testModelOnly === undefined ? {} : { testModelOnly: parts.testModelOnly }),
   };
 }
 
@@ -142,6 +143,18 @@ verifies("app.doctor-service", () => {
     });
     expect(report.models).toBeUndefined();
     expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+
+  it("doesn't read the trust check for a workspace on the test model only, and marks it ok", async () => {
+    const report = await doctor({ trust: "new" }).service.check(workspace({ testModelOnly: true }));
+
+    expect(report.workspace).toEqual({
+      check: "workspace",
+      status: "ok",
+      name: "acme",
+      trust: "not-needed",
+    });
+    expect(report.summary.warnings).toBe(0);
   });
 
   it("reads each provider's models from the report and each key from the secrets", async () => {

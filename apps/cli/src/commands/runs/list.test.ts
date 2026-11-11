@@ -216,10 +216,10 @@ verifies("cli.commands.runs.list", () => {
       ]);
     });
 
-    it("points to Studio's Workflows page when no workflow is close", async () => {
+    it("lists the workflows when no workflow is close", async () => {
       const { io } = await runsIn(acme, "--workflow", "billing");
 
-      expect(io.stderr[1]).toBe("  See them in Studio's Workflows page.");
+      expect(io.stderr[1]).toBe("  Workflows in acme: support-reply.");
     });
 
     it("asks for the hub when two hubs have the workflow", async () => {
@@ -278,7 +278,7 @@ verifies("cli.commands.runs.list", () => {
       expect(code).toBe(exitCode.notFound);
       expect(io.stderr).toEqual([
         "✕ Couldn't list the runs in downloads: there's no workspace.yaml here.",
-        "  Run it inside a workspace, or create one with halonic init.",
+        "  Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.",
       ]);
     });
   });

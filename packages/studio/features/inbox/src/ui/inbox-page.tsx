@@ -1,14 +1,12 @@
-import { EmptyState, List, type ListRow } from "@halonicjs/studio-kit";
+import { EmptyState, List } from "@halonicjs/studio-kit";
 import { errorMessageFor, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
-import { approvalTitle } from "../plain/approval-text.ts";
-import { markedName } from "../plain/hidden-characters.ts";
-import { movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
+import { countDetail, itemTitle, rowFor } from "./inbox-row.ts";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
@@ -32,7 +30,8 @@ export interface InboxViewProps {
 /**
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
  * grid of what waits for you, newest first, with its count in the heading ("Needs you, 2
- * waiting"), beside the open item's card. Nothing is open at first. Enter or a click opens a
+ * waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
+ * for an item (`Inbox.requestOpen`). Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
  * Not here yet: notices, the request form, setup items and the narrow and phone layouts
@@ -51,6 +50,15 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
   useEffect(() => {
     if (openIndex !== -1) openAt.current = openIndex;
   }, [openIndex]);
+  // Home's Needs you asks for an item before it opens the Inbox; take it now and on each change.
+  useEffect(() => {
+    const take = () => {
+      const asked = inbox.takeOpenRequest();
+      if (asked !== undefined) setOpen(asked);
+    };
+    take();
+    return inbox.subscribe(take);
+  }, [inbox]);
   const retry = () => void inbox.refresh();
   const failedFirst = !state.loaded && state.error !== undefined;
 
@@ -105,24 +113,6 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
   );
 }
 
-/** "2 waiting" after the heading, read "Needs you, 2 waiting"; no count when nothing waits. */
-function countDetail(waiting: number): { detail?: string } {
-  return waiting === 0 ? {} : { detail: `${waiting} waiting` };
-}
-
-/**
- * A row (flow-inbox 3.2): the card's title, then since when it waits and, for a wait step with a
- * timer, when it moves on: "Waiting 6 h · moves on Mon 14:00".
- */
-function rowFor(item: InboxItem, now: Date): ListRow {
-  const waiting = waitingFor(new Date(item.since), now);
-  if (item.kind === "approval") {
-    return { id: item.key, title: approvalTitle(item), meta: waiting };
-  }
-  const movesOn = item.movesOnAt === null ? "" : ` · ${movesOnMeta(new Date(item.movesOnAt))}`;
-  return { id: item.key, title: markedName(item.title), meta: `${waiting}${movesOn}` };
-}
-
 /**
  * The next item for the decided card's **Next**: the one after the open one, else the first. Once
  * the open item has left the list, the one after it is the item now at `openAt`, where it was.
@@ -139,7 +129,7 @@ function nextItem(
   const next = after ?? others[0];
   if (next === undefined) return null;
   return {
-    title: next.kind === "approval" ? approvalTitle(next) : markedName(next.title),
+    title: itemTitle(next),
     left: others.length,
     open: () => setOpen(next),
   };

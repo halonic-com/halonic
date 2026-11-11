@@ -1,6 +1,7 @@
 import {
   checkPackageRunnerLaunch,
   checkResolvedVersion,
+  connectorBaseEnv,
   pinnedRunnerArgs,
   type StdioTransport,
 } from "@halonicjs/app";
@@ -90,8 +91,8 @@ export interface Spawn {
 }
 
 /**
- * What a real launcher spawns for a `stdio` connector, on top of the
- * environment it inherits. Without a pin, the command as configured. With
+ * What a real launcher spawns for a `stdio` connector, on top of the base
+ * of the environment it inherits (`app.connector-base-env`). Without a pin, the command as configured. With
  * one, the runner's words name the pin's package at its version, as
  * `pinnedRunnerArgs` writes them for a real launcher, inherited variables that `app.package-runner-launch` blocks are
  * dropped, and the registry is set from `registryUrl`.
@@ -102,8 +103,10 @@ export function spawnFor(
   inheritedEnv: Readonly<Record<string, string>>,
 ): Spawn {
   const { command, args, env } = transport;
-  if (pin === null) return { command, args: [...args], env: { ...inheritedEnv, ...env } };
-  const kept = Object.entries(inheritedEnv).filter(([name]) => !isBlockedVariable(name));
+  // This adapter runs anywhere, the browser included, so it takes the POSIX names.
+  const base = connectorBaseEnv(inheritedEnv, "linux");
+  if (pin === null) return { command, args: [...args], env: { ...base, ...env } };
+  const kept = Object.entries(base).filter(([name]) => !isBlockedVariable(name));
   return {
     command,
     args: pinnedRunnerArgs(pin, command, args),

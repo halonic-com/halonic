@@ -9,8 +9,9 @@ import {
   type LoadedWorkspace,
   type LocalIntegrationInput,
   modelAliases,
+  reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
-import { trustSubjectOf } from "./workspace-trust.ts";
+import { trustContentInputOf, trustSubjectOf } from "./workspace-trust.ts";
 
 /**
  * Where a model server on this computer answers when its provider file
@@ -64,6 +65,8 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
     trust: trustSubjectOf(input),
     aliases: allAliases.filter((alias) => listed.has(alias.provider)),
     providers,
+    // The rule `run` skips trust by, so doctor doesn't ask for a trust `run` wouldn't.
+    testModelOnly: reachesOnlyTheTestModel(trustContentInputOf(workspace, input.integrations)),
   };
 }
 

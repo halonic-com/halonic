@@ -113,6 +113,20 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
   }
 }
 
+/**
+ * The line of the probe's error output that says what went wrong. Node that
+ * dies on an uncaught error first prints where it was thrown (`node:fs:3455`)
+ * and the source line, and only then the error itself, so that line is taken
+ * when there is one, and the first line otherwise.
+ */
+export function errorLine(errors: string): string {
+  const lines = errors
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  return lines.find((line) => /^[A-Za-z]*Error\b/.test(line)) ?? lines[0] ?? "";
+}
+
 async function runProbe(
   input: FenceProofInput,
   probeFile: string,
@@ -147,7 +161,7 @@ async function runProbe(
     try {
       result = JSON.parse(output.trim().split("\n").pop() ?? "");
     } catch {
-      const detail = errors.trim().split("\n")[0] ?? "";
+      const detail = errorLine(errors);
       return {
         state: "not-fenced",
         reason: `the fence probe did not report (exit ${exit.code ?? exit.signal})${detail === "" ? "" : `: ${detail}`}`,

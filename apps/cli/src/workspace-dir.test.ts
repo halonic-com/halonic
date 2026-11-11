@@ -61,7 +61,7 @@ verifies("cli.workspace-dir", () => {
       expect(error).toMatchObject({
         code: "no-workspace",
         message: "there's no workspace.yaml here.",
-        fix: "Run it inside a workspace, or create one with halonic init.",
+        fix: "Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.",
       });
     }
   });

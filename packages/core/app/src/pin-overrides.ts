@@ -140,8 +140,8 @@ export function findBlockedVariables(
  * Whether a variable is a package-manager or language setting, in any case,
  * such as `NODE_OPTIONS` or `npm_config_registry`. A pinned launch drops
  * these when it inherits them from its own process, and sets the registry
- * itself. It keeps an inherited proxy, certificate or preload, which are the
- * person's own machine settings (`ports.connector-trust-enforcement`).
+ * itself. It keeps an inherited proxy, certificate or library folder, which
+ * are the person's own machine settings (`app.connector-base-env`).
  */
 export function isPackageManagerVariable(name: string): boolean {
   return isInGroup(packageManagerVariables, name);

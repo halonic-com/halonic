@@ -6,13 +6,14 @@ import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import type { CommandContext } from "./command.ts";
 import { type RoutineTicks, runTimerCollection } from "./local-engine-host.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import type { GaveUpRun, StuckTimer } from "./stuck-timers.ts";
 import { engineStart } from "./test/run-setup.ts";
+import { waitUntil } from "./test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
@@ -153,21 +154,23 @@ async function openWithTicks(
   const nextTick = async (minutes = 1) => {
     const count = ticks.length + 1;
     now += minutes * 60_000;
-    await vi.waitFor(() => {
+    await waitUntil(() => {
       for (const [callback, at] of [...wakeUps]) {
         if (at > now) continue;
         wakeUps.delete(callback);
         wakeUpsCalled += 1;
         callback();
       }
-      expect(ticks).toHaveLength(count);
       // A stuck run's step reads its log from disk, which can outlast the tick on a slow
       // computer: the clock moves on only once that failure is in (HAL-5648).
-      if (onStuck !== undefined) expect(wakeUpsSettled).toBe(wakeUpsCalled);
+      return ticks.length === count && (onStuck === undefined || wakeUpsSettled === wakeUpsCalled);
     });
+    expect(ticks).toHaveLength(count);
+    if (onStuck !== undefined) expect(wakeUpsSettled).toBe(wakeUpsCalled);
   };
   // The scheduler sets its first wake-up once it has read its timers; only later ones may fail.
-  await vi.waitFor(() => expect(wakeUps.size).toBe(1));
+  await waitUntil(() => wakeUps.size === 1);
+  expect(wakeUps.size).toBe(1);
   const failNextWakeUp = () => {
     failingWakeUps += 1;
   };
@@ -229,7 +232,8 @@ verifies("cli.commands.routines.watch", () => {
     try {
       for (let tick = 0; tick < 4; tick += 1) await nextTick();
 
-      await vi.waitFor(() => expect(engine.stuck.aborted).toBe(true));
+      await waitUntil(() => engine.stuck.aborted);
+      expect(engine.stuck.aborted).toBe(true);
       expect(engine.stuck.reason).toEqual(new Error("tick 4 failed"));
     } finally {
       await engine.close();
@@ -245,9 +249,9 @@ verifies("cli.commands.routines.watch", () => {
       }
 
       // Each failure is the first in a row, so each is a retry --debug shows.
-      await vi.waitFor(() =>
-        expect(debugLines.filter((line) => line.includes("try 1 of 3"))).toHaveLength(3),
-      );
+      const retries = () => debugLines.filter((line) => line.includes("try 1 of 3"));
+      await waitUntil(() => retries().length === 3);
+      expect(retries()).toHaveLength(3);
       expect(engine.stuck.aborted).toBe(false);
     } finally {
       await engine.close();
@@ -262,7 +266,8 @@ verifies("cli.commands.routines.watch", () => {
         await nextTick();
       }
 
-      await vi.waitFor(() => expect(engine.stuck.aborted).toBe(true));
+      await waitUntil(() => engine.stuck.aborted);
+      expect(engine.stuck.aborted).toBe(true);
       expect(engine.stuck.reason).toEqual(new Error("wake-up 3 failed"));
     } finally {
       await engine.close();
@@ -302,7 +307,8 @@ verifies("cli.commands.routines.watch", () => {
       }
       // The give-up's cancel goes to the disk and settles after the failure that set it off, so
       // wait for it, without moving the clock. The ceiling stays under the test timeout.
-      await vi.waitFor(() => expect(gaveUp).toHaveLength(1), { timeout: 4_000 });
+      await waitUntil(() => gaveUp.length > 0, { timeout: 4_000 });
+      expect(gaveUp).toHaveLength(1);
       const gaveUpAfterMs = elapsedMs();
       // The run log can be read now, so a step tried again would work and its timer go.
       const folders = await acmeFolders();

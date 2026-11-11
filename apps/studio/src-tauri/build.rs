@@ -24,6 +24,12 @@ fn main() {
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
+        "fs_list",
+        "fs_read",
+        "fs_write",
+        "fs_remove",
+        "fs_watch",
+        "fs_unwatch",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

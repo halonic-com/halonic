@@ -71,6 +71,26 @@ verifies("cli.doctor-workspace", () => {
     ]);
   });
 
+  it("finds a workspace on the test model only, as run's trust skip does", async () => {
+    const mock = "id: mock\nname: Test model\ntype: mock\nlocal: true\n";
+    const onTheTestModel = await workspaceOf({
+      "workspace.yaml": acmeSettings,
+      "providers/mock.yaml": mock,
+    });
+    const doctorOf = (workspace: LoadedWorkspace) =>
+      doctorWorkspace({
+        workspace,
+        integrations: [],
+        location: root,
+        fallbackName: "./acme",
+        commandPaths: new Map(),
+      });
+
+    expect(doctorOf(onTheTestModel).testModelOnly).toBe(true);
+    const withAnthropic = await workspaceOf(providerFiles);
+    expect(doctorOf(withAnthropic).testModelOnly).toBe(false);
+  });
+
   it("shows the folder as typed when workspace.yaml didn't parse", async () => {
     const workspace = await workspaceOf({ "workspace.yaml": "name: [\n" });
     const doctor = doctorWorkspace({

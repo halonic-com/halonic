@@ -96,20 +96,33 @@ export type IntegrationSecret = Infer<typeof Secret>;
 const Token = s.object({ name, purpose: s.string().min(1) }).strict();
 
 /**
- * A plain noun in lower case: letters, with single spaces between words. No
- * digits or other marks, so it can't carry a secret or an argument value.
+ * A plain noun: letters, with single spaces between words. Only its first
+ * letter may be a capital, for a product name such as "Drive file"; the rest
+ * is lower case, so a sheet can't shout. No digits or other marks, so it
+ * can't carry a secret or an argument value.
  */
-const TOOL_NOUN_PATTERN = /^[a-z]+(?: [a-z]+)*$/;
+const TOOL_NOUN_PATTERN = /^[A-Za-z][a-z]*(?: [a-z]+)*$/;
 
 const nounWord = s
   .string()
-  .regex(TOOL_NOUN_PATTERN, "use a lower-case noun of letters and spaces, such as 'email'");
+  .regex(
+    TOOL_NOUN_PATTERN,
+    "use a lower-case noun of letters and spaces, such as 'email', with at most a capital first letter, such as 'Drive file'",
+  );
 
 /**
  * What one call of a tool sends, in the singular and the plural, so a run can
  * say "Sent 1 email" or "Sent 3 emails".
  */
 const ToolNoun = s.object({ one: nounWord, many: nounWord }).strict();
+
+/**
+ * What one call of a tool does to its noun, in the past tense, so a run can
+ * say "Saved 1 Drive file" rather than "Sent". A closed list, so a sheet
+ * can't word a send as something milder: each verb still says that something
+ * was made or changed. The same list as `ToolVerb` in `@halonicjs/events`.
+ */
+const TOOL_VERBS = ["sent", "saved", "created", "updated", "moved"] as const;
 
 /** A tool as a sheet declares it; a plugin's local tools declare theirs the same way. */
 export const IntegrationTool = s
@@ -123,6 +136,8 @@ export const IntegrationTool = s
     risk: s.enum(["read", "write", "send"]),
     /** What a `send` tool sends, such as `{ one: email, many: emails }`. */
     noun: ToolNoun.optional(),
+    /** What one call does to its noun, such as `saved`; absent means `sent`. Only next to a noun. */
+    verb: s.enum(TOOL_VERBS).optional(),
     /** Whether the result carries outside content, such as mail. Always stated. */
     untrusted: s.boolean(),
   })

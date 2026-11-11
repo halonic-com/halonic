@@ -115,6 +115,18 @@ impl WorkspaceFolders {
             &["deployments", deployment_id, "runs"],
         ))
     }
+
+    /// The folder for the blobs the workspace's runs refer to, as
+    /// `blobsFolder` names it.
+    pub fn blobs_folder(&self) -> String {
+        join_path(self.platform, &self.folder, &["blobs"])
+    }
+
+    /// The folder for the workspace's records, agent notes and collections,
+    /// as `recordsFolder` names it.
+    pub fn records_folder(&self) -> String {
+        join_path(self.platform, &self.folder, &["records"])
+    }
 }
 
 /// The first 32 hex characters of the SHA-256 of the path's one spelling.

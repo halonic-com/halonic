@@ -188,6 +188,9 @@ describe("doctorReportLines", () => {
     expect(workspaceOf(unreadable)).toEqual([
       "! Workspace   not trusted yet · halonic trust --dir ./acme",
     ]);
+    expect(workspaceOf({ ...trusted, trust: "not-needed" })).toEqual([
+      "✓ Workspace   acme · test model only, no trust needed",
+    ]);
   });
 
   it("names both servers that don't answer, and the sandbox, in the summary", () => {

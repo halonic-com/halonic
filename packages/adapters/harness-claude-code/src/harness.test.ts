@@ -30,8 +30,8 @@ const unusedProbe = {
   },
 };
 
-function newHarness(settings = new MemorySettingsFolder()) {
-  return claudeCodeHarness({ probe: unusedProbe, settings });
+function newHarness(settings = new MemorySettingsFolder(), ownSandbox = async () => true) {
+  return claudeCodeHarness({ probe: unusedProbe, settings, ownSandbox });
 }
 
 const task: HarnessTask = {
@@ -183,6 +183,44 @@ verifies("harness-claude-code.start", () => {
 
       expect(settingsFolderTexts(thisComputerMode)).toEqual(settingsFolderTexts(sandboxMode));
       expect(settingsFolderTexts(sandboxMode)).toEqual(Object.values(claudeCodeSettingsFiles()));
+    });
+
+    it("turns Claude Code's own sandbox on outside the fence, where it works", async () => {
+      const thisComputer = new FakeSandboxSession({
+        profile: engineProfile,
+        program: claudeFinishing,
+        fence: { state: "off" },
+      });
+      const { events } = await readAll(newHarness().start(task, thisComputer, bridge));
+
+      expect(events.at(-1)).toMatchObject({ type: "agent.finished", output: "Teal." });
+      expect(thisComputer.started[0]?.args).toContain("--settings");
+    });
+
+    it("still starts outside the fence where Claude Code's own sandbox doesn't work, without it", async () => {
+      const thisComputer = new FakeSandboxSession({
+        profile: engineProfile,
+        program: claudeFinishing,
+        fence: { state: "off" },
+      });
+      const harness = newHarness(new MemorySettingsFolder(), async () => false);
+      const { events } = await readAll(harness.start(task, thisComputer, bridge));
+
+      expect(events.at(-1)).toMatchObject({ type: "agent.finished", output: "Teal." });
+      expect(thisComputer.started[0]?.args).not.toContain("--settings");
+    });
+
+    it("leaves Claude Code's own sandbox off inside the fence, without asking", async () => {
+      let asked = 0;
+      const harness = newHarness(new MemorySettingsFolder(), async () => {
+        asked += 1;
+        return true;
+      });
+      const session = openSession(claudeFinishing);
+      await readAll(harness.start(task, session, bridge));
+
+      expect(session.started[0]?.args).not.toContain("--settings");
+      expect(asked).toBe(0);
     });
 
     it("ends Claude Code's input after its result, and ends the stream once it has exited", async () => {

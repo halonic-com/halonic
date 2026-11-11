@@ -40,6 +40,9 @@ export const doctorMessages = defineMessages("doctor", {
   /** Workspace ✓. */
   trusted: (workspace: string) =>
     phrase`${workspace} ${markPart("separator")} trusted on this computer`,
+  /** Workspace ✓ when a run there can only reach the test model, so it needs no trust (HAL-6007). */
+  testModelOnly: (workspace: string) =>
+    phrase`${workspace} ${markPart("separator")} test model only, no trust needed`,
   /** Workspace !, also when the trust record can't be read, because `halonic trust` writes it again. */
   notTrusted: (dir?: string) =>
     phrase`not trusted yet ${markPart("separator")} ${suggestedCommand("trust", dir)}`,

@@ -33,3 +33,30 @@ export interface BlobStore {
    */
   get(hash: string): Promise<Uint8Array | null>;
 }
+
+/** HTTP token characters (RFC 9110), for each half of `type/subtype`. */
+const mediaTypeToken = "[!#$%&'*+.^_`|~0-9A-Za-z-]+";
+const mediaTypePattern = new RegExp(`^${mediaTypeToken}/${mediaTypeToken}$`, "u");
+const blobHashPattern = /^[0-9a-f]{64}$/u;
+
+/**
+ * Refuses a media type {@link BlobStore.put} must not store: anything but
+ * `type/subtype` made of HTTP token characters.
+ *
+ * @throws RangeError naming the media type
+ */
+export function checkBlobMediaType(mediaType: string): void {
+  if (!mediaTypePattern.test(mediaType)) {
+    throw new RangeError(
+      `Media type ${JSON.stringify(mediaType)} is not type/subtype without parameters.`,
+    );
+  }
+}
+
+/**
+ * Whether a hash can name a blob: 64 lowercase hex characters. Any other
+ * is answered with `null` by {@link BlobStore.get} before it reaches storage.
+ */
+export function isBlobHash(hash: string): boolean {
+  return blobHashPattern.test(hash);
+}

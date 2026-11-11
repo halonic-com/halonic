@@ -19,4 +19,4 @@ The `halonic validate` command shall load the workspace in the current folder, o
   then it shows 20 problems, then "Showing the first 20 of 25 problems. Run halonic validate --dir ./acme --all to see them all.", and with `--all` all 25.
 - Given a folder without `workspace.yaml`,
   when `halonic validate --dir ./downloads` runs,
-  then it prints "✕ Couldn't check ./downloads: there's no workspace.yaml here." and "Run it inside a workspace, or create one with halonic init." on stderr and exits with 4.
+  then it prints "✕ Couldn't check ./downloads: there's no workspace.yaml here." and "Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme." on stderr and exits with 4.

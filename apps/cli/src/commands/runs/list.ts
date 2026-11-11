@@ -162,15 +162,13 @@ async function runFilter(
       if ((await history.listRuns(gone, 1)).total > 0) {
         return { ...byStatus, ...gone };
       }
-      const near = nearMatch(
-        typed,
-        workflows.map((each) => each.workflow.id),
-      );
+      const ids = workflows.map((each) => each.workflow.id);
+      const near = nearMatch(typed, ids);
       throw new OwnLineError(
         "not_found",
         workflowMessages.noWorkflow(shownTyped, workspaceName),
         near === undefined
-          ? workflowMessages.seeWorkflows()
+          ? workflowMessages.seeWorkflows(workspaceName, ids)
           : workflowMessages.workflowNear(printable(near)),
       );
     }

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { loadContext } from "../lib/context.ts";
 import { defaultCoverageFloors } from "../lib/coverage.ts";
-import { startersPath } from "../rules/process-starts.ts";
-import { type FixturePackage, manifestFor, runChecks } from "./fixture-repo.ts";
+import { checkProcessStarts, startersPath } from "../rules/process-starts.ts";
+import {
+  type FixturePackage,
+  manifestFor,
+  removeFixtureRepo,
+  runChecks,
+  writeFixtureRepo,
+} from "./fixture-repo.ts";
 
 const launcher = "packages/adapters/launcher/src/launch.ts";
 const launcherTest = "packages/adapters/launcher/src/launch.test.ts";
@@ -123,11 +130,35 @@ describe("tooling/check: process-starts", () => {
 
   it("flags a stale entry", () => {
     const pkg = adapter({ "src/launch.ts": "export const run = 1;\n", "src/launch.test.ts": "" });
-    const missing = { "packages/adapters/launcher/src/gone.ts": validEntry };
-    const found = problems([pkg], starters({ [launcher]: validEntry, ...missing }));
-    expect(found).toHaveLength(2);
+    const found = problems([pkg], starters({ [launcher]: validEntry }));
+    expect(found).toHaveLength(1);
     expect(found[0]).toContain("no longer imports");
-    expect(found[1]).toContain("doesn't exist");
+  });
+
+  it("only warns about an entry whose file and test don't exist yet", () => {
+    const pkg = adapter({});
+    const coming = {
+      "packages/adapters/launcher/src/coming.ts": {
+        reason: "Starts the stdio connector.",
+        scriptsTest: "packages/adapters/launcher/src/coming.test.ts",
+      },
+    };
+    const root = writeFixtureRepo([pkg], { extraFiles: { [startersPath]: starters(coming) } });
+    try {
+      const found = checkProcessStarts(loadContext(root)).problems;
+      expect(found.map((problem) => `${problem.severity}: ${problem.message}`)).toEqual([
+        `warning: starters["packages/adapters/launcher/src/coming.ts"]: the file doesn't exist. Remove the entry unless its code is still to come. See docs/guides/checks.md (process-starts).`,
+      ]);
+    } finally {
+      removeFixtureRepo(root);
+    }
+    const noReason = { reason: "", scriptsTest: "packages/adapters/launcher/src/coming.test.ts" };
+    const found = problems(
+      [pkg],
+      starters({ "packages/adapters/launcher/src/coming.ts": noReason }),
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("needs a reason");
   });
 
   it("flags an entry with an empty reason", () => {

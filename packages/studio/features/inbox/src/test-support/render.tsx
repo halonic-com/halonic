@@ -28,3 +28,16 @@ export function render(element: ReactNode): HTMLElement {
   act(() => root.render(element));
   return container;
 }
+
+/**
+ * Renders `element` like {@link render}, in an awaited `act`, for a view that suspends: React
+ * retries a suspended view only when the `act` it first rendered in was awaited.
+ */
+export async function renderSuspending(element: ReactNode): Promise<HTMLElement> {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push({ root, container });
+  await act(async () => root.render(element));
+  return container;
+}

@@ -2,6 +2,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 /**
+ * Keeps licence comments (marked `@license` or `@preserve`, or opening with `/*!`) when the build minifies, which
+ * drops every other comment. The public suffix list in @halonicjs/std is MPL-2.0, and its notice
+ * must reach whoever gets the app (HAL-6177). Vite's `legalComments` setting no longer does this.
+ */
+const output = { comments: { legal: true } };
+
+/**
  * Two pages, built apart so the Android app never ships the Studio (HAL-1253):
  *
  * - by default, the Android app's own page into dist/connect (tauri.android.conf.json loads it).
@@ -17,7 +24,7 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: "dist/studio",
         emptyOutDir: true,
-        rollupOptions: { input: "studio.html" },
+        rolldownOptions: { input: "studio.html", output },
       },
     };
   }
@@ -26,7 +33,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist/connect",
       emptyOutDir: true,
-      rollupOptions: { input: "connect.html" },
+      rolldownOptions: { input: "connect.html", output },
     },
   };
 });

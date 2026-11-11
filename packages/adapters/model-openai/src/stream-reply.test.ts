@@ -26,6 +26,26 @@ verifies("model-openai.replies", () => {
     expect(answer.finishReason).toBe("tool_calls");
   });
 
+  it("keeps the thought signature Gemini streams with a call, without adding it to the events", () => {
+    const reply = new StreamedReply();
+    const events = reply.add(
+      toolCallChunk([
+        {
+          index: 0,
+          id: "call_1",
+          function: { name: "search", arguments: "{}" },
+          extra_content: { google: { thought_signature: "sig-a" } },
+        },
+      ]),
+    );
+    expect(events).toEqual([
+      { type: "tool-call", index: 0, id: "call_1", name: "search", arguments: "{}" },
+    ]);
+    expect(reply.response().toolCalls).toEqual([
+      { id: "call_1", name: "search", arguments: {}, signature: "sig-a" },
+    ]);
+  });
+
   it("gives streamed calls without an id call_<index>", () => {
     const answer = answerAfter([
       toolCallChunk([

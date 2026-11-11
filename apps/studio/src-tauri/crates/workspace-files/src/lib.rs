@@ -13,11 +13,13 @@ mod error;
 mod folder;
 mod links;
 mod temporary_write;
+mod watch;
 mod workspace_path;
 mod write_locks;
 
 pub use error::FileError;
 pub use folder::{WorkspaceFolder, WriteOutcome, content_digest};
+pub use watch::{FolderSnapshot, WatchMessage, Watches};
 pub use workspace_path::{
     check_public_workspace_path, check_workspace_path, is_private_workspace_path, segment_as_opened,
 };

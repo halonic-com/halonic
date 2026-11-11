@@ -1,5 +1,11 @@
 export { addUsage } from "./add-usage.ts";
 export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
+export {
+  type BlockedSite,
+  type BlockedSitesOptions,
+  blockedSites,
+  type StepBlockedSites,
+} from "./blocked-sites.ts";
 export type {
   ApprovalResolver,
   CantTryReason,

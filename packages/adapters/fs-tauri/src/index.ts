@@ -1,3 +1,11 @@
+export {
+  type BlobRefusal,
+  type BlobRefusalKind,
+  blobCommands,
+  blobRefusalKinds,
+  isBlobRefusal,
+} from "./blob-commands.ts";
+export { TauriBlobStore } from "./blob-store.ts";
 export { TauriDefinitionStore } from "./definition-store.ts";
 export {
   type FileRefusal,
