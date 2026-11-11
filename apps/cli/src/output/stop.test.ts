@@ -1,10 +1,17 @@
+import { EventEmitter } from "node:events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { defineMessages } from "../messages/define.ts";
 import { bold, phrase, plainText } from "../messages/phrase.ts";
 import { stopMessages } from "../messages/stop.ts";
 import { fakeSignals as signals } from "../test/fake-signals.ts";
-import { exitOnceWritten, type PendingOutput, stopExitCode, watchForStop } from "./stop.ts";
+import {
+  exitOnceWritten,
+  type PendingOutput,
+  quietOnClosedPipe,
+  stopExitCode,
+  watchForStop,
+} from "./stop.ts";
 
 const run = defineMessages("test", {
   cancelled: () =>
@@ -93,6 +100,15 @@ verifies("cli.stop", () => {
     exitNow(130);
     exitNow(143);
     expect(exits).toEqual([143]);
+  });
+
+  it("ends the output quietly when the reader closes the pipe, and still throws other write errors", () => {
+    const stdout = new EventEmitter();
+    quietOnClosedPipe(stdout);
+    const closed = Object.assign(new Error("write EPIPE"), { code: "EPIPE" });
+    const full = Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
+    expect(() => stdout.emit("error", closed)).not.toThrow();
+    expect(() => stdout.emit("error", full)).toThrow("no space left on device");
   });
 
   it("says Stopped, then what that meant", () => {
