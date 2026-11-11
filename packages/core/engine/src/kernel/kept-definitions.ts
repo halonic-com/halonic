@@ -72,7 +72,8 @@ function isDefinitions(parsed: unknown): parsed is RunDefinitions {
     (parsed["agents"] === undefined || isPlainObject(parsed["agents"])) &&
     (parsed["workflows"] === undefined || isPlainObject(parsed["workflows"])) &&
     (parsed["collections"] === undefined || isPlainObject(parsed["collections"])) &&
-    (parsed["knowledge"] === undefined || isPlainObject(parsed["knowledge"]))
+    (parsed["knowledge"] === undefined || isPlainObject(parsed["knowledge"])) &&
+    (parsed["skills"] === undefined || isPlainObject(parsed["skills"]))
   );
 }
 

@@ -35,6 +35,7 @@ import {
   openSources,
 } from "./knowledge/agent-knowledge.ts";
 import { defaultRunMaxRounds, type RunTurn, runLocalSubagent } from "./local-subagent.ts";
+import { runTurnMessages } from "./run/agent-system-prompt.ts";
 import {
   allowedToolsOf,
   connectorsOf,
@@ -406,9 +407,9 @@ export class LocalExecutor implements RunExecutor {
    * their kept files allow ({@link runConnectorsOf}), through the same turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first, and a connector call its kept file puts
    * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
-   * round limit: a turn that reaches it while the model still calls tools fails the call. The
-   * agent's own prompt and the turn's full run log come in step 4; until then it logs only
-   * `tool.refused` ({@link refusalLog}).
+   * round limit: a turn that reaches it while the model still calls tools fails the call. The model
+   * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
+   * turn's full run log comes in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
    *
    * A `parallel` branch's call is offered only the connector tools whose
    * listing says they read and their kept file doesn't put under `approve`
@@ -433,7 +434,7 @@ export class LocalExecutor implements RunExecutor {
       inBranch: branchOfCall(run.parallel, call.callId) !== null,
     };
     const agent = agentIn(turn.definitions, call.agent);
-    const messages = [{ role: "user" as const, content: call.prompt }];
+    const messages = runTurnMessages(agent, turn.definitions, call.prompt);
     const model = await this.options.resolveModel({
       hubId: run.hubId,
       agentId: call.agent,

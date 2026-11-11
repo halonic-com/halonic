@@ -92,6 +92,13 @@ its `collections` when the executor has a record store, and a `delegate_` tool p
 collections come from the run's kept definitions (`RunDefinitions.collections`). A chat turn gets
 none of them.
 
+A run's agent, and each subagent it hands a task to, gets a system message before its task
+(requirement `engine.run-agent-instructions`), built by `agentSystemPrompt` from its kept file:
+its instructions, each skill its `skills` lists (from `RunDefinitions.skills`) as `## Skill: <name>`,
+`delegationHint` when it has subagents, a line on connector tools when it has connectors, and how
+to reply when its `output` is a choice or JSON. An agent with none of these, or with no file in the
+kept definitions, gets its task alone. A chat turn's system message comes from its caller.
+
 A run's model call is offered a connector's tools only as its kept file allows (requirement
 `engine.run-connector-allow`): the tools its `allow` list names, under the name its server lists
 them under, or every tool the server lists when the file has no `allow`. A connector whose file

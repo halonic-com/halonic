@@ -11,6 +11,7 @@ import type { RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn } from "./kernel/kept-definitions.ts";
 import type { RunState } from "./kernel/run-state.ts";
 import type { AgentKnowledge } from "./knowledge/agent-knowledge.ts";
+import { runTurnMessages } from "./run/agent-system-prompt.ts";
 import { runConnectorsOf } from "./run/connector-calls.ts";
 import type { DelegatedTask, SubagentOutcome } from "./tools/subagents/subagent-tools.ts";
 
@@ -58,7 +59,9 @@ export interface LocalSubagentContext {
  * gets them when the turn is under one. Its calls are checked as a run's
  * are ({@link runToolCheckOf}), so a call that needs a person's OK, or one
  * the engine must make, stops the subagent's turn, and the turn that
- * delegated to it stops at the `delegate_*` call (HAL-3361).
+ * delegated to it stops at the `delegate_*` call (HAL-3361). The model gets
+ * the subagent's own instructions and skills as a system message
+ * ({@link runTurnMessages}), then the task.
  *
  * A subagent that uses all its `maxSteps` while still calling tools hands
  * back the text it has, unlike a run's own call, which fails then
@@ -75,7 +78,7 @@ export async function runLocalSubagent(
 ): Promise<SubagentOutcome> {
   const { turn } = context;
   const subagent = agentIn(turn.definitions, task.agent);
-  const messages = [{ role: "user" as const, content: task.task }];
+  const messages = runTurnMessages(subagent, turn.definitions, task.task);
   const model = await context.resolveModel({
     hubId: turn.run.hubId,
     agentId: task.agent,

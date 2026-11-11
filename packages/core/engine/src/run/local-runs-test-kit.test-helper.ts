@@ -1,5 +1,12 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Agent, Collection, Connector, KnowledgeSource, Workflow } from "@halonicjs/format";
+import type {
+  Agent,
+  Collection,
+  Connector,
+  KnowledgeSource,
+  Skill,
+  Workflow,
+} from "@halonicjs/format";
 import type {
   ChatResponse,
   Clock,
@@ -115,6 +122,8 @@ export interface RunsSetup {
   readonly connectorTools?: Readonly<Record<string, Connector["tools"]>>;
   /** The knowledge sources the hub can see; none when left out. */
   readonly knowledge?: Readonly<Record<string, KnowledgeSource>>;
+  /** The skills the hub can see; none when left out. */
+  readonly skills?: Readonly<Record<string, Skill>>;
   /** How the executor builds agents' knowledge sources; it builds none when left out. */
   readonly knowledgeOptions?: AgentKnowledgeOptions;
   /** What runs need to reach the connectors; runs offer none of their tools when left out. */
@@ -137,6 +146,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     workflows,
     collections,
     knowledge,
+    skills,
     blobs = new KernelBlobs(),
   } = setup;
   const connectorTools =
@@ -175,6 +185,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
           ...(workflows === undefined ? {} : { workflows }),
           ...(collections === undefined ? {} : { collections }),
           ...(knowledge === undefined ? {} : { knowledge }),
+          ...(skills === undefined ? {} : { skills }),
           connectorTools,
         };
       },

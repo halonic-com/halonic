@@ -87,8 +87,8 @@ export function definitionsOf(workspace: LoadedWorkspace, hubId: string): HubDef
 
 /**
  * What a new run starts with: the workflow it runs, the hub's agents,
- * workflows, collections and knowledge sources, and the `tools` lists of
- * the connectors it can see. It has the shape of the engine's
+ * workflows, collections, knowledge sources and skills, and the `tools`
+ * lists of the connectors it can see. It has the shape of the engine's
  * `RunDefinitions`, built here so the CLI and the test runner build it the
  * same way.
  */
@@ -98,6 +98,7 @@ export interface RunStartDefinitions {
   readonly workflows: ById<"workflow">;
   readonly collections: ById<"collection">;
   readonly knowledge: ById<"knowledge">;
+  readonly skills: ById<"skill">;
   /**
    * Each connector's `tools` lists by its id, and nothing else of its file:
    * a run needs only what its agents are offered, not how to connect.
@@ -108,7 +109,7 @@ export interface RunStartDefinitions {
 /**
  * The definitions a new run of `workflowId` in `hubId` starts with, as the
  * workspace has them now: the workflow, the hub's agents, workflows,
- * collections and knowledge sources, and its connectors' `tools` lists.
+ * collections, knowledge sources and skills, and its connectors' `tools` lists.
  *
  * @param workspace - the loaded workspace
  * @param hubId - the hub the run is in
@@ -117,7 +118,7 @@ export interface RunStartDefinitions {
  *
  * @example
  * runDefinitionsOf(workspace, "support", "support-reply");
- * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {}, connectorTools: { mail: { allow: ["search"], approve: [] } } }
+ * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {}, skills: {}, connectorTools: { mail: { allow: ["search"], approve: [] } } }
  */
 export function runDefinitionsOf(
   workspace: LoadedWorkspace,
@@ -135,6 +136,7 @@ export function runDefinitionsOf(
     workflows: hub.workflows,
     collections: hub.collections,
     knowledge: hub.knowledge,
+    skills: hub.skills,
     connectorTools: connectorToolsOf(hub),
   };
 }

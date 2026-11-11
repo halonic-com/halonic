@@ -113,13 +113,14 @@ verifies("workspace.definitions", () => {
 });
 
 verifies("workspace.run-definitions", () => {
-  it("starts a run with the workflow and the hub's agents, workflows, collections and knowledge", async () => {
+  it("starts a run with the workflow and the hub's agents, workflows, collections, knowledge and skills", async () => {
     const definitions = runDefinitionsOf(await load(), "billing", "invoice");
     expect(definitions.workflow.id).toBe("invoice");
     expect(Object.keys(definitions.agents)).toEqual(["clerk"]);
     expect(Object.keys(definitions.workflows)).toEqual(["invoice"]);
     expect(definitions.collections).toEqual({});
     expect(definitions.knowledge).toEqual({});
+    expect(Object.keys(definitions.skills).sort()).toEqual(["house-style", "notes"]);
     expect(definitions.connectorTools).toEqual({});
   });
 
