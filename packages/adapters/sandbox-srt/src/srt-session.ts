@@ -307,6 +307,8 @@ export class SrtSession implements SandboxSession {
     const { journalFolder = null } = options;
     let journal: string | null = null;
     let launcherTemp: string | null = null;
+    // Held from here, before srt runs anything: the forget in the `catch` below or `close()` gives the hold up.
+    grants?.hold([profile.workingFolder, profile.tempFolder]);
     try {
       launcherTemp = await makeLauncherTemp();
       if (git.folder !== null && journalFolder !== null) {
@@ -448,8 +450,8 @@ export class SrtSession implements SandboxSession {
 
   /**
    * Takes back the write grants srt kept on the working and temp folders
-   * (Windows), once nothing the session started is left. A grant another
-   * live session holds stays and is left to a later sweep.
+   * (Windows), once nothing the session started is left. A folder another
+   * live session of this host uses stays; that session forgets it when it closes.
    *
    * @returns the folders it could not free, so `close()` can reject with them.
    */

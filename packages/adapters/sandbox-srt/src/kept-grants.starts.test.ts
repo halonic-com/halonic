@@ -30,11 +30,11 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(started).toEqual([
         {
           file: "vendor/srt-win.exe",
-          args: ["--srt-win", "acl", "forget", "work", "--unless-held-by-others"],
+          args: ["--srt-win", "acl", "forget", "work"],
         },
         {
           file: "vendor/srt-win.exe",
-          args: ["--srt-win", "acl", "forget", "temp", "--unless-held-by-others"],
+          args: ["--srt-win", "acl", "forget", "temp"],
         },
       ]);
     });

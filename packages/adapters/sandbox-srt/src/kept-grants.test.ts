@@ -21,22 +21,25 @@ function fakeSrtWin(answer: (args: string[]) => Partial<SrtWinResult> = () => ({
 
 verifies("sandbox-srt.kept-grants", () => {
   describe("KeptGrants", () => {
-    it("forgets each folder once, unless another session holds it", async () => {
+    it("forgets each folder once, naming only the folder", async () => {
       const { calls, grants } = fakeSrtWin();
       const result = await grants.forget(["work", "temp", "work"]);
       expect(result).toEqual({ heldByOthers: [], failed: [] });
-      expect(calls).toHaveLength(2);
-      for (const call of calls) {
-        expect(call.slice(0, 2)).toEqual(["acl", "forget"]);
-        expect(call.at(-1)).toBe("--unless-held-by-others");
-      }
+      expect(calls).toEqual([
+        ["acl", "forget", "work"],
+        ["acl", "forget", "temp"],
+      ]);
     });
 
-    it("does not count a grant another live session holds as a failure", async () => {
-      const { grants } = fakeSrtWin(() => ({ status: 22 }));
-      const result = await grants.forget(["work"]);
-      expect(result.failed).toEqual([]);
-      expect(result.heldByOthers).toHaveLength(1);
+    it("keeps a folder another live session of this host holds, and forgets it when that one lets go", async () => {
+      const { calls, grants } = fakeSrtWin();
+      grants.hold([inRuns, "temp-a"]);
+      grants.hold([inRuns.toLowerCase(), "temp-b"]);
+      const first = await grants.forget([inRuns, "temp-a"]);
+      expect(first).toEqual({ heldByOthers: [inRuns], failed: [] });
+      expect(calls).toEqual([["acl", "forget", "temp-a"]]);
+      await grants.forget([inRuns, "temp-b"]);
+      expect(calls.map((call) => call[2])).toEqual(["temp-a", inRuns, "temp-b"]);
     });
 
     it("reports a failing folder with its reason, and goes on with the rest", async () => {
@@ -76,17 +79,21 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(() => fakeSrtWin().grants.assertSupported()).not.toThrow();
     });
 
-    it("sweeps only the kept grants inside the run folder, whatever their letter case", async () => {
+    it("sweeps only the kept grants inside the run folder, whatever their letter case, and none a live session holds", async () => {
       const roots = [inRuns, inRunsLower, outside, sibling];
       const { calls, grants } = fakeSrtWin((args) =>
         args[0] === "user"
           ? { stdout: JSON.stringify({ persistent_grants: { state: "present", roots } }) }
           : {},
       );
+      grants.hold([inRunsLower]);
       const result = await grants.sweep(runsFolder);
-      expect(result.failed).toEqual([]);
+      expect(result).toEqual({ heldByOthers: [inRunsLower], failed: [] });
       const forgotten = calls.filter((call) => call[0] === "acl").map((call) => call[2]);
-      expect(forgotten).toEqual([inRuns, inRunsLower]);
+      expect(forgotten).toEqual([inRuns]);
+      // The sweep doesn't take the session's hold: its own close still finds it held once.
+      await grants.forget([inRunsLower]);
+      expect(calls.at(-1)).toEqual(["acl", "forget", inRunsLower]);
       expect(calls[0]).toEqual(["user", "status"]);
     });
 

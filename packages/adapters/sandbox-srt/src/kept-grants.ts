@@ -5,9 +5,6 @@ import { installedSrtVersion } from "./srt-runner.ts";
 /** The versions of sandbox-runtime whose `srt-win acl forget` this module was tried against. */
 export const testedSrtVersions: readonly string[] = ["0.0.81"];
 
-/** `srt-win`'s exit code for "nothing was removed: another session still holds the grant". */
-const heldByOthers = 22;
-
 /** What one `srt-win` call gave. */
 export interface SrtWinResult {
   status: number | null;
@@ -24,7 +21,7 @@ export interface ForgetFailure {
   reason: string;
 }
 
-/** What forgetting some folders gave: the ones another live session still holds (a later sweep takes them), and the ones that failed. */
+/** What forgetting some folders gave: the ones another live session of this host still uses (it forgets them when it closes), and the ones that failed. */
 export interface ForgetResult {
   heldByOthers: string[];
   failed: ForgetFailure[];
@@ -71,10 +68,17 @@ function oneLine(text: string): string {
  * read an earlier session's files (HAL-5882). srt has no library call to take
  * it back; this is the one place that runs `srt-win acl forget` for it.
  * Windows only.
+ *
+ * `acl forget` checks for live sessions only with `--all`, not for named
+ * folders, so which folders the live sessions of this host use is counted
+ * here: a session holds its folders while it runs, and a folder is forgotten
+ * only once no session holds it any more.
  */
 export class KeptGrants {
   readonly #run: RunSrtWin;
   readonly #version: () => string;
+  /** How many live sessions of this host use each folder, by {@link windowsKey}. */
+  readonly #held = new Map<string, number>();
 
   /** A test hands in a fake `srt-win` and version. */
   constructor(run: RunSrtWin = runVendoredSrtWin, version: () => string = installedSrtVersion) {
@@ -99,34 +103,58 @@ export class KeptGrants {
     }
   }
 
-  /** Forgets the kept grant on each folder, unless a live session of another process holds it. Never rejects. */
+  /** Records that a live session uses these folders, so no other session's close or sweep forgets them. */
+  hold(folders: readonly string[]): void {
+    for (const key of new Set(folders.map(windowsKey))) {
+      this.#held.set(key, (this.#held.get(key) ?? 0) + 1);
+    }
+  }
+
+  /**
+   * Gives up one hold on each folder (if it had one), then forgets the kept
+   * grant on each folder no other live session of this host holds. Never rejects.
+   */
   async forget(folders: readonly string[]): Promise<ForgetResult> {
+    for (const key of new Set(folders.map(windowsKey))) this.#release(key);
+    return this.#forgetUnheld(folders);
+  }
+
+  async #forgetUnheld(folders: readonly string[]): Promise<ForgetResult> {
+    const unique = [...new Map(folders.map((folder) => [windowsKey(folder), folder])).values()];
     const result: ForgetResult = { heldByOthers: [], failed: [] };
-    for (const folder of new Set(folders)) {
-      try {
-        const run = await this.#run(["acl", "forget", folder, "--unless-held-by-others"]);
-        if (run.status === 0) continue;
-        if (run.status === heldByOthers) result.heldByOthers.push(folder);
-        else {
-          const why = oneLine(run.stderr || run.stdout);
-          result.failed.push({
-            folder,
-            reason: `exit ${run.status}${why === "" ? "" : `: ${why}`}`,
-          });
-        }
-      } catch (error) {
-        result.failed.push({
-          folder,
-          reason: oneLine(error instanceof Error ? error.message : String(error)),
-        });
+    for (const folder of unique) {
+      if (this.#held.has(windowsKey(folder))) {
+        result.heldByOthers.push(folder);
+        continue;
       }
+      const failure = await this.#forgetOne(folder);
+      if (failure !== null) result.failed.push(failure);
     }
     return result;
   }
 
+  #release(key: string): void {
+    const count = this.#held.get(key) ?? 0;
+    if (count <= 1) this.#held.delete(key);
+    else this.#held.set(key, count - 1);
+  }
+
+  async #forgetOne(folder: string): Promise<ForgetFailure | null> {
+    try {
+      const run = await this.#run(["acl", "forget", folder]);
+      if (run.status === 0) return null;
+      const why = oneLine(run.stderr || run.stdout);
+      return { folder, reason: `exit ${run.status}${why === "" ? "" : `: ${why}`}` };
+    } catch (error) {
+      return { folder, reason: oneLine(error instanceof Error ? error.message : String(error)) };
+    }
+  }
+
   /**
    * Forgets the kept grants of this user inside `runsFolder` that no live
-   * session holds: those of sessions that crashed before they closed.
+   * session of this host holds: those of sessions that crashed before they
+   * closed. A live session of another host process on the same folder would
+   * lose its grant, so give each host a runs folder of its own.
    * Never rejects.
    */
   async sweep(runsFolder: string): Promise<ForgetResult> {
@@ -151,15 +179,17 @@ export class KeptGrants {
         ],
       };
     }
-    return this.forget(roots.filter((root) => isInsideWindows(runsFolder, root)));
+    return this.#forgetUnheld(roots.filter((root) => isInsideWindows(runsFolder, root)));
   }
 }
 
-/** Whether `child` is `parent` or inside it, as Windows reads paths (letter case doesn't count). */
+/** A folder as Windows compares it: resolved, letter case doesn't count. */
+function windowsKey(folder: string): string {
+  return win32.resolve(folder).toLowerCase();
+}
+
+/** Whether `child` is `parent` or inside it, as Windows reads paths. */
 function isInsideWindows(parent: string, child: string): boolean {
-  const path = win32.relative(
-    win32.resolve(parent).toLowerCase(),
-    win32.resolve(child).toLowerCase(),
-  );
+  const path = win32.relative(windowsKey(parent), windowsKey(child));
   return path === "" || (!path.startsWith("..") && !win32.isAbsolute(path));
 }
