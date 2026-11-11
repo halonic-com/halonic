@@ -158,7 +158,11 @@ cases:
       const [test] = (await runWorkspaceTests(input, deps)).tests;
 
       expect(test?.failures).toEqual([]);
-      expect(promptsOf(models[0])[1]).toEqual(["clerk", "[#12 Login fails]"]);
+      // A connector tool's result reaches the model inside the untrusted fence.
+      expect(promptsOf(models[0])[1]).toEqual([
+        "clerk",
+        "<untrusted>\n[#12 Login fails]\n</untrusted>",
+      ]);
     });
 
     it("wait for a person before a tool that needs approval, then run it or tell the agent no", async () => {

@@ -69,7 +69,8 @@ verifies("test-runner.old-suites", () => {
       ]);
       expect(promptsOf(models[0])).toEqual([
         ["helper", "Check the post"],
-        ["helper", "[school, bank]"],
+        // The shared connector's result reaches the model inside the untrusted fence.
+        ["helper", "<untrusted>\n[school, bank]\n</untrusted>"],
       ]);
       expect(promptsOf(models[1])).toEqual([["analyst", "Check the post"]]);
     });

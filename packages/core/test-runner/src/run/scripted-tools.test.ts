@@ -54,9 +54,13 @@ verifies("test-runner.scripted-tools", () => {
       const [test] = (await runWorkspaceTests(input, deps)).tests;
 
       expect(test?.failures).toEqual([]);
-      // The model's second request holds the scripted result.
+      // The model's second request holds the scripted result, fenced like
+      // any connector tool's result.
       const answered = models[0]?.requests[1]?.messages.at(-1);
-      expect(answered).toMatchObject({ role: "tool", content: '{"vendor": "Acme Paper"}' });
+      expect(answered).toMatchObject({
+        role: "tool",
+        content: '<untrusted>\n{"vendor": "Acme Paper"}\n</untrusted>',
+      });
     });
 
     it("fails a case whose run calls a tool it has no result for", async () => {
