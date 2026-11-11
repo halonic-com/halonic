@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileSystemFolderReader, FileTrustStore } from "@halonicjs/adapter-fs-node";
-import { MemoryUnfencedRunConsentStore } from "@halonicjs/adapter-memory";
+import { MemoryFolderReader, MemoryUnfencedRunConsentStore } from "@halonicjs/adapter-memory";
 import {
   type GatedRunner,
   IntegrationNotTrustedError,
@@ -24,12 +24,16 @@ import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
+import { readLocalIntegrations } from "./workspace-integrations.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust, workspaceIntegrations } from "./workspace-trust.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
 const clock = fixedClock(Date.UTC(2026, 10, 11, 9));
 const noCommands = { path: undefined, endings: [] };
+
+/** A folder link on Windows is a junction, which needs no special rights. */
+const folderLinkType = process.platform === "win32" ? "junction" : "dir";
 
 /** A local integration that reaches the weather station at the address in its `station_url` setting. */
 const stationSheet = `id: station
@@ -151,8 +155,28 @@ verifies("cli.local-integrations", () => {
         "integrations/linked/integration.yaml": stationSheet.replace("id: station", "id: linked"),
         "integrations/station-copy/integration.yaml": stationSheet,
       });
-      await symlink(join(acme, "workspace.yaml"), join(acme, "integrations/linked/workspace.yaml"));
+      await symlink(join(acme, "library"), join(acme, "integrations/linked/data"), folderLinkType);
       const integrations = await workspaceIntegrations(acme, "./acme");
+      expect(integrations.map((integration) => integration.folder)).toEqual([
+        "integrations/station",
+      ]);
+    });
+
+    it("leaves out a folder whose files can't be read, and still reads the others", async () => {
+      const workspace = new MemoryFolderReader();
+      for (const id of ["broken", "station"]) {
+        workspace.putFile(
+          `integrations/${id}/integration.yaml`,
+          stationSheet.replace("id: station", `id: ${id}`),
+        );
+        workspace.putFile(`integrations/${id}/src/index.js`, "export default {};\n");
+      }
+      const read = workspace.read.bind(workspace);
+      workspace.read = async (path) => {
+        if (path.startsWith("integrations/broken/src/")) throw new Error("The disk failed.");
+        return await read(path);
+      };
+      const integrations = await readLocalIntegrations(workspace, webCryptoDigest);
       expect(integrations.map((integration) => integration.folder)).toEqual([
         "integrations/station",
       ]);

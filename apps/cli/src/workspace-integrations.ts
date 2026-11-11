@@ -5,7 +5,7 @@
 // (`TrustedRunnerStart`) reads it, so the code hash a person trusts is the
 // one checked when the integration starts.
 
-import { readIntegrationFolder } from "@halonicjs/app";
+import { type IntegrationFolder, readIntegrationFolder } from "@halonicjs/app";
 import type { Digest, FolderEntry, FolderReader } from "@halonicjs/ports";
 import type { LocalIntegrationInput } from "@halonicjs/workspace";
 
@@ -20,7 +20,7 @@ const sheetName = "integration.yaml";
  * order of their folders' names.
  *
  * A folder that can't be read as an integration, such as one with a link
- * in it or a sheet that doesn't parse, is left out, as `loadWorkspace`
+ * in it, a sheet that doesn't parse or a file that can't be read, is left out, as `loadWorkspace`
  * leaves out a file with an error. So is a folder whose id an earlier
  * folder already has. A left-out integration is in no trust, so its runner
  * never starts (`not-in-trust`).
@@ -42,12 +42,31 @@ export async function readLocalIntegrations(
   const integrations: LocalIntegrationInput[] = [];
   const ids = new Set<string>();
   for (const folder of await integrationFolders(workspace)) {
-    const read = await readIntegrationFolder(workspace, digest, folder);
-    if (!read.ok || ids.has(read.value.sheet.id)) continue;
-    ids.add(read.value.sheet.id);
-    integrations.push({ sheet: read.value.sheet, settings: {}, folder, code: read.value.code });
+    const read = await readFolder(workspace, digest, folder);
+    if (read === undefined || ids.has(read.sheet.id)) continue;
+    ids.add(read.sheet.id);
+    integrations.push({ sheet: read.sheet, settings: {}, folder, code: read.code });
   }
   return integrations;
+}
+
+/**
+ * The integration in `folder`, or `undefined` when it can't be read as one.
+ * That includes a reader that throws, such as for a name with a backslash
+ * in it or a file that became a link while it was read, so one such folder
+ * doesn't stop the trust check of the whole workspace.
+ */
+async function readFolder(
+  workspace: FolderReader,
+  digest: Digest,
+  folder: string,
+): Promise<IntegrationFolder | undefined> {
+  try {
+    const read = await readIntegrationFolder(workspace, digest, folder);
+    return read.ok ? read.value : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Every folder directly under `integrations/` with an `integration.yaml` in it, by name. */
