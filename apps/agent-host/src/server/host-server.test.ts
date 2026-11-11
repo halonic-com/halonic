@@ -102,7 +102,7 @@ describe("startHostServer", () => {
     expect(answer.status).toBe(404);
   });
 
-  it("answers 500 when a route throws before it answers", async () => {
+  it("answers 500 when a route rejects before it answers", async () => {
     server = await startHostServer(token, [
       { method: "GET", path: "/v1/broken", handle: () => Promise.reject(new Error("broken")) },
     ]);
@@ -110,6 +110,24 @@ describe("startHostServer", () => {
     const answer = await send(server.url, "/v1/broken", headers);
     expect(answer.status).toBe(500);
     expect(answer.body).toEqual({ error: { kind: "internal" } });
+  });
+
+  it("answers 500 and keeps serving when a route throws synchronously", async () => {
+    server = await startHostServer(token, [
+      healthRoute("1.2.3"),
+      {
+        method: "GET",
+        path: "/v1/broken",
+        handle: () => {
+          throw new Error("broken");
+        },
+      },
+    ]);
+    const headers = { host: new URL(server.url).host, authorization: `Bearer ${token}` };
+    const answer = await send(server.url, "/v1/broken", headers);
+    expect(answer.status).toBe(500);
+    expect(answer.body).toEqual({ error: { kind: "internal" } });
+    expect((await send(server.url, "/v1/health", headers)).status).toBe(200);
   });
 });
 

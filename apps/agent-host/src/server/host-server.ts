@@ -62,11 +62,15 @@ export async function startHostServer(
       sendRefusal(response, refusal ?? "not_found");
       return;
     }
-    Promise.resolve(route.handle(request, response)).catch(() => {
-      // A route answers its own errors; one that throws anyway ends its answer here.
-      if (!response.headersSent) sendJson(response, 500, { error: { kind: "internal" } });
-      else response.destroy();
-    });
+    // Calling `handle` inside `then` turns a synchronous throw into a rejection,
+    // so one broken request can't end the whole host.
+    Promise.resolve()
+      .then(() => route.handle(request, response))
+      .catch(() => {
+        // A route answers its own errors; one that throws anyway ends its answer here.
+        if (!response.headersSent) sendJson(response, 500, { error: { kind: "internal" } });
+        else response.destroy();
+      });
   });
   port = await listenOnLoopback(server);
   return { url: `http://${loopbackHost}:${port}`, close: () => stopServer(server) };
