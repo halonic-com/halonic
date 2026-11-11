@@ -456,6 +456,29 @@ it. The host saves the width on this computer, as it does the sidebar's:
 
 The edge itself, Maximise and ✕ come with the item page frame.
 
+## Phone places and Back
+
+On a phone (`shell.place-stacks`) there are no window tabs: the bottom navigation has four places,
+Home, Inbox, Runs and More, and each keeps its own stack of pages. `PlaceStacks` is a plain value,
+the place shown and each stack with its top page first. The functions take one and return the
+next, or the same one when nothing changed:
+
+- `switchPhonePlace(stacks, place)` is a tap in the bottom navigation: another place shows where the
+  user left it, the place already shown goes back to its top.
+- `openPhonePage(stacks, location, { list })` opens a page in the place shown. A sidebar place
+  opens where it lives (`phonePlaceOf`): Inbox and Runs at their top, Agents, Workflows, Routines,
+  Library and Changes as lists right above the More page. `list: true` marks a page that is still a
+  list, such as the Library's Skills, so the bottom navigation stays.
+- `openPhonePageIn(stacks, place, location)` follows a link to another place's page (a waiting run's
+  "Review in Inbox"): that place shows with the page on top, and Back from it comes back.
+- `goBackOnPhone(stacks)` is Back: one page up, or to Home from the top of Inbox, Runs or More. At
+  the top of Home it returns `undefined`, and the app leaves.
+- `isAtPlaceTop` says when the top bar has no Back button, `showsBottomNavigation` when the bottom
+  navigation shows (on a place or a list, never on an opened item), and `currentPhonePage` gives
+  the page whose title the top bar shows.
+
+The bars themselves, the More page and Android's back come next.
+
 ## Item page
 
 `ItemPage` is the frame the features draw an agent's, a workflow's or another item's page in (UX

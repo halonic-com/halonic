@@ -120,6 +120,23 @@ export {
   savedPanelWidth,
   shownPanelWidth,
 } from "./panels/panel-width.ts";
+export {
+  currentPhonePage,
+  goBackOnPhone,
+  isAtPlaceTop,
+  openPhonePage,
+  openPhonePageIn,
+  type PhoneOpenOptions,
+  type PhonePage,
+  type PhonePlace,
+  type PlaceStacks,
+  phonePlaceOf,
+  phonePlaces,
+  phonePlaceTops,
+  showsBottomNavigation,
+  startPlaceStacks,
+  switchPhonePlace,
+} from "./phone/place-stacks.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
   CommandContribution,
