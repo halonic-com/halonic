@@ -89,7 +89,7 @@ const plugins = async () => (await openPluginService(setup).load()).map((entry) 
 const pluginsFolder = () => join(folder, "profile", "plugins");
 
 verifies("cli.commands.plugin.add", () => {
-  it("shows Studio's sections in Studio's order, asks, and trusts the copy on yes", async () => {
+  it("shows Studio's sections in Studio's order without In Studio, asks, and trusts the copy on yes", async () => {
     const source = await writeSource("weather");
     const { terminal, written } = terminalTyping("y");
 
@@ -111,10 +111,7 @@ verifies("cli.commands.plugin.add", () => {
         "Addresses",
         "  api.weather.example",
         "",
-        "In Studio",
-        "  Commands      forecast",
-        "",
-        "Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.",
+        "Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.",
         "",
         "Trust Weather and turn it on? [y/N] ",
       ].join("\n"),

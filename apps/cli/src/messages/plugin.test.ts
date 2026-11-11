@@ -68,7 +68,6 @@ describe("plugin's sentences", () => {
       words(pluginMessages.secretsHeading()),
       words(pluginMessages.secretGoesTo("api.weather.example")),
       words(pluginMessages.addressesHeading()),
-      words(pluginMessages.inStudioHeading()),
       words(pluginMessages.notChecked()),
     ]).toEqual([
       "Tools for agents",
@@ -80,8 +79,7 @@ describe("plugin's sentences", () => {
       "Secrets",
       "goes only to api.weather.example",
       "Addresses",
-      "In Studio",
-      "Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.",
+      "Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.",
     ]);
   });
 

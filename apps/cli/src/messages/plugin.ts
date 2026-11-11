@@ -13,7 +13,9 @@ const stateWords: Readonly<Record<PluginState, string>> = {
 /**
  * The sentences of `halonic plugin add | list | remove` (cli-output 1.9 and
  * 3.6). The trust check's sections, headings and order are Studio's
- * (microcopy 24 T6–T9); a section shows only when it has something in it.
+ * (microcopy 24 T6–T9), without "In Studio", because 0.1 has no Studio to
+ * draw a plugin's settings, commands, cards or panel (HAL-6417); a section
+ * shows only when it has something in it.
  * Plugins live in the profile, so nothing here says "into your workspace".
  */
 export const pluginMessages = defineMessages("plugin", {
@@ -44,19 +46,12 @@ export const pluginMessages = defineMessages("plugin", {
   /** After a secret's name: "goes only to api.weather.example". */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
   addressesHeading: () => phrase`Addresses`,
-  inStudioHeading: () => phrase`In Studio`,
   /** T9's last line, under every plugin trust check. */
   notChecked: () =>
-    phrase`Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.`,
+    phrase`Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.`,
 
   /** A host that is the value of one of the plugin's settings, so it isn't known until it is set. */
   hostFromSetting: (setting: string) => phrase`the address in the setting ${setting}`,
-  /** The rows of "In Studio": what Halonic draws for the plugin. */
-  studioSettings: () => phrase`Settings`,
-  studioCommands: () => phrase`Commands`,
-  studioCards: () => phrase`Cards`,
-  studioPanel: () => phrase`Panel`,
-
   /** The refusal when a plugin with the id is already added; adding it again would be a conflict. */
   alreadyAdded: (id: string) => phrase`${id} is already added.`,
   alreadyAddedFix: (id: string) =>

@@ -1,9 +1,11 @@
 // Turns a plugin's trust content into the lines `halonic plugin add` shows
 // before it asks (cli-output 3.6): the same sections, headings and order as
 // Studio's trust check (microcopy 24 T6-T9, CHECK P8): Tools for agents,
-// Programs on this computer, Secrets, Addresses, In Studio, then the last
-// line. A section shows only when it has something in it. Every word comes
-// from the catalogue; this file only decides which sentence goes where.
+// Programs on this computer, Secrets, Addresses, then the last line. Studio's
+// "In Studio" section is left out: 0.1 has no Studio to draw the plugin's
+// settings, commands, cards or panel, and that part carries no code
+// (HAL-6417). A section shows only when it has something in it. Every word
+// comes from the catalogue; this file only decides which sentence goes where.
 
 import type { PluginTrustContent } from "@halonicjs/app";
 import type { Message } from "../messages/define.ts";
@@ -27,7 +29,7 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  * @example
  * pluginTrustCheckLines(entry.content);
  * // ["Trust Weather and turn it on?", "", "Tools for agents",
- * //  "  Reads         get_forecast", …, "", "Plugin code runs apart from Studio. …"]
+ * //  "  Reads         get_forecast", …, "", "Plugin code runs apart from the rest of Halonic. …"]
  */
 export function pluginTrustCheckLines(content: PluginTrustContent): Phrase[] {
   return [
@@ -36,7 +38,6 @@ export function pluginTrustCheckLines(content: PluginTrustContent): Phrase[] {
     ...programsSection(content),
     ...secretsSection(content),
     ...addressesSection(content),
-    ...inStudioSection(content),
     phrase``,
     pluginMessages.notChecked().phrase,
   ];
@@ -101,24 +102,6 @@ function shownHost(host: unknown): string {
   const setting = (host as { fromSetting?: unknown } | null)?.fromSetting;
   const words = pluginMessages.hostFromSetting(typeof setting === "string" ? setting : "");
   return plainText(words.phrase);
-}
-
-/** What Halonic draws for the plugin: its settings, commands, cards and panel. */
-function inStudioSection(content: PluginTrustContent): Phrase[] {
-  const ui = content.manifest.ui;
-  if (ui === undefined) return [];
-  const names = (items: readonly { readonly id: string }[]) =>
-    items.map((item) => printable(item.id)).join(", ");
-  const rows: [Message, string][] = [
-    [pluginMessages.studioSettings(), Object.keys(ui.settings).map(printable).join(", ")],
-    [pluginMessages.studioCommands(), names(ui.commands)],
-    [pluginMessages.studioCards(), names(ui.cards)],
-    [pluginMessages.studioPanel(), ui.panel === undefined ? "" : printable(ui.panel.title)],
-  ];
-  const shown = rows
-    .filter(([, detail]) => detail !== "")
-    .map(([label, detail]) => row(plainHeading(label), phrase`${detail}`));
-  return section(pluginMessages.inStudioHeading(), shown);
 }
 
 /** A catalogue sentence as plain text, for the first column of a row. */
