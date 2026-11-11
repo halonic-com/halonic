@@ -162,6 +162,15 @@ verifies("app.sandbox-trust-check", () => {
     });
   });
 
+  it("fails with other when the sandbox has no fence at all", async () => {
+    const { sandbox, canary } = fakes({ fence: { state: "off" } });
+    expect(await runTrustCheck(sandbox, canary)).toEqual({
+      passed: false,
+      reason: "other",
+      missing: ["the fence proof is off"],
+    });
+  });
+
   it("passes when name lookups leave through the system's DNS service, and says whether they do", async () => {
     const { sandbox, canary } = fakes({ findings: { ...clean, nameLookupsLeave: false } });
     expect(await runTrustCheck(sandbox, canary)).toEqual({ passed: true, nameLookupsLeave: false });

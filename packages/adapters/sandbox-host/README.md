@@ -51,7 +51,10 @@ from the fenced sandbox's `check()` and the user's saved yes (`UnfencedRuns` in 
 - stops a program and its process group (on Windows its process tree, with `taskkill /T /F`) on
   `kill`, on `close`, when the time limit runs out and when the open signal aborts: SIGTERM
   first, SIGKILL after 2 seconds. It also stops them when the launcher exits or gets SIGINT or
-  SIGTERM, as the probe does. On Windows, a child whose parent has already ended is not found;
+  SIGTERM, as the probe does. When the program ends by itself, what it left in its group is
+  killed at once, so a child that holds its output open doesn't keep it running. On Windows, a
+  child whose parent has already ended is not found, and such a child keeps the output open
+  until the time limit;
 - reports no blocked accesses, because nothing is fenced off. The profile's read, deny and
   network lists are not enforced: only Node's permission layer, which the runner turns on
   itself, limits the program.

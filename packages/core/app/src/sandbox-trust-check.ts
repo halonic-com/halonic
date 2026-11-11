@@ -4,7 +4,7 @@
 // MXC has one. It reports codes, never sentences: Studio and the CLI word
 // them from the board-approved design (HAL-3290).
 
-import type { Sandbox, SandboxProfile, SandboxSession } from "@halonicjs/ports";
+import type { Sandbox, SandboxFence, SandboxProfile, SandboxSession } from "@halonicjs/ports";
 
 /**
  * The probes that find a leak, in the order the trust check reports them:
@@ -159,11 +159,16 @@ function verdict(session: SandboxSession, findings: CanaryFindings): TrustCheckR
   const { readOnlyFileRead, workFolderScriptLoaded } = findings.controls;
   if (!readOnlyFileRead || !workFolderScriptLoaded) return failed("too-strict", findings.missing);
 
-  // A fence proof that failed with no probe to say which is still a failure.
+  // Only a fence proof that says `fenced` passes: one that failed with no
+  // probe to say which, or a sandbox with no fence at all, is still a failure.
   const fence = session.fence;
-  if (fence.state === "not-fenced") return failed("other", [fence.reason, ...findings.missing]);
+  if (fence.state !== "fenced") return failed("other", [fenceProblem(fence), ...findings.missing]);
 
   return { passed: true, nameLookupsLeave: findings.nameLookupsLeave };
+}
+
+function fenceProblem(fence: Exclude<SandboxFence, { state: "fenced" }>): string {
+  return fence.state === "not-fenced" ? fence.reason : `the fence proof is ${fence.state}`;
 }
 
 function failed(reason: TrustCheckFailure, missing: readonly string[]): TrustCheckResult {

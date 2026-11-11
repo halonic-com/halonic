@@ -3,7 +3,7 @@
 // launcher's own, and leads its own process group (on Windows, a process
 // tree), so stopping it stops everything it started.
 
-import { type ChildProcess, execFile, spawn } from "node:child_process";
+import { type ChildProcess, execFile, execFileSync, spawn } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -64,8 +64,9 @@ export async function startHostProgram(start: HostStart): Promise<HostProgram> {
     throw new Error(skillScriptsRefusal);
   }
   let child: ChildProcess | null = null;
+  // Runs during the launcher's `exit`, when nothing asynchronous runs any more.
   const forget = stopOnLauncherExit(() => {
-    if (child !== null) killTree(child, "SIGKILL");
+    if (child !== null) killTreeNow(child);
   });
   try {
     child = spawn(start.path, [...start.args], {
@@ -89,13 +90,17 @@ export async function startHostProgram(start: HostStart): Promise<HostProgram> {
 function running(child: ChildProcess, forget: () => void): HostProgram {
   let forceTimer: NodeJS.Timeout | undefined;
   let gone = false;
+  // Whatever the program left behind in its group goes as soon as the program
+  // itself ends, not once its output closes: a child it left running could
+  // hold that open until the time limit. Windows ties no tree to a process
+  // that has ended, and its id may be reused.
+  child.once("exit", () => {
+    gone = true;
+    clearTimeout(forceTimer);
+    if (!windows) killTree(child, "SIGKILL");
+  });
   const ended = new Promise<HostEnd>((resolve) => {
     child.once("close", (code, signal) => {
-      gone = true;
-      clearTimeout(forceTimer);
-      // Whatever the program left behind in its group goes with it. Windows
-      // ties no tree to a process that has ended, and its id may be reused.
-      if (!windows) killTree(child, "SIGKILL");
       forget();
       resolve({ code, signal });
     });
@@ -137,6 +142,28 @@ function killTree(child: ChildProcess, signal: "SIGTERM" | "SIGKILL"): void {
     process.kill(-pid, signal);
   } catch {
     // The group has already ended.
+  }
+}
+
+/**
+ * Ends the program's process group, on Windows its process tree, before it
+ * returns, for the launcher's `exit`. Never throws.
+ */
+function killTreeNow(child: ChildProcess): void {
+  const pid = child.pid;
+  if (pid === undefined) return;
+  if (!windows) {
+    killTree(child, "SIGKILL");
+    return;
+  }
+  try {
+    execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+      windowsHide: true,
+      stdio: "ignore",
+      timeout: stopGraceMs,
+    });
+  } catch {
+    // Already gone.
   }
 }
 

@@ -191,6 +191,30 @@ verifies("sandbox-host.start", () => {
       await session.close();
     });
 
+    // Windows ties no tree to a program that has ended, so there the child keeps it open (README).
+    it.skipIf(windows)(
+      "ends as soon as the program does, even when a child it left holds its output open",
+      async () => {
+        const leavesChild = [
+          "const { spawn } = require('node:child_process');",
+          "const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'inherit' });",
+          "process.stdout.write(String(child.pid) + '\\n', () => process.exit(0));",
+        ].join("\n");
+        const session = await createHostSandbox().open(profile());
+        const program = await session.start({ program: node, args: ["-e", leavesChild] });
+        const child = Number(await firstLine(program));
+        // Well inside the session's 30 s, which is when it would end if the child kept it open.
+        const exit = await Promise.race([
+          program.exited,
+          new Promise((resolve) => setTimeout(() => resolve("still running"), 10_000)),
+        ]);
+        expect(exit).toEqual({ code: 0, signal: null, reason: "exited" });
+        await gone(child);
+        await session.close();
+      },
+      15_000,
+    );
+
     it("stops its programs when the time limit runs out", async () => {
       // Long enough for Node to start twice and print the child's id on a busy runner.
       const session = await createHostSandbox().open(profile({ timeLimitMs: 3_000 }));
