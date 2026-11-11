@@ -123,8 +123,9 @@ export interface WorkspaceTrustMachine {
  *
  * @param nothingDone - the end of line 1 saying nothing happened, such as
  *   `runMessages.nothingRan()`
- * @param loaded - the workspace as it will run, such as the live version a
- *   run starts; without it, the saved files are read
+ * @param loaded - the workspace as it will be used, such as the live
+ *   version a run starts. It is required so trust is checked on what is
+ *   used, never on a second read of the files
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown (exit 3)
  */
@@ -133,7 +134,7 @@ export async function trustedGrant(
   machine: WorkspaceTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message,
-  loaded?: LoadedWorkspace,
+  loaded: LoadedWorkspace,
 ): Promise<TrustGrant> {
   const { name, subject } = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
   const check = await cliTrustService(machine.trustStore, machine.clock).check(subject);

@@ -20,9 +20,10 @@ export interface SourceListingTarget {
   /** The source's connector file, as the workspace loaded it. */
   readonly connector: Connector;
   /**
-   * The workspace the source belongs to, for its harness agents' working
-   * folders: a `stdio` program that would run or load a file from one of
-   * them doesn't start (HAL-4739).
+   * The workspace the source belongs to: trust is checked on it, and on no
+   * second read of the files, and its harness agents' working folders are
+   * where a `stdio` program that would run or load a file doesn't start
+   * (HAL-4739).
    */
   readonly workspace: LoadedWorkspace;
 }
@@ -45,7 +46,13 @@ export async function readSourceListing(
   secrets: Secrets,
   nothingDone: Message,
 ): Promise<ConnectorTool[]> {
-  const trust = await trustedGrant(target.dir, machine, target.typedDir, nothingDone);
+  const trust = await trustedGrant(
+    target.dir,
+    machine,
+    target.typedDir,
+    nothingDone,
+    target.workspace,
+  );
   return await machine.factories.listTools(connectorConfigOf(target.connector), {
     secrets,
     tokens: machine.tokens,

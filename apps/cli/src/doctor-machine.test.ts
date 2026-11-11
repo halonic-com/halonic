@@ -1,11 +1,19 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import type { DoctorWorkspace } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
+import { systemClock } from "@halonicjs/std";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type DoctorMachine, doctorService, nodeDoctorMachine } from "./doctor-machine.ts";
+import {
+  type DoctorMachine,
+  doctorService,
+  type MachineWorkspace,
+  nodeDoctorMachine,
+} from "./doctor-machine.ts";
 import { noSecrets } from "./remembered-secrets.ts";
+import { cliTrustService } from "./workspace-trust.ts";
 
 let profile: string;
 
@@ -76,39 +84,11 @@ describe("doctorService", () => {
   });
 
   it("asks each model server on this computer the workspace uses, at its default address", async () => {
-    const lmStudio: Provider = {
-      id: "studio",
-      name: "LM Studio",
-      type: "lmstudio",
-      local: true,
-    } as Provider;
-    const workspace: DoctorWorkspace = {
-      name: "Acme",
-      trust: {
-        location: "/work/acme",
-        connectors: [],
-        commandPaths: new Map(),
-        agents: [],
-        integrations: [],
-        providers: [],
-      },
-      aliases: [{ alias: "fast", provider: "studio" }],
-      providers: [
-        {
-          provider: "studio",
-          name: "LM Studio",
-          runs: "on-this-computer",
-          address: "localhost:1234",
-        },
-      ],
-    };
+    const studio = studioWorkspace();
     const asked: string[] = [];
 
-    const doctor = await doctorService(machine(asked), noSecrets, {
-      workspace,
-      providerFiles: new Map([["studio", lmStudio]]),
-    });
-    const report = await doctor.check(workspace);
+    const doctor = await doctorService(machine(asked), noSecrets, studio);
+    const report = await doctor.check(studio.workspace);
 
     expect(asked).toContain("http://localhost:1234/api/v0/models");
     expect(report.models?.ready).toEqual([
@@ -121,7 +101,62 @@ describe("doctorService", () => {
       },
     ]);
   });
+
+  it("sends nothing to a server at another address until the workspace is trusted here", async () => {
+    const studio = studioWorkspace("http://10.0.0.5:1234/v1");
+    const asked: string[] = [];
+
+    const doctor = await doctorService(machine(asked), noSecrets, studio);
+    const report = await doctor.check(studio.workspace);
+
+    expect(asked.filter((url) => url.includes("10.0.0.5"))).toEqual([]);
+    expect(report.models?.problems).toEqual([
+      { problem: "unreachable", provider: "studio", name: "LM Studio", address: "10.0.0.5:1234" },
+    ]);
+  });
+
+  it("asks a server at another address once the workspace is trusted here", async () => {
+    const studio = studioWorkspace("http://10.0.0.5:1234/v1");
+    const asked: string[] = [];
+    const trusting = machine(asked);
+    const trustStore = new FileTrustStore(join(profile, "trust"));
+    const service = cliTrustService(trustStore, systemClock);
+    const check = await service.check(studio.workspace.trust);
+    expect((await service.grant(studio.workspace.trust, check.fingerprint, "cli")).ok).toBe(true);
+
+    const doctor = await doctorService({ ...trusting, trustStore }, noSecrets, studio);
+    await doctor.check(studio.workspace);
+
+    expect(asked).toContain("http://10.0.0.5:1234/api/v0/models");
+  });
 });
+
+/** A workspace whose alias `fast` uses LM Studio on this computer, at `baseUrl` or its default address. */
+function studioWorkspace(baseUrl?: string): MachineWorkspace {
+  const lmStudio = {
+    id: "studio",
+    name: "LM Studio",
+    type: "lmstudio",
+    local: true,
+    options: {},
+    ...(baseUrl === undefined ? {} : { baseUrl }),
+  } as Provider;
+  const address = baseUrl === undefined ? "localhost:1234" : new URL(baseUrl).host;
+  const workspace: DoctorWorkspace = {
+    name: "Acme",
+    trust: {
+      location: "/work/acme",
+      connectors: [],
+      commandPaths: new Map(),
+      agents: [],
+      integrations: [],
+      providers: [lmStudio],
+    },
+    aliases: [{ alias: "fast", provider: "studio" }],
+    providers: [{ provider: "studio", name: "LM Studio", runs: "on-this-computer", address }],
+  };
+  return { workspace, providerFiles: new Map([["studio", lmStudio]]) };
+}
 
 describe("nodeDoctorMachine", () => {
   it("names this computer's system and its Claude Code and Codex harnesses", () => {

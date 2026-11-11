@@ -168,6 +168,28 @@ verifies("cli.source-listing", () => {
       expect(exitCodeOfError(error)).toBe(3);
       expect(servers.started).toEqual([]);
     });
+
+    it("checks trust on the workspace it starts the program from, not on a second read", async () => {
+      const { target, trust } = await acmeNotes();
+      // The files change after the source was loaded, and that version is trusted.
+      await writeFile(
+        join(folder, "acme", "library", "connectors", "notes.connector.yaml"),
+        "name: Notes\ntransport:\n  stdio:\n    command: acme-notes-server-2\n",
+      );
+      await trust();
+      const failure = readSourceListing(
+        target,
+        machine,
+        new MemorySecrets(),
+        runMessages.nothingRan(),
+      );
+      const error = await failure.then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      );
+      expect(exitCodeOfError(error)).toBe(3);
+      expect(servers.started).toEqual([]);
+    });
   });
 
   describe("the composition root", () => {

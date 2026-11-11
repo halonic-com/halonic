@@ -176,6 +176,38 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(await store.list()).toEqual([]);
   });
 
+  it("saves nothing when the workspace changes while the person answers", async () => {
+    writeAcme();
+    const shown = await fingerprintOfAcme();
+    const io = captureIo(folder);
+    const { terminal } = terminalTyping("y", "y");
+    const questions = terminal.questions;
+    if (questions === undefined) throw new TypeError("The terminal asks questions");
+    const answerAfterAPull: QuestionTerminal = {
+      write: (text) => questions.write(text),
+      readLine: async () => {
+        writeAcme({
+          "library/connectors/notes.connector.yaml":
+            "name: Notes\ntransport:\n  stdio:\n    command: notes-server\ntools:\n  approve: []\n",
+        });
+        return await questions.readLine();
+      },
+    };
+
+    const code = await runCli(["trust", "--dir", "acme"], io, commands(), {
+      terminal: { ...terminal, questions: answerAfterAPull },
+    });
+
+    expect(code).toBe(exitCode.notTrusted);
+    expect(io.stderr.slice(-2)).toEqual([
+      "✕ Couldn't trust Acme: it changed since that fingerprint was made.",
+      "  Run halonic trust --dir acme again to see what changed.",
+    ]);
+    expect(io.stdout.at(-1)).toMatch(fullFingerprint);
+    expect(io.stdout.at(-1)).not.toBe(shown);
+    expect(await store.list()).toEqual([]);
+  });
+
   it("with --json and no --yes, refuses with the fingerprint in the error", async () => {
     writeAcme();
     const io = captureIo(folder);
