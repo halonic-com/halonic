@@ -43,6 +43,10 @@ export function runExample(): string[] {
 An adapter package registers its suites the same way from a `*.test.ts` file, for example
 `definitionStoreContract("memory", async (files) => new MemoryDefinitionStore(files))`.
 
+## Suites for `HttpClient` and the sandbox fence
+
+`httpClientContract` (`contracts.http-client`) holds an `HttpClient` adapter to passing `init.redirect` and `init.signal` on: a redirect it was told to refuse throws or is returned as it is, never followed, and a request whose signal aborts, before or during the request, throws. `sandboxFenceContract` (`contracts.sandbox-fence`) holds a `Sandbox` adapter to saying why in words when a session's fence proof is `not-fenced`, and to starting no program in it (`sandboxCheckContract` is the suite for the check itself). `@halonicjs/adapter-http-node` and `@halonicjs/adapter-sandbox-srt` run them.
+
 ## Node bindings: no real connections
 
 A binding whose tests run in Node calls `refuseRealConnections()` from
