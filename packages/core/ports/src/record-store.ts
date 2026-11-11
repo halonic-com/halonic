@@ -83,3 +83,87 @@ export function compactedChanges(
     values: record.values,
   }));
 }
+
+// A collection's log file rules, which every adapter that keeps records as
+// files applies: the CLI's `FileRecordStore` in `fs-node` and the desktop
+// app's store in `fs-tauri`, whose shell writes the same files. Bytes stay
+// with the adapters: each finds the log's whole lines and decodes them its
+// own way, then reads them here.
+
+const recordOps: ReadonlySet<string> = new Set(["add", "update", "remove", "seed"]);
+
+/** Writes changes as record log lines: one JSON change per line, each ending in a line break. */
+export function formatRecordLines(changes: readonly RecordChange[]): string {
+  return changes.map((change) => `${JSON.stringify(change)}\n`).join("");
+}
+
+/**
+ * Reads a collection log's whole lines back into changes. Every line must
+ * hold a change to this collection: one for another collection means the
+ * file was copied or renamed by hand. Pass only whole lines, each ending in
+ * a line break: a torn last line, from a crash or an append still being
+ * written, is the adapter's to leave out first.
+ *
+ * @param lines - the log's whole lines, or `""` for an empty log
+ * @param collection - the collection the log belongs to
+ * @param file - the log's name or path, for the error message
+ * @returns the changes, oldest first
+ * @throws RangeError when the text doesn't end in a line break
+ * @throws Error naming the file and line when a line is broken
+ */
+export function parseRecordLines(lines: string, collection: string, file: string): RecordChange[] {
+  if (lines === "") {
+    return [];
+  }
+  if (!lines.endsWith("\n")) {
+    throw new RangeError(`Only whole lines of record log ${JSON.stringify(file)} can be read.`);
+  }
+  return lines
+    .slice(0, -1)
+    .split("\n")
+    .map((line, index) => parseRecordLine(line, index + 1, collection, file));
+}
+
+function parseRecordLine(
+  line: string,
+  number: number,
+  collection: string,
+  file: string,
+): RecordChange {
+  const broken = (why: string): Error =>
+    new Error(`Broken record log ${JSON.stringify(file)}, line ${number}: ${why}`);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    throw broken("it is not JSON.");
+  }
+  if (!isRecordChange(parsed)) {
+    throw broken("it is not a record change.");
+  }
+  if (parsed.collection !== collection) {
+    throw broken(`it holds a change to another collection, ${JSON.stringify(parsed.collection)}.`);
+  }
+  return parsed;
+}
+
+/** Whether a parsed line has the fields of a {@link RecordChange}, with the types the port gives them. */
+function isRecordChange(value: unknown): value is RecordChange {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  const { at, collection, id, op, values, by } = value;
+  return (
+    typeof at === "string" &&
+    typeof collection === "string" &&
+    typeof id === "string" &&
+    typeof op === "string" &&
+    recordOps.has(op) &&
+    (values === null || isPlainObject(values)) &&
+    (by === undefined || isPlainObject(by))
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

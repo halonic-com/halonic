@@ -158,6 +158,8 @@ export {
   type CurrentRecord,
   compactedChanges,
   foldRecords,
+  formatRecordLines,
+  parseRecordLines,
   type RecordChange,
   type RecordStore,
   recordStoreVersion,
