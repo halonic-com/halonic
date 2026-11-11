@@ -1,0 +1,21 @@
+Halonic WSL image
+=================
+
+This image is a minimal Debian system plus a few Debian packages (see
+packages.txt for the exact list and versions). Every Debian package keeps its
+licence text in /usr/share/doc/<package>/copyright.
+
+Source code: for each Debian package in packages.txt, the matching source is
+available from Debian. This image is built from the Debian snapshot named in
+SNAPSHOT.txt, so the exact source can be fetched with:
+
+    apt-get source <package>=<version>
+
+after adding the "deb-src" lines for that snapshot (the file
+/etc/apt/sources.list.d/debian.sources already carries deb-src entries for
+Debian's own mirrors), or by browsing https://snapshot.debian.org/ at the
+timestamp in SNAPSHOT.txt.
+
+The recipe that built this image is in https://github.com/halonic-com/halonic,
+folder infra/wsl-image. Halonic's own code in /opt/halonic carries its own
+licence files.
