@@ -261,11 +261,13 @@ export {
   SaveState,
   type SavingItem,
 } from "./save/save-state.ts";
+export { SearchPage, type SearchPageProps } from "./search/search-page.tsx";
 export {
   type NameResult,
   type SearchPageNames,
   type SearchPageQuery,
   type SearchScope,
+  searchPageCount,
   searchPageLocation,
   searchPageNames,
   searchPageWords,

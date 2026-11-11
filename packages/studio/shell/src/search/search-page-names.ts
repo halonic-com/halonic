@@ -174,3 +174,12 @@ function withoutRepeats(found: readonly SearchResult[]): SearchResult[] {
 function distinct(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
+
+/**
+ * The count line over the results, "3 matches in 3 items", in the words of microcopy 3.5. Each
+ * item in "Names and descriptions" is one match.
+ */
+export function searchPageCount(names: SearchPageNames): string {
+  const count = names.results.length;
+  return `${count} ${count === 1 ? "match" : "matches"} in ${count} ${count === 1 ? "item" : "items"}`;
+}

@@ -153,8 +153,11 @@ function isKeyK(event: KeyboardEvent): boolean {
     : event.code === "KeyK";
 }
 
-/** The place that shows an item a provider found, named as the row names it. */
-function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNames): TabLocation {
+/**
+ * The place that shows an item a search provider found, named as its row names it, as Ctrl K and
+ * the Search page open it.
+ */
+export function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNames): TabLocation {
   const kind = kinds.get(item.kind)?.label;
   return {
     key: itemLocationKey(item),

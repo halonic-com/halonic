@@ -371,6 +371,28 @@ const names = searchPageNames(
 );
 ```
 
+`SearchPage` draws it (`shell.search-page`, VK T2-F7 and F26): the title and its sentence, the
+search box, the In and Hub picker chips with Match case and Whole word, the count line
+(`searchPageCount`, "2 matches in 2 items") as a status, and the results with the words marked.
+Enter with other words opens their Search page in the same tab. A result opens here, or with a
+Ctrl-click in a new tab. "Searching…" shows still skeleton rows, and the page's states are
+"Nothing matches", with **Search all hubs** while a hub is picked, and "Couldn't search" with
+`shell.engine.words.notAnswering` and **Try again**. Until the engine searches the text of files,
+there is no "Text inside" section and no Pattern chip, and the sentences say "name or description"
+rather than "the words inside it".
+
+```tsx
+<SearchPage
+  words={searchPageWords(location) ?? ""}
+  tabs={workspace.tabs}
+  announcer={shell.announcer}
+  providers={shell.contributions.search.providers()}
+  contextFor={(featureId) => shell.services.contextFor(featureId, target)}
+  kinds={shell.contributions.itemKinds}
+  notAnswering={shell.engine.words.notAnswering}
+/>;
+```
+
 ## Status bar and toasts
 
 The status bar shows state only: spend, the branch, the problems count. `StatusBarItems` draws the

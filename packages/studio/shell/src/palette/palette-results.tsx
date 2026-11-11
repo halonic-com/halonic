@@ -1,5 +1,6 @@
 import { AlertIcon, Button, SkeletonBar } from "@halonicjs/studio-kit";
 import type { MouseEvent, ReactNode } from "react";
+import { MarkedText } from "./marked-text.tsx";
 import type { PaletteContent, PaletteRow } from "./palette-groups.ts";
 import { type PaletteKindNames, paletteOptionName } from "./palette-options.ts";
 
@@ -114,7 +115,7 @@ function Row({
         {iconFor?.(row)}
       </span>
       <span className="min-w-0 truncate">
-        <Highlighted row={row} />
+        <MarkedText text={row.label} found={row.match} />
         {row.detail === undefined ? null : (
           <span className="ms-2 text-small text-fg-muted">{row.detail}</span>
         )}
@@ -123,23 +124,6 @@ function Row({
         <span className="ms-auto shrink-0 text-small text-fg-muted">Switch to tab</span>
       ) : null}
     </div>
-  );
-}
-
-/** The row's name with the typed words marked in `accent-soft`, as the phone's rows mark them. */
-function Highlighted({ row }: { readonly row: PaletteRow }) {
-  const { label, match } = row;
-  if (match === undefined || match.start === match.end) {
-    return <>{label}</>;
-  }
-  return (
-    <>
-      {label.slice(0, match.start)}
-      <mark className="rounded-xs bg-accent-soft text-fg">
-        {label.slice(match.start, match.end)}
-      </mark>
-      {label.slice(match.end)}
-    </>
   );
 }
 
