@@ -8,7 +8,9 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { PANEL_DEFAULT_WIDTH } from "../panels/panel-width.ts";
+import { panelEdgeLimits } from "../panels/panel-width.ts";
+import { usePanelWidth } from "../panels/panel-width-context.tsx";
+import { ResizeEdge } from "../resize/resize-edge.tsx";
 import { useElementWidth } from "./element-width.ts";
 import { ItemHeader } from "./item-header.tsx";
 import { type ItemLayout, type ItemLayoutChoices, itemLayout } from "./item-layout.ts";
@@ -61,7 +63,8 @@ function focusTarget(page: HTMLElement, idBase: string, target: FocusTarget): HT
  * features to draw their item pages in: the tab header, and one view at a time under it, picked
  * in the header's views nav and remembered for the tab (req-shell `panels.one-view-at-a-time`).
  * When a feature provides a `chat` for the kind, the chat sits on the left and the view in a panel
- * on the right, which ✕ hides and a narrow tab turns into a button (`shell.item-page-chat`).
+ * on the right, which ✕ hides and a narrow tab turns into a button (`shell.item-page-chat`). The
+ * panel's left edge resizes it, for every item page in the window (`shell.panel-width`).
  * Without one, the view takes the full width.
  *
  * @example
@@ -91,6 +94,7 @@ export function ItemPage<Id extends string>({
   const page = useRef<HTMLDivElement>(null);
   const idBase = useId();
   const tabWidth = useElementWidth(page);
+  const [panelWidth, resizePanel, savePanelWidth] = usePanelWidth();
   // Until the user opens or closes the chat, it follows `startsOpen`, so a chat that arrives after
   // the first render still starts open.
   const [choices, setChoices] = useState<ChosenLayout>({ panelClosed: false, panelScreen: false });
@@ -101,7 +105,7 @@ export function ItemPage<Id extends string>({
       ...choices,
       chatOpen: choices.chatOpen ?? chat?.startsOpen ?? false,
     },
-    PANEL_DEFAULT_WIDTH,
+    panelWidth,
     tabWidth,
   );
 
@@ -162,7 +166,19 @@ export function ItemPage<Id extends string>({
             {chat.render(() => change({ chatOpen: false }, "ask"))}
           </section>
         )}
+        {layout.shows === "chat-and-panel" ? (
+          <ResizeEdge
+            label="Resize panel"
+            controls={`${idBase}-panel`}
+            width={layout.panelWidth}
+            limits={panelEdgeLimits(tabWidth)}
+            side="start"
+            onResize={resizePanel}
+            onResizeEnd={savePanelWidth}
+          />
+        ) : null}
         <div
+          id={`${idBase}-panel`}
           hidden={!shown.panel}
           className={shown.split ? "min-h-0 shrink-0 overflow-y-auto border-s border-border" : ""}
           style={layout.shows === "chat-and-panel" ? { width: layout.panelWidth } : undefined}

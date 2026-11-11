@@ -583,7 +583,16 @@ nothing changed:
 ## Side panel width
 
 An item page's side panel (`shell.panel-width`) is 420 to 1400px wide, 700px until someone drags
-it. The host saves the width on this computer, as it does the sidebar's:
+it. The width is the same for every item page in the window, and the host saves it on this
+computer, as it does the sidebar's: it mounts `PanelWidthProvider` once around the tabs' pages,
+with what was saved and how to save it. Outside one (a test, a preview), each page starts at 700px
+and saves nothing.
+
+```tsx
+<PanelWidthProvider saved={settings.read("panelWidth")} onSave={(width) => settings.write("panelWidth", width)}>
+  <TabPages … />
+</PanelWidthProvider>
+```
 
 - `savedPanelWidth(saved)` reads the saved value back: kept inside 420 to 1400, or 700px for
   anything that isn't a finite number. `clampPanelWidth(width)` keeps a drag inside 420 to 1400.
@@ -592,7 +601,10 @@ it. The host saves the width on this computer, as it does the sidebar's:
   doesn't fit beside a 320px chat (with the 48px gap and the 40px lead, a tab under 828px);
   `panelFitsBeside(tabWidth)` says the same. Then the item page shows the panel as a button.
 
-The edge itself, Maximise and ✕ come with the item page frame.
+- While the panel is beside the chat, `ItemPage` draws its left edge as a window splitter named
+  "Resize panel", the same edge as the sidebar's: a drag; ← wider and → narrower by 16px; Home
+  420px, End as wide as leaves the chat 320px; Enter and a double-click 700px. The width is saved
+  when the key or the pointer is released. `panelEdgeLimits(tabWidth)` gives those limits.
 
 ## Phone places and Back
 
@@ -718,8 +730,8 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   - The chat and the view stay mounted through every switch, hidden rather than moved, so a
     half-typed message or the canvas's zoom survives. A chat provided after the first render still
     starts open until the user opens or closes it.
-- **Not yet:** the panel's edge and Maximise, and the "Changes not live yet" line (24.9). A feature
-  draws its stacked cards with `StackedCards` inside its view.
+- **Not yet:** Maximise and the "Changes not live yet" line (24.9). A feature draws its stacked
+  cards with `StackedCards` inside its view.
 
 ## Resource numbers
 

@@ -138,10 +138,15 @@ export {
   PANEL_GAP,
   PANEL_MAX_WIDTH,
   PANEL_MIN_WIDTH,
+  panelEdgeLimits,
   panelFitsBeside,
   savedPanelWidth,
   shownPanelWidth,
 } from "./panels/panel-width.ts";
+export {
+  PanelWidthProvider,
+  type PanelWidthProviderProps,
+} from "./panels/panel-width-context.tsx";
 export {
   BottomNavigation,
   type BottomNavigationPlace,

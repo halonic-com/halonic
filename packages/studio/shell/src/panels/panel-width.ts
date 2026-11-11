@@ -1,3 +1,5 @@
+import type { EdgeLimits } from "../resize/edge-width.ts";
+
 /** The side panel's width when nobody has changed it, and what a double-click goes back to. */
 export const PANEL_DEFAULT_WIDTH = 700;
 /** The narrowest the side panel gets beside the chat. */
@@ -56,4 +58,17 @@ export function shownPanelWidth(width: number, tabWidth: number): number | undef
     return undefined;
   }
   return Math.min(clampPanelWidth(width), Math.floor(roomForPanel(tabWidth)));
+}
+
+/**
+ * What the panel's resize edge can set in a tab this wide: 420px at the narrowest, 1400px or as
+ * wide as leaves the chat 320px at the widest, and 700px for Enter and a double-click.
+ */
+export function panelEdgeLimits(tabWidth: number | undefined): EdgeLimits {
+  const widest = tabWidth === undefined ? PANEL_MAX_WIDTH : Math.floor(roomForPanel(tabWidth));
+  return {
+    min: PANEL_MIN_WIDTH,
+    max: Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, widest)),
+    reset: PANEL_DEFAULT_WIDTH,
+  };
 }
