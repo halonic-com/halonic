@@ -1,4 +1,4 @@
-import { useCallback, useId, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useReducer, useState, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { type PlaceContribution, showPlace } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
@@ -13,7 +13,11 @@ import type { WorkspaceContext } from "../workspace-context.ts";
 
 /** Props for {@link StudioSidebar}. */
 export interface StudioSidebarProps {
-  /** Home and the places features added, in the sidebar's order: `shell.contributions.places.list()`. */
+  /**
+   * Home and the places features added, in the sidebar's order: `shell.contributions.places.list()`.
+   * Pass the same list each render (it doesn't change once the shell has started), or the
+   * sidebar subscribes to the signals again each time.
+   */
   readonly places: readonly Registered<PlaceContribution>[];
   readonly tabs: TabSet;
   readonly announcer: Announcer;
@@ -32,7 +36,8 @@ export interface StudioSidebarProps {
  * the window is open. In a narrow window the frame puts it in the Places drawer, which sets its
  * width, and the edge hides itself.
  *
- * A place's signal is read again each time the tabs change.
+ * A place's signal is read again each time the tabs change, and each time its place says it
+ * changed through `subscribeSignal`.
  *
  * @example
  * <StudioSidebar places={shell.contributions.places.list()} tabs={workspace.tabs}
@@ -46,6 +51,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
     useCallback((listener) => tabs.subscribe(listener), [tabs]),
     () => tabs.state,
   );
+  useSignalChanges(props.places, contextFor);
   const places = props.places.map((place) =>
     showPlace(place.id, place.signal?.(contextFor(place.featureId))),
   );
@@ -69,4 +75,28 @@ export function StudioSidebar(props: StudioSidebarProps) {
       />
     </>
   );
+}
+
+/**
+ * Draws the sidebar again whenever a place says its signal changed, so a count or the running dot
+ * is current without waiting for the tabs to change. Stops listening when the places change or
+ * the sidebar goes away.
+ */
+function useSignalChanges(
+  places: readonly Registered<PlaceContribution>[],
+  contextFor: (featureId: string) => WorkspaceContext,
+): void {
+  const [, signalChanged] = useReducer((changes: number) => changes + 1, 0);
+  useEffect(() => {
+    const stops = places.flatMap((place) =>
+      place.subscribeSignal === undefined
+        ? []
+        : [place.subscribeSignal(contextFor(place.featureId), signalChanged)],
+    );
+    return () => {
+      for (const stop of stops) {
+        stop();
+      }
+    };
+  }, [places, contextFor]);
 }

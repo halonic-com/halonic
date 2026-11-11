@@ -47,7 +47,8 @@ Runs, Changes); a feature that adds Home gets a `ShellError`. The shell lists th
 leaves out a place no feature added, so a place whose feature hasn't landed is simply not there. The shell owns each place's name and icon (`placeNames`), so a feature
 gives only the place, its view and its `signal`: the count or running dot, with the words a screen
 reader hears after the name. `showPlace` gives what the sidebar shows, with nothing for a zero
-(`shell.sidebar-places`).
+(`shell.sidebar-places`). A signal that changes on its own, such as the Runs dot, also gives
+`subscribeSignal`, and the sidebar reads it again each time it is told (`shell.place-signal-changes`).
 
 Home's sections come from features the same way, through `home.addCard`, naming one of the fixed
 sections (`homeSections`: Get set up, Needs you, Recent runs). The shell shows them in that order

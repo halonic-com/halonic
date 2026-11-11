@@ -92,6 +92,12 @@ export interface PlaceContribution extends ViewRef {
   readonly id: SidebarPlace;
   /** The place's signal now, or `undefined` for none. */
   signal?(context: WorkspaceContext): PlaceSignal | undefined;
+  /**
+   * Calls `listener` whenever the signal may have changed, such as a run starting, so the sidebar
+   * reads `signal` again. Returns a function that stops the calls. Leave it out for a signal
+   * that only changes when the tabs do.
+   */
+  subscribeSignal?(context: WorkspaceContext, listener: () => void): () => void;
 }
 
 /** A place as the sidebar shows it now: its name and icon, and its signal if there is one. */

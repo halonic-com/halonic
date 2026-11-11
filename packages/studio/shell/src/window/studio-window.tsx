@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
@@ -54,6 +54,8 @@ export function StudioWindow(props: StudioWindowProps) {
       shell.services.contextFor(featureId, workspace.services),
     [shell, workspace],
   );
+  // The same list each render, so the sidebar subscribes to the places' signals only once.
+  const places = useMemo(() => contributions.places.list(), [contributions]);
   const palette = usePaletteOpening(platform);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
   useEffect(() => announceSaveNotes(workspace.saving, announcer), [workspace, announcer]);
@@ -77,7 +79,7 @@ export function StudioWindow(props: StudioWindowProps) {
       }
       sidebar={
         <StudioSidebar
-          places={contributions.places.list()}
+          places={places}
           tabs={tabs}
           announcer={announcer}
           platform={platform}
