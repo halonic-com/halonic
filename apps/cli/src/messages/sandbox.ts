@@ -120,6 +120,7 @@ const sandboxDocs = "https://docs.halonic.com/sandbox";
 const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
   "bubblewrap-missing": "bubblewrap",
   container: "container",
+  "user-namespaces-restricted": "apparmor",
 };
 
 /**

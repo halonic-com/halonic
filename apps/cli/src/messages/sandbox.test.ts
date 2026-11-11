@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { plainText } from "./phrase.ts";
-import { sandboxMessages } from "./sandbox.ts";
+import { sandboxDocsLink, sandboxMessages } from "./sandbox.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -100,6 +100,17 @@ describe("the sandbox sentences", () => {
         "Halonic can't tell what the sandbox is missing.",
         "Fix: see what the sandbox needs on this computer. Then run halonic doctor again.",
       ],
+    ]);
+  });
+
+  it("links each reason to its section of the sandbox guide, or to the guide itself", () => {
+    expect(worded.map((code) => sandboxDocsLink(code))).toEqual([
+      "https://docs.halonic.com/sandbox",
+      "https://docs.halonic.com/sandbox#container",
+      "https://docs.halonic.com/sandbox#apparmor",
+      "https://docs.halonic.com/sandbox#bubblewrap",
+      "https://docs.halonic.com/sandbox",
+      "https://docs.halonic.com/sandbox",
     ]);
   });
 
