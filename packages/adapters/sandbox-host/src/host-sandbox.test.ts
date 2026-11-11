@@ -193,7 +193,7 @@ verifies("sandbox-host.start", () => {
 
     // Windows ties no tree to a program that has ended, so there the child keeps it open (README).
     it.skipIf(windows)(
-      "ends as soon as the program does, even when a child it left holds its output open",
+      "[platform:win32] has no process groups: ends as soon as the program does, even when a child it left holds its output open",
       async () => {
         const leavesChild = [
           "const { spawn } = require('node:child_process');",
