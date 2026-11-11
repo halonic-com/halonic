@@ -36,8 +36,9 @@ export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
     options: { dir: dirOption },
     async run(input, context) {
       const given = givenDir(input);
-      const workspace = await readWorkspace(workspaceDir(input, context.cwd), given !== undefined);
+      const read = await readWorkspace(workspaceDir(input, context.cwd), given !== undefined);
       const computer = machine();
+      const workspace = read === null ? null : withWindowsDrive(read, computer);
       const doctor = await doctorService(computer, context.secrets, workspace);
       const report = await doctor.check(workspace?.workspace ?? null);
       const lines = doctorReportLines(report, {
@@ -96,6 +97,19 @@ async function readWorkspace(
     filesOf(loaded, "provider").map((file) => [file.value.id, file.value]),
   );
   return { workspace, providerFiles };
+}
+
+/**
+ * `workspace`, with the Windows drive it is on when `computer` runs under
+ * WSL and finds one (HAL-6517): its real path, the trust record's key, says.
+ */
+function withWindowsDrive(
+  workspace: MachineWorkspace,
+  computer: Pick<DoctorMachine, "windowsDrive">,
+): MachineWorkspace {
+  const drive = computer.windowsDrive?.(workspace.workspace.trust.location) ?? null;
+  if (drive === null) return workspace;
+  return { ...workspace, workspace: { ...workspace.workspace, windowsDrive: drive } };
 }
 
 /**

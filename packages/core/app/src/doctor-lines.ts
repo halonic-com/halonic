@@ -29,27 +29,42 @@ export interface WorkspaceLine extends DoctorLine {
    * `not-needed`: "test model only, no trust needed".
    */
   trust: WorkspaceTrust;
+  /**
+   * On WSL, the Windows drive the workspace is on, such as "/mnt/c": runs
+   * there are slow, and edits made from Windows aren't seen (HAL-6517).
+   * Left out when it isn't on one.
+   */
+  windowsDrive?: string;
 }
 
 /**
  * The Workspace line of `halonic doctor` (requirement `app.doctor-workspace`).
  * A trusted workspace is ✓, and so is one that needs no trust, as `run`
  * doesn't ask for it there; every other state is a warning, because
- * `halonic trust` fixes it and nothing else is stopped.
+ * `halonic trust` fixes it and nothing else is stopped. A workspace on a
+ * Windows drive under WSL is a warning too (requirement
+ * `app.doctor-workspace-drive`): it works, only slowly.
  *
  * @param name the workspace's name
  * @param trust the status `TrustService.check` returned
+ * @param windowsDrive the Windows drive it is on under WSL, such as "/mnt/c"
  *
  * @example
  * workspaceLine("acme", "changed");
  * // { check: "workspace", status: "warning", name: "acme", trust: "changed" }
  */
-export function workspaceLine(name: string, trust: WorkspaceTrust): WorkspaceLine {
+export function workspaceLine(
+  name: string,
+  trust: WorkspaceTrust,
+  windowsDrive?: string,
+): WorkspaceLine {
+  const trustOk = trust === "trusted" || trust === "not-needed";
   return {
     check: "workspace",
-    status: trust === "trusted" || trust === "not-needed" ? "ok" : "warning",
+    status: trustOk && windowsDrive === undefined ? "ok" : "warning",
     name,
     trust,
+    ...(windowsDrive === undefined ? {} : { windowsDrive }),
   };
 }
 

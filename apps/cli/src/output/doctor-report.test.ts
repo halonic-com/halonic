@@ -158,6 +158,20 @@ verifies("cli.doctor-report", () => {
   });
 });
 
+verifies("cli.doctor-windows-drive", () => {
+  it("says under the trust which Windows drive the workspace is on, and how to fix it", () => {
+    const workspace: WorkspaceLine = { ...trusted, status: "warning", windowsDrive: "/mnt/c" };
+    const lines = printed(reportOf({ workspace, sandbox: sandboxReady, disk: diskFree }));
+
+    expect(check(lines, "Workspace")).toEqual([
+      "! Workspace   acme · trusted on this computer",
+      "              The workspace is on the Windows drive /mnt/c: runs are slow, and Halonic doesn't see edits made in Windows.",
+      "              Fix: move it into your Linux home folder (~), then run halonic doctor again.",
+    ]);
+    expect(lines.at(-1)).toBe("No problems. 1 warning.");
+  });
+});
+
 describe("doctorReportLines", () => {
   it("leaves out the lines the report doesn't have, outside a workspace", () => {
     const lines = printed(reportOf({ sandbox: sandboxReady, disk: diskFree }));

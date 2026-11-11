@@ -40,6 +40,23 @@ verifies("app.doctor-workspace", () => {
   });
 });
 
+verifies("app.doctor-workspace-drive", () => {
+  it("warns about a workspace on a Windows drive, also when it is trusted", () => {
+    expect(workspaceLine("acme", "trusted", "/mnt/c")).toEqual({
+      check: "workspace",
+      status: "warning",
+      name: "acme",
+      trust: "trusted",
+      windowsDrive: "/mnt/c",
+    });
+    expect(workspaceLine("acme", "not-needed", "/mnt/d").status).toBe("warning");
+  });
+
+  it("is never failed, as the workspace still runs there", () => {
+    expect(workspaceLine("acme", "new", "/mnt/c").status).toBe("warning");
+  });
+});
+
 const onThisComputer: SandboxCapabilities = { files: "shared", strength: "os" };
 
 verifies("app.doctor-sandbox", () => {

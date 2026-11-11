@@ -50,6 +50,13 @@ export const doctorMessages = defineMessages("doctor", {
   changedSinceTrusted: (dir?: string) =>
     phrase`changed since you trusted it ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
 
+  /** Workspace ! under WSL, under the trust: the workspace is on a Windows drive (HAL-6517). */
+  onWindowsDrive: (drive: string) =>
+    phrase`The workspace is on the Windows drive ${drive}: runs are slow, and Halonic doesn't see edits made in Windows.`,
+  /** Under {@link onWindowsDrive}. */
+  moveToLinuxHome: () =>
+    phrase`Fix: move it into your Linux home folder (~), then run halonic doctor again.`,
+
   /** Models ✓ for a model server on this computer; `loaded` is left out when no model is loaded. */
   answering: (server: string, address: string, loaded?: Phrase) =>
     loaded === undefined

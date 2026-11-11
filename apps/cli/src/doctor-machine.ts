@@ -37,6 +37,7 @@ import {
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
+import { nodeIsWsl, windowsDriveOf } from "./wsl.ts";
 
 /** What `doctor` asks on this computer. */
 export interface DoctorMachine {
@@ -52,6 +53,11 @@ export interface DoctorMachine {
   readonly http: HttpClient;
   /** The operating system and processor, such as "Linux x64". */
   readonly system: string;
+  /**
+   * The Windows drive a folder is on, such as "/mnt/c", or `null` when it
+   * isn't on one. Only under WSL; left out elsewhere.
+   */
+  readonly windowsDrive?: (folder: string) => string | null;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -80,7 +86,7 @@ const runFolderNames = ["runs", "deployments", "blobs"];
 /**
  * This computer: the profile from `HALONIC_HOME` or the system's data
  * folder, the srt sandbox, Node's resource probe, Claude Code and Codex as
- * `PATH` finds them, and `fetch`.
+ * `PATH` finds them, `fetch`, and under WSL the Windows drives.
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
@@ -96,6 +102,7 @@ export function nodeDoctorMachine(): DoctorMachine {
     harnesses: nodeHarnessPrograms(),
     http: { fetch: (url, init) => fetch(url, init) },
     system: `${systemNames[system] ?? system} ${arch()}`,
+    ...(nodeIsWsl() ? { windowsDrive: windowsDriveOf } : {}),
   };
 }
 

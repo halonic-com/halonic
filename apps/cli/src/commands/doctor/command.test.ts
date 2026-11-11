@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { SandboxCheck, TrustStore } from "@halonicjs/ports";
@@ -137,5 +137,45 @@ verifies("cli.commands.doctor.check-this-computer", () => {
       expect.objectContaining({ check: "sandbox", status: "ok" }),
       expect.objectContaining({ check: "disk", status: "ok", freeBytes: 48 * gb }),
     ]);
+  });
+});
+
+verifies("cli.doctor-windows-drive", () => {
+  it("warns when WSL finds the workspace on a Windows drive, and still exits 0", async () => {
+    writeAcme();
+    const io = captureIo(folder);
+    const asked: string[] = [];
+    const onWsl: DoctorMachine = {
+      ...machine(),
+      windowsDrive: (path) => {
+        asked.push(path);
+        return "/mnt/c";
+      },
+    };
+
+    const code = await runCli(["doctor", "--dir", "acme", "--json"], io, [
+      createDoctorCommand(() => onWsl),
+    ]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(asked).toEqual([realpathSync(join(folder, "acme"))]);
+    const document = JSON.parse(io.stdout.join("\n"));
+    expect(document.checks[0]).toEqual({
+      check: "workspace",
+      status: "warning",
+      name: "Acme",
+      trust: "new",
+      windowsDrive: "/mnt/c",
+    });
+  });
+
+  it("says nothing about a drive for a workspace in Linux's own files", async () => {
+    writeAcme();
+    const io = captureIo(folder);
+    const onWsl: DoctorMachine = { ...machine(), windowsDrive: () => null };
+
+    await runCli(["doctor", "--dir", "acme", "--json"], io, [createDoctorCommand(() => onWsl)]);
+
+    expect(JSON.parse(io.stdout.join("\n")).checks[0]).not.toHaveProperty("windowsDrive");
   });
 });

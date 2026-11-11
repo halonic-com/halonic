@@ -70,6 +70,11 @@ export interface DoctorWorkspace {
    * isn't read, and the Workspace line is ✓ (HAL-6007).
    */
   testModelOnly?: boolean;
+  /**
+   * On WSL, the Windows drive the workspace is on, such as "/mnt/c", as the
+   * host found it; left out elsewhere. The Workspace line warns about it.
+   */
+  windowsDrive?: string;
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -153,7 +158,11 @@ export class DoctorService {
       disk: diskLine(resources),
     };
     if (workspace !== null) {
-      report.workspace = workspaceLine(workspace.name, trust?.status ?? "not-needed");
+      report.workspace = workspaceLine(
+        workspace.name,
+        trust?.status ?? "not-needed",
+        workspace.windowsDrive,
+      );
       const providers = workspace.providers.map((provider) =>
         providerState(provider, resources.models, keys),
       );

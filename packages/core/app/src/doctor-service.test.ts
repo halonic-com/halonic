@@ -59,6 +59,7 @@ function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}):
     aliases: parts.aliases ?? [],
     providers: parts.providers ?? [],
     ...(parts.testModelOnly === undefined ? {} : { testModelOnly: parts.testModelOnly }),
+    ...(parts.windowsDrive === undefined ? {} : { windowsDrive: parts.windowsDrive }),
   };
 }
 
@@ -292,5 +293,22 @@ verifies("app.doctor-service", () => {
     await expect(check).rejects.toThrow(
       "The provider ollama runs on this computer, but the resource report has no LoadedModelSource for it.",
     );
+  });
+});
+
+verifies("app.doctor-workspace-drive", () => {
+  it("warns on the Workspace line when the host found the workspace on a Windows drive", async () => {
+    const report = await doctor({ trust: "trusted" }).service.check(
+      workspace({ windowsDrive: "/mnt/c" }),
+    );
+
+    expect(report.workspace).toEqual({
+      check: "workspace",
+      status: "warning",
+      name: "acme",
+      trust: "trusted",
+      windowsDrive: "/mnt/c",
+    });
+    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
   });
 });

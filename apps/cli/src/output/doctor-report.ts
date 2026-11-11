@@ -101,7 +101,15 @@ function workspaceCheck(line: WorkspaceLine, dir: string | undefined): CheckLine
   return {
     status: line.status,
     label: doctorMessages.workspaceLabel(),
-    lines: [workspaceTrust(line, dir).phrase],
+    lines: [
+      workspaceTrust(line, dir).phrase,
+      ...(line.windowsDrive === undefined
+        ? []
+        : [
+            doctorMessages.onWindowsDrive(line.windowsDrive).phrase,
+            doctorMessages.moveToLinuxHome().phrase,
+          ]),
+    ],
   };
 }
 
