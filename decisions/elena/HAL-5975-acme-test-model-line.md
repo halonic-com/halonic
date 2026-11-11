@@ -2,6 +2,7 @@
 
 - Approval: decided by the team on [HAL-5956](/HAL/issues/HAL-5956) (E1), asked for on [HAL-5975](/HAL/issues/HAL-5975); the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ogJHewzMCA5BzPibbsXozpI1cyFKXZ3AnhRWrJ4TwC566v8x1gb99qMYSkg1dabTLYE4AmblvS4TI+WcERBUDw==
 - Task: HAL-5975
 
 ## What changes
