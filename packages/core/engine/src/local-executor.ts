@@ -102,12 +102,9 @@ export interface LocalExecutorOptions {
     request: ChatTurnRequest,
   ): Promise<Readonly<Record<string, Connector["tools"]>>>;
   /**
-   * Whether the workspace is local only (`privacy.localOnly: true`, ADR
-   * 2026-11-08-local-first). Then a turn in Halonic's own loop skips every
-   * model that isn't `local` before calling it, a run with no local model
-   * left fails with `local-only`, and only the connectors that are `local`
-   * are used. An agent that runs in a harness program (`runs.harnesses`)
-   * isn't covered yet: its turns run as before (HAL-5922).
+   * Local-only workspace (`privacy.localOnly`): Halonic's own loop skips models that aren't
+   * `local` (a run left with none fails `local-only`) and uses only `local` connectors. Agents
+   * in a harness program (`runs.harnesses`) aren't covered yet (HAL-5922).
    */
   readonly localOnly?: boolean;
 }
@@ -145,10 +142,8 @@ export class LocalExecutor implements RunExecutor {
     if (!Number.isInteger(maxRounds) || maxRounds < 1) {
       throw new RangeError(`maxRounds must be a whole number of 1 or more, not ${maxRounds}.`);
     }
-    this.options =
-      options.localOnly === true
-        ? { ...options, connectors: options.connectors.filter((each) => each.local === true) }
-        : options;
+    const connectors = options.connectors.filter((each) => !options.localOnly || each.local);
+    this.options = { ...options, connectors };
     this.maxRounds = maxRounds;
     const connectorCalls = options.runs?.connectorCalls;
     this.runs =
@@ -160,12 +155,7 @@ export class LocalExecutor implements RunExecutor {
             (run, call) => this.callModel(run, call),
             connectorCalls === undefined
               ? undefined
-              : (effect) =>
-                  makeConnectorCall(
-                    this.options.connectors,
-                    effectBoundary(connectorCalls),
-                    effect,
-                  ),
+              : (effect) => makeConnectorCall(connectors, effectBoundary(connectorCalls), effect),
           );
     const runs = options.runs;
     this.chatHarnesses =
@@ -497,9 +487,7 @@ export class LocalExecutor implements RunExecutor {
 
   /** The definitions the run started with. */
   private async keptDefinitions(run: RunState): Promise<RunDefinitions> {
-    if (this.options.runs === undefined) {
-      throw noRuns();
-    }
+    if (this.options.runs === undefined) throw noRuns();
     return await definitionsOf(this.options.runs.blobs, run.definitionsVersion);
   }
 }
