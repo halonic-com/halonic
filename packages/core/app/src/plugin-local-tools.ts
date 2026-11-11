@@ -13,6 +13,7 @@ import type {
   ConnectorFactoryContext,
   ConnectorTool,
   Sandbox,
+  SandboxFence,
   SandboxProfile,
   SandboxSession,
   SandboxUnavailableReason,
@@ -40,14 +41,18 @@ export type LocalToolState =
  * Why a local tool can't run: a load state other than `ready`, or
  * `sandbox-not-fenced` when the session opened without a proven fence.
  * Local tools run only fenced (plugins ADR, sections 4 and 6), so a session
- * whose fence is `off` (the launcher, which has none) or `not-fenced` is
- * closed before any program starts. Only a call finds this out, because the
+ * whose fence is anything but `fenced` (`off` for the launcher, which has
+ * none, `not-fenced`, or already `stopped`) is closed before any program
+ * starts. Only a call finds this out, because the
  * fence is proven when a session opens, so {@link PluginLocalTools.state} never
  * reports it.
  */
 export type LocalToolUnavailable =
   | Exclude<LocalToolState, { kind: "ready" }>
-  | { readonly kind: "sandbox-not-fenced"; readonly fence: "off" | "not-fenced" };
+  | {
+      readonly kind: "sandbox-not-fenced";
+      readonly fence: Exclude<SandboxFence["state"], "fenced">;
+    };
 
 /** What the host built for one local tool, before its session opens. */
 export interface LocalToolOpening {
@@ -250,7 +255,7 @@ class SessionConnector implements ConnectorClient {
       throw new Error(`Local tool "${this.id}" was closed while its session opened.`);
     }
     const fence = session.fence.state;
-    if (fence === "off" || fence === "not-fenced") {
+    if (fence !== "fenced") {
       await session.close();
       throw new LocalToolUnavailableError(this.id, { kind: "sandbox-not-fenced", fence });
     }

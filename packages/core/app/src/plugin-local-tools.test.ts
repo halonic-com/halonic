@@ -157,6 +157,7 @@ verifies("app.plugin-local-tools", () => {
   it.each([
     { fence: { state: "off" }, code: "off" },
     { fence: { state: "not-fenced", reason: "a probe got through" }, code: "not-fenced" },
+    { fence: { state: "stopped" }, code: "stopped" },
   ] as const)(
     "refuses a session whose fence is $code: closes it and creates no connector",
     async ({ fence, code }) => {
