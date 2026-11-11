@@ -77,7 +77,10 @@ export function BlockedSitesPanel(props: BlockedSitesPanelProps) {
       <ul className="divide-y divide-border">
         {step.sites.map((site) => (
           <li key={site.host} className="flex justify-between gap-4 py-1 text-body">
-            <SiteNameText host={site.host} />
+            {/* A 64-character name is wider than a phone: it wraps, the count stays whole. */}
+            <span className="min-w-0 break-all">
+              <SiteNameText host={site.host} />
+            </span>
             <span className="sr-only">, </span>
             <span className="shrink-0 text-fg-muted">{triesText(site.tries)}</span>
           </li>
