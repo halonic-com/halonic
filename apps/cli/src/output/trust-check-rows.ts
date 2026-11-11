@@ -31,15 +31,20 @@ export const rowIndent = "  ";
 /** Where the lines under a row start: under its second column. */
 const underRow = " ".repeat(rowIndent.length + firstColumn);
 
-/** "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN", then its ! line. */
+/**
+ * "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN ·
+ * takes AWS_PROFILE from your environment", then its ! line.
+ */
 export function programRow(
   connector: ConnectorTrustContent,
   unpinned: ReadonlySet<string>,
 ): Phrase[] {
   const command = [text(connector.settings["command"]), ...strings(connector.settings["args"])];
-  const lines = [
-    row(connector.id, withSecrets(phrase`${command.join(" ")}`, secretNames(connector))),
-  ];
+  const withNames = withInherited(
+    withSecrets(phrase`${command.join(" ")}`, secretNames(connector)),
+    strings(connector.settings["inheritEnv"]),
+  );
+  const lines = [row(connector.id, withNames)];
   if (unpinned.has(connector.id)) {
     const warning = trustMessages.notPinned(
       registryOf(text(connector.settings["command"]), command),
@@ -118,6 +123,13 @@ function withSecrets(detail: Phrase, secrets: readonly string[]): Phrase {
   return secrets.length === 0
     ? detail
     : phrase`${detail} ${markPart("separator")} ${trustMessages.getsSecrets(secrets).phrase}`;
+}
+
+/** The detail, then "· takes AWS_PROFILE from your environment" when it takes any. */
+function withInherited(detail: Phrase, names: readonly string[]): Phrase {
+  return names.length === 0
+    ? detail
+    : phrase`${detail} ${markPart("separator")} ${trustMessages.takesFromEnvironment(names).phrase}`;
 }
 
 /** The agent's id and program, then its sites, every one, and its folder when it isn't the default. */

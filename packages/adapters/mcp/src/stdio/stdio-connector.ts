@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { connectorBaseEnv, type StdioTransport as StdioConfig } from "@halonicjs/app";
+import { connectorInheritedEnv, type StdioTransport as StdioConfig } from "@halonicjs/app";
 import type {
   ConnectorClient,
   ConnectorConfig,
@@ -34,8 +34,9 @@ export interface McpStdioOptions {
   readonly runners: RunnerSearch;
   /**
    * The app's own environment, usually `process.env`. A program gets only
-   * its base (`app.connector-base-env`); the rest is read to scrub secrets
-   * from the program's error output.
+   * its base (`app.connector-base-env`) and the variables its connector
+   * names in `inheritEnv` (`app.connector-inherited-env`); the rest is read
+   * to scrub secrets from the program's error output.
    */
   readonly inheritedEnv: Readonly<Record<string, string | undefined>>;
   /** How Halonic introduces itself to the server. */
@@ -307,9 +308,10 @@ class McpStdioConnector implements ConnectorClient {
     return folders.length === 0 ? {} : { workingFolders: { workspaceRoot, folders } };
   }
 
-  /** What the program gets from the app's own environment: only its base, so no model key. */
+  /** What the program gets from the app's own environment: its base and what it names, so no model key. */
   #inheritedEnv(): Record<string, string> {
-    return connectorBaseEnv(this.#options.inheritedEnv, this.#options.runners.platform);
+    const { inheritedEnv, runners } = this.#options;
+    return connectorInheritedEnv(inheritedEnv, this.#stdio.inheritEnv ?? [], runners.platform);
   }
 
   async #removeFolder(): Promise<void> {

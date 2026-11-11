@@ -1,6 +1,9 @@
 // The variables a local connector program gets from the app's own
 // environment without its connector naming them (HAL-6266). Anything else,
-// a model key in the person's shell included, stays out.
+// a model key in the person's shell included, stays out unless the
+// connector names it in `inheritEnv`, and a secret's name never.
+
+import { isSecretVariableName } from "@halonicjs/std";
 
 /**
  * What a program needs to find programs, its home and temp folders, and to
@@ -113,4 +116,36 @@ function isBaseVariable(name: string, windows: boolean): boolean {
   const written = windows ? name.toUpperCase() : name;
   if (written.startsWith(localePrefix)) return true;
   return windows ? windowsNames.has(written) : posixNames.has(written);
+}
+
+/**
+ * What a local connector program gets from `env`, the app's own
+ * environment: its base ({@link connectorBaseEnv}) and each variable its
+ * connector names in `inheritEnv` that is set there. On Windows a name
+ * matches in any letter case. A name that says it holds a secret is never
+ * taken, even when the format check was skipped: a secret goes through
+ * `secretEnv`.
+ *
+ * @example
+ * connectorInheritedEnv({ PATH: "/usr/bin", AWS_PROFILE: "work" }, ["AWS_PROFILE"], "linux");
+ * // { PATH: "/usr/bin", AWS_PROFILE: "work" }
+ */
+export function connectorInheritedEnv(
+  env: Readonly<Record<string, string | undefined>>,
+  inheritEnv: readonly string[],
+  platform: string,
+): Record<string, string> {
+  const inherited = connectorBaseEnv(env, platform);
+  const windows = platform === "win32";
+  for (const name of inheritEnv) {
+    if (isSecretVariableName(name)) continue;
+    const written = windows
+      ? Object.keys(env).find((key) => key.toUpperCase() === name.toUpperCase())
+      : name;
+    const value = written === undefined ? undefined : env[written];
+    if (written !== undefined && value !== undefined && !value.startsWith("()")) {
+      inherited[written] = value;
+    }
+  }
+  return inherited;
 }

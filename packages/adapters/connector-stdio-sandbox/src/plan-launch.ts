@@ -40,6 +40,12 @@ export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> 
       `Connector "${id}" names a folder to start in, but a local tool starts in the working folder Halonic chose for it.`,
     );
   }
+  // The session's profile holds no variable from this computer's environment to take one from.
+  if ((stdio.inheritEnv ?? []).length > 0) {
+    throw new Error(
+      `Connector "${id}" names variables to take from your environment, but a local tool in a sandbox gets none of them. Set them under env or secretEnv instead.`,
+    );
+  }
   const pin = await checkPinnedLaunch(stdio, config.secretEnv, context.http);
   if (!pin.ok) throw new Error(`Halonic didn't start the connector "${id}": ${pin.error}.`);
   const secretEnv = await readSecretEnv(id, config.secretEnv, context.secrets);

@@ -91,6 +91,13 @@ export const trustMessages = defineMessages("trust", {
   /** The secrets a program gets, after its command: "gets the secret GMAIL_TOKEN". */
   getsSecrets: (names: readonly string[]) =>
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
+  /**
+   * The variables a program takes from the person's environment, after its
+   * secrets: "takes AWS_PROFILE from your environment". The team's words
+   * (HAL-6266), a detail of the approved trust check (HAL-2282).
+   */
+  takesFromEnvironment: (names: readonly string[]) =>
+    phrase`takes ${listed(names)} from your environment`,
   agentsHeading: () => phrase`Agents`,
   /** The line under the Agents heading. The terminal has no count and no collapsing. */
   agentsIntro: () => phrase`Agents in this workspace that run in Claude Code or Codex.`,

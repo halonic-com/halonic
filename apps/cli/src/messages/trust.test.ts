@@ -78,6 +78,15 @@ describe("trust's sentences", () => {
     ]);
   });
 
+  it("names the variables a program takes from the person's environment", () => {
+    expect(words(trustMessages.takesFromEnvironment(["AWS_PROFILE"]))).toBe(
+      "takes AWS_PROFILE from your environment",
+    );
+    expect(words(trustMessages.takesFromEnvironment(["AWS_PROFILE", "KUBECONFIG"]))).toBe(
+      "takes AWS_PROFILE and KUBECONFIG from your environment",
+    );
+  });
+
   it("lists several secrets of one program", () => {
     expect(words(trustMessages.getsSecrets(["A", "B"]))).toBe("gets the secrets A and B");
     expect(words(trustMessages.getsSecrets(["A", "B", "C"]))).toBe("gets the secrets A, B and C");

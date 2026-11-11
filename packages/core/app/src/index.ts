@@ -61,7 +61,7 @@ export {
   type SendingCheck,
   type SendingSettings,
 } from "./connection-settings.ts";
-export { connectorBaseEnv } from "./connector-base-env.ts";
+export { connectorBaseEnv, connectorInheritedEnv } from "./connector-base-env.ts";
 export {
   ConnectorFactories,
   type ConnectorKind,

@@ -126,6 +126,23 @@ verifies("cli.trust-check", () => {
     ]);
   });
 
+  it("names the variables a program takes from the person's environment, after its secrets", () => {
+    const aws: ConnectorTrustContent = {
+      ...mail,
+      id: "aws-mcp",
+      settings: { ...mail.settings, inheritEnv: ["AWS_PROFILE", "AWS_REGION"] },
+    };
+    const check: TrustCheck = {
+      status: "new",
+      content: { connectors: [aws], agents: [] },
+      fingerprint,
+      unpinned: [],
+    };
+    expect(lines(check)[5]).toBe(
+      "  aws-mcp       npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN · takes AWS_PROFILE and AWS_REGION from your environment",
+    );
+  });
+
   it("starts with the ! line when the list of trusted workspaces can't be read", () => {
     const check: TrustCheck = {
       status: "unreadable",

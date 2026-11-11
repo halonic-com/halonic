@@ -162,6 +162,38 @@ verifies("mcp.stdio-connector", () => {
       await client.close();
     });
 
+    it("adds each variable the connector names in inheritEnv, under its own env and secrets", async () => {
+      const { starter, context } = setUp();
+      const factory = new McpStdioConnectorFactory({
+        starter,
+        folders: unusedFolders,
+        runners: unusedRunners,
+        inheritedEnv: {
+          PATH: "/usr/bin",
+          AWS_PROFILE: "work",
+          NOTES_MODE: "loud",
+          GITHUB_TOKEN: "x",
+        },
+        clientInfo: { name: "halonic", version: "0.1.0" },
+      });
+      const transport: ConnectorConfig["transport"] = {
+        kind: "stdio",
+        command: "notes-mcp",
+        args: ["--serve"],
+        env: { NOTES_MODE: "quiet" },
+        inheritEnv: ["AWS_PROFILE", "NOTES_MODE", "GITHUB_TOKEN", "KUBECONFIG"],
+      };
+      const client = factory.create({ ...config, transport }, context);
+      await client.listTools();
+      expect(starter.programs[0]?.launch.env).toEqual({
+        PATH: "/usr/bin",
+        AWS_PROFILE: "work",
+        NOTES_MODE: "quiet",
+        NOTES_TOKEN: "value-from-secrets",
+      });
+      await client.close();
+    });
+
     it("throws a tool's own failure apart from the message, which is ours", async () => {
       const { factory, context } = setUp();
       const client = factory.create(config, context);

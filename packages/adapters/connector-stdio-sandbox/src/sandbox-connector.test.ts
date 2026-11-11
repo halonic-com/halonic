@@ -78,6 +78,15 @@ verifies("connector-stdio-sandbox.session-start", () => {
     expect(sandbox.started).toEqual([]);
   });
 
+  it("refuses variables to take from this computer's environment: the session has none", async () => {
+    const { sandbox, factory, context } = setUp();
+    const named = { ...config.transport, inheritEnv: ["AWS_PROFILE"] };
+    await expect(
+      factory.create({ ...config, transport: named }, context).listTools(),
+    ).rejects.toThrow("a local tool in a sandbox gets none of them");
+    expect(sandbox.started).toEqual([]);
+  });
+
   it("refuses another transport kind", () => {
     const { factory, context } = setUp();
     const http: ConnectorConfig = {

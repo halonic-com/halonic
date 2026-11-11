@@ -132,6 +132,20 @@ verifies("mcp.pinned-launcher", () => {
       await client.close();
     });
 
+    it("gets the variables its connector names in inheritEnv, and no other", async () => {
+      const env = { ...linuxEnv, AWS_PROFILE: "work", ANTHROPIC_API_KEY: "sk-ant-test" };
+      const named = { runners: runnerComputer, inheritedEnv: env };
+      const { starter, factory, context } = setUp(undefined, undefined, named);
+      const config = pinned();
+      const transport = { ...config.transport, inheritEnv: ["AWS_PROFILE"] };
+      const client = factory.create({ ...config, transport }, context);
+      await client.listTools();
+      const launch = starter.programs[0]?.launch;
+      expect(launch?.env).toMatchObject({ AWS_PROFILE: "work", HOME: launch?.cwd });
+      expect(launch?.env).not.toHaveProperty("ANTHROPIC_API_KEY");
+      await client.close();
+    });
+
     it("gets the harness agents' working folders for the starter to check", async () => {
       const { starter, factory, context } = setUp();
       const coder = "/workspaces/acme/files/agents/coder";
