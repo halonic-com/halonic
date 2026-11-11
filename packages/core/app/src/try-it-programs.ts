@@ -89,31 +89,42 @@ function startsProgram(file: LoadedFile, pinned: ReadonlySet<string>): boolean {
 }
 
 /**
- * A POSIX root, a home folder (`~`), a Windows drive (`C:\`, `C:/`) or a
- * network share (`\\server`), optionally after a short option with its
- * value attached (`-r/srv/acme`).
+ * A POSIX root, a home folder (`~`), a Windows root or network share
+ * (`\acme`, `\\server`), optionally after a short option with its value
+ * attached (`-r/srv/acme`). A Windows drive (`C:\`) needs no rule of
+ * its own: splitting at its `:` leaves a piece that starts at a root.
  */
-const absolutePathStart = /^(-[A-Za-z])?(\/|~|[A-Za-z]:[\\/]|\\\\)/;
+const absolutePathStart = /^(-[A-Za-z])?[\\/~]/;
 
-/** A `..` path segment, at the start, after `=` or after a path separator. */
-const parentSegment = /(^|[=\\/])\.\.([\\/]|$)/;
+/** A `..` path segment, at the start of a piece or after a path separator. */
+const parentSegment = /(^|[\\/])\.\.([\\/]|$)/;
 
 /** A `file:` URI, a form some servers take for their roots. */
 const fileUri = /file:/i;
 
 /**
+ * Where one value can hold more than one path: after `=` (`--root=/srv`),
+ * in a list (`docs,/srv`, `docs;/srv`, `docs:/srv`), or after a space when
+ * an option and its path come as one string (`--root /srv`). A `:` before
+ * `//` belongs to a URL (`https://…`), so it doesn't split.
+ */
+const pieceSeparator = /[=,;\s]|:(?!\/\/)/;
+
+/**
  * Whether an argument or environment value could name a path outside the
  * connector's own folder, and so point a pinned connector back at the
  * workspace (a filesystem server given the workspace folder, say). This
- * check doesn't know where the workspace is, so it fails safe: any
- * absolute path counts (at the start, or after `=` as in
- * `--root=/srv/acme`), as does any `..` segment, since enough of them
- * reach the root from any folder, and any `file:` URI. Matching too much
- * only makes a step can't-try while a non-item file is held back.
+ * check doesn't know where the workspace is, so it fails safe: any piece
+ * of the value that is an absolute path counts, as does any `..` segment,
+ * since enough of them reach the root from any folder, and any `file:`
+ * URI. Matching too much only makes a step can't-try while a non-item
+ * file is held back.
  */
 function mayPointOutsideItsFolder(value: string): boolean {
-  if (fileUri.test(value) || parentSegment.test(value)) {
+  if (fileUri.test(value)) {
     return true;
   }
-  return value.split("=").some((part) => absolutePathStart.test(part));
+  return value
+    .split(pieceSeparator)
+    .some((piece) => absolutePathStart.test(piece) || parentSegment.test(piece));
 }

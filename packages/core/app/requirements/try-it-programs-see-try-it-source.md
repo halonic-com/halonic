@@ -12,7 +12,7 @@ While Try it or Test holds back a file that isn't an item, such as a script a co
   when Try it asks for its source for workflow `triage`, whose step `reply` runs `writer`,
   then step `reply` can't be tried and its reason names `tools/run.sh`, while Try it's own source still reads the accepted script.
 - Given the same change and `sync` pinned in the trust record, then every step can be tried.
-- Given the same change, `sync` pinned, and `sync` given the argument `--root=/srv/acme`, `--root=../../acme` or `file:///srv/acme`, then step `reply` can't be tried.
+- Given the same change, `sync` pinned, and `sync` given the argument `--root=/srv/acme`, `--root=../../acme`, `file:///srv/acme`, `--roots=docs,/srv/acme`, `docs:/srv/acme` or `--root /srv/acme`, then step `reply` can't be tried.
 - Given agent `sorter` with subagent `helper`, whose `harness` is `claude-code`, and a held-back `tools/run.sh`, then `sorter` tried on its own can't be tried as a whole.
 - Given a step that runs a child workflow whose step runs `writer`, and the held-back `tools/run.sh`, then that step can't be tried.
 - Given only a held-back change to an agent's permissions, then its harness and connectors are tried as before.

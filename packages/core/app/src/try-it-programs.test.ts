@@ -118,6 +118,11 @@ verifies("app.try-it-programs-see-try-it-source", () => {
       'args: ["--root=../../acme"]',
       'args: ["file:///srv/acme"]',
       'args: ["-r/srv/acme"]',
+      'args: ["--roots=docs,/srv/acme"]',
+      'args: ["docs:/srv/acme"]',
+      'args: ["--root /srv/acme"]',
+      'args: ["--root .."]',
+      'args: ["C:\\\\acme"]',
     ];
     for (const given of outside) {
       const { review, propose } = acme({ [sync]: stdioSync.replace("args: [run.sh]", given) });
@@ -126,6 +131,21 @@ verifies("app.try-it-programs-see-try-it-source", () => {
       expect((await review.tryItSource({ item: triage, pinned })).cantTry).toEqual([
         { status: "cant-try", item: triage, step: "reply", reason: scriptHeldBack },
       ]);
+    }
+  });
+
+  it("tries the step when a pinned connector is given only URLs, packages and inside paths", async () => {
+    const pinned = new Set(["sync"]);
+    const inside = [
+      'args: ["./data", "node_modules/.bin/x", "a..b"]',
+      'args: ["@scope/pkg", "--port=8080"]',
+      'args: ["https://example.com/x", "--url=http://localhost:8080/a"]',
+    ];
+    for (const given of inside) {
+      const { review, propose } = acme({ [sync]: stdioSync.replace("args: [run.sh]", given) });
+      await propose(script, "echo changed\n");
+
+      expect((await review.tryItSource({ item: triage, pinned })).cantTry).toEqual([]);
     }
   });
 
