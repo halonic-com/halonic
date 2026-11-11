@@ -14,10 +14,12 @@ const ranStatuses = ["passed", "failed"];
  * - a deleted test file
  * - fewer tests that ran in a test file
  * - fewer tests that ran for a requirement, even if the total stays the same
- * - fewer `expect` calls for a requirement, if the pull request changes one of
- *   its test files or its requirement file. A test can only be weakened by
- *   editing it; a count that drops over unchanged tests is run-to-run noise
- *   (polling, tests that skip in some environments).
+ * - fewer `expect` calls for a requirement, if the pull request changes a file
+ *   in a package that owns its tests, or its requirement file. The count is
+ *   measured at run time, so a shared helper, a fixture or the code under
+ *   test can weaken a test without editing it. A drop in a package nothing
+ *   changed in is run-to-run noise (polling, tests that skip in some
+ *   environments).
  * Both checkouts' tests must have run first. A missing or unreadable result
  * file is a finding too, so the guard fails closed.
  */
@@ -152,27 +154,38 @@ function requirementFiles(tests: readonly TestOutcome[]): Map<string, string> {
   return files;
 }
 
-/** The requirements with a test file or a requirement file the pull request changed. */
+/**
+ * The requirements the pull request may have weakened: those with a test in a
+ * package where any file changed (a helper, a fixture, the code under test),
+ * and those whose requirement file changed. The expect count is measured at
+ * run time, so a test can lose calls without being edited. The generated
+ * result file doesn't count as a change.
+ */
 function touchedRequirements(
   { base, head }: Checkouts,
   tests: readonly TestOutcome[],
 ): ReadonlySet<string> {
+  const packageOf = (file: string): string | undefined =>
+    (owningPackage(file, head.packages) ?? owningPackage(file, base.packages))?.directory;
+  const changedPackages = new Set<string>();
   const touched = new Set<string>();
-  for (const test of tests) {
-    if (test.requirement !== undefined && changeOf(test.file, base, head) !== undefined) {
-      touched.add(test.requirement);
+  for (const file of new Set([...base.files, ...head.files])) {
+    const pkg = packageOf(file);
+    if (pkg === undefined || file === `${pkg}/${testResultsFile}`) {
+      continue;
+    }
+    if (changeOf(file, base, head) === undefined) {
+      continue;
+    }
+    changedPackages.add(pkg);
+    if (pkg !== "." && file.endsWith(".md") && file.includes("/requirements/")) {
+      touched.add(expectedRequirementId(file, pkg));
     }
   }
-  for (const file of new Set([...base.files, ...head.files])) {
-    const pkg = owningPackage(file, head.packages) ?? owningPackage(file, base.packages);
-    if (
-      pkg !== undefined &&
-      pkg.directory !== "." &&
-      file.endsWith(".md") &&
-      file.includes("/requirements/") &&
-      changeOf(file, base, head) !== undefined
-    ) {
-      touched.add(expectedRequirementId(file, pkg.directory));
+  for (const test of tests) {
+    const pkg = packageOf(test.file);
+    if (test.requirement !== undefined && pkg !== undefined && changedPackages.has(pkg)) {
+      touched.add(test.requirement);
     }
   }
   return touched;

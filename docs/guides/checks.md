@@ -165,7 +165,7 @@ covers it:
 | Change | The note lists |
 | --- | --- |
 | an active requirement is edited, retired, demoted to draft, renamed or deleted | the requirement ID |
-| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls (only when the pull request changes one of its test files or its requirement file: a test can only be weakened by editing it, and counts of unchanged tests vary from run to run) | the requirement ID |
+| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls (only when the pull request changes a file in the package that owns its tests, or its requirement file: a helper, a fixture or the code under test can weaken a test without editing it, but counts in a package nothing changed in vary from run to run) | the requirement ID |
 | a test file is deleted, or fewer of its tests ran | the test file |
 | a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config | the file |
 | a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about | the test file |

@@ -113,7 +113,18 @@ verifies("check.guard-fewer-assertions", () => {
     expect(errors.join("\n")).toMatch(/made 2 expect call\(s\), 3 on the merge base/);
   });
 
-  test("passes a lower expect count over unchanged tests: that is run-to-run noise", async () => {
+  test("fails when a helper in the package changed, the test file didn't, and there are fewer calls", async () => {
+    const helper = "src/assert-timer.ts";
+    const errors = await errorsFor(
+      { ...two, [helper]: "export const assertTimer = 2;\n" },
+      { ...fewer, [helper]: "export const assertTimer = 1;\n" },
+    );
+    expect(errors).toEqual([
+      `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
+    ]);
+  });
+
+  test("passes a lower expect count in a package nothing changed in: that is run-to-run noise", async () => {
     expect(await errorsFor(two, fewer)).toEqual([]);
   });
 
