@@ -171,12 +171,14 @@
     "esbuild": {
       "category": "dev-tooling",
       "allowedIn": [
+        "@halonicjs/adapter-integration-runner",
         "@halonicjs/tooling-publish"
       ],
       "layers": [
+        "adapters",
         "tooling"
       ],
-      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. No dependencies beyond its own platform binaries. Tests only."
+      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only."
     },
     "fast-check": {
       "category": "dev-tooling",

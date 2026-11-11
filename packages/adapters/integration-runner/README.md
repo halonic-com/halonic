@@ -53,10 +53,14 @@ must be stopped with exactly one block, or answered without stopping, and never 
 - **The runner process, `src/runner/main.ts`:** `node --permission … <runner> <nonce> <entry file>
   <export>`. The console goes to stderr, so stdout carries only frames. It loads the integration
   after `start`, and gives it a token store that refuses every call.
+- **The runner file, `pnpm build` (`esbuild.config.ts`):** writes the runner and everything it
+  imports (our packages and Zod) to `dist/runner.mjs`, the one file Node may read inside the fence
+  besides the integration's folder. The build fails if that file would import anything but Node's
+  own modules. esbuild does the build and never ships.
 
-Not done yet: building the runner into one file, the module hook, and starting through
-`sandbox-host` on the confirmed path without the fence. Whether a runner may start at all, and
-fenced or not, is decided before `startRunner` by the start gate in `core/app`.
+Not done yet: the module hook, and starting through `sandbox-host` on the confirmed path without
+the fence. Whether a runner may start at all, and fenced or not, is decided before `startRunner`
+by the start gate in `core/app`.
 
 ## Example
 
