@@ -50,6 +50,11 @@ fix comes first ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes
   there without asking. Keep work you can't lose in git.
 - **Allowed sites see what the agent can read.** The fence checks a site's
   name, not what is sent to it.
+- **Only blocked sites reached through the proxy have a name.** The run page
+  names each site a step was refused, once, with its tries. A program that
+  connects without the fence's proxy is still refused, but the log has no site
+  name for it, so in 0.1 the run page shows no row for it. A blocked site gets
+  no connection on any system; on Windows, the name may still be looked up.
 - **It doesn't stop the steering.** A model tricked by a mail or a web page is
   still tricked. The sandbox limits what the steered agent can reach.
 - **Linux in a container can't use it.** Bubblewrap can't nest in Docker or
