@@ -171,11 +171,11 @@ verifies("cli.commands.init.copy-example", () => {
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
         `✓ Created a copy of the Acme example in .${sep}acme.`,
-        "  2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed",
+        "  2 hubs · 3 agents · 2 workflows · 1 routine · test model, no key needed",
         "",
         "Next:",
         "  cd acme",
-        "  halonic test                        run its workflow tests (no key, nothing sent)",
+        "  halonic test                        run its tests (no key, nothing sent)",
         "  halonic run support-reply --input examples/refund-question.json",
       ]);
       expect(io.stderr).toEqual([]);

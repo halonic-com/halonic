@@ -19,7 +19,7 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
   then they are the four lines of cli-output 1.9, joined by ·, each under 80 columns.
 - Given `halonic init --example acme` and the example's 2 hubs, 3 agents, 2 workflows and 1 routine,
   when its success lines are made,
-  then they read "Created a copy of the Acme example in ./acme." and "2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed" (cli-output 3.1).
+  then they read "Created a copy of the Acme example in ./acme." and "2 hubs · 3 agents · 2 workflows · 1 routine · test model, no key needed" (cli-output 3.1).
 - Given a `halonic validate` that found 2 errors and 1 warning in 2 of 14 files,
   when its summary line is made,
   then it reads "2 errors and 1 warning in 2 files. Checked 14 files.", with "2 errors" in bold (cli-output 3.2).

@@ -20,7 +20,7 @@ network and no key. No file in it points at a real service.
 | Reports | Routine | Runs the Weekly report every Monday at 9:00 | `hubs/reports/workflows/routines/weekly-report.routine.yaml` |
 
 In the Support reply workflow, the step **Approve this reply?** (`review`)
-waits for a person and shows the draft. `approve` finishes the workflow with
+waits for a person to approve the draft. `approve` finishes the workflow with
 the reply approved. `reject` finishes it without a reply. Nothing is actually
 sent: this is an example. Spam ends right after the Sorter, with no draft to
 review.

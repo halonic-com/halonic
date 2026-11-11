@@ -40,7 +40,7 @@ export const initMessages = defineMessages("init", {
   nextValidate: () => phrase`halonic validate`,
   nextValidateWhy: () => [dim("check the files as you edit them")],
   nextTest: () => phrase`halonic test`,
-  nextTestWhy: () => [dim("run its workflow tests (no key, nothing sent)")],
+  nextTestWhy: () => [dim("run its tests (no key, nothing sent)")],
   /** "halonic run support-reply --input examples/refund-question.json", the example's own workflow and input. */
   nextRun: (workflow: string, input: string) => phrase`halonic run ${workflow} --input ${input}`,
   /**
@@ -67,8 +67,8 @@ export const initMessages = defineMessages("init", {
 });
 
 /**
- * "2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key
- * needed", all dimmed, with the separator as a mark so it falls back to `-`
+ * "2 hubs · 3 agents · 2 workflows · 1 routine · test model, no key needed", all
+ * dimmed, with the separator as a mark so it falls back to `-`
  * where the output isn't UTF-8.
  */
 function contentsLine(contents: ExampleContents): Phrase {
@@ -77,7 +77,7 @@ function contentsLine(contents: ExampleContents): Phrase {
     counted(contents.agents, "agent", "agents"),
     counted(contents.workflows, "workflow", "workflows"),
     counted(contents.routines, "routine", "routines"),
-    "runs on the test model, no key needed",
+    "test model, no key needed",
   ];
   return facts.flatMap((fact, index) =>
     index === 0 ? [dim(fact)] : [" ", markPart("separator"), " ", dim(fact)],

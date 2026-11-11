@@ -15,7 +15,7 @@ verifies("cli.messages", () => {
       "Created a copy of the Acme example in ./acme.",
     );
     expect(words(initMessages.exampleContents(acme))).toBe(
-      "2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed",
+      "2 hubs · 3 agents · 2 workflows · 1 routine · test model, no key needed",
     );
     expect(words(initMessages.nextRun("support-reply", "examples/refund-question.json"))).toBe(
       "halonic run support-reply --input examples/refund-question.json",
@@ -48,7 +48,7 @@ describe("init's sentences", () => {
     });
     const oldConsole = paintFor({ colour: false, live: false, unicode: false });
     expect(renderPhrase(contents.phrase, oldConsole)).toBe(
-      "1 hub - 1 agent - 1 workflow - 2 routines - runs on the test model, no key needed",
+      "1 hub - 1 agent - 1 workflow - 2 routines - test model, no key needed",
     );
     expect(contents.phrase[0]).toEqual(dim("1 hub"));
   });
@@ -68,11 +68,11 @@ describe("init's sentences", () => {
       "halonic validate",
       "check the files as you edit them",
       "halonic test",
-      "run its workflow tests (no key, nothing sent)",
+      "run its tests (no key, nothing sent)",
       "Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool",
     ]);
     expect(initMessages.nextTestWhy().phrase).toEqual([
-      dim("run its workflow tests (no key, nothing sent)"),
+      dim("run its tests (no key, nothing sent)"),
     ]);
   });
 
