@@ -16,7 +16,17 @@ needs a decision note (see CONTRIBUTING.md).
 
 <!-- Which tests did you add or run? Anything you checked by hand, and on which OS? -->
 
-- [ ] `pnpm verify` passes locally
+<!--
+Which local check did you run, and why was it enough? Don't run plain
+`pnpm verify` locally: CI runs it on every pull request. One of:
+- local (change stays inside one package, no export or behaviour changes):
+  ran turbo typecheck lint test on <package>
+- shared (touches code other packages rely on): ran turbo typecheck lint test
+  on ...[origin/main]
+Either way, run `pnpm check:enqueue` once before queueing.
+-->
+
+Local check: 
 
 ## Docs
 
