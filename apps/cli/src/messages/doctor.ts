@@ -125,7 +125,7 @@ export const doctorMessages = defineMessages("doctor", {
   windowsNodeInWsl: () => phrase`This is Windows' Node.js, running in a WSL folder.`,
   /** Under {@link windowsNodeInWsl}. */
   installNodeInWsl: () => phrase`Fix: install Node.js inside WSL and run halonic there.`,
-  /** Node.js ! inside WSL: "pnpm on the PATH is Windows' one: /mnt/c/…/pnpm". */
+  /** Node.js ! inside WSL, with the path of Windows' pnpm, which is under /mnt. */
   windowsPnpm: (path: string) => phrase`pnpm on the PATH is Windows' one: ${path}`,
   /** Under {@link windowsPnpm}. */
   installPnpmInWsl: () =>

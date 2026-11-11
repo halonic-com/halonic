@@ -42,7 +42,7 @@ export function windowsDriveOf(path: string): string | null {
  * `wsl$` or `wsl.localhost`.
  *
  * @example
- * isWslShare("\\\\wsl.localhost\\Ubuntu\\srv\\acme"); // true (leak-guard: allow absolute-path a WSL share)
+ * isWslShare("//wsl.localhost/Ubuntu/srv/acme"); // true, also with backslashes
  * isWslShare("\\\\server\\share\\acme"); // false
  */
 export function isWslShare(folder: string): boolean {
