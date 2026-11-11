@@ -31,7 +31,33 @@ describe("findSbomProblems", () => {
       ],
     };
     expect(findSbomProblems(sbom, list, own)).toEqual([
-      "left-pad@1.3.0 is in the SBOM but not in tooling/check/dependencies.json",
+      "left-pad@1.3.0 is in the SBOM but not in tooling/check/dependencies.json, and no listed package depends on it",
+    ]);
+  });
+
+  test("accepts a package that a listed one depends on, at any depth", () => {
+    const ref = (name: string): string => `pkg:npm/${name}@1.0.0`;
+    const component = (name: string) => ({
+      name,
+      version: "1.0.0",
+      purl: ref(name),
+      "bom-ref": ref(name),
+    });
+    const sbom = {
+      components: [
+        component("yaml"),
+        component("child"),
+        component("grandchild"),
+        component("stray"),
+      ],
+      dependencies: [
+        { ref: ref("yaml"), dependsOn: [ref("child")] },
+        { ref: ref("child"), dependsOn: [ref("grandchild")] },
+        { ref: ref("stray"), dependsOn: [ref("yaml")] },
+      ],
+    };
+    expect(findSbomProblems(sbom, list, own)).toEqual([
+      "stray@1.0.0 is in the SBOM but not in tooling/check/dependencies.json, and no listed package depends on it",
     ]);
   });
 
