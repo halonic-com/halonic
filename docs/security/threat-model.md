@@ -88,7 +88,7 @@ workspace you didn't write is like running its code.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| A workspace starts programs before you trust it | Ask "trust this workspace" before any program starts; no `shell: true`. The `TrustStore` port and its record format exist; nothing asks yet. The requirement `ports.connector-trust-enforcement` is still a draft. | **Planned** (phase 2, plan HAL-9; the requirement becomes active with the contract suites, HAL-181) |
+| A workspace starts programs before you trust it | Ask "trust this workspace" before any program starts; no `shell: true`. The CLI asks: `halonic trust` shows what the workspace can start and trusts it on this computer, by a fingerprint of its connectors, agents and providers. `run`, `runs send`, `routines watch` and `tools review` refuse a workspace that isn't trusted here, or changed since, and start nothing (exit 3); a run that can only reach the test model needs no trust (`reachesOnlyTheTestModel`). A trust record that can't be read counts as no trust. Studio doesn't ask yet: its "Trust this folder?" question only lets it open the folder, and doesn't check the workspace. The requirement `ports.connector-trust-enforcement` is still a draft, because the stdio launcher that checks the grant itself isn't built (HAL-230) | CLI **On `main`** (`apps/cli`, `workspace-trust.ts`); Studio **Planned** (phase 2, plan HAL-9); the requirement becomes active with the contract suites (HAL-181) |
 | A hub or an agent lists the token collection | Halonic's own collections (`_tokens`, `_google_setups`) start with `_`, which no workspace collection id may, so a hub, an agent or a ref field can't name them; the scheduler's and coordination's collections (`halonic.scheduler.timers`, `halonic.coordination`) are kept out by their `.` (`packages/core/format`, `collectionId`) | **On `main`** |
 | A workspace picks a token or one of Halonic's own secrets by name | A provider's or a model's `secret` is read through `workspaceSecrets`, which refuses `token-key`, `serve-password` and every name under the token prefix `halonic_token_`, in any case and with `-` or `_` (`packages/core/ports`). Together with the row above, no workspace name reaches a token or Halonic's own secrets in either store: the record store keeps tokens in `_tokens`, and a store that holds secrets and tokens together, such as the desktop keychain, keeps tokens under the prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
 | A workspace reads another workspace's or hub's data | Isolation between workspaces and hubs is not built | **Planned** (phase 2, plan HAL-9) |
@@ -279,18 +279,18 @@ A leaked run token gives only what that agent may already do, for that one run.
 | The agent changes what it may reach | Halonic builds the `SandboxProfile` from your profile and the trusted workspace; the agent can't change it. The workspace's definition files are read-only inside | Port **on `main`**; building the profile **Planned** (HAL-189) |
 | A working folder where tools read settings that run outside | `workingFolder` can't start with `.` (such as `.git`, `.claude`, `.codex`), be a kind's folder or `hubs`, or leave the workspace | **On `main`** (`format.agent-sandbox-fields`) |
 | Writes outside the agent's folders | srt allows writing only to the working, temp and settings folders; denied paths are hidden for reading and writing, read-only paths for writing; a path is never read as a pattern | **On `main`** (`sandbox-srt.profile-to-srt-config`) |
-| Tool settings in the working folder that would run commands | `.claude/settings.json`, `.claude/settings.local.json`, `.codex` and `.cursor` in the working folder are write-denied | **Lands with #753** (HAL-2554) |
+| Tool settings in the working folder that would run commands | `.claude/settings.json`, `.claude/settings.local.json`, `.codex` and `.cursor` in the working folder are write-denied | **On `main`** (`sandbox-srt`, `src/srt-config.ts`) |
 | Sending data to a site nobody allowed | Only the bridge and the allowed sites are reachable; every other host is denied without asking. `allowedSites` has at most 50 entries, no bare `*`, no addresses and no local names | **On `main`** (`sandbox-srt.profile-to-srt-config`, `format.agent-sandbox-fields`) |
 | An allowed name resolves to a local or private address | srt refuses a name that resolves to loopback, link-local, cloud metadata or this computer's own addresses; Halonic adds RFC 1918, carrier-grade NAT and IPv6 unique local ranges. Only the bridge's own address and port are let through | **On `main`** (`sandbox-srt.profile-to-srt-config`) |
-| A changed list of allowed sites slips past you | Harness, programs, sites and folders are part of the trust fingerprint, so a change asks for trust again | **Planned** (HAL-189, PR #771) |
-| The host's secrets reach the agent through its environment | The program gets only the variables the profile names. Probing a program before a run passes only `PATH`, `HOME` and the locale, with no shell, a 5-second limit and output cut at 4 KB | Probe **on `main`** (`sandbox-host.program-probe-node`); run env **Lands with #753** |
-| Code planted by the agent runs outside the fence before it starts | The srt launcher gets only the host's absolute `PATH` (without entries the program can write) and `TMPDIR`; the program's own variables are set inside the fence. A planted `bwrap` or `NODE_OPTIONS` never runs | **Lands with #753** (HAL-2554) |
-| The sandbox silently doesn't confine | Before a session starts anything, it proves the fence: a canary file it must hide, a canary loopback port it must block, and a control read. A session that isn't `fenced` starts nothing | Port **on `main`** (`ports.sandbox-fence-proof`); proof **Lands with #753** |
-| A process keeps running after cancel | Each program runs in its own process group; `kill`, `close`, the time limit and an aborted run stop the whole group | **Lands with #753** (HAL-2554) |
+| A changed list of allowed sites slips past you | Harness, programs, sites and folders are part of the trust fingerprint, so a change asks for trust again | **On `main`** (`workspace.trust-agents`) |
+| The host's secrets reach the agent through its environment | The program gets only the variables the profile names. Probing a program before a run passes only `PATH`, `HOME` and the locale, with no shell, a 5-second limit and output cut at 4 KB | **On `main`** (`sandbox-host.program-probe-node`, `sandbox-srt.session`) |
+| Code planted by the agent runs outside the fence before it starts | The srt launcher gets only the host's absolute `PATH` (without entries the program can write) and `TMPDIR`; the program's own variables are set inside the fence. A planted `bwrap` or `NODE_OPTIONS` never runs | **On `main`** (`sandbox-srt.session`) |
+| The sandbox silently doesn't confine | Before a session starts anything, it proves the fence: a canary file it must hide, a canary loopback port it must block, and a control read. A session that isn't `fenced` starts nothing | **On `main`** (`ports.sandbox-fence-proof`, `sandbox-srt.session`) |
+| A process keeps running after cancel | Each program runs in its own process group; `kill`, `close`, the time limit and an aborted run stop the whole group. On macOS a program that left its group is found by a variable it carries; on Windows, which has no process groups, `taskkill /T /F` ends the tree | **On `main`** (`sandbox-srt.session`) |
 | No sandbox, so the agent runs without one | `check()` gives a listed reason; when it isn't `ok`, `open` refuses and Halonic doesn't run the step. No code path falls back to running without the fence | **On `main`** (`sandbox-srt.check`, `contracts.sandbox-check`) |
 | Claude Code's or Codex's own sandbox breaks inside ours | Inside our sandbox their own sandboxes are switched off in the settings folder Halonic gives them, and ours is the fence | **Planned** (HAL-2552, HAL-2608) |
-| You can't see what was blocked | Each blocked access becomes a `sandbox.blocked` event in the run log. srt has no structured feed of blocked accesses, so the session in #753 reports none yet | Event **on `main`**; reports **Planned** (HAL-193) |
-| An adapter passes its own tests but leaks | Attack tests every sandbox adapter must pass, on Linux, macOS and Windows: `~/.ssh` and keychain files, writes outside the working folder, the agent's own file, sites by name, address and DNS, the bridge without or with another run's token, your own harness settings, a process left after cancel | **Planned** (HAL-193; CI on macOS and Windows: HAL-2646) |
+| You can't see what was blocked | Each blocked access becomes a `sandbox.blocked` event in the run log. srt has no structured feed of blocked accesses, so sandbox-srt's session reports only the git files it undoes when it ends (see the session's requirement) | Event and git-file reports **on `main`** (`sandbox-srt.session`); reports of what the fence blocked **Planned** (HAL-193) |
+| An adapter passes its own tests but leaks | Attack tests every sandbox adapter must pass, on Linux, macOS and Windows: `~/.ssh` and keychain files, writes outside the working folder, the agent's own file, sites by name, address and DNS, the bridge without or with another run's token, your own harness settings, a process left after cancel | sandbox-srt's fence tests **on `main`**: on Linux and macOS in CI (`sandbox-fence`, `sandbox-fence-macos`), on Windows as canary probes and a session test (`sandbox-windows`); the full list as a suite every adapter must pass **Planned** (HAL-193) |
 
 #### Linux, macOS and Windows
 
@@ -314,14 +314,20 @@ start, in this order, because its fix comes first.
   `check()` only looks for `/usr/bin/sandbox-exec`. Apple marks `sandbox-exec`
   as deprecated, so a later macOS could change or remove it.
 - **WSL 2** counts as Linux and gets the full Linux sandbox.
-- **Plain Windows** has no sandbox on `main`: `check()` reports `windows` and
-  nothing runs. The v0.1 desktop is to use srt's Windows mode, which is a
-  preview, set up by the installer with one admin step (D44). If it isn't set
-  up or fails its check, Studio offers to run that agent on this computer only
-  after a warning you confirm. That is the "this computer" choice below,
-  never a fallback Halonic makes by itself. The Windows mode needs a security
-  review before it becomes the default (HAL-196). Microsoft's process container
-  (MXC) as an extra Windows 11 option waits on the board (HAL-2546).
+- **Plain Windows** uses srt's Windows mode, an early (alpha) version: a
+  separate sandbox user account with network filters. It needs srt's install
+  for the whole machine, once, as an administrator (D44); `setUp()` runs it for
+  the installer, leaving out srt's grant to read your profile. Without the
+  install `check()` reports `windows` and nothing runs. On Windows there are
+  no process groups, so stopping a program ends its whole tree at once with
+  no grace period, and a program, argument or variable with a double quote,
+  a percent sign or a line break is refused rather than quoted. If the
+  sandbox isn't set up or fails its check, Studio is to offer to run that
+  agent on this computer only after a warning you confirm. That is the "this
+  computer" choice below, never a fallback Halonic makes by itself. The
+  Windows mode needs a security review before it becomes the default
+  (HAL-196). Microsoft's process container (MXC) as an extra Windows 11
+  option waits on the board (HAL-2546).
 
 #### "This computer"
 
@@ -344,7 +350,7 @@ but those are theirs, not Halonic's fence.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| A downloaded workspace moves an agent out of the sandbox | The choice lives in your profile, never in the workspace; without one, the agent runs in a sandbox | **On `main`** (`ports.agent-placement-store`); file store **Planned** (HAL-189, PR #774) |
+| A downloaded workspace moves an agent out of the sandbox | The choice lives in your profile, never in the workspace; without one, the agent runs in a sandbox | **On `main`** (`ports.agent-placement-store`, `fs-node.agent-placement-store-files`) |
 | A pull changes an agent you let out | The choice is bound to the SHA-256 of the agent file's raw bytes; any change, even whitespace, puts it back in the sandbox until you choose again. A file that changed while you read the prompt isn't saved | **On `main`** (`app.agent-placement`) |
 | The agent or a model takes itself out | Only a person's action saves the choice; the engine gets only the read side, and no tool reaches the store. An unreadable choice means sandbox | **On `main`** (`app.agent-placement`) |
 | You forget an agent runs unfenced | A permanent label on the agent that it runs with your full access | **Planned** (phase 5) |
