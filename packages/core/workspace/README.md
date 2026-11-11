@@ -82,6 +82,31 @@ export async function runExample(): Promise<{
   hub's workflows and agents; one at the root names its hub in `run.hub`, unless the root has agents
   or workflows of its own.
 
+## The files as a version holds them
+
+`new VersionSource(vcs, commit, location)` is a `DefinitionSource` over one commit. It reads and
+lists only through `Vcs.readAt` and `Vcs.listAt` at that commit, never the files on disk, so a file
+saved but not yet in the version reads as it was in the version, and a file the version doesn't have
+isn't found (`read` gives `null`, `list` gives `[]`). Run, routines, triggers and calls from other
+agents read through it, so a saved change isn't live until it is in a version.
+
+- **Its `version()` is the commit id**, so `loadWorkspace` gives a workspace whose `version` is that
+  commit, and a run that starts from it records the commit.
+- **Paths are checked first.** An unsafe or private path (`.env`, `.git`) throws a `RangeError`
+  before the `Vcs` is asked, as the `DefinitionSource` port says.
+- **The commit must be a full commit id.** `HEAD` or a short id such as `3f9a0c1` makes the
+  constructor throw a `RangeError`; resolve the name first.
+- **`VersionReader`** is the part of `Vcs` it needs (`readAt` and `listAt`), so a test can pass a few
+  files in memory.
+
+```ts
+const live = new VersionSource(vcs, head, "~/workspaces/acme");
+const workspace = await loadWorkspace(live);
+workspace.version; // the commit id at HEAD
+```
+
+Requirement: [`workspace.definition-source-at-version`](requirements/definition-source-at-version.md).
+
 ## Model aliases and the definitions a run keeps
 
 `resolveModel(workspace, hubId, name)` turns a model setting into a provider and a model. A name
@@ -121,15 +146,24 @@ store is empty once more and `initWorkspace` can simply run again.
 `gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
 workspace's own settings live (`workspace.yaml`).
 
+`copyWorkspace(source, target)` lays out a copy of a workspace, such as the Acme example that
+`halonic init --example acme` copies, under the same rules: it writes only into an empty store and
+returns `{ kind: "not_empty" }` otherwise (`CopyWorkspaceError`), the copy gets the `.gitignore` of a
+new workspace when the source has none, `workspace.yaml` is written last, and a failed write removes
+what was written. A success is a `CopiedWorkspace`: the target's `location` and the `files` written.
+
 Checking a workspace needs no service of its own: `loadWorkspace` gives every issue with its
 severity, file and line, and the caller counts the errors.
 
 The types in the API go with these functions: `LoadedWorkspace`, `LoadedFile`, `LoadedFileOf` and
 `WorkspaceIssue` for `loadWorkspace` and `filesOf`; `PlaceMatch` for `placeOf`; `ModelTarget` and
-`ResolvedModelTarget` for model aliases; `HubDefinitions` for `definitionsOf`; `InitWorkspaceOptions`,
-`InitializedWorkspace` and `InitWorkspaceError` for `initWorkspace`; and the trust types listed below
-(`TrustContent`, `TrustContentInput`, `ConnectorTrustContent`, `RefusedConnector`, `AgentTrustContent`,
-`TrustUrl`, `TrustChanges`, `ItemChanges`, `ChangedItem`, `ChangedConnector` and `ChangedAgent`).
+`ResolvedModelTarget` for model aliases; `HubDefinitions` for `definitionsOf`; `RunStartDefinitions` for `runDefinitionsOf`;
+`InitWorkspaceOptions`, `InitializedWorkspace` and `InitWorkspaceError` for `initWorkspace`;
+`CopiedWorkspace` and `CopyWorkspaceError` for `copyWorkspace`; `VersionReader` for `VersionSource`;
+and the trust types listed below (`TrustContent`, `TrustContentInput`, `ConnectorTrustContent`,
+`RefusedConnector`, `AgentTrustContent`, `IntegrationTrustContent`, `LocalIntegrationInput`,
+`TrustSkipInput`, `TrustUrl`, `TrustChanges`, `ItemChanges`, `ChangedItem`, `ChangedConnector`,
+`ChangedAgent` and `ChangedIntegration`).
 
 ## Trust content
 
@@ -159,10 +193,19 @@ Punycode, each once, sorted) and its working folder when that isn't `files/agent
 harness or with `halonic` add nothing, so a workspace without harness agents keeps the same content and
 fingerprint as before.
 
+Local integrations with a `{ fromSetting }` host are part of it too. `integrationsTrustContent` takes
+each integration's permission sheet and the workspace's settings for it, and lists, sorted by id, the
+URL each such setting holds, normalised as connector URLs are, `null` while it isn't set, and only
+the reason for a URL it can't trust. Integrations without such a host add nothing, so a workspace
+without them keeps the same content and fingerprint as before.
+
+`reachesOnlyTheTestModel` says when a run needs no trust at all: every provider is `mock`, there is no
+local integration and the trust content is empty, so nothing starts outside Halonic.
+
 When the fingerprint no longer matches, `trustChanges` compares the trusted content with the current
-one and lists the new, changed and removed connectors and harness agents, so the prompt can show New
-and Changed first. Only removing whole connectors or whole harness agents lets the record shrink
-without asking (HAL-65 decision 9). Any change
+one and lists the new, changed and removed connectors, harness agents and integrations, so the prompt
+can show New and Changed first. Only removing whole connectors, harness agents or integrations lets
+the record shrink without asking (HAL-65 decision 9). Any change
 inside a connector asks again, even one that takes something out of the file, because dropping a
 tool from `approve`, the `allow` list or a variable can let the connector do more.
 
