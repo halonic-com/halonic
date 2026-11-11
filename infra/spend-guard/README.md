@@ -68,10 +68,10 @@ No new Cloudflare product goes live before it is on this list and priced in `src
 | R2 (storage, Class A/B) | yes               | `r2StorageAdaptiveGroups`, `r2OperationsAdaptiveGroups`                   | storage = peak size × elapsed part of month (high estimate)                                                                                             |
 | KV                      | yes               | `kvOperationsAdaptiveGroups`, `kvStorageAdaptiveGroups`                   |                                                                                                                                                         |
 | Workers AI              | no                | `aiInferenceAdaptiveGroups`                                               | read anyway                                                                                                                                             |
-| Durable Objects         | no, with HAL-3083 | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | reader written; `live: false` until it ships                                                                                                            |
-| Containers              | no, with HAL-3083 | `containersUsageAdaptiveGroups`                                           | `live: false`. CPU is read; memory and disk units must be checked against real data before they are priced. Until then the render sub-budget is the cap |
+| Durable Objects | yes (HAL-3083) | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | `activeTime` µs × 0.125 GB; counted in the render sub-budget |
+| Containers | yes (HAL-3083) | `containersUsageAdaptiveGroups`                                           | Units checked 11 Nov 2026 against real data: `cpuTimeSec` = vCPU-s, `allocatedMemory` = bytes×s (÷2³⁰ → GiB-s), `allocatedDisk` = bytes×s (÷10⁹ → GB-s). Counted in the render sub-budget |
 
-Flip `live` in `src/usage.mjs` in the same pull request that ships the product. Any product not on the list (Queues, D1, Vectorize, Images, Stream, Browser Rendering...) is not covered.
+Flip `live` in `src/usage.mjs` in the same pull request that ships the product (done for Containers and Durable Objects with HAL-3083). Any product not on the list (Queues, D1, Vectorize, Images, Stream, Browser Rendering...) is not covered.
 
 ## Prices used
 

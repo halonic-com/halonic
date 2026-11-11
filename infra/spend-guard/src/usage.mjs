@@ -159,17 +159,21 @@ export const READERS = {
     };
   },
 
-  // Not live until HAL-3083. cpuTimeSec is vCPU-seconds; allocatedMemory and
-  // allocatedDisk need their units confirmed against real data before they are
-  // priced, so the render sub-budget stays the cap until then.
+  // Units checked against real HAL-3083 data (11 Nov 2026, standard-4 = 12 GiB, 20 GB disk):
+  // cpuTimeSec is vCPU-seconds; allocatedMemory is bytes x seconds (12 GiB x 10 s = 128849018880);
+  // allocatedDisk is bytes x seconds (20 GB x 10 s = 2e11). Billing uses GiB-s and GB-s.
   async containers(env, w) {
     const a = await gql(
       env,
       `query($tag:String!,$since:Time!,$until:Time!){viewer{accounts(filter:{accountTag:$tag}){
-        c:containersUsageAdaptiveGroups(limit:10000, filter:{datetime_geq:$since, datetime_leq:$until}){sum{cpuTimeSec}}}}}`,
+        c:containersUsageAdaptiveGroups(limit:10000, filter:{datetime_geq:$since, datetime_leq:$until}){sum{cpuTimeSec allocatedMemory allocatedDisk}}}}}`,
       { tag: env.ACCOUNT_ID, since: w.since, until: w.until },
     );
-    return { containerVcpuSeconds: sum(a.c, (r) => r.sum.cpuTimeSec) };
+    return {
+      containerVcpuSeconds: sum(a.c, (r) => r.sum.cpuTimeSec),
+      containerMemGibSeconds: sum(a.c, (r) => r.sum.allocatedMemory) / 2 ** 30,
+      containerDiskGbSeconds: sum(a.c, (r) => r.sum.allocatedDisk) / GB,
+    };
   },
 
   async workersAi(env, w) {
@@ -183,15 +187,13 @@ export const READERS = {
   },
 };
 
-// Containers and Durable Objects go live with HAL-3083. Flip `live` in the same
-// PR that ships them, and add the Containers reader then.
 export const COVERAGE = [
   { product: "workers", live: true },
   { product: "r2", live: true },
   { product: "kv", live: true },
   { product: "workersAi", live: true },
-  { product: "durableObjects", live: false },
-  { product: "containers", live: false },
+  { product: "durableObjects", live: true },
+  { product: "containers", live: true },
 ];
 
 const merge = (parts) => {
@@ -221,6 +223,10 @@ export async function readUsage(env, now) {
     const parts = [];
     if (cfg.scripts.length) parts.push(await READERS.workers(env, w, { scripts: cfg.scripts }));
     if (cfg.buckets.length) parts.push(await READERS.r2(env, w, { buckets: cfg.buckets }));
+    // Containers and Durable Objects are only used by render, so the account-wide reads are its own.
+    if (cfg.containers) {
+      parts.push(await READERS.containers(env, w), await READERS.durableObjects(env, w));
+    }
     services[name] = price(merge(parts), { allowances: false, daysElapsed: w.daysElapsed }).total;
   }
   return { totalUsd: account.total, services, breakdown: account.lines };
