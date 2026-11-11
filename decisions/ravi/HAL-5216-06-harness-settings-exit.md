@@ -2,7 +2,6 @@
 
 - Approval: the approach was agreed with the harness owner (Owen) on [HAL-5231](/HAL/issues/HAL-5231) for the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216); Liam approves this note in review
 - Kind: internal
-- Signature: pending
 - Task: HAL-5216
 
 ## What changes
