@@ -406,7 +406,7 @@ export class LocalExecutor implements RunExecutor {
    * their kept files allow ({@link runConnectorsOf}), through the same turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first, and a connector call its kept file puts
    * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
-   * round limit. The agent's own prompt and the turn's full run log come in step 4; until then
+   * round limit: a turn that reaches it while the model still calls tools fails the call. The agent's own prompt and the turn's full run log come in step 4; until then
    * it logs only `tool.refused` ({@link refusalLog}).
    *
    * A `parallel` branch's call is offered only the connector tools whose
@@ -449,6 +449,7 @@ export class LocalExecutor implements RunExecutor {
     );
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
+    const maxRounds = agent?.maxSteps ?? defaultRunMaxRounds;
     const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
@@ -456,7 +457,7 @@ export class LocalExecutor implements RunExecutor {
       halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
       connectors: connectorCalls === undefined ? [] : connectors,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
-      maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
+      maxRounds,
       agent: call.agent,
       clock: this.options.clock,
       checkCall: runToolCheckOf(connectorTools),
@@ -464,9 +465,14 @@ export class LocalExecutor implements RunExecutor {
       log: refusalLog(this.options.runs?.store, run, call, this.options.clock),
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
     });
-    return outcome.kind === "stopped"
-      ? outcome.stop
-      : { type: "model", output: outcome.result.content };
+    if (outcome.kind === "stopped") return outcome.stop;
+    // An answer cut off at the limit isn't the agent's answer: the state mustn't go on with it.
+    if (outcome.result.atRoundLimit === true) {
+      throw new Error(
+        `Agent "${call.agent}" used all ${maxRounds} of its steps (maxSteps) and was still calling tools, so it gave no answer.`,
+      );
+    }
+    return { type: "model", output: outcome.result.content };
   }
 
   /** The definitions the run started with. */

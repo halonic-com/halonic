@@ -78,3 +78,24 @@ verifies("engine.run-tool-calls", () => {
     ]);
   });
 });
+
+verifies("engine.run-step-limit", () => {
+  it("fails the run when its agent uses all its steps and still calls tools", async () => {
+    const lookupForever = Array.from({ length: 3 }, (_, index) =>
+      callAnswer(call(`c${index}`, "lookup")),
+    );
+    const { model, runs } = await runReply(lookupForever, new KernelRuns(), {
+      agents: { writer: { ...writerAgent(), maxSteps: 2 } },
+      halonicTools: [halonicTool("lookup", async () => "found")],
+    });
+
+    expect(model.requests).toHaveLength(2);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      reason: "error",
+      error:
+        'Agent "writer" used all 2 of its steps (maxSteps) and was still calling tools, so it gave no answer.',
+    });
+    expect((await runs.get("run_1"))?.context).not.toHaveProperty("reply");
+  });
+});

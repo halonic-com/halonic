@@ -127,7 +127,9 @@ on an event.
   workspace: the Studio's, or the CLI's while `halonic run` or
   `halonic routines watch` runs. It keeps its timers in the profile, so a
   timer missed while nothing was running fires as soon as an engine opens.
-- **Task states have no timeout.** An agent is limited by `maxSteps`.
+- **Task states have no timeout.** An agent is limited by `maxSteps`. An
+  agent that uses all its steps and is still calling tools gave no answer,
+  so its state fails rather than going on with an unfinished one.
 
 The functions are `stateTimers` (the timers and their due times) and
 `dueTimer` (the one to take now, or none).

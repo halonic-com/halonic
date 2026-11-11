@@ -95,6 +95,8 @@ export interface ModelTurnResult extends ChatResponse {
   readonly skipped: ChatTurnSkip[];
   /** The model name that gave the last answer. */
   readonly model: string;
+  /** Set when the turn reached its round limit while the model still called tools. */
+  readonly atRoundLimit?: true;
 }
 
 /**
@@ -258,7 +260,7 @@ function endAtRoundLimit(ended: ModelTurnResult, tools: TurnTools, maxRounds: nu
   }
   ended.turn.push({ role: "assistant", content: ended.content });
   const { replay: _dropped, ...answer } = ended;
-  return { ...answer, toolCalls: [], finishReason: "length" as const };
+  return { ...answer, toolCalls: [], finishReason: "length" as const, atRoundLimit: true as const };
 }
 
 function assistantMessage(response: ChatResponse, toolCalls: ToolCall[]): ChatMessage {
