@@ -1,5 +1,6 @@
 import { isComposing } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useCutTextTooltip } from "../cut-text/cut-text-tooltip.ts";
 
 /** Props for {@link NameField}. */
 export interface NameFieldProps {
@@ -15,7 +16,7 @@ export interface NameFieldProps {
  * The item's name in its page header, as a rename field (req-shell `item-page.chat-and-panel`,
  * a11y 6.1). It reads as the title until it's hovered or focused. Enter or leaving the field keeps
  * the name; Esc puts the old one back, and that press does nothing else. An empty name isn't kept:
- * the old one comes back.
+ * the old one comes back. A name cut with "…" shows in full as a tooltip.
  */
 export function NameField({ name, label, onRename }: NameFieldProps) {
   const [draft, setDraft] = useState(name);
@@ -23,6 +24,7 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
   // may not have changed in between (the rename is async, or was rejected), so it's asked for
   // once. Typing starts a new edit, which may ask for the same name again.
   const asked = useRef<string | undefined>(undefined);
+  const tooltip = useCutTextTooltip(draft);
 
   // A rename from somewhere else (the file, another tab) shows here.
   useEffect(() => {
@@ -48,6 +50,15 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    editKeys(event);
+    // Esc puts the old name back before it hides the tooltip: an inline edit is above a tooltip in
+    // the Escape order (specs 23 A7).
+    if (!(event.defaultPrevented || isComposing(event.nativeEvent))) {
+      tooltip.anchor.onKeyDown(event);
+    }
+  };
+
+  const editKeys = (event: KeyboardEvent<HTMLInputElement>) => {
     if (isComposing(event.nativeEvent)) {
       return;
     }
@@ -74,6 +85,7 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
         {draft === "" ? " " : draft}
       </span>
       <input
+        {...tooltip.anchor}
         type="text"
         size={1}
         aria-label={label}
@@ -83,8 +95,12 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
         className={nameClasses}
         onChange={(event) => edit(event.target.value)}
         onKeyDown={onKeyDown}
-        onBlur={keep}
+        onBlur={() => {
+          tooltip.anchor.onBlur();
+          keep();
+        }}
       />
+      {tooltip.popover}
     </span>
   );
 }

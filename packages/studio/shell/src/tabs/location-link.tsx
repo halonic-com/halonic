@@ -1,3 +1,4 @@
+import type { TooltipAnchorProps } from "@halonicjs/studio-kit";
 import type { MouseEvent, ReactNode } from "react";
 import type { TabLocation } from "./tab-set.ts";
 
@@ -14,6 +15,8 @@ export interface LocationLinkProps {
    * phone's bottom navigation draws its count as a mark and names the link "Inbox, 3 waiting".
    */
   readonly label?: string;
+  /** A kit tooltip's anchor, from `useTooltip`, when the link has a tooltip. */
+  readonly tooltip?: TooltipAnchorProps | undefined;
   readonly children: ReactNode;
 }
 
@@ -28,6 +31,7 @@ export function LocationLink({
   className,
   current,
   label,
+  tooltip,
   children,
 }: LocationLinkProps) {
   const open = (event: MouseEvent<HTMLAnchorElement>, inNewTab: boolean) => {
@@ -36,6 +40,7 @@ export function LocationLink({
   };
   return (
     <a
+      {...tooltip}
       href={`#${location.key}`}
       aria-current={current === true ? "page" : undefined}
       aria-label={label}

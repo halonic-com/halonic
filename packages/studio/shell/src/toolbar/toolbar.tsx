@@ -1,6 +1,7 @@
 import { BackIcon, Button, ForwardIcon } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useId, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
+import { useCutTextTooltip } from "../cut-text/cut-text-tooltip.ts";
 import { useHistoryMoves } from "../tabs/history-moves.ts";
 import { LocationLink } from "../tabs/location-link.tsx";
 import { openLocation } from "../tabs/open-location.ts";
@@ -28,7 +29,8 @@ export interface ToolbarProps {
  * the active tab, the path as a `nav` named "Location", then on the right the header badge slot
  * and the save state. Back and Forward stay in the Tab order when there's nowhere to go, and say
  * so. A part of the path before the last is a link: a click opens it in the active tab, a
- * Ctrl-click or a middle-click in a new tab next to it, or says it is already open in one.
+ * Ctrl-click or a middle-click in a new tab next to it, or says it is already open in one. A part
+ * cut with "…" shows its full title as a tooltip.
  *
  * The Assistant button joins it with the Assistant (T14); until then there's none.
  *
@@ -54,18 +56,14 @@ export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: Toolb
         <ol className="flex min-w-0 items-center gap-1.5 text-small">
           {parents.map((part) => (
             <li key={part.key} className={pathLayout.parent}>
-              <LocationLink location={part} onOpen={openPart} className={pathLinkClasses}>
-                {part.title}
-              </LocationLink>
+              <PathLink location={part} onOpen={openPart} />
               <span aria-hidden="true" className="shrink-0 text-fg-muted">
                 /
               </span>
             </li>
           ))}
           <li className={pathLayout.current}>
-            <span aria-current="page" className="block truncate text-fg">
-              {location.title}
-            </span>
+            <CurrentPlace title={location.title} />
           </li>
         </ol>
       </nav>
@@ -119,6 +117,43 @@ function HistoryButton({ direction, available, onClick }: HistoryButtonProps) {
       <span id={reasonId} className="sr-only">
         {words.nowhere}
       </span>
+    </>
+  );
+}
+
+interface PathLinkProps {
+  readonly location: TabLocation;
+  readonly onOpen: (location: TabLocation, inNewTab: boolean) => void;
+}
+
+/** A part of the path before the last, as a link, with its full title while it's cut. */
+function PathLink({ location, onOpen }: PathLinkProps) {
+  const { anchor, popover } = useCutTextTooltip(location.title);
+  return (
+    <>
+      <LocationLink
+        location={location}
+        onOpen={onOpen}
+        className={pathLinkClasses}
+        tooltip={anchor}
+      >
+        {location.title}
+      </LocationLink>
+      {popover}
+    </>
+  );
+}
+
+/** The place the user is on, the path's last part, with its full title while it's cut. */
+function CurrentPlace({ title }: { readonly title: string }) {
+  const { anchor, popover } = useCutTextTooltip(title);
+  return (
+    <>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: it only hears the pointer for its tooltip; there's nothing to use */}
+      <span aria-current="page" className="block truncate text-fg" {...anchor}>
+        {title}
+      </span>
+      {popover}
     </>
   );
 }

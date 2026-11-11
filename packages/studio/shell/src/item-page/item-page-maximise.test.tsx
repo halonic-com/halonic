@@ -90,7 +90,9 @@ verifies("shell.panel-maximise", () => {
 
     const maximise = button("Maximise Flow") as HTMLButtonElement;
     expect(maximise.hasAttribute("aria-describedby")).toBe(false);
-    const tooltip = document.querySelector('[role="tooltip"]');
+    // The kit's Tooltip puts its popover right after the span round the button.
+    const tooltip = maximise.parentElement?.nextElementSibling;
+    expect(tooltip?.getAttribute("role")).toBe("tooltip");
     expect(tooltip?.textContent).toBe("Maximise Flow");
   });
 

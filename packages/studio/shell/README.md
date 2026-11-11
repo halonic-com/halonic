@@ -127,8 +127,12 @@ words, and the active one checked. A pick makes that tab active and the page tak
 (`shell.open-tabs-menu`). The badge is part of `WindowTabStrip`, not a separate export; widening the
 window shows the tabs again.
 
+Each tab's tooltip is its full path, "Workflows / Support reply" (component specs 24.5,
+`shell.cut-text-tooltips`), from the same `parentsOf` as the toolbar's. It describes the tab only
+when there are places above the tab's own; a tab on Home is already named "Home".
+
 ```tsx
-<ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
+<ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} parentsOf={parentsOf} />} …>
 ```
 
 `useWindowKeys` binds the window-wide keys in the desktop app only: Ctrl T opens a tab (and calls
@@ -238,8 +242,11 @@ announced as "Opened Workflows in a new tab." (or "Workflows is already open in 
 tabs left as they are). Back and Forward move focus to the new page's `h1`. With nowhere to go, they
 stay in the Tab order as unavailable, and screen readers hear "Nothing to go back to" or "Nothing to
 go forward to". The `badges` slot and the `saveState` slot (see `ToolbarSaveNote`) take no room when
-they're empty. There's no Assistant button until the Assistant (T14) lands; the window-wide Back and
-Forward keys and the path's tooltips come in later pull requests.
+they're empty. A part of the path cut with "…" shows its full title as a tooltip on hover and keyboard
+focus, and none while it fits (`shell.cut-text-tooltips`); the item page's name field does the same.
+Such a tooltip never names or describes its element, whose own text is already the full text. There's
+no Assistant button until the Assistant (T14) lands; the window-wide Back and Forward keys come in a
+later pull request.
 
 ```tsx
 <ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>

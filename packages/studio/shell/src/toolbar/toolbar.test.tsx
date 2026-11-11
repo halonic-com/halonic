@@ -63,8 +63,16 @@ function click(target: Element | null, init: MouseEventInit = {}): MouseEvent {
   return event;
 }
 
+/** The path as it reads, without the hidden tooltips of cut parts (`shell.cut-text-tooltips`). */
 function pathText(container: HTMLElement): string {
-  return container.querySelector('nav[aria-label="Location"]')?.textContent ?? "";
+  const path = container.querySelector('nav[aria-label="Location"]')?.cloneNode(true);
+  if (!(path instanceof HTMLElement)) {
+    return "";
+  }
+  for (const tooltip of path.querySelectorAll("[role=tooltip]")) {
+    tooltip.remove();
+  }
+  return path.textContent ?? "";
 }
 
 verifies("shell.toolbar", () => {

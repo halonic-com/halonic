@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
+import { installFakePopover } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { currentLocation, type TabLocation, TabSet } from "./tab-set.ts";
 import { WindowTabStrip } from "./window-tab-strip.tsx";
@@ -13,15 +14,19 @@ const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "
 const reply: TabLocation = { key: "workflow/acme/reply", title: "Support reply", kind: "workflow" };
 
 let uninstallMedia: () => void;
+let uninstallPopover: () => void;
 
-// A wide window: the narrow window's folded tabs are `shell.open-tabs-menu`'s.
+// A wide window: the narrow window's folded tabs are `shell.open-tabs-menu`'s. A tab focused by
+// the keyboard shows its tooltip, a popover jsdom lacks.
 beforeEach(() => {
   uninstallMedia = new FakeMediaQueries(1440).install();
+  uninstallPopover = installFakePopover();
 });
 
 afterEach(() => {
   unmountAll();
   uninstallMedia();
+  uninstallPopover();
 });
 
 /** A strip over tabs on Agents, Sorter and Support reply, with Sorter active. */
