@@ -4,6 +4,7 @@
 - Task: HAL-4561, which asks for a test with a mode 000 folder, skipped on Windows and as root
 - Approval: the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HSS6LJc9l9OruzFlP2ST7vblo6q+cMza89RejdHH2l1qvIRKqehPC+vAzstsP7Wdr3lbb7IyVt0+dW5FM9VKDQ==
 
 ## What changes
 
