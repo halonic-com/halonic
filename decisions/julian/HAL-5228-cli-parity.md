@@ -2,6 +2,7 @@
 
 - Approval: HAL-187 item 9, assigned by Liam on [HAL-5228](/HAL/issues/HAL-5228); the six new entries, the CLI rules and the new gap are on HAL-5228, signed off by Liam in review on HAL-5313
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GW2NqPpS9rvyw5WdoeaU4MjFh++6VjnOqxi4RJfnBAmOLS73uewKHzPSnc6IZ4JAGlH7i7kknBpMnsE6K4W9Dw==
 - Task: HAL-5228
 
 ## What changes
