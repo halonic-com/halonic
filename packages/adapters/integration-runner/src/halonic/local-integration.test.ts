@@ -1,4 +1,5 @@
-import type { IntegrationTool, TokenStore } from "@halonicjs/ports";
+import type { AddressCheckingHttpClient } from "@halonicjs/adapter-integration-kit";
+import type { HttpClient, IntegrationTool, TokenStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { IntegrationDeclaration } from "../frames.ts";
@@ -137,6 +138,9 @@ function memoryTokens(): TokenStore {
   };
 }
 
+// Answers without a network, so there is no address to check.
+const offlineTransport: HttpClient = { fetch: async () => new Response("{}") };
+
 /** Loads with runners that answer in turn from `runners`, recording each start. */
 async function load(runners: FakeRunner[], overrides: Partial<LoadLocalIntegrationOptions> = {}) {
   const starts: LocalRunnerBridge[] = [];
@@ -147,7 +151,7 @@ async function load(runners: FakeRunner[], overrides: Partial<LoadLocalIntegrati
     folder: "/work/weather",
     folderDisk: tidyFolder,
     choices: { secretNames: { "weather-key": "example-key" } },
-    transport: { fetch: async () => new Response("{}") },
+    transport: offlineTransport as AddressCheckingHttpClient,
     secrets: { get: async (name) => (name === "example-key" ? fakeSecret : null) },
     tokens: memoryTokens(),
     start: async (bridge) => {

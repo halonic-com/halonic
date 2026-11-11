@@ -1,3 +1,4 @@
+export type { AddressCheckingHttpClient } from "./address-checking.ts";
 export {
   type AddressClass,
   addressAllowedFor,

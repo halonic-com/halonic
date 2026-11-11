@@ -7,6 +7,9 @@
 // it fails when host code imports a file inside the entry's folder instead
 // of the entry itself. Internal code imports by relative path.
 
+// The transport the loader asks for; only an address-checking transport, such as
+// `createNodeHttpClient`, is one.
+export type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 export { declarationProblems } from "./declaration.ts";
 export {
   type CreatedIntegrationHost,

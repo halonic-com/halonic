@@ -1,3 +1,4 @@
+import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import {
   type IntegrationSecret,
   type IntegrationSheet,
@@ -5,7 +6,6 @@ import {
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
 import {
-  type HttpClient,
   type Integration,
   type IntegrationHost,
   type ProviderConfig,
@@ -56,7 +56,12 @@ export interface WorkspaceChoices {
 export interface LoadIntegrationOptions {
   readonly source: IntegrationSource;
   readonly choices?: WorkspaceChoices;
-  readonly transport: HttpClient;
+  /**
+   * What sends the requests. The sheet names hosts only, so it must check
+   * the addresses a name resolves to itself: the Node one from
+   * `createNodeHttpClient`, never a plain `fetch` wrapper.
+   */
+  readonly transport: AddressCheckingHttpClient;
   readonly secrets: Secrets;
   readonly tokens: TokenStore;
   /** What this runtime offers beyond HTTP, for the sheet's `needs`, such as `process`. Default none. */

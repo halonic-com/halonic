@@ -1,4 +1,5 @@
-import type { HttpClient, Secrets, TokenStore } from "@halonicjs/ports";
+import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
+import type { Secrets, TokenStore } from "@halonicjs/ports";
 import { IntegrationRefusedError, type RefusalCode } from "./integration/index.ts";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
 import type { DeclaredPlacement, IntegrationPolicy } from "./policy.ts";
@@ -22,8 +23,9 @@ export function fakeTransport(
 ) {
   const sent: SentRequest[] = [];
   const options: RequestInit[] = [];
-  const transport: HttpClient = {
-    fetch: async (url, init = {}) => {
+  // Answers without a network, so there is no address to check.
+  const transport = {
+    fetch: async (url: string, init: RequestInit = {}) => {
       options.push(init);
       init.signal?.throwIfAborted();
       const body =
@@ -37,7 +39,7 @@ export function fakeTransport(
       });
       return answer(new URL(url), init.method ?? "GET");
     },
-  };
+  } as AddressCheckingHttpClient;
   return { transport, sent, options };
 }
 

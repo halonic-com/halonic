@@ -270,3 +270,8 @@ const loaded = loadIntegration({
 });
 if (loaded.ok) connections.set("weather", loaded.value.integration.connect(loaded.value.host));
 ```
+
+The `transport` must be an `AddressCheckingHttpClient`, such as the Node one from
+`createNodeHttpClient`. The sheet names hosts only, so the transport has to check the addresses a
+name resolves to; a plain `fetch` wrapper doesn't compile here (requirement
+`address-checking-transport`).
