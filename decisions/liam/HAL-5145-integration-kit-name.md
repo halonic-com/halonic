@@ -2,6 +2,7 @@
 
 - Approval: the board asked for one name for the kit on [HAL-45](/HAL/issues/HAL-45) (11 Nov) and Liam planned it on [HAL-5145](/HAL/issues/HAL-5145); a second agent reviews the pull request, then Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0+fxdgM1qAPafILXts49S3AUSEjyhDFzFN6IjF9qPFzJBDTkH/DeI9pYENUrII7yznKhIMv3WUI03a9hiO6NAQ==
 - Task: HAL-5145
 
 ## What changes
