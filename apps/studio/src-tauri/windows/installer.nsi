@@ -3,7 +3,7 @@
 ; Based on Tauri's own template (tauri-bundler 2.x, `nsis/installer.nsi`,
 ; MIT or Apache-2.0, (c) Tauri Programme within The Commons Conservancy).
 ; Every Halonic change is marked "Halonic change" with its task, so a Tauri
-; upgrade can be merged by searching for it. Tauri fills the {{...}} values.
+; upgrade can be merged by searching for it.
 ; Pinned to the template of tauri-bundler 2.12.x (see tauri in Cargo.toml).
 ;
 Unicode true
