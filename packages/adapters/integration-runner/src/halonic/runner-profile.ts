@@ -5,26 +5,30 @@
 // environment holds only `TMPDIR`. The OS key store is denied: on macOS the
 // Keychain answers over Mach, past the file fence (attack case A36).
 //
-// A profile can't allow a path inside a denied one, and the code or the
-// runtime often lives inside the home folder. So a folder to hide that holds
-// one of them is not hidden as a whole: every entry in it is hidden except
-// the ones on the way to what the runner needs, down to that path itself.
-// The reverse can't be done: a path the runner needs that is, or holds, a
-// folder to hide would leave that folder readable, so the profile refuses it.
-// A folder on the way that can't be listed fails the start too, because its
-// entries couldn't be hidden.
+// The code or the runtime often lives inside the home folder, and the temp
+// folder often inside the shared `/tmp`. So each folder to hide is denied as
+// a whole, and the paths the runner needs inside it are reopened
+// (`SandboxProfile.reopenedPaths`). Nothing is listed, so a folder made in
+// the home folder after the profile is built is denied too (HAL-5808). The
+// reverse can't be done: a path the runner needs that is, or holds, a folder
+// to hide would leave that folder readable, so the profile refuses it.
+//
+// On Windows a deny on a folder also takes the right to look at the folders
+// on the way to a path inside it, and Node looks at each of them to resolve
+// a script's path, so the runner couldn't start from a reopened folder
+// (HAL-5644). So on Windows the profile denies every entry of a folder to
+// hide that isn't on the way to a path the runner needs, by name, as it
+// finds them when the profile is built, and reopens nothing. What is made
+// in the home folder later is kept out by the home folder's own access
+// list, which the sandbox reads only where a grant names (threat model 4.6,
+// Known limits). A folder on the way that can't be listed fails the start
+// there, because its entries couldn't be denied.
 //
 // The fence denies a path's real place as well as the path as written. So the
 // profile works on real paths only: `realRunnerPaths` resolves every path
-// before the profile is built, and an entry to hide that is a symlink into
-// what the runner needs (such as `~/.nvm/current`) is left alone, because
-// denying its real place would hide the runner's own files.
-//
-// Hiding entry by entry races with the folder changing. bubblewrap mounts over
-// each entry, and an entry removed after it was listed has no mount point left:
-// bubblewrap can't create one in the read-only folder and the start fails
-// (HAL-6577). So keep a runner's paths, the temp folder above all, out of a
-// folder that changes often, such as the shared `/tmp`; there it is hidden as one.
+// before the profile is built, and an entry denied by name that is a symlink
+// into what the runner needs (such as `~/.nvm/current`) is left alone,
+// because denying its real place would hide the runner's own files.
 
 import { readdirSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
@@ -52,11 +56,13 @@ export interface RunnerMachine {
   readonly tempFolder: string;
   /** How long the runner may live, in milliseconds. */
   readonly timeLimitMs: number;
+  /** The system, as `process.platform` names it; this one unless a test passes another. */
+  readonly platform?: NodeJS.Platform;
 }
 
 /** What the profile reads from disk. */
 export interface RunnerDisk {
-  /** Lists the names in a folder; throws when it can't, such as a missing or unreadable folder. */
+  /** Lists the names in a folder, on Windows only; throws when it can't, such as a missing or unreadable folder. */
   listFolder(folder: string): readonly string[];
   /** The path with every symlink on it resolved; throws when it can't, such as a missing path. */
   realPath(path: string): string;
@@ -133,11 +139,10 @@ export function realRunnerPaths(
 
 /**
  * The untrusted profile for one runner start. Every path must already be real;
- * see {@link realRunnerPaths}. On Linux, keep the temp folder out of a folder to
- * hide that changes often, such as `/tmp`: see the race at the top of this file.
+ * see {@link realRunnerPaths}.
  *
  * @throws when a path the runner needs is, or holds, the home folder or a socket folder
- * @throws when a folder on the way to a path the runner needs can't be listed
+ * @throws on Windows, when a folder on the way to a path the runner needs can't be listed
  */
 export function runnerProfile(
   files: RunnerFiles,
@@ -147,14 +152,17 @@ export function runnerProfile(
   const readOnlyPaths = [files.nodeFolder, files.runnerFile, files.integrationFolder];
   const kept = [...readOnlyPaths, machine.tempFolder];
   refuseKeptHoldingHidden(files, machine);
+  const hidden = [machine.homeFolder, ...machine.socketFolders];
+  const byName = (machine.platform ?? process.platform) === "win32";
   return {
     workingFolder: machine.tempFolder,
     tempFolder: machine.tempFolder,
     settingsFolder: null,
     readOnlyPaths,
-    deniedPaths: [machine.homeFolder, ...machine.socketFolders].flatMap((folder) =>
-      hiddenAround(folder, kept, disk),
-    ),
+    deniedPaths: byName ? hidden.flatMap((folder) => hiddenAround(folder, kept, disk)) : hidden,
+    reopenedPaths: byName
+      ? []
+      : [...new Set(kept.filter((path) => hidden.some((folder) => isInsideOrSame(path, folder))))],
     env: { TMPDIR: machine.tempFolder },
     network: { bridge: null, allowedSites: [] },
     timeLimitMs: machine.timeLimitMs,

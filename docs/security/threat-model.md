@@ -449,8 +449,11 @@ routes, isn't built yet, so no app uses the host today.
   sandbox reads only where a grant names (with `HALONIC_HOME` elsewhere,
   that folder's access list decides). srt, though, runs every sandboxed
   program under one account and sets its grants on the folders themselves,
-  where they win over a deny a folder inherits from a denied parent. That
-  leaves two limits on Windows (HAL-5882):
+  where they win over a deny a folder inherits from a denied parent. The
+  integration runner's profile treats the home folder and the socket folders
+  the same way: denied as a whole and reopened on Linux and macOS, their
+  other entries denied by name on Windows (HAL-5808). That leaves two limits
+  on Windows (HAL-5882):
   - **On Windows, a sandboxed run can read folders granted to any other
     sandboxed run that is running at the same time**, whatever its profile
     denies. Closing this needs srt to keep sessions' reads apart; until it

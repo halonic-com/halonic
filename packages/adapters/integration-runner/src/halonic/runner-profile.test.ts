@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -44,40 +52,31 @@ const machine = {
   socketFolders: ["/run", "/shared-tmp"],
   tempFolder: "/shared-tmp/halonic-run-1",
   timeLimitMs: 60_000,
-};
+  platform: "linux",
+} as const;
+const onWindows = { ...machine, platform: "win32" } as const;
 
 verifies("integration-runner.start", () => {
   describe("runnerProfile", () => {
     const profile = runnerProfile(files, machine, disk);
 
-    it("hides the home folder except the way to the integration and to Node", () => {
-      expect(profile.deniedPaths).toEqual(
-        expect.arrayContaining([
-          "/fake-home/.ssh",
-          "/fake-home/.config",
-          "/fake-home/code/other-project",
-          "/fake-home/.nvm/versions/node/v24.1.0",
-        ]),
-      );
-      for (const kept of [
-        files.integrationFolder,
-        files.nodeFolder,
+    it("denies the home folder and the socket folders as a whole, without listing them", () => {
+      const lists = (folder: string): string[] => {
+        throw new Error(`listed ${folder}`);
+      };
+      expect(runnerProfile(files, machine, { ...disk, listFolder: lists }).deniedPaths).toEqual([
         "/fake-home",
-        "/fake-home/code",
-      ]) {
-        expect(profile.deniedPaths).not.toContain(kept);
-      }
+        "/run",
+        "/shared-tmp",
+      ]);
     });
 
-    it("leaves a symlink into Node's folder, because hiding it would hide Node's folder too", () => {
-      expect(profile.deniedPaths).not.toContain("/fake-home/.nvm/alias");
-    });
-
-    it("hides the socket folders, except its own temp folder in a shared one", () => {
-      expect(profile.deniedPaths).toContain("/run");
-      expect(profile.deniedPaths).toContain("/shared-tmp/someone-elses.sock");
-      expect(profile.deniedPaths).not.toContain("/shared-tmp");
-      expect(profile.deniedPaths).not.toContain(machine.tempFolder);
+    it("reopens the paths the runner needs inside them, and no other", () => {
+      expect(profile.reopenedPaths).toEqual([
+        files.nodeFolder,
+        files.integrationFolder,
+        machine.tempFolder,
+      ]);
     });
 
     it("gives no network, writes only to the temp folder and an environment of TMPDIR alone", () => {
@@ -99,6 +98,39 @@ verifies("integration-runner.start", () => {
     });
   });
 
+  describe("runnerProfile on Windows", () => {
+    const profile = runnerProfile(files, onWindows, disk);
+
+    it("denies the entries around the paths the runner needs by name, not their folders, and reopens nothing", () => {
+      // A deny on the home folder itself would keep Node from resolving a path in the integration's folder.
+      expect(profile.deniedPaths).toEqual(
+        expect.arrayContaining([
+          "/fake-home/.ssh",
+          "/fake-home/.config",
+          "/fake-home/code/other-project",
+          "/fake-home/.nvm/versions/node/v24.1.0",
+          "/run",
+          "/shared-tmp/someone-elses.sock",
+        ]),
+      );
+      for (const kept of [
+        files.integrationFolder,
+        files.nodeFolder,
+        machine.tempFolder,
+        "/fake-home",
+        "/fake-home/code",
+        "/shared-tmp",
+      ]) {
+        expect(profile.deniedPaths).not.toContain(kept);
+      }
+      expect(profile.reopenedPaths).toEqual([]);
+    });
+
+    it("leaves a symlink into Node's folder, because denying it would deny Node's folder too", () => {
+      expect(profile.deniedPaths).not.toContain("/fake-home/.nvm/alias");
+    });
+  });
+
   describe("runnerProfile refusals", () => {
     it.each([
       ["Node's folder", { ...files, nodeFolder: "/" }, machine],
@@ -111,12 +143,12 @@ verifies("integration-runner.start", () => {
       expect(() => runnerProfile(someFiles, someMachine, disk)).toThrow(`the ${name} `);
     });
 
-    it("fails when a folder on the way to a kept path can't be listed", () => {
+    it("fails on Windows when a folder on the way to a kept path can't be listed", () => {
       const unreadable = (folder: string) => {
         if (folder === "/fake-home/code") throw new Error("EACCES");
         return listFolder(folder);
       };
-      expect(() => runnerProfile(files, machine, { ...disk, listFolder: unreadable })).toThrow(
+      expect(() => runnerProfile(files, onWindows, { ...disk, listFolder: unreadable })).toThrow(
         "EACCES",
       );
     });
@@ -186,27 +218,38 @@ verifies("integration-runner.start", () => {
         socketFolders: [join(base, "run")],
         tempFolder: join(base, "run", "halonic-run-1"),
         timeLimitMs: 60_000,
+        platform: "linux",
       },
     );
     const profile = runnerProfile(linked.files, linked.machine);
+    const reopened = profile.reopenedPaths ?? [];
+    const deniedHere = (path: string) =>
+      profile.deniedPaths.some((denied) => isInsideOrSame(path, denied)) &&
+      !reopened.some((open) => isInsideOrSame(path, open));
 
-    it("keeps Node's real folder readable and the symlink to it unhidden", () => {
+    it("reads Node from its real folder, which it reopens", () => {
       expect(linked.files.nodeFolder).toBe(realNode);
       expect(linked.files.node).toBe(join(realNode, "bin", "node"));
       expect(profile.readOnlyPaths).toContain(realNode);
-      expect(profile.deniedPaths).toContain(join(home, ".ssh"));
-      expect(profile.deniedPaths).not.toContain(join(home, ".nvm", "current"));
+      expect(reopened).toContain(realNode);
+      expect(deniedHere(join(home, ".ssh"))).toBe(true);
     });
 
-    it("denies no real place that is or holds a path the runner needs", () => {
-      const kept = [...profile.readOnlyPaths, profile.tempFolder];
-      for (const denied of profile.deniedPaths.flatMap((path) => [
-        path,
-        realpathSync.native(path),
-      ])) {
-        for (const path of kept) {
-          expect(isInsideOrSame(path, denied), `${denied} hides ${path}`).toBe(false);
-        }
+    it("denies a folder made in the home folder after the profile is built (HAL-5808)", () => {
+      const later = join(home, ".aws");
+      const beside = join(home, "code", "made-later");
+      mkdirSync(later);
+      mkdirSync(beside);
+      expect(deniedHere(later), `${later} stays readable`).toBe(true);
+      expect(deniedHere(beside), `${beside} stays readable`).toBe(true);
+    });
+
+    it("keeps to the sandbox's rules for reopened paths", () => {
+      // Each one exists, lies in a denied path, and holds no writable folder but itself.
+      for (const path of reopened) {
+        expect(existsSync(path), `${path} isn't there`).toBe(true);
+        expect(profile.deniedPaths.some((denied) => isInsideOrSame(path, denied))).toBe(true);
+        expect(path === profile.tempFolder || !isInsideOrSame(profile.tempFolder, path)).toBe(true);
       }
     });
   });

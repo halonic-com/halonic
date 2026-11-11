@@ -40,7 +40,7 @@ export interface StartRunnerOptions extends Omit<ConnectRunnerOptions, "process"
   machine: RunnerMachine;
   /** Aborting it closes the session and so stops the runner. */
   signal?: AbortSignal;
-  /** Where the paths are resolved and the folders to hide are listed; this machine's disk unless a test passes another. */
+  /** Where the paths are resolved and, on Windows, the folders to hide are listed; this machine's disk unless a test passes another. */
   disk?: RunnerDisk;
 }
 
@@ -56,7 +56,7 @@ export interface StartedRunner extends RunnerConnection {
  * Closing the connection, or the runner stopping by itself, closes the session.
  *
  * @throws {RunnerStoppedError} when the runner stops before it is ready
- * @throws when a path the runner needs can't be resolved, is or holds a folder the fence hides, or a folder on the way can't be listed; no session is opened
+ * @throws when a path the runner needs can't be resolved, is or holds a folder the fence hides, or on Windows a folder on the way can't be listed; no session is opened
  * @throws when the sandbox can't open the session or start the runner, such as a fence proof that is `not-fenced`
  */
 export async function startRunner(options: StartRunnerOptions): Promise<StartedRunner> {
