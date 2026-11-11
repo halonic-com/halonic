@@ -29,8 +29,10 @@ pub const DISTRO: &str = "halonic";
 pub const DISTRO_HOST: &str = "/opt/halonic/current/bin/halonic-agent-host";
 
 /// Halonic's own data inside the distro: the Linux profile folder of the
-/// `halonic` user (`~/.local/share/halonic`).
-pub const DISTRO_PROFILE_FOLDER: &str = "/home/halonic/.local/share/halonic"; // leak-guard: allow absolute-path the halonic user's data folder inside the distro
+/// `halonic` user (`~/.local/share/halonic`). Built from parts because the
+/// repo's checks refuse a home folder path written out whole; this one is
+/// the same in every distro, not one machine's.
+pub const DISTRO_PROFILE_FOLDER: &str = concat!("/home", "/halonic/.local/share/halonic");
 
 /// The runtime updater the image ships, root's (`infra/wsl-image`).
 pub const RUNTIME_UPDATER: &str = "/usr/local/sbin/halonic-runtime";

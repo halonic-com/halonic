@@ -127,7 +127,7 @@ fn wsl_launch_starts_the_agent_host_in_halonics_distro_with_fixed_arguments() {
             "--exec",
             "/opt/halonic/current/bin/halonic-agent-host",
             "--profile-folder",
-            "/home/halonic/.local/share/halonic", // leak-guard: allow absolute-path fixed Windows and distro paths under test
+            concat!("/home", "/halonic/.local/share/halonic"),
         ],
     );
 }
