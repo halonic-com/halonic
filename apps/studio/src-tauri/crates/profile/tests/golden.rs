@@ -1,7 +1,8 @@
 //! The golden cases `@halonicjs/profile` is checked against
 //! (`packages/core/profile/src/golden/profile-folders.json`), so the shell
-//! and the CLI find the same profile and trust folder. Requirement
-//! `profile.trust-folder`; these tests' names start with `trust_folder_`.
+//! and the CLI find the same profile, trust folder and settings folder.
+//! Requirements `profile.trust-folder` and `profile.settings-folder`; these
+//! tests' names start with `trust_folder_` and `settings_folder_`.
 
 use halonic_profile::{Platform, ProfileEnvironment, ProfileError, profile_folder};
 use serde_json::Value;
@@ -51,6 +52,24 @@ fn trust_folder_matches_every_golden_case() {
             }
         }
     }
+}
+
+#[test]
+fn settings_folder_matches_every_golden_case() {
+    let cases: Vec<Value> = serde_json::from_str(GOLDEN).unwrap();
+    let mut checked = 0;
+    for case in &cases {
+        let name = case["name"].as_str().unwrap_or_default();
+        let Some(expected) = case["settings"].as_str() else {
+            assert!(case["settings"].is_null(), "{name}: settings is text or null");
+            continue;
+        };
+        let profile = profile_folder(&environment_of(case))
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(profile.settings_folder(), with_drive(expected), "{name}");
+        checked += 1;
+    }
+    assert!(checked >= 19, "every case that finds a profile is checked");
 }
 
 #[test]

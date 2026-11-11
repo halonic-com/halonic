@@ -1,6 +1,6 @@
 //! The profile the CLI uses, found as `@halonicjs/profile` finds it, for the
-//! commands that keep files in it: the trust records (`trust.rs`) and the
-//! runs (`runs.rs`). One way of finding it, so the shell never writes to
+//! commands that keep files in it: the trust records (`trust.rs`), the
+//! host settings (`host_settings.rs`) and the runs (`runs.rs`). One way of finding it, so the shell never writes to
 //! another profile than the CLI's.
 //!
 //! A Studio started from Finder, the Dock or a desktop launcher doesn't get

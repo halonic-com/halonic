@@ -1,7 +1,8 @@
 //! Finds the profile folder exactly as `profileFolder` in `@halonicjs/profile`
 //! does (HAL-2612), so the Studio shell and the CLI share one profile, and
 //! with it one folder of trust records (requirement `profile.trust-folder`)
-//! and one folder of runs per workspace (`profile.workspace-folders`).
+//! and one folder of runs per workspace (`profile.workspace-folders`), and
+//! one folder of host settings (`profile.settings-folder`).
 //!
 //! Paths are plain text joined the platform's way, as in the TypeScript
 //! package, so both can be checked against the same golden cases
@@ -22,6 +23,10 @@ const FOLDER_NAME: &str = "halonic";
 
 /// The name of the folder in the profile that holds the trust records.
 const TRUST_FOLDER_NAME: &str = "trust";
+
+/// The name of the folder in the profile that holds the settings kept where
+/// Halonic runs.
+const SETTINGS_FOLDER_NAME: &str = "settings";
 
 /// The systems Halonic keeps a profile on. `Linux` covers every other
 /// Unix-like system too.
@@ -127,6 +132,14 @@ impl ProfileFolder {
     /// there.
     pub fn trust_folder(&self) -> String {
         join_path(self.platform, &self.root, &[TRUST_FOLDER_NAME])
+    }
+
+    /// The folder for the settings kept where Halonic runs, `settings` in
+    /// the profile folder, as `settingsFolder` in `@halonicjs/profile` names
+    /// it. The CLI's `FileHostSettingsStore` and the shell's
+    /// `host_settings_*` commands both keep `host.json` there.
+    pub fn settings_folder(&self) -> String {
+        join_path(self.platform, &self.root, &[SETTINGS_FOLDER_NAME])
     }
 }
 
