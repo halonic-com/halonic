@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
-import { secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
+import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -153,6 +153,19 @@ verifies("studio.open-folder", () => {
     expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
     expect(webview.calls.at(-1)?.args).toEqual({ name: "openai" });
     expect(opened.name).toBe("acme");
+    await opened.dispose();
+  });
+
+  it("gives an opened workspace the profile's host settings through the shell", async () => {
+    const webview = desktopWebview(null);
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const opened = openFolder(shell, webview.page, "/work/acme");
+
+    await opened.workspace.services.get(hostSettingsStoreKey).remove("assistant.turn-limit");
+    expect(webview.calls.at(-1)).toEqual({
+      command: "host_settings_remove",
+      args: { key: "assistant.turn-limit" },
+    });
     await opened.dispose();
   });
 });

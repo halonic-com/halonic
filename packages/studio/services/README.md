@@ -2,7 +2,9 @@
 
 The Studio's platform bridges: the services that come from the shell the Studio runs in. Today that
 is the OS keychain in the desktop app, given to a workspace's services as its `Secrets` and
-`TokenStore`. The plan (section 5.5) adds the React side of the service registry, the web and
+`TokenStore`, and the settings kept where Halonic runs (`provideShellHostSettings`), given as its
+`HostSettingsStore` (`hostSettingsStoreKey`) through `TauriHostSettingsStore`, so the CLI and every
+window share the profile's `settings/host.json`. The plan (section 5.5) adds the React side of the service registry, the web and
 served bridges, the run event stream and settings storage here later.
 
 - **Layer:** studio

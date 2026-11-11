@@ -2186,6 +2186,9 @@ importers:
       '@halonicjs/adapter-agent-host-client':
         specifier: workspace:*
         version: link:../../adapters/agent-host-client
+      '@halonicjs/adapter-fs-tauri':
+        specifier: workspace:*
+        version: link:../../adapters/fs-tauri
       '@halonicjs/adapter-harness-claude-code':
         specifier: workspace:*
         version: link:../../adapters/harness-claude-code

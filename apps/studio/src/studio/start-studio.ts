@@ -13,6 +13,7 @@ import {
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
 import {
+  provideShellHostSettings,
   provideShellSecrets,
   TauriChannel,
   type TauriIpc,
@@ -158,14 +159,16 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
 /**
  * Opens the workspace in a folder with services of its own. The OS keychain becomes its secrets
  * and tokens before any feature's services are built, so no token lands in the data folder
- * (threat model 4.4, HAL-2952). In the shell, its runs are the run logs in the folder's run
- * folder, the ones the CLI writes (`studio.workspace-runs`). Its name is the folder's until the
- * workspace's files are read (HAL-3335).
+ * (threat model 4.4, HAL-2952), and the profile's `settings/host.json` its host settings
+ * (HAL-6261). In the shell, its runs are the run logs in the folder's run folder, the ones the
+ * CLI writes (`studio.workspace-runs`). Its name is the folder's until the workspace's files are
+ * read (HAL-3335).
  */
 export function openFolder(shell: Shell, window: object, location: string): OpenedWorkspace {
   const name = folderName(location);
   const services = new ServiceRegistry();
   provideShellSecrets(services, window);
+  provideShellHostSettings(services, window);
   provideWorkspaceRuns(services, window, location);
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
