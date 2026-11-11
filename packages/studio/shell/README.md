@@ -51,7 +51,7 @@ reader hears after the name. `showPlace` gives what the sidebar shows, with noth
 `subscribeSignal`, and the sidebar reads it again each time it is told (`shell.place-signal-changes`).
 
 Home's sections come from features the same way, through `home.addCard`, naming one of the fixed
-sections (`homeSections`: Get set up, Needs you, Recent runs). The shell shows them in that order
+sections (`homeSections`: Get set up, Needs you, Recent runs, Cards). The shell shows them in that order
 under the `h1` "Home", each a region named by its heading from `homeSectionTitles`, and leaves out a
 section no feature added. A card's view is a named export that gets `HomeCardProps`: the context of
 the feature that added it (`shell.home-sections`). Each section loads and fails on its own: a card's
