@@ -23,7 +23,7 @@ import {
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
 import { assertDefined, KindedError } from "@halonicjs/std";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -43,6 +43,7 @@ import { stepName } from "../../messages/step-name.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { endedAt, type RunClock } from "../../run-times.ts";
+import { loadSendWorkspace } from "../../run-workspace.ts";
 import { type SandboxGateRun, sandboxRunOf } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
@@ -84,7 +85,7 @@ export async function sendToRun(
   const workspace = await openWorkspaceDir(input, context);
   const runs = await openWorkspaceRuns(workspace.root, setup.profile);
   const dir = givenDir(input, workspace);
-  const loaded = await loadWorkspace(workspace.store);
+  const loaded = await loadSendWorkspace(workspace, setup.history);
   const named = { event, typed, name: printable(workspaceNameOf(loaded, workspace)), dir };
   const lookup = await new RunHistory(runs).showRun(typed);
   switch (lookup.found) {

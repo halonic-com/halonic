@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The Vcs port on the real git program, always hardened: no hooks, no user or system config, no program the repository names.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

@@ -42,5 +42,5 @@ export async function checkRunTrust(
   if (reachesOnlyTheTestModel({ providers, ...trustContentInputOf(workspace) })) {
     return;
   }
-  await trustedGrant(dir, machine, typedDir, nothingDone);
+  await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
 }

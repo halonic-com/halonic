@@ -13,7 +13,7 @@ import {
   RunEvents,
   WorkflowRuns,
 } from "@halonicjs/app";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -30,8 +30,9 @@ import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
+import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
 import { type SandboxGateRun, unsandboxedWarning } from "../../sandbox-gate.ts";
-import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "../../workspace-engine.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
@@ -45,6 +46,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
   clock(): RunClock;
   /** The trust records and the connectors' programs. */
   trust(): RunTrustMachine;
+  /** Opens the workspace's history, for its live version; git on the `PATH` by default. */
+  readonly history?: OpenWorkspaceHistory;
 }
 
 /**
@@ -54,6 +57,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  *
  * @throws UsageError when there isn't exactly one workflow
  * @throws NoWorkspaceError when the folder holds no workspace
+ * @throws OwnLineError `conflict` when the workspace has history but nothing
+ *   is live yet; nothing ran
  * @throws NotTrustedError when the run could reach more than the test model
  *   and the workspace isn't trusted here; nothing ran
  * @throws RunInputError when `--input` isn't a JSON object
@@ -72,7 +77,7 @@ export async function runWorkflow(
   const dir = await openWorkspaceDir(input, context);
   const workspaceName = printable(dir.name);
   const typedDir = givenDir(input, dir);
-  const workspace = await loadWorkspace(dir.store);
+  const workspace = await liveWorkspace(dir, setup.history);
   await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
   const workflow = workflowToRun(workspace, typed, workspaceName);
@@ -189,6 +194,23 @@ function noWorkflow(workspace: LoadedWorkspace, typed: string, name: string): Ow
     workflowMessages.noWorkflow(typed, name),
     near === undefined ? workflowMessages.seeWorkflows() : workflowMessages.workflowNear(near),
   );
+}
+
+/**
+ * The workspace the run starts: the live version, or the saved files with
+ * history off.
+ *
+ * @throws OwnLineError `conflict` when nothing is live yet
+ */
+async function liveWorkspace(
+  dir: OpenWorkspaceDir,
+  history: OpenWorkspaceHistory | undefined,
+): Promise<LoadedWorkspace> {
+  const run = await loadRunWorkspace(dir, history);
+  if (run.found === "nothing-live") {
+    throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
+  }
+  return run.workspace;
 }
 
 /** The one argument, the workflow as typed; else the usage error with the usage line. */

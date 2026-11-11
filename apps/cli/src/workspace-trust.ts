@@ -78,7 +78,8 @@ export interface WorkspaceTrust {
 
 /**
  * Loads the workspace in `dir` and finds each connector's program on this
- * computer, for a trust check.
+ * computer, for a trust check. A run passes the workspace it starts, the
+ * live version, so trust is checked on what runs, not on the saved files.
  *
  * @example
  * await readWorkspaceTrust(await openWorkspaceDir(input, io), nodeCommandSearch());
@@ -87,8 +88,9 @@ export interface WorkspaceTrust {
 export async function readWorkspaceTrust(
   dir: OpenWorkspaceDir,
   search: CommandSearch,
+  loaded?: LoadedWorkspace,
 ): Promise<WorkspaceTrust> {
-  const workspace = await loadWorkspace(dir.store);
+  const workspace = loaded ?? (await loadWorkspace(dir.store));
   const name = workspaceNameOf(workspace, dir);
   const connectors = filesOf(workspace, "connector").map((file) => file.value);
   const subject = trustSubjectOf({
@@ -120,6 +122,8 @@ export interface WorkspaceTrustMachine {
  *
  * @param nothingDone - the end of line 1 saying nothing happened, such as
  *   `runMessages.nothingRan()`
+ * @param loaded - the workspace as it will run, such as the live version a
+ *   run starts; without it, the saved files are read
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown (exit 3)
  */
@@ -128,8 +132,9 @@ export async function trustedGrant(
   machine: WorkspaceTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message,
+  loaded?: LoadedWorkspace,
 ): Promise<TrustGrant> {
-  const { name, subject } = await readWorkspaceTrust(dir, machine.commandSearch);
+  const { name, subject } = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
   const check = await cliTrustService(machine.trustStore, machine.clock).check(subject);
   if (check.status === "trusted") {
     return check.grant;

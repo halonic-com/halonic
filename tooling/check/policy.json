@@ -29,6 +29,9 @@
     "@halonicjs/studio-services"
   ],
   "extraExports": {
+    "@halonicjs/adapter-git": [
+      "./testing"
+    ],
     "@halonicjs/adapter-integration-kit": [
       "./integration"
     ],

@@ -64,6 +64,10 @@ A version is a full commit id (port v2). `snapshot` commits the public files on 
 
 The desktop's `git-guard` crate does the same in Rust.
 
+## In other packages' tests
+
+`@halonicjs/adapter-git/testing` gives `testGit()`, the git program this package's tests run: git itself, from its `--exec-path` folder, so a wrapper script found as `git` on the `PATH` doesn't fail the hardening check. Pass it as `GitRunner.create({ git })`. Only tests import it.
+
 ## Not yet
 
 - **Pushing to a remote that needs a password.** No credential helper runs, the user's included. Halonic's own helper comes with the keychain work.

@@ -308,6 +308,9 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
+      '@halonicjs/adapter-git':
+        specifier: workspace:*
+        version: link:../../packages/adapters/git
       '@halonicjs/adapter-harness-claude-code':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-claude-code
