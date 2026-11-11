@@ -1,7 +1,7 @@
 import type { HarnessBridge, HarnessEvent, HarnessTask, SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { FakeHost, ok, refused } from "./fake-host.test-helper.ts";
+import { FakeHost, type FakeStream, ok, refused } from "./fake-host.test-helper.ts";
 import { type AgentHostHarnessOptions, agentHostHarnesses } from "./harness.ts";
 import { AgentHostSession } from "./sandbox.ts";
 
@@ -44,6 +44,12 @@ async function claudeCode(host: FakeHost) {
   const [harness] = await agentHostHarnesses(host, options);
   if (harness === undefined) throw new Error("no harness");
   return harness;
+}
+
+/** Sends the run's `started` line and lets the run read it. */
+async function start(stream: FakeStream, run: string): Promise<void> {
+  stream.send({ type: "started", run });
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 async function collect(events: AsyncIterable<HarnessEvent>): Promise<HarnessEvent[]> {
@@ -186,7 +192,7 @@ verifies("agent-host-client.harness", () => {
       const opened = host.nextStream("POST /v1/harnesses/runs/start");
       const run = harness.start(task, hostSession(host), bridge);
       const stream = await opened;
-      stream.send({ type: "started", run: "r1" });
+      await start(stream, "r1");
       let cancelled = false;
       const cancelling = run.cancel().then(() => {
         cancelled = true;
@@ -198,6 +204,30 @@ verifies("agent-host-client.harness", () => {
       stream.send({ type: "failed", message: "The run was cancelled." });
       await cancelling;
       expect(cancelled).toBe(true);
+    });
+
+    it("refuses send and cancel for a run whose stream ended before it started", async () => {
+      const host = hostWithHarnesses();
+      const harness = await claudeCode(host);
+      const opened = host.nextStream("POST /v1/harnesses/runs/start");
+      const run = harness.start(task, hostSession(host), bridge);
+      (await opened).send({ type: "finished" });
+      expect(await collect(run)).toEqual([]);
+      await expect(run.send({ type: "answer", text: "yes" })).rejects.toMatchObject({
+        kind: "run_not_started",
+      });
+      await expect(run.cancel()).resolves.toBeUndefined();
+    });
+
+    it("hangs up at once when cancelled before the host has started it", async () => {
+      const host = hostWithHarnesses();
+      const harness = await claudeCode(host);
+      const opened = host.nextStream("POST /v1/harnesses/runs/start");
+      const run = harness.start(task, hostSession(host), bridge);
+      const stream = await opened;
+      await expect(run.cancel()).resolves.toBeUndefined();
+      expect(stream.signal.aborted).toBe(true);
+      expect(host.calls.map((call) => call.route)).not.toContain("POST /v1/harnesses/runs/cancel");
     });
 
     it("counts a run the host no longer has as stopped", async () => {
@@ -222,7 +252,7 @@ verifies("agent-host-client.harness", () => {
       const opened = host.nextStream("POST /v1/harnesses/runs/start");
       const run = harness.start(task, hostSession(host), bridge);
       const stream = await opened;
-      stream.send({ type: "started", run: "r1" });
+      await start(stream, "r1");
       await expect(run.cancel()).rejects.toThrow("can't be reached");
       expect(stream.signal.aborted).toBe(true);
     });

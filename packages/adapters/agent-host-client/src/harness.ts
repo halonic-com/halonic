@@ -129,6 +129,8 @@ class AgentHostRun implements HarnessRun {
   readonly #transport: AgentHostTransport;
   readonly #stop = new AbortController();
   readonly #runId: Promise<string>;
+  /** The run's id once the host has started it. */
+  #run: string | undefined;
   readonly #ended: Promise<void>;
   #events!: ReadableStreamDefaultController<HarnessEvent>;
   readonly #readable = new ReadableStream<HarnessEvent>({
@@ -142,13 +144,27 @@ class AgentHostRun implements HarnessRun {
     let started!: (run: string) => void;
     let notStarted!: (error: unknown) => void;
     this.#runId = new Promise((resolve, reject) => {
-      started = resolve;
+      started = (run) => {
+        this.#run = run;
+        resolve(run);
+      };
       notStarted = reject;
     });
     // Awaited by `send` and `cancel` only; a run that never starts mustn't be an unhandled rejection.
     this.#runId.catch(() => {});
     this.#ended = this.#read(body, started).then(
-      () => this.#events.close(),
+      () => {
+        // A stream that ended before `started` leaves no run to send to or cancel.
+        // Once the run has started, this does nothing.
+        notStarted(
+          new AgentHostError(
+            200,
+            "run_not_started",
+            "The agent host ended the run before it started.",
+          ),
+        );
+        this.#events.close();
+      },
       (error: unknown) => {
         notStarted(error);
         this.#events.error(error);
@@ -176,13 +192,17 @@ class AgentHostRun implements HarnessRun {
     if (answer.status !== 200) throw answerError(route, answer);
   }
 
-  /** Stops the run in the host, and resolves once its stream has ended. */
+  /**
+   * Stops the run in the host, and resolves once its stream has ended. A run
+   * the host hasn't started yet is hung up on at once, which stops it there,
+   * rather than waiting for the harness's program to start.
+   */
   async cancel(): Promise<void> {
-    let run: string;
-    try {
-      run = await this.#runId;
-    } catch {
-      return; // It never started, so there is nothing to stop.
+    const run = this.#run;
+    if (run === undefined) {
+      this.#stop.abort();
+      await this.#ended.catch(() => {});
+      return;
     }
     const route = "POST /v1/harnesses/runs/cancel";
     try {
