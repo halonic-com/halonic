@@ -16,6 +16,7 @@ import type {
   ScheduledTimer,
   Scheduler,
 } from "@halonicjs/ports";
+import { chatApprovalReason } from "../agent/check-chat-tool-call.ts";
 import { isProgramHarness } from "../kernel/agent-call.ts";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
 import { LiveHarnessCalls } from "../run/live-harness-calls.ts";
@@ -68,9 +69,6 @@ export const chatStoppedMessage = "The chat was stopped while the agent was work
 /** What the harness is told when it asks for an approval during a chat turn. */
 export const chatApprovalComment =
   "Nobody can approve this in a chat, so it was refused. Do the task without it, or say what you needed.";
-
-/** Why a chat turn refused a harness's call, for the turn's `refusals`. */
-const chatApprovalReason = "A chat can't wait for a person's approval, so the call was refused.";
 
 /**
  * The state name the call's `harness.started` and `sandbox.*` events carry.

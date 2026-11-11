@@ -6,6 +6,7 @@ import type {
   ToolDefinition,
 } from "@halonicjs/ports";
 import { ScriptedModel } from "../testing/scripted-model.ts";
+import type { CallChecker } from "./check-call-before-run.ts";
 import type { ResolvedModel } from "./model-chain.ts";
 import { type ModelTurnInput, runModelTurn } from "./run-model-turn.ts";
 import type { TurnEvent, TurnLog } from "./turn-log.ts";
@@ -37,6 +38,12 @@ export class MemoryTurnLog implements TurnLog {
   }
 }
 
+/**
+ * A check that lets every call run. The loop's own tests use it, so they
+ * test the loop and not the check; the chat turn's check has its own tests.
+ */
+export const runEveryCall: CallChecker = () => ({ kind: "run" });
+
 /** A caller tool, which the turn hands back. */
 export function callerTool(name: string): ToolDefinition {
   return { name, description: `Picks with ${name}`, parameters: { type: "object" } };
@@ -59,6 +66,8 @@ export interface TestTurn {
   provider?: string;
   /** The model's `local` and `price`, which give its calls their cost. */
   pricing?: Pick<ResolvedModel, "local" | "price">;
+  /** Checks each call; {@link runEveryCall} when left out. */
+  checkCall?: CallChecker;
 }
 
 /** Runs a turn on the scripted model with a fixed clock, and gives the model back too. */
@@ -74,6 +83,7 @@ export async function runTestTurn(setup: TestTurn) {
     maxRounds: setup.maxRounds ?? 20,
     agent: "clerk",
     clock: steppingClock(),
+    checkCall: setup.checkCall ?? runEveryCall,
     ...(setup.log === undefined ? {} : { log: setup.log }),
   };
   const result = await runModelTurn(input);
