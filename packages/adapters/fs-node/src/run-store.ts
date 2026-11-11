@@ -24,7 +24,7 @@ import {
   type RunStore,
   startedAtOrAfter,
 } from "@halonicjs/ports";
-import { KeyedQueue } from "@halonicjs/std";
+import { KeyedQueue, KindedError } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
 import { type LockedOutcome, settleUnderRunLock } from "./run-lock.ts";
@@ -263,6 +263,10 @@ export class FolderRunStore implements RunStore {
       return known;
     }
     const log = await this.#readLog(runId, { forWrite: true });
+    if (log.events.length === 0 && (await this.#listedUnderOtherCase(runId))) {
+      // A log without a whole line can't tell whose it is, but its name can.
+      throw otherCaseClash(runId);
+    }
     if (log.torn) {
       await truncate(this.#file(runId, logSuffix), log.intactBytes);
     }
@@ -299,13 +303,29 @@ export class FolderRunStore implements RunStore {
     }
     if (isLogOfOtherCase(bytes, runId)) {
       if (forWrite) {
-        throw new Error(
-          `Run id ${runId} clashes with a stored run whose id differs only in letter case, on a case-insensitive file system.`,
-        );
+        throw otherCaseClash(runId);
       }
       return { events: [], intactBytes: 0, torn: false };
     }
     return parseRunLog(bytes, runId, file);
+  }
+
+  /**
+   * Whether `<runId>.jsonl` opens a file the folder lists under another
+   * name, as only a case-insensitive file system does. It lists the folder
+   * only when the file is there, so a new run costs one `stat`.
+   */
+  async #listedUnderOtherCase(runId: string): Promise<boolean> {
+    const name = `${runId}${logSuffix}`;
+    try {
+      await stat(join(this.#root, name));
+    } catch (error) {
+      if (isMissing(error)) {
+        return false;
+      }
+      throw error;
+    }
+    return !(await readdir(this.#root)).includes(name);
   }
 
   /**
@@ -360,6 +380,18 @@ async function cutBack(file: string, size: number): Promise<void> {
   } catch {
     // Missing (the write failed before creating it) or not writable.
   }
+}
+
+/**
+ * The error of an append under an id that differs from a stored run's only in
+ * letter case, on a case-insensitive file system. It is `invalid_input`, not
+ * a conflict: the log hasn't moved on, and trying again can't help.
+ */
+function otherCaseClash(runId: string): KindedError {
+  return new KindedError(
+    "invalid_input",
+    `Run id ${runId} clashes with a stored run whose id differs only in letter case, on a case-insensitive file system.`,
+  );
 }
 
 /** A stored snapshot, or `null` when the text isn't one. */

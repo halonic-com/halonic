@@ -1,6 +1,6 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { AppendResult, RunStore } from "@halonicjs/ports";
-import type { ErrorKind } from "@halonicjs/std";
+import { type ErrorKind, errorKindOf } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { completed, entered, eventTime, failed, started, waiting } from "./run-events.ts";
@@ -58,6 +58,11 @@ export function runStoreContract(
   verifies("contracts.run-store-empty-status", () => {
     describe(`RunStore empty status list: ${name}`, () => {
       emptyStatusCases(make, settle);
+    });
+  });
+  verifies("contracts.run-store-run-id-case", () => {
+    describe(`RunStore run id case: ${name}`, () => {
+      runIdCaseCases(make, settle);
     });
   });
   verifies("contracts.run-store-started-since", () => {
@@ -320,4 +325,40 @@ function sharedCases(makeShared: () => Promise<SharedRunStorage>): void {
       });
     });
   }
+}
+
+function runIdCaseCases(make: MakeRunStore, settle: (store: RunStore) => Promise<void>): void {
+  it("treats a run id in another case as another run, and never changes a run through it", async () => {
+    const store = await make();
+    const own = [started("run_x"), entered("run_x", 2)];
+    await store.append("run_x", 0, own, { snapshot: { step: 2 } });
+    await settle(store);
+    const ownSummary = await store.get("run_x");
+    expect(await store.events("RUN_X")).toEqual([]);
+    expect(await store.snapshot("RUN_X")).toBeNull();
+    expect(await store.get("RUN_X")).toBeNull();
+
+    // A store that keeps the two apart stores the new run; a folder that
+    // ignores case can't, so its store refuses it as invalid input, since
+    // trying again can't help. Never a conflict from the other run's log.
+    const other = started("RUN_X", { at: eventTime(5) });
+    const answer = await store.append("RUN_X", 0, [other]).then(
+      (result) => ({ stored: result }),
+      (error: unknown) => ({ refused: errorKindOf(error) }),
+    );
+    await settle(store);
+    if ("refused" in answer) {
+      expect(answer.refused).toBe("invalid_input");
+      expect(await store.events("RUN_X")).toEqual([]);
+      expect((await store.list()).map((run) => run.id)).toEqual(["run_x"]);
+    } else {
+      expect(answer.stored).toEqual({ ok: true, lastSeq: 1 });
+      expect(await store.events("RUN_X")).toEqual([other]);
+      expect((await store.list()).map((run) => run.id)).toEqual(["RUN_X", "run_x"]);
+    }
+    expect(await store.events("run_x")).toEqual(own);
+    expect(await store.snapshot("run_x")).toEqual({ seq: 2, state: { step: 2 } });
+    expect(await store.get("run_x")).toEqual(ownSummary);
+    expect((await store.list()).find((run) => run.id === "run_x")).toEqual(ownSummary);
+  });
 }
