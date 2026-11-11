@@ -49,15 +49,21 @@ any failed step refuses the start before a secret is read or a folder is created
    package afresh.
 5. Inherited package-manager and language variables are dropped and the registry is set from
    `registryUrl`. npm's user and global config point at the folder's empty config, uv and pip read
-   no config file, and uv downloads no Python. An inherited proxy, certificate or preload stays:
-   that's the person's machine.
+   no config file, and uv downloads no Python. An inherited proxy, certificate or library folder
+   stays: that's the person's machine.
 6. The folder is deleted when the connector closes, and also when the start fails, so the next call
    plans a new launch with a new folder. A connector closed while its registry lookup runs creates
    no folder.
 
 A package runner without a pin starts as configured, like any program the person trusted, in the
-workspace folder (or its `cwd`), with the inherited environment, the connector's `env` and its
-secrets. Both kinds start only once the workspace is trusted.
+workspace folder (or its `cwd`), with the base of the app's environment, the connector's `env` and
+its secrets. Both kinds start only once the workspace is trusted.
+
+**What a program inherits.** Only the base of the app's environment (`connectorBaseEnv` in
+`@halonicjs/app`, `app.connector-base-env`): `PATH`, home, user, temp and locale variables, the
+person's proxy, certificate and library folders, and on Windows the system folders a program needs.
+A model key or token in the person's shell stays out; a program that needs a key gets it through
+`secretEnv`.
 
 ## How a program is started and stopped
 

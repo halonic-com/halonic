@@ -24,15 +24,15 @@ const folderVariables = [
 ];
 
 /**
- * The environment a pinned program starts with, before its secrets: what
- * the launcher inherits, without the package-manager and language variables
+ * The environment a pinned program starts with, before its secrets: the
+ * base of what the launcher inherits (`app.connector-base-env`), without the package-manager and language variables
  * (`app.package-manager-variable`), with the connector's own `env`, which
  * `checkPackageRunnerLaunch` has checked, then the launch folder and the
  * pin's registry, which nothing before can change. On Windows a later
  * variable replaces an earlier one in any letter case (see {@link mergedEnv}).
  *
- * An inherited proxy, certificate or preload stays: those are the person's
- * own machine settings, such as a company proxy (`ports/connector-client.ts`).
+ * An inherited proxy, certificate or library folder stays: those are the
+ * person's own machine settings, such as a company proxy (`ports/connector-client.ts`).
  */
 export function pinnedEnv(
   pin: ConnectorPin,

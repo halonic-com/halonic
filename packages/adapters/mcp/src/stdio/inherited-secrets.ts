@@ -43,9 +43,10 @@ const tokenUserNameSchemes = new Set(["http:", "https:"]);
  * `PASSWORD`, the password in a value written as a URL, such as
  * `postgres://acme:hush@db.acme.test/notes`, and the user name of an
  * `http(s)` URL with no password that is long enough to be a token, such
- * as a Sentry DSN. Both launches pass on what the app inherited
- * (`mcp.stdio-connector`), so a program can echo any of these, whatever
- * their shape (`mcp.stdio-inherited-secrets`).
+ * as a Sentry DSN. A program gets only the base of the app's
+ * environment (`app.connector-base-env`), but a proxy there can hold a
+ * password, so every variable is read, whatever its shape
+ * (`mcp.stdio-inherited-secrets`).
  *
  * @example
  * inheritedSecrets({ ACME_API_KEY: "plain-words", PATH: "/usr/bin" }); // ["plain-words"]

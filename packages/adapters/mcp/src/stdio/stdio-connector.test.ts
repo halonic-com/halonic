@@ -35,7 +35,7 @@ function setUp(secrets = new MemorySecrets({ "notes-token": "value-from-secrets"
     starter,
     folders: unusedFolders,
     runners: unusedRunners,
-    inheritedEnv: { PATH: "/usr/bin", UNSET: undefined },
+    inheritedEnv: { PATH: "/usr/bin", ANTHROPIC_API_KEY: "sk-ant-test", UNSET: undefined },
     clientInfo: { name: "halonic", version: "0.1.0" },
   });
   const context: ConnectorFactoryContext = {
@@ -146,7 +146,7 @@ verifies("ports.connector-sandbox-session", () => {
 
 verifies("mcp.stdio-connector", () => {
   describe("starting the program", () => {
-    it("puts secrets only in the environment, next to the inherited and configured variables", async () => {
+    it("puts secrets only in the environment, next to the base it inherits and the configured variables", async () => {
       const { starter, factory, context } = setUp();
       const client = factory.create(config, context);
       await client.listTools();
