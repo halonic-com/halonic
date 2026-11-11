@@ -3,6 +3,7 @@
 - Task: HAL-4895 (part 2, halonic#1597)
 - Approval: Liam approved the HAL-4895 plan and approves this note in review on [HAL-5293](/HAL/issues/HAL-5293)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DPeWWrFtuvA8aUBWAHwKozy6Y/qJ2lEgA4/gNXGqIF2bAHcS1iymVftMWjGhp80FAsOXW046KciODQDpRN9OAg==
 
 ## What changes
 
