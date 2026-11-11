@@ -14,26 +14,30 @@ function fileIn(root: string): string {
   return join(root, "host.json");
 }
 
+/** The text of `file`, or `undefined` when there is none. */
+async function textOf(file: string): Promise<string | undefined> {
+  try {
+    return await readFile(file, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
 hostSettingsStoreContract("file", async () => {
   const root = join(await tempFolder(), "settings");
   return {
     store: new FileHostSettingsStore(root),
-    // Cut the file in half, as a crash or a full disk would.
-    damage: async () => {
-      const text = await readFile(fileIn(root), "utf8");
-      await writeFile(fileIn(root), text.slice(0, text.length / 2), "utf8");
+    saved: () => textOf(fileIn(root)),
+    brokenCopy: () => textOf(join(root, "host.json.broken")),
+    writeSaved: async (text) => {
+      await mkdir(root, { recursive: true });
+      await writeFile(fileIn(root), text, "utf8");
     },
     // Another window or the CLI: a store of its own on the same folder.
     changeElsewhere: (key, value) => new FileHostSettingsStore(root).set(key, value),
   };
 });
-
-/** A store whose file holds `text`, as a hand edit would leave it. */
-async function storeHolding(text: string): Promise<FileHostSettingsStore> {
-  const root = await tempFolder();
-  await writeFile(fileIn(root), text, "utf8");
-  return new FileHostSettingsStore(root);
-}
 
 verifies("fs-node.host-settings-store", () => {
   describe("the file", () => {
@@ -56,41 +60,6 @@ verifies("fs-node.host-settings-store", () => {
       const root = join(await tempFolder(), "settings");
       expect(await new FileHostSettingsStore(root).read()).toEqual({});
       await expect(lstat(root)).rejects.toMatchObject({ code: "ENOENT" });
-    });
-
-    it("keeps both of two saves made at once", async () => {
-      const store = new FileHostSettingsStore(await tempFolder());
-      await Promise.all([
-        store.set("assistant.turn-limit", 20),
-        store.set("assistant.connector-tools", false),
-      ]);
-      expect(await store.read()).toEqual({
-        "assistant.turn-limit": 20,
-        "assistant.connector-tools": false,
-      });
-    });
-  });
-
-  describe("a file that isn't the settings' shape", () => {
-    const shapes: Record<string, string> = {
-      "a list": "[]",
-      null: "null",
-      "no values": JSON.stringify({ version: 1 }),
-      "values that are a list": JSON.stringify({ version: 1, values: [16] }),
-      "values that are null": JSON.stringify({ version: 1, values: null }),
-    };
-    for (const [shape, text] of Object.entries(shapes)) {
-      it(`reads ${shape} as none saved`, async () => {
-        expect(await (await storeHolding(text)).read()).toEqual({});
-      });
-    }
-
-    it("leaves out a key no setting can have", async () => {
-      const text = JSON.stringify({
-        version: 1,
-        values: { "assistant.turn-limit": 20, "../host.json": 1, turn: 2 },
-      });
-      expect(await (await storeHolding(text)).read()).toEqual({ "assistant.turn-limit": 20 });
     });
   });
 
