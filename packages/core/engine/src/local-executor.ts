@@ -391,7 +391,9 @@ export class LocalExecutor implements RunExecutor {
    * are checked as a run's are, except that one that needs a person's OK is
    * refused ({@link checkSubagentToolCall}).
    *
-   * @returns the subagent's answer; its turn doesn't stop yet
+   * Given `task.resumeFrom`, its turn goes on from where it stopped.
+   *
+   * @returns the subagent's answer, or where its turn stopped; with no effect step and every call that asks refused, it doesn't stop yet
    */
   private async runSubagent(turn: RunTurn, task: DelegatedTask): Promise<SubagentOutcome> {
     const subagent = agentIn(turn.definitions, task.agent);
@@ -405,11 +407,10 @@ export class LocalExecutor implements RunExecutor {
     const knowledge = this.runKnowledgeOf(turn, task.agent);
     const lists = turn.definitions.connectorTools ?? {};
     const connectors = runConnectorsOf(this.options.connectors, subagent, lists, true);
-    const result = await runModelTurn({
+    const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
       messages,
-      callerTools: [],
       halonicTools: this.runToolsOf(turn, task.agent, task.depth, knowledge),
       connectors: this.options.runs?.connectorCalls === undefined ? [] : connectors,
       maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
@@ -417,8 +418,11 @@ export class LocalExecutor implements RunExecutor {
       clock: this.options.clock,
       checkCall: checkSubagentToolCall,
       autoKnowledge: knowledge.auto,
+      ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
     });
-    return { kind: "answer", content: result.content };
+    return outcome.kind === "stopped"
+      ? outcome
+      : { kind: "answer", content: outcome.result.content };
   }
 
   /**

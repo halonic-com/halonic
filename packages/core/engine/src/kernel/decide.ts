@@ -14,7 +14,12 @@ import type {
 } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
-import { brokeOff, type RequestedEffect, unknownOutcomeEvents } from "./requested-effect.ts";
+import {
+  brokeOff,
+  effectCallerOf,
+  type RequestedEffect,
+  unknownOutcomeEvents,
+} from "./requested-effect.ts";
 import { branchOfCall } from "./run-branches.ts";
 import { callOf, evolve, hasEnded, type RunState, type WaitingApproval } from "./run-state.ts";
 import { foldableEvent } from "./saved-artifacts.ts";
@@ -220,7 +225,8 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
 
 /** The same events a call that broke off records, as `takeToolResult` does. */
 function effectCutShort(run: RunState, effect: RequestedEffect, error: string): Decision {
-  const { state, agent, tool } = effect;
+  const { state, tool } = effect;
+  const agent = effectCallerOf(effect);
   const events: DecidedEvent[] = [
     { type: "tool.result", agent, tool, result: brokeOff(error), outcome: "unknown" },
     { type: "run.waiting", state, events: [...unknownOutcomeEvents] },
