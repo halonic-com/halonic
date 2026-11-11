@@ -169,9 +169,17 @@ class PayloadCollector {
   }
 }
 
-/** Test files and test helpers, which the host never loads. */
-function isTestFile(file: string): boolean {
-  return /\.test(-helper)?\.[cm]?tsx?$|\.test-d\.ts$/.test(file);
+/**
+ * Test files, test helpers, recorded fixtures and golden files, which the host
+ * never loads. `file` is relative to a package's `src`. Only a top-level
+ * `test/` folder counts: `commands/test/` holds a command the host runs.
+ */
+export function isTestFile(file: string): boolean {
+  return (
+    /\.(?:test(?:-helper)?|spec)\.[cm]?tsx?$|\.test-d\.ts$/.test(file) ||
+    file.startsWith("test/") ||
+    /(?:^|\/)(?:fixtures|golden|__snapshots__)\//.test(file)
+  );
 }
 
 /**

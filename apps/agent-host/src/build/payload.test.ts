@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { collectPayload, payloadManifest } from "./payload.ts";
+import { collectPayload, isTestFile, payloadManifest } from "./payload.ts";
 
 // A small repo laid out as pnpm installs one: workspace packages linked into
 // each other's node_modules, and outside packages in a store folder, where a
@@ -21,6 +21,26 @@ function write(path: string, text: string): void {
   mkdirSync(dirname(join(repo, path)), { recursive: true });
   writeFileSync(join(repo, path), text);
 }
+
+describe("isTestFile", () => {
+  it.each([
+    "a.test.ts",
+    "a.spec.ts",
+    "kit.test-helper.ts",
+    "a.test-d.ts",
+    "test/helper.ts",
+    "fixtures/run.json",
+    "recording/fixtures/run.json",
+    "golden/out.txt",
+    "x/__snapshots__/a.snap",
+  ])("skips %s", (file) => {
+    expect(isTestFile(file)).toBe(true);
+  });
+
+  it.each(["main.ts", "commands/test/command.ts", "testing.ts", "specs.ts"])("keeps %s", (file) => {
+    expect(isTestFile(file)).toBe(false);
+  });
+});
 
 function packageJson(path: string, name: string, extra: Record<string, unknown> = {}): void {
   write(path, JSON.stringify({ name, ...extra }));
