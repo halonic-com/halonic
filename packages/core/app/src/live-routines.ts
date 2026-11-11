@@ -2,13 +2,21 @@
 // HAL-3267, on HAL-3246): each routine as its live version has it, since a
 // saved change only counts once it is made live, but On and Off, and
 // whether the routine is there at all, from its saved file, since stopping
-// a routine must never wait for a version.
+// a routine must never wait for a version. It also tells the scheduler
+// when a routine's target can't start, for the seventh skip reason.
 
 import { parseFile } from "@halonicjs/format";
 import type { DefinitionSource, Vcs } from "@halonicjs/ports";
-import type { PlacedRoutine } from "@halonicjs/routines";
-import { filesOf, loadWorkspace, placeOf, VersionSource } from "@halonicjs/workspace";
+import type { DueRun, PlacedRoutine } from "@halonicjs/routines";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  placeOf,
+  VersionSource,
+} from "@halonicjs/workspace";
 import { liveVersionOf } from "./live-version.ts";
+import type { TargetUnavailableWhy } from "./routine-skips.ts";
 import { placedRoutines } from "./workspace-routines.ts";
 
 /** What {@link LiveRoutines} reads. */
@@ -23,6 +31,20 @@ export interface LiveRoutinesOptions {
 interface LiveRoutineFile {
   readonly path: string;
   readonly placed: PlacedRoutine;
+}
+
+/** What a routine starts: a workflow or an agent, by its id in a hub. */
+interface RoutineTarget {
+  readonly kind: "workflow" | "agent";
+  readonly hub: string | null;
+  readonly id: string;
+}
+
+/** The routines and the files of the live version at one commit. */
+interface LiveFiles {
+  readonly commit: string;
+  readonly routines: readonly LiveRoutineFile[];
+  readonly workspace: LoadedWorkspace;
 }
 
 /**
@@ -48,16 +70,23 @@ interface LiveRoutineFile {
  * every call, so a watch event needs no signal: Off acts by the next tick.
  * Keep one instance per open workspace, for the `enabled` values it keeps.
  *
+ * {@link targetUnavailable} is the scheduler's check for the seventh skip
+ * reason (`app.scheduler-target-unavailable-live`).
+ *
  * @example
  * const live = new LiveRoutines({ vcs, saved: store });
- * workspaceRoutineScheduler({ ...options, routines: () => live.list() });
+ * workspaceRoutineScheduler({
+ *   ...options,
+ *   routines: () => live.list(),
+ *   targetUnavailable: (run) => live.targetUnavailable(run),
+ * });
  */
 export class LiveRoutines {
   readonly #options: LiveRoutinesOptions;
   /** The last `enabled` read from each saved routine file, by path. */
   readonly #lastEnabled = new Map<string, boolean>();
-  /** The live version's routines, kept until the live version moves. */
-  #cached: { readonly commit: string; readonly routines: readonly LiveRoutineFile[] } | null = null;
+  /** The live version's routines and files, kept until the live version moves. */
+  #cached: LiveFiles | null = null;
 
   constructor(options: LiveRoutinesOptions) {
     this.#options = options;
@@ -73,7 +102,7 @@ export class LiveRoutines {
     if (live.kind === "none-yet" || vcs === null) {
       return [];
     }
-    const routines = await this.#liveRoutineFiles(vcs, live.commit.hash);
+    const { routines } = await this.#liveFiles(vcs, live.commit.hash);
     const scheduled: PlacedRoutine[] = [];
     for (const { path, placed } of routines) {
       const enabled = await this.#savedEnabled(path, placed.routine.enabled);
@@ -85,11 +114,39 @@ export class LiveRoutines {
     return scheduled;
   }
 
-  /** The routines of the live version at `commit`, read once per commit. */
-  async #liveRoutineFiles(
-    vcs: Pick<Vcs, "readAt" | "listAt">,
-    commit: string,
-  ): Promise<readonly LiveRoutineFile[]> {
+  /**
+   * Why the target of a due run can't start, or `null` when it can: the
+   * scheduler's `targetUnavailable` check, asked only about the runs a tick
+   * would start.
+   *
+   * - `never-live`: the target isn't in the live version, but it is saved,
+   *   so it was added and never made live.
+   * - `in-trash`: the target is in the live version, but its saved file is
+   *   gone, such as when it was moved to the trash.
+   *
+   * A target that is neither live nor saved, such as a misspelt id, gives
+   * `null`: the run starts and fails on its own with "not found", as with
+   * history off, where every target comes from the saved files.
+   */
+  async targetUnavailable(run: Pick<DueRun, "placed">): Promise<TargetUnavailableWhy | null> {
+    const { vcs, saved } = this.#options;
+    const live = await liveVersionOf(vcs);
+    // With nothing live, no routine is scheduled, so no run asks.
+    if (live.kind !== "commit" || vcs === null) {
+      return null;
+    }
+    const target = targetOf(run.placed);
+    const { workspace } = await this.#liveFiles(vcs, live.commit.hash);
+    const livePath = pathOf(workspace, target);
+    if (livePath !== null) {
+      return (await saved.read(livePath)) === null ? "in-trash" : null;
+    }
+    // Read only now: a target that isn't live is rare, and a tick shouldn't load every saved file.
+    return pathOf(await loadWorkspace(saved), target) === null ? null : "never-live";
+  }
+
+  /** The routines and files of the live version at `commit`, read once per commit. */
+  async #liveFiles(vcs: Pick<Vcs, "readAt" | "listAt">, commit: string): Promise<LiveFiles> {
     if (this.#cached?.commit !== commit) {
       const workspace = await loadWorkspace(
         new VersionSource(vcs, commit, this.#options.saved.location),
@@ -98,9 +155,9 @@ export class LiveRoutines {
         path: file.path,
         placed: { hub: file.hub, routine: file.value },
       }));
-      this.#cached = { commit, routines };
+      this.#cached = { commit, routines, workspace };
     }
-    return this.#cached.routines;
+    return this.#cached;
   }
 
   /**
@@ -132,4 +189,21 @@ export class LiveRoutines {
       }
     }
   }
+}
+
+/** The workflow or agent a routine starts, in the hub it names or its own. */
+function targetOf(placed: PlacedRoutine): RoutineTarget {
+  const run = placed.routine.run;
+  const hub = run.hub ?? placed.hub;
+  return "workflow" in run
+    ? { kind: "workflow", hub, id: run.workflow }
+    : { kind: "agent", hub, id: run.agent };
+}
+
+/** The path of `target`'s file in `workspace`, or `null` when it has none. */
+function pathOf(workspace: LoadedWorkspace, target: RoutineTarget): string | null {
+  const file = filesOf(workspace, target.kind).find(
+    (candidate) => candidate.hub === target.hub && candidate.value.id === target.id,
+  );
+  return file?.path ?? null;
 }
