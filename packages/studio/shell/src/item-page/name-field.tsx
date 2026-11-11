@@ -63,10 +63,12 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
 
   return (
     // The field and a hidden copy of its text share one grid cell, so the field is exactly as wide
-    // as the name it shows, up to the room left, and the ⋮ sits right after it. `size={1}` keeps the
-    // input's own width (20 characters by default) from setting the cell's width; the hidden copy
-    // sets it instead. A `size` of the name's length counts average characters, which comes out too
-    // wide or too narrow in a proportional font.
+    // as the name it shows, up to the room left, and the ⋮ sits right after it. The input's own width
+    // must not count: `w-0` gives it none, so the hidden copy alone sets the cell's width, and
+    // `min-w-full` then stretches the input to fill the cell. `size={1}` alone isn't enough, since
+    // browsers still give a one-character input a minimum of several characters; it stays for
+    // browsers that ignore `w-0` here. A `size` of the name's length counts average characters, which
+    // comes out too wide or too narrow in a proportional font.
     <span className="inline-grid min-w-0 max-w-full grid-cols-[minmax(0,auto)]">
       <span aria-hidden="true" data-name-sizer="" className={sizerClasses}>
         {draft === "" ? " " : draft}
@@ -90,7 +92,7 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
 // The title's look, with a 4px inset so the text lines up with the kind label; a quiet fill on hover
 // says it can be edited, and focus is the standard ring.
 const nameClasses = [
-  "col-start-1 row-start-1 w-full min-w-0 truncate rounded-xs border-0 bg-transparent px-1",
+  "col-start-1 row-start-1 w-0 min-w-full truncate rounded-xs border-0 bg-transparent px-1",
   "text-section text-fg hover:bg-surface-subtle focus:bg-surface focus-ring",
 ].join(" ");
 
