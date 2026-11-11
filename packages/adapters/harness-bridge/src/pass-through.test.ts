@@ -1,4 +1,6 @@
-import type { ServerResponse } from "node:http";
+import { once } from "node:events";
+import { createServer, type RequestListener, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -55,6 +57,25 @@ async function openWith(route: BridgeRoute) {
   });
   closers.push(bridge.close);
   return bridge;
+}
+
+/** A local HTTP server that answers with `handle` and counts the requests it gets. */
+async function listen(handle: RequestListener) {
+  let requests = 0;
+  const server = createServer((request, response) => {
+    requests += 1;
+    handle(request, response);
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  closers.push(() => new Promise((resolve) => server.close(() => resolve())));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    get requests() {
+      return requests;
+    },
+  };
 }
 
 /** A reply body that has a new 64 KiB chunk whenever the bridge asks for one. */
@@ -126,6 +147,20 @@ verifies("harness-bridge.pass-through", () => {
       expect(reply.status).toBe(429);
       expect(reply.headers.get("retry-after")).toBe("7");
       expect(await reply.text()).toBe(error);
+    });
+
+    it("doesn't follow a redirect, so the key never goes to another address", async () => {
+      const elsewhere = await listen((_, response) => response.end("{}"));
+      const redirecting = await listen((_, response) => {
+        response.writeHead(307, { location: elsewhere.url }).end();
+      });
+      // Node's own fetch, sent to the redirecting server in place of the provider.
+      const toRedirecting: Fetch = (_, init) => fetch(redirecting.url, init);
+      const reply = await programRequest(await open(toRedirecting));
+
+      expect(reply.status).toBe(503);
+      expect(redirecting.requests).toBe(1);
+      expect(elsewhere.requests).toBe(0);
     });
 
     it("answers 503 when the provider can't be reached", async () => {
