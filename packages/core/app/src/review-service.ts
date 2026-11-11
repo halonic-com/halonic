@@ -189,13 +189,16 @@ export class ReviewService {
    * save, so Accept or Reject of one of them answers `stale`. Save before
    * deciding one.
    */
-  async changesIn(path: string, current?: string): Promise<FileReview | null> {
-    const record = await this.files.read(path);
-    if (record === null) {
-      return null;
-    }
-    const text = current ?? (await this.files.store.read(path));
-    return fileReview(this.files, record, text);
+  changesIn(path: string, current?: string): Promise<FileReview | null> {
+    // In the file's turn, so the record and the file are read as one.
+    return this.files.turn(path, async () => {
+      const record = await this.files.read(path);
+      if (record === null) {
+        return null;
+      }
+      const text = current ?? (await this.files.store.read(path));
+      return fileReview(this.files, record, text);
+    });
   }
 
   /** The changes to review in each file one chat card covers, sorted by path, for the card. */

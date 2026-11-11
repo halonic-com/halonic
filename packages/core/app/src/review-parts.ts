@@ -2,6 +2,7 @@
 // line changes from its baseline to the file, worked out fresh each time,
 // and Accept or Reject of one of them, or of one change on an item page.
 
+import type { ExpectedContent } from "@halonicjs/ports";
 import { applyLineChanges, diffLines } from "@halonicjs/std";
 import { revertParts } from "./changes/revert-parts.ts";
 import type { ReviewFiles } from "./review-files.ts";
@@ -33,18 +34,31 @@ export async function fileReview(
     path: record.path,
     card: record.card,
     baseline: record.baseline,
-    seen: await files.digestOf(text),
+    seen: await partsSeen(files, record.baseline, text),
     deleted: text === null,
     parts: text === null ? [] : diffLines(record.baseline ?? "", text),
   };
 }
 
 /**
+ * The digest of the baseline and the text the parts were worked out from.
+ * It covers both because Accept moves the baseline and leaves the file
+ * alone, and that shifts the parts that follow.
+ */
+function partsSeen(
+  files: ReviewFiles,
+  baseline: string | null,
+  text: string | null,
+): Promise<ExpectedContent> {
+  return files.digestOf(JSON.stringify([baseline, text]));
+}
+
+/**
  * Accepts or rejects one part (`app.review-accept-reject-part`) or one
  * change on an item page (`app.review-accept-reject-change`). Accept moves
  * the baseline and leaves the file alone; Reject writes the file and keeps
- * the baseline. It is `stale` when the file no longer holds the text the
- * target was worked out from.
+ * the baseline. It is `stale` when the file or the baseline is no longer
+ * what the target was worked out from.
  */
 export function decideInFile(
   files: ReviewFiles,
@@ -55,10 +69,14 @@ export function decideInFile(
     const held: ReviewOutcome = { status: "done", step: { files: [] }, held: [target.path] };
     const record = await files.read(target.path);
     const current = await files.store.read(target.path);
-    if (record === null || current === null || (await files.digestOf(current)) !== target.seen) {
+    if (
+      record === null ||
+      current === null ||
+      (await partsSeen(files, record.baseline, current)) !== target.seen
+    ) {
       return { status: "stale", path: target.path };
     }
-    if (record.seen !== target.seen) {
+    if ((await files.digestOf(current)) !== record.seen) {
       return held;
     }
     const decided =
