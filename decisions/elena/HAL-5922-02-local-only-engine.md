@@ -2,6 +2,7 @@
 
 - Approval: Liam's decision on [HAL-5921](/HAL/issues/HAL-5921) (from Maya's finding on HAL-5915: the accepted ADR `docs/adr/2026-11-08-local-first.md` stands and the code follows it); Liam approves this note in review on [HAL-5922](/HAL/issues/HAL-5922)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GIwVOBJ1Q3bccRa+byQxfdw58GL/BLQAXfK/7TINVIx8Rp9H+tVcw0jp3wbdwN/e3CPBsjA9k0AWtgXqzXZ5CA==
 - Task: HAL-5922
 
 ## What changes
