@@ -1,0 +1,190 @@
+import type { Digest } from "@halonicjs/ports";
+import { contentDigest } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
+import { ReviewService } from "./review-service.ts";
+import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
+import { TestTrash } from "./testing/test-trash.ts";
+
+/** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
+const digest: Digest = {
+  async sha256(data) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};
+
+const k1 = { chatId: "c1", cardId: "k1" };
+
+const agent = "agents/clerk.agent.yaml";
+const models = "models.yaml";
+const connector = "library/connectors/mail.connector.yaml";
+const workflow = "workflows/intake.workflow.yaml";
+
+const clerk = [
+  "id: clerk",
+  "name: Clerk",
+  "model: small",
+  "allowedSites: [docs.acme.test]",
+  "methods:",
+  "  file:",
+  "    instructions: File it.",
+  "    tools: [read]",
+  "",
+].join("\n");
+const aliases = "aliases:\n  small: { provider: local, model: tiny }\n";
+const intake = "id: intake\nstart: sort\n";
+
+/** A workspace with an agent, `models.yaml` and a workflow, and the trust the test sets. */
+function workspace(files: Record<string, string> = {}) {
+  const store = new TestDefinitionStore(
+    { [agent]: clerk, [models]: aliases, [workflow]: intake, ...files },
+    digest,
+  );
+  const records = new TestDefinitionStore({}, digest);
+  let trusted = true;
+  const review = new ReviewService({
+    store,
+    records,
+    digest,
+    isTrusted: () => trusted,
+    trash: new TestTrash(store, digest),
+  });
+  /** Writes `content` as the assistant, over what the file holds now. */
+  const propose = async (path: string, content: string) => {
+    const current = store.files.get(path);
+    const expected = current === undefined ? "absent" : await contentDigest(current, digest);
+    const outcome = await review.propose({ path, content, expected, card: k1 });
+    expect(outcome.status).toBe("written");
+  };
+  const setTrusted = (value: boolean) => {
+    trusted = value;
+  };
+  return { store, records, review, propose, setTrusted };
+}
+
+verifies("app.review-try-it-holds-back", () => {
+  it("reads the workspace as it is when nothing is left out", async () => {
+    const { store, review, propose } = workspace();
+    await propose(agent, clerk.replace("name: Clerk", "name: Head clerk"));
+    const { source, leftOut } = await review.tryItSource();
+    expect(leftOut).toEqual({ total: 0, beforeTrust: 0, files: [] });
+    expect(await source.read(agent)).toBe(store.files.get(agent));
+    expect(await source.list()).toEqual(await store.list());
+    expect(await source.version()).toBe(await store.version());
+  });
+
+  it("uses a switch to an alias that exists", async () => {
+    const { store, review, propose } = workspace();
+    await propose(agent, clerk.replace("model: small", "model: large"));
+    const { source, leftOut } = await review.tryItSource();
+    expect(leftOut.total).toBe(0);
+    expect(await source.read(agent)).toBe(store.files.get(agent));
+  });
+
+  it("takes the baseline's sites and method tools, and the file's other changes", async () => {
+    const { review, propose } = workspace();
+    await propose(
+      agent,
+      clerk
+        .replace("name: Clerk", "name: Head clerk")
+        .replace("[docs.acme.test]", "[docs.acme.test, '*.example.test']")
+        .replace("tools: [read]", "tools: [read, send]"),
+    );
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.read(agent)).toBe(clerk.replace("name: Clerk", "name: Head clerk"));
+    expect(leftOut).toEqual({
+      total: 2,
+      beforeTrust: 0,
+      files: [{ path: agent, reason: "permissions", changes: 2 }],
+    });
+  });
+
+  it("holds back models.yaml whole, so a new alias isn't there", async () => {
+    const { review, propose } = workspace();
+    await propose(models, `${aliases}  large: { provider: cloud, model: big }\n`);
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.read(models)).toBe(aliases);
+    expect(leftOut.files).toEqual([{ path: models, reason: "models", changes: 1 }]);
+  });
+
+  it("leaves out a new connector, and a new agent only when it reaches further", async () => {
+    const { review, propose } = workspace();
+    await propose(connector, "id: mail\ntransport:\n  http: { url: https://mail.example.test }\n");
+    await propose("agents/plain.agent.yaml", "id: plain\nname: Plain\n");
+    await propose("agents/sender.agent.yaml", "id: sender\nname: Sender\nconnectors: [mail]\n");
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.read(connector)).toBeNull();
+    expect(await source.read("agents/sender.agent.yaml")).toBeNull();
+    expect(await source.read("agents/plain.agent.yaml")).toBe("id: plain\nname: Plain\n");
+    expect(await source.list("agents")).toEqual([agent, "agents/plain.agent.yaml"]);
+    expect(leftOut.files.map(({ path, reason }) => ({ path, reason }))).toEqual([
+      { path: "agents/sender.agent.yaml", reason: "connections" },
+      { path: connector, reason: "connections" },
+    ]);
+  });
+
+  it("uses the assistant's delete of an agent, but not of models.yaml", async () => {
+    const { store, review } = workspace();
+    for (const path of [agent, models]) {
+      const expected = await contentDigest(store.files.get(path) ?? "", digest);
+      expect((await review.proposeDelete({ path, expected, card: k1 })).status).toBe("written");
+    }
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.list()).toEqual([models, workflow]);
+    expect(await source.read(models)).toBe(aliases);
+    expect(leftOut.files).toEqual([{ path: models, reason: "models", changes: 1 }]);
+  });
+
+  it("reads an agent that isn't YAML as it is, since it doesn't load", async () => {
+    const { store, review, propose } = workspace();
+    await propose(agent, "id: clerk\nconnectors: [mail\n");
+    const { source, leftOut } = await review.tryItSource();
+    expect(leftOut.total).toBe(0);
+    expect(await source.read(agent)).toBe(store.files.get(agent));
+  });
+
+  it("gives another version when anything is held, and writes nothing", async () => {
+    const { store, records, review, propose } = workspace();
+    await propose(models, "aliases: {}\n");
+    const files = new Map(store.files);
+    const recordFiles = new Map(records.files);
+    const { source } = await review.tryItSource();
+    expect(await source.version()).toMatch(/^.+\+held-back\.sha256:[0-9a-f]{64}$/u);
+    expect(store.files).toEqual(files);
+    expect(records.files).toEqual(recordFiles);
+  });
+});
+
+verifies("app.untrusted-changes-held", () => {
+  describe("a change the assistant wrote while the workspace was untrusted", () => {
+    it("stays out whole after the workspace is trusted, and is counted", async () => {
+      const { review, propose, setTrusted } = workspace();
+      setTrusted(false);
+      await propose(workflow, `${intake}description: Sorts mail.\n`);
+      await propose(agent, clerk.replace("model: small", "model: large"));
+      setTrusted(true);
+      const { source, leftOut } = await review.tryItSource();
+      expect(await source.read(workflow)).toBe(intake);
+      expect(await source.read(agent)).toBe(clerk);
+      expect(leftOut).toEqual({
+        total: 2,
+        beforeTrust: 2,
+        files: [
+          { path: agent, reason: "before-trust", changes: 1 },
+          { path: workflow, reason: "before-trust", changes: 1 },
+        ],
+      });
+    });
+
+    it("is used once the person accepts it", async () => {
+      const { store, review, propose, setTrusted } = workspace();
+      setTrusted(false);
+      await propose(workflow, `${intake}description: Sorts mail.\n`);
+      setTrusted(true);
+      await review.accept({ kind: "file", path: workflow });
+      const { source, leftOut } = await review.tryItSource();
+      expect(leftOut.total).toBe(0);
+      expect(await source.read(workflow)).toBe(store.files.get(workflow));
+    });
+  });
+});

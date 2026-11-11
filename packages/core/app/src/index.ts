@@ -223,6 +223,9 @@ export { ReviewService, type ReviewServiceOptions } from "./review-service.ts";
 export type {
   FileReview,
   ItemToReview,
+  LeftOut,
+  LeftOutFile,
+  LeftOutReason,
   ProposedDelete,
   ProposedWrite,
   ProposeOutcome,
@@ -232,6 +235,7 @@ export type {
   ReviewStep,
   ReviewTarget,
   Trash,
+  TryItSource,
 } from "./review-types.ts";
 export { ReviewingDefinitionStore } from "./reviewing-store.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";

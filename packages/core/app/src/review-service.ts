@@ -20,7 +20,9 @@ import type {
   ReviewOutcome,
   ReviewStep,
   ReviewTarget,
+  TryItSource,
 } from "./review-types.ts";
+import { buildTryItSource } from "./try-it-source.ts";
 
 export type { ReviewServiceOptions } from "./review-files.ts";
 
@@ -216,6 +218,22 @@ export class ReviewService {
   async itemsWithChangesToReview(): Promise<readonly ItemToReview[]> {
     const { records } = await this.files.list();
     return records.map(({ path, card }) => ({ path, card }));
+  }
+
+  /**
+   * What Try it and Test read while there are changes to review
+   * (`app.review-try-it-holds-back`, `app.untrusted-changes-held`): the
+   * workspace, with the baseline's value for a change's permissions, trust
+   * and sandbox, connections, models and providers, and the whole baseline
+   * for a file the assistant wrote while the workspace was untrusted, until
+   * the person accepts them. `leftOut` counts what that leaves out.
+   *
+   * Built in memory, from the records as they are now: call it again on
+   * {@link onDidChange}. It writes nothing, starts nothing and never reads
+   * or changes trust.
+   */
+  tryItSource(): Promise<TryItSource> {
+    return buildTryItSource(this.files);
   }
 
   /**
