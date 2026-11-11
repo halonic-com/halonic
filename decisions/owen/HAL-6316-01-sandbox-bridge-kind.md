@@ -2,6 +2,7 @@
 
 - Approval: HAL-6340 (Liam approved the plan on HAL-6316, condition 6: an explicit `kind`)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LSYk9jCHaoDE3AGanykNMBgmWLFFDfBZgfs2uj7+9mE/ROH298hG17FDofvO2J4++gWLP19EzHeEcDAnDLPQAw==
 
 On Linux each run's bridge moves from a loopback port to a Unix socket that srt's proxy reaches
 by a name (`bridge.halonic.invalid`), so no port of ours is open to the user's other WSL distros
