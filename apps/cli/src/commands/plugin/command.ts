@@ -52,5 +52,5 @@ function listCommandWith(setup: PluginSetup): CliCommand {
   };
 }
 
-/** `halonic plugin`: add, list or remove plugins in this computer's profile. */
+/** `halonic plugin`: add or list plugins in this computer's profile. */
 export const pluginCommand: CliCommand = pluginCommandWith({});

@@ -194,6 +194,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.conflict);
     expect(io.stderr.join("\n")).toContain("weather is already added.");
+    expect(io.stderr.join("\n")).toContain("See it with halonic plugin list.");
     expect(await readdir(pluginsFolder())).toEqual(["weather"]);
   });
 
@@ -208,7 +209,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.join("\n")).toContain("isn't a folder");
-    expect(io.stderr.join("\n")).toContain("Check the folder or git address.");
+    expect(io.stderr.join("\n")).toContain("Check the folder.");
   });
 
   it("refuses a link inside the folder that points outside it, and writes nothing", async () => {
@@ -219,7 +220,7 @@ verifies("cli.commands.plugin.add", () => {
     const { code, io } = await add([source]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr.join("\n")).toContain("Check the folder or git address.");
+    expect(io.stderr.join("\n")).toContain("Check the folder.");
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
 

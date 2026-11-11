@@ -19,7 +19,7 @@ The `halonic plugin add <folder>` command shall copy the plugin in the folder in
   then the plugin is added but off, stderr has the check and the two lines that say there's no terminal, the last stdout line is the fingerprint, and it exits 3.
 - Given a plugin already added with the id weather,
   when `halonic plugin add ./other-weather` is run for a plugin with the same id,
-  then it says weather is already added, writes nothing and exits 5.
+  then it says weather is already added and to see it with `halonic plugin list`, writes nothing and exits 5.
 - Given a folder with a link to a file outside it,
   when it is added,
   then it is refused with the reason, nothing is written to the plugins folder, and it exits 2.

@@ -16,7 +16,7 @@ The `halonic plugin list` command, which is also what `halonic plugin` does on i
   then its last column says "! not trusted yet · halonic trust --plugin tides".
 - Given no plugins,
   when `halonic plugin list` is run,
-  then it prints "No plugins yet. Add one with halonic plugin add <folder or git address>." and exits 0.
+  then it prints "No plugins yet. Add one from a folder with halonic plugin add <folder>." and exits 0.
 - Given a folder in the plugins folder with no manifest,
   when `halonic plugin list` is run,
   then it is listed by its folder name with "✕ can't be read or checked", and the other plugins are listed too.

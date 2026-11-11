@@ -34,7 +34,7 @@ verifies("cli.messages", () => {
 
 describe("plugin's sentences", () => {
   it("has the summary", () => {
-    expect(words(pluginMessages.summary())).toBe("Add, list or remove plugins");
+    expect(words(pluginMessages.summary())).toBe("Add or list plugins");
   });
 
   it("has add's lines", () => {
@@ -53,7 +53,7 @@ describe("plugin's sentences", () => {
       "Added Weather 1.2.0. It's on.",
       "Weather is added but off. Nothing from it runs until you trust it: halonic trust --plugin weather",
       "add the plugin",
-      "Check the folder or git address.",
+      "Check the folder.",
     ]);
   });
 
@@ -93,7 +93,7 @@ describe("plugin's sentences", () => {
       "changed since you trusted it - halonic trust --plugin notes",
     );
     expect(words(pluginMessages.noPlugins())).toBe(
-      "No plugins yet. Add one with halonic plugin add <folder or git address>.",
+      "No plugins yet. Add one from a folder with halonic plugin add <folder>.",
     );
   });
 

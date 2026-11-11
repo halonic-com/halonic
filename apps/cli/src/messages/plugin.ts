@@ -16,10 +16,12 @@ const stateWords: Readonly<Record<PluginState, string>> = {
  * (microcopy 24 T6–T9), without "In Studio", because 0.1 has no Studio to
  * draw a plugin's settings, commands, cards or panel (HAL-6417); a section
  * shows only when it has something in it.
+ * Only `add <folder>` and `list` are built, so the lines users see name only
+ * those; git sources and `remove` come back with their commands (HAL-1736).
  * Plugins live in the profile, so nothing here says "into your workspace".
  */
 export const pluginMessages = defineMessages("plugin", {
-  summary: () => phrase`Add, list or remove plugins`,
+  summary: () => phrase`Add or list plugins`,
   addSummary: () => phrase`Add a plugin from a folder and ask whether to trust it`,
   listSummary: () => phrase`List the plugins and whether each is on`,
   /** What `plugin list` was doing, for "✕ Couldn't list the plugins: …". */
@@ -54,11 +56,10 @@ export const pluginMessages = defineMessages("plugin", {
   hostFromSetting: (setting: string) => phrase`the address in the setting ${setting}`,
   /** The refusal when a plugin with the id is already added; adding it again would be a conflict. */
   alreadyAdded: (id: string) => phrase`${id} is already added.`,
-  alreadyAddedFix: (id: string) =>
-    phrase`To add another version, remove it first: halonic plugin remove ${id}`,
-  /** `plugin add` without a folder or git address. */
-  addNeedsSource: () => phrase`Say which plugin to add: a folder or a git address.`,
-  addUsage: () => phrase`halonic plugin add <folder or git address>[@commit]`,
+  alreadyAddedFix: () => phrase`See it with halonic plugin list.`,
+  /** `plugin add` without a folder. */
+  addNeedsSource: () => phrase`Say which folder to add the plugin from.`,
+  addUsage: () => phrase`halonic plugin add <folder>`,
   /** `--yes` alone: the fingerprint comes from the check, which only an earlier add without it printed. */
   yesNeedsFingerprintFix: () =>
     phrase`Add it without --yes to see the check; the fingerprint is on its last stdout line.`,
@@ -80,7 +81,7 @@ export const pluginMessages = defineMessages("plugin", {
   addNoTerminalFix: (id: string) =>
     phrase`Review it with halonic trust --plugin ${id}, then pass --yes --fingerprint <fingerprint>.`,
   /** After the refusal's reason from the attack-test list; never more detail than the reason. */
-  refusedSourceFix: () => phrase`Check the folder or git address.`,
+  refusedSourceFix: () => phrase`Check the folder.`,
 
   /** A plugin's state on its `list` line. */
   state: (state: PluginState) => phrase`${stateWords[state]}`,
@@ -89,7 +90,7 @@ export const pluginMessages = defineMessages("plugin", {
     phrase`${stateWords[state]} ${markPart("separator")} halonic trust --plugin ${id}`,
   /** A folder in the plugins folder that can't be read or checked, with a ✕. */
   broken: () => phrase`can't be read or checked`,
-  noPlugins: () => phrase`No plugins yet. Add one with halonic plugin add <folder or git address>.`,
+  noPlugins: () => phrase`No plugins yet. Add one from a folder with halonic plugin add <folder>.`,
 
   /** `remove`'s question, framed with [y/N]; a plugin without secrets has the shorter one. */
   removeQuestion: (name: string, hasSecrets: boolean) =>

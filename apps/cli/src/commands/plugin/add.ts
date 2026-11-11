@@ -142,11 +142,11 @@ function addedLine(plugin: AddedPlugin["plugin"]) {
   return phrase`${markPart("done")} ${pluginMessages.added(plugin.name, plugin.version).phrase}`;
 }
 
-/** The refusal for a plugin that wasn't added, with its reason and "Check the folder or git address.". */
+/** The refusal for a plugin that wasn't added, with its reason and "Check the folder.". */
 function refused(error: PluginAddRefusal): KindedError {
   if (error.kind === "taken") {
     return new KindedError("conflict", plainOf(pluginMessages.alreadyAdded(error.id)), {
-      fix: plainOf(pluginMessages.alreadyAddedFix(error.id)),
+      fix: plainOf(pluginMessages.alreadyAddedFix()),
     });
   }
   return refusal("invalid_input", firstProblem(error.problems));
@@ -157,7 +157,7 @@ function firstProblem(problems: readonly PluginProblem[]): Phrase {
   return phrase`${printable(problems[0]?.message ?? "")}`;
 }
 
-/** "Couldn't add the plugin: <reason> · Check the folder or git address." */
+/** "Couldn't add the plugin: <reason> · Check the folder." */
 function refusal(kind: "invalid_input", reason: Phrase): KindedError {
   return new KindedError(kind, plainText(reason), {
     fix: plainOf(pluginMessages.refusedSourceFix()),
