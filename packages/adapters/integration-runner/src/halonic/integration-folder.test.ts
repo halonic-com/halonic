@@ -26,7 +26,8 @@ function nestedDisk(perLevel: number, levels: number): IntegrationFolderDisk {
   const file = (n: number): FolderEntry => ({ name: `file-${n}.js`, kind: "file" });
   return {
     entries: (folder) => {
-      const level = folder.split("/").length - 3;
+      // Count the `more` folders on the way down; Windows joins with `\`, other systems with `/`.
+      const level = folder.split(/[\\/]/).filter((part) => part === "more").length;
       if (level === levels - 1) return Array.from({ length: perLevel }, (_, n) => file(n));
       const files = Array.from({ length: perLevel - 1 }, (_, n) => file(n));
       return [...files, { name: "more", kind: "folder" }];
