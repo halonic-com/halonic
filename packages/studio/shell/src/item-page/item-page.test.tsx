@@ -104,7 +104,7 @@ verifies("shell.item-page-header", () => {
     const container = render(<Workflow />);
     const field = nameField(container);
     const sizer = field.parentElement?.querySelector("[data-name-sizer]") as HTMLElement;
-    expect(field.hasAttribute("size")).toBe(false);
+    expect(field.getAttribute("size")).toBe("1");
     expect(sizer.getAttribute("aria-hidden")).toBe("true");
     expect(sizer.textContent).toBe("Support reply");
     typeInto(field, "Intake v2 ");

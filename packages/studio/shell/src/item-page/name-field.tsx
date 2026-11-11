@@ -63,14 +63,17 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
 
   return (
     // The field and a hidden copy of its text share one grid cell, so the field is exactly as wide
-    // as the name it shows, up to the room left, and the ⋮ sits right after it. An input's `size`
-    // counts average characters, which comes out too wide or too narrow in a proportional font.
+    // as the name it shows, up to the room left, and the ⋮ sits right after it. `size={1}` keeps the
+    // input's own width (20 characters by default) from setting the cell's width; the hidden copy
+    // sets it instead. A `size` of the name's length counts average characters, which comes out too
+    // wide or too narrow in a proportional font.
     <span className="inline-grid min-w-0 max-w-full grid-cols-[minmax(0,auto)]">
       <span aria-hidden="true" data-name-sizer="" className={sizerClasses}>
         {draft === "" ? " " : draft}
       </span>
       <input
         type="text"
+        size={1}
         aria-label={label}
         value={draft}
         spellCheck={false}
