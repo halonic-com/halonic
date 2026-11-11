@@ -129,7 +129,7 @@ function rowKind(row: PaletteRow, kinds: PaletteKindNames): string | undefined {
       return row.target.location.kind;
     case "item": {
       const label = kinds.get(row.target.item.kind)?.label;
-      return label === undefined ? undefined : inSentence(label);
+      return label === undefined ? undefined : kindInSentence(label);
     }
     case "action":
       return undefined;
@@ -137,7 +137,7 @@ function rowKind(row: PaletteRow, kinds: PaletteKindNames): string | undefined {
 }
 
 /** A kind's name as it reads after a comma: "Agent" as "agent", but "MCP server" as it is. */
-function inSentence(label: string): string {
+export function kindInSentence(label: string): string {
   const [first = "", second = ""] = label;
   return second !== second.toLowerCase() ? label : first.toLowerCase() + label.slice(first.length);
 }

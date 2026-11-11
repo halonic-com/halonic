@@ -120,7 +120,14 @@ export {
   resultCountDelayMs,
   resultCountText,
 } from "./palette/palette-options.ts";
+export { RecentPlaces, recentPlacesKept } from "./palette/recent-places.ts";
 export { type FoundItems, searchProviders } from "./palette/search-providers.ts";
+export {
+  ShellPalette,
+  type ShellPaletteProps,
+  usePaletteKey,
+} from "./palette/shell-palette.tsx";
+export { type PaletteSearch, usePaletteSearch } from "./palette/use-palette-search.ts";
 export {
   CHAT_MIN_WIDTH,
   clampPanelWidth,

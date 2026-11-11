@@ -303,6 +303,37 @@ const content = paletteGroups({
 });
 ```
 
+`ShellPalette` joins all of this to a workspace (`shell.palette-wiring`). It owns the words and asks
+the providers as they change through `usePaletteSearch`, which uses only the answer to the latest
+words and keeps what was found for earlier words while it waits. `RecentPlaces` follows a tab set:
+each place the active tab comes to show goes first, once, with the name its tab gives it now. A
+place or an item opens here, which closes the palette, or with Mod in a new tab through
+`openLocation`, which keeps the palette open and says "Opened _Refund checker_ in a new tab." An
+action closes the palette and runs with its own feature's context; one that fails shows the danger
+toast "Couldn't run _New agent_." with the reason from `errorMessageFor`. `usePaletteKey` opens it on
+Mod K, in the desktop app and served alike, but not over a modal dialog.
+
+```tsx
+const [paletteOpen, setPaletteOpen] = useState(false);
+usePaletteKey(platform, () => setPaletteOpen(true));
+
+{paletteOpen ? (
+  <ShellPalette
+    tabs={workspace.tabs}
+    recent={workspace.recent}
+    providers={shell.contributions.search.providers()}
+    commands={shell.contributions.commands.list()}
+    kinds={shell.contributions.itemKinds}
+    contextFor={contextFor}
+    announcer={shell.announcer}
+    toasts={shell.toasts}
+    notAnswering={shell.engine.words.notAnswering}
+    platform={platform}
+    onClose={() => setPaletteOpen(false)}
+  />
+) : null}
+```
+
 ## Status bar and toasts
 
 The status bar shows state only: spend, the branch, the problems count. `StatusBarItems` draws the
