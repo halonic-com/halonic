@@ -63,18 +63,6 @@ function offeredTool(tool: TurnTool): OfferedTool | null {
 }
 
 /**
- * Checks a call in a subagent's turn as {@link checkRunToolCall} does, but
- * refuses a call that needs a person's OK: a subagent's turn runs inside
- * its parent's tool call, so it can't stop the run to wait (HAL-3361).
- */
-export function checkSubagentToolCall(tool: TurnTool, call: ToolCall): CallCheck {
-  const check = checkRunToolCall(tool, call);
-  return check.kind === "ask"
-    ? refused(`${call.name} needs a person's OK, which a subagent can't wait for yet`)
-    : check;
-}
-
-/**
  * A Halonic tool as `checkToolCall` reads it: declared, because Halonic
  * wrote and reviewed it, so its arguments are checked at every level.
  */

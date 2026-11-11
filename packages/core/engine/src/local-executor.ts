@@ -356,6 +356,7 @@ export class LocalExecutor implements RunExecutor {
     if (agent === undefined || this.options.runs === undefined) {
       return own;
     }
+    const connectorCalls = this.options.runs.connectorCalls;
     const granted = runAgentTools({
       agent,
       hubId: turn.run.hubId,
@@ -374,7 +375,7 @@ export class LocalExecutor implements RunExecutor {
             secrets: this.options.secrets,
             clock: this.options.clock,
             connectors: this.options.connectors,
-            connectorCalls: this.options.runs?.connectorCalls !== undefined,
+            ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
             knowledgeOf: (id) => this.runKnowledgeOf(turn, id),
             toolsOf: (id, depth, knowledge) => this.runToolsOf(turn, id, depth, knowledge),
           },
@@ -410,7 +411,12 @@ export class LocalExecutor implements RunExecutor {
    * @throws when the run's definitions are gone, as {@link missingDefinitionsError} says
    */
   private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
-    const turn: RunTurn = { run, state: call.state, definitions: await this.keptDefinitions(run) };
+    const turn: RunTurn = {
+      run,
+      state: call.state,
+      definitions: await this.keptDefinitions(run),
+      inBranch: branchOfCall(run.parallel, call.callId) !== null,
+    };
     const agent = agentIn(turn.definitions, call.agent);
     const messages = [{ role: "user" as const, content: call.prompt }];
     const model = await this.options.resolveModel({
@@ -420,9 +426,13 @@ export class LocalExecutor implements RunExecutor {
       tools: [],
     });
     const connectorCalls = this.options.runs?.connectorCalls;
-    const inBranch = branchOfCall(run.parallel, call.callId) !== null;
     const connectorTools = turn.definitions.connectorTools ?? {};
-    const connectors = runConnectorsOf(this.options.connectors, agent, connectorTools, inBranch);
+    const connectors = runConnectorsOf(
+      this.options.connectors,
+      agent,
+      connectorTools,
+      turn.inBranch,
+    );
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
     const outcome = await runAgentTurn({

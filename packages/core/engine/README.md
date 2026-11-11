@@ -72,9 +72,10 @@ The caller's `runSubagent` runs the subagent's own turn one level deeper, and th
 `agent.started` and `agent.finished` around it, naming the delegating agent as `parent`. At depth 3
 an agent gets no `delegate_` tools, so agents that delegate to each other stop there. The agent's
 instructions get `delegationHint`, since a subagent never sees the conversation. In a run, the
-local executor runs the subagent's turn on its own model and tools. Like a `parallel` branch, a
-subagent is offered only the connector tools its own file lists that read and wait for no one (requirement
-`engine.subagent-connector-reads`). It gets none when the executor has no connector calls. A subagent
+local executor runs the subagent's turn on its own model and tools. A subagent is offered the
+connector tools its own file lists, checked as the state's agent's are; under a `parallel` branch,
+only the ones that read and wait for no one (requirement `engine.subagent-connector-reads`). It gets
+none when the executor has no connector calls. A subagent
 that needs a person's OK, or a connector call the engine makes, stops the run's turn where it stopped
 (requirement `engine.turn-subagent-stop`): the turn's stop names the subagent's tool and holds a `resume`
 whose `inner` nests the subagent's own `resume`, as deep as the delegation, and the `approval.requested` or

@@ -8,6 +8,10 @@ When an agent has `subagents`, the engine shall give it, for each one, a tool `d
 
 When a `delegate_` tool runs, the engine shall run the subagent's own turn on the task, one level deeper, and shall log `agent.started` with the task as `prompt` before it, and `agent.finished` with the answer as `output` after it, each naming the state and the delegating agent as `parent`. When the subagent fails, the tool shall fail with the subagent's error and log no `agent.finished`, so the `agent.started` stays open and the `tool.result` carries the error. When the task is missing or empty, the tool shall fail with an error that names `task`, and run nothing.
 
+### Waits for an OK
+
+In a workflow run, when a subagent's call needs a person's OK, or is one the engine must make, the engine shall stop the run at the `delegate_` call that the subagent runs in, as for the state's agent, and go on in the subagent once the person answers or the call is made (`engine.turn-subagent-stop`, `engine.turn-subagent-go-on`). A chat turn has nowhere to keep where it stopped, so a chat turn whose subagent stops shall fail.
+
 ## Examples
 
 - Given a `reviewer` with `subagents: [checker, reviewer, ghost]` in a hub without `ghost`,

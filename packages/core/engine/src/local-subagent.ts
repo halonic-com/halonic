@@ -2,9 +2,10 @@
 // the subagent path can grow without growing the executor.
 
 import type { ChatTurnRequest, Clock, ConnectorClient, Secrets } from "@halonicjs/ports";
-import { checkSubagentToolCall } from "./agent/check-run-tool-call.ts";
+import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn } from "./agent/run-model-turn.ts";
+import type { EffectBoundary } from "./agent/run-tool-call.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn } from "./kernel/kept-definitions.ts";
@@ -24,6 +25,12 @@ export interface RunTurn {
   readonly run: RunState;
   readonly state: string;
   readonly definitions: RunDefinitions;
+  /**
+   * Whether the turn is a `parallel` branch's, or a subagent's under one.
+   * Such a turn is offered only the connector tools that read and wait for
+   * no one, because a branch can't stop the run (HAL-4630).
+   */
+  readonly inBranch: boolean;
 }
 
 /** What a subagent's turn takes from the `LocalExecutor` that runs it. */
@@ -34,10 +41,10 @@ export interface LocalSubagentContext {
   resolveModel(request: ChatTurnRequest): Promise<ResolvedModel>;
   readonly secrets: Secrets;
   readonly clock: Clock;
-  /** The connected servers; the subagent gets their tools only with `connectorCalls`. */
+  /** The connected servers; the subagent gets their tools only with `effects`. */
   readonly connectors: readonly ConnectorClient[];
-  /** Whether the executor has `runs.connectorCalls`. */
-  readonly connectorCalls: boolean;
+  /** Where the turn hands over connector calls that can change things; set with `runs.connectorCalls`. */
+  readonly effects?: EffectBoundary;
   /** The knowledge sources of an agent in the turn's run. */
   knowledgeOf(agentId: string): AgentKnowledge;
   /** The Halonic tools of an agent in the turn's run, at a depth, with its knowledge. */
@@ -46,14 +53,16 @@ export interface LocalSubagentContext {
 
 /**
  * A subagent's own turn on a task, one level deeper, on its own model and
- * with its own tools: with `runs.connectorCalls`, the connector tools a
- * `parallel` branch gets, because it can't stop the run either. Its calls
- * are checked as a run's are, except that one that needs a person's OK is
- * refused ({@link checkSubagentToolCall}).
+ * with its own tools: with `runs.connectorCalls`, the connector tools its
+ * own file lists, as the state's agent gets them, or as a `parallel` branch
+ * gets them when the turn is under one. Its calls are checked as a run's
+ * are ({@link runToolCheckOf}), so a call that needs a person's OK, or one
+ * the engine must make, stops the subagent's turn, and the turn that
+ * delegated to it stops at the `delegate_*` call (HAL-3361).
  *
  * Given `task.resumeFrom`, its turn goes on from where it stopped.
  *
- * @returns the subagent's answer, or where its turn stopped; with no effect step and every call that asks refused, it doesn't stop yet
+ * @returns the subagent's answer, or where its turn stopped
  */
 export async function runLocalSubagent(
   context: LocalSubagentContext,
@@ -70,17 +79,18 @@ export async function runLocalSubagent(
   });
   const knowledge = context.knowledgeOf(task.agent);
   const lists = turn.definitions.connectorTools ?? {};
-  const connectors = runConnectorsOf(context.connectors, subagent, lists, true);
+  const connectors = runConnectorsOf(context.connectors, subagent, lists, turn.inBranch);
   const outcome = await runAgentTurn({
     model,
     secrets: context.secrets,
     messages,
     halonicTools: context.toolsOf(task.agent, task.depth, knowledge),
-    connectors: context.connectorCalls ? connectors : [],
+    connectors: context.effects === undefined ? [] : connectors,
+    ...(context.effects === undefined ? {} : { effects: context.effects }),
     maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
     agent: task.agent,
     clock: context.clock,
-    checkCall: checkSubagentToolCall,
+    checkCall: runToolCheckOf(lists),
     autoKnowledge: knowledge.auto,
     ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
   });
