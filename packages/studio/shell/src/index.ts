@@ -26,6 +26,7 @@ export {
   shownCards,
   topCardName,
 } from "./cards/card-stack.ts";
+export { StackedCards, type StackedCardsProps } from "./cards/stacked-cards.tsx";
 export {
   type CloseLayer,
   type CloseLayerKind,

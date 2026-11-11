@@ -537,7 +537,36 @@ nothing changed:
   draft-reply"), and `dockedCardCoversPanel(width)` says when a docked card covers the panel
   (below 720px).
 
-The cards' drawing, focus and keys come with the item page frame.
+`StackedCards` draws the stack over a view (`shell.stacked-cards`, component specs 16, VK T6-F3):
+
+```tsx
+<StackedCards
+  itemPath={["Acme Mail", "Writer"]}
+  stack={cards}
+  onChange={setCards}
+  closeStack={shell.closeStack}
+  panelWidth={width}
+  renderCard={(card) => <TaskCard card={card} />}
+>
+  <AgentMap onOpen={(card) => setCards(openCard(cards, card))} />
+</StackedCards>;
+```
+
+- **The top card** is `surface-raised` with `shadow-2`: **←** ("Back"), the breadcrumb ("Card
+  path"), **✕** ("Close"), then the title, named "draft-reply, in Acme Mail › Writer › draft-reply".
+  The feature draws the body under it.
+- **Cards behind** are bands only, 10px higher (`--stack-peek`) and 12px narrower on each side
+  (`--stack-inset`) per step back, on `--stack-shade-1` and `--stack-shade-2`, with no shadow. A
+  docked card behind stays full width. Their bodies aren't kept, so a feature keeps what a card
+  needs in its own state. Nothing moves.
+- **Full cards** dim the view with `--stack-scrim` and make it inert. **A docked card alone** takes
+  the panel's right 480px with the view usable and undimmed, or the whole panel under 720px.
+- **Back:** Esc (a `stacked-card` or `docked-card` layer, only on the shown tab's page), **←** and
+  the scrim close the top card; a breadcrumb part or a band goes back to its level, the item's own
+  name closing every card; **✕** closes every card.
+- **Focus:** an opened card's title takes it; a closed card gives it back to what opened it, else
+  to the title of the card now on top. When `dropGoneCards` removes a card, the page announces
+  "_check_ was removed.".
 
 ## Side panel width
 
@@ -677,8 +706,8 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   - The chat and the view stay mounted through every switch, hidden rather than moved, so a
     half-typed message or the canvas's zoom survives. A chat provided after the first render still
     starts open until the user opens or closes it.
-- **Not yet:** the panel's edge and Maximise, the stacked cards, and the "Changes not live yet"
-  line (24.9).
+- **Not yet:** the panel's edge and Maximise, and the "Changes not live yet" line (24.9). A feature
+  draws its stacked cards with `StackedCards` inside its view.
 
 ## Resource numbers
 
