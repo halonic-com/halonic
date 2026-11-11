@@ -123,6 +123,8 @@ class LocalRunners {
   #current: Promise<RunnerConnection> | undefined;
   /** Set once a runner stopped for any reason but idle, or a new one was refused: every later call fails with it. */
   #refused: Error | undefined;
+  /** How many connections are open; the runner closes when the last one does. */
+  #openConnections = 0;
 
   constructor(
     prepared: PreparedIntegration,
@@ -142,26 +144,28 @@ class LocalRunners {
 
   /**
    * The connection the integration hands out: every call goes to the runner
-   * running then. Once closed, it refuses every call rather than start a new
-   * runner; the other connections start one on their next call.
+   * running then. Every connection shares that runner, so it closes only when
+   * the last open connection closes; a call on another one goes on. Once
+   * closed, a connection refuses every call rather than start a new runner.
    */
   connect(host: IntegrationHost): IntegrationConnection {
     if (host !== this.#prepared.host) {
       throw new Error("a local integration connects only through the host its loader built");
     }
-    let closed = false;
+    let open = true;
+    this.#openConnections += 1;
     return {
       callTool: async (name, args, signal) => {
-        if (closed) {
+        if (!open) {
           throw new Error(`${this.#prepared.sheet.id}: its connection is closed`);
         }
         return this.#call(name, args, signal);
       },
       close: async () => {
-        closed = true;
-        const current = this.#current;
-        this.#current = undefined;
-        await (await current?.catch(() => undefined))?.close();
+        if (!open) return;
+        open = false;
+        this.#openConnections -= 1;
+        if (this.#openConnections === 0) await this.#closeRunner();
       },
     };
   }
@@ -187,6 +191,12 @@ class LocalRunners {
       if (this.#current === current) this.#current = undefined;
       return (await this.#running()).callTool(name, args, signal);
     }
+  }
+
+  async #closeRunner(): Promise<void> {
+    const current = this.#current;
+    this.#current = undefined;
+    await (await current?.catch(() => undefined))?.close();
   }
 
   /** The runner running now, or a new one when the last one stopped for being idle. */

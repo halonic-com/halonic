@@ -237,6 +237,39 @@ verifies("integration-runner.local-integration", () => {
       ).rejects.toBe(untrusted);
     });
 
+    it("closes the shared runner only when the last connection closes", async () => {
+      const runner = fakeRunner(declaration(), "first");
+      let answer: () => void = () => undefined;
+      const answered = new Promise<void>((resolve) => {
+        answer = resolve;
+      });
+      const slowRunner: FakeRunner = {
+        ...runner,
+        callTool: async (name, args, signal) => {
+          await answered;
+          return runner.callTool(name, args, signal);
+        },
+      };
+      const { loaded, starts } = await load([slowRunner]);
+      if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+      const { integration, host } = loaded.value;
+      const leaving = integration.connect(host);
+      const staying = integration.connect(host);
+
+      const inFlight = staying.callTool("forecast", { city: "Ghent" });
+      await leaving.close();
+      expect(runner.closed()).toBe(false);
+      answer();
+      expect(await inFlight).toBe('first: forecast {"city":"Ghent"}');
+      await expect(leaving.callTool("forecast", {})).rejects.toThrow(
+        "weather: its connection is closed",
+      );
+
+      await staying.close();
+      expect(runner.closed()).toBe(true);
+      expect(starts).toHaveLength(1);
+    });
+
     it("connects only through the host its loader built", async () => {
       const { loaded } = await load([fakeRunner(declaration(), "first")]);
       if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
@@ -330,8 +363,8 @@ verifies("integration-runner.local-integration", () => {
         "weather: its connection is closed",
       );
       expect(starts).toHaveLength(1);
-      expect(await other.callTool("forecast", {})).toBe("second: forecast {}");
-      expect(starts).toHaveLength(2);
+      expect(await other.callTool("forecast", {})).toBe("first: forecast {}");
+      expect(starts).toHaveLength(1);
     });
   });
 });
