@@ -1,5 +1,6 @@
-import { parseEventLine, type RunEvent } from "@halonicjs/events";
+import type { RunEvent } from "@halonicjs/events";
 import { parseLogLines } from "@halonicjs/ports";
+import { parseFirstLine } from "./run-log-start.ts";
 
 /** A run log as read from disk: its events, and how many of its bytes hold them. */
 export interface RunLog {
@@ -49,12 +50,10 @@ function decodeLines(bytes: Uint8Array, file: string): string {
 export function isLogOfOtherCase(bytes: Uint8Array, runId: string): boolean {
   const end = bytes.indexOf(lineBreak);
   if (end < 0) return false;
-  try {
-    const first = parseEventLine(
-      new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, end)),
-    );
-    return first.runId !== runId && first.runId.toLowerCase() === runId.toLowerCase();
-  } catch {
-    return false;
-  }
+  const first = parseFirstLine(bytes.subarray(0, end));
+  return (
+    first !== undefined &&
+    first.runId !== runId &&
+    first.runId.toLowerCase() === runId.toLowerCase()
+  );
 }

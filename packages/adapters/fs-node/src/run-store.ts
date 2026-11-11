@@ -262,7 +262,7 @@ export class FolderRunStore implements RunStore {
     if (known !== undefined && (await this.#logSize(runId)) === known.bytes) {
       return known;
     }
-    const log = await this.#readLog(runId);
+    const log = await this.#readLog(runId, { forWrite: true });
     if (log.torn) {
       await truncate(this.#file(runId, logSuffix), log.intactBytes);
     }
@@ -281,7 +281,12 @@ export class FolderRunStore implements RunStore {
     }
   }
 
-  async #readLog(runId: string): Promise<RunLog> {
+  /**
+   * The run's log. A log of a run whose id differs only in letter case is not
+   * this run's: a read finds no events, but a write refuses it, because
+   * appending would damage the other run's log and snapshot.
+   */
+  async #readLog(runId: string, { forWrite = false } = {}): Promise<RunLog> {
     const file = `${runId}${logSuffix}`;
     let bytes: Uint8Array;
     try {
@@ -293,6 +298,11 @@ export class FolderRunStore implements RunStore {
       throw error;
     }
     if (isLogOfOtherCase(bytes, runId)) {
+      if (forWrite) {
+        throw new Error(
+          `Run id ${runId} clashes with a stored run whose id differs only in letter case, on a case-insensitive file system.`,
+        );
+      }
       return { events: [], intactBytes: 0, torn: false };
     }
     return parseRunLog(bytes, runId, file);

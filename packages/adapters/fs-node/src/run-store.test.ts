@@ -152,6 +152,29 @@ verifies("fs-node.run-store-files", () => {
     expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
   });
 
+  it("refuses to append under an id that differs only in letter case, and leaves the stored run alone", async () => {
+    const { root, store } = await storeWithRun();
+    await store.append("r1", 3, [entered("r1", 4)], { snapshot: { step: 1 } });
+    // What a case-insensitive file system gives for "R1": the files of "r1".
+    for (const suffix of [".jsonl", ".snapshot.json"]) {
+      await writeFile(join(root, `R1${suffix}`), await readFile(join(root, `r1${suffix}`)));
+    }
+    const before = await Promise.all(
+      ["r1.jsonl", "r1.snapshot.json", "R1.jsonl", "R1.snapshot.json"].map((f) =>
+        readFile(join(root, f)),
+      ),
+    );
+    await expect(store.append("R1", 0, [started("R1")])).rejects.toThrow(
+      /differs only in letter case/,
+    );
+    const after = await Promise.all(
+      ["r1.jsonl", "r1.snapshot.json", "R1.jsonl", "R1.snapshot.json"].map((f) =>
+        readFile(join(root, f)),
+      ),
+    );
+    expect(after).toEqual(before);
+  });
+
   it("forgets a run whose log is deleted, and lists nothing for a missing folder", async () => {
     const { root, store } = await storeWithRun();
     await store.append("r2", 0, [started("r2")], { snapshot: { step: 1 } });

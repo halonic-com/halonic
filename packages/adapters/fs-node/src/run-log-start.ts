@@ -2,7 +2,7 @@
 // filtered by `startedSince` skips an older run without reading its log.
 
 import { open } from "node:fs/promises";
-import { parseEventLine } from "@halonicjs/events";
+import { parseEventLine, type RunEvent } from "@halonicjs/events";
 import { isMissing } from "./links.ts";
 
 /** How much of the log one read takes while looking for the first line break. */
@@ -17,11 +17,18 @@ const lineBreak = 0x0a;
  */
 export async function readLogStart(file: string): Promise<string | undefined> {
   const line = await readFirstLine(file);
-  if (line === undefined) return undefined;
+  return line === undefined ? undefined : parseFirstLine(line)?.at;
+}
+
+/**
+ * The event on a log's first line (its bytes without the line break), or
+ * `undefined` when the line is not valid UTF-8 or not an event. That is not
+ * an answer either way: the whole read that follows names the fault.
+ */
+export function parseFirstLine(line: Uint8Array): RunEvent | undefined {
   try {
-    return parseEventLine(new TextDecoder("utf-8", { fatal: true }).decode(line)).at;
+    return parseEventLine(new TextDecoder("utf-8", { fatal: true }).decode(line));
   } catch {
-    // Not an answer either way: the whole read that follows names the fault.
     return undefined;
   }
 }
