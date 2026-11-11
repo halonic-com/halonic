@@ -707,12 +707,17 @@ jobs:
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
-      # Blocking. A note's signature is checked offline against the keys in
+      # Advisory for now (HAL-5568): the guard diffs the merge ref against
+      # pull_request.base.sha, an older commit than main, so it reports
+      # requirements other pull requests changed. HAL-5568 fixes the
+      # comparison and removes continue-on-error. A note's signature is
+      # checked offline against the keys in
       # the base branch's tooling/check/approvers.json (pull_request.base.sha,
       # not the commit base-tests may have stepped back to). Both commits
       # are fetched as objects only: nothing of the pull request runs.
       - name: Requirement guard (merge base's copy)
         if: ${{ !cancelled() }}
+        continue-on-error: true
         working-directory: head
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
