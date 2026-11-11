@@ -10,7 +10,7 @@ When a `delegate_` tool runs, the engine shall run the subagent's own turn on th
 
 ### Waits for an OK
 
-In a workflow run, when a subagent's call needs a person's OK, or is one the engine must make, the engine shall stop the run at the `delegate_` call that the subagent runs in, as for the state's agent, and go on in the subagent once the person answers or the call is made (`engine.turn-subagent-stop`, `engine.turn-subagent-go-on`). A chat turn has nowhere to keep where it stopped, so a chat turn whose subagent stops shall fail.
+In a workflow run, when a subagent's call needs a person's OK, or is one the engine must make, the engine shall stop the run at the `delegate_` call that the subagent runs in, as for the state's agent, and go on in the subagent once the person answers or the call is made (`engine.turn-subagent-stop`, `engine.turn-subagent-go-on`). Under a `parallel` branch, at any depth, a branch can't wait (`engine.parallel-state`), so the engine shall end the branch at that call with the error its own agent would get, and make no call. A chat turn has nowhere to keep where it stopped, so a chat turn whose subagent stops shall fail.
 
 ## Examples
 
@@ -23,3 +23,6 @@ In a workflow run, when a subagent's call needs a person's OK, or is one the eng
 - Given `reviewer` and `checker` that each list the other as a subagent,
   when each delegates as deep as it can,
   then the agent at depth 3 gets no `delegate_` tool.
+- Given a `parallel` branch whose `writer` delegates to a `checker` that calls `publish`, a Halonic tool that can write,
+  when the branch runs,
+  then the branch ends with an error saying it stopped for an OK on `publish`, no `approval.requested` is logged and `publish` doesn't run.

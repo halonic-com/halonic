@@ -1,4 +1,4 @@
-import type { Agent } from "@halonicjs/format";
+import type { Agent, Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { halonicTool } from "../agent/turn-test-kit.test-helper.ts";
@@ -162,6 +162,67 @@ verifies("engine.run-agent-tools", () => {
     expect(await runs.get("run_1")).toMatchObject({
       status: "completed",
       context: { reply: "Dear support" },
+    });
+  });
+});
+
+verifies("engine.subagent-tools", () => {
+  it("ends a parallel branch whose subagent's call needs an OK, and runs nothing", async () => {
+    const ran: string[] = [];
+    const publish = {
+      ...halonicTool("publish", async () => {
+        ran.push("publish");
+        return "published";
+      }),
+      risk: "write" as const,
+    };
+    const triage: Workflow = {
+      version: 1,
+      id: "triage",
+      name: "Triage the mail",
+      initial: "triage",
+      context: {},
+      states: {
+        triage: {
+          type: "parallel",
+          branches: { mail: { agent: "writer", input: "Triage the mail" } },
+          continueOnError: true,
+          on: [{ to: "done", event: "done" }],
+        },
+        done: { type: "final", on: [] },
+      },
+      layout: {},
+    };
+    const { executor, runs, scheduler } = runsOn(
+      [
+        callAnswer(call("d-1", "delegate_checker", { task: "Publish the reply" })),
+        callAnswer(call("p-1", "publish")),
+      ],
+      new KernelRuns(),
+      {
+        workflow: triage,
+        agents: { writer: agent("writer", { subagents: ["checker"] }), checker: agent("checker") },
+        halonicTools: [publish],
+      },
+    );
+    await executor.start({ ...replyStart, workflowId: "triage" });
+    await scheduler.runDue();
+
+    expect(ran).toEqual([]);
+    const log = runs.logs.get("run_1") ?? [];
+    expect(log.map((event) => event.type)).not.toContain("approval.requested");
+    expect(log).toContainEqual(
+      expect.objectContaining({
+        type: "agent.finished",
+        agent: "writer",
+        branch: "mail",
+        output: null,
+        error: expect.stringContaining(`stopped for an OK on tool "publish"`),
+      }),
+    );
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { mail: { error: expect.any(String) } },
     });
   });
 });
