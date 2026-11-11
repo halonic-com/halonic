@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3070 (follow-up to HAL-1551); the attack cases and harmless rewrites of `contracts.trust-fingerprint`; `contracts.trust-service-attacks`; `cli.not-trusted`; `cli.source-listing`
 
-After a person trusted a workspace, and an attacker then makes any of the edits of `contracts.trust-fingerprint` to its connector files, the CLI shall start none of its connectors' programs and reach none of their servers when it reads a source's tool listing, shall write no run to the workspace's run log, and `halonic run` shall exit with 3 with the full fingerprint as the last stdout line. After each harmless rewrite of `contracts.trust-fingerprint`, the same commands shall still start the connectors and run the workflow, so a check that refuses everything can't pass.
+When a person has trusted a workspace and an attacker then makes any of the edits of `contracts.trust-fingerprint` to its connector files, the CLI shall start none of its connectors' programs and reach none of their servers when it reads a source's tool listing, shall write no run to the workspace's run log, and `halonic run` shall exit with 3 with the full fingerprint as the last stdout line. When a harmless rewrite of `contracts.trust-fingerprint` is made instead, the same commands shall still start the connectors and run the workflow, so a check that refuses everything can't pass.
 
 ## Examples
 
