@@ -2,7 +2,7 @@
 // `runs` set, workflow runs through the run kernel.
 
 import type { RunSummary } from "@halonicjs/events";
-import type { Agent } from "@halonicjs/format";
+import type { Agent, Connector } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
   ChatTurnResponse,
@@ -17,6 +17,7 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
+import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
@@ -35,6 +36,7 @@ import {
 } from "./knowledge/agent-knowledge.ts";
 import { defaultRunMaxRounds, type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import {
+  allowedToolsOf,
   connectorsOf,
   effectBoundary,
   makeConnectorCall,
@@ -88,6 +90,17 @@ export interface LocalExecutorOptions {
    * without it, every chat turn runs in Halonic's own loop.
    */
   chatAgentOf?(request: ChatTurnRequest): Promise<Agent | undefined>;
+  /**
+   * Each connector file's `tools` lists by connector id, as the workspace
+   * has them now, for a chat turn. With it, a chat offers each connector
+   * only the tools its file's `allow` names, and refuses a call to one its
+   * `approve` names, as a run does (HAL-5503); a connector with no lists
+   * here isn't offered. Without it, a chat turn offers every tool its
+   * connectors list and checks only the risk the servers give.
+   */
+  chatConnectorToolsOf?(
+    request: ChatTurnRequest,
+  ): Promise<Readonly<Record<string, Connector["tools"]>>>;
 }
 
 /** The round limit of a chat turn when the options don't set one. */
@@ -259,16 +272,17 @@ export class LocalExecutor implements RunExecutor {
       return this.chatHarnesses.turn(harnessTurn);
     }
     const knowledge = await this.chatKnowledgeOf(request);
+    const lists = await this.options.chatConnectorToolsOf?.(request);
+    const connectors =
+      agent === undefined ? this.options.connectors : connectorsOf(this.options.connectors, agent);
     return runModelTurn({
       model: await this.options.resolveModel(request),
       secrets: this.options.secrets,
       messages: request.messages,
       callerTools: request.tools,
       halonicTools: [...this.halonicToolsOf(request.agentId), ...knowledgeTools(knowledge.sources)],
-      connectors:
-        agent === undefined
-          ? this.options.connectors
-          : connectorsOf(this.options.connectors, agent),
+      connectors: lists === undefined ? connectors : allowedToolsOf(connectors, lists),
+      ...(lists === undefined ? {} : { checkCall: chatToolCheckOf(lists) }),
       ...(request.params === undefined ? {} : { params: request.params }),
       maxRounds: this.maxRounds,
       agent: request.agentId ?? chatAgent,
