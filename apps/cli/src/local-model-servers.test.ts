@@ -1,6 +1,10 @@
 import type { HttpClient } from "@halonicjs/ports";
 import { describe, expect, it } from "vitest";
-import { type LocalModelServer, localLoadedModels } from "./local-model-servers.ts";
+import {
+  isOnThisComputer,
+  type LocalModelServer,
+  localLoadedModels,
+} from "./local-model-servers.ts";
 
 /** A server that answers every call with `status` and `body`, and keeps the addresses it was asked. */
 function answering(status: number, body: unknown) {
@@ -95,5 +99,34 @@ describe("localLoadedModels", () => {
     };
 
     await expect(localLoadedModels(ollama, http).loadedModels()).rejects.toThrow("fetch failed");
+  });
+});
+
+describe("isOnThisComputer", () => {
+  it("counts localhost, 127.0.0.0/8 and ::1 as this computer", () => {
+    for (const url of [
+      "http://localhost:11434/v1",
+      "http://LOCALHOST:1234/v1",
+      "http://127.0.0.1:1234/v1",
+      "http://127.8.9.10/v1",
+      "http://[::1]:1234/v1",
+    ]) {
+      expect(isOnThisComputer(url), url).toBe(true);
+    }
+  });
+
+  it("counts every other address, name and text as another computer", () => {
+    for (const url of [
+      "http://10.0.0.5:11434/v1",
+      "http://192.168.1.20:1234/v1",
+      "http://169.254.169.254/v1",
+      "http://0.0.0.0:1234/v1",
+      "https://models.example.com/v1",
+      "http://localhost.example.com/v1",
+      "http://127.0.0.1.example.com/v1",
+      "not a url",
+    ]) {
+      expect(isOnThisComputer(url), url).toBe(false);
+    }
   });
 });

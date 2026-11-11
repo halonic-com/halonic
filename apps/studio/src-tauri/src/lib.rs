@@ -1,5 +1,6 @@
-//! The Studio shell. Today it opens one window with the connect page
-//! (tauri.conf.json). The page may call the `connect` command
+//! The Studio shell. It opens one window: the Studio page on desktop
+//! (tauri.conf.json) and the connect page on Android
+//! (tauri.android.conf.json). The page may call the `connect` command
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`

@@ -1,4 +1,4 @@
-import { placeNames, type SidebarPlace, sidebarPlaces } from "../points/frame.ts";
+import { isSidebarPlace, placeNames, type SidebarPlace } from "../points/frame.ts";
 import { homeLocation, type TabLocation } from "../tabs/tab-set.ts";
 
 /** The phone's four places, in the bottom navigation's order (component specs 15.2). */
@@ -181,10 +181,6 @@ function withStack(
   pages: readonly PhonePage[],
 ): PlaceStacks {
   return { ...stacks, stacks: { ...stacks.stacks, [place]: pages } };
-}
-
-function isSidebarPlace(key: string): key is SidebarPlace {
-  return (sidebarPlaces as readonly string[]).includes(key);
 }
 
 /** A sidebar place or Settings, which open where they live rather than on the place shown. */

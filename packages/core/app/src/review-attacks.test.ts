@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { ReviewRecords } from "./review-records.ts";
 import { ReviewService } from "./review-service.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
+import { TestTrash } from "./testing/test-trash.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -29,13 +30,34 @@ function setUp(options: { trusted: boolean; store?: TestDefinitionStore }) {
   const store = options.store ?? new TestDefinitionStore({ [clerk]: fast }, digest);
   const recordStore = new TestDefinitionStore({}, digest);
   const trust = { trusted: options.trusted };
+  const trash = new TestTrash(store, digest);
   const review = new ReviewService({
     store,
     records: recordStore,
     digest,
+    trash,
     isTrusted: () => trust.trusted,
   });
-  return { store, recordStore, trust, review, records: new ReviewRecords(recordStore, digest) };
+  return {
+    store,
+    recordStore,
+    trash,
+    trust,
+    review,
+    records: new ReviewRecords(recordStore, digest),
+  };
+}
+
+/** Deletes `path`, which holds "planted\n", the way `propose_delete` does. */
+async function proposeDeleteOf(path: string, trusted: boolean) {
+  const store = new TestDefinitionStore({ [clerk]: fast, [path]: "planted\n" }, digest);
+  const set = setUp({ trusted, store });
+  const outcome = await set.review.proposeDelete({
+    path,
+    expected: await digestOf("planted\n"),
+    card: k1,
+  });
+  return { ...set, outcome };
 }
 
 /** Writes a new file the way `propose_file` does. */
@@ -84,6 +106,22 @@ verifies("app.assistant-no-git-or-halonic", () => {
           expect(recordStore.files.size).toBe(0);
         },
       );
+
+      // The delete half of A4: `propose_delete` is held to the same rule.
+      it.each([...halonicPaths, ...gitPaths])(
+        "refuses to delete %j and keeps the file, the trash and the records as they were",
+        async (path) => {
+          const { store, recordStore, trash, outcome } = await proposeDeleteOf(path, trusted);
+          expect(outcome).toEqual({
+            status: "refused",
+            reason: trusted ? "not-allowed" : "untrusted",
+          });
+          expect(store.log).toEqual([]);
+          expect(store.files.get(path)).toBe("planted\n");
+          expect(trash.entries.size).toBe(0);
+          expect(recordStore.files.size).toBe(0);
+        },
+      );
     });
   }
 
@@ -128,6 +166,19 @@ verifies("app.assistant-untrusted-items-only", () => {
     expect(store.log).toEqual([]);
     expect(recordStore.files.size).toBe(0);
   });
+
+  // The delete half of B2.
+  it.each(["package.json", ".vscode/tasks.json", ".github/workflows/x.yml", ".npmrc"])(
+    "refuses to delete %j while untrusted and keeps it",
+    async (path) => {
+      const { store, recordStore, trash, outcome } = await proposeDeleteOf(path, false);
+      expect(outcome).toEqual({ status: "refused", reason: "untrusted" });
+      expect(store.log).toEqual([]);
+      expect(store.files.get(path)).toBe("planted\n");
+      expect(trash.entries.size).toBe(0);
+      expect(recordStore.files.size).toBe(0);
+    },
+  );
 
   // B3: the control case.
   it("writes an agent file and models.yaml while untrusted, marking their records", async () => {

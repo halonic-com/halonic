@@ -16,7 +16,9 @@ import {
   DoctorService,
   type DoctorServiceOptions,
   type DoctorWorkspace,
+  type LoadedModelSource,
   ResourceReport,
+  type TrustService,
 } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
 import type {
@@ -29,7 +31,11 @@ import type {
 } from "@halonicjs/ports";
 import { type ProfileFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { localLoadedModels } from "./local-model-servers.ts";
+import {
+  isOnThisComputer,
+  type LocalModelServer,
+  localLoadedModels,
+} from "./local-model-servers.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
@@ -111,15 +117,18 @@ export async function doctorService(
   secrets: Secrets,
   workspace: MachineWorkspace | null,
 ): Promise<DoctorService> {
+  const trust = cliTrustService(machine.trustStore, systemClock);
+  const trusted = await isTrusted(trust, workspace);
   const resources = new ResourceReport({
     probe: machine.probe,
     runs: noRuns,
     clock: systemClock,
     dataRoot: machine.profile.root,
     dataFolders: await runDataFolders(machine.profile),
-    modelSources: modelServers(workspace).map((server) => localLoadedModels(server, machine.http)),
+    modelSources: modelServers(workspace).map((server) =>
+      modelSourceOf(server, machine.http, trusted),
+    ),
   });
-  const trust = cliTrustService(machine.trustStore, systemClock);
   return new DoctorService({
     trust,
     sandbox: machine.sandbox,
@@ -127,6 +136,33 @@ export async function doctorService(
     harnesses: machine.harnesses,
     secrets,
   });
+}
+
+/** Whether the workspace is trusted on this computer as it is now; `false` outside one. */
+async function isTrusted(trust: TrustService, workspace: MachineWorkspace | null) {
+  if (workspace === null) return false;
+  return (await trust.check(workspace.workspace.trust)).status === "trusted";
+}
+
+/**
+ * Where `doctor` reads a server's loaded models. A workspace names its
+ * servers' addresses itself, so before it is trusted here `doctor` only
+ * asks a server on this computer, and sends nothing to any other address:
+ * that server shows as not answering.
+ */
+function modelSourceOf(
+  server: LocalModelServer,
+  http: HttpClient,
+  trusted: boolean,
+): LoadedModelSource {
+  if (trusted || isOnThisComputer(server.baseUrl)) return localLoadedModels(server, http);
+  return {
+    id: server.id,
+    loadedModels: () =>
+      Promise.reject(
+        new Error(`${server.id} isn't on this computer, and the workspace isn't trusted here.`),
+      ),
+  };
 }
 
 /** Each server on this computer the workspace's aliases use, at its `baseUrl` or its default address. */

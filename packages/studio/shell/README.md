@@ -345,7 +345,9 @@ place or an item opens here, which closes the palette, or with Mod in a new tab 
 action closes the palette and runs with its own feature's context; one that fails shows the danger
 toast "Couldn't run _New agent_." with the reason from `errorMessageFor`. `usePaletteKey` opens it on
 Mod K, in the desktop app and served alike, but not over a modal dialog. K is read by the character
-it types, or by its place on the keyboard on a layout without Latin letters, such as Russian.
+it types, or by its place on the keyboard on a layout without Latin letters, such as Russian. Its
+empty box says "Search", and a place's row starts with the sidebar's outline icon for that place
+(`paletteRowIcon`, `shell.palette-dialog`).
 
 `usePaletteOpening` keeps whether the palette is open and binds Mod K; its `show` goes to
 everything else that opens it (`shell.palette-entry`). `SidebarSearch` is the sidebar's Search box,
@@ -459,7 +461,9 @@ search box, the In and Hub picker chips with Match case and Whole word, the coun
 in a `search` landmark. The count line is a status that also says "Searching…", and, when there is
 no count, the title of the state that stands in for it ("Nothing matches", "Couldn't search"), so a
 screen reader hears the search end.
-Enter with other words opens their Search page in the same tab. A result opens here, or with a
+The results follow the box as the user types, once the typing pauses for `searchPauseMs` (300 ms),
+in the same place. Enter with other words commits them: it opens their Search page in the same tab,
+so the tab's title names them and Back brings the old words back. A result opens here, or with a
 Ctrl-click in a new tab. "Searching…" shows still skeleton rows, and the page's states are
 "Nothing matches", with **Search all hubs** while a hub is picked, and "Couldn't search" with
 `shell.engine.words.notAnswering` and **Try again**. Until the engine searches the text of files,
@@ -911,9 +915,10 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   A command source (`shell.command-sources`) is `{ id, commands }`, for commands that come and go
   while Studio runs, such as those of the plugins that are on. Each time the shell lists commands or
   looks one up, it calls `commands()` again and lists what it gives with the feature that added the
-  source. A command of a source must have an id that starts with the source's id and a dot, be a
-  valid id and not repeat one, or it is left out; a source that throws gives none, and the other
-  commands still show. Two sources with one id, or a command or source whose id starts with a
+  source. A command of a source must be readable, have an id that starts with the source's id and a
+  dot, be a valid id and not repeat one, have a `title` that is text and, when it has a `source`,
+  one that is text, or it is left out (one unreadable command, such as a getter that throws, drops
+  only itself); a source that throws or gives no list gives none, and the other commands still show. Two sources with one id, or a command or source whose id starts with a
   source's id and a dot, throw a `ShellError` naming both.
 
 A view is a `ViewRef`: the name of a named export and a `load` that imports its module. `loadView`

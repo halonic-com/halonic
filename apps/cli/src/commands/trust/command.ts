@@ -145,10 +145,15 @@ async function reviewAndTrust(
     return { exitCode: exitCode.notTrusted, lines: [trustMessages.notTrusted().phrase], json: {} };
   }
 
-  const granted = await trust.grant(workspace.subject, check.fingerprint, "cli");
+  // Read the files again: they can change while the person answers, and only
+  // what the check showed them is trusted.
+  const answered = await readWorkspaceTrust(opened, machine.commandSearch);
+  const granted = await trust.grant(answered.subject, check.fingerprint, "cli");
   if (!granted.ok) {
-    // The files changed between the check and the answer.
-    throw fingerprintChanged({ name: workspace.name, check, lines: [], dir, changes });
+    // The files changed between the check and the answer: the refusal gives
+    // the fingerprint they have now, as a check run now would.
+    const now = { ...check, fingerprint: granted.error.fingerprint };
+    throw fingerprintChanged({ name: workspace.name, check: now, lines: [], dir, changes });
   }
   return {
     exitCode: exitCode.ok,

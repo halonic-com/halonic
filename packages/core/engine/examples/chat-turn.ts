@@ -22,7 +22,13 @@ const model: LlmProvider = {
 const billing: ConnectorClient = {
   id: "billing",
   listTools: async () => [
-    { name: "lookup", description: "Looks up an invoice", parameters: { type: "object" } },
+    {
+      name: "lookup",
+      description: "Looks up an invoice",
+      parameters: { type: "object", properties: { invoice: { type: "string" } } },
+      // A chat refuses a tool that writes or sends, and one that names no risk counts as such.
+      risk: "read",
+    },
   ],
   callTool: async (_name, args) => `${String(args["invoice"])} is paid`,
   close: async () => {},

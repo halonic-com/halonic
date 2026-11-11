@@ -6,8 +6,10 @@ import type {
   Coordination,
   DefinitionSource,
   DefinitionStore,
+  Harness,
   HarnessDetection,
   HarnessEvent,
+  HarnessSignIn,
   HttpClient,
   KnowledgeProvider,
   RunEventListener,
@@ -356,6 +358,21 @@ verifies("ports.harness-signed-out", () => {
     // @ts-expect-error: a signed-out harness says which version it found
     const unknown: HarnessDetection = { status: "signed-out" };
     expect(unknown).toBeDefined();
+  });
+});
+
+verifies("ports.harness-sign-in", () => {
+  it("names the program, what it is asked and the variable for the agent's folder", () => {
+    const signIn: HarnessSignIn = {
+      program: "claude",
+      args: ["auth", "login"],
+      folderVariable: "CLAUDE_CONFIG_DIR",
+    };
+    expect(signIn.folderVariable).toBe("CLAUDE_CONFIG_DIR");
+  });
+
+  typeTest("is optional, so a harness without a sign-in of its own needs none", () => {
+    expectTypeOf<Harness["signIn"]>().toEqualTypeOf<HarnessSignIn | undefined>();
   });
 });
 

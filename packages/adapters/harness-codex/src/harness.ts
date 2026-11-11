@@ -3,6 +3,7 @@ import type { Harness, ProgramProbe } from "@halonicjs/ports";
 import { detectCodex } from "./detect.ts";
 import { codexEnvironment } from "./environment.ts";
 import { CodexRun } from "./run.ts";
+import { codexSignIn } from "./sign-in-command.ts";
 
 /** What the Codex harness is made with. */
 export interface CodexHarnessOptions {
@@ -37,5 +38,6 @@ export function codexHarness(options: CodexHarnessOptions): Harness {
     detect: () => detectCodex(options.probe),
     environment: codexEnvironment,
     start: (task, session, bridge) => new CodexRun(task, session, bridge, { settings, clientInfo }),
+    signIn: codexSignIn,
   };
 }

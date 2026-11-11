@@ -110,8 +110,11 @@ are added once, before the first read. A record keeps the time of its last chang
 the old `createdAt` is gone, because the record store's fold keeps only that time.
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
-(HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
-For now they pass values through unchanged.
+(HAL-998): `offerListedTools`, the call check and `passResultToModel`, in `src/agent/`.
+`offerListedTools` and `passResultToModel` pass values through unchanged for now. A run's model
+call checks each call with `checkRunToolCall`; a chat turn with `checkChatToolCall`, which refuses
+a call that would need a person's OK, such as one to a connector tool that writes or sends, because
+nothing in a chat can wait for a person.
 
 `LocalExecutorOptions` is what a `LocalExecutor` is built from; `maxRounds` defaults to
 `defaultMaxRounds` (20).
@@ -326,7 +329,13 @@ const model: LlmProvider = {
 const billing: ConnectorClient = {
   id: "billing",
   listTools: async () => [
-    { name: "lookup", description: "Looks up an invoice", parameters: { type: "object" } },
+    {
+      name: "lookup",
+      description: "Looks up an invoice",
+      parameters: { type: "object", properties: { invoice: { type: "string" } } },
+      // A chat refuses a tool that writes or sends, and one that names no risk counts as such.
+      risk: "read",
+    },
   ],
   callTool: async (_name, args) => `${String(args["invoice"])} is paid`,
   close: async () => {},

@@ -224,6 +224,16 @@ verifies("agent-host-client.bridges", () => {
       // An emoji is 2 UTF-16 units and 4 bytes.
       expect(fitsAnswerLimit("\u{1f600}".repeat(limit / 4))).toBe(true);
       expect(fitsAnswerLimit(`${"\u{1f600}".repeat(limit / 4)}a`)).toBe(false);
+      // "€" is 3 bytes, and a lone surrogate counts as U+FFFD, 3 bytes too.
+      const thirds = Math.floor(limit / 3);
+      const rest = "a".repeat(limit - thirds * 3);
+      for (const unit of ["€", "\ud800", "\udc00"]) {
+        expect(fitsAnswerLimit(unit.repeat(thirds) + rest)).toBe(true);
+        expect(fitsAnswerLimit(`${unit.repeat(thirds) + rest}a`)).toBe(false);
+      }
+      // A high surrogate before a character that isn't a low one is alone too.
+      expect(fitsAnswerLimit("\ud800a".repeat(limit / 4))).toBe(true);
+      expect(fitsAnswerLimit(`${"\ud800a".repeat(limit / 4)}a`)).toBe(false);
     });
   });
 });

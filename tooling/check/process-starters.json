@@ -13,6 +13,10 @@
       "reason": "The agent host executable's entry point. With createRequire it loads only files of the payload the build embedded, unpacked and checked against their SHA-256 digests: the host's entry, and the manifest's programs (srt's dist/cli.js, which sandbox-srt starts through process.execPath). Any other first argument is not run, so never a skill's scripts.",
       "scriptsTest": "apps/agent-host/src/main.test.ts"
     },
+    "apps/agent-host/src/terminal/open-terminal.ts": {
+      "reason": "Opens a terminal window the person can see for a harness program's own sign-in (HAL-5395). It starts only cmd.exe from the Windows folder, /usr/bin/open on a .command file it wrote to a new private temp folder, or the first of a fixed list of terminals found in the absolute PATH folders. The program they run is an absolute path with plain-word arguments, and it refuses a program or variable under a skill's scripts/ folder, as written or through a symbolic link.",
+      "scriptsTest": "apps/agent-host/src/terminal/open-terminal.test.ts"
+    },
     "packages/adapters/git/src/node/run-process.ts": {
       "reason": "Starts only git, at the absolute path findGit resolved, with array arguments and no shell. Every call runs hardened: hooks point at an empty folder and no user or system config is read.",
       "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"

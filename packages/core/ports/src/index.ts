@@ -76,6 +76,7 @@ export {
   type HarnessEvent,
   type HarnessInput,
   type HarnessRun,
+  type HarnessSignIn,
   type HarnessTask,
   harnessBridgeTokenHeader,
   harnessVersion,

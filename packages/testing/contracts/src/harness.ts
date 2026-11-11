@@ -176,9 +176,9 @@ async function endedRun(harness: HarnessContractHarness, ending: RunEnding): Pro
 /**
  * The {@link Harness} contract (requirement `contracts.harness`): how a run's
  * stream ends when it finishes, fails, is cancelled or can't start, and that
- * the bridge token stays out of every event and error. The cases run the
- * harness against a {@link FakeSandboxSession}, with the programs the
- * adapter's tests give.
+ * the bridge token stays out of every event and error, and that a sign-in
+ * points at the settings folder runs use. The cases run the harness against
+ * a {@link FakeSandboxSession}, with the programs the adapter's tests give.
  */
 export function harnessContract(name: string, harness: HarnessContractHarness): void {
   verifies("contracts.harness", () => {
@@ -250,6 +250,16 @@ export function harnessContract(name: string, harness: HarnessContractHarness): 
         const session = openSession(subject, bridge, harness.finishing, fence);
 
         await expectCantStart(subject, session, bridge);
+      });
+
+      it("signs in to the settings folder its runs use, when it has a sign-in", async () => {
+        const subject = await harness.make();
+        const added = subject.environment?.(newBridge(), engineProfile) ?? {};
+        // A harness without a sign-in of its own, such as the built-in loop, points nowhere.
+        const { signIn } = subject;
+        const pointedAt = signIn === undefined ? null : added[signIn.folderVariable];
+
+        expect(pointedAt).toBe(signIn === undefined ? null : engineProfile.settingsFolder);
       });
     });
   });

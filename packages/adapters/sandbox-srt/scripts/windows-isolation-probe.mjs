@@ -2,10 +2,10 @@
 // and process fence that the spike did not try. C1 starts WSL from inside srt
 // (the README says the WSL service answers a sandboxed process), C2 reads a
 // denied file through SMB to the machine's own shares, and C3 checks whether
-// write grants of one session stay readable in the next, and whether a deny
-// stays behind. Report-only: results go to the job summary and to
+// write grants of one session stay readable or writable in the next, and
+// whether a deny stays behind. Report-only: results go to the job summary and to
 // windows-isolation-results.json.
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
 import { join, win32 } from "node:path";
 import { createKit } from "./windows-probe-kit.mjs";
@@ -166,9 +166,13 @@ console.log(JSON.stringify(r));
   writeFileSync(join(never, "c.txt"), "never");
   const rw = kit.script(
     "rw.mjs",
-    `import { readFileSync, writeFileSync } from "node:fs";
+    `import { readFileSync, rmSync, writeFileSync } from "node:fs";
 const [op, path] = process.argv.slice(2);
-try { if (op === "write") { writeFileSync(path, "x"); console.log("ok"); } else console.log("read:" + readFileSync(path, "utf8")); }
+try {
+  if (op === "write") { writeFileSync(path, "x"); console.log("ok"); }
+  else if (op === "delete") { rmSync(path); console.log("ok"); }
+  else console.log("read:" + readFileSync(path, "utf8"));
+}
 catch (e) { console.log("blocked:" + e.code); }
 `,
   );
@@ -193,6 +197,16 @@ catch (e) { console.log("blocked:" + e.code); }
   const acl1 = acl();
   const s2 = await op(sessionB, b, "read", join(a, "a.txt"));
   const s2never = await op(sessionB, b, "read", join(never, "c.txt"));
+  // HAL-5432: A keeps sandbox-runtime-users (M) after session 1, so a session
+  // on B could also write there unless srt's write-restricted token stops it.
+  // Before the deny session, whose deny stays on A and would block it anyway.
+  // Checked from outside too, so a quiet success can't pass as a block.
+  writeFileSync(join(a, "victim.txt"), "keep");
+  const s2w = await op(sessionB, b, "write", join(a, "b-wrote.txt"));
+  const s2d = await op(sessionB, b, "delete", join(a, "victim.txt"));
+  const wroteA = existsSync(join(a, "b-wrote.txt"));
+  const deletedA = !existsSync(join(a, "victim.txt"));
+  const aclWrite = acl();
   const s2b = await op(sessionBDenyA, b, "read", join(a, "a.txt"));
   const acl2b = acl();
   const s3 = await op(sessionA, a, "write", join(a, "a3.txt"));
@@ -206,6 +220,19 @@ catch (e) { console.log("blocked:" + e.code); }
       "kept-roots-readable: a session on B reads A",
       s2?.startsWith("read:") ? "FAIL" : "PASS",
       detail,
+    );
+    const writeDetail = `write: ${s2w}, file in A: ${wroteA}; delete: ${s2d}, file gone: ${deletedA}`;
+    record(
+      "C3 kept grants",
+      "kept-roots-writable: a session on B writes in A",
+      s2w === "ok" || wroteA ? "FAIL" : "PASS",
+      writeDetail,
+    );
+    record(
+      "C3 kept grants",
+      "kept-roots-writable: a session on B deletes in A",
+      s2d === "ok" || deletedA ? "FAIL" : "PASS",
+      writeDetail,
     );
     record(
       "C3 kept grants",
@@ -225,7 +252,7 @@ catch (e) { console.log("blocked:" + e.code); }
   } else {
     record("C3 kept grants", "session 1 writes in A", "INCONCLUSIVE", s1);
   }
-  const acls = `before: ${aclBefore} || after 1: ${acl1} || after 2b: ${acl2b} || after 3: ${acl3}`;
+  const acls = `before: ${aclBefore} || after 1: ${acl1} || after 2 writes: ${aclWrite} || after 2b: ${acl2b} || after 3: ${acl3}`;
   record("C3 kept grants", "A's ACL per step", "INFO", acls);
 }
 

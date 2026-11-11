@@ -1,3 +1,15 @@
+export {
+  PluginCard,
+  type PluginCardProps,
+  type PluginCardStatus,
+  type PluginCardUi,
+} from "./cards/plugin-card.tsx";
+export {
+  type PluginCardFeed,
+  type PluginCards,
+  type PluginHomeCardsOptions,
+  pluginHomeCards,
+} from "./cards/plugin-home-cards.ts";
 export { PluginCommandHost, type PluginCommandHostProps } from "./commands/plugin-command-host.tsx";
 export {
   type OpenedCommand,

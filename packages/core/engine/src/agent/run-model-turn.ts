@@ -19,7 +19,8 @@ import type {
 } from "@halonicjs/ports";
 import { withKnowledgeFirst } from "../knowledge/knowledge-first.ts";
 import { callCost } from "./call-cost.ts";
-import { type CallChecker, checkCallBeforeRun } from "./check-call-before-run.ts";
+import type { CallChecker } from "./check-call-before-run.ts";
+import { checkChatToolCall } from "./check-chat-tool-call.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { type EffectBoundary, runCalls, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
@@ -56,7 +57,7 @@ export interface ModelTurnInput {
   readonly clock: Clock;
   /** Where the events go; a turn outside any run has none. */
   readonly log?: TurnLog;
-  /** Checks each call the turn runs itself; a chat turn's check when left out. */
+  /** Checks each call the turn runs itself; a chat turn's check ({@link checkChatToolCall}) when left out. */
   readonly checkCall?: CallChecker;
   /**
    * The agent's knowledge sources with `mode: auto`: before the first model
@@ -139,7 +140,7 @@ async function turnLoop(
   const context: ToolCallContext = {
     agent: input.agent,
     refusals: [...tools.refusals],
-    check: input.checkCall ?? checkCallBeforeRun,
+    check: input.checkCall ?? checkChatToolCall,
     ...(input.log === undefined ? {} : { log: input.log }),
     ...(effects === undefined ? {} : { effects }),
   };

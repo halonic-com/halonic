@@ -1,6 +1,7 @@
 import type { ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { chatApprovalReason } from "./agent/check-chat-tool-call.ts";
 import { halonicTool, secretsWith, steppingClock } from "./agent/turn-test-kit.test-helper.ts";
 import { writerAgent } from "./kernel/kernel-test-kit.test-helper.ts";
 import {
@@ -45,7 +46,7 @@ const request: ChatTurnRequest = {
 verifies("engine.local-chat-turn", () => {
   it("runs the turn on the resolved model with its servers' tools", async () => {
     const model = new ScriptedModel([callAnswer(call("c1", "lookup")), textAnswer("Found it")]);
-    const mail = new ScriptedConnector("mail", [listedTool("lookup")]);
+    const mail = new ScriptedConnector("mail", [{ ...listedTool("lookup"), risk: "read" }]);
     const { executor, resolved } = executorOn(model, { connectors: [mail] });
 
     const response = await executor.chatTurn(request);
@@ -64,6 +65,39 @@ verifies("engine.local-chat-turn", () => {
       "assistant",
     ]);
     expect(model.requests[0]?.meta).toEqual({ agentId: "chat" });
+  });
+
+  it("refuses a connector tool that sends, because nobody in a chat can approve it", async () => {
+    const model = new ScriptedModel([callAnswer(call("c1", "send_mail")), textAnswer("Not sent")]);
+    const mail = new ScriptedConnector("mail", [{ ...listedTool("send_mail"), risk: "send" }]);
+    const clerk = { ...writerAgent(), id: "clerk", name: "Clerk", connectors: ["mail"] };
+    const { executor } = executorOn(model, {
+      connectors: [mail],
+      chatAgentOf: async () => clerk,
+    });
+
+    const response = await executor.chatTurn({ ...request, agentId: "clerk" });
+
+    expect(mail.calls).toEqual([]);
+    expect(response.refusals).toEqual([
+      { source: "mail", name: "send_mail", refused: "call", reason: chatApprovalReason },
+    ]);
+    expect(response.turn?.[1]).toMatchObject({
+      role: "tool",
+      toolCallId: "c1",
+      content: `Refused: ${chatApprovalReason}`,
+    });
+  });
+
+  it("refuses a connector tool whose listing gives no risk, which counts as one that writes", async () => {
+    const model = new ScriptedModel([callAnswer(call("c1", "archive")), textAnswer("Kept")]);
+    const mail = new ScriptedConnector("mail", [listedTool("archive")]);
+    const { executor } = executorOn(model, { connectors: [mail] });
+
+    const response = await executor.chatTurn(request);
+
+    expect(mail.calls).toEqual([]);
+    expect((response.refusals ?? []).map((refusal) => refusal.name)).toEqual(["archive"]);
   });
 
   it("offers its Halonic tools after the caller's and names the request's agent", async () => {

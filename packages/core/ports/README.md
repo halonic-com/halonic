@@ -26,7 +26,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `DefinitionStore` | `definition-store.ts` | 2 | the workspace files; `DefinitionSource` is its read-only side | `definition-store` |
 | `Digest` | `digest.ts` | 1 | SHA-256 from the platform's WebCrypto | `digest` (with first adapter) |
 | `FolderReader` | `folder-reader.ts` | 1 | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins | `folder-reader` |
-| `Harness` | `harness.ts` | 2 | what drives an agent (Halonic, Claude Code, Codex): detect it, start it, answer it, cancel it | `harness` (with first adapter) |
+| `Harness` | `harness.ts` | 2 | what drives an agent (Halonic, Claude Code, Codex): detect it, sign in, start, answer, cancel it | `harness` (with first adapter) |
 | `HarnessBridgeServer` | `harness-bridge-server.ts` | 1 | opens one run's bridge: model requests to the provider, Halonic's tools and approvals over MCP | `harness-bridge-server` (with first adapter) |
 | `HttpClient` | `http-client.ts` | 1 | outbound HTTP, replaces `FetchLike` | `http-client` (with first adapter) |
 | `IdGenerator` | `id-generator.ts` | 1 | unique ids | `id-generator` |

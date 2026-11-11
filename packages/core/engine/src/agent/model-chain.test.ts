@@ -13,7 +13,12 @@ import {
 } from "../testing/scripted-model.ts";
 import type { ResolvedModel } from "./model-chain.ts";
 import { runModelTurn } from "./run-model-turn.ts";
-import { MemoryTurnLog, secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
+import {
+  MemoryTurnLog,
+  runEveryCall,
+  secretsWith,
+  steppingClock,
+} from "./turn-test-kit.test-helper.ts";
 
 /** A model alias on a scripted provider; its model is named after the provider. */
 function alias(name: string, provider: ScriptedModel, more: Partial<ResolvedModel> = {}) {
@@ -40,6 +45,7 @@ function runTurnOn(model: ResolvedModel, setup: TurnSetup = {}) {
     maxRounds: 20,
     agent: "clerk",
     clock: setup.clock ?? steppingClock(),
+    checkCall: runEveryCall,
     ...(setup.log === undefined ? {} : { log: setup.log }),
   });
 }

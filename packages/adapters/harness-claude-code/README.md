@@ -38,6 +38,11 @@ the person's sign-in), `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR` (the
 session's own temp folder) and `HALONIC_RUN_TOKEN`. It throws when the profile
 has no settings folder. The run token is removed from every event and error.
 
+`claudeCodeSignIn` (also `harness.signIn`) is Claude Code's own sign-in for
+one agent: `claude auth login` with `CLAUDE_CONFIG_DIR` set to the agent's
+settings folder, the one its runs get. Studio runs it in a terminal the
+person can see.
+
 ## Reading the output
 
 Claude Code runs with `--output-format stream-json`, one JSON object per line.

@@ -11,7 +11,11 @@ checked by `pnpm check features`. Vite builds two pages apart, so the Android ap
 ## The shell
 
 `src-tauri/` is the Tauri shell, a Cargo workspace whose root package is the
-app. It opens one window with the page in `connect/`. On desktop only, the
+app. On desktop it opens one window with the Studio page (`studio.html`, built
+into `dist/studio`; `tauri build` and `tauri dev` build it first), and on
+Android one with the connect page (`dist/connect`). Tauri reads that folder
+when the shell compiles, so run `pnpm build` here once before a plain
+`cargo clippy` or `cargo test` (`studio.desktop-page`). On desktop only, the
 page may also call the commands for git, secrets, trust, runs and the agent
 host (`agent_host_request`, `agent_host_stream`, `agent_host_stream_end`),
 each behind its own capability in `src-tauri/capabilities/` (`desktop-*.json`)

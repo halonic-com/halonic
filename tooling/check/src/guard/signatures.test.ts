@@ -138,6 +138,16 @@ verifies("check.guard-signed-notes", () => {
     expect(await reasonOf({ text, head: { ...baseFiles, "README.md": "new" } })).toBe("approved");
   });
 
+  test("binds the tests that verify a covered requirement, so removing one breaks the signature", async () => {
+    const extra = "packages/core/workflow/src/extra.test.ts";
+    const verifying = `import { verifies } from "@halonicjs/testing-spec";\nverifies("workflow.timer-fires", () => {});\n`;
+    const files = { ...baseFiles, [extra]: verifying };
+    const text = signed(note(), files, cto.privatePem);
+    expect(await reasonOf({ text, head: files, base: files })).toBe("approved");
+    expect(await reasonOf({ text, head: baseFiles })).toMatch(/doesn't match/);
+    expect(await reasonOf({ text, head: { ...files, [extra]: "" } })).toMatch(/doesn't match/);
+  });
+
   test("covers a top-level file named without a slash by its contents", async () => {
     const files = { ...baseFiles, "turbo.json": "{}" };
     const text = signed(`${note()}- turbo.json\n`, files, cto.privatePem);

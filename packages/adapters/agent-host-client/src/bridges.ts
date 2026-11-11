@@ -8,7 +8,7 @@ import type {
   Secrets,
 } from "@halonicjs/ports";
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
-import { encodeUtf8, isPlainObject } from "@halonicjs/std";
+import { isPlainObject } from "@halonicjs/std";
 import { answerBridgeCall, type BridgeCallServices } from "./bridge-calls.ts";
 import { AgentHostError, type AgentHostTransport, answerError, checked } from "./transport.ts";
 
@@ -335,10 +335,12 @@ function wellFormedReplacer(_key: string, value: unknown): unknown {
 
 /**
  * Whether `text` is at most {@link bridgeAnswerLimitBytes} in UTF-8. A UTF-16
- * code unit takes 1 to 3 bytes, so only text near the limit is encoded.
+ * code unit takes 1 to 3 bytes, so only text near the limit is encoded. The
+ * host's own `TextEncoder`, not std's `encodeUtf8`: that one is written in
+ * JavaScript, and a 1 MiB answer took it seconds on a loaded runner (HAL-5473).
  */
 export function fitsAnswerLimit(text: string): boolean {
   if (text.length > bridgeAnswerLimitBytes) return false;
   if (text.length * 3 <= bridgeAnswerLimitBytes) return true;
-  return encodeUtf8(text).byteLength <= bridgeAnswerLimitBytes;
+  return new TextEncoder().encode(text).byteLength <= bridgeAnswerLimitBytes;
 }

@@ -182,6 +182,23 @@ verifies("app.run-proposal-trust", () => {
       });
     });
 
+    it.each([".halonic/review/files/0123abcd.json", ".Halonic/review/files/0123abcd.json"])(
+      "refuses %s, a planted record of a change to review (HAL-3353)",
+      async (planted) => {
+        const setup = setUpProposals(digest);
+        await proposeRun(setup, "01JD8Q", (files) => {
+          files.set(planted, '{"path":"agents/clerk.agent.yaml","baseline":""}\n');
+        });
+        const result = await setup.proposals.accept("01JD8Q", "all");
+        expect(result.refused).toEqual([{ path: planted, why: "under-halonic" }]);
+        expect(result.written).toEqual([]);
+        expect(setup.store.files.has(planted)).toBe(false);
+        expect([...setup.records.files.keys()].filter((path) => path.includes("review"))).toEqual(
+          [],
+        );
+      },
+    );
+
     it("refuses a file the store won't serve, such as one through a symlink", async () => {
       const setup = setUpProposals(digest);
       await proposeRun(setup, "01JD8Q", (files) => files.set("notes/link/today.md", "x\n"));

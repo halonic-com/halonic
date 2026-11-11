@@ -137,6 +137,12 @@ function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {
     },
     rowNames: () =>
       [...view.querySelectorAll('[role="option"]')].map((row) => row.getAttribute("aria-label")),
+    /** Each row's place icon, by the row's name; `null` for a row with none. */
+    rowIcons: () =>
+      [...view.querySelectorAll('[role="option"]')].map((row) => [
+        row.getAttribute("aria-label"),
+        row.querySelector("[data-place-icon]")?.getAttribute("data-place-icon") ?? null,
+      ]),
     heard: () => {
       timers.advance(0);
       return said;
@@ -260,5 +266,26 @@ verifies("shell.palette-wiring", () => {
     expect(palette.toasts.list().map((toast) => [toast.tone, toast.title])).toEqual([
       ["danger", "Couldn't run New agent."],
     ]);
+  });
+});
+
+verifies("shell.palette-dialog", () => {
+  it("says Search in the empty box", () => {
+    const palette = renderPalette();
+    palette.open();
+    expect(palette.box()?.placeholder).toBe("Search");
+  });
+
+  it("shows a place's outline icon from the sidebar on its row, and none on an item's", async () => {
+    const palette = renderPalette();
+    palette.tabs.openHere(agents);
+    palette.open();
+    expect(palette.rowIcons()).toEqual([
+      ["Agents, switch to tab", "agents"],
+      ["Home", "home"],
+    ]);
+    palette.type("ref");
+    await palette.answer(0, [refundChecker]);
+    expect(palette.rowIcons()).toEqual([["Refund checker, agent", null]]);
   });
 });

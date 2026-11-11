@@ -311,6 +311,22 @@ describe("payloadProgram", () => {
     expect(payloadProgram(cli(), "1.2.3", manifest)).toBeUndefined();
   });
 
+  it("is nothing when a file the program loads was changed after unpacking", () => {
+    unpackPayload(folder(), manifest, readAsset);
+    const other = manifest.files.find((file) => !manifest.programs.includes(file.path));
+    expect(other).toBeDefined();
+    writeFileSync(join(folder(), ...(other?.path ?? "").split("/")), "changed");
+    expect(payloadProgram(cli(), "1.2.3", manifest)).toBeUndefined();
+  });
+
+  it("is nothing in a folder that only has the right name", () => {
+    const named = join(profile, "elsewhere", `1.2.3-${manifest.digest.slice(0, 16)}`);
+    unpackPayload(named, manifest, readAsset);
+    expect(
+      payloadProgram(join(named, "node_modules", "srt", "dist", "cli.js"), "1.2.3", manifest),
+    ).toBeUndefined();
+  });
+
   it("is never a skill's script (HAL-188)", () => {
     unpackPayload(folder(), manifest, readAsset);
     const script = join(folder(), ".claude", "skills", "a", "scripts", "run.js");

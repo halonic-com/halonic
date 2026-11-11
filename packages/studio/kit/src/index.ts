@@ -123,6 +123,7 @@ export { BackIcon } from "./icons/back-icon.tsx";
 export { ChevronDownIcon } from "./icons/chevron-down-icon.tsx";
 export { ChevronRightIcon } from "./icons/chevron-right-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
+export { DashedRingIcon } from "./icons/dashed-ring-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
 export { MaximiseIcon } from "./icons/maximise-icon.tsx";
@@ -135,6 +136,7 @@ export {
   placeIconNames,
 } from "./icons/place-icon.tsx";
 export { PlusIcon } from "./icons/plus-icon.tsx";
+export { RefreshIcon } from "./icons/refresh-icon.tsx";
 export { RestoreIcon } from "./icons/restore-icon.tsx";
 export { SearchIcon } from "./icons/search-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";

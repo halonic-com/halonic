@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { type StartedStudio, startStudio } from "./start-studio.ts";
 
 // Under jsdom `import.meta.url` isn't a file URL, so the page is found from the package
@@ -26,9 +26,14 @@ function desktopMediaQueries(query: string): MediaQueryList {
   };
 }
 
-/** Lets React draw what `createRoot().render` scheduled. */
-async function drawn() {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+/**
+ * Waits until React has drawn the window's heading. React draws on its own schedule, so a
+ * fixed wait is too short when CI is busy; this polls until the heading is there instead.
+ */
+async function drawn(root: HTMLElement): Promise<void> {
+  await vi.waitFor(() => expect(root.querySelector("main h1")).not.toBeNull(), {
+    timeout: 10_000,
+  });
 }
 
 let started: StartedStudio | undefined;
@@ -53,7 +58,7 @@ verifies("studio.starting", () => {
     document.body.append(root);
 
     started = startStudio({ element: root, window, userAgent: "Mozilla/5.0 (X11; Linux x86_64)" });
-    await drawn();
+    await drawn(root);
 
     expect(root.textContent).not.toContain(startingText);
     expect(root.querySelector("main h1")?.textContent).toBe("Home");

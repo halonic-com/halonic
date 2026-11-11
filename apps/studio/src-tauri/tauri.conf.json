@@ -4,13 +4,19 @@
   "version": "0.1.0",
   "identifier": "com.halonic.studio",
   "build": {
-    "frontendDist": "../connect"
+    "beforeDevCommand": {
+      "script": "pnpm run build",
+      "wait": true
+    },
+    "beforeBuildCommand": "pnpm run build",
+    "frontendDist": "../dist/studio"
   },
   "app": {
     "withGlobalTauri": false,
     "windows": [
       {
-        "title": "Halonic"
+        "title": "Halonic",
+        "url": "studio.html"
       }
     ],
     "security": {

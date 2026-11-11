@@ -28,10 +28,11 @@ import {
   searchPageLocation,
   searchPageNames,
 } from "./search-page-names.ts";
+import { usePausedWords } from "./use-paused-words.ts";
 
 /** Props for {@link SearchPage}. */
 export interface SearchPageProps {
-  /** The words this place searches: `searchPageWords(location)`. */
+  /** The place's words, which the box starts with: `searchPageWords(location)`. */
   readonly words: string;
   /** The open workspace's tabs: new words open here, a result here or in a new tab. */
   readonly tabs: TabSet;
@@ -56,9 +57,11 @@ export interface SearchPageProps {
  * until the engine searches the text of files, so the page never shows a control with nothing
  * behind it.
  *
- * Enter in the box searches the new words as a new place in this tab, so Back goes to the words
- * searched before; the chips start again from their defaults there. A result opens here, or with
- * a Ctrl-click, Cmd-click or middle-click in a new tab.
+ * The results follow the box as the user types, once the typing pauses, without a new place.
+ * Enter commits the typed words as a new place in this tab, so the tab's title names them and
+ * Back goes to the words committed before; the chips start again from their defaults there.
+ * Words typed but not committed stay with this page only: the place keeps its own words. A result
+ * opens here, or with a Ctrl-click, Cmd-click or middle-click in a new tab.
  *
  * Mount it fresh for each place: the box and the chips start from `words` and their defaults only
  * on mount, and a new `words` doesn't reset them. `TabPages` does this by keying each page with
@@ -72,13 +75,14 @@ export interface SearchPageProps {
 export function SearchPage(props: SearchPageProps) {
   const { words, tabs, announcer, kinds } = props;
   const [typed, setTyped] = useState(words);
+  const searched = usePausedWords(typed);
   const [matchCase, setMatchCase] = useState(false);
   const [wholeWord, setWholeWord] = useState(false);
   const [scope, setScope] = useState<SearchScope>({});
   const box = useRef<HTMLInputElement>(null);
-  const search = usePaletteSearch(words, props.providers, props.contextFor);
+  const search = usePaletteSearch(searched, props.providers, props.contextFor);
   const names = searchPageNames(
-    { words, options: { matchCase, wholeWord }, scope },
+    { words: searched, options: { matchCase, wholeWord }, scope },
     search.found.results,
     search.found.failed,
   );
@@ -160,7 +164,7 @@ export function SearchPage(props: SearchPageProps) {
         ]}
       />
       <SearchResults
-        words={words}
+        words={searched}
         names={names}
         searching={search.searching}
         notAnswering={props.notAnswering}

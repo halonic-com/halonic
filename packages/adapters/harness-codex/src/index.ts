@@ -5,3 +5,4 @@ export { codexProgram, detectCodex, oldestSupportedVersion, supportedVersions } 
 export { type CodexFolders, codexEnvironment, codexRunTokenVariable } from "./environment.ts";
 export { type CodexHarnessOptions, codexHarness } from "./harness.ts";
 export { saysSignedOut } from "./sign-in.ts";
+export { codexSignIn } from "./sign-in-command.ts";

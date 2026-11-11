@@ -50,6 +50,11 @@ export const sidebarPlaces = [
 /** One of the sidebar's places. */
 export type SidebarPlace = (typeof sidebarPlaces)[number];
 
+/** Whether a location's key is one of the sidebar's places, such as `inbox`. */
+export function isSidebarPlace(key: string): key is SidebarPlace {
+  return (sidebarPlaces as readonly string[]).includes(key);
+}
+
 /** A place's name and icon, the same wherever the place shows. */
 export interface PlaceName {
   /** The place's name in the sidebar, the phone's bar and More page, a tab's title and the palette. */
