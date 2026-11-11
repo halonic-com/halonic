@@ -19,6 +19,7 @@ import {
   contractServerTools,
   coordinationContract,
   definitionStoreContract,
+  hostSettingsStoreContract,
   idGeneratorContract,
   knowledgeProviderContract,
   llmProviderContract,
@@ -51,6 +52,7 @@ import {
   type MemoryConnectorServer,
   MemoryCoordination,
   MemoryDefinitionStore,
+  MemoryHostSettingsStore,
   MemoryKnowledgeProvider,
   MemoryRecordStore,
   MemoryRemote,
@@ -104,6 +106,15 @@ clockContract("memory", async () => new ManualClock());
 connectionSettingsStoreContract("memory", async () => {
   const store = new MemoryConnectionSettingsStore();
   return { store, damage: async (key) => store.damage(key) };
+});
+hostSettingsStoreContract("memory", async () => {
+  const store = new MemoryHostSettingsStore();
+  const elsewhere = new MemoryHostSettingsStore(store);
+  return {
+    store,
+    damage: async () => store.damage(),
+    changeElsewhere: (key, value) => elsewhere.set(key, value),
+  };
 });
 unfencedRunConsentStoreContract("memory", async () => {
   const store = new MemoryUnfencedRunConsentStore();

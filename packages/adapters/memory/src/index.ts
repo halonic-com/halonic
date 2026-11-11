@@ -19,6 +19,7 @@ export {
 export { DryRunRunStore, type PlannedRunAppend } from "./dry-run-run-store.ts";
 export { DryRunVcs, type PlannedVcsChange } from "./dry-run-vcs.ts";
 export { MemoryFolderReader } from "./folder-reader.ts";
+export { MemoryHostSettingsStore } from "./host-settings-store.ts";
 export { fixedIds } from "./ids.ts";
 export { type MemoryKnowledgeOptions, MemoryKnowledgeProvider } from "./knowledge-provider.ts";
 export { ScriptedLlmProvider, type ScriptedLlmProviderOptions } from "./llm-provider.ts";

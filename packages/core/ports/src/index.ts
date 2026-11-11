@@ -107,6 +107,14 @@ export {
   harnessBridgeServerVersion,
   type OpenHarnessBridge,
 } from "./harness-bridge-server.ts";
+export {
+  type HostSettingsStore,
+  type HostSettingValue,
+  type HostSettingValues,
+  hostSettingsMaxBytes,
+  hostSettingsStoreVersion,
+  isHostSettingKey,
+} from "./host-settings-store.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
 export {

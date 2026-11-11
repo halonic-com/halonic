@@ -9,6 +9,7 @@ import { digestVersion } from "./digest.ts";
 import { folderReaderVersion } from "./folder-reader.ts";
 import { harnessVersion } from "./harness.ts";
 import { harnessBridgeServerVersion } from "./harness-bridge-server.ts";
+import { hostSettingsStoreVersion } from "./host-settings-store.ts";
 import { httpClientVersion } from "./http-client.ts";
 import { idGeneratorVersion } from "./id-generator.ts";
 import { integrationVersion } from "./integration.ts";
@@ -51,6 +52,7 @@ export const portVersions = {
   FolderReader: folderReaderVersion,
   Harness: harnessVersion,
   HarnessBridgeServer: harnessBridgeServerVersion,
+  HostSettingsStore: hostSettingsStoreVersion,
   HttpClient: httpClientVersion,
   IdGenerator: idGeneratorVersion,
   Integration: integrationVersion,

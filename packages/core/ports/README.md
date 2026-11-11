@@ -28,6 +28,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `FolderReader` | `folder-reader.ts` | 1 | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins | `folder-reader` |
 | `Harness` | `harness.ts` | 2 | what drives an agent (Halonic, Claude Code, Codex): detect it, sign in, start, answer, cancel it | `harness` (with first adapter) |
 | `HarnessBridgeServer` | `harness-bridge-server.ts` | 1 | opens one run's bridge: model requests to the provider, Halonic's tools and approvals over MCP; a model request the recorder refuses with `limit_reached` gets a 429 and never reaches the provider | `harness-bridge-server` (with first adapter) |
+| `HostSettingsStore` | `host-settings-store.ts` | 1 | the settings kept where Halonic runs (assistant, sandbox default) in the user's profile, by key; `HostSettings` decides | `host-settings-store` |
 | `HttpClient` | `http-client.ts` | 1 | outbound HTTP, replaces `FetchLike` | `http-client` (with first adapter) |
 | `IdGenerator` | `id-generator.ts` | 1 | unique ids | `id-generator` |
 | `Integration` | `integration.ts` | 1 | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens | `integration` (own package) |

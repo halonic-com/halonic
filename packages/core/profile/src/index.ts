@@ -6,6 +6,7 @@ export {
   pluginsFolder,
   profileFolder,
   sandboxJournalFolder,
+  settingsFolder,
   trustFolder,
 } from "./profile-folder.ts";
 export {

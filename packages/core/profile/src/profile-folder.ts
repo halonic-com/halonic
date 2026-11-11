@@ -26,6 +26,9 @@ const pluginsFolderName = "plugins";
 /** The name of the folder in the profile that holds the plugins' records. */
 const pluginRecordsFolderName = "plugin-records";
 
+/** The name of the folder in the profile that holds the settings kept where Halonic runs. */
+const settingsFolderName = "settings";
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -179,4 +182,21 @@ export function pluginsFolder(profile: ProfileFolder): string {
  */
 export function pluginRecordsFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, pluginRecordsFolderName);
+}
+
+/**
+ * The folder for the settings kept where Halonic runs, `settings` in the
+ * profile folder: the assistant and the sandbox default, for every
+ * workspace on this computer. They are the person's own, so they are never
+ * written to a workspace, and the CLI and the Studio read the same ones.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the settings folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * settingsFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/settings"
+ */
+export function settingsFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, settingsFolderName);
 }

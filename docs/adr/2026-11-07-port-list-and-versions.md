@@ -243,6 +243,22 @@ One new port, at version 1:
   trusted is what was placed; reading the source and checking it stay in
   `core/app`.
 
+_2026-11-11, proposed on HAL-6159 for the settings host API (T11 PR 7, design on HAL-6159); Liam reviews it._
+One new port, at version 1:
+
+- **`HostSettingsStore`:** `read` every saved setting by key, `set` one
+  key's JSON value (or remove it) and `watch` for changes
+  (`ports.host-settings-store`). These are the settings kept where
+  Halonic runs, for every workspace on that computer: the assistant and
+  the sandbox default. They live in the user's profile, never in a
+  workspace file, and a provider key is never one of them. Settings save
+  by themselves one control at a time (HAL-1102), so a save changes one
+  key, and two windows that change two settings keep both. `watch` only
+  says something may have changed, so an adapter can sit on a file
+  watcher or a Tauri channel; the caller reads again. The port only
+  stores: `HostSettings` in `core/app` gives each setting its schema and
+  default.
+
 ## Additive after the freeze: optional hints
 
 _2026-11-10, decided by Liam on HAL-3756, built in HAL-1532 (HAL-186 step 4c, part 4)._

@@ -31,6 +31,9 @@ answers for the cases in `src/golden/profile-folders.json`. `sandboxJournalFolde
 `sandbox-journals` folder in the profile folder, where the sandbox keeps its crash journals.
 `pluginsFolder(profile)` and `pluginRecordsFolder(profile)` name the `plugins` and `plugin-records` folders
 in the profile folder, where the CLI and the Studio share one plugin host's plugins and their records.
+`settingsFolder(profile)` names the `settings` folder in the profile folder, where the CLI and the Studio
+keep the settings that belong to the computer Halonic runs on (the assistant, the sandbox default),
+never to a workspace.
 `withHomeAsTilde(platform, homeFolder, path)` writes a path inside the home folder with a leading `~`,
 for showing to a person.
 

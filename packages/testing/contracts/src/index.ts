@@ -61,6 +61,11 @@ export {
   type MakeFolderReader,
 } from "./folder-reader.ts";
 export { type HarnessContractHarness, harnessContract, type MakeHarness } from "./harness.ts";
+export {
+  type HostSettingsStoreHarness,
+  hostSettingsStoreContract,
+  type MakeHostSettingsStore,
+} from "./host-settings-store.ts";
 export { type HttpClientHarness, type HttpPeer, httpClientContract } from "./http-client.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
 export {
