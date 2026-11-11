@@ -9,7 +9,9 @@ it is built:
 
 - **On `main`**: the code is merged and tested. It protects you today only
   where the row names the `halonic` command-line tool (`apps/cli`) or code it
-  calls. Otherwise it is library code that no app uses yet.
+  calls. A row that names `apps/studio` or `apps/agent-host` is in an app that
+  doesn't ship yet; the rest is library code that no app uses yet (see
+  [section 1](#1-scope)).
 - **Lands with #n**: built in an open pull request, not merged yet. Until it
   merges, read it as **Planned**.
 - **Planned (HAL-n)**: decided, not built. Don't rely on it. The number is the
@@ -24,17 +26,27 @@ promise about a mitigation marked **Planned**.
 ## 1. Scope
 
 Halonic is a local-first app. The Studio and the `halonic` command-line tool
-are designed to run on your own machine, as you. The command-line tool
-(`apps/cli`) is part of 0.1, run from source. The Studio (`apps/studio`)
-doesn't ship yet. An **On `main`** item is a protection you have today only
-when the CLI uses it, such as the trust check in [4.1](#41-workspace-code-b1)
-and the run log in [4.2](#42-model-output-and-content-b2). The rest is tested library code that no
+are designed to run on your own machine, as you. On `main` there are three
+apps:
+
+- `apps/cli`, the `halonic` command. It is part of 0.1, run from source. It
+  validates, trusts, runs and tests workspaces, and checks the sandbox before a
+  run.
+- `apps/studio`, the desktop app. It is being built and doesn't ship yet. It
+  opens a folder as a workspace, but doesn't check workspace trust yet (see
+  [section 3](#3-trust-boundaries)).
+- `apps/agent-host`, the program that runs the sandbox for Studio. Studio
+  doesn't start it yet (see [4.6](#46-agents-in-a-sandbox-b8)).
+
+An **On `main`** item is a protection you have today only when the CLI uses it,
+such as the trust check in [4.1](#41-workspace-code-b1) and the run log in
+[4.2](#42-model-output-and-content-b2). The rest is tested code that no shipped
 app calls yet (for example `readToolListing` has no caller outside its tests).
 
 | Shape | Who can reach it | Status |
 | --- | --- | --- |
 | `halonic` on your machine | you, and programs running as you | Part of 0.1, run from source |
-| Studio on your machine | you, and programs running as you | Planned (phase 1, plan HAL-9). Not shipped |
+| Studio on your machine | you, and programs running as you | Being built (phase 1, plan HAL-9). Not shipped |
 | `halonic serve` on loopback | programs and web pages on your machine | Planned (phase 4, plan HAL-9) |
 | `serve` on a LAN, tunnel or VPS | everyone on that network, or the internet | Planned (phase 4). Treated as public |
 | Cloud deployments (Cloudflare, containers) | the whole internet | Planned (phase 4). See [section 6](#6-cloud-deployments-b7) |
