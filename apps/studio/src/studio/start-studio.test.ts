@@ -1,8 +1,17 @@
 // @vitest-environment jsdom
 
+import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
+import { secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
+import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { keyboardPlatform, type StartedStudio, startStudio, studioHost } from "./start-studio.ts";
+import {
+  keyboardPlatform,
+  openFolder,
+  type StartedStudio,
+  startStudio,
+  studioHost,
+} from "./start-studio.ts";
 
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
@@ -83,5 +92,62 @@ verifies("studio.entry", () => {
     await studio.stop();
 
     expect(element.childElementCount).toBe(0);
+  });
+});
+
+/** The desktop app's webview: Tauri's IPC, answering `pick_folder` and the keychain. */
+function desktopWebview(picked: string | null) {
+  const calls: { command: string; args: Record<string, unknown> | undefined }[] = [];
+  const invoke = async (command: string, args?: Record<string, unknown>) => {
+    calls.push({ command, args });
+    return command === "pick_folder" ? picked : null;
+  };
+  return { calls, page: { __TAURI_INTERNALS__: { invoke } } };
+}
+
+function memoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+  };
+}
+
+verifies("studio.open-folder", () => {
+  it("starts the desktop app on Welcome and opens the folder picked", async () => {
+    const webview = desktopWebview("/work/acme");
+    const storage = memoryStorage();
+    started = startStudio({
+      element,
+      window: webview.page,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage,
+    });
+    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+    expect(started.host).toBe("desktop-app");
+
+    element.querySelector("button")?.click();
+    await drawn(element);
+
+    expect(webview.calls.map((call) => call.command)).toContain("pick_folder");
+    const switcher = element.querySelector('button[aria-label="Workspace: acme"]');
+    expect(switcher?.textContent).toContain("/work/acme");
+    expect(new RecentWorkspaces(storage).list()).toEqual([
+      { location: "/work/acme", name: "acme" },
+    ]);
+  });
+
+  it("gives an opened workspace the keychain as its secrets, before its features' services", async () => {
+    const webview = desktopWebview(null);
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const opened = openFolder(shell, webview.page, "/work/acme");
+
+    await opened.workspace.services.get(secretsKey).get("openai");
+    expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
+    expect(webview.calls.at(-1)?.args).toEqual({ name: "openai" });
+    expect(opened.name).toBe("acme");
+    await opened.dispose();
   });
 });
