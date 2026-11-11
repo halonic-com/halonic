@@ -174,6 +174,13 @@ describe("startHostServer, with a caller that holds connections open", () => {
     return { port: Number(host.split(":")[1]), host };
   }
 
+  /**
+   * Errors that only say the host hung up. Closing a connection that still has
+   * unread data resets it, and Windows reports that where Linux and macOS often
+   * see a clean close first, so these count as hanging up on every OS.
+   */
+  const hangUpErrors = new Set(["ECONNRESET", "ECONNABORTED", "EPIPE"]);
+
   /** Opens a connection, writes `raw`, and resolves with all it got once the host hangs up. */
   function hungUp(port: number, raw: string): Promise<{ answer: string; afterMs: number }> {
     const startedAt = Date.now();
@@ -181,7 +188,10 @@ describe("startHostServer, with a caller that holds connections open", () => {
       const chunks: Buffer[] = [];
       const socket = connect(port, "127.0.0.1", () => socket.write(raw));
       socket.on("data", (chunk: Buffer) => chunks.push(chunk));
-      socket.on("error", reject);
+      socket.on("error", (error: NodeJS.ErrnoException) => {
+        // A hang-up still ends in "close" below; anything else fails the test.
+        if (!hangUpErrors.has(error.code ?? "")) reject(error);
+      });
       socket.on("close", () =>
         resolve({
           answer: Buffer.concat(chunks).toString("utf8"),
@@ -228,28 +238,25 @@ describe("startHostServer, with a caller that holds connections open", () => {
     expect(answer).toContain('{"late":true}');
   });
 
-  it.skipIf(process.platform === "win32")(
-    "[platform:win32] HAL-4750: the connection reset (read ECONNRESET) breaks the cap test: takes no more connections than its cap",
-    async () => {
-      const { port } = await startedWithLimits();
-      const held: Socket[] = [];
-      try {
-        for (let index = 0; index < limits.maxConnections; index++) {
-          held.push(
-            await new Promise<Socket>((resolve) => {
-              const socket = connect(port, "127.0.0.1", () => resolve(socket));
-            }),
-          );
-        }
-        // Give the server time to count the held connections before the next one.
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
-        expect(answer).toBe("");
-      } finally {
-        for (const socket of held) socket.destroy();
+  it("takes no more connections than its cap", async () => {
+    const { port } = await startedWithLimits();
+    const held: Socket[] = [];
+    try {
+      for (let index = 0; index < limits.maxConnections; index++) {
+        held.push(
+          await new Promise<Socket>((resolve) => {
+            const socket = connect(port, "127.0.0.1", () => resolve(socket));
+          }),
+        );
       }
-    },
-  );
+      // Give the server time to count the held connections before the next one.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const { answer } = await hungUp(port, "GET /v1/health HTTP/1.1\r\n\r\n");
+      expect(answer).toBe("");
+    } finally {
+      for (const socket of held) socket.destroy();
+    }
+  });
 });
 
 describe("launch token", () => {
