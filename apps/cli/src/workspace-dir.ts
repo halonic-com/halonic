@@ -56,6 +56,7 @@ export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
  * and opens its files.
  *
  * @throws NoWorkspaceError when the folder has no `workspace.yaml`, or doesn't exist.
+ * @throws KindedError `invalid_input` when the folder can't be read.
  */
 export async function openWorkspaceDir(
   input: CommandInput,
@@ -63,10 +64,30 @@ export async function openWorkspaceDir(
 ): Promise<OpenWorkspaceDir> {
   const dir = workspaceDir(input, context.cwd);
   const store = new FolderDefinitionStore(dir.root, dir.shown);
-  if ((await store.read(settingsPath)) === null) {
+  if ((await readSettings(store)) === null) {
     throw new NoWorkspaceError();
   }
   return { ...dir, store };
+}
+
+/**
+ * The text of `workspace.yaml`, or `null` when there is none. A folder the
+ * account may not read (`EACCES`, or `EPERM` on Windows) is the user's to
+ * fix, so it becomes an `invalid_input` error, not a crash.
+ */
+async function readSettings(store: DefinitionStore): Promise<string | null> {
+  try {
+    return await store.read(settingsPath);
+  } catch (error) {
+    const code = typeof error === "object" && error !== null ? Reflect.get(error, "code") : null;
+    if (code !== "EACCES" && code !== "EPERM") {
+      throw error;
+    }
+    throw new KindedError("invalid_input", plainText(workspaceMessages.folderUnreadable().phrase), {
+      fix: plainText(workspaceMessages.folderUnreadableFix().phrase),
+      cause: error,
+    });
+  }
 }
 
 /**

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { errorKindOf } from "@halonicjs/std";
@@ -65,6 +65,27 @@ verifies("cli.workspace-dir", () => {
       });
     }
   });
+
+  // Windows has no read permission bits, and root reads any folder.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] needs POSIX modes: stops with invalid_input when the folder can't be read",
+    async () => {
+      const acme = join(cwd, "acme");
+      makeWorkspace(acme);
+      chmodSync(acme, 0o000);
+      try {
+        const error = await openWorkspaceDir(inputWith("acme"), ioIn(cwd)).catch((e: unknown) => e);
+        expect(errorKindOf(error)).toBe("invalid_input");
+        expect(exitCodeFor(errorKindOf(error))).toBe(exitCode.usage);
+        expect(error).toMatchObject({
+          message: "the folder can't be read.",
+          fix: "Check the folder's permissions.",
+        });
+      } finally {
+        chmodSync(acme, 0o755);
+      }
+    },
+  );
 
   it("never uses the workspace of a parent folder", async () => {
     makeWorkspace(cwd);

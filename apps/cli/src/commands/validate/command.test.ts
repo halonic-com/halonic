@@ -225,3 +225,25 @@ verifies("workspace.unreadable-file", () => {
     },
   );
 });
+
+verifies("cli.workspace-dir", () => {
+  // Windows has no read permission bits, and root reads any folder.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] needs POSIX modes: names a workspace folder that can't be read, with exit 2",
+    async () => {
+      chmodSync(acme, 0o000);
+      try {
+        const { code, io } = await validateIn(acme);
+
+        expect(code).toBe(exitCode.usage);
+        expect(io.stdout).toEqual([]);
+        expect(io.stderr.slice(0, 2)).toEqual([
+          "✕ Couldn't check acme: the folder can't be read.",
+          "  Check the folder's permissions.",
+        ]);
+      } finally {
+        chmodSync(acme, 0o755);
+      }
+    },
+  );
+});
