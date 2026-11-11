@@ -2,6 +2,7 @@
 
 - Approval: a change under `.github/` and a new skip need Liam's review (docs/guides/checks.md, requirement guard); Liam approves this note in review of the fenced attack PR on [HAL-983](/HAL/issues/HAL-983)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hvBH/En3iWg3FFFzGAmRSIa3C4AhPLcrk+156F3owLMV1mFO7ikEqqonF/AgFkGEy5nDII5XKJkCXeZy4YDTDw==
 - Task: HAL-983
 
 ## What changes
