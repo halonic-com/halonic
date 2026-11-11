@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-188, HAL-3011, HAL-3628, HAL-4777
+- Source: HAL-188, HAL-3011, HAL-3628, HAL-4777, HAL-4903
 
-The format shall tell whether a program start touches a skill's `scripts/` folder (a `skills/<name>/scripts` part, in either slash style and any letter case) in the folder it starts in or a path it names, as `format.program-start-paths` lists them (the program, each argument and `env` value and the pieces in them, and a `python -m` module's folder path), as written, resolved against the folder it starts in or through a symbolic link, so every adapter that starts a program refuses the same starts.
+The format shall tell whether a program start touches a skill's `scripts/` folder (a `skills/<name>/scripts` part, in either slash style and any letter case) in the folder it starts in or a path it names, as `format.program-start-paths` lists them (the program, each argument and `env` value and the pieces in them, with or without quotes, and a `python -m` module's folder path, `-m` alone or among other short flags), as written, resolved against the folder it starts in or through a symbolic link, so every adapter that starts a program refuses the same starts.
 
 ## Examples
 
@@ -24,5 +24,11 @@ The format shall tell whether a program start touches a skill's `scripts/` folde
   when it is checked,
   then it touches a skill's scripts.
 - Given `node` with the `env` value `NODE_OPTIONS=--require skills/mail/scripts/send.js`,
+  when it is checked,
+  then it touches a skill's scripts.
+- Given `python -Im skills.mail.scripts.send`,
+  when it is checked,
+  then it touches a skill's scripts.
+- Given `node` with the `env` value `NODE_OPTIONS=--require "skills/mail/scripts/send.js"`,
   when it is checked,
   then it touches a skill's scripts.

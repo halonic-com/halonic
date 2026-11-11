@@ -155,7 +155,9 @@ function launched(child: ChildProcess): Promise<void> {
  */
 export const srtRunner: Runner = {
   async run(request) {
-    // Checked here too, not only in the session, so no caller of the runner gets round it.
+    // Checked here too, not only in the session, so no caller of the runner gets round it. The
+    // session reads the profile's variables; `programEnv` also holds the safe host `PATH`, which isn't
+    // workspace content, so it isn't read here.
     if (await touchesSkillScripts(request, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }

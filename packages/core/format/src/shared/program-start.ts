@@ -55,8 +55,10 @@ export function pathsNamedBy({ program, args, env = {} }: ProgramStart): NamedPa
  * piece between `=`, `:`, `;`, `@` and spaces (as in
  * `--config=tools/mail.json`, `--define=KEY=tools/x`, `PATH=tools/bin:/usr/bin`,
  * `file:tools/x` or `@tools/args.txt`), the whole text after each `=`, `:`
- * and `@` (so `--file=my link` still names `my link`), and each piece
- * without its short flag, as in `-ctools/mail.json`.
+ * and `@` (so `--file=my link` still names `my link`), the whole text inside
+ * each pair of quotes (as in `--require "my tools/x.js"`), each piece without
+ * its quotes (HAL-4903), and each piece without its short flag, as in
+ * `-ctools/mail.json`.
  */
 export function pathsIn(text: string): string[] {
   const pieces = [
@@ -64,8 +66,10 @@ export function pathsIn(text: string): string[] {
     ...text.split(/[;\s]+/),
     ...text.split(/[=:;@\s]+/),
     ...textsAfter(/[=:@]/g, text),
+    ...textsInQuotes(text),
   ];
-  const withoutFlags = pieces.flatMap((piece) =>
+  const withoutQuotes = pieces.flatMap((piece) => [piece, piece.replaceAll(/["']/g, "")]);
+  const withoutFlags = withoutQuotes.flatMap((piece) =>
     /^-[^-]./.test(piece) ? [piece, piece.slice(2)] : [piece],
   );
   return [...new Set(withoutFlags.filter((piece) => piece !== ""))];
@@ -76,9 +80,15 @@ function textsAfter(separator: RegExp, text: string): string[] {
   return [...text.matchAll(separator)].map((match) => text.slice(match.index + 1));
 }
 
+/** The text inside each pair of `"` or `'`: `--require "my x.js"` gives `my x.js`. */
+function textsInQuotes(text: string): string[] {
+  return [...text.matchAll(/"([^"]*)"|'([^']*)'/g)].map((match) => match[1] ?? match[2] ?? "");
+}
+
 /**
  * The folder path of a module that `python -m` runs, from the argument at
- * `index`: `-m tools.mail` or `-mtools.mail` reads `tools/mail`. Empty when
+ * `index`: `-m tools.mail`, `-mtools.mail` and, with `-m` among other short
+ * flags, `-Im tools.mail` or `-Imtools.mail` read `tools/mail`. Empty when
  * that argument names no module.
  */
 export function moduleIn(args: readonly string[], index: number): string[] {
@@ -88,6 +98,19 @@ export function moduleIn(args: readonly string[], index: number): string[] {
 
 /** The module an argument names after `-m`, or with `-m` in front of it; otherwise empty. */
 function moduleName(before: string | undefined, arg: string): string {
-  if (before === "-m") return arg;
-  return arg.startsWith("-m") ? arg.slice(2) : "";
+  if (before !== undefined && textAfterShortM(before) === "") return arg;
+  return textAfterShortM(arg) ?? "";
+}
+
+/**
+ * The text after the first `m` in a group of short flags, as Python reads
+ * one: `-Imtools.mail` gives `tools.mail`, and `-Im` gives an empty text, as
+ * the module is the next argument. Undefined when the argument isn't a group
+ * of short flags or has no `m`. A flag that takes a value, as in `-Xdev`, may
+ * read a stray module; that only makes a guard stricter.
+ */
+function textAfterShortM(arg: string): string | undefined {
+  if (!/^-[^-]/.test(arg)) return undefined;
+  const at = arg.indexOf("m", 1);
+  return at === -1 ? undefined : arg.slice(at + 1);
 }

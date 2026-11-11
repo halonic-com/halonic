@@ -91,9 +91,9 @@ class HostSession implements SandboxSession {
     if (!isInsideOrSame(cwd, resolve(this.profile.workingFolder))) {
       throw new Error(`the program must start inside the working folder, not in ${cwd}`);
     }
-    if (
-      await touchesSkillScripts({ cwd, program: command.program, args: command.args }, nodePaths)
-    ) {
+    // The profile's variables, which Halonic sets, are read too (HAL-4903).
+    const start = { cwd, program: command.program, args: command.args, env: this.profile.env };
+    if (await touchesSkillScripts(start, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
     // A bare name is found on the program's own PATH, never in its folder.

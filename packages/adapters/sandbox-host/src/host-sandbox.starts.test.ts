@@ -36,14 +36,14 @@ beforeAll(async () => {
 });
 afterAll(() => rm(work, { recursive: true, force: true }));
 
-function profile(): SandboxProfile {
+function profile(env: Record<string, string> = {}): SandboxProfile {
   return {
     workingFolder: work,
     tempFolder: work,
     settingsFolder: null,
     readOnlyPaths: [],
     deniedPaths: [],
-    env: { PATH: work },
+    env: { PATH: work, ...env },
     network: { bridge: null, allowedSites: [] },
     timeLimitMs: 30_000,
   };
@@ -78,6 +78,19 @@ verifies("sandbox-host.start", () => {
       },
     );
 
+    it.each([
+      ["a profile variable", { NODE_OPTIONS: "--require skills/mail/scripts/send" }],
+      ["a quoted profile variable", { NODE_OPTIONS: '--require "skills/mail/scripts/send"' }],
+      ["a profile PATH", { PATH: join(work, "skills", "mail", "scripts") }],
+    ])("refuses a start when %s names a skill's scripts/ folder (HAL-4903)", async (_, env) => {
+      const session = await createHostSandbox().open(profile(env));
+      await expect(session.start({ program: "node", args: [] })).rejects.toThrow(
+        /skill's scripts\/ folder/,
+      );
+      expect(spawned).toEqual([]);
+      await session.close();
+    });
+
     it("refuses a script in the starter itself too, so no caller gets round the session's check", async () => {
       const send = join(work, "skills", "mail", "scripts", "send");
       for (const start of [
@@ -89,6 +102,10 @@ verifies("sandbox-host.start", () => {
           /skill's scripts\/ folder/,
         );
       }
+      const env = { NODE_OPTIONS: `--require ${send}` };
+      await expect(
+        startHostProgram({ path: "/usr/bin/node", args: [], cwd: work, env }),
+      ).rejects.toThrow(/skill's scripts\/ folder/);
       expect(spawned).toEqual([]);
     });
   });

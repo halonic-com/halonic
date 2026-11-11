@@ -340,9 +340,9 @@ export class SrtSession implements SandboxSession {
     if (!isInside(resolve(this.profile.workingFolder), cwd)) {
       throw new Error(`the program must start inside the working folder, not in ${cwd}`);
     }
-    if (
-      await touchesSkillScripts({ cwd, program: command.program, args: command.args }, nodePaths)
-    ) {
+    // The profile's variables, which Halonic sets, are read too; the safe host `PATH` isn't (HAL-4903).
+    const start = { cwd, program: command.program, args: command.args, env: this.profile.env };
+    if (await touchesSkillScripts(start, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
     const program = await this.#runner.run({

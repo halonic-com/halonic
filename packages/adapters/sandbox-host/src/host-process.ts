@@ -54,13 +54,12 @@ const windows = process.platform === "win32";
  * Starts `start.path` with no shell. A program that can't start ends at
  * once with {@link cantStartCode}.
  *
- * @throws when the program, an argument or the folder is under a skill's `scripts/` folder; nothing starts
+ * @throws when the program, an argument, an `env` value or the folder is under a skill's `scripts/` folder; nothing starts
  */
 export async function startHostProgram(start: HostStart): Promise<HostProgram> {
   // Checked here too, not only in the session, so no caller gets round it.
-  if (
-    await touchesSkillScripts({ cwd: start.cwd, program: start.path, args: start.args }, nodePaths)
-  ) {
+  const named = { cwd: start.cwd, program: start.path, args: start.args, env: start.env };
+  if (await touchesSkillScripts(named, nodePaths)) {
     throw new Error(skillScriptsRefusal);
   }
   let child: ChildProcess | null = null;

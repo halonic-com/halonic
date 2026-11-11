@@ -336,6 +336,21 @@ verifies("sandbox-srt.session", () => {
       },
     );
 
+    it.each([
+      ["a profile variable", { NODE_OPTIONS: "--require skills/mail/scripts/send.js" }],
+      ["a quoted profile variable", { NODE_OPTIONS: '--require "skills/mail/scripts/send.js"' }],
+      ["a profile PATH", { PATH: "/usr/bin:library/skills/mail/scripts" }],
+    ])("refuses a start when %s names a skill's scripts/ folder (HAL-4903)", async (_, env) => {
+      const { runner, runs } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile({ env }));
+      const before = runs.length;
+      await expect(session.start({ program: "node", args: [] })).rejects.toThrow(
+        /skill's scripts\/ folder/,
+      );
+      expect(runs).toHaveLength(before);
+      await session.close();
+    });
+
     it("throws once the session is closed", async () => {
       const { runner } = fakeRunner();
       const session = await new SrtSandbox(linux, runner).open(profile());

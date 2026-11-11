@@ -87,6 +87,22 @@ verifies("format.skill-scripts-folder", () => {
     });
 
     it.each([
+      ["a module after -m among short flags", start("python", ["-Im", "skills.mail.scripts.send"])],
+      [
+        "a module written with -m among short flags",
+        start("python", ["-Imskills.mail.scripts.send"]),
+      ],
+      [
+        "a quoted env value",
+        { ...start("node"), env: { NODE_OPTIONS: '--require "skills/mail/scripts/send.js"' } },
+      ],
+      ["a quoted argument", start("node", ["--require='skills/mail/scripts/send.js'"])],
+      ["a quoted link with a space in its name", start("node", ['--file="my link"'])],
+    ])("is true for %s (HAL-4903)", async (_, bad) => {
+      expect(await touchesSkillScripts(bad, paths)).toBe(true);
+    });
+
+    it.each([
       ["a bare name", start("scripts")],
       ["a scripts folder outside a skill", start("./tools/scripts/run.sh")],
       ["a skill's own file", start("skills/x/SKILL.md")],
@@ -94,6 +110,8 @@ verifies("format.skill-scripts-folder", () => {
       ["an option with a harmless value", start("node", ["--file=scripts/build.js"])],
       ["an option without a value", start("node", ["--verbose", "--name="])],
       ["a harmless module", start("python", ["-m", "tools.scripts.send"])],
+      ["a harmless module among short flags", start("python", ["-Im", "tools.scripts.send"])],
+      ["a harmless quoted value", { ...start("node"), env: { NODE_OPTIONS: '--require "x.js"' } }],
       ["a harmless env value", { ...start("node"), env: { NODE_PATH: "tools/lib:/usr/lib" } }],
       ["an env name alone", { ...start("node"), env: { "skills/mail/scripts/send.js": "1" } }],
     ])("is false for %s", async (_, fine) => {
