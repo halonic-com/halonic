@@ -91,7 +91,7 @@ Var OldMainBinaryName
 ; and nothing else moves.
 !define SANDBOX_STEP
 ; What the installer says it uses. CI fails when the real size is off by a quarter.
-!define SIZE_MB 180
+!define SIZE_MB 130
 Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
