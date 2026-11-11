@@ -80,6 +80,16 @@ its `collections` when the executor has a record store, and a `delegate_` tool p
 collections come from the run's kept definitions (`RunDefinitions.collections`). A chat turn gets
 none of them.
 
+A run's model call is offered a connector's tools only as its kept file allows (requirement
+`engine.run-connector-allow`): the tools its `allow` list names, under the name its server lists
+them under, or every tool the server lists when the file has no `allow`. A connector whose file
+isn't in the kept definitions offers none, and a call to a tool that wasn't offered reaches no
+connector.
+
+A step that picks data (`gets`) and has no `input` sends only the `## Data` section, not the run's
+input before it. `task` states and `parallel` branches both build their prompt through
+`stepPrompt` from `@halonicjs/workflow` (requirement `workflow.state-input`).
+
 An agent with `collections` gets `find_<id>`, `add_<id>` and `update_<id>` for each collection its
 hub can see (`recordTools`). Values are checked against the collection's fields and brought into
 their form (`engine.record-values`), computed fields are worked out from their formula and never

@@ -59,6 +59,11 @@ export async function runExample(): Promise<{
   of its own, so a new kind with a place is loaded without a change here.
 - **Issues** are format's `FileProblem` plus `file`, the workspace-relative path. A file with an
   error is left out of `files`; its warnings, and those of the files that parsed, are in `issues`.
+- **A file the account may not read** (`EACCES`, or `EPERM` on Windows) makes `loadWorkspace` throw
+  an `invalid_input` error that names the file by its workspace path and says to check its
+  permissions or move it out of the workspace (`workspace.unreadable-file`). A folder store's
+  `version()` reads every file, so when it fails that way the loader reads each listed file to find
+  the one to name; any other error from the source reaches the caller as it is.
 - **Ignored files** are those no kind places, such as a README or a file in an older layout. The
   reserved `.halonic/` folders are skipped without being listed.
 - **Checks across files** run after every file is parsed. They report, with the old loader's
