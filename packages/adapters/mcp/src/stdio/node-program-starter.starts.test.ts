@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join } from "node:path";
 import { skillScriptsRefusal } from "@halonicjs/format";
@@ -134,8 +134,11 @@ verifies("mcp.program-starter", () => {
       const launch = await guarded(node("process.exit(0)"));
       await mkdir(join(folder, "node_modules"));
       await symlink(join(folder, "files/agents/coder"), join(folder, "node_modules/mail-mcp"));
+      // The check lists node_modules on the real path, so on Windows the
+      // message names the long form of a short temp folder such as RUNNER~1.
+      const realFolder = await realpath(folder);
       await expect(nodeProgramStarter.start(launch)).rejects.toThrow(
-        "loads '" + join(folder, "node_modules/mail-mcp") + "'",
+        "loads '" + join(realFolder, "node_modules/mail-mcp") + "'",
       );
     });
 
