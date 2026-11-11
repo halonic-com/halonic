@@ -222,8 +222,8 @@ verifies("cli.run-harness", () => {
         "Update Claude Code, then run again.",
       ],
       [
-        { status: "failed", error: "it timed out" },
-        "Halonic found Claude Code but couldn't ask its version: it timed out. Nothing ran.",
+        { status: "failed", error: "`claude --version` didn't print a version." },
+        "Halonic found Claude Code but couldn't ask its version: `claude --version` didn't print a version. Nothing ran.",
         "Check that Claude Code starts in a terminal, then run again.",
       ],
     ] as const)("refuses a program that can't start: %j", async (detection, reason, fix) => {

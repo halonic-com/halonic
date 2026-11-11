@@ -106,9 +106,12 @@ export const runMessages = defineMessages("run", {
     phrase`${harness} ${version} isn't supported. Halonic needs ${oldestSupported(supported)} or newer. ${nothingRan}`,
   /** Its fix. */
   updateHarness: (harness: string) => phrase`Update ${harness}, then run again.`,
-  /** The reason when asking the `--harness` program for its version failed; `reason` is the harness's own. */
+  /**
+   * The reason when asking the `--harness` program for its version failed;
+   * `reason` is the harness's own sentence and ends with its full stop.
+   */
   harnessVersionFailed: (harness: string, reason: string) =>
-    phrase`Halonic found ${harness} but couldn't ask its version: ${reason}. ${nothingRan}`,
+    phrase`Halonic found ${harness} but couldn't ask its version: ${reason} ${nothingRan}`,
   /** Its fix. */
   checkHarness: (harness: string) =>
     phrase`Check that ${harness} starts in a terminal, then run again.`,
