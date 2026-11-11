@@ -2,7 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   plainGit,
   repositoryWith,
@@ -25,7 +25,7 @@ async function repoWith(files: Record<string, string>) {
   const worktrees = join(await scratch.folder(), "worktrees");
   const runner = await testRunner(scratch);
   const vcs = new GitVcs(folder, { runner, author: testAuthor, worktrees });
-  return { vcs, folder, files: new FolderDefinitionStore(folder) };
+  return { vcs, folder, runner, files: new FolderDefinitionStore(folder) };
 }
 
 /** The files Halonic leaves in `.git` while it works: none may stay. */
@@ -69,6 +69,19 @@ verifies("git.commit-version", () => {
         vcs.commitVersion({ message: "Create version", include: [], exclude: [] }),
       ).rejects.toThrow(RangeError);
       expect(await vcs.log(5)).toEqual(before);
+    });
+
+    it("refuses an unsafe path in include or exclude before running git at all", async () => {
+      const { vcs, runner } = await repoWith({ "a.yaml": "1\n" });
+      const run = vi.spyOn(runner, "run");
+      const message = "Create version";
+      await expect(
+        vcs.commitVersion({ message, include: [".git/config"], exclude: [] }),
+      ).rejects.toThrow(RangeError);
+      await expect(vcs.commitVersion({ message, exclude: ["../outside.yaml"] })).rejects.toThrow(
+        RangeError,
+      );
+      expect(run).not.toHaveBeenCalled();
     });
   });
 });

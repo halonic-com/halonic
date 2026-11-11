@@ -230,7 +230,8 @@ export class GitVcs implements Vcs {
   }
 
   async commitVersion(options: VcsCommitVersionOptions): Promise<string> {
-    return commitVersionOf(await this.#repository(), options, this.#authorConfig());
+    const paths = [...(options.include ?? []), ...options.exclude];
+    return commitVersionOf(await this.#checkedRepository(paths), options, this.#authorConfig());
   }
 
   async commitWorktreeTo(
