@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-First release of Halonic.
+First release of Halonic. From the command line you can validate a workspace, run its workflows, test them with the test model, and answer a run that is waiting for you.
 
 ### Command line
 
@@ -11,11 +11,5 @@ First release of Halonic.
 - `halonic run` checks that the sandbox is ready before it starts. If it is not ready, the message says why.
 - `halonic run` prints each step's line when the step ends, names the model alias on the live line, and shows retries with `--debug`.
 - Ctrl C tells you when it could not cancel the run.
-- `halonic trust` lists the trusted workspaces from the real folder.
+- `halonic trust` lists the workspaces you trusted, also on Windows.
 - `halonic validate` names a workspace file it cannot read.
-
-### Studio app
-
-- Try it: run a workflow from the app straight away.
-- Plugins: add, review and manage plugins in the app.
-- A saved file now shows that it is live.
