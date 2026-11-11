@@ -3,6 +3,8 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
+  type RefCallback,
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -20,8 +22,8 @@ export interface TooltipTriggerProps {
   readonly "aria-keyshortcuts"?: string;
 }
 
-/** The props of `Tooltip`. */
-export interface TooltipProps {
+/** What a tooltip says and when, for `Tooltip` and `useTooltip`. */
+export interface TooltipOptions {
   /** A few words, never anything you click: "New tab", "Finish getting updates first." */
   readonly text: string;
   /** The control's shortcut, shown after the words: `["Ctrl", "T"]`. */
@@ -31,8 +33,42 @@ export interface TooltipProps {
    * then isn't described by it too, which a screen reader would read twice.
    */
   readonly isName?: boolean;
+  /**
+   * Asked each time the tooltip would show; it stays hidden when this says no. For a tooltip that
+   * only helps sometimes, such as the full title of a title that may be cut with "…".
+   */
+  readonly showIf?: () => boolean;
+}
+
+/** The props of `Tooltip`. */
+export interface TooltipProps extends TooltipOptions {
   /** The control, given the props that link it to the tooltip. */
   readonly children: (props: TooltipTriggerProps) => ReactNode;
+}
+
+/**
+ * What `useTooltip` gives the element the tooltip belongs to: the ref it's placed by, and the
+ * pointer, focus and key handlers that show and hide it. A handler the element has of its own
+ * must call the matching one here too.
+ */
+export interface TooltipAnchorProps {
+  readonly ref: RefCallback<HTMLElement>;
+  readonly onPointerEnter: (event: PointerEvent) => void;
+  readonly onPointerDown: () => void;
+  readonly onPointerLeave: () => void;
+  readonly onFocus: (event: FocusEvent) => void;
+  readonly onBlur: () => void;
+  readonly onKeyDown: (event: KeyboardEvent) => void;
+}
+
+/** The parts of a tooltip, from `useTooltip`. */
+export interface TooltipParts {
+  /** For the element the tooltip is placed under and that hears the pointer, focus and keys. */
+  readonly anchor: TooltipAnchorProps;
+  /** For the control the tooltip names or describes; often the same element as `anchor`. */
+  readonly trigger: TooltipTriggerProps;
+  /** The tooltip itself, rendered anywhere beside its control. */
+  readonly popover: ReactNode;
 }
 
 /** The tooltip sits this far below (or above) its control. */
@@ -59,25 +95,53 @@ export const tooltipClasses = [
  * specs 0.2). An external keyboard's focus still shows it.
  *
  * The control is wrapped, so a control that gets no pointer or focus events of its own still gets
- * a tooltip.
+ * a tooltip. Where a wrapper would break the layout round the control, as in a row of tabs, use
+ * `useTooltip` on the control itself.
  *
  * @example
  * <Tooltip text="New tab" keys={["Ctrl", "T"]} isName>
  *   {(props) => <Button {...props} variant="ghost" icon={<PlusIcon />} label="New tab" />}
  * </Tooltip>
  */
-export function Tooltip({ text, keys, isName = false, children }: TooltipProps) {
+export function Tooltip({ children, ...options }: TooltipProps) {
+  const { anchor, trigger, popover } = useTooltip(options);
+  return (
+    <>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: it only hears its control's pointer, focus and keys; the control is what you use */}
+      <span className="inline-flex" {...anchor}>
+        {children(trigger)}
+      </span>
+      {popover}
+    </>
+  );
+}
+
+/**
+ * The tooltip of `Tooltip`, without the wrapper: spread `anchor` and `trigger` on the control and
+ * render `popover` beside it. It behaves exactly as `Tooltip` does.
+ *
+ * @example
+ * const { anchor, trigger, popover } = useTooltip({ text: "Workflows / Support reply" });
+ * return <><div role="tab" {...anchor} {...trigger}>Support reply</div>{popover}</>;
+ */
+export function useTooltip({ text, keys, isName = false, showIf }: TooltipOptions): TooltipParts {
   const id = useId();
-  const anchor = useRef<HTMLSpanElement>(null);
+  const anchor = useRef<HTMLElement | null>(null);
   const tooltip = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shown = useRef(false);
   /** The control was pressed and the pointer hasn't left it since (component specs 14, C27). */
   const pressed = useRef(false);
+  const setAnchor = useCallback((element: HTMLElement | null) => {
+    anchor.current = element;
+  }, []);
 
   function show(): void {
     const element = tooltip.current;
     if (element === null || anchor.current === null || shown.current || pressed.current) {
+      return;
+    }
+    if (showIf !== undefined && !showIf()) {
       return;
     }
     element.showPopover();
@@ -96,63 +160,52 @@ export function Tooltip({ text, keys, isName = false, children }: TooltipProps) 
   // Don't leave a timer behind, or a tooltip open on a control that's gone.
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  function onPointerEnter(event: PointerEvent): void {
-    if (event.pointerType === "touch") {
-      return;
-    }
-    clearTimeout(timer.current);
-    timer.current = setTimeout(show, TOOLTIP_DELAY_MS);
-  }
-
-  function onPointerDown(): void {
-    hide();
-    pressed.current = true;
-  }
-
-  function onPointerLeave(): void {
-    hide();
-    pressed.current = false;
-  }
-
-  function onFocus(event: FocusEvent): void {
-    // Keyboard focus only: a click or a tap focuses the control too, without the ring.
-    if (event.target.matches(":focus-visible")) {
-      show();
-    }
-  }
-
-  function onKeyDown(event: KeyboardEvent): void {
-    // Escape closes the topmost thing, and only that (specs 23 A7): the tooltip, not a dialog.
-    if (event.key === "Escape" && shown.current) {
-      event.preventDefault();
-      event.stopPropagation();
+  const anchorProps: TooltipAnchorProps = {
+    ref: setAnchor,
+    onPointerEnter(event) {
+      if (event.pointerType === "touch") {
+        return;
+      }
+      clearTimeout(timer.current);
+      timer.current = setTimeout(show, TOOLTIP_DELAY_MS);
+    },
+    onPointerDown() {
       hide();
-    }
-  }
+      pressed.current = true;
+    },
+    onPointerLeave() {
+      hide();
+      pressed.current = false;
+    },
+    onFocus(event) {
+      // Keyboard focus only: a click or a tap focuses the control too, without the ring.
+      if (event.target.matches(":focus-visible")) {
+        show();
+      }
+    },
+    onBlur: hide,
+    onKeyDown(event) {
+      // Escape closes the topmost thing, and only that (specs 23 A7): the tooltip, not a dialog.
+      if (event.key === "Escape" && shown.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        hide();
+      }
+    },
+  };
 
-  return (
-    <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: it only hears its control's pointer, focus and keys; the control is what you use */}
-      <span
-        ref={anchor}
-        className="inline-flex"
-        onPointerEnter={onPointerEnter}
-        onPointerDown={onPointerDown}
-        onPointerLeave={onPointerLeave}
-        onFocus={onFocus}
-        onBlur={hide}
-        onKeyDown={onKeyDown}
-      >
-        {children({
-          ...(isName ? {} : { "aria-describedby": id }),
-          ...(keys === undefined ? {} : { "aria-keyshortcuts": keyShortcutsLabel(keys) }),
-        })}
-      </span>
+  return {
+    anchor: anchorProps,
+    trigger: {
+      ...(isName ? {} : { "aria-describedby": id }),
+      ...(keys === undefined ? {} : { "aria-keyshortcuts": keyShortcutsLabel(keys) }),
+    },
+    popover: (
       <div id={id} ref={tooltip} popover="manual" role="tooltip" className={tooltipClasses}>
         <TooltipBody text={text} keys={keys} />
       </div>
-    </>
-  );
+    ),
+  };
 }
 
 /**

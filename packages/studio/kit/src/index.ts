@@ -242,8 +242,12 @@ export {
 export {
   TOOLTIP_DELAY_MS,
   Tooltip,
+  type TooltipAnchorProps,
+  type TooltipOptions,
+  type TooltipParts,
   type TooltipProps,
   type TooltipTriggerProps,
+  useTooltip,
 } from "./tooltip/tooltip.tsx";
 export { ViewOnlyLine, type ViewOnlyLineProps } from "./view-only-line/view-only-line.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Button } from "../button/button.tsx";
 import { fakePopover, isOpen, restorePopover } from "../test/popover.ts";
 import { render, unmountAll } from "../test/render.tsx";
-import { TOOLTIP_DELAY_MS, Tooltip } from "./tooltip.tsx";
+import { TOOLTIP_DELAY_MS, Tooltip, useTooltip } from "./tooltip.tsx";
 
 beforeEach(() => {
   fakePopover();
@@ -34,7 +34,7 @@ function renderTooltip(keys?: readonly string[]) {
  * Focuses the control as the keyboard would. jsdom guesses `:focus-visible` from the events it has
  * seen, so a bare `focus()` matches it only some of the time; this says which focus it was.
  */
-function focus(button: HTMLButtonElement, by: "keyboard" | "pointer" = "keyboard") {
+function focus(button: HTMLElement, by: "keyboard" | "pointer" = "keyboard") {
   const matches = button.matches.bind(button);
   vi.spyOn(button, "matches").mockImplementation((selector) =>
     selector === ":focus-visible" ? by === "keyboard" : matches(selector),
@@ -200,5 +200,59 @@ verifies("kit.tooltip", () => {
     expect(container.querySelector("button")?.getAttribute("aria-describedby")).toBe(
       `why ${tooltip.id}`,
     );
+  });
+});
+
+/** A tab with the full path as its tooltip, from `useTooltip` and with no wrapper. */
+function TabWithTooltip({ showIf }: { readonly showIf?: () => boolean }) {
+  const { anchor, trigger, popover } = useTooltip({
+    text: "Workflows / Support reply",
+    ...(showIf === undefined ? {} : { showIf }),
+  });
+  return (
+    <div role="tablist">
+      <div role="tab" aria-selected tabIndex={0} {...anchor} {...trigger}>
+        Support reply
+      </div>
+      {popover}
+    </div>
+  );
+}
+
+verifies("kit.tooltip-parts", () => {
+  it("puts the tooltip on the control itself, with no wrapper", () => {
+    const { container } = render(<TabWithTooltip />);
+    const tab = container.querySelector("[role=tab]") as HTMLElement;
+    const tooltip = container.querySelector("[role=tooltip]") as HTMLElement;
+    expect(tab.parentElement?.getAttribute("role")).toBe("tablist");
+    expect(tab.getAttribute("aria-describedby")).toBe(tooltip.id);
+    pointer(tab, "pointerover");
+    act(() => vi.advanceTimersByTime(TOOLTIP_DELAY_MS));
+    expect(isOpen(tooltip)).toBe(true);
+    expect(tooltip.textContent).toBe("Workflows / Support reply");
+    pointer(tab, "pointerout");
+    expect(isOpen(tooltip)).toBe(false);
+  });
+
+  it("shows only while showIf says yes, asked each time it would show", () => {
+    let cut = false;
+    const { container } = render(<TabWithTooltip showIf={() => cut} />);
+    const tab = container.querySelector("[role=tab]") as HTMLElement;
+    const tooltip = container.querySelector("[role=tooltip]") as HTMLElement;
+    pointer(tab, "pointerover");
+    act(() => vi.advanceTimersByTime(TOOLTIP_DELAY_MS));
+    expect(isOpen(tooltip)).toBe(false);
+    pointer(tab, "pointerout");
+    cut = true;
+    pointer(tab, "pointerover");
+    act(() => vi.advanceTimersByTime(TOOLTIP_DELAY_MS));
+    expect(isOpen(tooltip)).toBe(true);
+  });
+
+  it("asks showIf on keyboard focus too", () => {
+    const { container } = render(<TabWithTooltip showIf={() => false} />);
+    const tab = container.querySelector("[role=tab]") as HTMLButtonElement;
+    focus(tab);
+    expect(isOpen(container.querySelector("[role=tooltip]") as HTMLElement)).toBe(false);
   });
 });

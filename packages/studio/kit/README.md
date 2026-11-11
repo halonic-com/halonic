@@ -1446,6 +1446,7 @@ Spread the props `children` gets on the control: they link it to the tooltip.
 | `text`     | A few words. Never anything you click                                            |
 | `keys`     | The control's shortcut, shown after the words and set as its `aria-keyshortcuts` |
 | `isName`   | The text is the control's name, as on an icon button: it doesn't describe it too |
+| `showIf`   | Asked each time it would show; it stays hidden when this says no                 |
 | `children` | Renders the control; a kit `Button` takes every prop it gets                     |
 
 | State    | What shows                                                                                 |
@@ -1466,6 +1467,25 @@ tell by itself, and a screen reader would otherwise read the name twice. The sho
 The control is wrapped in an `inline-flex` span, which gets the pointer and focus events. Where a
 Button has to stretch as a flex or grid child, give it a Tooltip only if the span may stay its
 size; icon buttons are fine.
+
+**Without the wrapper:** where a span round the control would break the layout, as in a row of
+tabs that shrink together, `useTooltip` gives the same tooltip as parts. Spread `anchor` (the ref
+and the pointer, focus and key handlers) and `trigger` on the control and render `popover` beside
+it. A handler the control has of its own calls the matching one in `anchor` too.
+
+```tsx
+const { anchor, trigger, popover } = useTooltip({ text: "Workflows / Support reply" });
+return (
+  <>
+    <div role="tab" {...anchor} {...trigger}>Support reply</div>
+    {popover}
+  </>
+);
+```
+
+**Only sometimes:** `showIf` is asked each time the tooltip would show, so a title's tooltip can
+show only while the title is cut with "…":
+`showIf: () => title.current !== null && title.current.scrollWidth > title.current.clientWidth`.
 
 **On touch** it never shows, not even on a long press, so what it says must be reachable another
 way: the icon button's name, a hint under a disabled control. Focus from an external keyboard still
