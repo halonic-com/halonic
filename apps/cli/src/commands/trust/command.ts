@@ -2,10 +2,11 @@ import { realpath } from "node:fs/promises";
 import { resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { TrustCheck } from "@halonicjs/app";
+import { parseFile } from "@halonicjs/format";
 import type { Clock, TrustRecord, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { filesOf, loadWorkspace, settingsPath } from "@halonicjs/workspace";
+import { settingsPath } from "@halonicjs/workspace";
 import {
   type CliCommand,
   type CommandContext,
@@ -285,14 +286,19 @@ async function removeTrust(
   };
 }
 
-/** The name in the workspace's `workspace.yaml`, or `fallback` when there's none to read. */
+/**
+ * The name in the workspace's `workspace.yaml`, or `fallback` when there's
+ * none to read. Only that file is read, so a broken file or folder elsewhere
+ * in one workspace can't stop `--list` from showing the others.
+ */
 async function nameAt(location: string, fallback: string): Promise<string> {
   const store = new FolderDefinitionStore(location, fallback);
-  if ((await store.read(settingsPath).catch(() => null)) === null) {
+  const text = await store.read(settingsPath).catch(() => null);
+  if (text === null) {
     return fallback;
   }
-  const workspace = await loadWorkspace(store);
-  return filesOf(workspace, "workspace")[0]?.value.name ?? fallback;
+  const parsed = parseFile("workspace", text);
+  return parsed.ok ? parsed.value.value.name : fallback;
 }
 
 /** The `--dir` as the user typed it, for the fixes that name `halonic trust`. */
