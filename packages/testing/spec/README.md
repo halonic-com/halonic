@@ -12,7 +12,8 @@ result file, so `pnpm check trace` can see which requirements have tests that
 ran and passed. Use one `verifies` per requirement; they don't nest. A bad ID,
 or a `verifies` inside another, throws an error that says what is wrong. The
 tag also holds how many `expect` calls each test made, counting both the global
-`expect` and the test's own.
+`expect` and the test's own. Inside `vi.waitFor`, only the attempt that passed
+counts, so the number doesn't change with how often the wait retried.
 
 `typeTest(name, body)` is `test` for a body that only checks types, for example
 with `expectTypeOf`. It records one assertion, so it passes when tests must
@@ -64,6 +65,7 @@ Add the package as a `devDependency` (`"@halonicjs/testing-spec": "workspace:*"`
 
 - [`spec.verifies-tags-tests`](requirements/verifies-tags-tests.md)
 - [`spec.verifies-counts-assertions`](requirements/verifies-counts-assertions.md)
+- [`spec.verifies-counts-passing-wait-attempt`](requirements/verifies-counts-passing-wait-attempt.md)
 - [`spec.verifies-rejects-bad-ids`](requirements/verifies-rejects-bad-ids.md)
 - [`spec.type-test-marks-type-only`](requirements/type-test-marks-type-only.md)
 - [`spec.expect-spec-file`](requirements/expect-spec-file.md)

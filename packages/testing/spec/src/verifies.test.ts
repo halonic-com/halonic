@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { requirementIdPattern, verifies } from "./verifies.ts";
 
 let nestedError: unknown;
@@ -70,6 +70,38 @@ verifies("spec.verifies-counts-assertions", () => {
         task.suite?.tasks.find((sibling) => sibling.name === name)?.meta.assertions;
       expect(countOf("global expect")).toBe(3);
       expect(countOf("the test's own expect")).toBe(1);
+    });
+  });
+});
+
+verifies("spec.verifies-counts-passing-wait-attempt", () => {
+  // Generous, so a loaded machine never times the wait out; it passes after 3 attempts.
+  const wait = { interval: 1, timeout: 10_000 };
+
+  // The last test reads the tags of the two before it, so they keep their order.
+  describe("in order", { shuffle: false }, () => {
+    test("a sync callback that fails twice", async () => {
+      let attempts = 0;
+      await vi.waitFor(() => {
+        attempts += 1;
+        expect(attempts).toBe(3);
+      }, wait);
+    });
+
+    test("an async callback with the test's own expect", async ({ expect: own }) => {
+      let attempts = 0;
+      await vi.waitFor(async () => {
+        attempts += 1;
+        await Promise.resolve();
+        own(attempts).toBe(3);
+      }, wait);
+    });
+
+    test("counts only the attempt that passed", ({ task }) => {
+      const countOf = (name: string): number | undefined =>
+        task.suite?.tasks.find((sibling) => sibling.name === name)?.meta.assertions;
+      expect(countOf("a sync callback that fails twice")).toBe(1);
+      expect(countOf("an async callback with the test's own expect")).toBe(1);
     });
   });
 });
