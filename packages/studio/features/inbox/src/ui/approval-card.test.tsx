@@ -129,6 +129,14 @@ verifies("inbox.approval-card", () => {
       expect(root.querySelector("h2")?.textContent).toBe("Sorter wants to use publish");
     });
 
+    it("names the subagent that asked before the agent it asked for", () => {
+      const item = { ...createNoteItem(), subagent: "checker" };
+      const { root } = openCard({ item, subagentName: "Checker" });
+      expect(root.querySelector("h2")?.textContent).toBe(
+        "Checker, for Sorter, wants to use create_note (notes-mcp)",
+      );
+    });
+
     it("shows model output as text: a link, an image and a script stay as written", () => {
       const reply =
         "[click](https://example.com) ![x](https://example.com/x.png) <script>alert(1)</script>";

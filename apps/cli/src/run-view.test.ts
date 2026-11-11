@@ -208,6 +208,16 @@ verifies("cli.run-view", () => {
     expect(linesOf(events)).toEqual(["! Draft a reply Writer · smart"]);
   });
 
+  it("names the subagent whose tool call waits for the user's OK, then the step's agent", () => {
+    const fromChecker = { ...approvalRequested("draft", "call-1"), subagent: "sorter" };
+    const events = logOf([
+      ...draftAsksApproval.slice(0, 2),
+      ["14:00:05", fromChecker],
+      ["14:00:05", { type: "run.waiting", state: "draft", events: ["approve", "reject"] }],
+    ]);
+    expect(linesOf(events)).toEqual(["! Draft a reply Sorter, for Writer · smart"]);
+  });
+
   it("shows an agent step whose tool call the user approved as a step that finished, asked once", () => {
     const events = logOf([
       ...draftAsksApproval,

@@ -266,6 +266,13 @@ verifies("events.summary-approvals-and-signals", () => {
     ]);
   });
 
+  it("names the subagent when a subagent's call waits for approval", () => {
+    const fromSubagent = { ...requested, agent: "writer", subagent: "checker" };
+    expect(summaryOf(fromSubagent).approvals).toEqual([
+      expect.objectContaining({ agent: "writer", subagent: "checker", callId: "c1" }),
+    ]);
+  });
+
   it("removes the approval once it is resolved", () => {
     expect(summaryOf(requested, resolved).approvals).toEqual([]);
   });

@@ -96,16 +96,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       });
       return;
     case "approval.requested":
-      summary.approvals.push({
-        agent: event.agent,
-        tool: event.tool,
-        args: event.args,
-        callId: event.callId,
-        at: event.at,
-        state: event.state,
-        branch: event.branch ?? null,
-        item: event.item ?? null,
-      });
+      summary.approvals.push(pendingApproval(event));
       return;
     case "approval.resolved":
       removeApproval(summary.approvals, event.callId);
@@ -147,6 +138,23 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
     default:
       return;
   }
+}
+
+/** The tool call an `approval.requested` asks about, as the summary lists it. */
+function pendingApproval(
+  event: Extract<RunEvent, { type: "approval.requested" }>,
+): PendingApproval {
+  return {
+    agent: event.agent,
+    ...(event.subagent === undefined ? {} : { subagent: event.subagent }),
+    tool: event.tool,
+    args: event.args,
+    callId: event.callId,
+    at: event.at,
+    state: event.state,
+    branch: event.branch ?? null,
+    item: event.item ?? null,
+  };
 }
 
 /**

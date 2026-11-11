@@ -175,7 +175,10 @@ function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): P
       return [name, runsListMessages.waitingForChildRun(shortRunId(end.childRunId)).phrase];
     case "waitingForApproval":
       // A parallel step has no agent of its own, and so nothing after its name.
-      return facts.length === 0 ? [name] : [name, runMessages.stepFacts(facts).phrase];
+      if (facts.length === 0) return [name];
+      return end.subagent === undefined
+        ? [name, runMessages.stepFacts(facts).phrase]
+        : [name, runMessages.subagentStepFacts(agentName(end.subagent, definitions), facts).phrase];
     case "running":
       return [name, runsMessages.runningSince(facts, at(end.since)).phrase];
   }
@@ -197,6 +200,11 @@ function markOf(step: RunStep): Mark {
     case "running":
       return "working";
   }
+}
+
+/** An agent's name, or its id when it's no longer in the workspace, made printable. */
+function agentName(agentId: string, definitions: RunDefinitions): string {
+  return printable(definitions.agent(agentId)?.name ?? agentId);
 }
 
 /**

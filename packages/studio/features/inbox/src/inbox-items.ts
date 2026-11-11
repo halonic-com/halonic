@@ -8,8 +8,10 @@ export interface ApprovalItem {
   readonly runId: string;
   /** The engine's own id of the call; the answer names it, so it can't answer a later call. */
   readonly callId: string;
-  /** The agent that asked, by its id. */
+  /** The step's agent, by its id: the one that asked, or the one whose subagent asked. */
   readonly agent: string;
+  /** The subagent that asked for `agent`, by its id, or `null` when `agent` asked itself. */
+  readonly subagent: string | null;
   /** The tool's name, such as `create_note`. */
   readonly tool: string;
   /** The connector the tool comes from, such as `notes-mcp`, or `null` for a built-in tool. */
@@ -89,6 +91,7 @@ function approvalItem(runId: string, approval: RunSummary["approvals"][number]):
     runId,
     callId: approval.callId,
     agent: approval.agent,
+    subagent: approval.subagent ?? null,
     tool: hasConnector ? approval.tool.slice(separator + connectorSeparator.length) : approval.tool,
     connector: hasConnector ? approval.tool.slice(0, separator) : null,
     rawTool: approval.tool,

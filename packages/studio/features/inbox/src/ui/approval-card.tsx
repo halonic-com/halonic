@@ -22,6 +22,8 @@ export interface ApprovalCardProps {
   readonly item: ApprovalItem;
   /** The agent's name as the workspace shows it. */
   readonly agentName: string;
+  /** The subagent's name as the workspace shows it, when a subagent asked; its id when left out. */
+  readonly subagentName?: string;
   readonly decisions: Pick<InboxDecisions, "approve" | "reject" | "askForChanges">;
   readonly onOpenRun: (runId: string) => void;
   /** The next item, or `null` when nothing else is waiting. */
@@ -79,7 +81,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const { item, agentName, decisions, next, back } = props;
   const now = props.now ?? (() => new Date());
   const titleId = useId();
-  const title = approvalTitle(item, agentName);
+  const title = approvalTitle(item, agentName, props.subagentName ?? item.subagent);
   const heading = useRef<HTMLHeadingElement>(null);
   const decided = useRef<CalloutHandle>(null);
   const [state, setState] = useState<CardState>({ kind: "open", failed: null });

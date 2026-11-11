@@ -22,6 +22,7 @@ verifies("inbox.items", () => {
       runId: "r1",
       callId: "call-1",
       agent: "sorter",
+      subagent: null,
       tool: "create_note",
       connector: "notes-mcp",
       rawTool: "notes-mcp__create_note",
@@ -31,6 +32,12 @@ verifies("inbox.items", () => {
       branch: null,
       item: null,
     });
+  });
+
+  it("names the subagent that asked for the step's agent", () => {
+    const approval = { ...pendingApproval("call-1", "publish", "T1"), subagent: "checker" };
+    const run = waitingRun("r1", { approvals: [approval] });
+    expect(inboxItems([run])[0]).toMatchObject({ agent: "sorter", subagent: "checker" });
   });
 
   it("gives a built-in tool no connector", () => {

@@ -103,6 +103,9 @@ export const runMessages = defineMessages("run", {
     phrase`Running ${title} in ${workspace} ${markPart("separator")} run ${runId}`,
   /** What a step's line says after its name: "Sorter · fast", "Gmail · fin@acme.example". */
   stepFacts: (facts: readonly string[]) => joinedFacts(facts),
+  /** The same, for a tool call a subagent asked for: "Checker, for Sorter · fast". */
+  subagentStepFacts: (subagent: string, facts: readonly string[]) =>
+    phrase`${subagent}, for ${joinedFacts(facts)}`,
   /** With a !: the wait step's description, its first line, as written. */
   waitingForYou: (description: string) => phrase`Waiting for you: ${description}`,
   /** With a !, for a wait step without a description. */

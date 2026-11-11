@@ -15,8 +15,11 @@ export type StepEnd =
   | { readonly kind: "waitingForYou"; readonly since: string }
   | { readonly kind: "waitingUntil"; readonly due: string }
   | { readonly kind: "waitingForChildRun"; readonly childRunId: string }
-  /** An agent step whose tool call waits for the user's OK. */
-  | { readonly kind: "waitingForApproval" }
+  /**
+   * An agent step whose tool call waits for the user's OK, with the subagent
+   * that asked for the step's agent, when one did.
+   */
+  | { readonly kind: "waitingForApproval"; readonly subagent?: string }
   | { readonly kind: "running"; readonly since: string };
 
 /** One step the run reached, in the order it reached them. */
@@ -155,7 +158,10 @@ function closed(step: OpenStep, at: string, how: "done" | "failed"): RunStep {
 function stillOpen(step: OpenStep, summary: RunSummary): StepEnd {
   const waiting = step.waiting;
   if (summary.status === "waiting" && summary.approvals.length > 0) {
-    return { kind: "waitingForApproval" };
+    const subagent = summary.approvals[0]?.subagent;
+    return subagent === undefined
+      ? { kind: "waitingForApproval" }
+      : { kind: "waitingForApproval", subagent };
   }
   if (summary.status !== "waiting" || waiting === undefined) {
     return { kind: "running", since: step.enteredAt };

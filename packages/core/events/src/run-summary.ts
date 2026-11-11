@@ -9,7 +9,13 @@ import type {
 
 /** A tool call a run is waiting on a person's OK for, from its `approval.requested` event. */
 export interface PendingApproval {
+  /** The state's agent: the one that asked, or the one whose subagent asked. */
   agent: string;
+  /**
+   * The subagent that asked, when it was one (requirement
+   * `events.agent-resume-inner`); absent when `agent` asked itself.
+   */
+  subagent?: string;
   tool: string;
   args: unknown;
   callId: string;
