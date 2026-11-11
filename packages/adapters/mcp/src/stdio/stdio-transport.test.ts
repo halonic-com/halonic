@@ -5,7 +5,7 @@ import { type FakeHandler, FakeProgram, type StopBehaviour } from "./fake-progra
 import { type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 
 const limits: StdioLimits = { requestTimeoutMs: 5000, maxMessageBytes: 64, stopGraceMs: 100 };
-const launch = { program: "notes-mcp", args: [], env: {}, cwd: "/workspaces/acme" };
+const launch = { program: "notes-mcp", args: [], env: {}, checkedEnv: {}, cwd: "/workspaces/acme" };
 const request = (id: number, method = "tools/list") => ({ jsonrpc: "2.0" as const, id, method });
 const silent: FakeHandler = () => undefined;
 

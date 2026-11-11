@@ -175,6 +175,7 @@ verifies("mcp.pinned-launcher", () => {
           npm_config_userconfig: join("/acme/launch-1", emptyNpmrc),
           npm_config_globalconfig: join("/acme/launch-1", emptyNpmrc),
         },
+        checkedEnv: { MAIL_MODE: "quiet" },
       });
     });
 

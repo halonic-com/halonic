@@ -20,9 +20,15 @@ Every start it refused before, it still refuses: the whole argument and the whol
 first `=` are still in the list (as one of the texts after each `=`, `:` and `@`), and no example
 or test is removed.
 
-`env` is read only when the adapter passes it. `nodeProgramStarter` (the MCP stdio adapter)
-passes the program's whole environment; the sandbox adapters pass no `env` yet, so for them only
-the extra argument pieces are new.
+`env` is read only when the adapter passes it, and only the part a workspace writes.
+`nodeProgramStarter` (the MCP stdio adapter) gets the program's whole environment, but checks only
+`checkedEnv`: the variables the connector file sets. The app's own environment (`PATH`,
+`PYTHONPATH`, ...) and the secret values aren't workspace content, so a path in them refuses
+nothing; reading them would refuse every connector for a user whose own `PATH` happens to name a
+skill's `scripts/`, and would hand every secret value to `realpath`. So `mcp.program-starter` now
+also refuses a value the connector file sets that names a skill's `scripts/`. The sandbox adapters
+pass no `env` yet, so for them only the extra argument pieces are new; reading the profile's
+environment there is a follow-up.
 
 The new requirement `format.program-start-paths` describes the shared reading. It is the reading
 `workspace.working-folders` and `format.working-folder-start` already used: their behaviour
@@ -39,3 +45,4 @@ a fix to one is a fix to all. Reading too much as a path only makes a guard stri
 ## Covers
 
 - format.skill-scripts-folder
+- mcp.program-starter

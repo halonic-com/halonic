@@ -265,7 +265,13 @@ class McpStdioConnector implements ConnectorClient {
       const env = { ...inheritedEnv, ...this.#stdio.env, ...(await this.#secretEnv()) };
       const cwd = resolve(workspaceRoot, this.#stdio.cwd ?? ".");
       return {
-        launch: { program: this.#stdio.command, args: this.#stdio.args, env, cwd },
+        launch: {
+          program: this.#stdio.command,
+          args: this.#stdio.args,
+          env,
+          checkedEnv: this.#stdio.env,
+          cwd,
+        },
         folder: undefined,
       };
     }

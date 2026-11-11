@@ -66,6 +66,7 @@ export function pinnedLaunch(
     program: runner.program,
     args: [...runner.leadingArgs, ...pinnedRunnerArgs(pin, transport.command, transport.args)],
     env: withFoldersFirst(env, runner.pathFolders, platform),
+    checkedEnv: transport.env,
     cwd: folder,
   };
 }

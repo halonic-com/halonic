@@ -15,8 +15,9 @@ const nodePaths: PathLookup = { resolve, realpath };
  * and only the environment it is given. A bare program name is first found
  * in the absolute folders of that environment's `PATH` (on Windows only as
  * `<name>.exe`), so neither Node nor Windows ever looks in the current
- * folder. It refuses a program it can't find, and a program, argument or
- * folder under a skill's `scripts/` folder, before anything starts.
+ * folder. It refuses a program it can't find, and a program, argument,
+ * folder or value of `checkedEnv` under a skill's `scripts/` folder, before
+ * anything starts.
  *
  * On macOS and Linux the program gets its own process group, so a signal
  * reaches everything it started, such as the server under `npx`, and
@@ -25,7 +26,8 @@ const nodePaths: PathLookup = { resolve, realpath };
  */
 export const nodeProgramStarter: ProgramStarter = {
   async start(launch) {
-    if (await touchesSkillScripts(launch, nodePaths)) {
+    const { cwd, program: named, args, checkedEnv } = launch;
+    if (await touchesSkillScripts({ cwd, program: named, args, env: checkedEnv }, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
     const program = await absoluteProgram(launch);

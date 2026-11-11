@@ -139,6 +139,8 @@ verifies("mcp.stdio-connector", () => {
         program: "notes-mcp",
         args: ["--serve"],
         env: { PATH: "/usr/bin", NOTES_MODE: "quiet", NOTES_TOKEN: "value-from-secrets" },
+        // Only what the connector file writes is read for a skill's scripts/ (HAL-4777).
+        checkedEnv: { NOTES_MODE: "quiet" },
         cwd: join(workspaceRoot, "tools"),
       });
       await client.close();

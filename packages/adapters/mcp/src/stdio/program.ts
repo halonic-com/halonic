@@ -4,6 +4,13 @@ export interface ProgramLaunch {
   readonly args: readonly string[];
   /** The program's whole environment: nothing else is inherited. */
   readonly env: Readonly<Record<string, string>>;
+  /**
+   * The part of `env` the connector file writes. Only these values are read
+   * for a skill's `scripts/` folder: the app's own environment and the
+   * secret values aren't workspace content, so a path in them refuses
+   * nothing (HAL-4777).
+   */
+  readonly checkedEnv: Readonly<Record<string, string>>;
   readonly cwd: string;
 }
 

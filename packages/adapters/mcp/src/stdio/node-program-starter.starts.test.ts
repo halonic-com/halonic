@@ -21,7 +21,7 @@ afterEach(async () => {
 
 /** Node running `script`, with only the environment given. */
 function node(script: string, env: Record<string, string> = {}): ProgramLaunch {
-  return { program: process.execPath, args: ["-e", script], env, cwd: folder };
+  return { program: process.execPath, args: ["-e", script], env, checkedEnv: {}, cwd: folder };
 }
 
 /** Echoes each line back, with the one variable it may see, and ends when its input closes. */
@@ -93,6 +93,25 @@ verifies("mcp.program-starter", () => {
       const launch = { ...node(""), args: ["--file=innocent"] };
       await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
     });
+
+    it("refuses a value the connector file writes that names a skill's scripts/ folder", async () => {
+      const authored = { NODE_OPTIONS: `--require ${join(folder, "skills/acme/scripts/run.js")}` };
+      const launch = { ...node("", authored), checkedEnv: authored };
+      await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
+    });
+
+    it.each([
+      ["an inherited PATH entry", "PATH"],
+      ["a secret value", "ACME_TOKEN"],
+    ])(
+      "starts with %s under a skill's scripts/ folder, as only checkedEnv is read",
+      async (_, name) => {
+        const scripts = join(folder, "skills/acme/scripts");
+        const env = { [name]: [scripts, dirname(process.execPath)].join(delimiter) };
+        const program = await nodeProgramStarter.start(node("process.exit(0)", env));
+        expect(await stopProgram(program, 5000)).toEqual({ code: 0, signal: null });
+      },
+    );
   });
 
   describe("a started program", () => {
