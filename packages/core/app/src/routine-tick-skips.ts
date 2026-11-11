@@ -3,7 +3,12 @@
 // or a changed routine dropped.
 
 import type { LastRuns } from "./routine-last-runs.ts";
-import type { SkippedTimes, SkipReason, SkipRecords } from "./routine-skips.ts";
+import type {
+  SkippedTimes,
+  SkipReason,
+  SkipRecords,
+  TargetUnavailableWhy,
+} from "./routine-skips.ts";
 
 /** A range of a routine's due times the tick function dropped, with the routine key. */
 export type DroppedRange = SkippedTimes & { key: string };
@@ -14,10 +19,18 @@ interface DueTime {
   at: Date;
 }
 
+/** Single times of one routine dropped for one reason and `why`. */
+interface SingleTimes {
+  reason: SkipReason;
+  why?: TargetUnavailableWhy;
+  times: Date[];
+}
+
 /** Gathers a tick's dropped times by routine, then adds them to the skip records. */
 export class TickSkips {
   private readonly byKey = new Map<string, SkippedTimes[]>();
-  private readonly singles = new Map<string, Map<SkipReason, Date[]>>();
+  /** By routine key, then by reason and `why` together. */
+  private readonly singles = new Map<string, Map<string, SingleTimes>>();
 
   /** Ranges the tick function dropped (the catch-up rule). */
   addRanges(ranges: readonly DroppedRange[]): void {
@@ -26,11 +39,21 @@ export class TickSkips {
     }
   }
 
-  /** Single due times dropped for one reason; one tick's times of a routine make one range. */
-  addTimes(times: readonly DueTime[], reason: SkipReason): void {
+  /**
+   * Single due times dropped for one reason, and for `target-unavailable`
+   * its `why`; one tick's times of a routine for one reason make one range.
+   */
+  addTimes(times: readonly DueTime[], reason: SkipReason, why?: TargetUnavailableWhy): void {
+    const group = why === undefined ? reason : `${reason}:${why}`;
     for (const { key, at } of times) {
-      const reasons = this.singles.get(key) ?? new Map<SkipReason, Date[]>();
-      reasons.set(reason, [...(reasons.get(reason) ?? []), at]);
+      const reasons = this.singles.get(key) ?? new Map<string, SingleTimes>();
+      const single = reasons.get(group) ?? {
+        reason,
+        ...(why === undefined ? {} : { why }),
+        times: [],
+      };
+      single.times.push(at);
+      reasons.set(group, single);
       this.singles.set(key, reasons);
     }
   }
@@ -65,10 +88,11 @@ export class TickSkips {
 
   private foldSingles(): void {
     for (const [key, reasons] of this.singles) {
-      for (const [reason, times] of reasons) {
+      for (const { reason, why, times } of reasons.values()) {
         const millis = times.map((time) => time.getTime());
         const range: SkippedTimes = {
           reason,
+          ...(why === undefined ? {} : { why }),
           from: new Date(Math.min(...millis)),
           to: new Date(Math.max(...millis)),
           count: new Set(millis).size,
