@@ -2,6 +2,7 @@
 
 - Approval: the maintainer approves this change in review of HAL-5208
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yBGxkYWuNndhj1fgCK2wwGzw47YOGU8Ze04KK7Rpfbn6Sb6u9mYal+ptXMyuWbeuIgTnmyAncpfbxFhER+r1BA==
 
 The requirements are tightened; nothing is narrowed and no test was weakened.
 
