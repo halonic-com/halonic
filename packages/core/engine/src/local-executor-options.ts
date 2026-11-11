@@ -12,6 +12,7 @@ import type {
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { AgentKnowledgeOptions } from "./knowledge/agent-knowledge.ts";
+import type { AbortOnStop } from "./run/abort-on-stop.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
@@ -75,4 +76,11 @@ export interface LocalExecutorOptions {
    * refused before it starts.
    */
   readonly localOnly?: boolean;
+  /**
+   * Gives a run's model call an `AbortSignal` for its stop, so a cancel, the
+   * run's end or the engine's stop aborts the request to the provider. Core
+   * code can't make one, so the host passes it. Without it, a stopped model
+   * call runs to its end, and the run takes its answer no more.
+   */
+  readonly abortOnStop?: AbortOnStop;
 }

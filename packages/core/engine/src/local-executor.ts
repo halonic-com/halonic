@@ -14,6 +14,7 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
+import type { StopSignal } from "@halonicjs/std";
 import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
@@ -106,7 +107,7 @@ export class LocalExecutor implements RunExecutor {
         : new LocalRuns(
             runs,
             options.clock,
-            (run, call) => this.callModel(run, call),
+            (run, call, stop) => this.callModel(run, call, stop),
             connectorCalls === undefined
               ? undefined
               : (effect, run) =>
@@ -393,9 +394,17 @@ export class LocalExecutor implements RunExecutor {
    * it before it makes it. Either way, the next call carries `resume` with
    * the answer or the result, and the turn goes on from there.
    *
+   * When `stop` is told to stop, the model call going on is aborted (with
+   * {@link LocalExecutorOptions.abortOnStop}) and no other model is tried.
+   *
    * @throws UnreadableDefinitions when the run's definitions are gone or can't be read, with why
+   * @throws the stop's reason, once `stop` was told to stop
    */
-  private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
+  private async callModel(
+    run: RunState,
+    call: PendingCall,
+    stop: StopSignal,
+  ): Promise<ModelCallResult> {
     const turn: RunTurn = {
       run,
       state: call.state,
@@ -425,24 +434,31 @@ export class LocalExecutor implements RunExecutor {
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
     const maxRounds = agent?.maxSteps ?? defaultRunMaxRounds;
-    const outcome = await runAgentTurn({
-      model,
-      secrets: this.options.secrets,
-      messages,
-      halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
-      connectors,
-      connectorTools,
-      ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
-      ...agentParamsOf(agent),
-      maxRounds,
-      agent: call.agent,
-      clock: this.options.clock,
-      checkCall: runToolCheckOf(connectorTools),
-      autoKnowledge: knowledge.auto,
-      log: turn.log,
-      ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
-      localOnly: this.options.localOnly === true,
-    });
+    const agentTurn = (signal?: AbortSignal) =>
+      runAgentTurn({
+        model,
+        secrets: this.options.secrets,
+        messages,
+        halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
+        connectors,
+        connectorTools,
+        ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
+        ...agentParamsOf(agent),
+        maxRounds,
+        agent: call.agent,
+        clock: this.options.clock,
+        checkCall: runToolCheckOf(connectorTools),
+        autoKnowledge: knowledge.auto,
+        log: turn.log,
+        ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
+        localOnly: this.options.localOnly === true,
+        ...(signal === undefined ? {} : { signal }),
+      });
+    const { abortOnStop } = this.options;
+    const outcome =
+      abortOnStop === undefined ? await agentTurn() : await abortOnStop(stop, agentTurn);
+    // A call stopped while it ran gives nothing, even when it ran to its end.
+    stop.throwIfStopped();
     if (outcome.kind === "stopped") return outcome.stop;
     // An answer cut off at the limit isn't the agent's answer: the state mustn't go on with it.
     if (outcome.result.atRoundLimit === true) {

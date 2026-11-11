@@ -17,6 +17,7 @@ import type {
   ScheduledTimer,
 } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
+import type { ResolvedModel } from "../agent/model-chain.ts";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { Budget } from "../budget/budget.ts";
@@ -31,6 +32,7 @@ import {
 import type { AgentKnowledgeOptions } from "../knowledge/agent-knowledge.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
+import type { AbortOnStop } from "./abort-on-stop.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
 import type { RunProposalFolders } from "./proposal-folders.ts";
 import type { RunConnectors } from "./run-connectors.ts";
@@ -141,6 +143,10 @@ export interface RunsSetup {
   readonly runConnectors?: RunConnectors;
   /** Whether the workspace is local only; the scripted model is `local` then. */
   readonly localOnly?: boolean;
+  /** The model every call resolves to, with its fallbacks; the scripted model when left out. */
+  readonly model?: ResolvedModel;
+  /** How a model call's stop becomes an `AbortSignal`; model calls get none when left out. */
+  readonly abortOnStop?: AbortOnStop;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -168,13 +174,15 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const definitionsAsked: string[] = [];
   const versionsAsked: (RunVersion | undefined)[] = [];
   const executor = new LocalExecutor({
-    resolveModel: async () => ({
-      provider: model,
-      model: "scripted-1",
-      ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
-      ...(setup.localOnly === true ? { local: true } : {}),
-      ...(setup.price === undefined ? {} : { price: setup.price }),
-    }),
+    resolveModel: async () =>
+      setup.model ?? {
+        provider: model,
+        model: "scripted-1",
+        ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
+        ...(setup.localOnly === true ? { local: true } : {}),
+        ...(setup.price === undefined ? {} : { price: setup.price }),
+      },
+    ...(setup.abortOnStop === undefined ? {} : { abortOnStop: setup.abortOnStop }),
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: setup.connectors ?? [],

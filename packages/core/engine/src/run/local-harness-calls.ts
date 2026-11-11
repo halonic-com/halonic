@@ -15,7 +15,7 @@ import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts
 import { definitionsOf } from "../kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
 import { HarnessAnswers } from "./harness-answers.ts";
-import { LiveHarnessCalls } from "./live-harness-calls.ts";
+import { LiveCalls } from "./live-calls.ts";
 import { type RunsProposalFolders, topLevelRunOf } from "./proposal-folders.ts";
 import type { StartDeadlines } from "./start-deadlines.ts";
 
@@ -42,7 +42,7 @@ export interface HarnessCallsOptions {
 /** The harness calls of the local executor's runs. */
 export class LocalHarnessCalls {
   readonly #options: HarnessCallsOptions;
-  readonly #live = new LiveHarnessCalls();
+  readonly #live = new LiveCalls();
   readonly #answers = new HarnessAnswers();
 
   constructor(options: HarnessCallsOptions) {

@@ -7,7 +7,8 @@ import type { ModelCallResult } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import type { PendingCall } from "../kernel/run-state.ts";
-import { type CallModel, LocalRuns } from "./local-runs.ts";
+import type { CallModel } from "./local-model-calls.ts";
+import { LocalRuns } from "./local-runs.ts";
 import { replyStart, TestScheduler, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 const resume: AgentResume = {

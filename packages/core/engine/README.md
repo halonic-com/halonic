@@ -13,7 +13,8 @@ loop of one model turn, which the local chat turn runs.
 |  | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error | `engine.run-call-fails` |
 |  | fails a run whose step asks for an effect it can't carry out yet, and sets no timer for it | `engine.local-runs-unbuilt-effect` |
 |  | starts child runs, passes a parent's events to its waiting child, and lets the parent go on in the same call | `engine.local-child-runs` |
-|  | cancels a run and the child run it waits on as `cancelled`, and stops their harness calls; an ended run stays as it is | `engine.local-run-cancel` |
+|  | cancels a run and the child run it waits on as `cancelled`, and stops their harness and model calls; an ended run stays as it is | `engine.local-run-cancel` |
+|  | stops a model call going on when its run is cancelled or ends, or the engine stops: the request is aborted with the host's `abortOnStop`, no other model is tried, nothing is recorded | `engine.model-call-stop` |
 |  | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name | `engine.turn-round-limit`, `engine.turn-tool-names` |
 |  | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
 |  | marks an answer whose whole text, bare or in `<tool_call>` tags (the last may lack its closing tag), calls an offered tool with `toolCallAsText`, never running it; other text around the tags leaves it unmarked | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text` |
