@@ -194,11 +194,15 @@ verifies("shell.phone-search", () => {
     expect(sheet.events).toEqual(["close", "open Home"]);
   });
 
-  it("says Searching under two skeleton rows while the providers look", () => {
+  it("says Searching in a status under two skeleton rows while the providers look", async () => {
     const sheet = renderSheet();
+    const status = () => sheet.view.querySelector('[role="status"]');
+    expect(status()?.textContent).toBe("");
     sheet.type("refund");
     expect(sheet.view.querySelector('[role="listbox"]')?.getAttribute("aria-busy")).toBe("true");
-    expect(sheet.view.querySelector(".sr-only")?.textContent).toBe("Searching");
+    expect(status()?.textContent).toBe("Searching");
+    await sheet.answer(0, []);
+    expect(status()?.textContent).toBe("");
   });
 
   it("says Nothing matches with no Enter hint, then the actions that fit", async () => {

@@ -82,7 +82,13 @@ export function PaletteResults(props: PaletteResultsProps) {
         ))}
         {searching ? <SearchingRows phone={phone} /> : null}
       </div>
-      {searching && phone ? <p className="sr-only">Searching</p> : null}
+      {phone ? (
+        // Always mounted, so a screen reader hears the text change; a status that appears along
+        // with its text isn't read out.
+        <p role="status" className="sr-only">
+          {searching ? "Searching" : ""}
+        </p>
+      ) : null}
     </div>
   );
 }
