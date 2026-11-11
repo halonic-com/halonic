@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { claudeCodeSettingsFiles, mcpSettingsFile, writeClaudeCodeSettings } from "./settings.ts";
+import {
+  claudeCodeSettingsFiles,
+  mcpSettingsFile,
+  unfencedSettingsFile,
+  writeClaudeCodeSettings,
+} from "./settings.ts";
 
 let folder: string;
 
@@ -44,6 +49,19 @@ verifies("harness-claude-code.settings", () => {
       });
     });
 
+    it("keeps Claude Code's own sandbox, for outside the fence, in a file of its own that asks for every command", async () => {
+      await writeClaudeCodeSettings(folder, diskSettingsFolder);
+
+      expect(await readJson(unfencedSettingsFile)).toEqual({
+        sandbox: {
+          enabled: true,
+          autoAllowBashIfSandboxed: false,
+          allowUnsandboxedCommands: false,
+          failIfUnavailable: true,
+        },
+      });
+    });
+
     it("names the bridge's MCP servers from the environment, with no token in any file", async () => {
       await writeClaudeCodeSettings(folder, diskSettingsFolder);
 
@@ -71,6 +89,7 @@ verifies("harness-claude-code.settings", () => {
       expect(claudeCodeSettingsFiles()).toEqual(claudeCodeSettingsFiles());
       expect(Object.keys(claudeCodeSettingsFiles()).sort()).toEqual([
         mcpSettingsFile,
+        unfencedSettingsFile,
         "settings.json",
       ]);
     });
@@ -98,9 +117,14 @@ verifies("harness-claude-code.settings", () => {
       expect(writer.written).toEqual([
         join(folder, "settings.json"),
         join(folder, mcpSettingsFile),
+        join(folder, unfencedSettingsFile),
       ]);
       expect(await readJson("settings.json")).toMatchObject({ sandbox: { enabled: false } });
-      expect((await readdir(folder)).sort()).toEqual([mcpSettingsFile, "settings.json"]);
+      expect((await readdir(folder)).sort()).toEqual([
+        mcpSettingsFile,
+        unfencedSettingsFile,
+        "settings.json",
+      ]);
     });
   });
 });

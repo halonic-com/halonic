@@ -6,6 +6,13 @@ import { claudeCodeRunTokenVariable } from "./environment.ts";
 /** The file in the settings folder that names the bridge's MCP server; Claude Code reads it with `--mcp-config`. */
 export const mcpSettingsFile = "halonic-mcp.json";
 
+/**
+ * The file in the settings folder that turns Claude Code's own sandbox on;
+ * Claude Code reads it with `--settings`, which the run passes only outside
+ * Halonic's fence, where Claude Code's sandbox works (`unfencedSettings`).
+ */
+export const unfencedSettingsFile = "halonic-unfenced.json";
+
 /** The tool on the bridge Claude Code asks when a tool call needs an OK (`--permission-prompt-tool`). */
 export const permissionPromptTool = `mcp__${permissionServerName}__approve_permission`;
 
@@ -18,8 +25,9 @@ export const permissionPromptTool = `mcp__${permissionServerName}__approve_permi
 export const deniedClaudeCodeTools: readonly string[] = ["WebFetch", "WebSearch"];
 
 /**
- * `settings.json`: Claude Code's own sandbox is off, because Halonic's
- * sandbox is already around it and the two don't nest, and its web tools
+ * `settings.json`: Claude Code's own sandbox is off inside Halonic's fence,
+ * because Halonic's sandbox is already around it and the two don't nest
+ * (outside the fence, {@link unfencedSettings} turns it on), and its web tools
  * are denied. A deny rule wins over any allow rule a project adds.
  *
  * Halonic's tools are allowed without Claude Code's own prompt: the bridge
@@ -60,6 +68,25 @@ function bridgeMcpServer(path: string): object {
 }
 
 /**
+ * {@link unfencedSettingsFile}: Claude Code's own sandbox, for a run outside
+ * Halonic's fence. Its shell commands run in it, and still ask for an OK
+ * (`autoAllowBashIfSandboxed: false`), so every command still reaches
+ * Halonic's approval card. A command is refused, not run without the
+ * sandbox, when the sandbox can't start (`failIfUnavailable`) or when
+ * Claude Code asks to run it outside (`allowUnsandboxedCommands: false`).
+ */
+function unfencedSettings(): object {
+  return {
+    sandbox: {
+      enabled: true,
+      autoAllowBashIfSandboxed: false,
+      allowUnsandboxedCommands: false,
+      failIfUnavailable: true,
+    },
+  };
+}
+
+/**
  * The files the harness writes to the agent's settings folder
  * (requirement `harness-claude-code.settings`), by file name. They don't
  * depend on the run or on where it runs, so two runs of one agent write the
@@ -69,6 +96,7 @@ export function claudeCodeSettingsFiles(): Readonly<Record<string, string>> {
   return {
     "settings.json": jsonFile(claudeCodeSettings()),
     [mcpSettingsFile]: jsonFile(mcpSettings()),
+    [unfencedSettingsFile]: jsonFile(unfencedSettings()),
   };
 }
 

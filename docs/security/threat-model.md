@@ -288,7 +288,7 @@ A leaked run token gives only what that agent may already do, for that one run.
 | The sandbox silently doesn't confine | Before a session starts anything, it proves the fence: a canary file it must hide, a canary loopback port it must block, and a control read. A session that isn't `fenced` starts nothing | **On `main`** (`ports.sandbox-fence-proof`, `sandbox-srt.session`) |
 | A process keeps running after cancel | Each program runs in its own process group; `kill`, `close`, the time limit and an aborted run stop the whole group. On macOS a program that left its group is found by a variable it carries; on Windows, which has no process groups, `taskkill /T /F` ends the tree | **On `main`** (`sandbox-srt.session`) |
 | No sandbox, so the agent runs without one | `check()` gives a listed reason; when it isn't `ok`, `open` refuses and Halonic doesn't run the step. No code path falls back to running without the fence | **On `main`** (`sandbox-srt.check`, `contracts.sandbox-check`) |
-| Claude Code's or Codex's own sandbox breaks inside ours | Inside our sandbox their own sandboxes are switched off in the settings folder Halonic gives them, and ours is the fence | **Planned** (HAL-2552, HAL-2608) |
+| Claude Code's or Codex's own sandbox breaks inside ours | Inside our sandbox their own sandboxes are switched off in the settings folder Halonic gives them, and ours is the fence. On this computer they are switched on where their own sandbox is available (see "This computer") | **On `main`** (`harness-claude-code.settings`, `harness-codex.config`) |
 | You can't see what was blocked | Each blocked access becomes a `sandbox.blocked` event in the run log. srt has no structured feed of blocked accesses, so sandbox-srt's session reports only the git files it undoes when it ends (see the session's requirement) | Event and git-file reports **on `main`** (`sandbox-srt.session`); reports of what the fence blocked **Planned** (HAL-193) |
 | An adapter passes its own tests but leaks | Attack tests every sandbox adapter must pass, on Linux, macOS and Windows: `~/.ssh` and keychain files, writes outside the working folder, the agent's own file, sites by name, address and DNS, the bridge without or with another run's token, your own harness settings, a process left after cancel | sandbox-srt's fence tests **on `main`**: on Linux and macOS in CI (`sandbox-fence`, `sandbox-fence-macos`), on Windows as canary probes and a session test (`sandbox-windows`); the full list as a suite every adapter must pass **Planned** (HAL-193) |
 
@@ -344,9 +344,12 @@ desktop app keeps secrets and tokens there (4.4, Planned), such an agent can
 read those items. On Linux (Secret Service, while it's unlocked) and Windows
 (Credential Manager) it gets them without a prompt; on macOS the keychain may
 ask you once for each app. Approvals then only hold as long as the agent keeps to
-Halonic's tools. Claude Code and Codex keep their own sandboxes and permission
-prompts, routed to Halonic's approval card (Planned, HAL-2552 and HAL-2608),
-but those are theirs, not Halonic's fence.
+Halonic's tools. Claude Code and Codex keep their permission prompts, routed
+to Halonic's approval card. They keep their own sandboxes on macOS, and on
+Linux with bubblewrap (`harness-kit.own-sandbox`). Claude Code's sandbox still
+asks before every shell command, and refuses a command it can't sandbox. On
+Windows, and on Linux without bubblewrap, Halonic's approval step is the only
+gate on this computer. Their sandboxes are theirs, not Halonic's fence.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |

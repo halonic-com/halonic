@@ -1,7 +1,7 @@
 import type { HarnessBridge } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { codexConfigArgs, codexConfigText, tomlString } from "./config.ts";
+import { codexConfigArgs, codexConfigText, codexOwnSandboxArgs, tomlString } from "./config.ts";
 
 const bridge: HarnessBridge = {
   url: "http://127.0.0.1:4100",
@@ -16,6 +16,13 @@ function settingLines(key: string): string[] {
 }
 
 verifies("harness-codex.config", () => {
+  describe("codexOwnSandboxArgs", () => {
+    it("turns Codex's own sandbox on for one process, with the commands' writes kept to the working folder", () => {
+      expect(codexOwnSandboxArgs).toEqual(["-c", 'sandbox_mode="workspace-write"']);
+      expect(codexConfigText()).toContain('sandbox_mode = "danger-full-access"');
+    });
+  });
+
   describe("codexConfigText", () => {
     // Checked by hand against Codex 0.166.0: `config/read` gives back each
     // of these values, and a turn reaches the bridge with the token header.

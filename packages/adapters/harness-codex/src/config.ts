@@ -18,8 +18,9 @@ export const bridgeProviderName = "halonic";
  *   the bridge's header. `requires_openai_auth` lets a person's own ChatGPT
  *   sign-in through to the bridge; without one, Codex sends no
  *   `Authorization` and the bridge uses Halonic's key.
- * - Codex's own sandbox is off (`danger-full-access`): Halonic's sandbox is
- *   already around it, and the two don't nest.
+ * - Codex's own sandbox is off (`danger-full-access`): inside the fence,
+ *   Halonic's sandbox is already around it, and the two don't nest. Outside
+ *   it, {@link codexOwnSandboxArgs} turns it on for that run.
  * - Codex asks for an OK when it wants one (`on-request`); the harness turns
  *   the request into `approval.requested`.
  * - Web search is off, in a sandbox and on this computer alike (decision 7,
@@ -50,6 +51,16 @@ export function codexConfigText(): string {
     "",
   ].join("\n");
 }
+
+/**
+ * The arguments that turn Codex's own sandbox on for one run outside
+ * Halonic's fence, where it works: the commands Codex starts may write only
+ * in the working folder and have no network. Codex itself, with its model
+ * requests and its MCP client, runs outside that sandbox, so it still
+ * reaches the bridge. `-c` sets it for this process only, so the agent's
+ * `config.toml` stays the same for every run.
+ */
+export const codexOwnSandboxArgs: readonly string[] = ["-c", 'sandbox_mode="workspace-write"'];
 
 /**
  * The arguments that give `codex app-server` the run's bridge: the model

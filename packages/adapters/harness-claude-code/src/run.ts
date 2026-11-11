@@ -1,5 +1,10 @@
 import { join } from "node:path";
-import { exitWithin, outputTail, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import {
+  exitWithin,
+  type OwnSandboxCheck,
+  outputTail,
+  type SettingsFolderWriter,
+} from "@halonicjs/adapter-harness-kit";
 import type {
   HarnessBridge,
   HarnessEvent,
@@ -29,6 +34,8 @@ const keptErrorCharacters = 4_096;
 export interface ClaudeCodeRunOptions {
   /** Writes the agent's settings folder and the run's instructions file before Claude Code starts. */
   settings: SettingsFolderWriter;
+  /** Whether Claude Code's own sandbox works here; asked only for a run outside Halonic's fence. */
+  ownSandbox: OwnSandboxCheck;
 }
 
 /** The running program, with what the run needs to talk to it. */
@@ -74,21 +81,26 @@ export class ClaudeCodeRun implements HarnessRun {
     this.#task = task;
     this.#bridgeToken = bridge.token;
     this.#scrubber.remember(bridge.token);
-    this.#started = this.#start(session, options.settings);
+    this.#started = this.#start(session, options);
     // A program that can't start is reported by the stream, not here.
     this.#started.catch(() => undefined);
   }
 
-  async #start(session: SandboxSession, settings: SettingsFolderWriter): Promise<Started> {
+  async #start(
+    session: SandboxSession,
+    { settings, ownSandbox }: ClaudeCodeRunOptions,
+  ): Promise<Started> {
     const folder = session.profile.settingsFolder;
     if (folder === null) {
       throw new Error("Claude Code needs a settings folder, and the sandbox profile has none.");
     }
     await writeClaudeCodeSettings(folder, settings);
     const instructionsFile = await this.#writeInstructions(session.profile.tempFolder, settings);
+    // Outside the fence, Claude Code's own sandbox is the one around its shell commands.
+    const own = session.fence.state === "off" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
     const process = await session.start(
-      claudeCodeCommand(this.#task, { settingsFolder: folder, instructionsFile }),
+      claudeCodeCommand(this.#task, { settingsFolder: folder, instructionsFile, ownSandbox: own }),
     );
     const input = process.stdin.getWriter();
     const errorTail = outputTail(process.stderr, keptErrorCharacters).catch(() => "");
