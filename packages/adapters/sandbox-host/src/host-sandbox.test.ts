@@ -50,6 +50,9 @@ async function runNode(code: string, overrides: Partial<SandboxProfile> = {}) {
   }
 }
 
+/** What the operating system adds to every process: Windows its folders, macOS the text encoding. */
+const addedBySystem = ["SYSTEMROOT", "SystemRoot", "WINDIR", "windir", "__CF_USER_TEXT_ENCODING"];
+
 /** Resolves once `pid` is gone, or rejects after a few seconds. */
 async function gone(pid: number): Promise<void> {
   for (let tries = 0; tries < 100; tries++) {
@@ -106,8 +109,7 @@ verifies("sandbox-host.start", () => {
         );
         expect(exit).toEqual({ code: 0, signal: null, reason: "exited" });
         const names = (JSON.parse(stdout) as string[]).filter(
-          // Windows adds a few of its own to every process.
-          (name) => !["SYSTEMROOT", "SystemRoot", "WINDIR", "windir"].includes(name),
+          (name) => !addedBySystem.includes(name),
         );
         expect(names).toEqual(["TMPDIR"]);
       } finally {
