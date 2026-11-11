@@ -172,7 +172,8 @@ function answerLine(
   labels: Readonly<Record<string, string>>,
 ): Phrase {
   const labelOf = (event: string) => {
-    const label = labels[event];
+    // Own keys only: an event may be named `toString` or `constructor`.
+    const label = Object.hasOwn(labels, event) ? labels[event] : undefined;
     return label === undefined || repeatsEvent(label, event) ? undefined : printable(label);
   };
   const labelled = (event: string) => {
