@@ -68,6 +68,17 @@ shows as `./acme`, not as `../../…/acme`.
 1 is also a bug on our side (`internal`) and 2 a wrong value or file (`invalid_input`). The codes
 never change meaning once released. `halonic --help` lists them too.
 
+## Parity with the old CLI
+
+`src/parity.test.ts` makes the 13 calls of the old CLI's `studio test` and `studio run` again with
+`halonic test` and `halonic run`, each on a fresh copy of the parity base fixture, from the old fixed
+clock, with IDs counted from 1 and the fixture trusted through the in-memory trust store. Each call
+is compared with the recording `cli.json` (exit code, stdout, stderr, and every stored run with its
+events in order). A difference must be named by an allowed difference's `cliRules`, or by a known gap
+that names the call and the task that fixes it; a rule or a gap that no longer applies fails the
+test. The compare, the rules and both lists live in `@halonicjs/testing-parity`; see its README
+(CLI calls). The requirement is `requirements/parity-cli-calls.md`.
+
 ## Adding a command
 
 1. Make a folder `src/commands/<name>/` with a `command.ts` that exports `<name>Command`
