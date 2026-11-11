@@ -41,3 +41,5 @@ follow in later steps of HAL-2868.
 ## Covers
 
 - format.integration-file
+- packages/core/format/spec/integration.schema.json
+- packages/core/format/spec/plugin.schema.json
