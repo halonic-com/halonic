@@ -12,6 +12,10 @@ export {
   LockHeldError,
   type RenewTimer,
 } from "./held-lock.ts";
+export {
+  FileSystemPluginFolder,
+  type FileSystemPluginFolderOptions,
+} from "./plugin-folder.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 export { FileTrustStore } from "./trust-store.ts";

@@ -270,6 +270,26 @@ fingerprint each plugin's files exactly. It passes the shared
   directly under `dir` (or the root); the default lists everything below it,
   up to `limit`.
 
+## Placing and removing plugins
+
+`new FileSystemPluginFolder(root)` is the profile's plugins folder as a
+`PluginFolderWriter`: `place` writes a plugin's folder whole or not at
+all, and `remove` takes one away. It passes the shared
+`PluginFolderWriter` contract suite.
+
+- **Whole or not at all:** a plugin is written into a new folder in
+  `<root>.staging`, beside the plugins folder and on the same disk, then
+  renamed into place as `<root>/<id>`. A replaced or removed plugin is
+  renamed out to the staging folder first and deleted there, so a reader
+  never lists half of one. A failed write leaves nothing in the plugins
+  folder.
+- **Names:** "the same id in any case" is decided with `segmentAsOpened`,
+  so it doesn't depend on the disk. `remove` acts only on the entry named
+  exactly the id.
+- **Links:** entries are looked at with `lstat`. `place` never replaces a
+  link, and `remove` takes away a link or a Windows junction itself, never
+  what it points to, also for one inside a plugin folder.
+
 ## Records in the profile
 
 `new FileRecordStore(root)` keeps agent notes and collection records in
