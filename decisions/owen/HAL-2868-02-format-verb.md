@@ -1,6 +1,6 @@
 # Decision: a sheet's tool may say what a call does to its noun, and a noun may start with a capital
 
-- Approval: [HAL-2868](/HAL/issues/HAL-2868), from Sofia's wording call on [HAL-2848](/HAL/issues/HAL-2848) and her note on HAL-2868 (team decisions); the package owner (Liam) approves this note in review
+- Approval: [HAL-2868](/HAL/issues/HAL-2868), from Sofia's wording call on [HAL-2848](/HAL/issues/HAL-2848) and her note on HAL-2868 (team decisions); Liam agreed to the capital first letter on [HAL-6051](/HAL/issues/HAL-6051); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-2868, a follow-up to [HAL-2836](/HAL/issues/HAL-2836)
 
@@ -28,7 +28,9 @@ and its review is the guard.
 The capital is for product names. "Drive" is one, and lower-case "drive file" would read wrong,
 while plain "file" can't tell the user's Google Drive apart from the workspace. Only the first
 letter may be a capital, so a sheet can't shout, and there are still no digits or marks, so a noun
-can't carry a value from the call.
+can't carry a value from the call. The capital is only for a product or service name ("Drive
+file", "Slack message"), never for an ordinary word ("Email"). The pattern can't tell the two
+apart, so the review of an integration's listing checks it.
 
 ## What it doesn't change
 
