@@ -18,21 +18,41 @@ export interface ProposedFile {
   readonly base: FileBase;
 }
 
-/**
- * What a run that changed files proposes, as `run.proposal` carries it
- * (flow-inbox CHECK C10). The run's texts are in the commit `ref` points at.
- */
-export interface RunProposal {
+/** What every run proposal holds, with history on or off. */
+interface RunProposalFields {
   readonly runId: string;
-  /** The commit the run started at: its version, and the parent of the proposal's commit. */
-  readonly base: string;
-  /** `refs/halonic/proposals/<runId>`. */
-  readonly ref: string;
   /** Sorted by path. */
   readonly files: readonly ProposedFile[];
   /** The ids of the items the files belong to, in path order, each once, for "to Support triage and 2 more". */
   readonly items: readonly string[];
 }
+
+/** A proposal of a run in a workspace with history on: its texts are in the commit `ref` points at. */
+export interface HistoryOnProposal extends RunProposalFields {
+  readonly history: "git";
+  /** The commit the run started at: its version, and the parent of the proposal's commit. */
+  readonly base: string;
+  /** `refs/halonic/proposals/<runId>`. */
+  readonly ref: string;
+}
+
+/**
+ * A proposal of a run in a workspace with history off
+ * (`app.run-proposal-history-off`): its texts are in the run's copy in
+ * Halonic's data folder, so there is no commit and no ref.
+ */
+export interface HistoryOffProposal extends RunProposalFields {
+  readonly history: "off";
+  readonly base: null;
+  readonly ref: null;
+}
+
+/**
+ * What a run that changed files proposes, as `run.proposal` carries it
+ * (flow-inbox CHECK C10). The Inbox reads `runId`, `files` and `items`,
+ * which both kinds have; narrow on `history` before reading `base` or `ref`.
+ */
+export type RunProposal = HistoryOnProposal | HistoryOffProposal;
 
 /** Where a proposed file stands. A refused file is `not-applicable`: it is never written. */
 export type Decision = "accepted" | "rejected" | "undecided" | "not-applicable";
@@ -145,16 +165,33 @@ export type InFileResult =
   | { readonly status: "cant-separate"; readonly path: string; readonly message: string };
 
 /**
- * Thrown when a call needs the run's texts and its proposal ref is gone,
- * deleted outside Halonic (`app.run-proposal-unavailable`). The Inbox shows
- * the proposal as unavailable and offers `removeUnavailable`.
+ * Thrown when a call needs the run's texts and they are gone: its proposal
+ * ref, or with history off its copy, was deleted outside Halonic
+ * (`app.run-proposal-unavailable`). The Inbox shows the proposal as
+ * unavailable and offers `removeUnavailable`.
  */
 export class ProposalUnavailableError extends Error {
   readonly runId: string;
 
   constructor(runId: string) {
-    super(`The proposal of run ${runId} is unavailable: its ref is gone.`);
+    super(`The proposal of run ${runId} is unavailable: its texts are gone.`);
     this.name = "ProposalUnavailableError";
+    this.runId = runId;
+  }
+}
+
+/**
+ * Thrown by `open` with history off when the workspace is too big to copy
+ * for a run (`app.run-proposal-history-off`). Nothing of the copy is left.
+ */
+export class WorkspaceTooBigToCopyError extends Error {
+  readonly runId: string;
+
+  constructor(runId: string, limit: string) {
+    super(
+      `Run ${runId} can't start: the workspace is too big to run with history off (more than ${limit}).`,
+    );
+    this.name = "WorkspaceTooBigToCopyError";
     this.runId = runId;
   }
 }

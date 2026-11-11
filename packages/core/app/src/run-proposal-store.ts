@@ -97,6 +97,18 @@ export class ProposalRecordStore {
     return records.filter((record): record is ProposedRecord => record.state === "proposed");
   }
 
+  /** Every run with a record, whether it can be read or not. */
+  async recordedRuns(): Promise<Set<string>> {
+    const runIds = new Set<string>();
+    for (const path of await this.store.list()) {
+      const runId = recordFilePattern.exec(path)?.[1];
+      if (runId !== undefined) {
+        runIds.add(runId);
+      }
+    }
+    return runIds;
+  }
+
   /** Every record that can be read. */
   private async readable(): Promise<RunProposalRecord[]> {
     const records: RunProposalRecord[] = [];

@@ -5,7 +5,7 @@ import {
   type VcsFileDiff,
   type VcsWorktree,
 } from "@halonicjs/ports";
-import type { ProposalVcs } from "../run-proposals.ts";
+import type { ProposalVcs } from "../run-proposal-git-texts.ts";
 
 type Tree = ReadonlyMap<string, string>;
 

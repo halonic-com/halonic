@@ -24,6 +24,7 @@ verifies("app.run-proposal-worktree", () => {
       expect(JSON.parse(records.files.get("01JD8Q.json") ?? "")).toEqual({
         format: 1,
         state: "running",
+        history: "git",
         runId: "01JD8Q",
         base: version,
         worktreeId: "wt1",
@@ -142,6 +143,7 @@ verifies("app.run-proposal-end", () => {
 
       const expected = {
         runId: "01JD8Q",
+        history: "git",
         base: version,
         ref: "refs/halonic/proposals/01JD8Q",
         files: [

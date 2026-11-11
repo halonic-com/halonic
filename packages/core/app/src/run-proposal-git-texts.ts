@@ -2,19 +2,36 @@
 // its own, and what it changed is committed onto its proposal ref, with its
 // version as parent. Internal to `core/app`.
 
-import type { Digest } from "@halonicjs/ports";
+import type { Digest, Vcs } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
-import { proposalRefOf, type RunningRecord } from "./run-proposal-record.ts";
-import type { OpenedRun, ProposalReader, ProposalTexts } from "./run-proposal-texts.ts";
+import { type HistoryOnRunningRecord, proposalRefOf } from "./run-proposal-record.ts";
+import type {
+  KeptTexts,
+  ProposalReader,
+  RecordedRuns,
+  WithoutItems,
+} from "./run-proposal-texts.ts";
 import {
+  type HistoryOnProposal,
   ProposalUnavailableError,
   type ProposedFile,
-  type RunProposal,
 } from "./run-proposal-types.ts";
-import type { ProposalVcs } from "./run-proposals.ts";
+
+/** The part of the `Vcs` port the proposal service uses. */
+export type ProposalVcs = Pick<
+  Vcs,
+  | "addWorktree"
+  | "removeWorktree"
+  | "listWorktrees"
+  | "diffBetween"
+  | "readAt"
+  | "commitWorktreeTo"
+  | "readRef"
+  | "deleteRef"
+>;
 
 /** The texts of runs in worktrees, kept on proposal refs. */
-export class GitProposalTexts implements ProposalTexts {
+export class GitProposalTexts implements KeptTexts<HistoryOnRunningRecord, HistoryOnProposal> {
   private readonly vcs: ProposalVcs;
   private readonly digest: Digest;
 
@@ -24,15 +41,18 @@ export class GitProposalTexts implements ProposalTexts {
   }
 
   /** Adds the run's worktree at its version (`app.run-proposal-worktree`). */
-  async open(runId: string, version: string): Promise<OpenedRun> {
+  async open(
+    runId: string,
+    version: string,
+  ): Promise<{ folder: string; record: HistoryOnRunningRecord }> {
     const worktree = await this.vcs.addWorktree(version);
     return {
       folder: worktree.path,
-      record: { state: "running", runId, base: version, worktreeId: worktree.id },
+      record: { state: "running", history: "git", runId, base: version, worktreeId: worktree.id },
     };
   }
 
-  async folderOf(record: RunningRecord): Promise<string | null> {
+  async folderOf(record: HistoryOnRunningRecord): Promise<string | null> {
     const worktrees = await this.vcs.listWorktrees();
     return worktrees.find((worktree) => worktree.id === record.worktreeId)?.path ?? null;
   }
@@ -42,7 +62,7 @@ export class GitProposalTexts implements ProposalTexts {
    * from that commit, not from the worktree's diff: the commit leaves out
    * files the repository ignores, and so does the proposal.
    */
-  async end(record: RunningRecord): Promise<Omit<RunProposal, "items"> | null> {
+  async end(record: HistoryOnRunningRecord): Promise<WithoutItems<HistoryOnProposal> | null> {
     const { runId, base, worktreeId } = record;
     const changed = await this.vcs.diffBetween(base, worktreeId);
     if (changed.length === 0) {
@@ -61,14 +81,14 @@ export class GitProposalTexts implements ProposalTexts {
       await this.vcs.deleteRef(ref);
       return null;
     }
-    return { runId, base, ref, files };
+    return { runId, history: "git", base, ref, files };
   }
 
-  async close(record: RunningRecord): Promise<void> {
+  async close(record: HistoryOnRunningRecord): Promise<void> {
     await this.vcs.removeWorktree(record.worktreeId);
   }
 
-  async readerOf(proposal: RunProposal): Promise<ProposalReader> {
+  async readerOf(proposal: HistoryOnProposal): Promise<ProposalReader> {
     const commit = await this.vcs.readRef(proposal.ref);
     if (commit === null) {
       throw new ProposalUnavailableError(proposal.runId);
@@ -78,20 +98,21 @@ export class GitProposalTexts implements ProposalTexts {
     };
   }
 
-  async isAvailable(proposal: RunProposal): Promise<boolean> {
+  async isAvailable(proposal: HistoryOnProposal): Promise<boolean> {
     return (await this.vcs.readRef(proposal.ref)) !== null;
   }
 
-  async release(proposal: RunProposal): Promise<void> {
+  async release(proposal: HistoryOnProposal): Promise<void> {
     await this.deleteRefIfThere(proposal.ref);
   }
 
-  async discard(record: RunningRecord): Promise<void> {
+  async discard(record: HistoryOnRunningRecord): Promise<void> {
     await this.deleteRefIfThere(proposalRefOf(record.runId));
   }
 
-  async removeLeftovers(kept: readonly RunningRecord[]): Promise<void> {
-    const keptIds = new Set(kept.map((record) => record.worktreeId));
+  /** Removes every worktree but those of running runs. A proposal's ref is not a leftover. */
+  async removeLeftovers({ running }: RecordedRuns<HistoryOnRunningRecord>): Promise<void> {
+    const keptIds = new Set(running.map((record) => record.worktreeId));
     for (const worktree of await this.vcs.listWorktrees()) {
       if (!keptIds.has(worktree.id)) {
         await this.vcs.removeWorktree(worktree.id);

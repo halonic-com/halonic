@@ -312,6 +312,8 @@ export {
   type CompareTexts,
   type Decision,
   type FileBase,
+  type HistoryOffProposal,
+  type HistoryOnProposal,
   type InFileProposalTarget,
   type InFileResult,
   type ProposalFileParts,
@@ -323,9 +325,11 @@ export {
   type UndoFileWrite,
   type UndoSource,
   type UndoStep,
+  WorkspaceTooBigToCopyError,
 } from "./run-proposal-types.ts";
 export {
   type ProposalVcs,
+  type RunCopies,
   RunProposals,
   type RunProposalsOptions,
   type RunWorktree,

@@ -3,16 +3,18 @@
 // changed becomes a proposal the person accepts or rejects from the Inbox.
 // Nothing here commits to a branch, pushes or makes anything live (7.6).
 
-import type { Clock, DefinitionStore, Digest, Vcs } from "@halonicjs/ports";
+import type { Clock, DefinitionStore, Digest } from "@halonicjs/ports";
 import { placeOf } from "@halonicjs/workspace";
 import type { Trash } from "./review-types.ts";
+import { CopyProposalTexts, type RunCopies } from "./run-proposal-copy-texts.ts";
 import { ProposalDecisions } from "./run-proposal-decisions.ts";
-import { GitProposalTexts } from "./run-proposal-git-texts.ts";
+import { GitProposalTexts, type ProposalVcs } from "./run-proposal-git-texts.ts";
 import { ProposalParts } from "./run-proposal-parts.ts";
 import type { ProposedRecord, RunningRecord } from "./run-proposal-record.ts";
 import { ProposalSettling, type SettleResult } from "./run-proposal-settle.ts";
 import { ProposalRecordStore } from "./run-proposal-store.ts";
 import type { ProposalTexts } from "./run-proposal-texts.ts";
+import { ProposalTextsByHistory } from "./run-proposal-texts-by-history.ts";
 import type {
   AcceptResult,
   CompareTexts,
@@ -27,23 +29,21 @@ import type {
   UndoStep,
 } from "./run-proposal-types.ts";
 
-/** The part of the `Vcs` port the proposal service uses. */
-export type ProposalVcs = Pick<
-  Vcs,
-  | "addWorktree"
-  | "removeWorktree"
-  | "listWorktrees"
-  | "diffBetween"
-  | "readAt"
-  | "commitWorktreeTo"
-  | "readRef"
-  | "deleteRef"
->;
+export type { RunCopies } from "./run-proposal-copy-texts.ts";
+export type { ProposalVcs } from "./run-proposal-git-texts.ts";
 
 /** What the run proposal service needs from the host. */
 export interface RunProposalsOptions {
-  /** The workspace's version control. Its worktrees go in Halonic's data folder, never in the workspace. */
-  readonly vcs: ProposalVcs;
+  /**
+   * The workspace's version control, or `null` when it has none (history
+   * off). Its worktrees go in Halonic's data folder, never in the workspace.
+   */
+  readonly vcs: ProposalVcs | null;
+  /**
+   * Where runs with history off get their copy of the workspace
+   * (`app.run-proposal-history-off`). Without it, such a run can't start.
+   */
+  readonly copies?: RunCopies;
   /**
    * The records' own store, in the workspace's folder in the profile, as
    * for review records. Never the workspace's store: git could bring a
@@ -95,7 +95,12 @@ export class RunProposals {
   private readonly settling: ProposalSettling;
 
   constructor(options: RunProposalsOptions) {
-    this.texts = new GitProposalTexts(options.vcs, options.digest);
+    this.texts = new ProposalTextsByHistory(
+      options.vcs === null ? null : new GitProposalTexts(options.vcs, options.digest),
+      options.copies === undefined
+        ? null
+        : new CopyProposalTexts(options.copies, options.store, options.digest),
+    );
     this.records = new ProposalRecordStore(options.records);
     this.clock = options.clock;
     this.onEndFailed = options.onEndFailed;
@@ -111,14 +116,18 @@ export class RunProposals {
   }
 
   /**
-   * Adds the run's worktree at its version (`app.run-proposal-worktree`)
-   * and records it, so a worktree left by a crash is found at start.
+   * Adds the run's worktree at its version (`app.run-proposal-worktree`),
+   * or with history off copies the saved files for it
+   * (`app.run-proposal-history-off`), and records it, so a folder left by a
+   * crash is found at start.
    *
-   * @param version - the commit the run's definitions are read from
+   * @param version - the commit the run's definitions are read from, or
+   *   `null` when history is off (`liveVersionOf` says `history-off`)
    * @throws RangeError for a run id that can't name a proposal ref
+   * @throws WorkspaceTooBigToCopyError with history off, when the workspace is too big to copy
    * @throws when the run already has a record
    */
-  async open(runId: string, version: string): Promise<RunWorktree> {
+  async open(runId: string, version: string | null): Promise<RunWorktree> {
     return await this.records.inTurn(runId, async () => {
       if ((await this.records.read(runId)) !== null) {
         throw new Error(`Run ${runId} already has a worktree or a proposal.`);
@@ -349,29 +358,30 @@ export class RunProposals {
 
   /**
    * Removes what runs left that the engine has ended, from a crash or an
-   * `end` that couldn't finish: their worktrees, records and proposal refs,
-   * and every worktree no open run records. The worktrees of `openRuns`
-   * stay for `folderOf`. Call it at start, before any run can open a
-   * worktree.
+   * `end` that couldn't finish: their worktrees or copies, records and
+   * proposal refs, every worktree no open run records, and every copy no
+   * record names. The folders of `openRuns` stay for `folderOf`, and so do
+   * the copies of proposals. Call it at start, before any run can open a
+   * folder.
    *
    * @param openRuns - the runs the engine hasn't ended: those waiting for a
    * person, and those it will end as interrupted
    */
   async removeLeftovers(openRuns: ReadonlySet<string>): Promise<void> {
-    const kept: RunningRecord[] = [];
+    const running: RunningRecord[] = [];
     for (const runId of await this.records.running()) {
       const record = await this.records.read(runId);
       if (record?.state !== "running") {
         continue;
       }
       if (openRuns.has(runId)) {
-        kept.push(record);
+        running.push(record);
         continue;
       }
       await this.texts.discard(record);
       await this.records.remove(runId);
     }
-    await this.texts.removeLeftovers(kept);
+    await this.texts.removeLeftovers({ running, recorded: await this.records.recordedRuns() });
   }
 }
 

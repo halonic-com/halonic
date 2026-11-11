@@ -1,23 +1,45 @@
-// The record the run proposal service keeps for each run with a worktree
-// (HAL-3248): while it runs, where its worktree is; once it has proposed,
-// the proposal and each file's decision. Kept as JSON in a store of its
-// own, like the review records (HAL-3417), so git can never bring one in.
+// The record the run proposal service keeps for each run with a worktree,
+// or with history off a copy (HAL-3248): while it runs, where its folder
+// is; once it has proposed, the proposal and each file's decision. Kept as
+// JSON in a store of its own, like the review records (HAL-3417), so git
+// can never bring one in.
 
 import { checkCommitId, checkProposalRef } from "@halonicjs/ports";
 import { err, isPlainObject, ok, type Result } from "@halonicjs/std";
-import type { Decision, FileBase, ProposedFile, RunProposal } from "./run-proposal-types.ts";
+import type {
+  Decision,
+  FileBase,
+  HistoryOffProposal,
+  HistoryOnProposal,
+  ProposedFile,
+  RunProposal,
+} from "./run-proposal-types.ts";
 
 /** The version of the record's JSON. A record of another version counts as unreadable. */
 const recordFormat = 1;
 
 /** A run that is still running, in its worktree. */
-export interface RunningRecord {
+export interface HistoryOnRunningRecord {
   readonly state: "running";
+  readonly history: "git";
   readonly runId: string;
   /** The commit the worktree was added at. */
   readonly base: string;
   readonly worktreeId: string;
 }
+
+/** A run that is still running, in its copy of the workspace: the copy is named by the run's id. */
+export interface HistoryOffRunningRecord {
+  readonly state: "running";
+  readonly history: "off";
+  readonly runId: string;
+}
+
+/**
+ * A run that is still running. A record written before history off existed
+ * has no `history`, and reads as `"git"`.
+ */
+export type RunningRecord = HistoryOnRunningRecord | HistoryOffRunningRecord;
 
 /** A run that ended with changes, and what the person decided so far. */
 export interface ProposedRecord {
@@ -116,10 +138,26 @@ export function parseRunProposalRecord(
   return err("its state is neither running nor proposed");
 }
 
+/**
+ * Whether the record is of a run with history on or off. A record written
+ * before history off existed has no `history`: it is `"git"`.
+ */
+function historyOf(json: Record<string, unknown>): "git" | "off" | null {
+  const history = json["history"] ?? "git";
+  return history === "git" || history === "off" ? history : null;
+}
+
 function readRunning(json: Record<string, unknown>, runId: string): Result<RunningRecord, string> {
   const { base, worktreeId } = json;
   if (json["runId"] !== runId) {
     return err("its runId isn't the run its name says");
+  }
+  const history = historyOf(json);
+  if (history === null) {
+    return err("its history is neither git nor off");
+  }
+  if (history === "off") {
+    return ok({ state: "running", history, runId });
   }
   if (!isCommitId(base)) {
     return err("its base isn't a full commit id");
@@ -127,7 +165,7 @@ function readRunning(json: Record<string, unknown>, runId: string): Result<Runni
   if (typeof worktreeId !== "string" || worktreeId === "") {
     return err("its worktreeId isn't text");
   }
-  return ok({ state: "running", runId, base, worktreeId });
+  return ok({ state: "running", history, runId, base, worktreeId });
 }
 
 function readProposed(
@@ -187,13 +225,7 @@ function readProposal(json: unknown, runId: string): Result<RunProposal, string>
   if (!isPlainObject(json) || json["runId"] !== runId) {
     return err("its proposal isn't about the run its name says");
   }
-  const { base, ref, files: filesJson, items } = json;
-  if (!isCommitId(base)) {
-    return err("its proposal's base isn't a full commit id");
-  }
-  if (ref !== proposalRefOf(runId)) {
-    return err("its proposal's ref isn't the run's proposal ref");
-  }
+  const { files: filesJson, items } = json;
   if (!Array.isArray(items) || !items.every((item) => typeof item === "string")) {
     return err("its proposal's items aren't a list of ids");
   }
@@ -208,7 +240,34 @@ function readProposal(json: unknown, runId: string): Result<RunProposal, string>
     }
     files.push(file);
   }
-  return ok({ runId, base, ref, files, items });
+  return readWhereTextsAre(json, { runId, files, items });
+}
+
+/** Reads where a proposal's texts are: its base and ref with history on, nothing with history off. */
+function readWhereTextsAre(
+  json: Record<string, unknown>,
+  fields: Pick<RunProposal, "runId" | "files" | "items">,
+): Result<RunProposal, string> {
+  const { base, ref } = json;
+  const history = historyOf(json);
+  if (history === null) {
+    return err("its proposal's history is neither git nor off");
+  }
+  if (history === "off") {
+    if (base !== null || ref !== null) {
+      return err("its proposal has history off but a base or a ref");
+    }
+    const proposal: HistoryOffProposal = { ...fields, history, base, ref };
+    return ok(proposal);
+  }
+  if (!isCommitId(base)) {
+    return err("its proposal's base isn't a full commit id");
+  }
+  if (ref !== proposalRefOf(fields.runId)) {
+    return err("its proposal's ref isn't the run's proposal ref");
+  }
+  const proposal: HistoryOnProposal = { ...fields, history, base, ref };
+  return ok(proposal);
 }
 
 const changes: ReadonlySet<unknown> = new Set(["added", "modified", "deleted"]);

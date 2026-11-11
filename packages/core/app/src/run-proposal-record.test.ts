@@ -11,12 +11,19 @@ import {
 const base = "a1b2c3".padEnd(40, "0");
 const digest = `sha256:${"a".repeat(64)}` as const;
 
-const running: RunningRecord = { state: "running", runId: "01JD8Q", base, worktreeId: "wt1" };
+const running: RunningRecord = {
+  state: "running",
+  history: "git",
+  runId: "01JD8Q",
+  base,
+  worktreeId: "wt1",
+};
 
 const proposed: ProposedRecord = {
   state: "proposed",
   proposal: {
     runId: "01JD8Q",
+    history: "git",
     base,
     ref: "refs/halonic/proposals/01JD8Q",
     files: [
@@ -102,10 +109,59 @@ verifies("app.run-proposal-end", () => {
       [{ runId: "7KQ2MX" }, "its runId isn't the run its name says"],
       [{ base: "main" }, "its base isn't a full commit id"],
       [{ worktreeId: "" }, "its worktreeId isn't text"],
+      [{ history: "maybe" }, "its history is neither git nor off"],
     ])("refuses a running record that was changed by hand: %o", (changes, error) => {
       const text = JSON.stringify({ format: 1, ...running, ...changes });
       expect(parseRunProposalRecord(text, "01JD8Q")).toEqual({ ok: false, error });
     });
+  });
+});
+
+verifies("app.run-proposal-history-off", () => {
+  describe("the record of a run with history off", () => {
+    const runningOff: RunningRecord = { state: "running", history: "off", runId: "01JD8Q" };
+    const proposedOff: ProposedRecord = {
+      ...proposed,
+      proposal: { ...proposed.proposal, history: "off", base: null, ref: null },
+    };
+
+    it("reads back what it wrote, running or proposed", () => {
+      for (const record of [runningOff, proposedOff]) {
+        expect(parseRunProposalRecord(serializeRunProposalRecord(record), "01JD8Q")).toEqual({
+          ok: true,
+          value: record,
+        });
+      }
+    });
+
+    it("reads a record written before history off existed as history on", () => {
+      const { history: _running, ...oldRunning } = running;
+      expect(
+        parseRunProposalRecord(JSON.stringify({ format: 1, ...oldRunning }), "01JD8Q"),
+      ).toEqual({
+        ok: true,
+        value: running,
+      });
+      const { history: _proposed, ...oldProposal } = proposed.proposal;
+      expect(parseRunProposalRecord(edited({ proposal: oldProposal }), "01JD8Q")).toEqual({
+        ok: true,
+        value: proposed,
+      });
+    });
+
+    it.each([
+      [{ history: "off" }, "its proposal has history off but a base or a ref"],
+      [{ history: "off", base: null }, "its proposal has history off but a base or a ref"],
+      [{ history: "maybe" }, "its proposal's history is neither git nor off"],
+    ])(
+      "refuses a proposal whose history doesn't match where its texts are: %o",
+      (changes, error) => {
+        expect(parseRunProposalRecord(editedProposal(changes), "01JD8Q")).toEqual({
+          ok: false,
+          error,
+        });
+      },
+    );
   });
 });
 

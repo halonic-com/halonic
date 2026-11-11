@@ -155,10 +155,10 @@ verifies("app.run-proposal-accept", () => {
       );
       setup.vcs.refs.clear();
       await expect(setup.proposals.accept("01JD8Q", "all")).rejects.toThrow(
-        "The proposal of run 01JD8Q is unavailable: its ref is gone.",
+        "The proposal of run 01JD8Q is unavailable: its texts are gone.",
       );
       await expect(setup.proposals.compare("01JD8Q", clerkPath)).rejects.toThrow(
-        "The proposal of run 01JD8Q is unavailable: its ref is gone.",
+        "The proposal of run 01JD8Q is unavailable: its texts are gone.",
       );
     });
   });
