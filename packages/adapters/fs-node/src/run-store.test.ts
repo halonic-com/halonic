@@ -143,6 +143,15 @@ verifies("fs-node.run-store-files", () => {
     });
   });
 
+  it("finds no run under an id that differs only in letter case, even where the file system opens it", async () => {
+    const { root, store } = await storeWithRun();
+    // What a case-insensitive file system gives for "R1": the log of "r1".
+    await writeFile(join(root, "R1.jsonl"), await readFile(join(root, "r1.jsonl")));
+    expect(await store.events("R1")).toEqual([]);
+    expect(await store.get("R1")).toBeNull();
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
+  });
+
   it("forgets a run whose log is deleted, and lists nothing for a missing folder", async () => {
     const { root, store } = await storeWithRun();
     await store.append("r2", 0, [started("r2")], { snapshot: { step: 1 } });

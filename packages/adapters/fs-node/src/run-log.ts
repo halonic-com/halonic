@@ -1,4 +1,4 @@
-import type { RunEvent } from "@halonicjs/events";
+import { parseEventLine, type RunEvent } from "@halonicjs/events";
 import { parseLogLines } from "@halonicjs/ports";
 
 /** A run log as read from disk: its events, and how many of its bytes hold them. */
@@ -36,5 +36,25 @@ function decodeLines(bytes: Uint8Array, file: string): string {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     throw new Error(`Broken run log ${file}: it is not valid UTF-8 text.`);
+  }
+}
+
+/**
+ * Whether the log's first line belongs to a run whose id differs from `runId`
+ * only in letter case. A case-insensitive file system (Windows, macOS) opens
+ * `RUN_X.jsonl` for the log `run_x.jsonl`, but run ids are case-sensitive, so
+ * that log is not this run's. A log whose first line can't be read is not an
+ * answer: the whole read that follows names the fault.
+ */
+export function isLogOfOtherCase(bytes: Uint8Array, runId: string): boolean {
+  const end = bytes.indexOf(lineBreak);
+  if (end < 0) return false;
+  try {
+    const first = parseEventLine(
+      new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, end)),
+    );
+    return first.runId !== runId && first.runId.toLowerCase() === runId.toLowerCase();
+  } catch {
+    return false;
   }
 }

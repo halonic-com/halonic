@@ -28,7 +28,7 @@ import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
 import { type LockedOutcome, settleUnderRunLock } from "./run-lock.ts";
-import { parseRunLog, type RunLog } from "./run-log.ts";
+import { isLogOfOtherCase, parseRunLog, type RunLog } from "./run-log.ts";
 import { readLogStart } from "./run-log-start.ts";
 
 const logSuffix = ".jsonl";
@@ -291,6 +291,9 @@ export class FolderRunStore implements RunStore {
         return { events: [], intactBytes: 0, torn: false };
       }
       throw error;
+    }
+    if (isLogOfOtherCase(bytes, runId)) {
+      return { events: [], intactBytes: 0, torn: false };
     }
     return parseRunLog(bytes, runId, file);
   }
