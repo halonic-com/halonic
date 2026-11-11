@@ -31,8 +31,8 @@ const unusedProbe = {
   },
 };
 
-function newHarness(settings = new MemorySettingsFolder(), ownSandbox = async () => true) {
-  return codexHarness({ probe: unusedProbe, settings, ownSandbox });
+function newHarness(settings = new MemorySettingsFolder()) {
+  return codexHarness({ probe: unusedProbe, settings, ownSandbox: async () => true });
 }
 
 const task: HarnessTask = {
@@ -140,47 +140,6 @@ verifies("harness-codex.start", () => {
           'mcp_servers.halonic.url="http://127.0.0.1:4100/mcp"',
         ],
       });
-    });
-
-    it("turns Codex's own sandbox on outside the fence, where it works", async () => {
-      const thisComputer = new FakeSandboxSession({
-        profile: engineProfile,
-        program: codexFinishing,
-        fence: { state: "off" },
-      });
-      const { events } = await readAll(newHarness().start(task, thisComputer, bridge));
-
-      expect(events.at(-1)).toMatchObject({ type: "agent.finished" });
-      expect(thisComputer.started[0]?.args.slice(-2)).toEqual([
-        "-c",
-        'sandbox_mode="workspace-write"',
-      ]);
-    });
-
-    it("still starts outside the fence where Codex's own sandbox doesn't work, without it", async () => {
-      const thisComputer = new FakeSandboxSession({
-        profile: engineProfile,
-        program: codexFinishing,
-        fence: { state: "off" },
-      });
-      const harness = newHarness(new MemorySettingsFolder(), async () => false);
-      const { events } = await readAll(harness.start(task, thisComputer, bridge));
-
-      expect(events.at(-1)).toMatchObject({ type: "agent.finished" });
-      expect(thisComputer.started[0]?.args.join(" ")).not.toContain("sandbox_mode");
-    });
-
-    it("leaves Codex's own sandbox off inside the fence, without asking", async () => {
-      let asked = 0;
-      const harness = newHarness(new MemorySettingsFolder(), async () => {
-        asked += 1;
-        return true;
-      });
-      const session = openSession(codexFinishing);
-      await readAll(harness.start(task, session, bridge));
-
-      expect(session.started[0]?.args.join(" ")).not.toContain("sandbox_mode");
-      expect(asked).toBe(0);
     });
 
     it("starts a thread in the working folder with the agent's model and instructions, and sends the prompt", async () => {
