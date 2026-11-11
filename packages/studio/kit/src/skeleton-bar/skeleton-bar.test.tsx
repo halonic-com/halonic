@@ -32,11 +32,12 @@ verifies("kit.skeleton-bar", () => {
     expect(barClasses("meta")).toContain("h-2 rounded-xs w-full");
   });
 
-  it("has fixed sizes for the trailing bar, the heading bar and the leading block", () => {
+  it("has fixed sizes for the trailing bar, the heading bar, the leading block and a value", () => {
     expect(barClasses("trailing")).toContain("h-2.5 w-20 rounded-xs");
     expect(barClasses("heading")).toContain("h-2 w-12 rounded-xs");
     expect(barClasses("icon")).toContain("size-icon-md shrink-0 rounded-xs");
     expect(barClasses("avatar")).toContain("size-7 shrink-0 rounded-full");
     expect(barClasses("avatar", "2/5")).not.toContain("w-2/5");
+    expect(barClasses("value")).toContain("h-9 w-18 shrink-0 rounded-sm");
   });
 });
