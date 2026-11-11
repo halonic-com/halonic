@@ -5,6 +5,7 @@
 - Approval: Liam approves this note in his review of this pull request on
   [HAL-4975](/HAL/issues/HAL-4975); Julian reviews it for security
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mlVLfW3sDzXthJ2D3G2XY079Jhj7yX2PYrhHYSZrB95kNUn7maXAelB1ofg1EGluVQKhTWnFxIMxwCmrsm2YAg==
 
 ## What changes
 
