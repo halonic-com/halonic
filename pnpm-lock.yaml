@@ -858,6 +858,9 @@ importers:
 
   packages/adapters/harness-kit:
     dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../fs-node
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../core/engine

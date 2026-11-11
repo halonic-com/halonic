@@ -21,6 +21,13 @@ export {
   type OwnSandboxCheckOptions,
   ownSandboxCheck,
 } from "./own-sandbox.ts";
+export {
+  type HarnessSettingsFolders,
+  type ProfileHostDisk,
+  profileHostDiskOnThisComputer,
+  WorkspaceHarnessHost,
+  type WorkspaceHarnessHostOptions,
+} from "./profile-host.ts";
 export { type ReadLinesOptions, readLines } from "./read-lines.ts";
 export {
   diskSettingsFolder,
