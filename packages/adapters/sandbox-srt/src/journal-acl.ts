@@ -13,7 +13,8 @@ function system32(): string {
   return `${root}\\System32`;
 }
 
-const runFixed: RunProgram = (file, args) =>
+/** Starts a program of the system folder, never one from the PATH. */
+export const runFixed: RunProgram = (file, args) =>
   new Promise((resolve, reject) => {
     execFile(
       `${system32()}\\${file}`,

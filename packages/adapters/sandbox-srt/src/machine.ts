@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { letSandboxReadParents, parentsInProfile } from "./profile-parents.ts";
 
 /**
  * What the sandbox asks of the machine it runs on. A test hands the adapter a
@@ -36,6 +38,15 @@ export interface Machine {
    * @throws with srt's own words when the install fails
    */
   installWindowsSandbox(): Promise<"installed" | "cancelled">;
+  /**
+   * Lets srt's sandbox account read the attributes of the folders above
+   * `folders` inside the user profile, which srt's grants leave out, so a
+   * program can resolve paths to the session's folders there (HAL-5885).
+   * Windows only.
+   *
+   * @throws when the sandbox account is unknown or an access list can't be read or changed
+   */
+  letSandboxReadParents(folders: readonly string[]): Promise<void>;
 }
 
 /** The sysctl that restricts user namespaces on Ubuntu 24.04 and later. */
@@ -131,5 +142,17 @@ export const systemMachine: Machine = {
       skipProfileGrant: true,
     });
     return install.cancelled === true ? "cancelled" : "installed";
+  },
+  async letSandboxReadParents(folders) {
+    const parents = parentsInProfile(folders, homedir());
+    if (parents.length === 0) return;
+    const { getWindowsSandboxUserStatusAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
+      "@anthropic-ai/sandbox-runtime"
+    );
+    const { sid } = await getWindowsSandboxUserStatusAsync({
+      srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+    });
+    if (sid === undefined) throw new Error("srt's sandbox account is not set up");
+    await letSandboxReadParents(parents, sid);
   },
 };

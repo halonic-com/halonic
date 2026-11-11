@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { isIP } from "node:net";
 import type {
   Sandbox,
@@ -100,6 +101,11 @@ export class SrtSandbox implements Sandbox {
     if (bridge !== null && !isLoopback(bridge.host)) {
       throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
     }
+    if (this.#machine.platform === "win32") {
+      // The temp folder's parents are only there once it is.
+      await mkdir(profile.tempFolder, { recursive: true });
+      await this.#machine.letSandboxReadParents(grantedPaths(profile));
+    }
     return SrtSession.open(profile, this.#runner, {
       ...options,
       journalFolder: this.#journalFolder,
@@ -143,6 +149,17 @@ export class SrtSandbox implements Sandbox {
     }
     return null;
   }
+}
+
+/** The paths srt grants the session, whose parents a program inside must be able to look at. */
+function grantedPaths(profile: SandboxProfile): string[] {
+  const { workingFolder, tempFolder, settingsFolder, readOnlyPaths } = profile;
+  return [
+    workingFolder,
+    tempFolder,
+    ...(settingsFolder === null ? [] : [settingsFolder]),
+    ...readOnlyPaths,
+  ];
 }
 
 /** `text` on one line: srt's messages can carry srt-win's output over several. */

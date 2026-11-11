@@ -33,6 +33,14 @@ which would let every sandboxed program on the machine read the user's profile, 
 can hold tokens (`.npmrc`, `.gitconfig`); a session reads only the folders its profile names. Other
 systems have no setup step.
 
+srt grants a session its folders, not the folders above them, and without the profile grant the
+sandbox account can't even look at a folder inside the user profile. Node checks each folder above a
+script before it runs it, so it couldn't start from `%LOCALAPPDATA%\halonic\…` (HAL-5885). Before
+a Windows session opens, `open()` therefore gives the sandbox account read attributes (`(RA)`) on
+each folder between the user profile and the paths it grants, on that folder alone: it sees the
+folder's dates and flags, never what it holds. The entry stays when the session closes, since other
+sessions share those folders; a folder that has it already is left alone.
+
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
 program, argument or variable with a double quote, a percent sign, a line break or a NUL is refused

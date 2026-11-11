@@ -13,6 +13,7 @@ export const linux = {
   hasSeatbelt: async () => true,
   hasWindowsSandbox: async () => false,
   installWindowsSandbox: async () => "installed" as const,
+  letSandboxReadParents: async () => undefined,
 };
 
 type Exit = { code: number | null; signal: string | null };

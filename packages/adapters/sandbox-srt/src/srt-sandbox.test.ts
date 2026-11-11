@@ -1,3 +1,6 @@
+import { mkdtemp, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { sandboxCheckContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -15,6 +18,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     hasSeatbelt: async () => true,
     hasWindowsSandbox: async () => false,
     installWindowsSandbox: async () => "installed" as const,
+    letSandboxReadParents: async () => undefined,
     ...overrides,
   };
 }
@@ -97,6 +101,42 @@ verifies("sandbox-srt.check", () => {
         timeLimitMs: 1000,
       };
       await expect(sandbox.open(profile)).rejects.toThrow("windows-install");
+    });
+
+    it("on Windows lets the sandbox look at the parents of every path it grants before it opens", async () => {
+      const base = await mkdtemp(join(tmpdir(), "halonic-srt-parents-"));
+      try {
+        const asked: (readonly string[])[] = [];
+        const sandbox = new SrtSandbox(
+          machine({
+            platform: "win32",
+            hasWindowsSandbox: async () => true,
+            letSandboxReadParents: async (folders) => {
+              asked.push(folders);
+              throw new Error("icacls failed");
+            },
+          }),
+        );
+        const temp = join(base, "tmp", "run_1");
+        const profile = {
+          workingFolder: join(base, "work"),
+          tempFolder: temp,
+          settingsFolder: join(base, "settings"),
+          readOnlyPaths: [join(base, "workspace.yaml")],
+          deniedPaths: [],
+          env: {},
+          network: { bridge: null, allowedSites: [] },
+          timeLimitMs: 1000,
+        };
+        await expect(sandbox.open(profile)).rejects.toThrow("icacls failed");
+        expect(asked).toEqual([
+          [join(base, "work"), temp, join(base, "settings"), join(base, "workspace.yaml")],
+        ]);
+        // The temp folder is made first, so its parents are there to be granted.
+        expect((await stat(temp)).isDirectory()).toBe(true);
+      } finally {
+        await rm(base, { recursive: true, force: true });
+      }
     });
 
     it("says files are shared and the fence is the operating system's", () => {
