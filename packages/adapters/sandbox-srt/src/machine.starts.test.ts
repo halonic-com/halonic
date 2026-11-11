@@ -5,9 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 // sees each one and nothing really runs.
 const started = vi.hoisted(() => [] as { file: string; args: string[] }[]);
 vi.mock("node:child_process", () => ({
-  execFile: (file: string, args: string[], _options: unknown, done: (error: null) => void) => {
+  execFile: (
+    file: string,
+    args: string[],
+    _options: unknown,
+    done: (error: null, stdout: string, stderr: string) => void,
+  ) => {
     started.push({ file, args });
-    done(null);
+    done(null, "", "");
   },
 }));
 
@@ -17,9 +22,11 @@ verifies("sandbox-srt.check", () => {
   describe("what the machine probes start", () => {
     it("is only bwrap, socat and rg with fixed arguments, never a skill's scripts (HAL-188)", async () => {
       await systemMachine.insideContainer();
+      await systemMachine.isWsl1();
       await systemMachine.hasBubblewrap();
-      await systemMachine.hasLinuxHelpers();
-      await systemMachine.userNamespacesRestricted();
+      await systemMachine.missingLinuxHelpers();
+      await systemMachine.bubblewrapUserNamespaceError();
+      await systemMachine.appArmorRestrictsUserNamespaces();
       await systemMachine.hasSeatbelt();
       await systemMachine.hasWindowsSandbox(); // starts srt-win only on Windows
       expect(started).toEqual([

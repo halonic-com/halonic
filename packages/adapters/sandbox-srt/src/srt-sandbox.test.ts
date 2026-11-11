@@ -12,9 +12,11 @@ function machine(overrides: Partial<Machine> = {}): Machine {
   return {
     platform: "linux",
     insideContainer: async () => false,
+    isWsl1: async () => false,
     hasBubblewrap: async () => true,
-    hasLinuxHelpers: async () => true,
-    userNamespacesRestricted: async () => false,
+    missingLinuxHelpers: async () => [],
+    bubblewrapUserNamespaceError: async () => null,
+    appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => true,
     hasWindowsSandbox: async () => false,
     installWindowsSandbox: async () => "installed" as const,
@@ -52,12 +54,22 @@ verifies("sandbox-srt.check", () => {
       expect(check.missing).toHaveLength(1);
     });
 
+    /** A Linux machine where bubblewrap is there but can't make a user namespace. */
+    const bubblewrapRefused = {
+      bubblewrapUserNamespaceError: async () => "bwrap: setting up uid map: Permission denied",
+    };
+
     it.each([
       ["setup-needed", { platform: "win32" as const }],
       ["container", { insideContainer: async () => true }],
-      ["user-namespaces-restricted", { userNamespacesRestricted: async () => true }],
+      ["not-supported", { isWsl1: async () => true }],
+      [
+        "user-namespaces-restricted",
+        { ...bubblewrapRefused, appArmorRestrictsUserNamespaces: async () => true },
+      ],
       ["bubblewrap-missing", { hasBubblewrap: async () => false }],
-      ["linux-tools-missing", { hasLinuxHelpers: async () => false }],
+      ["linux-tools-missing", { missingLinuxHelpers: async () => ["socat" as const] }],
+      ["other", bubblewrapRefused],
       ["other", { platform: "darwin" as const, hasSeatbelt: async () => false }],
     ])("gives the reason %s", async (reason, overrides) => {
       const check = await new SrtSandbox(machine(overrides)).check();
@@ -68,11 +80,68 @@ verifies("sandbox-srt.check", () => {
     it("gives the first reason in the port's order when several apply", async () => {
       const everythingWrong = machine({
         insideContainer: async () => true,
-        userNamespacesRestricted: async () => true,
+        isWsl1: async () => true,
+        ...bubblewrapRefused,
+        appArmorRestrictsUserNamespaces: async () => true,
         hasBubblewrap: async () => false,
-        hasLinuxHelpers: async () => false,
+        missingLinuxHelpers: async () => ["socat", "ripgrep"],
       });
       expect((await new SrtSandbox(everythingWrong).check()).reason).toBe("container");
+    });
+
+    it("tells WSL 1 to switch the distro to WSL 2, before it asks about bubblewrap", async () => {
+      const wsl1 = machine({ isWsl1: async () => true, hasBubblewrap: async () => false });
+      expect(await new SrtSandbox(wsl1).check()).toEqual({
+        ok: false,
+        reason: "not-supported",
+        missing: ["WSL 1 can't run bubblewrap; switch the distro to WSL 2"],
+      });
+    });
+
+    it("says only that bubblewrap is missing, also when AppArmor restricts user namespaces (Ubuntu 24.04)", async () => {
+      // Ubuntu 24.04's profile for bubblewrap lets it through once it's installed.
+      const ubuntu = machine({
+        hasBubblewrap: async () => false,
+        appArmorRestrictsUserNamespaces: async () => true,
+        missingLinuxHelpers: async () => ["socat", "ripgrep"],
+      });
+      expect(await new SrtSandbox(ubuntu).check()).toEqual({
+        ok: false,
+        reason: "bubblewrap-missing",
+        missing: ["bubblewrap is not installed"],
+      });
+    });
+
+    it("blames AppArmor only when bubblewrap fails and the setting is on", async () => {
+      const bubblewrapThrough = machine({ appArmorRestrictsUserNamespaces: async () => true });
+      expect((await new SrtSandbox(bubblewrapThrough).check()).ok).toBe(true);
+      const restricted = machine({
+        ...bubblewrapRefused,
+        appArmorRestrictsUserNamespaces: async () => true,
+      });
+      expect((await new SrtSandbox(restricted).check()).reason).toBe("user-namespaces-restricted");
+    });
+
+    it("gives bubblewrap's own words when it fails for another reason", async () => {
+      expect(await new SrtSandbox(machine(bubblewrapRefused)).check()).toEqual({
+        ok: false,
+        reason: "other",
+        missing: ["bubblewrap can't start: bwrap: setting up uid map: Permission denied"],
+      });
+    });
+
+    it("names the helpers that are missing", async () => {
+      const missing = async (helpers: ("socat" | "ripgrep")[]) =>
+        (await new SrtSandbox(machine({ missingLinuxHelpers: async () => helpers })).check())
+          .missing;
+      expect(await missing(["socat"])).toEqual(["socat is not installed"]);
+      expect(await missing(["ripgrep"])).toEqual(["ripgrep is not installed"]);
+      expect(await missing(["socat", "ripgrep"])).toEqual(["socat and ripgrep are not installed"]);
+    });
+
+    it("asks for the helpers before it calls a bubblewrap failure `other`, which comes last", async () => {
+      const both = machine({ ...bubblewrapRefused, missingLinuxHelpers: async () => ["ripgrep"] });
+      expect((await new SrtSandbox(both).check()).reason).toBe("linux-tools-missing");
     });
 
     it("starts on macOS with Seatbelt", async () => {

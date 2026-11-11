@@ -17,18 +17,29 @@ export interface Machine {
   platform: NodeJS.Platform;
   /** Whether Halonic itself runs inside a container such as Docker. */
   insideContainer(): Promise<boolean>;
+  /** Whether the Linux kernel is WSL 1's, which can't run bubblewrap. */
+  isWsl1(): Promise<boolean>;
   /** Whether bubblewrap (`bwrap`) can be started. */
   hasBubblewrap(): Promise<boolean>;
   /**
-   * Whether `socat` and `rg` (ripgrep) can be started: srt runs both on Linux,
-   * `socat` for the network bridge and `rg` to find the paths it fences off.
+   * The helpers srt runs next to bubblewrap that can't be started, none when
+   * both can: `socat` for the network bridge and ripgrep (`rg`) to find the
+   * paths it fences off.
    */
-  hasLinuxHelpers(): Promise<boolean>;
+  missingLinuxHelpers(): Promise<LinuxHelper[]>;
   /**
-   * Whether the system stops programs from creating user namespaces, which
-   * bubblewrap needs: Ubuntu 24.04 does by default.
+   * Starts bubblewrap in a new user namespace. Only asked once bubblewrap is
+   * there.
+   *
+   * @returns null when it started, otherwise the first line of what bubblewrap said
    */
-  userNamespacesRestricted(): Promise<boolean>;
+  bubblewrapUserNamespaceError(): Promise<string | null>;
+  /**
+   * Whether AppArmor stops programs without their own profile from creating
+   * user namespaces: Ubuntu 24.04 does by default. Bubblewrap's own profile
+   * lets it through once it is installed.
+   */
+  appArmorRestrictsUserNamespaces(): Promise<boolean>;
   /** Whether Apple's `sandbox-exec` is there. */
   hasSeatbelt(): Promise<boolean>;
   /** Whether srt's Windows install is there and usable: the sandbox account, its network filters and a matching setup version. */
@@ -77,14 +88,46 @@ export interface Machine {
   forgetSandboxParents(profileFolder: string): Promise<void>;
 }
 
+/** A helper srt runs next to bubblewrap on Linux. */
+export type LinuxHelper = "socat" | "ripgrep";
+
 /** The sysctl that restricts user namespaces on Ubuntu 24.04 and later. */
 const restrictSetting = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns";
 
 /** Runs a program and says whether it exited with code 0. Never rejects. */
-function succeeds(file: string, args: string[]): Promise<boolean> {
+async function succeeds(file: string, args: string[]): Promise<boolean> {
+  return (await failure(file, args)) === null;
+}
+
+/**
+ * Runs a program. Never rejects.
+ *
+ * @returns null when it exited with code 0, otherwise the first line it wrote to stderr, or Node's error when it wrote none
+ */
+function failure(file: string, args: string[]): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile(file, args, { timeout: 5000 }, (error) => resolve(error === null));
+    execFile(file, args, { timeout: 5000 }, (error, _stdout, stderr) => {
+      if (error === null) resolve(null);
+      else resolve(firstLine(String(stderr ?? "")) ?? firstLine(error.message) ?? "it failed");
+    });
   });
+}
+
+/** The first line of `text` with something on it, trimmed; undefined when there is none. */
+function firstLine(text: string): string | undefined {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line !== "");
+}
+
+/**
+ * True when `/proc/version` names WSL 1's kernel. Its release ends in
+ * `-Microsoft` (`4.4.0-19041-Microsoft`); WSL 2's kernels say
+ * `microsoft-standard`, in small letters, with `-WSL2` after it since 5.10.
+ */
+export function procVersionIsWsl1(procVersion: string): boolean {
+  return /^Linux version \S+-Microsoft\s/.test(procVersion);
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -117,12 +160,15 @@ function bubblewrapStarts(): Promise<boolean> {
 }
 
 /** Asked once, like bubblewrap: the helpers srt starts next to it do not come and go while we run. */
-let linuxHelpersProbe: Promise<boolean> | undefined;
-function linuxHelpersStart(): Promise<boolean> {
+let linuxHelpersProbe: Promise<LinuxHelper[]> | undefined;
+function linuxHelpersMissing(): Promise<LinuxHelper[]> {
   linuxHelpersProbe ??= Promise.all([
     succeeds("socat", ["-V"]),
     succeeds("rg", ["--version"]),
-  ]).then(([socat, rg]) => socat && rg);
+  ]).then(([socat, rg]) => [
+    ...(socat ? [] : ["socat" as const]),
+    ...(rg ? [] : ["ripgrep" as const]),
+  ]);
   return linuxHelpersProbe;
 }
 
@@ -133,16 +179,13 @@ export const systemMachine: Machine = {
     if ((await exists("/.dockerenv")) || (await exists("/run/.containerenv"))) return true;
     return cgroupNamesContainer(await readOrEmpty("/proc/1/cgroup"));
   },
+  isWsl1: async () => procVersionIsWsl1(await readOrEmpty("/proc/version")),
   hasBubblewrap: bubblewrapStarts,
-  hasLinuxHelpers: linuxHelpersStart,
-  async userNamespacesRestricted() {
-    // With bubblewrap there, ask it: it knows better than the setting (Ubuntu 24.04
-    // lets bubblewrap through its own profile). Its new root is empty, so give it ours.
-    if (await bubblewrapStarts()) {
-      return !(await succeeds("bwrap", ["--ro-bind", "/", "/", "--unshare-user", "--", "true"]));
-    }
-    return (await readOrEmpty(restrictSetting)).trim() === "1";
-  },
+  missingLinuxHelpers: linuxHelpersMissing,
+  // Its new root is empty, so give it ours.
+  bubblewrapUserNamespaceError: () =>
+    failure("bwrap", ["--ro-bind", "/", "/", "--unshare-user", "--", "true"]),
+  appArmorRestrictsUserNamespaces: async () => (await readOrEmpty(restrictSetting)).trim() === "1",
   hasSeatbelt: () => exists("/usr/bin/sandbox-exec"),
   async hasWindowsSandbox() {
     if (process.platform !== "win32") return false;

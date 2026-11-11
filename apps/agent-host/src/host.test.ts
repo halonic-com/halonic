@@ -16,9 +16,11 @@ function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): M
   return {
     platform: "win32",
     insideContainer: async () => false,
+    isWsl1: async () => false,
     hasBubblewrap: async () => false,
-    hasLinuxHelpers: async () => false,
-    userNamespacesRestricted: async () => false,
+    missingLinuxHelpers: async () => ["socat" as const, "ripgrep" as const],
+    bubblewrapUserNamespaceError: async () => null,
+    appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => false,
     hasWindowsSandbox: async () => state.installed,
     installWindowsSandbox: async () => {

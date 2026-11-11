@@ -221,20 +221,45 @@ export class SrtSandbox implements Sandbox {
     if (machine.platform !== "linux") {
       return { reason: "other", missing: `${machine.platform} has no sandbox` };
     }
+    return this.#firstLinuxUnavailable();
+  }
+
+  /**
+   * {@link SrtSandbox.#firstUnavailable} on Linux. A reason Halonic can only
+   * know once bubblewrap is there is not asked without it.
+   */
+  async #firstLinuxUnavailable(): Promise<Unavailable | null> {
+    const machine = this.#machine;
     if (await machine.insideContainer()) {
       return { reason: "container", missing: "Halonic runs inside a container" };
     }
-    if (await machine.userNamespacesRestricted()) {
+    if (await machine.isWsl1()) {
+      return {
+        reason: "not-supported",
+        missing: "WSL 1 can't run bubblewrap; switch the distro to WSL 2",
+      };
+    }
+    if (!(await machine.hasBubblewrap())) {
+      // Without bubblewrap, the AppArmor setting says nothing: Ubuntu 24.04's
+      // profile for bubblewrap lets it through once it is installed.
+      return { reason: "bubblewrap-missing", missing: "bubblewrap is not installed" };
+    }
+    const bubblewrapError = await machine.bubblewrapUserNamespaceError();
+    if (bubblewrapError !== null && (await machine.appArmorRestrictsUserNamespaces())) {
       return {
         reason: "user-namespaces-restricted",
         missing: "the system doesn't let programs create user namespaces",
       };
     }
-    if (!(await machine.hasBubblewrap())) {
-      return { reason: "bubblewrap-missing", missing: "bubblewrap is not installed" };
+    const helpers = await machine.missingLinuxHelpers();
+    if (helpers.length > 0) {
+      return {
+        reason: "linux-tools-missing",
+        missing: `${helpers.join(" and ")} ${helpers.length === 1 ? "is" : "are"} not installed`,
+      };
     }
-    if (!(await machine.hasLinuxHelpers())) {
-      return { reason: "linux-tools-missing", missing: "socat or ripgrep is not installed" };
+    if (bubblewrapError !== null) {
+      return { reason: "other", missing: `bubblewrap can't start: ${bubblewrapError}` };
     }
     return null;
   }
