@@ -12,6 +12,7 @@ export const linux = {
   userNamespacesRestricted: async () => false,
   hasSeatbelt: async () => true,
   hasWindowsSandbox: async () => false,
+  installWindowsSandbox: async () => "installed" as const,
 };
 
 type Exit = { code: number | null; signal: string | null };

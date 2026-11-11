@@ -28,11 +28,18 @@ The build puts the payload's manifest (each file's SHA-256, size and executable 
 ## Running it
 
 ```
-halonic-agent-host --profile-folder <folder> [--version | --sandbox-check]
+halonic-agent-host --profile-folder <folder> [--version | --sandbox-check | --sandbox-setup]
 halonic-agent-host <unpacked program> [arguments]
 ```
 
-With `--version` the host prints its version, and with `--sandbox-check` whether the sandbox works on this machine, as JSON. Without either, it serves (below).
+With `--version` the host prints its version. Without any of these, it serves (below). The two sandbox commands print one JSON line, and exit with 0 when it says `ok` and 1 when it doesn't, so an installer can go by the exit code alone:
+
+| Command           | Prints                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| `--sandbox-check` | whether the sandbox works on this machine: `{"ok":true,"reason":null,"missing":[]}`, or `ok` false with the reason and what is missing |
+| `--sandbox-setup` | `{"ok":true}` once the one-time setup worked and the sandbox check passes, or `{"ok":false,"reason":"<one line>"}` |
+
+`--sandbox-setup` is for the Windows installer, which runs it as an administrator: it runs srt's Windows install without srt's profile read grant, then the check (see sandbox-srt's README). The install is for the whole machine, so a check as the person's own account passes after an administrator answered the prompt. Running it again repairs the install or changes nothing. On other systems there is nothing to set up, and it exits with 1.
 
 - **The host.** On launch the executable unpacks the payload into `<profile folder>/agent-host/<version>-<digest>` and checks every file against its SHA-256. A folder an earlier launch left is reused when every file still matches, and unpacked again otherwise. It unpacks into a temporary folder first and renames it, so a launch that stops halfway leaves nothing half-written. It then maps `@halonicjs/*` to the unpacked packages with a resolve hook and loads `src/host.ts`. The folder is inside Halonic's own data, so the profiles Studio builds must deny it to sandboxed programs, with the rest of that data (the `halonic-data` group). Studio's side isn't built yet; nothing on `main` builds that group so far.
 - **Old folders.** More than one host can run on a profile folder (Studio launched twice, or the CLI next to it), so each host first claims its folder in `agent-host/running/<process id>` and gives the claim up when it exits. Once its own folder is ready, the host removes the payload folders other versions and halfway launches left under `agent-host`, but never one a running host has claimed, nor that host's temporary folders. A claim whose host no longer runs is dropped, and anything that isn't a payload folder is left alone. This is best effort: a folder still in use (on Windows) stays until a later launch.

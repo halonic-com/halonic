@@ -14,6 +14,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     userNamespacesRestricted: async () => false,
     hasSeatbelt: async () => true,
     hasWindowsSandbox: async () => false,
+    installWindowsSandbox: async () => "installed" as const,
     ...overrides,
   };
 }
@@ -108,6 +109,78 @@ verifies("sandbox-srt.check", () => {
       expect(cgroupNamesContainer("0::/docker/abc123")).toBe(true);
       expect(cgroupNamesContainer("0::/kubepods/burstable/pod1")).toBe(true);
       expect(cgroupNamesContainer("0::/user.slice/user-1000.slice")).toBe(false);
+    });
+  });
+});
+
+verifies("sandbox-srt.setup", () => {
+  describe("SrtSandbox.setUp", () => {
+    /** Windows, where each install brings the sandbox in. */
+    function windowsMachine(install: Machine["installWindowsSandbox"]) {
+      let installed = false;
+      return machine({
+        platform: "win32",
+        hasWindowsSandbox: async () => installed,
+        installWindowsSandbox: async () => {
+          const result = await install();
+          installed ||= result === "installed";
+          return result;
+        },
+      });
+    }
+
+    it("installs on Windows and is done once the sandbox passes its check", async () => {
+      const sandbox = new SrtSandbox(windowsMachine(async () => "installed"));
+      expect(await sandbox.setUp()).toEqual({ ok: true });
+      expect((await sandbox.check()).ok).toBe(true);
+    });
+
+    it("is done again when run again", async () => {
+      const sandbox = new SrtSandbox(windowsMachine(async () => "installed"));
+      await sandbox.setUp();
+      expect(await sandbox.setUp()).toEqual({ ok: true });
+    });
+
+    it("says the administrator prompt was cancelled", async () => {
+      const sandbox = new SrtSandbox(windowsMachine(async () => "cancelled"));
+      expect(await sandbox.setUp()).toEqual({
+        ok: false,
+        reason: "the administrator prompt was cancelled; nothing changed",
+      });
+    });
+
+    it("gives the install's own words on one line when it fails", async () => {
+      const sandbox = new SrtSandbox(
+        windowsMachine(async () => {
+          throw new Error("srt-win install: WFP filter install failed:\r\n  access denied\r\n");
+        }),
+      );
+      expect(await sandbox.setUp()).toEqual({
+        ok: false,
+        reason: "srt-win install: WFP filter install failed: access denied",
+      });
+    });
+
+    it("gives the check's words when the sandbox still can't start after the install", async () => {
+      const sandbox = new SrtSandbox(machine({ platform: "win32" }));
+      const setup = await sandbox.setUp();
+      expect(setup.ok).toBe(false);
+      expect(setup.ok ? "" : setup.reason).toContain("windows-install");
+    });
+
+    it("installs nothing on other systems", async () => {
+      let installs = 0;
+      const linux = machine({
+        installWindowsSandbox: async () => {
+          installs++;
+          return "installed";
+        },
+      });
+      expect(await new SrtSandbox(linux).setUp()).toEqual({
+        ok: false,
+        reason: "only Windows has a sandbox setup, not linux",
+      });
+      expect(installs).toBe(0);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +13,8 @@ import type { Handshake } from "../src/host.ts";
  * `pnpm smoke:sea` runs after `pnpm build:sea`, on every system CI checks:
  *
  * 1. the host unpacks its payload into a fresh profile folder and prints its version;
- * 2. it loads sandbox-srt from the payload and says whether the sandbox works here;
+ * 2. it loads sandbox-srt from the payload and says whether the sandbox works here
+ *    (exit code 0 when it does, 1 when not);
  * 3. srt's command line runs through the executable, as sandbox-srt starts it;
  * 4. it serves on loopback: a request without the token gets 401, one with it
  *    gets the version, the sandbox answers its check over loopback (whether or
@@ -28,11 +29,18 @@ const { version } = JSON.parse(readFileSync(join(packageDirectory, "package.json
 const executable = join(packageDirectory, "dist", executableName(process.platform));
 const profile = mkdtempSync(join(tmpdir(), "agent-host-smoke-"));
 
-/** Runs the executable; a check that fails names what it expected and what it got. */
-function check(args: string[], expected: RegExp, what: string): void {
-  const printed = execFileSync(executable, args, { encoding: "utf8" });
-  if (!expected.test(printed)) {
-    throw new Error(`${what}: expected ${expected}, got ${JSON.stringify(printed)}.`);
+/**
+ * Runs the executable; a check that fails names what it expected and what it got.
+ *
+ * @param exitCodes - the exit codes that count as an answer
+ */
+function check(args: string[], expected: RegExp, what: string, exitCodes = [0]): void {
+  const { status, stdout, stderr } = spawnSync(executable, args, { encoding: "utf8" });
+  if (status === null || !exitCodes.includes(status)) {
+    throw new Error(`${what}: exited with ${status}: ${stderr}`);
+  }
+  if (!expected.test(stdout)) {
+    throw new Error(`${what}: expected ${expected}, got ${JSON.stringify(stdout)}.`);
   }
   console.log(`OK: ${what}.`);
 }
@@ -84,6 +92,8 @@ try {
     ["--profile-folder", profile, "--sandbox-check"],
     /^\{"ok":(true|false),.*\}\n$/,
     "checks the sandbox",
+    // 1: the sandbox can't start on this system, which CI's runners needn't allow.
+    [0, 1],
   );
   const [unpacked] = readdirSync(join(profile, "agent-host"));
   const srtCli = join(profile, "agent-host", unpacked ?? "", "node_modules", "@anthropic-ai");

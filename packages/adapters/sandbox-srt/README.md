@@ -16,6 +16,16 @@ never run a file under a skill's `scripts/` folder. When a session ends, it undo
 file the program changed in the working folder's git folders and moves aside any `.git` the program
 planted at a gitlink, reporting each as a refused write.
 
+`setUp()` is the one-time setup the installer runs as an administrator (through the agent host's
+`--sandbox-setup`). On Windows it runs srt's install (what `srt windows-install` runs), then checks:
+it is `ok` only when `check()` then passes, and otherwise gives one line on why not. Running it again
+repairs the install or changes nothing. The install is for the whole machine (the sandbox account,
+its password in `HKLM` and the network filters), so it serves every user, also when an administrator
+other than the person at the keyboard answered the prompt. It leaves out srt's profile read grant,
+which would let every sandboxed program on the machine read the user's profile, including files that
+can hold tokens (`.npmrc`, `.gitconfig`); a session reads only the folders its profile names. Other
+systems have no setup step.
+
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
 program, argument or variable with a double quote, a percent sign, a line break or a NUL is refused

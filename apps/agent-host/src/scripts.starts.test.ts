@@ -32,6 +32,10 @@ vi.mock("node:child_process", async () => {
       started.push({ file, args: Array.isArray(args) ? args : [] });
       return answerOf(Array.isArray(args) ? args : []);
     },
+    spawnSync: (file: string, args?: readonly string[] | object) => {
+      started.push({ file, args: Array.isArray(args) ? args : [] });
+      return { status: 0, stdout: answerOf(Array.isArray(args) ? args : []), stderr: "" };
+    },
     spawn: (file: string, args: readonly string[]) => {
       started.push({ file, args });
       return host;

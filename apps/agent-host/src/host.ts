@@ -32,23 +32,39 @@ export interface Handshake {
  *
  * - `--version` prints its version;
  * - `--sandbox-check` prints whether the sandbox works on this machine, as JSON;
+ * - `--sandbox-setup` sets the sandbox up, once, for the installer (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON;
  * - otherwise it serves on loopback (see {@link serve}).
  *
+ * The two sandbox commands exit with 0 when the answer is `ok`, and 1 when it
+ * isn't, so the installer needn't read the JSON.
+ *
+ * @param sandbox - the sandbox on this machine; tests pass one on a fake machine
  * @returns the exit code
  */
 export async function run(
   args: readonly string[],
   version: string,
   io: HostIo = { input: process.stdin, write: (text) => process.stdout.write(text) },
+  sandbox: SrtSandbox = new SrtSandbox(),
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
-  } else if (args.includes("--sandbox-check")) {
-    io.write(`${JSON.stringify(await new SrtSandbox().check())}\n`);
-  } else {
-    await serve(version, io);
+    return 0;
   }
+  if (args.includes("--sandbox-check")) {
+    return answer(io, await sandbox.check());
+  }
+  if (args.includes("--sandbox-setup")) {
+    return answer(io, await sandbox.setUp());
+  }
+  await serve(version, io, sandbox);
   return 0;
+}
+
+/** Prints `result` as one JSON line. @returns its exit code: 0 when it is `ok`, 1 when not */
+function answer(io: HostIo, result: { ok: boolean }): number {
+  io.write(`${JSON.stringify(result)}\n`);
+  return result.ok ? 0 : 1;
 }
 
 /**
@@ -58,14 +74,14 @@ export async function run(
  * or a file, where other programs could read it. The host stops when its
  * standard input closes, so it never outlives that program.
  */
-async function serve(version: string, io: HostIo): Promise<void> {
+async function serve(version: string, io: HostIo, sandbox: SrtSandbox): Promise<void> {
   const token = randomLaunchToken();
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
   const runs = new RunTable();
   const server = await startHostServer(token, [
     healthRoute(version),
-    ...sandboxRoutes(new SrtSandbox(), sessions),
+    ...sandboxRoutes(sandbox, sessions),
     ...bridgeRoutes((secrets) => new NodeHarnessBridgeServer({ secrets }), bridges),
     ...harnessRoutes({ harnesses: hostHarnesses(version), sessions, bridges, runs }),
   ]);

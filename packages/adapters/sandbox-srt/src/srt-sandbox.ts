@@ -17,6 +17,9 @@ interface Unavailable {
   missing: string;
 }
 
+/** What setting up the sandbox gave: done, or why not, in one line. */
+export type SandboxSetup = { ok: true } | { ok: false; reason: string };
+
 /**
  * The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on
  * macOS, a sandbox user account and network filters on Windows. Windows is
@@ -53,6 +56,31 @@ export class SrtSandbox implements Sandbox {
     }
     if (unavailable === null) return { ok: true, reason: null, missing: [] };
     return { ok: false, reason: unavailable.reason, missing: [unavailable.missing] };
+  }
+
+  /**
+   * The one-time setup the installer runs, as an administrator. On Windows it
+   * runs srt's install, without srt's profile read grant, then checks the
+   * sandbox, so `ok` means {@link SrtSandbox.check} passes. The install is for
+   * the whole machine, so it serves every user, also when an administrator
+   * other than the person at the keyboard answered the prompt. Running it
+   * again repairs the install or changes nothing. Other systems have no setup
+   * step. Never throws.
+   */
+  async setUp(): Promise<SandboxSetup> {
+    const machine = this.#machine;
+    if (machine.platform !== "win32") {
+      return { ok: false, reason: `only Windows has a sandbox setup, not ${machine.platform}` };
+    }
+    try {
+      if ((await machine.installWindowsSandbox()) === "cancelled") {
+        return { ok: false, reason: "the administrator prompt was cancelled; nothing changed" };
+      }
+    } catch (error) {
+      return { ok: false, reason: oneLine(error instanceof Error ? error.message : String(error)) };
+    }
+    const check = await this.check();
+    return check.ok ? { ok: true } : { ok: false, reason: oneLine(check.missing.join("; ")) };
   }
 
   /** Programs share the working folder, and the fence is the operating system's. */
@@ -115,6 +143,15 @@ export class SrtSandbox implements Sandbox {
     }
     return null;
   }
+}
+
+/** `text` on one line: srt's messages can carry srt-win's output over several. */
+function oneLine(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .join(" ");
 }
 
 /** Whether `host` is `localhost` or a loopback address (`127.0.0.0/8`, `::1`). */

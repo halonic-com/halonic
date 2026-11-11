@@ -26,6 +26,16 @@ export interface Machine {
   hasSeatbelt(): Promise<boolean>;
   /** Whether srt's Windows install is there and usable: the sandbox account, its network filters and a matching setup version. */
   hasWindowsSandbox(): Promise<boolean>;
+  /**
+   * Runs srt's Windows install (`srt windows-install`): the sandbox account and
+   * its network filters, for the whole machine. It asks for an administrator
+   * once, unless this process already runs as one. Running it again repairs
+   * the install or changes nothing.
+   *
+   * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
+   * @throws with srt's own words when the install fails
+   */
+  installWindowsSandbox(): Promise<"installed" | "cancelled">;
 }
 
 /** The sysctl that restricts user namespaces on Ubuntu 24.04 and later. */
@@ -108,5 +118,18 @@ export const systemMachine: Machine = {
     } catch {
       return false; // No srt-win, or it did not answer: not installed, as far as we can tell.
     }
+  },
+  async installWindowsSandbox() {
+    const { installWindowsSandboxAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
+      "@anthropic-ai/sandbox-runtime"
+    );
+    const install = await installWindowsSandboxAsync({
+      srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+      // srt's profile read grant would let every sandboxed program on the
+      // machine read the user's profile, with files that can hold tokens
+      // (.npmrc, .gitconfig). A session reads only the folders its profile names.
+      skipProfileGrant: true,
+    });
+    return install.cancelled === true ? "cancelled" : "installed";
   },
 };
