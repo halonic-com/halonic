@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-fs-tauri",
   "private": true,
   "type": "module",
-  "description": "The TrustStore and RunStore ports over the Studio shell's trust_* and run_* commands, sharing the trust folder and the run folders with the CLI and one opened-folder list with git.",
+  "description": "The TrustStore, RunStore and DefinitionStore ports over the Studio shell's trust_*, run_* and fs_* commands, sharing the trust folder, the run folders and the workspace files with the CLI and one opened-folder list with git.",
   "exports": {
     ".": "./src/index.ts"
   },
