@@ -1,8 +1,7 @@
 import { createHash, createPublicKey, type KeyObject, sign, verify } from "node:crypto";
 import { posix } from "node:path";
 import { expectedRequirementId, isRequirementFile } from "../lib/requirements.ts";
-import { isSourceFile, isTestFile } from "../lib/source-files.ts";
-import { findVerifiesCalls } from "../lib/verifies-calls.ts";
+import { isSourceFile, isTestFile } from "../lib/source-paths.ts";
 import type { DecisionKind } from "./decision-notes.ts";
 
 /**
@@ -128,12 +127,12 @@ export function signedText(facts: SignedFacts): string {
  * note excuses breaks the signature. An entry is a path when it has a
  * `/` or names a file at the head or the base, as `turbo.json` does.
  */
-export function coveredPaths(
+export async function coveredPaths(
   covers: readonly string[],
   git: GitObjects,
   head: string,
   base: string,
-): readonly string[] {
+): Promise<readonly string[]> {
   const paths = new Set<string>();
   const isPath = (entry: string): boolean =>
     entry.includes("/") ||
@@ -150,7 +149,7 @@ export function coveredPaths(
       const file = files.get(id) ?? baseFiles.get(id);
       paths.add(file ?? `requirement:${id}`);
     }
-    for (const file of testFilesVerifying(ids, git, head)) {
+    for (const file of await testFilesVerifying(ids, git, head)) {
       paths.add(file);
     }
   }
@@ -158,7 +157,14 @@ export function coveredPaths(
 }
 
 /** The test files at `head` that call `verifies()` with one of the IDs. */
-function testFilesVerifying(ids: readonly string[], git: GitObjects, head: string): string[] {
+async function testFilesVerifying(
+  ids: readonly string[],
+  git: GitObjects,
+  head: string,
+): Promise<string[]> {
+  // Loaded only here: the TypeScript parser is an npm package, and the
+  // guard-notes job runs without an install (HAL-5613).
+  const { findVerifiesCalls } = await import("../lib/verifies-calls.ts");
   const files: string[] = [];
   for (const file of git.listFiles(head).filter((f) => isSourceFile(f) && isTestFile(f))) {
     const text = git.readFile(head, file);

@@ -51,15 +51,15 @@ const notApproved = (reason: string): ApprovalVerdict => ({ approved: false, rea
  */
 export function signedApprovals(pull: PullRequest | undefined, git: GitObjects): ApprovalLookup {
   return {
-    check: ({ note }) => Promise.resolve(verifyNote(note, pull, git)),
+    check: ({ note }) => verifyNote(note, pull, git),
   };
 }
 
-function verifyNote(
+async function verifyNote(
   note: DecisionNote,
   pull: PullRequest | undefined,
   git: GitObjects,
-): ApprovalVerdict {
+): Promise<ApprovalVerdict> {
   if (pull === undefined) {
     return notApproved(
       "the guard wasn't given the pull request's repo, number, head and base, so it can't check a signature",
@@ -91,19 +91,19 @@ function verifyNote(
   } catch (error) {
     return notApproved(`the base branch's ${approversFile} can't be read: ${String(error)}`);
   }
-  const signed = noteSignedText(note, split.unsigned, pull, git);
+  const signed = await noteSignedText(note, split.unsigned, pull, git);
   const verdict = verifySigned(signed, split.keyId, split.signature, note.kind, pinned);
   return verdict.ok ? { approved: true } : notApproved(verdict.reason);
 }
 
 /** The text a signature on `note` must sign for this pull request (see {@link signedText}). */
-export function noteSignedText(
+export async function noteSignedText(
   note: DecisionNote,
   unsigned: string,
   pull: PullRequest,
   git: GitObjects,
-): string {
-  const paths = coveredPaths(note.covers, git, pull.head, pull.base);
+): Promise<string> {
+  const paths = await coveredPaths(note.covers, git, pull.head, pull.base);
   return signedText({
     repo: pull.repo,
     pr: pull.number,

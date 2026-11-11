@@ -44,7 +44,12 @@ const head = "a".repeat(40);
 const pull: PullRequest = { repo: "halonic-com/halonic", number: 7, head, base };
 
 /** Signs `text` as the approver would for `signedFor`, and puts the line under Kind. */
-function signed(text: string, files: Files, privatePem: string, signedFor = pull): string {
+async function signed(
+  text: string,
+  files: Files,
+  privatePem: string,
+  signedFor = pull,
+): Promise<string> {
   const git = fakeGit({ [base]: baseFiles, [head]: { ...files, [noteFile]: text } });
   const parsed = parseDecisionNote(noteFile, text);
   if (!parsed.ok) {
@@ -56,7 +61,7 @@ function signed(text: string, files: Files, privatePem: string, signedFor = pull
       pr: signedFor.number,
       kind: parsed.note.kind,
       unsigned: text,
-      objects: coveredObjects(coveredPaths(parsed.note.covers, git, head, base), git, head),
+      objects: coveredObjects(await coveredPaths(parsed.note.covers, git, head, base), git, head),
     }),
     privatePem,
   );
@@ -88,17 +93,17 @@ const reasonOf = async (run: Case): Promise<string> => {
 
 verifies("check.guard-signed-notes", () => {
   test("approves a note the CTO's pinned key signed for this pull request", async () => {
-    expect(await verdictOf({ text: signed(note(), baseFiles, cto.privatePem) })).toEqual({
+    expect(await verdictOf({ text: await signed(note(), baseFiles, cto.privatePem) })).toEqual({
       approved: true,
     });
   });
 
-  test("signs a tagged text with one field per line and the covered objects, sorted", () => {
+  test("signs a tagged text with one field per line and the covered objects, sorted", async () => {
     const git = fakeGit({ [base]: baseFiles, [head]: baseFiles });
     const text = signedText({
       ...{ repo: pull.repo, pr: pull.number, kind: "internal" as const, unsigned: "x" },
       objects: coveredObjects(
-        coveredPaths(["workflow.timer-fires", timerTest], git, head, base),
+        await coveredPaths(["workflow.timer-fires", timerTest], git, head, base),
         git,
         head,
       ),
@@ -116,19 +121,22 @@ verifies("check.guard-signed-notes", () => {
   });
 
   test("rejects the signature replayed on another pull request with the same branch name", async () => {
-    const forOther = signed(note(), baseFiles, cto.privatePem, { ...pull, number: 8 });
+    const forOther = await signed(note(), baseFiles, cto.privatePem, { ...pull, number: 8 });
     expect(await reasonOf({ text: forOther })).toMatch(/doesn't match/);
-    const forFork = signed(note(), baseFiles, cto.privatePem, { ...pull, repo: "someone/halonic" });
+    const forFork = await signed(note(), baseFiles, cto.privatePem, {
+      ...pull,
+      repo: "someone/halonic",
+    });
     expect(await reasonOf({ text: forFork })).toMatch(/doesn't match/);
   });
 
   test("rejects a note edited after signing", async () => {
-    const text = signed(note(), baseFiles, cto.privatePem).replace("routines", "scheduler");
+    const text = (await signed(note(), baseFiles, cto.privatePem)).replace("routines", "scheduler");
     expect(await reasonOf({ text })).toMatch(/doesn't match/);
   });
 
   test("rejects a covered test or requirement edited after signing, but not other files", async () => {
-    const text = signed(note(), baseFiles, cto.privatePem);
+    const text = await signed(note(), baseFiles, cto.privatePem);
     expect(await reasonOf({ text, head: { ...baseFiles, [timerTest]: "" } })).toMatch(
       /doesn't match/,
     );
@@ -142,7 +150,7 @@ verifies("check.guard-signed-notes", () => {
     const extra = "packages/core/workflow/src/extra.test.ts";
     const verifying = `import { verifies } from "@halonicjs/testing-spec";\nverifies("workflow.timer-fires", () => {});\n`;
     const files = { ...baseFiles, [extra]: verifying };
-    const text = signed(note(), files, cto.privatePem);
+    const text = await signed(note(), files, cto.privatePem);
     expect(await reasonOf({ text, head: files, base: files })).toBe("approved");
     expect(await reasonOf({ text, head: baseFiles })).toMatch(/doesn't match/);
     expect(await reasonOf({ text, head: { ...files, [extra]: "" } })).toMatch(/doesn't match/);
@@ -150,7 +158,7 @@ verifies("check.guard-signed-notes", () => {
 
   test("covers a top-level file named without a slash by its contents", async () => {
     const files = { ...baseFiles, "turbo.json": "{}" };
-    const text = signed(`${note()}- turbo.json\n`, files, cto.privatePem);
+    const text = await signed(`${note()}- turbo.json\n`, files, cto.privatePem);
     expect(await reasonOf({ text, head: files, base: files })).toBe("approved");
     const edited = { ...files, "turbo.json": '{"x":1}' };
     expect(await reasonOf({ text, head: edited, base: files })).toMatch(/doesn't match/);
@@ -158,30 +166,30 @@ verifies("check.guard-signed-notes", () => {
 
   test("rejects a key the pull request adds to approvers.json itself", async () => {
     const own = { ...baseFiles, [approversFile]: approvers({ internal: [stranger.publicKey] }) };
-    const text = signed(note(), own, stranger.privatePem);
+    const text = await signed(note(), own, stranger.privatePem);
     expect(await reasonOf({ text, head: own })).toMatch(/isn't in the merge base's/);
   });
 
   test("rejects an internal key on a user-visible note", async () => {
-    const text = signed(note("user-visible"), baseFiles, cto.privatePem);
+    const text = await signed(note("user-visible"), baseFiles, cto.privatePem);
     expect(await reasonOf({ text })).toMatch(/may only sign internal notes/);
   });
 
   test("rejects a key the base removed from approvers.json after signing", async () => {
-    const text = signed(note(), baseFiles, cto.privatePem);
+    const text = await signed(note(), baseFiles, cto.privatePem);
     const removed = { ...baseFiles, [approversFile]: approvers({}) };
     expect(await reasonOf({ text, base: removed })).toMatch(/isn't in the merge base's/);
   });
 
   test("rejects a signed note the base branch already has", async () => {
-    const text = signed(note(), baseFiles, cto.privatePem);
+    const text = await signed(note(), baseFiles, cto.privatePem);
     expect(await reasonOf({ text, base: { ...baseFiles, [noteFile]: text } })).toMatch(
       /already on the base branch/,
     );
   });
 
   test("fails closed without the pull request's details or commits", async () => {
-    const text = signed(note(), baseFiles, cto.privatePem);
+    const text = await signed(note(), baseFiles, cto.privatePem);
     expect(await reasonOf({ text, pull: undefined })).toMatch(/wasn't given the pull request/);
     expect(await reasonOf({ text, pull: { ...pull, base: "c".repeat(40) } })).toMatch(/can't read/);
   });

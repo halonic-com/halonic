@@ -1,5 +1,7 @@
 import ts from "@typescript/typescript6";
 
+export { isSourceFile, isTestFile, sourceExtensions } from "./source-paths.ts";
+
 /** One import, export-from, dynamic import or `require` in a source file. */
 export interface ImportReference {
   readonly specifier: string;
@@ -30,25 +32,9 @@ export interface SourceFacts {
   readonly functions: readonly FunctionSpan[];
 }
 
-/** File endings the parser reads. */
-export const sourceExtensions = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
-
-/** True when the file is TypeScript or JavaScript source. */
-export function isSourceFile(file: string): boolean {
-  return sourceExtensions.some((extension) => file.endsWith(extension));
-}
-
 /** True when the file is code, docs or config that people read and review as text. */
 export function isTextFile(file: string): boolean {
   return /\.(?:[cm]?[jt]sx?|md|mdx|json|jsonc|ya?ml|toml|astro|css|html|svg|rs|sh|txt)$/.test(file);
-}
-
-/**
- * Test files may use dev tooling such as Vitest. They end in `.test.ts` or
- * `.spec.ts`; a `test/` folder alone doesn't make a file a test.
- */
-export function isTestFile(file: string): boolean {
-  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file);
 }
 
 /** True when an import path names a test file, with or without its file ending. */
