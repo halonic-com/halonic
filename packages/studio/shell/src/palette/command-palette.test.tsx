@@ -235,6 +235,21 @@ verifies("shell.palette-dialog", () => {
     expect(palette.heard()).toEqual(["Couldn't search, 1 result"]);
   });
 
+  it("brings the focus back to the search row after Try again", () => {
+    const palette = renderPalette();
+    palette.show({ words: "new", failed: true });
+    const tryAgain = [...palette.view.querySelectorAll("button")].find(
+      (button) => button.textContent === "Try again",
+    );
+    act(() => {
+      tryAgain?.focus();
+      tryAgain?.click();
+    });
+    // The retry clears the failure, which removes the focused button from the page.
+    palette.show({ words: "new", searching: true });
+    expect(document.activeElement).toBe(palette.box());
+  });
+
   it("opens a clicked row, in a new tab with Ctrl, and keeps the focus in the box", () => {
     const palette = renderPalette();
     palette.show({ words: "refund", found: [refundChecker] });

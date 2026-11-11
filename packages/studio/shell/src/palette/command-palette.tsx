@@ -95,6 +95,12 @@ export function CommandPalette(props: CommandPaletteProps) {
     const mod = platform === "macos" ? event.metaKey : event.ctrlKey;
     props.onOpen(row, mod || event.button === 1);
   };
+  const onTryAgain = () => {
+    // The retry removes the "Couldn't search" line and the focused button with it, so the
+    // focus goes back to the search row before typing would land nowhere.
+    box.current?.focus();
+    props.onTryAgain();
+  };
 
   return (
     <PaletteBox label="Search" initialFocus={() => box.current} onCancel={props.onCancel}>
@@ -116,7 +122,7 @@ export function CommandPalette(props: CommandPaletteProps) {
         notAnswering={props.notAnswering}
         iconFor={props.iconFor}
         onOpen={onRowClick}
-        onTryAgain={props.onTryAgain}
+        onTryAgain={onTryAgain}
       />
       <PaletteFooter platform={platform} />
     </PaletteBox>
