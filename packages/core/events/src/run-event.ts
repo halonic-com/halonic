@@ -11,6 +11,7 @@ import type {
   StoredBlob,
   ToolNoun,
   ToolOutcome,
+  ToolRefusalReason,
   ToolRisk,
   Usage,
 } from "./run-basics.ts";
@@ -137,6 +138,20 @@ export type RunEventBody =
       next?: string;
     }
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
+  /**
+   * A model's tool call was refused before it ran, so it reached nothing
+   * (requirement `events.tool-refused`). `tool`: the name exactly as the
+   * model wrote it, which may hold look-alike or control characters.
+   * `toolCallId`: the model's id for the call. A refused call has no
+   * `tool.called` or `tool.result`.
+   */
+  | {
+      type: "tool.refused";
+      agent: string;
+      tool: string;
+      toolCallId: string;
+      reason: ToolRefusalReason;
+    }
   /**
    * A step's sandbox is being opened (requirement `events.started-events`).
    * Written before the call, so a screen can say what the step waits for;

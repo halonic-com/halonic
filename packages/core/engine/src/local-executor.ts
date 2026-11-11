@@ -20,8 +20,10 @@ import type {
 import { checkSubagentToolCall, runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
+import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
+import { SerialRunLog } from "./harness/serial-run-log.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn, missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
@@ -427,7 +429,9 @@ export class LocalExecutor implements RunExecutor {
    * Every call is checked with `checkToolCall` first, and a connector call
    * its kept file puts under `approve` asks a person ({@link runToolCheckOf}),
    * and the agent's `maxSteps` is the round limit. The agent's own prompt and
-   * the turn's run log come later in step 4.
+   * the turn's full run log come later in step 4; until then its log takes
+   * only the `tool.refused` of a call to a tool it wasn't offered
+   * ({@link refusalLogOf}).
    *
    * A `parallel` branch's call is offered only the connector tools whose
    * listing says they read and their kept file doesn't put under `approve`
@@ -475,11 +479,41 @@ export class LocalExecutor implements RunExecutor {
       clock: this.options.clock,
       checkCall: runToolCheckOf(connectorTools),
       autoKnowledge: knowledge.auto,
+      log: this.refusalLogOf(run, call),
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
     });
     return outcome.kind === "stopped"
       ? outcome.stop
       : { type: "model", output: outcome.result.content };
+  }
+
+  /**
+   * The log of a run's model call: it writes the turn's `tool.refused`
+   * events to the run's log while the run waits on the call, in the call's
+   * branch or item, and drops the turn's other events, which the run doesn't
+   * log until step 4 (requirement `engine.run-connector-allow`).
+   */
+  private refusalLogOf(run: RunState, call: PendingCall): TurnLog {
+    const store = this.options.runs?.store;
+    if (store === undefined) {
+      throw noRuns();
+    }
+    const item = run.foreach?.running.find(
+      (running) => "call" in running && running.call.callId === call.callId,
+    );
+    const branch = branchOfCall(run.parallel, call.callId);
+    const log = new SerialRunLog(
+      store,
+      run.runId,
+      { callId: call.callId },
+      run.lastSeq,
+      this.options.clock,
+      item?.item ?? null,
+      branch?.name ?? null,
+    );
+    return {
+      append: (event) => (event.type === "tool.refused" ? log.append(event) : Promise.resolve()),
+    };
   }
 
   /** The definitions the run started with. */

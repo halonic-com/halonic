@@ -36,6 +36,8 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.llm-skipped (HAL-1880).
       | "llm.skipped"
       | "tool.called"
+      // Added after the reference by events.tool-refused (HAL-4658).
+      | "tool.refused"
       // Added after the reference by events.started-events (HAL-189).
       | "sandbox.started"
       | "harness.started"

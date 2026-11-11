@@ -1,7 +1,8 @@
 // Attack tests for `engine.run-connector-allow` (HAL-4629): a run's model
 // tries to reach a connector tool its file's `allow` leaves out. Every such
-// call must reach no connector, write no `tool.called` (`engine.turn-logs-events`),
-// ask no person and record no effect, and the model gets the refusal.
+// call must reach no connector, write one `tool.refused` and no `tool.called`
+// (`engine.turn-logs-events`), ask no person and record no effect, and the
+// model gets the refusal.
 
 import type { RunEvent } from "@halonicjs/events";
 import type { Connector } from "@halonicjs/format";
@@ -61,12 +62,33 @@ function resultsIn(model: { requests: { messages: { role: string; content: strin
     .map((message) => message.content);
 }
 
-/** That the run logged nothing of a call it refused, and went on. */
-async function expectNothingLogged(runs: KernelRuns) {
+/** The `tool.refused` events of the run's log. */
+function refusalsIn(runs: KernelRuns) {
+  const events = (runs.logs.get("run_1") ?? []) as readonly RunEvent[];
+  return events.filter((event) => event.type === "tool.refused");
+}
+
+/** The `tool.refused` a call to `tool` the step didn't offer writes. */
+function refused(toolCallId: string, tool: string) {
+  return expect.objectContaining({
+    type: "tool.refused",
+    agent: "writer",
+    tool,
+    toolCallId,
+    reason: "not-offered",
+  });
+}
+
+/**
+ * That the run logged a call it refused only as one `tool.refused`, with
+ * the name as the model wrote it, and went on.
+ */
+async function expectOnlyRefusalLogged(runs: KernelRuns, toolCallId: string, tool: string) {
   const types = typesOf(runs.logs.get("run_1") as readonly RunEvent[] | undefined);
   for (const type of ["tool.called", "tool.result", "approval.requested", "effect.requested"]) {
     expect(types).not.toContain(type);
   }
+  expect(refusalsIn(runs)).toEqual([refused(toolCallId, tool)]);
   expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
 }
 
@@ -107,16 +129,17 @@ verifies("engine.run-connector-allow", () => {
       expect(offeredIn(model)).toEqual(["search"]);
       expect(mail.calls).toEqual([]);
       expect(resultsIn(model)).toEqual([unoffered]);
-      await expectNothingLogged(runs);
+      await expectOnlyRefusalLogged(runs, "x-1", name);
     });
 
     it("is refused next to an allowed call in the same answer, which still goes through", async () => {
       const mail = new ScriptedConnector("mail", [tool("search"), tool("delete_all")]);
       const both = callAnswer(call("s-1", "search", {}), call("d-1", "delete_all", {}));
-      const { model } = await runOf([mail], onlySearch, [both, textAnswer("Done")]);
+      const { model, runs } = await runOf([mail], onlySearch, [both, textAnswer("Done")]);
 
       expect(mail.calls).toEqual([{ name: "search", args: {} }]);
       expect(resultsIn(model)).toEqual(["search done", unoffered]);
+      expect(refusalsIn(runs)).toEqual([refused("d-1", "delete_all")]);
     });
 
     it("is refused when it can change things, before any person is asked or effect recorded", async () => {
@@ -126,7 +149,7 @@ verifies("engine.run-connector-allow", () => {
 
       expect(mail.calls).toEqual([]);
       expect(resultsIn(model)).toEqual([unoffered]);
-      await expectNothingLogged(runs);
+      await expectOnlyRefusalLogged(runs, "m-1", "send_mail");
     });
   });
 
@@ -142,10 +165,11 @@ verifies("engine.run-connector-allow", () => {
         callAnswer(call("d-1", "delete_all", {})),
         textAnswer("Done"),
       ];
-      const { model } = await runOf([mail], onlySearch, answers);
+      const { model, runs } = await runOf([mail], onlySearch, answers);
 
       expect(mail.calls.map(({ name }) => name)).toEqual(["search"]);
       expect(resultsIn(model).at(-1)).toBe(unoffered);
+      expect(refusalsIn(runs)).toEqual([refused("d-1", "delete_all")]);
     });
 
     it("isn't offered or called on the model call after a person's OK", async () => {
@@ -169,6 +193,7 @@ verifies("engine.run-connector-allow", () => {
         expect(offeredIn(model, request)).toEqual(["send_mail"]);
       }
       expect(resultsIn(model).at(-1)).toBe(unoffered);
+      expect(refusalsIn(runs)).toEqual([refused("d-1", "delete_all")]);
       expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
     });
   });
@@ -205,7 +230,7 @@ verifies("engine.run-connector-allow", () => {
 
       expect(offeredIn(model)).toEqual(["search", "search_issues"]);
       expect([...mail.calls, ...tracker.calls]).toEqual([]);
-      await expectNothingLogged(runs);
+      await expectOnlyRefusalLogged(runs, "a-1", "archive");
     });
 
     it("doesn't take one connector's `allow` for another's", async () => {
@@ -213,10 +238,11 @@ verifies("engine.run-connector-allow", () => {
       const tracker = new ScriptedConnector("tracker", [tool("search"), tool("delete_all")]);
       const answers = [callAnswer(call("d-1", "delete_all", {})), textAnswer("Done")];
       const lists: Lists = { mail: { allow: ["search", "delete_all"], approve: [] } };
-      const { model } = await runOf([mail, tracker], lists, answers);
+      const { model, runs } = await runOf([mail, tracker], lists, answers);
 
       expect(offeredIn(model)).toEqual(["search"]);
       expect([...mail.calls, ...tracker.calls]).toEqual([]);
+      expect(refusalsIn(runs)).toEqual([refused("d-1", "delete_all")]);
     });
   });
 
@@ -228,7 +254,7 @@ verifies("engine.run-connector-allow", () => {
 
       expect(model.requests[0]?.tools).toEqual([]);
       expect(mail.calls).toEqual([]);
-      await expectNothingLogged(runs);
+      await expectOnlyRefusalLogged(runs, "s-1", "search");
     });
 
     it("offers and calls every tool the server lists when the file has no `allow`", async () => {
@@ -251,7 +277,7 @@ verifies("engine.run-connector-allow", () => {
 
         expect(model.requests[0]?.tools).toEqual([]);
         expect(server.calls).toEqual([]);
-        await expectNothingLogged(runs);
+        await expectOnlyRefusalLogged(runs, "s-1", "search");
       },
     );
 

@@ -88,6 +88,17 @@ describe("SerialRunLog", () => {
     expect(runs.logs.get("run_1")).toMatchObject([{ seq: 1, item: 2 }]);
   });
 
+  it("tags every event with the parallel branch the call runs in", async () => {
+    const runs = new KernelRuns();
+    const clock = steppingClock();
+    const log = new SerialRunLog(runs, "run_1", { callId: "call-1" }, 0, clock, null, "web");
+
+    await log.append({ type: "state.entered", state: "a" });
+
+    expect(runs.logs.get("run_1")).toMatchObject([{ seq: 1, branch: "web" }]);
+    expect(runs.logs.get("run_1")?.[0]).not.toHaveProperty("item");
+  });
+
   it("settles once every append given so far is stored", async () => {
     const runs = new KernelRuns();
     const log = new SerialRunLog(runs, "run_1", { callId: "call-1" }, 0, steppingClock());

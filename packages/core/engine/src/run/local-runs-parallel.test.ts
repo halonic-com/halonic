@@ -1,9 +1,10 @@
+import type { RunEvent } from "@halonicjs/events";
 import type { Connector, Workflow } from "@halonicjs/format";
 import type { ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
-import { ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
+import { call, callAnswer, ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
 import { agentsUsing, runsOn } from "./local-runs-test-kit.test-helper.ts";
 
@@ -166,3 +167,36 @@ async function branchesOfferedUnder(approve: Connector["tools"]["approve"]) {
   expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   return model;
 }
+
+verifies("engine.run-connector-allow", () => {
+  it("records a branch's call to a tool it wasn't offered in that branch", async () => {
+    const mail = new ScriptedConnector("mail", [
+      mailTool("search", "read"),
+      mailTool("archive", "write"),
+    ]);
+    // The branches' model calls run in name order: `notes`, then `web`.
+    const answers = [
+      callAnswer(call("a-1", "archive", {})),
+      textAnswer("n"),
+      callAnswer(call("a-2", "archive", {})),
+      textAnswer("w"),
+    ];
+    const { executor, runs, scheduler } = runsOn(answers, new KernelRuns(), {
+      workflow: research,
+      agents: agentsUsing(["mail"], "searcher", "reader"),
+      connectors: [mail],
+      connectorCalls: sendingOn,
+    });
+    await executor.start(researchStart);
+
+    await scheduler.runDue();
+
+    const events = (runs.logs.get("run_1") ?? []) as readonly RunEvent[];
+    expect(events.filter((event) => event.type === "tool.refused")).toEqual([
+      expect.objectContaining({ branch: "notes", agent: "reader", toolCallId: "a-1" }),
+      expect.objectContaining({ branch: "web", agent: "searcher", toolCallId: "a-2" }),
+    ]);
+    expect(mail.calls).toEqual([]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+});

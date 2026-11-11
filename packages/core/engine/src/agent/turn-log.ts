@@ -13,7 +13,8 @@ export type TurnEvent = Extract<
       | "llm.fallback"
       | "knowledge.searched"
       | "tool.called"
-      | "tool.result";
+      | "tool.result"
+      | "tool.refused";
   }
 >;
 

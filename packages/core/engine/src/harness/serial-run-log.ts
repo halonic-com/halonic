@@ -34,6 +34,7 @@ export class SerialRunLog implements HarnessEventLog {
   readonly #call: WaitedOnCall;
   readonly #clock: Clock;
   readonly #item: number | null;
+  readonly #branch: string | null;
   #seq: number;
   /** The last append, which the next one waits for. */
   #tail: Promise<void> = Promise.resolve();
@@ -42,6 +43,7 @@ export class SerialRunLog implements HarnessEventLog {
    * @param call - the harness call that writes, which the run must still wait on
    * @param lastSeq - the `seq` of the run's last stored event, which the first event follows
    * @param item - the `foreach` item the call runs, which every event then carries; `null` for a task state's call
+   * @param branch - the `parallel` branch the call runs in, which every event then carries; `null` outside one
    */
   constructor(
     store: Pick<RunStore, "append" | "events" | "snapshot">,
@@ -50,6 +52,7 @@ export class SerialRunLog implements HarnessEventLog {
     lastSeq: number,
     clock: Clock,
     item: number | null = null,
+    branch: string | null = null,
   ) {
     this.#store = store;
     this.#runId = runId;
@@ -57,6 +60,7 @@ export class SerialRunLog implements HarnessEventLog {
     this.#seq = lastSeq;
     this.#clock = clock;
     this.#item = item;
+    this.#branch = branch;
   }
 
   /**
@@ -91,6 +95,7 @@ export class SerialRunLog implements HarnessEventLog {
       const stored: RunEvent = {
         ...event,
         ...(this.#item === null ? {} : { item: this.#item }),
+        ...(this.#branch === null ? {} : { branch: this.#branch }),
         runId: this.#runId,
         seq: this.#seq + 1,
         at: this.#clock.now().toISOString(),

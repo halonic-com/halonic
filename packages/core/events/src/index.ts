@@ -16,6 +16,7 @@ export type {
   StoredBlob,
   ToolNoun,
   ToolOutcome,
+  ToolRefusalReason,
   ToolRisk,
   Usage,
 } from "./run-basics.ts";

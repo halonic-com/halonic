@@ -142,7 +142,7 @@ async function answerWaitingCall(
 ): Promise<CallStep> {
   const tool = tools.byName.get(call.name);
   if (tool === undefined) {
-    return answered(refuseUnoffered(context, call));
+    return answered(await refuseUnoffered(context, call));
   }
   if ("result" in answer) {
     const content = passResultToModel(tool, answer.result);

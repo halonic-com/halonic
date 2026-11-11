@@ -122,6 +122,12 @@ export interface RunParent {
 export type ToolOutcome = "ok" | "error" | "unknown";
 
 /**
+ * Why a model's tool call was refused before it ran (requirement
+ * `events.tool-refused`): `not-offered`, the step offered no tool of that name.
+ */
+export type ToolRefusalReason = "not-offered";
+
+/**
  * Where a payload too large for the run log is kept: the hash of its bytes
  * in the run's blob store, their size and their media type. The same shape
  * as `BlobRef` in `@halonicjs/ports`, which this package may not import.

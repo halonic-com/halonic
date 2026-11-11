@@ -153,7 +153,7 @@ verifies("engine.turn-logs-events", () => {
     ]);
   });
 
-  it("writes no tool.called for a refused call", async () => {
+  it("writes one tool.refused and no tool.called for a call to a tool it didn't offer", async () => {
     const log = new MemoryTurnLog();
     await runTestTurn({
       answers: [callAnswer(call("c1", "delete_everything")), textAnswer("Sorry")],
@@ -163,8 +163,31 @@ verifies("engine.turn-logs-events", () => {
     expect(log.events.map((event) => event.type)).toEqual([
       "llm.request",
       "llm.response",
+      "tool.refused",
       "llm.request",
       "llm.response",
+    ]);
+    expect(log.events[2]).toEqual({
+      type: "tool.refused",
+      agent: "clerk",
+      tool: "delete_everything",
+      toolCallId: "c1",
+      reason: "not-offered",
+    });
+  });
+
+  it("writes the refused tool's name as the model wrote it", async () => {
+    const log = new MemoryTurnLog();
+    // A zero-width space and a newline, which a cleaned-up name would lose.
+    const name = `look${String.fromCharCode(0x200b)}up\n`;
+    await runTestTurn({
+      answers: [callAnswer(call("c1", name)), textAnswer("Sorry")],
+      connectors: [new ScriptedConnector("mail", [listedTool("lookup")])],
+      log,
+    });
+
+    expect(log.events.filter((event) => event.type === "tool.refused")).toEqual([
+      { type: "tool.refused", agent: "clerk", tool: name, toolCallId: "c1", reason: "not-offered" },
     ]);
   });
 });

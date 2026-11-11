@@ -60,7 +60,7 @@ export async function runToolCall(
   call: ToolCall,
 ): Promise<CallStep> {
   if (tool === undefined) {
-    return answered(refuseUnoffered(context, call));
+    return answered(await refuseUnoffered(context, call));
   }
   const check = context.check(tool, call);
   if (check.kind === "refused") {
@@ -181,8 +181,23 @@ export async function carryOutCall(
   return toolMessage(call, passResultToModel(tool, result));
 }
 
-/** The answer to a call to a tool nobody offered, which Halonic refuses. */
-export function refuseUnoffered(context: ToolCallContext, call: ToolCall): ChatMessage {
+/**
+ * The answer to a call to a tool nobody offered, which Halonic refuses. The
+ * model only sees the tools it was offered, so such a call is a mistake or
+ * the sign of an injected prompt: the log records it as `tool.refused`, with
+ * the name as the model wrote it (requirement `engine.turn-logs-events`).
+ */
+export async function refuseUnoffered(
+  context: ToolCallContext,
+  call: ToolCall,
+): Promise<ChatMessage> {
+  await context.log?.append({
+    type: "tool.refused",
+    agent: context.agent,
+    tool: call.name,
+    toolCallId: call.id,
+    reason: "not-offered",
+  });
   return refuseCall(context, halonicSource, call, "no tool of that name was offered");
 }
 
