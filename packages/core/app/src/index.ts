@@ -260,6 +260,7 @@ export {
 } from "./routine-scheduler.ts";
 export type { SkipReason, SkipRecord, TargetUnavailableWhy } from "./routine-skips.ts";
 export type { UnavailableTime } from "./routine-targets.ts";
+export { type RoutineVersions, routineVersions } from "./routine-versions.ts";
 export { type RunEventRefusal, RunEventRefused, RunEvents } from "./run-events.ts";
 export {
   defaultRunListLimit,
