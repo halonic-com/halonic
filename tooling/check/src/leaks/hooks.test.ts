@@ -92,6 +92,17 @@ describe("pre-commit hook", () => {
     });
   }
 
+  it("scans a file whatever .gitattributes says about it", () => {
+    writeFileSync(join(repo, ".gitattributes"), "docs/*.md -diff\nbin/* binary\n");
+    run("git", ["add", ".gitattributes"]);
+    run("git", ["commit", "-q", "-m", "attributes"]);
+    for (const path of ["docs/config.md", "bin/config.dat"]) {
+      const result = commitFile(path, `token = "${fakeSecrets["npm-token"]}"\n`);
+      expect(result.status).not.toBe(0);
+      expect(result.output).toContain("problem(s) found");
+    }
+  });
+
   it("carries on without terms when there is no terms file, with a one-line notice", () => {
     environment["HALONIC_DENY_TERMS_FILE"] = join(scratch, "missing");
     const result = commitFile("docs/thanks.md", `Thanks to ${term}!\n`);

@@ -15,9 +15,10 @@ runs:
       # The container runs as root but the checkout belongs to the runner user.
       # Without safe.directory git refuses the repo, and gitleaks scans 0 commits
       # and still reports no leaks, so the commit count is checked as well.
-      # .gitattributes marks pnpm-lock.yaml -diff, so git log shows no text for
-      # it and a pull request that only changes the lockfile scans 0 commits.
-      # info/attributes wins over .gitattributes and makes it text for the scan.
+      # A -diff or binary line in .gitattributes, which a pull request can add,
+      # makes git log show no text for a file, so the file is not scanned and
+      # a pull request that only changes it scans 0 commits. info/attributes
+      # wins over .gitattributes and makes every file text for the scan.
       # The log only says how many leaks there are. The report also holds the
       # author, email and commit message, which may be personal, so only the
       # commit, file, line and rule are printed from it. A pull request author
@@ -26,7 +27,7 @@ runs:
       run: |
         image=$(sed -n 's/^FROM //p' "$GITHUB_ACTION_PATH/Dockerfile")
         mkdir -p "$GITHUB_WORKSPACE/.git/info"
-        echo 'pnpm-lock.yaml diff' >> "$GITHUB_WORKSPACE/.git/info/attributes"
+        echo '* diff' >> "$GITHUB_WORKSPACE/.git/info/attributes"
         args=(git --redact --no-banner --exit-code 1 --report-format json --report-path /out/gitleaks.json)
         if [ -n "$LOG_OPTS" ]; then
           args+=("--log-opts=$LOG_OPTS")

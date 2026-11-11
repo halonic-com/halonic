@@ -17,11 +17,14 @@ export function git(root: string, args: readonly string[]): string {
  * Diff options that make the output the same on every machine, whatever
  * the person's own git config says (prefixes, colour, external diff tools).
  * The raw part lists every file, also empty and binary ones; the patch
- * part, without context lines, holds the added lines.
+ * part, without context lines, holds the added lines. `--text` makes git
+ * show the lines of every file, also one that `.gitattributes` marks `-diff`
+ * or `binary`, which a pull request can set to hide a file from the scan.
  */
 const diffOptions = [
   "--patch-with-raw",
   "--unified=0",
+  "--text",
   "--no-color",
   "--no-ext-diff",
   "--no-textconv",
