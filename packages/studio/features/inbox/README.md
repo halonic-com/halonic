@@ -1,6 +1,6 @@
 # @halonicjs/studio-feature-inbox
 
-The Studio Inbox: what waits for you, its count, and your answers. It works from run summaries: one item for each tool call waiting for your OK, and one for each run at a `wait` step, whose title and body core has already filled in (`RunSummary.waitingFor`).
+The Studio Inbox: what waits for you, its count, and your answers. It works from run summaries: one item for each tool call waiting for your OK (titled with the subagent that asked, when one did), and one for each run at a `wait` step, whose title and body core has already filled in (`RunSummary.waitingFor`).
 
 - **Layer:** studio
 - **Owner:** elena

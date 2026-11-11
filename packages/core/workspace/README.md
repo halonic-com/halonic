@@ -219,11 +219,17 @@ Punycode, each once, sorted) and its working folder when that isn't `files/agent
 harness or with `halonic` add nothing, so a workspace without harness agents keeps the same content and
 fingerprint as before.
 
-Local integrations with a `{ fromSetting }` host are part of it too. `integrationsTrustContent` takes
-each integration's permission sheet and the workspace's settings for it, and lists, sorted by id, the
-URL each such setting holds, normalised as connector URLs are, `null` while it isn't set, and only
-the reason for a URL it can't trust. Integrations without such a host add nothing, so a workspace
-without them keeps the same content and fingerprint as before.
+Every local integration is part of it too, because Halonic starts its code in the runner.
+`integrationsTrustContent` takes each integration's permission sheet, the workspace's settings for
+it, its folder and the hash of its code, and lists, sorted by id: the folder, what the sheet lets
+the code do (`provides`, `hosts`, `secrets` by name only, `googleScopes`, `tools` with their risk and
+`untrusted` mark, and `needs`), `code`, and `addresses`: the URL each `{ fromSetting }` host holds,
+normalised as connector URLs are, `null` while it isn't set, and only the reason for a URL it can't
+trust. `integrationCodeDigest` makes `code`: `sha256:` and a hash of every file's path and bytes in
+the folder, `integration.yaml` included, so a change to any file or to the set of files asks again;
+it refuses an unclean path (requirement `workspace.trust-integration-code`). Built-in integrations
+come with Halonic and add nothing, so a workspace without local integrations keeps the same content
+and fingerprint as before.
 
 `reachesOnlyTheTestModel` says when a run needs no trust at all: every provider is `mock`, there is no
 local integration and the trust content is empty, so nothing starts outside Halonic.
