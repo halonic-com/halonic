@@ -4,31 +4,29 @@
 
 import { encodeUtf8 } from "@halonicjs/std";
 
-/** The most UTF-8 bytes in a run id or a `Coordination` key (ports). */
-const maxIdBytes = 256;
-
 /**
  * The run id of a routine fire: the same workspace, routine and due time
  * always give the same id, so the executor starts it once however often it
  * is asked, and two workspaces sharing a run store never share a run.
  *
- * Normally `routine:<workspace hash>/<routine key>@<due time>`. A routine key
- * so long that the id would go over 256 UTF-8 bytes is hashed as well.
+ * `routine-<workspace hash>-<due time>-<hash of the routine key and due time>`,
+ * such as `routine-9f67cab0a2a7258c-20261103T080000.000Z-5d2b8e…`: 62
+ * letters, digits, "-" and "." whatever the key, so every run store keeps it
+ * as a file name (`checkRunId` of `@halonicjs/ports`). The routine key is in
+ * the run's `trigger.routineId`. The hash comes last, so the short id people
+ * type, the last 6 characters, differs from run to run.
  *
  * @param workspaceId - names the workspace for as long as it exists, the same on every host (never a path)
  */
 export function routineRunId(workspaceId: string, key: string, at: Date): string {
   const due = at.toISOString();
-  const readable = `${routineRunPrefix(workspaceId)}${key}@${due}`;
-  if (utf8Length(readable) <= maxIdBytes) {
-    return readable;
-  }
-  return `${routineRunPrefix(workspaceId)}#${shortHash(key)}@${due}`;
+  const compactDue = due.replaceAll("-", "").replaceAll(":", "");
+  return `${routineRunPrefix(workspaceId)}${compactDue}-${shortHash(`${key}@${due}`)}`;
 }
 
 /** How the id of every routine run of a workspace starts, so runs of other workspaces can be told apart. */
 export function routineRunPrefix(workspaceId: string): string {
-  return `routine:${shortHash(workspaceId)}/`;
+  return `routine-${shortHash(workspaceId)}-`;
 }
 
 /** The `Coordination` key that keeps a workspace's last routine tick. */
