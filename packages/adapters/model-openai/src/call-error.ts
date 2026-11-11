@@ -1,5 +1,6 @@
 import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
+import type { CallTimeoutError } from "./call-timer.ts";
 import type { BodyTooLargeError } from "./read-body.ts";
 
 /** The call that failed, for the error message. */
@@ -140,6 +141,23 @@ function isKeyRefused(status: number, vendor: VendorError): boolean {
 export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallError {
   const where = call.host === undefined ? "" : ` at ${call.host}`;
   return new ModelCallError("offline", `Halonic couldn't reach ${call.providerId}${where}`, {
+    cause,
+    ...(call.host === undefined ? {} : { host: call.host }),
+  });
+}
+
+/**
+ * The {@link ModelCallError} for a call that passed one of its time limits.
+ * The port counts a timeout as `offline`, so the turn moves on to its next model.
+ */
+export function errorForTimeout(cause: CallTimeoutError, call: FailedCall): ModelCallError {
+  const where = call.host === undefined ? "" : ` at ${call.host}`;
+  const seconds = cause.ms / 1000;
+  const what =
+    cause.limit === "response"
+      ? `didn't answer within ${seconds} seconds`
+      : `sent nothing for ${seconds} seconds`;
+  return new ModelCallError("offline", `${call.providerId}${where} ${what}`, {
     cause,
     ...(call.host === undefined ? {} : { host: call.host }),
   });
