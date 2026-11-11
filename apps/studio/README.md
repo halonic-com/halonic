@@ -45,7 +45,28 @@ merged). Run `pwsh windows/build-installer.ps1` in `src-tauri` on Windows x64:
 it builds the agent host as one executable, builds the installer with
 `tauri.installer.conf.json` (kept apart so plain `cargo` builds don't need the
 host binary) and leaves `dist/Halonic-<version>-windows-x64-setup.exe` at the
-repo root. It installs per user, with no admin rights, and puts the repo's
-`LICENSE` and `NOTICE` next to the app. The `installer-windows`
-CI job builds it, installs it silently into a temporary folder and uninstalls
-it again. The screens, the sandbox step and signing are not built yet.
+repo root. It installs per user and puts the repo's `LICENSE` and `NOTICE` next
+to the app. Only the "Set up the agent sandbox" step asks Windows for
+administrator rights, once.
+
+What it shows (design: the install flow, sections 2.2 to 2.5):
+
+- One page (folder, sandbox box, desktop shortcut box), the step lines, and a
+  finish page that says whether the sandbox is ready, or why not.
+- Run again with the same version: one page with the sandbox box (or "The agent
+  sandbox is set up.") and **Repair Halonic**. Without Repair it copies nothing.
+- A newer Halonic already installed: a message, and nothing is installed.
+- Halonic open: a message with **Retry** and **Cancel**. The installer never
+  closes Halonic itself.
+- **Cancel during the steps:** NSIS disables Cancel while the steps run, so the
+  sandbox step ends only when Windows' administrator prompt is answered (No
+  counts as refused, and the finish page says so).
+
+Silent (`/S`) and passive installs show none of this and skip the sandbox step;
+`/S /SANDBOX=1` from an elevated prompt runs it. `/RELAUNCH` reopens Halonic
+after a silent install.
+
+The `installer-windows` CI job builds it, walks the pages and the messages
+(the pictures are in the job's artifacts), installs it silently into a
+temporary folder and uninstalls it again. Signing and the uninstall page are
+not built yet.
