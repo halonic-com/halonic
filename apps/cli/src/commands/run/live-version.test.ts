@@ -104,63 +104,83 @@ const dirOf = () => ({
 });
 
 verifies("cli.run-live-version", () => {
-  it("starts the live version, not a saved change that isn't in a version", async () => {
-    await makeLive();
-    await saveNewName("Saved reply");
+  it(
+    "starts the live version, not a saved change that isn't in a version",
+    async () => {
+      await makeLive();
+      await saveNewName("Saved reply");
 
-    const { code, stdout } = await run();
+      const { code, stdout } = await run();
 
-    expect(code).toBe(exitCode.ok);
-    expect(stdout.join("\n")).toContain("Running Support reply in acme");
-    expect(stdout.join("\n")).not.toContain("Saved reply");
-    expect(await storedRuns()).toBe(1);
-  }, gitTimeout);
+      expect(code).toBe(exitCode.ok);
+      expect(stdout.join("\n")).toContain("Running Support reply in acme");
+      expect(stdout.join("\n")).not.toContain("Saved reply");
+      expect(await storedRuns()).toBe(1);
+    },
+    gitTimeout,
+  );
 
-  it("loads the live version with its commit as the workspace's version", async () => {
-    const commit = await makeLive();
-    await saveNewName("Saved reply");
+  it(
+    "loads the live version with its commit as the workspace's version",
+    async () => {
+      const commit = await makeLive();
+      await saveNewName("Saved reply");
 
-    // The run keeps the definitions it loaded; their version is this commit.
-    expect(await loadRunWorkspace(dirOf(), history)).toMatchObject({
-      found: "loaded",
-      workspace: { version: commit },
-    });
-  }, gitTimeout);
+      // The run keeps the definitions it loaded; their version is this commit.
+      expect(await loadRunWorkspace(dirOf(), history)).toMatchObject({
+        found: "loaded",
+        workspace: { version: commit },
+      });
+    },
+    gitTimeout,
+  );
 
-  it("starts the saved files when the folder isn't a git repository", async () => {
-    await saveNewName("Saved reply");
+  it(
+    "starts the saved files when the folder isn't a git repository",
+    async () => {
+      await saveNewName("Saved reply");
 
-    const { code, stdout } = await run();
+      const { code, stdout } = await run();
 
-    expect(code).toBe(exitCode.ok);
-    expect(stdout.join("\n")).toContain("Running Saved reply in acme");
-  }, gitTimeout);
+      expect(code).toBe(exitCode.ok);
+      expect(stdout.join("\n")).toContain("Running Saved reply in acme");
+    },
+    gitTimeout,
+  );
 
-  it("refuses when the workspace has history but nothing is live yet, and stores no run", async () => {
-    await vcs.init();
+  it(
+    "refuses when the workspace has history but nothing is live yet, and stores no run",
+    async () => {
+      await vcs.init();
 
-    const { code, stderr } = await run();
+      const { code, stderr } = await run();
 
-    expect(code).toBe(exitCode.conflict);
-    expect(stderr).toEqual([
-      "✕ Nothing is live yet, so there is nothing to run. Nothing ran.",
-      "  Make the workspace live in the Studio, then run again.",
-    ]);
-    expect(await storedRuns()).toBe(0);
-  }, gitTimeout);
+      expect(code).toBe(exitCode.conflict);
+      expect(stderr).toEqual([
+        "✕ Nothing is live yet, so there is nothing to run. Nothing ran.",
+        "  Make the workspace live in the Studio, then run again.",
+      ]);
+      expect(await storedRuns()).toBe(0);
+    },
+    gitTimeout,
+  );
 
-  it("refuses when the workspace has history but git can't start, and stores no run", async () => {
-    await makeLive();
+  it(
+    "refuses when the workspace has history but git can't start, and stores no run",
+    async () => {
+      await makeLive();
 
-    const { code, stderr } = await run(noGit);
+      const { code, stderr } = await run(noGit);
 
-    expect(code).toBe(exitCode.unavailable);
-    expect(stderr).toEqual([
-      "✕ Couldn't run support-reply: git can't start on this computer, so the live version can't be read. Nothing ran.",
-      "  Install git and make sure it's on your PATH, then try again.",
-    ]);
-    expect(await storedRuns()).toBe(0);
-  }, gitTimeout);
+      expect(code).toBe(exitCode.unavailable);
+      expect(stderr).toEqual([
+        "✕ Couldn't run support-reply: git can't start on this computer, so the live version can't be read. Nothing ran.",
+        "  Install git and make sure it's on your PATH, then try again.",
+      ]);
+      expect(await storedRuns()).toBe(0);
+    },
+    gitTimeout,
+  );
 
   describe("runs send", () => {
     const nameOf = async () =>
@@ -168,30 +188,42 @@ verifies("cli.run-live-version", () => {
         (file) => file.value.id === "support-reply",
       )?.value.name;
 
-    it("checks the run on the live version", async () => {
-      await makeLive();
-      await saveNewName("Saved reply");
+    it(
+      "checks the run on the live version",
+      async () => {
+        await makeLive();
+        await saveNewName("Saved reply");
 
-      expect(await nameOf()).toBe("Support reply");
-    }, gitTimeout);
+        expect(await nameOf()).toBe("Support reply");
+      },
+      gitTimeout,
+    );
 
-    it("checks it on the saved files while nothing is live yet", async () => {
-      await vcs.init();
-      await saveNewName("Saved reply");
+    it(
+      "checks it on the saved files while nothing is live yet",
+      async () => {
+        await vcs.init();
+        await saveNewName("Saved reply");
 
-      expect(await nameOf()).toBe("Saved reply");
-    }, gitTimeout);
+        expect(await nameOf()).toBe("Saved reply");
+      },
+      gitTimeout,
+    );
 
-    it("refuses when git can't start, rather than check the saved files", async () => {
-      await makeLive();
+    it(
+      "refuses when git can't start, rather than check the saved files",
+      async () => {
+        await makeLive();
 
-      await expect(loadSendWorkspace(dirOf(), noGit)).rejects.toMatchObject({
-        kind: "unavailable",
-        message:
-          "git can't start on this computer, so the live version can't be read. Nothing was sent.",
-        fix: "Install git and make sure it's on your PATH, then try again.",
-        cause: new Error("git wasn't found on the PATH."),
-      });
-    }, gitTimeout);
+        await expect(loadSendWorkspace(dirOf(), noGit)).rejects.toMatchObject({
+          kind: "unavailable",
+          message:
+            "git can't start on this computer, so the live version can't be read. Nothing was sent.",
+          fix: "Install git and make sure it's on your PATH, then try again.",
+          cause: new Error("git wasn't found on the PATH."),
+        });
+      },
+      gitTimeout,
+    );
   });
 });
