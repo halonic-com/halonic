@@ -79,6 +79,8 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
 
     it("hold the .git file of each submodule checkout in .gitmodules, nested ones too", async () => {
       await gitFolder(".git");
+      await gitFolder(join(".git", "modules", "docs", "modules", "theme"));
+      await gitFolder(join(".git", "modules", "lib"));
       await writeFile(
         join(work, ".gitmodules"),
         '[submodule "docs"]\n\tpath = docs\n\turl = ../docs\n[submodule "lib"]\n\tpath = "libs/acme" # vendored\n',
@@ -96,6 +98,63 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       expect(paths).toContain(join("docs", ".git"));
       expect(paths).toContain(join("libs", "acme", ".git"));
       expect(paths).toContain(join("docs", "theme", ".git"));
+    });
+
+    it("hold the config, config.worktree and hooks of the git folder a submodule's .git file names elsewhere in the working folder (HAL-6212)", async () => {
+      await gitFolder(".git");
+      await writeFile(join(work, ".gitmodules"), '[submodule "acme"]\n\tpath = libs/acme\n');
+      await gitFolder(join("stash", "acme-git"));
+      await mkdir(join(work, "libs", "acme"), { recursive: true });
+      await writeFile(join(work, "libs", "acme", ".git"), "gitdir: ../../stash/acme-git\n");
+      const paths = await gitPathsToDeny(work);
+      for (const file of ["config", "hooks", "config.worktree"]) {
+        expect(paths).toContain(join("stash", "acme-git", file));
+      }
+      expect(paths).toContain(join("libs", "acme", ".git"));
+    });
+
+    it("hold the settings of the working folder's own git folder when its .git file names one inside it", async () => {
+      await gitFolder(".repo");
+      await writeFile(join(work, ".git"), `gitdir: ${join(work, ".repo")}\n`);
+      expect(await gitPathsToDeny(work)).toEqual([
+        ".git",
+        join(".repo", "config"),
+        join(".repo", "hooks"),
+        join(".repo", "config.worktree"),
+      ]);
+    });
+
+    it("hold the config and hooks of the folder the named git folder's commondir leads to", async () => {
+      await gitFolder(join("stash", "acme-git"));
+      await mkdir(join(work, "stash", "acme-git", "worktrees", "feature"), { recursive: true });
+      await writeFile(
+        join(work, "stash", "acme-git", "worktrees", "feature", "commondir"),
+        "../..\n",
+      );
+      await writeFile(join(work, ".git"), "gitdir: stash/acme-git/worktrees/feature\n");
+      const paths = await gitPathsToDeny(work);
+      expect(paths).toContain(join("stash", "acme-git", "config"));
+      expect(paths).toContain(join("stash", "acme-git", "hooks"));
+      expect(paths).toContain(join("stash", "acme-git", "worktrees", "feature", "commondir"));
+      expect(paths).not.toContain(join("stash", "acme-git", "worktrees", "feature", "config"));
+    });
+
+    it("refuse a .git file that names a missing folder in the working folder, or one through a link", async () => {
+      const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
+      try {
+        await writeFile(join(work, ".git"), "gitdir: stash/acme-git\n");
+        await expect(gitPathsToDeny(work)).rejects.toThrow(
+          `${join(work, ".git")} sends git to ${join(work, "stash", "acme-git")}, which is not a folder inside the working folder`,
+        );
+        await mkdir(join(outside, "acme-git"));
+        await writeFile(join(outside, "acme-git", "HEAD"), "ref: refs/heads/main\n");
+        await symlink(outside, join(work, "stash"));
+        await expect(gitPathsToDeny(work)).rejects.toThrow(
+          "which is not a folder inside the working folder",
+        );
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
     });
 
     it("hold the config and hooks of a submodule checkout whose .git is a folder", async () => {

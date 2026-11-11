@@ -1,6 +1,6 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { linkedGitFolder } from "./git-link.ts";
+import { gitdirFolder, linkedGitFolder, settingsFolder } from "./git-link.ts";
 
 /**
  * How deep the search goes before it stops. It counts a level for each folder
@@ -27,6 +27,12 @@ const skippedFolders = new Set([".git", "node_modules"]);
  *
  * - `.git` itself when it is a file (a linked worktree or a submodule): it
  *   points git at another git folder, which the program could make its own.
+ *   When the git folder it names is inside the working folder, that folder's
+ *   `config`, `config.worktree` and `hooks` as well (those of the folder its
+ *   `commondir` names, when it has one): srt protects them only in a folder
+ *   named `.git`, and one kept elsewhere (`stash/acme-git`) would be open. One
+ *   that is missing or reached through a link stops the session (see
+ *   `gitdirFolder`).
  * - The `.git` of each submodule checkout listed in `.gitmodules`, nested ones
  *   too: `git status` in the repository runs it in each submodule. When it is a
  *   folder rather than a file, its `config` and `hooks` as well. When it is a
@@ -62,6 +68,8 @@ export async function gitPathsToDeny(workingFolder: string): Promise<string[]> {
     ...(await checkoutPaths(workingFolder, "", 0)),
     ...(await nestedClonePaths(workingFolder, "", 0)),
   ];
+  // Both walks reach a submodule checkout, and its git folder in `.git/modules` is
+  // found both through its `.git` file and there.
   return [...new Set(paths)];
 }
 
@@ -92,7 +100,7 @@ async function checkoutPaths(root: string, checkout: string, depth: number): Pro
   if (kind === null) return [];
   const paths: string[] = [];
   if (kind.isFile()) {
-    paths.push(dotGit);
+    paths.push(dotGit, ...(await namedGitFolderPaths(root, checkout)));
   } else if (kind.isDirectory()) {
     if (checkout !== "") paths.push(join(dotGit, "config"), join(dotGit, "hooks"));
     paths.push(...(await gitFolderPaths(root, dotGit)));
@@ -109,6 +117,15 @@ async function checkoutPaths(root: string, checkout: string, depth: number): Pro
     }
   }
   return paths;
+}
+
+/** What to deny for the git folder that the `.git` file of `checkout` names, when it is inside `root`. */
+async function namedGitFolderPaths(root: string, checkout: string): Promise<string[]> {
+  const gitFolder = await gitdirFolder(root, checkout);
+  if (gitFolder === null) return [];
+  const settings = await settingsFolder(root, gitFolder);
+  const paths = settings === null ? [] : [join(settings, "config"), join(settings, "hooks")];
+  return [...paths, ...(await gitFolderPaths(root, gitFolder))];
 }
 
 /** What to deny inside the git folder `gitFolder`, beyond its own `config` and `hooks`. */

@@ -1,4 +1,4 @@
-import { lstat, readlink, realpath } from "node:fs/promises";
+import { lstat, readFile, readlink, realpath } from "node:fs/promises";
 import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 
 /**
@@ -24,6 +24,62 @@ export async function linkedGitFolder(workingFolder: string, checkout: string): 
     `the .git in ${join(workingFolder, checkout)} is a link that doesn't lead to a git folder inside ` +
       "the working folder, so the sandbox can't keep a program from changing its settings. Replace " +
       "the link with a `gitdir:` file, then open the session again.",
+  );
+}
+
+/**
+ * The git folder a checkout's `.git` file names in its `gitdir:` line,
+ * relative to the working folder. Git reads that folder's settings and runs
+ * its hooks, and srt's own rules protect it only when it is a folder named
+ * `.git`: one the user keeps elsewhere in the working folder
+ * (`git clone --separate-git-dir`) the program could change. Null when the
+ * file has no `gitdir:` line or names a folder outside the working folder,
+ * where the program can't write.
+ *
+ * @throws when it names a place inside the working folder that isn't a real
+ *   folder reached without a link, so the session doesn't open.
+ */
+export async function gitdirFolder(
+  workingFolder: string,
+  checkout: string,
+): Promise<string | null> {
+  const dotGit = join(workingFolder, checkout, ".git");
+  const target = /^gitdir:[ \t]*(.+?)\r?$/m.exec(await readFile(dotGit, "utf8"))?.[1];
+  if (target === undefined) return null;
+  return insideFolder(workingFolder, resolve(workingFolder, checkout, target), dotGit);
+}
+
+/**
+ * The folder git reads `gitFolder`'s settings and hooks from, relative to
+ * the working folder: the one its `commondir` names (a linked worktree's
+ * git folder has one), else `gitFolder` itself. Null when that is outside
+ * the working folder.
+ *
+ * @throws as `gitdirFolder` does, for the folder `commondir` names.
+ */
+export async function settingsFolder(
+  workingFolder: string,
+  gitFolder: string,
+): Promise<string | null> {
+  const commondir = join(workingFolder, gitFolder, "commondir");
+  if ((await lstat(commondir).catch(() => null))?.isFile() !== true) return gitFolder;
+  const target = (await readFile(commondir, "utf8")).trim();
+  return insideFolder(workingFolder, resolve(workingFolder, gitFolder, target), commondir);
+}
+
+/** `folder` relative to the working folder, null when outside it; throws when it isn't safe to deny. */
+async function insideFolder(
+  workingFolder: string,
+  folder: string,
+  namedIn: string,
+): Promise<string | null> {
+  const target = await insidePath(workingFolder, folder);
+  if (leaves(target)) return null;
+  if (await insideWithoutLinks(workingFolder, target, { mustExist: true })) return target;
+  throw new Error(
+    `${namedIn} sends git to ${folder}, which is not a folder inside the working folder that the ` +
+      "sandbox can protect: there or through a link on the way, a program could plant settings " +
+      "git would run. Check the path, then open the session again.",
   );
 }
 

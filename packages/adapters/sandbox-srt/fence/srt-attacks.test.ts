@@ -214,6 +214,35 @@ describe("a program trying to get out of the fence", () => {
     );
   });
 
+  it("can't change the settings of a git folder a submodule's .git file names outside .git (HAL-6212)", async () => {
+    const repo = join(base, "with-stash");
+    const stash = join(repo, "stash", "docs-git");
+    await mkdir(join(repo, ".git"), { recursive: true });
+    await mkdir(stash, { recursive: true });
+    await mkdir(join(repo, "docs"), { recursive: true });
+    await writeFile(join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(stash, "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(stash, "config"), "[core]\n");
+    await writeFile(join(repo, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+    await writeFile(join(repo, "docs", ".git"), "gitdir: ../stash/docs-git\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: repo });
+    try {
+      const attempts = [
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' >> stash/docs-git/config",
+        "mkdir -p stash/docs-git/hooks && echo x > stash/docs-git/hooks/post-checkout",
+        "echo x > stash/docs-git/config.worktree",
+        "mv stash stash-old",
+      ];
+      for (const attempt of attempts) {
+        expect((await sh(attempt, planted)).code).not.toBe(0);
+      }
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(stash, "config"), "utf8")).toBe("[core]\n");
+    await expect(stat(join(stash, "hooks", "post-checkout"))).rejects.toThrow();
+  });
+
   it("can't reach the network outside the bridge", async () => {
     const { out } = await sh(
       "curl -s --max-time 10 --noproxy '*' http://example.com/ 2>&1; echo \"exit=$?\"",
