@@ -56,6 +56,8 @@ function declaration(tools: IntegrationTool[] = [forecastTool()]): IntegrationDe
 /** A started runner the test stops by hand. */
 interface FakeRunner extends RunnerConnection {
   stop(stop: RunnerStop): void;
+  /** Refuses calls with `stop` while `stopped` hasn't settled yet, as while its process is killed. */
+  stopping(stop: RunnerStop): void;
   readonly closed: () => boolean;
 }
 
@@ -82,6 +84,9 @@ function fakeRunner(declared: IntegrationDeclaration, answer: string): FakeRunne
       end({ reason: "closed" });
     },
     stop: end,
+    stopping: (reason) => {
+      stop ??= reason;
+    },
     closed: () => closed,
   };
 }
@@ -267,7 +272,7 @@ verifies("integration-runner.local-integration", () => {
       expect(starts).toHaveLength(1);
     });
 
-    it("refuses a new runner whose code declares something else, and starts no more", async () => {
+    it("refuses a new runner whose code declares something else, and every later call fails with that", async () => {
       const first = fakeRunner(declaration(), "first");
       const changed = fakeRunner(
         declaration([{ ...forecastTool(), parameters: { type: "object" } }]),
@@ -280,7 +285,51 @@ verifies("integration-runner.local-integration", () => {
         /declares something else than when it was loaded/,
       );
       expect(changed.closed()).toBe(true);
-      await expect(connection.callTool("forecast", {})).rejects.toBeInstanceOf(RunnerStoppedError);
+      await expect(connection.callTool("forecast", {})).rejects.toThrow(
+        /declares something else than when it was loaded/,
+      );
+      expect(starts).toHaveLength(2);
+    });
+
+    it("checks the folder's links again before a new runner starts, and starts no more when one leads out (A12)", async () => {
+      const folders: Record<string, FolderEntry[]> = { "/work/weather": [] };
+      const first = fakeRunner(declaration(), "first");
+      const { loaded, starts } = await load([first, fakeRunner(declaration(), "second")], {
+        folderDisk: fakeDisk(folders, { "/work/weather/keys": "/work/elsewhere/.ssh" }),
+      });
+      if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+      const connection = loaded.value.integration.connect(loaded.value.host);
+      folders["/work/weather"] = [{ name: "keys", kind: "link" }];
+      first.stop({ reason: "idle" });
+      await first.stopped;
+      await expect(connection.callTool("forecast", {})).rejects.toThrow(
+        "weather: its folder holds a link out of it, keys",
+      );
+      folders["/work/weather"] = [];
+      await expect(connection.callTool("forecast", {})).rejects.toThrow(/a link out of it, keys/);
+      expect(starts).toHaveLength(1);
+    });
+
+    it("makes a call once more on a new runner when the one it got stopped for being idle", async () => {
+      const first = fakeRunner(declaration(), "first");
+      const { connection, starts } = await connected([first, fakeRunner(declaration(), "second")]);
+      first.stopping({ reason: "idle" });
+      expect(await connection.callTool("forecast", {})).toBe("second: forecast {}");
+      expect(starts).toHaveLength(2);
+    });
+
+    it("refuses calls on a closed connection and starts no runner for them", async () => {
+      const first = fakeRunner(declaration(), "first");
+      const { loaded, starts } = await load([first, fakeRunner(declaration(), "second")]);
+      if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+      const closing = loaded.value.integration.connect(loaded.value.host);
+      const other = loaded.value.integration.connect(loaded.value.host);
+      await closing.close();
+      await expect(closing.callTool("forecast", {})).rejects.toThrow(
+        "weather: its connection is closed",
+      );
+      expect(starts).toHaveLength(1);
+      expect(await other.callTool("forecast", {})).toBe("second: forecast {}");
       expect(starts).toHaveLength(2);
     });
   });

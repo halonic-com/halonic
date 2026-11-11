@@ -81,8 +81,11 @@ must be stopped with exactly one block, or answered without stopping, and never 
   a sheet with `tokens`). Then `folderLinkProblems` refuses a folder with a symbolic link that
   leads out of it or nowhere (A12). Only then does the caller's `start` run: the trust check, the
   start gate in `core/app`, then `startRunner`. The runner's declaration must match the sheet, or
-  it is stopped and nothing is offered. After an idle stop the next call starts a new runner the
-  same way, which must declare the same; after any other stop nothing starts again.
+  it is stopped and nothing is offered. After an idle stop the next call checks the folder's links
+  again and starts a new runner the same way, which must declare the same; a call that got a runner
+  just as it stopped for being idle is made once more on the new one. After any other stop, or a
+  refused restart, nothing starts again and every call fails with that reason. A closed connection
+  refuses calls.
 
 Whether a runner may start at all, and fenced or not, is decided before `startRunner` by the start
 gate in `core/app`.

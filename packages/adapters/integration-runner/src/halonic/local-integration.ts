@@ -28,6 +28,7 @@ import type {
 import { err, ok, type Result } from "@halonicjs/std";
 import type { RunnerConnection } from "./connect-runner.ts";
 import { folderLinkProblems, type IntegrationFolderDisk } from "./integration-folder.ts";
+import { RunnerStoppedError } from "./limits.ts";
 
 /** What one runner start needs from the loader: the parts of the bridge only Halonic holds. */
 export interface LocalRunnerBridge {
@@ -95,7 +96,9 @@ export async function loadLocalIntegration(
   if (links.length > 0) {
     return err(links);
   }
-  const runners = new LocalRunners(prepared.value, start);
+  const runners = new LocalRunners(prepared.value, start, () =>
+    folderLinkProblems(checked.sheet.id, folder, folderDisk),
+  );
   const first = await runners.startFirst();
   const problems = declarationProblems(checked.sheet, first.declaration);
   if (problems.length > 0) {
@@ -113,15 +116,22 @@ export async function loadLocalIntegration(
 class LocalRunners {
   readonly #prepared: PreparedIntegration;
   readonly #start: StartLocalRunner;
+  /** The folder's link check, run again before every later start: the folder can change in between. */
+  readonly #linkProblems: () => LoadProblem[];
   /** What the first runner declared, as JSON; every later one must declare the same. */
   #declared: string | undefined;
   #current: Promise<RunnerConnection> | undefined;
-  /** Set once a runner stopped for any reason but idle: no runner starts after that. */
-  #stoppedFor: RunnerConnection | undefined;
+  /** Set once a runner stopped for any reason but idle, or a new one was refused: every later call fails with it. */
+  #refused: Error | undefined;
 
-  constructor(prepared: PreparedIntegration, start: StartLocalRunner) {
+  constructor(
+    prepared: PreparedIntegration,
+    start: StartLocalRunner,
+    linkProblems: () => LoadProblem[],
+  ) {
     this.#prepared = prepared;
     this.#start = start;
+    this.#linkProblems = linkProblems;
   }
 
   async startFirst(): Promise<RunnerConnection> {
@@ -130,17 +140,25 @@ class LocalRunners {
     return runner;
   }
 
-  /** The connection the integration hands out: every call goes to the runner running then. */
+  /**
+   * The connection the integration hands out: every call goes to the runner
+   * running then. Once closed, it refuses every call rather than start a new
+   * runner; the other connections start one on their next call.
+   */
   connect(host: IntegrationHost): IntegrationConnection {
     if (host !== this.#prepared.host) {
       throw new Error("a local integration connects only through the host its loader built");
     }
+    let closed = false;
     return {
       callTool: async (name, args, signal) => {
-        const runner = await this.#running();
-        return runner.callTool(name, args, signal);
+        if (closed) {
+          throw new Error(`${this.#prepared.sheet.id}: its connection is closed`);
+        }
+        return this.#call(name, args, signal);
       },
       close: async () => {
+        closed = true;
         const current = this.#current;
         this.#current = undefined;
         await (await current?.catch(() => undefined))?.close();
@@ -148,11 +166,33 @@ class LocalRunners {
     };
   }
 
+  /**
+   * Calls the tool on the runner running now. A runner can stop for being idle
+   * after it was handed to this call but before it is let go; idle only stops
+   * a runner with no call running, so this call never reached the code and is
+   * made once more on a new runner.
+   */
+  async #call(
+    name: string,
+    args: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+  ): Promise<string> {
+    const current = this.#running();
+    try {
+      return await (await current).callTool(name, args, signal);
+    } catch (error) {
+      if (!(error instanceof RunnerStoppedError) || error.stop.reason !== "idle") {
+        throw error;
+      }
+      if (this.#current === current) this.#current = undefined;
+      return (await this.#running()).callTool(name, args, signal);
+    }
+  }
+
   /** The runner running now, or a new one when the last one stopped for being idle. */
   #running(): Promise<RunnerConnection> {
-    if (this.#stoppedFor !== undefined) {
-      // Calling it fails with the reason it stopped.
-      return Promise.resolve(this.#stoppedFor);
+    if (this.#refused !== undefined) {
+      return Promise.reject(this.#refused);
     }
     this.#current ??= this.#startNext();
     return this.#current;
@@ -160,6 +200,13 @@ class LocalRunners {
 
   async #startNext(): Promise<RunnerConnection> {
     const { host, sheet, readSecrets } = this.#prepared;
+    if (this.#declared !== undefined) {
+      const links = this.#linkProblems();
+      if (links.length > 0) {
+        this.#current = undefined;
+        throw this.#refuse(new Error(links.map((problem) => problem.message).join("; ")));
+      }
+    }
     let runner: RunnerConnection;
     try {
       runner = await this.#start({
@@ -173,15 +220,25 @@ class LocalRunners {
       throw error;
     }
     if (this.#declared !== undefined && JSON.stringify(runner.declaration) !== this.#declared) {
-      this.#stoppedFor = runner;
+      const refused = this.#refuse(
+        new Error(`${sheet.id}: its code declares something else than when it was loaded`),
+      );
       await runner.close();
-      throw new Error(`${sheet.id}: its code declares something else than when it was loaded`);
+      throw refused;
     }
     const started = this.#current;
     void runner.stopped.then((stop) => {
       if (this.#current === started) this.#current = undefined;
-      if (stop.reason !== "idle" && stop.reason !== "closed") this.#stoppedFor = runner;
+      if (stop.reason !== "idle" && stop.reason !== "closed") {
+        this.#refuse(new RunnerStoppedError(stop));
+      }
     });
     return runner;
+  }
+
+  /** Starts no runner again; every later call fails with the first reason. */
+  #refuse(reason: Error): Error {
+    this.#refused ??= reason;
+    return this.#refused;
   }
 }

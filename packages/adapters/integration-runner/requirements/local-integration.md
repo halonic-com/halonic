@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-983 (design HAL-958 sections 3.5 and 5, attack cases A12 and A32)
 
-When Halonic loads a local integration, it shall check the permission sheet and the workspace's choices without loading the integration's code, refuse the folder when a symbolic link in it leads out of it or nowhere, and only then start one runner through the caller's start (the trust check, then the start gate). It shall offer the integration's tools only when what the runner declares matches the sheet, and stop the runner otherwise. After an idle stop, the next call shall start a new runner the same way and refuse to go on when its code declares something else; after any other stop, no runner shall start again for that connection.
+When Halonic loads a local integration, it shall check the permission sheet and the workspace's choices without loading the integration's code, refuse the folder when a symbolic link in it leads out of it or nowhere, and only then start one runner through the caller's start (the trust check, then the start gate). It shall offer the integration's tools only when what the runner declares matches the sheet, and stop the runner otherwise. After an idle stop, the next call shall check the folder's links again, start a new runner the same way and refuse to go on when its code declares something else; after any other stop or a refused restart, no runner shall start again and every later call shall fail with that reason.
 
 ## Examples
 
@@ -20,3 +20,9 @@ When Halonic loads a local integration, it shall check the permission sheet and 
 - Given a runner that stopped because it broke the protocol,
   when the next call comes,
   then the call fails with that reason and no new runner starts.
+- Given a runner that stopped for being idle and a link out of the folder added since,
+  when the next call comes,
+  then the call fails with `link-out-of-folder`'s reason and no new runner starts.
+- Given a call that got a runner just as it stopped for being idle,
+  when that runner refuses the call,
+  then the call is made once more on a new runner.
