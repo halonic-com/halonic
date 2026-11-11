@@ -4,7 +4,6 @@ import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import type { Studio } from "../studio.ts";
-import { loadView } from "../view.ts";
 import { type PlaceContribution, placeNames, type SidebarPlace, showPlace } from "./frame.ts";
 
 const load = async () => ({ View: () => "view" });
@@ -36,12 +35,15 @@ verifies("shell.sidebar-places", () => {
     expect(places.map((entry) => entry.featureId)).toEqual(["shell", "inbox", "agents", "runs"]);
   });
 
-  it("lists only Home, added by the shell, when no feature adds a place", async () => {
+  // home-page.test.tsx loads Home's view for real; importing the page here
+  // too made this test wait on a cold import of the whole page (HAL-5100).
+  it("lists only Home, added by the shell, when no feature adds a place", () => {
     const shell = createShell({ features: [] });
     const places = shell.contributions.places.list();
     expect(places.map((entry) => placeNames[entry.id].label)).toEqual(["Home"]);
     expect(places[0]?.featureId).toBe("shell");
-    expect(await loadView(places[0] as PlaceContribution)).toBeTypeOf("function");
+    expect(places[0]?.view).toBe("HomePage");
+    expect(places[0]?.load).toBeTypeOf("function");
   });
 
   it("refuses Home from a feature, because the shell adds it", () => {

@@ -5,10 +5,12 @@ import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { defineFeature } from "../feature.ts";
+import type { PlaceContribution } from "../points/frame.ts";
 import type { HomeCardContribution } from "../points/home.ts";
 import { createShell } from "../shell.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { loadView } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { type HomeCardProps, HomePage } from "./home-page.tsx";
 
@@ -79,5 +81,14 @@ verifies("shell.home-sections", () => {
     expect(container.querySelector("section p")?.textContent).toBe(
       "Inbox rows for needs-you-feature",
     );
+  });
+});
+
+// This file imports the page already, so loading Home's view costs nothing
+// here; places.test.ts checks the rest of the Home place without it (HAL-5100).
+verifies("shell.sidebar-places", () => {
+  it("loads Home's page for the Home place the shell adds", async () => {
+    const [home] = createShell({ features: [] }).contributions.places.list();
+    expect(await loadView(home as PlaceContribution)).toBe(HomePage);
   });
 });
