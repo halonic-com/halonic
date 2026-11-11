@@ -1,7 +1,8 @@
 // The plugin service, as `app.plugin-service` asks: it finds every plugin in
 // the profile's plugin folder, reads and checks each one and asks whether it
 // is trusted (P2 plan sections 1 and 5). It adds a plugin from a source
-// folder, as `app.plugin-add` asks (P3 plan, steps 1 to 4), saves and
+// folder, as `app.plugin-add` asks (P3 plan, steps 1 to 4), removes one with
+// its trust, secrets and settings, as `app.plugin-remove` asks, saves and
 // forgets a person's trust, keeps each plugin's setting values, which only
 // removing the plugin deletes, and gives the tools and UI of the trusted
 // ones. The CLI and the Studio call it; it reaches the folder, the trust
@@ -85,6 +86,27 @@ export interface AddPluginOptions {
    * commit of the same plugin. Without it, an id already added is `taken`.
    */
   readonly replace: boolean;
+}
+
+/**
+ * Deletes one secret from the host's `Secrets`, by the name it is stored
+ * under. `Secrets` is read-only in core, so the host passes its own writer.
+ * Deleting a name that isn't there must succeed, so a remove that stopped
+ * part way can run again.
+ */
+export type DeletePluginSecret = (storedName: string) => Promise<void>;
+
+/**
+ * Why a plugin wasn't removed: one of its secrets couldn't be deleted. Its
+ * trust may be gone, but its folder, settings and other secrets are kept,
+ * so removing it again finishes the job.
+ */
+export interface PluginRemoveRefusal {
+  readonly kind: "secret";
+  /** The secret's name as the plugin declares it, never its value. */
+  readonly secret: string;
+  /** What the host's secret writer said. */
+  readonly reason: string;
 }
 
 /** What {@link PluginService} needs from the host. */
@@ -292,13 +314,75 @@ export class PluginService {
   }
 
   /**
-   * Deletes the setting values of the plugin `id`, for removing the plugin.
-   * Its trust isn't touched here, and neither are its secrets: `Secrets` is
-   * read-only in core, so the host deletes the {@link secretNames} with its
-   * own secret writer first, and says so when one can't be deleted.
+   * Deletes the setting values of the plugin `id`. Its trust isn't touched
+   * here, and neither are its secrets: {@link remove} does all of it.
    */
   async forget(id: string): Promise<void> {
     await this.#settings.forget(id);
+  }
+
+  /**
+   * Removes the plugin `id` and everything kept for it, in this order, so a
+   * folder is never gone while its trust, secrets or settings are left:
+   *
+   * 1. its trust, when its entry is a real folder (a link is never trusted,
+   *    and is never followed);
+   * 2. every secret it declares now or declared when it was added, with
+   *    `deleteSecret`; at the first that fails it stops, naming it;
+   * 3. its settings and its install record;
+   * 4. its entry in the plugins folder: a folder with everything in it, or
+   *    a link itself, never what it points to.
+   *
+   * Running it again after a failure finishes the job. Only the entry with
+   * exactly the id is removed: `remove("weather")` leaves `Weather`.
+   *
+   * @param id - the plugin's id, which is its folder's name
+   * @throws a `RangeError` when `id` isn't a single folder name, and what
+   *   the trust store, the records or the plugins folder throw
+   */
+  async remove(
+    id: string,
+    deleteSecret: DeletePluginSecret,
+  ): Promise<Result<void, PluginRemoveRefusal>> {
+    const folder = pluginFolderOf(id);
+    const top = await this.#options.plugins.entries(undefined, { recursive: false });
+    const entry = top.find((found) => found.path === folder);
+    if (entry?.kind === "folder") await this.revoke(folder);
+    for (const [secret, storedName] of Object.entries(
+      await this.#storedSecretNames(entry, folder),
+    )) {
+      try {
+        await deleteSecret(storedName);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        return err({ kind: "secret", secret, reason });
+      }
+    }
+    await this.#settings.forget(folder);
+    await this.#installs.forget(folder);
+    await this.#options.writer.remove(folder);
+    return ok(undefined);
+  }
+
+  /**
+   * Every secret name of the plugin `folder`, by declared name: those its
+   * install record kept, and those its folder declares now when it can be
+   * read. A plugin that can't be read is removed with the names it was
+   * added with.
+   */
+  async #storedSecretNames(
+    entry: FolderEntry | undefined,
+    folder: string,
+  ): Promise<Record<string, string>> {
+    const names: Record<string, string> = { ...(await this.#installs.get(folder))?.secretNames };
+    if (entry?.kind !== "folder") return names;
+    try {
+      const read = await readPluginFolder(this.#options.plugins, this.#options.digest, folder);
+      if (read.ok) Object.assign(names, pluginSecretNames(read.value.plugin));
+    } catch {
+      // Unreadable now: the install record's names are all there is.
+    }
+    return names;
   }
 
   async #loadOne(entry: FolderEntry): Promise<PluginEntry> {

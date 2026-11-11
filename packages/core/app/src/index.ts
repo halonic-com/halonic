@@ -188,8 +188,10 @@ export {
 export {
   type AddPluginOptions,
   type BrokenPlugin,
+  type DeletePluginSecret,
   type PluginAddRefusal,
   type PluginEntry,
+  type PluginRemoveRefusal,
   PluginService,
   type PluginServiceOptions,
   type PluginTrustRefusal,
