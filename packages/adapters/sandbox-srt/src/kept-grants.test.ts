@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { KeptGrants, type RunSrtWin, type SrtWinResult } from "./kept-grants.ts";
+import { KeptGrants, type RunSrtWin, type SrtWinResult, testedSrtVersions } from "./kept-grants.ts";
+import { installedSrtVersion } from "./srt-runner.ts";
 
 // Windows paths on a made-up drive, as srt-win lists them; the sweep reads them as Windows does on any system.
 const runsFolder = "Z:\\runs"; // leak-guard: allow absolute-path made-up Windows path for a test
@@ -107,6 +108,11 @@ verifies("sandbox-srt.kept-grants", () => {
     it("reports a sweep that can't read the list", async () => {
       const { grants } = fakeSrtWin(() => ({ stdout: "not json" }));
       expect((await grants.sweep(runsFolder)).failed).toHaveLength(1);
+    });
+
+    // A sandbox-runtime bump fails here, on every system, not only on Windows or a user's machine.
+    it("is tested with the installed sandbox-runtime", () => {
+      expect(testedSrtVersions).toContain(installedSrtVersion());
     });
   });
 });
