@@ -58,6 +58,11 @@ verifies("shell.window-title", () => {
     expect(windowTitle("Home")).toBe("Home · Halonic");
   });
 
+  it("treats an empty workspace name like no name", () => {
+    expect(windowTitle("Home", "")).toBe("Home · Halonic");
+    expect(windowTitle("Home", "  ")).toBe("Home · Halonic");
+  });
+
   it("names Home and the workspace in a new window", () => {
     renderWindow("Acme");
     expect(document.title).toBe("Home · Acme · Halonic");

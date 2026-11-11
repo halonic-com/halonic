@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1290 (T2), plan PR 16d; Sofia's UX check of #1713 (HAL-5329)
+- Source: HAL-1290 (T2), plan PR 16d; Sofia's UX check of #1713 (HAL-5329); HAL-5401
 
-While a Studio window shows, the shell shall keep the page's title as the active tab's title, the workspace's name and "Halonic", joined by " · ", such as "Home · Acme · Halonic". When the window doesn't know the workspace's name, the title shall leave it out. The title shall follow tab switches, Back and Forward, and renames.
+While a Studio window shows, the shell shall keep the page's title as the active tab's title, the workspace's name and "Halonic", joined by " · ", such as "Home · Acme · Halonic". When the window doesn't know the workspace's name, or the name is empty, the title shall leave it out. The title shall follow tab switches, Back and Forward, and renames.
 
 ## Examples
 
@@ -12,6 +12,9 @@ While a Studio window shows, the shell shall keep the page's title as the active
   when the window shows,
   then the page's title is "Home · Acme · Halonic".
 - Given a workspace with no name yet,
+  when the window shows,
+  then the page's title is "Home · Halonic".
+- Given a workspace whose name is empty,
   when the window shows,
   then the page's title is "Home · Halonic".
 - Given the active tab on Home,
