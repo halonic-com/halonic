@@ -1891,12 +1891,18 @@ importers:
 
   packages/studio/features/runs:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../../core/events
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
       react:
         specifier: 'catalog:'
         version: 19.3.1

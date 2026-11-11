@@ -1,8 +1,16 @@
+import { defineFeature } from "@halonicjs/studio-shell";
+import { RunsSourceService } from "./api.ts";
+
 /**
- * The Runs feature as the Studio shell sees it. Becomes
- * defineFeature() from @halonicjs/studio-shell once the shell exists.
+ * The Runs feature. It reads the open workspace's runs from the source the
+ * app provides (`RunsSourceService`). Its list page, run page, Home's
+ * Recent runs and Ctrl K's run rows register here as they land (HAL-1301).
  */
-export const runsFeature = {
+export const runsFeature = defineFeature({
   id: "runs",
   title: "Runs",
-} as const;
+  needs: [RunsSourceService],
+  register() {
+    // Nothing to show yet: the list page comes in the next pull request.
+  },
+});

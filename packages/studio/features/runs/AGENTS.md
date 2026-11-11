@@ -4,7 +4,7 @@ Owner: elena · Layer: studio · Read the root `AGENTS.md` first; this file adds
 
 ## Scope
 
-The Studio Runs feature: the run list, the run page and what each run ran.
+The Studio Runs: the runs list, the run page with its receipt and what each run ran, Home's Recent runs and Ctrl K's run rows.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`, plus `src/api.ts` for other features;
 everything else is internal.

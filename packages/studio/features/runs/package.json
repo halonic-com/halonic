@@ -2,7 +2,7 @@
   "name": "@halonicjs/studio-feature-runs",
   "private": true,
   "type": "module",
-  "description": "The Runs feature of the Studio.",
+  "description": "The Runs feature of the Studio: the runs list, the run page with its receipt, Home's Recent runs and Ctrl K's run rows.",
   "exports": {
     ".": "./src/index.ts",
     "./api": "./src/api.ts"
@@ -13,8 +13,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
   },
   "devDependencies": {
