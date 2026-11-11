@@ -18,12 +18,10 @@ import type { WaitedOnCall } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
 import type {
   AnswerHarnessEffect,
-  CallToolEffect,
   DecideInput,
   Effect,
   ModelCallResult,
   StartChildEffect,
-  ToolResult,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
@@ -36,22 +34,22 @@ import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
 import { RunsProposalFolders } from "./proposal-folders.ts";
-import { RunConnectorCallRunner } from "./run-connector-call-runner.ts";
+import {
+  type CallTool,
+  noConnectorCalls,
+  RunConnectorCallRunner,
+} from "./run-connector-call-runner.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest, startInputOf } from "./start-request.ts";
+import { resumeTimer, UnfinishedEffects } from "./unfinished-effects.ts";
+import { UnrecordedResults } from "./unrecorded-results.ts";
 
 /**
  * Carries out a model call a run waits on, and gives the model's answer, or
  * the tool call the agent stopped at because it needs a person's OK.
  */
 export type CallModel = (run: RunState, call: PendingCall) => Promise<ModelCallResult>;
-
-/**
- * Makes a connector call a run recorded, and gives its result. It never
- * throws: a call that fails gives the outcome it had.
- */
-export type CallTool = (effect: CallToolEffect) => Promise<ToolResult>;
 
 /**
  * The `error` of a run whose harness call was gone when a person answered
@@ -66,7 +64,8 @@ export const cancelledError = "The run was cancelled.";
 /**
  * Timer ids: a model call or a harness run to carry out now, a timer a
  * state set (`set-timer`), and a child run to hear from (on the parent's
- * key). A harness call's start limits have their own (see {@link StartDeadlines}).
+ * key). A harness call's start limits have their own (see {@link StartDeadlines}),
+ * and so does a run whose effects couldn't all be carried out ({@link resumeTimer}).
  */
 const callTimer = "call:";
 const harnessTimer = "harness:";
@@ -76,13 +75,6 @@ const toolTimer = "tool:";
 
 /** How a call a run waits on is carried out: a model call, or a run of the agent's harness. */
 type CallKind = "model" | "harness";
-
-/** Without `connectorCalls`, no `call-tool` effect gets this far; this answers one anyway. */
-const noConnectorCalls: CallTool = async () => ({
-  type: "tool",
-  result: "The call wasn't made: this engine makes no connector calls.",
-  outcome: "error",
-});
 
 /** Runs workflows in this process for the local executor. */
 export class LocalRuns {
@@ -96,6 +88,8 @@ export class LocalRuns {
   readonly #budget: BudgetCheck | undefined;
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
+  readonly #unrecorded = new UnrecordedResults();
+  readonly #effects: UnfinishedEffects;
   readonly #harnessCalls: LocalHarnessCalls;
   readonly #folders: RunsProposalFolders;
   #started: Promise<void> | undefined;
@@ -127,6 +121,13 @@ export class LocalRuns {
       clock,
       ...(this.#budget === undefined ? {} : { budget: this.#budget }),
       record: (runId, input) => this.#record(runId, input),
+    });
+    this.#effects = new UnfinishedEffects({
+      store: options.store,
+      scheduler: options.scheduler,
+      carryOut: (run, effect) => this.#carryOut(run, effect),
+      ended: (runId) => this.#ended(runId),
+      now: () => this.#now(),
     });
     this.#connectorCalls = new RunConnectorCallRunner({
       store: options.store,
@@ -234,16 +235,17 @@ export class LocalRuns {
 
   /**
    * A timer of a run is due: carry out the call it names, end a harness
-   * start whose time is up, or pass the run the timer a state set. A timer
+   * start whose time is up, or pass the run the timer a state set. Any
+   * other timer of a run first carries out the effects it kept. A timer
    * that is late, repeated or no longer wanted changes nothing, so this
    * resolves for it, and so does every timer after {@link LocalRuns.close}.
    */
   async onTimer(timer: ScheduledTimer): Promise<void> {
     if (this.#closed) return;
     await this.#ready();
-    if (StartDeadlines.owns(timer)) {
-      this.#startDeadlines.expire(timer);
-    } else if (timer.timerId.startsWith(callTimer)) {
+    if (StartDeadlines.owns(timer)) return this.#startDeadlines.expire(timer);
+    await this.#effects.resume(timer.key);
+    if (timer.timerId.startsWith(callTimer)) {
       await this.#carryOutCall(timer.key, timer.timerId.slice(callTimer.length), "model");
     } else if (timer.timerId.startsWith(harnessTimer)) {
       await this.#carryOutCall(timer.key, timer.timerId.slice(harnessTimer.length), "harness");
@@ -305,13 +307,15 @@ export class LocalRuns {
     const slot = JSON.stringify([runId, callId]);
     if (this.#calling.has(slot)) return;
     this.#calling.add(slot);
+    const record = (input: DecideInput) => this.#recordIfTaken(runId, input);
     try {
+      if (await this.#unrecorded.recordKept(slot, record)) return;
       const run = await readRun(this.#options.store, runId);
       const call = run == null ? null : callOf(run, callId);
       if (run == null || call === null) return;
       const result = await this.#callResult(run, call, kind);
       if (this.#closed) return;
-      await this.#recordIfTaken(runId, result);
+      await this.#unrecorded.record(slot, result, record);
     } finally {
       this.#calling.delete(slot);
     }
@@ -362,7 +366,7 @@ export class LocalRuns {
 
   /**
    * Steps the run with the input, tells the subscribers, and carries out or
-   * schedules the effects.
+   * schedules the effects; those it can't are kept for the run's next timer.
    *
    * @returns the events the step stored; none when the input changed nothing
    */
@@ -389,9 +393,7 @@ export class LocalRuns {
       await this.#ended(runId);
       return events;
     }
-    for (const effect of effects) {
-      await this.#carryOut(run, effect);
-    }
+    await this.#effects.carryOut(run, effects);
     if (events.length > 0 && hasEnded(run.status)) await this.#ended(runId);
     return events;
   }

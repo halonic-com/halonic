@@ -8,12 +8,25 @@ import type { CallToolEffect, DecideInput, ToolResult } from "../kernel/decide-t
 import { brokeOff } from "../kernel/requested-effect.ts";
 import { readRun } from "../kernel/step.ts";
 import { connectorCallTimeoutMs } from "../states/task/effect.ts";
-import type { CallTool } from "./local-runs.ts";
 import type { StartDeadlines } from "./start-deadlines.ts";
+import { UnrecordedResults } from "./unrecorded-results.ts";
 
 /** The text of a call the engine was making when it stopped. */
 export const stoppedDuringCall =
   "The engine stopped before this call had an answer, so it may or may not have done its work.";
+
+/**
+ * Makes a connector call a run recorded, and gives its result. It never
+ * throws: a call that fails gives the outcome it had.
+ */
+export type CallTool = (effect: CallToolEffect) => Promise<ToolResult>;
+
+/** Without `connectorCalls`, no `call-tool` effect gets this far; this answers one anyway. */
+export const noConnectorCalls: CallTool = async () => ({
+  type: "tool",
+  result: "The call wasn't made: this engine makes no connector calls.",
+  outcome: "error",
+});
 
 /** What the runner needs from the local runs. */
 export interface RunConnectorCallRunnerOptions {
@@ -34,6 +47,7 @@ export class RunConnectorCallRunner {
   readonly #options: RunConnectorCallRunnerOptions;
   /** The calls being made now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
+  readonly #unrecorded = new UnrecordedResults();
 
   constructor(options: RunConnectorCallRunnerOptions) {
     this.#options = options;
@@ -65,13 +79,16 @@ export class RunConnectorCallRunner {
    * Makes the connector call the run recorded under `callId`, within its
    * time limit. A call that takes longer breaks off with an unknown
    * outcome; its late answer is dropped, because the run then waits for a
-   * person. A timer for a call the run no longer waits on changes nothing.
+   * person. A timer for a call the run no longer waits on changes nothing,
+   * and one for a call whose result couldn't be recorded records it.
    */
   async make(runId: string, callId: string): Promise<void> {
     const slot = JSON.stringify([runId, callId]);
     if (this.#calling.has(slot)) return;
     this.#calling.add(slot);
+    const record = (input: DecideInput) => this.#options.record(runId, input);
     try {
+      if (await this.#unrecorded.recordKept(slot, record)) return;
       const effect = (await readRun(this.#options.store, runId))?.effect;
       if (effect == null || effect.unknown || effect.callId !== callId) return;
       // Only the call's own fields: the host never gets the prompt or the conversation.
@@ -89,12 +106,8 @@ export class RunConnectorCallRunner {
       };
       const result = await this.#withinLimit(runId, call);
       if (this.#options.isClosed()) return;
-      await this.#options.record(runId, {
-        type: "effect-done",
-        at: this.#options.now(),
-        callId,
-        result,
-      });
+      const done: DecideInput = { type: "effect-done", at: this.#options.now(), callId, result };
+      await this.#unrecorded.record(slot, done, record);
     } finally {
       this.#calling.delete(slot);
     }
