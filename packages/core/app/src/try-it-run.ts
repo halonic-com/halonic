@@ -2,10 +2,12 @@
 // that run, and the steps it can't try because of that, found before the
 // run starts so they go on its `run.started` event.
 
+import type { CantTryStep } from "@halonicjs/events";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import type { ReviewFiles } from "./review-files.ts";
 import type { LeftOutFile, TryItSource } from "./review-types.ts";
 import { cantTryAtLoad } from "./try-it-cant-try.ts";
+import { cantTryForPrograms } from "./try-it-programs.ts";
 import { runFilesOf } from "./try-it-run-files.ts";
 import { buildTryItSource, leftOutOf } from "./try-it-source.ts";
 
@@ -16,9 +18,14 @@ import { buildTryItSource, leftOutOf } from "./try-it-source.ts";
  * it, to compare them.
  *
  * @param item - the path of the workflow or agent being tried
+ * @param pinned - the ids of the connectors the trust record pins
  * @throws what `loadWorkspace` throws, such as for a file the account may not read
  */
-export async function buildTryItRun(files: ReviewFiles, item: string): Promise<TryItSource> {
+export async function buildTryItRun(
+  files: ReviewFiles,
+  item: string,
+  pinned: ReadonlySet<string>,
+): Promise<TryItSource> {
   const { source, leftOut } = await buildTryItSource(files);
   const workspace = await loadWorkspace(files.store);
   const tried = await loadWorkspace(source);
@@ -30,6 +37,24 @@ export async function buildTryItRun(files: ReviewFiles, item: string): Promise<T
   return {
     source,
     leftOut: leftOutOf(leftOut.files.filter(readByRun)),
-    cantTry: cantTryAtLoad({ item, workspace, tried, runFiles, leftOut: leftOut.files }),
+    cantTry: cantTryOf(
+      cantTryAtLoad({ item, workspace, tried, runFiles, leftOut: leftOut.files }),
+      cantTryForPrograms({ item, tried, runFiles, leftOut: leftOut.files, pinned }),
+    ),
   };
+}
+
+/**
+ * The steps that can't be tried for either cause, each entry once. When
+ * the whole item can't be tried, that is the one entry.
+ */
+function cantTryOf(atLoad: CantTryStep[], forPrograms: CantTryStep[]): CantTryStep[] {
+  if (atLoad.some((entry) => entry.step === null)) {
+    return atLoad;
+  }
+  const entries = new Map<string, CantTryStep>();
+  for (const entry of [...atLoad, ...forPrograms]) {
+    entries.set(JSON.stringify(entry), entry);
+  }
+  return [...entries.values()];
 }

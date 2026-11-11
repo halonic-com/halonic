@@ -232,18 +232,25 @@ export class ReviewService {
    * With `item`, for a run of that workflow or agent
    * (`app.review-try-it-cant-try`): `leftOut` keeps only the files that run
    * reads, and `cantTry` lists the steps it can't try without a left-out
-   * change. Pass them to the run's start.
+   * change. Pass them to the run's start. That includes each step that
+   * would start a program reading the workspace from disk while a file
+   * that isn't an item is held back (`app.try-it-programs-see-try-it-source`).
    *
    * Built in memory, from the records as they are now: call it again on
    * {@link onDidChange}. It writes nothing, starts nothing and never reads
    * or changes trust.
    *
-   * @param options - `item`: the path of the workflow or agent being tried
+   * @param options - `item`: the path of the workflow or agent being
+   *   tried; `pinned`: the ids of the connectors the workspace's trust
+   *   record pins, from the caller, since this service never reads trust.
+   *   Left out, no connector counts as pinned.
    */
-  tryItSource(options: { readonly item?: string } = {}): Promise<TryItSource> {
+  tryItSource(
+    options: { readonly item?: string; readonly pinned?: ReadonlySet<string> } = {},
+  ): Promise<TryItSource> {
     return options.item === undefined
       ? buildTryItSource(this.files)
-      : buildTryItRun(this.files, options.item);
+      : buildTryItRun(this.files, options.item, options.pinned ?? new Set());
   }
 
   /**
