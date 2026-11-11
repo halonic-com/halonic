@@ -70,11 +70,15 @@ export interface WorkspaceEngineTarget {
 /** A workspace's engine, open until {@link LocalEngine.close}, with the signal to follow its runs with. */
 export interface WorkspaceEngine extends LocalEngine {
   /**
-   * Aborted at Ctrl C or SIGTERM, or when a run's step keeps failing. Pass
-   * it to `WorkflowRuns`, and wrap the follow in `followUntilStopped`.
+   * Aborted at Ctrl C or SIGTERM, or as {@link stuck} is. Pass it to
+   * `WorkflowRuns`, and wrap the follow in `followUntilStopped`.
    */
   readonly signal: AbortSignal;
-  /** Aborted, with the step's last error as its reason, when a run's step keeps failing. */
+  /**
+   * Aborted, with the last error as its reason, when a run's step keeps
+   * failing, or three ticks or wake-ups in a row fail. With `onStuck`, a
+   * step that keeps failing goes there instead and doesn't abort it.
+   */
   readonly stuck: AbortSignal;
   /** The runs' agents set to "On this computer", each once, for the ! lines before they start. */
   readonly unsandboxed: readonly UnsandboxedAgent[];

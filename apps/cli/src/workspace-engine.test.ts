@@ -1,18 +1,21 @@
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { FileRecordStore } from "@halonicjs/adapter-fs-node";
+import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { CommandContext } from "./command.ts";
-import type { RoutineTicks } from "./local-engine-host.ts";
+import { type RoutineTicks, runTimerCollection } from "./local-engine-host.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
+import type { StuckTimer } from "./stuck-timers.ts";
 import { engineStart } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
-import { nodeProfileEnvironment } from "./workspace-runs.ts";
+import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
 
@@ -29,10 +32,15 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
+const profile = () => ({
+  ...nodeProfileEnvironment(),
+  variables: { HALONIC_HOME: join(folder, "home") },
+});
+
 function setup(): WorkspaceEngineSetup {
   return {
     http: { fetch: () => Promise.reject(new TypeError("no server")) },
-    profile: { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "home") } },
+    profile: profile(),
     sandboxGate: () => ({
       sandbox: { check: () => Promise.reject(new Error("Acme's agents need no sandbox.")) },
       placement: { where: () => Promise.reject(new Error("Acme's agents need no placement.")) },
@@ -85,7 +93,10 @@ verifies("cli.run", () => {
  * {@link failNextWakeUp} makes the wake-up after the next tick fail: the
  * scheduler can't set its next one. The `--debug` lines are in `debugLines`.
  */
-async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
+async function openWithTicks(
+  outcomes: readonly ("fail" | "ok")[],
+  onStuck?: (stuck: StuckTimer) => void,
+) {
   let now = engineStart;
   /** The wake-ups set, with the time each is due. */
   const wakeUps = new Map<() => void, number>();
@@ -120,7 +131,14 @@ async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
         },
       },
     },
-    { dir, workspace, runs: [], ending: runMessages.nothingRan(), routines: () => routines },
+    {
+      dir,
+      workspace,
+      runs: [],
+      ending: runMessages.nothingRan(),
+      routines: () => routines,
+      ...(onStuck === undefined ? {} : { onStuck }),
+    },
   );
   const nextTick = async () => {
     const count = ticks.length + 1;
@@ -140,6 +158,36 @@ async function openWithTicks(outcomes: readonly ("fail" | "ok")[]) {
     failingWakeUps += 1;
   };
   return { engine, nextTick, failNextWakeUp, debugLines };
+}
+
+/** The timer {@link plantStuckTimer} sets: a step of a run, due as the engine starts. */
+const failingTimer = {
+  key: "run_mfx3k2a1_09d9f0",
+  timerId: "call:draft",
+  at: new Date(engineStart).toISOString(),
+};
+
+/**
+ * Sets {@link failingTimer} in the engine's timers, with its run's log a
+ * folder that can't be read as a file, so each time the engine carries out
+ * that step it fails: the run is stuck. Call it before the engine opens.
+ */
+async function plantStuckTimer(): Promise<void> {
+  const folders = await workspaceFolders(
+    profileFolder(profile()),
+    await realpath(acme),
+    webCryptoDigest,
+  );
+  await mkdir(join(folders.runsFolder(), `${failingTimer.key}.jsonl`), { recursive: true });
+  await new FileRecordStore(folders.recordsFolder()).append([
+    {
+      at: failingTimer.at,
+      collection: runTimerCollection,
+      id: JSON.stringify([failingTimer.key, failingTimer.timerId]),
+      op: "add",
+      values: { ...failingTimer, failures: 0, dueAt: failingTimer.at },
+    },
+  ]);
 }
 
 verifies("cli.commands.routines.watch", () => {
@@ -199,5 +247,21 @@ verifies("cli.commands.routines.watch", () => {
     } finally {
       await engine.close();
     }
+  });
+
+  it("hands a run whose step keeps failing to onStuck, once, and keeps watching (HAL-5064)", async () => {
+    await plantStuckTimer();
+    const stuck: StuckTimer[] = [];
+    const { engine, nextTick } = await openWithTicks([], (timer) => stuck.push(timer));
+    try {
+      // Each tick delivers the timer once more: it fails 4 times.
+      for (let tick = 0; tick < 4; tick += 1) await nextTick();
+    } finally {
+      // Closing waits for the last delivery, so its failure is counted.
+      await engine.close();
+    }
+
+    expect(stuck).toEqual([{ error: expect.any(Error), timer: failingTimer }]);
+    expect(engine.stuck.aborted).toBe(false);
   });
 });
