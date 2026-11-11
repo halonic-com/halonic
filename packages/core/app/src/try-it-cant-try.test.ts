@@ -1,9 +1,11 @@
 import type { Digest } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
+import { loadWorkspace } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { ReviewService } from "./review-service.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
+import { missingKinds } from "./try-it-cant-try.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -40,22 +42,32 @@ function workflow(extra: { readonly step: string; readonly agent: string } | nul
   return lines.join("\n");
 }
 
-/** Acme's support hub with workflow `triage`, a billing hub, and the trust the test sets. */
+/** An agent's method `summarize`, which takes no input. */
+const summarize =
+  "methods:\n  summarize:\n    description: Sum up.\n    input: []\n    instructions: Sum up.\n";
+
+/** Workflow `triage` with step `reply` calling the writer's `summarize`. */
+const callsSummarize = workflow().replace(
+  "    agent: writer\n",
+  "    agent: writer\n    method: summarize\n",
+);
+
+/** Acme's files: a support hub with workflow `triage`, and a billing hub. */
+const acmeFiles: Readonly<Record<string, string>> = {
+  "workspace.yaml": "id: acme\nname: Acme\n",
+  "providers/mock.yaml": "id: mock\nname: Mock\ntype: mock\nlocal: true\n",
+  "models.yaml": fast,
+  "hubs/support/hub.yaml": "id: support\nname: Support\n",
+  "hubs/billing/hub.yaml": "id: billing\nname: Billing\n",
+  [triage]: workflow(),
+  [sorter]: agent("sorter"),
+  [writer]: agent("writer"),
+  [billingAgent]: agent("clerk"),
+};
+
+/** Acme's workspace with the trust the test sets. */
 function acme() {
-  const store = new TestDefinitionStore(
-    {
-      "workspace.yaml": "id: acme\nname: Acme\n",
-      "providers/mock.yaml": "id: mock\nname: Mock\ntype: mock\nlocal: true\n",
-      "models.yaml": fast,
-      "hubs/support/hub.yaml": "id: support\nname: Support\n",
-      "hubs/billing/hub.yaml": "id: billing\nname: Billing\n",
-      [triage]: workflow(),
-      [sorter]: agent("sorter"),
-      [writer]: agent("writer"),
-      [billingAgent]: agent("clerk"),
-    },
-    digest,
-  );
+  const store = new TestDefinitionStore(acmeFiles, digest);
   let trusted = true;
   const review = new ReviewService({
     store,
@@ -74,6 +86,35 @@ function acme() {
   };
   return { store, review, propose, setTrusted };
 }
+
+/** For each code in `missingKinds`, the files that break Acme's workspace so its checks give that code. */
+const breaksFor: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  "unknown-model-alias": { [writer]: agent("writer").replace("model: fast", "model: large") },
+  "unknown-fallback": { "models.yaml": `${fast}    fallback: [slow]\n` },
+  "unknown-provider": { "models.yaml": fast.replace("provider: mock", "provider: cloud") },
+  "unknown-connector": { [writer]: agent("writer", "connectors: [mail]\n") },
+  "unknown-knowledge": { [writer]: agent("writer", "knowledge: [handbook]\n") },
+  "unknown-skill": { [writer]: agent("writer", "skills: [plain-words]\n") },
+  "unknown-collection": { [writer]: agent("writer", "collections: [invoices]\n") },
+  "shared-not-in-uses": {
+    "hubs/support/hub.yaml": "id: support\nname: Support\nuses:\n  connectors: []\n",
+    [mail]: "transport:\n  http:\n    url: https://mail.example.test/mcp\n",
+    [writer]: agent("writer", "connectors: [mail]\n"),
+  },
+  "unknown-agent": { [triage]: workflow({ step: "send", agent: "mailer" }) },
+  "unknown-subagent": { [writer]: agent("writer", "subagents: [mailer]\n") },
+  "unknown-workflow": {
+    [triage]: workflow().replace(
+      "    agent: writer\n",
+      "    type: workflow\n    workflow: escalate\n",
+    ),
+  },
+  "unknown-method": { [triage]: callsSummarize },
+  "missing-argument": {
+    [writer]: agent("writer", summarize.replace("input: []", "input: [text]")),
+    [triage]: callsSummarize,
+  },
+};
 
 verifies("app.review-try-it-cant-try", () => {
   it("can try every step when nothing it reads is left out", async () => {
@@ -97,6 +138,15 @@ verifies("app.review-try-it-cant-try", () => {
         reason: { kind: "needs-left-out-change", path: "models.yaml", leftOut: "models" },
       },
     ]);
+    expect(leftOut.files.map((file) => file.path)).toEqual(["models.yaml"]);
+  });
+
+  it("tries every step when only the assistant's model needs a left-out alias", async () => {
+    const { review, propose } = acme();
+    await propose("models.yaml", `${fast}  large:\n    provider: mock\n    model: big\n`);
+    await propose("workspace.yaml", "id: acme\nname: Acme\nassistant:\n  model: large\n");
+    const { cantTry, leftOut } = await review.tryItSource({ item: triage });
+    expect(cantTry).toEqual([]);
     expect(leftOut.files.map((file) => file.path)).toEqual(["models.yaml"]);
   });
 
@@ -150,6 +200,58 @@ verifies("app.review-try-it-cant-try", () => {
     expect(leftOut).toMatchObject({ total: 1, beforeTrust: 1 });
   });
 
+  it("blames a method only the left-out agent has on that agent, not another left-out file", async () => {
+    const { review, propose, setTrusted } = acme();
+    setTrusted(false);
+    await propose(writer, agent("writer", summarize));
+    setTrusted(true);
+    await propose(sorter, agent("sorter", "maxSteps: 50\n"));
+    await propose(triage, callsSummarize);
+    const { cantTry, leftOut } = await review.tryItSource({ item: triage });
+    expect(cantTry).toEqual([
+      {
+        status: "cant-try",
+        item: triage,
+        step: "reply",
+        reason: { kind: "needs-left-out-change", path: writer, leftOut: "before-trust" },
+      },
+    ]);
+    expect(leftOut.files.map((file) => file.path).sort()).toEqual([sorter, writer]);
+  });
+
+  it("with two left-out agents, blames the one the broken step calls", async () => {
+    const { review, propose } = acme();
+    await propose(sorter, agent("sorter", "maxSteps: 50\n"));
+    // A new method with its own step limit is left out whole.
+    await propose(writer, agent("writer", `${summarize}    maxSteps: 3\n`));
+    await propose(triage, callsSummarize);
+    expect((await review.tryItSource({ item: triage })).cantTry).toEqual([
+      {
+        status: "cant-try",
+        item: triage,
+        step: "reply",
+        reason: { kind: "needs-left-out-change", path: writer, leftOut: "permissions" },
+      },
+    ]);
+  });
+
+  it("can't try a left-out item whose baseline doesn't load, and says why", async () => {
+    const { store, review, propose, setTrusted } = acme();
+    await store.write(sorter, "id: [sorter\n");
+    setTrusted(false);
+    await propose(sorter, agent("sorter"));
+    setTrusted(true);
+    const { cantTry } = await review.tryItSource({ item: sorter });
+    expect(cantTry).toEqual([
+      {
+        status: "cant-try",
+        item: sorter,
+        step: null,
+        reason: { kind: "invalid-without-change", path: sorter, message: expect.any(String) },
+      },
+    ]);
+  });
+
   it("counts only what the item's run reads", async () => {
     const { review, propose } = acme();
     await propose(billingAgent, agent("clerk", "maxSteps: 50\n"));
@@ -158,5 +260,16 @@ verifies("app.review-try-it-cant-try", () => {
       { path: billingAgent, reason: "permissions", changes: 1 },
     ]);
     expect((await review.tryItSource()).leftOut.total).toBe(1);
+  });
+  it("maps only codes the workspace checks give as errors", async () => {
+    expect(Object.keys(breaksFor).sort()).toEqual(Object.keys(missingKinds).sort());
+    for (const [code, files] of Object.entries(breaksFor)) {
+      const broken = await loadWorkspace(new TestDefinitionStore({ ...acmeFiles, ...files }));
+      const errors = broken.issues.filter((issue) => issue.severity === "error");
+      expect(
+        errors.map((issue) => issue.code),
+        code,
+      ).toContain(code);
+    }
   });
 });

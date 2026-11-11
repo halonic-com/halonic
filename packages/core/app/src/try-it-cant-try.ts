@@ -24,14 +24,14 @@ export interface CantTryInput {
 }
 
 /**
- * Which kinds of left-out file an issue that names something missing
- * points at, by the issue's code. Any other new error is put down to the
- * first left-out file the run reads.
+ * Which kinds of left-out file an error that names something missing
+ * points at, by the error's code. Only errors count, so a warning such as
+ * `extra-argument` has no entry. A test checks the workspace checks give
+ * each code.
  */
-const missingKinds: Readonly<Record<string, readonly KindName[]>> = {
+export const missingKinds: Readonly<Record<string, readonly KindName[]>> = {
   "unknown-model-alias": ["models", "hub"],
   "unknown-fallback": ["models", "hub"],
-  "unknown-model": ["models", "hub"],
   "unknown-provider": ["provider"],
   "unknown-connector": ["connector", "hub"],
   "unknown-knowledge": ["knowledge", "hub"],
@@ -41,6 +41,9 @@ const missingKinds: Readonly<Record<string, readonly KindName[]>> = {
   "unknown-agent": ["agent"],
   "unknown-subagent": ["agent"],
   "unknown-workflow": ["workflow"],
+  // A method, or the input it takes, only the left-out version of an agent has.
+  "unknown-method": ["agent"],
+  "missing-argument": ["agent"],
 };
 
 /**
@@ -63,21 +66,17 @@ export function cantTryAtLoad(input: CantTryInput): CantTryStep[] {
   const leftOut = input.leftOut.filter((file) => runFiles.all.has(file.path));
   const itemLeftOut = leftOut.find((file) => file.path === item);
   if (itemLeftOut !== undefined && !loads(tried, item) && loads(workspace, item)) {
-    const reason = {
-      kind: "needs-left-out-change",
-      path: item,
-      leftOut: itemLeftOut.reason,
-    } as const;
-    return [{ status: "cant-try", item, step: null, reason }];
+    return [{ status: "cant-try", item, step: null, reason: itemReason(itemLeftOut, tried) }];
   }
   const known = new Set(workspace.issues.filter(isError).map(issueKey));
   const found = new Map<string, CantTryStep>();
   for (const issue of tried.issues) {
-    if (!isError(issue) || !runFiles.all.has(issue.file) || known.has(issueKey(issue))) {
+    const counts = isError(issue) && runFiles.all.has(issue.file) && !readByNoRun(issue);
+    if (!counts || known.has(issueKey(issue))) {
       continue;
     }
-    const reason = reasonFor(issue, leftOut);
     for (const step of stepsReading(issue, item, runFiles)) {
+      const reason = reasonFor(issue, step, leftOut, runFiles);
       const entry: CantTryStep = { status: "cant-try", item, step, reason };
       found.set(JSON.stringify(entry), entry);
     }
@@ -85,20 +84,62 @@ export function cantTryAtLoad(input: CantTryInput): CantTryStep[] {
   return [...found.values()];
 }
 
-/** Why the error in `issue` makes a step impossible to try. */
-function reasonFor(issue: WorkspaceIssue, leftOut: readonly LeftOutFile[]): CantTryReason {
+/**
+ * Why a left-out item that Try it can't load can't be tried: its baseline
+ * is there but has an error, such as one that doesn't parse, or there is
+ * no baseline, as for a new file, so it needs the change.
+ */
+function itemReason(item: LeftOutFile, tried: LoadedWorkspace): CantTryReason {
+  const error = tried.issues.find((issue) => isError(issue) && issue.file === item.path);
+  if (error !== undefined) {
+    return { kind: "invalid-without-change", path: item.path, message: error.message };
+  }
+  return { kind: "needs-left-out-change", path: item.path, leftOut: item.reason };
+}
+
+/** Why the error in `issue` makes `step` impossible to try; `null` is the whole item. */
+function reasonFor(
+  issue: WorkspaceIssue,
+  step: string | null,
+  leftOut: readonly LeftOutFile[],
+  runFiles: RunFiles,
+): CantTryReason {
   if (leftOut.some((file) => file.path === issue.file)) {
     return { kind: "invalid-without-change", path: issue.file, message: issue.message };
   }
-  const kinds = missingKinds[issue.code] ?? [];
-  const named =
-    leftOut.find((file) => kinds.includes(placeOf(file.path)?.kind ?? "workspace")) ?? leftOut[0];
+  const named = leftOutNeeded(issue, step, leftOut, runFiles);
   if (named === undefined) {
     // Nothing left out explains it; say what fails to load.
     return { kind: "invalid-without-change", path: issue.file, message: issue.message };
   }
   const reason: LeftOutReason = named.reason;
   return { kind: "needs-left-out-change", path: named.path, leftOut: reason };
+}
+
+/**
+ * The left-out file an error in another file most likely needs, the first
+ * found of: a file of a kind the error's code names that `step` reads; one
+ * of that kind anywhere in the run; any file `step` reads; the run's
+ * first. So with two left-out agents, the step blames the one it calls.
+ */
+function leftOutNeeded(
+  issue: WorkspaceIssue,
+  step: string | null,
+  leftOut: readonly LeftOutFile[],
+  runFiles: RunFiles,
+): LeftOutFile | undefined {
+  const kinds = missingKinds[issue.code] ?? [];
+  const stepFiles = step === null ? undefined : runFiles.byStep.get(step);
+  const ofKind = (file: LeftOutFile) => kinds.includes(placeOf(file.path)?.kind ?? "workspace");
+  const readByStep = (file: LeftOutFile) => stepFiles?.has(file.path) ?? false;
+  const choices = [(file: LeftOutFile) => ofKind(file) && readByStep(file), ofKind, readByStep];
+  for (const choice of choices) {
+    const found = leftOut.find(choice);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return leftOut[0];
 }
 
 /** The steps that read the file of `issue`, or `[null]` when the whole item does. */
@@ -118,6 +159,15 @@ function stepsReading(issue: WorkspaceIssue, item: string, runFiles: RunFiles): 
 /** Whether `path` parsed in the workspace. */
 function loads(workspace: LoadedWorkspace, path: string): boolean {
   return workspace.files.some((file) => file.path === path);
+}
+
+/**
+ * Whether `issue` is in a setting no run reads: the Build assistant's own
+ * model in `workspace.yaml`. Runs don't refuse to start on it, so it
+ * mustn't stop every step being tried.
+ */
+function readByNoRun(issue: WorkspaceIssue): boolean {
+  return placeOf(issue.file)?.kind === "workspace" && issue.path[0] === "assistant";
 }
 
 function isError(issue: WorkspaceIssue): boolean {
