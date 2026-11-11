@@ -10,7 +10,8 @@
     "build": "node esbuild.config.ts",
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "dependencies": {
     "@halonicjs/adapter-integration-kit": "workspace:*",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-sandbox-host": "workspace:*",
+    "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
