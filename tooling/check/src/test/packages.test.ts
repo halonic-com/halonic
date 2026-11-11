@@ -68,7 +68,7 @@ describe("tooling/check: packages", () => {
         layer: "core",
         owner: "liam",
         coverage: defaultCoverageFloors.core,
-        publish: { name: "@halonicjs/std" },
+        publish: { name: "@halonicjs/core/std" },
       },
     });
     const notListed = messages([staged], { coreOrder: ["@halonicjs/std"] });
@@ -78,6 +78,32 @@ describe("tooling/check: packages", () => {
       policy: (policy) => ({ ...policy, published: ["@halonicjs/std"] }),
     });
     expect(listed).toEqual([]);
+  });
+
+  it("publishes a package as its folder's subpath of the layer package, or as the layer's main entry", () => {
+    const publishedAs = (name: string) =>
+      messages(
+        [
+          stdWith({
+            private: true,
+            halonic: {
+              layer: "core",
+              owner: "liam",
+              coverage: defaultCoverageFloors.core,
+              publish: { name },
+            },
+          }),
+        ],
+        {
+          coreOrder: ["@halonicjs/std"],
+          policy: (policy) => ({ ...policy, published: ["@halonicjs/std"] }),
+        },
+      );
+    expect(publishedAs("@halonicjs/core")).toEqual([]);
+    expect(publishedAs("@halonicjs/std")).toEqual([
+      '"halonic.publish.name" must be "@halonicjs/core/std" (the layer package with the folder as subpath) or "@halonicjs/core" (the layer\'s main entry), not "@halonicjs/std".',
+    ]);
+    expect(publishedAs("@halonicjs/core/stdlib")).toHaveLength(1);
   });
 
   it("flags a package outside the package folders", () => {

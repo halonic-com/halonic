@@ -70,7 +70,32 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
     );
   }
   checkPublication(context, pkg, report);
+  checkPublishedName(pkg, place.layer, folder, report);
   checkDeclaration(pkg, place.layer, report);
+}
+
+/**
+ * npm gets one package per layer (HAL-5149), and each published package is
+ * one subpath of it named after its folder: `packages/adapters/integration-kit`
+ * is published as `@halonicjs/adapters/integration-kit`. Only a layer's main
+ * entry may take the bare layer package name.
+ */
+function checkPublishedName(
+  pkg: WorkspacePackage,
+  layer: Layer,
+  folder: string,
+  report: Report,
+): void {
+  const publishedName = pkg.manifest.halonic?.publish?.name;
+  if (publishedName === undefined) return;
+  const layerPackage = `${scope}/${layer}`;
+  const subpath = `${layerPackage}/${folder}`;
+  if (publishedName !== subpath && publishedName !== layerPackage) {
+    report.error(
+      pkg.manifestPath,
+      `"halonic.publish.name" must be "${subpath}" (the layer package with the folder as subpath) or "${layerPackage}" (the layer's main entry), not "${publishedName}".`,
+    );
+  }
 }
 
 function checkPublication(context: CheckContext, pkg: WorkspacePackage, report: Report): void {

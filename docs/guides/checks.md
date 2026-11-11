@@ -463,8 +463,12 @@ change, so it needs Liam's review.
 `package.json` stays `private` in the workspace and becomes one subpath of
 its layer's npm package, such as `@halonicjs/adapters/integration-kit`;
 [tooling/publish](../../tooling/publish/README.md) stages that package.
-Such a package must be listed too, or `packages` fails. Adding a name
-needs Liam's review.
+Such a package must be listed too, or `packages` fails. Its
+`halonic.publish.name` must be the layer package with the folder as
+subpath (`packages/adapters/integration-kit` gives
+`@halonicjs/adapters/integration-kit`), or the bare layer package for the
+layer's main entry; `packages` fails otherwise. Adding a name needs Liam's
+review.
 
 ## Ignoring an advisory
 
