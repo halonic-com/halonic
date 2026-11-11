@@ -20,6 +20,9 @@ Studio, which 0.1 doesn't have:
 
 `halonic plugin list` named no Studio and doesn't change.
 
+A test of how sentences are painted used the old "Replace the key in Studio …" sentence as its
+example. Users never see it, but it now uses the 0.1 sentence from HAL-6183 instead.
+
 ## Why
 
 The other sections list what the plugin's code can do and reach: its tools, programs, secrets

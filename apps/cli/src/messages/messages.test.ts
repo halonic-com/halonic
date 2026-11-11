@@ -20,9 +20,9 @@ verifies("cli.messages", () => {
   });
 
   it("keeps the same words with colour, through a pipe and as JSON text", () => {
-    const sentence = phrase`Replace the key in Studio (Settings ${markPart("studioPath")} Models ${markPart("studioPath")} ${bold("OpenAI")}), or set HALONIC_SECRET_OPENAI_KEY, then run again. ${dim("(key-refused)")}`;
+    const sentence = phrase`Set HALONIC_SECRET_OPENAI_KEY to a key ${bold("OpenAI")} accepts, then run again. ${dim("(key-refused)")}`;
     const words =
-      "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again. (key-refused)";
+      "Set HALONIC_SECRET_OPENAI_KEY to a key OpenAI accepts, then run again. (key-refused)";
     expect(plainText(sentence)).toBe(words);
     expect(renderPhrase(sentence, piped)).toBe(words);
     const inTerminal = renderPhrase(sentence, coloured);
