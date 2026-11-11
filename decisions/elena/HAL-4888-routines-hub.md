@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4888](/HAL/issues/HAL-4888) asks for the hub id after the routine name when routines come from more than one hub, with a golden file and a row test; the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZfZXEgPpYM/05GtIybd43SmuHFzOY3EzQKBf/C6f2yilcXCnkp6WMw78vNLsvSdLXVni8tcjE0Iq1AI2sXbLAQ==
 
 ## What changes
 
