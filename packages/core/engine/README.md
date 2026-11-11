@@ -237,6 +237,14 @@ engine's own `SandboxNotReadyError`. A step logs `sandbox.started`, then `sandbo
 step on this computer, `sandbox.off` with `chosenAt` (never both), then `harness.started`
 (requirements `engine.run-harness`, `engine.run-harness-failures`).
 
+When the host gives the local executor proposal folders, a top-level run with an agent that runs in a
+program harness opens the run's proposal folder before it records `run.started`, and doesn't start when
+it can't. Every harness call of the run and its child runs, `foreach` items included, gets that one
+folder as the agent's `filesFolder`, so the agent writes there and never in the workspace; with no open
+folder the call fails before it opens a bridge or a sandbox. When the top-level run ends, however it
+ends, the engine stops the harness calls still going and then ends the folder; a child run's end
+doesn't. A run with no harness agent gets no folder (requirement `engine.run-proposal-folder`).
+
 A chat turn with an agent that runs in a harness is one harness call in the agent's sandbox, with
 the same sandbox, bridge and start limits (`ChatHarnessTurns`, requirement `engine.chat-harness-turn`).
 Each message starts a new call whose prompt carries the earlier messages; the caller's tools aren't

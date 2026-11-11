@@ -48,6 +48,9 @@ secrets. Both kinds start only once the workspace is trusted.
 ## How a program is started and stopped
 
 - **Trust first.** Without a trust grant nothing starts and no secret is read.
+- **No sandbox session.** This factory starts programs on this computer, so `create` throws for a
+  context with `sandbox` set, before a secret is read or anything starts. A program that must run in a
+  sandbox session needs a factory that starts it through that session (`ports.connector-sandbox-session`).
 - **Secrets** go into the program's environment only, never into its arguments.
 - **Limits** (`defaultStdioLimits`): every request, `initialize` included, has a 60-second timeout,
   and a message may be at most 4 MiB. Breaking either ends the session and stops the program.
@@ -60,7 +63,9 @@ secrets. Both kinds start only once the workspace is trusted.
   program's last error output in `errorOutput`, its secrets, key-shaped lines, e-mail addresses,
   home folder and user name removed. Its secrets include what it inherited from the app's
   environment: the value of each variable named like a secret (`API_KEY`, `NODE_AUTH_TOKEN`) and
-  the password in a URL value, whatever their shape (`mcp.stdio-inherited-secrets`).
+  the password in a URL value, and the user name of an `http(s)` URL with no password when it is at least 16
+  characters long, as in a Sentry DSN (`https://<key>@host/1`), whatever their shape
+  (`mcp.stdio-inherited-secrets`). Shorter user names such as `x-access-token` and other schemes stay.
 - **Stopping** closes the program's input, waits 2 seconds, sends SIGTERM to its process group,
   waits again, then SIGKILL. On Windows, `taskkill /T` ends the process tree.
 - **Process starts** happen in one file, `src/stdio/node-program-starter.ts`, listed in
