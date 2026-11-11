@@ -1,4 +1,5 @@
 import {
+  type IntegrationSecret,
   type IntegrationSheet,
   integrationPolicy,
   parseIntegrationSheet,
@@ -8,6 +9,7 @@ import {
   type Integration,
   type IntegrationHost,
   type ProviderConfig,
+  type SecretPlacement,
   type Secrets,
   type TokenStore,
   workspaceSecrets,
@@ -18,6 +20,7 @@ import { createIntegrationHost } from "./host.ts";
 import type { RequestLimits } from "./limited-http.ts";
 import type { LoadProblem } from "./load-problem.ts";
 import type { RequestLog } from "./request-log.ts";
+import type { SecretOnWire } from "./secret-filter.ts";
 
 /** An integration and its permission sheet, as they were found. */
 export interface IntegrationSource {
@@ -70,6 +73,26 @@ export interface LoadedIntegration {
   readonly log: RequestLog;
 }
 
+/** What {@link prepareIntegration} needs: {@link LoadIntegrationOptions} without the code. */
+export interface PrepareIntegrationOptions extends Omit<LoadIntegrationOptions, "source"> {
+  readonly source: Omit<IntegrationSource, "integration">;
+}
+
+/**
+ * An integration whose sheet and choices are checked and whose host is
+ * built, but whose code hasn't been checked against the sheet yet: the code
+ * runs somewhere Halonic can't read it directly, such as the runner.
+ */
+export interface PreparedIntegration extends Omit<LoadedIntegration, "integration"> {
+  /**
+   * Reads the value of each secret the user picked, with the one placement
+   * the sheet allows, for a secret filter outside the kit, such as the runner
+   * bridge's. Read it again for each runner start, so a changed value is
+   * filtered too. Only Halonic's side ever calls it.
+   */
+  readonly readSecrets: () => Promise<SecretOnWire[]>;
+}
+
 /**
  * Checks an integration against its permission sheet and builds its host. The
  * sheet must pass its schema, the code must be exactly what the sheet
@@ -84,6 +107,35 @@ export interface LoadedIntegration {
 export function loadIntegration(
   options: LoadIntegrationOptions,
 ): Result<LoadedIntegration, LoadProblem[]> {
+  const { integration } = options.source;
+  const prepared = prepare(options, (sheet) => declarationProblems(sheet, integration));
+  if (!prepared.ok) {
+    return prepared;
+  }
+  const { readSecrets: _readSecrets, ...loaded } = prepared.value;
+  return ok({ ...loaded, integration });
+}
+
+/**
+ * Does every check {@link loadIntegration} does except the one on the code,
+ * and builds the host. The caller checks the code against the sheet itself
+ * with {@link declarationProblems} once it knows what the code declares.
+ *
+ * @example
+ * const prepared = prepareIntegration({ source: { origin: "local", sheet, approvedSheet }, transport, secrets, tokens });
+ * if (prepared.ok) runner = await startRunner({ http: prepared.value.host.http, ... });
+ */
+export function prepareIntegration(
+  options: PrepareIntegrationOptions,
+): Result<PreparedIntegration, LoadProblem[]> {
+  return prepare(options, () => []);
+}
+
+/** The checks both entries share; `codeProblems` checks the code, where there is code to check. */
+function prepare(
+  options: PrepareIntegrationOptions,
+  codeProblems: (sheet: IntegrationSheet) => LoadProblem[],
+): Result<PreparedIntegration, LoadProblem[]> {
   const { source } = options;
   const parsed = parseIntegrationSheet(source.sheet);
   if (!parsed.ok) {
@@ -95,7 +147,7 @@ export function loadIntegration(
   const problems = [
     ...approvalProblems(source, sheet),
     ...localTokenProblems(source, sheet),
-    ...declarationProblems(sheet, source.integration),
+    ...codeProblems(sheet),
     ...needProblems(sheet, options.capabilities ?? []),
     ...secretChoiceProblems(sheet, secretNames),
   ];
@@ -106,16 +158,18 @@ export function loadIntegration(
   if (problems.length > 0 || !resolved.ok) {
     return err(problems);
   }
+  const secrets = chosenSecrets(options.secrets, secretNames);
   const { host, log } = createIntegrationHost({
     policy: resolved.value.policy,
     transport: options.transport,
-    secrets: chosenSecrets(options.secrets, secretNames),
+    secrets,
     tokens: options.tokens,
     settings,
     ...(resolved.value.limits ? { limits: requestLimits(resolved.value.limits) } : {}),
     ...(options.now ? { now: options.now } : {}),
   });
-  return ok({ origin: source.origin, integration: source.integration, sheet, host, log });
+  const readSecrets = () => secretsOnWire(sheet, secrets);
+  return ok({ origin: source.origin, sheet, host, log, readSecrets });
 }
 
 /**
@@ -168,7 +222,10 @@ export function providerChoices(
   return problems.length > 0 ? err(problems) : ok({ settings, secretNames });
 }
 
-function approvalProblems(source: IntegrationSource, sheet: IntegrationSheet): LoadProblem[] {
+function approvalProblems(
+  source: PrepareIntegrationOptions["source"],
+  sheet: IntegrationSheet,
+): LoadProblem[] {
   if (source.origin !== "local") {
     return [];
   }
@@ -191,7 +248,10 @@ function approvalProblems(source: IntegrationSource, sheet: IntegrationSheet): L
  * (I5 design HAL-958, section 3.5): its sheet can't declare `tokens` (A32).
  * Tokens as handles are the follow-up HAL-984. Built-in ones keep `tokens`.
  */
-function localTokenProblems(source: IntegrationSource, sheet: IntegrationSheet): LoadProblem[] {
+function localTokenProblems(
+  source: PrepareIntegrationOptions["source"],
+  sheet: IntegrationSheet,
+): LoadProblem[] {
   if (source.origin !== "local" || sheet.tokens.length === 0) {
     return [];
   }
@@ -257,4 +317,30 @@ function chosenSecrets(raw: Secrets, secretNames: Readonly<Record<string, string
       return picked === undefined ? null : await workspace.get(picked);
     },
   };
+}
+
+/** Each declared secret with a value, and its one placement, as {@link PreparedIntegration.readSecrets} gives them. */
+async function secretsOnWire(sheet: IntegrationSheet, secrets: Secrets): Promise<SecretOnWire[]> {
+  const read = Object.entries(sheet.secrets).map(async ([name, declared]) => {
+    const value = await secrets.get(name);
+    return value === null ? [] : [{ value, placements: [placementOf(name, declared)] }];
+  });
+  return (await Promise.all(read)).flat();
+}
+
+/** Where the sheet puts one secret, as the request names it. */
+function placementOf(secret: string, declared: IntegrationSecret): SecretPlacement {
+  switch (declared.as) {
+    case "bearer":
+      return { secret, as: "bearer" };
+    case "header":
+      return {
+        secret,
+        as: "header",
+        header: declared.header,
+        ...(declared.prefix === undefined ? {} : { prefix: declared.prefix }),
+      };
+    case "form":
+      return { secret, as: "form", field: declared.field };
+  }
 }

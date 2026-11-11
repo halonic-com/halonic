@@ -1,10 +1,18 @@
 import { readdirSync, readFileSync } from "node:fs";
 import type { IntegrationSheet } from "@halonicjs/format/integration";
 import type { Integration, IntegrationTool, ProviderConfig } from "@halonicjs/ports";
+import type { Result } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { canary, fakeTransport, memoryTokens, secrets } from "./fake-transport.test-helper.ts";
-import { type LoadIntegrationOptions, loadIntegration, providerChoices } from "./loader.ts";
+import type { LoadProblem } from "./load-problem.ts";
+import {
+  type LoadIntegrationOptions,
+  loadIntegration,
+  prepareIntegration,
+  providerChoices,
+  type WorkspaceChoices,
+} from "./loader.ts";
 
 /** The weather sheet as the build writes it: data, defaults left out. */
 function sheet(): Record<string, unknown> {
@@ -64,7 +72,7 @@ function load(overrides: Partial<LoadIntegrationOptions> = {}, data: unknown = s
   return { loaded, sent: fake.sent };
 }
 
-function codes(result: ReturnType<typeof loadIntegration>) {
+function codes(result: Result<unknown, readonly LoadProblem[]>) {
   return result.ok ? [] : result.error.map(({ code, path }) => ({ code, path }));
 }
 
@@ -167,6 +175,43 @@ verifies("integration-kit.loader", () => {
       );
       const builtIn = load({ source: { origin: "built-in", sheet: withTokens, integration } });
       expect(builtIn.loaded.ok).toBe(true);
+    });
+  });
+
+  describe("prepared without its code, as the runner needs it", () => {
+    const prepare = (choices: WorkspaceChoices, data = sheet()) =>
+      prepareIntegration({
+        source: { origin: "local", sheet: data, approvedSheet: data },
+        choices,
+        transport: fakeTransport().transport,
+        secrets,
+        tokens: memoryTokens(),
+      });
+
+    it("checks the sheet and builds the host, but no code", async () => {
+      const prepared = prepare({ secretNames: { "weather-key": "example-key" } });
+      if (!prepared.ok) expect.fail(JSON.stringify(prepared.error));
+      expect(prepared.value.sheet.id).toBe("weather");
+      expect(prepared.value).not.toHaveProperty("integration");
+      expect(await prepared.value.readSecrets()).toEqual([
+        {
+          value: canary["example-key"],
+          placements: [{ secret: "weather-key", as: "bearer" }],
+        },
+      ]);
+    });
+
+    it("reads no secret the user didn't pick", async () => {
+      const prepared = prepare({});
+      if (!prepared.ok) expect.fail(JSON.stringify(prepared.error));
+      expect(await prepared.value.readSecrets()).toEqual([]);
+    });
+
+    it("refuses what loading refuses apart from the code, such as tokens", () => {
+      const withTokens = { ...sheet(), tokens: [{ name: "refresh", purpose: "Stays signed in." }] };
+      expect(codes(prepare({}, withTokens))).toEqual([
+        { code: "tokens-not-allowed", path: ["tokens"] },
+      ]);
     });
   });
 

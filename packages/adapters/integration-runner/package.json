@@ -15,7 +15,8 @@
   "dependencies": {
     "@halonicjs/adapter-integration-kit": "workspace:*",
     "@halonicjs/ports": "workspace:*",
-    "@halonicjs/schema-kit": "workspace:*"
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/adapter-sandbox-host": "workspace:*",

@@ -1,11 +1,17 @@
 // The public API of @halonicjs/adapter-integration-runner. Internal code imports by relative path.
 
-export { maxFrameBytes } from "./frames.ts";
+export { type IntegrationDeclaration, maxFrameBytes } from "./frames.ts";
 export {
   type ConnectRunnerOptions,
   connectRunner,
   type RunnerConnection,
 } from "./halonic/connect-runner.ts";
+export {
+  type FolderEntry,
+  folderLinkProblems,
+  type IntegrationFolderDisk,
+  integrationFolderOnThisMachine,
+} from "./halonic/integration-folder.ts";
 export {
   defaultRunnerLimits,
   type RunnerBlock,
@@ -15,6 +21,12 @@ export {
   RunnerStoppedError,
   RunnerToolError,
 } from "./halonic/limits.ts";
+export {
+  type LoadLocalIntegrationOptions,
+  type LocalRunnerBridge,
+  loadLocalIntegration,
+  type StartLocalRunner,
+} from "./halonic/local-integration.ts";
 export {
   type RunnerDisk,
   type RunnerFiles,

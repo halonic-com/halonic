@@ -6,14 +6,15 @@ import type { LoadProblem } from "./load-problem.ts";
  * Where the integration's code differs from its permission sheet: the kit
  * version, the name, the version, and each tool's text, `risk` and
  * `untrusted`. The user approves the sheet, so the code must be exactly what
- * it says. Empty when they match.
+ * it says. Empty when they match. Only what the code declares is read, so a
+ * declaration the runner sent works as well as the integration itself.
  *
  * @example
  * declarationProblems(sheet, weather); // [] when code and sheet agree
  */
 export function declarationProblems(
   sheet: IntegrationSheet,
-  integration: Integration,
+  integration: Pick<Integration, "name" | "version" | "tools">,
 ): LoadProblem[] {
   const problems: LoadProblem[] = [];
   const add = (code: string, path: LoadProblem["path"], message: string) =>

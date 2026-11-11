@@ -30,6 +30,9 @@ export {
   type LoadedIntegration,
   type LoadIntegrationOptions,
   loadIntegration,
+  type PreparedIntegration,
+  type PrepareIntegrationOptions,
+  prepareIntegration,
   providerChoices,
   type WorkspaceChoices,
 } from "./loader.ts";
