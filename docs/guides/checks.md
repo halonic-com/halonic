@@ -1,8 +1,10 @@
 # Checks
 
-Every pull request runs the same checks as `pnpm verify --full`. Run
-`pnpm verify` before you ask for review: it runs the fast checks and then
-typecheck, lint and test for the packages your change affects.
+Every pull request runs the same checks as `pnpm verify --full`.
+`pnpm verify` runs the fast checks and then typecheck, lint and test for the
+packages your change affects. Agents and anyone on a shared machine don't run
+it, or `--full`, locally; see [Running checks on your
+machine](#running-checks-on-your-machine).
 
 | Command | What it does |
 | --- | --- |
@@ -11,7 +13,7 @@ typecheck, lint and test for the packages your change affects.
 | `pnpm check:enqueue` | before you queue a PR: merges the latest `origin/main`, checks the subject that will land (the title, and a one-commit branch's commit subject), then lockfile, typecheck of every package, format spec tests, process-starts and requirement guards |
 | `pnpm check:leaks` | the leak guard over the working tree; see [leak-guard.md](leak-guard.md) |
 | `pnpm check:licences` | every installed package's licence against `tooling/check/licences.json` |
-| `pnpm check:sbom --name <product> --version <v> --out <dir>` | release only: writes the CycloneDX SBOM and `THIRD-PARTY-NOTICES.txt`, and fails on a library missing from `tooling/check/dependencies.json` |
+| `pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]` | release only: writes the CycloneDX SBOM (of one package, or of the workspace without `--package`), and with `--notices` also `THIRD-PARTY-NOTICES.txt`; fails on a library missing from `tooling/check/dependencies.json` |
 | `pnpm check:audit [options]` | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
 | `pnpm check:pr-title` | the pull request title as a Conventional Commits title (`PR_TITLE` when run locally); CI runs it |
@@ -20,6 +22,29 @@ typecheck, lint and test for the packages your change affects.
 | `pnpm new package <layer>/<name>` | creates an empty package that passes every check (adapters: add `--runtime <r>`) |
 | `pnpm new feature <name>` | creates an empty Studio feature and adds it to the Studio's feature list |
 | `pnpm who-touches [<package>]` | the open pull requests that change a package; run it before you start |
+
+## Running checks on your machine
+
+Check only what you changed and let CI run the rest:
+
+```sh
+git fetch origin
+HALONIC_TEST_TIMEOUT=30000 pnpm exec turbo run typecheck lint test --filter=...[origin/main]
+```
+
+Then run `pnpm check:enqueue` on a clean, committed tree right before you
+queue the pull request. It is the check that catches what breaks the merge
+queue.
+
+- Outside CI, `turbo.json` caps Turbo at 2 tasks at once, and Vitest uses 2
+  workers. `HALONIC_TEST_WORKERS` changes the workers (it applies in CI too).
+  CI sets `TURBO_CONCURRENCY` itself.
+- `HALONIC_TEST_TIMEOUT` (milliseconds) raises the timeout of every test and
+  hook. On a busy machine a fast test can get no CPU for 5 seconds and fail
+  with Vitest's default. CI sets 30000 for its loaded jobs (the merge base's
+  tests, the scaffold job and the Windows tests); a real hang still fails.
+- To reproduce one failing test, run only its file, in its package folder:
+  `pnpm exec vitest run <file> --coverage.enabled=false --maxWorkers=1`.
 
 ## `pnpm check` rules
 
@@ -478,7 +503,7 @@ a testing package. Only tests may import test files.
 missing field, an unknown one (often a typo) or a wrong type stops
 `pnpm check` with the file and field named, instead of skipping a rule.
 
-`extraExports` in `policy.json` lets a core package have a deliberate extra
+`extraExports` in `policy.json` lets a package have a deliberate extra
 entry point, such as `{ "@halonicjs/format": ["./recording"] }`. Each entry
 names a package in this repo and lists different subpaths: `./` and
 lower-case words joined by `-`, never a wildcard, a nested path or
@@ -636,7 +661,7 @@ requirement guard, and the workflow lint unless the group changes
 
 | Job | What |
 | --- | --- |
-| Fast gates | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
+| Fast gates | `halonic --help` on a fresh install, the pull request title (in the queue, the squash commit's subject), `pnpm check` (with the DCO sign-off), licences, the spend-guard and turbo-cache tests, formatting, the feature list, `pnpm audit` for shipped dependencies |
 | Leak guard | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
 | Secret scan | `gitleaks` over the pull request's commits, checksum-verified |
 | Workflow lint | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes |
@@ -648,11 +673,30 @@ requirement guard, and the workflow lint unless the group changes
 | Tauri shell (Rust checks) | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny` |
 | Tauri shell on Windows | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths |
 | Coverage floors | pull requests only: `pnpm check:coverage-floors`; the `coverage-floor-lowered` label allows a lower floor |
-| Sandbox fence | when the sandbox adapter changes: bubblewrap (Linux) and Seatbelt (macOS) fence tests, and canary probes on Windows |
-| Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows |
+| Sandbox fence | when the sandbox adapter changes: bubblewrap (Linux) and Seatbelt (macOS) fence tests, and canary probes on Windows (required; it retries only when the probes didn't run) |
+| Sandbox packages | when sandbox adapters or the ports change: typecheck and test on macOS and Windows. The Windows leg also tests the changed packages (and their dependants) among those that touch paths, files and processes, such as the CLI, the agent host and the file and system adapters |
 | Agent host executable | when `apps/agent-host` changes: builds the executable on Linux, macOS and Windows, runs it and reports its size |
+| Keychain contract on macOS | when `apps/studio/src-tauri` changes: the keychain crate's contract test against a real macOS Keychain |
+| Windows installer | when the Tauri shell or `apps/agent-host` changes: builds the installer from the custom NSIS template, installs it silently into a temporary folder and uninstalls it |
 | Android shell | when the Tauri shell or Studio's connect page changes: builds the debug APK |
-| End-to-end, docs | stubs that run only when their area changes; real once the Studio and `apps/docs` exist |
+| End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
+| Cancel the run on the first failure | merge queue only: watches the run's other jobs and cancels the run when one fails |
+
+**The merge queue.** `main` merges through GitHub's merge queue. The queue builds each pull request
+on top of the latest `main` (or the entry ahead of it), runs `ci.yml` on that
+commit and merges it when `ci-ok` passes. A queue entry that has failed would
+keep its place and hold up everyone behind it until its slowest job ended, so
+the `Cancel the run on the first failure` job cancels the run at the first
+failed job and `ci-ok` fails within a minute. Fix the pull request, wait for
+green and queue it again. Run `pnpm check:enqueue` first: it checks what the
+queue would break, on top of the latest `main`.
+
+**The built-on label.** Every pull request needs a `built-on:paperclip` or `built-on:halonic` label,
+which says which tool built the change. The `Built-on label` workflow
+(`built-on-label` check) fails a pull request without one and re-runs when a
+label is added or removed. In the merge queue it passes, because the label was
+checked on the pull request. An outside contributor can't add the label; a
+maintainer does during review.
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history
