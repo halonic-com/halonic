@@ -1,0 +1,96 @@
+import type { Sandbox, SandboxSession } from "@halonicjs/ports";
+import { s } from "@halonicjs/schema-kit";
+import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
+import { readCheckedBody } from "../server/json-body.ts";
+import { startNdjsonStream } from "../server/ndjson-stream.ts";
+import { sandboxProfileSchema } from "./profile-schema.ts";
+import type { SessionTable } from "./session-table.ts";
+
+const openBody = s.object({ profile: sandboxProfileSchema }).strict();
+const sessionBody = s.object({ session: s.string().min(1) }).strict();
+
+const unknownSessionMessage = "The agent host has no open sandbox session with this id.";
+
+/**
+ * The `Sandbox` port over loopback, so Studio can give the engine a stand-in
+ * for the sandbox that runs here:
+ *
+ * - `GET /v1/sandbox/check` and `GET /v1/sandbox/capabilities` answer as the port does;
+ * - `POST /v1/sandbox/sessions/open` with `{ profile }` opens a session and
+ *   answers `{ session, fence }`: its id and the fence proof;
+ * - `POST /v1/sandbox/sessions/blocked` with `{ session }` streams the
+ *   session's blocked accesses, one `SandboxBlock` per line, until it closes;
+ * - `POST /v1/sandbox/sessions/close` with `{ session }` closes it.
+ *
+ * A session that ends by itself (time limit) keeps its id until it is closed
+ * here; the host closes every session when it stops.
+ */
+export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRoute[] {
+  return [
+    {
+      method: "GET",
+      path: "/v1/sandbox/check",
+      handle: async (_request, response) => sendJson(response, 200, await sandbox.check()),
+    },
+    {
+      method: "GET",
+      path: "/v1/sandbox/capabilities",
+      handle: (_request, response) => sendJson(response, 200, sandbox.capabilities()),
+    },
+    {
+      method: "POST",
+      path: "/v1/sandbox/sessions/open",
+      handle: async (request, response) => {
+        const body = await readCheckedBody(request, response, openBody);
+        if (body === undefined) return;
+        let callerGone = false;
+        response.once("close", () => {
+          callerGone = true;
+        });
+        let session: SandboxSession;
+        try {
+          session = await sandbox.open(body.profile);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          sendError(response, 422, "sandbox_open_failed", message);
+          return;
+        }
+        if (callerGone) {
+          // The caller went away while the session opened: nobody can close it later.
+          await session.close();
+          return;
+        }
+        sendJson(response, 200, { session: sessions.add(session), fence: session.fence });
+      },
+    },
+    {
+      method: "POST",
+      path: "/v1/sandbox/sessions/blocked",
+      handle: async (request, response) => {
+        const body = await readCheckedBody(request, response, sessionBody);
+        if (body === undefined) return;
+        const session = sessions.get(body.session);
+        if (session === undefined) {
+          sendError(response, 404, "unknown_session", unknownSessionMessage);
+          return;
+        }
+        const stream = startNdjsonStream(response);
+        const stopBlocks = session.onBlocked((block) => stream.send(block));
+        const stopWaiting = sessions.onClosed(body.session, () => stream.end());
+        await stream.ended;
+        stopBlocks();
+        stopWaiting();
+      },
+    },
+    {
+      method: "POST",
+      path: "/v1/sandbox/sessions/close",
+      handle: async (request, response) => {
+        const body = await readCheckedBody(request, response, sessionBody);
+        if (body === undefined) return;
+        if (await sessions.close(body.session)) sendJson(response, 200, { closed: true });
+        else sendError(response, 404, "unknown_session", unknownSessionMessage);
+      },
+    },
+  ];
+}

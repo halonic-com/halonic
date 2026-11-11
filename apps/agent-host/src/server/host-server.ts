@@ -94,9 +94,7 @@ function sendRefusal(response: ServerResponse, refusal: Refusal): void {
   if (refusal === "unauthenticated") response.setHeader("WWW-Authenticate", "Bearer");
   // The caller may still be sending: close the connection once the answer is out.
   response.shouldKeepAlive = false;
-  sendJson(response, refusalStatus[refusal], {
-    error: { kind: refusal, message: refusalMessage[refusal] },
-  });
+  sendError(response, refusalStatus[refusal], refusal, refusalMessage[refusal]);
 }
 
 /** Answers with `value` as JSON. */
@@ -108,6 +106,16 @@ export function sendJson(response: ServerResponse, status: number, value: unknow
     "Cache-Control": "no-store",
   });
   response.end(body);
+}
+
+/** Answers with an error in the host's one shape: `{ error: { kind, message } }`. */
+export function sendError(
+  response: ServerResponse,
+  status: number,
+  kind: string,
+  message: string,
+): void {
+  sendJson(response, status, { error: { kind, message } });
 }
 
 function listenOnLoopback(server: Server): Promise<number> {

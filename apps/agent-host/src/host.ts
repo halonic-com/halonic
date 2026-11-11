@@ -1,5 +1,7 @@
 import type { Readable } from "node:stream";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
+import { SessionTable } from "./sandbox/session-table.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
@@ -50,10 +52,16 @@ export async function run(
  */
 async function serve(version: string, io: HostIo): Promise<void> {
   const token = randomLaunchToken();
-  const server = await startHostServer(token, [healthRoute(version)]);
+  const sessions = new SessionTable();
+  const server = await startHostServer(token, [
+    healthRoute(version),
+    ...sandboxRoutes(new SrtSandbox(), sessions),
+  ]);
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
   await inputClosed(io.input);
+  // Stop the sandboxed programs first, so none outlives the host.
+  await sessions.closeAll();
   await server.close();
 }
 

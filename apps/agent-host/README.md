@@ -1,6 +1,6 @@
 # @halonicjs/app-agent-host
 
-Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. For now it answers only `GET /v1/health`; the sandbox, the bridge and the harnesses come next (HAL-4476).
+Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. It serves the `Sandbox` port; the bridge and the harnesses come next (HAL-4476).
 
 - **Layer:** apps
 - **Owner:** owen
@@ -53,6 +53,17 @@ The host listens on a free port of `127.0.0.1` only. The token is 32 random byte
 
 Every refusal comes before the path is looked at, so a caller without the token can't learn which paths exist. Answers are JSON; an error is `{"error":{"kind","message"}}`. The host stops when its standard input closes, so it never outlives the program that started it.
 
-| Request          | Answer                              |
-| ---------------- | ----------------------------------- |
-| `GET /v1/health` | `{"ok":true,"version":"<version>"}` |
+| Request                                                | Answer                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `GET /v1/health`                                       | `{"ok":true,"version":"<version>"}`                                      |
+| `GET /v1/sandbox/check`                                | the `SandboxCheck`, as the port answers it                               |
+| `GET /v1/sandbox/capabilities`                         | the `SandboxCapabilities`                                                |
+| `POST /v1/sandbox/sessions/open` with `{"profile"}`    | `{"session","fence"}`: the new session's id and its fence proof          |
+| `POST /v1/sandbox/sessions/blocked` with `{"session"}` | a stream, one `SandboxBlock` per line (NDJSON), until the session closes |
+| `POST /v1/sandbox/sessions/close` with `{"session"}`   | `{"closed":true}`                                                        |
+
+## The sandbox over loopback
+
+Studio gives the engine a stand-in `Sandbox` that calls these routes, and the host runs the real one (`SrtSandbox`). The profile arrives as data, so the host checks it before the sandbox sees it: every field present, nothing extra, every path absolute (`400 body_invalid` names each problem with its path). A body larger than 1 MiB gets `413`. A session that can't open gets `422 sandbox_open_failed` with the sandbox's reason.
+
+A session is named by an id the host makes; any other id gets `404 unknown_session`. A session that ends by itself (its time limit) keeps its id until Studio closes it. When the host stops, it closes every open session before it stops serving, so no sandboxed program outlives it.
