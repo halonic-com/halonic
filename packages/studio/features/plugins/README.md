@@ -24,9 +24,19 @@ Nothing a plugin sends is turned into HTML or script: it is drawn as React text,
 
 ## Secrets
 
-A plugin's `secret` setting is saved to the keychain under the plugin's own name for it, `plugin__<id>__<secret>`, never under the name the plugin declares; an empty field keeps the stored secret (requirement `plugins.plugin-secrets`). `savePluginSettings` saves nothing, secrets included, when the plugin's other settings don't fit, and `forgetPlugin` deletes every secret under those names and then the setting values when a plugin is removed. A secret that can't be saved or deleted doesn't stop the rest and is named in the result. Both live in `src/settings/plugin-secrets.ts` and are internal: they are not exported from `index.ts` or `api.ts`.
+A plugin's `secret` setting is saved to the keychain under the plugin's own name for it, `plugin__<id>__<secret>`, never under the name the plugin declares; an empty field keeps the stored secret (requirement `plugins.plugin-secrets`). `savePluginSettings` saves nothing, secrets included, when the plugin's other settings don't fit, and `forgetPlugin` deletes every secret under those names and then the setting values when a plugin is removed. A secret that can't be saved or deleted doesn't stop the rest and is named in the result. Both live in `src/settings/plugin-secrets.ts`.
+
+## Settings section
+
+`PluginSettingsSection` shows a plugin's `ui.settings` on its page as label-over-field rows with the kit part for each type (requirement `plugins.plugin-settings`). A setting is saved when the person leaves its field, and a switch or a pick at once; saves run one at a time, and the page's toolbar hears each one through `onSaveState` (`saving`, `saved`, `failed`). A `secret` setting shows "Set" or "Not set" and the line "Stored in your secrets as *name*. Sent only to *hosts*.", never its value. A value that can't be saved is explained under its field, a pick or a switch goes back to what is stored, and typed text stays. When settings can't be loaded, the section shows "Couldn't load the settings" with Try again. While the plugin is off (`off`), the fields stay readable and nothing is saved. The section reads and saves through a `PluginSettingsReader` and a `PluginSecretStore` that the screen passes in.
+
+## Command dialog
+
+`PluginCommandDialog` shows a plugin command from `ui.commands` in a dialog (requirement `plugins.plugin-commands`): the command's title, the line "From the *name* plugin · uses the tool *tool*, which reads", its form, and Cancel and Run command. A required field left empty or a value of the wrong kind gets a line under it ("Fill this in: it is required."), the first such field takes focus, and no tool is called. The tool is called through a `PluginToolCaller`; its answer shows in a Result box with Copy, drawn like `PluginResult`, and the buttons become Run again and Close. A failure reads "Couldn't run *title*: *reason*." with Try again, and the form keeps what was typed. A command without a form runs as soon as the dialog opens.
 
 ## Exports
 
 - `@halonicjs/studio-feature-plugins`: `pluginsFeature`, the feature's id and title (`plugins`, "Plugins"). It is a placeholder until the shell's `defineFeature()` replaces it.
 - `@halonicjs/studio-feature-plugins/api`, for other features: `PluginResult`, `PluginResultProps` (`text`, `show`) and `ResultShow` (`text`, `markdown` or `table`, from the plugin manifest's `ui`). Anything that shows a plugin's answer outside its own card or dialog draws it with `PluginResult`.
+
+`PluginSettingsSection`, `PluginCommandDialog`, `savePluginSettings` and `forgetPlugin` are internal to the package for now: they are not exported from `index.ts` or `api.ts`.

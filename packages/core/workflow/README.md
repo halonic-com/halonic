@@ -16,7 +16,8 @@ so number guards can compare them.
 
 `evaluateGuard` decides whether a transition's `when` condition passes:
 comparisons, `contains`, `exists`, number comparisons and `not`, `all` and
-`any`. `selectTransition` picks the transition an event fires in a state,
+`any`. A missing value is the same as nothing, not even as another missing
+value: `equals` of two paths that aren't there fails and `notEquals` passes. `selectTransition` picks the transition an event fires in a state,
 `acceptedEvents` lists the events a waiting state listens to, and
 `stateTimers` and `dueTimer` handle the `after` transitions of a wait state.
 `promptFor`, `childInput`, `withGets` and `stepPrompt` build what an agent or a child run

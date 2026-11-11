@@ -35,6 +35,13 @@ result holds an e-mail, which is personal data, so log only `kind` and
 callback route out of request logging, or log its path without the query
 string: its URL carries `code` and `state`.
 
+Every request to Google's token endpoint (the code exchange and the refresh)
+and to the revoke endpoint refuses redirects, because one would send the
+secrets or the refresh token to another address, and gives up after 10
+seconds. For the exchange and the refresh a stalled answer counts as
+`unreachable`; a disconnect still removes the saved token and says in its
+result that Google didn't confirm.
+
 Revoke ends every token of the account under that client ID. If two
 integrations ever share a client ID for one account, disconnecting one also
 breaks the other. A new sign-in overwrites the old refresh token and never

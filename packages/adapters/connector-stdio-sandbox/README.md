@@ -13,8 +13,8 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 
 - **No session, no connector.** `create` refuses a context without `sandbox`.
 - **No trust grant, or no proven fence, no start.** While the session's fence proof isn't
-  `fenced`, the connector throws `SandboxNotFencedError` and starts nothing, in the session or on
-  this computer. A person's yes to run without the sandbox doesn't cover programs.
+  `fenced`, whatever state it is in (`not-fenced`, `off` or `stopped`), the connector throws
+  `SandboxNotFencedError` and starts nothing, in the session or on this computer. A person's yes to run without the sandbox doesn't cover programs.
 - **Blocked accesses are reported.** Each access the sandbox refused reaches `onBlocked`, with
   the connector's id, for the host's `sandbox.blocked` event.
 - **A session that ended ends the connector.** Every call then throws `SandboxSessionEndedError`.

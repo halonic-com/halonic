@@ -269,7 +269,7 @@ commands whose title matches). `nothingFound` says when the "Nothing matches" li
 "Couldn't search" in its place. What other providers found still shows. Each
 group keeps its best 5 rows, ordered by `matchName`: the whole name, then its start, then a word's
 start, then anywhere, and among equals the more recently opened. A row a tab shows has `open`, so
-it says "Switch to tab". A source that isn't built adds no group.
+it says "Switch to tab". A source that isn't built adds no group. A command's optional `source`, such as "Weather plugin", shows beside its title (the whole of it on hover; on a phone under the title), and a screen reader reads it after the title: "Show forecast, Weather plugin".
 
 `matchName` reads the words as plain text, never as a pattern, so `workspace.yaml`, `{ input` and
 `(EU)` find exactly that (`search.files.plain-text-is-literal`). Case doesn't matter (Greek final
@@ -902,10 +902,17 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
 - **Frame** (`shell.frame-points`): `cards.add`, `panelWindows.add`, `statusBar.add`,
   `titleBar.add`, `phoneBar.add` and `settings.add`, with `places.add` and `home.addCard` above.
 - **Commands** (`shell.commands`, `shell.keybindings`): `commands.add`, `keybindings.add`,
-  `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
+  `commands.addSource`, `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
   contexts with `&&`, each optionally `!`; of the bindings that hold, the one with the most
   conditions wins. `Mod` is `Cmd` when `createShell` gets `platform: "macos"`, else `Ctrl`.
   `shell.contributions.keybindings.resolve(keys, activeContexts)` finds the binding.
+  A command source (`shell.command-sources`) is `{ id, commands }`, for commands that come and go
+  while Studio runs, such as those of the plugins that are on. Each time the shell lists commands or
+  looks one up, it calls `commands()` again and lists what it gives with the feature that added the
+  source. A command of a source must have an id that starts with the source's id and a dot, be a
+  valid id and not repeat one, or it is left out; a source that throws gives none, and the other
+  commands still show. Two sources with one id, or a command or source whose id starts with a
+  source's id and a dot, throw a `ShellError` naming both.
 
 A view is a `ViewRef`: the name of a named export and a `load` that imports its module. `loadView`
 takes the export, and throws a `ShellError` listing what the module does export when the name isn't
@@ -984,7 +991,7 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
   `HomeCardContribution`, `HomePoint`, `HomeSection`, `ItemKindContribution`, `ItemRef`,
   `ItemAction`, `TabBehaviour`, `TabDescription`, `ExplorerGroupContribution`, `ExplorerItem`,
   `ExplorerSectionContribution`, `ItemPageSectionContribution`, `CommandContribution`,
-  `KeybindingContribution`, `SearchProviderContribution`, `SearchResult`, `PersistContribution`,
+  `CommandSource`, `KeybindingContribution`, `SearchProviderContribution`, `SearchResult`, `PersistContribution`,
   `PersistedSession`.
 
 ## End-to-end tests
