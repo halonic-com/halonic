@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react";
 import { PANEL_DEFAULT_WIDTH, savedPanelWidth } from "./panel-width.ts";
 
 /** The side panel's chosen width, shared by every item page in the window. */
@@ -33,7 +33,14 @@ export interface PanelWidthProviderProps {
  */
 export function PanelWidthProvider({ saved, onSave, children }: PanelWidthProviderProps) {
   const [width, setWidth] = useState(() => savedPanelWidth(saved));
-  const setting = useMemo(() => ({ width, resize: setWidth, save: onSave }), [width, onSave]);
+  // The host may pass a new `onSave` each render; keeping the latest in a ref keeps the setting
+  // the same, so the item pages don't all draw again for it.
+  const latestSave = useRef(onSave);
+  latestSave.current = onSave;
+  const setting = useMemo(
+    () => ({ width, resize: setWidth, save: (chosen: number) => latestSave.current(chosen) }),
+    [width],
+  );
   return <PanelWidthContext.Provider value={setting}>{children}</PanelWidthContext.Provider>;
 }
 

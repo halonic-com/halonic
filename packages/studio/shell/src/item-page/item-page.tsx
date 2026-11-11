@@ -1,19 +1,14 @@
-import {
-  BackIcon,
-  Button,
-  CloseIcon,
-  type MenuItem,
-  type Tab,
-  TabPanel,
-  useTabIds,
-} from "@halonicjs/studio-kit";
+import { type MenuItem, type Tab, TabPanel, useTabIds } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import type { CloseStack } from "../close-stack/close-stack.ts";
 import { panelEdgeLimits } from "../panels/panel-width.ts";
 import { usePanelWidth } from "../panels/panel-width-context.tsx";
 import { ResizeEdge } from "../resize/resize-edge.tsx";
 import { useElementWidth } from "./element-width.ts";
 import { ItemHeader } from "./item-header.tsx";
 import { type ItemLayout, type ItemLayoutChoices, itemLayout } from "./item-layout.ts";
+import { useMaximiseLayer } from "./maximise-layer.ts";
+import { PanelControls } from "./panel-controls.tsx";
 import { useRememberedView } from "./remembered-view.ts";
 
 /** The chat a feature provides for a kind's item page, beside the panel that shows the view. */
@@ -39,12 +34,14 @@ export interface ItemPageProps<Id extends string> {
   readonly end?: ReactNode;
   /** The chat about the item, when a feature provides one for the kind. */
   readonly chat?: ItemPageChat | undefined;
+  /** The window's close stack: Esc puts a maximised panel back beside the chat. */
+  readonly closeStack?: CloseStack | undefined;
   /** Draws the view that's picked. */
   readonly children: (view: Id) => ReactNode;
 }
 
 /** Where focus goes once the page has drawn the layout a control asked for. */
-type FocusTarget = "views" | "chat" | "ask" | "show-panel" | "back-to-chat";
+type FocusTarget = "views" | "chat" | "ask" | "show-panel" | "back-to-chat" | "maximise";
 
 /** The page's element for `target`, its header controls found by their ids under `idBase`. */
 function focusTarget(page: HTMLElement, idBase: string, target: FocusTarget): HTMLElement | null {
@@ -64,7 +61,8 @@ function focusTarget(page: HTMLElement, idBase: string, target: FocusTarget): HT
  * in the header's views nav and remembered for the tab (req-shell `panels.one-view-at-a-time`).
  * When a feature provides a `chat` for the kind, the chat sits on the left and the view in a panel
  * on the right, which ✕ hides and a narrow tab turns into a button (`shell.item-page-chat`). The
- * panel's left edge resizes it, for every item page in the window (`shell.panel-width`).
+ * panel's left edge resizes it, for every item page in the window (`shell.panel-width`), and its ⤢
+ * lets it cover the tab while the chat steps back (`shell.panel-maximise`).
  * Without one, the view takes the full width.
  *
  * @example
@@ -83,6 +81,7 @@ export function ItemPage<Id extends string>({
   views,
   children,
   chat,
+  closeStack,
   end,
   ...header
 }: ItemPageProps<Id>) {
@@ -97,7 +96,11 @@ export function ItemPage<Id extends string>({
   const [panelWidth, resizePanel, savePanelWidth] = usePanelWidth();
   // Until the user opens or closes the chat, it follows `startsOpen`, so a chat that arrives after
   // the first render still starts open.
-  const [choices, setChoices] = useState<ChosenLayout>({ panelClosed: false, panelScreen: false });
+  const [choices, setChoices] = useState<ChosenLayout>({
+    panelClosed: false,
+    panelScreen: false,
+    maximised: false,
+  });
   const [focus, setFocus] = useState<FocusTarget | undefined>(undefined);
   const layout = itemLayout(
     {
@@ -107,6 +110,11 @@ export function ItemPage<Id extends string>({
     },
     panelWidth,
     tabWidth,
+  );
+  // Only a panel beside the chat can cover the tab; one shown as a button has no ⤢.
+  const maximised = choices.maximised && layout.shows === "chat-and-panel";
+  useMaximiseLayer(maximised, closeStack, page, () =>
+    setChoices((current) => ({ ...current, maximised: false })),
   );
 
   // A control that swaps the layout leaves focus on nothing, so it goes to what took its place.
@@ -140,11 +148,15 @@ export function ItemPage<Id extends string>({
             {end}
             <PanelControls
               layout={layout}
+              maximised={maximised}
               idBase={idBase}
               kind={header.kind}
               viewLabel={viewLabel}
               onAsk={() => change({ chatOpen: true }, "chat")}
-              onClosePanel={() => change({ panelClosed: true }, "show-panel")}
+              onToggleMaximise={() =>
+                setChoices((current) => ({ ...current, maximised: !maximised }))
+              }
+              onClosePanel={() => change({ panelClosed: true, maximised: false }, "show-panel")}
               onReopenPanel={() => change({ panelClosed: false }, "views")}
               onPanelScreen={() => change({ panelScreen: true }, "views")}
               onBackToChat={() => change({ panelScreen: false }, "show-panel")}
@@ -161,12 +173,22 @@ export function ItemPage<Id extends string>({
             data-item-chat=""
             tabIndex={-1}
             hidden={!shown.chat}
+            inert={maximised}
             className={chatClasses(layout)}
           >
             {chat.render(() => change({ chatOpen: false }, "ask"))}
           </section>
         )}
-        {layout.shows === "chat-and-panel" ? (
+        {maximised ? (
+          // For the pointer only: the keyboard restores with Esc or the restore mark.
+          <div
+            aria-hidden="true"
+            data-maximise-margin=""
+            className="absolute inset-0 bg-(--stack-scrim)"
+            onClick={() => change({ maximised: false }, "maximise")}
+          />
+        ) : null}
+        {layout.shows === "chat-and-panel" && !maximised ? (
           <ResizeEdge
             label="Resize panel"
             controls={`${idBase}-panel`}
@@ -180,8 +202,12 @@ export function ItemPage<Id extends string>({
         <div
           id={`${idBase}-panel`}
           hidden={!shown.panel}
-          className={shown.split ? "min-h-0 shrink-0 overflow-y-auto border-s border-border" : ""}
-          style={layout.shows === "chat-and-panel" ? { width: layout.panelWidth } : undefined}
+          className={panelClasses(shown.split, maximised)}
+          style={
+            layout.shows === "chat-and-panel" && !maximised
+              ? { width: layout.panelWidth }
+              : undefined
+          }
         >
           <TabPanel ids={tabIds} tabs={views} selected={view}>
             {children(view)}
@@ -192,8 +218,14 @@ export function ItemPage<Id extends string>({
   );
 }
 
-/** What the user chose for the chat and the panel; `chatOpen` is unset until they open or close it. */
-type ChosenLayout = Omit<ItemLayoutChoices, "chatOpen"> & { readonly chatOpen?: boolean };
+/**
+ * What the user chose for the chat and the panel; `chatOpen` is unset until they open or close it.
+ * `maximised` counts only while the panel is beside the chat.
+ */
+type ChosenLayout = Omit<ItemLayoutChoices, "chatOpen"> & {
+  readonly chatOpen?: boolean;
+  readonly maximised: boolean;
+};
 
 /** Which of the chat and the panel `layout` shows, and whether they share the tab side by side. */
 function shownParts(layout: ItemLayout): {
@@ -211,7 +243,8 @@ function shownParts(layout: ItemLayout): {
 function bodyClasses(layout: ItemLayout): string {
   switch (layout.shows) {
     case "chat-and-panel":
-      return "flex min-h-0 flex-1";
+      // The maximised panel and its margin are placed over this box.
+      return "relative flex min-h-0 flex-1";
     case "chat":
       return "flex min-h-0 flex-1 flex-col";
     default:
@@ -230,59 +263,13 @@ function chatClasses(layout: ItemLayout): string {
     : "outline-none";
 }
 
-interface PanelControlsProps {
-  readonly layout: ItemLayout;
-  readonly idBase: string;
-  readonly kind: string;
-  readonly viewLabel: string;
-  readonly onAsk: () => void;
-  readonly onClosePanel: () => void;
-  readonly onReopenPanel: () => void;
-  readonly onPanelScreen: () => void;
-  readonly onBackToChat: () => void;
-}
-
-/** The header's control for the chat and the panel, after the item's own: one at a time. */
-function PanelControls({ layout, idBase, kind, viewLabel, ...on }: PanelControlsProps) {
-  switch (layout.shows) {
-    case "view":
-      return layout.ask ? (
-        <Button variant="secondary" size="sm" id={`${idBase}-ask`} onClick={on.onAsk}>
-          {`Ask about this ${kind.toLowerCase()}…`}
-        </Button>
-      ) : null;
-    case "chat-and-panel":
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<CloseIcon />}
-          label={`Close ${viewLabel}`}
-          onClick={on.onClosePanel}
-        />
-      );
-    case "chat":
-      return (
-        <Button
-          variant="secondary"
-          size="sm"
-          id={`${idBase}-show-panel`}
-          onClick={layout.panelControl === "reopen" ? on.onReopenPanel : on.onPanelScreen}
-        >
-          {viewLabel}
-        </Button>
-      );
-    case "panel-screen":
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<BackIcon />}
-          id={`${idBase}-back-to-chat`}
-          onClick={on.onBackToChat}
-        >
-          Chat
-        </Button>
-      );
+/**
+ * Beside the chat, the panel keeps its width with a line on its left. Maximised, it covers the tab's
+ * body inside a 112px margin (`inset-28`), as its own surface over the dimmed chat.
+ */
+function panelClasses(split: boolean, maximised: boolean): string {
+  if (maximised) {
+    return "absolute inset-28 min-h-0 overflow-y-auto rounded-md border border-border bg-surface shadow-3";
   }
+  return split ? "min-h-0 shrink-0 overflow-y-auto border-s border-border" : "";
 }

@@ -755,8 +755,14 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   - The chat and the view stay mounted through every switch, hidden rather than moved, so a
     half-typed message or the canvas's zoom survives. A chat provided after the first render still
     starts open until the user opens or closes it.
-- **Not yet:** Maximise and the "Changes not live yet" line (24.9). A feature draws its stacked
-  cards with `StackedCards` inside its view.
+- **Maximise** (`shell.panel-maximise`): beside the chat, ⤢ "Maximise Flow" sits before the ✕,
+  with its name as its tooltip. It makes the panel cover the tab's body inside a 112px margin over
+  the dimmed, inert chat, and becomes the restore mark "Restore Flow", keeping the focus. The restore
+  mark, Esc (a `maximise` layer, once cards above it have closed; pass `closeStack`) or a click in
+  the margin puts the panel back at its width. There is no resize edge while it's maximised, and no
+  ⤢ where the panel shows as a button.
+- **Not yet:** the "Changes not live yet" line (24.9). A feature draws its stacked cards with
+  `StackedCards` inside its view.
 
 ## Resource numbers
 

@@ -2061,7 +2061,7 @@ group, so a long action ("Sign in with Google") goes under the text and lines up
 ## Other exports
 
 The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `InfoIcon`, `MaximiseIcon` (⤢), `RestoreIcon`
-(⤡) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
+(the restore mark) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
 names a `PlaceIcon` knows. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the

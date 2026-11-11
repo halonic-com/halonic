@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { PanelWidthProvider } from "../panels/panel-width-context.tsx";
 import { installFakePopover } from "../test-support/fake-popover.ts";
@@ -152,5 +152,43 @@ verifies("shell.panel-width", () => {
     for (const container of [closedChat, noChat, narrow]) {
       expect(container.querySelector('[role="separator"]')).toBeNull();
     }
+  });
+
+  it("shows no edge once the panel is closed with its ✕", () => {
+    const { container, edge } = renderPages();
+
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('[data-page="refund"] button[aria-label="Close Flow"]')
+        ?.click();
+    });
+
+    expect(container.querySelector('[data-page="refund"] [role="separator"]')).toBeNull();
+    expect(edge("triage")).not.toBeNull();
+  });
+
+  it("saves through the host's latest onSave, which may be a new function each render", () => {
+    const saves: string[] = [];
+    function Host() {
+      const [round, setRound] = useState(1);
+      return (
+        <PanelWidthProvider
+          saved={undefined}
+          onSave={(width) => {
+            saves.push(`${round}:${width}`);
+            setRound(round + 1);
+          }}
+        >
+          <Item name="Refund checker" itemChat={chat()} />
+        </PanelWidthProvider>
+      );
+    }
+    const container = render(<Host />);
+    const edge = container.querySelector('[role="separator"]') as HTMLElement;
+
+    press(edge, "ArrowLeft");
+    press(edge, "ArrowLeft");
+
+    expect(saves).toEqual(["1:716", "2:732"]);
   });
 });
