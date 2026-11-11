@@ -31,9 +31,15 @@ runs:
         file="$RUNNER_TEMP/pull-request-event.json"
         # Many merge groups run at once, each with several jobs that read the
         # pull request, so the token's hourly API limit can run out (HAL-5146).
-        # Retry only a rate limit (403/429 with a rate-limit message), with a
-        # growing wait; any other error fails at once. Never skip the read: the
-        # leak guard must see the pull request's current text.
+        # Retry only a rate limit (403/429 with a rate-limit message); any other
+        # error fails at once. Never skip the read: the leak guard must see the
+        # pull request's current text. The total wait stays within BUDGET (the
+        # calling jobs have 15 minutes), so a long limit fails with a clear
+        # error instead of a job timeout. When the hourly limit is used up,
+        # wait until its reset if that fits; otherwise fail at once. Reading
+        # /rate_limit doesn't count against the limit.
+        BUDGET=600
+        slept=0
         attempt=0
         while true; do
           attempt=$((attempt + 1))
@@ -42,15 +48,28 @@ runs:
             break
           fi
           cat "$RUNNER_TEMP/pull-request-read.err" >&2
-          if ! grep -qiE 'rate limit|HTTP 429|abuse detection|secondary' "$RUNNER_TEMP/pull-request-read.err" || [ "$attempt" -ge 8 ]; then
+          if ! grep -qiE 'rate limit|HTTP 429|abuse detection|secondary' "$RUNNER_TEMP/pull-request-read.err"; then
             echo "::error::Couldn't read pull request #$NUMBER (attempt $attempt)."
             exit 1
           fi
-          # 20 s, 40 s, 80 s, then 120 s (at most), plus up to 10 s of jitter.
-          wait=$((20 * (1 << (attempt - 1))))
-          [ "$wait" -gt 120 ] && wait=120
-          wait=$((wait + RANDOM % 10))
-          echo "::warning::GitHub's API rate limit is reached; retrying in ${wait}s (attempt $attempt of 8)."
+          remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "")
+          reset=$(gh api rate_limit --jq '.resources.core.reset' 2>/dev/null || echo "")
+          if [ "$remaining" = "0" ] && [ -n "$reset" ]; then
+            # Hourly limit used up: wait for the reset, plus a little jitter.
+            wait=$((reset - $(date +%s) + 5 + RANDOM % 10))
+            [ "$wait" -lt 5 ] && wait=5
+          else
+            # Secondary limit: 20 s, 40 s, 80 s, then 120 s (at most), plus jitter.
+            wait=$((20 * (1 << (attempt - 1))))
+            [ "$wait" -gt 120 ] && wait=120
+            wait=$((wait + RANDOM % 10))
+          fi
+          if [ $((slept + wait)) -gt "$BUDGET" ]; then
+            echo "::error::Couldn't read pull request #$NUMBER: GitHub's API rate limit won't clear within ${BUDGET}s (waited ${slept}s, next wait ${wait}s). Re-run the job later."
+            exit 1
+          fi
+          echo "::warning::GitHub's API rate limit is reached; retrying in ${wait}s (attempt $attempt)."
           sleep "$wait"
+          slept=$((slept + wait))
         done
         echo "event-path=$file" >> "$GITHUB_OUTPUT"
