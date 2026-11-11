@@ -153,6 +153,7 @@ verifies("workspace.working-folders", () => {
     it.each([
       ["node", "tools/server.js"],
       ["python", "tools/server.py"],
+      ["node", "tools\\server.js"],
     ])(
       "refuses a working folder below the folder of the script %s runs, which it loads files next to",
       async (command, script) => {

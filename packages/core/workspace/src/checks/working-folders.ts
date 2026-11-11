@@ -106,10 +106,12 @@ function connectorReach(connector: Connector, folder: string): string | undefine
  * `path`: the path itself, as a folder in `PYTHONPATH` or `NODE_PATH` is,
  * and the folder it is in, as Node and Python load files next to the script
  * they run. The workspace root is left out, as every working folder is
- * inside it.
+ * inside it. `\` reads as `/` before taking the parent folder, as
+ * `posixPath.dirname` only splits on `/` and Windows splits on both.
  */
 function loadFolders(path: string): string[] {
-  return [path, posixPath.dirname(path)].filter((loaded) => !isWorkspaceRoot(loaded));
+  const slashed = path.replaceAll("\\", "/");
+  return [slashed, posixPath.dirname(slashed)].filter((loaded) => !isWorkspaceRoot(loaded));
 }
 
 /**
