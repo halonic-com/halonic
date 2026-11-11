@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import type { SearchProviderContribution, SearchResult } from "../points/commands.ts";
 import type { Registered } from "../points/point-store.ts";
@@ -13,6 +13,7 @@ import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { SearchPage } from "./search-page.tsx";
 import { searchPageLocation } from "./search-page-names.ts";
+import { searchPauseMs } from "./use-paused-words.ts";
 
 const refundChecker: SearchResult = {
   item: { kind: "agent", hub: "acme", id: "refund-checker" },
@@ -36,6 +37,7 @@ beforeEach(() => {
 afterEach(() => {
   unmountAll();
   restorePopover();
+  vi.useRealTimers();
 });
 
 /** A provider that answers with `results`, or fails when there are none. */
@@ -81,6 +83,20 @@ async function renderPage(words: string, results: readonly SearchResult[]) {
       return said;
     },
     status: () => view.querySelector('[role="status"]')?.textContent,
+    titles: () => tabs.state.tabs.map((tab) => currentLocation(tab).title),
+    type: (words: string) => {
+      const box = view.querySelector("search input") as HTMLInputElement;
+      act(() => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(box, words);
+        box.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    },
+    pressEnter: () => {
+      const box = view.querySelector("search input") as HTMLInputElement;
+      act(() => {
+        box.form?.requestSubmit();
+      });
+    },
     rows: () => [...view.querySelectorAll("li a")].map((row) => row.textContent),
     marks: () => [...view.querySelectorAll("mark")].map((mark) => mark.textContent),
     button: (name: string) => {
@@ -146,21 +162,46 @@ verifies("shell.search-page", () => {
 
   it("searches new words as a new place in this tab, so Back goes to the old words", async () => {
     const page = await renderPage("refund", [refundChecker]);
-    const box = page.view.querySelector("search input") as HTMLInputElement;
-    act(() => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-        box,
-        "policy",
-      );
-      box.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    act(() => {
-      box.form?.requestSubmit();
-    });
-    const titles = () => page.tabs.state.tabs.map((tab) => currentLocation(tab).title);
-    expect(titles()).toEqual(["Search: policy"]);
+    page.type("policy");
+    page.pressEnter();
+    expect(page.titles()).toEqual(["Search: policy"]);
     act(() => page.tabs.back());
-    expect(titles()).toEqual(["Search: refund"]);
+    expect(page.titles()).toEqual(["Search: refund"]);
+  });
+
+  it("shows what the typed words find once the typing pauses, and Enter names them", async () => {
+    vi.useFakeTimers();
+    const invoiceReader: SearchResult = {
+      item: { kind: "agent", hub: "acme", id: "invoice-reader" },
+      label: "Invoice reader",
+      detail: "Agent · acme",
+    };
+    const refundPolicy: SearchResult = {
+      item: { kind: "file", hub: "acme", id: "refund-policy.md" },
+      label: "Refund policy",
+      detail: "File · acme",
+    };
+    const page = await renderPage("invoice", [invoiceReader, refundChecker, refundPolicy]);
+    expect(page.rows()).toEqual(["Invoice readerAgent · acme"]);
+
+    page.type("ref");
+    act(() => vi.advanceTimersByTime(searchPauseMs - 1));
+    expect(page.rows()).toEqual(["Invoice readerAgent · acme"]);
+    act(() => vi.advanceTimersByTime(1));
+    // Lets the provider's answer arrive.
+    await act(async () => undefined);
+    expect(page.rows()).toEqual([
+      "Refund checkerAgent · acmeChecks refund requests against the policy.",
+      "Refund policyFile · acme",
+    ]);
+    expect(page.status()).toBe("2 matches in 2 items");
+    expect(page.titles()).toEqual(["Search: invoice"]);
+
+    page.type("refund");
+    page.pressEnter();
+    expect(page.titles()).toEqual(["Search: refund"]);
+    act(() => page.tabs.back());
+    expect(page.titles()).toEqual(["Search: invoice"]);
   });
 
   it("says nothing matches, and offers all hubs while a hub is picked", async () => {
