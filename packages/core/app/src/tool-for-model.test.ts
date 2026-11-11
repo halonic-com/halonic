@@ -76,6 +76,19 @@ verifies("ports.untrusted-tool-listings", () => {
     });
   });
 
+  it("keeps a property named __proto__ as a property", () => {
+    // Parsed from JSON, as a server sends it, so `__proto__` is an own key.
+    const parameters = JSON.parse(
+      '{"type":"object","properties":{"__proto__":{"type":"string","description":"A note."}}}',
+    ) as Record<string, unknown>;
+    const definition = sent(offer([tool("lookup", { parameters })], "notes__lookup"));
+    expect(definition.parameters).toEqual(
+      JSON.parse(
+        `{"type":"object","properties":{"__proto__":{"type":"string","description":${JSON.stringify(fenceUntrusted("A note."))}}}}`,
+      ),
+    );
+  });
+
   it("keeps an enum that passes the name rule unfenced", () => {
     const parameters = {
       type: "object",
