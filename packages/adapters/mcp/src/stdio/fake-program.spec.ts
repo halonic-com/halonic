@@ -169,12 +169,19 @@ export const contractMcpTools = contractServerTools.map((tool) => ({
       }),
 }));
 
+/** Where a fake server sends its messages: a fake program's output, or an HTTP answer. */
+export interface MessageSink {
+  send(message: unknown): void;
+}
+
 /**
  * The contract's MCP server: it answers `initialize`, lists
  * {@link contractMcpTools} and answers calls with `contractServerAnswer`,
  * recording each call that reached it in `reached`.
  */
-export function contractServer(reached: ReachedCall[]): FakeHandler {
+export function contractServer(
+  reached: ReachedCall[],
+): (message: Record<string, unknown>, program: MessageSink) => void {
   return (message, program) => {
     const { id, method, params } = message;
     if (typeof id !== "number") return;

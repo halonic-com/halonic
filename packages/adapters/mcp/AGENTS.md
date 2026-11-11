@@ -4,7 +4,7 @@ Owner: tomas · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-Our own MCP client for local programs: the MCP protocol session and the stdio connector that starts a trusted program.
+Our own MCP client: the MCP protocol session, the http connector, and the stdio connector that starts a trusted program.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

@@ -1,9 +1,15 @@
 # @halonicjs/adapter-mcp
 
-Our own MCP client for programs on the person's computer.
+Our own MCP client, for servers over HTTP and programs on the person's computer.
 
 - `src/protocol/` holds the MCP session: the `initialize` handshake, paged `tools/list` and
   `tools/call`, over any `McpTransport`.
+- `src/http/` holds `McpHttpConnectorFactory`, the `ConnectorFactory` for `http` connectors. It
+  talks MCP's streamable HTTP transport through the host's `HttpClient` (the context's `http`), so
+  the host decides which addresses it may reach. It lists tools without a trust grant and calls
+  none without one. A connector's `secret` goes only in the `Authorization` header. No request
+  follows a redirect, each has a 60-second timeout and each message a 4 MiB limit
+  (`defaultHttpLimits`). A dropped event stream fails its request and isn't resumed.
 - `src/stdio/` holds `McpStdioConnectorFactory`, the `ConnectorFactory` for `stdio` connectors. It
   starts the program of a trusted workspace on the first call and talks MCP over its standard input
   and output.
