@@ -7,6 +7,7 @@ import {
   allowedSiteProblem,
   asciiAllowedSites,
   defaultWorkingFolder,
+  isInWorkingFolder,
   PROTECTED_TOP_NAMES,
   workingFolderProblem,
 } from "./sandbox-fields.ts";
@@ -215,6 +216,31 @@ verifies("format.agent-sandbox-fields", () => {
           "*.Docs.example",
         ]),
       ).toEqual(["api.example.com", "xn--bcher-kva.example", "*.docs.example"]);
+    });
+  });
+
+  describe("isInWorkingFolder", () => {
+    it.each([
+      ["scripts", "scripts"],
+      ["scripts/mail.sh", "scripts"],
+      ["Scripts\\mail.sh", "scripts"],
+      ["./files/../scripts/mail.sh", "scripts"],
+      ["scripts. /mail.sh", "scripts"],
+      ["ｓｃｒｉｐｔｓ/mail.sh", "scripts"],
+      ["files/agents/coder/x", "files/agents/coder"],
+    ])("finds %s inside %s", (path, folder) => {
+      expect(isInWorkingFolder(path, folder)).toBe(true);
+    });
+
+    it.each([
+      ["scripts-old/mail.sh", "scripts"],
+      ["files", "files/agents/coder"],
+      ["/scripts/mail.sh", "scripts"],
+      ["C:/scripts/mail.sh", "scripts"],
+      ["../scripts/mail.sh", "scripts"],
+      ["files/agents/other", "files/agents/coder"],
+    ])("finds %s outside %s", (path, folder) => {
+      expect(isInWorkingFolder(path, folder)).toBe(false);
     });
   });
 });

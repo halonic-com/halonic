@@ -4,7 +4,7 @@
 // computer can touch, so the checks refuse anything that could reach past
 // the workspace or past the named sites.
 import { s } from "@halonicjs/schema-kit";
-import { asciiHost } from "@halonicjs/std";
+import { asciiHost, posixPath } from "@halonicjs/std";
 import { foldName, relativePathProblem } from "../../shared/relative-path.ts";
 
 /**
@@ -78,6 +78,47 @@ export function workingFolderProblem(path: string): string | null {
     return `The agent can't write in '${shown}': tools read settings and hooks from folders that start with '.'`;
   }
   return null;
+}
+
+/**
+ * Whether a workspace path is a working folder or inside it, as a file
+ * system that ignores case sees it. Both are relative to the workspace root.
+ * `path` may be written loosely, as a program's folder or argument is: with
+ * `\`, `.` or `..` parts, or a part that ends in `.` or a space, which
+ * Windows drops. An absolute path, or one that leaves the workspace, is
+ * never inside: who checks those must know where the workspace is.
+ *
+ * @param path - a path relative to the workspace root
+ * @param workingFolder - a `workingFolder` that passed {@link workingFolderProblem}
+ * @returns `true` when the path is the folder or inside it
+ *
+ * @example
+ * isInWorkingFolder("Scripts\\mail.sh", "scripts"); // true
+ * isInWorkingFolder("scripts-old/mail.sh", "scripts"); // false
+ */
+export function isInWorkingFolder(path: string, workingFolder: string): boolean {
+  const parts = comparableParts(path);
+  const folder = comparableParts(workingFolder);
+  if (parts === null || folder === null || parts.length < folder.length) return false;
+  return folder.every((part, index) => parts[index] === part);
+}
+
+/**
+ * The parts of a relative path as a file system that ignores case reads
+ * them, or `null` for an absolute path or one that leaves the workspace.
+ */
+function comparableParts(path: string): string[] | null {
+  const slashed = foldName(path).replaceAll("\\", "/");
+  if (slashed.startsWith("/") || /^[a-z]:/.test(slashed)) return null;
+  const normalized = posixPath.normalize(slashed.split("/").map(windowsName).join("/"));
+  if (normalized === ".." || normalized.startsWith("../")) return null;
+  return normalized.split("/").filter((part) => part !== "" && part !== ".");
+}
+
+/** A part as Windows reads it: without trailing dots and spaces, so `scripts.` is `scripts`. */
+function windowsName(part: string): string {
+  const trimmed = part.replace(/[. ]+$/, "");
+  return part === "." || part === ".." || trimmed === "" ? part : trimmed;
 }
 
 /**

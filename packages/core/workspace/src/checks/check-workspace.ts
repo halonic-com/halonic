@@ -5,6 +5,7 @@ import { checkDelegationLoops } from "./delegation-loops.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkRoutines } from "./routines.ts";
 import { checkSubflowLoops, checkWorkflows } from "./workflows.ts";
+import { checkWorkingFolders } from "./working-folders.ts";
 import { checkDuplicateIds, checkTestTargets, checkWorkspaceFile } from "./workspace-files.ts";
 
 /** One rule across files: the errors and warnings it finds. */
@@ -18,6 +19,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkSessionModel,
   checkAgents,
   checkDelegationLoops,
+  checkWorkingFolders,
   checkTestTargets,
   checkWorkflows,
   checkSubflowLoops,
@@ -27,7 +29,8 @@ const checks: readonly WorkspaceCheck[] = [
 /**
  * The checks across files: what one file names in another (an agent's
  * model alias, a test's workflow) and rules over several files (agents that
- * delegate in a loop, two files with one id), what a workflow runs and
+ * delegate in a loop, two files with one id, a harness agent's working
+ * folder that holds what a local connector runs), what a workflow runs and
  * calls, and what a routine runs and when it starts.
  *
  * @param files - the files that parsed

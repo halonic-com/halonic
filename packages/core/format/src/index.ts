@@ -7,6 +7,7 @@ export {
   AGENT_HARNESSES,
   asciiAllowedSites,
   defaultWorkingFolder,
+  isInWorkingFolder,
   MAX_ALLOWED_SITES,
 } from "./kinds/agent/sandbox-fields.ts";
 export type { Agent, AgentMethod, AgentOutput, MethodField } from "./kinds/agent/schema.ts";
