@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-118 (plan 9.3, point 3)
 
-If a requirement's tests make fewer `expect` calls in a pull request than on the merge base, and the pull request changes a file in the package that owns its tests or changes its requirement file, then the requirement guard shall report it under the requirement's ID. When one of the requirement's test files retries with `vi.waitFor`, the guard reports the drop only if the pull request changes one of its test files.
+If a requirement's tests make fewer `expect` calls in a pull request than on the merge base, and the pull request changes a file in the package that owns its tests or changes its requirement file, then the requirement guard shall report it under the requirement's ID. When one of the requirement's test files imports `vi` and retries with `vi.waitFor`, the guard skips a drop only those retries can explain: the pull request changes none of the requirement's test files, none of its tests drops to 0 calls, and its test files without `vi.waitFor` make as many calls as before.
 
 ## Examples
 
@@ -20,3 +20,7 @@ If a requirement's tests make fewer `expect` calls in a pull request than on the
   then the guard reports nothing, because `vi.waitFor` runs its `expect` calls again until they pass, so the count depends on the runner's speed.
 - Given the same, but the pull request changes one of that requirement's test files,
   then the guard reports 2 calls against 3.
+- Given the same, but one test of `workflow.timer-fires` drops from 1 call to 0,
+  then the guard reports it, because a retry runs its `expect` calls at least once.
+- Given the same, but the drop is in a second test file of `workflow.timer-fires` that doesn't call `vi.waitFor`,
+  then the guard reports it, because that file's count doesn't depend on timing.

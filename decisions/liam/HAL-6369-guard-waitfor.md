@@ -7,11 +7,18 @@
 
 ## What changes
 
-The requirement guard no longer reports fewer `expect` calls for a requirement when one of its
-test files calls `vi.waitFor` and the pull request edits none of its test files. Everything else
-stays: fewer tests per requirement or per file, deleted test files, and a drop after the
-requirement's own test file was edited are still reported. `check.guard-fewer-assertions` says
-so in two new examples.
+The requirement guard no longer reports fewer `expect` calls for a requirement when only
+`vi.waitFor`'s retries can explain the drop: one of its test files imports `vi` and calls
+`vi.waitFor`, the pull request edits none of its test files, none of its tests drops to 0 calls,
+and its test files without `vi.waitFor` make as many calls as before. Everything else stays:
+fewer tests per requirement or per file, deleted test files, and a drop after the requirement's
+own test file was edited are still reported. `check.guard-fewer-assertions` says so in four new
+examples.
+
+Julian's review narrowed the first version, which skipped any drop for such a requirement: a
+retry runs its callback at least once, so a drop to 0 isn't timing, and a test file without
+`vi.waitFor` has a stable count. The `vi` import keeps a `vi.waitFor` that only appears in a
+string or a comment, like in the guard's own tests, from counting.
 
 ## Why
 
