@@ -34,6 +34,7 @@ export const sandboxProfileSchema: Schema<SandboxProfile> = s
     settingsFolder: absolutePath.nullable(),
     readOnlyPaths: s.array(absolutePath),
     deniedPaths: s.array(absolutePath),
+    reopenedPaths: s.array(absolutePath).optional(),
     env: s.record(s.string(), s.string()),
     network: s
       .object({

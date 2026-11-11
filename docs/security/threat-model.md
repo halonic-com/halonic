@@ -407,14 +407,16 @@ routes, isn't built yet, so no app uses the host today.
   and Studio's memory. A program running as you can also change the host's
   unpacked files between launches, or the executable itself; the digest
   check finds the first only at the next launch.
-- **Halonic's data folder is denied as it was when the session opened.** The
-  `halonic-data` group lists every entry of the data folder that isn't on the
-  way to the run's own folders, once. srt can't allow a folder inside a denied
-  one, so the folders on the way stay readable, and a folder made there later
-  stays readable for the rest of the session: another run's proposal folder, a
-  later temp folder or a new agent's settings folder. **Planned** fix: one
-  folder per run in the data folder, so nothing another run makes lands on the
-  way (HAL-5644).
+- **On Windows, another run's folder made after the session opened is
+  readable.** The `halonic-data` group denies the data folder as a whole and
+  reopens only the run's own folders, so on Linux and macOS a folder another
+  run makes there later is denied too (HAL-5644). On Windows srt keeps the
+  write grant on each writable folder between sessions, and any sandboxed
+  session may read a folder that has one, because a grant set on the folder
+  ranks above the deny it inherits from the data folder. The profile therefore
+  also denies the data folder's other entries by name when the session opens.
+  A run folder that another session makes and writes after that is not
+  named, and stays readable until this session ends.
 
 ### 4.7 Sandbox backends on Windows (B8)
 

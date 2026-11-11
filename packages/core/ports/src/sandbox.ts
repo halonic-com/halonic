@@ -126,8 +126,23 @@ export interface SandboxProfile {
   settingsFolder: string | null;
   /** Paths the program may read but not change, such as the workspace's definition files. */
   readOnlyPaths: string[];
-  /** Paths the program may not read or write, such as SSH keys and Halonic's own data. Wins over every other list. */
+  /**
+   * Paths the program may not read or write, such as SSH keys and Halonic's
+   * own data. Wins over every other list, except that a path in
+   * {@link reopenedPaths} may be read again.
+   */
   deniedPaths: string[];
+  /**
+   * Paths inside a denied path that the program may read again, such as a
+   * run's own folders in Halonic's denied data folder. A writable folder
+   * inside a denied path must be listed here too; it stays writable. Each
+   * path must exist when the session opens, must lie inside a path of
+   * {@link deniedPaths}, and must not hold a writable folder (list the
+   * entries around that folder instead). An adapter refuses a profile that
+   * breaks one of these rules. Absent means none, so a profile that drops it
+   * can only deny more.
+   */
+  reopenedPaths?: string[] | undefined;
   /**
    * The only environment variables the program gets, by name and value. The
    * host's own environment is never passed on.

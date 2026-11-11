@@ -102,9 +102,12 @@ verifies("harness-kit.harness-profile", () => {
         "halonic-data",
       ]);
       expect(deniedGroups[0]?.paths).toEqual([join(home, ".ssh")]);
-      const hidden = deniedGroups.find(({ code }) => code === "halonic-data")?.paths ?? [];
-      expect([...hidden].sort()).toEqual([join(data, "agent-host"), join(data, "workspaces")]);
+      expect(deniedGroups.at(-1)).toEqual({ code: "halonic-data", paths: [data] });
       expect(profile.deniedPaths).toEqual(deniedGroups.flatMap(({ paths }) => paths));
+      expect(profile.reopenedPaths).toEqual([
+        join(data, "tmp", "run_1"),
+        join(data, "settings", "writer"),
+      ]);
     });
 
     it("works in the proposal folder, writes nowhere in the workspace, and denies the rest of the data", async () => {
@@ -117,10 +120,69 @@ verifies("harness-kit.harness-profile", () => {
         expect(writable?.startsWith(workspace)).toBe(false);
       }
       expect(profile.readOnlyPaths).toEqual([join(proposal, ".git"), join(proposal, "agents")]);
-      const hidden = deniedGroups.find(({ code }) => code === "halonic-data")?.paths ?? [];
-      expect(hidden).toContain(join(data, "agent-host"));
-      expect(hidden).toContain(join(data, "workspaces", "k1", "proposals", "run_2"));
-      expect(hidden.some((path) => proposal.startsWith(path))).toBe(false);
+      expect(deniedGroups.at(-1)).toEqual({ code: "halonic-data", paths: [data] });
+      // The proposal folder's entries around the working folder, not the folder itself, which holds it.
+      expect([...(profile.reopenedPaths ?? [])].sort()).toEqual(
+        [
+          join(proposal, ".git"),
+          join(proposal, "agents"),
+          profile.workingFolder,
+          join(data, "tmp", "run_1"),
+          join(data, "settings", "writer"),
+        ].sort(),
+      );
+    });
+
+    it("denies a folder another run makes after the profile is built", async () => {
+      const { data, proposal } = computer;
+      const { profile } = await profilesWith().profileOf(agentWith(proposal), bridge);
+
+      const later = [
+        join(data, "workspaces", "k1", "proposals", "run_3"),
+        join(data, "tmp", "run_3"),
+        join(data, "settings", "reviewer"),
+      ];
+      for (const folder of later) await mkdir(folder, { recursive: true });
+
+      for (const folder of later) {
+        expect(profile.deniedPaths.some((denied) => folder.startsWith(denied))).toBe(true);
+        expect(profile.reopenedPaths?.some((open) => folder.startsWith(open))).toBe(false);
+      }
+    });
+
+    it("leaves out a proposal entry that links out of the proposal folder", async () => {
+      const { data, proposal } = computer;
+      await symlink(join(data, "agent-host"), join(proposal, "host"), "junction");
+
+      const { profile } = await profilesWith().profileOf(agentWith(proposal), bridge);
+
+      expect(profile.reopenedPaths).not.toContain(join(data, "agent-host"));
+      expect(profile.reopenedPaths).not.toContain(join(proposal, "host"));
+    });
+
+    it("also denies the data folder's other entries by name on Windows", async () => {
+      const { data, home, proposal } = computer;
+      await mkdir(join(home, ".local", "bin"), { recursive: true });
+      await writeFile(join(home, ".local", "bin", "claude"), "");
+
+      const { deniedGroups } = await profilesWith({}, { platform: "win32" }).profileOf(
+        agentWith(proposal),
+        bridge,
+      );
+
+      const denied = deniedGroups.find(({ code }) => code === "halonic-data")?.paths ?? [];
+      expect(denied[0]).toBe(data);
+      expect(denied).toContain(join(data, "agent-host"));
+      expect(denied).toContain(join(data, "workspaces", "k1", "proposals", "run_2"));
+      expect(denied.some((path) => path !== data && proposal.startsWith(path))).toBe(false);
+    });
+
+    it("refuses a temp folder that isn't there", async () => {
+      const tempFolder = async () => join(computer.data, "tmp", "run_9");
+
+      await expect(
+        profilesWith({}, {}, { tempFolder }).profileOf(agentWith(null), bridge),
+      ).rejects.toThrow(/The temp folder .* isn't there/);
     });
 
     it("refuses a working folder whose link leads out of the folder it works in", async () => {
@@ -196,16 +258,19 @@ verifies("harness-kit.harness-profile", () => {
         settingsFolder: async () => join(data, "settings", "writer"),
       };
 
-      const { deniedGroups } = await profilesWith(
+      const { profile, deniedGroups } = await profilesWith(
         {},
         { workspace, halonicData: data },
         host,
       ).profileOf(agentWith(null), bridge);
 
-      const hidden = deniedGroups.find(({ code }) => code === "halonic-data")?.paths ?? [];
-      expect(hidden).toContain(join(data, "agent-host"));
-      expect(hidden).not.toContain(join(data, "tmp", "run_1"));
-      expect(hidden).not.toContain(join(data, "settings", "writer"));
+      expect(deniedGroups.at(-1)).toEqual({ code: "halonic-data", paths: [data] });
+      expect(profile.reopenedPaths).toEqual([
+        join(data, "tmp", "run_1"),
+        join(data, "settings", "writer"),
+      ]);
+      // A workspace's `.halonic` that is the data folder stays denied, so it isn't named read-only.
+      expect(profile.readOnlyPaths).not.toContain(data);
     });
 
     it("refuses a proposal folder in the workspace", async () => {

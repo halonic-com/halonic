@@ -1,6 +1,6 @@
-import { lstatSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, realpathSync } from "node:fs";
 import { isIP } from "node:net";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import type { SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
 import type { SandboxProfile } from "@halonicjs/ports";
 
@@ -16,7 +16,8 @@ function literalPath(path: string): { path: string; literal: true } {
  * isn't there yet (`.npmrc`) would never match if it stayed `/var/...`.
  */
 export function resolveRealPath(path: string): string {
-  // srt doesn't run on Windows, and a POSIX path there would gain a drive letter and add a second entry.
+  // Windows paths are compared as given: srt resolves links, junctions and letter case there
+  // itself, and a POSIX path (in a test) would gain a drive letter and add a second entry.
   if (process.platform === "win32") return path;
   const missing: string[] = [];
   let existing = path;
@@ -32,6 +33,61 @@ export function resolveRealPath(path: string): string {
       existing = parent;
     }
   }
+}
+
+/** Whether `path` is `folder` or inside it. */
+function isAtOrInside(path: string, folder: string): boolean {
+  const way = relative(folder, path);
+  return way === "" || (!isAbsolute(way) && way !== ".." && !way.startsWith(`..${sep}`));
+}
+
+/**
+ * Checks the profile's reopened paths against the rules of
+ * `SandboxProfile.reopenedPaths`, on their real places, and returns the
+ * denied paths that hold one. Those stay out of `denyWrite`: srt ranks
+ * `denyWrite` above `allowWrite`, so a writable folder reopened inside one
+ * would become read-only (on Windows) or be bound back read-only over the
+ * reopened folders (on Linux).
+ *
+ * @throws when a reopened path isn't there, lies in no denied path, or holds
+ *   a writable folder; when a writable folder lies in a denied path without
+ *   being reopened; or when a writable folder holds a denied path that holds
+ *   a reopened one, because writes there would no longer be denied
+ */
+function deniesHoldingReopened(profile: SandboxProfile, writableFolders: string[]): string[] {
+  const denied = profile.deniedPaths.map((path) => ({ path, real: resolveRealPath(path) }));
+  const writable = writableFolders.map(resolveRealPath);
+  const reopened = (profile.reopenedPaths ?? []).map(resolveRealPath);
+  for (const path of reopened) {
+    if (!existsSync(path)) {
+      throw new Error(`The reopened path ${path} isn't there, so the sandbox can't open it.`);
+    }
+    if (!denied.some(({ real }) => isAtOrInside(path, real))) {
+      throw new Error(`The reopened path ${path} lies in no denied path.`);
+    }
+    const held = writable.find((folder) => folder !== path && isAtOrInside(folder, path));
+    if (held !== undefined) {
+      throw new Error(`The reopened path ${path} holds the writable folder ${held}.`);
+    }
+  }
+  for (const folder of writable) {
+    const inDenied = denied.find(({ real }) => isAtOrInside(folder, real));
+    if (inDenied !== undefined && !reopened.includes(folder)) {
+      throw new Error(
+        `The writable folder ${folder} is in the denied ${inDenied.path}, and isn't reopened.`,
+      );
+    }
+  }
+  const holding = denied.filter(({ real }) => reopened.some((path) => isAtOrInside(path, real)));
+  for (const { path, real } of holding) {
+    const folder = writable.find((writableFolder) => isAtOrInside(real, writableFolder));
+    if (folder !== undefined) {
+      throw new Error(
+        `The writable folder ${folder} holds the denied ${path}, which a reopened path is in.`,
+      );
+    }
+  }
+  return holding.map(({ path }) => path);
 }
 
 /** A git worktree's `.git` is a file pointing at the real git folder; rewriting it redirects git (and its hooks). */
@@ -133,11 +189,18 @@ const toolSettingsInWorkingFolder = [
 /**
  * Builds the sandbox-runtime settings for one session from the profile.
  *
- * The profile's `deniedPaths` become `denyRead` and `denyWrite`. Halonic works
- * out the deny list before the session opens (everything in its data folder
- * except the session's own settings folder), so nothing here has to allow a
- * path inside a denied one. Read-only paths are denied for writing only. The
- * tool settings in the working folder are denied for writing as well.
+ * The profile's `deniedPaths` become `denyRead` and `denyWrite`, and its
+ * `reopenedPaths` become `allowRead`, which srt ranks above `denyRead` on
+ * every system. So Halonic's data folder is denied as a whole, and only the
+ * run's own folders in it are reopened: a folder another run makes there
+ * later is denied too, with no list to keep up to date (HAL-5644). A denied
+ * path that holds a reopened one stays out of `denyWrite` (see
+ * `deniesHoldingReopened`). Writes there are still refused: macOS and
+ * Windows allow writes only where `allowWrite` names, and on Linux the
+ * denied folder is an empty tmpfs, so what a program writes there outside
+ * the reopened folders is lost when it ends and never reaches the disk.
+ * Read-only paths are denied for writing only. The tool settings in the
+ * working folder are denied for writing as well.
  *
  * On Windows reads are not open by default: `--sandbox-setup` skips srt's read
  * grant for the whole user profile, so a program reads only the folders the
@@ -174,6 +237,11 @@ export function buildSrtConfig(
   if (profile.settingsFolder !== null) {
     writableFolders.push(profile.settingsFolder);
   }
+  const notDeniedForWriting = deniesHoldingReopened(profile, writableFolders);
+  const readable = [
+    ...(platform === "win32" ? profile.readOnlyPaths : []),
+    ...(profile.reopenedPaths ?? []),
+  ];
   const { bridge, allowedSites } = profile.network;
   const bridgeDomains = bridge === null ? [] : [bridgeDomain(bridge.host, bridge.port)];
   return {
@@ -185,13 +253,13 @@ export function buildSrtConfig(
     },
     filesystem: {
       denyRead: withResolved(hidden).map(literalPath),
-      ...(platform === "win32" && profile.readOnlyPaths.length > 0
-        ? { allowRead: withResolved(profile.readOnlyPaths).map(literalPath) }
-        : {}),
+      ...(readable.length > 0 ? { allowRead: withResolved(readable).map(literalPath) } : {}),
       allowWrite: withResolved(writableFolders).map(literalPath),
-      denyWrite: withResolved([...hidden, ...profile.readOnlyPaths, ...toolSettings]).map(
-        literalPath,
-      ),
+      denyWrite: withResolved([
+        ...hidden.filter((path) => !notDeniedForWriting.includes(path)),
+        ...profile.readOnlyPaths,
+        ...toolSettings,
+      ]).map(literalPath),
     },
   };
 }

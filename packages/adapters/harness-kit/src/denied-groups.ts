@@ -99,19 +99,18 @@ export async function homeDeniedGroups(
 }
 
 /**
- * The paths that deny Halonic's data folder while leaving each path in
- * `kept` reachable: the folder itself when nothing kept is in it, otherwise
- * every entry that isn't on the way to a kept path, all the way down. The
- * runner's untrusted profile hides the home folder the same way. A program
- * in the sandbox then reaches its own folders in the data folder (its
- * proposal folder, temp and settings folders) and nothing else of it, the
- * agent host's files included.
+ * The entries in `folder` that aren't on the way to a path in `kept`, all
+ * the way down: the folder itself when nothing kept is in it, nothing when a
+ * kept path holds it. The profile reopens a proposal folder's entries around
+ * the working folder this way, and on Windows also denies the data folder's
+ * entries around the run's own folders by name (see `HarnessProfiles`). The
+ * runner's untrusted profile hides the home folder the same way.
  *
- * @param folder - the data folder's real path
- * @param kept - real paths that must stay reachable
- * @throws when a folder on the way to a kept path can't be listed, because its entries couldn't be hidden
+ * @param folder - a real path
+ * @param kept - real paths
+ * @throws when a folder on the way to a kept path can't be listed
  */
-export async function hiddenAround(
+export async function entriesAround(
   folder: string,
   kept: readonly string[],
   disk: Pick<ProfileDisk, "listFolder">,
@@ -119,13 +118,13 @@ export async function hiddenAround(
   if (kept.some((path) => isInsideOrSame(folder, path))) return [];
   const keptInside = kept.filter((path) => isInsideOrSame(path, folder));
   if (keptInside.length === 0) return [folder];
-  const hidden: string[] = [];
+  const around: string[] = [];
   for (const name of await disk.listFolder(folder)) {
     const entry = join(folder, name);
     const onTheWay = keptInside.some((path) => isInsideOrSame(path, entry));
-    hidden.push(...(onTheWay ? await hiddenAround(entry, keptInside, disk) : [entry]));
+    around.push(...(onTheWay ? await entriesAround(entry, keptInside, disk) : [entry]));
   }
-  return hidden;
+  return around;
 }
 
 async function realOrNothing(
