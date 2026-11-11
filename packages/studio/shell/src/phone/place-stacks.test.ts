@@ -9,6 +9,7 @@ import {
   openPhonePageIn,
   type PlaceStacks,
   phonePlaceOf,
+  settingsLocation,
   showsBottomNavigation,
   startPlaceStacks,
   switchPhonePlace,
@@ -89,6 +90,21 @@ verifies("shell.place-stacks", () => {
       expect(shown(stacks)).toBe("workflows");
       expect(showsBottomNavigation(stacks)).toBe(true);
       expect(shown(goBackOnPhone(stacks) as PlaceStacks)).toBe("more");
+    });
+
+    it("opens Settings as a list right above the More page, with the bottom navigation", () => {
+      const stacks = openPhonePage(on("more", workflows, workflow), settingsLocation);
+      expect(stacks.place).toBe("more");
+      expect(stacks.stacks.more.map((page) => page.location.key)).toEqual(["more", "settings"]);
+      expect(showsBottomNavigation(stacks)).toBe(true);
+      expect(shown(goBackOnPhone(stacks) as PlaceStacks)).toBe("more");
+    });
+
+    it("opens Settings under More from a link in another place", () => {
+      const stacks = openPhonePageIn(on("runs", run), "inbox", settingsLocation);
+      expect(stacks.place).toBe("more");
+      expect(shown(stacks)).toBe("settings");
+      expect(currentPhonePage(stacks).from).toBeUndefined();
     });
 
     it("opens Inbox or Runs at their top from anywhere", () => {

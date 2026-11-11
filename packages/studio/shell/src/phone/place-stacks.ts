@@ -15,6 +15,12 @@ export const phonePlaceTops: Readonly<Record<PhonePlace, TabLocation>> = {
   more: { key: "more", title: "More" },
 };
 
+/**
+ * Settings on a phone: not a sidebar place (on a desktop it opens as a dialog), but a list under
+ * More next to Agents, Workflows, Routines, Library and Changes (component specs 15.2).
+ */
+export const settingsLocation: TabLocation = { key: "settings", title: "Settings" };
+
 /** A page in a place's stack. */
 export interface PhonePage {
   readonly location: TabLocation;
@@ -94,8 +100,8 @@ export function switchPhonePlace(stacks: PlaceStacks, place: PhonePlace): PlaceS
 
 /**
  * Opens a page in the place shown, on top of its stack. A sidebar place opens where it lives
- * instead: Inbox and Runs at their top, a list under More right above the More page, so its Back
- * leads to More. Opening the page already shown changes nothing.
+ * instead: Inbox and Runs at their top, a list under More (and Settings) right above the More
+ * page, so its Back leads to More. Opening the page already shown changes nothing.
  */
 export function openPhonePage(
   stacks: PlaceStacks,
@@ -107,6 +113,9 @@ export function openPhonePage(
   }
   if (isSidebarPlace(location.key)) {
     return openSidebarPlace(stacks, location.key);
+  }
+  if (location.key === settingsLocation.key) {
+    return openMoreList(stacks, settingsLocation);
   }
   const page: PhonePage = { location, list: options.list ?? false };
   return withStack(stacks, stacks.place, [...stacks.stacks[stacks.place], page]);
@@ -123,7 +132,7 @@ export function openPhonePageIn(
   location: TabLocation,
   options: PhoneOpenOptions = {},
 ): PlaceStacks {
-  if (place === stacks.place || isSidebarPlace(location.key)) {
+  if (place === stacks.place || isMoreTopLevel(location.key)) {
     return openPhonePage(stacks, location, options);
   }
   const page: PhonePage = { location, list: options.list ?? false, from: stacks.place };
@@ -148,12 +157,18 @@ export function goBackOnPhone(stacks: PlaceStacks): PlaceStacks | undefined {
 
 function openSidebarPlace(stacks: PlaceStacks, place: SidebarPlace): PlaceStacks {
   const phonePlace = phonePlaceOf(place);
-  const top = topOf(stacks, phonePlace);
-  const pages: readonly PhonePage[] =
-    phonePlace === "more"
-      ? [...top, { location: { key: place, title: placeNames[place].label }, list: true }]
-      : top;
-  return { place: phonePlace, stacks: { ...stacks.stacks, [phonePlace]: pages } };
+  if (phonePlace === "more") {
+    return openMoreList(stacks, { key: place, title: placeNames[place].label });
+  }
+  return {
+    place: phonePlace,
+    stacks: { ...stacks.stacks, [phonePlace]: topOf(stacks, phonePlace) },
+  };
+}
+
+function openMoreList(stacks: PlaceStacks, location: TabLocation): PlaceStacks {
+  const pages: readonly PhonePage[] = [...topOf(stacks, "more"), { location, list: true }];
+  return { place: "more", stacks: { ...stacks.stacks, more: pages } };
 }
 
 function topOf(stacks: PlaceStacks, place: PhonePlace): readonly PhonePage[] {
@@ -170,4 +185,9 @@ function withStack(
 
 function isSidebarPlace(key: string): key is SidebarPlace {
   return (sidebarPlaces as readonly string[]).includes(key);
+}
+
+/** A sidebar place or Settings, which open where they live rather than on the place shown. */
+function isMoreTopLevel(key: string): boolean {
+  return isSidebarPlace(key) || key === settingsLocation.key;
 }

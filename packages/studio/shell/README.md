@@ -477,7 +477,8 @@ next, or the same one when nothing changed:
   user left it, the place already shown goes back to its top.
 - `openPhonePage(stacks, location, { list })` opens a page in the place shown. A sidebar place
   opens where it lives (`phonePlaceOf`): Inbox and Runs at their top, Agents, Workflows, Routines,
-  Library and Changes as lists right above the More page. `list: true` marks a page that is still a
+  Library and Changes as lists right above the More page. Settings (`settingsLocation`) opens there
+  too, though it isn't a sidebar place. `list: true` marks a page that is still a
   list, such as the Library's Skills, so the bottom navigation stays.
 - `openPhonePageIn(stacks, place, location)` follows a link to another place's page (a waiting run's
   "Review in Inbox"): that place shows with the page on top, and Back from it comes back.

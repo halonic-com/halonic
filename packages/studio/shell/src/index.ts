@@ -144,6 +144,7 @@ export {
   phonePlaceOf,
   phonePlaces,
   phonePlaceTops,
+  settingsLocation,
   showsBottomNavigation,
   startPlaceStacks,
   switchPhonePlace,
