@@ -813,6 +813,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/std
     devDependencies:
+      '@halonicjs/adapter-git':
+        specifier: workspace:*
+        version: link:../git
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec

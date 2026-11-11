@@ -19,6 +19,7 @@
     "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/adapter-git": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
