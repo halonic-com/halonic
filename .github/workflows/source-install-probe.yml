@@ -64,7 +64,8 @@ jobs:
           $env:PNPM_HOME = $userHome
           # The Node installer puts Node's and npm's folders in Path; setup-node doesn't write them to the registry.
           $nodeDirs = (Split-Path (Get-Command node -CommandType Application | Select-Object -First 1).Source) + ';' + (Split-Path $pnpm)
-          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $userPath + ';' + $nodeDirs
+          # A new terminal expands %PNPM_HOME% in the user Path; GetEnvironmentVariable doesn't.
+          $env:Path = [Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $userPath) + ';' + $nodeDirs
           Say "## New terminal (environment read again from the registry)"
           Run 'pnpm add -g ./apps/cli' 'pwsh' @('-NoProfile', '-Command', 'pnpm add -g ./apps/cli')
 
