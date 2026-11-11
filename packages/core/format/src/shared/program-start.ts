@@ -54,15 +54,26 @@ export function pathsNamedBy({ program, args, env = {} }: ProgramStart): NamedPa
  * between `;` and spaces (a Windows `PATH` keeps its drive letters), each
  * piece between `=`, `:`, `;`, `@` and spaces (as in
  * `--config=tools/mail.json`, `--define=KEY=tools/x`, `PATH=tools/bin:/usr/bin`,
- * `file:tools/x` or `@tools/args.txt`), and each piece without its short
- * flag, as in `-ctools/mail.json`.
+ * `file:tools/x` or `@tools/args.txt`), the whole text after each `=`, `:`
+ * and `@` (so `--file=my link` still names `my link`), and each piece
+ * without its short flag, as in `-ctools/mail.json`.
  */
 export function pathsIn(text: string): string[] {
-  const pieces = [text, ...text.split(/[;\s]+/), ...text.split(/[=:;@\s]+/)];
+  const pieces = [
+    text,
+    ...text.split(/[;\s]+/),
+    ...text.split(/[=:;@\s]+/),
+    ...textsAfter(/[=:@]/g, text),
+  ];
   const withoutFlags = pieces.flatMap((piece) =>
     /^-[^-]./.test(piece) ? [piece, piece.slice(2)] : [piece],
   );
   return [...new Set(withoutFlags.filter((piece) => piece !== ""))];
+}
+
+/** The whole text after each match of `separator`: `a=b:c` gives `b:c` and `c` for `/[=:]/g`. */
+function textsAfter(separator: RegExp, text: string): string[] {
+  return [...text.matchAll(separator)].map((match) => text.slice(match.index + 1));
 }
 
 /**

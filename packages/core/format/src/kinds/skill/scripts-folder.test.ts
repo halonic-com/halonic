@@ -4,14 +4,16 @@ import type { ProgramStart } from "../../shared/program-start.ts";
 import { type PathLookup, touchesSkillScripts } from "./scripts-folder.ts";
 
 /**
- * A file system with one link, `/w/innocent`, that leads into a skill's
- * scripts. Paths are resolved the POSIX way, which is enough for the rule;
+ * A file system with links that lead into a skill's scripts: `/w/innocent`,
+ * and `/w/my link`, `/w/a:b` and `/w/a@b`, whose names hold a separator. Paths are resolved the POSIX way, which is enough for the rule;
  * the adapters' tests run it on Node's own `resolve` and `realpath`.
  */
 const paths: PathLookup = {
   resolve: (cwd, part) => normalize(part.startsWith("/") ? part : `${cwd}/${part}`),
   realpath: async (path) => {
-    if (path === "/w/innocent") return "/w/skills/mail/scripts/send.js";
+    if (["/w/innocent", "/w/my link", "/w/a:b", "/w/a@b"].includes(path)) {
+      return "/w/skills/mail/scripts/send.js";
+    }
     if (path === "/w/tools") return "/w/skills/mail/scripts";
     throw new Error(`nothing at ${path}`);
   },
@@ -59,6 +61,10 @@ verifies("format.skill-scripts-folder", () => {
       ["a value from the skill", start("node", ["--file=./scripts/send.js"], "/w/skills/mail")],
       ["a value that is a link", start("node", ["--file=innocent"])],
       ["a second = value", start("node", ["--define=KEY=skills/mail/scripts/send.js"])],
+      ["a link with a space in its name", start("node", ["--file=my link"])],
+      ["a link with a : in its name", start("node", ["--file=a:b"])],
+      ["a link with an @ in its name", start("node", ["--file=a@b"])],
+      ["a link with a : after a second =", start("node", ["--define=KEY=a:b"])],
     ])("is true for %s joined with = (HAL-3628)", async (_, bad) => {
       expect(await touchesSkillScripts(bad, paths)).toBe(true);
     });

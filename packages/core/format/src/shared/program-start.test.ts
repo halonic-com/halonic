@@ -42,6 +42,15 @@ verifies("format.program-start-paths", () => {
       expect(pathsOf(start("node", [arg]))).toContain(path);
     });
 
+    it.each([
+      ["an =", "--file=my tools/x.js", "my tools/x.js"],
+      ["a second =", "--define=KEY=a:b", "a:b"],
+      ["a :", "file:a@b", "a@b"],
+      ["an @", "@a=b", "a=b"],
+    ])("keeps the whole text after %s, separators and all", (_, arg, path) => {
+      expect(pathsOf(start("node", [arg]))).toContain(path);
+    });
+
     it("keeps the whole argument too", () => {
       expect(pathsOf(start("node", ["tools/x.js"]))).toEqual(["node", "tools/x.js"]);
     });

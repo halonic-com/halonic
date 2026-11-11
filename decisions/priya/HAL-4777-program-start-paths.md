@@ -9,14 +9,16 @@
 `format.skill-scripts-folder` reads a start the way the working-folder guards already do. Before,
 it looked at the folder, the program, each argument and the text after an argument's first `=`.
 Now it looks at the folder and every path `pathsNamedBy` lists: the program, each argument and
-`env` value whole and split at `;`, `=`, `:`, `@` and spaces, each piece also without a short
-flag such as `-c`, and the folder path of a `python -m` module. Each of these is checked as
+`env` value whole and split at `;`, `=`, `:`, `@` and spaces, the whole text after each `=`, `:`
+and `@`, each piece also without a short flag such as `-c`, and the folder path of a `python -m` module. Each of these is checked as
 written, resolved from the start folder and through symbolic links, as before.
 
 So the guard refuses more starts: a link after a second `=`, a path after `:` or `@`, a path
 behind a short flag, `python -m skills.x.scripts.y`, and an `env` value such as `NODE_OPTIONS`
-that names a skill's script. Every start it refused before, it still refuses: the whole argument
-and the text after the first `=` are still in the list, and no example or test is removed.
+that names a skill's script, or a link after `=` whose name holds a `:` (`--define=K=a:b`).
+Every start it refused before, it still refuses: the whole argument and the whole text after the
+first `=` are still in the list (as one of the texts after each `=`, `:` and `@`), and no example
+or test is removed.
 
 `env` is read only when the adapter passes it. `nodeProgramStarter` (the MCP stdio adapter)
 passes the program's whole environment; the sandbox adapters pass no `env` yet, so for them only
