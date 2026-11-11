@@ -35,7 +35,7 @@ states:
       Approve this reply?
       {{context.reply}}
 
-      Sample: approving finishes the run. Nothing is sent.
+      Sample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent.
     on:
       - to: replied
         event: approve

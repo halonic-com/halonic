@@ -64,7 +64,7 @@ stdout:
       },
       "error": null,
       "reason": null,
-      "definitionsVersion": "5b90081bfa512d711c6f00d768ffad22e8eeaf45d4086a83c3356385359da8b8",
+      "definitionsVersion": "ed2ed4eb87e29f3a1ab17f9829b23125b1cf9ca7b9d210df7b98863ec9777cf4",
       "trigger": null,
       "parentRunId": null,
       "waitingOn": null,
@@ -88,7 +88,7 @@ stdout:
           "mail": "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
         },
         "kind": "run",
-        "definitionsVersion": "5b90081bfa512d711c6f00d768ffad22e8eeaf45d4086a83c3356385359da8b8",
+        "definitionsVersion": "ed2ed4eb87e29f3a1ab17f9829b23125b1cf9ca7b9d210df7b98863ec9777cf4",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 1,
         "at": "2026-11-10T14:01:00.000Z"
@@ -238,7 +238,7 @@ stdout:
           "reject": "Reject"
         },
         "title": "Approve this reply?",
-        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: approving finishes the run. Nothing is sent.",
+        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent.",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 18,
         "at": "2026-11-10T14:01:00.000Z"
