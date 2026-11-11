@@ -1,8 +1,18 @@
+import { defineFeature } from "@halonicjs/studio-shell";
+import { InboxRunsService, InboxService } from "./api.ts";
+import { Inbox } from "./inbox.ts";
+
 /**
- * The Inbox feature as the Studio shell sees it. Becomes
- * defineFeature() from @halonicjs/studio-shell once the shell exists.
+ * The Inbox feature. It builds one {@link Inbox} per open workspace from the
+ * runs the app provides (`InboxRunsService`), and offers it to the other
+ * features as `InboxService`.
  */
-export const inboxFeature = {
+export const inboxFeature = defineFeature({
   id: "inbox",
   title: "Inbox",
-} as const;
+  needs: [InboxRunsService],
+  provides: [InboxService],
+  register(studio) {
+    studio.services.provide(InboxService, (services) => new Inbox(services.get(InboxRunsService)));
+  },
+});
