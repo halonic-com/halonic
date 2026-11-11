@@ -1502,13 +1502,14 @@ Function PageFinish
     ${Else}
       StrCpy $1 "The setup stopped: $SandboxReason"
     ${EndIf}
-    ${NSD_CreateLabel} 10u 12u 96% 22u "$1"
+    ; Three lines for the cause, so a long reason isn't cut (checklist 2.4).
+    ${NSD_CreateLabel} 10u 12u 96% 32u "$1"
     Pop $0
-    ${NSD_CreateLabel} 10u 36u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, open Settings › Agent sandbox in Halonic."
+    ${NSD_CreateLabel} 10u 46u 96% 42u "Everything else works. Until the sandbox is set up, an agent can run on this computer only after a warning you confirm. To set it up later, open Settings › Agent sandbox in Halonic."
     Pop $0
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 90u 100% 10u "Start ${PRODUCTNAME}"
+  ${NSD_CreateCheckbox} 0 100u 100% 10u "Start ${PRODUCTNAME}"
   Pop $StartCheckbox
   ${NSD_Check} $StartCheckbox
 
