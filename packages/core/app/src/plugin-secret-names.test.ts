@@ -1,5 +1,5 @@
 import { MAX_PLUGIN_ID_LENGTH, MAX_PLUGIN_SECRET_NAME_LENGTH } from "@halonicjs/format";
-import { isHalonicSecretName, isSecretName, secretKey } from "@halonicjs/ports";
+import { isHalonicSecretName, isPluginSecretName, isSecretName, secretKey } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { pluginSecretName, pluginSecretNames } from "./plugin-secret-names.ts";
@@ -46,5 +46,9 @@ localTools:
     );
     expect(isSecretName(longest)).toBe(true);
     expect(isHalonicSecretName(longest)).toBe(false);
+  });
+
+  it("is a name no workspace may pick", () => {
+    expect(isPluginSecretName(pluginSecretName("weather", "acme-key"))).toBe(true);
   });
 });
