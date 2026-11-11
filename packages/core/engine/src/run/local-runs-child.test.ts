@@ -13,6 +13,7 @@ import { readRun } from "../kernel/step.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
 import { childStart, receiverOf } from "./child-runs.ts";
 import { runsOn } from "./local-runs-test-kit.test-helper.ts";
+import type { RunProposalFolders } from "./proposal-folders.ts";
 
 /** A parent whose first state runs `child` with the parent's `from`, and keeps its context as `verdict`. */
 function onboard(child: string): Workflow {
@@ -73,6 +74,21 @@ class FullBlobs extends KernelBlobs {
   override async put(data: Uint8Array, mediaType: string): Promise<BlobRef> {
     if (this.blobs.size > 0) throw new Error("The disk is full.");
     return super.put(data, mediaType);
+  }
+}
+
+/** Proposal folders whose `end` breaks its contract and throws for one run. */
+class BrokenFolders implements RunProposalFolders {
+  async open(): Promise<string> {
+    return "<data>/proposals/run";
+  }
+
+  async folderOf(): Promise<string | null> {
+    return null;
+  }
+
+  async end(runId: string): Promise<void> {
+    if (runId === "run_5") throw new Error("The proposal folder is locked.");
   }
 }
 
@@ -199,6 +215,33 @@ verifies("engine.local-child-runs", () => {
 
     expect(await after.executor.start({ ...start, runId: "run_9" })).toMatchObject({
       status: "waiting",
+    });
+  });
+
+  it("tells a waiting parent its child was interrupted even when a folder's end throws", async () => {
+    const before = childRuns("review");
+    await before.executor.start(start);
+    // A top-level run on the same store that the engine stops while it waits for its model call.
+    const other = runsOn([], before.runs, { blobs: before.blobs });
+    await other.executor.start({ ...start, runId: "run_5", workflowId: "reply" });
+    await before.executor.send("run_1", "approve");
+    const setup = {
+      workflow: onboard("review"),
+      workflows,
+      blobs: before.blobs,
+      proposalFolders: new BrokenFolders(),
+    };
+    const after = runsOn([], before.runs, setup);
+
+    await expect(after.executor.start({ ...start, runId: "run_9" })).rejects.toThrow(
+      "The proposal folder is locked.",
+    );
+    await after.scheduler.runDue();
+
+    expect(await before.runs.get("run_5")).toMatchObject({ reason: "interrupted" });
+    expect(await before.runs.get("run_1")).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining('Workflow "review" failed: The engine stopped'),
     });
   });
 
