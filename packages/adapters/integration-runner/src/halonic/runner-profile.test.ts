@@ -1,8 +1,19 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { readRunnerArgs } from "../runner-args.ts";
 import { runnerCommand } from "./runner-command.ts";
-import { hiddenAround, type RunnerFiles, runnerProfile, socketFolders } from "./runner-profile.ts";
+import {
+  hiddenAround,
+  isInsideOrSame,
+  type RunnerDisk,
+  type RunnerFiles,
+  realRunnerPaths,
+  runnerProfile,
+  socketFolders,
+} from "./runner-profile.ts";
 
 /** A small file tree: each folder with its names. */
 const tree: Record<string, string[]> = {
@@ -13,7 +24,14 @@ const tree: Record<string, string[]> = {
   "/fake-home/.nvm/versions/node": ["v26.0.0", "v24.1.0"],
   "/shared-tmp": ["halonic-run-1", "someone-elses.sock"],
 };
+/** Symlinks in the tree, and where they point. */
+const links: Record<string, string> = {
+  "/fake-home/.nvm/alias": "/fake-home/.nvm/versions/node/v26.0.0",
+  "/fake-home/code/other-project": "/elsewhere/other-project",
+  "/var/run": "/run",
+};
 const listFolder = (folder: string) => tree[folder] ?? [];
+const disk: RunnerDisk = { listFolder, realPath: (path) => links[path] ?? path };
 
 const files: RunnerFiles = {
   node: "/fake-home/.nvm/versions/node/v26.0.0/bin/node",
@@ -30,7 +48,7 @@ const machine = {
 
 verifies("integration-runner.start", () => {
   describe("runnerProfile", () => {
-    const profile = runnerProfile(files, machine, listFolder);
+    const profile = runnerProfile(files, machine, disk);
 
     it("hides the home folder except the way to the integration and to Node", () => {
       expect(profile.deniedPaths).toEqual(
@@ -38,7 +56,6 @@ verifies("integration-runner.start", () => {
           "/fake-home/.ssh",
           "/fake-home/.config",
           "/fake-home/code/other-project",
-          "/fake-home/.nvm/alias",
           "/fake-home/.nvm/versions/node/v24.1.0",
         ]),
       );
@@ -50,6 +67,10 @@ verifies("integration-runner.start", () => {
       ]) {
         expect(profile.deniedPaths).not.toContain(kept);
       }
+    });
+
+    it("leaves a symlink into Node's folder, because hiding it would hide Node's folder too", () => {
+      expect(profile.deniedPaths).not.toContain("/fake-home/.nvm/alias");
     });
 
     it("hides the socket folders, except its own temp folder in a shared one", () => {
@@ -83,7 +104,7 @@ verifies("integration-runner.start", () => {
       ["integration's folder", { ...files, integrationFolder: "/shared-tmp" }, machine],
       ["temp folder", files, { ...machine, tempFolder: "/shared-tmp" }],
     ])("refuses a %s that is or holds a folder to hide", (name, someFiles, someMachine) => {
-      expect(() => runnerProfile(someFiles, someMachine, listFolder)).toThrow(`the ${name} `);
+      expect(() => runnerProfile(someFiles, someMachine, disk)).toThrow(`the ${name} `);
     });
 
     it("fails when a folder on the way to a kept path can't be listed", () => {
@@ -91,7 +112,9 @@ verifies("integration-runner.start", () => {
         if (folder === "/fake-home/code") throw new Error("EACCES");
         return listFolder(folder);
       };
-      expect(() => runnerProfile(files, machine, unreadable)).toThrow("EACCES");
+      expect(() => runnerProfile(files, machine, { ...disk, listFolder: unreadable })).toThrow(
+        "EACCES",
+      );
     });
 
     it("fails on disk when a folder on the way is missing", () => {
@@ -102,17 +125,99 @@ verifies("integration-runner.start", () => {
     });
   });
 
+  describe("realRunnerPaths", () => {
+    it("resolves every path, and keeps a folder to hide that doesn't exist as written", () => {
+      const missing = (path: string) => {
+        if (path === "/no-xdg") throw new Error("ENOENT");
+        return disk.realPath(path);
+      };
+      const real = realRunnerPaths(
+        { ...files, nodeFolder: "/fake-home/.nvm/alias" },
+        { ...machine, socketFolders: ["/run", "/var/run", "/no-xdg"] },
+        { ...disk, realPath: missing },
+      );
+      expect(real.files.nodeFolder).toBe("/fake-home/.nvm/versions/node/v26.0.0");
+      expect(real.machine.socketFolders).toEqual(["/run", "/no-xdg"]);
+    });
+
+    it("fails when a path the runner needs can't be resolved", () => {
+      const noRunner = (path: string) => {
+        if (path === files.runnerFile) throw new Error("ENOENT");
+        return path;
+      };
+      expect(() => realRunnerPaths(files, machine, { ...disk, realPath: noRunner })).toThrow(
+        `can't find the runner file ${files.runnerFile}`,
+      );
+    });
+  });
+
+  describe("runnerProfile on disk", () => {
+    // Node's folder through a symlink, as with `~/.nvm/current` or a Homebrew link.
+    const base = realpathSync.native(mkdtempSync(join(tmpdir(), "halonic-runner-profile-")));
+    afterAll(() => rmSync(base, { recursive: true, force: true }));
+    const home = join(base, "home");
+    const realNode = join(home, ".nvm", "versions", "node", "v26.0.0");
+    for (const folder of [
+      join(realNode, "bin"),
+      join(home, ".ssh"),
+      join(home, "code", "weather"),
+    ]) {
+      mkdirSync(folder, { recursive: true });
+    }
+    mkdirSync(join(base, "opt"));
+    mkdirSync(join(base, "run", "halonic-run-1"), { recursive: true });
+    writeFileSync(join(realNode, "bin", "node"), "");
+    writeFileSync(join(base, "opt", "runner.js"), "");
+    // A junction on Windows, which needs no admin rights; other systems ignore the type.
+    symlinkSync(realNode, join(home, ".nvm", "current"), "junction");
+    const linked = realRunnerPaths(
+      {
+        node: join(home, ".nvm", "current", "bin", "node"),
+        nodeFolder: join(home, ".nvm", "current"),
+        runnerFile: join(base, "opt", "runner.js"),
+        integrationFolder: join(home, "code", "weather"),
+      },
+      {
+        homeFolder: home,
+        socketFolders: [join(base, "run")],
+        tempFolder: join(base, "run", "halonic-run-1"),
+        timeLimitMs: 60_000,
+      },
+    );
+    const profile = runnerProfile(linked.files, linked.machine);
+
+    it("keeps Node's real folder readable and the symlink to it unhidden", () => {
+      expect(linked.files.nodeFolder).toBe(realNode);
+      expect(linked.files.node).toBe(join(realNode, "bin", "node"));
+      expect(profile.readOnlyPaths).toContain(realNode);
+      expect(profile.deniedPaths).toContain(join(home, ".ssh"));
+      expect(profile.deniedPaths).not.toContain(join(home, ".nvm", "current"));
+    });
+
+    it("denies no real place that is or holds a path the runner needs", () => {
+      const kept = [...profile.readOnlyPaths, profile.tempFolder];
+      for (const denied of profile.deniedPaths.flatMap((path) => [
+        path,
+        realpathSync.native(path),
+      ])) {
+        for (const path of kept) {
+          expect(isInsideOrSame(path, denied), `${denied} hides ${path}`).toBe(false);
+        }
+      }
+    });
+  });
+
   describe("hiddenAround", () => {
     it("hides a folder as a whole when nothing kept is inside it", () => {
-      expect(hiddenAround("/run", ["/fake-home/code/weather"], listFolder)).toEqual(["/run"]);
+      expect(hiddenAround("/run", ["/fake-home/code/weather"], disk)).toEqual(["/run"]);
     });
 
     it("hides nothing of a folder inside a kept one", () => {
-      expect(hiddenAround("/fake-home/code", ["/fake-home"], listFolder)).toEqual([]);
+      expect(hiddenAround("/fake-home/code", ["/fake-home"], disk)).toEqual([]);
     });
 
     it("doesn't take a sibling with a longer name for the kept folder", () => {
-      expect(hiddenAround("/fake-home/code", ["/fake-home/code/weath"], listFolder)).toEqual([
+      expect(hiddenAround("/fake-home/code", ["/fake-home/code/weath"], disk)).toEqual([
         "/fake-home/code/weather",
         "/fake-home/code/other-project",
       ]);

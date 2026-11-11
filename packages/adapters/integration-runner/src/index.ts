@@ -16,8 +16,10 @@ export {
   RunnerToolError,
 } from "./halonic/limits.ts";
 export {
+  type RunnerDisk,
   type RunnerFiles,
   type RunnerMachine,
+  realRunnerPaths,
   runnerProfile,
   socketFolders,
 } from "./halonic/runner-profile.ts";

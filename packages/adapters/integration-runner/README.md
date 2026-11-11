@@ -46,7 +46,9 @@ must be stopped with exactly one block, or answered without stopping, and never 
   and no loopback bridge, writes only to a fresh temp folder, and an environment of `TMPDIR`
   alone. It hides the home folder and the socket folders (`socketFolders`). A profile can't allow
   a path inside a hidden one, so when Node or the integration is inside such a folder, every other
-  entry on the way is hidden instead. Node runs with `--permission`, reading only the runner and
+  entry on the way is hidden instead. The fence denies a path's real place too, so every path is
+  resolved first (`realRunnerPaths`), and a symlink into what the runner needs, such as
+  `~/.nvm/current`, is left unhidden. Node runs with `--permission`, reading only the runner and
   the integration's folder. Each start has a fresh nonce. The connection carries the session's
   fence proof (`fence`), what the fence refuses is reported through `onBlocked` as a `fence`
   block, and the session closes when the runner stops for any reason.

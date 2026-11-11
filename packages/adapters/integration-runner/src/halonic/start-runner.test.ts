@@ -82,6 +82,21 @@ class FakeSandbox implements Sandbox {
 
 const folder = "/work/integrations/weather";
 
+/** Symlinks on the fake disk, and where they point. */
+const links: Record<string, string> = {
+  "/usr/local/node": "/usr",
+  "/work/linked-weather": folder,
+  [`${folder}/linked-entry.js`]: "/work/integrations/other/index.js",
+};
+/** Resolves a link anywhere on the path, as `realpath` does. */
+function realPath(path: string): string {
+  for (const [link, target] of Object.entries(links)) {
+    if (path === link || path.startsWith(`${link}/`)) return target + path.slice(link.length);
+  }
+  return path;
+}
+const fakeDisk = { listFolder: () => [], realPath };
+
 function startOptions(sandbox: FakeSandbox): StartRunnerOptions & { blocks: unknown[] } {
   const { process: _process, nonce: _nonce, ...connect } = bridgeOptions(fakeRunnerProcess());
   return {
@@ -94,6 +109,7 @@ function startOptions(sandbox: FakeSandbox): StartRunnerOptions & { blocks: unkn
       integrationFolder: folder,
     },
     entry: { file: `${folder}/index.js`, exportName: "weather" },
+    disk: fakeDisk,
     machine: {
       homeFolder: "/fake-home",
       socketFolders: ["/run"],
@@ -202,6 +218,45 @@ verifies("integration-runner.start", () => {
           startRunner({ ...options, entry: { file, exportName: "weather" } }),
         ).rejects.toThrow(/not inside its folder/);
       }
+      expect(sandbox.profiles).toHaveLength(0);
+    });
+
+    it("starts the runner from the real paths", async () => {
+      const sandbox = new FakeSandbox();
+      const options = startOptions(sandbox);
+      const { connection } = await started(sandbox, {
+        ...options,
+        files: {
+          ...options.files,
+          nodeFolder: "/usr/local/node",
+          integrationFolder: "/work/linked-weather",
+        },
+        entry: { file: "/work/linked-weather/index.js", exportName: "weather" },
+      });
+      expect(sandbox.profiles[0]?.readOnlyPaths).toEqual([
+        "/usr",
+        "/opt/halonic/runner.js",
+        folder,
+      ]);
+      expect(sandbox.commands[0]?.args.slice(2)).toEqual([
+        `--allow-fs-read=${folder}`,
+        "/opt/halonic/runner.js",
+        sandbox.lastNonce(),
+        `${folder}/index.js`,
+        "weather",
+      ]);
+      await connection.close();
+    });
+
+    it("opens no session for an entry file that links out of the integration's folder", async () => {
+      const sandbox = new FakeSandbox();
+      const options = startOptions(sandbox);
+      await expect(
+        startRunner({
+          ...options,
+          entry: { file: `${folder}/linked-entry.js`, exportName: "weather" },
+        }),
+      ).rejects.toThrow(/not inside its folder/);
       expect(sandbox.profiles).toHaveLength(0);
     });
 
