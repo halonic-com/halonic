@@ -197,16 +197,18 @@ catch (e) { console.log("blocked:" + e.code); }
   const acl1 = acl();
   const s2 = await op(sessionB, b, "read", join(a, "a.txt"));
   const s2never = await op(sessionB, b, "read", join(never, "c.txt"));
-  const s2b = await op(sessionBDenyA, b, "read", join(a, "a.txt"));
-  const acl2b = acl();
   // HAL-5432: A keeps sandbox-runtime-users (M) after session 1, so a session
   // on B could also write there unless srt's write-restricted token stops it.
+  // Before the deny session, whose deny stays on A and would block it anyway.
   // Checked from outside too, so a quiet success can't pass as a block.
   writeFileSync(join(a, "victim.txt"), "keep");
   const s2w = await op(sessionB, b, "write", join(a, "b-wrote.txt"));
   const s2d = await op(sessionB, b, "delete", join(a, "victim.txt"));
   const wroteA = existsSync(join(a, "b-wrote.txt"));
   const deletedA = !existsSync(join(a, "victim.txt"));
+  const aclWrite = acl();
+  const s2b = await op(sessionBDenyA, b, "read", join(a, "a.txt"));
+  const acl2b = acl();
   const s3 = await op(sessionA, a, "write", join(a, "a3.txt"));
   const acl3 = acl();
   if (s1 === "ok") {
@@ -250,7 +252,7 @@ catch (e) { console.log("blocked:" + e.code); }
   } else {
     record("C3 kept grants", "session 1 writes in A", "INCONCLUSIVE", s1);
   }
-  const acls = `before: ${aclBefore} || after 1: ${acl1} || after 2b: ${acl2b} || after 3: ${acl3}`;
+  const acls = `before: ${aclBefore} || after 1: ${acl1} || after 2 writes: ${aclWrite} || after 2b: ${acl2b} || after 3: ${acl3}`;
   record("C3 kept grants", "A's ACL per step", "INFO", acls);
 }
 
