@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: engine answer point 4, the seventh skip reason (HAL-3267); flow-routines rev 20, 2.4 and 3.9; HAL-3246 step 4b-2
 
-`LiveRoutines.targetUnavailable` shall answer the routine scheduler's `targetUnavailable` check (`app.scheduler-skip-target-unavailable`) from the live version and the saved files: `never-live` when the routine's target, the workflow or agent it starts in the hub it names or its own, isn't in the live version but is saved; `in-trash` when the target is in the live version but no saved file is at its path; otherwise `null`, so the run starts. A target that is neither live nor saved, such as a misspelt id, shall give `null`, so the run fails on its own as before. With history off, or with nothing live yet, it shall give `null`.
+The `LiveRoutines.targetUnavailable` method shall answer the routine scheduler's `targetUnavailable` check (`app.scheduler-skip-target-unavailable`) from the live version and the saved files: `never-live` when the routine's target, the workflow or agent it starts in the hub it names or its own, isn't in the live version but is saved; `in-trash` when the target is in the live version but no saved file is at its path; otherwise `null`, so the run starts. Here `never-live` means the target isn't in the current live version, so a target removed in a later version and then saved again also gives `never-live` ("isn't live yet"). A target that is neither live nor saved, such as a misspelt id, shall give `null`, so the run fails on its own as before. With history off, or with nothing live yet, it shall give `null`.
 
 ## Examples
 
