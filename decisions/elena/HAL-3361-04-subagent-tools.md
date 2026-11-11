@@ -2,6 +2,7 @@
 
 - Approval: PR 4 of the design Liam reviewed and approved on [HAL-4700](/HAL/issues/HAL-4700) for [HAL-3361](/HAL/issues/HAL-3361); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZGrl+t/93XMegv7PL4vWJ+3QqHhY8LDLsdmsPui/Q39PjMV5uxHdeIZNpG3T1LVr1lBrLsZyXskinUUsK/OYAQ==
 - Task: HAL-3361
 
 ## What changes
