@@ -13,7 +13,10 @@
   there are any, with the launch, for pinned and unpinned connectors alike.
 - `mcp.program-starter` gains one sentence and one example: the Node starter refuses a launch
   that `format.working-folder-start` finds reaching a working folder, before anything starts,
-  and checks again with the program as it found it on `PATH`.
+  and checks again with the program as it found it on `PATH`. Like the skill `scripts/` check
+  since HAL-4777, it reads only the `env` values the connector file sets (`checkedEnv`), not
+  the app's own variables or the secret values: those aren't workspace content, and a piece of
+  a secret value must never appear in the refusal message.
 
 ## Why
 

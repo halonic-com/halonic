@@ -176,6 +176,22 @@ verifies("mcp.program-starter", () => {
       await expect(nodeProgramStarter.start(launch)).rejects.toThrow("in the agent working folder");
     });
 
+    it("refuses a value the connector file writes that names a working folder", async () => {
+      const authored = { NODE_OPTIONS: `--require ${join(folder, "files/agents/coder/hook.js")}` };
+      const launch = await guarded({ ...node("", authored), checkedEnv: authored });
+      await expect(nodeProgramStarter.start(launch)).rejects.toThrow("in the agent working folder");
+    });
+
+    it.each([
+      ["an inherited PATH entry", "PATH"],
+      ["a secret value", "ACME_TOKEN"],
+    ])("starts with %s in a working folder, as only checkedEnv is read", async (_, name) => {
+      const coder = join(folder, "files/agents/coder");
+      const env = { [name]: [coder, dirname(process.execPath)].join(delimiter) };
+      const program = await nodeProgramStarter.start(await guarded(node("process.exit(0)", env)));
+      expect(await stopProgram(program, 5000)).toEqual({ code: 0, signal: null });
+    });
+
     it("starts a program that reaches no working folder", async () => {
       const launch = await guarded(node("process.exit(0)"));
       const program = await nodeProgramStarter.start(launch);
