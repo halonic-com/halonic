@@ -1,6 +1,6 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
-import type { ConnectorTool, ToolRisk } from "@halonicjs/ports";
+import type { ChatRequest, ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
@@ -76,9 +76,11 @@ function eventsOf(runs: KernelRuns, type: string): RunEvent[] {
   return (runs.logs.get("run_1") ?? []).filter((event) => event.type === type);
 }
 
-/** The tool message for `toolCallId` in the model's request at `index`. */
-function resultIn(requests: { messages: { toolCallId?: string }[] }[], index: number, id: string) {
-  return requests[index]?.messages.find((message) => message.toolCallId === id);
+/** The tool message for the call `id` in the model's request at `index`. */
+function resultIn(requests: readonly ChatRequest[], index: number, id: string) {
+  return requests[index]?.messages.find(
+    (message) => message.role === "tool" && message.toolCallId === id,
+  );
 }
 
 /** A workflow whose one `parallel` branch is the `writer`'s. */
