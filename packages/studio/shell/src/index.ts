@@ -341,6 +341,8 @@ export {
   type ToolbarSaveNoteProps,
 } from "./toolbar/toolbar-save-note.tsx";
 export { loadView, type ViewRef } from "./view.ts";
+export { Welcome, type WelcomeOpenProblem, type WelcomeProps } from "./welcome/welcome.tsx";
+export { WelcomeWindow, type WelcomeWindowProps } from "./welcome/welcome-window.tsx";
 export {
   type MountedStudioWindow,
   mountStudioWindow,
