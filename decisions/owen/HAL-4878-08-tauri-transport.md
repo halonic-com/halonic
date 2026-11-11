@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4878](/HAL/issues/HAL-4878)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6rmGgZGIlXuFt0sQDmqWOd7so82fn0HQLfWyAnFALOPSZwOE60KZ5pvJX5jHc/CKBB/DTIyHXwfYrd2tNaHbBw==
 
 `services.tauri-ipc` said that `tauriIpc` is the only code that reads
 Tauri's internal `__TAURI_INTERNALS__`. Reading the shell's agent host
