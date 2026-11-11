@@ -169,7 +169,7 @@ onto the sheet's one secret, so an integration ignores
 ## Testing
 
 Every integration runs the conformance suite from
-`@halonicjs/testing-integration` on recorded responses; no test reaches the
+`@halonicjs/testing/integration` on recorded responses; no test reaches the
 network. See its README for the call.
 
 Recordings are `halonic.recording/1` files, one scenario each, written by
@@ -183,7 +183,8 @@ guard run over recordings in CI.
 
 ## How the integrations repo gets the kit
 
-`@halonicjs/integration-kit` and `@halonicjs/testing-integration` are
+`@halonicjs/adapters` (imported as `@halonicjs/adapters/integration-kit`)
+and `@halonicjs/testing` (imported as `@halonicjs/testing/integration`) are
 published from the main repo's CI with npm trusted publishing and
 provenance. The integrations repo pins exact versions and installs with a
 frozen lockfile (ADR, section 4).

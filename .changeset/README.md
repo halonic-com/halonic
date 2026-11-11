@@ -30,9 +30,9 @@ The version starts at `0.1.0`, not `0.0.0`: Tauri derives the Android
 `versionCode` from it and refuses `0.0.0`, which would make the code 0.
 
 Private packages are versioned only when their `package.json` has a
-`version`: the Studio app and the two packages `tooling/publish` ships to
-npm (`@halonicjs/adapter-integration-kit`, `@halonicjs/testing-integration`).
-Don't add one to other packages.
+`version`: the Studio app. Don't add one to other packages. The npm
+packages `tooling/publish` builds, one per layer, carry their version in
+`tooling/publish/layers/<layer>/layer.json`, outside changesets.
 
 ## Releasing
 

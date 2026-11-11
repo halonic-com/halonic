@@ -1,14 +1,18 @@
-# @halonicjs/integration-kit
+# @halonicjs/adapters
 
-What an integration for [Halonic](https://github.com/halonic-com/halonic)
-imports: the port types, `runTool` and the errors the host raises. It has no
-dependencies, so it adds nothing but itself to an integration's cloud bundle.
+[Halonic](https://github.com/halonic-com/halonic)'s adapters for code outside
+the engine. Each part is a subpath of this package. This version has one:
+
+- **`@halonicjs/adapters/integration-kit`**: what an integration imports.
+
+It has no dependencies, so it adds nothing but the code an integration
+imports to its cloud bundle.
 
 ```sh
-npm install --save-exact @halonicjs/integration-kit
+npm install --save-exact @halonicjs/adapters
 ```
 
-## What it holds
+## `@halonicjs/adapters/integration-kit`
 
 - **The port types:** `Integration`, `IntegrationHost`, `IntegrationTool`,
   `IntegrationHttpClient`, `TokenStore`, the model provider types
@@ -28,7 +32,7 @@ HTTP client limited to the hosts and secrets of its permission sheet, its
 tokens and `host.wait`. It never uses `fetch`, timers or Node APIs itself.
 
 ```ts
-import { type Integration, runTool } from "@halonicjs/integration-kit";
+import { type Integration, runTool } from "@halonicjs/adapters/integration-kit";
 
 export const weather: Integration = {
   name: "tool-weather",
@@ -47,9 +51,9 @@ export const weather: Integration = {
 
 ## Versions
 
-Use the exact version of `@halonicjs/testing-integration`, the conformance
-suite, that matches this package. Both are released together with the same
-version number.
+Use the exact version of `@halonicjs/testing`, whose
+`@halonicjs/testing/integration` is the conformance suite, that matches this
+package. Both are released together with the same version number.
 
 ## More
 

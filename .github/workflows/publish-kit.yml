@@ -1,8 +1,10 @@
-# Publishes @halonicjs/integration-kit and @halonicjs/testing-integration to
-# npm, so the integrations repo can run the conformance suite in its own CI.
+# Publishes the layer packages @halonicjs/adapters and @halonicjs/testing to
+# npm (one package per layer, HAL-5149), so the integrations repo can import
+# @halonicjs/adapters/integration-kit and run the conformance suite
+# @halonicjs/testing/integration in its own CI.
 #
 # KEEP THIS FILE NAME. It is entered in the npm trusted-publisher settings of
-# both packages (repository halonic-com/halonic, workflow publish-kit.yml,
+# the packages (repository halonic-com/halonic, workflow publish-kit.yml,
 # no environment). Renaming it stops every publish.
 #
 # No npm token exists anywhere. npm trusts this workflow's identity (OIDC) and
@@ -10,15 +12,17 @@
 # checks out nothing and runs no repo code, only the tarballs the `pack` job
 # made, so a dependency in the build can never reach the identity.
 #
-# It runs on every push to `main` that changes either package's
-# `package.json`, but it only publishes a package whose `version` field
-# differs from the one before the push. A push that changes dependencies, exports
-# or the description stops in the `pack` job, before any build, and stages
-# nothing. It can also be run by hand from the Actions tab, on `main`, where
-# `dry_run` is on by default: it builds and checks the tarballs and stops
-# short of `npm publish`. A run by hand always builds both packages. It never
-# runs on pull requests. A version already on npm is skipped, so a run can be
-# repeated after a partial failure.
+# It runs on every push to `main` that changes a layer package's
+# `tooling/publish/layers/<layer>/layer.json`, but it only publishes when a
+# `version` field differs from the one before the push. A push that changes
+# dependencies or the description stops in the `pack` job, before any build,
+# and stages nothing. So does a push that adds a new layer package: its first
+# version is staged by a run by hand, once its trusted publisher is set up on
+# npm. A run by hand works on `main` only, where `dry_run` is on by default:
+# it builds and checks the tarballs and stops short of `npm publish`. A run by
+# hand always builds every layer package. It never runs on pull requests. A
+# version already on npm is skipped, so a run can be repeated after a partial
+# failure.
 #
 # The trusted publisher on npm allows `npm stage publish` only, so a run puts
 # the version in npm's staging area. It is not public until a person approves
@@ -26,7 +30,7 @@
 # answers 409 "Cannot stage previously published version" when a version is
 # staged again. The run treats that as a skip, not a failure.
 #
-# So merging a pull request that changes either package's `version` is
+# So merging a pull request that changes a layer package's `version` is
 # a release, and so is a run by hand with `dry_run` off. Releases need the
 # board's yes: ask through a task for Chief, and merge or run only once the
 # user has approved.
@@ -37,8 +41,7 @@ on:
   push:
     branches: [main]
     paths:
-      - packages/adapters/integration-kit/package.json
-      - packages/testing/integration/package.json
+      - tooling/publish/layers/*/layer.json
   workflow_dispatch:
     inputs:
       dry_run:
@@ -91,11 +94,13 @@ jobs:
           fi
           git fetch --no-tags --depth=1 origin "$BEFORE" || true
           changed=false
-          for file in packages/adapters/integration-kit/package.json packages/testing/integration/package.json; do
+          for file in tooling/publish/layers/*/layer.json; do
             now=$(node -p 'require("./" + process.argv[1]).version' "$file")
             before=$(git show "$BEFORE:$file" 2>/dev/null | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version' 2>/dev/null || echo none)
             echo "$file: $before -> $now"
-            if [ "$before" != "$now" ]; then
+            # A layer package new on `main` is first staged by a run by hand,
+            # once its trusted publisher is set up on npm.
+            if [ "$before" != none ] && [ "$before" != "$now" ]; then
               changed=true
             fi
           done
@@ -111,16 +116,16 @@ jobs:
           cache: false
       - run: pnpm install --frozen-lockfile
         if: steps.version.outputs.changed == 'true'
-      - name: Stage both packages
+      - name: Stage the layer packages
         if: steps.version.outputs.changed == 'true'
-        run: pnpm turbo run build --filter=@halonicjs/adapter-integration-kit --filter=@halonicjs/testing-integration
+        run: pnpm --filter @halonicjs/tooling-publish stage adapters testing
       - name: Pack, in the order they publish
         if: steps.version.outputs.changed == 'true'
         run: |
           mkdir -p tarballs
-          # The kit first: the conformance suite depends on it.
-          (cd packages/adapters/integration-kit/dist/package && npm pack --pack-destination ../../../../../tarballs)
-          (cd packages/testing/integration/dist/package && npm pack --pack-destination ../../../../../tarballs)
+          # The adapters first: the testing package depends on them.
+          (cd tooling/publish/dist/adapters && npm pack --pack-destination ../../../../tarballs)
+          (cd tooling/publish/dist/testing && npm pack --pack-destination ../../../../tarballs)
           ls -l tarballs
       - name: Check what is in the tarballs
         if: steps.version.outputs.changed == 'true'
@@ -143,7 +148,7 @@ jobs:
             node -e '
               const m = JSON.parse(require("node:fs").readFileSync("manifest.json", "utf8"));
               const own = Object.keys({ ...m.dependencies, ...m.peerDependencies }).filter((n) => n.startsWith("@halonicjs/"));
-              const allowed = ["@halonicjs/integration-kit"];
+              const allowed = ["@halonicjs/adapters"];
               const bad = own.filter((n) => !allowed.includes(n));
               if (m.private || m.version === undefined || bad.length > 0) {
                 console.error("Bad manifest for " + m.name + ": private, no version or an unpublished dependency: " + bad);
@@ -188,13 +193,13 @@ jobs:
         with:
           name: kit-tarballs
           path: tarballs
-      - name: Publish, kit first
+      - name: Publish, adapters first
         env:
           # Only a run by hand can be a dry run; a push publishes.
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
-          # Alphabetical order would put the suite before the kit it needs.
-          for tarball in ./tarballs/halonicjs-integration-kit-*.tgz ./tarballs/halonicjs-testing-integration-*.tgz; do
+          # The testing package needs the adapters, so they go first.
+          for tarball in ./tarballs/halonicjs-adapters-*.tgz ./tarballs/halonicjs-testing-*.tgz; do
             name=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).name')
             version=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
             if npm view "$name@$version" version > /dev/null 2>&1; then

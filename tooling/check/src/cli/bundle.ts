@@ -5,6 +5,11 @@ import type { DependencyList, Policy } from "../lib/context.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
 
+/** The npm package of a published import path: `@scope/name/subpath` gives `@scope/name`. */
+function layerPackageOf(publishedName: string | undefined): string | undefined {
+  return publishedName?.split("/").slice(0, 2).join("/");
+}
+
 /**
  * pnpm check:bundle --target <cloud> <metafile> …
  *
@@ -32,10 +37,11 @@ function main(argv: readonly string[]): number {
     runtime,
     dependencyList: readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),
     // Our own code under its workspace name or, installed from npm, under
-    // the name it is published as.
+    // the layer package it is published in (`@halonicjs/adapters` for
+    // `@halonicjs/adapters/integration-kit`).
     workspacePackages: new Set(
       listWorkspacePackages(root).flatMap((pkg) =>
-        [pkg.manifest.name, pkg.manifest.halonic?.publish?.name].filter(
+        [pkg.manifest.name, layerPackageOf(pkg.manifest.halonic?.publish?.name)].filter(
           (name): name is string => name !== undefined,
         ),
       ),

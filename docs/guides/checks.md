@@ -460,10 +460,11 @@ change, so it needs Liam's review.
 
 `published` in `policy.json` lists every package that reaches npm. The CLI
 `halonic` is published as it is. A package with `halonic.publish` in its
-`package.json` stays `private` in the workspace, and
-[tooling/publish](../../tooling/publish/README.md) stages the copy that
-goes to npm; such a package must be listed too, or `packages` fails. Adding
-a name needs Liam's review.
+`package.json` stays `private` in the workspace and becomes one subpath of
+its layer's npm package, such as `@halonicjs/adapters/integration-kit`;
+[tooling/publish](../../tooling/publish/README.md) stages that package.
+Such a package must be listed too, or `packages` fails. Adding a name
+needs Liam's review.
 
 ## Ignoring an advisory
 

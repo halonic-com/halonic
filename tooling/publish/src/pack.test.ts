@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { build } from "esbuild";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { stagePackage } from "./stage.ts";
+import { stageLayer } from "./stage.ts";
 
 // Packs both packages the way the release does and installs the tarballs
 // into a fresh folder outside the workspace, so nothing resolves through a
@@ -34,9 +34,13 @@ function run(command: string, args: string[], cwd: string): string {
   return result.stdout;
 }
 
-/** Stages and packs a workspace package, then unpacks the tarball into the consumer's node_modules. */
-function install(packageFolder: string, name: string): void {
-  const staged = stagePackage(root, join(root, packageFolder), join(scratch, name));
+/** Stages and packs a layer package, then unpacks the tarball into the consumer's node_modules. */
+function install(layer: string): void {
+  const staged = stageLayer(
+    root,
+    join(root, "tooling/publish/layers", layer),
+    join(scratch, layer),
+  );
   const tarballs = join(scratch, "tarballs");
   mkdirSync(tarballs, { recursive: true });
   const tarball = run("npm", ["pack", "--silent", "--pack-destination", tarballs], staged.directory)
@@ -59,8 +63,8 @@ function linkFromWorkspace(name: string, installedIn: string): void {
 beforeAll(() => {
   mkdirSync(join(consumer, "node_modules"), { recursive: true });
   writeFileSync(join(consumer, "package.json"), '{ "private": true, "type": "module" }\n');
-  install("packages/adapters/integration-kit", "kit");
-  install("packages/testing/integration", "suite");
+  install("adapters");
+  install("testing");
   linkFromWorkspace("zod", "packages/core/schema-kit");
   linkFromWorkspace("yaml", "packages/core/yaml");
   linkFromWorkspace("vitest", "tooling/publish");
@@ -69,8 +73,8 @@ beforeAll(() => {
 verifies("publish.packed-import", () => {
   it("imports the packed kit and suite from a fresh folder, with one copy of the error classes", () => {
     const script = `
-      import * as kit from "@halonicjs/integration-kit";
-      import * as suite from "@halonicjs/testing-integration";
+      import * as kit from "@halonicjs/adapters/integration-kit";
+      import * as suite from "@halonicjs/testing/integration";
       console.log(JSON.stringify({
         runTool: typeof kit.runTool,
         timeoutError: typeof kit.IntegrationTimeoutError,
@@ -86,7 +90,7 @@ verifies("publish.packed-import", () => {
       pluginConformance: "function",
     });
 
-    const suiteFiles = readdirSync(join(consumer, "node_modules/@halonicjs/testing-integration"), {
+    const suiteFiles = readdirSync(join(consumer, "node_modules/@halonicjs/testing"), {
       recursive: true,
       encoding: "utf8",
     });
@@ -98,8 +102,8 @@ verifies("publish.packed-import", () => {
   it("type-checks code that uses the packed packages", () => {
     writeFileSync(
       join(consumer, "use.ts"),
-      `import { IntegrationTimeoutError, maxIntegrationWaitMs, runTool } from "@halonicjs/integration-kit";
-import { describeIntegrationConformance } from "@halonicjs/testing-integration";
+      `import { IntegrationTimeoutError, maxIntegrationWaitMs, runTool } from "@halonicjs/adapters/integration-kit";
+import { describeIntegrationConformance } from "@halonicjs/testing/integration";
 
 export const timeout: Error = new IntegrationTimeoutError("example.com took too long");
 export const wait: number = maxIntegrationWaitMs;
@@ -131,7 +135,7 @@ export { describeIntegrationConformance, runTool };
   it("bundles an integration that uses the kit into a cloud bundle check:bundle accepts", async () => {
     writeFileSync(
       join(consumer, "integration.ts"),
-      `import { IntegrationRefusedError, runTool } from "@halonicjs/integration-kit";
+      `import { IntegrationRefusedError, runTool } from "@halonicjs/adapters/integration-kit";
 export default { runTool, IntegrationRefusedError };
 `,
     );

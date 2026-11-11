@@ -1,7 +1,6 @@
 {
   "name": "@halonicjs/testing-integration",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
   "description": "The conformance suite every integration runs against recorded responses, with its attack cases: an undeclared host, a file or a leaked key must fail. Published for the integrations repo.",
   "exports": {
@@ -10,8 +9,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run",
-    "build": "node ../../../tooling/publish/src/cli/stage.ts ."
+    "test": "vitest run"
   },
   "dependencies": {
     "@halonicjs/adapter-integration-kit": "workspace:*",
@@ -25,7 +23,6 @@
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
-    "@halonicjs/tooling-publish": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
@@ -38,18 +35,7 @@
       "branches": 85
     },
     "publish": {
-      "name": "@halonicjs/testing-integration",
-      "aliases": {
-        "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit"
-      },
-      "dependencies": {
-        "@halonicjs/integration-kit": "0.1.0",
-        "yaml": "2.9.1",
-        "zod": "4.6.7"
-      },
-      "peerDependencies": {
-        "vitest": "^5.1.0"
-      }
+      "name": "@halonicjs/testing/integration"
     }
   }
 }

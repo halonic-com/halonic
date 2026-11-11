@@ -2,14 +2,14 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1216 (build the integration kit and the conformance suite for npm)
+- Source: HAL-1216 (build the integration kit and the conformance suite for npm), HAL-5213 (one npm package per layer)
 
-The packed tarballs of the integration kit and the conformance suite shall install into a folder outside the workspace and import and type-check there with only their declared dependencies. The suite shall use the installed kit for the error classes and hold no copy of the kit's integration entry. An integration that imports the kit, bundled for a cloud runtime, shall pass `check:bundle`.
+The packed tarballs of `@halonicjs/adapters` and `@halonicjs/testing` shall install into a folder outside the workspace and import and type-check there with only their declared dependencies. The conformance suite shall use the installed kit for the error classes and hold no copy of the kit's integration entry. An integration that imports the kit, bundled for a cloud runtime, shall pass `check:bundle`.
 
 ## Examples
 
 - Given both tarballs installed into an empty folder with `zod` and `vitest`,
-  when a module imports `@halonicjs/integration-kit` and `@halonicjs/testing-integration`,
+  when a module imports `@halonicjs/adapters/integration-kit` and `@halonicjs/testing/integration`,
   then `runTool`, `IntegrationTimeoutError` and `describeIntegrationConformance` are functions.
 - Given code in that folder that assigns `maxIntegrationWaitMs` to a string,
   when it is type-checked,

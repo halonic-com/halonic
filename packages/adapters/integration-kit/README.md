@@ -4,7 +4,7 @@ The integration interface: builds the
 `IntegrationHost` an integration gets, with an `HttpClient` limited to the
 hosts and secrets of its permission sheet. Web types only, so it runs on
 Node, in the Worker and in the browser. Published as
-`@halonicjs/integration-kit` for the `halonic-com/integrations` repo (see
+`@halonicjs/adapters/integration-kit` for the `halonic-com/integrations` repo (see
 [the integration interface ADR](../../../docs/adr/2026-11-08-integration-interface.md)).
 
 - **Layer:** adapters
@@ -15,7 +15,7 @@ Node, in the Worker and in the browser. Published as
 ## Two entries
 
 - **The integration entry** (`./integration`, published as
-  `@halonicjs/integration-kit`) is all that integration code imports: the
+  `@halonicjs/adapters/integration-kit`) is all that integration code imports: the
   port types (`Integration`, `IntegrationHost`, `IntegrationTool`, the model
   and knowledge provider types), `maxIntegrationWaitMs`,
   `ToolImplementation` and `runTool`, and the two error classes. It ends up
@@ -29,7 +29,7 @@ Node, in the Worker and in the browser. Published as
   integration matches what the host throws.
 
 ```ts
-import { type Integration, runTool } from "@halonicjs/integration-kit";
+import { type Integration, runTool } from "@halonicjs/adapters/integration-kit";
 
 export const gmail: Integration = {
   name: "tool-google-gmail",
@@ -52,7 +52,7 @@ lives in [`examples/run-a-tool-on-a-fake-host.ts`](examples/run-a-tool-on-a-fake
 is typechecked and run by `src/example.test.ts`; keep this copy in step with it. The file imports
 the two entries by path, because a package may not import itself by name; outside this package,
 the host side is `@halonicjs/adapter-integration-kit` and the integration entry is
-`@halonicjs/integration-kit`. Nothing in it touches the network, and the key is made up.
+`@halonicjs/adapters/integration-kit`. Nothing in it touches the network, and the key is made up.
 
 ```ts
 import type { HttpClient, Secrets, TokenStore } from "@halonicjs/ports";
@@ -63,7 +63,7 @@ import {
   type IntegrationHttpClient,
   runTool,
   type ToolImplementation,
-} from "@halonicjs/integration-kit";
+} from "@halonicjs/adapters/integration-kit";
 
 // A made-up integration: one tool that reads a forecast from a made-up service.
 interface ForecastArguments {

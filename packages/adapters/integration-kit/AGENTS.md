@@ -8,7 +8,7 @@ The integration interface: the IntegrationHost an integration gets, with an Http
 
 This package may change only through tasks that name it. Its public API is the `exports` map in `package.json`:
 `src/index.ts` (the host side) and `src/integration/index.ts` (the integration entry, published as
-`@halonicjs/integration-kit`); everything else is internal.
+`@halonicjs/adapters/integration-kit`); everything else is internal.
 
 ## Commands
 

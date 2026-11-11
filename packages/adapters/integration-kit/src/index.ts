@@ -1,6 +1,6 @@
 // The host side of @halonicjs/adapter-integration-kit: the loader, the host
 // and its limited client, for Halonic itself. It isn't published; the
-// integration entry (`./integration`) is, as @halonicjs/integration-kit.
+// integration entry (`./integration`) is, as @halonicjs/adapters/integration-kit.
 // The host side takes the error classes from the integration entry, so there
 // is one copy of each. The npm build (tooling/publish) keeps that entry
 // outside the conformance suite's bundle and points it at the published kit;

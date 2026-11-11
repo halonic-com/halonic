@@ -875,9 +875,6 @@ importers:
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
-      '@halonicjs/tooling-publish':
-        specifier: workspace:*
-        version: link:../../../tooling/publish
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
@@ -2030,9 +2027,6 @@ importers:
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
-      '@halonicjs/tooling-publish':
-        specifier: workspace:*
-        version: link:../../../tooling/publish
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6

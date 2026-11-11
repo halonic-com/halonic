@@ -1,0 +1,13 @@
+{
+  "name": "@halonicjs/testing",
+  "version": "0.1.0",
+  "description": "Halonic's test suites for code outside the engine. @halonicjs/testing/integration is the conformance suite every integration runs against recorded responses, with its attack cases.",
+  "dependencies": {
+    "@halonicjs/adapters": "0.1.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "vitest": "^5.1.0"
+  }
+}

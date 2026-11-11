@@ -1,19 +1,18 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveFolder, stagePackage } from "../stage.ts";
+import { stageLayer } from "../stage.ts";
+import { findLayers, layersDirectory } from "../workspace.ts";
 
 /**
- * Builds the publishable copy of each package folder given: `pnpm
- * --filter <package> build` runs it for one package. Prints the staged
+ * Builds the publishable copy of each layer package given by its layer
+ * (`adapters`, `testing`), or of every layer package when none is given:
+ * `pnpm --filter @halonicjs/tooling-publish stage`. Prints the staged
  * folder, name and version.
  */
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
-const folders = process.argv.slice(2);
-if (folders.length === 0) {
-  console.error("stage: give at least one package folder.");
-  process.exitCode = 1;
-}
-for (const folder of folders) {
-  const staged = stagePackage(root, resolveFolder(folder));
+const given = process.argv.slice(2);
+const layers = given.length > 0 ? given : findLayers(root).map((config) => config.layer);
+for (const layer of layers) {
+  const staged = stageLayer(root, join(layersDirectory(root), layer));
   console.log(`stage: ${staged.name}@${staged.version} -> ${staged.directory}`);
 }

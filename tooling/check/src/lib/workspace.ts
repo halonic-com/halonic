@@ -20,7 +20,11 @@ export interface PackageJson {
     readonly coverage?: unknown;
     /** Where an adapter runs: `node`, `web`, `workers` or `any`. */
     readonly runtime?: string;
-    /** How the package is published to npm; `name` may differ from the workspace name. */
+    /**
+     * Where the package is published to npm: `name` is the import path, the
+     * layer package with a subpath (`@halonicjs/adapters/integration-kit`),
+     * and `entry` the subpath of `exports` published there (default `.`).
+     */
     readonly publish?: { readonly name?: string; readonly entry?: string };
   };
 }

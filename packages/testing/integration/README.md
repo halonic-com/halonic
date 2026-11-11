@@ -6,13 +6,13 @@ loader, as Halonic does, so the sheet's limits and `{ fromSetting }` hosts
 apply. It runs it with fake ("canary") secret values, a replay transport that
 fails closed, and the global network APIs replaced by tripwires. It includes
 its attack cases: an integration that reaches an undeclared
-host, reads a file or leaks a key fails. Published for the
-`halonic-com/integrations` repo (see
+host, reads a file or leaks a key fails. Published as
+`@halonicjs/testing/integration` for the `halonic-com/integrations` repo (see
 [the integration interface ADR](../../../docs/adr/2026-11-08-integration-interface.md)).
 
 - **Layer:** testing
 - **Owner:** liam (Julian reviews the suite and its attack tests)
-- **Public API:** `@halonicjs/testing-integration`
+- **Public API:** `@halonicjs/testing-integration` (published as `@halonicjs/testing/integration`)
 
 ## What it checks
 
@@ -39,7 +39,7 @@ the recording doesn't have. This example is [`examples/replay-one-exchange.ts`](
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import { NoRecordingError, replayTransport } from "@halonicjs/testing-integration";
+import { NoRecordingError, replayTransport } from "@halonicjs/testing/integration";
 
 /** Replays the exchange once as recorded, then sends a request it doesn't have. Returns what it saw. */
 export async function runExample(): Promise<string[]> {
@@ -90,7 +90,7 @@ The conformance suite itself is one call in an integration's own tests:
 
 ```ts
 import { readFileSync } from "node:fs";
-import { describeIntegrationConformance } from "@halonicjs/testing-integration";
+import { describeIntegrationConformance } from "@halonicjs/testing/integration";
 import { weather } from "./index.ts";
 import forecastGhent from "../recordings/forecast-ghent.json" with { type: "json" };
 
@@ -112,7 +112,7 @@ backend. A backend then gets every check above, with each code file beside its `
 
 ```ts
 import { fileURLToPath } from "node:url";
-import { describePluginConformance } from "@halonicjs/testing-integration";
+import { describePluginConformance } from "@halonicjs/testing/integration";
 import { weather } from "../backend/index.js";
 import forecastGhent from "../recordings/forecast-ghent.json" with { type: "json" };
 

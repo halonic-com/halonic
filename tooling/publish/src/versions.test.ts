@@ -3,68 +3,72 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { requireMatchingVersions } from "./versions.ts";
-import {
-  findWorkspacePackages,
-  type PublishConfig,
-  readJson,
-  readPublishConfig,
-  type WorkspacePackage,
-} from "./workspace.ts";
+import { findLayers, type LayerConfig } from "./workspace.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-const kit: WorkspacePackage = {
-  name: "@halonicjs/adapter-integration-kit",
-  directory: "packages/adapters/integration-kit",
-  entries: new Map(),
-  version: "0.1.0",
-  publishedName: "@halonicjs/integration-kit",
-};
-
-function suiteConfig(kitRange: string): PublishConfig {
+function layer(name: string, version: string, dependencies = {}): LayerConfig {
   return {
-    name: "@halonicjs/testing-integration",
-    entry: ".",
-    description: undefined,
-    readme: "README.md",
-    aliases: { "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit" },
-    dependencies: { "@halonicjs/integration-kit": kitRange, zod: "4.6.7" },
-    peerDependencies: { vitest: "^5.1.0" },
+    layer: name.replace("@halonicjs/", ""),
+    directory: `tooling/publish/layers/${name.replace("@halonicjs/", "")}`,
+    name,
+    version,
+    description: "A layer.",
+    dependencies,
+    peerDependencies: {},
   };
+}
+
+const adapters = layer("@halonicjs/adapters", "0.1.0");
+
+function testing(version: string, adaptersRange: string): LayerConfig {
+  return layer("@halonicjs/testing", version, {
+    "@halonicjs/adapters": adaptersRange,
+    zod: "4.6.7",
+  });
 }
 
 verifies("publish.matching-versions", () => {
   describe("the published versions", () => {
-    it("accepts a suite at the kit's version that pins the kit exactly", () => {
-      expect(() => requireMatchingVersions("0.1.0", suiteConfig("0.1.0"), [kit])).not.toThrow();
+    it("accepts @halonicjs/testing at the adapters' version that pins them exactly", () => {
+      const config = testing("0.1.0", "0.1.0");
+      expect(() =>
+        requireMatchingVersions(config, ["@halonicjs/adapters"], [adapters, config]),
+      ).not.toThrow();
     });
 
-    it("refuses a suite whose version differs from the kit's", () => {
-      expect(() => requireMatchingVersions("0.2.0", suiteConfig("0.2.0"), [kit])).toThrow(
-        /is 0\.2\.0 but @halonicjs\/integration-kit is 0\.1\.0/,
-      );
+    it("refuses @halonicjs/testing whose version differs from the adapters'", () => {
+      const config = testing("0.2.0", "0.2.0");
+      expect(() =>
+        requireMatchingVersions(config, ["@halonicjs/adapters"], [adapters, config]),
+      ).toThrow(/is 0\.2\.0 but @halonicjs\/adapters is 0\.1\.0/);
     });
 
     it("refuses a range where an exact version belongs", () => {
-      expect(() => requireMatchingVersions("0.1.0", suiteConfig("^0.1.0"), [kit])).toThrow(
-        /"\^0\.1\.0"\. Published dependencies are exact versions/,
+      const config = testing("0.1.0", "^0.1.0");
+      expect(() =>
+        requireMatchingVersions(config, ["@halonicjs/adapters"], [adapters, config]),
+      ).toThrow(/"\^0\.1\.0"\. Published dependencies are exact versions/);
+    });
+
+    it("refuses an import of a package no layer publishes", () => {
+      const config = testing("0.1.0", "0.1.0");
+      expect(() => requireMatchingVersions(config, ["@halonicjs/adapters"], [config])).toThrow(
+        /no layer package publishes it/,
       );
     });
 
-    it("refuses an alias of a package no workspace package publishes", () => {
-      expect(() => requireMatchingVersions("0.1.0", suiteConfig("0.1.0"), [])).toThrow(
-        /no workspace package publishes it/,
-      );
-    });
-
-    it("holds for the kit and the suite in this repo", () => {
-      const workspace = findWorkspacePackages(root);
-      for (const folder of ["packages/adapters/integration-kit", "packages/testing/integration"]) {
-        const manifest = readJson(join(root, folder, "package.json"));
-        const version = String(manifest["version"]);
-        expect(() =>
-          requireMatchingVersions(version, readPublishConfig(manifest), workspace),
-        ).not.toThrow();
+    it("holds for the layer packages in this repo", () => {
+      const layers = findLayers(root);
+      expect(layers.map((config) => config.name).sort()).toEqual([
+        "@halonicjs/adapters",
+        "@halonicjs/testing",
+      ]);
+      for (const config of layers) {
+        const imported = Object.keys(config.dependencies).filter((name) =>
+          name.startsWith("@halonicjs/"),
+        );
+        expect(() => requireMatchingVersions(config, imported, layers)).not.toThrow();
       }
     });
   });

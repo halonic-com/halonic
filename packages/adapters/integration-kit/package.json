@@ -1,9 +1,8 @@
 {
   "name": "@halonicjs/adapter-integration-kit",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
-  "description": "The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Only its ./integration entry is published, as @halonicjs/integration-kit.",
+  "description": "The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Only its ./integration entry is published, as @halonicjs/adapters/integration-kit.",
   "exports": {
     ".": "./src/index.ts",
     "./integration": "./src/integration/index.ts"
@@ -11,8 +10,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run",
-    "build": "node ../../../tooling/publish/src/cli/stage.ts ."
+    "test": "vitest run"
   },
   "dependencies": {
     "@halonicjs/adapter-http-kit": "workspace:*",
@@ -24,7 +22,6 @@
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
-    "@halonicjs/tooling-publish": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
@@ -37,13 +34,8 @@
       "lines": 80
     },
     "publish": {
-      "name": "@halonicjs/integration-kit",
-      "entry": "./integration",
-      "description": "What an integration for Halonic imports: the port types, runTool and the errors the host raises. No dependencies.",
-      "readme": "README.npm.md",
-      "aliases": {},
-      "dependencies": {},
-      "peerDependencies": {}
+      "name": "@halonicjs/adapters/integration-kit",
+      "entry": "./integration"
     }
   }
 }
