@@ -2,7 +2,6 @@
 
 - Approval: the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216) asked for it; Liam approves this note in review
 - Kind: internal
-- Signature: pending
 - Task: HAL-5216
 
 ## What changes
