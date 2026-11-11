@@ -54,8 +54,8 @@ const TOKEN_LENGTH: usize = 43;
 ///
 /// [`AgentHostError::Handshake`] naming what is wrong with the line.
 pub fn read_handshake(line: &str) -> Result<Handshake, AgentHostError> {
-    let parsed: HandshakeLine = serde_json::from_str(line.trim_end())
-        .map_err(|_| refused("it isn't {\"url\",\"token\"} as JSON"))?;
+    let parsed =
+        read_object(line).ok_or_else(|| refused("it isn't {\"url\",\"token\"} as JSON"))?;
     if !is_loopback_url(&parsed.url) {
         return Err(refused("its url isn't http://127.0.0.1:<port>"));
     }
@@ -66,6 +66,16 @@ pub fn read_handshake(line: &str) -> Result<Handshake, AgentHostError> {
         url: parsed.url,
         token: parsed.token,
     })
+}
+
+/// The line as a JSON object with exactly `url` and `token`. Read as a value
+/// first, because serde would also take `[url, token]` for the struct.
+fn read_object(line: &str) -> Option<HandshakeLine> {
+    let value: serde_json::Value = serde_json::from_str(line.trim_end()).ok()?;
+    if !value.is_object() {
+        return None;
+    }
+    serde_json::from_value(value).ok()
 }
 
 fn refused(why: &str) -> AgentHostError {
