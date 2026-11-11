@@ -1,11 +1,13 @@
 # Decision: a connector file's `read` list, and a run log event for tools that ran without asking
 
-- Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approves this note in review
-- Kind: user-visible
+- Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approved this note in review on [HAL-5616](/HAL/issues/HAL-5616)
+- Kind: internal
 
 The board chose to let a workspace mark safe connector tools as read-only by
 name, in the connector file (HAL-5522, option A). This part adds the field,
 its checks and the run log event; the engine uses them in part 2.
+The note is `internal` and signed with the CTO key because no user key is
+pinned yet (HAL-3434); the change itself is the board's decision above.
 
 - `format.connector-read` (new): `tools.read` is a list of exact tool names.
   A pattern is an error, a name `tools.allow` leaves out a warning.
