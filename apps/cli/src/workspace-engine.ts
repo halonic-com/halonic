@@ -12,6 +12,7 @@ import type { ProfileEnvironment } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext } from "./command.ts";
+import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type LocalEngine,
   type LocalEngineInput,
@@ -97,6 +98,9 @@ export interface WorkspaceEngine extends LocalEngine {
  * command closes it in a `finally`. Trust is the command's to check first,
  * each in its own words. Each retry of a failing step shows with `--debug`.
  *
+ * @throws KindedError `invalid_input` when a run's harness would move an
+ *   agent whose allowed sites or working folder no check read into a
+ *   program (`checkHarnessOverride`): no engine was opened (exit 2)
  * @throws SandboxRefusedError when an agent of a run needs the sandbox and
  *   it can't start here: no engine was opened, so nothing ran (exit 9)
  * @throws KindedError `conflict` when another engine is open on the workspace
@@ -118,6 +122,7 @@ export async function openWorkspaceEngine(
   const machine = await sandboxGateMachine(host, target.dir.root);
   const unsandboxed = new Map<string, UnsandboxedAgent>();
   for (const run of target.runs) {
+    checkHarnessOverride(target.workspace, run, target.ending);
     for (const agent of await checkRunSandbox(target.workspace, run, machine, target.ending)) {
       unsandboxed.set(agent.name, agent);
     }

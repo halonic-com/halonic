@@ -169,7 +169,10 @@ verifies("cli.run-sandbox-gate", () => {
     await writerWith("harness: claude-code\n");
     const options = Object.keys(runCommand(bubblewrapMissing).options ?? {});
 
-    expect(options.sort()).toEqual(["dir", "event", "input"]);
+    // `--harness` picks the harness, never the sandbox: a program it names is
+    // checked like one the file names, and `halonic` starts no program
+    // (`cli.run-harness`).
+    expect(options.sort()).toEqual(["dir", "event", "harness", "input"]);
     for (const flag of ["--no-sandbox", "--unsafe", "--skip-sandbox", "--sandbox=off"]) {
       const { code } = await run(bubblewrapMissing, flag);
       expect(code).toBe(exitCode.usage);

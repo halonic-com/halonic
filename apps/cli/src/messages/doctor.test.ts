@@ -104,7 +104,7 @@ describe("doctor's sentences", () => {
       words(doctorMessages.harnessReady("Claude Code", "2.1.0")),
       words(doctorMessages.harnessMissing("Writer", "Codex")),
       words(doctorMessages.installHarness("Codex")),
-      words(doctorMessages.harnessUnsupported("Claude Code", "0.9.1", "1.0.0")),
+      words(doctorMessages.harnessUnsupported("Claude Code", "0.9.1", ">=1.0.0")),
       words(doctorMessages.updateHarness("Claude Code")),
       words(doctorMessages.harnessVersionFailed("Claude Code", "it timed out")),
     ]).toEqual([

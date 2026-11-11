@@ -6,9 +6,6 @@ import { readdir } from "node:fs/promises";
 import { arch, platform } from "node:os";
 import { join } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
-import { detectClaudeCode } from "@halonicjs/adapter-harness-claude-code";
-import { detectCodex } from "@halonicjs/adapter-harness-codex";
-import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
 import {
@@ -31,6 +28,7 @@ import type {
 } from "@halonicjs/ports";
 import { type ProfileFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { nodeHarnessPrograms } from "./harness-programs.ts";
 import {
   isOnThisComputer,
   type LocalModelServer,
@@ -88,7 +86,6 @@ const runFolderNames = ["runs", "deployments", "blobs"];
  */
 export function nodeDoctorMachine(): DoctorMachine {
   const profile = profileFolder(nodeProfileEnvironment());
-  const programs = createProgramProbe();
   const system = platform();
   return {
     profile,
@@ -96,10 +93,7 @@ export function nodeDoctorMachine(): DoctorMachine {
     sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
     sandboxKind: sandboxKinds[system] ?? system,
     probe: new NodeResourceProbe(),
-    harnesses: [
-      { id: "claude-code", name: "Claude Code", detect: () => detectClaudeCode(programs) },
-      { id: "codex", name: "Codex", detect: () => detectCodex(programs) },
-    ],
+    harnesses: nodeHarnessPrograms(),
     http: { fetch: (url, init) => fetch(url, init) },
     system: `${systemNames[system] ?? system} ${arch()}`,
   };

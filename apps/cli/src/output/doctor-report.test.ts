@@ -255,7 +255,7 @@ describe("doctorReportLines", () => {
           harness: "claude-code",
           name: "Claude Code",
           version: "0.9.1",
-          supported: "1.0.0",
+          supported: ">=1.0.0",
         },
         { problem: "failed", harness: "codex", name: "Codex", error: "it timed out" },
       ],

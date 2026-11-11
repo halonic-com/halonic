@@ -1,16 +1,19 @@
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
+import { AGENT_HARNESSES } from "@halonicjs/format";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { CliCommand } from "../../command.ts";
 import { nodeCommandSearch } from "../../command-paths.ts";
+import { nodeHarnessPrograms } from "../../harness-programs.ts";
 import { inputValueName, runMessages } from "../../messages/run.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { type RunSetup, runWorkflow } from "./run.ts";
 
 /**
- * This computer: its clock and time zone, its trust records, `PATH` and
- * `fetch`. `halonic runs send` moves a run on with the same.
+ * This computer: its clock and time zone, its trust records, `PATH`, its
+ * harness programs and `fetch`. `halonic runs send` moves a run on with the
+ * same.
  */
 export const computerRunSetup: RunSetup = {
   clock: () => ({ now: new Date() }),
@@ -20,6 +23,7 @@ export const computerRunSetup: RunSetup = {
     commandSearch: nodeCommandSearch(),
   }),
   http: { fetch: (url, init) => fetch(url, init) },
+  harnesses: nodeHarnessPrograms,
 };
 
 /**
@@ -29,7 +33,7 @@ export const computerRunSetup: RunSetup = {
 export function runCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "run",
-    usage: `<workflow> [--dir <folder>] [--input <${inputValueName}>] [--event <event>]...`,
+    usage: `<workflow> [--dir <folder>] [--input <${inputValueName}>] [--event <event>]... [--harness <harness>]`,
     summary: runMessages.summary(),
     action: (input) => runMessages.action(input.positionals[0] ?? ""),
     options: {
@@ -40,6 +44,11 @@ export function runCommandWith(setup: RunSetup): CliCommand {
         multiple: true,
         valueName: "event",
         description: runMessages.eventOption(),
+      },
+      harness: {
+        type: "string",
+        valueName: "harness",
+        description: runMessages.harnessOption(AGENT_HARNESSES),
       },
     },
     run: (input, context) => runWorkflow(input, context, setup),

@@ -51,7 +51,7 @@ export interface FollowOptions {
   readonly onEvent?: (event: RunEvent, events: readonly RunEvent[]) => void;
 }
 
-/** Options for starting a run with {@link WorkflowRuns.startRun}: a follow's, and what the run read. */
+/** Options for starting a run with {@link WorkflowRuns.startRun}: a follow's, what the run read, and the harness for all its agents. */
 export interface StartRunOptions extends Omit<FollowOptions, "after"> {
   /**
    * Which version of the workspace the run reads, recorded on its
@@ -59,6 +59,14 @@ export interface StartRunOptions extends Omit<FollowOptions, "after"> {
    * from. Not recorded when absent.
    */
   readonly version?: RunVersion;
+  /**
+   * The harness every agent of the run uses, in place of the one its file
+   * names, such as for `halonic run --harness codex`. The run's
+   * `run.started` records it, and the runs it starts use it too. The
+   * executor refuses an id that isn't a harness; the caller checks first
+   * that the program can start on this computer.
+   */
+  readonly harness?: string;
 }
 
 /** The executor calls {@link WorkflowRuns} makes; `cancel` is optional, as on the port. */
@@ -137,6 +145,7 @@ export class WorkflowRuns {
    * @param options - `signal` stops following and cancels the run; aborted before the start, nothing starts.
    *   `onEvent` sees each event while the run goes, as for {@link WorkflowRuns.follow}.
    *   `version` is recorded on the run's `run.started`
+   *   `harness` runs every agent in that harness
    * @throws what the executor's `start` throws, such as for a refused input
    * @throws the signal's reason, an `AbortError` by default, when
    *   `options.signal` was aborted before the start: nothing started
@@ -158,13 +167,15 @@ export class WorkflowRuns {
       return lookup;
     }
     options.signal?.throwIfAborted();
+    const { version, harness, ...follow } = options;
     const started = await this.#executor.start({
       hubId: lookup.hubId,
       workflowId: lookup.workflow.id,
       input,
-      ...(options.version === undefined ? {} : { version: options.version }),
+      ...(version === undefined ? {} : { version }),
+      ...(harness === undefined ? {} : { harness }),
     });
-    return { found: "one", run: await this.follow(started.id, options) };
+    return { found: "one", run: await this.follow(started.id, follow) };
   }
 
   /**

@@ -10,6 +10,7 @@
 import { type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
+import { startsAProgram } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import {
   trustContentInputOf,
@@ -22,12 +23,15 @@ export type RunTrustMachine = WorkspaceTrustMachine;
 
 /**
  * Refuses to go on unless the workspace is trusted on this computer, or
- * its run can only reach the test model. A trust record that can't be read
+ * its run can only reach the test model. A run that names a harness program
+ * for all its agents, such as with `--harness codex`, reaches more than the
+ * test model, so it always needs trust. A trust record that can't be read
  * counts as no trust: the run fails closed. `runs send` checks it too before
  * a run goes on.
  *
  * @param nothingDone - the end of line 1 saying nothing happened:
  *   `runMessages.nothingRan()`, the default, or `sandboxMessages.nothingSent()`
+ * @param harness - the harness the run names for all its agents, if any
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown, and nothing ran (exit 3)
  */
@@ -37,8 +41,9 @@ export async function checkRunTrust(
   machine: RunTrustMachine,
   typedDir: string | undefined,
   nothingDone: Message = runMessages.nothingRan(),
+  harness?: string,
 ): Promise<void> {
-  if (reachesOnlyTheTestModel(trustContentInputOf(workspace))) {
+  if (!startsAProgram(harness) && reachesOnlyTheTestModel(trustContentInputOf(workspace))) {
     return;
   }
   await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
