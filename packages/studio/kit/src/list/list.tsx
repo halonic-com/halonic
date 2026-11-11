@@ -302,10 +302,11 @@ function Row<Id extends string>({
   selection,
   current,
 }: RowProps<Id>) {
-  const isSelected = current || selection?.selected.has(row.id) === true;
+  const isSelected = selection?.selected.has(row.id) === true;
   const isUnavailable = row.unavailable !== undefined;
   const reasonId = useId();
-  const state = rowStateClasses[rowState(isUnavailable, isSelected)];
+  // Being current only changes the row's look: its `aria-selected` and checkbox follow the selection.
+  const state = rowStateClasses[rowState(isUnavailable, isSelected || current)];
   const cells = cellClasses({ look, first, top, last, state, hasCheck, hasMore });
   const mainColumn = hasCheck ? 1 : 0;
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({

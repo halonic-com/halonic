@@ -46,4 +46,25 @@ verifies("kit.list", () => {
     await click(mainCell(container, 2));
     expect(onOpen.mock.calls).toEqual([["writer"], ["checker"]]);
   });
+
+  it("keeps the current row apart from the selection: it isn't selected or ticked", () => {
+    const { container } = render(
+      <List
+        label="Inbox"
+        rows={agents}
+        onOpen={() => {}}
+        current="writer"
+        selection={{ selected: new Set(["checker"]), onToggle: () => {} }}
+      />,
+    );
+    const boxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    );
+    expect(rowsIn(container)[1]?.getAttribute("aria-current")).toBe("true");
+    expect(rowsIn(container)[1]?.getAttribute("aria-selected")).toBe("false");
+    expect(boxes[1]?.checked).toBe(false);
+    expect(rowsIn(container)[1]?.querySelector("td")?.className).toContain("selected-bar");
+    expect(rowsIn(container)[2]?.getAttribute("aria-selected")).toBe("true");
+    expect(boxes[2]?.checked).toBe(true);
+  });
 });

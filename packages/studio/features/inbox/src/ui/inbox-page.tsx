@@ -1,6 +1,6 @@
 import { EmptyState, List, type ListRow } from "@halonicjs/studio-kit";
 import { errorMessageFor, type PlaceViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
@@ -44,6 +44,13 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
   // The open item, kept here rather than looked up in the list: once you answer it, it leaves
   // the list, but its card stays to say what you decided.
   const [open, setOpen] = useState<InboxItem | null>(null);
+  // Where the open row was when last seen in the list: once it leaves, the item that moves into
+  // its place is the next one.
+  const openIndex = open === null ? -1 : state.items.findIndex((item) => item.key === open.key);
+  const openAt = useRef(-1);
+  useEffect(() => {
+    if (openIndex !== -1) openAt.current = openIndex;
+  }, [openIndex]);
   const retry = () => void inbox.refresh();
   const failedFirst = !state.loaded && state.error !== undefined;
 
@@ -88,7 +95,7 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
               key={open.key}
               item={open}
               inbox={inbox}
-              next={nextItem(state.items, open, setOpen)}
+              next={nextItem(state.items, open, openAt.current, setOpen)}
               now={now}
             />
           )}
@@ -116,15 +123,19 @@ function rowFor(item: InboxItem, now: Date): ListRow {
   return { id: item.key, title: markedName(item.title), meta: `${waiting}${movesOn}` };
 }
 
-/** The next item for the decided card's **Next**: the one after the open one, else the first. */
+/**
+ * The next item for the decided card's **Next**: the one after the open one, else the first. Once
+ * the open item has left the list, the one after it is the item now at `openAt`, where it was.
+ */
 function nextItem(
   items: readonly InboxItem[],
   open: InboxItem,
+  openAt: number,
   setOpen: (item: InboxItem) => void,
 ): NextItem | null {
   const others = items.filter((item) => item.key !== open.key);
   const index = items.findIndex((item) => item.key === open.key);
-  const after = index === -1 ? undefined : items.slice(index + 1)[0];
+  const after = index === -1 ? items[openAt] : items[index + 1];
   const next = after ?? others[0];
   if (next === undefined) return null;
   return {

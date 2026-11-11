@@ -186,6 +186,23 @@ verifies("inbox.page", () => {
       expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
       expect(rows(root)[0]?.getAttribute("aria-current")).toBe("true");
     });
+
+    it("has Next open the item after the decided one, not the first", async () => {
+      const send = waitingRun("r3", {
+        approvals: [pendingApproval("call-3", "mail-mcp__send_reply", at(10, 0))],
+      });
+      const { root, later } = await openPage(fakeRuns([notes, send, review]).runs);
+      expect(rows(root)).toHaveLength(3);
+      await click(rowCell(root, 1));
+      later(2);
+      await click(button(root, "Approve"));
+      await settled();
+      expect(rows(root)).toHaveLength(2);
+
+      await click(button(root, "Next: Approve this reply?"));
+      expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
+      expect(rows(root)[1]?.getAttribute("aria-current")).toBe("true");
+    });
   });
 
   describe("whole-Inbox states", () => {

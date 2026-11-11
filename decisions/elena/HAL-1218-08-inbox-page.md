@@ -7,8 +7,8 @@
 ## What changes
 
 `kit.list` gets one sentence: the row named by the list's `current` has the selected look and
-`aria-current="true"`, without a checkbox cell or `aria-selected`, and still opens on Enter or a
-click. Nothing else in the requirement changes, and no example was removed or weakened.
+`aria-current="true"`, and still opens on Enter or a click. Only its look changes: being current
+doesn't select it, so with a `selection` its `aria-selected` and checkbox follow the selection. Nothing else in the requirement changes, and no example was removed or weakened.
 
 ## Why
 

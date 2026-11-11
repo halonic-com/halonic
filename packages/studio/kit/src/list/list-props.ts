@@ -71,7 +71,8 @@ interface ListBase<Id extends string> {
   readonly selection?: ListSelection<Id>;
   /**
    * The row whose item shows beside the list, as the Inbox's open item: it has the selected look
-   * and `aria-current`, without a checkbox. Enter and a click still call `onOpen`.
+   * and `aria-current`. Only its look changes: it isn't selected, so with a `selection` its
+   * `aria-selected` and checkbox still follow the selection. Enter and a click still call `onOpen`.
    */
   readonly current?: Id;
   /** 32px rows, for menus and pickers; 48px on a phone. */
