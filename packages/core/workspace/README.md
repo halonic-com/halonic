@@ -219,6 +219,12 @@ Punycode, each once, sorted) and its working folder when that isn't `files/agent
 harness or with `halonic` add nothing, so a workspace without harness agents keeps the same content and
 fingerprint as before.
 
+`harnessWorkingFolders(workspace)` lists the same agents' working folders for whoever starts a local
+connector's program, in every hub: each folder as the agent file wrote it (relative to the workspace
+root, `files/agents/<id>` when it names none), each once, sorted by code unit. The caller resolves them
+to real paths and passes them as `ConnectorFactoryContext.workingFolders`, so a start that would run or
+load a file an agent could have written is refused (`workspace.harness-working-folders`).
+
 Every local integration is part of it too, because Halonic starts its code in the runner.
 `integrationsTrustContent` takes each integration's permission sheet, the workspace's settings for
 it, its folder and the hash of its code, and lists, sorted by id: the folder, what the sheet lets

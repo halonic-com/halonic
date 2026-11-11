@@ -38,6 +38,9 @@ and passes the shared `DefinitionStore` contract suite.
   moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
   again five times over about a third of a second before the write fails.
   A file it replaces keeps its permissions, such as a script's execute bit.
+  The temporary file is flushed to disk before the rename, so after a power
+  cut the file holds the old text or the new one, never an empty or partial
+  file. The rename itself may still be lost, which leaves the old file.
 - **Write if unchanged:** `write(path, content, { expected })` writes only
   when the file is still what `expected` says, and otherwise returns
   `changed-on-disk` with the current file. Writes to one path run one after
@@ -61,8 +64,16 @@ and passes the shared `DefinitionStore` contract suite.
 
 - **Files:** `<runId>.jsonl` holds the run's events, one per line, and only
   ever grows. `<runId>.snapshot.json` caches the engine's state, written
-  through a temporary file and a rename. Delete it at any time; the engine
-  then replays the log.
+  through a temporary file that is flushed to disk and renamed over it.
+  Delete it at any time; the engine then replays the log.
+- **Private:** run logs and snapshots hold prompts, tool results and model
+  output, so the root folder gets mode `700` (an existing folder is changed
+  to it) and each log, snapshot and run lock mode `600`. Windows ignores
+  these modes; the profile folder's own permissions protect the files there.
+- **Links:** a log that is a symbolic link (even one to nothing), a hard
+  link or not a plain file is refused on read and append with a `RangeError`,
+  and nothing is written through it. A snapshot that is a link is not used
+  and gives `null`.
 - **List:** worked out from the logs on every call, with no cache. Deleting
   a `.jsonl` removes the run. With `startedSince`, a run that started
   earlier costs a read of its log's first line, not of the whole log.
@@ -92,10 +103,11 @@ and passes the shared `DefinitionStore` contract suite.
   succeeds, so a retry doesn't conflict with its own events; the error goes
   to `onLockReleaseError`. Later appends to the run, this store's included,
   wait until the lock left behind goes stale after 10 seconds.
-- **Limits:** a log survives a crash of the program, not of the machine: there
-  is no `fsync`, so after a power cut the last appends may be gone. If the
-  program crashes in the middle of an append of several events, the first
-  of them may be stored without the rest.
+- **Flushed:** an append flushes its lines to disk before it reports
+  success, so an event it acknowledged survives a power cut. Lock files are
+  not flushed: a lock from before a power cut is stale when it is next read.
+- **Limits:** if the program crashes in the middle of an append of several
+  events, the first of them may be stored without the rest.
 
 ## Example
 
@@ -183,8 +195,9 @@ inside a workspace. It passes the shared `TrustStore` contract suite.
   two spellings of `café`, apart, and a long path still fits in a name.
   Hashing code units rather than UTF-8 keeps two Windows paths with
   different lone surrogates apart too.
-- **Writes** go to a temporary file that is renamed over the record, so a
-  reader sees the old record or the new one. The folder is created with
+- **Writes** go to a temporary file that is flushed to disk and renamed over
+  the record, so a reader sees the old record or the new one, also after a
+  power cut. The folder is created with
   mode `700` and each file with `600`. Windows ignores these modes; the
   profile folder's own permissions protect the files there.
 - **Damage:** each file starts with its location. When a record can't be
@@ -205,8 +218,8 @@ It passes the shared `AgentPlacementStore` contract suite.
 - **File names** are the SHA-256 of the JSON of `[location, agent]` as
   UTF-16 code units, as for trust records. JSON keeps a location ending in
   `/` from running into the agent id.
-- **Writes** go through a temporary file and a rename, with the same modes
-  as trust records.
+- **Writes** go through a flushed temporary file and a rename, with the same
+  modes as trust records.
 - **Damage:** when a choice can't be read, or the file holds another
   agent's key, `get` throws naming the agent and its workspace, and
   `remove` deletes the file without reading it. `AgentPlacement` in
@@ -223,8 +236,8 @@ sending on. The setting survives a restart. It passes the shared
 
 - **File names** are the SHA-256 of the JSON of `[location, connector]` as
   UTF-16 code units, as for "this computer" choices.
-- **Writes** go through a temporary file and a rename, with the same modes
-  as trust records. Only the fields of the settings are written.
+- **Writes** go through a flushed temporary file and a rename, with the same
+  modes as trust records. Only the fields of the settings are written.
 - **Damage:** when settings can't be read, hold another connector's key, or
   hold anything but `allowSending` as `true` or `false` and `changedAt` as
   text next to the key, `get` throws naming the connector and its
@@ -241,8 +254,8 @@ plugin and integration code without the sandbox as `consent.json` in
 never inside a workspace, so neither a workspace nor an agent can give the
 yes. It passes the shared `UnfencedRunConsentStore` contract suite.
 
-- **Writes** go through a temporary file and a rename, with the same modes
-  as trust records, and hold only the reason and the time.
+- **Writes** go through a flushed temporary file and a rename, with the same
+  modes as trust records, and hold only the reason and the time.
 - **Shape:** after `JSON.parse` the file must be exactly a non-empty
   `reason` and an `allowedAt` a `Date` can read (HAL-3385). Anything else,
   a link or a file that isn't JSON makes `get` throw, without quoting the
@@ -318,8 +331,8 @@ the shared `RecordStore` contract suite.
   line, or one for another collection, is an error naming the file and line.
 - **Links:** a log that is a symbolic link, a hard link or not a plain file
   is refused on read, append and compact, as for trust records.
-- **Limits:** appends are not flushed to disk, so after a power cut the
-  last appends may be gone, as for run logs.
+- **Flushed:** an append flushes its lines to disk before it reports
+  success, as for run logs.
 
 ## Blobs in the profile
 
@@ -331,8 +344,8 @@ the shared `BlobStore` contract suite.
 - **Files:** each blob is `<hash[0..2]>/<hash>`, holding only the bytes. The
   media type isn't kept, as the port allows. Folders get mode `700`, files
   `600`.
-- **Writes** go to a temporary file in the blob's own folder and are renamed
-  into place, so the rename stays on one disk and a reader gets the whole
+- **Writes** go to a temporary file in the blob's own folder, are flushed to
+  disk and renamed into place, so the rename stays on one disk and a reader gets the whole
   blob or none. Bytes that are already stored aren't written again.
 - **Paths:** a hash that isn't 64 lowercase hex characters never reaches a
   path, and a path outside the folder is refused where it is built.

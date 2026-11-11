@@ -9,7 +9,7 @@ The engine's `Sandbox`, bridge host and `Harness` as stand-ins that call the age
 
 ## The transport
 
-The stand-ins call the host through an `AgentHostTransport`. It names a route from the host's table (`agentHostRequestRoutes`, `agentHostStreamRoutes`), never a URL. In Studio, the shell makes the calls, so the host's launch token never reaches the page. In tests, an in-memory host answers. A JSON route answers `{ status, body }`. A stream route answers its lines, each parsed from JSON, or the error the host gave instead of a stream. The host's errors become an `AgentHostError` with its status, `kind` and message.
+The stand-ins call the host through an `AgentHostTransport`. It names a route from the host's table (`agentHostRequestRoutes`, `agentHostStreamRoutes`), never a URL. In Studio, the shell makes the calls, so the host's launch token never reaches the page. In tests, an in-memory host answers. The routes are the ones the shell's `ROUTES` table in `apps/studio/src-tauri/crates/agent-host/src/routes.rs` lets a page call, with the same answer kind; a test fails, naming the route, when the two drift apart (`agent-host-client.shell-routes`). A JSON route answers `{ status, body }`; the shell gives a `null` body only when the host's answer is empty, and refuses a body that isn't JSON. A stream route answers its lines, each parsed from JSON, or the error the host gave instead of a stream. The host's errors become an `AgentHostError` with its status, `kind` and message.
 
 ## The sandbox
 

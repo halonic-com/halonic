@@ -57,7 +57,8 @@ the feature that added it (`shell.home-sections`). Each section loads and fails 
 view suspends while it loads (as with React's `use`) and throws when it fails. The shell shows the
 skeleton (none for Get set up), says "Loading Home" once for the page, and puts the section's
 "Couldn't load" error with Try again in place of its rows. The errors aren't live regions: the page
-says each reason once, so when the engine isn't answering, screen readers hear it once, not once per
+says each reason once, each ending in a full stop (one that has none gets one, so two reasons aren't
+read as one sentence), so when the engine isn't answering, screen readers hear it once, not once per
 section, and the reasons take the place of "Loading Home" while other sections still load
 (`shell.home-states`). Get set up's card
 throws only once it knows setup isn't finished: if it can't tell, it shows nothing, so a workspace
