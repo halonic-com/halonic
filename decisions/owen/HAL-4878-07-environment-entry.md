@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4878](/HAL/issues/HAL-4878)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6sg1BaNfvdBd/6k62/03sfQBWKxRKYMCSHDhgT+utNriEAfvCU5Njk9amzb0ghhxyn70NPuDdJge3Vc6QhVKDA==
 
 Studio runs harnesses in the agent host but computes each harness's
 environment on its own page (HAL-4878 plan, "`environment` stays local").
