@@ -2,8 +2,8 @@
 // "Untrusted workspace"). A run runs the workspace's models, programs and
 // connectors, so the workspace must be trusted on this computer first,
 // unless the run can only reach the built-in test model (Liam, HAL-1984;
-// the rule is `reachesOnlyTheTestModel` in the workspace package, which
-// Studio uses too): then nothing outside Halonic starts, and
+// the rule is `reachesOnlyTheTestModel` in the workspace package, so
+// Studio can use it too): then nothing outside Halonic starts, and
 // `init --example acme` runs straight away. The service that starts the run
 // doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
 

@@ -2,7 +2,7 @@
 // only reach the built-in test model starts nothing outside Halonic, so
 // `init --example acme` runs straight away. The rule reads the trust content
 // itself, so whatever trust comes to cover next turns the skip off too.
-// The CLI's `halonic run` and Studio both ask it.
+// The CLI's `halonic run` asks it; Studio is meant to ask it too (HAL-1984).
 //
 // A local integration turns it off even when it adds nothing to the trust
 // content (all its hosts are fixed): its code runs and reaches its hosts,
