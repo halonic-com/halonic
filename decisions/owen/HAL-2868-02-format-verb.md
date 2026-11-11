@@ -36,3 +36,7 @@ apart, so the review of an integration's listing checks it.
 
 The engine doesn't copy `verb` onto `tool.result` yet, and the receipt doesn't read it yet. Both
 follow in later steps of HAL-2868.
+
+## Covers
+
+- format.integration-file
