@@ -79,7 +79,12 @@ async function startThroughLauncher(source: string): Promise<StartedRunner> {
 }
 
 verifies("integration-runner.start-without-fence", () => {
-  describe("the built runner through the launcher's sandbox", () => {
+  // Each test starts a real Node with its permission model and loads the built runner. The first
+  // start in a file takes about 2.5 s on a cold machine and 0.2 s after, but one took 7.7 s while
+  // other packages ran their tests too (HAL-5317). The build is already shared above, and each test
+  // needs its own integration, so there is no more setup to share. A real hang still fails at 20 s,
+  // well before the runner's own 60 s time limit.
+  describe("the built runner through the launcher's sandbox", { timeout: 20_000 }, () => {
     it("serves a tool and reports its fence proof as off, never fenced", async () => {
       const started = await startThroughLauncher(forecastSource);
       expect(started.fence).toEqual({ state: "off" });
