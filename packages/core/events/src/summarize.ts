@@ -106,6 +106,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       return;
     case "event.received":
     case "workflow.finished":
+    case "workflow.resumed":
     case "timer.fired":
       summary.status = "running";
       summary.waitingOn = null;

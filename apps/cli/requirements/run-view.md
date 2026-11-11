@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2742, HAL-3650 and HAL-5052; the CLI output design on HAL-1981 (cli-output section 3.4, "Finished: the receipt" and "`halonic runs show <run-id>`", revisions 17 to 38), approved by the board on HAL-2123
+- Source: HAL-2742, HAL-3650 and HAL-5052; the CLI output design on HAL-1981 (cli-output section 3.4, "Finished: the receipt" and "`halonic runs show <run-id>`", revisions 17 to 38), approved by the board on HAL-2123; a workflow step whose child runs again from HAL-6173
 
 When the `halonic` command shows what a run did, it shall build it from the run's log alone: one line per step the run reached, in order, with its mark, its name and what ran it (the agent's name and model alias, after the subagent's name and "for" when a subagent's tool call waits for the user's OK), lined up in columns, and the receipt. A finished or failed step shall end with how long it took; a wait step the user answered shall say what they answered and when; the step a run is in shall say since when it runs or waits. The workflow's end state and steps the run didn't reach shall get no line. The receipt shall say "sent nothing" only for a run that made no tool call, shall count each time the run asked the user, and shall leave the cost out when no call had a price.
 
@@ -17,6 +17,9 @@ When the `halonic` command shows what a run did, it shall build it from the run'
 - Given an Acme run in the step Draft a reply since 10:53,
   when its steps are shown,
   then the last line reads "◌ Draft a reply Writer · smart · running since 10:53".
+- Given an Acme run in the workflow step Get it approved since 10:53, whose child run waited and runs again,
+  when its steps are shown,
+  then the last line reads "◌ Get it approved running since 10:53".
 - Given an Acme run waiting at Approve this reply? since 10:41,
   when its steps are shown,
   then the last line reads "! Approve this reply? waiting for you since 10:41".

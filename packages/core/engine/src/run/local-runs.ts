@@ -468,7 +468,7 @@ export class LocalRuns {
     }
   }
 
-  /** Gives the parent a `child` input with how its child is now; a running child tells nothing. */
+  /** Gives the parent a `child` input with how its child is now. */
   async #hearFromChild(parentRunId: string, childRunId: string): Promise<void> {
     const now = await childNow(this.#options.store, childRunId);
     if (now === null) return;

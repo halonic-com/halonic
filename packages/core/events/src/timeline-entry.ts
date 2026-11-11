@@ -111,6 +111,7 @@ function updateOf(event: RunEvent): EntryUpdate | null {
     // Only while the run waits; otherwise no entry is open and it stands alone.
     case "timer.fired":
     case "event.received":
+    case "workflow.resumed":
       return { opener: "run.waiting", fields: [], closes: true };
     default:
       return null;

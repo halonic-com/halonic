@@ -99,7 +99,9 @@ A state with `type: workflow` runs another workflow as a child run.
    child's final context under `output` and fires `done`.
 4. **Child waits.** The parent logs `run.waiting`, with `child` and the events
    the child accepts. An event sent to the parent is passed to the child
-   unchanged.
+   unchanged. When the child goes on without finishing, by an event or its
+   own timer, the parent logs `workflow.resumed` and runs until the child
+   waits again or finishes; an event sent to it then is refused.
 5. **A waiting child finishes.** This can happen by an event sent to either run.
    The parent continues in the same call. If the parent is itself a child, its
    parent continues too, and so on up.

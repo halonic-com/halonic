@@ -116,6 +116,24 @@ verifies("engine.workflow-state", () => {
     expect(later.run?.accepts).toEqual(["approve"]);
   });
 
+  it("records workflow.resumed and takes no events when the child runs again", () => {
+    const waiting = told({ status: "waiting", events: ["approve", "reject"] });
+    const running = told({ status: "running" });
+    const { log, decisions, run } = playOnboard([start, waiting, running, running]);
+    expect(bodies(log, 4)).toEqual([{ type: "workflow.resumed", state: "check", childRunId }]);
+    expect(decisions[3]).toEqual({ events: [], effects: [] });
+    expect(run).toMatchObject({
+      status: "running",
+      accepts: [],
+      child: { runId: childRunId, state: "check", workflow: "approval" },
+    });
+  });
+
+  it("records nothing when told its child runs before the child waited", () => {
+    const { decisions } = playOnboard([start, told({ status: "running" })]);
+    expect(decisions[1]).toEqual({ events: [], effects: [] });
+  });
+
   it("fails the run when the child fails", () => {
     const { log, run } = playOnboard([start, told({ status: "failed", error: "No model." })]);
     expect(bodies(log, 3)).toEqual([
@@ -192,6 +210,21 @@ verifies("engine.child-tells-parent", () => {
       ]);
       expect(decisions[0]?.effects).not.toContainEqual(tell);
       expect(decisions[1]?.effects).toEqual([tell]);
+    });
+
+    it("tells its parent when it runs again after it waited, and not when it goes on running", () => {
+      const review: Workflow = {
+        ...replyWorkflow,
+        initial: "decide",
+        states: {
+          ...replyWorkflow.states,
+          decide: { type: "wait", on: [{ to: "draft", event: "approve" }] },
+        },
+      };
+      const approve: DecideInput = { type: "send", at: start.at, event: "approve" };
+      const { decisions, run } = play(review, [{ ...startInput("sha-1"), parent }, approve]);
+      expect(run).toMatchObject({ status: "running" });
+      expect(decisions[1]?.effects).toContainEqual(tell);
     });
 
     it("tells its parent when a failed call fails it", () => {

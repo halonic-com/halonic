@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1535, step 5(a) of the HAL-186 plan; "Subflows" in docs/specs/workflow-semantics.md
+- Source: HAL-1535, step 5(a) of the HAL-186 plan; "Subflows" in docs/specs/workflow-semantics.md; `workflow.resumed` from HAL-6173, decided on HAL-6144
 
-When a run enters a `workflow` state, the engine shall record `workflow.started` and ask for a child run of the named workflow, from the definitions the run started with, with the state's `input` rendered against the scope and a depth one more than the run's. While the child waits, the engine shall record `run.waiting` with the child's id and the events the child takes, once for each change. When the child completes, the engine shall record `workflow.finished`, write the child's final context to the state's `output` and take the `done` transition. When the child fails, the engine shall record `workflow.finished` and fail the run. When the state names no workflow, a workflow the run's definitions don't have, or would start a child more than 5 deep, the engine shall fail the run with an error that says so.
+When a run enters a `workflow` state, the engine shall record `workflow.started` and ask for a child run of the named workflow, from the definitions the run started with, with the state's `input` rendered against the scope and a depth one more than the run's. While the child waits, the engine shall record `run.waiting` with the child's id and the events the child takes, once for each change. When the child runs again after it waited, the engine shall record `workflow.resumed` with the state and the child's id, once, and the run shall take no events until the child waits again. When the child completes, the engine shall record `workflow.finished`, write the child's final context to the state's `output` and take the `done` transition. When the child fails, the engine shall record `workflow.finished` and fail the run. When the state names no workflow, a workflow the run's definitions don't have, or would start a child more than 5 deep, the engine shall fail the run with an error that says so.
 
 ## Examples
 
@@ -14,6 +14,9 @@ When a run enters a `workflow` state, the engine shall record `workflow.started`
 - Given that child,
   when it waits for `approve` or `reject`,
   then the parent records `run.waiting` with the child's id and `approve, reject`.
+- Given that child, waiting,
+  when it runs again,
+  then the parent records `workflow.resumed` with the child's id, is running and takes no events; told again that the child runs, it records nothing.
 - Given that child,
   when it completes with the context `{ ok: 1 }`,
   then the parent records `workflow.finished`, sets `verdict` to `{ ok: 1 }` and moves on `done`.

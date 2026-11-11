@@ -132,7 +132,9 @@ function readInStep(step: OpenStep, event: RunEvent): void {
         step.waiting = undefined;
       }
       break;
+    // A timer moved the wait step on, or the child run a workflow step waits with runs again.
     case "timer.fired":
+    case "workflow.resumed":
       step.waiting = undefined;
       break;
   }

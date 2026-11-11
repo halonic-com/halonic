@@ -256,6 +256,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "event.received":
       return receiveEvent(state, event.event);
     case "timer.fired":
+    case "workflow.resumed":
       return { ...state, status: "running", accepts: [] };
     case "workflow.started":
       return startChild(state, event);

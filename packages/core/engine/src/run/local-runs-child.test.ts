@@ -1,5 +1,5 @@
 import type { Workflow } from "@halonicjs/format";
-import type { BlobRef, ChatResponse } from "@halonicjs/ports";
+import type { BlobRef, ChatResponse, Clock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -49,6 +49,22 @@ const review: Workflow = {
   },
 };
 
+/** A person approves first; when no one has after an hour, the writer drafts the reply anyway. */
+const reviewOrLater: Workflow = {
+  ...review,
+  id: "review-or-later",
+  states: {
+    ...review.states,
+    decide: {
+      type: "wait",
+      on: [
+        { to: "draft", event: "approve" },
+        { to: "draft", event: "late", after: "1h" },
+      ],
+    },
+  },
+};
+
 /** A workflow that ends as soon as it starts. */
 const instant: Workflow = {
   ...replyWorkflow,
@@ -57,7 +73,13 @@ const instant: Workflow = {
   context: { ready: true },
 };
 
-const workflows = { approval: approvalWorkflow(), reply: replyWorkflow, review, instant };
+const workflows = {
+  approval: approvalWorkflow(),
+  reply: replyWorkflow,
+  review,
+  "review-or-later": reviewOrLater,
+  instant,
+};
 
 const start = { hubId: "acme", workflowId: "onboard", input: { from: "support" } };
 
@@ -68,6 +90,29 @@ function childRuns(
 ) {
   const setup = { workflow: onboard(child), workflows, ...(blobs === undefined ? {} : { blobs }) };
   return runsOn(answers, new KernelRuns(), setup);
+}
+
+/** A clock that stands still until the test moves it. */
+function settableClock(start: string) {
+  let now = Date.parse(start);
+  const clock: Clock = { now: () => new Date(now) };
+  return { clock, moveTo: (at: string) => (now = Date.parse(at)) };
+}
+
+/**
+ * Approves the waiting child of `run_1`, and stops the engine after the
+ * child moves on to its model call and before its parent hears: the parent
+ * still waits, with a child that runs.
+ */
+async function approveAndStopBeforeParentHears(
+  before: Pick<ReturnType<typeof childRuns>, "executor" | "scheduler">,
+): Promise<void> {
+  const schedule = before.scheduler.schedule.bind(before.scheduler);
+  before.scheduler.schedule = async (key, timerId, at) => {
+    if (key === "run_1" && timerId.startsWith("child:")) throw new Error("The engine stopped.");
+    return schedule(key, timerId, at);
+  };
+  await expect(before.executor.send("run_1", "approve")).rejects.toThrow("The engine stopped.");
 }
 
 /** Blobs that keep the first definitions, then refuse to keep any more. */
@@ -178,11 +223,80 @@ verifies("engine.local-child-runs", () => {
     });
   });
 
+  it("stops waiting with a child that runs again when an event sent to it moves the child on", async () => {
+    const { executor, runs, scheduler } = childRuns("review");
+    await executor.start(start);
+
+    const resumed = await executor.send("run_1", "approve");
+
+    expect(resumed).toMatchObject({ status: "running", accepts: [], waitingOn: null });
+    expect(runs.logs.get("run_1")?.at(-1)).toMatchObject({
+      type: "workflow.resumed",
+      state: "check",
+      childRunId: "run_1.2",
+    });
+    await expect(executor.send("run_1", "approve")).rejects.toMatchObject({
+      code: "engine.input-not-accepted",
+      message: expect.stringContaining('Run "run_1" '),
+    });
+    await scheduler.runDue();
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { verdict: { reply: "Dear support" } },
+    });
+  });
+
+  it("stops waiting with a child that runs again when the child's own timer moves it on", async () => {
+    const time = settableClock("2026-11-09T09:00:00.000Z");
+    const setup = { workflow: onboard("review-or-later"), workflows, clock: time.clock };
+    const { executor, runs, scheduler } = runsOn(
+      [textAnswer("Dear support")],
+      new KernelRuns(),
+      setup,
+    );
+    expect(await executor.start(start)).toMatchObject({ status: "waiting", accepts: ["approve"] });
+    const [timer] = await scheduler.pending("run_1.2");
+    if (timer === undefined) throw new Error("expected the child's timer");
+
+    time.moveTo("2026-11-09T10:00:00.000Z");
+    await executor.onTimer(timer);
+
+    expect(await runs.get("run_1")).toMatchObject({ status: "running", accepts: [] });
+    expect(runs.logs.get("run_1")?.at(-1)).toMatchObject({
+      type: "workflow.resumed",
+      state: "check",
+      childRunId: "run_1.2",
+    });
+    await expect(executor.send("run_1", "approve")).rejects.toMatchObject({
+      code: "engine.input-not-accepted",
+      message: expect.stringContaining('Run "run_1" '),
+    });
+    await scheduler.runDue();
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("ends a parent whose child runs again as interrupted with its child when the engine stopped", async () => {
+    const before = childRuns("review");
+    await before.executor.start(start);
+    // The child moves on to its model call, and the parent with it; the engine stops before the call.
+    await before.executor.send("run_1", "approve");
+
+    const setup = { workflow: onboard("review"), workflows, blobs: before.blobs };
+    const after = runsOn([], before.runs, setup);
+    await after.executor.start({ ...start, runId: "run_9" });
+    await after.scheduler.runDue();
+
+    expect(await before.runs.get("run_1.2")).toMatchObject({ reason: "interrupted" });
+    expect(await before.runs.get("run_1")).toMatchObject({
+      status: "failed",
+      reason: "interrupted",
+    });
+  });
+
   it("tells a waiting parent that its child ended as interrupted when the engine stopped", async () => {
     const before = childRuns("review");
     await before.executor.start(start);
-    // The child moves on to its model call; the engine stops before it is made.
-    await before.executor.send("run_1", "approve");
+    await approveAndStopBeforeParentHears(before);
 
     const setup = { workflow: onboard("review"), workflows, blobs: before.blobs };
     const after = runsOn([], before.runs, setup);
@@ -241,7 +355,7 @@ verifies("engine.local-child-runs", () => {
     // A top-level run on the same store that the engine stops while it waits for its model call.
     const other = runsOn([], before.runs, { blobs: before.blobs });
     await other.executor.start({ ...start, runId: "run_5", workflowId: "reply" });
-    await before.executor.send("run_1", "approve");
+    await approveAndStopBeforeParentHears(before);
     const setup = {
       workflow: onboard("review"),
       workflows,

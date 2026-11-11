@@ -169,8 +169,12 @@ export interface HarnessAskedInput extends InputBase {
   readonly args: unknown;
 }
 
-/** How a child run is now, as its parent hears it: waiting for events, or ended. */
+/**
+ * How a child run is now, as its parent hears it: running again after it
+ * waited, waiting for events, or ended.
+ */
 export type ChildRunNow =
+  | { readonly status: "running" }
   | { readonly status: "waiting"; readonly events: readonly string[] }
   | { readonly status: "completed"; readonly context: Record<string, unknown> }
   | {
@@ -185,7 +189,7 @@ export type ChildRunNow =
       readonly cantTry: readonly CantTryStep[];
     };
 
-/** A child run a `workflow` state started waits or has ended. */
+/** A child run a `workflow` state started runs again, waits or has ended. */
 export type ChildInput = InputBase & {
   readonly type: "child";
   readonly childRunId: string;
@@ -280,7 +284,8 @@ export interface StartChildEffect {
 }
 
 /**
- * Tell the parent run that this child run waits or has ended. The effect
+ * Tell the parent run that this child run waits, has ended, or runs again
+ * after it waited. The effect
  * runner reads how the child is when it carries this out, and gives the
  * parent a `child` input, so a late or repeated telling changes nothing.
  */

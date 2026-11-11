@@ -66,6 +66,8 @@ verifies("events.run-log-contract", () => {
       | "transition"
       | "workflow.started"
       | "workflow.finished"
+      // Added after the reference by events.workflow-resumed (HAL-6173).
+      | "workflow.resumed"
       | "run.waiting"
       | "timer.fired"
       | "event.received"

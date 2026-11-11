@@ -16,8 +16,9 @@ export const maxChildDepth = 5;
  * A `workflow` state runs another workflow of the hub as a child run. On
  * entry it records `workflow.started` and asks for the child. The child
  * tells it each time it waits or ends: while the child waits, so does this
- * run, with the child's events; when the child completes, its context goes
- * to `output` and the state finishes with `done`; when it fails, so does
+ * run, with the child's events; when the child runs again, this run records
+ * `workflow.resumed` and runs with it; when the child completes, its context
+ * goes to `output` and the state finishes with `done`; when it fails, so does
  * this run. A child its budget stopped stops this run for its budget too.
  */
 export const workflowState: StateHandler<"workflow"> = {
@@ -70,6 +71,9 @@ function childMoved({ run, stateId, state }: StateContext, input: ChildInput): S
   if (child === null || child.state !== stateId || child.runId !== input.childRunId) {
     return nothing;
   }
+  if (input.status === "running") {
+    return resumeWithChild(run.status === "waiting", stateId, child);
+  }
   if (input.status === "waiting") {
     return waitWithChild(run.status === "waiting" ? run.accepts : null, stateId, input);
   }
@@ -107,6 +111,22 @@ function waitWithChild(
     child: input.childRunId,
   };
   return { events: [waiting], effects: [] };
+}
+
+/**
+ * The run stops waiting with a child that runs again, and takes no events
+ * until the child waits again; told while it runs, it records nothing.
+ */
+function resumeWithChild(waiting: boolean, stateId: string, child: ChildRun): StateStep {
+  if (!waiting) {
+    return nothing;
+  }
+  const resumed: DecidedEvent = {
+    type: "workflow.resumed",
+    state: stateId,
+    childRunId: child.runId,
+  };
+  return { events: [resumed], effects: [] };
 }
 
 function finished(

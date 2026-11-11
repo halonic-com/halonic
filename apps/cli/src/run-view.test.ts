@@ -30,6 +30,7 @@ const supportReply = {
     draft: { type: "task", agent: "writer", description: "Draft a reply" },
     review: { type: "wait", description: "Approve this reply?\n{{context.reply}}" },
     checks: { type: "parallel", description: "Run the checks" },
+    approval: { type: "workflow", description: "Get it approved" },
     done: { type: "final" },
   },
 } as unknown as WorkflowDefinition;
@@ -198,6 +199,26 @@ verifies("cli.run-view", () => {
       "✓ Read the email Writer · smart 2 s",
       "◌ Draft a reply Writer · smart · running since 10:53",
     ]);
+  });
+
+  it("says a workflow step whose child run runs again runs, not waits for the child", () => {
+    const childWaits: RunEventBody = {
+      type: "run.waiting",
+      state: "approval",
+      events: ["approve"],
+      child: "run_mfx3k2a1_a101jd8q.2",
+    };
+    const resumed: RunEventBody = {
+      type: "workflow.resumed",
+      state: "approval",
+      childRunId: "run_mfx3k2a1_a101jd8q.2",
+    };
+    const events = logOf([
+      ["10:53:00", entered("approval")],
+      ["10:53:01", childWaits],
+      ["10:55:00", resumed],
+    ]);
+    expect(linesOf(events)).toEqual(["◌ Get it approved running since 10:53"]);
   });
 
   it("says since when a run waits for the user's answer", () => {

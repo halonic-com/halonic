@@ -345,6 +345,12 @@ export type RunEventBody =
       context?: Record<string, unknown>;
     }
   /**
+   * The child run a waiting `workflow` state waits on runs again, so the run
+   * does too and takes no events until the child waits again
+   * (requirement `events.workflow-resumed`).
+   */
+  | { type: "workflow.resumed"; state: string; childRunId: string }
+  /**
    * `child`: the run is waiting because this child run waits; events go to it.
    * `title` and `body`: the wait step's description, filled in against the
    * run when it started waiting (requirement `events.waiting-description`).

@@ -1,4 +1,4 @@
-import type { CantTryStep, RunFailureReason } from "@halonicjs/events";
+import type { CantTryStep, RunFailureReason, RunStatus } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
 import { getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
@@ -80,24 +80,31 @@ export function decide(
   if (handler !== undefined) {
     settle(draft, stateId, handler.onInput(contextOf(draft, stateId), input));
   }
-  return decisionOf(draft);
+  return decisionOf(draft, run.status);
 }
 
 /**
  * A child run tells its parent each time it waits or ends, so the parent
- * can wait with it or go on. A run with no parent tells no one.
+ * can wait with it or go on, and when it runs again after it waited, so the
+ * parent stops waiting with it. A run with no parent tells no one, and nor
+ * does a run that ran before the step and still runs.
  *
  * @param run - the run as it is after the decided events
+ * @param was - how the run was before them; `null` for a run they start
  */
-export function tellParent(run: RunState): Effect[] {
-  if (run.parent === null || run.status === "running") {
+export function tellParent(run: RunState, was: RunStatus | null = null): Effect[] {
+  if (run.parent === null) {
+    return [];
+  }
+  if (run.status === "running" && was !== "waiting") {
     return [];
   }
   return [{ type: "tell-parent", parentRunId: run.parent.runId, childRunId: run.runId }];
 }
 
-function decisionOf(draft: Draft): Decision {
-  const told = draft.events.length === 0 ? [] : tellParent(draft.run);
+/** @param was - how the run was before the draft's events; `null` for a run they start */
+function decisionOf(draft: Draft, was: RunStatus | null): Decision {
+  const told = draft.events.length === 0 ? [] : tellParent(draft.run, was);
   return { events: draft.events, effects: [...draft.effects, ...told] };
 }
 
@@ -198,7 +205,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     }
     enter(draft, workflow.initial);
   }
-  return decisionOf(draft);
+  return decisionOf(draft, null);
 }
 
 /**

@@ -107,6 +107,10 @@ function takeChildNews(context: StateContext, input: ChildInput): StateStep {
   if (running === undefined || !("childRunId" in running)) {
     return nothing;
   }
+  // An item's child never waits, so it never runs again after a wait either.
+  if (input.status === "running") {
+    return nothing;
+  }
   const { item, childRunId, workflow } = running;
   const where = `item ${item} of for-each state "${context.stateId}"`;
   if (input.status === "waiting") {

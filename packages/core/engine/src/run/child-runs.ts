@@ -56,14 +56,15 @@ export async function childStart(
  * How a child run is now, as its parent hears it, read from the store when
  * the telling is carried out, so a late or repeated telling is up to date.
  *
- * @returns `null` while the child runs, or when it has no log
+ * @returns `null` when the child has no log
  */
 export async function childNow(
   runs: Pick<RunStore, "events" | "snapshot" | "get">,
   childRunId: string,
 ): Promise<ChildRunNow | null> {
   const child = await readRun(runs, childRunId);
-  if (child === null || child.status === "running") return null;
+  if (child === null) return null;
+  if (child.status === "running") return { status: "running" };
   if (child.status === "waiting") return { status: "waiting", events: child.accepts };
   if (child.status === "completed") return { status: "completed", context: child.context };
   if (child.status === "cant-try") return { status: "cant-try", cantTry: child.cantTry };
