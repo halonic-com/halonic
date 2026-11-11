@@ -31,13 +31,25 @@ verifies("app.run-proposal-worktree", () => {
       });
     });
 
-    it("refuses a second worktree for the same run", async () => {
+    it("gives an open run's folder again and adds no second worktree", async () => {
       const { vcs, proposals, version } = setUp();
-      await proposals.open("01JD8Q", version);
-      await expect(proposals.open("01JD8Q", version)).rejects.toThrow(
-        "Run 01JD8Q already has a worktree or a proposal.",
-      );
+      const [first, second] = await Promise.all([
+        proposals.open("01JD8Q", version),
+        proposals.open("01JD8Q", version),
+      ]);
+      expect(second.folder).toBe(first.folder);
       expect(vcs.worktrees.size).toBe(1);
+    });
+
+    it("refuses to open a run that already has a proposal", async () => {
+      const { vcs, proposals, version } = setUp();
+      const { folder } = await proposals.open("01JD8Q", version);
+      vcs.filesOf(folder).set("notes/today.md", "Done.\n");
+      expect(await proposals.end("01JD8Q")).not.toBeNull();
+      await expect(proposals.open("01JD8Q", version)).rejects.toThrow(
+        "Run 01JD8Q already has a proposal.",
+      );
+      expect(vcs.worktrees.size).toBe(0);
     });
 
     it("refuses a run id that can't name a proposal ref, before adding anything", async () => {
