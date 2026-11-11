@@ -18,8 +18,9 @@ use std::time::{Duration, Instant};
 pub use handshake::{Handshake, read_handshake};
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
 pub use wsl::{
-    DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, RUNTIME_UPDATER, RuntimeStep, WslError,
-    distro_host_command, file_sha256, install_runtime, run_runtime_step, runtime_command, wsl_exe,
+    DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
+    WslError, distro_host_command, file_sha256, install_runtime, run_runtime_step, runtime_command,
+    wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.

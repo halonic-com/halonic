@@ -7,14 +7,17 @@
 //! - always as `-d halonic --exec <program>`, so the person's default distro
 //!   is never used and no shell reads the arguments;
 //! - with fixed arguments only. Project names and paths go over standard
-//!   input, never on the command line (security review W7, HAL-5407).
+//!   input, never on the command line (security review W7, HAL-5407);
+//! - always with an explicit user, so the agent host never runs as root when
+//!   the distro's default user is lost (W2a), and without `WSLENV`, so none
+//!   of the person's Windows variables cross into the distro.
 //!
 //! The runtime updater runs as root in the distro (`-u root`, no admin on
 //! Windows). Studio checks the runtime archive's SHA-256 here, before a
 //! byte of it goes in, and the updater checks it again (review W2).
 
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -24,6 +27,9 @@ use crate::without_console_window;
 
 /// The name Halonic's distro is imported under.
 pub const DISTRO: &str = "halonic";
+
+/// The user the agent host runs as in the distro.
+pub const DISTRO_USER: &str = "halonic";
 
 /// The agent host of the current runtime, inside the distro.
 pub const DISTRO_HOST: &str = "/opt/halonic/current/bin/halonic-agent-host";
@@ -126,7 +132,7 @@ pub fn wsl_exe(system_root: Option<&str>) -> Result<PathBuf, WslError> {
 /// The command that starts the agent host in the distro, as the `halonic`
 /// user, with Halonic's data there as its profile folder.
 pub fn distro_host_command(wsl: &Path) -> Command {
-    let mut command = distro_command(wsl, None, DISTRO_HOST);
+    let mut command = distro_command(wsl, DISTRO_USER, DISTRO_HOST);
     command.args(["--profile-folder", DISTRO_PROFILE_FOLDER]);
     command
 }
@@ -138,7 +144,7 @@ pub fn distro_host_command(wsl: &Path) -> Command {
 /// [`WslError::BadArgument`] for a version or SHA-256 the updater would
 /// refuse, so a refused step never starts `wsl.exe`.
 pub fn runtime_command(wsl: &Path, step: RuntimeStep<'_>) -> Result<Command, WslError> {
-    let mut command = distro_command(wsl, Some("root"), RUNTIME_UPDATER);
+    let mut command = distro_command(wsl, "root", RUNTIME_UPDATER);
     match step {
         RuntimeStep::Install { version, sha256 } => {
             check_version(version)?;
@@ -158,21 +164,25 @@ pub fn runtime_command(wsl: &Path, step: RuntimeStep<'_>) -> Result<Command, Wsl
     Ok(command)
 }
 
-/// Checks the archive's SHA-256 against `sha256`, then runs `command`, an
-/// install step from [`runtime_command`], with the archive on its standard
-/// input. Nothing is started when the SHA-256 differs.
+/// Installs the runtime `version` from `archive`: checks the archive's
+/// SHA-256 against `sha256`, then runs the updater's install step with the
+/// archive on its standard input. Nothing is started when the SHA-256
+/// differs. The step is built here, so the SHA-256 checked on Windows is
+/// the one the updater checks again.
 ///
 /// # Errors
 ///
-/// When the archive can't be read or has another SHA-256, when `wsl.exe`
-/// can't start, or with the updater's own reason when it ends with an error.
-pub fn install_runtime(command: Command, archive: &Path, sha256: &str) -> Result<(), WslError> {
-    check_sha256(sha256)?;
-    if file_sha256(archive)? != sha256 {
-        return Err(WslError::ChecksumDiffers);
-    }
-    let file = File::open(archive).map_err(archive_error)?;
-    run(command, Stdio::from(file)).map(drop)
+/// For a version or SHA-256 the updater would refuse, when the archive
+/// can't be read or has another SHA-256, when `wsl.exe` can't start, or
+/// with the updater's own reason when it ends with an error.
+pub fn install_runtime(
+    wsl: &Path,
+    version: &str,
+    archive: &Path,
+    sha256: &str,
+) -> Result<(), WslError> {
+    let command = runtime_command(wsl, RuntimeStep::Install { version, sha256 })?;
+    send_archive(command, archive, sha256)
 }
 
 /// Runs `command`, a step from [`runtime_command`], with no input, and
@@ -192,6 +202,21 @@ pub fn run_runtime_step(command: Command) -> Result<String, WslError> {
 /// [`WslError::Archive`] when the file can't be read.
 pub fn file_sha256(path: &Path) -> Result<String, WslError> {
     let mut file = File::open(path).map_err(archive_error)?;
+    reader_sha256(&mut file)
+}
+
+/// Hashes the archive and streams it to `command` from the same open file,
+/// so it can't be swapped between the check and the send.
+fn send_archive(command: Command, archive: &Path, sha256: &str) -> Result<(), WslError> {
+    let mut file = File::open(archive).map_err(archive_error)?;
+    if reader_sha256(&mut file)? != sha256 {
+        return Err(WslError::ChecksumDiffers);
+    }
+    file.seek(SeekFrom::Start(0)).map_err(archive_error)?;
+    run(command, Stdio::from(file)).map(drop)
+}
+
+fn reader_sha256(file: &mut File) -> Result<String, WslError> {
     let mut hasher = Sha256::new();
     let mut buffer = vec![0_u8; 64 * 1024];
     loop {
@@ -208,12 +233,11 @@ pub fn file_sha256(path: &Path) -> Result<String, WslError> {
         .collect())
 }
 
-fn distro_command(wsl: &Path, user: Option<&str>, program: &str) -> Command {
+fn distro_command(wsl: &Path, user: &str, program: &str) -> Command {
     let mut command = Command::new(wsl);
-    command.args(["-d", DISTRO]);
-    if let Some(user) = user {
-        command.args(["-u", user]);
-    }
+    // `WSLENV` names Windows variables that wsl.exe copies into the distro.
+    command.env_remove("WSLENV");
+    command.args(["-d", DISTRO, "-u", user]);
     // The Windows working folder has no path in the distro: no drive is mounted.
     command.args(["--cd", "/", "--exec", program]);
     command
@@ -271,3 +295,6 @@ fn check_sha256(sha256: &str) -> Result<(), WslError> {
 fn archive_error(error: io::Error) -> WslError {
     WslError::Archive(format!("The runtime archive can't be read: {error}."))
 }
+
+#[cfg(test)]
+mod tests;
