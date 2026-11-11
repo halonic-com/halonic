@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -17,7 +17,7 @@ beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-plugin-list-"));
   setup = {
     profile: {
-      platform: "linux",
+      platform: process.platform === "win32" ? "windows" : "linux",
       homeFolder: folder,
       variables: { HALONIC_HOME: join(folder, "profile") },
     },
@@ -74,8 +74,8 @@ verifies("cli.commands.plugin.list", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      "Tides     1.2.0   ~/sources/tides     ! not trusted yet · halonic trust --plugin tides",
-      "Weather   1.2.0   ~/sources/weather   ✓ on",
+      `Tides     1.2.0   ~${sep}sources${sep}tides     ! not trusted yet · halonic trust --plugin tides`,
+      `Weather   1.2.0   ~${sep}sources${sep}weather   ✓ on`,
     ]);
   });
 
