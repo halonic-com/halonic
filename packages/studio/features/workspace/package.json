@@ -1,0 +1,28 @@
+{
+  "name": "@halonicjs/studio-feature-workspace",
+  "private": true,
+  "type": "module",
+  "description": "The Workspace feature of the Studio.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "elena",
+    "coverage": {
+      "lines": 85
+    }
+  }
+}
