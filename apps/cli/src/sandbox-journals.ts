@@ -18,19 +18,36 @@ export function privateJournalFolder(profile: ProfileFolder): string {
 /**
  * Undoes the `commondir` changes of sessions whose host crashed. Run it once
  * when the host starts, before any session opens. A failure is not the
- * person's problem: an undo that fails is retried at the next start.
+ * person's problem: an undo that fails is retried at the next start. Each
+ * file it couldn't undo, or the error when it couldn't run, goes to `debug`
+ * (HAL-5215).
  *
  * @returns the files it could not undo
  */
 export async function recoverSandboxSessions(
   profile: () => ProfileFolder,
   recover: typeof recoverGitFolders = recoverGitFolders,
+  debug: (line: string) => void = () => {},
 ): Promise<string[]> {
+  let failed: string[];
   try {
     // Resolved in here: a profile folder that can't be resolved (a relative
     // HALONIC_HOME) must not stop the program, `--version` included.
-    return (await recover(privateJournalFolder(profile()))).failed;
-  } catch {
+    failed = (await recover(privateJournalFolder(profile()))).failed;
+  } catch (error) {
+    debug(
+      `Couldn't undo what crashed sandbox sessions left, trying again at the next start: ${messageOf(error)}`,
+    );
     return [];
   }
+  for (const file of failed) {
+    debug(
+      `Couldn't undo a crashed sandbox session's change to ${file}, trying again at the next start.`,
+    );
+  }
+  return failed;
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

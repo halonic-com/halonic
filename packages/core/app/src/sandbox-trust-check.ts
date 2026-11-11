@@ -140,13 +140,22 @@ export async function runTrustCheck(
     return failed("did-not-start", [messageOf(error)]);
   }
 
+  let result: TrustCheckResult;
   try {
-    return verdict(session, await canary.probe(session));
+    result = verdict(session, await canary.probe(session));
   } catch (error) {
-    return failed("other", [messageOf(error)]);
-  } finally {
-    await session.close();
+    result = failed("other", [messageOf(error)]);
   }
+  try {
+    await session.close();
+  } catch (error) {
+    // A sandbox that can't end its canary session doesn't pass (HAL-5215).
+    const closing = `the canary session didn't close: ${messageOf(error)}`;
+    return result.passed
+      ? failed("other", [closing])
+      : failed(result.reason, [...result.missing, closing]);
+  }
+  return result;
 }
 
 /** The verdict from the fence proof and the probes: a leak first, then a failed control. */

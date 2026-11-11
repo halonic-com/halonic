@@ -62,6 +62,24 @@ describe("recoverSandboxSessions", () => {
     expect(await recoverSandboxSessions(profile, failing)).toEqual([]);
   });
 
+  // Startup prints these with `--debug` instead of dropping them (HAL-5215).
+  it("passes each file it couldn't undo, or why it couldn't run, to debug", async () => {
+    const lines: string[] = [];
+    const partly = async () => ({ undone: [], failed: ["/work/.git/commondir"] });
+    expect(await recoverSandboxSessions(profile, partly, (line) => lines.push(line))).toEqual([
+      "/work/.git/commondir",
+    ]);
+    const failing = async () => {
+      throw new Error("disk");
+    };
+    expect(await recoverSandboxSessions(profile, failing, (line) => lines.push(line))).toEqual([]);
+
+    expect(lines).toEqual([
+      "Couldn't undo a crashed sandbox session's change to /work/.git/commondir, trying again at the next start.",
+      "Couldn't undo what crashed sandbox sessions left, trying again at the next start: disk",
+    ]);
+  });
+
   it("does not throw when the profile folder can't be resolved", async () => {
     const unresolved = () => {
       throw new Error("HALONIC_HOME must be an absolute path");

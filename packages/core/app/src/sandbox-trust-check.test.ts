@@ -171,6 +171,39 @@ verifies("app.sandbox-trust-check", () => {
     });
   });
 
+  // A backend may fail to end its canary session, such as one whose process it can't stop;
+  // the check reports that and doesn't throw (HAL-5215).
+  it("fails with other, and doesn't throw, when the canary session can't be closed", async () => {
+    const closeFails = (setup: Setup) => {
+      const { sandbox, canary } = fakes(setup);
+      const open = sandbox.open;
+      sandbox.open = async (given) => {
+        const session = await open(given);
+        session.close = async () => {
+          throw new Error("the box wouldn't stop");
+        };
+        return session;
+      };
+      return { sandbox, canary };
+    };
+
+    const passing = closeFails({});
+    expect(await runTrustCheck(passing.sandbox, passing.canary)).toEqual({
+      passed: false,
+      reason: "other",
+      missing: ["the canary session didn't close: the box wouldn't stop"],
+    });
+
+    const leaking = closeFails({
+      findings: { ...clean, leaks: ["internet-reachable"], missing: ["got out"] },
+    });
+    expect(await runTrustCheck(leaking.sandbox, leaking.canary)).toEqual({
+      passed: false,
+      reason: "internet-reachable",
+      missing: ["got out", "the canary session didn't close: the box wouldn't stop"],
+    });
+  });
+
   it("passes when name lookups leave through the system's DNS service, and says whether they do", async () => {
     const { sandbox, canary } = fakes({ findings: { ...clean, nameLookupsLeave: false } });
     expect(await runTrustCheck(sandbox, canary)).toEqual({ passed: true, nameLookupsLeave: false });
