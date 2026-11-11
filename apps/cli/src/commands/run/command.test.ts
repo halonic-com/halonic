@@ -16,6 +16,7 @@ import { checklistProblems } from "../../test/golden-checklist.ts";
 import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { testRunSetup } from "../../test/run-setup.ts";
+import { leakedAddressParts, userInfoConnectorYaml } from "../../test/user-info-connector.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
 import { runCommandWith } from "./command.ts";
 
@@ -231,23 +232,30 @@ describe("halonic run's refusals", () => {
     expect(listed.total).toBe(0);
   });
 
-  it("names the connector file whose URL can't be trusted, without its password, and starts nothing (HAL-5421)", async () => {
+  it("names the connector file whose URL can't be trusted, without its address, and starts nothing (HAL-5421)", async () => {
     await turnOffLocalOnly(acme);
     await mkdir(join(acme, "library/connectors"), { recursive: true });
-    await writeFile(
-      join(acme, "library/connectors/web.connector.yaml"),
-      "name: Web\ntransport:\n  http:\n    url: https://ops:pw@web.example.com/mcp\ntools:\n  approve: []\n",
-    );
+    await writeFile(join(acme, "library/connectors/web.connector.yaml"), userInfoConnectorYaml);
     const profile = freshProfile();
     const io = captureIo(acme);
+    const json = captureIo(acme);
 
     const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
+    const jsonCode = await runCli(["run", "support-reply", ...samsEmail, "--json"], json, [
+      runCommand(profile),
+    ]);
 
-    expect(code).toBe(exitCode.usage);
+    expect([code, jsonCode]).toEqual([exitCode.usage, exitCode.usage]);
     expect(io.stderr).toContain(
       "✕ Couldn't run support-reply: library/connectors/web.connector.yaml can't be trusted, because the URL has user info.",
     );
-    expect(io.stderr.join("\n")).not.toContain("pw");
+    expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({
+      ok: false,
+      error: { kind: "invalid_input" },
+    });
+    expect(
+      leakedAddressParts([...io.stdout, ...io.stderr, ...json.stdout, ...json.stderr]),
+    ).toEqual([]);
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
   });

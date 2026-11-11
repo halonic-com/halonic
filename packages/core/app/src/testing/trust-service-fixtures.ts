@@ -19,6 +19,34 @@ export function program(id: string, env: Record<string, string> = {}): Connector
   };
 }
 
+/**
+ * The parts of an address with user info. Each is distinctive, so a test can
+ * show that none of them reaches a check: not the password, and not the rest
+ * of the address either (HAL-5421). The password is short because the leak
+ * guard reports any URL password of six characters or more.
+ */
+const userInfoAddress = {
+  user: "leak-test-user",
+  password: "Xq7z9",
+  host: "leak-test-host.example.com",
+} as const;
+
+/**
+ * An address with user info, ending in `path` (which starts with `/`), which
+ * the trust check refuses. Core code has no `URL`, so the address is joined
+ * from its parts.
+ */
+export function userInfoUrl(path: string): string {
+  const userInfo = [userInfoAddress.user, userInfoAddress.password].join(":");
+  return `https://${userInfo}@${userInfoAddress.host}${path}`;
+}
+
+/** The parts of a {@link userInfoUrl} address that `value` holds as JSON; a test expects none. */
+export function leakedAddressParts(value: unknown): string[] {
+  const json = JSON.stringify(value);
+  return Object.values(userInfoAddress).filter((part) => json.includes(part));
+}
+
 /** A connector reached over HTTP at `url`. */
 export function remote(id: string, url: string): Connector {
   return { version: 1, id, transport: { http: { url, headers: {} } }, tools: { approve: [] } };

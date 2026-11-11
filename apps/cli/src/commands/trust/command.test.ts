@@ -9,6 +9,7 @@ import { exitCode } from "../../exit-code.ts";
 import type { QuestionTerminal } from "../../output/question.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { leakedAddressParts, userInfoConnectorYaml } from "../../test/user-info-connector.ts";
 import { createTrustCommand, type TrustMachine } from "./command.ts";
 
 /** Midday on 3 Nov, so the day is the same in every time zone the tests run in. */
@@ -164,11 +165,8 @@ verifies("cli.commands.trust.review-and-trust", () => {
     ]);
   });
 
-  it("names the file of a connector whose URL has user info, without the password, and saves nothing (HAL-5421)", async () => {
-    writeAcme({
-      "library/connectors/web.connector.yaml":
-        "name: Web\ntransport:\n  http:\n    url: https://ops:pw@web.example.com/mcp\ntools:\n  approve: []\n",
-    });
+  it("names the file of a connector whose URL has user info, without its address, and saves nothing (HAL-5421)", async () => {
+    writeAcme({ "library/connectors/web.connector.yaml": userInfoConnectorYaml });
     const io = captureIo(folder);
     const json = captureIo(folder);
     const { terminal, written } = terminalTyping("y", "y");
@@ -185,7 +183,9 @@ verifies("cli.commands.trust.review-and-trust", () => {
       ok: false,
       error: { kind: "invalid_input" },
     });
-    expect([...io.stdout, ...io.stderr, ...json.stdout, written()].join("\n")).not.toContain("pw");
+    expect(
+      leakedAddressParts([...io.stdout, ...io.stderr, ...json.stdout, ...json.stderr, written()]),
+    ).toEqual([]);
     expect(await store.list()).toEqual([]);
   });
 

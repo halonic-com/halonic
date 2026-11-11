@@ -22,4 +22,4 @@ The `halonic trust [--dir <folder>]` command shall show the trust check of the w
   then it prints "✕ Couldn't trust Acme: it changed since that fingerprint was made.", saves nothing and exits with 3.
 - Given Acme with a connector file `library/connectors/mail.connector.yaml` whose URL is `https://ops:pw@mail.example.com/mcp`,
   when `halonic trust --dir acme` runs,
-  then it exits 2 with "✕ Couldn't trust Acme: library/connectors/mail.connector.yaml can't be trusted, because the URL has user info.", nothing is saved, and neither the output nor its `--json` holds the password.
+  then it exits 2 with "✕ Couldn't trust acme: library/connectors/mail.connector.yaml can't be trusted, because the URL has user info.", nothing is saved, and neither the output nor its `--json` holds the password.
