@@ -30,6 +30,7 @@ verifies("sandbox-srt.session", () => {
         "whoami.exe",
         "icacls.exe",
         "icacls.exe",
+        "icacls.exe",
       ]);
       expect(started.every((s) => /system32/i.test(s.file))).toBe(true);
     });

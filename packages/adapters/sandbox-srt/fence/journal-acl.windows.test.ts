@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -58,7 +58,11 @@ exit $p.ExitCode`;
       ["-NoProfile", "-NonInteractive", "-Command", script],
       {
         windowsHide: true,
-        env: { ...process.env, PROBE_COMMAND: commandLine, PROBE_PASSWORD: otherPassword },
+        env: {
+          ...process.env,
+          PROBE_COMMAND: commandLine,
+          PROBE_PASSWORD: otherPassword,
+        },
       },
       (error) => resolve(exitCode(error)),
     );
@@ -93,12 +97,48 @@ describe("the journal folder on Windows", () => {
       .map((line) => line.trim());
     expect(entries, stdout).toHaveLength(1);
     expect(entries[0]).not.toContain("(I)");
-    expect(entries[0]?.toLowerCase()).toContain((process.env["USERNAME"] ?? "").toLowerCase());
+    expect(entries[0]?.toLowerCase()).toContain(
+      (process.env["USERNAME"] ?? "").toLowerCase(),
+    );
+  });
+
+  it("is owned by the current user", async () => {
+    const { code, stdout } = await run("powershell.exe", [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      `(Get-Acl -LiteralPath '${folder}').Owner`,
+    ]);
+    expect(code).toBe(0);
+    const owner = stdout.trim().toLowerCase();
+    expect(
+      owner.endsWith(`\\${(process.env["USERNAME"] ?? "").toLowerCase()}`),
+      owner,
+    ).toBe(true);
+  });
+
+  it("is taken over when another account owns it, with the access list still reset", async () => {
+    const owned = join(base, "owned-by-other");
+    await mkdir(owned);
+    // Give it to the second account; the runner is an administrator and may.
+    const given = await run("icacls.exe", [owned, "/setowner", other]);
+    expect(given.code, `${given.stdout} ${given.stderr}`).toBe(0);
+    await prepareJournalFolder(owned);
+    const { stdout } = await run("powershell.exe", [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      `(Get-Acl -LiteralPath '${owned}').Owner`,
+    ]);
+    expect(stdout.trim().toLowerCase()).not.toContain(other);
+    expect(await asOther(`dir "${owned}"`)).not.toBe(0);
   });
 
   it("is reachable by another local account neither to read nor to write", async () => {
     expect(await asOther("exit 0")).toBe(0); // the account works at all
     expect(await asOther(`dir "${folder}"`)).not.toBe(0);
-    expect(await asOther(`echo x > "${join(folder, "planted.json")}"`)).not.toBe(0);
+    expect(
+      await asOther(`echo x > "${join(folder, "planted.json")}"`),
+    ).not.toBe(0);
   });
 });

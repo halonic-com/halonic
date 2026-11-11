@@ -2,14 +2,25 @@ import { describe, expect, it } from "vitest";
 import { restrictToThisUser } from "./journal-acl.ts";
 
 describe("restrictToThisUser", () => {
-  it("removes inheritance and grants only the current user's SID", async () => {
+  it("takes the ownership, removes inheritance and grants only the current user's SID", async () => {
     const calls: { file: string; args: string[] }[] = [];
-    await restrictToThisUser("journals\\sandbox-journals", async (file, args) => {
-      calls.push({ file, args });
-      return { stdout: '"corp\\ada lovelace","S-1-5-21-1-2-3-1001"\r\n' };
-    });
+    await restrictToThisUser(
+      "journals\\sandbox-journals",
+      async (file, args) => {
+        calls.push({ file, args });
+        return { stdout: '"corp\\ada lovelace","S-1-5-21-1-2-3-1001"\r\n' };
+      },
+    );
     expect(calls).toEqual([
       { file: "whoami.exe", args: ["/user", "/fo", "csv", "/nh"] },
+      {
+        file: "icacls.exe",
+        args: [
+          "journals\\sandbox-journals",
+          "/setowner",
+          "*S-1-5-21-1-2-3-1001",
+        ],
+      },
       {
         file: "icacls.exe",
         args: [
@@ -21,7 +32,12 @@ describe("restrictToThisUser", () => {
       },
       {
         file: "icacls.exe",
-        args: ["journals\\sandbox-journals", "/remove:g", "*S-1-5-18", "*S-1-5-32-544"],
+        args: [
+          "journals\\sandbox-journals",
+          "/remove:g",
+          "*S-1-5-18",
+          "*S-1-5-32-544",
+        ],
       },
     ]);
   });
