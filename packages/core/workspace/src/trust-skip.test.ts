@@ -73,6 +73,7 @@ const withPart: Record<keyof TrustContent, TrustSkipInput> = {
       },
     ],
   },
+  providers: { ...acme, providers: [...acme.providers, provider("claude", "anthropic")] },
 };
 
 verifies("workspace.trust-skip", () => {

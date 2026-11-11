@@ -1,4 +1,4 @@
-import type { Agent, Connector } from "@halonicjs/format";
+import type { Agent, Connector, Provider } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
 import { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 import {
@@ -6,6 +6,7 @@ import {
   integrationsTrustContent,
   type LocalIntegrationInput,
 } from "./trust-integrations.ts";
+import { type ProviderTrustContent, providersTrustContent } from "./trust-providers.ts";
 import { secretReference } from "./trust-secret.ts";
 import { trustUrl } from "./trust-url.ts";
 
@@ -37,9 +38,10 @@ export interface TrustContent {
   /** Every connector that can be trusted, sorted by id. */
   connectors: ConnectorTrustContent[];
   /**
-   * Connectors that can't be trusted at all, sorted by id. Only there when
-   * there are some. A workspace with any can't be fingerprinted, so none of
-   * its connectors can be trusted or started until the file is fixed.
+   * Connectors and providers that can't be trusted at all, sorted by id.
+   * Only there when there are some. A workspace with any can't be
+   * fingerprinted, so nothing in it can be trusted or started until the
+   * file is fixed.
    */
   refused?: RefusedConnector[];
   /**
@@ -54,6 +56,12 @@ export interface TrustContent {
    * the same as before.
    */
   integrations?: IntegrationTrustContent[];
+  /**
+   * The model providers, apart from the test model, sorted by id. Only
+   * there when there are some, so the content and fingerprint of a
+   * workspace without them are the same as before.
+   */
+  providers?: ProviderTrustContent[];
 }
 
 /**
@@ -78,7 +86,7 @@ export interface ConnectorTrustContent {
   unknown?: Record<string, unknown>;
 }
 
-/** A connector that can't be trusted, and why. Its settings stay out, as they may hold a password. */
+/** A connector or provider that can't be trusted, and why. Its settings stay out, as they may hold a password. */
 export interface RefusedConnector {
   id: string;
   /** Why, such as "the URL has user info". */
@@ -99,6 +107,8 @@ export interface TrustContentInput {
   agents?: readonly Agent[];
   /** The workspace's local integrations, with its settings for each and the hash of its code. */
   integrations?: readonly LocalIntegrationInput[];
+  /** The workspace's model providers, as parsed from their files. */
+  providers?: readonly Provider[];
 }
 
 /**
@@ -119,6 +129,10 @@ export interface TrustContentInput {
  *   secrets and tool risks its sheet declares, the hash of its code and
  *   the URL each `{ fromSetting }` setting holds (see
  *   {@link integrationsTrustContent}).
+ * - **providers:** for each model provider but the test model, its type,
+ *   its `baseUrl` normalised, its secret's name, `local` and its options
+ *   (see {@link providersTrustContent}). One whose `baseUrl` `trustUrl`
+ *   refuses goes in `refused`.
  *
  * @example
  * trustContent({ connectors: [mailConnector] });
@@ -136,6 +150,8 @@ export function trustContent(input: TrustContentInput): TrustContent {
       connectors.push(content);
     }
   }
+  const providers = providersTrustContent(input.providers ?? []);
+  refused.push(...providers.refused);
   connectors.sort((left, right) => compareText(left.id, right.id));
   refused.sort((left, right) => compareText(left.id, right.id));
   const agents = agentsTrustContent(input.agents ?? []);
@@ -145,6 +161,7 @@ export function trustContent(input: TrustContentInput): TrustContent {
     ...(refused.length === 0 ? {} : { refused }),
     ...(agents.length === 0 ? {} : { agents }),
     ...(integrations.length === 0 ? {} : { integrations }),
+    ...(providers.providers.length === 0 ? {} : { providers: providers.providers }),
   };
 }
 

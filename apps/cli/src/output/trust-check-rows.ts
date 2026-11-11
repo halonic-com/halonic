@@ -1,6 +1,6 @@
 // The rows of the trust check (cli-output 3.5, revision 40): a program with
-// its command, secrets and ! line, an address, a local integration with the
-// address each of its settings holds, an agent with its sites and folder,
+// its command, secrets and ! line, an address, a model provider's address,
+// a local integration with the address each of its settings holds, an agent with its sites and folder,
 // and a changed agent's one row per field. `trust-check.ts` puts
 // them in sections.
 
@@ -11,6 +11,7 @@ import type {
   ChangedAgent,
   ConnectorTrustContent,
   IntegrationTrustContent,
+  ProviderTrustContent,
 } from "@halonicjs/workspace";
 import { columnGap } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
@@ -35,7 +36,9 @@ export function programRow(
   unpinned: ReadonlySet<string>,
 ): Phrase[] {
   const command = [text(connector.settings["command"]), ...strings(connector.settings["args"])];
-  const lines = [row(connector.id, withSecrets(phrase`${command.join(" ")}`, connector))];
+  const lines = [
+    row(connector.id, withSecrets(phrase`${command.join(" ")}`, secretNames(connector))),
+  ];
   if (unpinned.has(connector.id)) {
     const warning = trustMessages.notPinned(
       registryOf(text(connector.settings["command"]), command),
@@ -49,7 +52,17 @@ export function programRow(
 export function addressRow(connector: ConnectorTrustContent): Phrase {
   const address =
     connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
-  return row(connector.id, withSecrets(phrase`${address}`, connector));
+  return row(connector.id, withSecrets(phrase`${address}`, secretNames(connector)));
+}
+
+/**
+ * "  claude        https://api.anthropic.com/ · gets the secret ANTHROPIC_KEY":
+ * where the provider sends its requests, or its type when the file names no
+ * address and the adapter's own is used.
+ */
+export function providerRow(provider: ProviderTrustContent): Phrase {
+  const address = provider.baseUrl ?? provider.type;
+  return row(provider.id, withSecrets(phrase`${address}`, providerSecretNames(provider)));
 }
 
 /**
@@ -74,9 +87,8 @@ function settingAddress(address: string | null): Phrase {
   return refused === undefined ? phrase`${address}` : trustMessages.settingRefused(refused).phrase;
 }
 
-/** The detail, then "· gets the secret GMAIL_TOKEN" when the connector gets any. */
-function withSecrets(detail: Phrase, connector: ConnectorTrustContent): Phrase {
-  const secrets = secretNames(connector);
+/** The detail, then "· gets the secret GMAIL_TOKEN" when there are any. */
+function withSecrets(detail: Phrase, secrets: readonly string[]): Phrase {
   return secrets.length === 0
     ? detail
     : phrase`${detail} ${markPart("separator")} ${trustMessages.getsSecrets(secrets).phrase}`;
@@ -160,11 +172,20 @@ export function withTag(line: Phrase, tag: Message): Phrase {
 
 /** The secrets a connector gets, by name: its own and the program's `secretEnv`, sorted. */
 export function secretNames(connector: ConnectorTrustContent): string[] {
-  const references = [
-    connector.secret,
-    ...Object.values(record(connector.settings["secretEnv"])),
-  ].filter((value) => typeof value === "string");
-  const names = references.map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1]);
+  const references = [connector.secret, ...Object.values(record(connector.settings["secretEnv"]))];
+  return namesOf(references);
+}
+
+/** The secret a model provider gets, by name, or none. */
+export function providerSecretNames(provider: ProviderTrustContent): string[] {
+  return namesOf([provider.secret]);
+}
+
+/** The names in `‹secret NAME›` references, each once and sorted. */
+function namesOf(references: readonly unknown[]): string[] {
+  const names = references
+    .filter((value) => typeof value === "string")
+    .map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1]);
   return [...new Set(names.filter((name) => name !== undefined))].sort();
 }
 

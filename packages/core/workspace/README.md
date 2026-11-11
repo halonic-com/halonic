@@ -231,12 +231,19 @@ it refuses an unclean path (requirement `workspace.trust-integration-code`). Bui
 come with Halonic and add nothing, so a workspace without local integrations keeps the same content
 and fingerprint as before.
 
+Model providers are part of it too, as a model call sends the provider's key to its address.
+`providersTrustContent` lists each provider but the test model (`mock`), sorted by id, with its type,
+its `baseUrl` normalised as connector URLs are, its secret by name, `local` and its options. A
+provider whose `baseUrl` can't be trusted is refused, as such a connector is. A workspace whose only
+provider is the test model keeps the same content and fingerprint as before.
+
 `reachesOnlyTheTestModel` says when a run needs no trust at all: every provider is `mock`, there is no
 local integration and the trust content is empty, so nothing starts outside Halonic.
 
 When the fingerprint no longer matches, `trustChanges` compares the trusted content with the current
-one and lists the new, changed and removed connectors, harness agents and integrations, so the prompt
-can show New and Changed first. Only removing whole connectors, harness agents or integrations lets
+one and lists the new, changed and removed connectors, harness agents, integrations and providers, so
+the prompt can show New and Changed first. Only removing whole connectors, harness agents, integrations
+or providers lets
 the record shrink without asking (HAL-65 decision 9). Any change
 inside a connector asks again, even one that takes something out of the file, because dropping a
 tool from `approve`, the `allow` list or a variable can let the connector do more.

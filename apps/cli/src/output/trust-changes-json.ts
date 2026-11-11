@@ -22,6 +22,8 @@ export interface TrustChangesDocument {
   readonly agents: ItemChangesDocument;
   /** The local integrations' setting addresses. */
   readonly integrations: ItemChangesDocument;
+  /** The model providers. */
+  readonly providers: ItemChangesDocument;
 }
 
 /**
@@ -39,6 +41,7 @@ export function trustChangesDocument(
     connectors: itemChangesDocument(changes),
     agents: itemChangesDocument(changes.agents),
     integrations: itemChangesDocument(changes.integrations),
+    providers: itemChangesDocument(changes.providers),
   };
 }
 

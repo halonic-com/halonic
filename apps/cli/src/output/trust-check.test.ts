@@ -4,6 +4,7 @@ import type {
   AgentTrustContent,
   ConnectorTrustContent,
   IntegrationTrustContent,
+  ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
@@ -157,6 +158,7 @@ verifies("cli.trust-check", () => {
         unchanged: 0,
       },
       integrations: noChanges,
+      providers: noChanges,
       onlyRemoves: false,
     };
     expect(lines({ status: "changed", content, ...current, changes, trustedAt })).toEqual([
@@ -218,6 +220,7 @@ verifies("cli.trust-check", () => {
         ...noChanges,
         changed: [{ id: "my-crm", before, after, fields: ["addresses"] }],
       },
+      providers: noChanges,
       onlyRemoves: false,
     };
     const check: TrustCheck = {
@@ -236,12 +239,77 @@ verifies("cli.trust-check", () => {
     expect(lines(check)[4]).toBe("  my-crm        CRM_URL   https://crm.example.com/   Changed");
   });
 
+  it("lists each model provider's address and secret under Addresses", () => {
+    const claude: ProviderTrustContent = {
+      id: "claude",
+      type: "anthropic",
+      secret: "‹secret ANTHROPIC_KEY›",
+      local: false,
+    };
+    const ollama: ProviderTrustContent = {
+      id: "ollama",
+      type: "ollama",
+      baseUrl: "http://localhost:11434/v1",
+      local: true,
+    };
+    const check: TrustCheck = {
+      status: "new",
+      content: { connectors: [], providers: [claude, ollama] },
+      fingerprint,
+      unpinned: [],
+    };
+    expect(lines(check).slice(2)).toEqual([
+      "Will pass 1 secret and list 2 addresses.",
+      "",
+      "Addresses",
+      "  claude        anthropic · gets the secret ANTHROPIC_KEY",
+      "  ollama        http://localhost:11434/v1",
+      "",
+      "Fingerprint",
+      `  ${fingerprint}`,
+    ]);
+  });
+
+  it("shows a provider whose address changed as one changed address", () => {
+    const before: ProviderTrustContent = {
+      id: "claude",
+      type: "anthropic",
+      secret: "‹secret ANTHROPIC_KEY›",
+      local: false,
+    };
+    const after = { ...before, baseUrl: "https://models.example.net/v1" };
+    const changes: TrustChanges = {
+      ...noChanges,
+      agents: noChanges,
+      integrations: noChanges,
+      providers: {
+        ...noChanges,
+        changed: [{ id: "claude", before, after, fields: ["baseUrl"] }],
+      },
+      onlyRemoves: false,
+    };
+    const check: TrustCheck = {
+      status: "changed",
+      content: { connectors: [], providers: [after] },
+      ...current,
+      changes,
+      trustedAt,
+    };
+    expect(lines(check).slice(1, 5)).toEqual([
+      "1 changed address since you trusted this on 3 Nov.",
+      "",
+      "Addresses",
+      "  claude        https://models.example.net/v1 · gets the secret ANTHROPIC_KEY   Changed",
+    ]);
+  });
+
   it("leaves out the change summary when there is nothing to name", () => {
     const changes: TrustChanges = {
       ...noChanges,
       removed: [notes],
       agents: noChanges,
       integrations: noChanges,
+      providers: noChanges,
       onlyRemoves: true,
     };
     const check: TrustCheck = { status: "changed", content, ...current, changes, trustedAt };
@@ -255,7 +323,7 @@ verifies("cli.trust-check", () => {
 
   it("says a trusted workspace is already trusted, with the date, and nothing else", () => {
     const grant = { location: "acme", fingerprint };
-    const shrunk = { connectors: [], agents: [], integrations: [] };
+    const shrunk = { connectors: [], agents: [], integrations: [], providers: [] };
     expect(lines({ status: "trusted", content, ...current, grant, shrunk, trustedAt })).toEqual([
       "✓ Acme is already trusted on this computer. Nothing changed since 3 Nov.",
     ]);

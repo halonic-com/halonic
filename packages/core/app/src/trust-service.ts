@@ -1,10 +1,10 @@
 // Decides whether a workspace is trusted, as `app.trust-service` asks: it
 // builds the trust content, fingerprints it and compares it with the trust
 // record in the user's profile. Only a person adds to a record (HAL-571);
-// a change that only removes whole connectors, harness agents or local
-// integrations shrinks it (HAL-65 decision 9).
+// a change that only removes whole connectors, harness agents, local
+// integrations or model providers shrinks it (HAL-65 decision 9).
 
-import type { Agent, Connector } from "@halonicjs/format";
+import type { Agent, Connector, Provider } from "@halonicjs/format";
 import type { TrustGrant, TrustRecord } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import {
@@ -57,6 +57,12 @@ export interface TrustSubject {
    * design on HAL-1873, section 5).
    */
   readonly integrations: readonly LocalIntegrationInput[];
+  /**
+   * The workspace's model providers, as parsed from their files. Required,
+   * so where each one sends its key, and which key, are always in the
+   * fingerprint, and a change asks for trust again (HAL-5200).
+   */
+  readonly providers: readonly Provider[];
 }
 
 /** What the workspace holds now, as the prompt shows it. */
@@ -83,6 +89,8 @@ export interface TrustShrink {
   readonly agents: readonly string[];
   /** The local integrations that were removed, or no longer read an address from a setting. */
   readonly integrations: readonly string[];
+  /** The model providers that were removed or became the test model. */
+  readonly providers: readonly string[];
 }
 
 /** Whether a workspace is trusted, and if not, why. */
@@ -119,7 +127,7 @@ export type TrustCheck =
  *
  * @example
  * const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
- * const check = await trust.check({ location, connectors, commandPaths, agents, integrations });
+ * const check = await trust.check({ location, connectors, commandPaths, agents, integrations, providers });
  * if (check.status !== "trusted") return refuse(check.fingerprint); // exit code 3
  */
 export class TrustService {
@@ -230,6 +238,7 @@ export class TrustService {
       commandPaths: subject.commandPaths,
       agents: subject.agents,
       integrations: subject.integrations,
+      providers: subject.providers,
     });
     return {
       content,
@@ -273,12 +282,13 @@ export class TrustService {
   }
 }
 
-const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [], integrations: [] };
+const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [], integrations: [], providers: [] };
 
 function removedIds(changes: TrustChanges): TrustShrink {
   return {
     connectors: changes.removed.map((connector) => connector.id),
     agents: changes.agents.removed.map((agent) => agent.id),
     integrations: changes.integrations.removed.map((integration) => integration.id),
+    providers: changes.providers.removed.map((provider) => provider.id),
   };
 }

@@ -23,8 +23,8 @@ export function unpinnedConnectors(connectors: readonly Connector[]): string[] {
 
 /**
  * Whether stored content has the shape `trustContent` builds: connectors,
- * and harness agents and local integrations when there are any, with an id
- * each.
+ * and harness agents, local integrations and model providers when there
+ * are any, with an id each.
  */
 export function isTrustContent(value: unknown): value is TrustContent {
   if (typeof value !== "object" || value === null || !("connectors" in value)) {
@@ -32,7 +32,8 @@ export function isTrustContent(value: unknown): value is TrustContent {
   }
   const agents = "agents" in value ? value.agents : [];
   const integrations = "integrations" in value ? value.integrations : [];
-  return hasIds(value.connectors) && hasIds(agents) && hasIds(integrations);
+  const providers = "providers" in value ? value.providers : [];
+  return [value.connectors, agents, integrations, providers].every(hasIds);
 }
 
 /** Whether the value is a list whose every entry has a text `id`. */

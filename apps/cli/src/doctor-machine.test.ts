@@ -90,6 +90,7 @@ describe("doctorService", () => {
         commandPaths: new Map(),
         agents: [],
         integrations: [],
+        providers: [],
       },
       aliases: [{ alias: "fast", provider: "studio" }],
       providers: [

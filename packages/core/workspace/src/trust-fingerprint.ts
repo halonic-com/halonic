@@ -17,21 +17,23 @@ export const trustFingerprintPrefix = "hfp1:";
  * preceded by its length in bytes and a line break, so the encoding marks
  * where the content ends.
  *
- * Content with refused connectors has no fingerprint, so it can never be
+ * Content with refused connectors or providers has no fingerprint, so it can never be
  * trusted: check `content.refused` first and show the reasons.
  *
  * @param content - the content from `trustContent`
  * @param digest - the port that hashes; the core has no hash code of its own
  * @returns the fingerprint, such as "hfp1:9f86d081…"
- * @throws RangeError when the content has refused connectors
+ * @throws RangeError when the content has refused connectors or providers
  *
  * @example
  * await trustFingerprint(trustContent({ connectors }), digest); // "hfp1:3b1f…"
  */
 export async function trustFingerprint(content: TrustContent, digest: Digest): Promise<string> {
   if (content.refused !== undefined && content.refused.length > 0) {
-    const ids = content.refused.map((connector) => connector.id).join(", ");
-    throw new RangeError(`These connectors can't be trusted, so there is no fingerprint: ${ids}.`);
+    const ids = content.refused.map((item) => item.id).join(", ");
+    throw new RangeError(
+      `These connectors or providers can't be trusted, so there is no fingerprint: ${ids}.`,
+    );
   }
   const json = encodeUtf8(canonicalJson(content));
   const length = encodeUtf8(`${json.length}\n`);

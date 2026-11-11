@@ -7,7 +7,7 @@
 // `init --example acme` runs straight away. The service that starts the run
 // doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
 
-import { filesOf, type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
+import { type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
@@ -38,8 +38,7 @@ export async function checkRunTrust(
   typedDir: string | undefined,
   nothingDone: Message = runMessages.nothingRan(),
 ): Promise<void> {
-  const providers = filesOf(workspace, "provider").map((file) => file.value);
-  if (reachesOnlyTheTestModel({ providers, ...trustContentInputOf(workspace) })) {
+  if (reachesOnlyTheTestModel(trustContentInputOf(workspace))) {
     return;
   }
   await trustedGrant(dir, machine, typedDir, nothingDone, workspace);

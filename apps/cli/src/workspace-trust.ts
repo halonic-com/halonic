@@ -28,8 +28,8 @@ export interface TrustSubjectInput {
 }
 
 /**
- * Every connector and agent of the workspace, of the root and of every hub,
- * as the trust check fingerprints them.
+ * Every connector, agent and model provider of the workspace, of the root
+ * and of every hub, as the trust check fingerprints them.
  */
 export function trustSubjectOf(input: TrustSubjectInput): TrustSubject {
   return {
@@ -40,13 +40,13 @@ export function trustSubjectOf(input: TrustSubjectInput): TrustSubject {
 }
 
 /**
- * The connectors, agents and local integrations of the workspace, of the
- * root and of every hub: what its trust content is built from, apart from
- * where the programs are on this computer.
+ * The connectors, agents, local integrations and model providers of the
+ * workspace, of the root and of every hub: what its trust content is built
+ * from, apart from where the programs are on this computer.
  */
 export function trustContentInputOf(
   workspace: LoadedWorkspace,
-): Pick<TrustSubject, "connectors" | "agents" | "integrations"> {
+): Pick<TrustSubject, "connectors" | "agents" | "integrations" | "providers"> {
   return {
     connectors: filesOf(workspace, "connector").map((file) => file.value),
     agents: filesOf(workspace, "agent").map((file) => file.value),
@@ -54,6 +54,7 @@ export function trustContentInputOf(
     // they go here with their settings, so every command checks the same
     // fingerprint and the trust skip of `run` sees them.
     integrations: [],
+    providers: filesOf(workspace, "provider").map((file) => file.value),
   };
 }
 

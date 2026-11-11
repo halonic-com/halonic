@@ -57,6 +57,7 @@ export {
   type ChangedConnector,
   type ChangedIntegration,
   type ChangedItem,
+  type ChangedProvider,
   type ItemChanges,
   type TrustChanges,
   trustChanges,
@@ -81,6 +82,12 @@ export {
   type SecretTrustContent,
   type ToolTrustContent,
 } from "./trust-integrations.ts";
+export {
+  type ProvidersTrustContent,
+  type ProviderTrustContent,
+  providersTrustContent,
+  type RefusedProvider,
+} from "./trust-providers.ts";
 export { secretReference } from "./trust-secret.ts";
 export { reachesOnlyTheTestModel, type TrustSkipInput } from "./trust-skip.ts";
 export { type TrustUrl, trustUrl } from "./trust-url.ts";

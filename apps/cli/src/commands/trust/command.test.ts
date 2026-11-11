@@ -287,6 +287,7 @@ verifies("cli.commands.trust.changes-json", () => {
       },
       agents: { added: [], changed: [], removed: [] },
       integrations: { added: [], changed: [], removed: [] },
+      providers: { added: [], changed: [], removed: [] },
     });
     expect(JSON.stringify(error.changes)).not.toContain("--all");
   });

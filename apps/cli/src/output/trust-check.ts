@@ -1,6 +1,7 @@
 // Turns the `TrustService`'s check into the lines `halonic trust` and every
 // command refused with exit code 3 print (cli-output 3.5 at revision 40):
-// the heading, the summary, Programs, Agents, Addresses and the full
+// the heading, the summary, Programs, Agents, Addresses (with the model
+// providers) and the full
 // fingerprint, or the ✓ line when nothing changed. Every word comes from the
 // catalogue; this file only decides which sentence goes where.
 
@@ -20,6 +21,8 @@ import {
   agentRow,
   integrationRows,
   programRow,
+  providerRow,
+  providerSecretNames,
   row,
   rowIndent,
   secretNames,
@@ -66,7 +69,7 @@ export function trustCheckLines(check: TrustCheck, facts: TrustCheckFacts): Phra
       ...fingerprint,
     ];
   }
-  const { connectors, agents = [], integrations = [] } = check.content;
+  const { connectors, agents = [], integrations = [], providers = [] } = check.content;
   const heading = [
     ...(check.status === "unreadable" ? [marked("needsYou", trustMessages.listUnreadable())] : []),
     trustMessages.heading(facts.name, facts.folder).phrase,
@@ -83,6 +86,7 @@ export function trustCheckLines(check: TrustCheck, facts: TrustCheckFacts): Phra
     ...section(trustMessages.addressesHeading(), [
       ...addresses(connectors).map((row) => addressRow(row)),
       ...integrations.flatMap(integrationRows),
+      ...providers.map(providerRow),
     ]),
     ...fingerprint,
   ];
@@ -106,8 +110,14 @@ function changedLines(
     agents: { added: changes.agents.added.length, changed: changes.agents.changed.length },
     // A local integration counts as one address, however many settings it reads.
     addresses: {
-      added: connectorAddresses.added + changes.integrations.added.length,
-      changed: connectorAddresses.changed + changes.integrations.changed.length,
+      added:
+        connectorAddresses.added +
+        changes.integrations.added.length +
+        changes.providers.added.length,
+      changed:
+        connectorAddresses.changed +
+        changes.integrations.changed.length +
+        changes.providers.changed.length,
     },
   };
   const rowsOf = (
@@ -143,6 +153,8 @@ function changedLines(
         changes.integrations.changed.map((row) => row.after),
         changedRow,
       ),
+      ...changes.providers.added.map((row) => withTag(providerRow(row), newRow)),
+      ...changes.providers.changed.map((row) => withTag(providerRow(row.after), changedRow)),
     ]),
   ];
 }
@@ -169,16 +181,21 @@ function marked(mark: "done" | "needsYou", message: Message): Phrase {
 
 function counts(content: TrustCheck["content"]) {
   const agents = content.agents ?? [];
+  const providers = content.providers ?? [];
   return {
     programs: programs(content.connectors).length,
     agents: agents.length,
-    secrets: new Set(content.connectors.flatMap(secretNames)).size,
+    secrets: new Set([
+      ...content.connectors.flatMap(secretNames),
+      ...providers.flatMap(providerSecretNames),
+    ]).size,
     addresses:
       addresses(content.connectors).length +
       (content.integrations ?? []).reduce(
         (sum, integration) => sum + Object.keys(integration.addresses).length,
         0,
-      ),
+      ) +
+      providers.length,
     sites: new Set(agents.flatMap((agent) => agent.allowedSites)).size,
   };
 }

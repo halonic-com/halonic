@@ -110,7 +110,14 @@ async function setup(
       folder,
       code: read.value.code,
     };
-    return { location, connectors: [], commandPaths: new Map(), agents: [], integrations: [radar] };
+    return {
+      location,
+      connectors: [],
+      commandPaths: new Map(),
+      agents: [],
+      integrations: [radar],
+      providers: [],
+    };
   };
 
   /** Trusts the workspace as a person would, and gives the check that follows. */

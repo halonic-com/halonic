@@ -2,8 +2,9 @@ import { deepEqual } from "@halonicjs/std";
 import type { AgentTrustContent } from "./trust-agents.ts";
 import type { ConnectorTrustContent, TrustContent } from "./trust-content.ts";
 import type { IntegrationTrustContent } from "./trust-integrations.ts";
+import type { ProviderTrustContent } from "./trust-providers.ts";
 
-/** One item, a connector, an agent or an integration, whose trust content differs from the trusted one. */
+/** One item, a connector, an agent, an integration or a provider, whose trust content differs from the trusted one. */
 export interface ChangedItem<Content> {
   id: string;
   /** The item as it was trusted. */
@@ -23,6 +24,9 @@ export type ChangedAgent = ChangedItem<AgentTrustContent>;
 /** One local integration whose trust content differs from the trusted one. */
 export type ChangedIntegration = ChangedItem<IntegrationTrustContent>;
 
+/** One model provider whose trust content differs from the trusted one. */
+export type ChangedProvider = ChangedItem<ProviderTrustContent>;
+
 /** What changed in one list of the trust content, matched by id. */
 export interface ItemChanges<Content> {
   /** Items that weren't in the trusted content. */
@@ -38,8 +42,8 @@ export interface ItemChanges<Content> {
 /**
  * What changed between the trust content a person trusted and the current
  * one, in the order the prompt shows it: New and Changed first. The
- * top-level lists are the connectors; `agents` holds the harness agents and
- * `integrations` the local integrations.
+ * top-level lists are the connectors; `agents` holds the harness agents,
+ * `integrations` the local integrations and `providers` the model providers.
  */
 export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
   /**
@@ -52,9 +56,11 @@ export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
    * folder shows as a change in `code`, without naming the files.
    */
   integrations: ItemChanges<IntegrationTrustContent>;
+  /** The model providers that changed. One that became the test model counts as removed. */
+  providers: ItemChanges<ProviderTrustContent>;
   /**
-   * Whether the change only removes whole connectors, harness agents or
-   * integrations, so
+   * Whether the change only removes whole connectors, harness agents,
+   * integrations or providers, so
    * the record can shrink without asking (HAL-65 decision 9). A change
    * inside one never counts as a removal, even when it takes something out
    * of the file: dropping a tool from `approve`, dropping the `allow` list,
@@ -66,9 +72,10 @@ export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
 
 /**
  * Compares the trust content a person trusted with the current one.
- * Connectors, agents and integrations are matched by id. A record from
- * before harness agents or integrations existed has no `agents` or
- * `integrations`, which is the same as none.
+ * Connectors, agents, integrations and providers are matched by id. A
+ * record from before harness agents, integrations or providers were
+ * covered has no `agents`, `integrations` or `providers`, which is the
+ * same as none.
  *
  * @param trusted - the content kept in the trust record
  * @param current - the content built from the workspace now
@@ -83,13 +90,20 @@ export function trustChanges(trusted: TrustContent, current: TrustContent): Trus
   const connectors = itemChanges(trusted.connectors, current.connectors);
   const agents = itemChanges(trusted.agents ?? [], current.agents ?? []);
   const integrations = itemChanges(trusted.integrations ?? [], current.integrations ?? []);
+  const providers = itemChanges(trusted.providers ?? [], current.providers ?? []);
 
-  const lists = [connectors, agents, integrations];
+  const lists = [connectors, agents, integrations, providers];
   const removesSomething = lists.some((changes) => changes.removed.length > 0);
   const addsOrChanges = lists.some(
     (changes) => changes.added.length > 0 || changes.changed.length > 0,
   );
-  return { ...connectors, agents, integrations, onlyRemoves: removesSomething && !addsOrChanges };
+  return {
+    ...connectors,
+    agents,
+    integrations,
+    providers,
+    onlyRemoves: removesSomething && !addsOrChanges,
+  };
 }
 
 function itemChanges<Content extends { id: string }>(

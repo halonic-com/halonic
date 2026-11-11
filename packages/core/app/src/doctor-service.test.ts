@@ -54,6 +54,7 @@ function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}):
       commandPaths: new Map(),
       agents: parts.agents ?? [],
       integrations: [],
+      providers: [],
     },
     aliases: parts.aliases ?? [],
     providers: parts.providers ?? [],
