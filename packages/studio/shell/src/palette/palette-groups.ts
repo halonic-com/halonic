@@ -2,6 +2,7 @@ import type { CommandContribution, SearchResult } from "../points/commands.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import { compareNameMatches, matchName, type NameMatch } from "./name-match.ts";
+import { kindInSentence, type PaletteKindNames } from "./palette-options.ts";
 
 /** The palette's groups, in the order they show (component specs 24.3). */
 export const paletteGroupTitles = {
@@ -77,6 +78,19 @@ export interface PaletteSources {
  */
 export function itemLocationKey(item: ItemRef): string {
   return `${item.kind}/${item.hub}/${item.id}`;
+}
+
+/**
+ * The place that shows an item a search provider found, named as its row names it, as Ctrl K and
+ * the Search page open it.
+ */
+export function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNames): TabLocation {
+  const kind = kinds.get(item.kind)?.label;
+  return {
+    key: itemLocationKey(item),
+    title: label,
+    ...(kind === undefined ? {} : { kind: kindInSentence(kind) }),
+  };
 }
 
 /**

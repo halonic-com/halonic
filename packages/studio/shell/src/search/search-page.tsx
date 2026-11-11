@@ -10,8 +10,8 @@ import {
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { MarkedText } from "../palette/marked-text.tsx";
+import { itemLocation } from "../palette/palette-groups.ts";
 import type { PaletteKindNames } from "../palette/palette-options.ts";
-import { itemLocation } from "../palette/shell-palette.tsx";
 import { usePaletteSearch } from "../palette/use-palette-search.ts";
 import type { SearchProviderContribution } from "../points/commands.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
@@ -60,6 +60,10 @@ export interface SearchPageProps {
  * searched before; the chips start again from their defaults there. A result opens here, or with
  * a Ctrl-click, Cmd-click or middle-click in a new tab.
  *
+ * Mount it fresh for each place: the box and the chips start from `words` and their defaults only
+ * on mount, and a new `words` doesn't reset them. `TabPages` does this by keying each page with
+ * its `location.key`.
+ *
  * @example
  * <SearchPage words={searchPageWords(location) ?? ""} tabs={workspace.tabs} announcer={shell.announcer}
  *   providers={shell.contributions.search.providers()} contextFor={contextFor}
@@ -105,7 +109,9 @@ export function SearchPage(props: SearchPageProps) {
         </h1>
         <p className="text-body text-fg-muted">{pageSentence}</p>
       </div>
-      <search>
+      {/* The role keeps the landmark where WebKitGTK (Tauri on Linux) predates `<search>`. */}
+      {/* biome-ignore lint/a11y/noRedundantRoles: older engines don't map `<search>` yet. */}
+      <search role="search">
         <form onSubmit={onSubmit}>
           <Input
             ref={box}
@@ -203,8 +209,9 @@ interface SearchResultsProps {
 /**
  * What the words found, or the state that stands in for it: "Searching…" with still skeleton
  * rows, "Couldn't search" with the reason and **Try again**, or "Nothing matches" with **Search
- * all hubs** while a hub is picked. The count line is a status, so a screen reader hears it once
- * the results are in; with nothing typed there is nothing to say.
+ * all hubs** while a hub is picked. The line above them is a status, so a screen reader hears the
+ * count, or what stands in for it, once the search is done; with nothing typed there is nothing
+ * to say.
  */
 function SearchResults(props: SearchResultsProps) {
   const headingId = useId();
@@ -234,7 +241,10 @@ function SearchResults(props: SearchResultsProps) {
   );
 }
 
-/** What the status line says: the count once there are results, else nothing to repeat. */
+/**
+ * What the status line says: "Searching…", then the count, or the title of the state that stands
+ * in for the results, so a screen reader doesn't hear the search end in silence.
+ */
 function statusLine({ words, names, searching }: SearchResultsProps): string {
   if (words.trim() === "") {
     return "";
@@ -242,7 +252,19 @@ function statusLine({ words, names, searching }: SearchResultsProps): string {
   if (searching) {
     return "Searching…";
   }
-  return names.results.length > 0 ? searchPageCount(names) : "";
+  if (names.couldNotSearch) {
+    return couldNotSearchTitle;
+  }
+  if (names.nothingFound) {
+    return nothingMatchesTitle(words);
+  }
+  return searchPageCount(names);
+}
+
+const couldNotSearchTitle = "Couldn't search";
+
+function nothingMatchesTitle(words: string): string {
+  return `Nothing matches “${words.trim()}”`;
 }
 
 /**
@@ -262,7 +284,7 @@ function searchedState(props: SearchResultsProps): ReactNode {
       <EmptyState
         tone="error"
         plain
-        title="Couldn't search"
+        title={couldNotSearchTitle}
         description={props.notAnswering}
         action={{ label: "Try again", onClick: props.onTryAgain }}
       />
@@ -272,7 +294,7 @@ function searchedState(props: SearchResultsProps): ReactNode {
     return (
       <EmptyState
         plain
-        title={`Nothing matches “${words.trim()}”`}
+        title={nothingMatchesTitle(words)}
         description={nothingFoundSentence}
         {...(names.offerAllHubs
           ? { secondaryAction: { label: "Search all hubs", onClick: props.onSearchAllHubs } }

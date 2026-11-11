@@ -4,15 +4,14 @@ import type { Announcer } from "../announcer/announcer.ts";
 import { errorMessageFor } from "../errors/error-message.ts";
 import { isModalDialogOpen } from "../frame/frame-effects.ts";
 import type { CommandContribution, SearchProviderContribution } from "../points/commands.ts";
-import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { openLocation } from "../tabs/open-location.ts";
 import { currentLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { CommandPalette } from "./command-palette.tsx";
-import { itemLocationKey, type PaletteRow, paletteGroups } from "./palette-groups.ts";
-import { kindInSentence, type PaletteKindNames } from "./palette-options.ts";
+import { itemLocation, type PaletteRow, paletteGroups } from "./palette-groups.ts";
+import type { PaletteKindNames } from "./palette-options.ts";
 import type { RecentPlaces } from "./recent-places.ts";
 import { usePaletteSearch } from "./use-palette-search.ts";
 
@@ -151,19 +150,6 @@ function isKeyK(event: KeyboardEvent): boolean {
   return latinLetterPattern.test(event.key)
     ? event.key.toLowerCase() === "k"
     : event.code === "KeyK";
-}
-
-/**
- * The place that shows an item a search provider found, named as its row names it, as Ctrl K and
- * the Search page open it.
- */
-export function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNames): TabLocation {
-  const kind = kinds.get(item.kind)?.label;
-  return {
-    key: itemLocationKey(item),
-    title: label,
-    ...(kind === undefined ? {} : { kind: kindInSentence(kind) }),
-  };
 }
 
 /** Runs a command with its own feature's context; a failure becomes a danger toast. */

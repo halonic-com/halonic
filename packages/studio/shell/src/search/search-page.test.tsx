@@ -112,6 +112,8 @@ verifies("shell.search-page", () => {
       'search input[aria-label="Search words"]',
     );
     expect(box?.value).toBe("refund");
+    // Kept as a role too, for engines that don't map `<search>` to the landmark yet.
+    expect(page.view.querySelector("search")?.getAttribute("role")).toBe("search");
     const chips = [...page.view.querySelectorAll("fieldset > button")].map(
       (chip) => chip.getAttribute("aria-label") ?? chip.textContent,
     );
@@ -172,6 +174,7 @@ verifies("shell.search-page", () => {
     // Only "Refun desk" in beta has "refun" as a whole word.
     page.click(page.button("Whole word"));
     expect(page.view.textContent).toContain("Nothing matches “refun”");
+    expect(page.status()).toBe("Nothing matches “refun”");
     expect(page.view.textContent).toContain(
       "Search looks in the names and descriptions of everything in this workspace.",
     );
@@ -183,6 +186,7 @@ verifies("shell.search-page", () => {
   it("says it couldn't search, with the reason and Try again", async () => {
     const page = await renderPage("refund", []);
     expect(page.view.textContent).toContain("Couldn't search");
+    expect(page.status()).toBe("Couldn't search");
     expect(page.view.textContent).toContain(
       "The engine isn't answering. It may still be starting.",
     );
