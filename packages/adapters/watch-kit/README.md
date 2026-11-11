@@ -22,14 +22,18 @@ the one it last saw, and reports only the files whose text really differs.
   - `quietMs`: how long the source stays quiet before a batch is read.
   - `isScratch` (optional): names the store only writes on the way to a file, such as a temporary
     file it renames into place. They are never reported.
-  - `openWatches`: the store's set of open watches. The watch is in it while it is open, and takes
-    itself out when it closes or fails.
+  - `openWatches`: the store's set of open watches. The watch joins it before it first reads the
+    workspace, so it hears about the store's changes from then on, and takes itself out when it
+    closes or fails. A change the store started before the watch joined can be reported once.
 - `WatchEvents` is `(noticed, failed) => stop`. The source calls `noticed(name)` with a workspace
   path (with `/`) that may have changed, or `""` when it can't say which, so every file is checked.
   It calls `failed(error)` when it breaks; the listener hears that once and nothing more after.
 - Around each of its own writes and removes, the store calls `beginOwnChange(path, change)` with
-  the new text's digest (or `"absent"`), then `endOwnChange(path)` once it is done or failed. A
-  batch read in between leaves the file out when it holds what the store is writing.
+  the new text's digest (or `"absent"`), then `endOwnChange(path, applied)` once it is over. A
+  batch read in between leaves the file out when it holds what the store is writing. When the
+  change was `applied`, the watch takes that digest as seen without reading the file again, so a
+  change from outside right after it is still reported; when it failed, the watch reads the file
+  back. The first reading, batches and `endOwnChange` run one at a time, in order.
   `endOwnChange` never rejects: a failure to read the file back breaks the watch, not the write.
 - `KnownFiles` is the part without timers or events: the digests last seen, the own-change marks,
   and `changesAt(names)`, which gives the sorted batch. `OwnChange` and `KnownFilesOptions` are its

@@ -197,11 +197,13 @@ export class FolderDefinitionStore implements DefinitionStore {
         watch.beginOwnChange(path, change);
       }
     }
+    let applied = false;
     try {
       await apply();
+      applied = true;
     } finally {
       for (const watch of watches) {
-        await watch.endOwnChange(path);
+        await watch.endOwnChange(path, applied);
       }
     }
   }

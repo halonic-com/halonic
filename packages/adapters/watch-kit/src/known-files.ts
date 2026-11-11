@@ -45,9 +45,24 @@ export class KnownFiles {
     this.#own.set(path, change);
   }
 
-  /** The store's change to `path` is over, whether it happened or not. */
-  endOwnChange(path: string): void {
+  /**
+   * The store's change to `path` is over. When it was `applied`, what the
+   * store left there is taken as seen without reading the file again: a read
+   * now could take in a change from outside made right after it, which would
+   * then never be reported. When it failed, the file is read back.
+   */
+  async endOwnChange(path: string, applied: boolean): Promise<void> {
+    const change = this.#own.get(path);
     this.#own.delete(path);
+    if (!applied || change === undefined) {
+      await this.remember(path);
+      return;
+    }
+    if (change === "absent") {
+      this.#digests.delete(path);
+    } else {
+      this.#digests.set(path, change);
+    }
   }
 
   /**

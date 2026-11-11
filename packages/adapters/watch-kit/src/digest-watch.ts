@@ -22,9 +22,9 @@ export interface DigestWatchOptions extends KnownFilesOptions {
   /** How long the events stay quiet before a batch is reported. */
   readonly quietMs: number;
   /**
-   * The store's open watches. The watch is in it from when it is open until
-   * it is closed or fails, so the store never tells a broken watch about its
-   * own changes.
+   * The store's open watches. The watch is in it from before it first reads
+   * the workspace until it is closed or fails, so the store tells it about
+   * every change it starts meanwhile, and never tells a broken watch.
    */
   readonly openWatches: Set<DigestWatch>;
 }
@@ -49,8 +49,11 @@ export class DigestWatch implements DefinitionWatch {
   #stopping = false;
   /** Set once `close()` is done: nothing more is reported. */
   #closed = false;
-  /** The batch being read, so `close()` can wait for it. */
-  #flushing: Promise<void> = Promise.resolve();
+  /**
+   * The end of the work queued on what the watch knows: the first reading,
+   * batches and the store's own changes ending. `close()` waits for it.
+   */
+  #queued: Promise<void> = Promise.resolve();
 
   /** Use {@link DigestWatch.open}, which reads the workspace first. */
   private constructor(options: DigestWatchOptions, listener: DefinitionWatchListener) {
@@ -65,21 +68,20 @@ export class DigestWatch implements DefinitionWatch {
     listener: DefinitionWatchListener,
   ): Promise<DigestWatch> {
     const watch = new DigestWatch(options, listener);
-    // Listening starts first, so a change made while the workspace is read is not missed.
+    // Joined and listening first, so neither a change from outside nor the
+    // store's own change made while the workspace is read is missed. A change
+    // the store started before this can still be reported once.
+    options.openWatches.add(watch);
     watch.#stopEvents = options.events(
       (name) => watch.#notice(name),
       (error) => watch.#fail(error),
     );
     try {
-      await watch.#known.rememberAll();
+      await watch.#inTurn(() => watch.#known.rememberAll());
     } catch (error) {
       // The watch never opened: it must not keep listening.
       await watch.close();
       throw error;
-    }
-    // An event source that failed while the workspace was read already closed the watch.
-    if (!watch.#stopping) {
-      options.openWatches.add(watch);
     }
     return watch;
   }
@@ -90,14 +92,15 @@ export class DigestWatch implements DefinitionWatch {
   }
 
   /**
-   * The store's change to `path` is done, or failed: what is there now is
-   * what the store knows. Never rejects: the store's change is done either
-   * way, so a failure to read it back breaks the watch, not the write.
+   * The store's change to `path` is over: `applied` when it happened, so the
+   * watch takes what the store left there as seen, or not, so the watch reads
+   * the file back. It waits its turn after the batches already queued. Never
+   * rejects: the store's change is over either way, so a failure to read the
+   * file back breaks the watch, not the write.
    */
-  async endOwnChange(path: string): Promise<void> {
-    this.#known.endOwnChange(path);
+  async endOwnChange(path: string, applied: boolean): Promise<void> {
     try {
-      await this.#known.remember(path);
+      await this.#inTurn(() => this.#known.endOwnChange(path, applied));
     } catch (error) {
       this.#fail(asError(error));
     }
@@ -109,7 +112,7 @@ export class DigestWatch implements DefinitionWatch {
     this.#options.openWatches.delete(this);
     clearTimeout(this.#timer);
     this.#stopEvents?.();
-    await this.#flushing;
+    await this.#queued;
     this.#closed = true;
   }
 
@@ -122,11 +125,19 @@ export class DigestWatch implements DefinitionWatch {
     this.#noticed.add(path);
     clearTimeout(this.#timer);
     this.#timer = setTimeout(() => {
-      // One batch at a time, so two never update what the watch knows at once.
-      this.#flushing = this.#flushing
-        .then(() => this.#flush())
-        .catch((error: unknown) => this.#fail(asError(error)));
+      this.#inTurn(() => this.#flush()).catch((error: unknown) => this.#fail(asError(error)));
     }, this.#options.quietMs);
+  }
+
+  /**
+   * Runs `task` once everything queued before it is done, so two never
+   * update what the watch knows at once, and an older read never lands over
+   * a newer one. The caller handles the task's failure; the queue goes on.
+   */
+  #inTurn(task: () => Promise<void>): Promise<void> {
+    const run = this.#queued.then(task);
+    this.#queued = run.catch(() => undefined);
+    return run;
   }
 
   async #flush(): Promise<void> {

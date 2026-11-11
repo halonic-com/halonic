@@ -137,6 +137,75 @@ verifies("watch-kit.digest-watch", () => {
       expect(batches).toEqual([[{ path: "a.yaml", kind: "changed" }]]);
     });
 
+    it("takes the store's write as seen, so a change from outside right after it is reported", async () => {
+      const { store, hand, watch, batches, settle } = await watched({ "a.yaml": "1" });
+      watch.beginOwnChange("a.yaml", await contentDigest("2", webCryptoDigest));
+      await store.write("a.yaml", "2");
+      // Another program writes before the store has finished its own change.
+      await store.write("a.yaml", "from an editor");
+      await watch.endOwnChange("a.yaml", true);
+      hand.notice("a.yaml");
+      await settle();
+      expect(batches).toEqual([[{ path: "a.yaml", kind: "changed" }]]);
+    });
+
+    it("reads a failed own change back in turn with the batches, never over a newer one", async () => {
+      const { store, hand, watch, batches, settle } = await watched({ "a.yaml": "1" });
+      const read = store.read.bind(store);
+      const slowRead = Promise.withResolvers<void>();
+      // The read-back of the failed write sees "1", but answers late.
+      vi.spyOn(store, "read").mockImplementationOnce(async (path) => {
+        const text = await read(path);
+        await slowRead.promise;
+        return text;
+      });
+      watch.beginOwnChange("a.yaml", await contentDigest("2", webCryptoDigest));
+      const ending = watch.endOwnChange("a.yaml", false);
+      await store.write("a.yaml", "3");
+      hand.notice("a.yaml");
+      await vi.advanceTimersByTimeAsync(quietMs);
+      slowRead.resolve();
+      await ending;
+      // Nothing changed since: the watch must still know the file holds "3".
+      hand.notice("a.yaml");
+      await settle();
+      expect(batches).toEqual([[{ path: "a.yaml", kind: "changed" }]]);
+    });
+
+    it("is told about the store's own changes while it reads the workspace on opening", async () => {
+      const store = new MemoryDefinitionStore({ "a.yaml": "1" });
+      const hand = handEvents();
+      const openWatches = new Set<DigestWatch>();
+      const batches: (readonly WorkspaceFileChange[])[] = [];
+      const read = store.read.bind(store);
+      const slowRead = Promise.withResolvers<void>();
+      // The first listing sees "1", but answers after the store's write.
+      vi.spyOn(store, "read").mockImplementationOnce(async (path) => {
+        const text = await read(path);
+        await slowRead.promise;
+        return text;
+      });
+      const opening = DigestWatch.open(
+        { files: store, digest: webCryptoDigest, events: hand.events, quietMs, openWatches },
+        { changed: (changes) => batches.push(changes), failed: () => {} },
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      // The store writes as it would, telling every open watch.
+      const own = await contentDigest("2", webCryptoDigest);
+      const watches = [...openWatches];
+      for (const watch of watches) watch.beginOwnChange("a.yaml", own);
+      await store.write("a.yaml", "2");
+      const endings = watches.map((watch) => watch.endOwnChange("a.yaml", true));
+      slowRead.resolve();
+      await Promise.all(endings);
+      const watch = await opening;
+      hand.notice("a.yaml");
+      await vi.advanceTimersByTimeAsync(quietMs);
+      await watch.close();
+      expect(watches).toEqual([watch]);
+      expect(batches).toEqual([]);
+    });
+
     it("ignores private entries and scratch files without reading the workspace", async () => {
       const isScratch = (name: string) => name.endsWith(".tmp");
       const { store, hand, batches, settle } = await watched({ "a.yaml": "1" }, isScratch);
@@ -183,11 +252,11 @@ verifies("watch-kit.digest-watch", () => {
       expect(openWatches.size).toBe(0);
     });
 
-    it("breaks the watch, not the store's write, when reading the write back fails", async () => {
+    it("breaks the watch, not the store's write, when reading a failed write back fails", async () => {
       const { store, watch, failures } = await watched({ "a.yaml": "1" });
       const readFailure = new Error("the disk stopped answering");
       vi.spyOn(store, "read").mockRejectedValueOnce(readFailure);
-      await expect(watch.endOwnChange("a.yaml")).resolves.toBeUndefined();
+      await expect(watch.endOwnChange("a.yaml", false)).resolves.toBeUndefined();
       expect(failures).toEqual([readFailure]);
     });
 

@@ -175,11 +175,20 @@ verifies("ports.definition-store-watch", () => {
       expect(batches).toEqual([[{ path: "hubs/a/hub.yaml", kind: "removed" }]]);
     });
 
-    it("doesn't fail a finished write when reading it back fails; the watch is told", async () => {
+    it("doesn't read a finished write back, so a change from outside right after it isn't missed", async () => {
       const { store, failures } = await watched({ "a.yaml": "1" });
+      const read = vi.spyOn(store, "read");
+      await expect(store.write("a.yaml", "2")).resolves.toEqual({ status: "written" });
+      expect(read).not.toHaveBeenCalled();
+      expect(failures).toEqual([]);
+    });
+
+    it("fails a write with its own error when reading it back fails too; the watch is told", async () => {
+      const { root, store, failures } = await watched({ "a.yaml": "1" });
+      await mkdir(join(root, "b.yaml"));
       const readFailure = new Error("the disk stopped answering");
       vi.spyOn(store, "read").mockRejectedValueOnce(readFailure);
-      await expect(store.write("a.yaml", "2")).resolves.toEqual({ status: "written" });
+      await expect(store.write("b.yaml", "2")).rejects.toMatchObject({ code: "EISDIR" });
       expect(failures).toEqual([readFailure]);
     });
 
