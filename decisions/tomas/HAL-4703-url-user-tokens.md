@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-4703 (Tomas's decision of 11 Nov 2026, from Liam's review of halonic#1503 on HAL-4699)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:b5M8CXHWoSsS8lCblCStXbBIZ6wb9MKAfjkz21htbeuQeN0W4WGPw40LPfYsJhUfg/QEe90pMbm7kkdu3Cq+BA==
 
 `mcp.stdio-inherited-secrets` removed the password of an inherited value written as a URL, but not
 a token written as the URL's user name with no password, such as a Sentry DSN
