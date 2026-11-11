@@ -28,16 +28,27 @@ export function setUpProposals(digest: Digest, extraFiles: Readonly<Record<strin
   const store = new TestDefinitionStore(files, digest);
   const trash = new TestTrash(store, digest);
   const endFailures: { runId: string; error: unknown }[] = [];
+  // The runs end at this time; a test moves it on to pass 30 days.
+  const clock = { time: new Date("2026-11-11T09:00:00.000Z"), now: () => clock.time };
   const proposals = new RunProposals({
     vcs,
     records,
     digest,
-    clock: { now: () => new Date("2026-11-11T09:00:00.000Z") },
+    clock,
     onEndFailed: (runId, error) => endFailures.push({ runId, error }),
     store,
     trash,
   });
-  return { vcs, records, store, trash, proposals, endFailures, version: vcs.commit(files) };
+  return {
+    vcs,
+    records,
+    store,
+    trash,
+    clock,
+    proposals,
+    endFailures,
+    version: vcs.commit(files),
+  };
 }
 
 /**

@@ -6,6 +6,7 @@ import { KeyedQueue } from "@halonicjs/std";
 import {
   type ProposedRecord,
   parseRunProposalRecord,
+  type RunningRecord,
   type RunProposalRecord,
   recordPathOf,
   serializeRunProposalRecord,
@@ -52,14 +53,17 @@ export class ProposalRecordStore {
   }
 
   /**
-   * A run's proposal.
+   * A run's proposal, while the person can still decide it.
    *
-   * @throws when the run has none, or as {@link read}
+   * @throws when the run has none, when it is settled, or as {@link read}
    */
   async proposed(runId: string): Promise<ProposedRecord> {
     const record = await this.read(runId);
     if (record?.state !== "proposed") {
       throw new Error(`Run ${runId} has no proposal.`);
+    }
+    if (record.settled !== undefined) {
+      throw new Error(`The proposal of run ${runId} is settled: nothing more can be decided.`);
     }
     return record;
   }
@@ -81,7 +85,21 @@ export class ProposalRecordStore {
    * must not be thrown away, so it waits for `read` to report it.
    */
   async running(): Promise<string[]> {
-    const runIds: string[] = [];
+    const records = await this.readable();
+    return records
+      .filter((record): record is RunningRecord => record.state === "running")
+      .map(({ runId }) => runId);
+  }
+
+  /** The proposals, settled or not. A record that can't be read is left out, as for {@link running}. */
+  async proposals(): Promise<ProposedRecord[]> {
+    const records = await this.readable();
+    return records.filter((record): record is ProposedRecord => record.state === "proposed");
+  }
+
+  /** Every record that can be read. */
+  private async readable(): Promise<RunProposalRecord[]> {
+    const records: RunProposalRecord[] = [];
     for (const path of await this.store.list()) {
       const runId = recordFilePattern.exec(path)?.[1];
       const text = runId === undefined ? null : await this.store.read(path);
@@ -89,10 +107,10 @@ export class ProposalRecordStore {
         continue;
       }
       const record = parseRunProposalRecord(text, runId);
-      if (record.ok && record.value.state === "running") {
-        runIds.push(runId);
+      if (record.ok) {
+        records.push(record.value);
       }
     }
-    return runIds;
+    return records;
   }
 }

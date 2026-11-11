@@ -144,3 +144,27 @@ verifies("app.run-proposal-accept-reject-part", () => {
     });
   });
 });
+
+verifies("app.run-proposal-done", () => {
+  describe("a settled record", () => {
+    it("reads back when and why it was settled", () => {
+      const settled: ProposedRecord = {
+        ...proposed,
+        settled: { at: "2026-12-11T09:00:00.000Z", why: "expired" },
+      };
+      const text = serializeRunProposalRecord(settled);
+      expect(parseRunProposalRecord(text, "01JD8Q")).toEqual({ ok: true, value: settled });
+    });
+
+    it.each([
+      ["a reason it doesn't know", { at: "2026-12-11T09:00:00.000Z", why: "forgotten" }],
+      ["no date", { why: "decided" }],
+      ["no object", "yes"],
+    ])("refuses a settled with %s", (_case, settled) => {
+      expect(parseRunProposalRecord(edited({ settled }), "01JD8Q")).toEqual({
+        ok: false,
+        error: "its settled isn't a date and a reason",
+      });
+    });
+  });
+});

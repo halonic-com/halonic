@@ -10,6 +10,7 @@ import type { Trash } from "./review-types.ts";
 import { ProposalDecisions } from "./run-proposal-decisions.ts";
 import { ProposalParts } from "./run-proposal-parts.ts";
 import { type ProposedRecord, proposalRefOf } from "./run-proposal-record.ts";
+import { ProposalSettling, type SettleResult } from "./run-proposal-settle.ts";
 import { ProposalRecordStore } from "./run-proposal-store.ts";
 import type {
   AcceptResult,
@@ -81,6 +82,7 @@ export interface RunWorktree {
  * const proposal = await proposals.end("01JD8Q"); // emit run.proposal when not null
  * const { undo, changedOnDisk } = await proposals.accept("01JD8Q", "all");
  * if (undo !== null) await proposals.restore(undo, "before"); // Undo
+ * await proposals.settle("01JD8Q"); // when the toast has gone
  */
 export class RunProposals {
   private readonly vcs: ProposalVcs;
@@ -90,6 +92,7 @@ export class RunProposals {
   private readonly onEndFailed: (runId: string, error: unknown) => void;
   private readonly decisions: ProposalDecisions;
   private readonly inFile: ProposalParts;
+  private readonly settling: ProposalSettling;
 
   constructor(options: RunProposalsOptions) {
     this.vcs = options.vcs;
@@ -105,6 +108,7 @@ export class RunProposals {
     };
     this.decisions = new ProposalDecisions(this.records, context);
     this.inFile = new ProposalParts(this.records, context, this.decisions);
+    this.settling = new ProposalSettling(this.records, options.vcs, options.clock);
   }
 
   /**
@@ -192,7 +196,7 @@ export class RunProposals {
     return proposal;
   }
 
-  /** The proposal of a run that ended with changes, or `null`. */
+  /** The proposal of a run that ended with changes, settled or not, or `null`. */
   async get(runId: string): Promise<ProposedRecord | null> {
     const record = await this.records.read(runId);
     return record?.state === "proposed" ? record : null;
@@ -286,9 +290,40 @@ export class RunProposals {
    * it, so an edit made since is never lost: it is listed in `changedOnDisk`.
    * Trust rule A holds as for Accept (`app.run-proposal-trust`): an entry
    * Accept could never write is listed under `refused` and left alone.
+   *
+   * @throws when the run has no proposal, or it is settled
    */
   restore(step: UndoStep, to: "before" | "after"): Promise<RestoreResult> {
     return this.decisions.restore(step, to);
+  }
+
+  /**
+   * Settles the proposal once the person can no longer undo their last
+   * decision on it, when the toast has gone (`app.run-proposal-done`):
+   * when no file is left undecided, its ref is deleted and its record is
+   * kept, as settled, for the Inbox. Then drop the run's undo steps from
+   * the history (their source names the run): nothing can be decided any
+   * more, so Undo of them would fail. A file that may never be written
+   * doesn't keep the proposal open.
+   *
+   * @returns `settled`, now or before, or `open` when a file is still
+   *   undecided (an Undo brought it back): nothing changed
+   * @throws when the run has no proposal
+   */
+  settle(runId: string): Promise<SettleResult> {
+    return this.settling.settle(runId);
+  }
+
+  /**
+   * Settles every open proposal whose run finished 30 days ago or more
+   * (`app.run-proposal-done`); its undecided files were not reviewed. Also
+   * deletes the ref of a settled proposal a crash left it to. Call it at
+   * start and once a day.
+   *
+   * @returns the runs settled now, whose undo steps to drop
+   */
+  settleExpired(): Promise<string[]> {
+    return this.settling.settleExpired();
   }
 
   /**

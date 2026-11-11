@@ -93,6 +93,8 @@ export class ProposalDecisions {
     }
     const { runId } = step.source;
     return this.records.inTurn(runId, async () => {
+      // The history drops a settled run's steps; one that comes back anyway changes nothing.
+      await this.records.proposed(runId);
       const entries = to === "before" ? [...step.files].reverse() : step.files;
       const changedOnDisk: string[] = [];
       const refusedEntries: { path: string; why: RefusalReason }[] = [];

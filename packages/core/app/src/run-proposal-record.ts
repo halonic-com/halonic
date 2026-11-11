@@ -32,6 +32,23 @@ export interface ProposedRecord {
    * changes, by path. Absent when there are none.
    */
   readonly partly?: Readonly<Record<string, PartlyDecided>>;
+  /**
+   * Set once the proposal is settled (`app.run-proposal-done`): its ref is
+   * gone and nothing more can be decided. Absent while it is open.
+   */
+  readonly settled?: Settled;
+}
+
+/** When and why a proposal was settled. */
+export interface Settled {
+  /** As an ISO date. */
+  readonly at: string;
+  /**
+   * `decided`: no file was left to decide once the person could no longer
+   * undo. `expired`: 30 days after the run finished; files still undecided
+   * then were not reviewed.
+   */
+  readonly why: "decided" | "expired";
 }
 
 /** Where a file stands once some of its parts or changes are decided. */
@@ -115,37 +132,53 @@ function readProposed(
   json: Record<string, unknown>,
   runId: string,
 ): Result<ProposedRecord, string> {
-  const { proposal: proposalJson, finishedAt, decisions: decisionsJson, partly: partlyJson } = json;
+  const { proposal: proposalJson, finishedAt, decisions: decisionsJson } = json;
   const proposal = readProposal(proposalJson, runId);
   if (!proposal.ok) {
     return proposal;
   }
-  if (typeof finishedAt !== "string" || Number.isNaN(Date.parse(finishedAt))) {
+  if (!isDate(finishedAt)) {
     return err("its finishedAt isn't a date");
   }
   const decisions = readDecisions(decisionsJson, proposal.value.files);
   if (!decisions.ok) {
     return decisions;
   }
-  if (partlyJson === undefined) {
-    return ok({
-      state: "proposed",
-      proposal: proposal.value,
-      finishedAt,
-      decisions: decisions.value,
-    });
-  }
-  const partly = readPartly(partlyJson, decisions.value);
-  if (!partly.ok) {
-    return partly;
-  }
-  return ok({
+  let record: ProposedRecord = {
     state: "proposed",
     proposal: proposal.value,
     finishedAt,
     decisions: decisions.value,
-    partly: partly.value,
-  });
+  };
+  if (json["partly"] !== undefined) {
+    const partly = readPartly(json["partly"], decisions.value);
+    if (!partly.ok) {
+      return partly;
+    }
+    record = { ...record, partly: partly.value };
+  }
+  if (json["settled"] !== undefined) {
+    const settled = readSettled(json["settled"]);
+    if (settled === null) {
+      return err("its settled isn't a date and a reason");
+    }
+    record = { ...record, settled };
+  }
+  return ok(record);
+}
+
+const settledReasons: ReadonlySet<unknown> = new Set(["decided", "expired"]);
+
+function readSettled(json: unknown): Settled | null {
+  if (!isPlainObject(json)) {
+    return null;
+  }
+  const { at, why } = json;
+  return isDate(at) && settledReasons.has(why) ? { at, why: why as Settled["why"] } : null;
+}
+
+function isDate(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
 
 function readProposal(json: unknown, runId: string): Result<RunProposal, string> {
