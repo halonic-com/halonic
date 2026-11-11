@@ -10,9 +10,14 @@ export const engineStoppedMessage = "The engine stopped while the harness ran.";
 /** The `error` a harness call stops with when its run is cancelled while it runs. */
 export const runCancelledMessage = "The run was cancelled while the agent was working.";
 
+/** The `error` a harness call stops with when its top-level run ended while it ran. */
+export const runEndedMessage = "The run ended while the agent was working.";
+
 /** One harness call going on now. */
 interface LiveCall {
   readonly runId: string;
+  /** The top-level run the call's run belongs to: the run itself, or the one that started it. */
+  readonly topLevelRunId: string;
   readonly source: StopSource;
   /** Settles once the call has stopped everything it started. */
   readonly done: Promise<void>;
@@ -27,15 +32,21 @@ export class LiveHarnessCalls {
    * Runs one harness call of the run with a signal that is told to stop when
    * the engine stops or the run is cancelled.
    *
+   * @param topLevelRunId - the top-level run `runId` belongs to, for {@link LiveHarnessCalls.stopUnder}
    * @throws an engine-stopped error, before starting anything, once {@link LiveHarnessCalls.stopAll} was called
    * @throws what the call throws
    */
-  async run<T>(runId: string, call: (stop: StopSignal) => Promise<T>): Promise<T> {
+  async run<T>(
+    runId: string,
+    call: (stop: StopSignal) => Promise<T>,
+    topLevelRunId = runId,
+  ): Promise<T> {
     if (this.#stopped) throw new Error(engineStoppedMessage);
     const source = new StopSource();
     const result = call(source.signal);
     const live: LiveCall = {
       runId,
+      topLevelRunId,
       source,
       done: result.then(
         () => {},
@@ -60,6 +71,16 @@ export class LiveHarnessCalls {
   async stop(runId: string, message = runCancelledMessage): Promise<void> {
     const calls = [...this.#calls].filter((call) => call.runId === runId);
     await stopCalls(calls, message);
+  }
+
+  /**
+   * Stops the calls going on in a top-level run and in every child run under
+   * it, and resolves once each has stopped all it started: the run has ended,
+   * and nothing of it may write in its proposal folder any more.
+   */
+  async stopUnder(topLevelRunId: string): Promise<void> {
+    const calls = [...this.#calls].filter((call) => call.topLevelRunId === topLevelRunId);
+    await stopCalls(calls, runEndedMessage);
   }
 
   /**

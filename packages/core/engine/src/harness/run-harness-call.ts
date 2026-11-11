@@ -74,6 +74,8 @@ export interface HarnessCall {
   readonly hubId: string;
   /** The agent's file as the run started with it. */
   readonly agent: Agent;
+  /** Where the agent writes workspace files, as {@link HarnessAgent.filesFolder} says. */
+  readonly filesFolder: string | null;
 }
 
 /**
@@ -123,7 +125,12 @@ export async function runHarnessCall(
       `Halonic can't start ${effect.harness} on this computer: the host offers no such harness.`,
     );
   }
-  const agent: HarnessAgent = { runId: call.runId, hubId: call.hubId, agentId: effect.agent };
+  const agent: HarnessAgent = {
+    runId: call.runId,
+    hubId: call.hubId,
+    agentId: effect.agent,
+    filesFolder: call.filesFolder,
+  };
   const placement = await options.placement.where(agent);
   const sandbox = options.sandboxes[placement.runsOn];
   const check = await sandbox.check();
@@ -214,7 +221,12 @@ async function openSandbox(
 ): Promise<SandboxSession> {
   stop.throwIfStopped();
   const { state, agent } = call.effect;
-  const subject = { runId: call.runId, hubId: call.hubId, agentId: agent };
+  const subject: HarnessAgent = {
+    runId: call.runId,
+    hubId: call.hubId,
+    agentId: agent,
+    filesFolder: call.filesFolder,
+  };
   const { profile, deniedGroups } = await options.profiles.profileOf(subject, bridge);
   const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});
   const timeoutMs = startTimeoutOf(options, "sandbox");

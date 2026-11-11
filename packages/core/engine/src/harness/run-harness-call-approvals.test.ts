@@ -23,6 +23,7 @@ const call: HarnessCall = {
   runId: "run_1",
   hubId: "acme",
   agent: writerAgent("claude-code"),
+  filesFolder: null,
 };
 
 /** A signal no one tells to stop, for calls the engine doesn't stop. */

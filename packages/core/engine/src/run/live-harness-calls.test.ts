@@ -3,6 +3,7 @@ import {
   engineStoppedMessage,
   LiveHarnessCalls,
   runCancelledMessage,
+  runEndedMessage,
 } from "./live-harness-calls.ts";
 
 describe("LiveHarnessCalls", () => {
@@ -51,6 +52,32 @@ describe("LiveHarnessCalls", () => {
 
     expect(stopped).toEqual(["run_1"]);
     await expect(cancelled).rejects.toThrow(runCancelledMessage);
+    await calls.stopAll();
+    await expect(other).rejects.toThrow(engineStoppedMessage);
+  });
+
+  it("stops the calls of a top-level run and its child runs, and no other run's", async () => {
+    const calls = new LiveHarnessCalls();
+    const stopped: string[] = [];
+    const callOf = (runId: string, topLevelRunId: string) =>
+      calls.run(
+        runId,
+        async (stop) => {
+          await new Promise<void>((resolve) => stop.onStop(resolve));
+          stopped.push(runId);
+          throw stop.reason;
+        },
+        topLevelRunId,
+      );
+    const own = callOf("run_1", "run_1");
+    const child = callOf("run_1.2", "run_1");
+    const other = callOf("run_1.2x", "run_1.2x");
+
+    await calls.stopUnder("run_1");
+
+    expect(stopped).toEqual(["run_1", "run_1.2"]);
+    await expect(own).rejects.toThrow(runEndedMessage);
+    await expect(child).rejects.toThrow(runEndedMessage);
     await calls.stopAll();
     await expect(other).rejects.toThrow(engineStoppedMessage);
   });

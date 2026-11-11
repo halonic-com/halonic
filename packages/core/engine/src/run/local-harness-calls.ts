@@ -14,6 +14,7 @@ import { missingDefinitionsError, readDefinitions } from "../kernel/kept-definit
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
 import { HarnessAnswers } from "./harness-answers.ts";
 import { LiveHarnessCalls } from "./live-harness-calls.ts";
+import { type RunsProposalFolders, topLevelRunOf } from "./proposal-folders.ts";
 import type { StartDeadlines } from "./start-deadlines.ts";
 
 /** What the harness calls of local runs need from the runs they belong to. */
@@ -22,6 +23,8 @@ export interface HarnessCallsOptions {
   readonly blobs: BlobStore;
   /** What harness calls need; without it, each call fails with an error that says so. */
   readonly harnesses: HarnessRunsOptions | undefined;
+  /** Where each call's agent writes workspace files: its top-level run's proposal folder. */
+  readonly folders: RunsProposalFolders;
   readonly startDeadlines: StartDeadlines;
   readonly clock: Clock;
   /**
@@ -49,11 +52,15 @@ export class LocalHarnessCalls {
    * the harness asked for, `waitedOn` moves on to the call id the run then
    * waits on.
    *
+   * The agent writes workspace files in the proposal folder of the run's
+   * top-level run, which the run's child runs share.
+   *
    * @throws when there are no `harnesses`, the definitions are gone, the
-   *   agent names no harness, the harness run fails, or the engine stops it
+   *   agent names no harness, the top-level run has no proposal folder where
+   *   the host has them, the harness run fails, or the engine stops it
    */
   async run(run: RunState, call: PendingCall, waitedOn: WaitedOnCall): Promise<unknown> {
-    const { store, blobs, harnesses, startDeadlines, clock } = this.#options;
+    const { store, blobs, harnesses, folders, startDeadlines, clock } = this.#options;
     if (harnesses === undefined) {
       throw new Error(
         "The local executor can't carry out a run-harness effect: it has no harnesses.",
@@ -71,16 +78,19 @@ export class LocalHarnessCalls {
     }
     const effect = { ...call, harness };
     const { runId, hubId, lastSeq } = run;
+    const topLevelRunId = await topLevelRunOf(store, run);
+    const filesFolder = await folders.folderOf(run, topLevelRunId);
     const item = run.foreach?.running.find(
       (running) => "call" in running && running.call.callId === call.callId,
     );
     const log = new SerialRunLog(store, runId, waitedOn, lastSeq, clock, item?.item ?? null);
     const limits = startDeadlines.of(runId, call.callId);
-    return this.#live.run(runId, (stop) => {
+    const running = (stop: StopSignal) => {
       const approvals = this.#approvalsOf(runId, call.agent, waitedOn, stop);
-      const harnessCall = { effect, runId, hubId, agent };
+      const harnessCall = { effect, runId, hubId, agent, filesFolder };
       return runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
-    });
+    };
+    return this.#live.run(runId, running, topLevelRunId);
   }
 
   /**
@@ -96,6 +106,14 @@ export class LocalHarnessCalls {
   /** Stops the run's harness calls going on, and resolves once each has stopped all it started. */
   stop(runId: string): Promise<void> {
     return this.#live.stop(runId);
+  }
+
+  /**
+   * Stops the harness calls going on in a top-level run and its child runs,
+   * and resolves once each has stopped all it started.
+   */
+  stopUnder(topLevelRunId: string): Promise<void> {
+    return this.#live.stopUnder(topLevelRunId);
   }
 
   /** Stops every harness call going on, and resolves once each has stopped all it started. */

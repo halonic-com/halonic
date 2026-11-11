@@ -33,6 +33,13 @@ export interface HarnessAgent {
   readonly runId: string;
   readonly hubId: string;
   readonly agentId: string;
+  /**
+   * Where the agent reads and writes workspace files: its top-level run's
+   * proposal folder, a worktree of the workspace in Halonic's data folder;
+   * `null` for the workspace itself, as in a chat turn or on a host with no
+   * proposal folders.
+   */
+  readonly filesFolder: string | null;
 }
 
 /**
@@ -68,11 +75,17 @@ export interface HarnessProfile {
  * Builds the sandbox profile of a harness run from the agent's file, the
  * trusted workspace and Halonic's data folders. It lives in the host because
  * it resolves the working folder on disk, symlinks included.
+ *
+ * With a `filesFolder`, the agent's working folder resolves in that folder
+ * instead of the workspace (`<filesFolder>/files/agents/writer`), and the
+ * profile may write nowhere in the workspace: the run proposes its changes
+ * from there (requirement `engine.run-proposal-folder`).
  */
 export interface HarnessProfileBuilder {
   /**
    * @param bridge - the run's open bridge, whose loopback address the profile's network allows
-   * @throws when the agent's working folder resolves outside the workspace or into a protected folder
+   * @throws when the agent's working folder resolves outside the workspace, or the
+   *   `filesFolder` when there is one, or into a protected folder
    */
   profileOf(agent: HarnessAgent, bridge: HarnessBridge): Promise<HarnessProfile>;
 }

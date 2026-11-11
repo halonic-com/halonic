@@ -8,6 +8,7 @@ import { spendOf } from "../budget/spend.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import type { Effect, RunDefinitions } from "../kernel/decide-types.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
+import type { RunProposalFolders } from "./proposal-folders.ts";
 
 /** What the local executor needs to run workflows, on top of what chat turns need. */
 export interface LocalRunsOptions {
@@ -33,6 +34,12 @@ export interface LocalRunsOptions {
    * at its harness step with an error that names the `run-harness` effect.
    */
   readonly harnesses?: HarnessRunsOptions;
+  /**
+   * The proposal folders of top-level runs that can write files: their
+   * harness agents write there instead of in the workspace. Without them,
+   * no run gets one, and harness agents write where their profiles say.
+   */
+  readonly proposalFolders?: RunProposalFolders;
   /**
    * The workspace's run and monthly budget as it is now, read before every
    * model call and harness run; `undefined` sets none. Without it, no budget

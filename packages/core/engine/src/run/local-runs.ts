@@ -39,9 +39,11 @@ import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
+import { RunsProposalFolders } from "./proposal-folders.ts";
 import { RunConnectorCallRunner } from "./run-connector-call-runner.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
+import { checkStartRequest, startInputOf } from "./start-request.ts";
 
 /**
  * Carries out a model call a run waits on, and gives the model's answer, or
@@ -64,9 +66,6 @@ export const harnessGoneError =
 
 /** The `error` of a run someone cancelled; screens word the reason themselves. */
 export const cancelledError = "The run was cancelled.";
-
-/** The longest run id, in UTF-8 bytes, because it is a `Scheduler` key. */
-const maxRunIdBytes = 256;
 
 /**
  * Timer ids: a model call or a harness run to carry out now, a timer a
@@ -102,6 +101,7 @@ export class LocalRuns {
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
   readonly #harnessCalls: LocalHarnessCalls;
+  readonly #folders: RunsProposalFolders;
   #started: Promise<void> | undefined;
   /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
   #closed = false;
@@ -119,10 +119,12 @@ export class LocalRuns {
     this.#callModel = callModel;
     this.#feed = new RunFeed(options.store);
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
+    this.#folders = new RunsProposalFolders(options.store, options.proposalFolders);
     this.#harnessCalls = new LocalHarnessCalls({
       store: options.store,
       blobs: options.blobs,
       harnesses: options.harnesses,
+      folders: this.#folders,
       startDeadlines: this.#startDeadlines,
       clock,
       record: (runId, input) => this.#record(runId, input),
@@ -141,43 +143,33 @@ export class LocalRuns {
 
   /**
    * Records the start of a run and sets the timer for its first effects. A
-   * `runId` that already exists returns that run and starts nothing.
+   * `runId` that already exists returns that run and starts nothing. A run
+   * that can write files gets its proposal folder first.
    *
    * @throws RangeError when `runId` is longer than 256 UTF-8 bytes, or `harness` isn't a harness
-   * @throws when the hub or workflow doesn't exist
+   * @throws when the hub or workflow doesn't exist, or the proposal folder can't be opened
    */
   async start(request: StartRunRequest): Promise<RunSummary> {
-    if (request.runId !== undefined && encodeUtf8(request.runId).length > maxRunIdBytes) {
-      throw new RangeError(`A run id is at most ${maxRunIdBytes} UTF-8 bytes.`);
-    }
-    if (request.harness !== undefined && !AGENT_HARNESSES.includes(request.harness)) {
-      const known = AGENT_HARNESSES.join(", ");
-      throw new RangeError(`"${request.harness}" isn't a harness. The harnesses are ${known}.`);
-    }
+    checkStartRequest(request);
     await this.#ready();
     const runId = request.runId ?? this.#options.ids.next("run");
     const existing = await this.#options.store.get(runId);
     if (existing !== null) return existing;
-    const { hubId, workflowId, input, trigger, harness, cantTry = [] } = request;
+    const { hubId, workflowId, harness } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId);
     const definitionsVersion = await keepDefinitions(this.#options.blobs, definitions);
+    const opened = await this.#folders.open({ runId, hubId, workflowId }, definitions, harness);
     try {
-      await this.#record(runId, {
-        type: "start",
-        at: this.#now(),
-        runId,
-        hubId,
-        workflowId,
-        input,
-        kind: request.kind ?? "run",
-        definitionsVersion,
-        ...(trigger === undefined ? {} : { trigger }),
-        ...(harness === undefined ? {} : { harness }),
-        cantTry,
-      });
+      await this.#record(runId, startInputOf(request, runId, definitionsVersion, this.#now()));
     } catch (error) {
       // A start repeated at the same moment: the other one recorded it.
-      if (!(error instanceof InputRefused && error.code === "engine.run-exists")) throw error;
+      if (error instanceof InputRefused && error.code === "engine.run-exists") {
+        return this.#summary(runId);
+      }
+      if (opened && (await this.#options.store.get(runId)) === null) {
+        await this.#folders.notStarted(runId);
+      }
+      throw error;
     }
     return this.#summary(runId);
   }
@@ -224,6 +216,8 @@ export class LocalRuns {
       await this.#fail(id, cancelledError, "cancelled");
       await this.#harnessCalls.stop(id);
     }
+    // Only now: its children are cancelled, so a call it stops records nothing in them.
+    await this.#ended(runId);
     return this.#summary(runId);
   }
 
@@ -289,6 +283,7 @@ export class LocalRuns {
     await this.#connectorCalls.markCutShort();
     const ended = await endInterruptedRuns(this.#options.store, this.#clock);
     for (const runId of ended) this.#feed.notify(runId);
+    for (const runId of ended) await this.#ended(runId);
     for (const runId of ended) {
       const parent = (await readRun(this.#options.store, runId))?.parent;
       if (parent == null) continue;
@@ -383,12 +378,24 @@ export class LocalRuns {
         `The local executor can't carry out a ${unbuilt.type} effect yet.`,
         reason,
       );
+      await this.#ended(runId);
       return events;
     }
     for (const effect of effects) {
       await this.#carryOut(run, effect);
     }
+    if (events.length > 0 && hasEnded(run.status)) await this.#ended(runId);
     return events;
+  }
+
+  /**
+   * A run has just ended: when it is a top-level run, its harness calls and
+   * its child runs' stop, and then its proposal folder ends.
+   */
+  async #ended(runId: string): Promise<void> {
+    await this.#folders.ended(runId, (topLevelRunId) =>
+      this.#harnessCalls.stopUnder(topLevelRunId),
+    );
   }
 
   /**

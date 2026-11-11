@@ -23,6 +23,7 @@ import type { AgentKnowledgeOptions } from "../knowledge/agent-knowledge.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
+import type { RunProposalFolders } from "./proposal-folders.ts";
 
 /**
  * Timers in a map that a test delivers with {@link TestScheduler.runDue},
@@ -118,6 +119,8 @@ export interface RunsSetup {
   readonly knowledgeOptions?: AgentKnowledgeOptions;
   /** What runs need to reach the connectors; runs offer none of their tools when left out. */
   readonly connectorCalls?: RunConnectorCalls;
+  /** The proposal folders of top-level runs; runs get none when left out. */
+  readonly proposalFolders?: RunProposalFolders;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -162,6 +165,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ...(harnesses === undefined ? {} : { harnesses }),
       ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
       ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
+      ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);

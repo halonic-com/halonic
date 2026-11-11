@@ -223,9 +223,9 @@ export function harnessPorts() {
       },
     },
     profiles: {
-      profileOf: async ({ agentId }) => ({
+      profileOf: async ({ agentId, filesFolder }) => ({
         profile: {
-          workingFolder: `<workspace>/files/agents/${agentId}`,
+          workingFolder: `${filesFolder ?? "<workspace>"}/files/agents/${agentId}`,
           tempFolder: "<data>/tmp/run_1",
           settingsFolder: null,
           readOnlyPaths: [],

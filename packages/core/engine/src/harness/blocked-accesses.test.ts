@@ -23,6 +23,7 @@ const call: HarnessCall = {
   runId: "run_1",
   hubId: "acme",
   agent: writerAgent("claude-code"),
+  filesFolder: null,
 };
 
 const sshKey: SandboxBlock = { kind: "file", path: "<home>/.ssh/id_ed25519", access: "read" };
