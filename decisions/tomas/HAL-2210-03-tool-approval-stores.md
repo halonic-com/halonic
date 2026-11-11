@@ -2,7 +2,6 @@
 
 - Approval: Paperclip task HAL-6201 (Liam's review of halonic#1928, for HAL-2210)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kE+AK2bru1dP9a7H33T4IC1iBnMsmm2UDCt5IAwOYWJ3ITrcP/C2ueKHnfCexqQDIVfxcmRIPqrgCn7p0v5WCQ==
 
 `tool-approval-store.test.ts` is a new test file for `FileToolApprovalStore`. Two of its tests
 check something Windows doesn't have, so they are `it.skipIf(process.platform === "win32")`, as
