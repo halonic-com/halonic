@@ -1049,15 +1049,15 @@ jobs:
           persist-credentials: false
       - uses: $/.github/actions/setup
       - name: Install bubblewrap and socat
-        # The runner's apt mirror list starts with azure.archive.ubuntu.com.
-        # When a runner can't resolve that name, apt spends minutes on DNS
-        # timeouts and then fails (HAL-5834), so the step points apt straight
-        # at archive.ubuntu.com instead.
+        # When ubuntu.com's name servers fail, no *.ubuntu.com mirror resolves
+        # and apt fails after minutes of DNS timeouts (HAL-5834). Then the
+        # step points apt at the kernel.org mirror, which has its own DNS.
+        # apt still checks the Ubuntu archive signature, whatever the mirror.
         run: |
           if ! getent hosts azure.archive.ubuntu.com > /dev/null; then
-            echo "azure.archive.ubuntu.com does not resolve, using archive.ubuntu.com"
-            grep -rl 'mirror+file:/etc/apt/apt-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
-              | xargs --no-run-if-empty sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu/|'
+            echo "azure.archive.ubuntu.com does not resolve, using mirrors.edge.kernel.org"
+            grep -rlE 'mirror\+file:/etc/apt/apt-mirrors\.txt|ubuntu\.com/ubuntu' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs --no-run-if-empty sudo sed -i -E 's#mirror\+file:/etc/apt/apt-mirrors\.txt|https?://[a-z.]*ubuntu\.com/ubuntu/?#http://mirrors.edge.kernel.org/ubuntu/#g'
           fi
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends bubblewrap socat ripgrep
