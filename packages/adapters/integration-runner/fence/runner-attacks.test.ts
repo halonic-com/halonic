@@ -1,9 +1,9 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { socketFolders } from "../src/halonic/runner-profile.ts";
@@ -332,12 +332,19 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
 // covered by A35 and by the environment holding no bus address (A17).
 describe.skipIf(!isMac)("an integration in the fence on macOS, Node's layer off", () => {
   const service = "halonic-fence-attack";
-  let keychain: string;
+  let folders: AttackFolders;
+  let keychain: string | undefined;
+  let searchList: string[] | undefined;
 
-  beforeAll(() => {
-    // In the hidden home folder, where the login keychain is.
-    keychain = join(homeFolder, "Library", "Keychains", "attack.keychain-db");
-    mkdirSync(dirname(keychain), { recursive: true });
+  beforeAll(async () => {
+    // In the integration's own folder, which the fence lets the runner read,
+    // so the file fence has no say in it: the test asks only whether
+    // securityd answers. The keychain goes on the user's search list, where
+    // the login keychain is, so the attack asks for the item by name and
+    // never names the file. The CI runner is thrown away after the job;
+    // `afterAll` still puts the list back.
+    folders = await attackFolders(base, "a36");
+    keychain = join(folders.integrationFolder, "attack.keychain-db");
     const password = Math.random().toString(36).slice(2);
     execFileSync("security", ["create-keychain", "-p", password, keychain]);
     execFileSync("security", [
@@ -348,28 +355,51 @@ describe.skipIf(!isMac)("an integration in the fence on macOS, Node's layer off"
       "halonic-ci",
       "-w",
       canary,
+      "-T",
+      "/usr/bin/security",
       keychain,
     ]);
+    searchList = userSearchList();
+    execFileSync("security", ["list-keychains", "-d", "user", "-s", ...searchList, keychain]);
   });
 
   afterAll(() => {
+    if (searchList) {
+      execFileSync("security", ["list-keychains", "-d", "user", "-s", ...searchList]);
+    }
     if (keychain) execFileSync("security", ["delete-keychain", keychain]);
   });
 
   it("A36: gets no keychain item through securityd", async () => {
+    // Outside the fence the item comes back, so a refusal inside is the
+    // fence's doing.
+    const outside = execFileSync("security", ["find-generic-password", "-w", "-s", service], {
+      encoding: "utf8",
+    });
+    expect(outside.trim()).toBe(canary);
+
     const { attempts } = await attack(
       "off",
       `
       const { spawnSync } = await import("node:child_process");
       await attempt("keychain item", () => {
-        const run = spawnSync("/usr/bin/security", ["find-generic-password", "-w", "-s", "${service}", ${JSON.stringify(keychain)}], { encoding: "utf8" });
+        const run = spawnSync("/usr/bin/security", ["find-generic-password", "-w", "-s", ${JSON.stringify(service)}], { encoding: "utf8" });
         if (run.error) throw run.error;
         if (run.status !== 0) throw Object.assign(new Error(run.stderr), { code: "EXIT_" + run.status });
         return run.stdout;
       });
       `,
+      folders,
     );
     expect(attempts["keychain item"]?.outcome).toBe("refused");
     expect(attempts["keychain item"]?.detail).not.toContain(canary);
   });
 });
+
+/** The user's keychain search list, as `security list-keychains` prints it: one quoted path a line. */
+function userSearchList(): string[] {
+  return execFileSync("security", ["list-keychains", "-d", "user"], { encoding: "utf8" })
+    .split("\n")
+    .map((line) => line.trim().replace(/^"(.*)"$/, "$1"))
+    .filter((path) => path !== "");
+}

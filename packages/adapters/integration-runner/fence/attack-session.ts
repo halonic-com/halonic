@@ -13,6 +13,7 @@
 import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Sandbox, SandboxCommand } from "@halonicjs/ports";
+import { runnerCommand } from "../src/halonic/runner-command.ts";
 import {
   diskOnThisMachine,
   type RunnerFiles,
@@ -138,14 +139,20 @@ export async function runAttack(options: RunAttackOptions): Promise<AttackResult
 }
 
 /**
- * Node started on the attack script. With Node's layer on, it gets the
- * runner's own flags: read only the script and the integration's folder,
- * nothing else allowed (see `runnerCommand`).
+ * Node started on the attack script, built from the runner's own command so
+ * a change to its flags is tested here too. With Node's layer on, the command
+ * is the runner's as it is. With it off, the Node flags before the script are
+ * left out. The script ignores the runner's arguments after it.
  */
 function attackCommand(files: RunnerFiles, nodeLayer: NodeLayer): SandboxCommand {
-  const nodeFlags =
-    nodeLayer === "on" ? ["--permission", `--allow-fs-read=${files.integrationFolder}`] : [];
-  return { program: files.node, args: [...nodeFlags, files.runnerFile] };
+  const command = runnerCommand(files, {
+    nonce: "attack",
+    folder: files.integrationFolder,
+    entryFile: files.runnerFile,
+    exportName: "attack",
+  });
+  if (nodeLayer === "on") return command;
+  return { ...command, args: command.args.slice(command.args.indexOf(files.runnerFile)) };
 }
 
 async function readText(stream: ReadableStream<Uint8Array>): Promise<string> {
