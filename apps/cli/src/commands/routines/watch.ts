@@ -79,10 +79,12 @@ export async function watchRoutines(
   });
   try {
     for (const agent of engine.unsandboxed) context.printAhead(unsandboxedWarning(agent));
+    // Straight away, so the times missed since the last watch start now, not a minute from now.
+    // Before the watching line, so that line means the scheduler has caught up; its runs print after.
+    const first = scheduler === undefined ? undefined : await scheduler.tick();
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
     context.printAhead(routinesMessages.watching(onAClock.length, printable(dir.name)).phrase);
-    // Straight away, so the times missed since the last watch start now, not a minute from now.
-    if (scheduler !== undefined) report.tick(await scheduler.tick());
+    if (first !== undefined) report.tick(first);
     await stopped(engine.signal);
   } finally {
     await engine.close();
