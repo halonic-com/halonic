@@ -4,6 +4,7 @@
 // folder and when it ends; the proposal service makes the worktree or copy,
 // and keeps what the run changed as its proposal.
 
+import type { RunVersion } from "@halonicjs/events";
 import type { RunProposals } from "./run-proposals.ts";
 
 /** The top-level run a folder is opened for, as the engine's `RunProposalFolders` names it. */
@@ -11,6 +12,8 @@ export interface ProposalFolderRun {
   readonly runId: string;
   readonly hubId: string;
   readonly workflowId: string;
+  /** The version the run's definitions were read from, as its start names it. */
+  readonly version: RunVersion | null;
 }
 
 /** What {@link ProposalFolders} needs from the host. */
@@ -19,11 +22,6 @@ export interface ProposalFoldersOptions {
     RunProposals,
     "open" | "folderOf" | "end" | "endLeftovers" | "removeLeftovers"
   >;
-  /**
-   * The commit the host read the run's definitions from, or `null` when it
-   * read the saved files (history off), as `runSourceFor` picked them.
-   */
-  versionOf(run: ProposalFolderRun): Promise<string | null>;
 }
 
 /**
@@ -31,7 +29,7 @@ export interface ProposalFoldersOptions {
  * `RunProposalFolders` (requirement `app.run-proposal-folders`).
  *
  * @example
- * const folders = new ProposalFolders({ proposals, versionOf: async (run) => commits.get(run.runId) ?? null });
+ * const folders = new ProposalFolders({ proposals });
  * await folders.start(openRuns); // before the engine starts any run
  * localEngine({ ...options, proposalFolders: folders });
  */
@@ -43,19 +41,21 @@ export class ProposalFolders {
   }
 
   /**
-   * Opens the run's folder at the version its definitions were read from.
+   * Opens the run's folder at the version its definitions were read from:
+   * a worktree at the live version's commit, or a copy of the saved files
+   * when the run read them (history off) or its start names no version.
    * A run that is open gets its folder again.
    *
    * @returns the folder's absolute path
    * @throws what the proposal service's `open` throws; the run doesn't start
    */
   async open(run: ProposalFolderRun): Promise<string> {
-    const { proposals, versionOf } = this.#options;
+    const { proposals } = this.#options;
     const open = await proposals.folderOf(run.runId);
     if (open !== null) {
       return open;
     }
-    const { folder } = await proposals.open(run.runId, await versionOf(run));
+    const { folder } = await proposals.open(run.runId, commitOf(run.version));
     return folder;
   }
 
@@ -87,4 +87,9 @@ export class ProposalFolders {
     await proposals.endLeftovers(openRuns);
     await proposals.removeLeftovers(openRuns);
   }
+}
+
+/** The commit of a live version; `null` for the saved files, or when the start names no version. */
+function commitOf(version: RunVersion | null): string | null {
+  return version?.reads === "live-version" ? version.commit : null;
 }

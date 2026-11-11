@@ -1,3 +1,4 @@
+import type { RunVersion } from "@halonicjs/events";
 import type { Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -11,36 +12,53 @@ const digest: Digest = {
   },
 };
 
-const run = (runId: string): ProposalFolderRun => ({ runId, hubId: "main", workflowId: "triage" });
-
-/** Proposal folders on a fresh proposal service, with every run read at the saved files' commit. */
+/** Proposal folders on a fresh proposal service, with the saved files at a live version's commit. */
 function setUp() {
   const setup = setUpProposals(digest);
-  const asked: ProposalFolderRun[] = [];
-  const folders = new ProposalFolders({
-    proposals: setup.proposals,
-    versionOf: async (asking) => {
-      asked.push(asking);
-      return setup.version;
-    },
+  const folders = new ProposalFolders({ proposals: setup.proposals });
+  const live: RunVersion = {
+    reads: "live-version",
+    commit: setup.version,
+    versionDate: "2026-11-11T08:00:00.000Z",
+  };
+  /** A top-level run of `triage` that read the live version, or the given one. */
+  const run = (runId: string, version: RunVersion | null = live): ProposalFolderRun => ({
+    runId,
+    hubId: "main",
+    workflowId: "triage",
+    version,
   });
-  return { ...setup, folders, asked };
+  return { ...setup, folders, run };
 }
 
 verifies("app.run-proposal-folders", () => {
   describe("ProposalFolders", () => {
     it("opens a run's folder at the commit its definitions were read from", async () => {
-      const { folders, filesOf, asked } = setUp();
+      const { folders, filesOf, vcs, copies, run } = setUp();
 
       const folder = await folders.open(run("01JD8Q"));
 
       expect(filesOf(folder).get("agents/clerk.agent.yaml")).toBe(clerk);
-      expect(asked).toEqual([run("01JD8Q")]);
+      expect(vcs.worktrees.size).toBe(1);
+      expect(copies.copies.size).toBe(0);
       expect(await folders.folderOf("01JD8Q")).toBe(folder);
     });
 
+    it.each([
+      ["read the saved files", { reads: "saved-files" } as const],
+      ["names no version", null],
+    ])("opens a copy of the saved files for a run that %s", async (_, version) => {
+      const { folders, vcs, copies, run } = setUp();
+
+      const folder = await folders.open(run("01JD8Q", version));
+
+      expect(copies.filesOf(folder).get("agents/clerk.agent.yaml")).toBe(clerk);
+      expect(vcs.worktrees.size).toBe(0);
+      expect(copies.copies.size).toBe(1);
+    });
+
     it("gives an open run its folder again", async () => {
-      const { folders, vcs } = setUp();
+      const { folders, vcs, run } = setUp();
 
       const folder = await folders.open(run("01JD8Q"));
 
@@ -49,7 +67,7 @@ verifies("app.run-proposal-folders", () => {
     });
 
     it("ends a run's folder, keeping what it changed as its proposal", async () => {
-      const { folders, filesOf, proposals } = setUp();
+      const { folders, filesOf, proposals, run } = setUp();
       const folder = await folders.open(run("01JD8Q"));
       filesOf(folder).set("notes/today.md", "Step 1.\n");
 
@@ -61,7 +79,7 @@ verifies("app.run-proposal-folders", () => {
     });
 
     it("at start, ends the folder of a run the engine has ended, and keeps open runs' folders", async () => {
-      const { folders, filesOf, proposals, vcs } = setUp();
+      const { folders, filesOf, proposals, vcs, run } = setUp();
       const ended = await folders.open(run("01JD8Q"));
       filesOf(ended).set("notes/today.md", "Step 1.\n");
       const waiting = await folders.open(run("7KQ2MX"));
@@ -77,7 +95,7 @@ verifies("app.run-proposal-folders", () => {
     });
 
     it("at start, removes a folder whose end can't finish", async () => {
-      const { folders, vcs, endFailures } = setUp();
+      const { folders, vcs, endFailures, run } = setUp();
       await folders.open(run("01JD8Q"));
       const failure = new Error("disk full");
       vcs.diffBetween = () => Promise.reject(failure);

@@ -1,3 +1,4 @@
+import type { RunVersion } from "@halonicjs/events";
 import type { Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
@@ -86,12 +87,21 @@ function writerRun(setup: { workflow?: Workflow; workflows?: Record<string, Work
   return { ...run, ports, folders };
 }
 
+/** The live version a start names, so its folder is made at that commit. */
+const liveVersion: RunVersion = {
+  reads: "live-version",
+  commit: "4be1c2d",
+  versionDate: "2026-11-11T08:00:00.000Z",
+};
+
 verifies("engine.run-proposal-folder", () => {
   it("opens the folder before the start, works in it, and ends it once the session has closed", async () => {
     const { executor, runs, scheduler, ports, folders } = writerRun();
 
-    await executor.start(replyStart);
-    expect(folders.opened).toEqual([{ runId: "run_1", hubId: "acme", workflowId: "reply" }]);
+    await executor.start({ ...replyStart, version: liveVersion });
+    expect(folders.opened).toEqual([
+      { runId: "run_1", hubId: "acme", workflowId: "reply", version: liveVersion },
+    ]);
     await scheduler.runDue();
 
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });

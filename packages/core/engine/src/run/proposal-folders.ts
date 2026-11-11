@@ -5,6 +5,7 @@
 // once the run has ended and nothing of it runs any more. What the folder is,
 // and what becomes of what the run changed in it, is the host's.
 
+import type { RunVersion } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { RunDefinitions } from "../kernel/decide-types.ts";
@@ -17,6 +18,13 @@ export interface ProposalRun {
   readonly runId: string;
   readonly hubId: string;
   readonly workflowId: string;
+  /**
+   * The version of the workspace the run's definitions were read from, as
+   * its start names it: the folder is made at this version. The engine
+   * opens the folder before it records `run.started`, so the host can't
+   * read it from the run's log yet. `null` when the start names none.
+   */
+  readonly version: RunVersion | null;
 }
 
 /**

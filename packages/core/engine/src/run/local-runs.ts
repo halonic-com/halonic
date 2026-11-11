@@ -155,7 +155,8 @@ export class LocalRuns {
     const { hubId, workflowId, harness, version } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId, version);
     const definitionsVersion = await keepDefinitions(this.#options.blobs, definitions);
-    const opened = await this.#folders.open({ runId, hubId, workflowId }, definitions, harness);
+    const folderRun = { runId, hubId, workflowId, version: version ?? null };
+    const opened = await this.#folders.open(folderRun, definitions, harness);
     try {
       await this.#record(runId, startInputOf(request, runId, definitionsVersion, this.#now()));
     } catch (error) {
