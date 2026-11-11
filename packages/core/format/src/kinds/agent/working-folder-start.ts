@@ -243,15 +243,18 @@ function foldersUpTo(folder: string, root: string, lookup: PathLookup): string[]
 /**
  * The scripts a start runs (see rule 4): the program and each piece of an
  * argument when it is a file, and each argument and `-m` module also when
- * it is a file once an ending is added, or a folder. An empty argument
- * names nothing, as in `pathsIn`, though it would resolve to the start folder.
+ * it is a file once an ending is added, or a folder. Empty inline code
+ * (`node -e ""`) is no script. Any other empty argument is read as the start
+ * folder, as Python does: `python ""` runs `__main__.py` from there.
  */
 async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<Script[]> {
   const exact = [
     start.program,
     ...start.args.flatMap((arg) => pathsIn(arg).filter((piece) => piece !== arg)),
   ];
-  const named = start.args.flatMap((arg, index) => (arg === "" ? [] : [{ arg, index }]));
+  const named = start.args.flatMap((arg, index) =>
+    isEmptyInlineCode(start.args, index) ? [] : [{ arg, index }],
+  );
   const filled = named.flatMap(({ arg, index }) => [
     { shown: arg, path: arg },
     ...moduleIn(start.args, index).map((path) => ({ shown: arg, path })),
@@ -266,6 +269,14 @@ async function scriptsRun(start: ConnectorStart, lookup: FolderLookup): Promise<
     if (folder !== null) scripts.push({ shown, folder });
   }
   return scripts;
+}
+
+/** The flags that take inline code as their next argument: Node's `-e` and `-p`, and `-c` for Python and shells. */
+const INLINE_CODE_FLAGS = new Set(["-e", "--eval", "-p", "--print", "-c"]);
+
+/** Whether the argument at `index` is empty inline code, such as the `""` in `node -e ""`. */
+function isEmptyInlineCode(args: readonly string[], index: number): boolean {
+  return args[index] === "" && index > 0 && INLINE_CODE_FLAGS.has(args[index - 1] ?? "");
 }
 
 /** The real folder of the first of `paths` that is a file, or `null`. */

@@ -173,6 +173,7 @@ verifies("format.working-folder-start", () => {
     it.each([
       ["a script without its ending", start("node", ["server"]), "server"],
       ["the folder it runs", start("node", ["."]), "."],
+      ["the folder an empty argument names", start("python", [""]), ""],
       ["a module without its ending", start("python", ["-m", "mail"]), "mail"],
       [
         "a script a flag loads",
@@ -210,7 +211,8 @@ verifies("format.working-folder-start", () => {
         start("node", ["tools/mail/server.js", "--port", "8080"]),
         [coder],
       ],
-      ["an empty argument", start("node", ["-e", ""]), [coder]],
+      ["empty inline code", start("node", ["-e", ""]), [coder]],
+      ["empty inline Python code", start("python", ["-c", ""]), [coder]],
     ])("allows %s", async (_, fine, workingFolders) => {
       expect(await reach(fine, workingFolders)).toBeNull();
     });
