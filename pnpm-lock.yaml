@@ -1894,6 +1894,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../../core/events
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
