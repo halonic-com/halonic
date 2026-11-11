@@ -17,7 +17,7 @@ import { blockBody, topLevelBlocks } from "./test/theme-file.spec.ts";
  * sets only --halo-blue and --halo-violet; every halo utility follows.
  */
 const presets = [
-  { name: "halo", blue: "#3B8BFF", violet: "#8B5CF6" },
+  { name: "halo", blue: "#3B8BFF", violet: "#B05ED9" },
   { name: "green", blue: "#10B981", violet: "#3B8BFF" },
   { name: "amber", blue: "#FBBF24", violet: "#F97316" },
   { name: "pink", blue: "#EC4899", violet: "#8B5CF6" },

@@ -20,13 +20,13 @@
   --color-border-control: #8284a3;
   --color-fg: rgb(16 16 46 / 0.88);
   --color-fg-muted: rgb(16 16 46 / 0.66);
-  --color-accent: #4a63f0;
-  --color-accent-text: #3f52e0;
-  --color-primary: #4a63f0;
+  --color-accent: #2668ed;
+  --color-accent-text: #0f52d6;
+  --color-primary: #2668ed;
   --color-on-primary: #ffffff;
-  --color-warning: #a84b05;
-  --color-warning-soft: rgb(168 75 5 / 0.1);
-  --color-danger: #c4143d;
+  --color-warning: #9736c5;
+  --color-warning-soft: rgb(151 54 197 / 0.1);
+  --color-danger: #c70d45;
   --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
   font-family: system-ui, sans-serif;
 }
@@ -39,13 +39,13 @@
     --color-border-control: #6e7092;
     --color-fg: rgb(242 242 255 / 0.9);
     --color-fg-muted: rgb(242 242 255 / 0.68);
-    --color-accent: #8796fb;
-    --color-accent-text: #9aa6ff;
-    --color-primary: #8796fb;
+    --color-accent: #477ff0;
+    --color-accent-text: #7da9fd;
+    --color-primary: #477ff0;
     --color-on-primary: #0d0d1f;
-    --color-warning: #fcc24c;
-    --color-warning-soft: rgb(252 194 76 / 0.18);
-    --color-danger: #fc7f92;
+    --color-warning: #d380fe;
+    --color-warning-soft: rgb(211 128 254 / 0.18);
+    --color-danger: #fd7692;
   }
 }
 

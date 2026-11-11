@@ -97,7 +97,7 @@ utilities follow. The four presets keep every text colour at 4.5:1 on the spot a
 
 | Variable | What it's for |
 | --- | --- |
-| `--character-1a` … `--character-5b` | The agent orb's five colour pairs (halo, lagoon, ember, moss, orchid) |
+| `--character-1a` … `--character-5b` | The agent orb's five colour pairs (periwinkle, azure, rose, green, violet) |
 | `--stack-gap` | How far the stack of cards sits in from the side panel's edges (16px) |
 | `--stack-peek`, `--stack-inset` | Each stacked card behind sits 10px higher and 12px narrower on each side |
 | `--stack-shade-1`, `--stack-shade-2` | The fill of the card one behind, and of the cards two or more behind |

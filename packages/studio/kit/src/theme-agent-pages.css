@@ -7,18 +7,21 @@
  */
 
 :root {
-  /* The agent orb's five colour pairs (Character): a is the highlight, b the orb's edge. The same
-     in light and dark, and not --halo-*, so a frame colour preset never recolours the agents. */
-  --character-1a: #3b8bff; /* halo */
-  --character-1b: #8b5cf6;
-  --character-2a: #22c3d6; /* lagoon */
-  --character-2b: #3b6cff;
-  --character-3a: #ffb547; /* ember */
-  --character-3b: #e5466b;
-  --character-4a: #4fd69c; /* moss */
-  --character-4b: #1a8fab;
-  --character-5a: #f08cf5; /* orchid */
-  --character-5b: #8d50f2;
+  /* The agent orb's five colour pairs (Character), one spectrum hue each: a is the highlight, b
+     the orb's edge, the same hue at two lightnesses. The five hues sit evenly across the
+     spectrum, so agents stay apart; blue and teal are left out, as they say "act" and "done".
+     The same in light and dark, and not --halo-*, so a frame colour preset never recolours the
+     agents. */
+  --character-1a: #94a3fe; /* periwinkle */
+  --character-1b: #646fe0;
+  --character-2a: #22b8fb; /* azure */
+  --character-2b: #0088bd;
+  --character-3a: #fa7f8d; /* rose */
+  --character-3b: #ce475d;
+  --character-4a: #29c890; /* green */
+  --character-4b: #079468;
+  --character-5a: #cb8dee; /* violet */
+  --character-5b: #9f59c5;
 
   /* Stacked cards (the side panel's stack on the agent and workflow pages). The stack sits
      --stack-gap in from the panel's edges; each card behind sits --stack-peek higher and
