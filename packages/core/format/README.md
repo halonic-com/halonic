@@ -101,6 +101,20 @@ not here.
   keeps the secret under fits the `Secrets` port's 128.
 - The types of each kind's value (`Agent`, `Workflow`, `Routine` and so on) and `Guard`.
 
+## Subpath exports
+
+Both entry points import only schema-kit and std, never `yaml`, so a reader that doesn't parse
+workspace files doesn't load the YAML parser. `@halonicjs/format` doesn't re-export `./recording`.
+
+- `@halonicjs/format/integration` is the integration permission sheet: `IntegrationSheet`,
+  `parseIntegrationSheet`, `checkIntegrationSheet`, `integrationPolicy`, the pattern and limit
+  constants, and the plugin helpers `Plugin`, `backendSheet` and `pluginFromIntegrationSheet`. The
+  integration kit and the conformance suite read sheets through it
+  (requirement `integration-entry`).
+- `@halonicjs/format/recording` is the recording file, `integrations/<name>/recordings/<scenario>.json`,
+  shared by the recorder and the conformance suite: `recordingFileSchema` (with the type
+  `RecordingFile`), `formatRecording` and `RECORDING_FORMAT` (`halonic.recording/1`).
+
 ## Spec files
 
 `spec/<kind>.schema.json` (for example `spec/workflow-test.schema.json`) is each kind's JSON
