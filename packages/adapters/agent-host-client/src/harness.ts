@@ -45,6 +45,16 @@ const detectionSchema = s.discriminatedUnion("status", [
   s.object({ status: s.literal("failed"), error: s.string() }).strict(),
 ]);
 
+/** What the host's sign-in route answers. */
+export type SignInOpened =
+  | { readonly opened: true }
+  | { readonly opened: false; readonly reason: string; readonly command: string };
+
+const signInSchema = s.discriminatedUnion("opened", [
+  s.object({ opened: s.literal(true) }).strict(),
+  s.object({ opened: s.literal(false), reason: s.string(), command: s.string() }).strict(),
+]);
+
 const runLineSchema = s.discriminatedUnion("type", [
   s.object({ type: s.literal("started"), run: s.string().min(1) }).strict(),
   s
@@ -97,6 +107,20 @@ export class AgentHostHarness implements Harness {
     const route = "POST /v1/harnesses/detect";
     const answer = await this.#transport.request(route, { harness: this.id });
     return readAnswer(route, answer, detectionSchema) as HarnessDetection;
+  }
+
+  /**
+   * Opens a terminal the person can see, running the program's own sign-in
+   * for one agent, pointed at that agent's settings folder (HAL-5395). When
+   * no window opened, the answer has the command to run by hand.
+   *
+   * @throws {@link AgentHostError} with kind `no_sign_in` for a harness
+   * without a sign-in of its own, or `sign_in_refused` with the reason
+   */
+  async openSignIn(settingsFolder: string): Promise<SignInOpened> {
+    const route = "POST /v1/harnesses/sign-in";
+    const answer = await this.#transport.request(route, { harness: this.id, settingsFolder });
+    return readAnswer(route, answer, signInSchema) as SignInOpened;
   }
 
   /**

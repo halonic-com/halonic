@@ -12,6 +12,7 @@ export {
   type AgentHostHarnessOptions,
   agentHostHarnesses,
   type HarnessEnvironment,
+  type SignInOpened,
 } from "./harness.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export {

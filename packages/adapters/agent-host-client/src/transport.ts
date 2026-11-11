@@ -15,6 +15,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/bridge/close",
   "GET /v1/harnesses",
   "POST /v1/harnesses/detect",
+  "POST /v1/harnesses/sign-in",
   "POST /v1/harnesses/runs/send",
   "POST /v1/harnesses/runs/cancel",
 ] as const;

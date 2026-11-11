@@ -78,6 +78,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/bridge/close` | `{"closed":true}`, or `404` for an unknown bridge |
 | `GET /v1/harnesses` | `[{"id","name"}]` |
 | `POST /v1/harnesses/detect` with `{"harness"}` | the `HarnessDetection` |
+| `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
@@ -121,6 +122,14 @@ Studio gives the engine a stand-in `Harness` for each one the host lists, and th
 A run that fails or is cancelled ends with `{"type":"failed","message"}` instead of `finished`. A harness, session or bridge the host doesn't have gets `404 unknown_harness`, `unknown_session` or `unknown_bridge`. When Studio goes away the run is cancelled, and when the host stops it cancels every run before it closes the sessions.
 
 The port's `environment` has no route: the engine asks for it without waiting, and it only reads its arguments, so Studio calls the adapter's own function with the bridge's address and token from `/v1/bridge/open`.
+
+## Signing an agent in
+
+An agent that uses a Claude Code or Codex subscription signs in once, in its own settings folder (HAL-5395). `POST /v1/harnesses/sign-in` with `{ harness, settingsFolder }` opens a terminal the person can see (below), running the harness's own `signIn`: `claude auth login` with `CLAUDE_CONFIG_DIR`, or `codex login` with `CODEX_HOME`, set to that folder. The person signs in there as usual. The host only opens the window: it never reads, copies or waits for the sign-in, so Studio runs `detect` again when the person chooses Check again.
+
+- `settingsFolder` must be an absolute path (`400 body_invalid` otherwise).
+- The program is found on the host's `PATH`, as `detect` finds it. When it isn't there, or no window could open, the answer is `{ opened: false, reason, command }`: `command` is the sign-in to type by hand, in PowerShell on Windows (`$env:CLAUDE_CONFIG_DIR = '<folder>'; claude auth login`) and in `sh` elsewhere (`CLAUDE_CONFIG_DIR='<folder>' claude auth login`).
+- A harness without a sign-in of its own gets `422 no_sign_in`, and a command the terminal refuses (a folder under a skill's `scripts/`) `422 sign_in_refused`.
 
 ## Opening a terminal the person can see
 

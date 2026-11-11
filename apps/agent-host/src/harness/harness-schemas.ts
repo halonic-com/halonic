@@ -1,5 +1,6 @@
 import type { HarnessInput, HarnessTask } from "@halonicjs/ports";
 import { s } from "@halonicjs/schema-kit";
+import { absolutePath } from "../sandbox/profile-schema.ts";
 import { portSchema } from "../server/port-schema.ts";
 
 const id = s.string().min(1);
@@ -44,3 +45,6 @@ export const startRunBody = s.object({ harness: id, task, session: id, bridge: i
 export const sendRunBody = s.object({ run: id, input }).strict();
 
 export const runBody = s.object({ run: id }).strict();
+
+/** A harness's sign-in for one agent, by the agent's settings folder (an absolute path). */
+export const signInBody = s.object({ harness: id, settingsFolder: absolutePath }).strict();

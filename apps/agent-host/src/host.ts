@@ -8,11 +8,13 @@ import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
+import { signInRoute } from "./harness/sign-in-route.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
+import { openTerminal } from "./terminal/open-terminal.ts";
 
 /** Where the host talks to the program that started it. */
 export interface HostIo {
@@ -79,11 +81,13 @@ async function serve(version: string, io: HostIo, sandbox: SrtSandbox): Promise<
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
   const runs = new RunTable();
+  const harnesses = hostHarnesses(version);
   const server = await startHostServer(token, [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
     ...bridgeRoutes((secrets) => new NodeHarnessBridgeServer({ secrets }), bridges),
-    ...harnessRoutes({ harnesses: hostHarnesses(version), sessions, bridges, runs }),
+    ...harnessRoutes({ harnesses, sessions, bridges, runs }),
+    signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ]);
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);

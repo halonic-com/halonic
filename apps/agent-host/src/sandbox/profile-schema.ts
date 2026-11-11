@@ -8,7 +8,7 @@ import { type Schema, s } from "@halonicjs/schema-kit";
  * the sandbox sees it (the port asks this of an adapter that takes one from
  * outside). Every path must be absolute in this computer's notation.
  */
-const absolutePath = s
+export const absolutePath = s
   .string()
   .min(1)
   .refine((path) => isAbsolute(path), { message: "must be an absolute path" });
