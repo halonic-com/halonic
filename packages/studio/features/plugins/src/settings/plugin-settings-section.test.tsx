@@ -265,7 +265,7 @@ verifies("plugins.plugin-settings", () => {
       const { view } = await show({ locked: true });
       const key = fieldNamed(view, "API key");
       await typeAndLeave(key, "abc");
-      expect(lineUnder(key)).toBe("Couldn't save the secret: The keychain is locked.");
+      expect(lineUnder(key)).toBe("Couldn't save the secret. The keychain is locked.");
       expect(key.value).toBe("abc");
     });
 
@@ -277,7 +277,7 @@ verifies("plugins.plugin-settings", () => {
       const key = fieldNamed(view, "API key");
       await typeAndLeave(key, "abc");
       expect(lineUnder(key)).toBe(
-        "Couldn't save the secret: The keychain is locked. The one you saved before is still in use.",
+        "Couldn't save the secret. The keychain is locked. The one you saved before is still in use.",
       );
     });
 
@@ -287,7 +287,7 @@ verifies("plugins.plugin-settings", () => {
       act(() => alerts?.click());
       await settle();
       expect(alerts?.checked).toBe(false);
-      expect(view.textContent).toContain("Couldn't save Alerts: The disk is full.");
+      expect(view.textContent).toContain("Couldn't save Alerts. The disk is full.");
     });
 
     it("keeps the settings readable but saves nothing while the plugin is off", async () => {
@@ -304,7 +304,7 @@ verifies("plugins.plugin-settings", () => {
     it("says it couldn't load the settings, with the reason and Try again", async () => {
       const { view } = await show({ unreadable: true });
       expect(view.querySelector("h2")?.textContent).toBe("Couldn't load the settings");
-      expect(view.textContent).toContain("The profile can't be read");
+      expect(view.textContent).toContain("The profile can't be read.");
       expect(view.querySelector("button")?.textContent).toBe("Try again");
       expect(view.querySelector("input")).toBeNull();
     });

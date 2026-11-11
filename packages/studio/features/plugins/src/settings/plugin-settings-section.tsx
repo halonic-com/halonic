@@ -97,7 +97,7 @@ export function PluginSettingsSection({
         setSecretSet(set);
         setLoadError(undefined);
       } catch (error) {
-        if (current) setLoadError(reasonOf(error));
+        if (current) setLoadError(settingProblemLine(reasonOf(error)));
       }
     })();
     return () => {
@@ -405,6 +405,5 @@ function typed(field: InputField, text: string): PluginSettingValue | undefined 
 }
 
 function reasonOf(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/[.!]+$/u, "");
+  return error instanceof Error ? error.message : String(error);
 }

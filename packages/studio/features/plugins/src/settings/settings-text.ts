@@ -30,17 +30,21 @@ export function hostFromSetting(label: string): string {
 }
 
 /**
- * A setting value the host refused, as a sentence: "use a number" is
- * "Use a number.". The host's messages are Halonic's, never the plugin's.
+ * A message from the host or the keychain, as a sentence: "use a number" is
+ * "Use a number.", and "The keychain is locked." stays as it is. The
+ * messages are Halonic's, never the plugin's.
  */
 export function settingProblemLine(message: string): string {
   const sentence = message.charAt(0).toUpperCase() + message.slice(1);
   return /[.!?]$/u.test(sentence) ? sentence : `${sentence}.`;
 }
 
-/** Saving a setting failed. A pick or a switch goes back; typed text stays. */
+/**
+ * Saving a setting failed: "Couldn't save Alerts. The disk is full.". A pick
+ * or a switch goes back; typed text stays.
+ */
 export function settingNotSavedLine(label: string, reason: string): string {
-  return `Couldn't save ${label}: ${reason}.`;
+  return `Couldn't save ${label}. ${settingProblemLine(reason)}`;
 }
 
 /**
@@ -48,6 +52,6 @@ export function settingNotSavedLine(label: string, reason: string): string {
  * The value is never in it.
  */
 export function secretNotSavedLine(reason: string, wasSet: boolean): string {
-  const first = `Couldn't save the secret: ${reason}.`;
+  const first = `Couldn't save the secret. ${settingProblemLine(reason)}`;
   return wasSet ? `${first} The one you saved before is still in use.` : first;
 }
