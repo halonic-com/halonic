@@ -73,9 +73,7 @@ verifies("app.plugin-settings", () => {
     const saved = await settings.save(named, {});
     expect(saved.ok).toBe(false);
     if (saved.ok) return;
-    expect(saved.error).toEqual([
-      { setting: "constructor", message: "fill this in: it is required" },
-    ]);
+    expect(saved.error).toEqual([{ setting: "constructor", message: "fill this in" }]);
   });
 
   it("forgets one plugin's values and compacts them out, keeping the others", async () => {

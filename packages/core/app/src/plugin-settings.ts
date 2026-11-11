@@ -136,7 +136,7 @@ function settingProblems(
     const given = Object.hasOwn(values, setting) && values[setting] !== undefined;
     const missing = !given && !("default" in field && field.default !== undefined);
     if (field.required && field.type !== "secret" && missing) {
-      problems.push({ setting, message: "fill this in: it is required" });
+      problems.push({ setting, message: "fill this in" });
     }
   }
   return problems;

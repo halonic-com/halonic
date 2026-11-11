@@ -101,7 +101,7 @@ verifies("plugins.plugin-secrets", () => {
     });
 
     it("writes no secret when the other settings don't fit", async () => {
-      const problems = [{ setting: "city", message: "fill this in: it is required" }];
+      const problems = [{ setting: "city", message: "fill this in" }];
       const { host } = fakeHost(problems);
       const { writer, stored } = fakeWriter();
       const outcome = await savePluginSettings(host, writer, weather, { key: "abc" });
