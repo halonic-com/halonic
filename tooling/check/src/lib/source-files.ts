@@ -200,7 +200,7 @@ function globalEscape(node: ts.Node): string | undefined {
     }
   }
   if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
-    const base = ts.skipOuterExpressions(node.expression);
+    const base = unwrap(node.expression);
     const key = memberName(node);
     if (ts.isIdentifier(base) && globalObjects.has(base.text)) {
       if (key === undefined) {
@@ -224,7 +224,7 @@ function globalEscape(node: ts.Node): string | undefined {
     ts.isObjectBindingPattern(node.name) &&
     node.initializer !== undefined
   ) {
-    const init = ts.skipOuterExpressions(node.initializer);
+    const init = unwrap(node.initializer);
     const takesEscape = node.name.elements.some((element) => {
       const key = element.propertyName ?? element.name;
       return (
@@ -238,6 +238,21 @@ function globalEscape(node: ts.Node): string | undefined {
     }
   }
   return undefined;
+}
+
+/** The expression inside parentheses, casts, `satisfies` and `!`. */
+function unwrap(node: ts.Expression): ts.Expression {
+  let inner = node;
+  while (
+    ts.isParenthesizedExpression(inner) ||
+    ts.isAsExpression(inner) ||
+    ts.isSatisfiesExpression(inner) ||
+    ts.isNonNullExpression(inner) ||
+    ts.isTypeAssertionExpression(inner)
+  ) {
+    inner = inner.expression;
+  }
+  return inner;
 }
 
 /** The name an identifier, `a.name` or `a["name"]` refers to. */
