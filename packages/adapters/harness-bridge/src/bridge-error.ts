@@ -62,9 +62,13 @@ export function sendBridgeRefusal(response: ServerResponse, refusal: BridgeRefus
   writeError(response, refusal);
 }
 
+/** The JSON body of every error reply, in the shape Anthropic and OpenAI use. */
+export function errorBody(kind: ErrorKind, message: string): string {
+  return JSON.stringify({ type: "error", error: { type: kind, message } });
+}
+
 /** Writes the whole error reply. */
 function writeError(response: ServerResponse, { status, kind, message }: BridgeRefusal): void {
-  const body = JSON.stringify({ type: "error", error: { type: kind, message } });
   response.writeHead(status, { "content-type": "application/json" });
-  response.end(body);
+  response.end(errorBody(kind, message));
 }

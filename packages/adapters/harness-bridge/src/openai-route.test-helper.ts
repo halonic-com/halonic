@@ -48,6 +48,7 @@ export async function open(fetch: Fetch, openai: BridgeProviderAccess | null = k
     recorder: { record: async (event: BridgeEvent) => void recorded.push(event) },
   };
   const bridge = await openBridge(run, {
+    place: { kind: "loopback" },
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
     closeTimeoutMs: 1_000,
     routes: [route],

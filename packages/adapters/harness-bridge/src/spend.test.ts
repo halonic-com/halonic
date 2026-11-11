@@ -50,6 +50,7 @@ async function open(fetch: Fetch, landing: () => Promise<void> = async () => {})
     },
   };
   const bridge = await openBridge(run, {
+    place: { kind: "loopback" },
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
     routes: [route],
     closeTimeoutMs: 1_000,

@@ -51,6 +51,7 @@ function open(fetch: Fetch) {
 /** Opens a bridge that serves only `route`. */
 async function openWith(route: BridgeRoute) {
   const bridge = await openBridge(fakeRun(), {
+    place: { kind: "loopback" },
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
     closeTimeoutMs: 1_000,
     routes: [route],

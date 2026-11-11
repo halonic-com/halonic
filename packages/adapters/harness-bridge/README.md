@@ -1,7 +1,8 @@
 # @halonicjs/adapter-harness-bridge
 
 The Halonic bridge for harness runs. Each run gets its own server on a free
-port of `127.0.0.1`, which answers only requests that carry the run's token in
+port of `127.0.0.1`, or, given a socket folder, on a Unix socket of its own
+(see "Socket mode" below), which answers only requests that carry the run's token in
 the `x-halonic-run-token` header. It passes the program's model
 requests on to the provider's one fixed host: Anthropic's (`POST
 /v1/messages`) to `https://api.anthropic.com` and OpenAI's (`POST
@@ -39,6 +40,20 @@ try {
   path.
 - **Token.** Any request without the run's exact token gets a 401, whatever its
   path. A path the bridge doesn't serve gets a 404.
+- **One refusal ends the connection.** Once a request is refused or fails,
+  nothing else on its connection is served, not even a request the program
+  had already sent behind it.
+- **Socket mode.** Given `socketFolder`, each run's bridge listens on
+  `bridge.sock` in a new folder of its own inside it, with mode 0700, and
+  never on a port. Its `url` is `http://bridge.halonic.invalid` and it gives
+  `socketPath`. The sandbox's proxy, outside the fence, sends requests for
+  that name to the socket, so the program needs no Unix socket of its own. The
+  bridge answers `Host: bridge.halonic.invalid` (with or without `:80`), a
+  target in absolute form that names it, and `CONNECT
+  bridge.halonic.invalid:80`, whose tunnel gets the same checks on every
+  request; any other `CONNECT` gets a 421. A socket path over Linux's 107
+  bytes fails before anything is created. Closing removes the socket and its
+  folder.
 - **Pass-through.** The bridge sends the request's bytes to the provider,
   without following a redirect, so the key only goes to the route's address, and
   copies the status, the allowed reply headers and the body back as they
@@ -92,7 +107,7 @@ try {
   resolves once they have ended or the close time limit has passed. Closing
   twice is safe.
 
-The rules are in `requirements/`: `server.md`, `pass-through.md`,
+The rules are in `requirements/`: `server.md`, `socket.md`, `pass-through.md`,
 `anthropic.md`, `openai.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
 
 ## Options
@@ -100,13 +115,15 @@ The rules are in `requirements/`: `server.md`, `pass-through.md`,
 | Export | What it is |
 | --- | --- |
 | `NodeHarnessBridgeServer` | The `HarnessBridgeServer` port on Node's `http` server. |
-| `NodeHarnessBridgeServerOptions` | Its options: `secrets` (required), `limits`, `upstreamLimits`, `fetch`, `closeTimeoutMs`. |
+| `NodeHarnessBridgeServerOptions` | Its options: `secrets` (required), `limits`, `upstreamLimits`, `fetch`, `closeTimeoutMs`, `socketFolder`. |
 | `BodyLimits` | Request size (`maxBytes`) and arrival time (`timeoutMs`). |
 | `UpstreamLimits` | How long a provider may take to start (`responseTimeoutMs`) or go silent (`idleTimeoutMs`). |
 | `Fetch` | The `fetch` the bridge calls providers with; tests give a fake one. |
 | `defaultBridgeLimits` | 32 MiB and 60 seconds. |
 | `defaultUpstreamLimits` | 10 minutes to start a reply, 2 minutes of silence. |
 | `defaultCloseTimeoutMs` | 5 seconds. |
+| `socketBridgeName` | `bridge.halonic.invalid`, the name a program calls a socket bridge by. |
+| `maxSocketPathBytes` | 107, the longest socket path Linux takes. |
 
 Each limit you leave out keeps its default. `closeTimeoutMs` must be a whole
 number of milliseconds, 0 or more.

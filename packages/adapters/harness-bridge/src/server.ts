@@ -7,6 +7,7 @@ import type {
 import { KindedError } from "@halonicjs/std";
 import { anthropicRoute } from "./anthropic-route.ts";
 import { openBridge } from "./bridge.ts";
+import type { BridgePlace } from "./listener.ts";
 import { mcpRoutes } from "./mcp-route.ts";
 import { openAiRoute } from "./openai-route.ts";
 import type { Fetch, UpstreamLimits } from "./pass-through.ts";
@@ -50,12 +51,21 @@ export interface NodeHarnessBridgeServerOptions {
    * milliseconds: a whole number, 0 or more.
    */
   closeTimeoutMs?: number;
+  /**
+   * An absolute folder, private to this user, in which each run's bridge
+   * serves a Unix socket in a new folder of its own, instead of a loopback
+   * port. The program then calls the bridge by name, `bridge.halonic.invalid`,
+   * and the sandbox's proxy sends those requests to the socket. Left out, each
+   * run gets a free loopback port.
+   */
+  socketFolder?: string;
 }
 
 /**
  * The `HarnessBridgeServer` port on Node's own `http` server: one server per
- * run, on a free port of `127.0.0.1`, answering only requests that carry the
- * run's token (requirement `harness-bridge.server`).
+ * run, on a free port of `127.0.0.1` or, given a socket folder, on a Unix
+ * socket of its own, answering only requests that carry the run's token
+ * (requirements `harness-bridge.server` and `harness-bridge.socket`).
  *
  * @example
  * const server = new NodeHarnessBridgeServer({ secrets });
@@ -70,10 +80,15 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
   readonly #limits: BodyLimits;
   readonly #routes: readonly BridgeRoute[];
   readonly #closeTimeoutMs: number;
+  readonly #place: BridgePlace;
 
   constructor(options: NodeHarnessBridgeServerOptions) {
     this.#limits = { ...defaultBridgeLimits, ...options.limits };
     this.#closeTimeoutMs = checkedCloseTimeout(options.closeTimeoutMs ?? defaultCloseTimeoutMs);
+    this.#place =
+      options.socketFolder === undefined
+        ? { kind: "loopback" }
+        : { kind: "socket", folder: options.socketFolder };
     const upstream = {
       fetch: options.fetch ?? globalThis.fetch,
       limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
@@ -88,6 +103,7 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
   /** Starts serving one run. */
   open(options: HarnessBridgeOptions): Promise<OpenHarnessBridge> {
     return openBridge(options, {
+      place: this.#place,
       limits: this.#limits,
       routes: this.#routes,
       closeTimeoutMs: this.#closeTimeoutMs,

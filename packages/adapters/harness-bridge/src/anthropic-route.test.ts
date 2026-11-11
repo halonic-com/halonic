@@ -38,6 +38,7 @@ async function open(fetch: Fetch, anthropic: BridgeProviderAccess | null = keyed
     recorder: { record: async () => {} },
   };
   const bridge = await openBridge(run, {
+    place: { kind: "loopback" },
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
     closeTimeoutMs: 1_000,
     routes: [route],

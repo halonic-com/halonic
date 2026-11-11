@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { Socket } from "node:net";
 import {
   type BridgeEvent,
   type BridgeRecorder,
@@ -7,36 +8,18 @@ import {
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { type BridgeRefusal, sendBridgeError, sendBridgeRefusal } from "./bridge-error.ts";
+import { sendBridgeError, sendBridgeRefusal } from "./bridge-error.ts";
+import { type BridgePlace, listenAt } from "./listener.ts";
 import { type BodyLimits, bodyTooLarge, readRequestBody } from "./read-body.ts";
+import { refusalOf } from "./request-checks.ts";
 import type { BridgeRoute } from "./route.ts";
 import { randomRunToken, runTokenMatches } from "./run-token.ts";
-
-/** Only this computer can reach the bridge: never another machine on the network. */
-const loopbackHost = "127.0.0.1";
-
-/**
- * The requests the bridge turns away before it checks the run token. The
- * token already keeps both out; these checks are defence in depth, as on the
- * agent host's own port.
- */
-const refusals = {
-  /** A web page that points its own domain at 127.0.0.1 (DNS rebinding). */
-  wrongHost: {
-    status: 421,
-    kind: "invalid_input",
-    message: "The Halonic bridge answers only requests addressed to its loopback address.",
-  },
-  /** A request from a web page: the harness programs aren't browsers, so the bridge has no CORS. */
-  browserOrigin: {
-    status: 403,
-    kind: "denied",
-    message: "The Halonic bridge doesn't answer requests from web pages.",
-  },
-} as const satisfies Record<string, BridgeRefusal>;
+import { serveTunnels } from "./tunnel.ts";
 
 /** How one bridge is set up: its limits and the paths it serves. */
 export interface BridgeSettings {
+  /** Where each run's bridge listens. */
+  place: BridgePlace;
   limits: BodyLimits;
   routes: readonly BridgeRoute[];
   /**
@@ -48,17 +31,20 @@ export interface BridgeSettings {
 }
 
 /**
- * Starts one run's bridge on a free loopback port. A request gets in only
- * when it passes three checks, in this order:
+ * Starts one run's bridge at `settings.place`: a free loopback port, or a
+ * new Unix socket that the program reaches by name through the sandbox's
+ * proxy. A request gets in only when it passes three checks, in this order:
  *
- * 1. its `Host` header names this loopback address and port, or the answer
- *    is 421;
+ * 1. its `Host` header names this bridge (this loopback address and port, or
+ *    the socket bridge's name), and so does its target when it is a whole
+ *    URL, or the answer is 421;
  * 2. it has no `Origin` header, or the answer is 403;
  * 3. it carries the run's token in {@link harnessBridgeTokenHeader}, or the
  *    answer is 401.
  *
  * Each answer is the same whatever the path, so a program can't even learn
- * which paths exist.
+ * which paths exist. Once a request is refused or fails, nothing else on its
+ * connection is served.
  */
 export async function openBridge(
   run: HarnessBridgeOptions,
@@ -68,19 +54,31 @@ export async function openBridge(
   const closing = new AbortController();
   const handlers = new Set<Promise<void>>();
   const recorder = new ClosingRecorder(run.recorder);
-  const context = { run: { ...run, recorder }, settings, token, closing: closing.signal };
+  const hosts = new Set<string>();
+  const context: ServeContext = {
+    run: { ...run, recorder },
+    settings,
+    token,
+    hosts,
+    closing: closing.signal,
+    endedConnections: new WeakSet(),
+  };
   const server = createServer((request, response) => {
     const handler = serve(context, request, response);
     handlers.add(handler);
     void handler.finally(() => handlers.delete(handler));
   });
-  const port = await listenOnLoopback(server);
+  const listening = await listenAt(server, settings.place);
+  for (const host of listening.hosts) hosts.add(host);
+  if (listening.tunnelTarget !== undefined) {
+    serveTunnels(server, listening.hosts, listening.tunnelTarget);
+  }
 
   let closed: Promise<void> | undefined;
   const close = (): Promise<void> => {
     closed ??= (async () => {
       await Promise.all([stopServer(server, closing), settled(handlers, settings.closeTimeoutMs)]);
-      await recorder.close();
+      await Promise.all([recorder.close(), listening.cleanUp()]);
     })();
     return closed;
   };
@@ -91,7 +89,8 @@ export async function openBridge(
   );
   if (run.signal?.aborted) await close();
 
-  return { url: `http://${loopbackHost}:${port}`, token, close };
+  const { url, socketPath } = listening;
+  return { url, token, ...(socketPath === undefined ? {} : { socketPath }), close };
 }
 
 /** What {@link serve} needs of the bridge a request came to. */
@@ -99,19 +98,29 @@ interface ServeContext {
   run: HarnessBridgeOptions;
   settings: BridgeSettings;
   token: string;
+  /** The `Host` values that name this bridge, in lower case. */
+  hosts: ReadonlySet<string>;
   closing: AbortSignal;
+  /** Connections that got a refusal or an error, so nothing more on them is served. */
+  endedConnections: WeakSet<Socket>;
 }
 
 /** Lets one request in, or answers it with the bridge's error. */
 async function serve(context: ServeContext, request: IncomingMessage, response: ServerResponse) {
-  const refusal = refusalOf(request);
+  const { run, settings, token, hosts, closing, endedConnections } = context;
+  if (endedConnections.has(request.socket)) {
+    // Node reads a request sent right behind a refused one before the connection closes.
+    response.destroy();
+    return;
+  }
+  const refusal = refusalOf(request, hosts);
   if (refusal !== undefined) {
     // The caller may still be sending: close the connection once the refusal is out.
+    endedConnections.add(request.socket);
     response.shouldKeepAlive = false;
     sendBridgeRefusal(response, refusal);
     return;
   }
-  const { run, settings, token, closing } = context;
   const requestEnded = new AbortController();
   response.on("close", () => requestEnded.abort());
   const signal = AbortSignal.any([closing, requestEnded.signal]);
@@ -143,21 +152,10 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
       return;
     }
     // The program may still be sending: close the connection once the error reply is out.
+    endedConnections.add(request.socket);
     response.shouldKeepAlive = false;
     sendBridgeError(response, error);
   }
-}
-
-/** Why the bridge turns a request away before it checks the token, or `undefined` when it doesn't. */
-function refusalOf(request: IncomingMessage): BridgeRefusal | undefined {
-  // The port the request came in on is this bridge's own port.
-  const port = request.socket.localPort;
-  const host = request.headers.host?.toLowerCase();
-  if (host !== `${loopbackHost}:${port}` && host !== `localhost:${port}`) {
-    return refusals.wrongHost;
-  }
-  if (request.headers.origin !== undefined) return refusals.browserOrigin;
-  return undefined;
 }
 
 /** The route for a request's method and path, ignoring its query. */
@@ -165,33 +163,9 @@ function findRoute(
   routes: readonly BridgeRoute[],
   request: IncomingMessage,
 ): BridgeRoute | undefined {
-  const path = new URL(request.url ?? "/", `http://${loopbackHost}`).pathname;
+  // The base only fills in a path-only target; an absolute one was checked already.
+  const path = new URL(request.url ?? "/", "http://bridge").pathname;
   return routes.find((route) => route.method === request.method && route.path === path);
-}
-
-/** Listens on a free loopback port and resolves with that port. */
-function listenOnLoopback(server: Server): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const onError = (cause: Error) => {
-      reject(
-        new KindedError("unavailable", "Halonic couldn't start the bridge on this computer.", {
-          cause,
-        }),
-      );
-    };
-    server.once("error", onError);
-    server.listen(0, loopbackHost, () => {
-      // Listening worked, so this listener has nothing left to report.
-      server.off("error", onError);
-      const address = server.address();
-      // A TCP server always has an address object once it listens; a string is a pipe's path.
-      if (address === null || typeof address === "string") {
-        reject(new KindedError("internal", "The bridge listens without a port."));
-        return;
-      }
-      resolve(address.port);
-    });
-  });
 }
 
 /** Refuses new requests, ends those in flight and their calls out, and waits until all have ended. */

@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type BridgeSettings, openBridge } from "./bridge.ts";
 import { fakeRun, send } from "./fakes.test-helper.ts";
+import { requestText, sendPipelined, statuses } from "./raw-client.test-helper.ts";
 import type { BridgeRequestContext, BridgeRoute } from "./route.ts";
 
 /** A route that answers with the body it was sent. */
@@ -16,6 +17,7 @@ const echo: BridgeRoute = {
 };
 
 const settings: BridgeSettings = {
+  place: { kind: "loopback" },
   limits: { maxBytes: 16, timeoutMs: 5_000 },
   routes: [echo],
   closeTimeoutMs: 1_000,
@@ -127,6 +129,40 @@ verifies("harness-bridge.server", () => {
           expect(JSON.parse(reply.text)).toMatchObject({ error: { type: "unauthenticated" } });
         }
       }
+    });
+
+    it("serves nothing more on a connection once a request on it was refused", async () => {
+      const ran: string[] = [];
+      const counted: BridgeRoute = {
+        ...echo,
+        handle: async (request) => {
+          ran.push("echo");
+          await echo.handle(request);
+        },
+      };
+      const bridge = await open([counted]);
+      const { hostname: host, port } = new URL(bridge.url);
+      const toEcho = { target: "/echo", host: `${host}:${port}`, body: "hi" };
+      const text = requestText(toEcho) + requestText({ ...toEcho, token: bridge.token });
+
+      const answered = await sendPipelined({ host, port: Number(port) }, text);
+
+      expect(statuses(answered)).toEqual([401]);
+      expect(ran).toEqual([]);
+    });
+
+    it("answers 421 to a request whose absolute target names another host", async () => {
+      const bridge = await open();
+      const { hostname: host, port } = new URL(bridge.url);
+      const elsewhere = requestText({
+        target: "http://other.example/echo",
+        host: `${host}:${port}`,
+        token: bridge.token,
+      });
+
+      const answered = await sendPipelined({ host, port: Number(port) }, elsewhere);
+
+      expect(statuses(answered)).toEqual([421]);
     });
 
     it("answers 421 to a request addressed to another host, even with the token", async () => {
