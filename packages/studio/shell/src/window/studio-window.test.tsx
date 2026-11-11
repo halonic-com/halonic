@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
+import type { HomeCardProps } from "../home/home-page.tsx";
 import { searchPageLocation } from "../search/search-page-names.ts";
 import { serviceKey } from "../service-key.ts";
 import { createShell, type Shell } from "../shell.ts";
@@ -54,6 +55,27 @@ const inboxFeature = defineFeature({
       view: "InboxView",
       load: async () => ({ InboxView }),
       signal: () => ({ mark: "count", value: 2, spoken: "2 waiting" }),
+    });
+  },
+});
+
+/** Home's Needs you, as a button that opens the Inbox through its context. */
+function OpenInboxCard({ context }: HomeCardProps) {
+  return (
+    <button type="button" className="open-inbox" onClick={() => context.openPlace?.("inbox")}>
+      Open the Inbox
+    </button>
+  );
+}
+
+const openerFeature = defineFeature({
+  id: "opener",
+  title: "Opener",
+  register(studio) {
+    studio.home.addCard({
+      id: "needs-you",
+      view: "OpenInboxCard",
+      load: async () => ({ OpenInboxCard }),
     });
   },
 });
@@ -128,6 +150,20 @@ verifies("shell.studio-window", () => {
     act(() => back()?.click());
     await settle();
     expect(document.activeElement?.className).toBe("inbox-view");
+  });
+
+  it("lets a view open a place in the active tab, as the sidebar does", async () => {
+    const { container, workspace } = renderWindow(
+      createShell({ features: [inboxFeature, openerFeature], timers: new FakeTimers() }),
+    );
+    await settle();
+
+    act(() => container.querySelector<HTMLButtonElement>("button.open-inbox")?.click());
+    await settle();
+
+    expect(workspace.tabs.state.tabs).toHaveLength(1);
+    expect(currentLocation(workspace.tabs.active)).toEqual({ key: "inbox", title: "Inbox" });
+    expect(container.querySelector("main h1.inbox-view")?.textContent).toBe("Inbox");
   });
 
   it("shows the Search page for a tab on a search", () => {

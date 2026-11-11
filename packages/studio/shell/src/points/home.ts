@@ -1,4 +1,6 @@
 import type { ViewRef } from "../view.ts";
+import type { WorkspaceContext } from "../workspace-context.ts";
+import type { PlaceSignal } from "./frame.ts";
 
 /**
  * Home's sections, in the only order they are shown (design direction 3, UX checklist 1.9): Get
@@ -27,6 +29,16 @@ export const homeSectionTitles: Readonly<Record<HomeSection, string>> = {
  */
 export interface HomeCardContribution extends ViewRef {
   readonly id: HomeSection;
+  /**
+   * The section's count now, shown after its heading as a place's is after its name ("Needs you,
+   * 1 waiting"), or `undefined` for none. Nothing shows at zero.
+   */
+  signal?(context: WorkspaceContext): PlaceSignal | undefined;
+  /**
+   * Calls `listener` whenever the signal may have changed, so the heading reads `signal` again.
+   * Returns a function that stops the calls.
+   */
+  subscribeSignal?(context: WorkspaceContext, listener: () => void): () => void;
 }
 
 /** Adds a card to Home. */
