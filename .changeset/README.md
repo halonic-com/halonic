@@ -31,7 +31,7 @@ The version starts at `0.1.0`, not `0.0.0`: Tauri derives the Android
 
 Private packages are versioned only when their `package.json` has a
 `version`: the Studio app and the two packages `tooling/publish` ships to
-npm (`@halonicjs/adapter-integration-kit`, `@halonicjs/testing-integration`).
+npm (`@halonicjs/integration-kit`, `@halonicjs/testing-integration`).
 Don't add one to other packages.
 
 ## Releasing

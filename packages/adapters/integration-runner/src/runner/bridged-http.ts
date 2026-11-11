@@ -3,7 +3,7 @@
 // for one piece per read, so Halonic reads the real body only while the
 // integration waits for it (design HAL-958, section 3.7).
 
-import { IntegrationRefusedError } from "@halonicjs/adapter-integration-kit/integration";
+import { IntegrationRefusedError } from "@halonicjs/integration-kit/integration";
 import type {
   IntegrationHttpClient,
   IntegrationRequestInit,

@@ -14,7 +14,7 @@
     "build": "node ../../../tooling/publish/src/cli/stage.ts ."
   },
   "dependencies": {
-    "@halonicjs/adapter-integration-kit": "workspace:*",
+    "@halonicjs/integration-kit": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*"
@@ -40,7 +40,7 @@
     "publish": {
       "name": "@halonicjs/testing-integration",
       "aliases": {
-        "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit"
+        "@halonicjs/integration-kit/integration": "@halonicjs/integration-kit"
       },
       "dependencies": {
         "@halonicjs/integration-kit": "0.1.0",

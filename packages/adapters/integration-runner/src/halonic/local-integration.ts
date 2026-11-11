@@ -19,7 +19,7 @@ import {
   prepareIntegration,
   type SecretForms,
   secretForms,
-} from "@halonicjs/adapter-integration-kit";
+} from "@halonicjs/integration-kit";
 import type {
   IntegrationConnection,
   IntegrationHost,

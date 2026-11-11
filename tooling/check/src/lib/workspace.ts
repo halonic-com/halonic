@@ -20,7 +20,7 @@ export interface PackageJson {
     readonly coverage?: unknown;
     /** Where an adapter runs: `node`, `web`, `workers` or `any`. */
     readonly runtime?: string;
-    /** How the package is published to npm; `name` may differ from the workspace name. */
+    /** How the package is published to npm; `name` is the workspace name too. */
     readonly publish?: { readonly name?: string; readonly entry?: string };
   };
 }

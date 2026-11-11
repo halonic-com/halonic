@@ -76,11 +76,11 @@ nobody said otherwise. `read` changes nothing, `write` changes data, and
   a provider's `baseUrl` becomes the sheet's `fromSetting` host, and the
   workspace secret the user picked becomes the secret named in the sheet.
   The integration ignores `ProviderConfig.baseUrl` and `ProviderConfig.secret`.
-- The kit's workspace name follows the layout rule
-  (`@halonicjs/adapter-integration-kit`); it is published as
-  `@halonicjs/integration-kit` (below). The suite lives in
-  `packages/testing/integration`, which the layout rule names
-  `@halonicjs/testing-integration`, the name it is published under.
+- The kit and the suite have the same names in the workspace as on npm:
+  `@halonicjs/integration-kit` (published from its `./integration` entry,
+  below) and `@halonicjs/testing-integration`. A package staged for npm
+  takes its published name instead of the one its folder gives it
+  (HAL-5145).
 
 ### 4. How the integrations repo gets the kit: published to npm
 

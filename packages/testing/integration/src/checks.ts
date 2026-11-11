@@ -1,5 +1,5 @@
-import { clampWaitMs, declarationProblems } from "@halonicjs/adapter-integration-kit";
 import { recordingFileSchema } from "@halonicjs/format/recording";
+import { clampWaitMs, declarationProblems } from "@halonicjs/integration-kit";
 import { type IntegrationHost, maxIntegrationWaitMs } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import { canaryFor, canaryMark } from "./canaries.ts";

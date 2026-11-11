@@ -2,7 +2,7 @@
 // stdin and stdout, holds it to the protocol and the limits, and offers it to
 // the engine as an ordinary IntegrationConnection (design HAL-958, section 3).
 
-import { removeSecrets, type SecretForms } from "@halonicjs/adapter-integration-kit";
+import { removeSecrets, type SecretForms } from "@halonicjs/integration-kit";
 import type {
   IntegrationConnection,
   IntegrationHttpClient,

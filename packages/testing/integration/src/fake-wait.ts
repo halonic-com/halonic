@@ -1,4 +1,4 @@
-import { clampWaitMs } from "@halonicjs/adapter-integration-kit";
+import { clampWaitMs } from "@halonicjs/integration-kit";
 import type { IntegrationHost } from "@halonicjs/ports";
 
 /** A `wait` for tests, and the pauses it was asked for. */

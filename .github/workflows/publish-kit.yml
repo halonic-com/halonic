@@ -110,7 +110,7 @@ jobs:
         if: steps.version.outputs.changed == 'true'
       - name: Stage both packages
         if: steps.version.outputs.changed == 'true'
-        run: pnpm turbo run build --filter=@halonicjs/adapter-integration-kit --filter=@halonicjs/testing-integration
+        run: pnpm turbo run build --filter=@halonicjs/integration-kit --filter=@halonicjs/testing-integration
       - name: Pack, in the order they publish
         if: steps.version.outputs.changed == 'true'
         run: |

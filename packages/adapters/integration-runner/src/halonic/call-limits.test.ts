@@ -1,4 +1,4 @@
-import { secretForms } from "@halonicjs/adapter-integration-kit";
+import { secretForms } from "@halonicjs/integration-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HalonicFrame } from "../frames.ts";

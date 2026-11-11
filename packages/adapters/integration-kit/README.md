@@ -1,20 +1,20 @@
-# @halonicjs/adapter-integration-kit
+# @halonicjs/integration-kit
 
 The integration interface: builds the
 `IntegrationHost` an integration gets, with an `HttpClient` limited to the
 hosts and secrets of its permission sheet. Web types only, so it runs on
-Node, in the Worker and in the browser. Published as
-`@halonicjs/integration-kit` for the `halonic-com/integrations` repo (see
+Node, in the Worker and in the browser. Its integration entry is published
+to npm under the same name for the `halonic-com/integrations` repo (see
 [the integration interface ADR](../../../docs/adr/2026-11-08-integration-interface.md)).
 
 - **Layer:** adapters
 - **Owner:** liam
-- **Public API:** `@halonicjs/adapter-integration-kit` (the host side) and
-  `@halonicjs/adapter-integration-kit/integration` (the integration entry)
+- **Public API:** `@halonicjs/integration-kit` (the host side) and
+  `@halonicjs/integration-kit/integration` (the integration entry)
 
 ## Two entries
 
-- **The integration entry** (`./integration`, published as
+- **The integration entry** (`./integration`, published as the root of
   `@halonicjs/integration-kit`) is all that integration code imports: the
   port types (`Integration`, `IntegrationHost`, `IntegrationTool`, the model
   and knowledge provider types), `maxIntegrationWaitMs`,
@@ -51,12 +51,13 @@ Define a tiny made-up integration, build a host over a fake transport and run it
 lives in [`examples/run-a-tool-on-a-fake-host.ts`](examples/run-a-tool-on-a-fake-host.ts), where it
 is typechecked and run by `src/example.test.ts`; keep this copy in step with it. The file imports
 the two entries by path, because a package may not import itself by name; outside this package,
-the host side is `@halonicjs/adapter-integration-kit` and the integration entry is
-`@halonicjs/integration-kit`. Nothing in it touches the network, and the key is made up.
+the host side is `@halonicjs/integration-kit` and the integration entry is
+`@halonicjs/integration-kit` on npm, as below (`@halonicjs/integration-kit/integration` in this
+workspace). Nothing in it touches the network, and the key is made up.
 
 ```ts
 import type { HttpClient, Secrets, TokenStore } from "@halonicjs/ports";
-import { createIntegrationHost, type IntegrationPolicy } from "@halonicjs/adapter-integration-kit";
+import { createIntegrationHost, type IntegrationPolicy } from "@halonicjs/integration-kit";
 import {
   type ArgumentSchema,
   type Integration,

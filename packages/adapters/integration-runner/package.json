@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/adapter-integration-kit": "workspace:*",
+    "@halonicjs/integration-kit": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*"

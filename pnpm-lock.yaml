@@ -887,7 +887,7 @@ importers:
 
   packages/adapters/integration-runner:
     dependencies:
-      '@halonicjs/adapter-integration-kit':
+      '@halonicjs/integration-kit':
         specifier: workspace:*
         version: link:../integration-kit
       '@halonicjs/ports':
@@ -2008,12 +2008,12 @@ importers:
 
   packages/testing/integration:
     dependencies:
-      '@halonicjs/adapter-integration-kit':
-        specifier: workspace:*
-        version: link:../../adapters/integration-kit
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
+      '@halonicjs/integration-kit':
+        specifier: workspace:*
+        version: link:../../adapters/integration-kit
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

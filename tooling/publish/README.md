@@ -22,7 +22,7 @@ A package opts in with `halonic.publish` in its `package.json` and a `build` scr
       "name": "@halonicjs/testing-integration",
       "entry": ".",
       "aliases": {
-        "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit"
+        "@halonicjs/integration-kit/integration": "@halonicjs/integration-kit"
       },
       "dependencies": {
         "@halonicjs/integration-kit": "0.1.0",
@@ -39,7 +39,7 @@ A package opts in with `halonic.publish` in its `package.json` and a `build` scr
 `pnpm --filter @halonicjs/testing-integration build` writes the publishable copy to
 `packages/testing/integration/dist/package`. Publish that folder, never the source package.
 
-- `name`: the npm name, which may differ from the workspace name.
+- `name`: the npm name. `pnpm check` requires the workspace name to be the same.
 - `entry`: the subpath of the package's `exports` that is published (default `.`). The kit publishes
   only `./integration`, so integrations carry none of the host side.
 - `description`: the npm description, when the workspace one doesn't fit the published entry.

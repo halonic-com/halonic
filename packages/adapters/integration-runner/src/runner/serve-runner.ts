@@ -5,7 +5,7 @@
 // runner with an error rather than being worked around.
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import { integrationWait } from "@halonicjs/adapter-integration-kit";
+import { integrationWait } from "@halonicjs/integration-kit";
 import type { IntegrationConnection, IntegrationHost } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import { FrameLineWriter, FrameTooLargeError, readFrameLines } from "../frame-lines.ts";

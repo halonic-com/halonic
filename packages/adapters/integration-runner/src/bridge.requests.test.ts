@@ -1,7 +1,7 @@
 import {
   IntegrationRefusedError,
   IntegrationTimeoutError,
-} from "@halonicjs/adapter-integration-kit/integration";
+} from "@halonicjs/integration-kit/integration";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { bridged, untilAborted } from "./bridged.test-helper.ts";

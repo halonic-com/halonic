@@ -6,7 +6,7 @@ import {
   IntegrationRefusedError,
   IntegrationTimeoutError,
   type RefusalCode,
-} from "@halonicjs/adapter-integration-kit/integration";
+} from "@halonicjs/integration-kit/integration";
 
 /**
  * The bridge's own reasons for an `error` frame, next to the kit's

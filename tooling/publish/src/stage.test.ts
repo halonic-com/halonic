@@ -64,7 +64,7 @@ verifies("publish.staged-package", () => {
       "utf8",
     );
     expect(checks).toContain('from "../../../adapters/integration-kit/src/index.js"');
-    expect(checks).not.toContain("adapter-integration-kit");
+    expect(checks).not.toContain('from "@halonicjs/integration-kit"');
   }, 120_000);
 });
 

@@ -14,7 +14,7 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const kit: WorkspacePackage = {
-  name: "@halonicjs/adapter-integration-kit",
+  name: "@halonicjs/integration-kit",
   directory: "packages/adapters/integration-kit",
   entries: new Map(),
   version: "0.1.0",
@@ -27,7 +27,7 @@ function suiteConfig(kitRange: string): PublishConfig {
     entry: ".",
     description: undefined,
     readme: "README.md",
-    aliases: { "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit" },
+    aliases: { "@halonicjs/integration-kit/integration": "@halonicjs/integration-kit" },
     dependencies: { "@halonicjs/integration-kit": kitRange, zod: "4.6.7" },
     peerDependencies: { vitest: "^5.1.0" },
   };

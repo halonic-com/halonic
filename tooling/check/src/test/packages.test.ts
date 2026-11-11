@@ -80,6 +80,49 @@ describe("tooling/check: packages", () => {
     expect(listed).toEqual([]);
   });
 
+  it("names a package staged for npm after its published name, not its folder", () => {
+    const kit: FixturePackage = {
+      directory: "packages/core/std",
+      manifest: manifestFor("@halonicjs/kit", "core", {
+        private: true,
+        halonic: {
+          layer: "core",
+          owner: "liam",
+          coverage: defaultCoverageFloors.core,
+          publish: { name: "@halonicjs/kit" },
+        },
+      }),
+    };
+    const options = {
+      coreOrder: ["@halonicjs/kit"],
+      policy: (policy: Record<string, unknown>) => ({ ...policy, published: ["@halonicjs/kit"] }),
+    };
+    expect(messages([kit], options)).toEqual([]);
+    const folderName = { ...kit, manifest: { ...kit.manifest, name: "@halonicjs/std" } };
+    expect(messages([folderName], { ...options, coreOrder: ["@halonicjs/std"] })).toContain(
+      'The name must be "@halonicjs/kit", the name it is published under ("halonic.publish.name"), not "@halonicjs/std".',
+    );
+  });
+
+  it("keeps a published name in our scope", () => {
+    const outside = stdWith({
+      name: "left-pad",
+      private: true,
+      halonic: {
+        layer: "core",
+        owner: "liam",
+        coverage: defaultCoverageFloors.core,
+        publish: { name: "left-pad" },
+      },
+    });
+    expect(
+      messages([outside], {
+        coreOrder: ["left-pad"],
+        policy: (policy) => ({ ...policy, published: ["left-pad"] }),
+      }),
+    ).toContain('"halonic.publish.name" must be in the @halonicjs scope, not "left-pad".');
+  });
+
   it("flags a package outside the package folders", () => {
     const stray: FixturePackage = {
       directory: "packages/misc/x",
