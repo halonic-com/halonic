@@ -85,12 +85,16 @@ function log(...bodies: RunEventBody[]): RunEvent[] {
   }));
 }
 
-/** Line 2 of the failure, as plain words. */
-function fixLine(failure: RunFailure | undefined): string {
+/** Line 2 of the failure, as plain words; `undefined` when the failure has none. */
+function fixLine(failure: RunFailure | undefined): string | undefined {
   if (failure === undefined) throw new Error("expected a failure");
   const run = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
-  return plainText(runFailedLines(run, failure).fix.phrase);
+  const { fix } = runFailedLines(run, failure);
+  return fix === undefined ? undefined : plainText(fix.phrase);
 }
+
+/** The general line 2, which asks for a bug report. */
+const reportIt = /^Run it again with --debug to see the details, and report it: /;
 
 const general: RunFailure = { reason: "error", message: "the engine's own words" };
 
@@ -201,18 +205,31 @@ verifies("cli.run-failure", () => {
       "budget",
       // Their words wait for the board (HAL-2264).
       "model-out-of-memory",
-      "disk-full",
-      "interrupted",
       "sandbox-start-failed",
       "harness-start-failed",
-      "answer-not-an-option",
       // `halonic run` has no harnesses in 0.1; the engine's message names the step's effect.
       "harness-unavailable",
       "error",
     ];
     for (const reason of generalReasons) {
       it(`gives ${reason} the general lines with the engine's message`, () => {
-        expect(runFailureOf(failedWith(reason), calledModel())).toEqual(general);
+        const failure = runFailureOf(failedWith(reason), calledModel());
+        expect(failure).toEqual(general);
+        expect(fixLine(failure)).toMatch(reportIt);
+      });
+    }
+
+    // Their words wait for the board too (HAL-2264), but the cause is known (HAL-6451).
+    const knownCauses: readonly RunFailureReason[] = [
+      "disk-full",
+      "interrupted",
+      "answer-not-an-option",
+    ];
+    for (const reason of knownCauses) {
+      it(`gives ${reason} the general line 1 without "report it"`, () => {
+        const failure = runFailureOf(failedWith(reason), calledModel());
+        expect(failure).toEqual({ ...general, causeKnown: true });
+        expect(fixLine(failure)).toBeUndefined();
       });
     }
 
@@ -368,8 +385,8 @@ verifies("cli.run-failed-sandbox", () => {
     const failure = runFailureOf(failed, undefined);
     if (failure === undefined) throw new Error("expected a failure");
     const run = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
-    const { message, fix } = runFailedLines(run, failure);
-    return [plainText(message.phrase), plainText(fix.phrase)];
+    const { message } = runFailedLines(run, failure);
+    return [plainText(message.phrase), fixLine(failure) ?? ""];
   }
 
   it("words the run from its code, in the words of a run the check refused", () => {

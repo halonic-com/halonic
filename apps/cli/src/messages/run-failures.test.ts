@@ -10,6 +10,7 @@ const draftReply: FailedRun = { title: "Support reply", step: "Draft a reply", r
 /** Line 1 and line 2 of a failed run as plain words, with the run in the step `step`. */
 function lines(failure: RunFailure, step = "Draft a reply", dir?: string): [string, string] {
   const { message, fix } = runFailedLines({ ...draftReply, step, dir }, failure);
+  if (fix === undefined) throw new Error("expected line 2");
   return [plainText(message.phrase), plainText(fix.phrase)];
 }
 
@@ -23,7 +24,7 @@ verifies("cli.messages", () => {
     };
     const { message, fix } = runFailedLines(draftReply, failure);
     expect(message.key).toBe("runFailed.key-refused");
-    expect(fix.key).toBe("runFailedFix.key-refused");
+    expect(fix?.key).toBe("runFailedFix.key-refused");
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
       "Set HALONIC_SECRET_OPENAI_KEY to a key OpenAI accepts, then run again.",
@@ -240,6 +241,15 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet.",
       report,
     ]);
+  });
+
+  it("leaves out the report line for a cause the engine knows (HAL-6451)", () => {
+    const failure: RunFailure = { reason: "error", message: "The disk is full.", causeKnown: true };
+    const { message, fix } = runFailedLines(draftReply, failure);
+    expect(plainText(message.phrase)).toBe(
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: The disk is full.",
+    );
+    expect(fix).toBeUndefined();
   });
 
   it("sends no one to Studio, which 0.1 doesn't have (HAL-6183)", () => {

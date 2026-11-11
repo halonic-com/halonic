@@ -53,7 +53,8 @@ export function showEnding(
  * A failed or stopped run (cli-output 3.4, revision 31): its ✕ line 1, the
  * fix indented under it, then the receipt, the same two lines `halonic run`
  * prints when the run fails. A run cancelled somewhere else has one line,
- * where the cancel landed, and no fix (revision 28).
+ * where the cancel landed, and no fix (revision 28); so has a run whose
+ * cause is known but has no words of its own yet (HAL-6451).
  */
 function failedEnding(
   run: RunDetail,
@@ -77,7 +78,7 @@ function failedEnding(
       dir,
     };
     const { message, fix } = runFailedLines(failedRun, failure);
-    lines = [message.phrase, phrase`  ${fix.phrase}`];
+    lines = fix === undefined ? [message.phrase] : [message.phrase, phrase`  ${fix.phrase}`];
   }
   const [first = [], ...rest] = lines;
   const receipt = runMessages.receipt(receiptOf(run.events, run.summary)).phrase;

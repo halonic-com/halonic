@@ -134,7 +134,16 @@ export type RunFailure =
       readonly model: string;
       readonly alias: string;
     }
-  | { readonly reason: "error"; readonly message?: string }
+  | {
+      readonly reason: "error";
+      readonly message?: string;
+      /**
+       * The engine knows the cause, such as a full disk, so a bug report
+       * wouldn't help: the run gets line 1 without the "report it" line 2
+       * (HAL-6451).
+       */
+      readonly causeKnown?: true;
+    }
   | { readonly reason: "internal" };
 
 /** A reason's sentence, given the run and that reason's own facts. */
@@ -292,16 +301,21 @@ export const runFailedMessages = defineMessages("runFailed", lineOne);
 /** Line 2, the one fix, keyed `runFailedFix.<reason>`. */
 export const runFailedFixMessages = defineMessages("runFailedFix", lineTwo);
 
-/** The two lines of a failed run: `message` and `fix`, as `--json` names them too (cli-output 1.8). */
+/**
+ * The two lines of a failed run: `message` and `fix`, as `--json` names them
+ * too (cli-output 1.8). `fix` is `undefined` for a general failure whose
+ * cause is known, where "report it" wouldn't help (HAL-6451).
+ */
 export function runFailedLines(
   run: FailedRun,
   failure: RunFailure,
-): { readonly message: Message; readonly fix: Message } {
+): { readonly message: Message; readonly fix: Message | undefined } {
   // TypeScript can't pair a union with the table entry of its own reason; `satisfies ByReason` above does.
   type AnyReason = (run: FailedRun, failure: RunFailure) => Message;
   const message = runFailedMessages[failure.reason] as AnyReason;
   const fix = runFailedFixMessages[failure.reason] as AnyReason;
-  return { message: message(run, failure), fix: fix(run, failure) };
+  const causeKnown = failure.reason === "error" && failure.causeKnown === true;
+  return { message: message(run, failure), fix: causeKnown ? undefined : fix(run, failure) };
 }
 
 function failedIn(run: FailedRun, reason: Phrase): Phrase {

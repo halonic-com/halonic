@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-3814 (the mapping, decided by Liam on the task, and the review of #1155); HAL-3810 (`server` from the provider's type); the failure lines of cli-output 3.4 at revision 28 (HAL-2718), and revision 39 for `provider-busy` without tries (HAL-2184)
+- Source: HAL-6451 (no bug report line for a known cause, decided by Liam on the task); HAL-3814 (the mapping, decided by Liam on the task, and the review of #1155); HAL-3810 (`server` from the provider's type); the failure lines of cli-output 3.4 at revision 28 (HAL-2718), and revision 39 for `provider-busy` without tries (HAL-2184)
 
-The CLI shall print a failed run's two lines from the reason its `run.failed` event names and from the model the run called last, with that model's alias and provider file from the workspace. The model called last shall be the one named by the last `llm.request`, `llm.fallback` or `llm.skipped` in the run log. `key-refused` shall read as `no-key` when the run skipped that model because its key isn't set and had no other model left. `provider-busy` shall name the provider of that model, and no tries while the run log doesn't hold them. `model-missing` shall offer the Ollama download command only when the provider's type is `ollama`, and the general download fix for any other provider or when the provider file can't be found. `model-unreachable` shall name the host the event names, or else the provider's own address. A cancelled run shall get no failure lines. A reason whose lines need a fact the run log doesn't hold, a reason whose words aren't settled yet, and a model reason whose model or provider file can't be found shall get the general lines with the engine's message.
+The CLI shall print a failed run's two lines from the reason its `run.failed` event names and from the model the run called last, with that model's alias and provider file from the workspace. The model called last shall be the one named by the last `llm.request`, `llm.fallback` or `llm.skipped` in the run log. `key-refused` shall read as `no-key` when the run skipped that model because its key isn't set and had no other model left. `provider-busy` shall name the provider of that model, and no tries while the run log doesn't hold them. `model-missing` shall offer the Ollama download command only when the provider's type is `ollama`, and the general download fix for any other provider or when the provider file can't be found. `model-unreachable` shall name the host the event names, or else the provider's own address. A cancelled run shall get no failure lines. A reason whose lines need a fact the run log doesn't hold, a reason whose words aren't settled yet, and a model reason whose model or provider file can't be found shall get the general lines with the engine's message. Of those, `disk-full`, `interrupted` and `answer-not-an-option` shall get line 1 only, without the general line 2 that asks for a bug report, because their cause is known.
 
 ## Examples
 
@@ -23,6 +23,9 @@ The CLI shall print a failed run's two lines from the reason its `run.failed` ev
 - Given a run that failed with `budget`,
   when the CLI prints its failure,
   then it prints the general lines with the engine's message.
+- Given a run that failed with `disk-full`, `interrupted` or `answer-not-an-option`,
+  when the CLI prints its failure,
+  then it prints the general line 1 with the engine's message and no line 2.
 - Given a cancelled run,
   when the CLI prints how it ended,
   then it prints no failure lines.

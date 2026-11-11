@@ -122,7 +122,9 @@ export function failedModelOf(
  * A reason whose lines need a fact the run log doesn't hold yet gets the
  * general lines, with the engine's own message: `budget` (the budget and
  * the spend), as do the reasons whose words wait for the board (HAL-2264)
- * and a model reason whose model or provider file can't be found.
+ * and a model reason whose model or provider file can't be found. Of
+ * those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
+ * cause, so they leave out the "report it" line 2 (HAL-6451).
  *
  * @param model - from {@link failedModelOf}; `undefined` when the run called no model
  * @returns `undefined` for a cancelled run, which prints "Stopped." or
@@ -179,14 +181,16 @@ export function runFailureOf(
             agent: model.agent,
             alias: model.alias,
           };
-    case "budget":
-    case "model-out-of-memory":
+    // The cause is known, so "report it" wouldn't help: line 1 only (HAL-6451).
     case "disk-full":
     case "interrupted":
+    case "answer-not-an-option":
+      return { ...generalFailure(failed), causeKnown: true };
+    case "budget":
+    case "model-out-of-memory":
     case "sandbox-start-failed":
     case "harness-start-failed":
     case "harness-unavailable":
-    case "answer-not-an-option":
     case "error":
       return generalFailure(failed);
     default:
@@ -225,7 +229,7 @@ function unreachableFailure(failed: RunFailedEvent, model: FailedModel | undefin
 }
 
 /** "Halonic can't tell the cause yet:" with the engine's message, which is safe to show. */
-function generalFailure(failed: RunFailedEvent): RunFailure {
+function generalFailure(failed: RunFailedEvent): Extract<RunFailure, { reason: "error" }> {
   return { reason: "error", message: failed.error };
 }
 
