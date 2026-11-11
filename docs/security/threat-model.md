@@ -276,7 +276,7 @@ A leaked run token gives only what that agent may already do, for that one run.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| The agent changes what it may reach | Halonic builds the `SandboxProfile` from your profile and the trusted workspace; the agent can't change it. The workspace's definition files are read-only inside | Port **on `main`**; building the profile **Planned** (HAL-189) |
+| The agent changes what it may reach | Halonic builds the `SandboxProfile` from your profile and the trusted workspace; the agent can't change it. The workspace's definition files are read-only inside. The builder resolves the working folder through links and refuses one that leaves the workspace or the run's proposal folder, or is in `.git`, a definition folder or Halonic's data | Port and builder **on `main`** (`harness-kit.harness-profile`); a host using the builder **Planned** (HAL-187, desktop agent host) |
 | A working folder where tools read settings that run outside | `workingFolder` can't start with `.` (such as `.git`, `.claude`, `.codex`), be a kind's folder or `hubs`, or leave the workspace | **On `main`** (`format.agent-sandbox-fields`) |
 | Writes outside the agent's folders | srt allows writing only to the working, temp and settings folders; denied paths are hidden for reading and writing, read-only paths for writing; a path is never read as a pattern | **On `main`** (`sandbox-srt.profile-to-srt-config`) |
 | Tool settings in the working folder that would run commands | `.claude/settings.json`, `.claude/settings.local.json`, `.codex` and `.cursor` in the working folder are write-denied | **Lands with #753** (HAL-2554) |
@@ -366,7 +366,7 @@ like Studio.
 | A caller fills the host's memory or holds it open | Bodies of at most 1 MiB, refused before reading when the length says more; a stream with more than 4 MiB unread is dropped; at most 64 sessions and 64 bridges | **On `main`** (`apps/agent-host`, `src/server`) |
 | A sandboxed program outlives Studio | The host stops when its standard input closes. It cancels every run and then closes every session before it stops serving | **On `main`** (`apps/agent-host`, `src/host.ts`) |
 | The host's unpacked files are changed | On launch the host checks every unpacked file against the SHA-256 the executable carries, and unpacks again when one differs. It runs a program for sandbox-srt only from this version's folder, and only while that file has its digest | **On `main`** (`apps/agent-host`, `src/main.ts`) |
-| A sandboxed agent changes the host's unpacked files | The folder is in Halonic's data, so the profiles Studio builds deny it, with the rest of that data (the `halonic-data` group) | **Planned** (Studio's side of the agent host) |
+| A sandboxed agent changes the host's unpacked files | The folder is in Halonic's data, so the profiles Studio builds deny it, with the rest of that data (the `halonic-data` group) | Builder **on `main`** (`harness-kit.harness-profile`); Studio using it **Planned** (Studio's side of the agent host) |
 
 Studio's side, which starts the host and gives the engine stand-ins over its
 routes, isn't built yet, so no app uses the host today.

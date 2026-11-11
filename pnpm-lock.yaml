@@ -797,6 +797,15 @@ importers:
 
   packages/adapters/harness-kit:
     dependencies:
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../core/engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
