@@ -65,7 +65,8 @@ export {
 } from "./trust-changes.ts";
 export {
   type ConnectorTrustContent,
-  type RefusedConnector,
+  type RefusedItem,
+  type RefusedKind,
   type TrustContent,
   type TrustContentInput,
   trustContent,

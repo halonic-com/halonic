@@ -191,7 +191,7 @@ The types in the API go with these functions: `LoadedWorkspace`, `LoadedFile`, `
 `ExtractPart`, `ExtractSettings` and `ExtractError` for `planHubExtract`; `ExtractedHub`, `ExtractHubOptions` and
 `ExtractHubError` for `extractHub`; `VersionReader` for `VersionSource`;
 and the trust types listed below (`TrustContent`, `TrustContentInput`, `ConnectorTrustContent`,
-`RefusedConnector`, `AgentTrustContent`, `IntegrationTrustContent`, `LocalIntegrationInput`,
+`RefusedItem`, `RefusedKind`, `AgentTrustContent`, `IntegrationTrustContent`, `LocalIntegrationInput`,
 `TrustSkipInput`, `TrustUrl`, `TrustChanges`, `ItemChanges`, `ChangedItem`, `ChangedConnector`,
 `ChangedAgent`, `ChangedIntegration`, `ChangedProvider`, `ProviderTrustContent`, `ProvidersTrustContent`
 and `RefusedProvider`).
@@ -209,7 +209,8 @@ left out.
 
 A URL with user info (`https://ops:pw@…`), a backslash before its query
 (`https://evil.test\@mcp.acme.test/` connects to `evil.test`) or no `//` after `http:` or `https:` is refused, not
-normalised: the connector goes in `refused` with the reason, and `trustFingerprint` won't fingerprint
+normalised: the connector goes in `refused` with its kind (`connector` or `provider`, as the two may
+share an id), its id and the reason, and `trustFingerprint` won't fingerprint
 content that has any, so nothing in that workspace can be trusted or started until the file is fixed.
 
 `trustFingerprint` hashes that content through the `Digest` port: `hfp1:` and the SHA-256 of its
