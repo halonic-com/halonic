@@ -10,12 +10,24 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 tar -xzf "$img" -C "$root" --numeric-owner
 
-conf="$root/etc/wsl.conf"
-for want in "[interop]" "enabled=false" "appendWindowsPath=false" "[automount]" "default=halonic" "systemd=false"; do
-  grep -qxF "$want" "$conf" || fail "wsl.conf lacks '$want'"
+# Each setting under its own section: "[section]key=value" per line.
+conf="$(awk '/^\[/ { s = $0; next } NF && !/^#/ { print s $0 }' "$root/etc/wsl.conf")"
+for want in "[interop]enabled=false" "[interop]appendWindowsPath=false" \
+            "[automount]enabled=false" "[automount]mountFsTab=false" \
+            "[user]default=halonic" "[boot]systemd=false"; do
+  grep -qxF "$want" <<<"$conf" || fail "wsl.conf lacks '$want'"
 done
-# interop and automount must both be off, and systemd too
-[ "$(grep -c '^enabled=false$' "$conf")" -eq 2 ] || fail "interop and automount must both be disabled"
+
+# No setuid or setgid programs (HAL-5845): root can mount the Windows drive.
+# Add a path here only with a reason in the review.
+allowed_setid=()
+while IFS= read -r f; do
+  path="${f#"$root"}"
+  for ok in "${allowed_setid[@]}"; do [ "$path" = "$ok" ] && continue 2; done
+  fail "setuid or setgid file: $path"
+done < <(find "$root" -xdev -type f -perm /6000)
+# The bit stays off after an apt upgrade only through dpkg-statoverride.
+grep -q ' /usr/bin/su$' "$root/var/lib/dpkg/statoverride" || fail "no statoverride for /usr/bin/su"
 
 [ -d "$root/opt/halonic" ] || fail "/opt/halonic is missing"
 [ -f "$root/usr/share/doc/halonic-image/NOTICE" ] || fail "licence notice is missing"
