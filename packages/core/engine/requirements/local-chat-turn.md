@@ -8,7 +8,7 @@ When the local executor runs a chat turn, it shall pick the provider and model w
 
 ## Examples
 
-- Given an executor with a server that lists `lookup`, and a request with alias `fast`,
+- Given an executor with a Halonic tool `lookup`, and a request with alias `fast`,
   when the model calls `lookup` and then answers "Found it",
   then `resolveModel` gets the request with alias `fast`, and the turn ends with "Found it", both answers and the tool message in `turn`, and the model name.
 - Given an executor with servers `mail` and `tracker`, and a `clerk` agent whose file lists `mail`,
