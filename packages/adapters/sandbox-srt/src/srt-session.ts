@@ -243,6 +243,7 @@ export class SrtSession implements SandboxSession {
 
   private constructor(
     profile: SandboxProfile,
+    remainingMs: number,
     runner: Runner,
     folder: string,
     launcherTemp: string | null,
@@ -263,7 +264,7 @@ export class SrtSession implements SandboxSession {
     this.#journal = journal;
     this.#launcherEnv = launcherEnv(profile, process.env, folder, launcherTemp);
     this.#programEnv = programEnv(profile, process.env, folder);
-    this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
+    this.#timer = setTimeout(() => void this.#expire(), remainingMs);
     this.#timer.unref();
     // Nobody awaits the abort handler, so a failed undo has no caller to reach there: `close()` reports it.
     const abort = () => void this.close().catch(() => undefined);
@@ -317,12 +318,12 @@ export class SrtSession implements SandboxSession {
         programEnv: baseEnv(profile, process.env, folder),
         withoutSrtEnv: reachesNoNetwork(profile),
       });
-      const remaining = {
-        ...profile,
-        timeLimitMs: Math.max(0, profile.timeLimitMs - (Date.now() - startedAt)),
-      };
+      // The proof's time counts against the limit, but `profile` stays the one the session was
+      // opened with, as the port says: a caller may compare it with the profile it built.
+      const remainingMs = Math.max(0, profile.timeLimitMs - (Date.now() - startedAt));
       const session = new SrtSession(
-        remaining,
+        profile,
+        remainingMs,
         runner,
         folder,
         launcherTemp,
