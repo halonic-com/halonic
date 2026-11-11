@@ -1,0 +1,34 @@
+{
+  "name": "@halonicjs/host-harness-host",
+  "private": true,
+  "type": "module",
+  "description": "Builds the engine's harness runs and proposal folders from ports.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "host",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
