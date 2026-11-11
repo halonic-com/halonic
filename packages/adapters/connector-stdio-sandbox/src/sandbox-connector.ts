@@ -20,6 +20,7 @@ import type {
   ConnectorFactoryContext,
   ConnectorTool,
   SandboxBlock,
+  SandboxFence,
   SandboxSession,
 } from "@halonicjs/ports";
 import { type Clock, systemClock } from "@halonicjs/std";
@@ -320,10 +321,8 @@ class SandboxStdioConnector implements ConnectorClient {
     }
     const ended = this.#sessionEnded();
     if (ended !== undefined) throw ended;
-    const fence = this.#context.sandbox.fence;
-    if (fence.state === "not-fenced") throw new SandboxNotFencedError(this.id, fence.reason);
-    // A session with no fence by design is the launcher's, which a saved yes to run without the sandbox opens.
-    if (fence.state === "off") throw new SandboxNotFencedError(this.id, noFenceReason);
+    const unfenced = unfencedReason(this.#context.sandbox.fence);
+    if (unfenced !== undefined) throw new SandboxNotFencedError(this.id, unfenced);
   }
 
   /** What the host set up for this local tool. */
@@ -436,5 +435,25 @@ class SandboxStdioConnector implements ConnectorClient {
 class DeadlinePassedError extends McpError {
   constructor(message: string) {
     super("unavailable", message);
+  }
+}
+
+/**
+ * Why the fence doesn't hold a local tool's program, or `undefined` when it
+ * is `fenced`. Only a proven fence counts: a launcher session (`off`) has no
+ * fence by design, so it is refused like a fence that failed its probes.
+ * Its caller reports a `stopped` session as ended before it asks; the case
+ * still refuses, so every state but `fenced` does.
+ */
+function unfencedReason(fence: SandboxFence): string | undefined {
+  switch (fence.state) {
+    case "fenced":
+      return undefined;
+    case "not-fenced":
+      return fence.reason;
+    case "off":
+      return noFenceReason;
+    case "stopped":
+      return "The session has ended.";
   }
 }

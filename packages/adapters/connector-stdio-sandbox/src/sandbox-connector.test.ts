@@ -28,14 +28,20 @@ verifies("ports.connector-sandbox-session", () => {
   });
 
   it("starts nothing in a session with no fence at all, the one a yes to run without the sandbox opens", async () => {
+    // Strength `none`: there is nothing to prove, and that isn't a proven fence.
     const { sandbox, factory, context } = setUp({ fence: { state: "off" } });
     const start = vi.spyOn(sandbox, "start");
     const client = factory.create(config, context);
     const refused = client.listTools();
     await expect(refused).rejects.toThrow(SandboxNotFencedError);
     await expect(refused).rejects.toThrow("the session has no fence at all");
+    await expect(client.callTool("read_note", { id: "n-1" })).rejects.toThrow(
+      SandboxNotFencedError,
+    );
     expect(start).not.toHaveBeenCalled();
   });
+
+  // The third state other than `fenced`, `stopped`, is under "session-ended" below.
 });
 
 verifies("connector-stdio-sandbox.session-start", () => {
