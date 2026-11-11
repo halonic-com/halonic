@@ -7,7 +7,7 @@ and shows who else is working on a package.
 - **Layer:** tooling
 - **Owner:** mateo
 - **Commands:**
-  - `pnpm discover` writes `apps/studio/src/generated/features.ts` (gitignored). Turbo runs it as the `codegen` task before every typecheck, test and build. It also writes one file per folder discovery (below).
+  - `pnpm discover` writes `apps/studio/src/generated/features.ts` (gitignored). `pnpm install` runs it too (the root `prepare` script, `src/cli/prepare.ts`), so a fresh clone runs the CLI and the Studio without a manual step. Turbo runs it as the `codegen` task before every typecheck, test and build. It also writes one file per folder discovery (below).
   - `pnpm discover --fix` also rewrites the feature list (run `pnpm install` after) and adds missing folder-discovery globs to `turbo.json`.
   - `pnpm discover --check` changes nothing and fails if the feature list, a folder discovery or `turbo.json` is out of date.
   - `pnpm new package <layer>/<name> --owner <agent> [--purpose "<one line>"]` and `pnpm new feature <name> --owner <agent> [--purpose "<one line>"]` create an empty package or feature, with its `AGENTS.md` written from `templates/package-AGENTS.md`. `<layer>` is one of `core`, `adapters`, `host`, `targets`, `studio`, `testing`, `tooling` or `apps`. A new `core` package is also added to `coreOrder` in `tooling/check/policy.json`. Adapters also take `--runtime <node | web | workers | any>`; target packages are `targets/<target>/<runtime | deploy | testing>`. Without `--purpose` the file holds `TODO: one-line purpose`, and `pnpm check` fails until you replace it.
