@@ -24,11 +24,17 @@ The lines `halonic run` prints don't change. Its `--json` output lists the run's
 golden files gain those three lines. The run summary in the same output has no such field and
 doesn't change.
 
+The parity compare with the old CLI's `studio run` calls (`cli.parity-cli-calls`) then sees the
+new field in `run.started`. `allowed-differences.json` gains the proposed entry
+`run-started-names-the-version` (requirement `events.run-started-version`), with the CLI rule
+`run-started-version` that takes `version` out of the new `run.started` only. Every other field
+of the runs is still compared. The entry is signed off in review.
+
 ## Tests
 
 No test was weakened. `live-version.test.ts` gains two tests and one more expected field;
 `watch.test.ts` checks one more field of the run it already starts. The golden files only gain
-the new field.
+the new field. `cli-judge.test.ts` gains a test for the new CLI rule.
 
 ## Covers
 
@@ -36,3 +42,4 @@ the new field.
 - cli.commands.routines.watch
 - apps/cli/src/commands/run/golden/support-reply-waiting.txt
 - apps/cli/src/commands/run/golden/support-reply-approved.txt
+- packages/testing/parity/allowed-differences.json

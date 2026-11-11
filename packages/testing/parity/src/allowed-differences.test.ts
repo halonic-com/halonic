@@ -209,6 +209,7 @@ verifies("parity.allowed-differences-checked", () => {
       "engine.task-json-answer",
       "engine.budget-composite-stops",
       "workspace.references",
+      "events.run-started-version",
     ]);
   });
 

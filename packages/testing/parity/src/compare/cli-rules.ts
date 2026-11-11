@@ -117,6 +117,16 @@ export const cliRules: readonly CliRule[] = [
     old: errorsBy(itemFailed),
     new: errorsBy(itemFailed),
   },
+  {
+    id: "run-started-version",
+    does: "takes version out of the new run.started",
+    new: (call) =>
+      eachEvent(call, (event) => {
+        if (event["type"] !== "run.started") return event;
+        const { version: _version, ...rest } = event;
+        return rest;
+      }),
+  },
   ...runRules.map(lifted),
 ];
 

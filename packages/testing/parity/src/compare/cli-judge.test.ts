@@ -188,5 +188,25 @@ verifies("parity.compare-cli-calls", () => {
         error: "x",
       });
     });
+
+    it("takes version out of the new run.started only", () => {
+      const rule = cliRule("run-started-version");
+      const started = {
+        command: "run",
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        runs: [
+          {
+            summary: { id: "run_1" },
+            events: [{ type: "run.started", runId: "run_1", version: { reads: "saved-files" } }],
+          },
+        ],
+      };
+      expect([rule?.old, rule?.new?.(started).runs[0]?.events[0]]).toEqual([
+        undefined,
+        { type: "run.started", runId: "run_1" },
+      ]);
+    });
   });
 });
