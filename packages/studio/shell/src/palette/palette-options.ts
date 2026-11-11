@@ -1,3 +1,4 @@
+import type { ItemKindContribution } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { PressedKey } from "../tabs/window-keys.ts";
 import type { PaletteContent, PaletteRow } from "./palette-groups.ts";
@@ -99,13 +100,20 @@ export function keptActive(
   return options[0]?.key;
 }
 
+/** The names of the item kinds, as `studio.itemKinds.add` registered them. */
+export interface PaletteKindNames {
+  get(kind: string): Pick<ItemKindContribution, "label"> | undefined;
+}
+
 /**
  * An option's name for a screen reader: its name, its kind when it has one, and "switch to tab"
  * when a window tab shows it already, such as "Support reply, workflow, switch to tab" (24.3).
+ * An item's kind is read with the name its kind was registered with, the word the row shows,
+ * never its id; a kind that isn't registered is left out.
  */
-export function paletteOptionName(row: PaletteRow): string {
+export function paletteOptionName(row: PaletteRow, kinds: PaletteKindNames): string {
   const parts = [row.label];
-  const kind = rowKind(row);
+  const kind = rowKind(row, kinds);
   if (kind !== undefined) {
     parts.push(kind);
   }
@@ -115,15 +123,23 @@ export function paletteOptionName(row: PaletteRow): string {
   return parts.join(", ");
 }
 
-function rowKind(row: PaletteRow): string | undefined {
+function rowKind(row: PaletteRow, kinds: PaletteKindNames): string | undefined {
   switch (row.target.kind) {
     case "location":
       return row.target.location.kind;
-    case "item":
-      return row.target.item.kind;
+    case "item": {
+      const label = kinds.get(row.target.item.kind)?.label;
+      return label === undefined ? undefined : inSentence(label);
+    }
     case "action":
       return undefined;
   }
+}
+
+/** A kind's name as it reads after a comma: "Agent" as "agent", but "MCP server" as it is. */
+function inSentence(label: string): string {
+  const [first = "", second = ""] = label;
+  return second !== second.toLowerCase() ? label : first.toLowerCase() + label.slice(first.length);
 }
 
 /**

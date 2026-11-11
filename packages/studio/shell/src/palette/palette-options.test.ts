@@ -5,6 +5,7 @@ import type { PaletteContent, PaletteRow } from "./palette-groups.ts";
 import {
   keptActive,
   movedActive,
+  type PaletteKindNames,
   paletteKeyFor,
   paletteOptionName,
   paletteOptions,
@@ -51,6 +52,24 @@ const newTab: PaletteRow = {
   open: false,
   target: { kind: "action", command: "shell.new-tab" },
 };
+
+const kindNames: PaletteKindNames = {
+  get: (kind) =>
+    ({
+      agent: { label: "Agent" },
+      "mcp-server": { label: "MCP server" },
+      "memory-note": { label: "Memory note" },
+    })[kind],
+};
+
+function itemRow(label: string, kind: string): PaletteRow {
+  return {
+    key: `${kind}/acme/${label}`,
+    label,
+    open: false,
+    target: { kind: "item", item: { kind, hub: "acme", id: label } },
+  };
+}
 
 function content(rows: readonly PaletteRow[][], couldNotSearch = false): PaletteContent {
   return {
@@ -154,10 +173,22 @@ verifies("shell.palette-options", () => {
 
   describe("what a screen reader hears", () => {
     it("names an option with its kind and switch to tab when a tab shows it", () => {
-      expect(paletteOptionName(supportReply)).toBe("Support reply, workflow, switch to tab");
-      expect(paletteOptionName(refundChecker)).toBe("Refund checker, agent");
-      expect(paletteOptionName(inbox)).toBe("Inbox");
-      expect(paletteOptionName(newTab)).toBe("New tab");
+      expect(paletteOptionName(supportReply, kindNames)).toBe(
+        "Support reply, workflow, switch to tab",
+      );
+      expect(paletteOptionName(refundChecker, kindNames)).toBe("Refund checker, agent");
+      expect(paletteOptionName(inbox, kindNames)).toBe("Inbox");
+      expect(paletteOptionName(newTab, kindNames)).toBe("New tab");
+    });
+
+    it("reads an item's kind by the name it was registered with, never its id", () => {
+      expect(paletteOptionName(itemRow("Groceries", "memory-note"), kindNames)).toBe(
+        "Groceries, memory note",
+      );
+      expect(paletteOptionName(itemRow("Files", "mcp-server"), kindNames)).toBe(
+        "Files, MCP server",
+      );
+      expect(paletteOptionName(itemRow("Old thing", "retired-kind"), kindNames)).toBe("Old thing");
     });
 
     it("counts the rows of every group", () => {

@@ -226,7 +226,8 @@ move the active row and wrap (`movedActive`), Enter opens it here and Mod Enter 
 stays in the box, and Mod K selects the words rather than closing the palette. Home and End are
 left to the box. New words make the first row active, and for the same words a row the user picked
 stays active when late results arrive (`keptActive`). `paletteOptionName` gives a screen reader
-"Support reply, workflow, switch to tab", and `resultCountText` the count said politely
+"Support reply, workflow, switch to tab", reading an item's kind by the name it was registered with
+(pass `shell.contributions.itemKinds`), never its id, and `resultCountText` the count said politely
 `resultCountDelayMs` (500 ms) after typing stops: "7 results", "1 result", "No results" or
 "Couldn't search".
 

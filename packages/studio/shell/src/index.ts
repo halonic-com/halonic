@@ -112,6 +112,7 @@ export {
   keptActive,
   movedActive,
   type PaletteKey,
+  type PaletteKindNames,
   paletteKeyFor,
   paletteOptionName,
   paletteOptions,
