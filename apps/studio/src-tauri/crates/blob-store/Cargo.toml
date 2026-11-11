@@ -1,0 +1,18 @@
+[package]
+name = "halonic-blob-store"
+description = "The blob folders the Studio shell writes, in the same files as the CLI's FolderBlobStore."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The blob's name is the hex SHA-256 of its bytes. sha2 is the exception
+# Liam allowed for trust-store (HAL-2652) and profile (HAL-2719): the shell
+# already builds it through wry and tauri-codegen. Pinned to the version in
+# Cargo.lock, so this adds no crate for cargo-deny to audit.
+[dependencies]
+sha2 = { version = "=0.10.9", default-features = false }
+
+[lints]
+workspace = true

@@ -1490,6 +1490,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-blob-store"
+version = "0.1.0"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
 name = "halonic-connect"
 version = "0.1.0"
 dependencies = [
