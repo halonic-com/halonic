@@ -277,9 +277,8 @@ export class LocalRuns {
   /**
    * Their parents hear from them on a `child:` timer, not in this call: a
    * failure to tell one would otherwise be lost, because a retry no longer
-   * finds the runs it ended. For the same reason, their folders end only
-   * once every timer is set: a folder adapter that throws must not keep a
-   * parent from hearing.
+   * finds the runs it ended. Their folders end last for the same reason: a
+   * folder adapter that throws must not keep a parent from hearing.
    */
   async #endInterruptedRuns(): Promise<void> {
     await this.#connectorCalls.markCutShort();
@@ -392,11 +391,9 @@ export class LocalRuns {
 
   /**
    * A run has just ended: when it is a top-level run, its harness calls and
-   * its child runs' stop, and then its proposal folder ends.
-   *
-   * It waits for those calls to stop, so no input recorded from inside a
-   * harness call may end its run. Today the only one is `harness-asked`,
-   * which never does.
+   * its child runs' stop, and then its proposal folder ends. It waits on those
+   * calls, so no input recorded inside a harness call may end its run (today
+   * that is only `harness-asked`, which never does).
    */
   async #ended(runId: string): Promise<void> {
     await this.#folders.ended(runId, (topLevelRunId) =>
