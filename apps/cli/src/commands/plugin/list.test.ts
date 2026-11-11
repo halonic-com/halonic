@@ -67,15 +67,15 @@ verifies("cli.commands.plugin.list", () => {
   });
 
   it("lists a trusted plugin as on and one never trusted with the command that trusts it", async () => {
-    const weather = await addPlugin("weather", "Weather", true);
-    const tides = await addPlugin("tides", "Tides", false);
+    await addPlugin("weather", "Weather", true);
+    await addPlugin("tides", "Tides", false);
 
     const { code, io } = await list();
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      `Tides     1.2.0   ${tides}     ! not trusted yet · halonic trust --plugin tides`,
-      `Weather   1.2.0   ${weather}   ✓ on`,
+      "Tides     1.2.0   ~/sources/tides     ! not trusted yet · halonic trust --plugin tides",
+      "Weather   1.2.0   ~/sources/weather   ✓ on",
     ]);
   });
 

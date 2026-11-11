@@ -76,3 +76,33 @@ export function withoutTrailingSeparators(platform: ProfilePlatform, folder: str
   }
   return trimmed;
 }
+
+/**
+ * A path with the home folder at its start written as `~`, for showing to a
+ * person. A path outside the home folder, or the home folder's namesake with
+ * a longer name (`/srv/ann2` against `/srv/ann`), comes back unchanged.
+ * Windows compares without regard to case and accepts either separator.
+ *
+ * @param platform - the system the paths belong to
+ * @param homeFolder - the person's home folder
+ * @param path - an absolute path
+ * @returns the path, starting `~` when it is inside the home folder
+ *
+ * @example
+ * withHomeAsTilde("linux", "/srv/ann", "/srv/ann/plugins/tides"); // "~/plugins/tides"
+ */
+export function withHomeAsTilde(
+  platform: ProfilePlatform,
+  homeFolder: string,
+  path: string,
+): string {
+  const home = withoutTrailingSeparators(platform, homeFolder);
+  const comparable = (text: string) =>
+    platform === "windows" ? text.toLowerCase().replaceAll("/", "\\") : text;
+  const rest = path.slice(home.length);
+  const inside =
+    path.length > home.length &&
+    comparable(path.slice(0, home.length)) === comparable(home) &&
+    comparable(rest).startsWith(separatorOf(platform));
+  return inside ? `~${rest}` : path;
+}

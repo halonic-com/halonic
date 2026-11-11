@@ -2,8 +2,8 @@
 // 3.6). A thin command over `PluginService.load`: it lists, and writes
 // nothing, so it needs no trust.
 
-import { homedir } from "node:os";
 import type { PluginEntry, PluginInstall, PluginService } from "@halonicjs/app";
+import { type ProfileEnvironment, withHomeAsTilde } from "@halonicjs/profile";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
@@ -11,6 +11,7 @@ import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts"
 import { type PluginState, pluginMessages } from "../../messages/plugin.ts";
 import { printable } from "../../output/printable.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
+import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 
 /** How many characters of a commit the list shows, as git does. */
 const shownCommitLength = 7;
@@ -30,7 +31,8 @@ export async function listPlugins(
 ): Promise<CommandResult> {
   const service = openPluginService(setup);
   const entries = await service.load();
-  const rows = await Promise.all(entries.map((entry) => pluginRow(service, entry)));
+  const profile = setup.profile ?? nodeProfileEnvironment();
+  const rows = await Promise.all(entries.map((entry) => pluginRow(service, entry, profile)));
   const json = { plugins: rows.map((row) => row.json) };
   if (rows.length === 0) {
     return { exitCode: exitCode.ok, lines: [pluginMessages.noPlugins().phrase], json };
@@ -43,9 +45,13 @@ interface PluginRow {
   readonly json: Readonly<Record<string, unknown>>;
 }
 
-async function pluginRow(service: PluginService, entry: PluginEntry): Promise<PluginRow> {
+async function pluginRow(
+  service: PluginService,
+  entry: PluginEntry,
+  profile: ProfileEnvironment,
+): Promise<PluginRow> {
   const install = await service.install(entry.folder);
-  const source = install === null ? "" : shownSource(install.source);
+  const source = install === null ? "" : shownSource(install.source, profile);
   if (entry.status === "broken") {
     return {
       cells: [
@@ -92,11 +98,10 @@ function stateCell(state: PluginState, id: string): Phrase {
  * scheme and `.git`, with the short commit, or a folder with the home folder
  * written as `~`.
  */
-function shownSource(source: PluginInstall["source"]): string {
+function shownSource(source: PluginInstall["source"], profile: ProfileEnvironment): string {
   if (source.kind === "git") {
     const address = source.address.replace(/^[a-z+]+:\/\//, "").replace(/\.git$/, "");
     return `${address}@${source.commit.slice(0, shownCommitLength)}`;
   }
-  const home = homedir();
-  return source.path.startsWith(`${home}/`) ? `~${source.path.slice(home.length)}` : source.path;
+  return withHomeAsTilde(profile.platform, profile.homeFolder, source.path);
 }
