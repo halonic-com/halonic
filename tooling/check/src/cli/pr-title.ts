@@ -26,13 +26,16 @@ export function squashSubject(title: string, commitSubjects: readonly string[]):
 }
 
 /**
- * Subjects that would fail the merge queue's check. The title is always
- * checked; the single commit's subject too, when there is exactly one.
+ * Subjects that would fail the merge queue's check. The title is checked when
+ * it is known; the single commit's subject too, when there is exactly one.
  */
-export function badSubjects(title: string, commitSubjects: readonly string[]): string[] {
-  const subjects = [title];
-  if (commitSubjects.length === 1) {
-    subjects.push(squashSubject(title, commitSubjects));
+export function badSubjects(
+  title: string | undefined,
+  commitSubjects: readonly string[],
+): string[] {
+  const subjects = title === undefined ? [] : [title];
+  if (commitSubjects.length === 1 && commitSubjects[0] !== undefined) {
+    subjects.push(commitSubjects[0]);
   }
   return [...new Set(subjects)].filter((subject) => !isConventionalTitle(subject));
 }
@@ -50,6 +53,10 @@ if (import.meta.main) {
   const title = readPullRequestText()?.title ?? process.env["PR_TITLE"] ?? "";
   const range = process.env["PR_RANGE"];
   const commits = range === undefined || range === "" ? [] : commitSubjectsIn(range);
+  if (range !== undefined && range !== "" && commits.length === 0) {
+    console.error(`pr-title: could not read any commits in ${range}.`);
+    process.exit(1);
+  }
   const bad = badSubjects(title, commits);
   if (bad.length === 0) {
     console.log("pr-title: ok.");

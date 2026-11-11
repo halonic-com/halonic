@@ -56,7 +56,13 @@ function pullRequestTitle(cwd: string): string | undefined {
 /** Prints the subjects that would fail the queue's squash subject check; true if any. */
 function badLandingSubjects(root: string): boolean {
   const commits = commitSubjectsIn("origin/main..HEAD", root);
-  const bad = badSubjects(pullRequestTitle(root) ?? commits[0] ?? "", commits);
+  const title = pullRequestTitle(root);
+  if (title === undefined) {
+    console.log(
+      "squash subject: no pull request title from gh, so only a single commit's subject is checked.",
+    );
+  }
+  const bad = badSubjects(title, commits);
   for (const subject of bad) {
     console.error(
       `✗ subject "${subject}" is not "type(scope): summary" of at most 100 characters.`,

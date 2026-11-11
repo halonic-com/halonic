@@ -38,4 +38,12 @@ describe("badSubjects", () => {
     expect(badSubjects(fine, [long, "wip"])).toEqual([]);
     expect(badSubjects(long, [fine, fine])).toEqual([long]);
   });
+
+  it("reports nothing for an unknown title with several commits", () => {
+    expect(badSubjects(undefined, [long, "wip"])).toEqual([]);
+  });
+
+  it("reports the one commit's subject for an unknown title", () => {
+    expect(badSubjects(undefined, [long])).toEqual([long]);
+  });
 });
