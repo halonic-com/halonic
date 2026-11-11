@@ -150,6 +150,40 @@ verifies("workspace.working-folders", () => {
       ]);
     });
 
+    it.each([
+      ["node", "tools/server.js"],
+      ["python", "tools/server.py"],
+    ])(
+      "refuses a working folder below the folder of the script %s runs, which it loads files next to",
+      async (command, script) => {
+        const errors = await errorsFor(writesIn("tools/lib"), connectorFile(command, [script]));
+        expect(errors).toEqual([
+          [
+            "agents/coder.agent.yaml",
+            "workingFolder",
+            `Agent "coder" can't write in 'tools/lib': connector "mail" uses '${script}' and loads files from 'tools', which holds it, outside the sandbox`,
+          ],
+        ]);
+      },
+    );
+
+    it.each([
+      ["PYTHONPATH", "src", "src/pkg"],
+      ["NODE_PATH", "lib", "lib/foo"],
+    ])("refuses a working folder below a folder named in %s=%s", async (name, value, folder) => {
+      const errors = await errorsFor(
+        writesIn(folder),
+        connectorFile("node", ["/opt/mail/server.js"], undefined, { [name]: value }),
+      );
+      expect(errors).toEqual([
+        [
+          "agents/coder.agent.yaml",
+          "workingFolder",
+          `Agent "coder" can't write in '${folder}': connector "mail" uses '${name}=${value}' and loads files from '${value}', which holds it, outside the sandbox`,
+        ],
+      ]);
+    });
+
     it.each([".", "./", ""])(
       "lets a working folder pass when the connector starts in the workspace root as '%s'",
       async (cwd) => {

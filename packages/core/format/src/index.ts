@@ -95,3 +95,4 @@ export { fileKinds, isKindName, type KindName, type KindValues, kindNames } from
 export { isReservedPath, RESERVED_FOLDER } from "./reserved.ts";
 export { SCHEMA_VERSION } from "./shared/fields.ts";
 export type { Guard } from "./shared/guard.ts";
+export { foldName } from "./shared/relative-path.ts";

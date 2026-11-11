@@ -5,7 +5,12 @@
 // be recorded for review (HAL-4732). So a working folder may not hold
 // anything a local connector starts in, names or loads without naming.
 
-import { type Connector, defaultWorkingFolder, isInWorkingFolder } from "@halonicjs/format";
+import {
+  type Connector,
+  defaultWorkingFolder,
+  foldName,
+  isInWorkingFolder,
+} from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
@@ -66,7 +71,7 @@ function runsInHarness(agent: AgentFile): boolean {
  * told where, so a working folder may have no `node_modules` part at all.
  */
 function hasNodeModulesPart(folder: string): boolean {
-  return folder.split("/").some((part) => part.toLowerCase() === "node_modules");
+  return folder.split("/").some((part) => foldName(part) === "node_modules");
 }
 
 /**
@@ -81,12 +86,30 @@ function hasNodeModulesPart(folder: string): boolean {
 function connectorReach(connector: Connector, folder: string): string | undefined {
   if (!("stdio" in connector.transport)) return undefined;
   const { cwd = "." } = connector.transport.stdio;
-  const part = startParts(connector).find((start) => isInWorkingFolder(start.path, folder));
+  const parts = startParts(connector);
+  const part = parts.find((start) => isInWorkingFolder(start.path, folder));
   if (part !== undefined) return `uses '${part.shown}' from there`;
   if (!isWorkspaceRoot(cwd) && isInWorkingFolder(folder, cwd)) {
     return `starts in '${cwd}', which holds it, and reads files from there`;
   }
+  for (const start of parts) {
+    const holder = loadFolders(start.path).find((loaded) => isInWorkingFolder(folder, loaded));
+    if (holder !== undefined) {
+      return `uses '${start.shown}' and loads files from '${holder}', which holds it`;
+    }
+  }
   return undefined;
+}
+
+/**
+ * The folders a program may load files from because a start part names
+ * `path`: the path itself, as a folder in `PYTHONPATH` or `NODE_PATH` is,
+ * and the folder it is in, as Node and Python load files next to the script
+ * they run. The workspace root is left out, as every working folder is
+ * inside it.
+ */
+function loadFolders(path: string): string[] {
+  return [path, posixPath.dirname(path)].filter((loaded) => !isWorkspaceRoot(loaded));
 }
 
 /**
