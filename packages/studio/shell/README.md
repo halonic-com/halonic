@@ -346,6 +346,31 @@ return (
 );
 ```
 
+## Search page
+
+The Search page finds anything in the workspace by its name or by the words inside it (VK T2-F7).
+Each search is its own place: `searchPageLocation("refund")` is the place whose tab reads
+"Search: refund", and `searchPageWords` reads the words back, so Back goes to the words searched
+before.
+
+`searchPageNames` works out its "Names and descriptions" section from what the search providers
+found (`shell.search-page-names`). A provider may give a `description` with each result, which the
+page searches too. The words are plain text, as in Ctrl K; the Match case and Whole word chips
+narrow them through `findWords`, and the In and Hub chips narrow the items to one kind or hub.
+Items whose name matches come first, ranked as Ctrl K ranks names, then those whose description
+alone matches. `kinds` and `hubs` are what the two pickers offer. When nothing matches,
+`nothingFound` shows the empty state, with **Search all hubs** while a hub is picked
+(`offerAllHubs`), and `couldNotSearch` replaces it when a provider failed.
+
+```ts
+const found = await searchProviders(words, shell.contributions.search.providers(), contextFor);
+const names = searchPageNames(
+  { words, options: { matchCase, wholeWord }, scope: { hub } },
+  found.results,
+  found.failed,
+);
+```
+
 ## Status bar and toasts
 
 The status bar shows state only: spend, the branch, the problems count. `StatusBarItems` draws the
