@@ -99,6 +99,62 @@ verifies("app.review-try-it-holds-back", () => {
     });
   });
 
+  it("leaves out a new method that limits its tools, so it doesn't get all of them", async () => {
+    const { review, propose } = workspace();
+    const added = "  send:\n    instructions: Send it.\n    tools: [read]\n";
+    const plain = "  note:\n    instructions: Note it.\n";
+    await propose(agent, `${clerk}${added}${plain}`);
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.read(agent)).toBe(`${clerk}${plain}`);
+    expect(leftOut.files.map(({ path, reason }) => ({ path, reason }))).toEqual([
+      { path: agent, reason: "permissions" },
+    ]);
+  });
+
+  it("holds back a switch of the default runtime in workspace.yaml and a hub", async () => {
+    const settings = "workspace.yaml";
+    const hub = "hubs/billing/hub.yaml";
+    const { review, propose } = workspace({
+      [settings]: "name: Acme\ndefaults:\n  runtime: inprocess\n",
+      [hub]: "id: billing\nname: Billing\ndefaults:\n  runtime: inprocess\n",
+    });
+    await propose(settings, "name: Acme Ltd\ndefaults:\n  runtime: shell\n");
+    await propose(hub, "id: billing\nname: Billing\ndefaults:\n  runtime: shell\n");
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.read(settings)).toBe("name: Acme Ltd\ndefaults:\n  runtime: inprocess\n");
+    expect(await source.read(hub)).toBe(
+      "id: billing\nname: Billing\ndefaults:\n  runtime: inprocess\n",
+    );
+    expect(leftOut.files.map(({ path, reason }) => ({ path, reason }))).toEqual([
+      { path: hub, reason: "trust-and-sandbox" },
+      { path: settings, reason: "trust-and-sandbox" },
+    ]);
+  });
+
+  it("holds back what the assistant writes after the source is built", async () => {
+    const { store, review, propose } = workspace();
+    const { source, leftOut } = await review.tryItSource();
+    const before = await source.version();
+    await propose(connector, "id: mail\ntransport:\n  http: { url: https://mail.example.test }\n");
+    await propose(agent, clerk.replace("allowedSites: [docs.acme.test]", "connectors: [mail]"));
+    expect(leftOut.total).toBe(0);
+    expect(await source.read(connector)).toBeNull();
+    expect(await source.read(agent)).toBe(clerk);
+    expect(await source.list()).toEqual([agent, models, workflow]);
+    expect(before).not.toMatch(/\+held-back\./u);
+    expect(await source.version()).toMatch(/^.+\+held-back\.sha256:[0-9a-f]{64}$/u);
+    expect(store.files.get(agent)).not.toBe(clerk);
+  });
+
+  it("doesn't list a file that is back to its baseline as left out", async () => {
+    const { store, review, propose } = workspace();
+    await propose(models, "aliases: {}\n");
+    store.files.set(models, aliases);
+    const { source, leftOut } = await review.tryItSource();
+    expect(await source.read(models)).toBe(aliases);
+    expect(leftOut).toEqual({ total: 0, beforeTrust: 0, files: [] });
+  });
+
   it("holds back models.yaml whole, so a new alias isn't there", async () => {
     const { review, propose } = workspace();
     await propose(models, `${aliases}  large: { provider: cloud, model: big }\n`);

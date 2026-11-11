@@ -10,7 +10,7 @@ import type { DefinitionSource } from "@halonicjs/ports";
 import { deepEqual, diffLines, isPlainObject } from "@halonicjs/std";
 import { placeOf } from "@halonicjs/workspace";
 import { readYaml } from "@halonicjs/yaml";
-import { revertParts } from "./changes/revert-parts.ts";
+import { type ItemPath, revertParts } from "./changes/revert-parts.ts";
 import type { ReviewFiles } from "./review-files.ts";
 import type { ReviewRecord } from "./review-record.ts";
 import type { LeftOut, LeftOutFile, TryItSource } from "./review-types.ts";
@@ -25,39 +25,47 @@ interface UsedInstead {
 
 /**
  * Builds the Try it source from the workspace's files and their records.
- * Each file is read in its turn, with its record read again there, so a
- * save in between can't pair a record with a file it doesn't describe.
+ * `leftOut` is what is held back now. A file the assistant writes later is
+ * held back too, when the source reads it ({@link HeldBackSource}).
  */
 export async function buildTryItSource(files: ReviewFiles): Promise<TryItSource> {
   const { records } = await files.list();
   const used = new Map<string, string | null>();
   const leftOutFiles: LeftOutFile[] = [];
   for (const { path } of records) {
-    const found = await files.turn(path, async () => {
-      const record = await files.read(path);
-      if (record === null) {
-        return null;
-      }
-      const text = await files.store.read(path);
-      const instead = usedInstead(record, text);
-      return instead === null ? null : { instead, text };
-    });
-    if (found === null) {
+    const { text, instead } = await readNow(files, path);
+    if (instead === null) {
       continue;
     }
-    const { instead, text } = found;
     used.set(path, instead.text);
-    leftOutFiles.push({
-      path,
-      reason: instead.reason,
-      changes: diffLines(instead.text ?? "", text ?? "").length,
-    });
+    const changes = diffLines(instead.text ?? "", text ?? "").length;
+    // A file put back to its baseline outside Halonic leaves nothing out.
+    if (changes > 0) {
+      leftOutFiles.push({ path, reason: instead.reason, changes });
+    }
   }
-  const version = used.size === 0 ? null : await files.digestOf(JSON.stringify([...used]));
   return {
-    source: new HeldBackSource(files.store, used, version),
+    source: new HeldBackSource(files, used),
     leftOut: leftOutOf(leftOutFiles),
   };
+}
+
+/** A file as it is now, and what Try it reads instead of it, if anything. */
+interface FileNow {
+  readonly text: string | null;
+  readonly instead: UsedInstead | null;
+}
+
+/**
+ * Reads a file and its record in the file's turn, so a save in between
+ * can't pair a record with a file it doesn't describe.
+ */
+function readNow(files: ReviewFiles, path: string): Promise<FileNow> {
+  return files.turn(path, async () => {
+    const text = await files.store.read(path);
+    const record = (await files.hasRecord(path)) ? await files.read(path) : null;
+    return { text, instead: record === null ? null : usedInstead(record, text) };
+  });
 }
 
 /**
@@ -93,7 +101,9 @@ function usedInstead(record: ReviewRecord, text: string | null): UsedInstead | n
   const texts = [baseline, text].filter((side): side is string => side !== null);
   const touched = heldBack
     .parts(texts)
-    .filter((part) => !deepEqual(valueAt(baselineData ?? {}, part), valueAt(fileData, part)));
+    .filter(
+      (part) => !deepEqual(valueAt(baselineData ?? {}, part.path), valueAt(fileData, part.path)),
+    );
   const reason = firstGroup(touched.map((part) => part.group));
   if (reason === null) {
     return null;
@@ -101,12 +111,28 @@ function usedInstead(record: ReviewRecord, text: string | null): UsedInstead | n
   if (baseline === null || baselineData === null) {
     return { text: baseline, reason };
   }
-  const reverted = revertParts(
-    text,
-    baseline,
-    touched.map((part) => part.path),
-  );
+  const reverted = revertParts(text, baseline, pathsToSetBack(touched, baselineData));
   return { text: reverted.ok ? reverted.value : baseline, reason };
+}
+
+/**
+ * The paths to set back to the baseline's for the touched parts: each
+ * part's own, or its whole entry when the baseline doesn't have the entry
+ * (a method the change adds). Each path once.
+ */
+function pathsToSetBack(
+  touched: readonly HeldBackPart[],
+  baselineData: Record<string, unknown>,
+): ItemPath[] {
+  const paths = new Map<string, ItemPath>();
+  for (const part of touched) {
+    const path =
+      part.entry !== undefined && valueAt(baselineData, part.entry) === undefined
+        ? part.entry
+        : part.path;
+    paths.set(JSON.stringify(path), path);
+  }
+  return [...paths.values()];
 }
 
 /** The text's data when it reads as a YAML map; `null` otherwise. */
@@ -115,10 +141,10 @@ function yamlMap(text: string): Record<string, unknown> | null {
   return read.ok && isPlainObject(read.value.data) ? read.value.data : null;
 }
 
-/** The value at a part's path, through map keys only; `undefined` where there is none. */
-function valueAt(data: Record<string, unknown>, part: HeldBackPart): unknown {
+/** The value at a path, through map keys only; `undefined` where there is none. */
+function valueAt(data: Record<string, unknown>, path: ItemPath): unknown {
   let value: unknown = data;
-  for (const key of part.path) {
+  for (const key of path) {
     if (!isPlainObject(value)) {
       return undefined;
     }
@@ -140,46 +166,56 @@ function leftOutOf(files: readonly LeftOutFile[]): LeftOut {
 /**
  * The workspace's files, with some read from texts held in memory instead:
  * `null` there means Try it reads no file at that path, so it isn't listed.
- * The other files are read from the workspace as they are when asked.
+ *
+ * A file that held nothing back when the source was built is read when
+ * asked, with its record, in its turn. So a change the assistant writes in
+ * between, while Build is still writing as the person presses Try it, is
+ * held back as well. Once held, a file's text stays as first read.
  */
 class HeldBackSource implements DefinitionSource {
   readonly location: string;
-  readonly #inner: DefinitionSource;
-  readonly #used: ReadonlyMap<string, string | null>;
-  /** The digest of what is held, or `null` when nothing is. */
-  readonly #held: string | null;
+  readonly #files: ReviewFiles;
+  readonly #used: Map<string, string | null>;
 
-  constructor(
-    inner: DefinitionSource,
-    used: ReadonlyMap<string, string | null>,
-    held: string | null,
-  ) {
-    this.location = inner.location;
-    this.#inner = inner;
+  constructor(files: ReviewFiles, used: Map<string, string | null>) {
+    this.location = files.store.location;
+    this.#files = files;
     this.#used = used;
-    this.#held = held;
   }
 
   async list(dir?: string): Promise<string[]> {
     // The workspace's own list first: it refuses an unsafe `dir`.
-    const paths = new Set(await this.#inner.list(dir));
-    for (const [path, text] of this.#used) {
-      if (dir !== undefined && !path.startsWith(`${dir}/`)) {
-        continue;
-      }
-      if (text === null) {
-        paths.delete(path);
-      } else {
-        paths.add(path);
+    const listed = await this.#files.store.list(dir);
+    const prefix = dir === undefined ? null : `${dir.replace(/\/+$/u, "")}/`;
+    const within = (path: string) => prefix === null || path.startsWith(prefix);
+    const { records } = await this.#files.list();
+    const candidates = new Set([
+      ...listed,
+      ...[...this.#used.keys()].filter(within),
+      ...records.map((record) => record.path).filter(within),
+    ]);
+    const paths: string[] = [];
+    for (const path of candidates) {
+      // Only a file with a record can be held back; the others are listed as they are.
+      const mayBeHeld = this.#used.has(path) || (await this.#files.hasRecord(path));
+      if (!mayBeHeld || (await this.read(path)) !== null) {
+        paths.push(path);
       }
     }
-    return [...paths].sort();
+    return paths.sort();
   }
 
-  read(path: string): Promise<string | null> {
-    const text = this.#used.get(path);
-    // Only record paths are held, and a record's path is always a safe one.
-    return text === undefined ? this.#inner.read(path) : Promise.resolve(text);
+  async read(path: string): Promise<string | null> {
+    const held = this.#used.get(path);
+    if (held !== undefined) {
+      return held;
+    }
+    const { text, instead } = await readNow(this.#files, path);
+    if (instead === null) {
+      return text;
+    }
+    this.#used.set(path, instead.text);
+    return instead.text;
   }
 
   /**
@@ -188,7 +224,11 @@ class HeldBackSource implements DefinitionSource {
    * the same version as one run with the files as they are.
    */
   async version(): Promise<string> {
-    const version = await this.#inner.version();
-    return this.#held === null ? version : `${version}+held-back.${this.#held}`;
+    const version = await this.#files.store.version();
+    if (this.#used.size === 0) {
+      return version;
+    }
+    const held = [...this.#used.keys()].sort().map((path) => [path, this.#used.get(path)]);
+    return `${version}+held-back.${await this.#files.digestOf(JSON.stringify(held))}`;
   }
 }

@@ -23,6 +23,14 @@ const groupOrder: readonly HeldBackGroup[] = [
 export interface HeldBackPart {
   readonly path: ItemPath;
   readonly group: HeldBackGroup;
+  /**
+   * The entry the part belongs to, such as one method, when that is less
+   * than the whole file. When the baseline doesn't have the entry, there
+   * is no value to set the part back to, and leaving the part out could
+   * reach further than either text (a method without `tools` may use all
+   * of the agent's tools). So Try it leaves out the whole entry instead.
+   */
+  readonly entry?: ItemPath;
 }
 
 /**
@@ -41,7 +49,11 @@ function fixedParts(parts: readonly HeldBackPart[]): HeldBack {
   return { kind: "parts", parts: () => [...parts] };
 }
 
-/** Each part of an agent that gives it more reach, by group. */
+/**
+ * Each part of an agent that gives it more reach, by group. An agent's
+ * `knowledge` and `skills` aren't here on purpose: knowledge is only read,
+ * and the requirement lists exactly what is held, `collections` included.
+ */
 const agentParts: readonly HeldBackPart[] = [
   { path: ["maxSteps"], group: "permissions" },
   { path: ["runLogs"], group: "permissions" },
@@ -71,18 +83,26 @@ const heldBackByKind: Partial<Record<KindName, HeldBack>> = {
     parts: (texts) => [
       ...agentParts,
       ...methodNames(texts).flatMap((method) =>
-        methodParts.map(({ key, group }) => ({ path: ["methods", method, key], group })),
+        methodParts.map(({ key, group }) => ({
+          path: ["methods", method, key],
+          group,
+          entry: ["methods", method],
+        })),
       ),
     ],
   },
   // A connector is all connection: how to reach it, its secret, and which
   // of its tools may run, with or without asking (`tools.approve`).
   connector: { kind: "whole", group: "connections" },
+  // Unlike a model alias, a switch to another runtime that exists is held:
+  // the runtime decides how fenced the run is.
   workspace: fixedParts([
     { path: ["budget"], group: "permissions" },
     { path: ["privacy"], group: "trust-and-sandbox" },
+    { path: ["defaults", "runtime"], group: "trust-and-sandbox" },
   ]),
   hub: fixedParts([
+    { path: ["defaults", "runtime"], group: "trust-and-sandbox" },
     { path: ["uses"], group: "connections" },
     { path: ["models"], group: "models" },
   ]),
