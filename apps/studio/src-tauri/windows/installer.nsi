@@ -762,6 +762,10 @@ Section Install
 
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
 
+  ; Keep NSIS's own file lines (Extract, Create folder) out of the list so
+  ; our step lines stay in view.
+  SetDetailsPrint none
+
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"
 
@@ -849,6 +853,7 @@ Section Install
     !insertmacro NSIS_HOOK_POSTINSTALL
   !endif
 
+  SetDetailsPrint both
   !insertmacro SetStep $LineCopy "✓ Copied Halonic"
 
   ; Auto close this page for passive mode
