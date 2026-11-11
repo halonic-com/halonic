@@ -18,7 +18,9 @@ Trust is a record in your profile folder, kept per workspace folder and per
 computer. A workspace's own files can't create or change it. A record holds a
 fingerprint (`hfp1:` and 64 hex characters) of everything the check lists. If
 any of it changes, the fingerprint changes and Halonic asks again. A change
-that only removes entries (a connector, a harness agent) doesn't ask.
+that only removes whole entries (connectors, harness agents, local integrations
+or model providers) doesn't ask. Removing a variable or another detail inside
+an entry is a change, and it asks.
 
 ## What `halonic trust` shows
 
@@ -56,9 +58,8 @@ can't be trusted by accident: the answer binds to the fingerprint you saw.
 
 ## Where trust is checked
 
-`halonic run`, `halonic runs send`, `halonic routines watch` and
-`halonic tools review` and `approve` refuse an untrusted or changed workspace
-with exit 3 and write the check and the fingerprint (requirement
+`halonic run`, `halonic runs send` and `halonic routines watch` refuse an
+untrusted or changed workspace with exit 3 and write the check and the fingerprint (requirement
 `cli.not-trusted`). A record that can't be read counts as no trust. A run that
 can only reach the test model needs no trust. `halonic validate` starts
 nothing, so it doesn't check.

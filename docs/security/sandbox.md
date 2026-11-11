@@ -8,6 +8,11 @@ list of what it is meant to stop. Workspace trust is a separate check; see
 Only agents that run in Claude Code or Codex use the sandbox. An agent in
 Halonic's own harness starts no program, so it has none.
 
+Today neither `halonic run` nor Studio runs an agent in Claude Code or Codex.
+`halonic run` checks the sandbox and then stops with exit 9, because it can't
+run those agents yet (requirement `cli.run-sandbox-gate`), and Studio doesn't
+start the agent host. This page describes the fence those runs will use.
+
 ## What it is
 
 The sandbox is `adapters/sandbox-srt`, built on
@@ -26,7 +31,9 @@ fence must hide and a canary loopback port it must block
 ## No sandbox, no run
 
 If the sandbox can't start, the step doesn't run, and no option makes it
-(requirements `cli.sandbox-gate` and `cli.run-sandbox-gate`). The CLI ends
+(requirements `cli.sandbox-gate` and `cli.run-sandbox-gate`). The one exception
+is an agent you chose to run on this computer; see
+["This computer" has none of it](#this-computer-has-none-of-it). The CLI ends
 with exit 9 and names one reason code: `windows`, `container`,
 `user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing` or
 `other`. When more than one applies, the first in that list wins, because its
@@ -36,9 +43,9 @@ fix comes first ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes
 
 - **It's a fence, not a virtual machine.** The operating system's kernel is
   shared with the program, so a kernel bug can break out of it.
-- **There are no CPU or memory limits.** A profile has a time limit for the
-  whole run (`timeLimitMs`) and nothing else. A program can use all the CPU
-  and memory it can get until the run is cancelled or times out.
+- **There are no CPU or memory limits.** A profile's only limit on
+  resources is a time limit for the whole run (`timeLimitMs`). A program can
+  use all the CPU and memory it can get until the run is cancelled or times out.
 - **Inside the working folder, anything goes.** The program can change any file
   there without asking. Keep work you can't lose in git.
 - **Allowed sites see what the agent can read.** The fence checks a site's
@@ -63,13 +70,17 @@ use Halonic inside WSL 2.
 
 ## "This computer" has none of it
 
-You can choose, per agent and per computer, to run an agent on this computer
+Nothing offers this choice yet: Studio has no screen for it and the CLI has
+no command that makes one. Today the CLI only reads such a choice. The limits
+below describe the choice once Studio offers it.
+
+The choice is per agent and per computer: run an agent on this computer
 without the sandbox. That agent runs with all your rights: it can read your keys
 and Halonic's own data, change any file you can and reach any address. The
 choice lives in your profile folder, never in the workspace. It is bound to the
 exact bytes of the agent's file, so a changed file goes back to the sandbox, and
 it doesn't carry to another computer. The CLI reads these choices and prints a
-`!` line before the run. It has no command that makes one.
+`!` line before the run.
 
 ## Related decisions
 
