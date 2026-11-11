@@ -1,0 +1,31 @@
+name: Apt install
+description: Installs Ubuntu packages with apt, retrying when the runner's package mirror can't be reached.
+inputs:
+  packages:
+    description: The packages to install, separated by spaces.
+    required: true
+runs:
+  using: composite
+  steps:
+    # The runner's default mirror (azure.archive.ubuntu.com) sometimes can't
+    # be resolved for a while, and a plain install then fails the job
+    # (HAL-5765). Each attempt retries the downloads; after a failed attempt
+    # the runner is pointed at archive.ubuntu.com instead.
+    - name: Install
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: |
+        apt_opts=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+        for attempt in 1 2 3; do
+          if sudo apt-get "${apt_opts[@]}" update &&
+            sudo apt-get "${apt_opts[@]}" install --yes --no-install-recommends $PACKAGES; then
+            exit 0
+          fi
+          echo "::warning::apt install failed (attempt $attempt of 3)"
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sleep $((attempt * 20))
+        done
+        exit 1
