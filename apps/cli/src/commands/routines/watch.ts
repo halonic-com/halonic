@@ -8,21 +8,14 @@
 // scheduler delivers their timers, and those missed while nothing ran as
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 
-import {
-  placedRoutines,
-  type RoutineScheduler,
-  type RoutineTickResult,
-  shortRunId,
-  workspaceRoutineScheduler,
-} from "@halonicjs/app";
-import { DEFAULT_TICK_POLICY, type PlacedRoutine, routineKey } from "@halonicjs/routines";
+import { placedRoutines, type RoutineScheduler, workspaceRoutineScheduler } from "@halonicjs/app";
+import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
 import { printable } from "../../output/printable.ts";
-import { startedAt } from "../../run-times.ts";
 import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import { unsandboxedWarning } from "../../sandbox-gate.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
@@ -30,14 +23,7 @@ import { openWorkspaceEngine } from "../../workspace-engine.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
-
-/** A routine run the watch started, as `--json` gives it. */
-interface StartedRoutineRun {
-  readonly key: string;
-  readonly runId: string;
-  /** ISO time it was due. */
-  readonly at: string;
-}
+import { watchReport } from "./watch-report.ts";
 
 /**
  * Watches until Ctrl C or SIGTERM, then returns that it stopped: exit 130
@@ -61,7 +47,7 @@ export async function watchRoutines(
   const workspace = await loadWorkspace(dir.store);
   await checkRunTrust(dir, workspace, setup.trust(), givenDir(input, dir));
   const routines = placedRoutines(workspace);
-  const report = startReporter(context, setup, routines);
+  const report = watchReport(context, () => setup.clock(), routines);
   let scheduler: RoutineScheduler | undefined;
   const engine = await openWorkspaceEngine(context, setup, {
     dir,
@@ -81,10 +67,11 @@ export async function watchRoutines(
     for (const agent of engine.unsandboxed) context.printAhead(unsandboxedWarning(agent));
     // Straight away, so the times missed since the last watch start now, not a minute from now.
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
-    const first = scheduler === undefined ? undefined : await scheduler.tick();
+    if (scheduler !== undefined) report.tick(await scheduler.tick());
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
     context.printAhead(routinesMessages.watching(onAClock.length, printable(dir.name)).phrase);
-    if (first !== undefined) report.tick(first);
+    // The runs held so far: the catch-up tick's, and any a scheduled tick started while it ran.
+    report.open();
     await stopped(engine.signal);
   } finally {
     await engine.close();
@@ -114,42 +101,6 @@ function routineScheduler(
     routines: async () => routines,
     policy: { ...DEFAULT_TICK_POLICY, timeZone },
   });
-}
-
-/** Prints a line for each run a tick started or failed to start, and keeps the started ones for `--json`. */
-function startReporter(
-  context: CommandContext,
-  setup: RunSetup,
-  routines: readonly PlacedRoutine[],
-): { tick(result: RoutineTickResult): void; readonly started: StartedRoutineRun[] } {
-  const names = new Map(routines.map((placed) => [routineKey(placed), placed.routine.name]));
-  const nameOf = (key: string) => printable(names.get(key) ?? key);
-  const started: StartedRoutineRun[] = [];
-  return {
-    started,
-    tick(result) {
-      const clock = setup.clock();
-      for (const run of result.started) {
-        const key = run.trigger?.routineId ?? "";
-        const at = run.trigger?.at ?? run.startedAt;
-        started.push({ key, runId: run.id, at });
-        context.printAhead(
-          routinesMessages.started(nameOf(key), shortRunId(run.id), startedAt(new Date(at), clock))
-            .phrase,
-        );
-      }
-      for (const failure of result.failed) {
-        context.printAhead(
-          routinesMessages.notStarted(nameOf(failure.key), startedAt(new Date(failure.at), clock))
-            .phrase,
-        );
-        context.debug(
-          routinesMessages.notStartedWhy(printable(failure.key), printable(failure.error.message))
-            .phrase,
-        );
-      }
-    },
-  };
 }
 
 /**
