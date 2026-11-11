@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
@@ -6,7 +6,7 @@ import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
 import { createResolvedAddressGuard } from "@anthropic-ai/sandbox-runtime/dist/sandbox/resolved-address-guard.js";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { buildSrtConfig } from "./srt-config.ts";
 
 function profile(overrides: Partial<SandboxProfile> = {}): SandboxProfile {
@@ -264,10 +264,24 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
   });
 
   describe("reopened paths", () => {
+    /** The temporary folders and links a test made, removed after it. */
+    const made: string[] = [];
+    afterEach(() => {
+      for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true });
+    });
+
+    /** A new temporary folder, removed after the test. */
+    function temporaryFolder(prefix: string): string {
+      const folder = mkdtempSync(join(tmpdir(), prefix));
+      made.push(folder);
+      return folder;
+    }
+
     /** Halonic's data folder on disk, with one run's folders in it. */
     function dataFolder() {
-      const top = mkdtempSync(join(tmpdir(), "srt-reopen-"));
+      const top = temporaryFolder("srt-reopen-");
       const link = join(tmpdir(), `${basename(top)}-link`);
+      made.push(link);
       const data = join(top, "data");
       const own = {
         proposalEntry: join(data, "proposals", "run_1", "agents"),
@@ -321,20 +335,29 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       },
     );
 
-    it("names both spellings of a reopened path reached through a link", () => {
-      const folders = dataFolder();
-      const linked = folders.proposalEntry.replace(folders.data, folders.link);
-      const config = buildSrtConfig(
-        reopening(folders, { reopenedPaths: [linked, folders.workingFolder, folders.tempFolder] }),
-        [],
-        [],
-        "linux",
-      );
+    // On Windows srt resolves links itself, so the path is checked and named as given (see `resolveRealPath`).
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] names both spellings of a reopened path reached through a link",
+      () => {
+        const folders = dataFolder();
+        const linked = folders.proposalEntry.replace(folders.data, folders.link);
+        const config = buildSrtConfig(
+          reopening(folders, {
+            reopenedPaths: [linked, folders.workingFolder, folders.tempFolder],
+          }),
+          [],
+          [],
+          "linux",
+        );
 
-      expect(paths(config.filesystem?.allowRead)).toEqual(
-        expect.arrayContaining([linked, folders.proposalEntry.replace(folders.data, folders.real)]),
-      );
-    });
+        expect(paths(config.filesystem?.allowRead)).toEqual(
+          expect.arrayContaining([
+            linked,
+            folders.proposalEntry.replace(folders.data, folders.real),
+          ]),
+        );
+      },
+    );
 
     it("refuses a reopened path that isn't there", () => {
       const folders = dataFolder();
@@ -350,7 +373,7 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
 
     it("refuses a reopened path that lies in no denied path", () => {
       const folders = dataFolder();
-      const elsewhere = mkdtempSync(join(tmpdir(), "srt-elsewhere-"));
+      const elsewhere = temporaryFolder("srt-elsewhere-");
       expect(() =>
         buildSrtConfig(
           reopening(folders, {
