@@ -3,6 +3,7 @@
 
 mod support;
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Barrier;
 use std::thread;
@@ -137,12 +138,26 @@ fn run_store_stores_the_events_when_the_snapshot_can_t_be_written() {
     assert_eq!(scratch.names(), ["r1.jsonl", "r1.snapshot.json"]);
 }
 
+/// The run ids and lines of `logs`, without the stamps.
+fn listed(logs: &[RunLog]) -> Vec<(&str, Option<&str>)> {
+    logs.iter()
+        .map(|log| (log.run_id.as_str(), log.lines.as_deref()))
+        .collect()
+}
+
+/// The stamps of `logs`, as `logs` takes them back.
+fn stamps(logs: &[RunLog]) -> HashMap<String, String> {
+    logs.iter()
+        .filter_map(|log| Some((log.run_id.clone(), log.stamp.clone()?)))
+        .collect()
+}
+
 #[test]
 fn run_store_lists_the_logs_of_valid_run_ids_only() {
     let scratch = Scratch::new("logs");
     let folders = folders();
     let runs = folders.folder(&scratch.runs()).unwrap();
-    assert_eq!(runs.logs(), Ok(Vec::new()));
+    assert_eq!(runs.logs(&HashMap::new()), Ok(Vec::new()));
 
     scratch.plant("r2.jsonl", lines("r2", 1, 1));
     scratch.plant("r1.jsonl", lines("r1", 1, 2));
@@ -150,18 +165,50 @@ fn run_store_lists_the_logs_of_valid_run_ids_only() {
     scratch.plant(".hidden.jsonl", lines(".hidden", 1, 1));
     scratch.plant("r 3.jsonl", lines("r 3", 1, 1));
     scratch.plant("notes.txt", "");
+    let logs = runs.logs(&HashMap::new()).unwrap();
+    let (r1, r2) = (lines("r1", 1, 2), lines("r2", 1, 1));
     assert_eq!(
-        runs.logs(),
-        Ok(vec![
-            RunLog {
-                run_id: "r1".to_owned(),
-                lines: lines("r1", 1, 2),
-            },
-            RunLog {
-                run_id: "r2".to_owned(),
-                lines: lines("r2", 1, 1),
-            },
-        ])
+        listed(&logs),
+        [("r1", Some(r1.as_str())), ("r2", Some(r2.as_str()))]
+    );
+    assert!(logs.iter().all(|log| log.stamp.is_some()));
+}
+
+#[test]
+fn run_store_lists_only_the_lines_of_logs_whose_stamp_changed() {
+    let scratch = Scratch::new("stamps");
+    let folders = folders();
+    let runs = folders.folder(&scratch.runs()).unwrap();
+    runs.append("r1", 0, &lines("r1", 1, 1), None).unwrap();
+    runs.append("r2", 0, &lines("r2", 1, 1), None).unwrap();
+    let first = runs.logs(&HashMap::new()).unwrap();
+
+    // Nothing changed: no log is read again.
+    let again = runs.logs(&stamps(&first)).unwrap();
+    assert_eq!(listed(&again), [("r1", None), ("r2", None)]);
+    assert_eq!(stamps(&again), stamps(&first));
+
+    // r1 grew, r3 is new: only those are read.
+    runs.append("r1", 1, &lines("r1", 2, 2), None).unwrap();
+    runs.append("r3", 0, &lines("r3", 1, 1), None).unwrap();
+    let after = runs.logs(&stamps(&first)).unwrap();
+    let (r1, r3) = (lines("r1", 1, 2), lines("r3", 1, 1));
+    assert_eq!(
+        listed(&after),
+        [
+            ("r1", Some(r1.as_str())),
+            ("r2", None),
+            ("r3", Some(r3.as_str()))
+        ]
+    );
+    assert_ne!(stamps(&after)["r1"], stamps(&first)["r1"]);
+
+    // A stamp the page made up, or kept from a deleted run, reads the log.
+    let stale = HashMap::from([("r2".to_owned(), "1:1".to_owned())]);
+    let r2 = lines("r2", 1, 1);
+    assert_eq!(
+        listed(&runs.logs(&stale).unwrap())[1],
+        ("r2", Some(r2.as_str()))
     );
 }
 

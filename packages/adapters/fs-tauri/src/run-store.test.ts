@@ -56,7 +56,7 @@ verifies("fs-tauri.run-store", () => {
         },
         { command: "run_events", args: { ...folder, runId: "r1" } },
         { command: "run_snapshot", args: { ...folder, runId: "r1" } },
-        { command: "run_logs", args: folder },
+        { command: "run_logs", args: { ...folder, known: {} } },
       ]);
     });
 
@@ -141,6 +141,40 @@ verifies("fs-tauri.run-store", () => {
       await expect(store.list()).rejects.toThrow(/^Broken run log r2\.jsonl, line 1: /u);
     });
 
+    it("reads each log once over many lists, and again only when it changed", async () => {
+      const shell = new FakeRunShell({ opened: [acme] });
+      const store = new TauriRunStore(shell, acme);
+      const runIds = Array.from(
+        { length: 300 },
+        (_, index) => `r${String(index).padStart(3, "0")}`,
+      );
+      for (const runId of runIds) {
+        shell.plant(acme, runId, { log: formatLogLines([started(runId)]) });
+      }
+      const first = await store.list();
+      expect(first).toHaveLength(300);
+      for (let list = 0; list < 5; list += 1) {
+        expect(await store.list()).toEqual(first);
+      }
+      expect(shell.logsRead).toEqual(runIds);
+
+      await store.append("r007", 1, [entered("r007", 2)]);
+      shell.plant(acme, "r300", { log: formatLogLines([started("r300")]) });
+      const after = await store.list();
+      expect(shell.logsRead.slice(300)).toEqual(["r007", "r300"]);
+      expect(after).toHaveLength(301);
+      expect(after.find((summary) => summary.id === "r007")).toEqual(await store.get("r007"));
+    });
+
+    it("gives each list its own summaries, so changing one doesn't change the next", async () => {
+      const shell = new FakeRunShell({ opened: [acme] });
+      const store = new TauriRunStore(shell, acme);
+      shell.plant(acme, "r1", { log: formatLogLines([started("r1")]) });
+      const [summary] = await store.list();
+      (summary as { id: string }).id = "changed";
+      expect((await store.list()).map(({ id }) => id)).toEqual(["r1"]);
+    });
+
     it("passes on the shell's broken log as a plain error with its message", async () => {
       const shell = new FakeRunShell({ opened: [acme] });
       shell.refuseNext("broken_log");
@@ -202,7 +236,15 @@ verifies("fs-tauri.run-store", () => {
         const error = await rejection(answering(answer).snapshot("r1"));
         expect(errorKindOf(error), JSON.stringify(answer)).toBe("unavailable");
       }
-      for (const answer of ["logs", [null], [{ runId: "r1" }]]) {
+      const logs: unknown[] = [
+        "logs",
+        [null],
+        [{ runId: "r1" }],
+        [{ runId: "r1", stamp: 1, lines: "" }],
+        // Unchanged lines the store never had.
+        [{ runId: "r1", stamp: "1:1", lines: null }],
+      ];
+      for (const answer of logs) {
         const error = await rejection(answering(answer).list());
         expect(errorKindOf(error), JSON.stringify(answer)).toBe("unavailable");
       }

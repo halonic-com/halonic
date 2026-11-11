@@ -21,7 +21,7 @@ This crate does only the file work. The page keeps everything else in TypeScript
 - `append(runId, expectedSeq, lines, snapshot)`: `Appended { lastSeq }` or `Conflict { lastSeq }`. A snapshot that can't be written doesn't fail the append; the error comes back for the shell to log. Nor does a lock that can't be released once the lines are stored: a retry would get `Conflict` with its own events in the log. That error comes back too, and the lock left behind goes stale after 10 seconds.
 - `events(runId)`: the log's whole lines, empty for a run with no log.
 - `snapshot(runId)`: the snapshot's text and how many events the log holds, so the page drops a snapshot ahead of the log.
-- `logs()`: every run's lines, sorted by run id, for the page's `list`.
+- `logs(known)`: every run's stamp (the log's size and modification time) and lines, sorted by run id, for the page's `list`. A log whose stamp is still the one in `known` isn't read: its lines are `None`, and the page keeps what it worked out from them (HAL-5545).
 
 Unlike `fs-node`, an append reads the whole log again to find its last event instead of remembering where it ended. That keeps this side simple; it can learn the same cache when logs get long.
 

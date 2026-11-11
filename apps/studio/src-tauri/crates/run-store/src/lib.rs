@@ -20,9 +20,11 @@ mod log_file;
 mod run_id;
 mod turns;
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 pub use error::RunStoreError;
 pub use halonic_run_lock::ThisComputer;
@@ -71,8 +73,13 @@ pub struct StoredSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunLog {
     pub run_id: String,
-    /// The log's whole lines.
-    pub lines: String,
+    /// The log file's size and modification time, taken before its lines
+    /// were read, or `None` when the file system gives no time. A log only
+    /// grows, so an unchanged stamp means unchanged lines.
+    pub stamp: Option<String>,
+    /// The log's whole lines, or `None` when the caller already had them:
+    /// its known stamp is still the file's.
+    pub lines: Option<String>,
 }
 
 /// Every run folder the shell writes: what each lock is judged against, and
@@ -194,9 +201,11 @@ impl<C: ThisComputer> RunFolder<'_, C> {
     }
 
     /// Every run's log, sorted by run id, for the page to work out the list
-    /// from, as `fs-node` does on every call. Only files named
-    /// `<runId>.jsonl` for a valid run id are read.
-    pub fn logs(&self) -> Result<Vec<RunLog>, RunStoreError> {
+    /// from. Only files named `<runId>.jsonl` for a valid run id are read,
+    /// and a log whose stamp is still the one in `known` isn't read at all:
+    /// the page keeps what it worked out from it, so a list of hundreds of
+    /// runs reads only the logs that grew since the last list (HAL-5545).
+    pub fn logs(&self, known: &HashMap<String, String>) -> Result<Vec<RunLog>, RunStoreError> {
         let entries = match fs::read_dir(&self.root) {
             Ok(entries) => entries,
             Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
@@ -213,11 +222,54 @@ impl<C: ThisComputer> RunFolder<'_, C> {
         run_ids.sort();
         run_ids
             .into_iter()
-            .map(|run_id| {
-                let lines = self.events(&run_id)?;
-                Ok(RunLog { run_id, lines })
-            })
+            .map(|run_id| self.log(run_id, known))
             .collect()
+    }
+
+    /// One run's entry of `logs`. The stamp is taken in the run's turn and
+    /// before the lines, so lines appended in between are read again next time.
+    fn log(
+        &self,
+        run_id: String,
+        known: &HashMap<String, String>,
+    ) -> Result<RunLog, RunStoreError> {
+        let lock_file = self.file(&run_id, LOCK_SUFFIX);
+        self.take_turn(&lock_file, || -> Result<RunLog, RunStoreError> {
+            let stamp = self.stamp(&run_id)?;
+            if stamp.is_some() && stamp.as_ref() == known.get(&run_id) {
+                return Ok(RunLog {
+                    run_id,
+                    stamp,
+                    lines: None,
+                });
+            }
+            let log = self.read_log(&run_id)?;
+            let lines = if log.is_other_runs(&run_id) {
+                String::new()
+            } else {
+                log.lines
+            };
+            Ok(RunLog {
+                run_id,
+                stamp,
+                lines: Some(lines),
+            })
+        })
+    }
+
+    /// The log's size and modification time in nanoseconds, as one text,
+    /// or `None` when the log is gone or the file system gives no time.
+    fn stamp(&self, run_id: &str) -> Result<Option<String>, RunStoreError> {
+        let metadata = match fs::metadata(self.file(run_id, LOG_SUFFIX)) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(error.into()),
+        };
+        let modified = metadata
+            .modified()
+            .ok()
+            .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok());
+        Ok(modified.map(|modified| format!("{}:{}", metadata.len(), modified.as_nanos())))
     }
 
     /// Checks `expected_seq` and writes an append, with the run's lock held.

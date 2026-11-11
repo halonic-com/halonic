@@ -50,6 +50,11 @@ export class TauriRunStore implements RunStore {
   readonly #shell: TauriShell;
   readonly #folder: { workspace: string; deployment: string | null };
   readonly #onSnapshotError: (runId: string, error: unknown) => void;
+  /**
+   * What the last `list` worked out from each run's log, by the log's stamp,
+   * so the next one asks the shell only for the logs that changed (HAL-5545).
+   */
+  #listed: ReadonlyMap<string, ListedRun> = new Map();
 
   /**
    * @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__`
@@ -121,19 +126,33 @@ export class TauriRunStore implements RunStore {
     return summarize(await this.events(runId));
   }
 
+  /**
+   * Every run's summary. The shell leaves out the lines of a log whose stamp
+   * is still the one this store summarised, so a list reads and parses only
+   * the logs that changed since the last one, however often a page asks.
+   */
   async list(filter: RunFilter = {}): Promise<RunSummary[]> {
-    const logs = await this.#call(runCommands.logs, {});
+    const before = this.#listed;
+    const known = Object.fromEntries([...before].map(([runId, { stamp }]) => [runId, stamp]));
+    const logs = await this.#call(runCommands.logs, { known });
     if (!Array.isArray(logs)) {
       throw noAnswer();
     }
+    const listed = new Map<string, ListedRun>();
     const summaries: RunSummary[] = [];
     for (const log of logs) {
-      const { runId, lines } = checkedLog(log);
-      const summary = summarize(readLog(runId, lines));
+      const { runId, stamp, lines } = checkedLog(log);
+      const summary =
+        lines === null ? knownSummary(before, runId, stamp) : summarizeLog(runId, lines);
+      if (stamp !== null) {
+        listed.set(runId, { stamp, summary });
+      }
       if (summary !== null && matchesRunFilter(summary, filter)) {
-        summaries.push(summary);
+        // A copy, so a caller changing it can't change the next list.
+        summaries.push(structuredClone(summary));
       }
     }
+    this.#listed = listed;
     return summaries.sort(compareRunSummaries);
   }
 
@@ -187,6 +206,29 @@ function readLog(runId: string, lines: string): RunEvent[] {
   return parseLogLines(lines, runId, `${runId}.jsonl`);
 }
 
+/** A run as the last `list` worked it out: the log's stamp, and its summary. */
+interface ListedRun {
+  readonly stamp: string;
+  readonly summary: RunSummary | null;
+}
+
+function summarizeLog(runId: string, lines: string): RunSummary | null {
+  return summarize(readLog(runId, lines));
+}
+
+/** The summary of a log the shell says is unchanged, which the store must have with that stamp. */
+function knownSummary(
+  listed: ReadonlyMap<string, ListedRun>,
+  runId: string,
+  stamp: string | null,
+): RunSummary | null {
+  const known = listed.get(runId);
+  if (known === undefined || known.stamp !== stamp) {
+    throw noAnswer();
+  }
+  return known.summary;
+}
+
 /** The shell's answer to an append, checked as far as the adapter relies on it. */
 function checkedAppend(answer: unknown): { outcome: AppendResult; snapshotError?: string } {
   const { ok, reason, lastSeq, snapshotError } = (answer ?? {}) as Record<string, unknown>;
@@ -213,12 +255,20 @@ function checkedStoredSnapshot(answer: unknown): { text: string; logEvents: numb
   return { text, logEvents };
 }
 
-function checkedLog(answer: unknown): { runId: string; lines: string } {
-  const { runId, lines } = (answer ?? {}) as Record<string, unknown>;
-  if (typeof runId !== "string" || typeof lines !== "string") {
+function checkedLog(answer: unknown): {
+  runId: string;
+  stamp: string | null;
+  lines: string | null;
+} {
+  const { runId, stamp, lines } = (answer ?? {}) as Record<string, unknown>;
+  if (
+    typeof runId !== "string" ||
+    (stamp !== null && typeof stamp !== "string") ||
+    (lines !== null && typeof lines !== "string")
+  ) {
     throw noAnswer();
   }
-  return { runId, lines };
+  return { runId, stamp, lines };
 }
 
 /** A stored snapshot, or `null` when the text isn't one, read as `FolderRunStore` reads it. */

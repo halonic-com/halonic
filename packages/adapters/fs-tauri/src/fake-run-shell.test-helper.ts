@@ -10,6 +10,11 @@ interface RunFiles {
   snapshot?: string;
 }
 
+/** A run's files, with the number of the write that last changed its log. */
+interface StoredRun extends RunFiles {
+  written: number;
+}
+
 /**
  * A shell that answers the `run_*` commands as the Rust shell does, written
  * out on its own rather than from the adapter: a run folder per workspace
@@ -25,7 +30,10 @@ export class FakeRunShell implements TauriShell {
   readonly calls: ShellCall[] = [];
   /** The folders the person opened in the shell. */
   readonly opened: readonly string[];
-  readonly #folders = new Map<string, Map<string, RunFiles>>();
+  /** The run ids whose lines `run_logs` gave, in order: each one is a log read. */
+  readonly logsRead: string[] = [];
+  readonly #folders = new Map<string, Map<string, StoredRun>>();
+  #writes = 0;
   readonly #granted: boolean;
   #nextRefusal: RunRefusalKind | undefined;
   #snapshotFails = false;
@@ -41,7 +49,7 @@ export class FakeRunShell implements TauriShell {
 
   /** Writes a run's files directly, as another writer or a damaged disk leaves them. */
   plant(workspace: string, runId: string, files: RunFiles, deployment: string | null = null): void {
-    this.#folder(workspace, deployment).set(runId, { ...files });
+    this.#folder(workspace, deployment).set(runId, { ...files, written: ++this.#writes });
   }
 
   /** Makes the next call fail this way, before anything is read or written. */
@@ -75,9 +83,7 @@ export class FakeRunShell implements TauriShell {
     }
     const folder = this.#folder(workspace, deployment);
     if (command === "run_logs") {
-      return [...folder.keys()]
-        .sort((left, right) => (left < right ? -1 : 1))
-        .map((runId) => ({ runId, lines: folder.get(runId)?.log }));
+      return this.#logs(folder, args["known"] as Record<string, string>);
     }
     const runId = String(args["runId"]);
     if (!isRunId(runId)) {
@@ -95,17 +101,31 @@ export class FakeRunShell implements TauriShell {
     }
   }
 
-  #append(folder: Map<string, RunFiles>, runId: string, args: Record<string, unknown>): unknown {
+  #logs(folder: Map<string, StoredRun>, known: Record<string, string>): unknown {
+    return [...folder.keys()]
+      .sort((left, right) => (left < right ? -1 : 1))
+      .map((runId) => {
+        const { log, written } = folder.get(runId) as StoredRun;
+        const stamp = `${log.length}:${written}`;
+        if (known[runId] === stamp) {
+          return { runId, stamp, lines: null };
+        }
+        this.logsRead.push(runId);
+        return { runId, stamp, lines: log };
+      });
+  }
+
+  #append(folder: Map<string, StoredRun>, runId: string, args: Record<string, unknown>): unknown {
     const lines = String(args["lines"]);
     if (!lines.endsWith("\n") || lines.split("\n").slice(0, -1).includes("")) {
       throw refusal("invalid_lines", "not whole lines");
     }
-    const files = folder.get(runId) ?? { log: "" };
+    const files = folder.get(runId) ?? { log: "", written: 0 };
     const lastSeq = countLines(files.log);
     if (lastSeq !== args["expectedSeq"]) {
       return { ok: false, reason: "conflict", lastSeq };
     }
-    const appended: RunFiles = { log: files.log + lines };
+    const appended: StoredRun = { log: files.log + lines, written: ++this.#writes };
     if (args["expectedSeq"] !== 0 && files.snapshot !== undefined) {
       appended.snapshot = files.snapshot;
     }
@@ -129,7 +149,7 @@ export class FakeRunShell implements TauriShell {
     return { text: files.snapshot, logEvents: countLines(files.log) };
   }
 
-  #folder(workspace: string, deployment: string | null): Map<string, RunFiles> {
+  #folder(workspace: string, deployment: string | null): Map<string, StoredRun> {
     const key = JSON.stringify([workspace, deployment]);
     let folder = this.#folders.get(key);
     if (folder === undefined) {

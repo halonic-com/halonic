@@ -9,6 +9,7 @@
 //! shell works out `<profile>/workspaces/<key>/runs` itself, as
 //! `runsFolder` in `@halonicjs/profile` does.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::OpenedFolders;
@@ -118,12 +119,14 @@ pub struct SnapshotAnswer {
     log_events: u64,
 }
 
-/// One entry of `run_logs`: a run's whole lines.
+/// One entry of `run_logs`: a run's stamp, and its whole lines, or `null`
+/// when the page's known stamp is still the log's.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogAnswer {
     run_id: String,
-    lines: String,
+    stamp: Option<String>,
+    lines: Option<String>,
 }
 
 /// The run folder of `workspace`, or of its deployment `deployment`, in
@@ -230,19 +233,23 @@ pub async fn run_snapshot<R: Runtime>(
     .await
 }
 
-/// Every run's whole lines, sorted by run id, for the page's list.
+/// Every run's stamp and whole lines, sorted by run id, for the page's
+/// list. `known` maps run ids to the stamps the page already has the lines
+/// of; those logs aren't read again.
 #[tauri::command]
 pub async fn run_logs<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
     deployment: Option<String>,
+    known: Option<HashMap<String, String>>,
 ) -> Result<Vec<LogAnswer>, RunRefusal> {
-    in_runs_folder(app, workspace, deployment, |runs| {
-        let logs = runs.logs()?;
+    in_runs_folder(app, workspace, deployment, move |runs| {
+        let logs = runs.logs(&known.unwrap_or_default())?;
         Ok(logs
             .into_iter()
             .map(|log| LogAnswer {
                 run_id: log.run_id,
+                stamp: log.stamp,
                 lines: log.lines,
             })
             .collect())

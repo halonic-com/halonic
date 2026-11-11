@@ -9,7 +9,8 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore` and `DefinitionStore` p
 - `TauriRunStore`: every call goes to the shell's `run_append`, `run_events`, `run_snapshot` or
   `run_logs` command. The shell keeps the runs in the profile's run folder for the workspace, laid
   out as `FolderRunStore` in `fs-node` lays it out, and holds the run's lock file while it appends,
-  so of a CLI and the desktop app appending with the same `expectedSeq`, exactly one wins.
+  so of a CLI and the desktop app appending with the same `expectedSeq`, exactly one wins. `list`
+  keeps each run's summary by its log's stamp, so the shell sends only the logs that changed.
 - `TauriBlobStore`: every call goes to the shell's `blob_put` or `blob_get` command. The shell
   keeps the blobs in the profile's blob folder for the workspace, laid out as `FolderBlobStore` in
   `fs-node` lays it out, so a blob one of them stored is there for the other.

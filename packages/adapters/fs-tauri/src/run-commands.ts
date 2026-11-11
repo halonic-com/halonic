@@ -26,7 +26,13 @@ export const runCommands = {
   events: "run_events",
   /** `{ runId }` → `{ text, logEvents }`, the snapshot file and the log's length, or `null`. */
   snapshot: "run_snapshot",
-  /** `{}` → `[{ runId, lines }]`, every run's whole lines, for the list. */
+  /**
+   * `{ known }` → `[{ runId, stamp, lines }]`, every run's log for the list.
+   * `stamp` is the log's size and modification time as text, or `null` when
+   * the file system gives none. `known` maps run ids to stamps the page
+   * already has the lines of; for those, `lines` is `null` while the stamp is
+   * unchanged, and the log's whole lines otherwise.
+   */
   logs: "run_logs",
 } as const;
 
