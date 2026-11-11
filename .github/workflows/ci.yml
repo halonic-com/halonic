@@ -1119,8 +1119,7 @@ jobs:
           pnpm exec turbo run typecheck test --env-mode=loose --output-logs=new-only
           --filter=@halonicjs/adapter-git
       # Which of the listed packages to test. On a push to main, all of them
-      # and the integration test kit (not testing-parity: its recordings come from
-      # the old repo's POSIX runner, which cannot start on Windows, HAL-4550). On a pull request or in a merge group, the
+      # and the integration and parity test kits. On a pull request or in a merge group, the
       # listed packages among those Turbo says changed or depend on a changed
       # package since the base commit. A change to the workflow or the setup
       # action runs the whole list (no package changed, the job itself did),
@@ -1135,9 +1134,9 @@ jobs:
         run: |
           list="@halonicjs/adapter-fs-node @halonicjs/adapter-harness-kit @halonicjs/adapter-harness-claude-code @halonicjs/adapter-harness-codex @halonicjs/adapter-mcp @halonicjs/workspace @halonicjs/app halonic"
           if [ "$EVENT" = "push" ]; then
-            list="$list @halonicjs/testing-integration"
+            list="$list @halonicjs/testing-integration @halonicjs/testing-parity"
             picked="$list"
-            echo "Push to main: the whole list and the integration test kit."
+            echo "Push to main: the whole list and the integration and parity test kits."
           else
             picked="$list"
             if [ -n "$BASE" ] && ! git diff --name-only "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
