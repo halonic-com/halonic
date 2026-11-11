@@ -1559,8 +1559,13 @@ jobs:
       - name: Watch the other jobs
         shell: bash
         run: |
+          # Every merge group polls the API for its whole run, so the interval
+          # counts against the token's hourly limit: 30 s, and a growing wait
+          # (up to 5 min) after an error such as a rate limit (HAL-5146).
+          pause=30
           while true; do
-            jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep 15; continue; }
+            jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue; }
+            pause=30
             # Our own job and ci-ok don't count; a job that hasn't finished yet has no conclusion.
             failed=$(echo "$jobs" | jq -r '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")')
             if [ -n "$failed" ]; then
@@ -1570,7 +1575,7 @@ jobs:
             fi
             open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
             [ "$open" = "0" ] && exit 0
-            sleep 10
+            sleep 30
           done
 
   ci-ok:

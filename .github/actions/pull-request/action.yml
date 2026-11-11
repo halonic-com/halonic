@@ -29,6 +29,28 @@ runs:
           exit 0
         fi
         file="$RUNNER_TEMP/pull-request-event.json"
-        gh api "repos/$REPO/pulls/$NUMBER" \
-          --jq '{pull_request: {title, body, head: {ref: .head.ref}, labels: [.labels[] | {name}]}}' > "$file"
+        # Many merge groups run at once, each with several jobs that read the
+        # pull request, so the token's hourly API limit can run out (HAL-5146).
+        # Retry only a rate limit (403/429 with a rate-limit message), with a
+        # growing wait; any other error fails at once. Never skip the read: the
+        # leak guard must see the pull request's current text.
+        attempt=0
+        while true; do
+          attempt=$((attempt + 1))
+          if gh api "repos/$REPO/pulls/$NUMBER" \
+            --jq '{pull_request: {title, body, head: {ref: .head.ref}, labels: [.labels[] | {name}]}}' > "$file" 2> "$RUNNER_TEMP/pull-request-read.err"; then
+            break
+          fi
+          cat "$RUNNER_TEMP/pull-request-read.err" >&2
+          if ! grep -qiE 'rate limit|HTTP 429|abuse detection|secondary' "$RUNNER_TEMP/pull-request-read.err" || [ "$attempt" -ge 8 ]; then
+            echo "::error::Couldn't read pull request #$NUMBER (attempt $attempt)."
+            exit 1
+          fi
+          # 20 s, 40 s, 80 s, then 120 s (at most), plus up to 10 s of jitter.
+          wait=$((20 * (1 << (attempt - 1))))
+          [ "$wait" -gt 120 ] && wait=120
+          wait=$((wait + RANDOM % 10))
+          echo "::warning::GitHub's API rate limit is reached; retrying in ${wait}s (attempt $attempt of 8)."
+          sleep "$wait"
+        done
         echo "event-path=$file" >> "$GITHUB_OUTPUT"
