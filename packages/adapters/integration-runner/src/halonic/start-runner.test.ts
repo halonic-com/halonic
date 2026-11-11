@@ -204,5 +204,25 @@ verifies("integration-runner.start", () => {
       }
       expect(sandbox.profiles).toHaveLength(0);
     });
+
+    it.each([
+      ["Node's folder", { files: { nodeFolder: "/" } }],
+      ["runner file", { files: { runnerFile: "/run" } }],
+      ["integration's folder", { files: { integrationFolder: "/fake-home" } }],
+      ["temp folder", { machine: { tempFolder: "/run" } }],
+    ])(
+      "opens no session when the %s is or holds a folder the fence hides",
+      async (name, change) => {
+        const sandbox = new FakeSandbox();
+        const options = startOptions(sandbox);
+        const files = { ...options.files, ...("files" in change ? change.files : {}) };
+        const machine = { ...options.machine, ...("machine" in change ? change.machine : {}) };
+        const entry = { file: `${files.integrationFolder}/index.js`, exportName: "weather" };
+        await expect(startRunner({ ...options, files, machine, entry })).rejects.toThrow(
+          `the ${name} `,
+        );
+        expect(sandbox.profiles).toHaveLength(0);
+      },
+    );
   });
 });

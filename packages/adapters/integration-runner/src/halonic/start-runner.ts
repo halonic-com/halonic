@@ -51,6 +51,7 @@ export interface StartedRunner extends RunnerConnection {
  * itself, closes the session.
  *
  * @throws {RunnerStoppedError} when the runner stops before it is ready
+ * @throws when a path the runner needs is, or holds, a folder the fence hides, or a folder on the way can't be listed; no session is opened
  * @throws when the sandbox can't open the session or start the runner, such as a fence proof that is `not-fenced`
  */
 export async function startRunner(options: StartRunnerOptions): Promise<StartedRunner> {
@@ -83,6 +84,9 @@ export async function startRunner(options: StartRunnerOptions): Promise<StartedR
   }
   const fence = session.fence;
   const sessionClosed = connection.stopped.then(closeSession);
+  // `close()` still rethrows a failed session close; this only keeps it from
+  // going unhandled when nobody calls `close()`.
+  sessionClosed.catch(() => {});
   return {
     fence,
     stopped: connection.stopped,

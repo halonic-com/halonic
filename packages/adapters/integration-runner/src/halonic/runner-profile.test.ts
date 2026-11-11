@@ -74,6 +74,34 @@ verifies("integration-runner.start", () => {
     });
   });
 
+  describe("runnerProfile refusals", () => {
+    it.each([
+      ["Node's folder", { ...files, nodeFolder: "/" }, machine],
+      ["Node's folder", { ...files, nodeFolder: "/fake-home" }, machine],
+      ["runner file", { ...files, runnerFile: "/run" }, machine],
+      ["integration's folder", { ...files, integrationFolder: "/fake-home" }, machine],
+      ["integration's folder", { ...files, integrationFolder: "/shared-tmp" }, machine],
+      ["temp folder", files, { ...machine, tempFolder: "/shared-tmp" }],
+    ])("refuses a %s that is or holds a folder to hide", (name, someFiles, someMachine) => {
+      expect(() => runnerProfile(someFiles, someMachine, listFolder)).toThrow(`the ${name} `);
+    });
+
+    it("fails when a folder on the way to a kept path can't be listed", () => {
+      const unreadable = (folder: string) => {
+        if (folder === "/fake-home/code") throw new Error("EACCES");
+        return listFolder(folder);
+      };
+      expect(() => runnerProfile(files, machine, unreadable)).toThrow("EACCES");
+    });
+
+    it("fails on disk when a folder on the way is missing", () => {
+      const missing = "/halonic-test-missing-folder";
+      expect(() => hiddenAround(missing, [`${missing}/integration`])).toThrow(
+        `can't list ${missing}`,
+      );
+    });
+  });
+
   describe("hiddenAround", () => {
     it("hides a folder as a whole when nothing kept is inside it", () => {
       expect(hiddenAround("/run", ["/fake-home/code/weather"], listFolder)).toEqual(["/run"]);
