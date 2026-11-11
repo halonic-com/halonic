@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
+import { maxTimeLimitMs } from "./profile-schema.ts";
 import { sandboxRoutes } from "./sandbox-routes.ts";
 import { SessionTable } from "./session-table.ts";
 
@@ -110,9 +111,9 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function started(): Promise<string> {
+async function started(table = new SessionTable()): Promise<string> {
   sandbox = new FakeSandbox();
-  sessions = new SessionTable();
+  sessions = table;
   server = await startHostServer(token, sandboxRoutes(sandbox, sessions));
   return server.url;
 }
@@ -258,5 +259,54 @@ describe("sandboxRoutes", () => {
     expect(await stream.text()).toBe("");
     expect(healthy?.closed).toBe(true);
     expect(broken?.listeners.size).toBe(0);
+  });
+
+  it("closes a session whose time limit ran out, so its id and stream end too", async () => {
+    const url = await started();
+    const answer = await post(url, "/v1/sandbox/sessions/open", {
+      profile: { ...profile, timeLimitMs: 50 },
+    });
+    const { session: id } = (await answer.json()) as { session: string };
+    const stream = await post(url, "/v1/sandbox/sessions/blocked", { session: id });
+    expect(await stream.text()).toBe("");
+    expect(sandbox.opened[0]?.closed).toBe(true);
+    expect((await post(url, "/v1/sandbox/sessions/close", { session: id })).status).toBe(404);
+  });
+
+  it("refuses a time limit longer than a timer can hold", async () => {
+    const url = await started();
+    const tooLong = { ...profile, timeLimitMs: maxTimeLimitMs + 1 };
+    expect((await post(url, "/v1/sandbox/sessions/open", { profile: tooLong })).status).toBe(400);
+    const longest = { ...profile, timeLimitMs: maxTimeLimitMs };
+    expect((await post(url, "/v1/sandbox/sessions/open", { profile: longest })).status).toBe(200);
+  });
+
+  it("keeps no more sessions than its limit, counting those still opening", async () => {
+    const url = await started(new SessionTable({ maxSessions: 2 }));
+    const release = signal();
+    sandbox.hold = release.promise;
+    const opening = post(url, "/v1/sandbox/sessions/open", { profile });
+    await sandbox.openCalled.promise;
+    sandbox.hold = undefined;
+    const open = await openSession(url);
+
+    const refused = await post(url, "/v1/sandbox/sessions/open", { profile });
+    expect(refused.status).toBe(429);
+    const { error } = (await refused.json()) as { error: { kind: string } };
+    expect(error.kind).toBe("too_many_sessions");
+
+    release.settle();
+    expect((await opening).status).toBe(200);
+    expect((await post(url, "/v1/sandbox/sessions/open", { profile })).status).toBe(429);
+    await post(url, "/v1/sandbox/sessions/close", { session: open });
+    expect((await post(url, "/v1/sandbox/sessions/open", { profile })).status).toBe(200);
+  });
+
+  it("frees the place of a session that failed to open", async () => {
+    const url = await started(new SessionTable({ maxSessions: 1 }));
+    sandbox.refuseOpen = true;
+    expect((await post(url, "/v1/sandbox/sessions/open", { profile })).status).toBe(422);
+    sandbox.refuseOpen = false;
+    expect((await post(url, "/v1/sandbox/sessions/open", { profile })).status).toBe(200);
   });
 });

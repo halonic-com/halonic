@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import type { Sandbox, SandboxSession } from "@halonicjs/ports";
+import type { Sandbox, SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
@@ -12,10 +12,43 @@ const sessionBody = s.object({ session: s.string().min(1) }).strict();
 
 const unknownSessionMessage = "The agent host has no open sandbox session with this id.";
 const hostStoppingMessage = "The agent host is stopping and opens no more sessions.";
+const tooManySessionsMessage =
+  "The agent host has as many sandbox sessions open as it keeps. Close one first.";
 
 /** Answers that the host is stopping and opens no more sessions. */
 function sendHostStopping(response: ServerResponse): void {
   sendError(response, 503, "host_stopping", hostStoppingMessage);
+}
+
+/** Opens a session in a place the caller reserved in `sessions`, and answers its id. */
+async function openSession(
+  sandbox: Sandbox,
+  sessions: SessionTable,
+  profile: SandboxProfile,
+  response: ServerResponse,
+): Promise<void> {
+  let callerGone = false;
+  response.once("close", () => {
+    callerGone = true;
+  });
+  let session: SandboxSession;
+  try {
+    session = await sandbox.open(profile);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    sendError(response, 422, "sandbox_open_failed", message);
+    return;
+  }
+  if (callerGone) {
+    // The caller went away while the session opened: nobody can close it later.
+    await session.close();
+    return;
+  }
+  // Read the fence before adding: a host that is stopping closes the session in `add`.
+  const fence = session.fence;
+  const id = await sessions.add(session);
+  if (id === undefined) sendHostStopping(response);
+  else sendJson(response, 200, { session: id, fence });
 }
 
 /**
@@ -25,13 +58,14 @@ function sendHostStopping(response: ServerResponse): void {
  * - `GET /v1/sandbox/check` and `GET /v1/sandbox/capabilities` answer as the port does;
  * - `POST /v1/sandbox/sessions/open` with `{ profile }` opens a session and
  *   answers `{ session, fence }`: its id and the fence proof, or 503
- *   `host_stopping` once the host has begun to stop;
+ *   `host_stopping` once the host has begun to stop, or 429
+ *   `too_many_sessions` when the session table is full;
  * - `POST /v1/sandbox/sessions/blocked` with `{ session }` streams the
  *   session's blocked accesses, one `SandboxBlock` per line, until it closes;
  * - `POST /v1/sandbox/sessions/close` with `{ session }` closes it.
  *
- * A session that ends by itself (time limit) keeps its id until it is closed
- * here; the host closes every session when it stops.
+ * A session that ends by itself (time limit) is closed here too, which ends
+ * its stream; the host closes every session when it stops.
  */
 export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRoute[] {
   return [
@@ -55,28 +89,16 @@ export function sandboxRoutes(sandbox: Sandbox, sessions: SessionTable): HostRou
           sendHostStopping(response);
           return;
         }
-        let callerGone = false;
-        response.once("close", () => {
-          callerGone = true;
-        });
-        let session: SandboxSession;
+        const release = sessions.reserve();
+        if (release === undefined) {
+          sendError(response, 429, "too_many_sessions", tooManySessionsMessage);
+          return;
+        }
         try {
-          session = await sandbox.open(body.profile);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          sendError(response, 422, "sandbox_open_failed", message);
-          return;
+          await openSession(sandbox, sessions, body.profile, response);
+        } finally {
+          release();
         }
-        if (callerGone) {
-          // The caller went away while the session opened: nobody can close it later.
-          await session.close();
-          return;
-        }
-        // Read the fence before adding: a host that is stopping closes the session in `add`.
-        const fence = session.fence;
-        const id = await sessions.add(session);
-        if (id === undefined) sendHostStopping(response);
-        else sendJson(response, 200, { session: id, fence });
       },
     },
     {

@@ -20,6 +20,13 @@ const bridge = s
   })
   .strict();
 
+/**
+ * The longest time limit a timer can hold: Node fires a `setTimeout` of more
+ * than 2^31 - 1 ms (about 24.8 days) after 1 ms, which would end the session
+ * at once.
+ */
+export const maxTimeLimitMs = 2_147_483_647;
+
 export const sandboxProfileSchema: Schema<SandboxProfile> = s
   .object({
     workingFolder: absolutePath,
@@ -35,6 +42,6 @@ export const sandboxProfileSchema: Schema<SandboxProfile> = s
         allowedSites: s.array(s.string().min(1)),
       })
       .strict(),
-    timeLimitMs: s.number().int().positive(),
+    timeLimitMs: s.number().int().positive().max(maxTimeLimitMs),
   })
   .strict();
