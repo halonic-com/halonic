@@ -137,8 +137,9 @@ jobs:
       # Right after install, before any turbo task or `pnpm discover`: a fresh
       # clone must run the CLI as `pnpm install` left it (HAL-5009). The
       # gitignored src/generated/ files come from the root `prepare` script.
+      # Runs the `bin` launcher users get, not src/main.ts (HAL-6414).
       - name: CLI runs on a fresh install
-        run: node apps/cli/src/main.ts --help
+        run: node apps/cli/bin/halonic.js --help
       - id: pr
         uses: $/.github/actions/pull-request
       # Reads the title from a file: an `env:` block is printed in the log.
