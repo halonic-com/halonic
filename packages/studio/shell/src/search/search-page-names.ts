@@ -87,8 +87,8 @@ export interface SearchPageNames {
 /**
  * The "Names and descriptions" section of the Search page (VK T2-F7): every found item whose name
  * or description contains the words, read as plain text and narrowed by Match case, Whole word
- * and the In and Hub chips. An item found twice shows once, with the description any provider
- * gave. Items whose name matches come first, ranked as Ctrl K ranks names (the whole name, its
+ * and the In and Hub chips. An item found twice shows once, with the first description any
+ * provider gave. Items whose name matches come first, ranked as Ctrl K ranks names (the whole name, its
  * start, a word's start, anywhere) with the same options, then items whose description alone
  * matches; equal ones keep the providers' order. Unlike Ctrl K, recently opened items don't come
  * first among equals. A provider's own looser match doesn't count: the words must be

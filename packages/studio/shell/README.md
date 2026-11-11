@@ -360,9 +360,10 @@ narrow them through `findWords`, and the In and Hub chips narrow the items to on
 Items whose name matches come first, ranked as Ctrl K ranks names (`matchName` with the page's
 options, so the order agrees with the highlight), then those whose description alone matches.
 Unlike Ctrl K, recently opened items don't come first among equals. An item two providers found
-shows once, with the description either gave. `kinds` and `hubs` are what the two pickers offer. When nothing matches,
-`nothingFound` shows the empty state, with **Search all hubs** while a hub is picked
-(`offerAllHubs`), and `couldNotSearch` replaces it when a provider failed.
+shows once, with the first description either gave. `kinds` and `hubs` are what the two
+pickers offer. When nothing matches, `nothingFound` shows the empty state, with **Search all
+hubs** while a hub is picked (`offerAllHubs`), and `couldNotSearch` replaces it when a provider
+failed.
 
 ```ts
 const found = await searchProviders(words, shell.contributions.search.providers(), contextFor);
