@@ -102,7 +102,7 @@ verifies("cli.commands.routines.list", () => {
 
       const { io } = await routinesIn();
 
-      expect(io.stdout).toEqual(["Hourly check   Every hour   Next 13:00   Never ran"]);
+      expect(io.stdout).toEqual(["Hourly check   Every hour (UTC)   Next 13:00   Never ran"]);
     });
 
     it("says Off for a routine that's off, whatever its trigger", async () => {
@@ -150,8 +150,8 @@ verifies("cli.commands.routines.list", () => {
       const { io } = await routinesIn();
 
       expect(io.stdout).toEqual([
-        "Hourly check   Every hour    Next 13:00    Never ran",
-        "By hand        Manual only   No set time   Never ran",
+        "Hourly check   Every hour (UTC)   Next 13:00    Never ran",
+        "By hand        Manual only        No set time   Never ran",
       ]);
     });
   });
