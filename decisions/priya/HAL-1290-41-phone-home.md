@@ -2,6 +2,7 @@
 
 - Approval: the maintainer approves this change in review of HAL-1290 (15b, phone Home)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iHV6pk24sh9uQfz6jmuZEiIMujhAYBYSq4Ul2yp4Edu7GnqbjAeUBsb1TwBbubtMdD3mTt0OwdGDV893i81wCA==
 
 The requirement gains a promise and narrows one: "Loading Home" is no longer said while a
 section shows its error with a reason. No test was weakened.
