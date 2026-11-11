@@ -1,4 +1,4 @@
-﻿; Halonic's NSIS installer template.
+; Halonic's NSIS installer template.
 ;
 ; Based on Tauri's own template (tauri-bundler 2.x, `nsis/installer.nsi`,
 ; MIT or Apache-2.0, (c) Tauri Programme within The Commons Conservancy).
