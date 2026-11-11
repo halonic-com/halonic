@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-6266 (follow-up to Liam's decision on HAL-6257, option 2; design on HAL-6266)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fKe8JHnvimiexCC38Hg7NQk0yxwGR3jyHQg6jABgcqNEuv7sl0wazhpD3LvQWSrDapFU2tt9zVBaZ2t54nYrCA==
 
 Until now a `stdio` connector started on this computer inherited the CLI's whole environment
 (`cliConnectorFactories(…, process.env)`), so a connector program could read the model keys and
