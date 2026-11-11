@@ -178,7 +178,8 @@ integration never holds it, and the host keeps the request log.
   marks `optional`, such as the key of a server that may need none, is left
   out when the workspace hasn't set it up; any other missing secret is
   refused as `secret-not-configured`. A value shorter than 8 bytes is
-  refused as `secret-too-short`: the filter couldn't remove it from replies
+  refused as `secret-too-short`, both when the kit places it and when it reads
+  the secrets for the filter: the filter couldn't remove it from replies
   without removing ordinary text too.
 - **The sheet says where a secret goes.** The code's placement must match
   the one in the policy: the same `as`, the same `header` ignoring ASCII
@@ -209,9 +210,11 @@ integration never holds it, and the host keeps the request log.
   matched: a host allowed to receive a key can always send it back in some
   other form. Neither are a form-encoded copy in lower-case hex, an encoder
   that leaves `/` as it is (Python's `quote`), or JSON that escapes `<`,
-  `>` and `&` (Go's default). A very short secret, such as a 4-digit PIN,
-  is replaced everywhere it occurs in a body, even where it is part of
-  unrelated data. `secretForms` and `removeSecrets` are exported so the
+  `>` and `&` (Go's default). A secret has at least 8 bytes, but it is still
+  replaced everywhere it occurs in a body, even where it is part of
+  unrelated data. The filter reads each part of a text once, so a
+  `[secret removed]` it wrote is never broken up by another secret.
+  `secretForms` and `removeSecrets` are exported so the
   bridge can filter tool results, errors and stderr the same way.
 - **Secrets can't be carried out.** A request whose method, URL, headers or
   body holds a secret value the kit didn't place there itself, in any of

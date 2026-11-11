@@ -114,7 +114,11 @@ Three steps of the loop are named functions, so the HAL-803 rules plug in withou
 `offerListedTools` and `passResultToModel` pass values through unchanged for now. A run's model
 call checks each call with `checkRunToolCall`; a chat turn with `checkChatToolCall`, which refuses
 a call that would need a person's OK, such as one to a connector tool that writes or sends, because
-nothing in a chat can wait for a person.
+nothing in a chat can wait for a person. When the host gives `chatConnectorToolsOf`, a chat turn reads
+each connector file's `tools` lists as a run does: it offers only the tools the file's `allow` names,
+offers nothing from a connector with no lists, and refuses a call to a tool the file's `approve` names
+(or `approve: all`), whatever risk the server lists. Without it, a chat offers every tool its
+connectors list and checks only the risk the servers give.
 
 `LocalExecutorOptions` is what a `LocalExecutor` is built from; `maxRounds` defaults to
 `defaultMaxRounds` (20).
@@ -254,7 +258,7 @@ folder adapter that throws can't keep a waiting parent from hearing that its chi
 
 A `run-harness` effect runs the agent in a harness program (Claude Code or Codex) in a sandbox, through
 `runHarnessCall`. The host's `PlacementPolicy.where` says where: `{ runsOn: "sandbox" }`, or
-`{ runsOn: "this-computer", chosenAt }` when a person chose this computer for the agent's file. The
+`{ runsOn: "this-computer", chosenAt }` (a `PlacementAnswer`) when a person chose this computer for the agent's file. The
 engine can only ask, never choose. It checks the sandbox for that placement first; when the check
 fails it starts nothing, not even the bridge, and the run fails with `sandbox-not-ready` and the
 check's reason code (`sandboxReason` on `run.failed`), which `runFailureReasonOf` takes from the
@@ -262,7 +266,14 @@ engine's own `SandboxNotReadyError`. A step logs `sandbox.started`, then `sandbo
 step on this computer, `sandbox.off` with `chosenAt` (never both), then `harness.started`
 (requirements `engine.run-harness`, `engine.run-harness-failures`).
 
-When the host gives the local executor proposal folders, a top-level run with an agent that runs in a
+The local executor takes these from the host as `HarnessRunsOptions`: the `PlacementPolicy`, a
+sandbox for each `Placement`, the harnesses, the `HarnessBridgeHost` that opens each run's bridge and
+the `HarnessProfileBuilder` whose `profileOf(agent, bridge)` gives the `HarnessAgent`'s
+`HarnessProfile` (the sandbox profile and its denied groups). `HarnessProfiles` in
+`@halonicjs/adapter-harness-kit` is that builder on a real disk.
+
+When the host gives the local executor proposal folders (`RunProposalFolders`, opened for a
+`ProposalRun`), a top-level run with an agent that runs in a
 program harness opens the run's proposal folder before it records `run.started`, and doesn't start when
 it can't. Every harness call of the run and its child runs, `foreach` items included, gets that one
 folder as the agent's `filesFolder`, so the agent writes there and never in the workspace; with no open

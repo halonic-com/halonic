@@ -85,13 +85,13 @@ The smaller exports:
 - `errorKinds` lists the eight kinds and `isErrorKind` tells whether a value is one of them.
 - `fixedClockStart` is the time `fixedClock()` starts at (2026-01-01 UTC).
 
+Each behaviour has a requirement in [`requirements/`](requirements/).
+
 ## Subpath exports
 
 - `@halonicjs/std/error-kind` is the error-kind part on its own: `ErrorKind`, `errorKinds`,
   `isErrorKind`, `KindedError` and `errorKindOf`, the same values `@halonicjs/std` exports. Import it
   where a package needs only the kinds, such as the integration kit, and not the rest of std.
-
-Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
 
