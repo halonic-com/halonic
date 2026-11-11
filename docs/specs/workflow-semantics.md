@@ -61,7 +61,11 @@ decides whether it passes.
   `{{context.reply}}`, it means the same.
 - **Numbers** are read as people and models write them: `1,200.50`,
   `1.200,50`, `EUR 1.250,00`. A side that is no number makes the guard fail,
-  whichever way it compares, so `not` around it passes.
+  whichever way it compares, so `not` around it passes. The last dot or comma
+  is the decimal point when one or two digits, or four or more, follow it
+  (`3.14159` is 3.14159). With exactly three digits it separates thousands
+  (`18.400` is 18,400), unless nothing but zeros comes before it (`0.125` is
+  0.125). A lone `1.234` therefore reads as 1,234.
 - **Empty lists.** `all: []` passes and `any: []` fails.
 
 ## Prompts and picked data

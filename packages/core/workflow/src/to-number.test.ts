@@ -37,12 +37,19 @@ verifies("workflow.to-number", () => {
   it("reads three digits after the last separator as thousands", () => {
     expect(toNumber("1.234.567")).toBe(1_234_567);
     expect(toNumber("1,234")).toBe(1234);
-    expect(toNumber("0.001")).toBe(1);
+    expect(toNumber("1.234")).toBe(1234);
   });
 
-  it("reads a lone separator before three or more digits as thousands, even in a decimal", () => {
-    expect(toNumber("0.125")).toBe(125);
-    expect(toNumber("3.14159")).toBe(314_159);
+  it("reads three digits after a separator as a decimal when the whole part is empty or zero", () => {
+    expect(toNumber("0.125")).toBe(0.125);
+    expect(toNumber("0.001")).toBe(0.001);
+    expect(toNumber(".125")).toBe(0.125);
+    expect(toNumber("-0,500")).toBe(-0.5);
+  });
+
+  it("reads four or more digits after the last separator as decimals", () => {
+    expect(toNumber("3.14159")).toBe(3.14159);
+    expect(toNumber("1.234,5678")).toBe(1234.5678);
   });
 
   it("keeps a leading minus sign", () => {
