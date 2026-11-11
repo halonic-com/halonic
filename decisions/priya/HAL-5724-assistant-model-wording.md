@@ -1,6 +1,6 @@
 # Decision: the unknown-model-alias message names the assistant model
 
-- Approval: wording decided by Liam on [HAL-5724](/HAL/issues/HAL-5724) (team decision, no card); the allowed difference is signed off in review
+- Approval: wording decided by Liam on [HAL-5724](/HAL/issues/HAL-5724) (team decision, no card); the allowed difference is signed off in review (HAL-5754)
 - Kind: internal
 - Task: HAL-5724, from Sofia's words check on HAL-5713
 
@@ -20,7 +20,7 @@ instead of `The session AI uses unknown model alias "turbo"`. The code stays
 - `format.workspace-file`: "64 session AI steps" becomes "64 assistant
   steps". Wording only; the rule is unchanged.
 - `packages/testing/parity/allowed-differences.json`: a new entry,
-  `assistant-model-alias-message` (proposed), lists the old and new message
+  `assistant-model-alias-message` (signed off by Liam in review), lists the old and new message
   for the eight parity cases that reach this check. The recorded fixtures are
   the old loader's output and stay as they are.
 

@@ -10,7 +10,8 @@ An agent's skills, knowledge, collections and connectors are the hub's own or sh
 
 ## Examples
 
-- Given each of the parity cases `agent/unknown-model`, `agent/unknown-method-model`, `agent/unknown-skill`, `agent/unknown-knowledge`, `agent/unknown-collection`, `agent/unknown-connector`, `agent/unknown-subagent`, `agent/own-subagent`, `hub/uses-leaves-out`, `models/unknown-provider`, `models/unknown-fallback`, `workspace/unknown-model` and `workflowTest/unknown-workflow`, when it is loaded, then it gives exactly the error the old loader recorded, at the key path and line its case file names.
+- Given each of the parity cases `agent/unknown-model`, `agent/unknown-method-model`, `agent/unknown-skill`, `agent/unknown-knowledge`, `agent/unknown-collection`, `agent/unknown-connector`, `agent/unknown-subagent`, `agent/own-subagent`, `hub/uses-leaves-out`, `models/unknown-provider`, `models/unknown-fallback` and `workflowTest/unknown-workflow`, when it is loaded, then it gives exactly the error the old loader recorded, at the key path and line its case file names.
+- Given the parity case `workspace/unknown-model`, when it is loaded, then it gives the error `The assistant model (assistant.model) uses "turbo", which isn't an alias in models.yaml.` at the file, key path and line its case file names.
 - Given the parity case `models/wrong-type`, whose `models.yaml` fails, when it is loaded, then the agents `clerk` and `notifier` and the assistant model each use an unknown model alias.
 - Given each of the parity cases `hub/wrong-type`, `hub/missing-required`, `hub/unknown-key` and `hub/deep-nesting`, whose `hub.yaml` fails, when it is loaded, then no check reports an error for the hub's agents.
 - Given a hub without `uses` and an agent with a shared skill and one of the hub's own, when it is loaded, then there is no error.
