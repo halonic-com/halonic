@@ -3,6 +3,7 @@
 - Task: HAL-5259 (the merge queue pushed the 0.1.0 release pull request together with another one, and the bot tagged nothing; HAL-4824)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-5259](/HAL/issues/HAL-5259)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2b9nKnl++2O4R0A+GOVaPtviA86cAKOFB8Qu3YBUEMEfcDlCdLCeufL02GfFE0HgChpPpzSR7uc73yzHyUH7DA==
 
 ## What changes
 
