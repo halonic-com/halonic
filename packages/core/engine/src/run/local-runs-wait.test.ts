@@ -31,7 +31,7 @@ verifies("engine.wait-state", () => {
       nextTimer: "2026-11-11T09:00:00.000Z",
     });
     expect([...scheduler.timers.values()]).toEqual([
-      { key: "run_1", timerId: "timer:2:2", at: "2026-11-11T09:00:00.000Z" },
+      { key: "run_1", timerId: "timer:3:2", at: "2026-11-11T09:00:00.000Z" },
     ]);
     const approved = await executor.send("run_1", "approve", { note: "ok" });
     expect(approved).toMatchObject({
@@ -39,7 +39,7 @@ verifies("engine.wait-state", () => {
       state: "approved",
       context: { outcome: "pending", lastEvent: { note: "ok" } },
     });
-    expect(runs.logs.get("run_1")).toHaveLength(8);
+    expect(runs.logs.get("run_1")).toHaveLength(9);
   });
 });
 
@@ -52,7 +52,7 @@ verifies("engine.wait-timers", () => {
 
     moveTo("2026-11-10T09:00:00.000Z");
     await executor.onTimer(timer);
-    expect(runs.logs.get("run_1")).toHaveLength(3);
+    expect(runs.logs.get("run_1")).toHaveLength(4);
     expect(await scheduler.pending("run_1")).toEqual([timer]);
 
     moveTo("2026-11-11T09:00:00.000Z");
@@ -71,6 +71,6 @@ verifies("engine.decision-callid-must-match", () => {
     ).rejects.toMatchObject({
       code: "engine.decision-callid-must-match",
     });
-    expect(runs.logs.get("run_1")).toHaveLength(3);
+    expect(runs.logs.get("run_1")).toHaveLength(4);
   });
 });

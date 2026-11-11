@@ -109,8 +109,9 @@ export interface RunState {
   /** The tool calls waiting for a person's approval, oldest first. */
   readonly approvals: readonly WaitingApproval[];
   /**
-   * The values `context.updated` set. The workflow's initial context is not
-   * in the log, so `decide` lays these over it.
+   * The values `context.updated` set, the workflow's initial context first.
+   * A log written before the initial context was logged lacks it, so
+   * `decide` still lays these over the workflow's.
    */
   readonly context: Record<string, unknown>;
   /** How many call ids the run has handed out; the next one is `call-<calls + 1>`. */

@@ -18,8 +18,11 @@ const send = (event: string, fields: Partial<SendInput> = {}): SendInput => ({
 
 const timer = (key: string, at: string): TimerInput => ({ type: "timer", at, key });
 
-/** The key of the 2d timer set when the run entered `decide` as its second event. */
-const firstVisitTimer = "2:2";
+/**
+ * The key of the 2d timer set when the run entered `decide` as its third
+ * event, after `run.started` and the initial context.
+ */
+const firstVisitTimer = "3:2";
 
 function refusal(workflow: Workflow, inputs: readonly DecideInput[], input: DecideInput) {
   const { run } = play(workflow, inputs);
@@ -43,7 +46,11 @@ verifies("engine.wait-state", () => {
     expect(decisions[0]?.effects).toEqual([
       { type: "set-timer", key: firstVisitTimer, at: "2026-11-11T09:00:00.000Z" },
     ]);
-    expect(run).toMatchObject({ status: "waiting", accepts: ["approve", "reject"] });
+    expect(run).toMatchObject({
+      status: "waiting",
+      accepts: ["approve", "reject"],
+      context: { outcome: "pending" },
+    });
   });
 
   it("lists no timers when the state has none", () => {
@@ -108,7 +115,7 @@ verifies("engine.wait-state", () => {
 
   it("writes the payload to lastEvent and moves on the event", () => {
     const { log } = play(approvalWorkflow(), [start, send("approve", { payload: { note: "ok" } })]);
-    expect(log.slice(3).map(({ runId: _r, seq: _s, at: _a, ...body }) => body)).toEqual([
+    expect(log.slice(4).map(({ runId: _r, seq: _s, at: _a, ...body }) => body)).toEqual([
       { type: "event.received", event: "approve", payload: { note: "ok" } },
       { type: "context.updated", key: "lastEvent", value: { note: "ok" } },
       { type: "transition", from: "decide", to: "approved", event: "approve" },
@@ -123,9 +130,9 @@ verifies("engine.wait-state", () => {
 
   it("writes nothing to the context for an event without a payload", () => {
     const { log } = play(approvalWorkflow(), [start, send("reject")]);
-    expect(log[3]).toMatchObject({ type: "event.received", event: "reject" });
-    expect(log[3]).not.toHaveProperty("payload");
-    expect(log[4]).toMatchObject({ type: "transition", to: "rejected" });
+    expect(log[4]).toMatchObject({ type: "event.received", event: "reject" });
+    expect(log[4]).not.toHaveProperty("payload");
+    expect(log[5]).toMatchObject({ type: "transition", to: "rejected" });
   });
 
   it("checks the guards with the payload, and refuses an event no guard lets through", () => {
@@ -161,14 +168,14 @@ verifies("engine.wait-timers", () => {
       start,
       timer(firstVisitTimer, "2026-11-11T09:00:00.000Z"),
     ]);
-    expect(log.slice(3).map(({ type }) => type)).toEqual([
+    expect(log.slice(4).map(({ type }) => type)).toEqual([
       "timer.fired",
       "transition",
       "state.entered",
       "run.completed",
     ]);
-    expect(log[3]).toMatchObject({ type: "timer.fired", state: "decide", after: "2d" });
-    expect(log[4]).toMatchObject({ from: "decide", to: "expired", event: "after 2d" });
+    expect(log[4]).toMatchObject({ type: "timer.fired", state: "decide", after: "2d" });
+    expect(log[5]).toMatchObject({ from: "decide", to: "expired", event: "after 2d" });
   });
 
   it("sets a timer that arrives early again, for its due time", () => {
@@ -190,7 +197,7 @@ verifies("engine.wait-timers", () => {
       timer(firstVisitTimer, "2026-11-11T09:00:00.000Z"),
     ]);
     expect(decisions[1]?.effects).toEqual([
-      { type: "set-timer", key: "6:2", at: "2026-11-11T10:00:00.000Z" },
+      { type: "set-timer", key: "7:2", at: "2026-11-11T10:00:00.000Z" },
     ]);
     expect(decisions[2]).toEqual({ events: [], effects: [] });
   });
@@ -200,10 +207,10 @@ verifies("engine.wait-timers", () => {
       { to: "approved", event: "done", after: "1d", when: { exists: "context.never" } },
       { to: "rejected", event: "done", after: "36h" },
     ]);
-    const early = play(workflow, [start, timer("2:3", "2026-11-10T12:00:00.000Z")]);
+    const early = play(workflow, [start, timer("3:3", "2026-11-10T12:00:00.000Z")]);
     expect(early.decisions[1]).toEqual({ events: [], effects: [] });
-    const { log } = play(workflow, [start, timer("2:2", "2026-11-12T09:00:00.000Z")]);
-    expect(log[4]).toMatchObject({ to: "rejected", event: "after 36h" });
+    const { log } = play(workflow, [start, timer("3:2", "2026-11-12T09:00:00.000Z")]);
+    expect(log[5]).toMatchObject({ to: "rejected", event: "after 36h" });
   });
 
   it("ignores a timer whose key isn't one it set", () => {

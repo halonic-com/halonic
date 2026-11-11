@@ -175,6 +175,11 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     // The whole item can't be tried, so the run enters no state at all.
     endCantTry(draft, null, []);
   } else {
+    // The initial context goes in the log, so a running or waiting run's
+    // summary holds it from the start.
+    for (const [key, value] of Object.entries(workflow.context)) {
+      emit(draft, { type: "context.updated", key, value });
+    }
     enter(draft, workflow.initial);
   }
   return decisionOf(draft);

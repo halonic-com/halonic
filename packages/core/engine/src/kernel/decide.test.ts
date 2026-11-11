@@ -1,3 +1,4 @@
+import { summarize } from "@halonicjs/events";
 import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
@@ -5,7 +6,7 @@ import { states } from "../generated/states.ts";
 import { decide } from "./decide.ts";
 import type { DecideInput, StartInput } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
-import { play, writerAgent } from "./kernel-test-kit.test-helper.ts";
+import { approvalWorkflow, play, writerAgent } from "./kernel-test-kit.test-helper.ts";
 import type { StateHandler, StateRegistry } from "./registry.ts";
 import { evolve, type RunState } from "./run-state.ts";
 
@@ -60,6 +61,7 @@ verifies("engine.task-state", () => {
         kind: "run",
         definitionsVersion: "sha-1",
       },
+      { type: "context.updated", key: "tone", value: "friendly" },
       { type: "state.entered", state: "draft" },
       { type: "agent.started", state: "draft", agent: "writer", prompt: "Reply to support" },
     ]);
@@ -276,6 +278,40 @@ verifies("engine.final-state", () => {
       context: { tone: "friendly", reply: "On its way" },
     });
     expect(run?.status).toBe("completed");
+  });
+});
+
+verifies("engine.initial-context-logged", () => {
+  it("logs each key of the initial context before the first state", () => {
+    const { log } = play(reply, [startInput]);
+    expect(log.slice(0, 3).map(({ type }) => type)).toEqual([
+      "run.started",
+      "context.updated",
+      "state.entered",
+    ]);
+    expect(log[1]).toMatchObject({ key: "tone", value: "friendly" });
+  });
+
+  it("holds the initial context in a waiting run's state and summary", () => {
+    const { log, run } = play(approvalWorkflow(), [{ ...startInput, workflowId: "approval" }]);
+    expect(run).toMatchObject({ status: "waiting", context: { outcome: "pending" } });
+    expect(summarize(log)).toMatchObject({ status: "waiting", context: { outcome: "pending" } });
+  });
+
+  it("logs nothing for a workflow without an initial context", () => {
+    const { log } = play({ ...reply, context: {} }, [startInput]);
+    expect(log[1]).toMatchObject({ type: "state.entered", state: "draft" });
+  });
+
+  it("logs nothing for a run that can't be tried at all", () => {
+    const cantTry = {
+      status: "cant-try",
+      item: "workflows/reply.yaml",
+      step: null,
+      reason: { kind: "needs-left-out-change", path: "models.yaml", leftOut: "models" },
+    } as const;
+    const { log } = play(reply, [{ ...startInput, cantTry: [cantTry] }]);
+    expect(log.map(({ type }) => type)).toEqual(["run.started", "run.cant-try"]);
   });
 });
 

@@ -101,7 +101,7 @@ verifies("engine.local-child-runs", () => {
       context: { verdict: { outcome: "pending", lastEvent: { note: "ok" } } },
     });
     // Only the child's own 2d timer is left; the parent heard from it at once.
-    expect([...scheduler.timers.keys()]).toEqual([JSON.stringify(["run_1.2", "timer:2:2"])]);
+    expect([...scheduler.timers.keys()]).toEqual([JSON.stringify(["run_1.2", "timer:3:2"])]);
   });
 
   it("completes the parent in the same call when the child ends at once", async () => {
