@@ -83,6 +83,27 @@ verifies("cli.commands.routines.list", () => {
     expect(goldenText(args, output)).toBe(await readFile(golden("acme-routines.txt"), "utf8"));
   });
 
+  it("names each routine's hub when two hubs have routines, as the golden file has them", async () => {
+    const acme = join(acmeRuns.folder, "acme-example");
+    await cp(acmeExample, acme, { recursive: true });
+    await writeFiles(acme, {
+      "hubs/support/workflows/routines/weekly-report.routine.yaml": routine(
+        "weekly-report",
+        "Weekly report",
+        '{ schedule: "0 9 * * 5" }',
+      ),
+    });
+    const args = ["routines"];
+
+    const output = await runGolden(args, () => [routinesCommand()], acme);
+
+    expect(output.noColour.exit).toBe(exitCode.ok);
+    expect(checklistProblems(output)).toEqual([]);
+    expect(goldenText(args, output)).toBe(
+      await readFile(golden("acme-routines-two-hubs.txt"), "utf8"),
+    );
+  });
+
   describe("each row", () => {
     it("gives a routine on a clock its next run, and one that never ran Never ran", async () => {
       await addRoutines({
@@ -152,6 +173,41 @@ verifies("cli.commands.routines.list", () => {
       expect(io.stdout).toEqual([
         "Hourly check   Every hour    Next 13:00    Never ran",
         "By hand        Manual only   No set time   Never ran",
+      ]);
+    });
+
+    it("follows each name with its hub, so two of the same name can be told apart", async () => {
+      await addRoutines({
+        morning: routine("morning", "Morning check", '{ schedule: "0 8 * * *" }'),
+      });
+      await writeFiles(acmeRuns.acme, {
+        "hubs/reports/workflows/routines/morning.routine.yaml": routine(
+          "morning",
+          "Morning check",
+          "{ manual: true }",
+        ),
+      });
+
+      const { code, io } = await routinesIn();
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout).toEqual([
+        "Morning check reports   Manual only      No set time           Never ran",
+        "Morning check support   Daily at 08:00   Next tomorrow 08:00   Never ran",
+      ]);
+    });
+
+    it("names no hub for a routine at the workspace's root", async () => {
+      await addRoutines({ manual: routine("manual", "By hand", "{ manual: true }") });
+      await writeFiles(acmeRuns.acme, {
+        "workflows/routines/manual.routine.yaml": routine("manual", "By hand", "{ manual: true }"),
+      });
+
+      const { io } = await routinesIn();
+
+      expect(io.stdout).toEqual([
+        "By hand support   Manual only   No set time   Never ran",
+        "By hand           Manual only   No set time   Never ran",
       ]);
     });
   });
