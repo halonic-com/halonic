@@ -2,6 +2,7 @@
 
 - Approval: step 8 of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan), approved by Liam on [HAL-1515](/HAL/issues/HAL-1515); the compare's design and the six new entries are on [HAL-1541](/HAL/issues/HAL-1541#document-findings), for Liam to sign off in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LknneIWgshepiujA4GaRKU69M3PEBetnCSfwJsdHyjL5hSfVg2l6lb6xM5HotrXJi4RIGGAUs33mgHoy7mTEAw==
 - Task: HAL-1541
 
 ## What changes
