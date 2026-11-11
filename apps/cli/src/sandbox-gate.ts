@@ -6,7 +6,7 @@
 // can't start, nothing starts, nothing is written to the run log, and the
 // command ends with exit 9. There is no flag that skips this (Julian, HAL-1673).
 
-import type { PlacementReader } from "@halonicjs/app";
+import type { PlacementReader, RunDetail } from "@halonicjs/app";
 import type { Workflow } from "@halonicjs/format";
 import type { Sandbox } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
@@ -73,6 +73,19 @@ export interface SandboxGateRun {
    * agent runs in its own.
    */
   readonly harness?: string;
+}
+
+/**
+ * A stored run as the sandbox check needs it, for `runs send`: its hub and
+ * workflow, and the harness it named for all its agents when it started
+ * (HAL-4305), so the steps after the event are checked in the harness they
+ * will run in.
+ */
+export function sandboxRunOf(detail: RunDetail): SandboxGateRun {
+  const { hubId, workflowId } = detail.summary;
+  const started = detail.events.find((each) => each.type === "run.started");
+  const harness = started?.type === "run.started" ? started.harness : undefined;
+  return harness === undefined ? { hubId, workflowId } : { hubId, workflowId, harness };
 }
 
 /**

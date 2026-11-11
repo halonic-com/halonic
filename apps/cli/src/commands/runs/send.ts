@@ -43,7 +43,7 @@ import { stepName } from "../../messages/step-name.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { endedAt, type RunClock } from "../../run-times.ts";
-import type { SandboxGateRun } from "../../sandbox-gate.ts";
+import { type SandboxGateRun, sandboxRunOf } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
@@ -216,18 +216,6 @@ function withoutRun(event: string, reason: Message): Message {
 /** The workflow the run is of, from its own hub, or `undefined` once it's gone. */
 function workflowOf(loaded: LoadedWorkspace, summary: RunSummary): WorkflowDefinition | undefined {
   return workflowIn(hubWorkflows(loaded), summary.hubId, summary.workflowId);
-}
-
-/**
- * The run as the sandbox check needs it: its hub and workflow, and the
- * harness it named for all its agents when it started (HAL-4305), so the
- * steps after the event are checked in the harness they will run in.
- */
-function sandboxRunOf(detail: RunDetail): SandboxGateRun {
-  const { hubId, workflowId } = detail.summary;
-  const started = detail.events.find((each) => each.type === "run.started");
-  const harness = started?.type === "run.started" ? started.harness : undefined;
-  return harness === undefined ? { hubId, workflowId } : { hubId, workflowId, harness };
 }
 
 /** What a send's errors name, whatever the run turns out to be. */

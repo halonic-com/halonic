@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { AgentPlacement, agentFingerprint } from "@halonicjs/app";
+import { AgentPlacement, agentFingerprint, type RunDetail } from "@halonicjs/app";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import {
   type AgentPlacementKey,
   type AgentPlacementRecord,
@@ -23,6 +24,7 @@ import {
   programAgentsOf,
   type SandboxGateMachine,
   SandboxRefusedError,
+  sandboxRunOf,
   unsandboxedLine,
 } from "./sandbox-gate.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
@@ -41,6 +43,23 @@ const hub = "hubs/support/hub.yaml";
 const writer = "hubs/support/agents/writer.agent.yaml";
 const writerFile = "id: writer\nname: Writer\ninstructions: Write.\nharness: claude-code\n";
 const supportReply = { hubId: "support", workflowId: "support-reply" };
+
+/** A stored run of Support reply that named `harness` for all its agents when it started. */
+function storedRun(harness: string | undefined): RunDetail {
+  const started: RunEvent = {
+    type: "run.started",
+    runId: "run_mfx3k2a1_09d9a0",
+    seq: 1,
+    at: "2026-11-10T10:40:00.000Z",
+    ...supportReply,
+    input: {},
+    kind: "run",
+    definitionsVersion: "v1",
+    ...(harness === undefined ? {} : { harness }),
+  };
+  // The check reads only the hub and workflow of the summary.
+  return { summary: { ...supportReply } as RunSummary, events: [started] };
+}
 
 /** A one-step workflow whose step runs `agent`. */
 function oneStep(id: string, agent: string): string {
@@ -188,6 +207,28 @@ verifies("cli.sandbox-gate", () => {
         await checkRunSandbox(workspace, { ...supportReply, harness: "halonic" }, machine),
       ).toEqual([]);
       expect(machine.checks).toBe(0);
+    });
+
+    it("takes a stored run's harness from its run.started, for runs send", async () => {
+      const workspace = await workspaceOf({
+        [writer]: "id: writer\nname: Writer\ninstructions: Write.\n",
+      });
+      const { machine } = machineWith(bubblewrapMissing);
+
+      const run = sandboxRunOf(storedRun("claude-code"));
+
+      expect(run).toEqual({ ...supportReply, harness: "claude-code" });
+      expect(exitCodeOfError(await refusal(checkRunSandbox(workspace, run, machine)))).toBe(9);
+    });
+
+    it("leaves each agent in its own harness when the stored run named none", async () => {
+      const workspace = await workspaceOf();
+      const { machine } = machineWith(bubblewrapMissing);
+
+      const run = sandboxRunOf(storedRun(undefined));
+
+      expect(run).toEqual(supportReply);
+      expect(exitCodeOfError(await refusal(checkRunSandbox(workspace, run, machine)))).toBe(9);
     });
   });
 
