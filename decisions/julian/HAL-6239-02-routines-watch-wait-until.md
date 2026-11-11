@@ -3,6 +3,7 @@
 - Task: HAL-6239
 - Approval: Liam chose this stopgap on [HAL-6239](/HAL/issues/HAL-6239) and approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l4keIQiszyHHIm7fFv0T/9w9dGoMitXyz4eleth7J2E2OdQVwhU/TZSS+ViOB3ym0ELllLnDnW7qkjj3MBFtDw==
 
 No test was weakened: every check the test made before, it still makes once, after the wait.
 
