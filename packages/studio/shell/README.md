@@ -461,7 +461,7 @@ search box, the In and Hub picker chips with Match case and Whole word, the coun
 in a `search` landmark. The count line is a status that also says "Searching…", and, when there is
 no count, the title of the state that stands in for it ("Nothing matches", "Couldn't search"), so a
 screen reader hears the search end.
-The results follow the box as the user types, once the typing pauses for `searchPauseMs` (300 ms),
+The results follow the box as the user types, once the typing pauses for 300 ms,
 in the same place. Enter with other words commits them: it opens their Search page in the same tab,
 so the tab's title names them and Back brings the old words back. A result opens here, or with a
 Ctrl-click in a new tab. "Searching…" shows still skeleton rows, and the page's states are
