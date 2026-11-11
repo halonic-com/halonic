@@ -1,9 +1,11 @@
+import type { CantTryStep } from "@halonicjs/events";
 import type { Digest } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ReviewService } from "./review-service.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
+import { cantTryOf } from "./try-it-run.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -15,6 +17,8 @@ const digest: Digest = {
 const triage = "hubs/support/workflows/triage.workflow.yaml";
 const sorter = "hubs/support/agents/sorter.agent.yaml";
 const writer = "hubs/support/agents/writer.agent.yaml";
+const helper = "hubs/support/agents/helper.agent.yaml";
+const escalate = "hubs/support/workflows/escalate.workflow.yaml";
 const sync = "library/connectors/sync.connector.yaml";
 const script = "tools/run.sh";
 
@@ -105,6 +109,18 @@ verifies("app.try-it-programs-see-try-it-source", () => {
     expect(cantTry).toEqual([]);
   });
 
+  it("can't try the step when a pinned connector is given an absolute path", async () => {
+    const pinned = new Set(["sync"]);
+    for (const given of ["args: [--root=/srv/acme]", "env:\n      ROOT: ~/acme"]) {
+      const { review, propose } = acme({ [sync]: stdioSync.replace("args: [run.sh]", given) });
+      await propose(script, "echo changed\n");
+
+      expect((await review.tryItSource({ item: triage, pinned })).cantTry).toEqual([
+        { status: "cant-try", item: triage, step: "reply", reason: scriptHeldBack },
+      ]);
+    }
+  });
+
   it("can't try a step whose agent runs in a harness, nor that agent tried alone", async () => {
     const { review, propose } = acme({ [sorter]: agent("sorter", "harness: claude-code\n") });
     await propose(".tools/run.sh", "echo changed\n");
@@ -116,6 +132,35 @@ verifies("app.try-it-programs-see-try-it-source", () => {
     ]);
     expect((await review.tryItSource({ item: sorter })).cantTry).toEqual([
       { status: "cant-try", item: sorter, step: null, reason },
+    ]);
+  });
+
+  it("can't try an agent alone whose subagent runs in a harness", async () => {
+    const { review, propose } = acme({
+      [sorter]: agent("sorter", "subagents: [helper]\n"),
+      [helper]: agent("helper", "harness: claude-code\n"),
+    });
+    await propose(script, "echo changed\n");
+
+    expect((await review.tryItSource({ item: sorter })).cantTry).toEqual([
+      { status: "cant-try", item: sorter, step: null, reason: scriptHeldBack },
+    ]);
+  });
+
+  it("can't try a step whose child workflow starts such a program", async () => {
+    const { review, propose } = acme({
+      [triage]: workflow.replace(
+        "    agent: writer\n",
+        "    type: workflow\n    workflow: escalate\n",
+      ),
+      [escalate]: workflow
+        .replace("id: triage", "id: escalate")
+        .replace("agent: sorter", "agent: writer"),
+    });
+    await propose(script, "echo changed\n");
+
+    expect((await review.tryItSource({ item: triage })).cantTry).toEqual([
+      { status: "cant-try", item: triage, step: "reply", reason: scriptHeldBack },
     ]);
   });
 
@@ -131,5 +176,38 @@ verifies("app.try-it-programs-see-try-it-source", () => {
     await propose(writer, agent("writer", "connectors: [sync]\n").replace("Help.", "Be brief."));
 
     expect((await review.tryItSource({ item: triage })).cantTry).toEqual([]);
+  });
+
+  it("leaves programs alone when only a part of an item is held back", async () => {
+    const { review, propose } = acme({ [sorter]: agent("sorter", "harness: codex\n") });
+    await propose(sorter, agent("sorter", "harness: codex\nmaxSteps: 50\n"));
+
+    const { cantTry, leftOut } = await review.tryItSource({ item: triage });
+
+    expect(leftOut.total).toBe(1);
+    expect(cantTry).toEqual([]);
+  });
+});
+
+describe("cantTryOf", () => {
+  const model = { kind: "needs-left-out-change", path: "models.yaml", leftOut: "models" } as const;
+  const atStep = (step: string | null, reason: CantTryStep["reason"]): CantTryStep => ({
+    status: "cant-try",
+    item: triage,
+    step,
+    reason,
+  });
+
+  it("keeps only the whole-item entry when the item can't be tried at load", () => {
+    const whole = atStep(null, model);
+    expect(cantTryOf([whole], [atStep("reply", scriptHeldBack)])).toEqual([whole]);
+  });
+
+  it("lists an entry both causes give once, and keeps different reasons for one step", () => {
+    const programs = atStep("reply", scriptHeldBack);
+    expect(cantTryOf([atStep("reply", model), programs], [{ ...programs }])).toEqual([
+      atStep("reply", model),
+      programs,
+    ]);
   });
 });

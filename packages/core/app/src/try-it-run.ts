@@ -46,9 +46,9 @@ export async function buildTryItRun(
 
 /**
  * The steps that can't be tried for either cause, each entry once. When
- * the whole item can't be tried, that is the one entry.
+ * the whole item can't be tried at load, that is the one entry.
  */
-function cantTryOf(atLoad: CantTryStep[], forPrograms: CantTryStep[]): CantTryStep[] {
+export function cantTryOf(atLoad: CantTryStep[], forPrograms: CantTryStep[]): CantTryStep[] {
   if (atLoad.some((entry) => entry.step === null)) {
     return atLoad;
   }

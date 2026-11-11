@@ -6,6 +6,11 @@
 // it: both would read the held-back file as it is on disk, the change the
 // person hasn't accepted. So while such a file is held back, those steps
 // are can't-try and no program starts.
+//
+// Held-back parts of items (an agent's permissions or connectors, say) are
+// on disk too, but a program only reads them as text: what a step may do
+// comes from Try it's own source. A file that isn't an item can be code the
+// program runs, so only those count.
 
 import type { CantTryStep } from "@halonicjs/events";
 import { type LoadedFile, type LoadedWorkspace, placeOf } from "@halonicjs/workspace";
@@ -25,7 +30,8 @@ export interface ProgramsInput {
   /**
    * The ids of the connectors pinned in the workspace's trust record. A
    * pinned connector runs its package in its own folder, never the
-   * workspace, so it can't read a held-back file.
+   * workspace, so it can't read a held-back file unless an absolute path
+   * in its arguments or environment points it there.
    */
   readonly pinned: ReadonlySet<string>;
 }
@@ -34,8 +40,8 @@ export interface ProgramsInput {
  * The steps of `item` that would start a program reading the workspace
  * from disk while a file that isn't an item is held back (requirement
  * `app.try-it-programs-see-try-it-source`): a stdio connector that isn't
- * pinned, or an agent in a harness program, whose working folder is
- * always in the workspace. Each is `needs-left-out-change` and names the first such
+ * pinned or is given an absolute path, or an agent in a harness program,
+ * whose working folder is always in the workspace. Each is `needs-left-out-change` and names the first such
  * file. For an agent being tried, the entry has no step.
  *
  * @returns one entry per step, in the workflow's order; empty when no file that isn't an item is held back
@@ -66,16 +72,32 @@ function startsProgramInWorkspace(input: ProgramsInput, files: ReadonlySet<strin
 }
 
 /**
- * Whether the file is a stdio connector without a pin, or an agent that
- * runs in a harness program. `halonic` is Halonic's own loop, which starts
- * no program.
+ * Whether the file is a stdio connector that may read the workspace, or an
+ * agent that runs in a harness program. `halonic` is Halonic's own loop,
+ * which starts no program.
  */
 function startsProgram(file: LoadedFile, pinned: ReadonlySet<string>): boolean {
   if (file.kind === "agent") {
     return file.value.harness !== undefined && file.value.harness !== "halonic";
   }
-  if (file.kind === "connector") {
-    return "stdio" in file.value.transport && !pinned.has(file.value.id);
+  if (file.kind === "connector" && "stdio" in file.value.transport) {
+    const { args, env = {} } = file.value.transport.stdio;
+    return !pinned.has(file.value.id) || [...args, ...Object.values(env)].some(namesAbsolutePath);
   }
   return false;
+}
+
+/** A POSIX root, a home folder (`~`), a Windows drive (`C:\`, `C:/`) or a network share (`\\server`). */
+const absolutePathStart = /^(\/|~|[A-Za-z]:[\\/]|\\\\)/;
+
+/**
+ * Whether an argument or environment value holds an absolute path, which
+ * could point a pinned connector back at the workspace (a filesystem
+ * server given the workspace folder, say). Relative paths resolve in the
+ * connector's own folder, so they can't. Any absolute path counts, since
+ * this check doesn't know where the workspace is: a path at the start, or
+ * after `=` as in `--root=/srv/acme`.
+ */
+function namesAbsolutePath(value: string): boolean {
+  return value.split("=").some((part) => absolutePathStart.test(part));
 }
