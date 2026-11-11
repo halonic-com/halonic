@@ -6,14 +6,17 @@ import type {
   LlmCapabilities,
   LlmProvider,
 } from "@halonicjs/ports";
+import { ModelCallError } from "@halonicjs/ports";
 import {
   errorForNetwork,
   errorForReply,
   errorForSize,
   errorForStatus,
   errorForStreamedError,
+  errorForTimeout,
   type FailedCall,
 } from "./call-error.ts";
+import { type CallLimits, CallTimer, defaultCallLimits } from "./call-timer.ts";
 import { BodyTooLargeError, bodyWithin, readTextWithin } from "./read-body.ts";
 import { ReplyFormatError, readReply } from "./reply.ts";
 import { toWireBody } from "./request.ts";
@@ -61,6 +64,8 @@ export interface AnthropicProviderOptions {
    * @throws {ModelCallError} with `no-key` when the key isn't set
    */
   key: () => Promise<string>;
+  /** How long one call may wait; {@link defaultCallLimits} when left out. */
+  limits?: CallLimits;
 }
 
 /**
@@ -91,6 +96,7 @@ export class AnthropicProvider implements LlmProvider {
   readonly #host: string | undefined;
   readonly #http: HttpClient;
   readonly #key: () => Promise<string>;
+  readonly #limits: CallLimits;
 
   constructor(options: AnthropicProviderOptions) {
     this.id = options.id;
@@ -99,20 +105,26 @@ export class AnthropicProvider implements LlmProvider {
     this.#host = hostOf(this.#endpoint);
     this.#http = options.http;
     this.#key = options.key;
+    this.#limits = options.limits ?? defaultCallLimits;
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
     request.signal?.throwIfAborted();
     const call = this.#failedCall(request);
     const key = await this.#key();
-    const response = await this.#send(request, call, key, { stream: false });
+    const timer = new CallTimer(this.#limits, request.signal);
     let body: unknown;
     try {
+      const response = await this.#send(request, call, key, timer, { stream: false });
       body = JSON.parse(await readTextWithin(response, maxReplyBytes));
     } catch (error) {
       request.signal?.throwIfAborted();
+      if (timer.timedOut !== undefined) throw errorForTimeout(timer.timedOut, call);
       if (error instanceof BodyTooLargeError) throw errorForSize(error, call);
+      if (error instanceof ModelCallError) throw error;
       throw errorForReply(error, call);
+    } finally {
+      timer.end();
     }
     try {
       return readReply(body);
@@ -131,9 +143,10 @@ export class AnthropicProvider implements LlmProvider {
     request.signal?.throwIfAborted();
     const call = this.#failedCall(request);
     const key = await this.#key();
-    const response = await this.#send(request, call, key, { stream: true });
+    const timer = new CallTimer(this.#limits, request.signal);
     const reader = new MessageStreamReader();
     try {
+      const response = await this.#send(request, call, key, timer, { stream: true });
       const body = await bodyWithin(response, maxReplyBytes);
       if (body === null) throw new ReplyFormatError("no body");
       for await (const event of readServerSentEvents(body)) {
@@ -145,7 +158,11 @@ export class AnthropicProvider implements LlmProvider {
       }
     } catch (error) {
       request.signal?.throwIfAborted();
+      if (timer.timedOut !== undefined) throw errorForTimeout(timer.timedOut, call);
+      if (error instanceof ModelCallError) throw error;
       throw errorForStreamFailure(error, call, key);
+    } finally {
+      timer.end();
     }
     let answer: ChatResponse;
     try {
@@ -161,14 +178,16 @@ export class AnthropicProvider implements LlmProvider {
   }
 
   /**
-   * Sends the call and gives the reply once its status is OK. An aborted
-   * signal rejects with its own reason, a network failure as offline, and an
-   * error status with what it means.
+   * Sends the call and gives the reply, watched by `timer`, once its status
+   * is OK. An aborted signal rejects with its own reason, a network failure
+   * as offline, and an error status with what it means. The caller turns a
+   * passed time limit into its error.
    */
   async #send(
     request: ChatRequest,
     call: FailedCall,
     key: string,
+    timer: CallTimer,
     options: { stream: boolean },
   ): Promise<Response> {
     const headers = {
@@ -184,16 +203,17 @@ export class AnthropicProvider implements LlmProvider {
         body: JSON.stringify(toWireBody(request, options)),
         // A redirect would carry the key to another address.
         redirect: "error",
-        ...(request.signal === undefined ? {} : { signal: request.signal }),
+        signal: timer.signal,
       });
     } catch (error) {
-      request.signal?.throwIfAborted();
+      if (timer.signal.aborted) throw error;
       throw errorForNetwork(error, call);
     }
+    response = timer.watch(response);
     if (response.ok) return response;
     const text = await textOrEmpty(response);
     // Reading the body ends early when the signal aborts; the caller gets the abort, not the status.
-    request.signal?.throwIfAborted();
+    timer.signal.throwIfAborted();
     throw errorForStatus(response.status, text, call, key);
   }
 }
