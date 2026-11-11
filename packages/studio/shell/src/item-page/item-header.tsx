@@ -26,6 +26,8 @@ export interface ItemHeaderProps<Id extends string> {
   readonly onPickView: (view: Id) => void;
   /** The same ids as the `TabPanel` that shows the view. */
   readonly tabIds: TabIds;
+  /** `false` while the panel that shows the views is hidden beside the chat. */
+  readonly viewsShown?: boolean;
   /** The item's own controls at the right: ▶ Run. */
   readonly end?: ReactNode;
 }
@@ -47,6 +49,7 @@ export function ItemHeader<Id extends string>({
   view,
   onPickView,
   tabIds,
+  viewsShown = true,
   end,
 }: ItemHeaderProps<Id>) {
   return (
@@ -77,13 +80,18 @@ export function ItemHeader<Id extends string>({
           />
         )}
       </div>
-      <TabList
-        label={`${kind} views`}
-        tabs={views}
-        selected={view}
-        onSelect={onPickView}
-        ids={tabIds}
-      />
+      {viewsShown ? (
+        <TabList
+          label={`${kind} views`}
+          tabs={views}
+          selected={view}
+          onSelect={onPickView}
+          ids={tabIds}
+        />
+      ) : (
+        // Holds the middle column, so the item's controls stay at the right.
+        <span />
+      )}
       <div className="flex min-w-0 items-center justify-end gap-2">{end}</div>
     </header>
   );

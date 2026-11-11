@@ -529,9 +529,18 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   view. A page that draws its own header can use `ItemHeader` and `useRememberedView` itself.
 - **Badges** are the kit tabs' `count` (`danger` errors, `warning` waiting for a person) and
   `running` dot.
-- **Not yet:** the chat beside the view (once a feature provides one for the kind), the panel's
-  edge, Maximise and ✕, the narrow window's **← Chat**, the stacked cards, and the "Changes not
-  live yet" line (24.9). Until the chat comes, the view takes the full width.
+- **The chat** (`shell.item-page-chat`): when a feature provides a `chat` for the kind, the chat
+  sits on the left and the view in a panel on the right, 700px wide or narrowed so the chat keeps
+  320px (`shell.panel-width`). Without one, the view takes the full width with no other controls.
+  - `chat={{ startsOpen: true, render: (close) => <TryIt close={close} /> }}`. A chat that doesn't
+    start open shows as "Ask about this <kind>…" in the header; `close` brings that back.
+  - The panel's ✕ ("Close Flow") hides it and the views nav; the chat centres at reading width,
+    and a "Flow" button shows the panel again.
+  - A tab with no room for a 420px panel beside the chat shows only the chat with the same button,
+    which opens the panel as the tab's own screen with **← Chat**.
+  - Focus moves to what took the pressed control's place.
+- **Not yet:** the panel's edge and Maximise, the stacked cards, and the "Changes not live yet"
+  line (24.9).
 
 ## Resource numbers
 

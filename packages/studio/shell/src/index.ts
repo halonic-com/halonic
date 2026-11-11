@@ -79,7 +79,7 @@ export {
 } from "./frame/status-bar.tsx";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
-export { ItemPage, type ItemPageProps } from "./item-page/item-page.tsx";
+export { ItemPage, type ItemPageChat, type ItemPageProps } from "./item-page/item-page.tsx";
 export { useRememberedView } from "./item-page/remembered-view.ts";
 export { useCopyDetails } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
