@@ -78,8 +78,14 @@ export type TurnTool =
       /** The name the server listed it under, which the call goes to. */
       readonly listedName: string;
       readonly connector: ConnectorClient;
-      /** What calling it can do, as its listing says; absent when the listing doesn't say. */
-      readonly risk?: ToolRisk;
+      /**
+       * What the engine counts a call to it as doing, which decides whether a
+       * person is asked and whether the engine records the call first. Never
+       * `read`: its server can't lower it (`countedRisk`).
+       */
+      readonly risk: ToolRisk;
+      /** What calling it can do, as its listing says, only for the log; absent when the listing doesn't say. */
+      readonly listedRisk?: ToolRisk;
     };
 
 /** The tools of one turn and what was refused while building them. */
@@ -139,7 +145,8 @@ async function addConnectorTools(builder: ToolListBuilder, connector: ConnectorC
       definition: tool.definition,
       listedName: tool.listedName,
       connector,
-      ...(tool.risk === undefined ? {} : { risk: tool.risk }),
+      risk: tool.risk,
+      ...(tool.listedRisk === undefined ? {} : { listedRisk: tool.listedRisk }),
     });
   }
 }

@@ -10,7 +10,7 @@ Where the executor is given connector calls, when the engine asks for a `paralle
 
 - Given a run with a `parallel` state of two branches whose agents list `mail`, a connector `mail` that lists `search` and `list_folders` (both `read`), and `mail`'s file puts `search` under `approve`,
   when the engine asks for each branch's model call,
-  then each call offers `list_folders` and not `search`.
+  then neither call offers `search`, and neither offers `list_folders`, whose listing can't make it count as reading (`engine.parallel-state`).
 - Given that run, and `mail`'s file says `approve: all` instead,
   when the engine asks for each branch's model call,
   then neither call offers any of `mail`'s tools.

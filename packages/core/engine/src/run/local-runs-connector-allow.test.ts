@@ -51,6 +51,20 @@ async function runOf(
   return setup;
 }
 
+/**
+ * {@link runOf}, approving every call the run then waits on a person for:
+ * no connector's tool runs without an OK, whatever its listing says.
+ */
+async function approvedRunOf(...args: Parameters<typeof runOf>) {
+  const setup = await runOf(...args);
+  // Capped, so a run that keeps waiting fails the test instead of hanging it.
+  for (let asked = 0; asked < 4 && (await setup.runs.get("run_1"))?.status === "waiting"; asked++) {
+    await setup.executor.send("run_1", "approve");
+    await setup.scheduler.runDue();
+  }
+  return setup;
+}
+
 function offeredIn(model: { requests: { tools?: readonly { name: string }[] }[] }, request = 0) {
   return model.requests[request]?.tools?.map(({ name }) => name);
 }
@@ -135,7 +149,7 @@ verifies("engine.run-connector-allow", () => {
     it("is refused next to an allowed call in the same answer, which still goes through", async () => {
       const mail = new ScriptedConnector("mail", [tool("search"), tool("delete_all")]);
       const both = callAnswer(call("s-1", "search", {}), call("d-1", "delete_all", {}));
-      const { model, runs } = await runOf([mail], onlySearch, [both, textAnswer("Done")]);
+      const { model, runs } = await approvedRunOf([mail], onlySearch, [both, textAnswer("Done")]);
 
       expect(mail.calls).toEqual([{ name: "search", args: {} }]);
       expect(resultsIn(model)).toEqual(["search done", unoffered]);
@@ -165,7 +179,7 @@ verifies("engine.run-connector-allow", () => {
         callAnswer(call("d-1", "delete_all", {})),
         textAnswer("Done"),
       ];
-      const { model, runs } = await runOf([mail], onlySearch, answers);
+      const { model, runs } = await approvedRunOf([mail], onlySearch, answers);
 
       expect(mail.calls.map(({ name }) => name)).toEqual(["search"]);
       expect(resultsIn(model).at(-1)).toBe(unoffered);
@@ -211,7 +225,7 @@ verifies("engine.run-connector-allow", () => {
       };
       const byId = { mail, tracker };
       const answers = [callAnswer(call("a-1", "archive", {})), textAnswer("Done")];
-      const { model } = await runOf([mail, tracker], lists, answers);
+      const { model } = await approvedRunOf([mail, tracker], lists, answers);
 
       expect(offeredIn(model)?.filter((name) => name === "archive")).toHaveLength(1);
       expect(byId[allows as "mail" | "tracker"].calls).toEqual([{ name: "archive", args: {} }]);
@@ -260,7 +274,7 @@ verifies("engine.run-connector-allow", () => {
     it("offers and calls every tool the server lists when the file has no `allow`", async () => {
       const mail = new ScriptedConnector("mail", [tool("search"), tool("delete_all")]);
       const answers = [callAnswer(call("d-1", "delete_all", {})), textAnswer("Done")];
-      const { model } = await runOf([mail], { mail: { approve: [] } }, answers);
+      const { model } = await approvedRunOf([mail], { mail: { approve: [] } }, answers);
 
       expect(offeredIn(model)).toEqual(["search", "delete_all"]);
       expect(mail.calls).toEqual([{ name: "delete_all", args: {} }]);

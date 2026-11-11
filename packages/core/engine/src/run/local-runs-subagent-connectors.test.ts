@@ -126,13 +126,13 @@ verifies("engine.subagent-connector-reads", () => {
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 
-  it("offers a subagent under a parallel branch only the tools that read and wait for no one", async () => {
+  it("offers a subagent under a parallel branch no connector tools, as the branch", async () => {
     const { model } = await runReply([delegate, textAnswer("Nothing to check"), textAnswer("ok")], {
       workflow: triage,
     });
 
     expect(offered(model.requests, 0)).toEqual(["delegate_checker"]);
-    expect(offered(model.requests, 1)).toEqual(["search"]);
+    expect(offered(model.requests, 1)).toEqual([]);
   });
 
   it("records a subagent's call its parent may not make, after the OK, and makes it once", async () => {
@@ -200,13 +200,17 @@ verifies("engine.subagent-connector-reads", () => {
     expect(typesOf(runs.logs.get("run_1"))).not.toContain("effect.requested");
   });
 
-  it("makes a subagent's read call and gives its result to the subagent's model", async () => {
-    const { mail, model, runs } = await runReply([
+  it("makes a subagent's call whose listing says it reads after the OK, and gives its result to the subagent's model", async () => {
+    const { executor, scheduler, mail, model, runs } = await runReply([
       delegate,
       callAnswer(call("s-1", "search", {})),
       textAnswer("Found it"),
       textAnswer("Dear support"),
     ]);
+    expect(mail.calls).toEqual([]);
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
 
     expect(mail.calls).toEqual([{ name: "search", args: {} }]);
     expect(model.requests[2]?.messages.at(-1)).toMatchObject({

@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 import { call, ScriptedConnector } from "../testing/scripted-model.ts";
 import { checkRunToolCall, runToolCheckOf } from "./check-run-tool-call.ts";
 import { halonicTool } from "./turn-test-kit.test-helper.ts";
-import type { TurnTool } from "./turn-tools.ts";
+import { collectTurnTools, type TurnTool } from "./turn-tools.ts";
 
 const lookup: TurnTool = {
   kind: "halonic",
@@ -42,6 +42,28 @@ verifies("engine.run-tool-calls", () => {
     expect(checkRunToolCall(mailTool("read"), call("c-1", "mail__search"))).toEqual({
       kind: "run",
     });
+  });
+
+  it("asks a person about a connector's tool whose listing says it only reads, because a server can't lower its risk", async () => {
+    const mail = new ScriptedConnector("mail", [
+      { name: "send_mail", description: "Sends", parameters: {}, risk: "read" },
+      { name: "forward", description: "Forwards", parameters: {}, risk: "send" },
+      { name: "label", description: "Labels", parameters: {} },
+    ]);
+    const { tools } = await collectTurnTools({
+      callerTools: [],
+      halonicTools: [],
+      connectors: [mail],
+    });
+
+    expect(tools.map((tool) => (tool.kind === "server" ? tool.risk : null))).toEqual([
+      "write",
+      "send",
+      "write",
+    ]);
+    for (const tool of tools) {
+      expect(checkRunToolCall(tool, call("c-1", tool.definition.name))).toEqual({ kind: "ask" });
+    }
   });
 
   it("asks a person about a connector's tool that can change things, or whose listing doesn't say", () => {

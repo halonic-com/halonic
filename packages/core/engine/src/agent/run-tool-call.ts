@@ -284,7 +284,7 @@ interface ToolRun {
  * it; Halonic's own tools leave it out, so readers count it as unknown.
  */
 function riskOf(tool: TurnTool): { risk?: ToolRisk } {
-  return tool.kind === "server" && tool.risk !== undefined ? { risk: tool.risk } : {};
+  return tool.kind === "server" && tool.listedRisk !== undefined ? { risk: tool.listedRisk } : {};
 }
 
 async function runTool(

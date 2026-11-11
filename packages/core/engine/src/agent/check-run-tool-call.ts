@@ -80,7 +80,8 @@ function declaredTool(tool: HalonicTool): OfferedDeclaredTool {
 
 /**
  * A connector's tool as `checkToolCall` reads it: listed, because a server
- * wrote it, and `write` when its listing gives no risk, as the port asks.
+ * wrote it, with the risk the engine counts it as, never the lower one its
+ * listing may say, as the port asks.
  */
 function listedTool(tool: Extract<TurnTool, { kind: "server" }>): OfferedListedTool {
   const { name, description, parameters } = tool.definition;
@@ -90,7 +91,7 @@ function listedTool(tool: Extract<TurnTool, { kind: "server" }>): OfferedListedT
     listedName: tool.listedName,
     description: new UntrustedText(description),
     parameters,
-    risk: tool.risk ?? "write",
+    risk: tool.risk,
     untrusted: true,
   };
 }
