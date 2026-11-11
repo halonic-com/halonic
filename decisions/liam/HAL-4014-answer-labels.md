@@ -22,9 +22,6 @@ event and adds the author's label in brackets when there is one: `halonic runs s
 This is the one place the CLI writes a waiting run's answers today: there is no `halonic run`
 command yet, and when it comes it prints the same line (`runMessages.answerHere`).
 
-Update (HAL-4182): the CLI hint is parked. The waiting line now says only `Answer in Studio's Inbox.`
-until `halonic runs send` lands; the labelled-answers line above comes back with it.
-
 ## Why
 
 A transition already has an optional `label`, but only the event names reached `run.waiting` and the

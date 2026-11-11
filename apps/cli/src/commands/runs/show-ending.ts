@@ -43,7 +43,7 @@ export function showEnding(
     case "cant-try":
       return cantTryEnding(run, title, definitions);
     case "waiting":
-      return waitingEnding(run.summary, definitions);
+      return waitingEnding(run.summary, definitions, dir);
     case "running":
       return [];
   }
@@ -157,7 +157,11 @@ function cancelledAt(
  * answer. A run waiting for a tool approval, its child run or a time has no
  * such lines in 3.4; its step line already says what it waits for.
  */
-function waitingEnding(summary: RunSummary, definitions: RunDefinitions): Phrase[] {
+function waitingEnding(
+  summary: RunSummary,
+  definitions: RunDefinitions,
+  dir: string | undefined,
+): Phrase[] {
   const waitsAtAWaitStep =
     summary.approvals.length === 0 && summary.waitingOn === null && summary.accepts.length > 0;
   if (!waitsAtAWaitStep || summary.state === null) {
@@ -170,7 +174,12 @@ function waitingEnding(summary: RunSummary, definitions: RunDefinitions): Phrase
           stepName(summary.state, definitions.workflow?.states[summary.state]?.description),
         )
       : runMessages.waitingForYou(description);
-  const answer = runMessages.answerHere();
+  const answer = runMessages.answerHere(
+    shortRunId(summary.id),
+    summary.accepts,
+    dir,
+    summary.answerLabels,
+  );
   return [[], phrase`${markPart("needsYou")} ${waiting.phrase}`, phrase`  ${answer.phrase}`];
 }
 
