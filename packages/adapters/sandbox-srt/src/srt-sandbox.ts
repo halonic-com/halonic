@@ -11,6 +11,7 @@ import type {
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
+import { assertSrtDeniesKeychain } from "./srt-config.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
 
@@ -171,8 +172,8 @@ export class SrtSandbox implements Sandbox {
   /**
    * Opens a session whose fence is proven before it returns.
    *
-   * @throws when {@link SrtSandbox.check} isn't `ok`, or the profile has a bridge that isn't a loopback address,
-   *   or one on a Unix socket
+   * @throws when {@link SrtSandbox.check} isn't `ok`, the profile has a bridge that isn't a loopback address
+   *   or one on a Unix socket, or it denies the key store and srt would drop that deny
    */
   async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
     const check = await this.check();
@@ -185,6 +186,7 @@ export class SrtSandbox implements Sandbox {
     if (bridge !== null && !isLoopback(bridge.host)) {
       throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
     }
+    await assertSrtDeniesKeychain(profile);
     const windows = this.#machine.platform === "win32";
     if (windows) {
       this.#grants.assertSupported();

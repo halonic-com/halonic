@@ -204,6 +204,31 @@ export type SrtConfig = SandboxRuntimeConfig & {
 };
 
 /**
+ * Throws unless srt keeps the Keychain deny of a profile that denies the key
+ * store. srt's schema drops a setting it doesn't know without an error, so if
+ * our patch of srt stopped applying (an srt update, a patch file that drifted),
+ * `denyMachLookup` would vanish and the Keychain would stay reachable. This
+ * reads the profile's settings through srt's own schema, the one its command
+ * line uses, and fails closed when a denied service is missing.
+ *
+ * @throws when the profile denies the key store and srt's parsed settings don't deny every Keychain service
+ */
+export async function assertSrtDeniesKeychain(profile: SandboxProfile): Promise<void> {
+  if (profile.keyStore !== "denied") return;
+  // Loaded only here, as `machine.ts` does: srt's index brings in all of srt.
+  const { SandboxRuntimeConfigSchema } = await import("@anthropic-ai/sandbox-runtime");
+  const parsed = SandboxRuntimeConfigSchema.parse(buildSrtConfig(profile));
+  const { denyMachLookup = [] } = parsed.network as SrtConfig["network"];
+  const missing = keychainMachServices.filter((name) => !denyMachLookup.includes(name));
+  if (missing.length > 0) {
+    throw new Error(
+      `the sandbox can't deny the key store: srt dropped the deny of ${missing.join(", ")}; ` +
+        "is Halonic's patch of @anthropic-ai/sandbox-runtime applied?",
+    );
+  }
+}
+
+/**
  * Builds the sandbox-runtime settings for one session from the profile.
  *
  * The profile's `deniedPaths` become `denyRead` and `denyWrite`, and its

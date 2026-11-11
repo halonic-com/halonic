@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-193 (plan phase 3, v1.17); Julian's re-review follow-up from HAL-2430; HAL-6346 (attack case A36)
+- Source: HAL-193 (plan phase 3, v1.17); Julian's re-review follow-up from HAL-2430; HAL-6346 (attack case A36), HAL-6484
 
-The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandbox-runtime so that the program writes only to its working, temp and settings folders, reads nothing the profile denies, reaches only the bridge and the allowed sites, never reaches a loopback, link-local, private or shared address, or one of this computer's own addresses, through an allowed site's name (the bridge's address and port excepted), never receives a path as a pattern, and, when the profile denies the key store, can't reach the macOS Keychain's Mach services.
+The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandbox-runtime so that the program writes only to its working, temp and settings folders, reads nothing the profile denies, reaches only the bridge and the allowed sites, never reaches a loopback, link-local, private or shared address, or one of this computer's own addresses, through an allowed site's name (the bridge's address and port excepted), never receives a path as a pattern, and, when the profile denies the key store, can't reach the macOS Keychain's Mach services, refusing to open such a session when sandbox-runtime's own schema would drop that deny.
 
 ## Examples
 
@@ -29,3 +29,6 @@ The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandb
 - Given a profile with `keyStore: "denied"`,
   when the settings are built,
   then srt denies `com.apple.SecurityServer` and `com.apple.securityd.xpc` at the end of its Seatbelt profile, after its own allows of them; without it, srt denies no Mach service.
+- Given a profile with `keyStore: "denied"` and an srt whose schema drops `denyMachLookup` (our patch no longer applied),
+  when a session is opened,
+  then opening fails, naming the services srt dropped, and nothing runs.
