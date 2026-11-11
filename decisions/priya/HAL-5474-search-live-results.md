@@ -2,6 +2,7 @@
 
 - Approval: the team's decision on HAL-5474 (Sofia's design check, HAL-5455; small fix on an approved screen, HAL-2282), reviewed by the maintainer
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GiUTE2MpGbd9YSCoZjJ6iDnj8Z9wAEXjr0ASqWkSb9sb9zj65jycBxqZ0pBsE/MMzktNj4uIColEwzl0En7EBA==
 
 The requirement gains a sentence; nothing it promised before is taken away, and no test was
 weakened. The page from #1618 searched only the place's words, so typing in the box showed
