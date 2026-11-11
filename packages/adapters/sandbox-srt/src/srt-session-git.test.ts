@@ -221,7 +221,12 @@ verifies("sandbox-srt.session", () => {
       expect(blocks).toEqual([{ kind: "file", path: dotGit, access: "write" }]);
     });
 
-    describe("after a host crash", () => {
+    // On Windows each test here starts seven real programs: `whoami` and two `icacls` when the
+    // session writes its journal, the same three again in `recoverGitFolders`, and a `node` for a
+    // dead pid. They take 0.3 to 2 s on a CI runner, but one hit 5.2 s while the other test files
+    // started programs too (HAL-4641). The code under test has no wait of its own, and each
+    // `whoami` or `icacls` stops after 15 s, so 20 s still fails a real hang.
+    describe("after a host crash", { timeout: 20_000 }, () => {
       let journals: string;
 
       beforeEach(() => {
