@@ -835,7 +835,12 @@ jobs:
         run: pnpm exec vite build --mode studio
       # Tauri builds against the system web view: WebKitGTK on Linux. The
       # keychain crate links libdbus for the Secret Service.
+      # Every install step has its own time limit, so a hung mirror fails the
+      # step in minutes instead of holding the job, and the merge queue, until
+      # the job's limit (HAL-5958). 8 minutes covers one full apt attempt (3 +
+      # 5 minutes) and leaves room for a fallback mirror; it usually takes 30 s.
       - name: Install the Linux libraries Tauri needs
+        timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
           packages: libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev gnome-keyring dbus-daemon
@@ -1057,6 +1062,7 @@ jobs:
           persist-credentials: false
       - uses: $/.github/actions/setup
       - name: Install bubblewrap and socat
+        timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
           packages: bubblewrap socat ripgrep
@@ -1618,10 +1624,13 @@ jobs:
           fi
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
       - name: Install the Linux libraries Playwright needs
+        timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
           packages: ${{ steps.playwright-deps.outputs.packages }}
+      # Downloaded from Playwright's CDN, usually in 10 s (HAL-5958).
       - name: Install Chromium and WebKit for Playwright
+        timeout-minutes: 5
         working-directory: packages/studio/shell
         run: pnpm exec playwright install chromium webkit
       - name: Shell end-to-end tests
