@@ -1,6 +1,6 @@
 # Decision: compare the new CLI with the old CLI's recorded calls
 
-- Approval: HAL-187 item 9, assigned by Liam on [HAL-5228](/HAL/issues/HAL-5228); the six new entries, the CLI rules and the new gap are on HAL-5228, for Liam to sign off in review
+- Approval: HAL-187 item 9, assigned by Liam on [HAL-5228](/HAL/issues/HAL-5228); the six new entries, the CLI rules and the new gap are on HAL-5228, signed off by Liam in review on HAL-5313
 - Kind: internal
 - Task: HAL-5228
 
@@ -20,7 +20,7 @@ differs fails unless a known gap names it in a new optional field, `calls`.
   shows in the CLI's runs: child run IDs (`run-ids-by-start`), `definitionsVersion`
   (`no-definitions-version`) and the waiting labels and title (`waiting-labels-and-title`). Nothing
   else about them changes.
-- Six new entries, all `proposed`, each with the requirement that makes the new behaviour right and
+- Six new entries, signed off by Liam in review (HAL-5313), each with the requirement that makes the new behaviour right and
   the one CLI rule it allows: the words come from the message catalogue (`cli.messages`), exit codes
   by error kind (`cli.exit-codes`), `halonic test` stores no runs (`cli.commands.test.run-tests`),
   `run.failed` carries a `reason` (`events.run-failed-reason`), the not-JSON error quotes the answer
@@ -40,9 +40,11 @@ differs fails unless a known gap names it in a new optional field, `calls`.
 - **Known gaps may name calls instead of tests.** `parity.known-gaps-checked` changes: a gap lists
   its `tests`, its `calls` or both, and a call must be one of `cli-calls.ts`. Before, every gap had
   to list tests. That is the only edit to an active requirement.
-- **One new gap, HAL-5285.** The old CLI refused to start a run whose Google connector wasn't
-  signed in; the new one starts it. No requirement says which is right, so it is a gap with a task
-  (assigned to Liam to decide), not an allowed difference.
+- **One new gap, HAL-5291.** The old CLI refused to start a run whose Google connector wasn't
+  signed in; the new one starts it. For 0.1 that is covered by `cli.local-engine`: a CLI run gets
+  no connectors at all, so nothing checks sign-in (Liam decided this on HAL-5285). It stays a gap,
+  not an allowed difference, because HAL-5291 brings the connectors and the old refusal back, so the
+  new behaviour has to change.
 - **HAL-4754 names the two echo-model calls.** The CLI test checks that, apart from the old
   `llm.request` and `llm.response`, those calls match, so nothing else hides behind the gap.
   HAL-4757 and HAL-4758 name no call: the one invoice call never started in the old CLI.

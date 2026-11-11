@@ -123,6 +123,26 @@ verifies("cli.parity-cli-calls", () => {
     expect(report.stale).toEqual([]);
   });
 
+  it("exits with each call's own code before exit-codes-by-kind folds it", () => {
+    // The rule turns 2 and 4 to 9 into the old 1, so a call that exits with
+    // the wrong one of them would pass the compare; this pins them.
+    expect(fresh.map((call) => [call.name, call.exitCode])).toEqual([
+      ["test", 0],
+      ["test one workflow", 0],
+      ["test an unknown hub", 2],
+      ["run and approve", 0],
+      ["run and reject", 0],
+      ["run that waits", 0],
+      ["run with an event the state doesn't accept", 2],
+      ["run an agent with the echo model", 1],
+      ["run a foreach over a nested workflow", 1],
+      ["run with a signed-out connector", 1],
+      ["run an unknown workflow", 4],
+      ["run with input that isn't JSON", 2],
+      ["run without a workflow", 2],
+    ]);
+  });
+
   it("meets no trust refusal, since the base is trusted", () => {
     expect(fresh.filter((call) => call.exitCode === 3).map((call) => call.name)).toEqual([]);
   });

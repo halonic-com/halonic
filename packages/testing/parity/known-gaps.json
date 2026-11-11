@@ -42,10 +42,10 @@
   },
   {
     "id": "run-starts-with-signed-out-connector",
-    "task": "HAL-5285",
+    "task": "HAL-5291",
     "area": "CLI runs: a connector that isn't signed in",
     "old": "784f78d's studio run refused to start the invoice workflow, whose hub has a Google connector for billing@example.com that wasn't signed in: \"Not started: Sign in billing@example.com first (Inbox).\", exit code 1, no run stored.",
-    "new": "halonic run starts the run without the connector's tools and stores it; with the echo model it then fails at the lines step, whose checker doesn't answer JSON.",
+    "new": "In 0.1 a CLI run gets no connectors at all (cli.local-engine), so nothing checks sign-in: halonic run starts the run and stores it; with the echo model it then fails at the lines step, whose checker doesn't answer JSON. HAL-5291 brings the check back with the connectors.",
     "calls": [
       "run with a signed-out connector"
     ]

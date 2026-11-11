@@ -722,7 +722,7 @@
     "old": "784f78d's studio test printed one line per test as <hub>/<workflow>: <name> and \"N passed\"; studio run printed every event of the log as a numbered line and \"Run <id>: <status>\"; errors were the bare message, such as Unknown workflow \"nope\" in hub \"billing\".",
     "new": "halonic test and halonic run print the sentences of the CLI's message catalogue: a heading, one line per test or step, a summary and a next step, and errors as a problem and its fix. The compare leaves stdout and stderr out on both sides; the exit code and every stored run are still compared.",
     "why": "Every sentence the user reads comes from the catalogue by key (cli-output, approved by the board on HAL-2123), so none of the old words is kept. The catalogue's own tests check the words.",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "output-words"
     ]
@@ -734,7 +734,7 @@
     "old": "784f78d's CLI exited with 1 for every failure: a failed run, a filter that kept no test, an event the state doesn't take, an unknown workflow, input that isn't JSON and a missing argument.",
     "new": "halonic exits with 1 only for a failed run or test, 2 for a wrong command line or input (an event the wait doesn't take, input that isn't JSON, no workflow, a filter that keeps no test) and 4 for something not found (an unknown workflow). The compare turns the new 2 and 4 to 9 into 1; 3, for a workspace that isn't trusted, is never turned.",
     "why": "A script can tell its own mistake from a failed run and from a missing workflow (HAL-1994, decided on HAL-1984). The base is trusted in the compare, so a 3 there is a real difference.",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "exit-codes-by-kind"
     ]
@@ -746,7 +746,7 @@
     "old": "784f78d's studio test stored every run of every test in the workspace, as .studio/runs/test_<n>.jsonl (15 runs for the base's 8 tests).",
     "new": "halonic test runs the tests on empty in-memory stores and writes nothing. The compare leaves the old test calls' runs out; the runs themselves are compared test by test in the run-log compare (test-runner.parity-run-logs).",
     "why": "A test shouldn't change the workspace or the person's run list, and must never need trust: it runs on the test model with nothing sent anywhere (cli-output 3.3).",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "test-runs-not-stored"
     ]
@@ -758,7 +758,7 @@
     "old": "784f78d wrote run.failed with the state and the error only.",
     "new": "run.failed also carries a reason, such as error or budget. The compare leaves it out of the new events.",
     "why": "Studio and the CLI pick the failed run's words and fix by the reason, not by parsing the error text. It is an added, optional field: logs without it read as before.",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "run-failed-reason"
     ]
@@ -770,7 +770,7 @@
     "old": "784f78d failed the run with Agent \"checker\" did not reply with valid JSON.",
     "new": "The error quotes the answer and says what to do: Agent \"checker\" answered \"paper\", which isn't the JSON its output asks for. Tighten the agent's instructions or use a larger model. The compare gives both one plain form; that the run failed, where and for which agent is still compared.",
     "why": "The person sees what the agent answered and how to fix it, without opening the log (HAL-4756).",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "not-json-words"
     ]
@@ -782,7 +782,7 @@
     "old": "784f78d failed the run with Item 1 of 1: Workflow \"line-check\" failed: <error>, counting items from 1.",
     "new": "The error is Workflow \"line-check\" failed in item 0 of for-each state \"each\": <error>, counting items from 0 as item does in the events. The compare gives both one plain form; the item, the workflow and the error after it are still compared.",
     "why": "Every failure of an item's child run is wrapped the same way, a budget stop too, and the item's number matches the item field of its events.",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "item-failed-words"
     ]

@@ -162,7 +162,7 @@ something listed as a difference or a gap:
   (`test-runs-stay-in-memory`). Those runs are compared test by test in the
   run-log compare.
 - **The signed-out connector** is a known gap: the old CLI refused to start
-  the `invoice` workflow, the new one starts it (HAL-5285).
+  the `invoice` workflow, the new one starts it (HAL-5291).
 
 ## The compare
 
