@@ -933,7 +933,7 @@
     "old": "784f78d wrote run.started without saying which version of the workspace the run read.",
     "new": "halonic run writes run.started with a version: the live version commit and date, or saved-files when the workspace has no history, as in the base fixture. The compare leaves it out of the new events.",
     "why": "A run view can say whether a run ran the live version of a date or the saved files (HAL-5173, HAL-6021). It is an added, optional field: logs without it read as before.",
-    "status": "proposed",
+    "status": "signed-off",
     "cliRules": [
       "run-started-version"
     ]
