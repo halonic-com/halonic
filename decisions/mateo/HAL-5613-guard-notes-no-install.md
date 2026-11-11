@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this fix on [HAL-5613](/HAL/issues/HAL-5613); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9wHatYjqCyNdeHCkUHkBgzoVOCks5dzY1Vh/UVD5F0otVXHtBdKLNy643+qnvPafE3qc4FvCFQGHiCBkg348Dg==
 - Task: HAL-5613
 
 ## What changes
