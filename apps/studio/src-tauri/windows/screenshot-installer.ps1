@@ -63,6 +63,9 @@ if ($h -eq [IntPtr]::Zero) { throw 'The installer opened no window' }
 Wait-Button $h '&Install' 20
 Save-Picture $h '1-install'
 [W]::SendMessage([W]::GetDlgItem($h, 1), 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+# The step lines while they run: the copy is quick, so look soon after pressing.
+Start-Sleep -Seconds 2
+Save-Picture $h '2-installing'
 Wait-Button $h '&Finish' 480
 Save-Picture $h '3-finish'
 # Finish with "Start Halonic" ticked, then stop what it opened.

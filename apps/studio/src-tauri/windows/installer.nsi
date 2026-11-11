@@ -96,6 +96,9 @@ Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
 Var SandboxReason
+Var LineCopy
+Var LineSetup
+Var LineCheck
 Var StartAfterState
 Var PathLabel
 Var FolderErrorLabel
@@ -606,6 +609,49 @@ Function .onInit
   !endif
 FunctionEnd
 
+; Step lines (flow 2.3): one line per step, and its mark changes in place
+; (◌ running, ✓ done, ! stopped, ○ not started). NSIS can only add lines, so
+; the page's list (control 1016) is edited directly. They talk through
+; StepText and StepNo, and keep every register as they found it.
+Var StepText
+Var StepNo
+
+Function PrintStep
+  Push $R1
+  Push $R2
+  DetailPrint "$StepText"
+  FindWindow $R1 "#32770" "" $HWNDPARENT
+  GetDlgItem $R1 $R1 1016
+  SendMessage $R1 0x1004 0 0 $R2
+  IntOp $StepNo $R2 - 1
+  Pop $R2
+  Pop $R1
+FunctionEnd
+
+Function SetStep
+  Push $R1
+  Push $R2
+  FindWindow $R1 "#32770" "" $HWNDPARENT
+  GetDlgItem $R1 $R1 1016
+  ; LVITEMW with LVIF_TEXT: mask, item, subitem, state, stateMask, text
+  System::Call '*(i 1, i $StepNo, i 0, i 0, i 0, t "$StepText") p.R2'
+  SendMessage $R1 0x1074 $StepNo $R2
+  System::Free $R2
+  Pop $R2
+  Pop $R1
+FunctionEnd
+
+!macro PrintStep VAR TEXT
+  StrCpy $StepText "${TEXT}"
+  Call PrintStep
+  StrCpy ${VAR} $StepNo
+!macroend
+!macro SetStep VAR TEXT
+  StrCpy $StepNo ${VAR}
+  StrCpy $StepText "${TEXT}"
+  Call SetStep
+!macroend
+
 Section WebView2
   ; Check if Webview2 is already installed and skip this section
   ${If} ${RunningX64}
@@ -700,7 +746,15 @@ SectionEnd
 
 Section Install
   SetOutPath $INSTDIR
-  DetailPrint "Copying Halonic…"
+  ; The three lines are on the page at once (flow 2.3); the sandbox ones only
+  ; when the box is ticked.
+  !insertmacro PrintStep $LineCopy "◌ Copying Halonic…"
+  !ifdef SANDBOX_STEP
+    ${If} $SandboxState == ${BST_CHECKED}
+      !insertmacro PrintStep $LineSetup "○ Setting up the agent sandbox"
+      !insertmacro PrintStep $LineCheck "○ Checking the agent sandbox"
+    ${EndIf}
+  !endif
 
   !ifmacrodef NSIS_HOOK_PREINSTALL
     !insertmacro NSIS_HOOK_PREINSTALL
@@ -795,7 +849,7 @@ Section Install
     !insertmacro NSIS_HOOK_POSTINSTALL
   !endif
 
-  DetailPrint "✓ Copied Halonic"
+  !insertmacro SetStep $LineCopy "✓ Copied Halonic"
 
   ; Auto close this page for passive mode
   ${If} $PassiveMode = 1
@@ -809,7 +863,7 @@ SectionEnd
 Section SandboxStep
   !ifdef SANDBOX_STEP
     ${If} $SandboxState == ${BST_CHECKED}
-      DetailPrint "◌ Setting up the agent sandbox…"
+      !insertmacro SetStep $LineSetup "◌ Setting up the agent sandbox…"
       StrCpy $0 ""
       ${IfNot} ${Silent}
         DetailPrint "   Windows is asking for administrator rights."
@@ -832,20 +886,23 @@ Section SandboxStep
       Pop $SandboxReason
       ${If} $2 == "0"
         StrCpy $SandboxOutcome "ready"
-        DetailPrint "✓ Set up the agent sandbox"
-        DetailPrint "✓ Checked the agent sandbox"
+        !insertmacro SetStep $LineSetup "✓ Set up the agent sandbox"
+        !insertmacro SetStep $LineCheck "✓ Checked the agent sandbox"
       ${ElseIf} $2 == "10"
         StrCpy $SandboxOutcome "refused"
-        DetailPrint "! The agent sandbox isn't set up: Windows didn't give administrator rights."
-        DetailPrint "○ Checking the agent sandbox, skipped"
+        !insertmacro SetStep $LineSetup "! The agent sandbox isn't set up: Windows didn't give administrator rights."
+        !insertmacro SetStep $LineCheck "○ Checking the agent sandbox, skipped"
       ${ElseIf} $2 == "12"
         StrCpy $SandboxOutcome "checkfailed"
-        DetailPrint "✓ Set up the agent sandbox"
-        DetailPrint "! The agent sandbox didn't pass its check: $SandboxReason"
+        !insertmacro SetStep $LineSetup "✓ Set up the agent sandbox"
+        !insertmacro SetStep $LineCheck "! The agent sandbox didn't pass its check: $SandboxReason"
       ${Else}
         StrCpy $SandboxOutcome "failed"
-        DetailPrint "! The agent sandbox isn't set up: $SandboxReason"
-        DetailPrint "○ Checking the agent sandbox, skipped"
+        ${If} $SandboxReason == ""
+          StrCpy $SandboxReason "the setup ended with code $2 and no reason"
+        ${EndIf}
+        !insertmacro SetStep $LineSetup "! The agent sandbox isn't set up: $SandboxReason"
+        !insertmacro SetStep $LineCheck "○ Checking the agent sandbox, skipped"
       ${EndIf}
     ${EndIf}
   !endif
