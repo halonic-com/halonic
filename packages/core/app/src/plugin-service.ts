@@ -198,6 +198,9 @@ export class PluginService {
     const unsafe = unsafeNameProblem(plugin.id, placed);
     if (unsafe !== null) return err({ kind: "broken", problems: [unsafe] });
 
+    // A secret the version being replaced had stays in `Secrets` until the
+    // plugin is removed, so its name stays in the install record too.
+    const replacedSecretNames = options.replace ? await this.#replacedSecretNames(plugin.id) : {};
     const placement = await this.#options.writer.place(plugin.id, placed, {
       replace: options.replace,
     });
@@ -205,7 +208,7 @@ export class PluginService {
     await this.#installs.save(plugin.id, {
       source: options.from,
       files,
-      secretNames: pluginSecretNames(plugin),
+      secretNames: { ...replacedSecretNames, ...pluginSecretNames(plugin) },
     });
     return ok(await this.#loadOne({ path: plugin.id, kind: "folder" }));
   }
@@ -345,8 +348,7 @@ export class PluginService {
     deleteSecret: DeletePluginSecret,
   ): Promise<Result<void, PluginRemoveRefusal>> {
     const folder = pluginFolderOf(id);
-    const top = await this.#options.plugins.entries(undefined, { recursive: false });
-    const entry = top.find((found) => found.path === folder);
+    const entry = await this.#topEntry(folder);
     if (entry?.kind === "folder") await this.revoke(folder);
     for (const [secret, storedName] of Object.entries(
       await this.#storedSecretNames(entry, folder),
@@ -383,6 +385,21 @@ export class PluginService {
       // Unreadable now: the install record's names are all there is.
     }
     return names;
+  }
+
+  /**
+   * Every secret name of the plugin `folder` that `add` is about to replace:
+   * those its install record kept and those it declares now, so none of them
+   * is forgotten when the new version declares fewer.
+   */
+  async #replacedSecretNames(folder: string): Promise<Record<string, string>> {
+    return await this.#storedSecretNames(await this.#topEntry(folder), folder);
+  }
+
+  /** The entry named exactly `folder` at the top of the plugins folder, if any. */
+  async #topEntry(folder: string): Promise<FolderEntry | undefined> {
+    const top = await this.#options.plugins.entries(undefined, { recursive: false });
+    return top.find((found) => found.path === folder);
   }
 
   async #loadOne(entry: FolderEntry): Promise<PluginEntry> {

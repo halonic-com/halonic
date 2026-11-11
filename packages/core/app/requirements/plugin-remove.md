@@ -29,3 +29,6 @@ The app's `PluginService` shall remove a plugin by its id, for the CLI and Studi
 - Given the id `../weather`,
   when it is removed,
   then it is refused with a `RangeError` and nothing is deleted.
+- Given the weather plugin was replaced by a version that no longer declares `acme-key`,
+  when it is removed,
+  then both `example-key` and `acme-key` are deleted.

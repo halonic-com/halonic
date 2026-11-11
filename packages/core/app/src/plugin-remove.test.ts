@@ -134,6 +134,23 @@ verifies("app.plugin-remove", () => {
     expect(deleted.sort()).toEqual([...weatherSecrets, "plugin__weather__extra-key"].sort());
   });
 
+  it("deletes a secret a replaced version declared, even when the new version dropped it", async () => {
+    const { folder, service } = await setup();
+    const withoutAcme = weatherManifest
+      .replace("      ACME_KEY: { secret: acme-key }\n", "")
+      .replace(/ {4}secrets:\n {6}acme-key:.*\n/u, "");
+    expect(withoutAcme).not.toContain("acme-key");
+    const newVersion = new TestFolderReader().putFiles({
+      "plugin.yaml": withoutAcme,
+      "backend/index.js": "export default { v: 2 };\n",
+    });
+    expect((await service.add(newVersion, { from, replace: true })).ok).toBe(true);
+    expect(await folder.reader.read("weather/plugin.yaml")).not.toBeNull();
+    const { deleted, deleteSecret } = secretWriter();
+    await service.remove("weather", deleteSecret);
+    expect(deleted.sort()).toEqual([...weatherSecrets].sort());
+  });
+
   it("leaves a plugin whose id differs only in case, and does nothing when there is none", async () => {
     const { folder, service } = await setup();
     const { deleted, deleteSecret } = secretWriter();

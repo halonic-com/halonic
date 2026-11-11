@@ -214,6 +214,23 @@ verifies("app.plugin-add", () => {
     expect(service.tools([replaced])).toEqual([]);
   });
 
+  it("keeps the secret names of the version it replaces, even ones the new version dropped", async () => {
+    const { service } = setup();
+    added(await service.add(weatherSource(), { from, replace: false }));
+    const withoutAcme = weatherManifest
+      .replace("      ACME_KEY: { secret: acme-key }\n", "")
+      .replace(/ {4}secrets:\n {6}acme-key:.*\n/u, "");
+    const source = new TestFolderReader().putFiles({
+      "plugin.yaml": withoutAcme,
+      "backend/index.js": code,
+    });
+    added(await service.add(source, { from, replace: true }));
+    expect((await service.install("weather"))?.secretNames).toEqual({
+      "example-key": "plugin__weather__example-key",
+      "acme-key": "plugin__weather__acme-key",
+    });
+  });
+
   it("keeps no install record when placing fails", async () => {
     const { folder, service } = setup();
     folder.beforePlace = () => {
