@@ -42,7 +42,7 @@ describe("SrtSandbox on Windows, through the session", () => {
     readOnlyPaths: [],
     deniedPaths: [join(base, "secrets")],
     env: { HALONIC_FENCE_VAR: "a value with spaces" },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 120_000,
   });
 

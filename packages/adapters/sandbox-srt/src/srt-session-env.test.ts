@@ -115,7 +115,7 @@ verifies("sandbox-srt.session", () => {
     });
 
     it("keeps srt's proxy variables when there is a bridge or an allowed site", async () => {
-      const bridge = { host: "127.0.0.1", port: 4100 };
+      const bridge = { kind: "loopback", host: "127.0.0.1", port: 4100 } as const;
       expect(await withoutSrtEnv({ bridge, allowedSites: [] })).toEqual([false, false]);
       expect(await withoutSrtEnv({ bridge: null, allowedSites: ["*.npmjs.org"] })).toEqual([
         false,

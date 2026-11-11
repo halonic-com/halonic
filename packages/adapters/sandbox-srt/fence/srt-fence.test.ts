@@ -40,7 +40,7 @@ describe("SrtSandbox with the real fence", () => {
     readOnlyPaths: [],
     deniedPaths: [join(base, "secrets")],
     env: { HOME: join(base, "temp") },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 120_000,
   });
 
@@ -244,7 +244,7 @@ describe("SrtSandbox with the real fence", () => {
     const bridged = await sandbox.open({
       ...profile(),
       network: {
-        bridge: { host: "127.0.0.1", port: port(bridge) },
+        bridge: { kind: "loopback", host: "127.0.0.1", port: port(bridge) },
         allowedSites: [],
       },
     });

@@ -123,7 +123,7 @@ const scriptedProfile: SandboxProfile = {
   readOnlyPaths: [],
   deniedPaths: [],
   env: {},
-  network: { bridge: { host: "127.0.0.1", port: 0 }, allowedSites: [] },
+  network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 0 }, allowedSites: [] },
   timeLimitMs: 600_000,
 };
 

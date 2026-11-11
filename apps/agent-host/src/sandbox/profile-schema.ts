@@ -13,12 +13,22 @@ export const absolutePath = s
   .min(1)
   .refine((path) => isAbsolute(path), { message: "must be an absolute path" });
 
-const bridge = s
-  .object({
-    host: s.string().min(1),
-    port: s.number().int().min(1).max(65_535),
-  })
-  .strict();
+const bridge = s.discriminatedUnion("kind", [
+  s
+    .object({
+      kind: s.literal("loopback"),
+      host: s.string().min(1),
+      port: s.number().int().min(1).max(65_535),
+    })
+    .strict(),
+  s
+    .object({
+      kind: s.literal("socket"),
+      name: s.string().min(1),
+      socketPath: absolutePath,
+    })
+    .strict(),
+]);
 
 /**
  * The longest time limit a timer can hold: Node fires a `setTimeout` of more

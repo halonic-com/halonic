@@ -369,8 +369,17 @@ describe("sandbox routes, attacked by a caller with the token", () => {
       { ...profile, extra: true },
       { ...profile, network: { bridge: null, allowedSites: [], all: true } },
       { ...profile, network: { allowedSites: [] } },
-      { ...profile, network: { bridge: { host: "127.0.0.1", port: 0 }, allowedSites: [] } },
-      { ...profile, network: { bridge: { host: "127.0.0.1", port: 65_536 }, allowedSites: [] } },
+      {
+        ...profile,
+        network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 0 }, allowedSites: [] },
+      },
+      {
+        ...profile,
+        network: {
+          bridge: { kind: "loopback", host: "127.0.0.1", port: 65_536 },
+          allowedSites: [],
+        },
+      },
       { ...profile, timeLimitMs: 0 },
       { ...profile, timeLimitMs: 1.5 },
       { ...profile, deniedPaths: ["relative"] },

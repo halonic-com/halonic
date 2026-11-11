@@ -102,6 +102,18 @@ verifies("ports.harness-bridge-server", () => {
     expectTypeOf<OpenHarnessBridge["close"]>().returns.toEqualTypeOf<Promise<void>>();
   });
 
+  it("gives a socket bridge's path, under the name the program calls, and none for loopback", () => {
+    const onSocket: HarnessBridge = {
+      url: "http://bridge.halonic.invalid",
+      token: "made-up-token",
+      socketPath: "/data/bridges/r1/bridge.sock",
+    };
+    const onLoopback: HarnessBridge = { url: "http://127.0.0.1:41817", token: "made-up-token" };
+    expectTypeOf<HarnessBridge["socketPath"]>().toEqualTypeOf<string | undefined>();
+    expect(onSocket.socketPath).toBe("/data/bridges/r1/bridge.sock");
+    expect(onLoopback.socketPath).toBeUndefined();
+  });
+
   it("records only model calls and Halonic tool calls", () => {
     const response: BridgeEvent = {
       type: "llm.response",

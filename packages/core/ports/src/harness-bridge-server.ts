@@ -195,7 +195,8 @@ export interface OpenHarnessBridge extends HarnessBridge {
 }
 
 /**
- * Opens the Halonic bridge for one run: a server on loopback that passes the
+ * Opens the Halonic bridge for one run: a server on loopback, or on a Unix
+ * socket only this user can open, that passes the
  * program's model requests to the provider and serves Halonic's tools and
  * approvals over MCP (requirement `ports.harness-bridge-server`). The engine
  * opens it before the sandbox and closes it when the run ends. It is a port
@@ -215,9 +216,12 @@ export interface OpenHarnessBridge extends HarnessBridge {
  */
 export interface HarnessBridgeServer {
   /**
-   * Starts serving one run on a free loopback port.
+   * Starts serving one run on a free loopback port, or on a new Unix socket
+   * of its own when the adapter is set up for sockets. A socket bridge gives
+   * its path as {@link HarnessBridge.socketPath}. One that can't create its
+   * socket fails: it never falls back to a loopback port.
    *
-   * @throws when it can't listen on loopback
+   * @throws when it can't listen
    */
   open(options: HarnessBridgeOptions): Promise<OpenHarnessBridge>;
 }

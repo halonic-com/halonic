@@ -83,9 +83,25 @@ verifies("sandbox-srt.session", () => {
     it("rejects a bridge that is not a loopback address", async () => {
       const { runner, probes } = fakeRunner();
       const open = new SrtSandbox(linux, runner).open(
-        profile({ network: { bridge: { host: "10.0.0.5", port: 4100 }, allowedSites: [] } }),
+        profile({
+          network: { bridge: { kind: "loopback", host: "10.0.0.5", port: 4100 }, allowedSites: [] },
+        }),
       );
       await expect(open).rejects.toThrow(/loopback/);
+      expect(probes).toEqual([]);
+    });
+
+    it("rejects a bridge on a Unix socket until srt's rule for it lands", async () => {
+      const { runner, probes } = fakeRunner();
+      const bridge = {
+        kind: "socket",
+        name: "bridge.halonic.invalid",
+        socketPath: "/data/r1/bridge.sock",
+      } as const;
+      const open = new SrtSandbox(linux, runner).open(
+        profile({ network: { bridge, allowedSites: [] } }),
+      );
+      await expect(open).rejects.toThrow(/Unix socket/);
       expect(probes).toEqual([]);
     });
 
@@ -105,7 +121,9 @@ verifies("sandbox-srt.session", () => {
       async (host) => {
         const { runner } = fakeRunner();
         const session = await new SrtSandbox(linux, runner).open(
-          profile({ network: { bridge: { host, port: 4100 }, allowedSites: [] } }),
+          profile({
+            network: { bridge: { kind: "loopback", host, port: 4100 }, allowedSites: [] },
+          }),
         );
         expect(session.fence).toEqual({ state: "fenced" });
         await session.close();

@@ -79,19 +79,29 @@ export interface HarnessTask {
 export const harnessBridgeTokenHeader = "x-halonic-run-token";
 
 /**
- * The Halonic bridge of one run: a loopback address in Halonic that serves
- * the model gateway and Halonic's tools over MCP. The harness points its
- * program at `url` and has it send `token` in the
- * {@link harnessBridgeTokenHeader} header on every request.
+ * The Halonic bridge of one run: an address in Halonic that serves the model
+ * gateway and Halonic's tools over MCP. The harness points its program at
+ * `url` and has it send `token` in the {@link harnessBridgeTokenHeader}
+ * header on every request.
  *
  * The token is a credential for this run only. A harness never writes it into
  * an event, a log line or an error message.
  */
 export interface HarnessBridge {
-  /** The bridge's address on loopback, such as "http://127.0.0.1:41817". */
+  /**
+   * The address the program calls: on loopback, such as
+   * "http://127.0.0.1:41817", or, when the bridge serves a Unix socket, the
+   * name the sandbox's proxy sends to it, such as
+   * "http://bridge.halonic.invalid".
+   */
   url: string;
   /** The run's random token. */
   token: string;
+  /**
+   * The absolute path of the Unix socket the bridge serves, when it serves
+   * one instead of a loopback port. Absent for a loopback bridge.
+   */
+  socketPath?: string;
 }
 
 /** The body of the run log event with this `type`. */

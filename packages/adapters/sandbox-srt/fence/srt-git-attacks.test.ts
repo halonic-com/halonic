@@ -34,7 +34,7 @@ function open(base: string, work: string): Promise<SandboxSession> {
     readOnlyPaths: [],
     deniedPaths: [],
     env: { HOME: join(base, "temp") },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 120_000,
   });
 }
@@ -227,7 +227,7 @@ describe("a program planting a repository in a submodule nested in a checked-out
       readOnlyPaths: [],
       deniedPaths: [],
       env: { HOME: join(base, "temp") },
-      network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+      network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
       timeLimitMs: 120_000,
     });
     const blocks: string[] = [];

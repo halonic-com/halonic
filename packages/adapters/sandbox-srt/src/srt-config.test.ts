@@ -17,7 +17,7 @@ function profile(overrides: Partial<SandboxProfile> = {}): SandboxProfile {
     readOnlyPaths: [],
     deniedPaths: [],
     env: {},
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 60_000,
     ...overrides,
   };
@@ -130,7 +130,7 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     const config = buildSrtConfig(
       profile({
         network: {
-          bridge: { host: "127.0.0.1", port: 4100 },
+          bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
           allowedSites: ["*.npmjs.org"],
         },
       }),
@@ -141,7 +141,7 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
   it("writes an IPv6 bridge host in brackets", () => {
     const config = buildSrtConfig(
       profile({
-        network: { bridge: { host: "::1", port: 4100 }, allowedSites: [] },
+        network: { bridge: { kind: "loopback", host: "::1", port: 4100 }, allowedSites: [] },
       }),
     );
     expect(config.network?.allowedDomains).toEqual(["[::1]:4100"]);
@@ -174,7 +174,7 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     const config = buildSrtConfig(
       profile({
         network: {
-          bridge: { host: "127.0.0.1", port: 4100 },
+          bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
           allowedSites: ["*.nip.io"],
         },
       }),
@@ -219,13 +219,13 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
         readOnlyPaths: ["/work/acme/halonic.yaml"],
         deniedPaths: ["/keys/ada*"],
         network: {
-          bridge: { host: "127.0.0.1", port: 4100 },
+          bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
           allowedSites: ["*.npmjs.org"],
         },
       }),
       profile({
         network: {
-          bridge: { host: "::1", port: 4100 },
+          bridge: { kind: "loopback", host: "::1", port: 4100 },
           allowedSites: ["*.npmjs.org"],
         },
       }),

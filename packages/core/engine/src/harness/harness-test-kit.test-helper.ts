@@ -234,7 +234,10 @@ export function harnessPorts() {
           readOnlyPaths: [],
           deniedPaths: ["<home>/.ssh"],
           env: { PATH: "/usr/bin" },
-          network: { bridge: { host: "127.0.0.1", port: 41817 }, allowedSites: [] },
+          network: {
+            bridge: { kind: "loopback", host: "127.0.0.1", port: 41817 },
+            allowedSites: [],
+          },
           timeLimitMs: 600_000,
         },
         deniedGroups: [{ code: "ssh-keys", paths: ["<home>/.ssh"] }],

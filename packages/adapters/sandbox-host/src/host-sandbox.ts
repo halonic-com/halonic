@@ -52,6 +52,10 @@ export function createHostSandbox(): Sandbox {
 /** The port's rule for every adapter, though nothing here can hold a program to it. */
 function checkBridge(profile: SandboxProfile): void {
   const bridge = profile.network.bridge;
+  if (bridge?.kind === "socket") {
+    // The name only reaches the socket through a sandbox's own proxy, and this launcher has none.
+    throw new Error("a program started without a fence can't reach a bridge on a Unix socket");
+  }
   if (bridge !== null && !["127.0.0.1", "::1", "localhost"].includes(bridge.host)) {
     throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
   }

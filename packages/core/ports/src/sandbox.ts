@@ -12,8 +12,11 @@
  * 6: reason codes for setup, WSL, company policy and sign-in, and `windows`
  * narrowed to a backend with no Windows mode
  * (docs/adr/2026-11-11-pluggable-sandbox-layer.md).
+ * 7: {@link SandboxNetwork.bridge} says its kind: a loopback port, or a name
+ * the sandbox's proxy serves on a Unix socket
+ * (docs/adr/2026-11-11-sandbox-bridge-on-a-socket.md).
  */
-export const sandboxVersion = 6;
+export const sandboxVersion = 7;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -164,19 +167,36 @@ export interface SandboxProfile {
   keyStore?: "allowed" | "denied";
 }
 
+/**
+ * Where the program reaches the Halonic bridge.
+ *
+ * - `loopback`: a port on this computer's loopback, `host` being `127.0.0.1`,
+ *   `::1` or `localhost`. The program dials it as it is.
+ * - `socket`: the bridge serves a Unix socket at `socketPath`, an absolute
+ *   path, and the program calls it by `name`, a host name that never
+ *   resolves, such as `bridge.halonic.invalid`. The sandbox's own proxy,
+ *   outside the fence, sends requests for that name, on port 80 only, to the
+ *   socket, so no port is open to anything else on the computer. The program
+ *   never opens the socket itself.
+ */
+export type SandboxBridge =
+  | { kind: "loopback"; host: string; port: number }
+  | { kind: "socket"; name: string; socketPath: string };
+
 /** The network a {@link SandboxProfile} allows. */
 export interface SandboxNetwork {
   /**
-   * The Halonic bridge: the one loopback address the program can reach. An
-   * adapter rejects a host that is not a loopback address (`127.0.0.1`, `::1`
-   * or `localhost`) when {@link Sandbox.open} is called.
+   * The Halonic bridge: the one address on this computer the program can
+   * reach. An adapter rejects, when {@link Sandbox.open} is called, a
+   * `loopback` bridge whose host is not a loopback address, and a bridge kind
+   * it can't serve.
    *
    * `null` means no bridge: the program reaches no loopback address at all,
    * only the allowed sites. The integration runner uses it, because it talks
    * to Halonic over its standard input and output, not the network. The field
    * is never optional, so leaving it out can't mean "the whole network".
    */
-  bridge: { host: string; port: number } | null;
+  bridge: SandboxBridge | null;
   /**
    * Further sites, by host name such as "registry.npmjs.org" or with a
    * leading "*." for every subdomain. Empty by default.
@@ -292,7 +312,7 @@ export interface Sandbox {
    * Opens a session for one run. Cancelling the run, by aborting `signal`,
    * closes the session.
    *
-   * @throws when the sandbox doesn't work here (see {@link Sandbox.check}) or the profile can't be applied, including a bridge that is not a loopback address
+   * @throws when the sandbox doesn't work here (see {@link Sandbox.check}) or the profile can't be applied, including a loopback bridge whose host is not a loopback address, or a bridge kind it can't serve
    */
   open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession>;
 }

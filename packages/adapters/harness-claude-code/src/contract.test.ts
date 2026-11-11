@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { addHarnessEnvironment, type HarnessBridge, type HarnessEvent } from "@halonicjs/ports";
+import {
+  addHarnessEnvironment,
+  type HarnessBridge,
+  type HarnessEvent,
+  type SandboxProfile,
+} from "@halonicjs/ports";
 import { FakeSandboxSession, harnessContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -46,14 +51,14 @@ verifies("ports.harness-stream", () => {
     it("ends a recorded run with one agent.finished for the task, and leaves bridge calls to the bridge", async () => {
       const bridge: HarnessBridge = { url: "http://127.0.0.1:4100", token: "made-up-token" };
       const harness = newHarness();
-      const profile = {
+      const profile: SandboxProfile = {
         workingFolder: "/agents/writer/work",
         tempFolder: "/sessions/one/temp",
         settingsFolder: "/agents/writer/settings",
         readOnlyPaths: [],
         deniedPaths: [],
         env: {},
-        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+        network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
         timeLimitMs: 60_000,
       };
       const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});

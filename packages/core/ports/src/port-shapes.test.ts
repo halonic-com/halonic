@@ -19,6 +19,7 @@ import type {
   RunStore,
   Sandbox,
   SandboxBlock,
+  SandboxBridge,
   SandboxCapabilities,
   SandboxCheck,
   SandboxFence,
@@ -237,7 +238,7 @@ verifies("ports.sandbox-profile", () => {
     readOnlyPaths: ["/data/workspace/workspace.yaml"],
     deniedPaths: ["/data/home/.ssh"],
     env: { HOME: "/data/tmp/run_1" },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 600_000,
   };
 
@@ -257,10 +258,7 @@ verifies("ports.sandbox-profile", () => {
 
   it("takes a profile with no bridge, said as null", () => {
     const fencedOff: SandboxProfile = { ...profile, network: { bridge: null, allowedSites: [] } };
-    expectTypeOf<SandboxProfile["network"]["bridge"]>().toEqualTypeOf<{
-      host: string;
-      port: number;
-    } | null>();
+    expectTypeOf<SandboxProfile["network"]["bridge"]>().toEqualTypeOf<SandboxBridge | null>();
     expect(fencedOff.network.bridge).toBeNull();
   });
 

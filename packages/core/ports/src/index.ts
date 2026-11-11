@@ -237,6 +237,7 @@ export {
   type Sandbox,
   type SandboxBlock,
   type SandboxBlockListener,
+  type SandboxBridge,
   type SandboxCapabilities,
   type SandboxCheck,
   type SandboxCommand,

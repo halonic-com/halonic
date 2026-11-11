@@ -171,12 +171,17 @@ export class SrtSandbox implements Sandbox {
   /**
    * Opens a session whose fence is proven before it returns.
    *
-   * @throws when {@link SrtSandbox.check} isn't `ok`, or the profile has a bridge that isn't a loopback address
+   * @throws when {@link SrtSandbox.check} isn't `ok`, or the profile has a bridge that isn't a loopback address,
+   *   or one on a Unix socket
    */
   async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
     const check = await this.check();
     if (!check.ok) throw new Error(`the sandbox can't start: ${check.missing.join("; ")}`);
     const { bridge } = profile.network;
+    if (bridge?.kind === "socket") {
+      // srt's proxy can send a name to the socket; the rule for it comes with HAL-6348.
+      throw new Error("this sandbox can't serve a bridge on a Unix socket yet");
+    }
     if (bridge !== null && !isLoopback(bridge.host)) {
       throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
     }

@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 import type { HarnessAgent, HarnessProfile, HarnessProfileBuilder } from "@halonicjs/engine";
 import type { DeniedPathGroup, DeniedPathGroupCode } from "@halonicjs/events";
 import { defaultWorkingFolder, PROTECTED_TOP_NAMES } from "@halonicjs/format";
-import type { HarnessBridge, SandboxProfile } from "@halonicjs/ports";
+import type { HarnessBridge, SandboxBridge, SandboxProfile } from "@halonicjs/ports";
 import { entriesAround, homeDeniedGroups } from "./denied-groups.ts";
 import { type HarnessInstall, windowsInstallReadPaths } from "./install-folders.ts";
 import {
@@ -166,7 +166,7 @@ export class HarnessProfiles implements HarnessProfileBuilder {
       deniedPaths: deniedGroups.flatMap(({ paths }) => paths),
       reopenedPaths,
       env: { ...this.#options.env, TMPDIR: tempFolder },
-      network: { bridge: bridgeAddress(bridge), allowedSites: [...file.allowedSites] },
+      network: { bridge: sandboxBridgeOf(bridge), allowedSites: [...file.allowedSites] },
       timeLimitMs: this.#options.timeLimitMs,
     };
     return { profile, deniedGroups };
@@ -355,9 +355,21 @@ function deniedHolding(
   return null;
 }
 
-/** The bridge's loopback host and port, from its address. */
-function bridgeAddress(bridge: HarnessBridge): { host: string; port: number } {
+/**
+ * Where the sandbox lets the program reach `bridge`: the socket and the name
+ * in its address when it serves a socket, otherwise the loopback host and
+ * port in its address.
+ */
+function sandboxBridgeOf(bridge: HarnessBridge): SandboxBridge {
   const url = new URL(bridge.url);
+  if (bridge.socketPath !== undefined) {
+    // The sandbox's proxy sends only port 80 of the name to the socket.
+    if (url.protocol !== "http:" || url.port !== "") {
+      throw new Error(`The bridge's address ${bridge.url} must be plain http on port 80.`);
+    }
+    return { kind: "socket", name: url.hostname, socketPath: bridge.socketPath };
+  }
   if (url.port === "") throw new Error(`The bridge's address ${bridge.url} names no port.`);
-  return { host: url.hostname.replace(/^\[(.*)\]$/, "$1"), port: Number(url.port) };
+  const host = url.hostname.replace(/^\[(.*)\]$/, "$1");
+  return { kind: "loopback", host, port: Number(url.port) };
 }

@@ -55,7 +55,7 @@ const engineProfile: SandboxProfile = {
   readOnlyPaths: [],
   deniedPaths: [],
   env: { PATH: "/usr/bin", HOME: "/agents/writer/home" },
-  network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+  network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
   timeLimitMs: 60_000,
 };
 

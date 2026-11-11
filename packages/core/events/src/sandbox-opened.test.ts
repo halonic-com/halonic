@@ -20,7 +20,10 @@ const profile = {
   readOnlyPaths: [`${home}/work/site/.halonic`],
   deniedPaths: [`${home}/.ssh`, `${home}/.aws`, `${home}/.halonic/data`, "/srv/private"],
   env: { API_TOKEN: "not-for-the-log", HOME: home },
-  network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: ["registry.npmjs.org"] },
+  network: {
+    bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
+    allowedSites: ["registry.npmjs.org"],
+  },
   timeLimitMs: 600_000,
 };
 

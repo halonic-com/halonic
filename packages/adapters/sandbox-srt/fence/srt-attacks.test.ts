@@ -43,7 +43,7 @@ describe("a program trying to get out of the fence", () => {
     readOnlyPaths: [join(base, "readonly")],
     deniedPaths: [join(base, "secrets")],
     env: { HOME: join(base, "temp") },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 120_000,
   });
 

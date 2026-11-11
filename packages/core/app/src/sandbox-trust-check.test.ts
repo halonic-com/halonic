@@ -22,7 +22,7 @@ const profile: SandboxProfile = {
   readOnlyPaths: [`${halonicFolder}/canary-read-only`],
   deniedPaths: [`${halonicFolder}/canary-hidden.txt`],
   env: {},
-  network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+  network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
   timeLimitMs: 30_000,
 };
 

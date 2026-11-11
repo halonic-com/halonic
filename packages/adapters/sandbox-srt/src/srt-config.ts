@@ -249,6 +249,8 @@ export type SrtConfig = SandboxRuntimeConfig & {
  *
  * A profile with `keyStore: "denied"` gets the Keychain's Mach services
  * denied (see {@link keychainMachServices}).
+ *
+ * @throws for a bridge on a Unix socket, which has no rule here yet (HAL-6348)
  */
 export function buildSrtConfig(
   profile: SandboxProfile,
@@ -275,6 +277,9 @@ export function buildSrtConfig(
     ...(sharedFolders.length > 0 ? [...writableFolders, ...profile.readOnlyPaths] : []),
   ];
   const { bridge, allowedSites } = profile.network;
+  if (bridge?.kind === "socket") {
+    throw new Error("srt's config has no rule yet for a bridge on a Unix socket");
+  }
   const bridgeDomains = bridge === null ? [] : [bridgeDomain(bridge.host, bridge.port)];
   return {
     network: {

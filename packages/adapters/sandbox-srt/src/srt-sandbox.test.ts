@@ -1,6 +1,7 @@
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { SandboxProfile } from "@halonicjs/ports";
 import { sandboxCheckContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -213,14 +214,14 @@ verifies("sandbox-srt.check", () => {
 
     it("opens nothing on Windows without srt's install", async () => {
       const sandbox = srt(machine({ platform: "win32" }));
-      const profile = {
+      const profile: SandboxProfile = {
         workingFolder: "/contract/work",
         tempFolder: "/contract/temp",
         settingsFolder: null,
         readOnlyPaths: [],
         deniedPaths: [],
         env: {},
-        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+        network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
         timeLimitMs: 1000,
       };
       await expect(sandbox.open(profile)).rejects.toThrow("windows-install");

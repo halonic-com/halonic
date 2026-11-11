@@ -151,7 +151,7 @@ verifies("harness-checks.bridge-sandbox", () => {
     const profile = sandbox.profile;
     const [, port = ""] = profile?.env["ANTHROPIC_BASE_URL"]?.split(/:(?=\d+$)/) ?? [];
     expect(profile?.network).toEqual({
-      bridge: { host: "127.0.0.1", port: Number(port) },
+      bridge: { kind: "loopback", host: "127.0.0.1", port: Number(port) },
       allowedSites: [],
     });
     expect(checked.bridgeUrl).toBe(profile?.env["ANTHROPIC_BASE_URL"]);

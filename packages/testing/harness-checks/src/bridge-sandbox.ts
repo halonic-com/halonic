@@ -162,7 +162,7 @@ async function checkProfile(
       ...options.extraEnv,
     },
     network: {
-      bridge: { host: tap.host, port: tap.port },
+      bridge: { kind: "loopback", host: tap.host, port: tap.port },
       allowedSites: [...options.allowedSites],
     },
     timeLimitMs: sessionTimeLimitMs,

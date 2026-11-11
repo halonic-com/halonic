@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SandboxProcess, SandboxProfile } from "@halonicjs/ports";
+import type { SandboxNetwork, SandboxProcess, SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cantStartCode } from "./host-process.ts";
@@ -241,9 +241,26 @@ verifies("sandbox-host.start", () => {
     });
 
     it("refuses a bridge that is not a loopback address, as every adapter does", async () => {
-      const network = { bridge: { host: "example.com", port: 80 }, allowedSites: [] };
+      const network: SandboxNetwork = {
+        bridge: { kind: "loopback", host: "example.com", port: 80 },
+        allowedSites: [],
+      };
       await expect(createHostSandbox().open(profile({ network }))).rejects.toThrow(
         "the bridge must be a loopback address",
+      );
+    });
+
+    it("refuses a bridge on a Unix socket, which only a sandbox's own proxy can reach", async () => {
+      const network: SandboxNetwork = {
+        bridge: {
+          kind: "socket",
+          name: "bridge.halonic.invalid",
+          socketPath: "/data/r1/bridge.sock",
+        },
+        allowedSites: [],
+      };
+      await expect(createHostSandbox().open(profile({ network }))).rejects.toThrow(
+        "can't reach a bridge on a Unix socket",
       );
     });
 

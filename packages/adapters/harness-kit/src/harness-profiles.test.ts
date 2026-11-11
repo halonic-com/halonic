@@ -88,7 +88,7 @@ verifies("harness-kit.harness-profile", () => {
       expect(profile.readOnlyPaths).toEqual([join(workspace, ".git"), join(workspace, "agents")]);
       expect(profile.env).toEqual({ PATH: "/usr/bin", TMPDIR: join(data, "tmp", "run_1") });
       expect(profile.network).toEqual({
-        bridge: { host: "127.0.0.1", port: 41817 },
+        bridge: { kind: "loopback", host: "127.0.0.1", port: 41817 },
         allowedSites: ["docs.acme.test"],
       });
       expect(deniedGroups.map(({ code }) => code)).toEqual([
@@ -104,6 +104,23 @@ verifies("harness-kit.harness-profile", () => {
         join(data, "tmp", "run_1"),
         join(data, "settings", "writer"),
       ]);
+    });
+
+    it("allows a bridge on a Unix socket by its name and path, and only on port 80", async () => {
+      const socketPath = join(computer.data, "bridges", "r1", "bridge.sock");
+      const onSocket = { url: "http://bridge.halonic.invalid", token: "run-token", socketPath };
+
+      const { profile } = await profilesWith().profileOf(agentWith(null), onSocket);
+
+      expect(profile.network.bridge).toEqual({
+        kind: "socket",
+        name: "bridge.halonic.invalid",
+        socketPath,
+      });
+      const onAnotherPort = { ...onSocket, url: "http://bridge.halonic.invalid:8080" };
+      await expect(profilesWith().profileOf(agentWith(null), onAnotherPort)).rejects.toThrow(
+        "must be plain http on port 80",
+      );
     });
 
     it("works in the proposal folder, writes nowhere in the workspace, and denies the rest of the data", async () => {
