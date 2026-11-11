@@ -80,6 +80,7 @@ verifies("cli.doctor-workspace", () => {
     const doctorOf = (workspace: LoadedWorkspace) =>
       doctorWorkspace({
         workspace,
+        integrations: [],
         location: root,
         fallbackName: "./acme",
         commandPaths: new Map(),
