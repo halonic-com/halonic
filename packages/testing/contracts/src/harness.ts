@@ -254,10 +254,12 @@ export function harnessContract(name: string, harness: HarnessContractHarness): 
 
       it("signs in to the settings folder its runs use, when it has a sign-in", async () => {
         const subject = await harness.make();
-        if (subject.signIn === undefined) return;
         const added = subject.environment?.(newBridge(), engineProfile) ?? {};
+        // A harness without a sign-in of its own, such as the built-in loop, points nowhere.
+        const { signIn } = subject;
+        const pointedAt = signIn === undefined ? null : added[signIn.folderVariable];
 
-        expect(added[subject.signIn.folderVariable]).toBe(engineProfile.settingsFolder);
+        expect(pointedAt).toBe(signIn === undefined ? null : engineProfile.settingsFolder);
       });
     });
   });
