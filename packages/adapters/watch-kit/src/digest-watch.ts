@@ -106,6 +106,15 @@ export class DigestWatch implements DefinitionWatch {
     }
   }
 
+  /**
+   * The store's change to `path` didn't happen: it found the file changed
+   * from outside and left it alone, so the next batch still reports that
+   * change. It waits its turn after the batches already queued.
+   */
+  async dropOwnChange(path: string): Promise<void> {
+    await this.#inTurn(async () => this.#known.dropOwnChange(path));
+  }
+
   /** Stops hearing events, lets a batch already being read finish, then reports nothing more. */
   async close(): Promise<void> {
     this.#stopping = true;

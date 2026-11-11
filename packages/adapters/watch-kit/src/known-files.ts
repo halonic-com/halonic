@@ -66,6 +66,15 @@ export class KnownFiles {
   }
 
   /**
+   * The store's change to `path` didn't happen: it found the file changed
+   * from outside and left it alone. That change is still to be reported, so
+   * the mark is dropped without reading the file.
+   */
+  dropOwnChange(path: string): void {
+    this.#own.delete(path);
+  }
+
+  /**
    * The files that changed at or under the names given, as one batch sorted
    * by path, and remembers how each is now. A name of `""` stands for the
    * whole workspace. A file that is now what the store is writing there is

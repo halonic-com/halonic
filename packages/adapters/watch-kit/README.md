@@ -35,6 +35,14 @@ the one it last saw, and reports only the files whose text really differs.
   change from outside right after it is still reported; when it failed, the watch reads the file
   back. The first reading, batches and `endOwnChange` run one at a time, in order.
   `endOwnChange` never rejects: a failure to read the file back breaks the watch, not the write.
+  When the store found the file changed from outside and left it alone, it calls
+  `dropOwnChange(path)` instead: the mark goes without reading the file, so the next batch still
+  reports that change.
+- `runOwnChange(watches, path, content, digest, apply)` does all of that around one change, for
+  the watches open when it starts: `content` is the new text, or `null` for a remove, and `apply`
+  gives whether it changed the file (`false` when it found a change from outside and left the file
+  alone). When `apply` throws, the watches read the file back and the error goes on. It works out
+  no digest when no watch is open.
 - `KnownFiles` is the part without timers or events: the digests last seen, the own-change marks,
   and `changesAt(names)`, which gives the sorted batch. `OwnChange` and `KnownFilesOptions` are its
   types.
