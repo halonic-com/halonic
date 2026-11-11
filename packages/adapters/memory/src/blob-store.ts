@@ -1,21 +1,12 @@
-import type { BlobRef, BlobStore } from "@halonicjs/ports";
+import { type BlobRef, type BlobStore, checkBlobMediaType, isBlobHash } from "@halonicjs/ports";
 import { sha256Hex } from "./sha256.ts";
-
-/** HTTP token characters (RFC 9110), for each half of `type/subtype`. */
-const token = "[!#$%&'*+.^_`|~0-9A-Za-z-]+";
-const mediaTypePattern = new RegExp(`^${token}/${token}$`);
-const hashPattern = /^[0-9a-f]{64}$/;
 
 /** Content-addressed blobs in a map. Bytes are copied in and out, so callers can't change what is stored. */
 export class MemoryBlobStore implements BlobStore {
   readonly #blobs = new Map<string, Uint8Array>();
 
   async put(data: Uint8Array, mediaType: string): Promise<BlobRef> {
-    if (!mediaTypePattern.test(mediaType)) {
-      throw new RangeError(
-        `Media type ${JSON.stringify(mediaType)} is not type/subtype without parameters.`,
-      );
-    }
+    checkBlobMediaType(mediaType);
     // Not `slice()`: on a Node `Buffer` it gives a view on the caller's memory, not a copy.
     const copy = new Uint8Array(data);
     const hash = await sha256Hex(copy);
@@ -26,7 +17,7 @@ export class MemoryBlobStore implements BlobStore {
   }
 
   async get(hash: string): Promise<Uint8Array | null> {
-    if (!hashPattern.test(hash)) {
+    if (!isBlobHash(hash)) {
       return null;
     }
     const stored = this.#blobs.get(hash);

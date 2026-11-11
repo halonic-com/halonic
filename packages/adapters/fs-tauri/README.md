@@ -1,6 +1,6 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore`, `RunStore` and `DefinitionStore` ports for the Studio desktop app.
+The `TrustStore`, `RunStore`, `BlobStore` and `DefinitionStore` ports for the Studio desktop app.
 
 - `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
@@ -10,6 +10,9 @@ The `TrustStore`, `RunStore` and `DefinitionStore` ports for the Studio desktop 
   `run_logs` command. The shell keeps the runs in the profile's run folder for the workspace, laid
   out as `FolderRunStore` in `fs-node` lays it out, and holds the run's lock file while it appends,
   so of a CLI and the desktop app appending with the same `expectedSeq`, exactly one wins.
+- `TauriBlobStore`: every call goes to the shell's `blob_put` or `blob_get` command. The shell
+  keeps the blobs in the profile's blob folder for the workspace, laid out as `FolderBlobStore` in
+  `fs-node` lays it out, so a blob one of them stored is there for the other.
 - `TauriDefinitionStore`: every call goes to the shell's `fs_list`, `fs_read`, `fs_write` or
   `fs_remove` command, on the plain files of a folder the person opened, the files the CLI's
   `FolderDefinitionStore` reads and writes. `watch()` hears the shell's `fs_watch`.
@@ -95,6 +98,33 @@ The package exports `TauriRunStore`, `TauriRunStoreOptions`, `runCommands`, `run
 types `RunRefusal` and `RunRefusalKind`, and `isRunRefusal`. The tests run the run-store
 contract against a fake shell; that the shell and the CLI take turns on one lock is proved on real
 files by the Rust tests of `crates/run-store` and `crates/run-lock` (in `apps/studio/src-tauri`).
+
+## Blobs
+
+`new TauriBlobStore(shell, workspace)` names the blob folder by the workspace, a folder the person
+opened in the shell. The shell works out the folder as `blobsFolder` in `@halonicjs/profile` does,
+`<profile>/workspaces/<key>/blobs`, and keeps each blob as the file `<first two hex
+characters>/<hash>`, holding only the bytes, as `FolderBlobStore` does. The page never names a path.
+
+The media type and the hash are checked here with the port's rules (`checkBlobMediaType`,
+`isBlobHash`), so a refused call never reaches the shell. Bytes cross the IPC as strict base64url
+(`encodeBase64url` in `@halonicjs/std`), and the shell hashes them itself, so a blob's file always
+holds the bytes its name says. The media type isn't kept, as the port allows.
+
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `linked_blob` | an `Error` with the shell's message, as `FolderBlobStore` throws for a linked blob |
+| `folder_not_open` | a `KindedError` `denied` |
+| `invalid_hash`, `invalid_data` | a `KindedError` `internal` (the page checks hashes and encodes the bytes) |
+| `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
+
+An answer that isn't the command's also rejects with `unavailable`, without text.
+
+The package exports `TauriBlobStore`, `blobCommands`, `blobRefusalKinds`, the types `BlobRefusal`
+and `BlobRefusalKind`, and `isBlobRefusal`. The tests run the blob-store contract against a fake
+shell; the layout, the private modes and the link refusals on real files are proved by the Rust
+tests of `crates/blob-store` (in `apps/studio/src-tauri`).
 
 ## Workspace files
 

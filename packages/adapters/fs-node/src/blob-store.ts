@@ -1,17 +1,12 @@
 import { createHash } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { BlobRef, BlobStore } from "@halonicjs/ports";
+import { type BlobRef, type BlobStore, checkBlobMediaType, isBlobHash } from "@halonicjs/ports";
 import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing, lstatOrNull } from "./links.ts";
 import { makePrivateFolder, readUnlinkedBytes } from "./private-files.ts";
 import { renameOver } from "./rename-over.ts";
 import { temporaryWriteFileName } from "./temporary-write.ts";
-
-/** HTTP token characters (RFC 9110), for each half of `type/subtype`. */
-const token = "[!#$%&'*+.^_`|~0-9A-Za-z-]+";
-const mediaTypePattern = new RegExp(`^${token}/${token}$`, "u");
-const hashPattern = /^[0-9a-f]{64}$/u;
 
 /**
  * Blobs as files in one folder of the user's profile, such as a workspace's
@@ -42,11 +37,7 @@ export class FolderBlobStore implements BlobStore {
   }
 
   async put(data: Uint8Array, mediaType: string): Promise<BlobRef> {
-    if (!mediaTypePattern.test(mediaType)) {
-      throw new RangeError(
-        `Media type ${JSON.stringify(mediaType)} is not type/subtype without parameters.`,
-      );
-    }
+    checkBlobMediaType(mediaType);
     // A copy, so a caller changing `data` while the write waits can't change what is stored.
     // Not `data.slice()`: on Node's Buffer that is a view of the same bytes.
     const bytes = new Uint8Array(data);
@@ -60,7 +51,7 @@ export class FolderBlobStore implements BlobStore {
   }
 
   async get(hash: string): Promise<Uint8Array | null> {
-    if (!hashPattern.test(hash)) {
+    if (!isBlobHash(hash)) {
       return null;
     }
     try {
