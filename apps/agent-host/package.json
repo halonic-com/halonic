@@ -29,6 +29,9 @@
   "version": "0.0.0",
   "dependencies": {
     "@halonicjs/adapter-harness-bridge": "workspace:*",
+    "@halonicjs/adapter-harness-claude-code": "workspace:*",
+    "@halonicjs/adapter-harness-codex": "workspace:*",
+    "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",

@@ -265,6 +265,15 @@ importers:
       '@halonicjs/adapter-harness-bridge':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-bridge
+      '@halonicjs/adapter-harness-claude-code':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-sandbox-host':
+        specifier: workspace:*
+        version: link:../../packages/adapters/sandbox-host
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-srt

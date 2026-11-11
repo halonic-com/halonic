@@ -1,6 +1,6 @@
 # @halonicjs/app-agent-host
 
-Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. It serves `GET /v1/health`, the `Sandbox` port and the Halonic bridge; the harnesses come next (HAL-4476).
+Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. It serves `GET /v1/health`, the `Sandbox` port, the Halonic bridge and the harnesses (Claude Code and Codex).
 
 - **Layer:** apps
 - **Owner:** owen
@@ -64,6 +64,11 @@ Every refusal comes before the path is looked at, so a caller without the token 
 | `POST /v1/bridge/open`                                 | an NDJSON stream: the bridge, then its calls to Studio (below)           |
 | `POST /v1/bridge/answer`                               | `{"answered":true}`, or `404` for a call the bridge isn't waiting for    |
 | `POST /v1/bridge/close`                                | `{"closed":true}`, or `404` for an unknown bridge                        |
+| `GET /v1/harnesses`                                    | `[{"id","name"}]`                                                        |
+| `POST /v1/harnesses/detect` with `{"harness"}`         | the `HarnessDetection`                                                   |
+| `POST /v1/harnesses/runs/start`                        | an NDJSON stream: the run's id, then its events (below)                  |
+| `POST /v1/harnesses/runs/send` with `{"run","input"}`  | `{"sent":true}`, or `409 send_failed` when the run refuses the input     |
+| `POST /v1/harnesses/runs/cancel` with `{"run"}`        | `{"cancelled":true}`                                                     |
 
 ## The sandbox over loopback
 
@@ -85,3 +90,18 @@ A session is named by an id the host makes; any other id gets `404 unknown_sessi
 The first line is `opened`, or `{"type":"failed","message"}` when the bridge couldn't listen. Each `call` is one of `recorder.record`, `tools.list`, `tools.check`, `tools.call`, `approvals.request` and `secrets.get`, with the port's arguments; Studio answers it with `POST /v1/bridge/answer` and `{ bridge, call, result }` or `{ bridge, call, error }`. A `cancel` means the bridge stopped waiting (the program went away), so Studio can stop the tool call or withdraw the approval. The host checks each answer against the port's shape, and asks only for the secrets the run's `providers` name. A bridge is named by a random id the host makes, like a session, because call ids (`1`, `2`, …) repeat from bridge to bridge.
 
 The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
+
+## The harnesses over loopback
+
+Studio gives the engine a stand-in `Harness` for each one the host lists, and the host runs the real one inside a sandbox session and with a bridge Studio opened here first. Studio starts a run with `{ harness, task, session, bridge }`, naming the session and the bridge by their ids, so the bridge's token never travels again. The answer stays open as a stream:
+
+```
+{"type":"started","run":"<id>"}
+{"type":"event","event":{"type":"tool.called",...}}
+{"type":"event","event":{"type":"agent.finished",...}}
+{"type":"finished"}
+```
+
+A run that fails or is cancelled ends with `{"type":"failed","message"}` instead of `finished`. A harness, session or bridge the host doesn't have gets `404 unknown_harness`, `unknown_session` or `unknown_bridge`. When Studio goes away the run is cancelled, and when the host stops it cancels every run before it closes the sessions.
+
+The port's `environment` has no route: the engine asks for it without waiting, and it only reads its arguments, so Studio calls the adapter's own function with the bridge's address and token from `/v1/bridge/open`.

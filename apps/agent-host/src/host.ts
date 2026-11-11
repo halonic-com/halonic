@@ -1,7 +1,13 @@
 import type { Readable } from "node:stream";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
+import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
+import { codexHarness } from "@halonicjs/adapter-harness-codex";
+import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
+import { harnessRoutes } from "./harness/harness-routes.ts";
+import { RunTable } from "./harness/run-table.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { healthRoute } from "./server/health-route.ts";
@@ -56,18 +62,28 @@ async function serve(version: string, io: HostIo): Promise<void> {
   const token = randomLaunchToken();
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
+  const runs = new RunTable();
   const server = await startHostServer(token, [
     healthRoute(version),
     ...sandboxRoutes(new SrtSandbox(), sessions),
     ...bridgeRoutes((secrets) => new NodeHarnessBridgeServer({ secrets }), bridges),
+    ...harnessRoutes({ harnesses: hostHarnesses(version), sessions, bridges, runs }),
   ]);
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
   await inputClosed(io.input);
-  // Stop the sandboxed programs first, so none outlives the host; their bridges then have no caller.
+  // Stop the runs, then their sandboxed programs, so none outlives the host;
+  // their bridges then have no caller.
+  await runs.cancelAll();
   await sessions.closeAll();
   await bridges.closeAll();
   await server.close();
+}
+
+/** The harnesses the host runs: Claude Code and Codex, found with this computer's launcher. */
+function hostHarnesses(version: string): Harness[] {
+  const probe = createProgramProbe();
+  return [claudeCodeHarness({ probe }), codexHarness({ probe, halonicVersion: version })];
 }
 
 function inputClosed(input: Readable): Promise<void> {
