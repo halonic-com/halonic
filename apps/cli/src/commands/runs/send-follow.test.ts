@@ -22,7 +22,7 @@ import {
   openWorkspaceRuns,
   webCryptoDigest,
 } from "../../workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { runCommandWith } from "../run/command.ts";
 import { runsCommandWith } from "./command.ts";
 
@@ -159,9 +159,11 @@ async function writerInClaudeCode(): Promise<void> {
 /** Trusts Acme as it is now, in the trust store every `halonic` command here reads. */
 async function trustAcme(): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const read = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
   const check = await trust.check(subject);
+  assertTrustable(check, read);
   expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
 }
 

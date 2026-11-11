@@ -19,7 +19,7 @@ import {
   openWorkspaceRuns,
   webCryptoDigest,
 } from "../../workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { runCommandWith } from "./command.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
@@ -68,9 +68,11 @@ async function writerWith(lines: string): Promise<void> {
   const file = join(acme, writerPath);
   await writeFile(file, `${await readFile(file, "utf8")}${lines}`);
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const { subject } = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands);
+  const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(chosen));
   const check = await trust.check(subject);
+  assertTrustable(check, read);
   expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
 }
 

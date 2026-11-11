@@ -123,6 +123,9 @@ async function setup(
   /** Trusts the workspace as a person would, and gives the check that follows. */
   const trusted = async (): Promise<TrustCheck> => {
     const shown = await trust.check(await subject());
+    if (shown.status === "refused") {
+      throw new Error("The radar integration has nothing to refuse.");
+    }
     expect((await trust.grant(await subject(), shown.fingerprint, "cli")).ok).toBe(true);
     const check = await trust.check(await subject());
     expect(check.status).toBe("trusted");

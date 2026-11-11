@@ -32,7 +32,7 @@ import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
 /** The parity package's base fixture: a made-up workspace with every file kind. */
 const base = join(import.meta.dirname, "..", "..", "..", "packages", "testing", "parity");
@@ -43,9 +43,11 @@ const noCommands = { path: undefined, endings: [] };
 /** Trusts the workspace in `trustStore` as it is now, as `halonic trust` would. */
 async function trust(workspace: string, trustStore: MemoryTrustStore): Promise<void> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: workspace });
-  const { subject } = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands);
+  const { subject } = read;
   const service = cliTrustService(trustStore, fixedClock(start));
   const check = await service.check(subject);
+  assertTrustable(check, read);
   const granted = await service.grant(subject, check.fingerprint, "cli");
   if (!granted.ok) throw new Error(`The base couldn't be trusted: ${granted.error.kind}`);
 }

@@ -18,7 +18,7 @@ import { exitCodeOfError } from "./exit-code-for.ts";
 import { runMessages } from "./messages/run.ts";
 import { readSourceListing } from "./source-listing.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
-import { cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
 const noCommands = { path: undefined, endings: [] };
 const clock = fixedClock(Date.UTC(2026, 10, 11, 9));
@@ -112,9 +112,11 @@ async function acmeNotes() {
   const connector = filesOf(workspace, "connector").find((file) => file.value.id === "notes");
   if (connector === undefined) throw new TypeError("Acme has a notes source");
   const trust = async () => {
-    const { subject } = await readWorkspaceTrust(dir, noCommands);
+    const read = await readWorkspaceTrust(dir, noCommands);
+    const { subject } = read;
     const service = cliTrustService(machine.trustStore, clock);
     const check = await service.check(subject);
+    assertTrustable(check, read);
     expect((await service.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
   };
   return { target: { dir, typedDir: undefined, connector: connector.value, workspace }, trust };

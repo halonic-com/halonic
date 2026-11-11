@@ -97,11 +97,21 @@ function setup() {
   return { store, service, later };
 }
 
+/** Checks a workspace that refuses nothing, so the check has a fingerprint. */
+async function fingerprinted(
+  service: TrustService,
+  workspace: TrustSubject,
+): Promise<Exclude<TrustCheck, { status: "refused" }>> {
+  const check = await service.check(workspace);
+  if (check.status === "refused") {
+    throw new Error(`The check refused ${check.refused.map((entry) => entry.id).join(", ")}.`);
+  }
+  return check;
+}
+
 /** Trusts the workspace as a person would: with the fingerprint the check showed. */
 async function trustAsPerson(service: TrustService, workspace: TrustSubject): Promise<void> {
-  const shown = await service.check(workspace);
-  expect(shown.status).not.toBe("refused");
-  if (shown.status === "refused") return;
+  const shown = await fingerprinted(service, workspace);
   const granted = await service.grant(workspace, shown.fingerprint, "cli");
   expect(granted.ok).toBe(true);
 }
@@ -288,9 +298,9 @@ verifies("app.trust-service", () => {
 
   it("saves nothing when the shown fingerprint is a prefix or out of date", async () => {
     const { service, store } = setup();
-    const old = await service.check(subject(program("files")));
+    const old = await fingerprinted(service, subject(program("files")));
     const workspace = subject(program("files", { PYTHONSTARTUP: "x.py" }));
-    const { fingerprint } = await service.check(workspace);
+    const { fingerprint } = await fingerprinted(service, workspace);
 
     for (const shown of [fingerprint.slice(0, 12), old.fingerprint, ""]) {
       expect(await service.grant(workspace, shown, "prompt")).toEqual({
@@ -304,7 +314,7 @@ verifies("app.trust-service", () => {
   it("puts the resolved command in the fingerprint, and can't be called without it", async () => {
     const { service } = setup();
     const connectors = [program("files")];
-    const here = await service.check({
+    const here = await fingerprinted(service, {
       location,
       connectors,
       commandPaths,
@@ -312,7 +322,7 @@ verifies("app.trust-service", () => {
       integrations: [],
       providers: [],
     });
-    const there = await service.check({
+    const there = await fingerprinted(service, {
       location,
       connectors,
       commandPaths: new Map([["node", "/opt/evil/node"]]),
@@ -461,7 +471,7 @@ verifies("app.trust-service", () => {
     expectStatus(check, "new");
     expect(check.unpinned).toEqual(["crm", "mail"]);
     expect(JSON.stringify(check.content)).not.toContain("unpinned");
-    const filesOnly = await service.check(subject(program("files")));
+    const filesOnly = await fingerprinted(service, subject(program("files")));
     expect(filesOnly.unpinned).toEqual([]);
   });
 

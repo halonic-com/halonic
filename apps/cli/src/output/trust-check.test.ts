@@ -1,4 +1,3 @@
-import type { TrustCheck } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import type {
   AgentTrustContent,
@@ -9,7 +8,7 @@ import type {
 } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
-import { shownDate, trustCheckLines } from "./trust-check.ts";
+import { type FingerprintedCheck, shownDate, trustCheckLines } from "./trust-check.ts";
 
 const facts = { name: "Acme", folder: "./acme" };
 const fingerprint = "hfp1:c9b6e22b01f6cd3d69165343778b05c2f2c0c4e472d4d4eadeb6d073f5bc61ca";
@@ -63,7 +62,7 @@ const crm: IntegrationTrustContent = {
 };
 const noChanges = { added: [], changed: [], removed: [], unchanged: 0 };
 
-const lines = (check: TrustCheck) => trustCheckLines(check, facts).map(plainText);
+const lines = (check: FingerprintedCheck) => trustCheckLines(check, facts).map(plainText);
 
 verifies("cli.trust-check", () => {
   it("prints a new workspace's check as cli-output 3.5's example", () => {
@@ -103,7 +102,7 @@ verifies("cli.trust-check", () => {
       harness: "codex",
       allowedSites: ["*.example.com", "xn--bcher-kva.example"],
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "new",
       content: { connectors: [inbox], agents: [reader] },
       fingerprint,
@@ -178,7 +177,7 @@ verifies("cli.trust-check", () => {
   });
 
   it("starts with the ! line when the list of trusted workspaces can't be read", () => {
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "unreadable",
       content,
       ...current,
@@ -234,7 +233,7 @@ verifies("cli.trust-check", () => {
   });
 
   it("lists a local integration's setting addresses under Addresses, one line each", () => {
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "new",
       content: { connectors: [], integrations: [crm] },
       fingerprint,
@@ -274,7 +273,7 @@ verifies("cli.trust-check", () => {
       providers: noChanges,
       onlyRemoves: false,
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "changed",
       content: { connectors: [], integrations: [after] },
       ...current,
@@ -392,7 +391,13 @@ verifies("cli.trust-check", () => {
       providers: noChanges,
       onlyRemoves: true,
     };
-    const check: TrustCheck = { status: "changed", content, ...current, changes, trustedAt };
+    const check: FingerprintedCheck = {
+      status: "changed",
+      content,
+      ...current,
+      changes,
+      trustedAt,
+    };
     expect(lines(check)).toEqual([
       "What changed in Acme since you trusted it on 3 Nov",
       "",
