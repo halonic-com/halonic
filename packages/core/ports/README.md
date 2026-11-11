@@ -56,6 +56,12 @@ with the memory adapters.
 `portVersions` holds the same list in code. A test fails when this table,
 `portVersions` and the port files disagree.
 
+`ConnectorFactoryContext.sandbox` is optional (the port stays at version 1). When it is set, a `stdio`
+connector starts its program in that `SandboxSession` and nowhere else: a factory that starts programs
+on this computer refuses the context, and a session whose fence proof isn't `fenced` starts nothing,
+whatever the person said about running without the sandbox (requirement
+`connector-sandbox-session`, draft until the sandboxed stdio adapter exists).
+
 A model call that fails throws `ModelCallError`, whose `reason` says why:
 `no-key`, `offline`, `model-missing`, `model-no-tools`, `out-of-memory`,
 `key-refused`, `out-of-credit`, `provider-busy` or `refused`, with the `host` that didn't answer for `offline`. The engine uses
