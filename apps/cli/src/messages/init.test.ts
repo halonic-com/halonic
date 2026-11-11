@@ -20,7 +20,6 @@ verifies("cli.messages", () => {
     expect(words(initMessages.nextRun("support-reply", "examples/refund-question.json"))).toBe(
       "halonic run support-reply --input examples/refund-question.json",
     );
-    expect(words(initMessages.nextStudioExample())).toBe("Or open the folder in Studio.");
   });
 
   it("keys init's sentences under init", () => {
@@ -62,7 +61,7 @@ describe("init's sentences", () => {
       words(initMessages.nextValidateWhy()),
       words(initMessages.nextTest()),
       words(initMessages.nextTestWhy()),
-      words(initMessages.nextStudio()),
+      words(initMessages.nextFirstAgent()),
     ]).toEqual([
       "Next:",
       "cd acme",
@@ -70,7 +69,7 @@ describe("init's sentences", () => {
       "check the files as you edit them",
       "halonic test",
       "run its workflow tests (no key, nothing sent)",
-      "Or open the folder in Studio to add your first agent.",
+      "Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool",
     ]);
     expect(initMessages.nextTestWhy().phrase).toEqual([
       dim("run its workflow tests (no key, nothing sent)"),

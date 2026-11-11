@@ -53,8 +53,12 @@ export const runMessages = defineMessages("run", {
    * workflow is live (Sofia, HAL-4850): `conflict`, exit 5.
    */
   nothingLive: () => phrase`Nothing is live yet, so there is nothing to run. ${nothingRan}`,
-  /** Its fix. The CLI has no make-live command yet; once it has, this names it. */
-  nothingLiveFix: () => phrase`Make the workspace live in the Studio, then run again.`,
+  /**
+   * Its fix. The live version is the latest commit, so a commit makes it
+   * (save model 2.2): the CLI has no make-live command, and Studio isn't in
+   * 0.1.0 (HAL-6007).
+   */
+  nothingLiveFix: () => phrase`Commit your changes with git, then run again.`,
   /**
    * A dimmed line before the run's heading when a definition file has
    * uncommitted changes: the run starts the live version, the latest commit,

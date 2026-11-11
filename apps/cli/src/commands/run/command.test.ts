@@ -154,6 +154,16 @@ describe("halonic run's refusals", () => {
     ]);
   });
 
+  it("lists the workflows when none is close to the one typed", async () => {
+    const { code, io } = await run("billing");
+
+    expect(code).toBe(exitCode.notFound);
+    expect(io.stderr).toEqual([
+      '✕ There\'s no workflow called "billing" in acme.',
+      "  Workflows in acme: weekly-report, support-reply.",
+    ]);
+  });
+
   it("refuses an input that isn't a JSON object, or a file that isn't there", async () => {
     const list = await run("support-reply", "--input", "[1, 2]");
     const text = await run("support-reply", "--input", "{mail}");

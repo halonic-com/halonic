@@ -245,14 +245,14 @@ function refuseHarnessAgents(workspace: LoadedWorkspace, workflow: SandboxGateRu
 
 /** "✕ There's no workflow called "suport-reply" in acme." with the near one when there is one. */
 function noWorkflow(workspace: LoadedWorkspace, typed: string, name: string): OwnLineError {
-  const near = nearMatch(
-    typed,
-    hubWorkflows(workspace).map((each) => each.workflow.id),
-  );
+  const ids = hubWorkflows(workspace).map((each) => each.workflow.id);
+  const near = nearMatch(typed, ids);
   return new OwnLineError(
     "not_found",
     workflowMessages.noWorkflow(typed, name),
-    near === undefined ? workflowMessages.seeWorkflows() : workflowMessages.workflowNear(near),
+    near === undefined
+      ? workflowMessages.seeWorkflows(name, ids)
+      : workflowMessages.workflowNear(near),
   );
 }
 

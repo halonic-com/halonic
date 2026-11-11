@@ -20,14 +20,19 @@ const leastGap = 2;
  * The `Next:` block after a command that has an obvious next thing
  * (cli-output 1.6): an empty line, the heading, then each step indented, its
  * why-words set apart by spaces only, so the command can still be copied on
- * its own. The last line names Studio as a choice.
+ * its own. A last line, when given, follows the steps as a choice.
  *
  * @example
- * nextSteps([{ command: initMessages.nextChangeFolder("acme").phrase }], studioLine);
- * // ["", "Next:", "  cd acme", "  Or open the folder in Studio to add your first agent."]
+ * nextSteps([{ command: initMessages.nextChangeFolder("acme").phrase }], firstAgentLine);
+ * // ["", "Next:", "  cd acme", "  Add your first agent: https://docs.halonic.com/…"]
  */
-export function nextSteps(steps: readonly NextStep[], studio: Phrase): Phrase[] {
-  return [[], initMessages.nextHeading().phrase, ...steps.map(stepLine), phrase`  ${studio}`];
+export function nextSteps(steps: readonly NextStep[], last?: Phrase): Phrase[] {
+  return [
+    [],
+    initMessages.nextHeading().phrase,
+    ...steps.map(stepLine),
+    ...(last === undefined ? [] : [phrase`  ${last}`]),
+  ];
 }
 
 function stepLine({ command, why }: NextStep): Phrase {

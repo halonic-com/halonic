@@ -191,7 +191,7 @@ verifies("cli.run-live-version", () => {
       expect(code).toBe(exitCode.conflict);
       expect(stderr).toEqual([
         "✕ Nothing is live yet, so there is nothing to run. Nothing ran.",
-        "  Make the workspace live in the Studio, then run again.",
+        "  Commit your changes with git, then run again.",
       ]);
       expect(await storedRuns()).toBe(0);
     },

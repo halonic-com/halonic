@@ -43,13 +43,13 @@ export const initMessages = defineMessages("init", {
   nextTestWhy: () => [dim("run its workflow tests (no key, nothing sent)")],
   /** "halonic run support-reply --input examples/refund-question.json", the example's own workflow and input. */
   nextRun: (workflow: string, input: string) => phrase`halonic run ${workflow} --input ${input}`,
-  /** Studio as a choice, not pushed (1.6): the last `Next:` line, dimmed as the preview shows it. */
-  nextStudio: () => [dim("Or open the folder in Studio to add your first agent.")],
   /**
-   * The example's last `Next:` line. It names no Inbox until the Studio shows one (HAL-5915); then it
-   * can say again where to start the example's workflow.
+   * The last `Next:` line of a plain `init`, dimmed: the guide to a first
+   * agent. It named Studio until 0.1.0, which has no Studio (HAL-6007).
    */
-  nextStudioExample: () => [dim("Or open the folder in Studio.")],
+  nextFirstAgent: () => [
+    dim("Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool"),
+  ],
 
   /** The help line for `--example <name>`. */
   exampleOption: () => phrase`Make a copy of this example instead of an empty workspace.`,

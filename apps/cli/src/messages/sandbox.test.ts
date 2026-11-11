@@ -25,7 +25,7 @@ verifies("cli.messages", () => {
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
     );
     expect(words(sandboxMessages.refusedFix("container"))).toBe(
-      "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the runner or computer itself, not in a container. halonic validate and halonic test work in a container.",
+      "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
     );
   });
 });
@@ -34,7 +34,7 @@ describe("the sandbox sentences", () => {
   it("has line 2 for every reason it words", () => {
     expect(worded.map((code) => words(sandboxMessages.refusedFix(code)))).toEqual([
       "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
-      "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the runner or computer itself, not in a container. halonic validate and halonic test work in a container.",
+      "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
@@ -82,7 +82,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "Halonic is running inside a container, and the sandbox can't start there.",
-        "Fix: run Halonic on the runner or computer itself, not in a container. Then run halonic doctor again. halonic validate and halonic test work in a container.",
+        "Fix: run Halonic on the computer itself, not in a container. Then run halonic doctor again. halonic validate and halonic test work in a container.",
       ],
       [
         "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",

@@ -6,7 +6,7 @@ stdout:
   Next:
     cd acme
     halonic validate                    \e[2mcheck the files as you edit them\e[22m
-    \e[2mOr open the folder in Studio to add your first agent.\e[22m
+    \e[2mAdd your first agent: https://docs.halonic.com/examples/agent-with-a-tool\e[22m
 stderr:
 
 ## NO_COLOR: halonic init acme
@@ -17,7 +17,7 @@ stdout:
   Next:
     cd acme
     halonic validate                    check the files as you edit them
-    Or open the folder in Studio to add your first agent.
+    Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool
 stderr:
 
 ## --json: halonic init acme

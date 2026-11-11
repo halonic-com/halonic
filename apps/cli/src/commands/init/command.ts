@@ -181,7 +181,7 @@ function initFolder(input: CommandInput, cwd: string, fallback: string): InitFol
   return { root, shown: shownPath(cwd, root), name: basename(root) || "workspace" };
 }
 
-/** The ✓ line, then the `Next:` block: `cd` when the workspace is elsewhere, `validate`, Studio. */
+/** The ✓ line, then the `Next:` block: `cd` when the workspace is elsewhere, `validate`, the first-agent guide. */
 function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: string): Phrase[] {
   const name = printable(workspace.name);
   const here = isHere(folder, cwd);
@@ -194,13 +194,13 @@ function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: 
   };
   return [
     phrase`${markPart("done")} ${created.phrase}`,
-    ...nextSteps([...changeFolder(folder, cwd), validate], initMessages.nextStudio().phrase),
+    ...nextSteps([...changeFolder(folder, cwd), validate], initMessages.nextFirstAgent().phrase),
   ];
 }
 
 /**
  * The ✓ line and the example's contents under it, then the `Next:` block:
- * `cd`, `halonic test`, `halonic run` on the example's input, and Studio.
+ * `cd`, `halonic test`, then `halonic run` on the example's input.
  *
  * @param beside - the folder that was already there, when the copy went next to it
  */
@@ -223,10 +223,7 @@ function exampleLines(
   return [
     phrase`${markPart("done")} ${created.phrase}`,
     phrase`  ${initMessages.exampleContents(contents).phrase}`,
-    ...nextSteps(
-      [...changeFolder(folder, cwd), test, run],
-      initMessages.nextStudioExample().phrase,
-    ),
+    ...nextSteps([...changeFolder(folder, cwd), test, run]),
   ];
 }
 
