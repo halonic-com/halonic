@@ -82,6 +82,9 @@ not here.
   `needsApproval(tools, name)` and `approveAll` (`"all"`) read a connector's `tools.approve` setting.
 - `touchesSkillScripts(start, paths)` and `skillScriptsRefusal` let every adapter that starts a
   program refuse files under a skill's `scripts/` folder.
+- `touchesWorkingFolder(start, workspaceRoot, workingFolders, lookup)` and `workingFolderRefusal`
+  let every adapter that starts a connector's program refuse one that would run or load a file
+  from a harness agent's working folder, on real paths (requirement `working-folder-start`).
 - Integration sheets: `IntegrationSheet` is the schema; `parseIntegrationSheet(value)` checks a
   sheet that is already data (such as JSON), `checkIntegrationSheet(sheet)` runs the cross-field
   checks, and `integrationPolicy(sheet, settings)` turns a sheet and the integration's settings

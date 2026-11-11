@@ -11,6 +11,13 @@ export {
   MAX_ALLOWED_SITES,
 } from "./kinds/agent/sandbox-fields.ts";
 export type { Agent, AgentMethod, AgentOutput, MethodField } from "./kinds/agent/schema.ts";
+export {
+  type ConnectorStart,
+  type FolderLookup,
+  touchesWorkingFolder,
+  type WorkingFolderReach,
+  workingFolderRefusal,
+} from "./kinds/agent/working-folder-start.ts";
 export type { Collection, CollectionField, CollectionView } from "./kinds/collection/schema.ts";
 export { FIELD_TYPES } from "./kinds/collection/schema.ts";
 export { connectorIsLocal } from "./kinds/connector/is-local.ts";
