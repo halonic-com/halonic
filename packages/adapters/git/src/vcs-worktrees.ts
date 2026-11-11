@@ -9,6 +9,7 @@ import {
   type VcsWorktree,
 } from "@halonicjs/ports";
 import type { ConfigEntry } from "./hardening.ts";
+import { inPathBatches } from "./path-batches.ts";
 import type { Repository, WorktreeLocation } from "./repository.ts";
 import { isInside, linksInGitFolder } from "./repository-location.ts";
 import { checkKnownVersion, nulSeparated } from "./vcs-versions.ts";
@@ -217,7 +218,9 @@ async function checkOut(repository: Repository, worktree: Worktree, version: str
     repository.output({ args, worktree });
   await inWorktree(["read-tree", version]);
   const leftOut = nulSeparated(await inWorktree(["ls-files", "-z"])).filter(isPrivateWorkspacePath);
-  if (leftOut.length > 0) await inWorktree(["rm", "--cached", "--quiet", "--", ...leftOut]);
+  await inPathBatches(leftOut, (batch) =>
+    inWorktree(["rm", "--cached", "--quiet", "--", ...batch]),
+  );
   await inWorktree(["checkout-index", "--all", "--quiet"]);
 }
 

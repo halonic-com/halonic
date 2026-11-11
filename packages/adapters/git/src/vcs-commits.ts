@@ -9,6 +9,7 @@ import {
   type VcsCommitVersionOptions,
 } from "@halonicjs/ports";
 import type { ConfigEntry } from "./hardening.ts";
+import { inPathBatches } from "./path-batches.ts";
 import type { Repository, RepositoryCall, WorktreeLocation } from "./repository.ts";
 import { checkVcsPaths } from "./vcs-input.ts";
 import { checkKnownVersion, nulSeparated } from "./vcs-versions.ts";
@@ -99,7 +100,7 @@ export async function commitWorktreeOnto(
     await onCopy(["read-tree", "--empty"]);
     await onCopy(["add", "--all", "--", "."]);
     const leftOut = nulSeparated(await onCopy(["ls-files", "-z"])).filter(isPrivateWorkspacePath);
-    if (leftOut.length > 0) await onCopy(["rm", "--cached", "--quiet", "--", ...leftOut]);
+    await inPathBatches(leftOut, (batch) => onCopy(["rm", "--cached", "--quiet", "--", ...batch]));
     return text(await onCopy(["write-tree"]));
   });
   const proposal = await commitTree(repository, tree, parent, {
@@ -180,11 +181,17 @@ function committedPathsArgs(head: string | null, version: string): string[] {
   return ["diff-tree", "-r", "--no-renames", "--name-only", "-z", head, version];
 }
 
-/** Puts `paths` in the index back to `head`'s content, or out of it when there is no commit. */
+/**
+ * Puts `paths` in the index back to `head`'s content, or out of it when
+ * there is no commit. A long list goes in several calls (see
+ * {@link inPathBatches}).
+ */
 async function backToHead(onIndex: OnCopy, head: string | null, paths: string[]): Promise<void> {
-  if (paths.length === 0) return;
-  if (head === null) await onIndex(["rm", "--cached", "--quiet", "--", ...paths]);
-  else await onIndex(["reset", "--quiet", head, "--", ...paths]);
+  await inPathBatches(paths, (batch) =>
+    head === null
+      ? onIndex(["rm", "--cached", "--quiet", "--", ...batch])
+      : onIndex(["reset", "--quiet", head, "--", ...batch]),
+  );
 }
 
 /** A commit of `tree`, never signed, with no hook run (the runner's hardening). */

@@ -2,7 +2,13 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { Scratch, testAuthor, testRunner, writeFiles } from "./fixtures.test-helper.ts";
+import {
+  repositoryWith,
+  Scratch,
+  testAuthor,
+  testRunner,
+  writeFiles,
+} from "./fixtures.test-helper.ts";
 import type { GitRunner } from "./git-runner.ts";
 import { pathBatches, pathCharactersPerCall } from "./path-batches.ts";
 import { GitVcs } from "./vcs.ts";
@@ -25,6 +31,9 @@ function manyPaths(name: (index: string) => string): string[] {
 
 const longFileNames = (index: string): string =>
   `agents/a-folder-with-a-long-name-for-batches/file-${index}-with-a-long-name.yaml`;
+
+const privateFileNames = (index: string): string =>
+  `a-folder-with-a-rather-long-name-that-holds-one-private-file-${index}/.env`;
 
 /** How long the call's arguments make a Windows command line: each quoted, after a space. */
 function commandLineLength(args: readonly string[]): number {
@@ -149,9 +158,7 @@ verifies("git.path-batches", () => {
     });
 
     it("leaves many private files out of a snapshot, in several calls", async () => {
-      const paths = manyPaths(
-        (index) => `a-folder-with-a-rather-long-name-that-holds-one-private-file-${index}/.env`,
-      );
+      const paths = manyPaths(privateFileNames);
       const { runner, calls } = await recordingRunner("rm");
       const { vcs } = await workspaceWith(runner, [...paths, "a.yaml"]);
 
@@ -159,6 +166,79 @@ verifies("git.path-batches", () => {
 
       expectSplitUnderTheLimit(calls);
       expect(await vcs.listAt(snapshot)).toEqual(["a.yaml"]);
+    });
+
+    it("makes a first version of a list too long for one call, in several", async () => {
+      const paths = manyPaths(longFileNames);
+      const { runner, calls } = await recordingRunner("reset");
+      const { vcs } = await workspaceWith(runner, paths);
+
+      const version = await vcs.commitVersion({ message: "First version", exclude: [] });
+
+      // The real index takes the new version's content for every path it committed.
+      expectSplitUnderTheLimit(calls);
+      expect(await vcs.listAt(version)).toEqual(paths);
+      expect((await vcs.status()).changes).toEqual([]);
+    });
+
+    it("leaves such a list out of a first version, in several calls", async () => {
+      const paths = manyPaths(longFileNames);
+      const { runner, calls } = await recordingRunner("rm");
+      const { vcs } = await workspaceWith(runner, [...paths, "keep.yaml"]);
+
+      const version = await vcs.commitVersion({
+        message: "First version",
+        include: ["keep.yaml"],
+        exclude: [],
+      });
+
+      expectSplitUnderTheLimit(calls);
+      expect(await vcs.listAt(version)).toEqual(["keep.yaml"]);
+    });
+
+    it("leaves such a list out after a commit, in several calls", async () => {
+      const paths = manyPaths(longFileNames);
+      const { runner, calls } = await recordingRunner("reset");
+      const folder = await repositoryWith(scratch, { "keep.yaml": "1\n" });
+      const vcs = new GitVcs(folder, { runner, author: testAuthor });
+      await writePaths(folder, paths);
+      await writeFiles(folder, { "keep.yaml": "2\n" });
+
+      const version = await vcs.commitVersion({
+        message: "Second version",
+        include: ["keep.yaml"],
+        exclude: [],
+      });
+
+      // One split for the out-of-scope paths; the real index then takes one path.
+      expect(calls.length).toBeGreaterThan(2);
+      for (const args of calls) expect(commandLineLength(args)).toBeLessThan(windowsLimit);
+      expect(await vcs.listAt(version)).toEqual(["keep.yaml"]);
+    });
+
+    it("leaves many private files out of a worktree and its proposal, in several calls", async () => {
+      const paths = manyPaths(privateFileNames);
+      const { runner, calls } = await recordingRunner("rm");
+      const committed = Object.fromEntries(paths.map((path) => [path, "x\n"]));
+      const folder = await repositoryWith(scratch, { ...committed, "a.yaml": "1\n" });
+      const worktrees = join(await scratch.folder(), "worktrees");
+      const vcs = new GitVcs(folder, { runner, author: testAuthor, worktrees });
+      const [head] = await vcs.log(1);
+      const parent = String(head?.hash);
+
+      const worktree = await vcs.addWorktree(parent);
+
+      expectSplitUnderTheLimit(calls);
+      expect((await readdir(worktree.path)).sort()).toEqual([".git", "a.yaml"]);
+
+      calls.length = 0;
+      await writePaths(worktree.path, paths);
+      const proposal = await vcs.commitWorktreeTo(worktree.id, "refs/halonic/proposals/run-1", {
+        parent,
+      });
+
+      expectSplitUnderTheLimit(calls);
+      expect(await vcs.listAt(proposal)).toEqual(["a.yaml"]);
     });
   });
 });
