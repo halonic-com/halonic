@@ -319,6 +319,21 @@ verifies("app.review-try-it-holds-back", () => {
       expect(read).toBe(mail);
       expect(reason).toBe("connections");
     });
+
+    // A `tools.read` list lets its tools run without asking (HAL-5583), so
+    // one the assistant adds stays out, however often it writes the file.
+    it("leaves out a read list added to an existing connector, each time it is written", async () => {
+      const mail = "id: mail\ntransport:\n  http: { url: https://mail.example.test }\n";
+      const { review, propose } = workspace({ [connector]: mail });
+      for (const read of ["[send_mail]", "[search_mail, send_mail]"]) {
+        await propose(connector, `${mail}tools:\n  read: ${read}\n`);
+        const { source, leftOut } = await review.tryItSource();
+        expect(await source.read(connector)).toBe(mail);
+        expect(leftOut.files.map(({ path, reason }) => ({ path, reason }))).toEqual([
+          { path: connector, reason: "connections" },
+        ]);
+      }
+    });
   });
 
   describe("trust and sandbox", () => {
