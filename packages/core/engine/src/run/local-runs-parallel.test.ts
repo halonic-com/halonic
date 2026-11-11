@@ -121,7 +121,9 @@ verifies("engine.parallel-state", () => {
     }
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
+});
 
+verifies("engine.parallel-connector-approve", () => {
   it("leaves out a read tool its connector's file puts under approve", async () => {
     const model = await branchesOfferedUnder(["search"]);
 
