@@ -204,8 +204,8 @@ Forward keys and the path's tooltips come in later pull requests.
 
 ## Ctrl K palette
 
-The palette's content is worked out without a DOM (design-search 2, component specs 24.3), and the
-dialog that shows it comes in a later pull request. `paletteGroups` takes the words, the open tabs'
+The palette's content is worked out without a DOM (design-search 2, component specs 24.3), and
+`CommandPalette` draws it. `paletteGroups` takes the words, the open tabs'
 places, the recent places, what the search providers found and the commands. With nothing typed it
 gives Open tabs, then Recent places that no tab shows. With words typed it gives "Agents, workflows
 and more" (open and recent places and found items whose name matches, each once) and Actions (the
@@ -229,7 +229,36 @@ stays active when late results arrive (`keptActive`). `paletteOptionName` gives 
 "Support reply, workflow, switch to tab", reading an item's kind by the name it was registered with
 (pass `shell.contributions.itemKinds`), never its id, and `resultCountText` the count said politely
 `resultCountDelayMs` (500 ms) after typing stops: "7 results", "1 result", "No results" or
-"Couldn't search".
+"Couldn't search". When an action still shows under "Couldn't search", it says both: "Couldn't
+search, 1 result".
+
+`CommandPalette` is the dialog (VK T2-F6, F22 to F25): the kit's `PaletteBox` named "Search", the
+search row as a `combobox` that keeps the focus and points at the active option, the groups as one
+`listbox` with a `group` named by each title, 40px rows with the typed words marked and the active
+one on the grey fill with the 2px accent bar, "Switch to tab", and the footer's keys. While
+providers look, two still skeleton rows follow the names. "Nothing matches “refnud”." and
+"Couldn't search" with the engine's reason and **Try again** sit above the Actions. It holds only
+the active option; the screen that shows it owns the words, the content and what opening does.
+
+```tsx
+{
+  searching ? (
+    <CommandPalette
+      words={words}
+      onWordsChange={setWords}
+      content={content}
+      searching={pending}
+      platform={platform}
+      kinds={shell.contributions.itemKinds}
+      notAnswering={shell.engine.words.notAnswering}
+      announcer={shell.announcer}
+      onOpen={open}
+      onTryAgain={search}
+      onCancel={() => setSearching(false)}
+    />
+  ) : null;
+}
+```
 
 `searchProviders` asks every `search.addProvider` provider with its own feature's context and waits
 for all of them. One that fails sets `failed` without hiding what the others found. Each provider

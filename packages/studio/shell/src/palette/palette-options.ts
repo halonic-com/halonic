@@ -144,15 +144,18 @@ function inSentence(label: string): string {
 
 /**
  * What the palette says politely once typing stops: "7 results", "1 result" or "No results"
- * (microcopy 19.2), counting the rows of every group. When nothing shows because a search
- * provider failed, it says "Couldn't search", as the palette does, rather than "No results".
+ * (microcopy 19.2), counting the rows of every group. When the palette shows "Couldn't search"
+ * because a search provider failed, it says so first: "Couldn't search" when nothing else
+ * shows, and "Couldn't search, 1 result" when an action still matches, so a screen reader hears
+ * what the line above the actions says.
  */
 export function resultCountText(content: PaletteContent): string {
   const count = paletteOptions(content).length;
   if (count === 0) {
     return content.couldNotSearch ? "Couldn't search" : "No results";
   }
-  return count === 1 ? "1 result" : `${count} results`;
+  const results = count === 1 ? "1 result" : `${count} results`;
+  return content.couldNotSearch ? `Couldn't search, ${results}` : results;
 }
 
 /** How long typing must stop before the count is said (component specs 24.3). */

@@ -9,6 +9,7 @@ import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
 import { createShellEngine } from "../engine/engine-connection.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
+import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ShellFrame } from "./shell-frame.tsx";
@@ -62,39 +63,6 @@ function pressEscape(target: Element): KeyboardEvent {
     target.dispatchEvent(event);
   });
   return event;
-}
-
-/**
- * jsdom has `<dialog>` but no `showModal()`; opening it is all the Dialog tests need. Returns a
- * function that puts the original methods back, so the fake doesn't leak into other files.
- */
-function fakeShowModal(): () => void {
-  const prototype = HTMLDialogElement.prototype;
-  const original = {
-    showModal: Object.getOwnPropertyDescriptor(prototype, "showModal"),
-    close: Object.getOwnPropertyDescriptor(prototype, "close"),
-  };
-  Object.defineProperty(prototype, "showModal", {
-    configurable: true,
-    value(this: HTMLDialogElement) {
-      this.setAttribute("open", "");
-    },
-  });
-  Object.defineProperty(prototype, "close", {
-    configurable: true,
-    value(this: HTMLDialogElement) {
-      this.removeAttribute("open");
-    },
-  });
-  return () => {
-    for (const [name, descriptor] of Object.entries(original)) {
-      if (descriptor === undefined) {
-        Reflect.deleteProperty(prototype, name);
-      } else {
-        Object.defineProperty(prototype, name, descriptor);
-      }
-    }
-  };
 }
 
 function nextFrame(): Promise<void> {
