@@ -276,8 +276,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * The payload program `argument` names, when it is one of the manifest's
- * programs in a folder this version of the host unpacked, and still has its
- * digest. Anything else isn't run.
+ * programs in a folder this version of the host unpacked, and every file of
+ * the payload in that folder still has its digest. Anything else isn't run.
  */
 export function payloadProgram(
   argument: string | undefined,
@@ -289,9 +289,12 @@ export function payloadProgram(
     const suffix = sep + program.split("/").join(sep);
     if (!argument.endsWith(suffix)) continue;
     const folder = argument.slice(0, -suffix.length);
-    const file = manifest.files.find((each) => each.path === program);
-    const unpacked = basename(folder) === payloadFolderName(version, manifest);
-    if (unpacked && file !== undefined && holdsFile(folder, program, file.sha256)) return argument;
+    // The folder sits where payloadFolder puts it, and holds every payload file, not
+    // only the program: it loads the files next to it.
+    const unpacked =
+      basename(folder) === payloadFolderName(version, manifest) &&
+      basename(dirname(folder)) === "agent-host";
+    if (unpacked && holdsPayload(folder, manifest)) return argument;
   }
   return undefined;
 }
