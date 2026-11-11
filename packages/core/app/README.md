@@ -17,6 +17,7 @@ Device-wide settings such as the theme live outside any scope.
 | `ServiceRegistry` | services by typed key, disposed newest first | `app.service-registry` |
 | `WorkspaceScope` | the three above for one workspace, closed together | `app.workspace-scope` |
 | `WorkspaceFiles` | unsaved changes by path, `save()` through the `DefinitionStore` | `app.workspace-save` |
+| `HostSettings` | the settings kept where Halonic runs (assistant, sandbox default): each with a check and a fallback, saved one at a time, changes made elsewhere reported by key | `app.host-settings` |
 | `UndoHistory` | one workspace-wide undo, 200 steps, typing in one file is one step | `app.workspace-undo` |
 | `openWorkspace` | a scope with the files service and `workspace.save`, `undo`, `redo` | `app.workspace-save` |
 | `RoutineScheduler` | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up | `app.routine-scheduler` |
