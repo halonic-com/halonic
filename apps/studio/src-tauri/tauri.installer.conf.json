@@ -13,6 +13,7 @@
       "windows/sandbox-step.ps1": "sandbox-step.ps1"
     },
     "windows": {
+      "allowDowngrades": false,
       "nsis": {
         "template": "windows/installer.nsi",
         "installMode": "currentUser",
