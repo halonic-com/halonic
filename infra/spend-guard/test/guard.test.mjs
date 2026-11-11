@@ -183,11 +183,26 @@ test("containers reader converts real row units (bytes x s) to GiB-s and GB-s", 
   globalThis.fetch = async () =>
     new Response(
       JSON.stringify({
-        data: { viewer: { accounts: [{ c: [{ sum: { cpuTimeSec: 24.38, allocatedMemory: 128849018880, allocatedDisk: 2e11 } }] }] } },
+        data: {
+          viewer: {
+            accounts: [
+              {
+                c: [
+                  {
+                    sum: { cpuTimeSec: 24.38, allocatedMemory: 128849018880, allocatedDisk: 2e11 },
+                  },
+                ],
+              },
+            ],
+          },
+        },
       }),
     );
   try {
-    const u = await READERS.containers({ CLOUDFLARE_SPEND_GUARD_TOKEN: "x", ACCOUNT_ID: "a" }, { since: "s", until: "u" });
+    const u = await READERS.containers(
+      { CLOUDFLARE_SPEND_GUARD_TOKEN: "x", ACCOUNT_ID: "a" },
+      { since: "s", until: "u" },
+    );
     assert.equal(u.containerMemGibSeconds, 120); // 12 GiB x 10 s
     assert.equal(u.containerDiskGbSeconds, 200); // 20 GB x 10 s
     assert.equal(u.containerVcpuSeconds, 24.38);
