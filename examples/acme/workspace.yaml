@@ -2,5 +2,9 @@
 id: acme
 name: Acme
 description: An invented shop that answers its customers' mail and reports on it once a week.
+# Local only, as every new workspace starts: Halonic uses only local models and
+# connectors, and no harness agents.
+privacy:
+  localOnly: true
 defaults:
   model: default

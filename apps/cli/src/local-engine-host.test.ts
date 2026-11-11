@@ -320,6 +320,13 @@ describe("the engine lock under attack", () => {
   describe("a chat turn", () => {
     /** A mail connector whose file puts `lookup` under `approve`, and an agent that lists it. */
     async function mailWorkspace(): Promise<void> {
+      // The mail connector isn't local, so a local-only workspace would never offer it.
+      const settings = join(acme, "workspace.yaml");
+      await writeFile(
+        settings,
+        (await readFile(settings, "utf8")).replace("localOnly: true", "localOnly: false"),
+        "utf8",
+      );
       await mkdir(join(acme, "library/connectors"), { recursive: true });
       await writeFile(
         join(acme, "library/connectors/mail.connector.yaml"),

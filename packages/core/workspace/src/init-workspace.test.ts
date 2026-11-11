@@ -19,7 +19,9 @@ verifies("workspace.init", () => {
         },
       });
       expect(store.files.get(".gitignore")).toBe(".env\n.env.*\n");
-      expect(store.files.get("workspace.yaml")).toBe("id: acme-billing\nname: Acme Billing\n");
+      expect(store.files.get("workspace.yaml")).toBe(
+        "id: acme-billing\nname: Acme Billing\nprivacy:\n  localOnly: true\n",
+      );
     });
 
     it("loads with no issue", async () => {
@@ -36,7 +38,9 @@ verifies("workspace.init", () => {
       const result = await initWorkspace(store, { name: "Acme Billing", id: "billing" });
 
       expect(result.ok && result.value.id).toBe("billing");
-      expect(store.files.get("workspace.yaml")).toBe("id: billing\nname: Acme Billing\n");
+      expect(store.files.get("workspace.yaml")).toBe(
+        "id: billing\nname: Acme Billing\nprivacy:\n  localOnly: true\n",
+      );
     });
   });
 

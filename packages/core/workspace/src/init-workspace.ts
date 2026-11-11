@@ -41,7 +41,10 @@ export const gitIgnoreLines: readonly string[] = [".env", ".env.*"];
 /**
  * Lays out a new workspace in an empty {@link DefinitionStore}: a
  * `workspace.yaml` with its id and name, and a `.gitignore` that keeps
- * `.env` files out of git.
+ * `.env` files out of git. A new workspace is local only
+ * (`privacy.localOnly: true`): until the person turns that off, the engine
+ * uses only local models and connectors and refuses harness agents (ADR
+ * `docs/adr/2026-11-08-local-first.md`, requirement `engine.local-only`).
  *
  * The settings are checked with the workspace kind's own schema before
  * anything is written. A store that has any file is left alone, so nothing a
@@ -73,7 +76,7 @@ export async function initWorkspace(
   options: InitWorkspaceOptions,
 ): Promise<Result<InitializedWorkspace, InitWorkspaceError>> {
   const id = options.id ?? slugify(options.name);
-  const settings = writeYamlFile({ id, name: options.name });
+  const settings = writeYamlFile({ id, name: options.name, privacy: { localOnly: true } });
   const parsed = parseFile("workspace", settings);
   if (!parsed.ok) {
     return err({ kind: "invalid_settings", problems: parsed.error });
