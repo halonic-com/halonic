@@ -30,6 +30,10 @@ export function hasInstructions(task: HarnessTask): boolean {
  * - `--mcp-config` with `--strict-mcp-config`: the bridge's MCP server from
  *   the settings folder, and no other, so a project's own `.mcp.json` can't
  *   add servers past Halonic.
+ * - `--setting-sources user`: only the settings in the agent's own settings
+ *   folder (`CLAUDE_CONFIG_DIR`), which Halonic writes. A working folder's
+ *   `.claude/settings.json` and `settings.local.json` are not read, so a
+ *   downloaded workspace can't add permission rules or hooks.
  * - `--permission-prompt-tool`: a tool call that needs an OK goes to the
  *   bridge, which asks the person through Halonic's approvals.
  * - `--model` from the agent's file, when it sets one.
@@ -52,6 +56,8 @@ export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): Sa
     "--mcp-config",
     join(files.settingsFolder, mcpSettingsFile),
     "--strict-mcp-config",
+    "--setting-sources",
+    "user",
     "--permission-prompt-tool",
     permissionPromptTool,
   ];

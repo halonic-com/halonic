@@ -9,7 +9,7 @@ import {
 } from "@halonicjs/ports";
 import { type FakeProgram, FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assistantLine,
   claudeAnswering,
@@ -190,6 +190,30 @@ verifies("harness-claude-code.start", () => {
       const { events } = await readAll(newHarness().start(task, session, bridge));
 
       expect(events.at(-1)).toMatchObject({ type: "agent.finished", output: "Teal." });
+      expect(session.running).toBe(0);
+    });
+
+    it("stops Claude Code that doesn't exit after its result, and ends with an error", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const neverExits: FakeProgram = async (io) => {
+        await io.readLine();
+        io.write(`${successLine("Teal.")}\n`);
+        // Ignores the end of its input, as a hung program would.
+        return new Promise<number>(() => {});
+      };
+      const session = openSession(neverExits);
+      let settled = false;
+      const read = readAll(newHarness().start(task, session, bridge)).finally(() => {
+        settled = true;
+      });
+
+      // The wait starts once the result is read, so the clock moves on in steps until it ends.
+      for (let step = 0; step < 30 && !settled; step++) await vi.advanceTimersByTimeAsync(1_000);
+      const { error } = await read;
+      vi.useRealTimers();
+      expect((error as Error).message).toBe(
+        "Claude Code didn't exit within 10 seconds, so Halonic stopped it.",
+      );
       expect(session.running).toBe(0);
     });
 

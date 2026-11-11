@@ -1,4 +1,5 @@
 import {
+  exitWithin,
   outputTail,
   type SettingsFolderWriter,
   writeSettingsFiles,
@@ -252,7 +253,12 @@ export class CodexRun implements HarnessRun {
   ): Promise<void> {
     if (this.#reader?.finished) return;
     if (cause !== undefined) return this.#fail(cause);
-    const exit = await process.exited;
+    let exit: SandboxExit;
+    try {
+      exit = await exitWithin(process, "Codex");
+    } catch (error) {
+      return this.#fail(error);
+    }
     if (this.#events.ended) return;
     if (this.#cancelled) return this.#fail(cancelledError());
     const lastLine = (await errorTail).trim().split("\n").at(-1)?.trim() ?? "";

@@ -268,7 +268,7 @@ loopback address.
 | A run outlives its bridge, or a stream hangs | Closing the bridge or aborting the run stops calls in flight; response and idle time limits; a body size limit | **On `main`** (`harness-bridge.pass-through`) |
 | A run's spend isn't counted | The bridge records each call's tokens and cost in the run log | **Planned** (HAL-2553) |
 | The agent calls tools or sends without approval | Halonic's tools are offered over MCP on the bridge, with the agent's `allow` and `approve` lists, "allow sending" and trust checks, as in the built-in loop; permission questions reach Halonic's approval card | **Planned** (HAL-194) |
-| A working folder's `.mcp.json` or hooks bypass those lists | The adapter starts Claude Code with only Halonic's MCP server (`--strict-mcp-config`) and only the agent's own settings, so a folder's MCP servers and hooks don't load. Anything they would start stays in the fence | **Planned** (HAL-2552 for Claude Code, HAL-2608 for Codex) |
+| A working folder's `.mcp.json`, hooks or permission rules bypass those lists | The adapter starts Claude Code with only Halonic's MCP server (`--strict-mcp-config`) and only the agent's own settings (`--setting-sources user`), so a folder's MCP servers, hooks and permission rules don't load. Anything they would start stays in the fence | **On `main`** for Claude Code (`harness-claude-code.command`); **Planned** for Codex (HAL-2608) |
 
 A leaked run token gives only what that agent may already do, for that one run.
 

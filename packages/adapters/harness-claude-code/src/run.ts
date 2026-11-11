@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { outputTail, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import { exitWithin, outputTail, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 import type {
   HarnessBridge,
   HarnessEvent,
@@ -146,15 +146,18 @@ export class ClaudeCodeRun implements HarnessRun {
     }
   }
 
-  /** After the result: ends Claude Code's input, so it exits by itself, and waits until it has. */
+  /**
+   * After the result: ends Claude Code's input, so it exits by itself, and
+   * waits until it has, for {@link exitWithin}'s time at most.
+   */
   async #finish({ process, input }: Started): Promise<void> {
     await input.close().catch(() => undefined);
-    await process.exited;
+    await exitWithin(process, "Claude Code");
   }
 
   /** The error for a run whose output ended without a result. */
   async #endedEarly({ process, errorTail }: Started): Promise<Error> {
-    const exit = await process.exited;
+    const exit = await exitWithin(process, "Claude Code");
     if (this.#cancelled) return cancelledError();
     const output = await errorTail;
     const signInProblem = output.split("\n").map(findSignInProblem).find(Boolean);

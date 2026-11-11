@@ -1,4 +1,5 @@
 // The public API of @halonicjs/adapter-harness-kit. Everything else in src/ is internal.
+export { exitGraceMs, exitWithin } from "./exit-within.ts";
 export { HarnessEventFilter, type HarnessEventFilterOptions } from "./harness-event-filter.ts";
 export {
   type HarnessInstall,
