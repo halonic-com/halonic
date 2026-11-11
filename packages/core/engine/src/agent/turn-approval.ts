@@ -8,6 +8,7 @@ import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import {
   type CallStep,
+  goOnInSubagent,
   makeOrHandOver,
   refuseCall,
   refuseUnoffered,
@@ -86,7 +87,11 @@ export type TurnStart =
  * result. The other calls of that answer are then checked and run in
  * order, so the turn can stop again at the next one that needs an OK.
  *
- * @throws when `resume` names no waiting call
+ * When the turn stopped inside a subagent (`resume.inner`), the answer
+ * goes to that subagent, as deep as it waits, and its answer answers the
+ * `delegate_*` call; a subagent that stops again stops this turn again.
+ *
+ * @throws when `resume` names no waiting call, or the subagent can't go on
  */
 export async function goOnAfterApproval(
   context: ToolCallContext,
@@ -100,13 +105,15 @@ export async function goOnAfterApproval(
   if (waiting === undefined) {
     throw new Error("The agent can't go on after the approval: where it stopped names no call.");
   }
-  if (resume.inner !== undefined) {
-    // Going on inside the subagent comes next (HAL-3361); until then no run stops there.
-    throw new Error(
-      `The agent can't go on yet: it stopped inside its subagent "${resume.inner.agent}".`,
-    );
-  }
-  const answered = await answerWaitingCall(context, tools, waiting, answer);
+  const { inner } = resume;
+  // Stopped inside a subagent: the answer is for where the subagent stopped.
+  const answered =
+    inner === undefined
+      ? await answerWaitingCall(context, tools, waiting, answer)
+      : await goOnInSubagent(context, tools.byName.get(waiting.name), waiting, inner.agent, {
+          ...answer,
+          resume: inner.resume,
+        });
   if (answered.kind !== "answered") {
     return stopAt(resume.calls, history, resume.step, stopKindOf(answered));
   }

@@ -63,3 +63,23 @@ export function proposalRefusal(path: string, trusted: boolean): ProposalRefusal
   }
   return null;
 }
+
+/** What {@link storeRefusing} gives when the store refused the path. */
+export const refused = Symbol("refused");
+
+/**
+ * Runs one store call, giving {@link refused} for the `RangeError` the
+ * `DefinitionStore` port throws for a path it won't serve, such as one
+ * through a symlink or a junction: the real-path check the assistant's
+ * writes and a run proposal's Accept share. Any other error is thrown.
+ */
+export async function storeRefusing<T>(call: () => Promise<T>): Promise<T | typeof refused> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return refused;
+    }
+    throw error;
+  }
+}

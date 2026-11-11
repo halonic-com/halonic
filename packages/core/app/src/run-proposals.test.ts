@@ -3,8 +3,7 @@ import { contentDigest } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { RunProposals } from "./run-proposals.ts";
-import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
-import { TestProposalVcs } from "./testing/test-proposal-vcs.ts";
+import { clerk, old, setUpProposals } from "./testing/run-proposal-fixtures.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -13,27 +12,7 @@ const digest: Digest = {
   },
 };
 
-const clerk = "name: Clerk\nmodel: fast\n";
-const old = "name: Old\n";
-
-function setUp() {
-  const vcs = new TestProposalVcs();
-  const records = new TestDefinitionStore();
-  const endFailures: { runId: string; error: unknown }[] = [];
-  const proposals = new RunProposals({
-    vcs,
-    records,
-    digest,
-    clock: { now: () => new Date("2026-11-11T09:00:00.000Z") },
-    onEndFailed: (runId, error) => endFailures.push({ runId, error }),
-  });
-  const version = vcs.commit({
-    "agents/clerk.agent.yaml": clerk,
-    "agents/old.agent.yaml": old,
-    "README.md": "# Acme\n",
-  });
-  return { vcs, records, proposals, version, endFailures };
-}
+const setUp = () => setUpProposals(digest);
 
 verifies("app.run-proposal-worktree", () => {
   describe("opening a run's worktree", () => {
@@ -78,7 +57,7 @@ verifies("app.run-proposal-worktree", () => {
     });
 
     it("gives it after a restart, for a run waiting for a person", async () => {
-      const { vcs, records, proposals, version } = setUp();
+      const { vcs, records, store, trash, proposals, version } = setUp();
       const { folder } = await proposals.open("01JD8Q", version);
       vcs.filesOf(folder).set("notes/today.md", "Step 1.\n");
       const restarted = new RunProposals({
@@ -87,6 +66,8 @@ verifies("app.run-proposal-worktree", () => {
         digest,
         clock: { now: () => new Date("2026-11-11T10:00:00.000Z") },
         onEndFailed: () => {},
+        store,
+        trash,
       });
       await restarted.removeLeftovers(new Set(["01JD8Q"]));
       expect(await restarted.folderOf("01JD8Q")).toBe(folder);

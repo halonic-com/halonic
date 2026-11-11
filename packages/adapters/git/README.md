@@ -42,7 +42,7 @@ Before each call in a repository, the adapter checks that the folder is the repo
 
 Private files (`.studio`, `.env`, `.envrc`, `.env.*`) never show in `status`, as they never go into a snapshot.
 
-Paths go to git as arguments, since the runner can't give git a list on stdin or in a file. Windows caps a command line at 32,767 characters, so `stage`, `unstage`, `discard` and a snapshot split a long list of paths into several calls of at most 16,384 characters of paths each. When one of those calls fails, the calls before it stay done.
+Paths go to git as arguments, since the runner can't give git a list on stdin or in a file. Windows caps a command line at 32,767 characters, so `stage`, `unstage`, `discard` and a snapshot split a long list of paths into several calls of at most 16,384 characters of paths each. `commitVersion`, `commitWorktreeTo` and a worktree's checkout do the same when they take private files out of an index or put paths back to HEAD, so a first version of a few hundred files stays under the cap. When one of those calls fails, the calls before it stay done.
 
 ## Versions
 

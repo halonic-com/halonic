@@ -1,8 +1,9 @@
+import { access, constants } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { settingsPath } from "@halonicjs/workspace";
+import { isUnreadable, settingsPath } from "@halonicjs/workspace";
 import type { CliOption, CommandContext, CommandInput } from "./command.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
@@ -56,6 +57,7 @@ export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
  * and opens its files.
  *
  * @throws NoWorkspaceError when the folder has no `workspace.yaml`, or doesn't exist.
+ * @throws KindedError `invalid_input` when the folder, or its `workspace.yaml`, can't be read.
  */
 export async function openWorkspaceDir(
   input: CommandInput,
@@ -63,10 +65,40 @@ export async function openWorkspaceDir(
 ): Promise<OpenWorkspaceDir> {
   const dir = workspaceDir(input, context.cwd);
   const store = new FolderDefinitionStore(dir.root, dir.shown);
-  if ((await store.read(settingsPath)) === null) {
+  if ((await readSettings(store, dir.root)) === null) {
     throw new NoWorkspaceError();
   }
   return { ...dir, store };
+}
+
+/**
+ * The text of `workspace.yaml`, or `null` when there is none. A folder or file
+ * the account may not read (`EACCES`, or `EPERM` on Windows) is the user's to
+ * fix, so it becomes an `invalid_input` error that names which of the two, not
+ * a crash.
+ */
+async function readSettings(store: DefinitionStore, root: string): Promise<string | null> {
+  try {
+    return await store.read(settingsPath);
+  } catch (error) {
+    if (!isUnreadable(error)) {
+      throw error;
+    }
+    const folderReads = await access(root, constants.R_OK | constants.X_OK).then(
+      () => true,
+      () => false,
+    );
+    throw folderReads
+      ? new KindedError(
+          "invalid_input",
+          plainText(workspaceMessages.fileUnreadable(settingsPath).phrase),
+          { fix: plainText(workspaceMessages.fileUnreadableFix().phrase), cause: error },
+        )
+      : new KindedError("invalid_input", plainText(workspaceMessages.folderUnreadable().phrase), {
+          fix: plainText(workspaceMessages.folderUnreadableFix().phrase),
+          cause: error,
+        });
+  }
 }
 
 /**

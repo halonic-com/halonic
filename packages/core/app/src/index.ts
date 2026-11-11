@@ -134,6 +134,7 @@ export {
   writtenDigest,
 } from "./listed-tool-fingerprint.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
+export { LiveRoutines, type LiveRoutinesOptions } from "./live-routines.ts";
 export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
 export {
   type LiveVersion,
@@ -256,7 +257,8 @@ export {
   type RoutineTime,
   type ScheduledRun,
 } from "./routine-scheduler.ts";
-export type { SkipReason, SkipRecord } from "./routine-skips.ts";
+export type { SkipReason, SkipRecord, TargetUnavailableWhy } from "./routine-skips.ts";
+export type { UnavailableTime } from "./routine-targets.ts";
 export { type RunEventRefusal, RunEventRefused, RunEvents } from "./run-events.ts";
 export {
   defaultRunListLimit,
@@ -301,6 +303,13 @@ export {
   runnerFence,
   runnerUnfencedReasons,
 } from "./runner-fence.ts";
+export {
+  type GatedRunner,
+  type GatedStart,
+  RunnerStartGate,
+  type RunnerStartGateOptions,
+  type StartInSandbox,
+} from "./runner-start-gate.ts";
 export {
   type MxcDefault,
   type MxcSetting,

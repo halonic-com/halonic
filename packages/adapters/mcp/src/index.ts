@@ -1,6 +1,8 @@
 // The public API of @halonicjs/adapter-mcp. Internal code imports by relative path.
 // The protocol is also its own entry, `./protocol`, which integrations import instead.
 
+export { McpHttpConnectorFactory, type McpHttpOptions } from "./http/http-connector.ts";
+export { defaultHttpLimits, type HttpLimits } from "./http/http-transport.ts";
 export type { RunnerSearch } from "./pinned/find-runner.ts";
 export { type LaunchFolders, nodeLaunchFolders } from "./pinned/launch-folders.ts";
 export { createRunnerSearch } from "./pinned/node-runner-search.ts";

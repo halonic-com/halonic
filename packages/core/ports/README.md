@@ -35,6 +35,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `LlmCache`                | `llm-cache.ts`                  | 1       | model answers reused by simulation re-runs                                                            | `llm-cache` (with first adapter)                         |
 | `LlmProvider`             | `llm-provider.ts`               | 1       | model providers, and their factory                                                                    | `llm-provider`, `llm-stream`                             |
 | `PasswordHasher`          | `password-hasher.ts`            | 1       | hash and check the sign-in password                                                                   | `password-hasher` (with first adapter)                   |
+| `PluginFolderWriter`      | `plugin-folder-writer.ts`       | 1       | places and removes whole plugin folders in the profile's plugins folder, never through a link         | `plugin-folder-writer`                                   |
 | `ProgramProbe`            | `program-probe.ts`              | 1       | finds a harness's program and asks it something short, such as its version                            | `program-probe` (with first adapter)                     |
 | `RecordStore`             | `record-store.ts`               | 2       | collection records as a change log; `compact` drops overwritten and removed values                    | `record-store`                                           |
 | `ResourceProbe`           | `resource-probe.ts`             | 1       | the engine's memory, the processes it started, a folder's size and free disk space                    | `resource-probe`                                         |
@@ -55,6 +56,12 @@ with the memory adapters.
 
 `portVersions` holds the same list in code. A test fails when this table,
 `portVersions` and the port files disagree.
+
+`ConnectorFactoryContext.sandbox` is optional (the port stays at version 1). When it is set, a `stdio`
+connector starts its program in that `SandboxSession` and nowhere else: a factory that starts programs
+on this computer refuses the context, and a session whose fence proof isn't `fenced` starts nothing,
+whatever the person said about running without the sandbox (requirement
+`connector-sandbox-session`, draft until the sandboxed stdio adapter exists).
 
 A model call that fails throws `ModelCallError`, whose `reason` says why:
 `no-key`, `offline`, `model-missing`, `model-no-tools`, `out-of-memory`,

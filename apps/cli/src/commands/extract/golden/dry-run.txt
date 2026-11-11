@@ -1,0 +1,92 @@
+## colour: halonic extract family family --dir home --dry-run
+exit 0
+stdout:
+  Would extract the hub Family affairs to \e[1m./family\e[22m. Nothing was written.
+  
+  From the hub:
+    hubs/family/agents/helper.agent.yaml
+    hubs/family/hub.yaml
+  
+  Shared items:
+    library/skills/tone/SKILL.md
+  
+  Workspace files:
+    .gitignore
+    models.yaml
+    providers/mock.yaml
+    workspace.yaml \e[2mwith the hub's id, name and description\e[22m
+  
+  \e[2mRun it again without --dry-run to write these files.\e[22m
+stderr:
+
+## NO_COLOR: halonic extract family family --dir home --dry-run
+exit 0
+stdout:
+  Would extract the hub Family affairs to ./family. Nothing was written.
+  
+  From the hub:
+    hubs/family/agents/helper.agent.yaml
+    hubs/family/hub.yaml
+  
+  Shared items:
+    library/skills/tone/SKILL.md
+  
+  Workspace files:
+    .gitignore
+    models.yaml
+    providers/mock.yaml
+    workspace.yaml with the hub's id, name and description
+  
+  Run it again without --dry-run to write these files.
+stderr:
+
+## --json: halonic extract family family --dir home --dry-run
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "hub": "family",
+    "name": "Family affairs",
+    "folder": "./family",
+    "dryRun": true,
+    "files": [
+      {
+        "path": ".gitignore",
+        "part": "workspace"
+      },
+      {
+        "path": "hubs/family/agents/helper.agent.yaml",
+        "part": "hub"
+      },
+      {
+        "path": "hubs/family/hub.yaml",
+        "part": "hub"
+      },
+      {
+        "path": "library/skills/tone/SKILL.md",
+        "part": "shared"
+      },
+      {
+        "path": "models.yaml",
+        "part": "workspace"
+      },
+      {
+        "path": "providers/mock.yaml",
+        "part": "workspace"
+      },
+      {
+        "path": "workspace.yaml",
+        "part": "workspace"
+      }
+    ],
+    "uses": {
+      "connectors": [],
+      "skills": [
+        "tone"
+      ],
+      "knowledge": [],
+      "collections": []
+    }
+  }
+stderr:

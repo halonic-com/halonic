@@ -77,6 +77,9 @@ export class LiveHarnessCalls {
    * Stops the calls going on in a top-level run and in every child run under
    * it, and resolves once each has stopped all it started: the run has ended,
    * and nothing of it may write in its proposal folder any more.
+   *
+   * Never call it from inside a live harness call of that run: it waits on
+   * the call's `done`, so the call would wait on itself for ever.
    */
   async stopUnder(topLevelRunId: string): Promise<void> {
     const calls = [...this.#calls].filter((call) => call.topLevelRunId === topLevelRunId);

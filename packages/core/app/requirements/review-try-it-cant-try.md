@@ -10,7 +10,9 @@ When Try it or Test asks the review service for its source for one workflow or a
 - such an error in a left-out file means the item doesn't load without the change: it names the file and the error;
 - when the item itself is left out and doesn't load as Try it reads it, the whole item can't be tried: it needs the change, or, when its baseline has an error, it names that error.
 
-An error in a file no single step reads, or in an agent being tried, applies to the whole item. Errors the workspace has as it is aren't listed, nor errors in settings no run reads, such as the assistant's model in `workspace.yaml`.
+An error in a file no single step reads, or in an agent being tried, applies to the whole item. Errors the workspace has as it is aren't listed, nor errors in settings this run doesn't read: the assistant's model in `workspace.yaml`, and an alias in `models.yaml` that none of the run's models name or fall back to.
+
+The service shall compare the two from one read of each file, so a file saved while it builds them doesn't show up as a difference.
 
 ## Examples
 
@@ -29,3 +31,6 @@ An error in a file no single step reads, or in an agent being tried, applies to 
 - Given the assistant added the alias `large` and made it the assistant's model,
   when Try it asks for its source for `triage`,
   then every step can be tried, and `models.yaml` is left out.
+- Given the person added the alias `spare` on provider `cloud`, which the assistant added and is left out, and no agent uses `spare`,
+  when Try it asks for its source for `triage`,
+  then every step can be tried.

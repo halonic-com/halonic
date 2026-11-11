@@ -280,6 +280,17 @@ verifies("shell.tab-set", () => {
     expect(strip(tabs)).toEqual(["Agents", "*Triage"]);
   });
 
+  it("tells rename subscribers about every rename, also of a place no open tab shows", () => {
+    const tabs = tabsOn(agents);
+    const renames: string[] = [];
+    const stop = tabs.subscribeToRenames((key, title) => renames.push(`${key}: ${title}`));
+    tabs.rename(agents.key, "All agents");
+    tabs.rename(sorter.key, "Sorter 2");
+    stop();
+    tabs.rename(writer.key, "Writer 2");
+    expect(renames).toEqual(["agents: All agents", "agent/acme/sorter: Sorter 2"]);
+  });
+
   it("tells subscribers about every change with a new state", () => {
     const tabs = new TabSet();
     const before = tabs.state;

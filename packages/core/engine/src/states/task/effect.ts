@@ -15,6 +15,7 @@ import type {
 } from "../../kernel/decide-types.ts";
 import { nothing, type StateContext, type StateStep } from "../../kernel/registry.ts";
 import {
+  effectCallerOf,
   type RequestedEffect,
   skippedEffectResult,
   unknownOutcomeEvents,
@@ -65,7 +66,7 @@ export function takeToolResult(
   if (effect.state !== stateId) return nothing;
   const logged: DecidedEvent = {
     type: "tool.result",
-    agent: effect.agent,
+    agent: effectCallerOf(effect),
     tool: effect.tool,
     result,
     outcome,
@@ -135,7 +136,7 @@ function makeCall(effect: RequestedEffect): StateStep {
       ...stoppedSubagentOf(resume),
     },
     { type: "connector.started", state, agent, connector, timeoutMs },
-    { type: "tool.called", agent, tool, args },
+    { type: "tool.called", agent: effectCallerOf(effect), tool, args },
   ];
   const call: Effect = {
     type: "call-tool",

@@ -16,7 +16,8 @@ import type { Handshake } from "../src/host.ts";
  * 2. it loads sandbox-srt from the payload and says whether the sandbox works here;
  * 3. srt's command line runs through the executable, as sandbox-srt starts it;
  * 4. it serves on loopback: a request without the token gets 401, one with it
- *    gets the version, and the host stops when its input closes.
+ *    gets the version, the sandbox answers its check over loopback (whether or
+ *    not it works on this system), and the host stops when its input closes.
  *
  * The last line is the size, which CI puts in the job summary.
  */
@@ -49,18 +50,27 @@ async function checkServes(): Promise<void> {
     if (withoutToken.status !== 401) {
       throw new Error(`Without the token: expected 401, got ${withoutToken.status}.`);
     }
-    const health = await fetch(`${handshake.url}/v1/health`, {
-      headers: { authorization: `Bearer ${handshake.token}` },
-    });
-    const answer = (await health.json()) as { version?: string };
-    if (answer.version !== version) throw new Error(`Health: got ${JSON.stringify(answer)}.`);
+    const get = (path: string) =>
+      fetch(`${handshake.url}${path}`, {
+        headers: { authorization: `Bearer ${handshake.token}` },
+      });
+    const health = (await (await get("/v1/health")).json()) as { version?: string };
+    if (health.version !== version) throw new Error(`Health: got ${JSON.stringify(health)}.`);
+    // The sandbox is loaded from the payload and asked through its route.
+    const sandbox = await get("/v1/sandbox/check");
+    const sandboxCheck = (await sandbox.json()) as { ok?: unknown };
+    if (sandbox.status !== 200 || typeof sandboxCheck.ok !== "boolean") {
+      throw new Error(`Sandbox check: got ${sandbox.status} ${JSON.stringify(sandboxCheck)}.`);
+    }
     host.stdin.end();
     const [code] = await exited;
     if (code !== 0) throw new Error(`The host exited with ${code} when its input closed.`);
   } finally {
     host.kill();
   }
-  console.log("OK: serves on loopback with its token, and stops when its input closes.");
+  console.log(
+    "OK: serves on loopback with its token, answers the sandbox check, and stops when its input closes.",
+  );
 }
 
 try {

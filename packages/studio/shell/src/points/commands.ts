@@ -39,7 +39,10 @@ export interface KeybindingContribution {
 export interface SearchResult {
   readonly item: ItemRef;
   readonly label: string;
+  /** The kind and hub, such as "Agent · acme". */
   readonly detail?: string;
+  /** The item's description, which the Search page also searches and shows under the name. */
+  readonly description?: string;
 }
 
 /** Offers a feature's items to search. Ids are unique. */

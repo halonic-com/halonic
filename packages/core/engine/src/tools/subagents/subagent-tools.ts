@@ -3,7 +3,7 @@
 // the conversation, so the tool asks for everything it needs.
 
 import type { Agent } from "@halonicjs/format";
-import type { TurnStop } from "../../agent/turn-approval.ts";
+import type { TurnAnswer, TurnStop } from "../../agent/turn-approval.ts";
 import type { TurnLog } from "../../agent/turn-log.ts";
 import type { HalonicTool, SubagentStopped } from "../../agent/turn-tools.ts";
 
@@ -23,6 +23,11 @@ export interface DelegatedTask {
   readonly parent: string;
   /** The subagent's depth: one more than its parent's. */
   readonly depth: number;
+  /**
+   * Where the subagent's turn stopped inside this task, and the answer it
+   * goes on with; absent for a task it starts on.
+   */
+  readonly resumeFrom?: TurnAnswer;
 }
 
 /**
@@ -49,7 +54,8 @@ export interface SubagentToolsOptions {
   readonly log?: TurnLog;
   /**
    * Runs the subagent's own turn on the task, with its own model, tools and
-   * instructions, and gives its answer, or where it stopped.
+   * instructions, and gives its answer, or where it stopped. Given
+   * `task.resumeFrom`, the turn goes on from where it stopped instead.
    *
    * @throws when the subagent fails; the delegating model gets the error
    */
@@ -94,6 +100,12 @@ function delegateTool(
 ): HalonicTool {
   const about = subagent.description ? `: ${subagent.description}` : "";
   const runOrStop = (args: Record<string, unknown>) => delegate(options, subagent.id, args);
+  const goOn = async (args: Record<string, unknown>, agent: string, answer: TurnAnswer) => {
+    if (agent !== subagent.id) {
+      throw new Error(`the "${agent}" agent stopped in a call that delegates to "${subagent.id}"`);
+    }
+    return delegate(options, subagent.id, args, answer);
+  };
   return {
     definition: {
       name: delegateToolName(subagent.id),
@@ -117,18 +129,22 @@ function delegateTool(
       return done;
     },
     runOrStop,
+    goOn,
   };
 }
 
 /**
  * Hands the task to the subagent and gives its answer as text. A subagent
  * that stopped gives its stop, and its `agent.finished` waits until it
- * answers, because it hasn't finished.
+ * answers, because it hasn't finished. Given `resumeFrom`, the subagent
+ * goes on from where it stopped, and its `agent.started` isn't logged
+ * again: it was logged when it started on the task.
  */
 async function delegate(
   options: SubagentToolsOptions,
   subagentId: string,
   args: Record<string, unknown>,
+  resumeFrom?: TurnAnswer,
 ): Promise<string | SubagentStopped> {
   const task = args["task"];
   if (typeof task !== "string" || task.trim() === "") {
@@ -136,12 +152,15 @@ async function delegate(
   }
   const parent = options.agent.id;
   const named = { state: options.state, agent: subagentId, parent };
-  await options.log?.append({ type: "agent.started", ...named, prompt: task });
+  if (resumeFrom === undefined) {
+    await options.log?.append({ type: "agent.started", ...named, prompt: task });
+  }
   const outcome = await options.runSubagent({
     agent: subagentId,
     task,
     parent,
     depth: options.depth + 1,
+    ...(resumeFrom === undefined ? {} : { resumeFrom }),
   });
   if (outcome.kind === "stopped") {
     return { kind: "subagent-stopped", agent: subagentId, stop: outcome.stop };

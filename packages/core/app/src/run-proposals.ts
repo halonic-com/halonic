@@ -6,9 +6,20 @@
 import type { Clock, DefinitionStore, Digest, Vcs } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
 import { placeOf } from "@halonicjs/workspace";
+import type { Trash } from "./review-types.ts";
+import { ProposalDecisions } from "./run-proposal-decisions.ts";
 import { type ProposedRecord, proposalRefOf } from "./run-proposal-record.ts";
 import { ProposalRecordStore } from "./run-proposal-store.ts";
-import type { ProposedFile, RunProposal } from "./run-proposal-types.ts";
+import type {
+  AcceptResult,
+  CompareTexts,
+  ProposalTarget,
+  ProposedFile,
+  RejectResult,
+  RestoreResult,
+  RunProposal,
+  UndoStep,
+} from "./run-proposal-types.ts";
 
 /** The part of the `Vcs` port the proposal service uses. */
 export type ProposalVcs = Pick<
@@ -43,6 +54,10 @@ export interface RunProposalsOptions {
    * a cancel or a parent's step. What it left is cleared at the next start.
    */
   readonly onEndFailed: (runId: string, error: unknown) => void;
+  /** The workspace's files, which Accept writes. */
+  readonly store: DefinitionStore;
+  /** Where Accept of a file the run deleted moves it, so Undo can bring it back. */
+  readonly trash: Trash;
 }
 
 /** What `open` gives the harness. */
@@ -56,10 +71,12 @@ export interface RunWorktree {
  * its workflow steps and calls to other agents share it.
  *
  * @example
- * const proposals = new RunProposals({ vcs, records, digest, clock, onEndFailed });
+ * const proposals = new RunProposals({ vcs, records, digest, clock, onEndFailed, store, trash });
  * const { folder } = await proposals.open("01JD8Q", version); // the harness writes only here
  * await proposals.folderOf("01JD8Q"); // the same folder, after a restart too
  * const proposal = await proposals.end("01JD8Q"); // emit run.proposal when not null
+ * const { undo, changedOnDisk } = await proposals.accept("01JD8Q", "all");
+ * if (undo !== null) await proposals.restore(undo, "before"); // Undo
  */
 export class RunProposals {
   private readonly vcs: ProposalVcs;
@@ -67,6 +84,7 @@ export class RunProposals {
   private readonly digest: Digest;
   private readonly clock: Clock;
   private readonly onEndFailed: (runId: string, error: unknown) => void;
+  private readonly decisions: ProposalDecisions;
 
   constructor(options: RunProposalsOptions) {
     this.vcs = options.vcs;
@@ -74,6 +92,12 @@ export class RunProposals {
     this.digest = options.digest;
     this.clock = options.clock;
     this.onEndFailed = options.onEndFailed;
+    this.decisions = new ProposalDecisions(this.records, {
+      vcs: options.vcs,
+      store: options.store,
+      digest: options.digest,
+      trash: options.trash,
+    });
   }
 
   /**
@@ -165,6 +189,57 @@ export class RunProposals {
   async get(runId: string): Promise<ProposedRecord | null> {
     const record = await this.records.read(runId);
     return record?.state === "proposed" ? record : null;
+  }
+
+  /**
+   * Accepts what the target covers (`app.run-proposal-accept`,
+   * `app.run-proposal-trust`). Each undecided file is written with its own
+   * `expected`, only while the saved file is still the run's base; one the
+   * person changed since is listed in `changedOnDisk`, for Compare, and
+   * stays undecided. A file under `.git/` or `.halonic/`, or one the store
+   * won't serve (through a symlink, say), is refused and becomes not
+   * applicable. Accepting starts nothing: no run, routine, hook or tool.
+   *
+   * @returns what was written, with the decisions record, as one undo
+   *   step; `undo` is `null` when no file was written, even if decisions
+   *   changed (a refused file, or one already as the run left it)
+   * @throws when the run has no proposal, or its ref is gone
+   */
+  accept(runId: string, target: ProposalTarget): Promise<AcceptResult> {
+    return this.decisions.accept(runId, target);
+  }
+
+  /**
+   * Rejects what the target covers (`app.run-proposal-reject`): each
+   * undecided file becomes rejected; the saved files stay as they are.
+   *
+   * @returns the decisions record, before and after, as one undo step
+   * @throws when the run has no proposal
+   */
+  reject(runId: string, target: ProposalTarget): Promise<RejectResult> {
+    return this.decisions.reject(runId, target);
+  }
+
+  /**
+   * The texts Compare shows for a file of the proposal: the run's base,
+   * the saved file and the run's.
+   *
+   * @throws when the run has no proposal, its ref is gone, or it doesn't propose the file
+   */
+  compare(runId: string, path: string): Promise<CompareTexts> {
+    return this.decisions.compare(runId, path);
+  }
+
+  /**
+   * Puts the files and decisions of a step from {@link accept} or
+   * {@link reject} back as they were `before` it (Undo) or `after` it
+   * (Redo). Each entry is written only while it is still as the step left
+   * it, so an edit made since is never lost: it is listed in `changedOnDisk`.
+   * Trust rule A holds as for Accept (`app.run-proposal-trust`): an entry
+   * Accept could never write is listed under `refused` and left alone.
+   */
+  restore(step: UndoStep, to: "before" | "after"): Promise<RestoreResult> {
+    return this.decisions.restore(step, to);
   }
 
   /**

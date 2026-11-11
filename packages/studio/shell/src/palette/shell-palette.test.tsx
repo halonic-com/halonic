@@ -10,6 +10,7 @@ import type {
   SearchProviderContribution,
   SearchResult,
 } from "../points/commands.ts";
+import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { type TabLocation, TabSet } from "../tabs/tab-set.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
@@ -56,7 +57,14 @@ function heldProvider() {
   return { provider, questions };
 }
 
-function renderPalette(commands: readonly Registered<CommandContribution>[] = []) {
+interface PaletteSetup {
+  readonly commands?: readonly Registered<CommandContribution>[];
+  readonly platform?: KeyboardPlatform;
+}
+
+const ctrlK: KeyboardEventInit = { key: "k", code: "KeyK", ctrlKey: true };
+
+function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {}) {
   const tabs = new TabSet();
   const recent = new RecentPlaces(tabs);
   const timers = new FakeTimers();
@@ -76,7 +84,7 @@ function renderPalette(commands: readonly Registered<CommandContribution>[] = []
 
   function Window() {
     const [open, setOpen] = useState(false);
-    usePaletteKey("windows", () => setOpen(true));
+    usePaletteKey(platform, () => setOpen(true));
     return open ? (
       <ShellPalette
         tabs={tabs}
@@ -88,7 +96,7 @@ function renderPalette(commands: readonly Registered<CommandContribution>[] = []
         announcer={announcer}
         toasts={toasts}
         notAnswering="The engine isn't answering."
-        platform="windows"
+        platform={platform}
         onClose={() => setOpen(false)}
       />
     ) : null;
@@ -102,15 +110,11 @@ function renderPalette(commands: readonly Registered<CommandContribution>[] = []
     ranWith,
     questions: held.questions,
     box,
-    open: () =>
+    /** Presses keys on the window, Ctrl K unless told otherwise. */
+    open: (keys: KeyboardEventInit = ctrlK) =>
       act(() => {
         window.dispatchEvent(
-          new KeyboardEvent("keydown", {
-            key: "k",
-            ctrlKey: true,
-            bubbles: true,
-            cancelable: true,
-          }),
+          new KeyboardEvent("keydown", { ...keys, bubbles: true, cancelable: true }),
         );
       }),
     type: (words: string) =>
@@ -150,6 +154,37 @@ verifies("shell.palette-wiring", () => {
     expect(palette.rowNames()).toEqual(["Agents, switch to tab", "Runs, switch to tab", "Home"]);
   });
 
+  it("opens on Cmd K on macOS, and not on Ctrl K there", () => {
+    const palette = renderPalette({ platform: "macos" });
+    palette.open(ctrlK);
+    expect(palette.box()).toBeNull();
+    palette.open({ key: "k", code: "KeyK", metaKey: true });
+    expect(palette.box()).not.toBeNull();
+  });
+
+  it("opens on Ctrl K on a layout without Latin letters, by the key's place", () => {
+    const palette = renderPalette();
+    palette.open({ key: "л", code: "KeyK", ctrlKey: true });
+    expect(palette.box()).not.toBeNull();
+  });
+
+  it("leaves Ctrl T alone on a Latin layout where that key sits where K does", () => {
+    const palette = renderPalette();
+    palette.open({ key: "t", code: "KeyK", ctrlKey: true });
+    expect(palette.box()).toBeNull();
+  });
+
+  it("does nothing on Ctrl K while a modal dialog is open", () => {
+    const palette = renderPalette();
+    const dialog = document.body.appendChild(document.createElement("dialog"));
+    dialog.showModal();
+    palette.open();
+    expect(palette.box()).toBeNull();
+    dialog.remove();
+    palette.open();
+    expect(palette.box()).not.toBeNull();
+  });
+
   it("uses only the answer to the latest words", async () => {
     const palette = renderPalette();
     palette.open();
@@ -159,6 +194,16 @@ verifies("shell.palette-wiring", () => {
     await palette.answer(0, [refundChecker]);
     expect(palette.rowNames()).toEqual([]);
     await palette.answer(1, [refundChecker]);
+    expect(palette.rowNames()).toEqual(["Refund checker, agent"]);
+  });
+
+  it("keeps showing what earlier words found while a newer search runs", async () => {
+    const palette = renderPalette();
+    palette.open();
+    palette.type("refund");
+    await palette.answer(0, [refundChecker]);
+    palette.type("refund c");
+    expect(palette.questions).toHaveLength(2);
     expect(palette.rowNames()).toEqual(["Refund checker, agent"]);
   });
 
@@ -194,16 +239,18 @@ verifies("shell.palette-wiring", () => {
   });
 
   it("closes and runs an action with its feature's context, and a failure is a toast", async () => {
-    const palette = renderPalette([
-      {
-        featureId: "agents",
-        id: "agents.new",
-        title: "New agent",
-        run: () => {
-          throw new Error("disk gone");
+    const palette = renderPalette({
+      commands: [
+        {
+          featureId: "agents",
+          id: "agents.new",
+          title: "New agent",
+          run: () => {
+            throw new Error("disk gone");
+          },
         },
-      },
-    ]);
+      ],
+    });
     palette.open();
     palette.type("new");
     await palette.answer(0, []);

@@ -141,7 +141,7 @@ verifies("engine.turn-subagent-stop", () => {
     expect(stoppedSubagentOf(readerStop.resume)).toEqual({});
   });
 
-  it("doesn't go on from inside a subagent yet", async () => {
+  it("doesn't go on from inside a subagent when the agent no longer has its delegate tool", async () => {
     const writer = await agentTurn("writer", [callAnswer(delegateCall)], async () => ({
       kind: "stopped",
       stop: readerStop,
@@ -160,7 +160,9 @@ verifies("engine.turn-subagent-stop", () => {
       resumeFrom: { resume, approved: true },
     });
 
-    await expect(goingOn).rejects.toThrow('it stopped inside its subagent "checker"');
+    await expect(goingOn).rejects.toThrow(
+      'its subagent "checker" stopped in delegate_checker, which it no longer has',
+    );
   });
 
   it("fails a chat turn whose delegate call's subagent stopped", async () => {

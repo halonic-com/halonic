@@ -1,22 +1,5 @@
 [
   {
-    "id": "initial-context-unlogged",
-    "task": "HAL-4752",
-    "area": "run logs: a workflow initial context",
-    "old": "784f78d wrote one context.updated for each key of the workflow context before the first state.entered, so a run summary held the initial context from the start.",
-    "new": "The engine lays the initial context under the run context only in run.completed, so a running or waiting run summary has none of it (the approval run waits with context {} instead of { outcome: pending }).",
-    "tests": [
-      "billing/approval/approve",
-      "billing/approval/the timer fires after two days",
-      "billing/approval/one day is not enough",
-      "billing/batch/each line runs the line-check workflow",
-      "billing/invoice/an approved invoice is paid and announced",
-      "billing/invoice/a rejection with a comment ends in rejected",
-      "billing/invoice/an approval nobody answers expires after two days",
-      "billing/invoice/without a decision the run waits"
-    ]
-  },
-  {
     "id": "workflow-model-calls-unlogged",
     "task": "HAL-4754",
     "area": "workflow runs: the model call",

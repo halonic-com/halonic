@@ -137,6 +137,14 @@ export {
 } from "./llm-provider.ts";
 export { type ModelPrice, priceOf } from "./model-price.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
+export {
+  checkPluginFiles,
+  checkPluginId,
+  type PlacePluginOptions,
+  type PluginFolderWriter,
+  type PluginPlacement,
+  pluginFolderWriterVersion,
+} from "./plugin-folder-writer.ts";
 export { type PortName, portVersions } from "./port-versions.ts";
 export {
   type ProgramProbe,

@@ -9,12 +9,24 @@ import { deleteValue } from "./routine-last-runs.ts";
  * caught up), `window` (older than the catch-up window). The overlap rule:
  * `busy` (the last run was still going, or the queue was full). `changed`: a
  * queued time whose routine was turned off or rescheduled before it started.
+ * `target-unavailable`: the workflow or agent it starts can't be started,
+ * for the reason in `why` (see {@link TargetUnavailableWhy}).
  */
-export type SkipReason = CatchUpReason | "busy" | "changed";
+export type SkipReason = CatchUpReason | "busy" | "changed" | "target-unavailable";
+
+/**
+ * Why a routine's target can't be started (flow-routines 3.9): it has
+ * never been in a version (`never-live`, "Briefing isn't live yet"), or it
+ * is live but its saved file is gone, as in the trash (`in-trash`,
+ * "Briefing is in the trash").
+ */
+export type TargetUnavailableWhy = "never-live" | "in-trash";
 
 /** Due times of one routine a tick dropped for one reason, to add to its records. */
 export interface SkippedTimes {
   reason: SkipReason;
+  /** For `target-unavailable` only: why the target can't be started. */
+  why?: TargetUnavailableWhy;
   /** The oldest dropped time. */
   from: Date;
   /** The newest dropped time. */
@@ -28,6 +40,8 @@ export interface SkippedTimes {
 /** A row of a routine's skipped times, as kept and read. */
 export interface SkipRecord {
   reason: SkipReason;
+  /** For `target-unavailable` only: why the target can't be started. */
+  why?: TargetUnavailableWhy;
   /** ISO time of the oldest skipped time. */
   from: string;
   /** ISO time of the newest skipped time. */
@@ -74,9 +88,14 @@ export function addSkips(
   return next.slice(0, MAX_SKIP_RECORDS);
 }
 
+/** Whether a row and a skip are for the same reason, and the same `why` (two texts make two rows). */
+function sameReason(row: SkipRecord, skip: SkippedTimes): boolean {
+  return row.reason === skip.reason && row.why === skip.why;
+}
+
 function holds(row: SkipRecord, skip: SkippedTimes): boolean {
   return (
-    row.reason === skip.reason &&
+    sameReason(row, skip) &&
     Date.parse(row.from) <= skip.from.getTime() &&
     skip.to.getTime() <= Date.parse(row.to)
   );
@@ -84,7 +103,7 @@ function holds(row: SkipRecord, skip: SkippedTimes): boolean {
 
 function continues(row: SkipRecord, skip: SkippedTimes, lastRun: Date | null): boolean {
   const rowEnd = Date.parse(row.to);
-  if (row.reason !== skip.reason || skip.from.getTime() <= rowEnd) {
+  if (!sameReason(row, skip) || skip.from.getTime() <= rowEnd) {
     return false;
   }
   const ranBetween =
@@ -96,6 +115,7 @@ function merged(row: SkipRecord, skip: SkippedTimes, decidedAt: Date): SkipRecor
   const countIsMinimum = row.countIsMinimum === true || skip.countIsMinimum === true;
   return {
     reason: row.reason,
+    ...(row.why === undefined ? {} : { why: row.why }),
     from: row.from,
     to: skip.to.toISOString(),
     count: row.count + skip.count,
@@ -107,6 +127,7 @@ function merged(row: SkipRecord, skip: SkippedTimes, decidedAt: Date): SkipRecor
 function recordOf(skip: SkippedTimes, decidedAt: Date): SkipRecord {
   return {
     reason: skip.reason,
+    ...(skip.why === undefined ? {} : { why: skip.why }),
     from: skip.from.toISOString(),
     to: skip.to.toISOString(),
     count: skip.count,
@@ -198,8 +219,12 @@ const knownReasons: Record<SkipReason, true> = {
   window: true,
   busy: true,
   changed: true,
+  "target-unavailable": true,
 };
 const reasons: ReadonlySet<string> = new Set(Object.keys(knownReasons));
+
+const knownWhys: Record<TargetUnavailableWhy, true> = { "never-live": true, "in-trash": true };
+const whys: ReadonlySet<string> = new Set(Object.keys(knownWhys));
 
 /**
  * Reads what {@link SkipRecords.add} wrote. Only the scheduler writes it, so
@@ -227,6 +252,9 @@ function isRecord(value: unknown): value is SkipRecord {
   return (
     typeof row.reason === "string" &&
     reasons.has(row.reason) &&
+    (row.reason === "target-unavailable"
+      ? typeof row.why === "string" && whys.has(row.why)
+      : row.why === undefined) &&
     isTime(row.from) &&
     isTime(row.to) &&
     isTime(row.decidedAt) &&

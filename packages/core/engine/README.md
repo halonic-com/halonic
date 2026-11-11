@@ -42,6 +42,7 @@ loop of one model turn, which the local chat turn runs.
 | `DecideInput`        | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`, `effect-failed`, `child`), each with its time                                                                                             | (types only)                                                                        |
 | `Effect`             | what `decide` asks `step` to do after appending: call a model or a tool, start a child run, tell the parent, set a timer                                                                                          | (types only)                                                                        |
 | `decide`             | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take                                                                                                                | `engine.decide-refusals`                                                            |
+|                      | starts a run with one `context.updated` per key of the workflow's initial context, before its first state                                                                                                         | `engine.initial-context-logged`                                                     |
 | `InputRefused`       | what `decide` throws for an input the run can't take; its `code` (a `RefusalCode`) says why, and nothing is recorded                                                                                              | `engine.decide-refusals`                                                            |
 | `step`               | moves a run on by one input: reads it, decides and appends once with `expectedSeq`, reading again after a lost race                                                                                               | `engine.step-appends-once`                                                          |
 | `StepPorts`          | what `step` takes besides the run and the input: the run store and the blob store (read and put)                                                                                                                  | `engine.step-appends-once`                                                          |
@@ -236,6 +237,14 @@ check's reason code (`sandboxReason` on `run.failed`), which `runFailureReasonOf
 engine's own `SandboxNotReadyError`. A step logs `sandbox.started`, then `sandbox.opened` or, for a
 step on this computer, `sandbox.off` with `chosenAt` (never both), then `harness.started`
 (requirements `engine.run-harness`, `engine.run-harness-failures`).
+
+When the host gives the local executor proposal folders, a top-level run with an agent that runs in a
+program harness opens the run's proposal folder before it records `run.started`, and doesn't start when
+it can't. Every harness call of the run and its child runs, `foreach` items included, gets that one
+folder as the agent's `filesFolder`, so the agent writes there and never in the workspace; with no open
+folder the call fails before it opens a bridge or a sandbox. When the top-level run ends, however it
+ends, the engine stops the harness calls still going and then ends the folder; a child run's end
+doesn't. A run with no harness agent gets no folder (requirement `engine.run-proposal-folder`).
 
 A chat turn with an agent that runs in a harness is one harness call in the agent's sandbox, with
 the same sandbox, bridge and start limits (`ChatHarnessTurns`, requirement `engine.chat-harness-turn`).

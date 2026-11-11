@@ -7,6 +7,7 @@ import {
   type RoutineStart,
   type ScheduledRun,
 } from "../routine-scheduler.ts";
+import type { TargetUnavailableWhy } from "../routine-skips.ts";
 import type { AppEvents } from "../workspace-scope.ts";
 import { TestCoordination } from "./memory-coordination.ts";
 import { TestExecutor } from "./test-executor.ts";
@@ -88,6 +89,7 @@ interface SetUpOptions {
   shared?: { coordination: TestCoordination; executor: TestExecutor };
   startOf?: (run: TestRun) => RoutineStart;
   workspaceId?: string;
+  targetUnavailable?: (run: TestRun) => Promise<TargetUnavailableWhy | null>;
 }
 
 export const workspace = "ws-7f3a2c";
@@ -95,7 +97,13 @@ export const tickKey = lastTickKey(workspace);
 
 export function setUp(
   routines: TestRoutine[],
-  { policy = "all", shared, startOf: start = startOf, workspaceId = workspace }: SetUpOptions = {},
+  {
+    policy = "all",
+    shared,
+    startOf: start = startOf,
+    workspaceId = workspace,
+    targetUnavailable,
+  }: SetUpOptions = {},
 ) {
   let now = Date.parse("2026-11-03T07:00:30Z");
   const coordination = shared?.coordination ?? new TestCoordination();
@@ -116,6 +124,7 @@ export function setUp(
     overlapOf: (run) => run.routine.overlap ?? "allow",
     runs: executor,
     events,
+    ...(targetUnavailable === undefined ? {} : { targetUnavailable }),
   });
   const at = (iso: string) => {
     now = Date.parse(iso);

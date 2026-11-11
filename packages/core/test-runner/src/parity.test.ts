@@ -96,10 +96,13 @@ verifies("test-runner.parity-run-logs", () => {
   });
 
   it("still differs only by the known gaps, each with its task", () => {
-    // Every base test starts a workflow with an initial context, so each
-    // stays a gap until initial-context-unlogged is fixed.
+    // The approval tests are compared strictly. The batch and invoice tests
+    // call a model, so they stay gaps until the workflow-run gaps are fixed.
     expect(report.results.map((result) => [result.test, result.verdict])).toEqual(
-      golden.tests.map((test) => [`${test.hub}/${test.workflow}/${test.name}`, "gap"]),
+      golden.tests.map((test) => [
+        `${test.hub}/${test.workflow}/${test.name}`,
+        test.workflow === "approval" ? "allowed" : "gap",
+      ]),
     );
   });
 

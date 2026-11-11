@@ -106,14 +106,15 @@ export interface ModelTurnResult extends ChatResponse {
  * the next model at once; see {@link ModelChain}.
  *
  * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
- * @throws when the log can't be written, or the check asks a person, which only a run can wait for
+ * @throws when the log can't be written, or the turn stops for a person's OK or for the engine, which only a run can wait for
  */
 export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResult> {
   const outcome = await turnLoop(input);
   if (outcome.kind === "stopped") {
-    throw new Error(
-      `The turn stopped for a person's OK on ${outcome.stop.tool}, which only a run can wait for.`,
-    );
+    const { type, tool } = outcome.stop;
+    const waitsFor =
+      type === "approval" ? `a person's OK on ${tool}` : `the engine to make ${tool}`;
+    throw new Error(`The turn stopped for ${waitsFor}, which only a run can wait for.`);
   }
   return outcome.result;
 }

@@ -71,7 +71,7 @@ export function cantTryAtLoad(input: CantTryInput): CantTryStep[] {
   const known = new Set(workspace.issues.filter(isError).map(issueKey));
   const found = new Map<string, CantTryStep>();
   for (const issue of tried.issues) {
-    const counts = isError(issue) && runFiles.all.has(issue.file) && !readByNoRun(issue);
+    const counts = isError(issue) && runFiles.all.has(issue.file) && !readByNoRun(issue, runFiles);
     if (!counts || known.has(issueKey(issue))) {
       continue;
     }
@@ -162,12 +162,21 @@ function loads(workspace: LoadedWorkspace, path: string): boolean {
 }
 
 /**
- * Whether `issue` is in a setting no run reads: the Build assistant's own
- * model in `workspace.yaml`. Runs don't refuse to start on it, so it
- * mustn't stop every step being tried.
+ * Whether `issue` is in a setting this run doesn't read: the Build
+ * assistant's own model in `workspace.yaml`, or an alias in `models.yaml`
+ * the run's models don't name or fall back to. Runs don't refuse to start
+ * on those, so they mustn't stop every step being tried.
  */
-function readByNoRun(issue: WorkspaceIssue): boolean {
-  return placeOf(issue.file)?.kind === "workspace" && issue.path[0] === "assistant";
+function readByNoRun(issue: WorkspaceIssue, runFiles: RunFiles): boolean {
+  const [first, alias] = issue.path;
+  switch (placeOf(issue.file)?.kind) {
+    case "workspace":
+      return first === "assistant";
+    case "models":
+      return first === "aliases" && typeof alias === "string" && !runFiles.models.has(alias);
+    default:
+      return false;
+  }
 }
 
 function isError(issue: WorkspaceIssue): boolean {

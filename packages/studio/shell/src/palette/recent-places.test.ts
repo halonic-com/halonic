@@ -36,6 +36,21 @@ verifies("shell.palette-wiring", () => {
     expect(recent.list.find((place) => place.key === reply.key)?.title).toBe("Refund reply");
   });
 
+  it("renames a place whose tab was closed, and tells its listeners", () => {
+    const tabs = new TabSet();
+    const recent = new RecentPlaces(tabs);
+    const opened = tabs.openInNewTab(reply);
+    tabs.activate(opened.tab.id);
+    tabs.close(opened.tab.id);
+    let changes = 0;
+    recent.subscribe(() => {
+      changes += 1;
+    });
+    tabs.rename(reply.key, "Refund reply");
+    expect(recent.list.find((place) => place.key === reply.key)?.title).toBe("Refund reply");
+    expect(changes).toBe(1);
+  });
+
   it("tells its listeners only when the list changes, and stops when disposed", () => {
     const tabs = new TabSet();
     const recent = new RecentPlaces(tabs);

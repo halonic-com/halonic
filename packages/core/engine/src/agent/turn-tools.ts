@@ -5,7 +5,7 @@
 
 import type { ChatTurnRefusal, ConnectorClient, ToolDefinition, ToolRisk } from "@halonicjs/ports";
 import { offerListedTools } from "./offer-listed-tools.ts";
-import type { TurnStop } from "./turn-approval.ts";
+import type { TurnAnswer, TurnStop } from "./turn-approval.ts";
 
 /** The source id of Halonic's own tools in refusals. */
 export const halonicSource = "halonic";
@@ -38,6 +38,18 @@ export interface HalonicTool {
    * @throws as `run` does
    */
   runOrStop?(args: Record<string, unknown>): Promise<string | SubagentStopped>;
+  /**
+   * Set on a `delegate_*` tool: goes on in the subagent `agent`, whose turn
+   * stopped inside a call of this tool with `args`, from `answer.resume`.
+   * It gives the subagent's answer, or where it stopped again.
+   *
+   * @throws as `run` does, and when `agent` isn't the subagent this tool delegates to
+   */
+  goOn?(
+    args: Record<string, unknown>,
+    agent: string,
+    answer: TurnAnswer,
+  ): Promise<string | SubagentStopped>;
 }
 
 /** A subagent's turn stopped inside a `delegate_*` call, and where. */

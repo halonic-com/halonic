@@ -1,6 +1,7 @@
 import type { ChatMessage, ChatTurnRefusal, ToolCall, ToolRisk } from "@halonicjs/ports";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
+import type { TurnAnswer } from "./turn-approval.ts";
 import type { TurnLog } from "./turn-log.ts";
 import {
   errorMessage,
@@ -191,7 +192,50 @@ async function carryOutCall(
     tool: call.name,
     args: call.arguments,
   });
-  const ran = await runTool(tool, call);
+  return await finishCall(context, tool, call, await runTool(call, () => startTool(tool, call)));
+}
+
+/**
+ * Goes on in the subagent `agent`, whose turn stopped inside `call`, a
+ * `delegate_*` call, with the answer to where it stopped. The call's
+ * `tool.called` was logged when it started, so only its result is logged,
+ * once the subagent answers. A subagent that stops again gives that stop.
+ *
+ * @param tool - the offered tool of that name, or `undefined` when there is none
+ * @throws when `tool` isn't a `delegate_*` tool any more, so the subagent can't go on
+ */
+export async function goOnInSubagent(
+  context: ToolCallContext,
+  tool: TurnTool | undefined,
+  call: ToolCall,
+  agent: string,
+  answer: TurnAnswer,
+): Promise<CallStep> {
+  const goOn = tool?.kind === "halonic" ? tool.tool.goOn : undefined;
+  if (tool === undefined || goOn === undefined) {
+    throw new Error(
+      `The agent can't go on: its subagent "${agent}" stopped in ${call.name}, which it no longer has.`,
+    );
+  }
+  const carried = await finishCall(
+    context,
+    tool,
+    call,
+    await runTool(call, () => goOn(call.arguments, agent, answer)),
+  );
+  return "kind" in carried ? carried : answered(carried);
+}
+
+/**
+ * Logs what a call's tool gave as its `tool.result`, and gives the tool
+ * message that answers the call, or the stop of a subagent that stopped.
+ */
+async function finishCall(
+  context: ToolCallContext,
+  tool: TurnTool,
+  call: ToolCall,
+  ran: ToolRun | SubagentStopped,
+): Promise<ChatMessage | SubagentStopped> {
   if (ran.kind === "subagent-stopped") {
     return ran;
   }
@@ -243,9 +287,12 @@ function riskOf(tool: TurnTool): { risk?: ToolRisk } {
   return tool.kind === "server" && tool.risk !== undefined ? { risk: tool.risk } : {};
 }
 
-async function runTool(tool: TurnTool, call: ToolCall): Promise<ToolRun | SubagentStopped> {
+async function runTool(
+  call: ToolCall,
+  start: () => Promise<string | SubagentStopped>,
+): Promise<ToolRun | SubagentStopped> {
   try {
-    const result = await startTool(tool, call);
+    const result = await start();
     return typeof result === "string" ? { kind: "ran", result, outcome: "ok" } : result;
   } catch (error) {
     const result = `The tool ${call.name} failed: ${errorMessage(error)}`;

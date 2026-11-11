@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-mcp",
   "private": true,
   "type": "module",
-  "description": "Our own MCP client for local programs: the MCP protocol session, the stdio connector that starts a trusted program, and the pinned launcher for npx and uvx connectors.",
+  "description": "Our own MCP client: the MCP protocol session, the http connector, the stdio connector that starts a trusted program, and the pinned launcher for npx and uvx connectors.",
   "exports": {
     ".": "./src/index.ts",
     "./protocol": "./src/protocol/index.ts"

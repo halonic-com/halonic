@@ -66,3 +66,72 @@ verifies("engine.turn-subagent-stop", () => {
     });
   });
 });
+
+verifies("engine.turn-subagent-go-on", () => {
+  it("credits the subagent with the call the engine makes, and goes on in the state's agent", () => {
+    const sent: DecideInput = {
+      type: "effect-done",
+      at: "2026-11-09T09:00:06.000Z",
+      callId: "call-2",
+      result: { type: "tool", result: "Sent", outcome: "ok", risk: "send" },
+    };
+    const { decisions, run } = play(replyWorkflow, [
+      start,
+      stoppedFor({ type: "effect", connector: "mail", ...call }),
+      sent,
+    ]);
+
+    expect(decisions[1]?.events).toContainEqual({
+      type: "tool.called",
+      agent: "reader",
+      tool: "send_mail",
+      args: { to: "support" },
+    });
+    expect(decisions[2]).toEqual({
+      events: [
+        {
+          type: "tool.result",
+          agent: "reader",
+          tool: "send_mail",
+          result: "Sent",
+          outcome: "ok",
+          risk: "send",
+        },
+      ],
+      effects: [
+        {
+          type: "call-model",
+          callId: "call-3",
+          state: "draft",
+          agent: "writer",
+          prompt: "Reply to support",
+          resume: { resume, result: "Sent", outcome: "ok" },
+        },
+      ],
+    });
+    expect(run).toMatchObject({ effect: null, pendingCall: { callId: "call-3", agent: "writer" } });
+  });
+
+  it("credits the subagent with a call that broke off, and waits for a person", () => {
+    const brokeOff: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:06.000Z",
+      callId: "call-2",
+      error: "the connector went away",
+      reason: "error",
+    };
+    const { decisions, run } = play(replyWorkflow, [
+      start,
+      stoppedFor({ type: "effect", connector: "mail", ...call }),
+      brokeOff,
+    ]);
+
+    expect(decisions[2]?.events[0]).toMatchObject({
+      type: "tool.result",
+      agent: "reader",
+      tool: "send_mail",
+      outcome: "unknown",
+    });
+    expect(run).toMatchObject({ status: "waiting", effect: { callId: "call-2", unknown: true } });
+  });
+});

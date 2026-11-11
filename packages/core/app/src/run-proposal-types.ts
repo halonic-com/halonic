@@ -89,3 +89,17 @@ export interface CompareTexts {
   readonly saved: string | null;
   readonly run: string | null;
 }
+
+/**
+ * What one Accept or Reject covers: one file, or every undecided file.
+ * Parts and changes inside a file follow (`revertParts`, HAL-3278).
+ */
+export type ProposalTarget = { readonly file: string } | "all";
+
+/** What an Undo or Redo of a proposal's step did. */
+export interface RestoreResult {
+  /** Entries left alone because they changed since the step, by path. */
+  readonly changedOnDisk: readonly string[];
+  /** Entries that may never be written, as for Accept; nothing of them was written. */
+  readonly refused: readonly { readonly path: string; readonly why: RefusalReason }[];
+}

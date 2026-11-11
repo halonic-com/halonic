@@ -5,6 +5,7 @@
 
 import type { AgentResume, RunEvent, ToolOutcome } from "@halonicjs/events";
 import type { RunState } from "./run-state.ts";
+import { stoppedSubagentOf } from "./stopped-subagent.ts";
 
 /** Where an agent stopped for a connector call that can change things, and the call's result. */
 export interface ResumeAfterEffect {
@@ -95,6 +96,19 @@ export function takeEffectRequest(
 }
 
 /**
+ * The agent whose call the effect is, which its `tool.called` and
+ * `tool.result` name: the innermost subagent when the state's agent
+ * stopped inside one (HAL-3361), so the log doesn't credit the state's
+ * agent with its subagent's call.
+ */
+export function effectCallerOf({
+  agent,
+  resume,
+}: Pick<RequestedEffect, "agent" | "resume">): string {
+  return stoppedSubagentOf(resume).subagent ?? agent;
+}
+
+/**
  * The result of the connector call the run waits on. With an answer, the
  * agent goes on with it; with an unknown outcome, the call stays, and the
  * run waits for a person. Any other `tool.result` changes nothing.
@@ -104,7 +118,7 @@ export function takeEffectResult(
   event: Extract<RunEvent, { type: "tool.result" }>,
 ): RunState {
   const effect = state.effect;
-  if (effect === null || effect.unknown || effect.agent !== event.agent) return state;
+  if (effect === null || effect.unknown || effectCallerOf(effect) !== event.agent) return state;
   if (effect.tool !== event.tool) return state;
   if (event.outcome === "unknown") {
     return { ...state, effect: { ...effect, unknown: true } };

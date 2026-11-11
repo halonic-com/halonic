@@ -10,5 +10,11 @@ export const workspaceMessages = defineMessages("workspace", {
   dirOption: () => phrase`The workspace folder, if it isn't the current one.`,
   /** The reason when the folder has no workspace in it: "Couldn't check ./downloads: there's no workspace.yaml here." */
   noWorkspace: () => phrase`there's no workspace.yaml here.`,
+  /** The reason when the folder itself can't be read, such as for its permissions: "Couldn't check acme: the folder can't be read." */
+  folderUnreadable: () => phrase`the folder can't be read.`,
+  folderUnreadableFix: () => phrase`Check the folder's permissions.`,
+  /** The reason when the folder reads but a file in it can't, worded as the loader words it: "the workspace file workspace.yaml can't be read." */
+  fileUnreadable: (path: string) => phrase`the workspace file ${path} can't be read.`,
+  fileUnreadableFix: () => phrase`Check the file's permissions, or move it out of the workspace.`,
   noWorkspaceFix: () => phrase`Run it inside a workspace, or create one with halonic init.`,
 });

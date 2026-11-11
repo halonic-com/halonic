@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { installFakePopover } from "../test-support/fake-popover.ts";
+import { FakeResizeObserver } from "../test-support/fake-resize-observer.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ItemPage, type ItemPageChat, type ItemPageProps } from "./item-page.tsx";
 
@@ -14,67 +15,19 @@ const views: ItemPageProps<View>["views"] = [
   { id: "configuration", label: "Configuration" },
 ];
 
-/** A `ResizeObserver` for jsdom, which has none: `resize` reports a new width to every target. */
-class FakeResizeObserver {
-  static readonly observers = new Set<FakeResizeObserver>();
-  static width = 1600;
-  /** Off for a browser that reports a little after the page is drawn. */
-  static reportsOnObserve = true;
-
-  private readonly targets = new Set<Element>();
-  private readonly callback: ResizeObserverCallback;
-
-  constructor(callback: ResizeObserverCallback) {
-    this.callback = callback;
-  }
-
-  static resize(width: number): void {
-    FakeResizeObserver.width = width;
-    act(() => {
-      for (const observer of FakeResizeObserver.observers) {
-        observer.report();
-      }
-    });
-  }
-
-  observe(target: Element): void {
-    this.targets.add(target);
-    FakeResizeObserver.observers.add(this);
-    if (FakeResizeObserver.reportsOnObserve) {
-      this.report();
-    }
-  }
-
-  disconnect(): void {
-    FakeResizeObserver.observers.delete(this);
-  }
-
-  unobserve(): void {}
-
-  private report(): void {
-    const entries = [...this.targets].map(
-      (target) =>
-        ({ target, contentRect: { width: FakeResizeObserver.width } }) as ResizeObserverEntry,
-    );
-    this.callback(entries, this as unknown as ResizeObserver);
-  }
-}
-
 let uninstallPopover: () => void;
+let uninstallResizeObserver: () => void;
 
 beforeEach(() => {
   uninstallPopover = installFakePopover();
-  FakeResizeObserver.width = 1600;
-  FakeResizeObserver.reportsOnObserve = true;
-  globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
+  uninstallResizeObserver = FakeResizeObserver.install();
 });
 
 afterEach(() => {
   unmountAll();
   uninstallPopover();
-  FakeResizeObserver.observers.clear();
+  uninstallResizeObserver();
   vi.restoreAllMocks();
-  Reflect.deleteProperty(globalThis, "ResizeObserver");
 });
 
 const agentChat: ItemPageChat = {
@@ -162,7 +115,8 @@ verifies("shell.item-page-chat", () => {
     expect(chat(container)?.textContent).toContain("Chat with Refund checker");
     expect(shown(chat(container))).toBe(true);
     expect(panelBox(container).style.width).toBe("700px");
-    expect(panelBox(container).previousElementSibling).toBe(chat(container));
+    // The chat first, then the panel's resize edge, then the panel.
+    expect(panelBox(container).parentElement?.firstElementChild).toBe(chat(container));
     expect(button(container, "Close Flow")).toBeDefined();
   });
 

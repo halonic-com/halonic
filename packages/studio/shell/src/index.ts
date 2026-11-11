@@ -26,6 +26,7 @@ export {
   shownCards,
   topCardName,
 } from "./cards/card-stack.ts";
+export { StackedCards, type StackedCardsProps } from "./cards/stacked-cards.tsx";
 export {
   type CloseLayer,
   type CloseLayerKind,
@@ -91,10 +92,13 @@ export {
 export { CommandPalette, type CommandPaletteProps } from "./palette/command-palette.tsx";
 export {
   compareNameMatches,
+  findWords,
   matchName,
   type NameMatch,
   type NameMatchRank,
   nameMatchRanks,
+  type WordsFound,
+  type WordsOptions,
 } from "./palette/name-match.ts";
 export {
   itemLocationKey,
@@ -108,6 +112,7 @@ export {
   paletteGroups,
   paletteGroupTitles,
 } from "./palette/palette-groups.ts";
+export { type PaletteOpening, usePaletteOpening } from "./palette/palette-opening.ts";
 export {
   type ActiveRowChange,
   keptActive,
@@ -136,10 +141,15 @@ export {
   PANEL_GAP,
   PANEL_MAX_WIDTH,
   PANEL_MIN_WIDTH,
+  panelEdgeLimits,
   panelFitsBeside,
   savedPanelWidth,
   shownPanelWidth,
 } from "./panels/panel-width.ts";
+export {
+  PanelWidthProvider,
+  type PanelWidthProviderProps,
+} from "./panels/panel-width-context.tsx";
 export {
   BottomNavigation,
   type BottomNavigationPlace,
@@ -251,6 +261,15 @@ export {
   SaveState,
   type SavingItem,
 } from "./save/save-state.ts";
+export {
+  type NameResult,
+  type SearchPageNames,
+  type SearchPageQuery,
+  type SearchScope,
+  searchPageLocation,
+  searchPageNames,
+  searchPageWords,
+} from "./search/search-page-names.ts";
 export type {
   FeatureServices,
   ServiceFactory,
@@ -265,6 +284,7 @@ export {
   SidebarResizeEdge,
   type SidebarResizeEdgeProps,
 } from "./sidebar/sidebar-resize-edge.tsx";
+export { SidebarSearch, type SidebarSearchProps } from "./sidebar/sidebar-search.tsx";
 export {
   clampSidebarWidth,
   SIDEBAR_DEFAULT_WIDTH,

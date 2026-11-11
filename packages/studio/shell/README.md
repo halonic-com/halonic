@@ -77,7 +77,8 @@ there. Closing the active tab activates the one to its right, else
 its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
 last of up to 20 closed tabs with their history. `closeOthers` keeps one tab and closes the rest,
 which Ctrl Shift T brings back one by one in their places; `canReopenClosed` says whether any can
-come back. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
+come back. `rename` updates a place's title in every tab, closed ones too, and tells
+`subscribeToRenames` listeners, so a list that keeps places of its own renames them too. `back` and `forward` return `false`
 at either end. `activate`, `cycle` (Ctrl Tab, wraps), `activateAt` (`-1` is the last tab), `move` and
 `close` do what they say.
 
@@ -306,18 +307,28 @@ const content = paletteGroups({
 `ShellPalette` joins all of this to a workspace (`shell.palette-wiring`). It owns the words and asks
 the providers as they change through `usePaletteSearch`, which uses only the answer to the latest
 words and keeps what was found for earlier words while it waits. `RecentPlaces` follows a tab set:
-each place the active tab comes to show goes first, once, with the name its tab gives it now. A
+each place the active tab comes to show goes first, once, and a rename renames it there too, even
+after its tab was closed. A
 place or an item opens here, which closes the palette, or with Mod in a new tab through
 `openLocation`, which keeps the palette open and says "Opened _Refund checker_ in a new tab." An
 action closes the palette and runs with its own feature's context; one that fails shows the danger
 toast "Couldn't run _New agent_." with the reason from `errorMessageFor`. `usePaletteKey` opens it on
-Mod K, in the desktop app and served alike, but not over a modal dialog.
+Mod K, in the desktop app and served alike, but not over a modal dialog. K is read by the character
+it types, or by its place on the keyboard on a layout without Latin letters, such as Russian.
+
+`usePaletteOpening` keeps whether the palette is open and binds Mod K; its `show` goes to
+everything else that opens it (`shell.palette-entry`). `SidebarSearch` is the sidebar's Search box,
+under the workspace switcher: a button that looks like a field, with the Kbd Mod K at its right and
+in its `aria-keyshortcuts`. **+** and Ctrl T (desktop app only) open a new tab on Home and call
+`onNewTab`, so passing `show` there opens the palette over the new tab, as UX 1.2 asks.
 
 ```tsx
-const [paletteOpen, setPaletteOpen] = useState(false);
-usePaletteKey(platform, () => setPaletteOpen(true));
+const palette = usePaletteOpening(platform);
+useWindowKeys({ host, platform, tabs: workspace.tabs, toasts: shell.toasts, onNewTab: palette.show });
+<WindowTabStrip tabs={workspace.tabs} onNewTab={palette.show} />;
+<SidebarSearch platform={platform} onOpen={palette.show} />;
 
-if (!paletteOpen) return null;
+if (!palette.open) return null;
 return (
   <ShellPalette
     tabs={workspace.tabs}
@@ -330,8 +341,33 @@ return (
     toasts={shell.toasts}
     notAnswering={shell.engine.words.notAnswering}
     platform={platform}
-    onClose={() => setPaletteOpen(false)}
+    onClose={palette.close}
   />
+);
+```
+
+## Search page
+
+The Search page finds anything in the workspace by its name or by the words inside it (VK T2-F7).
+Each search is its own place: `searchPageLocation("refund")` is the place whose tab reads
+"Search: refund", and `searchPageWords` reads the words back, so Back goes to the words searched
+before.
+
+`searchPageNames` works out its "Names and descriptions" section from what the search providers
+found (`shell.search-page-names`). A provider may give a `description` with each result, which the
+page searches too. The words are plain text, as in Ctrl K; the Match case and Whole word chips
+narrow them through `findWords`, and the In and Hub chips narrow the items to one kind or hub.
+Items whose name matches come first, ranked as Ctrl K ranks names, then those whose description
+alone matches. `kinds` and `hubs` are what the two pickers offer. When nothing matches,
+`nothingFound` shows the empty state, with **Search all hubs** while a hub is picked
+(`offerAllHubs`), and `couldNotSearch` replaces it when a provider failed.
+
+```ts
+const found = await searchProviders(words, shell.contributions.search.providers(), contextFor);
+const names = searchPageNames(
+  { words, options: { matchCase, wholeWord }, scope: { hub } },
+  found.results,
+  found.failed,
 );
 ```
 
@@ -537,12 +573,51 @@ nothing changed:
   draft-reply"), and `dockedCardCoversPanel(width)` says when a docked card covers the panel
   (below 720px).
 
-The cards' drawing, focus and keys come with the item page frame.
+`StackedCards` draws the stack over a view (`shell.stacked-cards`, component specs 16, VK T6-F3):
+
+```tsx
+<StackedCards
+  itemPath={["Acme Mail", "Writer"]}
+  stack={cards}
+  onChange={setCards}
+  closeStack={shell.closeStack}
+  panelWidth={width}
+  renderCard={(card) => <TaskCard card={card} />}
+>
+  <AgentMap onOpen={(card) => setCards(openCard(cards, card))} />
+</StackedCards>;
+```
+
+- **The top card** is `surface-raised` with `shadow-2`: **←** ("Back"), the breadcrumb ("Card
+  path"), **✕** ("Close all cards" while more than one card is open, else "Close"), then the
+  title, named "draft-reply, in Acme Mail › Writer › draft-reply". The feature draws the body
+  under it.
+- **Cards behind** are bands only, 10px higher (`--stack-peek`) and 12px narrower on each side
+  (`--stack-inset`) per step back, on `--stack-shade-1` and `--stack-shade-2`, with no shadow. A
+  docked card behind stays full width. Their bodies aren't kept, so a feature keeps what a card
+  needs in its own state. Nothing moves.
+- **Full cards** dim the view with `--stack-scrim` and make it inert. **A docked card alone** takes
+  the panel's right 480px with the view usable and undimmed, or the whole panel under 720px.
+- **Back:** Esc (a `stacked-card` or `docked-card` layer, only on the shown tab's page), **←** and
+  the scrim close the top card; a breadcrumb part or a band goes back to its level, the item's own
+  name closing every card; **✕** closes every card.
+- **Focus:** an opened card's title takes it; a closed card gives it back to what opened it, else
+  to the title of the card now on top. When `dropGoneCards` removes a card, the feature that
+  called it announces "_check_ was removed."; `StackedCards` doesn't.
 
 ## Side panel width
 
 An item page's side panel (`shell.panel-width`) is 420 to 1400px wide, 700px until someone drags
-it. The host saves the width on this computer, as it does the sidebar's:
+it. The width is the same for every item page in the window, and the host saves it on this
+computer, as it does the sidebar's: it mounts `PanelWidthProvider` once around the tabs' pages,
+with what was saved and how to save it. Outside one (a test, a preview), each page starts at 700px
+and saves nothing.
+
+```tsx
+<PanelWidthProvider saved={settings.read("panelWidth")} onSave={(width) => settings.write("panelWidth", width)}>
+  <TabPages … />
+</PanelWidthProvider>
+```
 
 - `savedPanelWidth(saved)` reads the saved value back: kept inside 420 to 1400, or 700px for
   anything that isn't a finite number. `clampPanelWidth(width)` keeps a drag inside 420 to 1400.
@@ -551,7 +626,10 @@ it. The host saves the width on this computer, as it does the sidebar's:
   doesn't fit beside a 320px chat (with the 48px gap and the 40px lead, a tab under 828px);
   `panelFitsBeside(tabWidth)` says the same. Then the item page shows the panel as a button.
 
-The edge itself, Maximise and ✕ come with the item page frame.
+- While the panel is beside the chat, `ItemPage` draws its left edge as a window splitter named
+  "Resize panel", the same edge as the sidebar's: a drag; ← wider and → narrower by 16px; Home
+  420px, End as wide as leaves the chat 320px; Enter and a double-click 700px. The width is saved
+  when the key or the pointer is released. `panelEdgeLimits(tabWidth)` gives those limits.
 
 ## Phone places and Back
 
@@ -677,8 +755,8 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   - The chat and the view stay mounted through every switch, hidden rather than moved, so a
     half-typed message or the canvas's zoom survives. A chat provided after the first render still
     starts open until the user opens or closes it.
-- **Not yet:** the panel's edge and Maximise, the stacked cards, and the "Changes not live yet"
-  line (24.9).
+- **Not yet:** Maximise and the "Changes not live yet" line (24.9). A feature draws its stacked
+  cards with `StackedCards` inside its view.
 
 ## Resource numbers
 

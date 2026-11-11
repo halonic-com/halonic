@@ -4,7 +4,7 @@ Owner: owen · Layer: apps · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-Halonic's agent host as one Node program. It unpacks its files and serves on loopback with a token per launch: its health, the sandbox and the Halonic bridge; the harnesses come next (HAL-4476).
+Halonic's agent host as one Node program. It unpacks its files and serves on loopback with a token per launch: its health, the sandbox, the Halonic bridge and the harnesses (Claude Code and Codex). Studio's side, which starts it and gives the engine stand-ins over these routes, is a follow-up.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
@@ -24,4 +24,5 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 ## Local rules
 
 - `src/main.ts` is the executable's main script: it may import only Node's own modules (and types). Everything else goes in the payload, loaded from `src/host.ts`.
+- A change to a route, the token or the loopback checks updates the README's tables and [threat model 4.6](../../docs/security/threat-model.md#46-agents-in-a-sandbox-b8) in the same pull request.
 - Every route goes through `startHostServer` (`src/server/host-server.ts`), which checks the `Host`, `Origin` and token before any route runs. Never add a listener of your own, and never print, log or store the token anywhere but the handshake line.
