@@ -11,6 +11,15 @@ import { linkedGitFolder } from "./git-link.ts";
 const maxModuleDepth = 8;
 
 /**
+ * How many folders below the working folder the search for nested clones goes:
+ * `vendor/lib/.git` is found at two.
+ */
+const maxNestedDepth = 8;
+
+/** Folders the search for nested clones doesn't enter, as srt's own search doesn't. */
+const skippedFolders = new Set([".git", "node_modules"]);
+
+/**
  * Files in the working folder that git reads as settings or runs, beyond the
  * fixed `.git/hooks` and `.git/config`, as paths relative to the working
  * folder. Each one can make git run a command on the user's next `git status`
@@ -28,6 +37,12 @@ const maxModuleDepth = 8;
  * - `config`, `config.worktree` and `hooks` of each submodule under
  *   `.git/modules`.
  * - Each `commondir` there is: it sends git to another folder for its settings.
+ * - The same for each nested clone: a folder below the working folder with its
+ *   own `.git` that no `.gitmodules` lists (`vendor/lib`). Git runs its hooks
+ *   and settings when someone uses git in it, and srt's own search denies only
+ *   the `hooks` and `config` of one a few folders deep under the command's
+ *   folder on Linux. The search goes `maxNestedDepth` folders down and skips
+ *   `node_modules`.
  *
  * Only what exists at session start is found, and a `.git` or `commondir` only
  * when it is there: on Linux srt puts an empty file at a denied path that is
@@ -43,7 +58,31 @@ const maxModuleDepth = 8;
  * fail there.
  */
 export async function gitPathsToDeny(workingFolder: string): Promise<string[]> {
-  return checkoutPaths(workingFolder, "", 0);
+  const paths = [
+    ...(await checkoutPaths(workingFolder, "", 0)),
+    ...(await nestedClonePaths(workingFolder, "", 0)),
+  ];
+  return [...new Set(paths)];
+}
+
+/**
+ * What to deny for each folder below `folder`, relative to `root`, that holds a
+ * `.git` of its own, nested ones too: the same as for a submodule checkout.
+ * Links are never followed. A folder that can't be read is denied itself, as
+ * srt does: the program can't give it back its mode then and fill it.
+ */
+async function nestedClonePaths(root: string, folder: string, depth: number): Promise<string[]> {
+  if (depth >= maxNestedDepth) return [];
+  const entries = await readdir(join(root, folder), { withFileTypes: true }).catch(() => null);
+  if (entries === null) return folder === "" ? [] : [folder];
+  const paths: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || skippedFolders.has(entry.name)) continue;
+    const checkout = join(folder, entry.name);
+    paths.push(...(await checkoutPaths(root, checkout, 1)));
+    paths.push(...(await nestedClonePaths(root, checkout, depth + 1)));
+  }
+  return paths;
 }
 
 /** What to deny for the checkout at `checkout`, relative to `root`, and the submodules in it. */

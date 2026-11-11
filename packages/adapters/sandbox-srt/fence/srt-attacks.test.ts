@@ -147,6 +147,32 @@ describe("a program trying to get out of the fence", () => {
     expect(await readFile(join(repo, ".git", "config.worktree"), "utf8").catch(() => "")).toBe("");
   });
 
+  it("can't make git run a command through a nested clone that is no submodule (HAL-5976)", async () => {
+    // Two folders down: deeper than srt's own search denies on Linux.
+    const repo = join(base, "with-nested-clone");
+    const clone = join(repo, "vendor", "acme", ".git");
+    await mkdir(clone, { recursive: true });
+    await writeFile(join(clone, "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(clone, "config"), "[core]\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: repo });
+    try {
+      const attempts = [
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' >> vendor/acme/.git/config",
+        "mkdir -p vendor/acme/.git/hooks && echo x > vendor/acme/.git/hooks/post-checkout",
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' > vendor/acme/.git/config.worktree",
+        "mv vendor/acme vendor/acme-old",
+      ];
+      for (const attempt of attempts) {
+        expect((await sh(attempt, planted)).code).not.toBe(0);
+      }
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(clone, "config"), "utf8")).toBe("[core]\n");
+    await expect(stat(join(clone, "hooks", "post-checkout"))).rejects.toThrow();
+    expect(await readFile(join(clone, "config.worktree"), "utf8").catch(() => "")).toBe("");
+  });
+
   it("can't point a linked worktree's .git file at a git folder of its own", async () => {
     const worktree = join(base, "worktree");
     await mkdir(worktree, { recursive: true });

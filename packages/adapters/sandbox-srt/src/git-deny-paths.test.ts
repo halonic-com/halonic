@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -173,6 +173,55 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
         await rm(outside, { recursive: true, force: true });
       }
     });
+
+    it("hold the config, config.worktree and hooks of each nested clone no .gitmodules lists, clones in clones too (HAL-5976)", async () => {
+      await gitFolder(join("vendor", "acme", ".git"));
+      await gitFolder(join("vendor", "acme", "docs", "theme", ".git"));
+      await gitFolder(join("vendor", "acme", ".git", "modules", "theme"));
+      const paths = await gitPathsToDeny(work);
+      for (const clone of [join("vendor", "acme"), join("vendor", "acme", "docs", "theme")]) {
+        for (const file of ["config", "config.worktree", "hooks"]) {
+          expect(paths).toContain(join(clone, ".git", file));
+        }
+      }
+      expect(paths).toContain(join("vendor", "acme", ".git", "modules", "theme", "hooks"));
+      expect(new Set(paths).size).toBe(paths.length);
+    });
+
+    it("hold the .git file of a nested clone that is a linked worktree", async () => {
+      await mkdir(join(work, "vendor", "acme"), { recursive: true });
+      await writeFile(
+        join(work, "vendor", "acme", ".git"),
+        "gitdir: /elsewhere/.git/worktrees/acme\n",
+      );
+      expect(await gitPathsToDeny(work)).toEqual([join("vendor", "acme", ".git")]);
+    });
+
+    it("look for nested clones neither in node_modules nor through a link", async () => {
+      const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
+      try {
+        await gitFolder(join("node_modules", "acme", ".git"));
+        await mkdir(join(outside, "acme", ".git"), { recursive: true });
+        await writeFile(join(outside, "acme", ".git", "HEAD"), "ref: refs/heads/main\n");
+        await symlink(outside, join(work, "linked"));
+        expect(await gitPathsToDeny(work)).toEqual([]);
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
+    });
+
+    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+      "deny a folder it can't read, as a clone could be inside",
+      async () => {
+        await mkdir(join(work, "locked"));
+        await chmod(join(work, "locked"), 0o000);
+        try {
+          expect(await gitPathsToDeny(work)).toEqual(["locked"]);
+        } finally {
+          await chmod(join(work, "locked"), 0o755);
+        }
+      },
+    );
 
     it("never follow a link the program put in place of a folder", async () => {
       const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));

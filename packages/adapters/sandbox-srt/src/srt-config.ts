@@ -86,7 +86,7 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
  * user's `git status` once the program adds it to the index (HAL-3493).
  *
  * The session adds the git files only it can find at start, such as each
- * submodule's settings (see `gitPathsToDeny`).
+ * submodule's and each nested clone's settings (see `gitPathsToDeny`).
  */
 const toolSettingsInWorkingFolder = [
   join(".claude", "settings.json"),
