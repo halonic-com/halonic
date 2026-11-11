@@ -56,6 +56,9 @@ concurrency:
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
+  # turbo.json caps Turbo at 2 tasks at once for agent workspaces; CI keeps
+  # Turbo's own default of 10.
+  TURBO_CONCURRENCY: "10"
 
 jobs:
   pack:

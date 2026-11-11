@@ -43,11 +43,13 @@ Each package declares its layer and owner in `package.json` (`"halonic": { "laye
 Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine; CI runs them):
 
 - Before you push, check what you changed: `git fetch origin`, then
-  `pnpm exec turbo run typecheck lint test --filter=...[origin/main] --concurrency=2`.
+  `pnpm exec turbo run typecheck lint test --filter=...[origin/main]`.
+  Outside CI, `turbo.json` caps Turbo at 2 tasks at once and Vitest uses 2 workers (`HALONIC_TEST_WORKERS`
+  changes that); CI sets `TURBO_CONCURRENCY` itself. Leave full runs to CI and the merge queue.
   A change under `examples/` alone selects nothing with that filter (Turborepo only maps files to packages),
   so also add `--filter=halonic --filter=@halonicjs/workspace --filter=@halonicjs/test-runner`, the three packages whose tests read it.
 - Before you queue a pull request, typecheck every package on top of the latest `main`:
-  `pnpm exec turbo run typecheck --concurrency=2`, or run `pnpm check:enqueue`: it merges the latest
+  `pnpm exec turbo run typecheck`, or run `pnpm check:enqueue`: it merges the latest
   `origin/main`, then checks the lockfile, typechecks every package, runs the `@halonicjs/format`
   spec tests, the process-starts guard and the requirement guard.
 
