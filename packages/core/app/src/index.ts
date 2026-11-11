@@ -186,6 +186,16 @@ export {
   pluginInstallsCollection,
 } from "./plugin-installs.ts";
 export {
+  isLocalToolSet,
+  type LocalToolOpening,
+  type LocalToolSet,
+  type LocalToolState,
+  LocalToolUnavailableError,
+  localToolConnectorId,
+  PluginLocalTools,
+  type PluginLocalToolsOptions,
+} from "./plugin-local-tools.ts";
+export {
   type AddPluginOptions,
   type BrokenPlugin,
   type PluginAddRefusal,
