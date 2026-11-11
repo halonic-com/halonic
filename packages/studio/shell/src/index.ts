@@ -341,6 +341,7 @@ export {
   type ToolbarSaveNoteProps,
 } from "./toolbar/toolbar-save-note.tsx";
 export { loadView, type ViewRef } from "./view.ts";
+export type { ItemViewProps } from "./window/item-view.tsx";
 export {
   cantOpenProblem,
   cantOpenWords,

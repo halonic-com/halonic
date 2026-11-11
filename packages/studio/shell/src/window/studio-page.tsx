@@ -9,6 +9,7 @@ import type { Shell } from "../shell.ts";
 import { homeLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
 import { loadView } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { ItemView, itemOfLocationKey } from "./item-view.tsx";
 
 /** What a place's view gets: the context of the feature that added the place. */
 export interface PlaceViewProps {
@@ -32,7 +33,9 @@ export interface StudioPageProps {
  * fails to load is "This page stopped working", from the `PageErrorBoundary` round every tab's
  * page and round the phone's page.
  *
- * Items open once a feature adds an item kind (T6, T7); until then no tab can show one.
+ * A tab on an item (`kind/hub/id`) shows the `open` view of the kind a feature added
+ * (`shell.item-tabs`), given the item and that feature's context, imported the first time a tab
+ * shows the kind. An item of a kind no feature added shows nothing.
  */
 export function StudioPage({ location, shell, tabs, announcer, contextFor }: StudioPageProps) {
   const { contributions } = shell;
@@ -56,6 +59,11 @@ export function StudioPage({ location, shell, tabs, announcer, contextFor }: Stu
   const place = contributions.places.list().find((added) => added.id === location.key);
   if (place !== undefined) {
     return <PlaceView place={place} context={contextFor(place.featureId)} />;
+  }
+  const item = itemOfLocationKey(location.key);
+  const kind = item === undefined ? undefined : contributions.itemKinds.get(item.kind);
+  if (item !== undefined && kind !== undefined) {
+    return <ItemView kind={kind} item={item} context={contextFor(kind.featureId)} />;
   }
   return null;
 }

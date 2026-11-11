@@ -933,7 +933,9 @@ there (`shell.view-loading`).
 a workspace menu), `TabPages` and `StatusBarItems`, and the Ctrl K palette, opened from the Search
 box, Mod K, **+** and Ctrl T. A tab on Home shows `HomePage`, a tab on a search the `SearchPage`,
 and a tab on a place a feature added that place's view, which gets `PlaceViewProps`: the context of
-the feature that added it. Items open once a feature adds an item kind (T6, T7).
+the feature that added it. A tab on an item (`kind/hub/id`) shows the `open` view of the kind a
+feature added, which gets `ItemViewProps`: the item and the context of that feature
+(`shell.item-tabs`). The view is imported the first time a tab shows an item of that kind.
 
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search
