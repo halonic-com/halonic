@@ -22,6 +22,7 @@
     "@halonicjs/yaml": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/testing-parity": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

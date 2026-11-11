@@ -60,7 +60,14 @@ new code does something else, the ported test leaves that part out, and it is li
 - The model sees a connector's tools by their own names (`search_issues`), not
   `<connector>__<tool>`; a case still scripts them as `<connector>.<tool>`.
 
-## Example
+## Parity with the old runner
+
+`src/parity.test.ts` runs the parity package's base fixture, its 8 workflow tests, from the old
+runner's fixed time, and checks the run logs against the old runner's (`run-logs.json`) with the
+parity package's run-log compare (`test-runner.parity-run-logs`). All 8 pass, as they did in the old
+runner. Where the logs differ, the difference is either allowed (`allowed-differences.json`, with
+the rule the compare applies) or a known gap of the engine (`known-gaps.json`, with the task that
+fixes it). Fixing a gap makes its tests match, and the check then fails until the gap is removed.
 
 List the test of a small in-memory workspace named "without a decision the run waits". The code lives in
 [`examples/list-tests.ts`](examples/list-tests.ts), where it is typechecked and run by
