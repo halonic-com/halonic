@@ -1,4 +1,5 @@
 import { TauriDefinitionStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { ServiceRegistry } from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
@@ -13,6 +14,7 @@ import {
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
 import {
+  hostSettingsStoreKey,
   provideShellHostSettings,
   provideShellSecrets,
   TauriChannel,
@@ -97,7 +99,7 @@ export function startStudio(page: StudioPage): StartedStudio {
     return startDesktopApp(page, { shell, ipc, platform });
   }
   const shell = createShell({ features: [], host, platform });
-  const services = new ServiceRegistry();
+  const services = servedServices();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
   const window = mountStudioWindow(page.element, {
@@ -125,6 +127,17 @@ export const desktopFeatures = {
   features: [inboxFeature, runsFeature],
   hostServices: [InboxRunsService, RunsSourceService],
 };
+
+/**
+ * The served Studio's services. Without the shell it can't reach the profile, so its host
+ * settings are kept in memory, as in the browser demo, until `halonic serve` gives it the
+ * server's (HAL-6159 design, section 5). They last until the page is closed.
+ */
+export function servedServices(): ServiceRegistry {
+  const services = new ServiceRegistry();
+  services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
+  return services;
+}
 
 /** What the desktop app's window is made of. */
 interface DesktopParts {

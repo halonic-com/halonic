@@ -9,6 +9,7 @@ import {
   keyboardPlatform,
   openFolder,
   type StartedStudio,
+  servedServices,
   startStudio,
   studioHost,
 } from "./start-studio.ts";
@@ -70,6 +71,15 @@ verifies("studio.entry", () => {
     expect(started.host).toBe("served");
     expect(element.querySelector(tabsSelector)).not.toBeNull();
     expect(element.querySelector(headingSelector)?.textContent).toBe("Home");
+  });
+
+  it("keeps the served Studio's host settings in memory, as it has no shell", async () => {
+    const services = servedServices();
+
+    const store = services.get(hostSettingsStoreKey);
+    await store.set("assistant.turn-limit", 20);
+    expect(await store.read()).toEqual({ "assistant.turn-limit": 20 });
+    await services.dispose();
   });
 
   it("runs as the desktop app in Tauri's webview", () => {

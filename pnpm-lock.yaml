@@ -426,6 +426,9 @@ importers:
       '@halonicjs/adapter-fs-tauri':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-tauri
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../packages/adapters/memory
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
@@ -469,9 +472,6 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
-      '@halonicjs/adapter-memory':
-        specifier: workspace:*
-        version: link:../../packages/adapters/memory
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../packages/core/engine
