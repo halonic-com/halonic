@@ -6,11 +6,11 @@ import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { type PaletteRow, paletteGroups } from "./palette-groups.ts";
+import { itemLocation, type PaletteRow, paletteGroups } from "./palette-groups.ts";
 import type { PaletteKindNames } from "./palette-options.ts";
 import { PhoneSearchSheet } from "./phone-search-sheet.tsx";
 import type { RecentPlaces } from "./recent-places.ts";
-import { itemLocation, runAction, useRecentPlaces } from "./shell-palette.tsx";
+import { runAction, useRecentPlaces } from "./shell-palette.tsx";
 import { usePaletteSearch } from "./use-palette-search.ts";
 
 /** Props for {@link ShellPhoneSearch}. */
