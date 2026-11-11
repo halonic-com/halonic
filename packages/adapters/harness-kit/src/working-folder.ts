@@ -54,7 +54,7 @@ export async function realWorkingFolder(
   if (namedProblem !== null) throw new Error(namedProblem);
   let current = root;
   for (const part of workingFolder.split("/")) {
-    current = await realOrMade(join(current, part), disk);
+    current = await realOrMade(join(current, part), workingFolder, disk);
     if (!isInsideOrSame(current, root)) {
       throw new Error(
         `The agent's working folder '${workingFolder}' leads out of ${root}, to ${current}.`,
@@ -71,13 +71,23 @@ export async function realWorkingFolder(
   return current;
 }
 
-/** The real place of `path`, after making it when it isn't there. */
-async function realOrMade(path: string, disk: ProfileDisk): Promise<string> {
+/**
+ * The real place of `path`, after making it when it isn't there. A link to
+ * a place that isn't there is refused, not followed.
+ */
+async function realOrMade(path: string, workingFolder: string, disk: ProfileDisk): Promise<string> {
   try {
     return await disk.realPath(path);
   } catch {
+    // Not there yet: made below.
+  }
+  try {
     await disk.makeFolder(path);
     return await disk.realPath(path);
+  } catch (error) {
+    throw new Error(`The agent's working folder '${workingFolder}' can't be made at ${path}.`, {
+      cause: error,
+    });
   }
 }
 

@@ -141,6 +141,15 @@ verifies("harness-kit.harness-profile", () => {
       );
     });
 
+    it("refuses a working folder through a link to a folder that isn't there", async () => {
+      const { workspace } = computer;
+      await symlink(join(workspace, "missing"), join(workspace, "files"), "junction");
+
+      await expect(profilesWith().profileOf(agentWith(null), bridge)).rejects.toThrow(
+        /can't be made at/,
+      );
+    });
+
     it("refuses a working folder named into .git", async () => {
       await expect(
         profilesWith({ workingFolder: ".git/hooks" }).profileOf(agentWith(null), bridge),
