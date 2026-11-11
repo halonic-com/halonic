@@ -124,7 +124,7 @@ verifies("engine.run-agent-tools", () => {
     });
   });
 
-  it("refuses a subagent's call that needs a person's OK, and the run doesn't wait", async () => {
+  it("waits for a person's OK on a subagent's call that needs one, then makes it", async () => {
     const ran: string[] = [];
     const publish = {
       ...halonicTool("publish", async () => {
@@ -133,11 +133,11 @@ verifies("engine.run-agent-tools", () => {
       }),
       risk: "write" as const,
     };
-    const { model, runs } = await runReply(
+    const { executor, model, runs, scheduler } = await runReply(
       [
         callAnswer(call("d-1", "delegate_checker", { task: "Publish the reply" })),
         callAnswer(call("p-1", "publish")),
-        textAnswer("Couldn't publish"),
+        textAnswer("Published it"),
         textAnswer("Dear support"),
       ],
       new KernelRuns(),
@@ -148,10 +148,16 @@ verifies("engine.run-agent-tools", () => {
     );
 
     expect(ran).toEqual([]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(ran).toEqual(["publish"]);
     expect(model.requests[2]?.messages.at(-1)).toMatchObject({
       role: "tool",
       toolCallId: "p-1",
-      content: "Refused: publish needs a person's OK, which a subagent can't wait for yet",
+      content: expect.stringContaining("published"),
     });
     expect(await runs.get("run_1")).toMatchObject({
       status: "completed",

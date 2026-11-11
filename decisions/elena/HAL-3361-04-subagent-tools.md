@@ -19,15 +19,21 @@ tools, and it gains examples for a branch's subagent, an `archive` call after th
 `approve`, and a subagent whose own file doesn't list the connector its parent uses.
 `engine.subagent-tools` gains a "Waits for an OK" section that points to `engine.turn-subagent-stop`
 and `engine.turn-subagent-go-on`. `engine.run-connector-approve` says that it holds for a
-subagent's model call too.
+subagent's model call too. `engine.run-agent-tools` said a subagent's call that needs an OK is
+refused and the run doesn't wait (HAL-3338); it now says the run waits, and its last example
+approves the call and checks that it runs once.
 
 ## Tests
 
 `local-runs-subagent-connectors.test.ts`: the first test's expected tools change from `search` to
-all five; four tests are added. No test is removed or skipped, and no other test changed.
+all five; four tests are added. `local-runs-agent-tools.test.ts`: "refuses a subagent's call that
+needs a person's OK, and the run doesn't wait" becomes "waits for a person's OK on a subagent's
+call that needs one, then makes it", with more `expect` calls. No test is removed or skipped, and
+no other test changed.
 
 ## Covers
 
 - engine.subagent-connector-reads
 - engine.subagent-tools
 - engine.run-connector-approve
+- engine.run-agent-tools
