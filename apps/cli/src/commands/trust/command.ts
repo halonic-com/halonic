@@ -1,7 +1,6 @@
 import { realpath } from "node:fs/promises";
 import { resolve } from "node:path";
 import { FileTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import type { TrustCheck } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
 import type { Clock, TrustRecord, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
@@ -27,12 +26,12 @@ import {
   type TrustChangesDocument,
   trustChangesDocument,
 } from "../../output/trust-changes-json.ts";
-import { shownDate, trustCheckLines } from "../../output/trust-check.ts";
+import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
 import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { trustPlugin } from "./plugin.ts";
 
 /** What `trust` uses on this computer, so tests can hand it a memory store and a fixed clock. */
@@ -137,6 +136,7 @@ async function reviewAndTrust(
   const workspace = await readWorkspaceTrust(opened, machine.commandSearch);
   const trust = cliTrustService(machine.store, machine.clock);
   const check = await trust.check(workspace.subject);
+  assertTrustable(check, workspace);
   const facts = { name: workspace.name, folder: opened.shown };
   const lines = trustCheckLines(check, facts);
   const changes =
@@ -189,7 +189,7 @@ async function reviewAndTrust(
 /** What a refusal of `trust` shows: the check, and what changed since it was trusted. */
 interface TrustRefusalFacts {
   readonly name: string;
-  readonly check: TrustCheck;
+  readonly check: FingerprintedCheck;
   /** The check's lines, shown before the first question and in the refusal. */
   readonly lines: readonly Phrase[];
   readonly dir: string | undefined;

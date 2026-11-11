@@ -38,6 +38,10 @@ verifies("app.doctor-workspace", () => {
   it("warns when the trust record can't be read, as for an untrusted workspace", () => {
     expect(workspaceLine("acme", "unreadable").status).toBe("warning");
   });
+
+  it("warns when a file names something that can't be trusted", () => {
+    expect(workspaceLine("acme", "refused")).toMatchObject({ status: "warning", trust: "refused" });
+  });
 });
 
 verifies("app.doctor-workspace-drive", () => {

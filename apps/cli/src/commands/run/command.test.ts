@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -222,6 +222,26 @@ describe("halonic run's refusals", () => {
       "✕ Couldn't run support-reply: Acme isn't trusted on this computer yet. Nothing ran.",
     );
     expect(io.stderr).toContain("  Review what it can start, then trust it: halonic trust");
+    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
+    expect(listed.total).toBe(0);
+  });
+
+  it("names the connector file whose URL can't be trusted, without its password, and starts nothing (HAL-5421)", async () => {
+    await mkdir(join(acme, "library/connectors"), { recursive: true });
+    await writeFile(
+      join(acme, "library/connectors/web.connector.yaml"),
+      "name: Web\ntransport:\n  http:\n    url: https://ops:pw@web.example.com/mcp\ntools:\n  approve: []\n",
+    );
+    const profile = freshProfile();
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toContain(
+      "✕ Couldn't run support-reply: library/connectors/web.connector.yaml can't be trusted, because the URL has user info.",
+    );
+    expect(io.stderr.join("\n")).not.toContain("pw");
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
   });

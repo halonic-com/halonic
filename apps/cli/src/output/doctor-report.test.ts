@@ -253,6 +253,10 @@ describe("doctorReportLines", () => {
     expect(workspaceOf({ ...trusted, trust: "not-needed" })).toEqual([
       "✓ Workspace   acme · test model only, no trust needed",
     ]);
+    const refused: WorkspaceLine = { ...trusted, status: "warning", trust: "refused" };
+    expect(workspaceOf(refused)).toEqual([
+      "! Workspace   can't be trusted · halonic trust --dir ./acme",
+    ]);
   });
 
   it("names both servers that don't answer, and the sandbox, in the summary", () => {

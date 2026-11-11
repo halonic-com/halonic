@@ -4,8 +4,9 @@
 
 import { realpath } from "node:fs/promises";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import { TrustService, type TrustSubject } from "@halonicjs/app";
+import { type TrustCheck, TrustService, type TrustSubject } from "@halonicjs/app";
 import type { Clock, TrustGrant, TrustStore } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import {
   filesOf,
   type LoadedWorkspace,
@@ -14,11 +15,12 @@ import {
 } from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import type { Message } from "./messages/define.ts";
+import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import { trustChangesDocument } from "./output/trust-changes-json.ts";
-import { trustCheckLines } from "./output/trust-check.ts";
+import { type FingerprintedCheck, trustCheckLines } from "./output/trust-check.ts";
 import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
 import { readLocalIntegrations } from "./workspace-integrations.ts";
@@ -99,6 +101,8 @@ export interface WorkspaceTrust {
   /** The workspace's name from `workspace.yaml`, or the folder as typed when it has none. */
   readonly name: string;
   readonly subject: TrustSubject;
+  /** Each connector's file, workspace-relative, by connector id, so a refusal can say which file to fix. */
+  readonly files: ReadonlyMap<string, string>;
 }
 
 /**
@@ -118,14 +122,39 @@ export async function readWorkspaceTrust(
 ): Promise<WorkspaceTrust> {
   const workspace = loaded ?? (await loadWorkspace(dir.store));
   const name = workspaceNameOf(workspace, dir);
-  const connectors = filesOf(workspace, "connector").map((file) => file.value);
+  const connectorFiles = filesOf(workspace, "connector");
+  const connectors = connectorFiles.map((file) => file.value);
   const subject = trustSubjectOf({
     workspace,
     integrations: await workspaceIntegrations(dir.root, dir.shown),
     location: await realpath(dir.root),
     commandPaths: await commandPaths(connectors, search),
   });
-  return { name, subject };
+  const files = new Map(connectorFiles.map((file) => [file.value.id, file.path]));
+  return { name, subject, files };
+}
+
+/**
+ * Stops when the check is `refused`: a file names something trust can't
+ * cover, such as a connector URL with user info, so the workspace has no
+ * fingerprint and nothing in it can start until the file is fixed (HAL-5421).
+ *
+ * @throws KindedError `invalid_input` naming each file and why, never its address (exit 2)
+ */
+export function assertTrustable(
+  check: TrustCheck,
+  workspace: WorkspaceTrust,
+): asserts check is FingerprintedCheck {
+  if (check.status !== "refused") {
+    return;
+  }
+  const refused = check.refused.map(({ id, reason }) => ({
+    file: workspace.files.get(id) ?? id,
+    reason,
+  }));
+  throw new KindedError("invalid_input", plainText(trustMessages.refused(refused).phrase), {
+    fix: plainText(trustMessages.refusedFix().phrase),
+  });
 }
 
 /** The trust service over `store`, with the CLI's digest and version. */
@@ -154,6 +183,7 @@ export interface WorkspaceTrustMachine {
  *   used, never on a second read of the files
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown (exit 3)
+ * @throws KindedError when a file names something that can't be trusted (exit 2)
  */
 export async function trustedGrant(
   dir: OpenWorkspaceDir,
@@ -162,8 +192,10 @@ export async function trustedGrant(
   nothingDone: Message,
   loaded: LoadedWorkspace,
 ): Promise<TrustGrant> {
-  const { name, subject } = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
+  const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
+  const { name, subject } = workspace;
   const check = await cliTrustService(machine.trustStore, machine.clock).check(subject);
+  assertTrustable(check, workspace);
   if (check.status === "trusted") {
     return check.grant;
   }

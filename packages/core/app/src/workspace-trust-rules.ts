@@ -24,10 +24,14 @@ export function unpinnedConnectors(connectors: readonly Connector[]): string[] {
 /**
  * Whether stored content has the shape `trustContent` builds: connectors,
  * and harness agents, local integrations and model providers when there
- * are any, with an id each.
+ * are any, with an id each. Content that lists something refused never
+ * does, as it has no fingerprint: only a hand edit puts it in a record.
  */
 export function isTrustContent(value: unknown): value is TrustContent {
   if (typeof value !== "object" || value === null || !("connectors" in value)) {
+    return false;
+  }
+  if ("refused" in value && value.refused !== undefined) {
     return false;
   }
   const agents = "agents" in value ? value.agents : [];

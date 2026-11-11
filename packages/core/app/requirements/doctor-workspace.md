@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2270; cli-output 3.7 (the Workspace line) and microcopy L90
 
-While it runs inside a workspace, `halonic doctor` shall show a Workspace line with the workspace's name and whether this computer trusts it. While the workspace is trusted, the line shall be marked as ok. While it isn't trusted yet, has changed since it was trusted, or its trust record can't be read, the line shall be marked as a warning. The line shall never be marked as failed. While a run in the workspace can only reach the test model, so it needs no trust, as for `halonic run`, the line shall be marked as ok and say no trust is needed, and the trust check shall not be read (HAL-6007).
+While it runs inside a workspace, `halonic doctor` shall show a Workspace line with the workspace's name and whether this computer trusts it. While the workspace is trusted, the line shall be marked as ok. While it isn't trusted yet, has changed since it was trusted, can't be trusted because a file names something the trust check refuses, or its trust record can't be read, the line shall be marked as a warning. The line shall never be marked as failed. While a run in the workspace can only reach the test model, so it needs no trust, as for `halonic run`, the line shall be marked as ok and say no trust is needed, and the trust check shall not be read (HAL-6007).
 
 ## Examples
 

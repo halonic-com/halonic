@@ -25,6 +25,11 @@ function program(id: string, env: Record<string, string> = {}): Connector {
   };
 }
 
+/** A connector reached over HTTP at `url`. */
+function remote(id: string, url: string): Connector {
+  return { version: 1, id, transport: { http: { url, headers: {} } }, tools: { approve: [] } };
+}
+
 function subject(...connectors: Connector[]): TrustSubject {
   return { location, connectors, commandPaths, agents: [], integrations: [], providers: [] };
 }
@@ -95,6 +100,8 @@ function setup() {
 /** Trusts the workspace as a person would: with the fingerprint the check showed. */
 async function trustAsPerson(service: TrustService, workspace: TrustSubject): Promise<void> {
   const shown = await service.check(workspace);
+  expect(shown.status).not.toBe("refused");
+  if (shown.status === "refused") return;
   const granted = await service.grant(workspace, shown.fingerprint, "cli");
   expect(granted.ok).toBe(true);
 }
@@ -248,6 +255,35 @@ verifies("app.trust-service", () => {
     expectStatus(check, "unreadable");
     expect(String(check.error)).toContain(location);
     expect(check).not.toHaveProperty("grant");
+  });
+
+  it("refuses a connector whose URL has user info, with no fingerprint, grant or password (HAL-5421)", async () => {
+    const { service, store } = setup();
+    await trustAsPerson(service, subject(program("files")));
+
+    const check = await service.check(
+      subject(program("files"), remote("mail", "https://ops:pw@mail.example.com/mcp")),
+    );
+
+    expectStatus(check, "refused");
+    expect(check.refused).toEqual([{ id: "mail", reason: "the URL has user info" }]);
+    expect(check).not.toHaveProperty("fingerprint");
+    expect(check).not.toHaveProperty("grant");
+    expect(JSON.stringify(check)).not.toContain("pw");
+    expect((await store.get(location))?.content).not.toHaveProperty("refused");
+  });
+
+  it("never shrinks a record whose content was edited to list refused connectors", async () => {
+    const { service, store } = setup();
+    await trustAsPerson(service, subject(program("files"), program("mail")));
+    const record = (await store.get(location)) as TrustRecord;
+    const refused = [{ id: "web", reason: "the URL has user info" }];
+    await store.grant({ ...record, content: { ...(record.content as object), refused } });
+
+    const check = await service.check(subject(program("files")));
+
+    expectStatus(check, "changed");
+    expect(await store.get(location)).toMatchObject({ fingerprint: record.fingerprint });
   });
 
   it("saves nothing when the shown fingerprint is a prefix or out of date", async () => {

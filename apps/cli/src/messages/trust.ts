@@ -191,7 +191,22 @@ export const trustMessages = defineMessages("trust", {
   /** The fix under {@link notTrustedYet}. */
   reviewThenTrust: (dir?: string) =>
     phrase`Review what it can start, then trust it: ${suggestedCommand("trust", dir)}`,
+  /**
+   * Line 1 after "Couldn't trust Acme:" or "Couldn't run …:" when a file
+   * names something the check can't cover, such as a URL with user info
+   * (HAL-5421). Each file is workspace-relative; the address is never
+   * shown, as it may hold a password.
+   */
+  refused: (refused: readonly RefusedFile[]) =>
+    phrase`${refused.map(({ file, reason }) => `${file} can't be trusted, because ${reason}`).join("; ")}.`,
+  refusedFix: () => phrase`Fix the address in that file, then try again.`,
 });
+
+/** A file the trust check refused, and why, such as "the URL has user info". */
+export interface RefusedFile {
+  readonly file: string;
+  readonly reason: string;
+}
 
 /** The agent page's names of the harnesses, by the id an agent file writes. */
 const harnessNames: ReadonlyMap<string, string> = new Map([

@@ -47,6 +47,9 @@ export const doctorMessages = defineMessages("doctor", {
   /** Workspace !, also when the trust record can't be read, because `halonic trust` writes it again. */
   notTrusted: (dir?: string) =>
     phrase`not trusted yet ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
+  /** Workspace ! when a file names something that can't be trusted; `halonic trust` says which (HAL-5421). */
+  refused: (dir?: string) =>
+    phrase`can't be trusted ${markPart("separator")} ${suggestedCommand("trust", dir)}`,
   /** Workspace !. */
   changedSinceTrusted: (dir?: string) =>
     phrase`changed since you trusted it ${markPart("separator")} ${suggestedCommand("trust", dir)}`,

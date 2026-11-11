@@ -50,6 +50,9 @@ describe("doctor's sentences", () => {
     expect(words(doctorMessages.changedSinceTrusted("./acme"))).toBe(
       "changed since you trusted it · halonic trust --dir ./acme",
     );
+    expect(words(doctorMessages.refused("./acme"))).toBe(
+      "can't be trusted · halonic trust --dir ./acme",
+    );
     const oldConsole = paintFor({ colour: false, live: false, unicode: false });
     expect(renderPhrase(doctorMessages.notTrusted().phrase, oldConsole)).toBe(
       "not trusted yet - halonic trust",

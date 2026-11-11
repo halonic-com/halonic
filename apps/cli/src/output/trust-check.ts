@@ -36,6 +36,9 @@ export interface TrustCheckFacts {
   readonly folder: string;
 }
 
+/** A check with a fingerprint: every status but `refused`, which stops before any line is shown. */
+export type FingerprintedCheck = Exclude<TrustCheck, { readonly status: "refused" }>;
+
 /**
  * The trust check's lines. A trusted workspace gets the one ✓ line; any
  * other gets the check: the heading and summary (or, when it changed since
@@ -50,7 +53,7 @@ export interface TrustCheckFacts {
  * //  "Will start 2 programs …", "", "Programs", "  mail-mcp      npx …", …,
  * //  "", "Fingerprint", "  hfp1:c9b6…"] (as phrases)
  */
-export function trustCheckLines(check: TrustCheck, facts: TrustCheckFacts): Phrase[] {
+export function trustCheckLines(check: FingerprintedCheck, facts: TrustCheckFacts): Phrase[] {
   if (check.status === "trusted") {
     const trustedOn = shownDate(check.trustedAt);
     return [marked("done", trustMessages.alreadyTrusted(facts.name, trustedOn))];

@@ -9,6 +9,7 @@ import type { TrustGrant, TrustRecord } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import {
   type LocalIntegrationInput,
+  type RefusedConnector,
   type TrustChanges,
   type TrustContent,
   trustChanges,
@@ -81,6 +82,18 @@ interface CurrentTrust {
   readonly unpinned: readonly string[];
 }
 
+/**
+ * A workspace whose content can't be trusted, such as a connector whose URL
+ * has user info. It has no fingerprint, so no record can match it and
+ * nothing in it starts until its files are fixed (HAL-5421).
+ */
+interface RefusedTrust {
+  readonly status: "refused";
+  readonly content: TrustContent;
+  /** What can't be trusted and why, sorted by id. Never its address, which may hold a password. */
+  readonly refused: readonly RefusedConnector[];
+}
+
 /** What a record lost when it shrank, by id and in the order the content lists them. */
 export interface TrustShrink {
   /** The connectors that were removed. */
@@ -114,7 +127,8 @@ export type TrustCheck =
       readonly status: "unreadable";
       /** The store's error. It names the record's location, so the host can say which file. */
       readonly error: unknown;
-    });
+    })
+  | RefusedTrust;
 
 /**
  * Checks and keeps the trust of workspaces. The launcher gets a
@@ -140,11 +154,16 @@ export class TrustService {
   /**
    * Whether the workspace is trusted now. A change that only removes whole
    * connectors or harness agents shrinks the record and counts as trusted, without asking.
+   * Content with something that can't be trusted is `refused`, whatever the record says.
    *
    * @throws when shrinking the record can't be saved
    */
   async check(subject: TrustSubject): Promise<TrustCheck> {
-    const current = await this.current(subject);
+    const content = contentOf(subject);
+    if (content.refused !== undefined && content.refused.length > 0) {
+      return { status: "refused", content, refused: content.refused };
+    }
+    const current = await this.current(subject, content);
     const stored = await readTrustRecord(this.options.store, subject.location);
     if (stored.status === "unreadable") {
       return { status: "unreadable", ...current, error: stored.error };
@@ -182,13 +201,15 @@ export class TrustService {
    * Saves a person's trust in the workspace. `shownFingerprint` is the full
    * fingerprint the person was shown; it must be exactly the current one,
    * or nothing is saved.
+   *
+   * @throws RangeError when the check is `refused`: such content has no fingerprint
    */
   async grant(
     subject: TrustSubject,
     shownFingerprint: string,
     origin: PersonTrustOrigin,
   ): Promise<Result<TrustGrant, TrustRefusal>> {
-    const current = await this.current(subject);
+    const current = await this.current(subject, contentOf(subject));
     if (shownFingerprint !== current.fingerprint) {
       return err({ kind: "fingerprint-changed", fingerprint: current.fingerprint });
     }
@@ -232,14 +253,7 @@ export class TrustService {
     return await this.options.store.list();
   }
 
-  private async current(subject: TrustSubject): Promise<CurrentTrust> {
-    const content = trustContent({
-      connectors: subject.connectors,
-      commandPaths: subject.commandPaths,
-      agents: subject.agents,
-      integrations: subject.integrations,
-      providers: subject.providers,
-    });
+  private async current(subject: TrustSubject, content: TrustContent): Promise<CurrentTrust> {
     return {
       content,
       fingerprint: await trustFingerprint(content, this.options.digest),
@@ -280,6 +294,16 @@ export class TrustService {
     await this.options.store.grant(shrunk);
     return shrunk;
   }
+}
+
+function contentOf(subject: TrustSubject): TrustContent {
+  return trustContent({
+    connectors: subject.connectors,
+    commandPaths: subject.commandPaths,
+    agents: subject.agents,
+    integrations: subject.integrations,
+    providers: subject.providers,
+  });
 }
 
 const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [], integrations: [], providers: [] };

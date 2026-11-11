@@ -130,6 +130,8 @@ function workspaceTrust(line: WorkspaceLine, dir: string | undefined): Message {
       return doctorMessages.testModelOnly(line.name);
     case "changed":
       return doctorMessages.changedSinceTrusted(dir);
+    case "refused":
+      return doctorMessages.refused(dir);
     case "new":
     case "unreadable":
       // A record that can't be read reads as not trusted, because `halonic trust` writes it again.

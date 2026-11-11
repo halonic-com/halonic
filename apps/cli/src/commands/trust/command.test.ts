@@ -153,6 +153,31 @@ verifies("cli.commands.trust.review-and-trust", () => {
     ]);
   });
 
+  it("names the file of a connector whose URL has user info, without the password, and saves nothing (HAL-5421)", async () => {
+    writeAcme({
+      "library/connectors/web.connector.yaml":
+        "name: Web\ntransport:\n  http:\n    url: https://ops:pw@web.example.com/mcp\ntools:\n  approve: []\n",
+    });
+    const io = captureIo(folder);
+    const json = captureIo(folder);
+    const { terminal, written } = terminalTyping("y", "y");
+
+    const code = await runCli(["trust", "--dir", "acme"], io, commands(), { terminal });
+    const jsonCode = await runCli(["trust", "--dir", "acme", "--json"], json, commands());
+
+    expect([code, jsonCode]).toEqual([exitCode.usage, exitCode.usage]);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't trust acme: library/connectors/web.connector.yaml can't be trusted, because the URL has user info.",
+      "  Fix the address in that file, then try again.",
+    ]);
+    expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({
+      ok: false,
+      error: { kind: "invalid_input" },
+    });
+    expect([...io.stdout, ...io.stderr, ...json.stdout, written()].join("\n")).not.toContain("pw");
+    expect(await store.list()).toEqual([]);
+  });
+
   it("refuses a fingerprint made before the workspace changed, also in a terminal", async () => {
     writeAcme();
     const old = await fingerprintOfAcme();
