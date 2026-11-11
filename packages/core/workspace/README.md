@@ -94,6 +94,9 @@ name, which is what `resolveModel` looks them up in.
 `definitionsOf(workspace, hubId)` gives everything a run in that hub reads, as plain data: the
 workspace settings, `hub.yaml`, the default model, the hub's own workflows and agents, every alias
 it can use resolved, the providers and runtimes, and the library items it may use.
+`runDefinitionsOf` builds what a new run starts with: the workflow, the hub's agents, workflows,
+collections and knowledge sources, and the `allow` and `approve` lists of the connectors the hub can
+see, by connector id, and nothing else of their files (`workspace.run-definitions`).
 `definitionsVersion(definitions, digest)` is the SHA-256 of their canonical JSON, through the
 `Digest` port. That is the hash the `BlobStore` gives the same JSON, so the engine keeps the
 definitions under the run's `definitionsVersion` and a waiting run goes on with the definitions it

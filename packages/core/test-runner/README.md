@@ -31,7 +31,9 @@ own: fresh stores, a test clock that starts at the given clock's time and moves 
 The expectations follow the old runner: `context` is a partial match (objects key by key, arrays
 whole), `artifacts` means "at least these" and is checked against the run's `artifact.created`
 events, `final` without `status` expects the run to finish, and a run that fails with no `status`
-that allows it fails its test. On top of `expect`, a case fails on scripted replies or tool results
+that allows it fails its test. A scripted reply to an agent whose output is a `choice` must be one of
+its options, in a `task`, a `parallel` branch or a `foreach` item alike: any other answer fails the
+run, or the branch, with `answer-not-an-option` (`engine.task-choice-answer`). On top of `expect`, a case fails on scripted replies or tool results
 its runs never used, on a tool call it has no result for, and on an event its run doesn't take.
 
 ## Known gaps
@@ -42,12 +44,14 @@ its runs never used, on a tool call it has no result for, and on an event its ru
 
 ## Differences from the old runner
 
-The old runner's tests (acme, foreach, gets, hubs, knowledge, legacy, parallel, subflows, timers)
-run through `runWorkspaceTests` in `src/ported/` (requirement `test-runner.old-suites`). Where the
+The old runner had nine suites (acme, foreach, gets, hubs, knowledge, legacy, parallel, subflows,
+timers). Three of them, gets, subflows and timers, run through `runWorkspaceTests` in `src/ported/`
+so far; the other six are still to port (requirement `test-runner.old-suites`, HAL-4448). Where the
 new code does something else, the ported test leaves that part out, and it is listed here:
 
-- The runner builds no knowledge sources, so an agent's `knowledge:` gives it nothing in a test;
-  the old runner took the knowledge factories (`test-runner.run-tests`, HAL-4458).
+- The runner builds a knowledge source only through the factories the caller passes in
+  `TestDeps.knowledge`, so without them an agent's `knowledge:` gives it nothing in a test
+  (`test-runner.run-tests`, HAL-4458).
 - A workspace from before the renames (`org.yaml`, `projects/`, `flows/`) doesn't load, so it runs
   no test (`workspace.load`).
 - A run's log doesn't hold a subagent's turn or a call to a tool that only reads, so the ported
