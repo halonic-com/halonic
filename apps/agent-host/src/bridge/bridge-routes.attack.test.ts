@@ -361,15 +361,7 @@ describe("bridge routes, attacked with bodies too large or callers that hang up"
     // Many times the limit, all of it sent: still being sent when the host answers.
     // Closing then would reset the connection, and on Windows the caller would lose the answer.
     const flood = "r".repeat(16 * maxBodyBytes);
-    const honest = [
-      "POST /v1/bridge/open HTTP/1.1",
-      `Host: 127.0.0.1:${port}`,
-      `Authorization: ${authorization}`,
-      "Content-Type: application/json",
-      `Content-Length: ${flood.length}`,
-      "",
-      flood,
-    ].join("\r\n");
+    const honest = rawPost(port, "/v1/bridge/open", [`Authorization: ${authorization}`], flood);
     expect(statusOf(await rawExchange(port, honest, 5_000))).toBe(413);
     expect(opened()).toBe(0);
   });
