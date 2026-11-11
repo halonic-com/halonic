@@ -94,6 +94,8 @@ A session is named by an id the host makes; any other id gets `404 unknown_sessi
 
 The first line is `opened`, or `{"type":"failed","message"}` when the bridge couldn't listen. Each `call` is one of `recorder.record`, `tools.list`, `tools.check`, `tools.call`, `approvals.request` and `secrets.get`, with the port's arguments; Studio answers it with `POST /v1/bridge/answer` and `{ bridge, call, result }` or `{ bridge, call, error }`. A `cancel` means the bridge stopped waiting (the program went away), so Studio can stop the tool call or withdraw the approval. The host checks each answer against the port's shape, and asks only for the secrets the run's `providers` name. A bridge is named by a random id the host makes, like a session, because call ids (`1`, `2`, …) repeat from bridge to bridge.
 
+Studio must answer `recorder.record`, `tools.list`, `tools.check` and `secrets.get` within 30 seconds, or the host sends a `cancel` and the bridge's request fails, so a Studio that hangs can't hold it forever. `tools.call` and `approvals.request` have no limit, because a tool's run and a person's approval rightly take long. A call fails too when Studio answers it with an error, or when the stream ends (Studio crashed or reloaded) before it answers.
+
 The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
 
 Each bridge listens on a port of its own, so the host keeps at most 64 bridges open, counting those still opening and those still closing; past that, opening one answers `429 too_many_bridges` before any stream starts.
