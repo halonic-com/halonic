@@ -8,11 +8,16 @@
 
 `app.try-it-programs-see-try-it-source` gains one case and one exclusion:
 
-- A pinned stdio connector given an absolute path in an argument or an environment value is
-  can't-try too, while a file that isn't an item is held back. A pinned connector runs in its
-  own folder, but a path such as `--root=/srv/acme` can point it back at the workspace. The
-  check doesn't know where the workspace is, so any absolute path counts: a path at the start
-  of the value or after `=`, a home folder (`~`), a Windows drive or a network share.
+- A pinned stdio connector given an argument or environment value that could name a path
+  outside its own folder is can't-try too, while a file that isn't an item is held back. A
+  pinned connector runs in its own folder, but a path such as `--root=/srv/acme` can point it
+  back at the workspace. The check doesn't know where the workspace is, so it fails safe:
+  - any absolute path, at the start of the value, after `=` or after a short option such as
+    `-r`: a POSIX root, a home folder (`~`), a Windows drive or a network share;
+  - any `..` path segment, since enough of them reach the root from any folder;
+  - any `file:` URI, a form some servers take for their roots.
+
+  Matching too much only makes a step can't-try while such a file is held back.
 - Held-back parts of item files, such as an agent's permissions or connectors, are not
   covered. They are on disk too, but a program only reads them as text, while what a step may
   do comes from Try it's own source. Only a file that isn't an item can be code the program

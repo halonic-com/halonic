@@ -109,9 +109,17 @@ verifies("app.try-it-programs-see-try-it-source", () => {
     expect(cantTry).toEqual([]);
   });
 
-  it("can't try the step when a pinned connector is given an absolute path", async () => {
+  it("can't try the step when a pinned connector is given a path outside its folder", async () => {
     const pinned = new Set(["sync"]);
-    for (const given of ["args: [--root=/srv/acme]", "env:\n      ROOT: ~/acme"]) {
+    const outside = [
+      "args: [--root=/srv/acme]",
+      "env:\n      ROOT: ~/acme",
+      'args: ["../../../../srv/acme"]',
+      'args: ["--root=../../acme"]',
+      'args: ["file:///srv/acme"]',
+      'args: ["-r/srv/acme"]',
+    ];
+    for (const given of outside) {
       const { review, propose } = acme({ [sync]: stdioSync.replace("args: [run.sh]", given) });
       await propose(script, "echo changed\n");
 

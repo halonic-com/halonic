@@ -82,22 +82,38 @@ function startsProgram(file: LoadedFile, pinned: ReadonlySet<string>): boolean {
   }
   if (file.kind === "connector" && "stdio" in file.value.transport) {
     const { args, env = {} } = file.value.transport.stdio;
-    return !pinned.has(file.value.id) || [...args, ...Object.values(env)].some(namesAbsolutePath);
+    const values = [...args, ...Object.values(env)];
+    return !pinned.has(file.value.id) || values.some(mayPointOutsideItsFolder);
   }
   return false;
 }
 
-/** A POSIX root, a home folder (`~`), a Windows drive (`C:\`, `C:/`) or a network share (`\\server`). */
-const absolutePathStart = /^(\/|~|[A-Za-z]:[\\/]|\\\\)/;
+/**
+ * A POSIX root, a home folder (`~`), a Windows drive (`C:\`, `C:/`) or a
+ * network share (`\\server`), optionally after a short option with its
+ * value attached (`-r/srv/acme`).
+ */
+const absolutePathStart = /^(-[A-Za-z])?(\/|~|[A-Za-z]:[\\/]|\\\\)/;
+
+/** A `..` path segment, at the start, after `=` or after a path separator. */
+const parentSegment = /(^|[=\\/])\.\.([\\/]|$)/;
+
+/** A `file:` URI, a form some servers take for their roots. */
+const fileUri = /file:/i;
 
 /**
- * Whether an argument or environment value holds an absolute path, which
- * could point a pinned connector back at the workspace (a filesystem
- * server given the workspace folder, say). Relative paths resolve in the
- * connector's own folder, so they can't. Any absolute path counts, since
- * this check doesn't know where the workspace is: a path at the start, or
- * after `=` as in `--root=/srv/acme`.
+ * Whether an argument or environment value could name a path outside the
+ * connector's own folder, and so point a pinned connector back at the
+ * workspace (a filesystem server given the workspace folder, say). This
+ * check doesn't know where the workspace is, so it fails safe: any
+ * absolute path counts (at the start, or after `=` as in
+ * `--root=/srv/acme`), as does any `..` segment, since enough of them
+ * reach the root from any folder, and any `file:` URI. Matching too much
+ * only makes a step can't-try while a non-item file is held back.
  */
-function namesAbsolutePath(value: string): boolean {
+function mayPointOutsideItsFolder(value: string): boolean {
+  if (fileUri.test(value) || parentSegment.test(value)) {
+    return true;
+  }
   return value.split("=").some((part) => absolutePathStart.test(part));
 }
