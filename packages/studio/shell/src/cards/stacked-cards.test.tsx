@@ -134,8 +134,17 @@ verifies("shell.stacked-cards", () => {
       act(() => container.querySelector<HTMLElement>(".bg-\\(--stack-scrim\\)")?.click());
       expect(title(container)?.textContent).toBe("A");
       act(() => button(container, "Open the run").click());
-      press(button(container, "Close"));
+      press(button(container, "Close all cards"));
       expect(title(container)).toBeNull();
+    });
+
+    it('names ✕ "Close all cards" while more than one card is open, else "Close"', () => {
+      const { container } = renderPage({ initial: stackOf("draft-reply") });
+      expect(button(container, "Close")).toBeDefined();
+      press(button(container, "Open the run"));
+      expect(button(container, "Close all cards")).toBeDefined();
+      press(button(container, "Back"));
+      expect(button(container, "Close")).toBeDefined();
     });
 
     it("closes the top card on Esc and gives the focus back to what opened it", () => {

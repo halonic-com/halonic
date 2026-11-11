@@ -219,7 +219,7 @@ function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: To
             variant="ghost"
             size="sm"
             icon={<CloseIcon />}
-            label="Close"
+            label={closeLabel(stack)}
             onClick={() => onGoBack(-1)}
           />
         </div>
@@ -238,6 +238,14 @@ function TopCard({ card, look, behind, itemPath, stack, onGoBack, children }: To
       </div>
     </section>
   );
+}
+
+/**
+ * ✕ closes every card, ← only the top one: with more than one card open, ✕ says so, or a screen
+ * reader would hear two controls that do different things under one name (Sofia, HAL-1290).
+ */
+function closeLabel(stack: CardStack): string {
+  return stack.length > 1 ? "Close all cards" : "Close";
 }
 
 /**
