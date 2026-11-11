@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 
 use crate::error::HostSettingsError;
+use crate::rename_over::rename_over;
 use crate::saved::{change_saved_host_settings, is_host_setting_key, read_saved_host_settings};
 use crate::unlinked::{ReadFailure, read_unlinked};
 
@@ -96,7 +97,7 @@ impl FileHostSettingsStore {
         let change = change_saved_host_settings(old.as_deref(), key, value)?;
         create_private_folder(&self.root)?;
         if change.broken {
-            fs::rename(&file, self.root.join(BROKEN_FILE))?;
+            rename_over(&file, &self.root.join(BROKEN_FILE))?;
         }
         write_replacing(&file, &change.text)
     }
@@ -136,7 +137,8 @@ fn create_private_folder(folder: &Path) -> Result<(), HostSettingsError> {
 }
 
 /// Writes `text` to a new temporary file next to `file`, then renames it
-/// over `file`, replacing a link there rather than writing through it.
+/// over `file`, replacing a link there rather than writing through it. On
+/// Windows the rename is tried again while another program holds `file`.
 fn write_replacing(file: &Path, text: &str) -> Result<(), HostSettingsError> {
     let temporary = temporary_for(file);
     if let Err(error) = write_then_rename(&temporary, file, text) {
@@ -150,7 +152,7 @@ fn write_replacing(file: &Path, text: &str) -> Result<(), HostSettingsError> {
 
 fn write_then_rename(temporary: &Path, file: &Path, text: &str) -> std::io::Result<()> {
     write_new(temporary, text)?;
-    fs::rename(temporary, file)
+    rename_over(temporary, file)
 }
 
 /// Writes a file that must not exist yet, readable by its owner only, and

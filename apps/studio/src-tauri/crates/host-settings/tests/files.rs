@@ -145,6 +145,56 @@ fn host_settings_file_refuses_a_hard_link_and_a_folder() {
     assert_eq!(reason, "it isn't a plain file");
 }
 
+#[cfg(unix)]
+#[test]
+fn host_settings_file_refuses_a_named_pipe_without_waiting() {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let scratch = Scratch::new("pipe");
+    fs::create_dir_all(scratch.settings()).unwrap();
+    let made = std::process::Command::new("mkfifo")
+        .arg(scratch.file())
+        .status()
+        .unwrap();
+    assert!(made.success(), "mkfifo makes the pipe");
+
+    // Without `O_NONBLOCK` the open would wait for a writer forever, so
+    // the store runs on its own thread and the test gives it five seconds.
+    let store = scratch.store();
+    let (sender, receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        let read = store.read();
+        let saved = store.set("assistant.turn-limit", &json!(20));
+        let _ = sender.send((read, saved));
+    });
+    let (read, saved) = receiver
+        .recv_timeout(Duration::from_secs(5))
+        .expect("a named pipe doesn't make the store wait");
+    let Err(HostSettingsError::Unreadable { reason, .. }) = read else {
+        panic!("a named pipe must not be read");
+    };
+    assert_eq!(reason, "it isn't a plain file");
+    saved.unwrap();
+    assert_eq!(
+        scratch.saved(),
+        json!({"version": 1, "values": {"assistant.turn-limit": 20}}),
+        "a save replaces the pipe"
+    );
+}
+
+#[test]
+fn host_settings_file_keeps_every_key_of_saves_in_a_row() {
+    let scratch = Scratch::new("in-a-row");
+    let store = scratch.store();
+    let keys: Vec<String> = (0..20).map(|n| format!("assistant.key-{n}")).collect();
+    for (n, key) in keys.iter().enumerate() {
+        store.set(key, &json!(n)).unwrap();
+    }
+    let values = store.read().unwrap();
+    assert_eq!(values.len(), keys.len(), "no save drops an earlier key");
+}
+
 #[test]
 fn host_settings_file_reads_a_settings_folder_that_is_a_file_as_none_saved() {
     let scratch = Scratch::new("folder-is-file");

@@ -10,5 +10,11 @@ publish.workspace = true
 [dependencies]
 serde_json = { version = "1", default-features = false, features = ["std"] }
 
+# Only for `O_NOFOLLOW`, `O_NONBLOCK` and their errors, which the standard
+# library doesn't name: no `unsafe` code. Pinned as in `process-probe`, so
+# it adds no new code to the build.
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.191", default-features = false }
+
 [lints]
 workspace = true

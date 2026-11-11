@@ -60,9 +60,12 @@ pub struct SavedChange {
 /// `value` is `None`, and every other key and field kept as it is. A
 /// `version` is added when there is none; a newer one is kept.
 ///
-/// `serde_json` sorts the fields when it writes them, so the text may list
-/// them in another order than the TypeScript side; the settings are the
-/// same. A `Value` can't hold a number that isn't finite, so there is no
+/// `serde_json` sorts the fields when it writes them, and writes numbers in
+/// its own form (`1e3` becomes `1000.0`), so the text may list them in
+/// another order and spell a number otherwise than the TypeScript side;
+/// the settings are the same. The size is counted in that form, so for a
+/// number with fractions it may differ from `hostSettingsMaxBytes`' count
+/// by a few bytes. A `Value` can't hold a number that isn't finite, so there is no
 /// such number to refuse here: the page's adapter refuses it before it
 /// calls the shell.
 ///

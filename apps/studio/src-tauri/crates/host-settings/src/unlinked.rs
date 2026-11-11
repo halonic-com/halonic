@@ -2,7 +2,7 @@
 //! `readUnlinkedFile` in `fs-node` does, so the settings can't live in a
 //! file an agent may edit, such as one in its workspace.
 
-use std::fs::{self, File, Metadata};
+use std::fs::{File, Metadata, OpenOptions};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -18,49 +18,56 @@ pub(crate) enum ReadFailure {
     Io(io::Error),
 }
 
-/// How often a read starts again when the file was replaced between the
-/// look and the open. A save renames a new file over the old one, so the
-/// next try finds a settled file.
-const TRIES: usize = 3;
-
-/// The file's bytes, refusing a symbolic link (on Windows a junction too), a
-/// hard link and anything but a plain file.
+/// The file's bytes, refusing a symbolic link (on Windows a junction too),
+/// a hard link and anything but a plain file.
 ///
-/// It looks with `symlink_metadata` first, then opens the file and checks
-/// the open file again. Rust's standard library has no `O_NOFOLLOW`, so on
-/// Unix the open file must be the one it looked at (same device and inode):
-/// a link put there in between is refused. On Windows the open file is
-/// only checked to be a plain file, and a hard link can't be told, because
-/// the standard library doesn't give a file's link count there yet. Only
-/// the file itself is checked; the settings folder must sit in the profile.
+/// The open itself refuses to follow a link, so nothing can swap one in
+/// between a look and the open: `O_NOFOLLOW` on Unix, and on Windows
+/// `FILE_FLAG_OPEN_REPARSE_POINT`, which opens the link rather than what it
+/// points to. On Unix the open doesn't wait either (`O_NONBLOCK`), so a
+/// named pipe put there is refused rather than holding the shell's settings
+/// lock forever. The open file is then checked: a hard link is refused on
+/// Unix only, because Windows' standard library doesn't give a file's link
+/// count yet. Only the file itself is checked; the settings folder must sit
+/// in the profile.
 pub(crate) fn read_unlinked(file: &Path) -> Result<Vec<u8>, ReadFailure> {
-    let mut tries = 0;
-    loop {
-        tries += 1;
-        let looked = fs::symlink_metadata(file).map_err(failure)?;
-        if looked.file_type().is_symlink() {
-            return Err(ReadFailure::Refused("it is a link"));
-        }
-        refuse_unless_plain(&looked)?;
-        let mut opened = File::open(file).map_err(failure)?;
-        let found = opened.metadata().map_err(ReadFailure::Io)?;
-        if !same_file(&looked, &found) {
-            if tries < TRIES {
-                continue;
-            }
-            return Err(ReadFailure::Refused("it changed while it was read"));
-        }
-        refuse_unless_plain(&found)?;
-        let mut bytes = Vec::new();
-        opened.read_to_end(&mut bytes).map_err(ReadFailure::Io)?;
-        return Ok(bytes);
-    }
+    let mut opened = open_unlinked(file).map_err(failure)?;
+    let found = opened.metadata().map_err(ReadFailure::Io)?;
+    refuse_unless_plain(&found)?;
+    let mut bytes = Vec::new();
+    opened.read_to_end(&mut bytes).map_err(ReadFailure::Io)?;
+    Ok(bytes)
 }
 
-/// Refuses anything but a plain file with no other name. A file with no
-/// name at all passes: a save that renamed over it after the open leaves
-/// the open file with none, and no workspace can reach it then.
+#[cfg(unix)]
+fn open_unlinked(file: &Path) -> io::Result<File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(file)
+}
+
+#[cfg(windows)]
+fn open_unlinked(file: &Path) -> io::Result<File> {
+    use std::os::windows::fs::OpenOptionsExt;
+    /// Opens a link itself rather than what it points to (`winbase.h`).
+    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    /// Lets a folder or a junction open too, so it is refused as not a
+    /// plain file and a save replaces it, as on Unix.
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS)
+        .open(file)
+}
+
+/// Refuses a link, anything but a plain file and, on Unix, a file with
+/// another name.
 fn refuse_unless_plain(entry: &Metadata) -> Result<(), ReadFailure> {
+    if entry.file_type().is_symlink() {
+        return Err(ReadFailure::Refused("it is a link"));
+    }
     if !entry.is_file() {
         return Err(ReadFailure::Refused("it isn't a plain file"));
     }
@@ -73,23 +80,22 @@ fn refuse_unless_plain(entry: &Metadata) -> Result<(), ReadFailure> {
     Ok(())
 }
 
-/// Whether two looks are at the same file. Only Unix can tell.
-#[cfg(unix)]
-fn same_file(left: &Metadata, right: &Metadata) -> bool {
-    use std::os::unix::fs::MetadataExt;
-    left.dev() == right.dev() && left.ino() == right.ino()
-}
-
-#[cfg(not(unix))]
-fn same_file(_left: &Metadata, _right: &Metadata) -> bool {
-    true
-}
-
 /// `Missing` for "there is nothing at this path", as `isMissing` in
-/// `fs-node` reads `ENOENT` and `ENOTDIR`; `Io` for anything else.
+/// `fs-node` reads `ENOENT` and `ENOTDIR`; `Refused` for the link
+/// `O_NOFOLLOW` wouldn't open (`ELOOP`, or `EMLINK` on FreeBSD); `Io` for
+/// anything else.
 fn failure(error: io::Error) -> ReadFailure {
-    match error.kind() {
-        io::ErrorKind::NotFound | io::ErrorKind::NotADirectory => ReadFailure::Missing,
-        _ => ReadFailure::Io(error),
+    if matches!(
+        error.kind(),
+        io::ErrorKind::NotFound | io::ErrorKind::NotADirectory
+    ) {
+        return ReadFailure::Missing;
     }
+    #[cfg(unix)]
+    {
+        if matches!(error.raw_os_error(), Some(libc::ELOOP | libc::EMLINK)) {
+            return ReadFailure::Refused("it is a link");
+        }
+    }
+    ReadFailure::Io(error)
 }
