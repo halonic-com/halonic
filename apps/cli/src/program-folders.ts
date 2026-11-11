@@ -47,8 +47,9 @@ export interface ProgramFolders {
    * in: a copy at the commit for the live version, the workspace folder for
    * the saved files. Release it when the run's programs have stopped.
    *
-   * @throws ProgramCopyUnavailableError when the copy can't be made; the
-   *   saved folder is never used in its place
+   * @throws ProgramCopyUnavailableError when the copy can't be made, or
+   *   once {@link ProgramFolders.close} has started; the saved folder is
+   *   never used in its place
    */
   folderFor(version: RunVersion): Promise<ProgramCopyLease>;
   /** Removes every copy, whoever still holds it, and stops git. Safe to call twice. */
@@ -79,17 +80,28 @@ export async function openProgramFolders(input: ProgramFoldersInput): Promise<Pr
   };
   await removeLeftovers(input, copiesOnGit);
   let closing: Promise<void> | undefined;
+  // A copy made once close has taken its list would stay until the next
+  // open, and a git started after it would never be stopped.
+  const refuseOnceClosing = (version: string): void => {
+    if (closing !== undefined) {
+      throw new ProgramCopyUnavailableError(version, new Error("The engine is stopping."));
+    }
+  };
   return {
     folderFor: async (version) => {
       if (version.reads === "saved-files") {
         return { path: input.workspaceRoot, release: async () => {} };
       }
+      refuseOnceClosing(version.commit);
       const copies = await copiesOnGit().then(
         (started) => started.copies,
         (error: unknown) => {
           throw new ProgramCopyUnavailableError(version.commit, error);
         },
       );
+      // Close may have started while git did. `make` records the copy before
+      // it awaits anything, so a close that starts after this check removes it.
+      refuseOnceClosing(version.commit);
       return await copies.make(version.commit);
     },
     close: () => {

@@ -1,4 +1,13 @@
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
@@ -6,7 +15,7 @@ import { testGit } from "@halonicjs/adapter-git/testing";
 import { ProgramCopyUnavailableError } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 
 /** Each test runs git itself, which is slow on a busy runner, as in the git adapter's own tests. */
@@ -42,6 +51,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(opened.splice(0).map((programs) => programs.close()));
   await runner.close();
   await rm(folder, { recursive: true, force: true });
@@ -105,11 +115,7 @@ verifies("app.runs-read-latest-version", () => {
   it(
     "removes the copies a stopped engine left behind when it opens",
     async () => {
-      // Made as an engine would, which then lost power before removing it.
-      await mkdir(copiesFolder);
-      const author = { name: "Test", email: "test@example.com" };
-      const stopped = new GitVcs(workspace, { runner, author, worktrees: copiesFolder });
-      await stopped.addWorktree(live.commit);
+      await leaveCopyBehind();
       expect(await readdir(copiesFolder)).toHaveLength(1);
 
       await open();
@@ -162,4 +168,74 @@ verifies("app.runs-read-latest-version", () => {
     },
     gitTimeout,
   );
+
+  it(
+    "refuses a live run's folder once it has closed, without starting git or leaving a copy",
+    async () => {
+      // Closed before git ever started: a copy made now would stay until the next open.
+      const programs = await open();
+      await programs.close();
+      await expect(programs.folderFor(live)).rejects.toBeInstanceOf(ProgramCopyUnavailableError);
+      expect(await readdir(copiesFolder)).toEqual([]);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "refuses a live run's folder asked for while it is closing",
+    async () => {
+      const programs = await open();
+      await programs.folderFor(live);
+      const closing = programs.close();
+      await expect(programs.folderFor(live)).rejects.toBeInstanceOf(ProgramCopyUnavailableError);
+      await closing;
+      expect(await readdir(copiesFolder)).toEqual([]);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "keeps a leftover copy git lists but couldn't remove for the next open",
+    async () => {
+      await leaveCopyBehind();
+      // As when a file in the copy is still open on Windows.
+      const removeWorktree = vi
+        .spyOn(GitVcs.prototype, "removeWorktree")
+        .mockRejectedValueOnce(new Error("Folder in use"));
+      await (await open()).close();
+      expect(await readdir(copiesFolder)).toHaveLength(1);
+      expect(reported).toEqual([]);
+
+      removeWorktree.mockRestore();
+      await open();
+      expect(await readdir(copiesFolder)).toEqual([]);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "removes a link in a leftover copy, never what it leads to",
+    async () => {
+      const outside = join(folder, "outside");
+      await mkdir(outside);
+      await writeFile(join(outside, "keep.txt"), "kept");
+      const recorded = await leaveCopyBehind();
+      await symlink(outside, join(recorded, "link"), "junction");
+      await mkdir(join(copiesFolder, "unrecorded"));
+      await symlink(outside, join(copiesFolder, "unrecorded", "link"), "junction");
+
+      await open();
+      expect(await readdir(copiesFolder)).toEqual([]);
+      expect(await readFile(join(outside, "keep.txt"), "utf8")).toBe("kept");
+    },
+    gitTimeout,
+  );
 });
+
+/** Makes a copy as an engine would, which then lost power before removing it, and returns its folder. */
+async function leaveCopyBehind(): Promise<string> {
+  await mkdir(copiesFolder, { recursive: true });
+  const author = { name: "Test", email: "test@example.com" };
+  const stopped = new GitVcs(workspace, { runner, author, worktrees: copiesFolder });
+  return (await stopped.addWorktree(live.commit)).path;
+}
