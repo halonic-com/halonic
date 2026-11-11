@@ -9,6 +9,11 @@ its checks and the run log event; the engine uses them in part 2.
 
 - `format.connector-read` (new): `tools.read` is a list of exact tool names.
   A pattern is an error, a name `tools.allow` leaves out a warning.
+  A name that breaks the listed-tool name rule (1 to 64 ASCII letters,
+  digits, `_` or `-`) is an error too, so a look-alike letter, a space or
+  an invisible character can't pass review (HAL-5673). The rule moved to
+  `@halonicjs/ports` so format and app share one copy. A tool whose
+  listing says `send` stays `send`; the list can't lower it.
   `marksRead` says a tool only reads when the list names it and `approve`
   doesn't, so `approve` wins. The JSON Schema spec file
   (`spec/connector.schema.json`) gains the optional `tools.read` list.
