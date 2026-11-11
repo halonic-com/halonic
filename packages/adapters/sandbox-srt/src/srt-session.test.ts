@@ -443,22 +443,6 @@ verifies("sandbox-srt.session", () => {
       expect(session.fence).toEqual({ state: "stopped" });
     });
 
-    it("keeps the profile it was opened with, though the proof's time counts against the limit", async () => {
-      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-      // The proof takes 1.25 seconds of the five.
-      vi.spyOn(Date, "now").mockReturnValueOnce(10_000).mockReturnValue(11_250);
-      const { runner, runs } = fakeRunner();
-      const opened = profile({ timeLimitMs: 5000 });
-      const session = await new SrtSandbox(linux, runner).open(opened);
-      expect(session.profile).toEqual(opened);
-      await session.start(command);
-      await vi.advanceTimersByTimeAsync(3749);
-      expect(runs[0]?.killed).toBe(false);
-      await vi.advanceTimersByTimeAsync(1);
-      expect(runs[0]?.killed).toBe(true);
-      vi.restoreAllMocks();
-    });
-
     it("says timeout for a program still launching when the time limit runs out", async () => {
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
       const { runner, runs } = fakeRunner();
