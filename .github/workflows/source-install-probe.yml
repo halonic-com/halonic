@@ -18,9 +18,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      # Like a user: Node from nodejs.org, pnpm from npm, no PNPM_HOME.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          cache: "false"
+          node-version: "26"
+      - name: Install pnpm and the dependencies
+        shell: pwsh
+        run: |
+          npm install --global pnpm@12.18.0
+          pnpm install --frozen-lockfile
       - name: Probe
         shell: pwsh
         run: |
@@ -39,25 +45,16 @@ jobs:
           Say "PNPM_HOME from setup: '$env:PNPM_HOME'"
           Say "pnpm: $(pnpm --version), node: $(node --version)"
 
-          # action-setup puts pnpm itself in PNPM_HOME, so keep its full path
-          # before taking that folder off Path.
           $pnpm = (Get-Command pnpm -CommandType Application | Select-Object -First 1).Source
           Say "pnpm used: $pnpm"
-
-          # (b) A user with no pnpm global bin folder: drop what action-setup set.
-          $setupHome = $env:PNPM_HOME
-          if ($setupHome) {
-            $env:Path = (($env:Path -split ';') | Where-Object { $_ -and -not $_.StartsWith($setupHome) }) -join ';'
-          }
-          Remove-Item Env:PNPM_HOME -ErrorAction SilentlyContinue
-          [Environment]::SetEnvironmentVariable('PNPM_HOME', $null, 'User')
+          Say "PNPM_HOME before setup: '$env:PNPM_HOME' (User: '$([Environment]::GetEnvironmentVariable('PNPM_HOME', 'User'))')"
           Say "## (b) pnpm setup"
           Run 'pnpm add -g before pnpm setup' $pnpm @('add', '-g', './apps/cli')
           Run 'pnpm setup' $pnpm @('setup')
           $userHome = [Environment]::GetEnvironmentVariable('PNPM_HOME', 'User')
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
           Say "User PNPM_HOME after setup: '$userHome'"
-          Say "User Path has it: $([bool](($userPath -split ';') | Where-Object { $_ -and $_.StartsWith($userHome) }))"
+          Say "User Path has it: $([bool]($userHome -and (($userPath -split ';') | Where-Object { $_ -and $_.StartsWith($userHome) })))"
           Say "This terminal's PNPM_HOME: '$env:PNPM_HOME'"
           Say "This terminal's Path has it: $([bool](($env:Path -split ';') | Where-Object { $userHome -and $_.StartsWith($userHome) }))"
           Run 'pnpm add -g in the same terminal, right after pnpm setup' $pnpm @('add', '-g', './apps/cli')
@@ -65,9 +62,11 @@ jobs:
 
           # A new terminal reads PNPM_HOME and Path from the registry.
           $env:PNPM_HOME = $userHome
-          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $userPath
+          # The Node installer puts Node's and npm's folders in Path; setup-node doesn't write them to the registry.
+          $nodeDirs = (Split-Path (Get-Command node -CommandType Application | Select-Object -First 1).Source) + ';' + (Split-Path $pnpm)
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $userPath + ';' + $nodeDirs
           Say "## New terminal (environment read again from the registry)"
-          Run 'pnpm add -g ./apps/cli' $pnpm @('add', '-g', './apps/cli')
+          Run 'pnpm add -g ./apps/cli' 'pwsh' @('-NoProfile', '-Command', 'pnpm add -g ./apps/cli')
 
           Say "## (a) The shims pnpm wrote"
           Say ('```' + "`n" + (Get-ChildItem -Recurse -Depth 1 $userHome -Include 'halonic*' | ForEach-Object { $_.FullName } | Out-String).Trim() + "`n" + '```')
