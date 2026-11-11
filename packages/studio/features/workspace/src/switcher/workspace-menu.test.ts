@@ -1,5 +1,6 @@
 import type { MenuEntry, MenuItem } from "@halonicjs/studio-kit";
-import { describe, expect, it, vi } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it, vi } from "vitest";
 import { type WorkspaceMenuOptions, workspaceMenu } from "./workspace-menu.ts";
 
 const acme = { location: "/work/acme", name: "Acme" };
@@ -38,7 +39,7 @@ function item(entries: readonly MenuEntry[], label: string): MenuItem {
   return found;
 }
 
-describe("workspaceMenu (flow-workspace 2.1a, microcopy 4.1)", () => {
+verifies("workspace.workspace-menu", () => {
   it("starts at Open a folder… with no Recent and nothing open", () => {
     expect(outline(workspaceMenu(options()))).toEqual(["Open a folder…"]);
   });

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { RECENT_WORKSPACES, type RecentStorage, RecentWorkspaces } from "./recent-workspaces.ts";
 
 /** A `localStorage` stand-in that keeps its items in a map. */
@@ -15,7 +16,7 @@ function memoryStorage(items: Record<string, string> = {}): RecentStorage {
 const acme = { location: "/work/acme", name: "Acme" };
 const beta = { location: "/work/beta", name: "Beta" };
 
-describe("RecentWorkspaces (workspace.switcher.recent-workspaces)", () => {
+verifies("workspace.recent-workspaces", () => {
   it("starts empty", () => {
     expect(new RecentWorkspaces(memoryStorage()).list()).toEqual([]);
   });
