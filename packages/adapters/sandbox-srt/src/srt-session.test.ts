@@ -56,6 +56,16 @@ verifies("sandbox-srt.session", () => {
       ["the probe can't see the temp folder", { ...fenced, control: "hidden" }, /temp folder/],
       ["the probe says nothing", { ...fenced, garbage: "" }, /did not report/],
       [
+        "Node dies before the probe runs",
+        {
+          ...fenced,
+          garbage: "",
+          errors:
+            "node:fs:3455\r\n  binding.lstat(path);\r\n          ^\r\n\r\nError: EPERM: operation not permitted, lstat 'profile'\r\n    at Object.lstatSync (node:fs:3455:11)\r\n",
+        },
+        /did not report \(exit 0\): Error: EPERM: operation not permitted, lstat 'profile'$/,
+      ],
+      [
         "the probe can't be launched",
         { ...fenced, launchFails: true },
         /could not run: spawn bwrap/,
