@@ -133,6 +133,55 @@ verifies("integration-runner.requests", () => {
       await connection.close();
     });
 
+    it("forgets a closed request once the runner acts in a later call", async () => {
+      const { runner, connection } = await startedRunner();
+      const first = await runningCall(runner, connection);
+      await runner.send(fetchFrame(0, first.call));
+      expect(await runner.next()).toMatchObject({ type: "head", id: 0 });
+      await runner.send({ type: "result", call: first.call, text: "done" });
+      await first.result;
+      expect(await runner.next()).toMatchObject({ type: "error", id: 0, code: "call-not-running" });
+
+      // A pull that crossed the next call on the wire is still ignored.
+      const second = await runningCall(runner, connection);
+      await runner.send({ type: "pull", body: 0 });
+      // A request in the later call shows the runner has read the close.
+      await runner.send(fetchFrame(1, second.call));
+      expect(await runner.next()).toMatchObject({ type: "head", id: 1 });
+
+      await runner.send({ type: "pull", body: 0 });
+      expect(await connection.stopped).toEqual({
+        reason: "protocol",
+        detail: "a pull for a body the runner doesn't own",
+      });
+    });
+
+    it("forgets a closed request once the runner answers a later ping", async () => {
+      const fake = fakeRunnerProcess();
+      const http = fakeKitClient(() => new Response("a body the runner may read"));
+      const options = bridgeOptions(fake, { http, limits: { pingIntervalMs: 20 } });
+      const runner = new HandDrivenRunner(fake);
+      const connecting = connectRunner(options);
+      await runner.start();
+      const connection = await connecting;
+      const { result, call } = await runningCall(runner, connection);
+      await runner.send(fetchFrame(0, call));
+      expect(await runner.next()).toMatchObject({ type: "head", id: 0 });
+      await runner.send({ type: "result", call, text: "done" });
+      await result;
+      expect(await runner.next()).toMatchObject({ type: "error", id: 0, code: "call-not-running" });
+
+      const ping = await runner.next();
+      if (ping.type !== "ping") throw new Error(`expected a ping, got ${ping.type}`);
+      await runner.send({ type: "pong", n: ping.n });
+      await runner.send({ type: "cancel-body", body: 0 });
+      expect(await connection.stopped).toEqual({
+        reason: "protocol",
+        detail: "a cancel for a body the runner doesn't own",
+      });
+      expect(options.blocks).toHaveLength(1);
+    });
+
     it("still stops a runner that pulls a body it never had", async () => {
       const { runner, connection } = await startedRunner();
       const { call } = await runningCall(runner, connection);

@@ -44,6 +44,11 @@ export class CallTable {
     this.#hooks = hooks;
   }
 
+  /** The number the next call gets. Numbers only go up. */
+  get nextCall(): number {
+    return this.#nextId;
+  }
+
   /** Whether Halonic ever started a call with this number. */
   wasStarted(call: number): boolean {
     return call < this.#nextId;

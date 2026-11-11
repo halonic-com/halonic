@@ -17,6 +17,7 @@ import { FrameTooLargeError } from "../frame-lines.ts";
 import type { FetchFrame, HalonicFrame } from "../frames.ts";
 import { type RequestFailure, requestFailure } from "../request-errors.ts";
 import type { CallTable } from "./calls.ts";
+import { ClosedRequests, type SentMark } from "./closed-requests.ts";
 import type { RunnerLimits } from "./limits.ts";
 
 /** What the request table needs from the bridge. */
@@ -27,6 +28,8 @@ export interface RequestTableHooks {
   violation(detail: string): void;
   /** The kit refused a request with a code on its leak list. */
   onLeakAttempt(code: RefusalCode): void;
+  /** How far Halonic has sent: the numbers its next call and next ping get. */
+  sentMark(): SentMark;
 }
 
 interface TableRequest {
@@ -50,12 +53,8 @@ export class RequestTable {
   readonly #live = new Map<number, TableRequest>();
   /** Request numbers only go up, so a number can't be used twice and none need remembering. */
   #lastId = -1;
-  /**
-   * Requests closed because their call ended. The runner's `pull` or
-   * `cancel-body` for one may have crossed the call's end on the wire, so it is
-   * ignored, not a violation. At most `maxRequestsInFlight` join per call.
-   */
-  readonly #closedWithCall = new Set<number>();
+  /** Requests closed because their call ended, whose late `pull` or `cancel-body` is ignored. */
+  readonly #closedWithCall = new ClosedRequests();
 
   constructor(
     http: IntegrationHttpClient,
@@ -80,6 +79,7 @@ export class RequestTable {
       this.#hooks.violation("a request for a call Halonic never started");
       return;
     }
+    this.#closedWithCall.runnerReadCall(frame.call);
     if (!this.#calls.isRunning(frame.call)) {
       this.#fail(frame.id, {
         code: "call-not-running",
@@ -153,6 +153,16 @@ export class RequestTable {
     if (entry !== undefined) this.#close(id, entry);
   }
 
+  /** The runner answered a `result` in call `call`, so it has read every frame sent before that call. */
+  runnerReadCall(call: number): void {
+    this.#closedWithCall.runnerReadCall(call);
+  }
+
+  /** The runner answered ping `n`, so it has read every frame sent before that ping. */
+  runnerReadPing(n: number): void {
+    this.#closedWithCall.runnerReadPing(n);
+  }
+
   /**
    * Closes every request of a call that stopped running: aborts the kit's
    * request, drops its body, frees its slot, and tells the runner.
@@ -161,11 +171,11 @@ export class RequestTable {
     for (const [id, entry] of this.#live) {
       if (entry.call !== call) continue;
       this.#close(id, entry);
-      this.#closedWithCall.add(id);
       this.#fail(id, {
         code: "call-not-running",
         message: "the request was closed because its tool call ended",
       });
+      this.#closedWithCall.add(id, this.#hooks.sentMark());
     }
   }
 

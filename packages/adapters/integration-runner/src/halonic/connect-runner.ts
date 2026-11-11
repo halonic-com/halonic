@@ -124,6 +124,7 @@ class RunnerBridge {
       send: (frame) => this.#send(frame),
       violation: (detail) => this.#violation(detail),
       onLeakAttempt: (code) => options.onBlocked?.({ kind: "leak-attempt", code }),
+      sentMark: () => ({ nextCall: this.#calls.nextCall, nextPing: this.#heartbeat.nextPing }),
     });
     this.#stderr = new StderrLog(limits.maxStderrBytesPerCall, (text) => options.onStderr?.(text));
     this.#readyTimer = setTimeout(
@@ -187,10 +188,16 @@ class RunnerBridge {
         this.#violation("a second ready");
         break;
       case "pong":
-        if (!this.#heartbeat.pong(frame.n)) this.#violation("a pong for no ping");
+        if (this.#heartbeat.pong(frame.n)) {
+          this.#requests.runnerReadPing(frame.n);
+        } else {
+          this.#violation("a pong for no ping");
+        }
         break;
       case "result":
-        if (!this.#calls.settle(frame.call, frame)) {
+        if (this.#calls.settle(frame.call, frame)) {
+          this.#requests.runnerReadCall(frame.call);
+        } else {
           this.#violation("a result for a call that isn't running");
         }
         break;

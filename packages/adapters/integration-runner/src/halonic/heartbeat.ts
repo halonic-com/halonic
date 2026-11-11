@@ -30,6 +30,11 @@ export class Heartbeat {
     this.#hooks = hooks;
   }
 
+  /** The number the next ping gets. Numbers only go up. */
+  get nextPing(): number {
+    return this.#nextPing;
+  }
+
   /** No call is running: ping regularly and count down to the idle stop. */
   betweenCalls(): void {
     this.#stopBetweenCallTimers();
