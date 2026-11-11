@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import { type PluginEntry, PluginService } from "./plugin-service.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
+import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
 import { TestRecordStore } from "./testing/test-record-store.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { TrustService } from "./trust-service.ts";
@@ -58,6 +59,7 @@ async function loadedPlugins(): Promise<{ service: PluginService; entries: Plugi
   });
   const service = new PluginService({
     plugins: reader,
+    writer: new TestPluginFolder(reader),
     digest,
     trust,
     records: new TestRecordStore(),

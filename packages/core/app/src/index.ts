@@ -172,10 +172,18 @@ export {
   MAX_PLUGIN_ENTRIES,
   type PluginFolder,
   type PluginProblem,
+  type ReadPluginFolderOptions,
   readPluginFolder,
 } from "./plugin-folder.ts";
 export {
+  type PluginInstall,
+  type PluginSource,
+  pluginInstallsCollection,
+} from "./plugin-installs.ts";
+export {
+  type AddPluginOptions,
   type BrokenPlugin,
+  type PluginAddRefusal,
   type PluginEntry,
   PluginService,
   type PluginServiceOptions,

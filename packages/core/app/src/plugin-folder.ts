@@ -50,6 +50,17 @@ export interface PluginFolder {
   readonly files: readonly PluginFileHash[];
 }
 
+/** How {@link readPluginFolder} reads a folder. */
+export interface ReadPluginFolderOptions {
+  /**
+   * Whether the folder must be named exactly as the plugin's id, as every
+   * folder in the profile's plugins folder must (D5). `false` for a plugin's
+   * source, which may have any name: adding it names its folder by the id.
+   * `true` by default.
+   */
+  readonly namedById?: boolean;
+}
+
 /** The two manifest names, of which a plugin folder has exactly one (ADR section 1.5). */
 const manifestNames = ["plugin.yaml", "integration.yaml"] as const;
 type ManifestName = (typeof manifestNames)[number];
@@ -67,6 +78,7 @@ const noTokensMessage =
  * @param reader - the profile's plugin folder
  * @param digest - for the SHA-256 of every file
  * @param folder - the plugin folder's name, which must be the plugin's id
+ *   unless `options.namedById` is `false`
  * @returns the plugin, its location and file hashes, or every problem found
  * @throws only what the reader or the digest throws, such as a file that
  *   became a link while it was read
@@ -75,6 +87,7 @@ export async function readPluginFolder(
   reader: FolderReader,
   digest: Digest,
   folder: string,
+  options: ReadPluginFolderOptions = {},
 ): Promise<Result<PluginFolder, PluginProblem[]>> {
   const entries = await reader.entries(folder, { limit: MAX_PLUGIN_ENTRIES });
   const listed = listingProblems(entries, folder);
@@ -97,7 +110,8 @@ export async function readPluginFolder(
   const parsed = parseManifest(manifestName, decodeUtf8(manifestBytes.value));
   if (!parsed.ok) return err(parsed.error);
   const plugin = parsed.value;
-  const checked = pluginProblems(plugin, folder, new Set(paths)).map((problem) =>
+  const namedById = options.namedById ?? true;
+  const checked = pluginProblems(plugin, namedById ? folder : null, new Set(paths)).map((problem) =>
     inManifest(manifestName, problem),
   );
   if (checked.length > 0) return err(checked);
@@ -253,14 +267,18 @@ function sheetPath(path: readonly (string | number)[]): readonly (string | numbe
   return rest;
 }
 
-/** The checks over the parsed plugin that need its folder (checks 2 to 5), with paths in a `plugin.yaml`. */
+/**
+ * The checks over the parsed plugin that need its folder (checks 2 to 5),
+ * with paths in a `plugin.yaml`. `folder` is the name the id must match, or
+ * `null` when the folder may have any name.
+ */
 function pluginProblems(
   plugin: Plugin,
-  folder: string,
+  folder: string | null,
   files: ReadonlySet<string>,
 ): PluginProblem[] {
   const problems: PluginProblem[] = [];
-  if (plugin.id !== folder) {
+  if (folder !== null && plugin.id !== folder) {
     problems.push(
       manifestValueProblem(
         "folder-name",

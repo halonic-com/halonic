@@ -1,21 +1,24 @@
 // The plugin service, as `app.plugin-service` asks: it finds every plugin in
 // the profile's plugin folder, reads and checks each one and asks whether it
-// is trusted (P2 plan sections 1 and 5). It saves and forgets a person's
-// trust, keeps each plugin's setting values, which only removing the plugin
-// deletes, and gives the tools and UI of the trusted ones. The CLI and the
-// Studio call it; it reaches the folder, the trust records and the setting
-// values only through ports.
+// is trusted (P2 plan sections 1 and 5). It adds a plugin from a source
+// folder, as `app.plugin-add` asks (P3 plan, steps 1 to 4), saves and
+// forgets a person's trust, keeps each plugin's setting values, which only
+// removing the plugin deletes, and gives the tools and UI of the trusted
+// ones. The CLI and the Studio call it; it reaches the folder, the trust
+// records and the setting values only through ports.
 
 import type { Plugin } from "@halonicjs/format";
-import type {
-  Clock,
-  Digest,
-  FolderEntry,
-  FolderReader,
-  RecordStore,
-  TrustGrant,
+import {
+  type Clock,
+  checkPluginFiles,
+  type Digest,
+  type FolderEntry,
+  type FolderReader,
+  type PluginFolderWriter,
+  type RecordStore,
+  type TrustGrant,
 } from "@halonicjs/ports";
-import { err, type Result } from "@halonicjs/std";
+import { err, ok, type Result } from "@halonicjs/std";
 import {
   type PluginToolSet,
   type PluginUiContribution,
@@ -23,12 +26,14 @@ import {
   trustedPluginUi,
 } from "./plugin-contributions.ts";
 import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
+import { type PluginInstall, PluginInstalls, type PluginSource } from "./plugin-installs.ts";
 import { pluginSecretNames } from "./plugin-secret-names.ts";
 import {
   type PluginSettingProblem,
   PluginSettings,
   type PluginSettingValues,
 } from "./plugin-settings.ts";
+import { PluginSourceSnapshot, sourceFolder } from "./plugin-source.ts";
 import type { PluginTrustCheck } from "./plugin-trust.ts";
 import type { PersonTrustOrigin, TrustRefusal } from "./trust-record.ts";
 import type { TrustService } from "./trust-service.ts";
@@ -62,15 +67,37 @@ export type PluginTrustRefusal =
   | TrustRefusal
   | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] };
 
+/**
+ * Why a plugin wasn't added: its source can't be read or checked, or a
+ * plugin with its id, in any case, is already added. Nothing was written to
+ * the plugins folder.
+ */
+export type PluginAddRefusal =
+  | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] }
+  | { readonly kind: "taken"; readonly id: string };
+
+/** How {@link PluginService.add} adds a plugin. */
+export interface AddPluginOptions {
+  /** Where the source came from, for the install record. */
+  readonly from: PluginSource;
+  /**
+   * Put it in place of the plugin with exactly the same id, for a new
+   * commit of the same plugin. Without it, an id already added is `taken`.
+   */
+  readonly replace: boolean;
+}
+
 /** What {@link PluginService} needs from the host. */
 export interface PluginServiceOptions {
   /** The profile's plugin folder, which holds one folder per plugin, named by its id. */
   readonly plugins: FolderReader;
+  /** Places and removes plugin folders in the same folder `plugins` reads. */
+  readonly writer: PluginFolderWriter;
   /** Hashes every file of a plugin. */
   readonly digest: Digest;
   /** The `TrustService`: plugins share its records with workspaces. */
   readonly trust: Pick<TrustService, "checkPlugin" | "grantPlugin" | "revoke">;
-  /** The profile's records, which hold every plugin's setting values. */
+  /** The profile's records, which hold every plugin's setting values and install record. */
   readonly records: RecordStore;
   /** Dates each saved setting value. */
   readonly clock: Clock;
@@ -80,7 +107,7 @@ export interface PluginServiceOptions {
  * Finds, checks and trusts the plugins in the profile's plugin folder.
  *
  * @example
- * const plugins = new PluginService({ plugins: folderReader, digest, trust, records, clock });
+ * const plugins = new PluginService({ plugins: folderReader, writer, digest, trust, records, clock });
  * const entries = await plugins.load();
  * for (const entry of entries) {
  *   if (entry.status === "broken") showProblems(entry.folder, entry.problems);
@@ -90,10 +117,12 @@ export interface PluginServiceOptions {
 export class PluginService {
   readonly #options: PluginServiceOptions;
   readonly #settings: PluginSettings;
+  readonly #installs: PluginInstalls;
 
   constructor(options: PluginServiceOptions) {
     this.#options = options;
     this.#settings = new PluginSettings(options.records, options.clock);
+    this.#installs = new PluginInstalls(options.records, options.clock);
   }
 
   /**
@@ -112,6 +141,59 @@ export class PluginService {
       entries.push(await this.#loadOne(entry));
     }
     return entries;
+  }
+
+  /**
+   * Adds the plugin in the folder `source` to the plugins folder, as a
+   * folder named by its id, and keeps where it came from. The source is
+   * read once and checked as `load` checks a plugin folder, and exactly the
+   * bytes that were hashed are placed, so a source that changes meanwhile
+   * can't slip in a file that wasn't checked. A plugin that can't be read
+   * or checked is refused before anything is written.
+   *
+   * It doesn't trust the plugin: the entry it gives is new, or changed when
+   * it replaced one, until a person trusts it with {@link trust}.
+   *
+   * @param source - the plugin's folder, read through its own `FolderReader`
+   * @returns the added plugin, as {@link load} gives it now
+   */
+  async add(
+    source: FolderReader,
+    options: AddPluginOptions,
+  ): Promise<Result<PluginEntry, PluginAddRefusal>> {
+    const snapshot = new PluginSourceSnapshot(source);
+    let read: Awaited<ReturnType<typeof readPluginFolder>>;
+    try {
+      read = await readPluginFolder(snapshot, this.#options.digest, sourceFolder, {
+        namedById: false,
+      });
+    } catch (error) {
+      return err({ kind: "broken", problems: [readFailedProblem(error)] });
+    }
+    if (!read.ok) return err({ kind: "broken", problems: read.error });
+    const { plugin, files } = read.value;
+    const placed = snapshot.files();
+    const unsafe = unsafeNameProblem(plugin.id, placed);
+    if (unsafe !== null) return err({ kind: "broken", problems: [unsafe] });
+
+    const placement = await this.#options.writer.place(plugin.id, placed, {
+      replace: options.replace,
+    });
+    if (placement === "taken") return err({ kind: "taken", id: plugin.id });
+    await this.#installs.save(plugin.id, {
+      source: options.from,
+      files,
+      secretNames: pluginSecretNames(plugin),
+    });
+    return ok(await this.#loadOne({ path: plugin.id, kind: "folder" }));
+  }
+
+  /**
+   * Where the plugin `id` was added from, its files' hashes then and its
+   * secret names, or `null` when it wasn't added through {@link add}.
+   */
+  async install(id: string): Promise<PluginInstall | null> {
+    return await this.#installs.get(pluginFolderOf(id));
   }
 
   /**
@@ -266,6 +348,30 @@ function notAFolderProblem(entry: FolderEntry): PluginProblem {
     path: [],
     message: `${entry.path} is a special file, such as a pipe or a socket. Each plugin is a folder of its own.`,
   };
+}
+
+/**
+ * A problem when the id or a file's name is one some system would open as
+ * another entry, such as `con` or `notes.`, or two names are the same file
+ * on a disk that ignores case, so the plugin can't be placed as it was
+ * checked; `null` when every name is safe.
+ */
+function unsafeNameProblem(
+  id: string,
+  files: ReadonlyMap<string, Uint8Array>,
+): PluginProblem | null {
+  try {
+    checkPluginFiles(id, files);
+    return null;
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    return {
+      code: "unsafe-name",
+      file: "",
+      path: [],
+      message: `${error.message} Rename it in the plugin's source and add it again.`,
+    };
+  }
 }
 
 /** What the reader, the digest or the trust check threw, for this one plugin. */

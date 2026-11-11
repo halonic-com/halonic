@@ -4,6 +4,7 @@ import { expect, it, vi } from "vitest";
 import { type PluginEntry, PluginService, type ReadPlugin } from "./plugin-service.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
+import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
 import { TestRecordStore } from "./testing/test-record-store.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { TrustService } from "./trust-service.ts";
@@ -51,7 +52,9 @@ function setup(reader = plugins(), store = new TestTrustStore()) {
   const clock: Clock = { now: () => new Date("2026-11-10T09:00:00.000Z") };
   const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
   const records = new TestRecordStore();
-  return { trust, service: new PluginService({ plugins: reader, digest, trust, records, clock }) };
+  const writer = new TestPluginFolder(reader);
+  const service = new PluginService({ plugins: reader, writer, digest, trust, records, clock });
+  return { trust, service };
 }
 
 /** The plugin `folder` as loaded, which must have been read and checked. */
