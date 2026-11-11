@@ -30,7 +30,7 @@ export interface StudioPageProps {
  * Search page for "Search: <words>", or the view of a place a feature added. The view is imported
  * the first time a tab shows the place, and nothing stands in for it while it loads. A view that
  * fails to load is "This page stopped working", from the `PageErrorBoundary` round every tab's
- * page.
+ * page and round the phone's page.
  *
  * Items open once a feature adds an item kind (T6, T7); until then no tab can show one.
  */

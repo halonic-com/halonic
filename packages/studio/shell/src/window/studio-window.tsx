@@ -76,6 +76,14 @@ export function StudioWindow(props: StudioWindowProps) {
   // Read again on every phone move, so the bottom navigation's signals follow.
   const shown = shownPlaces(contributions.places.list(), contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
+  // The palette is the desktop's: one opened on a phone (Mod K on a keyboard) or left open when the
+  // window narrows is closed, so it doesn't pop up when the window widens again.
+  const { open: paletteOpen, close: closePalette } = palette;
+  useEffect(() => {
+    if (paletteOpen && !desktop) {
+      closePalette();
+    }
+  }, [paletteOpen, desktop, closePalette]);
   useEffect(() => announceSaveNotes(workspace.saving, announcer), [workspace, announcer]);
   useWindowTitle(tabs, workspace.name);
 

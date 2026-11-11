@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { serviceKey } from "../service-key.ts";
 import { createShell } from "../shell.ts";
@@ -32,6 +32,7 @@ beforeEach(() => {
 
 afterEach(() => {
   unmountAll();
+  vi.restoreAllMocks();
   restoreModal();
   restoreMedia();
   window.history.replaceState(null, "");
@@ -50,6 +51,10 @@ function InboxView({ context }: PlaceViewProps) {
 
 function AgentsView() {
   return <h1 tabIndex={-1}>Agents</h1>;
+}
+
+function BrokenAgentsView(): never {
+  throw new Error("the agents view broke");
 }
 
 const inboxFeature = defineFeature({
@@ -75,8 +80,20 @@ const agentsFeature = defineFeature({
   },
 });
 
-function renderPhoneWindow() {
-  const shell = createShell({ features: [inboxFeature, agentsFeature], timers: new FakeTimers() });
+const brokenAgentsFeature = defineFeature({
+  id: "agents",
+  title: "Agents",
+  register(studio) {
+    studio.places.add({
+      id: "agents",
+      view: "AgentsView",
+      load: async () => ({ AgentsView: BrokenAgentsView }),
+    });
+  },
+});
+
+function renderPhoneWindow(features = [inboxFeature, agentsFeature]) {
+  const shell = createShell({ features, timers: new FakeTimers() });
   const services = new MapTarget();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
@@ -99,7 +116,15 @@ function renderPhoneWindow() {
         .querySelector<HTMLElement>(`nav[aria-label="Places"] a[aria-label^="${name}"]`)
         ?.click(),
     );
-  return { container, workspace, title, heading, button, tapPlace };
+  const openUnderMore = async (name: string) => {
+    tapPlace("More");
+    const row = [...container.querySelectorAll("main tr")].find((candidate) =>
+      candidate.textContent?.includes(name),
+    );
+    act(() => row?.querySelector<HTMLElement>("[role=gridcell]")?.click());
+    await settle();
+  };
+  return { container, workspace, title, heading, button, tapPlace, openUnderMore };
 }
 
 /** Lets the lazily imported views resolve and React draw them. */
@@ -136,16 +161,12 @@ verifies("shell.studio-phone", () => {
   });
 
   it("opens a place under More with Back, and Back goes back to the More page", async () => {
-    const { container, title, heading, button, tapPlace } = renderPhoneWindow();
+    const { container, title, heading, button, tapPlace, openUnderMore } = renderPhoneWindow();
     tapPlace("More");
     expect(heading()).toBe("More");
     expect(container.querySelector('button[aria-label^="Workspace:"]')).toBeNull();
 
-    const agents = [...container.querySelectorAll("main tr")].find((row) =>
-      row.textContent?.includes("Agents"),
-    );
-    act(() => agents?.querySelector<HTMLElement>("[role=gridcell]")?.click());
-    await settle();
+    await openUnderMore("Agents");
     expect(title()).toBe("Agents");
     expect(heading()).toBe("Agents");
 
@@ -188,5 +209,33 @@ verifies("shell.studio-phone", () => {
 
     act(() => media.resize(PHONE_WIDTH));
     expect(heading()).toBe("More");
+  });
+
+  it("stops only a page that throws, with the bars still working", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { container, title, heading, openUnderMore, tapPlace } = renderPhoneWindow([
+      inboxFeature,
+      brokenAgentsFeature,
+    ]);
+
+    await openUnderMore("Agents");
+
+    expect(title()).toBe("Agents");
+    expect(container.querySelector("main")?.textContent).toContain("This page stopped working");
+    expect(container.querySelector('nav[aria-label="Places"]')).not.toBeNull();
+
+    tapPlace("Home");
+    expect(heading()).toBe("Home");
+  });
+
+  it("doesn't keep the palette open on a phone, so it doesn't pop up on widening", () => {
+    const { container } = renderPhoneWindow();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+    });
+
+    act(() => media.resize(DESKTOP_WIDTH));
+
+    expect(container.querySelector('dialog[open][aria-label="Search"]')).toBeNull();
   });
 });
