@@ -139,6 +139,17 @@ jobs:
       # gitignored src/generated/ files come from the root `prepare` script.
       - name: CLI runs on a fresh install
         run: node apps/cli/src/main.ts --help
+      # The README's source install (HAL-6000): `pnpm add -g` links the
+      # folder and puts a `halonic` shim in $PNPM_HOME/bin, which runs
+      # main.ts through its `#!/usr/bin/env node` line.
+      - name: CLI installs from source
+        env:
+          PNPM_HOME: ${{ runner.temp }}/pnpm-home
+        run: |
+          export PATH="$PNPM_HOME/bin:$PATH"
+          pnpm add -g ./apps/cli
+          halonic --help
+          halonic --version
       - id: pr
         uses: $/.github/actions/pull-request
       # Reads the title from a file: an `env:` block is printed in the log.

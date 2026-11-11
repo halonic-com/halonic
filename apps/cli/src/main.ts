@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { EnvSecrets } from "@halonicjs/adapter-env-secrets";
 import { profileFolder } from "@halonicjs/profile";
 import { commands } from "./generated/commands.ts";

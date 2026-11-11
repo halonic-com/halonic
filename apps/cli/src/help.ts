@@ -2,9 +2,12 @@ import type { CliCommand, CliOption, CommandPath } from "./command.ts";
 import { globalOptionFlags } from "./global-options.ts";
 import type { Message } from "./messages/define.ts";
 import { helpMessages } from "./messages/help.ts";
-import { type Phrase, phrase } from "./messages/phrase.ts";
+import { type Phrase, phrase, plainText } from "./messages/phrase.ts";
 
 const blank: Phrase = [];
+
+/** How wide a help line may be, for an 80-column terminal. */
+const helpWidth = 80;
 
 /** The help for `halonic` on its own (cli-output 1.9): what it is, the commands, the options, the exit codes. */
 export function overallHelp(commands: readonly CliCommand[]): Phrase[] {
@@ -15,7 +18,7 @@ export function overallHelp(commands: readonly CliCommand[]): Phrase[] {
     blank,
     ...commandList(commands),
     blank,
-    helpMessages.globalOptions(globalOptionFlags).phrase,
+    ...globalOptionLines(globalOptionFlags),
     blank,
     helpMessages.exitCodes(0).phrase,
     helpMessages.exitCodes(1).phrase,
@@ -80,6 +83,30 @@ function commandList(commands: readonly CliCommand[]): Phrase[] {
       (command) => phrase`  ${command.name.padEnd(width)}  ${command.summary.phrase}`,
     ),
   ];
+}
+
+/**
+ * "Options for every command:" and the options, on as many lines as keep
+ * each within {@link helpWidth}; every line but the last ends with a comma.
+ */
+function globalOptionLines(flags: readonly string[]): Phrase[] {
+  const line = (index: number, group: readonly string[], continues: boolean) =>
+    (index === 0 ? helpMessages.globalOptions : helpMessages.globalOptionsMore)(group, continues)
+      .phrase;
+  const groups: string[][] = [];
+  for (const flag of flags) {
+    const current = groups.at(-1);
+    const longer = current === undefined ? [] : [...current, flag];
+    if (
+      current !== undefined &&
+      plainText(line(groups.length - 1, longer, true)).length <= helpWidth
+    ) {
+      current.push(flag);
+    } else {
+      groups.push([flag]);
+    }
+  }
+  return groups.map((group, index) => line(index, group, index < groups.length - 1));
 }
 
 function optionLabel(name: string, option: CliOption): string {

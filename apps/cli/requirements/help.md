@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-187; plan 6.1 (help text generated from each command); the options line from HAL-2223; the first line and the unknown command from HAL-2196, in the words of the approved CLI output on HAL-1981 (sections 1.3 and 1.9)
+- Source: HAL-187; plan 6.1 (help text generated from each command); the options line from HAL-2223, wrapped at 80 columns from HAL-6000; the first line and the unknown command from HAL-2196, in the words of the approved CLI output on HAL-1981 (sections 1.3 and 1.9)
 
-The `halonic` command shall make its help from the commands themselves: `halonic --help` starts with a line saying what Halonic's command line is for, lists every command with its one-line summary, then, after "Options for every command:", each option that every command takes, and exits with 0, `halonic <command> --help` prints that command's usage line, summary and options and exits with 0, and `halonic` with no command prints the list and exits with 2. An unknown command shall print "There's no command" with the name and, as its fix, "Run halonic --help to see every command.", without the list, and exit with 2; when exactly one command is within an edit distance of 2 of the name, the first line adds "Did you mean" with that command. The options line shall name only options the CLI reads, and every help line shall fit 80 columns.
+The `halonic` command shall make its help from the commands themselves: `halonic --help` starts with a line saying what Halonic's command line is for, lists every command with its one-line summary, then, after "Options for every command:", each option that every command takes, on as many lines as keep each within 80 columns, every line but the last ending with a comma, and exits with 0, `halonic <command> --help` prints that command's usage line, summary and options and exits with 0, and `halonic` with no command prints the list and exits with 2. An unknown command shall print "There's no command" with the name and, as its fix, "Run halonic --help to see every command.", without the list, and exit with 2; when exactly one command is within an edit distance of 2 of the name, the first line adds "Did you mean" with that command. The options line shall name only options the CLI reads, and every help line shall fit 80 columns.
 
 ## Examples
 
@@ -13,7 +13,7 @@ The `halonic` command shall make its help from the commands themselves: `halonic
   then it lists `schema` with its summary and exits with 0.
 - Given `halonic --help`,
   when it runs,
-  then after the commands it prints "Options for every command: --json, --no-color, --verbose, --debug, --help".
+  then after the commands it prints "Options for every command: --json, --no-color, --verbose, --debug, --help," and "--version".
 - Given `halonic deploy` where there is no deploy command,
   when it runs,
   then it prints '✕ There\'s no command "deploy".' and, indented by two spaces, "Run halonic --help to see every command.", and exits with 2.

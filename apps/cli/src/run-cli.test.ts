@@ -8,6 +8,7 @@ import { defineMessages } from "./messages/define.ts";
 import { bold, markPart, phrase } from "./messages/phrase.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
+import { halonicVersion } from "./version.ts";
 
 /** An error class with its own kind and fix, as an existing error class gets them. */
 class NotHereError extends Error {
@@ -228,7 +229,8 @@ verifies("cli.help", () => {
       "  greet     Say hello",
       "  trust-me  Refuse, as an untrusted workspace does",
       "",
-      "Options for every command: --json, --no-color, --verbose, --debug, --help",
+      "Options for every command: --json, --no-color, --verbose, --debug, --help,",
+      "--version",
       "",
       "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input ·",
       "3 not trusted · 4 not found · 5 conflict · 6 signed out · 7 not allowed ·",
@@ -299,6 +301,35 @@ verifies("cli.help", () => {
     for (const line of io.stdout) {
       expect(line.length).toBeLessThanOrEqual(80);
     }
+  });
+});
+
+verifies("cli.version", () => {
+  it("prints halonic and the version, and exits with 0", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["--version"], io, commands)).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([`halonic ${halonicVersion}`]);
+    expect(io.stderr).toEqual([]);
+  });
+
+  it("gives the version as one JSON document with --json", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["--version", "--json"], io, commands)).toBe(exitCode.ok);
+    expect(io.stdout.map((line) => JSON.parse(line))).toEqual([
+      { outputVersion: 1, ok: true, version: halonicVersion },
+    ]);
+  });
+
+  it("answers instead of the command, wherever it stands", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["greet", "Ada", "--version"], io, commands)).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([`halonic ${halonicVersion}`]);
+  });
+
+  it("is an argument after --", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["greet", "--", "--version"], io, commands)).toBe(exitCode.ok);
+    expect(io.stdout).toEqual(["✓ Hello --version"]);
   });
 });
 
