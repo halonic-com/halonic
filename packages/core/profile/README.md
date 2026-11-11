@@ -42,6 +42,7 @@ absolute. `runsFolder(deploymentId)` throws one for a deployment id that isn't 1
 letters, digits, `-` or `_` starting with a letter or digit, or that is a Windows device name
 (`con`, `nul`, `com1`, …). `isDeploymentId` and `checkDeploymentId` apply the same rule for code that
 hands a deployment id to something else that builds the folder, such as the desktop shell.
+`harnessSettingsFolder(agentId, harnessId)` applies that rule to both ids, because each names a folder.
 
 | Folder | Holds |
 | --- | --- |
@@ -50,6 +51,7 @@ hands a deployment id to something else that builds the folder, such as the desk
 | `blobs/` | kept definitions and large run payloads |
 | `records/` | agent notes and collection records |
 | `review/` | the assistant's changes to review |
+| `harness-settings/<agentId>/<harnessId>/` | a harness's own settings for one agent, such as its sign-in |
 
 Records belong to the workspace: two workspaces with an agent `clerk` never share its notes, and a
 moved workspace folder starts without its old records, as it does without its old runs. A person's
@@ -58,6 +60,11 @@ connection data (tokens, Google setups) is not a workspace's and is kept elsewhe
 The records of the assistant's changes to review hold each file's baseline, which decides what Try it
 leaves out. They are kept here, like trust, and not in the workspace, so git can't bring one in and no
 version, snapshot or Share carries one (HAL-3417).
+
+An agent signs in to its harness once per workspace, for every deployment (HAL-5355), so its harness
+settings folder doesn't depend on a deployment. Each harness gets its own folder, so a switch from one
+harness to another never mixes their files. The CLI, the Studio and the harness profile host all ask
+`harnessSettingsFolder`, so they name the same folder (HAL-6169).
 
 The package only works out paths: it creates nothing and reads no files. The adapter gives it the
 system, the home folder and the environment variables, and a `Digest` for the hash.

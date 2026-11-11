@@ -137,3 +137,41 @@ verifies("profile.workspace-folders", () => {
     });
   });
 });
+
+verifies("profile.harness-settings-folder", () => {
+  it("keeps an agent's harness settings in the workspace's folder, one folder per harness", async () => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(folders.harnessSettingsFolder("writer", "claude-code")).toBe(
+      `${folders.folder}/harness-settings/writer/claude-code`,
+    );
+    expect(folders.harnessSettingsFolder("writer", "codex")).not.toBe(
+      folders.harnessSettingsFolder("writer", "claude-code"),
+    );
+    const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
+    expect(windows.harnessSettingsFolder("writer", "claude-code")).toBe(
+      `${windows.folder}\\harness-settings\\writer\\claude-code`,
+    );
+  });
+
+  it("gives one agent id in two workspaces different folders", async () => {
+    const one = await workspaceFolders(profile, "/srv/acme/one", digest);
+    const two = await workspaceFolders(profile, "/srv/acme/two", digest);
+    expect(one.harnessSettingsFolder("writer", "claude-code")).not.toBe(
+      two.harnessSettingsFolder("writer", "claude-code"),
+    );
+  });
+
+  it.each(["../writer", "Writer", "", "con", "a".repeat(65)])("refuses %j", async (badId) => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(() => folders.harnessSettingsFolder(badId, "claude-code")).toThrow(RangeError);
+    expect(() => folders.harnessSettingsFolder("writer", badId)).toThrow(RangeError);
+  });
+
+  it("names the kind of id it refuses", async () => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(() => folders.harnessSettingsFolder("../writer", "claude-code")).toThrow(
+      /^Not an agent id/,
+    );
+    expect(() => folders.harnessSettingsFolder("writer", "Codex")).toThrow(/^Not a harness id/);
+  });
+});

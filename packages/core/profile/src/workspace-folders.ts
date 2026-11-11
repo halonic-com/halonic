@@ -28,8 +28,12 @@ const keyLength = 32;
  * A deployment id, as `deployments.yaml` allows it: at most 64 characters,
  * which keeps the runs folder's path under Windows' 260-character limit.
  * The format's own test checks that both rules accept the same ids.
+ * Agent and harness ids name folders too, so they follow the same rule.
  */
-const deploymentIdPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+const folderIdPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+/** The folder in a workspace's folder that holds its agents' harness settings. */
+const harnessSettingsFolderName = "harness-settings";
 
 /** Names Windows keeps for devices; a folder can't have them. */
 const windowsDeviceNames = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/;
@@ -61,6 +65,18 @@ export interface WorkspaceFolders {
    * so they are kept here like trust, never in the workspace (HAL-3417).
    */
   reviewFolder(): string;
+  /**
+   * The folder an agent's harness keeps its own settings in, such as the
+   * agent's own sign-in: `harness-settings/<agentId>/<harnessId>`. One
+   * agent signs in once per workspace, for every deployment (HAL-5355), so
+   * the deployment isn't part of it. The harness is, so a switch from one
+   * harness to another never mixes their files (HAL-6169).
+   *
+   * @param agentId - the agent's id, from its file
+   * @param harnessId - the harness's id, such as `claude-code`
+   * @throws RangeError when either id can't name a folder safely
+   */
+  harnessSettingsFolder(agentId: string, harnessId: string): string;
 }
 
 /**
@@ -114,6 +130,11 @@ export async function workspaceFolders(
     reviewFolder(): string {
       return joinPath(profile.platform, folder, "review");
     },
+    harnessSettingsFolder(agentId: string, harnessId: string): string {
+      checkFolderId("an agent id", agentId);
+      checkFolderId("a harness id", harnessId);
+      return joinPath(profile.platform, folder, harnessSettingsFolderName, agentId, harnessId);
+    },
   };
 }
 
@@ -163,7 +184,7 @@ function withoutVerbatimPrefix(path: string): string {
  * checks before it is given the id.
  */
 export function isDeploymentId(deploymentId: string): boolean {
-  return deploymentIdPattern.test(deploymentId) && !windowsDeviceNames.test(deploymentId);
+  return isFolderId(deploymentId);
 }
 
 /**
@@ -172,9 +193,18 @@ export function isDeploymentId(deploymentId: string): boolean {
  * @throws RangeError when the id isn't a deployment id
  */
 export function checkDeploymentId(deploymentId: string): void {
-  if (!isDeploymentId(deploymentId)) {
+  checkFolderId("a deployment id", deploymentId);
+}
+
+/** Whether `id` can name a folder in the profile on every platform. */
+function isFolderId(id: string): boolean {
+  return folderIdPattern.test(id) && !windowsDeviceNames.test(id);
+}
+
+function checkFolderId(kind: string, id: string): void {
+  if (!isFolderId(id)) {
     throw new RangeError(
-      `Not a deployment id: ${JSON.stringify(deploymentId)}. Use 1 to 64 lowercase letters, digits, '-' or '_', starting with a letter or digit, and not a name Windows keeps for a device.`,
+      `Not ${kind}: ${JSON.stringify(id)}. Use 1 to 64 lowercase letters, digits, '-' or '_', starting with a letter or digit, and not a name Windows keeps for a device.`,
     );
   }
 }
