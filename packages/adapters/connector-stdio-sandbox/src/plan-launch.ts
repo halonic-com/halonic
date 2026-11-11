@@ -13,15 +13,15 @@ import { profileDifferences } from "./profile-check.ts";
 export interface LaunchChecks {
   readonly config: ConnectorConfig;
   readonly stdio: StdioConfig;
-  /** Where the host set the local tool up; `undefined` when it didn't. */
-  readonly place: LocalToolPlace | undefined;
+  /** Where the host set the local tool up. */
+  readonly place: LocalToolPlace;
   readonly session: SandboxSession;
   readonly context: Pick<ConnectorFactoryContext, "secrets" | "http">;
 }
 
 /**
  * The command to start in the session, once every check before it passed:
- * the host set the local tool up, the launch passes the pin rules (and a
+ * the launch passes the pin rules (and a
  * pin is looked up at its registry, through `context.http`, exactly as
  * `checkPinnedLaunch` does on this computer), every secret is set, and
  * the session's profile is exactly the one {@link localToolLaunch} builds
@@ -35,11 +35,6 @@ export interface LaunchChecks {
 export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> {
   const { config, stdio, place, session, context } = checks;
   const id = config.id;
-  if (place === undefined) {
-    throw new Error(
-      `Connector "${id}" is a local tool Halonic didn't set up, so it doesn't start.`,
-    );
-  }
   if (stdio.cwd !== undefined) {
     throw new Error(
       `Connector "${id}" names a folder to start in, but a local tool starts in the working folder Halonic chose for it.`,

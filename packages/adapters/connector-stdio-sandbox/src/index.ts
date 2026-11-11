@@ -1,5 +1,6 @@
 // The public API of @halonicjs/adapter-connector-stdio-sandbox. Internal code imports by relative path.
 
+export type { DeclaredTool } from "./declared-tools.ts";
 export { SandboxNotFencedError, SandboxSessionEndedError } from "./errors.ts";
 export {
   type LocalToolLaunch,
@@ -14,5 +15,6 @@ export {
   type LocalToolSetup,
   SandboxStdioConnectorFactory,
   type SandboxStdioOptions,
+  type UndeclaredTool,
 } from "./sandbox-connector.ts";
 export { sandboxProgram } from "./sandbox-program.ts";

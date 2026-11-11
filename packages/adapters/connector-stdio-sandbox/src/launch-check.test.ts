@@ -5,7 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { config, setUp } from "./connector-setup.spec.ts";
 import { SandboxSessionEndedError } from "./errors.ts";
-import { contractProgram, testPlace } from "./fake-mcp-program.spec.ts";
+import { contractProgram, testPlace, testSetup } from "./fake-mcp-program.spec.ts";
 import { type LocalToolPlace, localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 
 /** A secret value no error, event or report may ever carry. */
@@ -100,7 +100,7 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
       const profile = localToolLaunch(pinned.transport as StdioConfig, pinnedPlace, pin, {});
       const { sandbox, factory, context } = setUp({
         profile: profile.profile,
-        factory: { localTools: () => ({ place: pinnedPlace }) },
+        factory: { localTools: () => ({ ...testSetup, place: pinnedPlace }) },
       });
       const client = factory.create(pinned, { ...context, http: npmRegistry(asked) });
       await client.listTools();
@@ -111,7 +111,7 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
 
     it("refuses a pinned package whose registry can't be reached, and one the command pins otherwise", async () => {
       const { sandbox, factory, context } = setUp({
-        factory: { localTools: () => ({ place: pinnedPlace }) },
+        factory: { localTools: () => ({ ...testSetup, place: pinnedPlace }) },
       });
       const unreachable = { fetch: () => Promise.reject(new Error("offline")) };
       await expect(
@@ -131,7 +131,7 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
       const profile = localToolLaunch(pinned.transport as StdioConfig, pinnedPlace, pin, {});
       const { sandbox, factory, context } = setUp({
         profile: profile.profile,
-        factory: { localTools: () => ({ place: pinnedPlace }) },
+        factory: { localTools: () => ({ ...testSetup, place: pinnedPlace }) },
       });
       const registry = npmRegistry([]);
       const closesSession: HttpClient = {

@@ -6,12 +6,12 @@ import {
   defaultStdioLimits,
   McpError,
   McpSession,
+  type McpToolResult,
   RestartLimit,
   type RestartLimits,
   resultText,
   type StdioLimits,
   StdioTransport,
-  toConnectorTool,
 } from "@halonicjs/adapter-mcp";
 import type {
   ConnectorClient,
@@ -23,6 +23,7 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { type Clock, systemClock } from "@halonicjs/std";
+import { type DeclaredTool, offeredTools } from "./declared-tools.ts";
 import { SandboxNotFencedError, SandboxSessionEndedError } from "./errors.ts";
 import type { LocalToolPlace, StdioConfig } from "./local-tool-launch.ts";
 import { planLaunch } from "./plan-launch.ts";
@@ -38,6 +39,16 @@ export interface ConnectorBlock {
 export interface LocalToolSetup {
   /** Where the tool runs: the place the host built the session's profile from. */
   readonly place: LocalToolPlace;
+  /** Every tool the manifest declares for it. Only these are offered and called. */
+  readonly tools: readonly DeclaredTool[];
+  /** How long one call may take, from the manifest, in milliseconds. */
+  readonly callTimeoutMs: number;
+}
+
+/** A tool a local tool's server listed that its plugin's manifest doesn't declare. */
+export interface UndeclaredTool {
+  readonly connectorId: string;
+  readonly toolName: string;
 }
 
 /** What a sandboxed stdio connector factory needs besides each connector's config and context. */
@@ -54,6 +65,8 @@ export interface SandboxStdioOptions {
    * turns each into the run's `sandbox.blocked` event.
    */
   readonly onBlocked: (blocked: ConnectorBlock) => void;
+  /** Hears each tool a server listed that its manifest doesn't declare, for the host's log. */
+  readonly onUndeclaredTool: (undeclared: UndeclaredTool) => void;
   readonly limits?: StdioLimits;
   /** How often a program that stopped may start again, `defaultRestartLimits` unless given. */
   readonly restartLimits?: RestartLimits;
@@ -159,16 +172,28 @@ class SandboxStdioConnector implements ConnectorClient {
     );
   }
 
+  /** The tools the server lists that the manifest declares, in the manifest's words. */
   async listTools(): Promise<ConnectorTool[]> {
+    const setup = this.#setup();
     const { session } = await this.#connect();
-    return (await session.listTools()).map(toConnectorTool);
+    return offeredTools(setup.tools, await session.listTools(), (toolName) =>
+      this.#options.onUndeclaredTool({ connectorId: this.id, toolName }),
+    );
   }
 
+  /**
+   * Calls a declared tool, within the manifest's `callTimeoutMs`. A tool the
+   * manifest doesn't declare is refused before anything starts.
+   */
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
+    const setup = this.#setup();
+    if (!setup.tools.some((tool) => tool.name === name)) {
+      throw new Error(
+        `Connector "${this.id}" has no tool "${name}" that its plugin declares, so Halonic doesn't call it.`,
+      );
+    }
     const connection = await this.#connect();
-    const result = await connection.session
-      .callTool(name, args)
-      .catch((error: unknown) => Promise.reject(this.#lostDuringCall(connection, name, error)));
+    const result = await this.#callWithin(connection, name, args, setup.callTimeoutMs);
     if (result.isError) throw new ConnectorToolError(this.id, name, resultText(result));
     return resultText(result);
   }
@@ -218,7 +243,7 @@ class SandboxStdioConnector implements ConnectorClient {
     const command = await planLaunch({
       config: this.#config,
       stdio: this.#stdio,
-      place: this.#options.localTools(this.id)?.place,
+      place: this.#setup().place,
       session: this.#context.sandbox,
       context: this.#context,
     });
@@ -270,6 +295,51 @@ class SandboxStdioConnector implements ConnectorClient {
     if (ended !== undefined) throw ended;
     const fence = this.#context.sandbox.fence;
     if (fence.state === "not-fenced") throw new SandboxNotFencedError(this.id, fence.reason);
+  }
+
+  /** What the host set up for this local tool. */
+  #setup(): LocalToolSetup {
+    const setup = this.#options.localTools(this.id);
+    if (setup === undefined) {
+      throw new Error(
+        `Connector "${this.id}" is a local tool Halonic didn't set up, so it doesn't start.`,
+      );
+    }
+    return setup;
+  }
+
+  /**
+   * One call, failed once it takes longer than `timeoutMs`. Then the
+   * program may be stuck, so it is stopped too, and the next call starts it
+   * again, within the restart limit.
+   */
+  async #callWithin(
+    connection: Connection,
+    name: string,
+    args: Record<string, unknown>,
+    timeoutMs: number,
+  ): Promise<McpToolResult> {
+    const cancel = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      cancel.abort();
+      void connection.transport.close();
+    }, timeoutMs);
+    try {
+      return await connection.session.callTool(name, args, cancel.signal);
+    } catch (error) {
+      if (!timedOut) throw this.#lostDuringCall(connection, name, error);
+      throw (
+        this.#sessionEnded() ??
+        new McpError(
+          "unavailable",
+          `Connector "${this.id}"'s tool "${name}" didn't answer within ${timeoutMs / 1000} seconds, so Halonic stopped its program. The next call starts it again.`,
+        )
+      );
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /** The error for every call once the session has ended, or `undefined` while it is open. */

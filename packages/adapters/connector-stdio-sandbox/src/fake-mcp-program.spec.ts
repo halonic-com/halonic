@@ -8,6 +8,7 @@ import {
   type ReachedCall,
 } from "@halonicjs/testing-contracts";
 import { type LocalToolPlace, localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
+import type { LocalToolSetup } from "./sandbox-connector.ts";
 
 /** The contract's tools as an MCP server lists them, risk and untrusted in `_meta`. */
 const contractMcpTools = contractServerTools.map((tool) => ({
@@ -102,6 +103,13 @@ export const testPlace: LocalToolPlace = {
   sites: ["notes.acme.test"],
   timeLimitMs: 60_000,
   path: "/usr/bin",
+};
+
+/** What the host set up for the contract's local tool: {@link testPlace}, the contract's tools declared as the server lists them. */
+export const testSetup: LocalToolSetup = {
+  place: testPlace,
+  tools: contractServerTools.map(({ parameters: _schema, ...declared }) => declared),
+  callTimeoutMs: 60_000,
 };
 
 /** The profile Halonic builds for {@link scriptConfig} at {@link testPlace}, without secrets. */

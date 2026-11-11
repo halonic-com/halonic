@@ -6,7 +6,7 @@ import {
   FakeSandboxSession,
   type ReachedCall,
 } from "@halonicjs/testing-contracts";
-import { contractProgram, scriptConfig, testPlace, testProfile } from "./fake-mcp-program.spec.ts";
+import { contractProgram, scriptConfig, testProfile, testSetup } from "./fake-mcp-program.spec.ts";
 import {
   type ConnectorBlock,
   SandboxStdioConnectorFactory,
@@ -36,7 +36,8 @@ export function setUp(options: SetUpOptions = {}) {
   const factory = new SandboxStdioConnectorFactory({
     clientInfo: { name: "halonic", version: "0.1.0" },
     onBlocked: (block) => blocked.push(block),
-    localTools: () => ({ place: testPlace }),
+    localTools: () => testSetup,
+    onUndeclaredTool: () => undefined,
     ...options.factory,
   });
   const context: ConnectorFactoryContext = {

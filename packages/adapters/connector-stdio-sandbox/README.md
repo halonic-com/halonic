@@ -20,6 +20,11 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 - **A session that ended ends the connector.** Every call then throws `SandboxSessionEndedError`.
   The host closes that session and opens a new session and connector for the next call. The
   connector never closes the session itself.
+- **Only declared tools.** It offers only the tools the server lists that the manifest declares,
+  in the manifest's words with its `risk` and `untrusted`, and the server's parameters. A tool the
+  server adds is left out and reported to `onUndeclaredTool`; calling one is refused.
+- **`callTimeoutMs` bounds one call.** A call that takes longer fails, and its program is stopped;
+  the next call starts it again.
 - **A program that stops starts again** on the next call, in the same session, up to the restart
   limit, as on this computer. Its error output is read and dropped, never kept: the profile gave
   it secrets.
@@ -54,6 +59,7 @@ const factory = new SandboxStdioConnectorFactory({
   localTools: (connectorId) => setUpLocalTools.get(connectorId),
   onBlocked: ({ connectorId, block }) =>
     events.push({ type: "sandbox.blocked", connectorId, block }),
+  onUndeclaredTool: ({ connectorId, toolName }) => log.warn({ connectorId, toolName }),
 });
 const client = factory.create(config, { ...context, sandbox: session });
 const tools = await client.listTools();
