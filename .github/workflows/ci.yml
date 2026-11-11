@@ -1355,9 +1355,14 @@ jobs:
         run: |
           $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $setup = Resolve-Path "dist/Halonic-$version-windows-x64-setup.exe"
-          Start-Process $setup -ArgumentList '/S', '/RELAUNCH', "/D=$env:HALONIC_TEST_DIR" -Wait
-          Start-Sleep -Seconds 10
-          $running = Get-Process Halonic -ErrorAction SilentlyContinue
+          # No -Wait: it would also wait for the Halonic the installer opens.
+          Start-Process $setup -ArgumentList '/S', '/RELAUNCH', "/D=$env:HALONIC_TEST_DIR"
+          $running = $null
+          foreach ($i in 1..60) {
+            Start-Sleep -Seconds 2
+            $running = Get-Process Halonic -ErrorAction SilentlyContinue
+            if ($running) { break }
+          }
           if (-not $running) { throw 'Halonic was not reopened after /RELAUNCH' }
           $running | Stop-Process -Force
       - name: Uninstall
