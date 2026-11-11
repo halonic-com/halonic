@@ -263,8 +263,14 @@ function openedEvent(
   if (placement.runsOn === "this-computer") {
     return { type: "sandbox.off", state, agent, chosenAt: placement.chosenAt };
   }
+  const { strength } = sandbox.capabilities();
+  // A host that gave the sandbox placement the launcher would run the agent
+  // without a fence while the log says it is fenced.
+  if (strength === "none") {
+    throw new Error(`The sandbox for agent "${agent}" has no fence.`);
+  }
   const view = sandboxOpenedView(session.profile, {
-    strength: sandbox.capabilities().strength,
+    strength,
     home,
     deniedGroups,
   });

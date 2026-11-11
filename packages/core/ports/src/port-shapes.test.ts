@@ -271,7 +271,7 @@ verifies("ports.sandbox-profile", () => {
 verifies("ports.sandbox-session", () => {
   it("says how files reach the sandbox and how strong the fence is", () => {
     expectTypeOf<SandboxCapabilities["files"]>().toEqualTypeOf<"shared" | "copied">();
-    expectTypeOf<SandboxCapabilities["strength"]>().toEqualTypeOf<"os" | "vm" | "remote">();
+    expectTypeOf<SandboxCapabilities["strength"]>().toEqualTypeOf<"os" | "vm" | "remote" | "none">();
     // @ts-expect-error: only shared and copied are ways for files to reach a sandbox
     const wrong: SandboxCapabilities = { files: "mounted", strength: "os" };
     expect(wrong).toBeDefined();
@@ -309,7 +309,7 @@ verifies("ports.sandbox-session", () => {
 verifies("ports.sandbox-fence-proof", () => {
   typeTest("a session carries a fence proof that is one of three states", () => {
     expectTypeOf<SandboxSession["fence"]>().toEqualTypeOf<SandboxFence>();
-    expectTypeOf<SandboxFence["state"]>().toEqualTypeOf<"fenced" | "not-fenced" | "stopped">();
+    expectTypeOf<SandboxFence["state"]>().toEqualTypeOf<"fenced" | "not-fenced" | "off" | "stopped">();
   });
 
   it("gives a reason only when the session is not fenced", () => {
@@ -321,6 +321,9 @@ verifies("ports.sandbox-fence-proof", () => {
     // @ts-expect-error: a fenced session has no reason
     const fencedWithReason: SandboxFence = { state: "fenced", reason: "x" };
     expect(fencedWithReason).toBeDefined();
+    // @ts-expect-error: a launcher without a fence has nothing to explain
+    const offWithReason: SandboxFence = { state: "off", reason: "x" };
+    expect(offWithReason).toBeDefined();
   });
 });
 

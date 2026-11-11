@@ -214,6 +214,18 @@ verifies("engine.run-harness", () => {
     ]);
   });
 
+  it("refuses the sandbox placement on a sandbox without a fence, and logs no sandbox.opened", async () => {
+    const ports = harnessPorts();
+    ports.sandbox.strength = "none";
+    ports.harness.events = [finished("ok")];
+
+    const { error, written } = await runOn(ports);
+
+    expect(error).toMatchObject({ message: 'The sandbox for agent "writer" has no fence.' });
+    expect(written.map((event) => event.type)).toEqual(["sandbox.started"]);
+    expect(ports.steps).toEqual(["bridge.open", "sandbox.open", "session.close", "bridge.close"]);
+  });
+
   it("starts nothing when the sandbox isn't ready, and never runs without it", async () => {
     const ports = harnessPorts();
     ports.sandbox.check = async () => ({

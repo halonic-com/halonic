@@ -2,6 +2,7 @@ import { type ChildProcess, type ChildProcessByStdio, spawn } from "node:child_p
 import type { Readable } from "node:stream";
 import { findProgram } from "@halonicjs/adapter-system-node";
 import type { ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
+import { stopOnLauncherExit } from "./launcher-exit.ts";
 
 const defaultTimeoutMs = 5_000;
 const maxOutputBytes = 4_096;
@@ -48,13 +49,6 @@ function childEnv(env: Readonly<Record<string, string | undefined>>): Record<str
   return result;
 }
 
-/** A probe being asked; `child` is set once its program has started. */
-interface LiveProbe {
-  child?: ChildProcess;
-}
-
-const liveProbes = new Set<LiveProbe>();
-
 /** On POSIX the program leads its own process group, so this also stops what it forked. */
 function killGroup(child: ChildProcess): void {
   try {
@@ -64,47 +58,6 @@ function killGroup(child: ChildProcess): void {
   } catch {
     // Already gone.
   }
-}
-
-function killLiveProbes(): void {
-  for (const probe of liveProbes) if (probe.child !== undefined) killGroup(probe.child);
-  liveProbes.clear();
-}
-
-const onSigint = () => onLauncherSignal("SIGINT");
-const onSigterm = () => onLauncherSignal("SIGTERM");
-
-function onLauncherSignal(signal: NodeJS.Signals): void {
-  killLiveProbes();
-  unwatchLauncher();
-  // With no other listener the signal would have ended the launcher, so let it. With one, that
-  // listener has this signal already and re-raising would show it a second Ctrl-C.
-  if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
-}
-
-function watchLauncher(): void {
-  process.on("exit", killLiveProbes);
-  process.on("SIGINT", onSigint);
-  process.on("SIGTERM", onSigterm);
-}
-
-function unwatchLauncher(): void {
-  process.off("exit", killLiveProbes);
-  process.off("SIGINT", onSigint);
-  process.off("SIGTERM", onSigterm);
-}
-
-/**
- * The program has its own process group, so Ctrl-C on the launcher no longer reaches it; stop it on the way out.
- * Call this before the program starts: a signal that came before the handlers would end the launcher and leave the program running.
- */
-function track(probe: LiveProbe): () => void {
-  if (liveProbes.size === 0) watchLauncher();
-  liveProbes.add(probe);
-  return () => {
-    liveProbes.delete(probe);
-    if (liveProbes.size === 0) unwatchLauncher();
-  };
 }
 
 function run(
@@ -120,15 +73,18 @@ function run(
       path,
       error: `${name} was found but couldn't be started.`,
     };
-    const probe: LiveProbe = {};
-    const untrack = track(probe);
+    // Set once the program has started.
+    let running: ChildProcess | null = null;
+    const untrack = stopOnLauncherExit(() => {
+      if (running !== null) killGroup(running);
+    });
     const child = start(path, args, env);
     if (child === null) {
       untrack();
       resolve(cantStart);
       return;
     }
-    probe.child = child;
+    running = child;
     const out = new Capture();
     const err = new Capture();
     let settled = false;

@@ -7,8 +7,10 @@
  * (docs/adr/2026-11-09-sandbox-check-reason-codes.md).
  * 4: {@link SandboxNetwork.bridge} may be `null`: a session with no network
  * but its listed sites (docs/adr/2026-11-10-sandbox-optional-bridge.md).
+ * 5: strength `none` and the fence proof `off`, for the launcher that starts
+ * programs without a fence (docs/adr/2026-11-11-sandbox-without-fence.md).
  */
-export const sandboxVersion = 4;
+export const sandboxVersion = 5;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -21,9 +23,10 @@ export type SandboxFileAccess = "shared" | "copied";
 /**
  * How strong the fence is. `os`: the operating system confines the program
  * (kernel escapes are not covered). `vm`: a micro-VM, with its own kernel.
- * `remote`: another machine.
+ * `remote`: another machine. `none`: no fence at all, only the launcher
+ * (`sandbox-host`), for runs the user confirmed without the sandbox.
  */
-export type SandboxStrength = "os" | "vm" | "remote";
+export type SandboxStrength = "os" | "vm" | "remote" | "none";
 
 /** What a sandbox adapter can do. */
 export interface SandboxCapabilities {
@@ -182,11 +185,15 @@ export type SandboxBlockListener = (block: SandboxBlock) => void;
  * `fenced`: the probes were refused, so programs run inside the fence.
  * `not-fenced`: a probe got through, or could not run; `reason` says which, in
  * one plain sentence, and {@link SandboxSession.start} throws.
+ * `off`: the adapter has no fence by design (strength `none`), so there is
+ * nothing to prove and programs start without one. Only the launcher reports
+ * it; a fenced adapter whose fence fails reports `not-fenced`, never `off`.
  * `stopped`: the session is closed.
  */
 export type SandboxFence =
   | { state: "fenced" }
   | { state: "not-fenced"; reason: string }
+  | { state: "off" }
   | { state: "stopped" };
 
 /** One run's sandbox: the programs it started, the fence they are in and the time limit. */
@@ -223,7 +230,8 @@ export interface Sandbox {
   /**
    * Whether it works on this machine, and if not, why and what is missing.
    * Never throws. When it isn't `ok`, Halonic doesn't run the step: it never
-   * falls back to running a program without the fence.
+   * falls back to running a program without the fence by itself. Only the
+   * user's saved yes for that reason sends a start to the launcher instead.
    */
   check(): Promise<SandboxCheck>;
   /** How files reach it and how strong the fence is. */

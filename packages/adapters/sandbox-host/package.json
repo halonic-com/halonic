@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-sandbox-host",
   "private": true,
   "type": "module",
-  "description": "The launcher: finds programs on this machine and asks them short questions (the ProgramProbe port) with Node, as the sandbox will start them.",
+  "description": "The launcher: finds programs on this machine and asks them short questions (the ProgramProbe port), and starts programs without a fence for runs the user confirmed (the Sandbox port), with Node.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@halonicjs/adapter-system-node": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {

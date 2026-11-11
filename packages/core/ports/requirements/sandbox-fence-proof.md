@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-958 design, section 4 and decision 8.4: a sandbox shows that it is really running before any untrusted code loads
 
-The `SandboxSession` shall report a fence proof, settled before `open` returns, that is `fenced`, `not-fenced` with a one-sentence reason, or `stopped` once the session is closed, and `start` shall throw while the proof is `not-fenced`.
+The `SandboxSession` shall report a fence proof, settled before `open` returns, that is `fenced`, `not-fenced` with a one-sentence reason, `off` for the launcher that has no fence by design (strength `none`), or `stopped` once the session is closed, and `start` shall throw while the proof is `not-fenced`.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The `SandboxSession` shall report a fence proof, settled before `open` returns, 
 - Given a fenced session,
   when it is closed,
   then its fence proof is `stopped`.
+- Given the launcher, whose strength is `none`,
+  when a session is opened,
+  then its fence proof is `off` and `start` starts the program without a fence.

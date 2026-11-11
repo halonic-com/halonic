@@ -13,6 +13,7 @@ import type {
   SandboxCheck,
   SandboxProfile,
   SandboxSession,
+  SandboxStrength,
   ScheduledTimer,
   Scheduler,
 } from "@halonicjs/ports";
@@ -55,6 +56,8 @@ export class FakeSandbox implements Sandbox {
   openError: Error | undefined;
   /** When set, `open` waits for it, as a sandbox that is slow to start would. */
   openHeld: Promise<void> | undefined;
+  /** `none` makes it the launcher, which has no fence. */
+  strength: SandboxStrength = "os";
   readonly profiles: SandboxProfile[] = [];
   /** Who hears the blocks of the sessions still open. */
   readonly #listeners = new Set<SandboxBlockListener>();
@@ -67,7 +70,7 @@ export class FakeSandbox implements Sandbox {
   }
 
   capabilities() {
-    return { files: "shared" as const, strength: "os" as const };
+    return { files: "shared" as const, strength: this.strength };
   }
 
   async open(profile: SandboxProfile): Promise<SandboxSession> {

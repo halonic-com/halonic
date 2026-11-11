@@ -4,7 +4,7 @@ Owner: mateo · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The launcher: finds programs on this machine and asks them short questions (the ProgramProbe port) with Node, as the sandbox will start them.
+The launcher: finds programs on this machine and asks them short questions (the ProgramProbe port), and starts programs without a fence for runs the user confirmed (the Sandbox port), with Node.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
