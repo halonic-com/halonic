@@ -20,6 +20,12 @@ const trustFolderName = "trust";
 /** The name of the folder in the profile that holds the sandbox's crash journals. */
 const sandboxJournalFolderName = "sandbox-journals";
 
+/** The name of the folder in the profile that holds the plugins, one folder each. */
+const pluginsFolderName = "plugins";
+
+/** The name of the folder in the profile that holds the plugins' records. */
+const pluginRecordsFolderName = "plugin-records";
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -140,4 +146,37 @@ function homeFolderOf(environment: ProfileEnvironment): string {
 function variableOf(environment: ProfileEnvironment, name: string): string | undefined {
   const value = environment.variables[name];
   return value === undefined || value === "" ? undefined : value;
+}
+
+/**
+ * The folder for the plugins, `plugins` in the profile folder: one folder
+ * each, named by the plugin's id. It is the person's own, never a
+ * workspace's, so a plugin is one thing for every workspace.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the plugins folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * pluginsFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/plugins"
+ */
+export function pluginsFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, pluginsFolderName);
+}
+
+/**
+ * The folder for the plugins' records, `plugin-records` in the profile
+ * folder: each plugin's setting values and where it was installed from. The
+ * CLI and the Studio both keep them there, so a plugin set up in one is set
+ * up in the other.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the records folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * pluginRecordsFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/plugin-records"
+ */
+export function pluginRecordsFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, pluginRecordsFolderName);
 }
