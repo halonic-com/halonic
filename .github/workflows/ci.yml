@@ -1346,7 +1346,9 @@ jobs:
           Start-Sleep -Seconds 5
           if (Get-Process Halonic -ErrorAction SilentlyContinue) { throw 'Halonic was opened by a silent install without /RELAUNCH' }
           # The agent host runs from the installed folder.
-          $v = & (Join-Path $dir 'halonic-agent-host.exe') --version
+          $profile = Join-Path $env:RUNNER_TEMP 'host-profile'
+          $v = & (Join-Path $dir 'halonic-agent-host.exe') --profile-folder $profile --version
+          if ($LASTEXITCODE -ne 0) { throw 'The installed agent host did not start' }
           Write-Output "agent host: $v"
           Add-Content $env:GITHUB_ENV "HALONIC_TEST_DIR=$dir"
       - name: Install again with /RELAUNCH, Halonic reopens
