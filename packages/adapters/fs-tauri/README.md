@@ -1,6 +1,6 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore`, `RunStore`, `BlobStore` and `DefinitionStore` ports for the Studio desktop app.
+The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore` and `DefinitionStore` ports for the Studio desktop app.
 
 - `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
@@ -13,6 +13,10 @@ The `TrustStore`, `RunStore`, `BlobStore` and `DefinitionStore` ports for the St
 - `TauriBlobStore`: every call goes to the shell's `blob_put` or `blob_get` command. The shell
   keeps the blobs in the profile's blob folder for the workspace, laid out as `FolderBlobStore` in
   `fs-node` lays it out, so a blob one of them stored is there for the other.
+- `TauriRecordStore`: every call goes to the shell's `record_append`, `record_read` or
+  `record_replace` command. The shell keeps the collections in the profile's record folder for the
+  workspace, laid out as `FileRecordStore` in `fs-node` lays it out, under the same write lock, so a
+  collection changed on desktop is there for `halonic serve`.
 - `TauriDefinitionStore`: every call goes to the shell's `fs_list`, `fs_read`, `fs_write` or
   `fs_remove` command, on the plain files of a folder the person opened, the files the CLI's
   `FolderDefinitionStore` reads and writes. `watch()` hears the shell's `fs_watch`.
@@ -125,6 +129,36 @@ The package exports `TauriBlobStore`, `blobCommands`, `blobRefusalKinds`, the ty
 and `BlobRefusalKind`, and `isBlobRefusal`. The tests run the blob-store contract against a fake
 shell; the layout, the private modes and the link refusals on real files are proved by the Rust
 tests of `crates/blob-store` (in `apps/studio/src-tauri`).
+
+## Collections
+
+`new TauriRecordStore(shell, workspace)` names the record folder by the workspace, a folder the
+person opened in the shell. The shell works out the folder as `recordsFolder` in
+`@halonicjs/profile` does, `<profile>/workspaces/<key>/records`, and keeps each collection's log as
+`FileRecordStore` does: named by the SHA-256 of the collection, one JSON change per line, every
+write under `write.lock`. The page names collections, never paths.
+
+Only the file work happens in the shell (`apps/studio/src-tauri/crates/record-store`). Writing
+changes as lines (`formatRecordLines`), reading them back (`parseRecordLines`) and folding a
+collection (`compactedChanges`) happen here, with the `RecordStore` port's rules that `fs-node` uses
+too. A compact reads the log with its version, folds it, and has the shell replace the log only while
+it still has that version. When a change came in between, it reads and folds again; after five tries
+it rejects with `conflict`.
+
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `broken_log`, `linked_log` | an `Error` with the shell's message, as `FileRecordStore` throws |
+| `folder_not_open` | a `KindedError` `denied` |
+| `invalid_lines` | a `KindedError` `internal` (the page writes the lines) |
+| `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
+
+An answer that isn't the command's also rejects with `unavailable`, without text.
+
+The package exports `TauriRecordStore`, `recordCommands`, `recordRefusalKinds`, the types
+`RecordRefusal` and `RecordRefusalKind`, and `isRecordRefusal`. The tests run the record-store
+contract against a fake shell; the files, the lock and the link refusals on real files are proved by
+the Rust tests of `crates/record-store`.
 
 ## Workspace files
 

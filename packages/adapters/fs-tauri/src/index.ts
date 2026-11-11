@@ -17,6 +17,14 @@ export {
   type TauriFileShell,
 } from "./file-commands.ts";
 export {
+  isRecordRefusal,
+  type RecordRefusal,
+  type RecordRefusalKind,
+  recordCommands,
+  recordRefusalKinds,
+} from "./record-commands.ts";
+export { TauriRecordStore } from "./record-store.ts";
+export {
   isRunRefusal,
   type RunRefusal,
   type RunRefusalKind,
