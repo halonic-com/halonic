@@ -2,10 +2,10 @@ import type { ViewRef } from "../view.ts";
 
 /**
  * Home's sections, in the only order they are shown (design direction 3, UX checklist 1.9): Get
- * set up while setup isn't done, Needs you, then Recent runs. A section whose feature hasn't
- * added its card isn't shown.
+ * set up while setup isn't done, Needs you, Recent runs, then the plugins' Cards (plugins D3,
+ * HAL-1801). A section whose feature hasn't added its card isn't shown.
  */
-export const homeSections = ["setup", "needs-you", "recent-runs"] as const;
+export const homeSections = ["setup", "needs-you", "recent-runs", "cards"] as const;
 
 /** One of Home's sections. */
 export type HomeSection = (typeof homeSections)[number];
@@ -18,6 +18,7 @@ export const homeSectionTitles: Readonly<Record<HomeSection, string>> = {
   setup: "Get set up",
   "needs-you": "Needs you",
   "recent-runs": "Recent runs",
+  cards: "Cards",
 };
 
 /**

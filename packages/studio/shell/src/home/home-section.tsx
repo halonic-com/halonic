@@ -1,6 +1,7 @@
 import { EmptyState, ListHeading } from "@halonicjs/studio-kit";
 import {
   type ComponentType,
+  createContext,
   lazy,
   type RefObject,
   Suspense,
@@ -32,10 +33,32 @@ export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
   setup: "Couldn't load setup",
   "needs-you": "Couldn't load what needs you",
   "recent-runs": "Couldn't load recent runs",
+  cards: "Couldn't load cards",
 };
 
 /** Get set up shows no skeleton: it appears only once it knows setup isn't done (PH 2.6). */
 const withoutSkeleton: ReadonlySet<HomeSection> = new Set<HomeSection>(["setup"]);
+
+/** Tells the section whether its card has nothing to show; see {@link HomeSectionEmpty}. */
+const HomeSectionEmptyReport = createContext<(empty: boolean) => void>(() => {});
+
+/**
+ * Rendered by a card's view when it has nothing to show, such as Cards while no plugin that's
+ * installed has a card (plugins design 8.2). The whole section, heading included, is hidden while
+ * it's rendered, so Home never shows a heading with nothing under it. The view stays mounted, so
+ * the section comes back as soon as the view renders something else.
+ *
+ * @example
+ * if (cards.length === 0) return <HomeSectionEmpty />;
+ */
+export function HomeSectionEmpty() {
+  const report = useContext(HomeSectionEmptyReport);
+  useLayoutEffect(() => {
+    report(true);
+    return () => report(false);
+  }, [report]);
+  return null;
+}
 
 /** Props for {@link HomeSectionRegion}. */
 export interface HomeSectionRegionProps {
@@ -67,9 +90,10 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
     setFocusPending(true);
   };
   const focusMoved = useCallback(() => setFocusPending(false), []);
+  const [empty, setEmpty] = useState(false);
 
   return (
-    <section aria-labelledby={headingId}>
+    <section aria-labelledby={headingId} hidden={empty}>
       <ListHeading id={headingId} headingRef={headingRef} name={homeSectionTitles[card.id]} />
       <ViewErrorBoundary
         // A new attempt starts a new boundary, which forgets the error and mounts the card again.
@@ -84,13 +108,23 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
           />
         )}
       >
-        <Suspense fallback={withoutSkeleton.has(card.id) ? null : <SectionSkeleton />}>
-          <CardView context={context} />
+        <Suspense fallback={skeletonFor(card.id)}>
+          <HomeSectionEmptyReport value={setEmpty}>
+            <CardView context={context} />
+          </HomeSectionEmptyReport>
           {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
         </Suspense>
       </ViewErrorBoundary>
     </section>
   );
+}
+
+/** What a section shows while its card loads: none for Get set up, cards for Cards, else rows. */
+function skeletonFor(section: HomeSection) {
+  if (withoutSkeleton.has(section)) {
+    return null;
+  }
+  return <SectionSkeleton shape={section === "cards" ? "cards" : "rows"} />;
 }
 
 /** The card's view, imported the first time the section shows, and again for each Try again. */
