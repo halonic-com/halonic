@@ -19,8 +19,8 @@ export interface DialogConfirm {
   readonly unavailable?: ButtonUnavailable;
 }
 
-/** The props of `Dialog`. */
-export interface DialogProps {
+/** What every Dialog takes, with a footer or without one. */
+interface DialogCommonProps {
   /** "Delete agent?", "New agent". The dialog's name. */
   readonly title: string;
   readonly size?: DialogSize;
@@ -28,6 +28,26 @@ export interface DialogProps {
   readonly height?: number;
   /** No body padding, for a body that lays out and scrolls its own columns (Settings). */
   readonly flush?: boolean;
+  /**
+   * Cancel, the ✕, Escape and a click on the overlay. The screen unmounts the Dialog. The
+   * browser can force a close while `busy`; this still runs then, and the request's result goes
+   * to a toast.
+   */
+  readonly onCancel: () => void;
+  /**
+   * The ✕'s name. Default "Close" and the title without a trailing "?". A title that starts
+   * with "Close" passes one: "Keep Acme open".
+   */
+  readonly closeLabel?: string;
+  /** A failed request's message, read through the alert slot at the end of the body. */
+  readonly error?: string;
+  /** Where focus goes on close when the opener has gone, such as a deleted row's next row (23 A2). */
+  readonly returnFocus?: () => HTMLElement | null;
+  readonly children: ReactNode;
+}
+
+/** A decision or a form: Cancel and the confirming button in a footer. */
+export interface ConfirmingDialogProps extends DialogCommonProps {
   /**
    * The body is a form: the Dialog wraps it in a `<form>`, the confirming button submits it (so
    * Enter in a one-line field does too), and focus starts in the first field.
@@ -38,24 +58,28 @@ export interface DialogProps {
   readonly onConfirm: () => void;
   /** "Cancel", or what cancelling does: "Not now". */
   readonly cancelLabel?: string;
-  /**
-   * Cancel, the ✕, Escape and a click on the overlay. The screen unmounts the Dialog. The
-   * browser can force a close while `busy`; this still runs then, and the request's result goes
-   * to a toast.
-   */
-  readonly onCancel: () => void;
   /** Default `true`. `false` for a decision whose cancel button says what it does. */
   readonly closeButton?: boolean;
-  /**
-   * The ✕'s name. Default "Close" and the title without a trailing "?". A title that starts
-   * with "Close" passes one: "Keep Acme open".
-   */
-  readonly closeLabel?: string;
   /** While the request runs: the confirming button is busy, Escape and the overlay do nothing. */
   readonly busy?: boolean;
-  /** A failed request's message, read through the alert slot at the end of the body. */
-  readonly error?: string;
-  /** Where focus goes on close when the opener has gone, such as a deleted row's next row (23 A2). */
-  readonly returnFocus?: () => HTMLElement | null;
-  readonly children: ReactNode;
+  readonly initialFocus?: undefined;
 }
+
+/**
+ * A place where every change saves by itself, such as Settings (HAL-1102): no footer, so
+ * nothing to confirm, and the ✕ is always there, on a phone too, as the one way out besides
+ * Escape.
+ */
+export interface FooterlessDialogProps extends DialogCommonProps {
+  readonly form?: undefined;
+  readonly confirm?: undefined;
+  readonly onConfirm?: undefined;
+  readonly cancelLabel?: undefined;
+  readonly closeButton?: undefined;
+  readonly busy?: undefined;
+  /** Where focus starts: Settings' current section row. Default the first field, else the ✕. */
+  readonly initialFocus?: () => HTMLElement | null;
+}
+
+/** The props of `Dialog`: with a confirming button, or without a footer at all. */
+export type DialogProps = ConfirmingDialogProps | FooterlessDialogProps;

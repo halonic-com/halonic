@@ -1,14 +1,15 @@
 import type { RefObject } from "react";
 import { Button } from "../button/button.tsx";
 import { CloseIcon } from "../icons/close-icon.tsx";
-import type { DialogProps } from "./dialog-props.ts";
+import type { ConfirmingDialogProps, DialogProps } from "./dialog-props.ts";
 
 export interface DialogHeaderProps {
   readonly props: DialogProps;
   readonly titleId: string;
   readonly confirmId: string;
-  /** No ✕ on a phone: Cancel is right there. */
+  /** No ✕ on a phone when Cancel is right there; a footerless Dialog keeps it. */
   readonly closeButton: boolean;
+  readonly closeButtonRef: RefObject<HTMLButtonElement | null>;
   readonly onClose: () => void;
 }
 
@@ -18,6 +19,7 @@ export function DialogHeader({
   titleId,
   confirmId,
   closeButton,
+  closeButtonRef,
   onClose,
 }: DialogHeaderProps) {
   const { busy = false } = props;
@@ -31,6 +33,7 @@ export function DialogHeader({
       </h2>
       {showClose ? (
         <Button
+          ref={closeButtonRef}
           variant="ghost"
           size="sm"
           icon={<CloseIcon />}
@@ -44,7 +47,7 @@ export function DialogHeader({
 }
 
 export interface DialogFooterProps {
-  readonly props: DialogProps;
+  readonly props: ConfirmingDialogProps;
   readonly phone: boolean;
   readonly confirmId: string;
   readonly cancelButton: RefObject<HTMLButtonElement | null>;

@@ -53,7 +53,13 @@ export {
 } from "./copy-button/clipboard.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export { Dialog } from "./dialog/dialog.tsx";
-export type { DialogConfirm, DialogProps, DialogSize } from "./dialog/dialog-props.ts";
+export type {
+  ConfirmingDialogProps,
+  DialogConfirm,
+  DialogProps,
+  DialogSize,
+  FooterlessDialogProps,
+} from "./dialog/dialog-props.ts";
 export {
   type ModalLiveRegion,
   type ModalLiveRegions,

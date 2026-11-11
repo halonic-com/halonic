@@ -15,7 +15,7 @@ import {
 } from "../test/dialogs.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { Dialog } from "./dialog.tsx";
-import type { DialogProps } from "./dialog-props.ts";
+import type { ConfirmingDialogProps } from "./dialog-props.ts";
 import { useModalPolite } from "./modal-regions.tsx";
 
 beforeEach(() => {
@@ -27,7 +27,7 @@ afterEach(() => {
   restoreDialogPage();
 });
 
-function onPhone(overrides: Partial<DialogProps> = {}) {
+function onPhone(overrides: Partial<ConfirmingDialogProps> = {}) {
   return render(
     <PresentationProvider presentation="phone">{newAgentDialog(overrides)}</PresentationProvider>,
   );
