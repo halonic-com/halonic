@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useReducer, useState, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
-import { type PlaceContribution, showPlace } from "../points/frame.ts";
+import type { PlaceContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { PlacesList } from "../sidebar/places-list.tsx";
@@ -10,6 +10,7 @@ import { SIDEBAR_DEFAULT_WIDTH } from "../sidebar/sidebar-width.ts";
 import { WorkspaceSwitcher, type WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import type { TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { shownPlaces } from "./shown-places.ts";
 
 /** Props for {@link StudioSidebar}. */
 export interface StudioSidebarProps {
@@ -52,9 +53,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
     () => tabs.state,
   );
   useSignalChanges(props.places, contextFor);
-  const places = props.places.map((place) =>
-    showPlace(place.id, place.signal?.(contextFor(place.featureId))),
-  );
+  const places = shownPlaces(props.places, contextFor);
 
   return (
     <>

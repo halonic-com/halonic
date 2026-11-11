@@ -164,7 +164,12 @@ export {
   type BottomNavigationPlace,
   type BottomNavigationProps,
 } from "./phone/bottom-navigation.tsx";
-export { MorePage, type MorePageProps, moreRows } from "./phone/more-page.tsx";
+export {
+  MorePage,
+  type MorePageProps,
+  type MorePageSwitcher,
+  moreRows,
+} from "./phone/more-page.tsx";
 export { type PhoneBackResult, pressPhoneBack, usePhoneBackButton } from "./phone/phone-back.ts";
 export {
   PhoneSearchButton,
@@ -340,7 +345,14 @@ export {
   type MountedStudioWindow,
   mountStudioWindow,
 } from "./window/mount-studio-window.tsx";
+export { shownPlaces } from "./window/shown-places.ts";
 export { type PlaceViewProps, StudioPage, type StudioPageProps } from "./window/studio-page.tsx";
+export {
+  StudioPhonePage,
+  type StudioPhonePageProps,
+  StudioPhoneTopBar,
+  type StudioPhoneTopBarProps,
+} from "./window/studio-phone.tsx";
 export { StudioSidebar, type StudioSidebarProps } from "./window/studio-sidebar.tsx";
 export { StudioWindow, type StudioWindowProps } from "./window/studio-window.tsx";
 export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-workspace.ts";

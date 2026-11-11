@@ -13,10 +13,11 @@ import { phonePlaceOf } from "./place-stacks.ts";
 
 /** Props for {@link MorePage}. */
 export interface MorePageProps {
-  /** The open workspace, as the switcher row shows it. */
-  readonly workspace: SwitcherWorkspace;
-  /** The switcher row's tap: opens the workspace picker as a picker sheet (T3). */
-  readonly onChangeWorkspace: () => void;
+  /**
+   * The workspace switcher row, once the app has a workspace picker (T3). Without it, no row
+   * shows, so the page never has a switcher that does nothing.
+   */
+  readonly switcher?: MorePageSwitcher | undefined;
   /**
    * The places the features added, from `showPlace`, as the sidebar gets them. Only the ones that
    * live under More are listed; Home, Inbox and Runs have the bottom navigation.
@@ -35,7 +36,7 @@ export interface MorePageProps {
  * The phone's More page (component specs 15.2, VK T2-F11): a place, so the bottom navigation shows
  * with More highlighted. It holds what doesn't fit in the bottom navigation:
  *
- * - **The workspace switcher** as the first row, 56px: the letter mark, the workspace's name over
+ * - **The workspace switcher** as the first row, once the app has a workspace picker, 56px: the letter mark, the workspace's name over
  *   its folder, and a chevron. It is one button, named "Workspace: Acme. Change workspace".
  * - **The header badge**, when there is one, on its own 48px line under it, so the two are sibling
  *   targets and never one inside the other.
@@ -49,20 +50,19 @@ export interface MorePageProps {
  *
  * @example
  * <MorePage
- *   workspace={{ name: "Acme", folder: "~/Work/acme" }}
- *   onChangeWorkspace={openWorkspacePicker}
+ *   switcher={{ workspace: { name: "Acme", folder: "~/Work/acme" }, onChange: openWorkspacePicker }}
  *   places={shownPlaces}
  *   onOpen={(place) => setStacks(openPhonePage(stacks, { key: place, title: placeNames[place].label }, { list: true }))}
  * />
  */
-export function MorePage({ workspace, onChangeWorkspace, places, onOpen, badge }: MorePageProps) {
+export function MorePage({ switcher, places, onOpen, badge }: MorePageProps) {
   const rows = moreRows(places);
   return (
     <div className="flex flex-col">
       <h1 tabIndex={-1} className="sr-only">
         More
       </h1>
-      <WorkspaceRow workspace={workspace} onChange={onChangeWorkspace} />
+      {switcher === undefined ? null : <WorkspaceRow {...switcher} />}
       {badge === undefined ? null : (
         <div className="mt-2 flex min-h-12 items-center ps-15">{badge}</div>
       )}
@@ -106,13 +106,16 @@ function RowEnd({ place }: { readonly place: ShownPlace }) {
   );
 }
 
-interface WorkspaceRowProps {
+/** The More page's workspace switcher row: the workspace it shows, and what its tap does. */
+export interface MorePageSwitcher {
+  /** The open workspace, as the row shows it. */
   readonly workspace: SwitcherWorkspace;
+  /** The row's tap: opens the workspace picker as a picker sheet (T3). */
   readonly onChange: () => void;
 }
 
 /** The switcher row: 56px, padding 0 16px, the same mark as the sidebar's switcher. */
-function WorkspaceRow({ workspace, onChange }: WorkspaceRowProps) {
+function WorkspaceRow({ workspace, onChange }: MorePageSwitcher) {
   return (
     <button
       type="button"

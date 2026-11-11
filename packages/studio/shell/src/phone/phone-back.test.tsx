@@ -44,8 +44,10 @@ function PhoneStudio({ closeStack }: { readonly closeStack: CloseStack }) {
       <main>
         {places.page.location.key === "more" ? (
           <MorePage
-            workspace={{ name: "Acme", folder: "~/Work/acme" }}
-            onChangeWorkspace={() => undefined}
+            switcher={{
+              workspace: { name: "Acme", folder: "~/Work/acme" },
+              onChange: () => undefined,
+            }}
             places={shownPlaces}
             onOpen={places.openPlace}
           />

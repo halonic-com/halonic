@@ -765,7 +765,8 @@ next, or the same one when nothing changed:
 ### The More page
 
 `MorePage` (`shell.more-page`, component specs 15.2) is the page at the top of More. It shows the
-workspace switcher row ("Workspace: Acme. Change workspace", which opens T3's picker sheet), the
+workspace switcher row ("Workspace: Acme. Change workspace", which opens T3's picker sheet) once
+the app passes one, the
 header badge on its own line when there is one, a flush List of the places that live under More,
 in the sidebar's order and only where a feature added them, and the line "Editing workflows is
 easier on a computer.". Changes shows its count in place of the chevron. The top bar says "More",
@@ -773,8 +774,7 @@ so the page's `h1` is for screen readers only.
 
 ```tsx
 <MorePage
-  workspace={{ name: "Acme", folder: "~/Work/acme" }}
-  onChangeWorkspace={openWorkspacePicker}
+  switcher={{ workspace: { name: "Acme", folder: "~/Work/acme" }, onChange: openWorkspacePicker }}
   places={shownPlaces}
   onOpen={(place) =>
     setStacks(openPhonePage(stacks, { key: place, title: placeNames[place].label }, { list: true }))
@@ -928,8 +928,16 @@ there (`shell.view-loading`).
 a workspace menu), `TabPages` and `StatusBarItems`, and the Ctrl K palette, opened from the Search
 box, Mod K, **+** and Ctrl T. A tab on Home shows `HomePage`, a tab on a search the `SearchPage`,
 and a tab on a place a feature added that place's view, which gets `PlaceViewProps`: the context of
-the feature that added it. Items open once a feature adds an item kind (T6, T7). The phone's bars
-come in a later part, so on a phone it shows only the page.
+the feature that added it. Items open once a feature adds an item kind (T6, T7).
+
+On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
+(the page's title, Back under a place's top, and **Search** at a place's top, opening the Search
+sheet), `StudioPhonePage` (Home or a place's view, as on the desktop, or the `MorePage` at the top
+of More, with its switcher row once the app passes `phoneSwitcher`), and the `BottomNavigation`.
+Android's back goes through `usePhoneBackButton`. The phone keeps its own places next to the
+desktop's tabs, so a window that crosses the phone width comes back to where each layout was. Ctrl
+K's palette is the desktop's; a phone searches in its Search sheet. `shownPlaces` reads the places
+with their signals for the sidebar, the bottom navigation and the More page alike.
 
 `StudioWorkspace` is the window's state for one workspace: its `tabs`, `recent` (Ctrl K's Recent),
 `saving` and `services`. Create one when the workspace opens and `dispose()` it when it closes.

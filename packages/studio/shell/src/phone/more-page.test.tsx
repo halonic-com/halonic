@@ -22,15 +22,18 @@ const places = [
   showPlace("changes", { mark: "count", value: 4, spoken: "4 to review" }),
 ];
 
-function renderMore(shown: readonly ShownPlace[] = places, badge?: string) {
+function renderMore(shown: readonly ShownPlace[] = places, badge?: string, withSwitcher = true) {
   const opened: SidebarPlace[] = [];
   let workspacePicks = 0;
+  const switcher = {
+    workspace: acme,
+    onChange: () => {
+      workspacePicks += 1;
+    },
+  };
   const container = render(
     <MorePage
-      workspace={acme}
-      onChangeWorkspace={() => {
-        workspacePicks += 1;
-      }}
+      switcher={withSwitcher ? switcher : undefined}
       places={shown}
       onOpen={(place) => opened.push(place)}
       badge={badge === undefined ? undefined : <button type="button">{badge}</button>}
@@ -99,5 +102,13 @@ verifies("shell.more-page", () => {
     expect(container.querySelector('[role="grid"]')).toBeNull();
     expect(container.textContent).toContain("Editing workflows is easier on a computer.");
     expect(container.querySelector("h1")?.textContent).toBe("More");
+  });
+
+  it("shows no switcher row until the app has a workspace picker", () => {
+    const { container } = renderMore(places, undefined, false);
+
+    expect(container.querySelector('button[aria-label^="Workspace:"]')).toBeNull();
+    expect(container.querySelector("h1")?.textContent).toBe("More");
+    expect(container.textContent).toContain("Editing workflows is easier on a computer.");
   });
 });
