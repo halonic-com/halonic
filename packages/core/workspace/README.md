@@ -163,6 +163,19 @@ returns `{ kind: "not_empty" }` otherwise (`CopyWorkspaceError`), the copy gets 
 new workspace when the source has none, `workspace.yaml` is written last, and a failed write removes
 what was written. A success is a `CopiedWorkspace`: the target's `location` and the `files` written.
 
+`planHubExtract(workspace, hubId)` plans a new workspace that holds one hub alone, as data
+(`ExtractPlan`): the hub's folder; `models.yaml`, the providers and the runtimes; the shared items the hub
+lists in `uses` or its agents name (a skill's whole folder, a `files` knowledge source's documents, the
+collections they refer to) and the workspace-level routines that run in the hub; the `.gitignore`; and the
+hub's id, name and description for `workspace.yaml`. `deployments.yaml` and the other hubs stay behind. It
+says `unknown_hub`, with the hubs there are, or `has_errors`, with how many, and plans nothing
+(`ExtractError`). `extractHub(workspace, source, target, hubId)` writes the plan into an empty
+`DefinitionStore` through `copyWorkspace`'s rules, with the original `workspace.yaml` given the hub's id,
+name and description and its comments and other settings kept, and never changes the original. With
+`{ dryRun: true }` it writes nothing and gives the files it would write; a target that lists a file gets
+`{ kind: "not_empty" }` (`ExtractHubError`). A success is an `ExtractedHub`: the plan, the target's
+`location` and the `files` written (requirement `workspace.extract`).
+
 Checking a workspace needs no service of its own: `loadWorkspace` gives every issue with its
 severity, file and line, and the caller counts the errors.
 
@@ -170,7 +183,9 @@ The types in the API go with these functions: `LoadedWorkspace`, `LoadedFile`, `
 `WorkspaceIssue` for `loadWorkspace` and `filesOf`; `PlaceMatch` for `placeOf`; `ModelTarget` and
 `ResolvedModelTarget` for model aliases; `HubDefinitions` for `definitionsOf`; `RunStartDefinitions` for `runDefinitionsOf`;
 `InitWorkspaceOptions`, `InitializedWorkspace` and `InitWorkspaceError` for `initWorkspace`;
-`CopiedWorkspace` and `CopyWorkspaceError` for `copyWorkspace`; `VersionReader` for `VersionSource`;
+`CopiedWorkspace` and `CopyWorkspaceError` for `copyWorkspace`; `ExtractPlan`, `ExtractFile`,
+`ExtractPart`, `ExtractSettings` and `ExtractError` for `planHubExtract`; `ExtractedHub`, `ExtractHubOptions` and
+`ExtractHubError` for `extractHub`; `VersionReader` for `VersionSource`;
 and the trust types listed below (`TrustContent`, `TrustContentInput`, `ConnectorTrustContent`,
 `RefusedConnector`, `AgentTrustContent`, `IntegrationTrustContent`, `LocalIntegrationInput`,
 `TrustSkipInput`, `TrustUrl`, `TrustChanges`, `ItemChanges`, `ChangedItem`, `ChangedConnector`,

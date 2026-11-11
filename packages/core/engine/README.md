@@ -74,8 +74,15 @@ an agent gets no `delegate_` tools, so agents that delegate to each other stop t
 instructions get `delegationHint`, since a subagent never sees the conversation. In a run, the
 local executor runs the subagent's turn on its own model and tools. Like a `parallel` branch, a
 subagent is offered only the connector tools its own file lists that read and wait for no one (requirement
-`engine.subagent-connector-reads`). It gets none when the executor has no connector calls. It refuses a
-subagent's call that needs a person's OK, because a subagent can't pause the run yet (HAL-3361).
+`engine.subagent-connector-reads`). It gets none when the executor has no connector calls. A subagent
+that needs a person's OK, or a connector call the engine makes, stops the run's turn where it stopped
+(requirement `engine.turn-subagent-stop`): the turn's stop names the subagent's tool and holds a `resume`
+whose `inner` nests the subagent's own `resume`, as deep as the delegation, and the `approval.requested` or
+`effect.requested` event names the innermost subagent in `subagent`. No `agent.finished` is logged for a
+subagent that stopped. When the person answers or the engine's call returns, the turn goes on in the
+innermost subagent, and each answer answers the `delegate_` call one level up, with no second
+`agent.started` (requirement `engine.turn-subagent-go-on`). A subagent that stops again stops the
+turn again at the same call. A chat turn can't wait, so a subagent's stop fails it.
 
 A run's agent gets the tools its kept file grants after its memory tools (requirement
 `engine.run-agent-tools`): `list_runs` and `read_run` with `runLogs: true`, the records tools of
@@ -224,7 +231,10 @@ an event, a timer or a child run) stay as they are. Status and last event come f
 the log; if the log moves on while the engine ends a run, something still writes to it, so the
 engine leaves it as it is. It returns the ids of the runs it ended (requirement
 `engine.end-interrupted-runs`). It assumes one engine per run store, and waking a parent that waits
-on a run it ended is the run kernel's job (HAL-186).
+on a run it ended is the run kernel's job (HAL-186). The local executor's start-up sweep then ends the
+proposal folder of each top-level run it ended, after it has set the timers that tell the parents, so a
+folder adapter that throws can't keep a waiting parent from hearing that its child was interrupted
+(requirement `engine.local-child-runs`).
 
 ## Harness runs
 
