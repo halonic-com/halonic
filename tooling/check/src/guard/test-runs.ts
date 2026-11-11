@@ -19,7 +19,8 @@ const ranStatuses = ["passed", "failed"];
  *   measured at run time, so a shared helper, a fixture or the code under
  *   test can weaken a test without editing it. A drop in a package nothing
  *   changed in is run-to-run noise (polling, tests that skip in some
- *   environments).
+ *   environments). So is a drop for a requirement whose tests retry with
+ *   `vi.waitFor`, unless the pull request edits one of its test files.
  * Both checkouts' tests must have run first. A missing or unreadable result
  * file is a finding too, so the guard fails closed.
  */
@@ -45,7 +46,8 @@ export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
   ).filter((finding) => head.files.includes(finding.file));
   const fileOf = requirementFiles(before);
   const touched = touchedRequirements(checkouts, [...before, ...after]);
-  const edited = (id: string): boolean => touched.has(id);
+  const retrying = retryingRequirements(checkouts, [...before, ...after]);
+  const edited = (id: string): boolean => touched.has(id) && !retrying.has(id);
   findings.push(
     ...fewerInFile,
     ...compareCounts(
@@ -189,4 +191,35 @@ function touchedRequirements(
     }
   }
   return touched;
+}
+
+/** A call of `vi.waitFor`, which runs its `expect` calls again until they pass. */
+const retryCall = /\bvi\.waitFor\s*\(/;
+
+/**
+ * HAL-6369: the requirements whose expect count depends on the runner's
+ * speed: a test file of theirs calls `vi.waitFor`, and the pull request
+ * edits none of their test files. A timing change elsewhere in the package
+ * can lower their count by chance; editing a test file still counts.
+ */
+function retryingRequirements(
+  { base, head }: Checkouts,
+  tests: readonly TestOutcome[],
+): ReadonlySet<string> {
+  const filesOf = new Map<string, Set<string>>();
+  for (const test of tests) {
+    if (test.requirement !== undefined) {
+      filesOf.set(test.requirement, (filesOf.get(test.requirement) ?? new Set()).add(test.file));
+    }
+  }
+  const retries = (file: string): boolean =>
+    [base, head].some((side) => side.files.includes(file) && retryCall.test(side.read(file)));
+  const retrying = new Set<string>();
+  for (const [id, files] of filesOf) {
+    const all = [...files];
+    if (all.some(retries) && all.every((file) => changeOf(file, base, head) === undefined)) {
+      retrying.add(id);
+    }
+  }
+  return retrying;
 }

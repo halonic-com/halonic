@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { checkTestRuns } from "../guard/test-runs.ts";
 import {
   noteCovering,
@@ -126,6 +126,33 @@ verifies("check.guard-fewer-assertions", () => {
 
   test("passes a lower expect count in a package nothing changed in: that is run-to-run noise", async () => {
     expect(await errorsFor(two, fewer)).toEqual([]);
+  });
+
+  describe("tests that retry with vi.waitFor", () => {
+    const helper = "src/assert-timer.ts";
+    const retrying = (files: Record<string, string>): Record<string, string> => ({
+      ...files,
+      [testFile]: `${testSource}await vi.waitFor(() => expect(fired).toBe(true));\n`,
+    });
+
+    test("passes a lower count when only other files in the package changed", async () => {
+      const errors = await errorsFor(
+        retrying({ ...two, [helper]: "export const assertTimer = 2;\n" }),
+        retrying({ ...fewer, [helper]: "export const assertTimer = 1;\n" }),
+      );
+      expect(errors).toEqual([]);
+    });
+
+    test("fails a lower count when the test file changed", async () => {
+      const head = retrying(fewer);
+      const errors = await errorsFor(retrying(two), {
+        ...head,
+        [testFile]: `${head[testFile]}// edited\n`,
+      });
+      expect(errors).toEqual([
+        `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
+      ]);
+    });
   });
 
   test("passes the same or more expect calls, or a note that covers the requirement", async () => {
