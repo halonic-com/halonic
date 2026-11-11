@@ -47,7 +47,10 @@ verifies("app.run-proposal-accept", () => {
       if (undo === null) {
         throw new Error("Accept wrote nothing.");
       }
-      expect(await setup.proposals.restore(undo, "before")).toEqual({ changedOnDisk: [] });
+      expect(await setup.proposals.restore(undo, "before")).toEqual({
+        changedOnDisk: [],
+        refused: [],
+      });
       expect(setup.store.files.get(clerkPath)).toBe(clerk);
       expect((await decisionsOf(setup))?.[clerkPath]).toBe("undecided");
       await setup.proposals.restore(undo, "after");
@@ -125,7 +128,10 @@ verifies("app.run-proposal-accept", () => {
         throw new Error("Accept wrote nothing.");
       }
       setup.store.files.set(clerkPath, "name: Clerk\nmodel: mine\n");
-      expect(await setup.proposals.restore(undo, "before")).toEqual({ changedOnDisk: [clerkPath] });
+      expect(await setup.proposals.restore(undo, "before")).toEqual({
+        changedOnDisk: [clerkPath],
+        refused: [],
+      });
       expect(setup.store.files.get(clerkPath)).toBe("name: Clerk\nmodel: mine\n");
       expect((await decisionsOf(setup))?.[clerkPath]).toBe("undecided");
     });
@@ -202,6 +208,40 @@ verifies("app.run-proposal-trust", () => {
     ])("tells why %s can't be written", (path, why) => {
       expect(refusalOf(path)).toBe(why);
     });
+  });
+
+  describe("undoing or redoing a step Accept didn't build", () => {
+    it.each(["before", "after"] as const)(
+      "refuses a crafted step's .git hook and another run's record, to %s",
+      async (to) => {
+        const setup = await setUpRun();
+        const hook = ".git/hooks/post-checkout";
+        const otherRecord = ".halonic/proposals/7KQ2MX.json";
+        // Each entry goes from no file to a planted one, whichever way it is restored.
+        const planted = (path: string, text: string) =>
+          to === "after"
+            ? { path, before: null, after: text }
+            : { path, before: text, after: null };
+        const result = await setup.proposals.restore(
+          {
+            source: { kind: "run-proposal", runId: "01JD8Q" },
+            files: [planted(hook, "#!/bin/sh\necho planted\n"), planted(otherRecord, "{}")],
+          },
+          to,
+        );
+        expect(result).toEqual({
+          changedOnDisk: [],
+          refused: expect.arrayContaining([
+            { path: hook, why: "under-git" },
+            { path: otherRecord, why: "under-halonic" },
+          ]),
+        });
+        expect(result.refused).toHaveLength(2);
+        expect(setup.store.files.has(hook)).toBe(false);
+        expect(setup.store.files.has(otherRecord)).toBe(false);
+        expect(setup.records.files.size).toBe(1);
+      },
+    );
   });
 });
 

@@ -100,4 +100,6 @@ export type ProposalTarget = { readonly file: string } | "all";
 export interface RestoreResult {
   /** Entries left alone because they changed since the step, by path. */
   readonly changedOnDisk: readonly string[];
+  /** Entries that may never be written, as for Accept; nothing of them was written. */
+  readonly refused: readonly { readonly path: string; readonly why: RefusalReason }[];
 }

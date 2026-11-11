@@ -2,7 +2,7 @@
 // Reject, Compare, and Undo and Redo of those decisions. Internal to
 // `core/app`; `RunProposals` hands its calls here.
 
-import { acceptFiles, type DecideContext, restoreFile } from "./run-proposal-decide.ts";
+import { acceptFiles, type DecideContext, refusalOf, restoreFile } from "./run-proposal-decide.ts";
 import {
   type ProposedRecord,
   recordPathOf,
@@ -15,8 +15,10 @@ import type {
   Decision,
   ProposalTarget,
   ProposedFile,
+  RefusalReason,
   RejectResult,
   RestoreResult,
+  UndoFileWrite,
   UndoStep,
 } from "./run-proposal-types.ts";
 
@@ -83,23 +85,42 @@ export class ProposalDecisions {
       return Promise.reject(new Error("Only a run proposal's steps can be restored here."));
     }
     const { runId } = step.source;
-    const recordContext: DecideContext = { ...this.context, store: this.records.store };
     return this.records.inTurn(runId, async () => {
       const entries = to === "before" ? [...step.files].reverse() : step.files;
       const changedOnDisk: string[] = [];
+      const refusedEntries: { path: string; why: RefusalReason }[] = [];
       for (const entry of entries) {
-        // The decisions record is named in the step as Elena's history
-        // shows it, but lives in the records' own store.
-        const restored =
-          entry.path === decisionsPathOf(runId)
-            ? await restoreFile(recordContext, { ...entry, path: recordPathOf(runId) }, to)
-            : await restoreFile(this.context, entry, to);
-        if (!restored) {
+        const outcome = await this.restoreEntry(runId, entry, to);
+        if (outcome === "changed-on-disk") {
           changedOnDisk.push(entry.path);
+        } else if (outcome !== "restored") {
+          refusedEntries.push({ path: entry.path, why: outcome.refused });
         }
       }
-      return { changedOnDisk };
+      return { changedOnDisk, refused: refusedEntries };
     });
+  }
+
+  /** Puts one entry of a run's step back, in the run's turn. */
+  private async restoreEntry(
+    runId: string,
+    entry: UndoFileWrite,
+    to: "before" | "after",
+  ): Promise<"restored" | "changed-on-disk" | { readonly refused: RefusalReason }> {
+    if (entry.path === decisionsPathOf(runId)) {
+      // The decisions record is named in the step as Elena's history
+      // shows it, but lives in the records' own store.
+      const recordContext: DecideContext = { ...this.context, store: this.records.store };
+      const recordEntry = { ...entry, path: recordPathOf(runId) };
+      return (await restoreFile(recordContext, recordEntry, to)) ? "restored" : "changed-on-disk";
+    }
+    // A step comes back from the history, which Accept didn't build:
+    // trust rule A holds for each of its files as it does for Accept.
+    const why = refusalOf(entry.path);
+    if (why !== null) {
+      return { refused: why };
+    }
+    return (await restoreFile(this.context, entry, to)) ? "restored" : "changed-on-disk";
   }
 
   /** @throws when the proposal's ref is gone */

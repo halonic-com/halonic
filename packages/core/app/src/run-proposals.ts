@@ -192,14 +192,6 @@ export class RunProposals {
   }
 
   /**
-   * Removes what runs left that the engine has ended, from a crash or an
-   * `end` that couldn't finish: their worktrees, records and proposal refs,
-   * and every worktree no open run records. The worktrees of `openRuns`
-   * stay for `folderOf`. Call it at start, before any run can open a
-   * worktree.
-   *
-   * @param openRuns - the runs the engine hasn't ended: those waiting for a
-   * person, and those it will end as interrupted
    * Accepts what the target covers (`app.run-proposal-accept`,
    * `app.run-proposal-trust`). Each undecided file is written with its own
    * `expected`, only while the saved file is still the run's base; one the
@@ -209,7 +201,8 @@ export class RunProposals {
    * applicable. Accepting starts nothing: no run, routine, hook or tool.
    *
    * @returns what was written, with the decisions record, as one undo
-   *   step; `undo` is `null` when nothing was written
+   *   step; `undo` is `null` when no file was written, even if decisions
+   *   changed (a refused file, or one already as the run left it)
    * @throws when the run has no proposal, or its ref is gone
    */
   accept(runId: string, target: ProposalTarget): Promise<AcceptResult> {
@@ -242,15 +235,22 @@ export class RunProposals {
    * {@link reject} back as they were `before` it (Undo) or `after` it
    * (Redo). Each entry is written only while it is still as the step left
    * it, so an edit made since is never lost: it is listed in `changedOnDisk`.
+   * Trust rule A holds as for Accept (`app.run-proposal-trust`): an entry
+   * Accept could never write is listed under `refused` and left alone.
    */
   restore(step: UndoStep, to: "before" | "after"): Promise<RestoreResult> {
     return this.decisions.restore(step, to);
   }
 
   /**
-   * Removes what runs left when Halonic closed while they ran: every
-   * worktree, the records of runs that never ended and their proposal refs.
-   * Call it at start, before any run can open a worktree.
+   * Removes what runs left that the engine has ended, from a crash or an
+   * `end` that couldn't finish: their worktrees, records and proposal refs,
+   * and every worktree no open run records. The worktrees of `openRuns`
+   * stay for `folderOf`. Call it at start, before any run can open a
+   * worktree.
+   *
+   * @param openRuns - the runs the engine hasn't ended: those waiting for a
+   * person, and those it will end as interrupted
    */
   async removeLeftovers(openRuns: ReadonlySet<string>): Promise<void> {
     const kept = new Set<string>();
