@@ -209,7 +209,7 @@ verifies("cli.commands.validate.check-workspace", () => {
 verifies("workspace.unreadable-file", () => {
   // Windows has no read permission bits, and root reads any file.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-    "names a workspace file that can't be read, with exit 2",
+    "[platform:win32] needs POSIX links, modes and signals: names a workspace file that can't be read, with exit 2",
     async () => {
       writeFiles(acme, agent("sorter", "fast"));
       chmodSync(join(acme, "hubs/support/agents/sorter.agent.yaml"), 0o000);
