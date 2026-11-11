@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { type RunDetail, RunEvents, shortRunId, WorkflowRuns } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
+import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterAll, beforeAll, expect, it } from "vitest";
@@ -14,6 +15,7 @@ import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { type Clock, type LiveLine, startProgress } from "../../output/progress.ts";
 import type { RunClock } from "../../run-times.ts";
 import { manualClock } from "../../test/manual-clock.ts";
+import { engineStart } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { liveLines } from "./live-lines.ts";
 import { runProgress, runResult } from "./result.ts";
@@ -21,7 +23,7 @@ import { runProgress, runResult } from "./result.ts";
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 
 /** The step lines' clock: the day the engine's own clock runs on. */
-const runClock: RunClock = { now: new Date(), timeZone: "UTC" };
+const runClock: RunClock = { now: new Date(engineStart + 60_000), timeZone: "UTC" };
 
 let folder: string;
 let workspace: LoadedWorkspace;
@@ -46,6 +48,9 @@ beforeAll(async () => {
     reportError: (error) => {
       throw error;
     },
+    // A clock that stands still, so every step takes "1 s" however slow the
+    // machine is; on the real clock a slow Windows runner printed "2 s" (HAL-5925).
+    clock: fixedClock(engineStart, 0),
   });
   try {
     const input = JSON.parse(await readFile(join(acme, "examples/refund-question.json"), "utf8"));
