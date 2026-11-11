@@ -78,7 +78,7 @@ fn read_object(line: &str) -> Option<HandshakeLine> {
     serde_json::from_value(value).ok()
 }
 
-fn refused(why: &str) -> AgentHostError {
+pub(crate) fn refused(why: &str) -> AgentHostError {
     AgentHostError::Handshake(format!("The agent host's handshake was refused: {why}."))
 }
 

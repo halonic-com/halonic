@@ -28,6 +28,12 @@ const EXIT_POLL: Duration = Duration::from_millis(25);
 /// How long dropping an [`AgentHost`] waits for it to exit on its own.
 const DROP_GRACE: Duration = Duration::from_secs(5);
 
+/// Windows' `CREATE_NO_WINDOW` process flag. The release shell is a GUI
+/// program, so a console program it starts would otherwise open a console
+/// window of its own for as long as it runs.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 /// Why the host couldn't be started. No message contains the token.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentHostError {
@@ -97,7 +103,9 @@ pub struct AgentHost {
 impl AgentHost {
     /// Starts `command` and waits up to `wait` for its handshake line. Its
     /// output after that line is read and dropped, so a host that prints
-    /// more never blocks on a full pipe. Its errors go to the shell's own.
+    /// more never blocks on a full pipe. Its errors go to the shell's own;
+    /// on Windows a GUI shell has none, so they are lost there. On Windows
+    /// the host starts without a console window.
     ///
     /// # Errors
     ///
@@ -109,6 +117,11 @@ impl AgentHost {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
         let mut child = command.spawn().map_err(|error| {
             AgentHostError::Start(format!("The agent host could not start: {error}."))
         })?;
@@ -116,11 +129,12 @@ impl AgentHost {
         let first_line = child.stdout.take().map(read_first_line);
         let answer = match first_line {
             Some(receiver) => receiver.recv_timeout(wait),
-            None => Ok(None),
+            None => Ok(FirstLine::Ended),
         };
         let handshake = match answer {
-            Ok(Some(line)) => read_handshake(&line),
-            Ok(None) => Err(AgentHostError::Exited),
+            Ok(FirstLine::Text(line)) => read_handshake(&line),
+            Ok(FirstLine::NotText) => Err(handshake::refused("it isn't UTF-8 text")),
+            Ok(FirstLine::Ended) => Err(AgentHostError::Exited),
             Err(_) => Err(AgentHostError::TimedOut(wait)),
         };
         match handshake {
@@ -185,10 +199,20 @@ impl std::fmt::Debug for AgentHost {
     }
 }
 
+/// What the host printed first.
+#[derive(Debug, PartialEq, Eq)]
+enum FirstLine {
+    /// A line of text, with its newline if it had one.
+    Text(String),
+    /// A line that isn't UTF-8: the host runs, but this is no handshake.
+    NotText,
+    /// Nothing: the output ended, or couldn't be read, before a line.
+    Ended,
+}
+
 /// Reads the first line of `output` on a thread of its own, then keeps
-/// reading and dropping the rest until the host closes it. Sends `None`
-/// when the output ends, or can't be read, before a line.
-fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<Option<String>> {
+/// reading and dropping the rest until the host closes it.
+fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<FirstLine> {
     let (sender, receiver) = mpsc::channel();
     std::thread::spawn(move || {
         let mut reader = BufReader::new(output);
@@ -198,8 +222,9 @@ fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<Option<
             .take(HANDSHAKE_LINE_LIMIT)
             .read_line(&mut line);
         let first = match read {
-            Ok(length) if length > 0 => Some(line),
-            _ => None,
+            Ok(length) if length > 0 => FirstLine::Text(line),
+            Err(error) if error.kind() == std::io::ErrorKind::InvalidData => FirstLine::NotText,
+            _ => FirstLine::Ended,
         };
         // The shell may have stopped waiting; then nobody needs the line.
         let _ = sender.send(first);
@@ -213,4 +238,31 @@ fn kill(child: &mut Child) {
     // leaves no zombie behind.
     let _ = child.kill();
     let _ = child.wait();
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::{FirstLine, read_first_line};
+
+    fn first_line_of(output: &[u8]) -> FirstLine {
+        read_first_line(Cursor::new(output.to_vec()))
+            .recv()
+            .expect("the reader answers")
+    }
+
+    #[test]
+    fn handshake_first_line_is_read_up_to_its_newline() {
+        assert_eq!(
+            first_line_of(b"{}\nmore\n"),
+            FirstLine::Text("{}\n".to_owned())
+        );
+    }
+
+    #[test]
+    fn handshake_first_line_that_isnt_utf8_is_told_apart_from_an_ended_output() {
+        assert_eq!(first_line_of(b"\xff\xfe\n"), FirstLine::NotText);
+        assert_eq!(first_line_of(b""), FirstLine::Ended);
+    }
 }
