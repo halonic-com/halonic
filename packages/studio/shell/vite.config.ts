@@ -18,6 +18,7 @@ export default defineConfig({
       input: {
         "tab-strip": `${import.meta.dirname}/e2e/pages/tab-strip.html`,
         "context-menu": `${import.meta.dirname}/e2e/pages/context-menu.html`,
+        "item-header": `${import.meta.dirname}/e2e/pages/item-header.html`,
       },
     },
   },
