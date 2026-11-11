@@ -7,6 +7,8 @@ pub enum RecordStoreError {
     /// The lines to write aren't whole, non-empty lines of JSON changes to
     /// the collection, each ending in a line break.
     InvalidLines { collection: String },
+    /// One append names the collection twice; the page sends each once.
+    RepeatedCollection { collection: String },
     /// The log's whole lines aren't UTF-8 text.
     BrokenLog { file: PathBuf },
     /// The log is a link, a hard link or not a plain file.
@@ -20,7 +22,9 @@ impl RecordStoreError {
     /// `packages/adapters/fs-tauri`, for the page to pick its words.
     pub fn kind(&self) -> &'static str {
         match self {
-            RecordStoreError::InvalidLines { .. } => "invalid_lines",
+            RecordStoreError::InvalidLines { .. } | RecordStoreError::RepeatedCollection { .. } => {
+                "invalid_lines"
+            }
             RecordStoreError::BrokenLog { .. } => "broken_log",
             RecordStoreError::LinkedLog { .. } => "linked_log",
             RecordStoreError::Io { .. } => "io",
@@ -44,6 +48,10 @@ impl fmt::Display for RecordStoreError {
             RecordStoreError::InvalidLines { collection } => write!(
                 formatter,
                 "The lines to append to {collection:?} must be whole lines of changes to it, each ending in a line break."
+            ),
+            RecordStoreError::RepeatedCollection { collection } => write!(
+                formatter,
+                "The lines to append to {collection:?} must come in one part, not several."
             ),
             RecordStoreError::BrokenLog { file } => write!(
                 formatter,

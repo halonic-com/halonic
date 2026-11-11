@@ -25,6 +25,7 @@
 mod error;
 mod log_file;
 
+use std::collections::HashSet;
 use std::fs::DirBuilder;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
@@ -139,9 +140,16 @@ impl<C: ThisComputer> RecordFolder<'_, C> {
     /// Appends each collection's lines to its log, all of them or none: when
     /// one fails, every log already added to is cut back to its size before.
     /// A torn last line a crash left is cut off first, so the new lines
-    /// aren't glued onto it.
+    /// aren't glued onto it. Each collection comes once, with all its lines,
+    /// as the page sends them.
     pub fn append(&self, appends: &[CollectionLines]) -> Result<Written<()>, RecordStoreError> {
+        let mut collections = HashSet::new();
         for append in appends {
+            if !collections.insert(append.collection.as_str()) {
+                return Err(RecordStoreError::RepeatedCollection {
+                    collection: append.collection.clone(),
+                });
+            }
             check_lines(&append.collection, &append.lines)?;
         }
         self.while_writing(|| {
@@ -290,11 +298,12 @@ fn check_lines(collection: &str, lines: &str) -> Result<(), RecordStoreError> {
     }
 }
 
-/// Cuts every log a failed append added to back to its size before. When a
-/// cut fails too, the append's own error is the one worth reporting; its
-/// lines left behind then count as stored, as after a crash.
+/// Cuts every log a failed append added to back to its size before, the
+/// last one first. When a cut fails too, the append's own error is the one
+/// worth reporting; its lines left behind then count as stored, as after a
+/// crash.
 fn cut_back_all(before: &[(PathBuf, u64)]) {
-    for (file, size) in before {
+    for (file, size) in before.iter().rev() {
         let _ = cut_back(file, *size);
     }
 }

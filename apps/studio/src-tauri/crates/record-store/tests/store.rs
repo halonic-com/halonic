@@ -111,6 +111,23 @@ fn record_store_refuses_lines_that_arent_whole_changes_to_the_collection() {
 }
 
 #[test]
+fn record_store_refuses_an_append_that_names_a_collection_twice() {
+    let scratch = Scratch::new("repeated");
+    let folders = folders();
+    let records = folders.folder(&scratch.records()).unwrap();
+    let refused = records.append(&[
+        lines("leads", change("leads", "1")),
+        lines("orders", change("orders", "1")),
+        lines("leads", change("leads", "2")),
+    ]);
+    let error = refused.unwrap_err();
+    assert_eq!(error.kind(), "invalid_lines");
+    assert!(error.to_string().contains("\"leads\""), "{error}");
+    // Refused before anything is written, the folder too.
+    assert!(!scratch.records().exists());
+}
+
+#[test]
 fn record_store_replaces_a_log_only_at_the_version_read() {
     let scratch = Scratch::new("replace");
     let folders = folders();
