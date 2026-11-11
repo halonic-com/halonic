@@ -16,6 +16,15 @@
       "expand": "always"
     }
   },
+  "markdown": {
+    // Biome pads every Markdown table to equal column widths, so one longer
+    // cell rewrites every row and two pull requests that each add a row
+    // conflict in the merge queue. Tables stay `| a | b |`: the
+    // `markdown-tables` check enforces it and `pnpm check:tables` fixes it.
+    "formatter": {
+      "enabled": false
+    }
+  },
   "javascript": {
     "formatter": {
       "quoteStyle": "double",
