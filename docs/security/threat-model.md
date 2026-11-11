@@ -21,15 +21,15 @@ promise about a mitigation marked **Planned**.
 
 Halonic is a local-first app. The Studio and the `halonic` command-line tool
 are designed to run on your own machine, as you. The command-line tool
-(`apps/cli`) shipped in 0.1. The Studio (`apps/studio`) doesn't ship yet. An
-**On `main`** item is a protection you have today only when the CLI uses it,
-such as the trust check in [4.1](#41-workspace-code-b1) and the run log in
-[4.2](#42-model-output-and-content-b2). The rest is tested library code that no
+(`apps/cli`) is part of 0.1, run from source. The Studio (`apps/studio`)
+doesn't ship yet. An **On `main`** item is a protection you have today only
+when the CLI uses it, such as the trust check in [4.1](#41-workspace-code-b1)
+and the run log in [4.2](#42-model-output-and-content-b2). The rest is tested library code that no
 app calls yet (for example `readToolListing` has no caller outside its tests).
 
 | Shape | Who can reach it | Status |
 | --- | --- | --- |
-| `halonic` on your machine | you, and programs running as you | Shipped in 0.1 |
+| `halonic` on your machine | you, and programs running as you | Part of 0.1, run from source |
 | Studio on your machine | you, and programs running as you | Planned (phase 1, plan HAL-9). Not shipped |
 | `halonic serve` on loopback | programs and web pages on your machine | Planned (phase 4, plan HAL-9) |
 | `serve` on a LAN, tunnel or VPS | everyone on that network, or the internet | Planned (phase 4). Treated as public |
@@ -113,7 +113,7 @@ rule is that a steered model must not be able to do more than you approved.
 | Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once | Planned (HAL-998 for listed tools; see 4.3) |
 | A tool result carries instructions | Results from tools marked untrusted reach the model only inside a fence | **On `main`**: every result of a server's tool, in chat turns and runs (HAL-5205) |
 | Knowledge or documents carry instructions | Knowledge reaches a model only through the engine's `knowledge_search` and `knowledge_read` tools, which fence the titles, snippets and texts of any source not marked `untrusted: false` (`ports.untrusted-knowledge`, `engine.knowledge-tools`). The ref the model sends back stays unfenced, so a hit or a document whose ref is longer than 512 characters is dropped (`knowledgeHitForModel`, `knowledgeDocForModel`). Agents don't get these tools in runs yet (HAL-4174) | **On `main`** |
-| A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). `FolderRunStore` keeps it as `<runId>.jsonl` in the workspace's `runs` folder in your profile, one event per line, and only adds to it. An append names the last event it expects (`expectedSeq`), holds `<runId>.lock` so the CLI and the Studio shell can't both write, and counts as stored only once flushed to disk; a failed append is cut back, so it stores none of its events. The folder is private to you (`700`, files `600`), and a log that is a link or has a second name is refused. The CLI uses it for every run; the Studio shell's run store reads and writes the same files under the same lock | **On `main`** (`packages/adapters/fs-node/src/run-store.ts`; `fs-node.run-store-files`, `run-store-lock`, `run-store-recovery`, `run-store-private-files`) |
+| A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). `FolderRunStore` keeps it as `<runId>.jsonl` in the workspace's `runs` folder in your profile, one event per line, and only adds to it. An append names the last event it expects (`expectedSeq`), holds `<runId>.lock` so the CLI and the Studio shell can't both write, and counts as stored only once flushed to disk; a failed append is cut back and stores none of its events, though one cut off by a crash of the program may leave the first events of its batch stored. The folder is private to you (`700`, files `600`), and a log that is a link or has a second name is refused. The CLI uses it for every run; the Studio shell's run store reads and writes the same files under the same lock | **On `main`** (`packages/adapters/fs-node/src/run-store.ts`; `fs-node.run-store-files`, `run-store-lock`, `run-store-recovery`, `run-store-private-files`) |
 
 **Known limit.** Run logs have no tamper evidence. An append-only interface
 doesn't stop a program running as you from rewriting the files.
