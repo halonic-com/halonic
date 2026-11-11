@@ -19,3 +19,4 @@ No test was weakened or skipped. `pr-title.test.ts` gains four cases: one commit
 ## Covers
 
 - tooling/check/
+- .github/
