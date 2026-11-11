@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5294](/HAL/issues/HAL-5294), decided by the maintainer (Liam) in its decision note; he approves this note in review of [HAL-5300](/HAL/issues/HAL-5300)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6gPGqiMz/QRb04lhG89uhpLscyHP8EWrTHyXiI8b97O+SmEVkam9iALd1U1QCswvl6hYy0Tg0zWJq6Gfam5+Bg==
 - Task: HAL-5300
 
 ## What changes
