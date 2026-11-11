@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5064](/HAL/issues/HAL-5064), raised by the maintainer (Liam) in his review of #1645 on [HAL-5060](/HAL/issues/HAL-5060); he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ak0P3svJ3V9L6PFQjp5cZ85/WEQnpx7WRxRwkU196Ss3ZvVPIeU5TkSI6rxEGLp0PS8ub/tNQFJ6jfjfx6ecCg==
 - Task: HAL-5064
 
 ## What changes
