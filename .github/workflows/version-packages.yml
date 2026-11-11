@@ -1,10 +1,12 @@
 # Version packages: the release bot. On every push to main it does up to
 # two things.
 #
-# - The pushed commit is a merged release pull request: one titled
+# - One of the pushed commits is a merged release pull request: one titled
 #   "chore(release): Halonic <version>" where <version> is the app version
-#   in apps/studio/package.json at that commit. It tags the commit
-#   v<version>, unless that tag exists already. This is the pull request
+#   in apps/studio/package.json at that commit. The merge queue can push
+#   several commits at once, so every commit of the push (before..sha) is
+#   looked at, not only the last. It tags the release commit v<version>,
+#   unless that tag exists already. This is the pull request
 #   this workflow opens, or a hand-made one such as the first release,
 #   0.1.0, where the version is already set and no changeset is waiting.
 #   Changing the version in another pull request never makes a tag. A
@@ -57,12 +59,7 @@ jobs:
           filter: blob:none
       - uses: $/.github/actions/setup
       - id: plan
-        name: Count waiting changesets and find a merged release pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-          EVENT: ${{ github.event_name }}
+        name: Count waiting changesets
         run: |
           pending=$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md | wc -l)
           # After `changeset pre exit` the consumed changesets wait in
@@ -75,41 +72,49 @@ jobs:
           if [ "$pending" != 0 ] || [ "$mode" = exit ]; then
             waiting=true
           fi
-          version=$(node -p 'require("./apps/studio/package.json").version')
-          # Is the pushed commit the merge of a release pull request? Ask
-          # GitHub which pull request it came from and compare its title.
-          release=false
-          if [ "$EVENT" = push ]; then
-            if titles=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[].title' 2> /dev/null); then
-              if printf '%s\n' "$titles" | grep -Fxq "chore(release): Halonic $version"; then
-                release=true
-              fi
-            else
-              echo "::warning::The release check could not run: GitHub did not answer the pull request lookup for $SHA. Nothing was tagged. If this push merged a release pull request, re-run this failed push run to tag it."
-            fi
-          fi
           echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "release=$release" >> "$GITHUB_OUTPUT"
-          echo "Waiting changesets: $pending. Pre mode: ${mode:-off}. App version: $version. Release pull request merged: $release."
+          echo "Waiting changesets: $pending. Pre mode: ${mode:-off}."
+      # Is one of the pushed commits the merge of a release pull request?
+      # The merge queue can push several commits at once, so look at all of
+      # them (before..sha), not only the last. Ask GitHub which pull request
+      # each came from and compare its title with the app version at that
+      # commit.
+      - id: release
+        name: Find a merged release pull request among the pushed commits
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: node tooling/publish/src/cli/find-release-commit.ts
+      # Check and tag the release commit itself, which is not always the
+      # last commit of the push. Then go back to the pushed commit: the
+      # steps below version the packages on top of it.
       - name: Check that the app versions agree
-        if: steps.plan.outputs.release == 'true'
-        run: pnpm check versions
+        if: steps.release.outputs.release == 'true'
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.release_sha }}
+          SHA: ${{ github.sha }}
+        run: |
+          git checkout -q --detach "$RELEASE_SHA"
+          trap 'git checkout -q --detach "$SHA"' EXIT
+          pnpm check versions
       - name: Tag the release
-        if: steps.plan.outputs.release == 'true'
+        if: steps.release.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
           REPO: ${{ github.repository }}
-          VERSION: ${{ steps.plan.outputs.version }}
-          SHA: ${{ github.sha }}
+          VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_SHA: ${{ steps.release.outputs.release_sha }}
         run: |
           tag="v$VERSION"
           if gh api "repos/$REPO/git/ref/tags/$tag" > /dev/null 2>&1; then
             echo "$tag exists already; nothing to tag."
             exit 0
           fi
-          gh api "repos/$REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$SHA" > /dev/null
-          echo "Tagged $SHA as $tag."
+          gh api "repos/$REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$RELEASE_SHA" > /dev/null
+          echo "Tagged $RELEASE_SHA as $tag."
       - id: bump
         name: Version the packages
         if: steps.plan.outputs.waiting == 'true'
