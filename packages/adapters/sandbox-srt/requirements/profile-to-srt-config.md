@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-193 (plan phase 3, v1.17); Julian's re-review follow-up from HAL-2430
+- Source: HAL-193 (plan phase 3, v1.17); Julian's re-review follow-up from HAL-2430; HAL-6346 (attack case A36)
 
-The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandbox-runtime so that the program writes only to its working, temp and settings folders, reads nothing the profile denies, reaches only the bridge and the allowed sites, never reaches a loopback, link-local, private or shared address, or one of this computer's own addresses, through an allowed site's name (the bridge's address and port excepted), and never receives a path as a pattern.
+The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandbox-runtime so that the program writes only to its working, temp and settings folders, reads nothing the profile denies, reaches only the bridge and the allowed sites, never reaches a loopback, link-local, private or shared address, or one of this computer's own addresses, through an allowed site's name (the bridge's address and port excepted), never receives a path as a pattern, and, when the profile denies the key store, can't reach the macOS Keychain's Mach services.
 
 ## Examples
 
@@ -26,3 +26,6 @@ The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandb
 - Given any profile,
   when the settings are built,
   then a host that isn't allowed is denied without asking.
+- Given a profile with `keyStore: "denied"`,
+  when the settings are built,
+  then srt denies `com.apple.SecurityServer` and `com.apple.securityd.xpc` at the end of its Seatbelt profile, after its own allows of them; without it, srt denies no Mach service.

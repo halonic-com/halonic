@@ -93,6 +93,10 @@ verifies("integration-runner.start", () => {
       ]);
       expect(profile.timeLimitMs).toBe(machine.timeLimitMs);
     });
+
+    it("denies the OS key store, which macOS answers over Mach past the file fence", () => {
+      expect(profile.keyStore).toBe("denied");
+    });
   });
 
   describe("runnerProfile refusals", () => {

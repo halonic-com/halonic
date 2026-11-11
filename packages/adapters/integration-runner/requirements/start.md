@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-983 (design HAL-958, sections 1 b, 2 and 5, attack cases A17, A23, A38)
+- Source: HAL-983 (design HAL-958, sections 1 b, 2 and 5, attack cases A17, A23, A36, A38)
 
-When Halonic starts a runner, it shall open a `Sandbox` session of its own with the untrusted profile (no network and no loopback bridge, writes only to a fresh temp folder, the home folder and the socket folders hidden except the way to Node, the runner and the integration, and an environment holding only `TMPDIR`), start Node in it with its permission model reading only the runner and the integration's folder, pass a fresh nonce, report the session's fence proof and every access the fence refused, and close the session when the runner stops for any reason.
+When Halonic starts a runner, it shall open a `Sandbox` session of its own with the untrusted profile (no network and no loopback bridge, writes only to a fresh temp folder, the home folder and the socket folders hidden except the way to Node, the runner and the integration, an environment holding only `TMPDIR`, and the OS key store denied), start Node in it with its permission model reading only the runner and the integration's folder, pass a fresh nonce, report the session's fence proof and every access the fence refused, and close the session when the runner stops for any reason.
 
 Halonic shall refuse to start a runner, before it opens a session, when Node's folder, the runner, the integration's folder or the temp folder is or holds the home folder or a socket folder, or when a folder on the way to one of them can't be listed.
 

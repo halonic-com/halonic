@@ -152,6 +152,16 @@ export interface SandboxProfile {
   network: SandboxNetwork;
   /** How long the whole run may last, in milliseconds, counted from {@link Sandbox.open}. */
   timeLimitMs: number;
+  /**
+   * Whether the program may ask the operating system's key store for a
+   * stored secret. `denied` for code nobody reviewed, such as a local
+   * integration (attack case A36). Left out, it may, because an agent can
+   * keep its own sign-in in the macOS Keychain. With `denied`, the fence on
+   * macOS refuses the Keychain's Mach services. On Linux the Secret Service
+   * is a D-Bus socket, so hide its folder in {@link deniedPaths}. On Windows
+   * no adapter can fence the Credential Manager yet.
+   */
+  keyStore?: "allowed" | "denied";
 }
 
 /** The network a {@link SandboxProfile} allows. */

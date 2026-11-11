@@ -2,7 +2,8 @@
 // HAL-958, section 5). No network, not even a loopback bridge. Read only the
 // runtime and the code. Write only a private temp folder. The home folder and
 // the socket folders a network namespace doesn't cover are hidden. The
-// environment holds only `TMPDIR`.
+// environment holds only `TMPDIR`. The OS key store is denied: on macOS the
+// Keychain answers over Mach, past the file fence (attack case A36).
 //
 // A profile can't allow a path inside a denied one, and the code or the
 // runtime often lives inside the home folder. So a folder to hide that holds
@@ -150,6 +151,7 @@ export function runnerProfile(
     env: { TMPDIR: machine.tempFolder },
     network: { bridge: null, allowedSites: [] },
     timeLimitMs: machine.timeLimitMs,
+    keyStore: "denied",
   };
 }
 

@@ -180,6 +180,14 @@ describe("sandboxRoutes", () => {
     expect(sandbox.opened[0]?.profile).toEqual(profile);
   });
 
+  it("passes a denied key store on to the sandbox, so the fence can refuse the Keychain", async () => {
+    const url = await started();
+    const denied: SandboxProfile = { ...profile, keyStore: "denied" };
+    const answer = await post(url, "/v1/sandbox/sessions/open", { profile: denied });
+    expect(answer.status).toBe(200);
+    expect(sandbox.opened[0]?.profile).toEqual(denied);
+  });
+
   it("refuses a profile that isn't valid, naming each problem, and opens nothing", async () => {
     const url = await started();
     const bad = { ...profile, workingFolder: "relative/path", network: { allowedSites: [] } };

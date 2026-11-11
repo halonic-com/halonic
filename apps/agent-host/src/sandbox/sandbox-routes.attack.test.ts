@@ -377,6 +377,8 @@ describe("sandbox routes, attacked by a caller with the token", () => {
       { ...profile, readOnlyPaths: [""] },
       { ...profile, env: { PATH: 1 } },
       { ...profile, workingFolder: null },
+      { ...profile, keyStore: "open" },
+      { ...profile, keyStore: null },
     ];
     for (const candidate of bad) {
       const answer = await post(url, "/v1/sandbox/sessions/open", { profile: candidate });

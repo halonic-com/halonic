@@ -44,5 +44,6 @@ export const sandboxProfileSchema: Schema<SandboxProfile> = s
       })
       .strict(),
     timeLimitMs: s.number().int().positive().max(maxTimeLimitMs),
+    keyStore: s.enum(["allowed", "denied"]).exactOptional(),
   })
   .strict();

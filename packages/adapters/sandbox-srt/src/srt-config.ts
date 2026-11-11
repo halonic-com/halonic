@@ -187,6 +187,23 @@ const toolSettingsInWorkingFolder = [
 ];
 
 /**
+ * The Mach services the macOS Keychain answers on. srt's Seatbelt profile
+ * always allows them, so `security find-generic-password` gets an item back
+ * inside the fence. Our patch of srt (`patches/`) adds `denyMachLookup`, which
+ * denies them again at the end of the profile, where the last matching rule
+ * wins. Linux and Windows ignore it.
+ */
+export const keychainMachServices: readonly string[] = [
+  "com.apple.SecurityServer",
+  "com.apple.securityd.xpc",
+];
+
+/** srt's settings with what our patch of srt adds: Mach services denied on macOS. */
+export type SrtConfig = SandboxRuntimeConfig & {
+  network: SandboxRuntimeConfig["network"] & { denyMachLookup?: string[] };
+};
+
+/**
  * Builds the sandbox-runtime settings for one session from the profile.
  *
  * The profile's `deniedPaths` become `denyRead` and `denyWrite`, and its
@@ -219,13 +236,16 @@ const toolSettingsInWorkingFolder = [
  * resolves to it reaches only the bridge. A profile without a bridge allows
  * the sites alone; with no sites either, the list is empty, which srt reads
  * as "no network at all".
+ *
+ * A profile with `keyStore: "denied"` gets the Keychain's Mach services
+ * denied (see {@link keychainMachServices}).
  */
 export function buildSrtConfig(
   profile: SandboxProfile,
   hiddenPaths: string[] = [],
   gitPaths: string[] = [],
   platform: NodeJS.Platform = process.platform,
-): SandboxRuntimeConfig {
+): SrtConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
   const toolSettings = [
     ...[...toolSettingsInWorkingFolder, ...gitPaths].map((path) =>
@@ -250,6 +270,7 @@ export function buildSrtConfig(
       deniedDomains: [],
       deniedResolvedAddresses: [...DENIED_RESOLVED_ADDRESSES],
       strictAllowlist: true,
+      ...(profile.keyStore === "denied" ? { denyMachLookup: [...keychainMachServices] } : {}),
     },
     filesystem: {
       denyRead: withResolved(hidden).map(literalPath),

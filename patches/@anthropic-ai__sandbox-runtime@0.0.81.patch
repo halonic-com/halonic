@@ -1,0 +1,93 @@
+diff --git a/dist/sandbox/macos-sandbox-utils.d.ts b/dist/sandbox/macos-sandbox-utils.d.ts
+index 8af5e03041b27d060b0027278fb0567745b06f2f..b2a73f173f72df93d39d66568f549c9e8b61dc8a 100644
+--- a/dist/sandbox/macos-sandbox-utils.d.ts
++++ b/dist/sandbox/macos-sandbox-utils.d.ts
+@@ -24,6 +24,7 @@ export interface MacOSSandboxParams {
+     allowAllUnixSockets?: boolean;
+     allowLocalBinding?: boolean;
+     allowMachLookup?: string[];
++    denyMachLookup?: string[];
+     readConfig: FsReadRestrictionConfig | undefined;
+     writeConfig: FsWriteRestrictionConfig | undefined;
+     /** Environment variable names to unset for the sandboxed child (env -u) */
+diff --git a/dist/sandbox/macos-sandbox-utils.js b/dist/sandbox/macos-sandbox-utils.js
+index 0e598b612d84d24b09ec2ab0d7ccc9b009c9457b..cacf8e7aaae30320cd3159d8c3fc9d8f8e7f8f5f 100644
+--- a/dist/sandbox/macos-sandbox-utils.js
++++ b/dist/sandbox/macos-sandbox-utils.js
+@@ -750,7 +750,7 @@ function generateWriteRules(config, logTag, allowGitConfig, writeRoots) {
+ /**
+  * Generate complete sandbox profile
+  */
+-function generateSandboxProfile({ readConfig, libraryDenyEntries, writeConfig, httpProxyPort, socksProxyPort, needsNetworkRestriction, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, allowPty, allowGitConfig = false, enableWeakerNetworkIsolation = false, allowAppleEvents = false, logTag, }) {
++function generateSandboxProfile({ readConfig, libraryDenyEntries, writeConfig, httpProxyPort, socksProxyPort, needsNetworkRestriction, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, denyMachLookup, allowPty, allowGitConfig = false, enableWeakerNetworkIsolation = false, allowAppleEvents = false, logTag, }) {
+     const profile = [
+         '(version 1)',
+         `(deny default (with message "${logTag}"))`,
+@@ -1032,6 +1032,13 @@ function generateSandboxProfile({ readConfig, libraryDenyEntries, writeConfig, h
+         profile.push('  (regex #"^/dev/ttys")');
+         profile.push(')');
+     }
++    // Halonic patch: the last matching rule wins in Seatbelt, so these
++    // denies, emitted last, take back every allow above for these names.
++    if (denyMachLookup && denyMachLookup.length > 0) {
++        profile.push('');
++        profile.push('; Denied XPC/Mach services');
++        profile.push(...denyMachLookup.map(name => `(deny mach-lookup (global-name ${escapePath(name)}))`));
++    }
+     return profile.join('\n');
+ }
+ /**
+@@ -1044,7 +1051,7 @@ function escapePath(pathStr) {
+  * Wrap command with macOS sandbox
+  */
+ export function wrapCommandWithSandboxMacOS(params) {
+-    const { command, commandId, needsNetworkRestriction, httpProxyPort, socksProxyPort, proxyAuthToken, caCertPath, javaAgentJarPath, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, readConfig, writeConfig, unsetEnvVars, setEnvVars, maskedFileBinds, degradeToDenyPaths, allowPty, allowGitConfig = false, gitSafeDirectories, enableWeakerNetworkIsolation = false, allowAppleEvents = false, binShell, } = params;
++    const { command, commandId, needsNetworkRestriction, httpProxyPort, socksProxyPort, proxyAuthToken, caCertPath, javaAgentJarPath, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, denyMachLookup, readConfig, writeConfig, unsetEnvVars, setEnvVars, maskedFileBinds, degradeToDenyPaths, allowPty, allowGitConfig = false, gitSafeDirectories, enableWeakerNetworkIsolation = false, allowAppleEvents = false, binShell, } = params;
+     // SBPL cannot redirect a read to different bytes, so whole-file masking
+     // degrades to read-deny on macOS: the sandboxed process gets EPERM
+     // instead of the sentinel. The DYLD interposer (a later step) lifts
+@@ -1097,6 +1104,7 @@ export function wrapCommandWithSandboxMacOS(params) {
+         allowAllUnixSockets,
+         allowLocalBinding,
+         allowMachLookup,
++        denyMachLookup,
+         allowPty,
+         allowGitConfig,
+         enableWeakerNetworkIsolation,
+diff --git a/dist/sandbox/sandbox-config.js b/dist/sandbox/sandbox-config.js
+index 76b00b1dc82a2d42a451a9f58068cbbd5e68da75..af3294a5629bdcc9eed6af78cfcaaabaa72e4cfd 100644
+--- a/dist/sandbox/sandbox-config.js
++++ b/dist/sandbox/sandbox-config.js
+@@ -640,6 +640,10 @@ export const NetworkConfigSchema = z.object({
+     }))
+         .optional()
+         .describe('macOS only: Additional XPC/Mach service names to allow looking up. Supports trailing-wildcard prefix matching (e.g., "2BUA8C4S2C.com.1password.*"). Needed for tools like 1Password CLI, Playwright, or the iOS Simulator that communicate via XPC.'),
++    denyMachLookup: z
++        .array(z.string().min(1))
++        .optional()
++        .describe('macOS only (Halonic patch): XPC/Mach service names to deny looking up, exact names only. Denied at the end of the profile, so they win over every allow, including the built-in ones such as com.apple.SecurityServer.'),
+     httpProxyPort: z
+         .number()
+         .int()
+diff --git a/dist/sandbox/sandbox-manager.js b/dist/sandbox/sandbox-manager.js
+index d475e55977bf54a2fe00a0c6aba38313761d55aa..7c3db965207789c043516525ece563312a49215e 100644
+--- a/dist/sandbox/sandbox-manager.js
++++ b/dist/sandbox/sandbox-manager.js
+@@ -1658,6 +1658,9 @@ function getAllowLocalBinding() {
+ function getAllowMachLookup() {
+     return config?.network?.allowMachLookup;
+ }
++function getDenyMachLookup() {
++    return config?.network?.denyMachLookup;
++}
+ function getIgnoreViolations() {
+     return config?.ignoreViolations;
+ }
+@@ -1993,6 +1996,7 @@ async function wrapWithSandboxOnce(walkEnded, restarts, command, binShell, custo
+                 allowAllUnixSockets: getAllowAllUnixSockets(),
+                 allowLocalBinding: getAllowLocalBinding(),
+                 allowMachLookup: getAllowMachLookup(),
++                denyMachLookup: getDenyMachLookup(),
+                 ignoreViolations: getIgnoreViolations(),
+                 allowPty,
+                 allowGitConfig: getAllowGitConfig(),
