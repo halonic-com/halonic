@@ -26,13 +26,26 @@ const secretWords = new Set([
 const shortestSecret = 4;
 
 /**
+ * The shortest user name of an `http(s)` URL with no password that counts
+ * as a token, such as a Sentry DSN's 32-character key or a 40-character
+ * GitHub token. Plain user names such as `acme` or `x-access-token` are
+ * shorter, and removing them would hide who a failing request ran as.
+ */
+const shortestUserNameToken = 16;
+
+/** The URL schemes whose user name, with no password, can be the token itself. */
+const tokenUserNameSchemes = new Set(["http:", "https:"]);
+
+/**
  * The secrets a program inherits from the app's own environment, as
  * opposed to the ones the connector's `secretEnv` gives it: the value of
  * each variable whose name holds a word such as `TOKEN`, `KEY` or
- * `PASSWORD`, and the password in a value written as a URL, such as
- * `postgres://acme:hush@db.acme.test/notes`. Both launches pass on
- * what the app inherited (`mcp.stdio-connector`), so a program can echo
- * any of these, whatever their shape (`mcp.stdio-inherited-secrets`).
+ * `PASSWORD`, the password in a value written as a URL, such as
+ * `postgres://acme:hush@db.acme.test/notes`, and the user name of an
+ * `http(s)` URL with no password that is long enough to be a token, such
+ * as a Sentry DSN. Both launches pass on what the app inherited
+ * (`mcp.stdio-connector`), so a program can echo any of these, whatever
+ * their shape (`mcp.stdio-inherited-secrets`).
  *
  * @example
  * inheritedSecrets({ ACME_API_KEY: "plain-words", PATH: "/usr/bin" }); // ["plain-words"]
@@ -45,8 +58,8 @@ export function inheritedSecrets(env: Readonly<Record<string, string | undefined
       secrets.push(value);
       continue;
     }
-    const password = urlPassword(value);
-    if (password !== undefined) secrets.push(password);
+    const urlSecret = urlCredential(value);
+    if (urlSecret !== undefined) secrets.push(urlSecret);
   }
   return secrets;
 }
@@ -57,15 +70,28 @@ function hasSecretName(name: string): boolean {
   return words.some((word) => secretWords.has(word.toUpperCase()));
 }
 
-/** The password written in a URL's `user:password@` part, decoded, if the value is such a URL. */
-function urlPassword(value: string): string | undefined {
+/**
+ * The secret written in a URL's user part, decoded, if the value is such a
+ * URL: the password of `user:password@`, or the user name of an `http(s)`
+ * URL's `token@` when it is at least {@link shortestUserNameToken} long.
+ * `git@host:repo` isn't a URL, and other schemes such as
+ * `postgres://acme@db` put a plain user name there, so they are left alone.
+ */
+function urlCredential(value: string): string | undefined {
   if (!URL.canParse(value)) return undefined;
-  const { password } = new URL(value);
-  if (password === "") return undefined;
+  const { password, username, protocol } = new URL(value);
+  if (password !== "") return decoded(password);
+  if (!tokenUserNameSchemes.has(protocol)) return undefined;
+  if (username.length < shortestUserNameToken) return undefined;
+  return decoded(username);
+}
+
+/** A URL part with its `%` escapes decoded. */
+function decoded(urlPart: string): string {
   try {
-    return decodeURIComponent(password);
+    return decodeURIComponent(urlPart);
   } catch {
-    // A broken escape: the password stays as written, which the scrubber still finds.
-    return password;
+    // A broken escape: the part stays as written, which the scrubber still finds.
+    return urlPart;
   }
 }

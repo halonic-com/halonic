@@ -30,6 +30,28 @@ verifies("mcp.stdio-inherited-secrets", () => {
       expect(inheritedSecrets(env)).toEqual(["o k", "50%zz"]);
     });
 
+    it("takes the user name of an http(s) URL with no password when it is long enough to be a token", () => {
+      const env = {
+        ACME_ERRORS_DSN: "https://acme-errors-public-key-01@o1.errors.acme.test/1",
+        NOTES_REMOTE: "https://acme%20repo%20token%2001@git.acme.test/acme/notes.git",
+        STATUS_HOOK: "http://acme-status-hook-token@hooks.acme.test",
+      };
+      expect(inheritedSecrets(env)).toEqual([
+        "acme-errors-public-key-01",
+        "acme repo token 01",
+        "acme-status-hook-token",
+      ]);
+    });
+
+    it("leaves a short user name, a user name in another scheme, and git's user@host form", () => {
+      const env = {
+        PROXY_URL: "https://x-access-token@proxy.acme.test",
+        NOTES_DB: "postgres://acme-notes-service-user@db.acme.test/notes",
+        NOTES_ORIGIN: "git@git.acme.test:acme-notes-service-user/notes.git",
+      };
+      expect(inheritedSecrets(env)).toEqual([]);
+    });
+
     it("leaves other variables, words that only start like a secret word, and short flags", () => {
       const env = {
         PATH: "/usr/bin",
