@@ -10,7 +10,7 @@ import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-ca
 import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";
 import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts";
-import { missingDefinitionsError, readDefinitions } from "../kernel/kept-definitions.ts";
+import { definitionsOf } from "../kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
 import { HarnessAnswers } from "./harness-answers.ts";
 import { LiveHarnessCalls } from "./live-harness-calls.ts";
@@ -66,8 +66,7 @@ export class LocalHarnessCalls {
         "The local executor can't carry out a run-harness effect: it has no harnesses.",
       );
     }
-    const definitions = await readDefinitions(blobs, run.definitionsVersion);
-    if (definitions === null) throw new Error(missingDefinitionsError(run.definitionsVersion));
+    const definitions = await definitionsOf(blobs, run.definitionsVersion);
     const agents = definitions.agents ?? {};
     const agent = Object.hasOwn(agents, call.agent) ? agents[call.agent] : undefined;
     const harness = programHarnessOf(run, agents, call.agent);

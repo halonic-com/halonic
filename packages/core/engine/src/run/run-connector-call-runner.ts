@@ -74,9 +74,17 @@ export class RunConnectorCallRunner {
     try {
       const effect = (await readRun(this.#options.store, runId))?.effect;
       if (effect == null || effect.unknown || effect.callId !== callId) return;
+      // Only the call's own fields: the host never gets the prompt or the conversation.
+      const { idempotencyKey, state, agent, connector, tool, args } = effect;
       const call: CallToolEffect = {
         type: "call-tool",
-        ...effect,
+        callId,
+        idempotencyKey,
+        state,
+        agent,
+        connector,
+        tool,
+        args,
         timeoutMs: connectorCallTimeoutMs,
       };
       const result = await this.#withinLimit(runId, call);

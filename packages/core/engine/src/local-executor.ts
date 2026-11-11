@@ -24,7 +24,7 @@ import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
-import { agentIn, missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
+import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import {
@@ -422,7 +422,7 @@ export class LocalExecutor implements RunExecutor {
    * it before it makes it. Either way, the next call carries `resume` with
    * the answer or the result, and the turn goes on from there.
    *
-   * @throws when the run's definitions are gone, as {@link missingDefinitionsError} says
+   * @throws UnreadableDefinitions when the run's definitions are gone or can't be read, with why
    */
   private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
     const turn: RunTurn = {
@@ -474,11 +474,7 @@ export class LocalExecutor implements RunExecutor {
     if (this.options.runs === undefined) {
       throw noRuns();
     }
-    const definitions = await readDefinitions(this.options.runs.blobs, run.definitionsVersion);
-    if (definitions === null) {
-      throw new Error(missingDefinitionsError(run.definitionsVersion));
-    }
-    return definitions;
+    return await definitionsOf(this.options.runs.blobs, run.definitionsVersion);
   }
 }
 

@@ -3,8 +3,8 @@ import type { BlobStore, RunStore } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { type BudgetCheck, keepToBudget } from "../budget/keep-to-budget.ts";
 import { checkRunTakes, decide, tellParent } from "./decide.ts";
-import type { DecideInput, Decision, Effect, LoggedEvent } from "./decide-types.ts";
-import { missingDefinitionsError, readDefinitions } from "./kept-definitions.ts";
+import type { DecideInput, Decision, Effect, LoggedEvent, RunDefinitions } from "./decide-types.ts";
+import { definitionsOf, UnreadableDefinitions } from "./kept-definitions.ts";
 import { foldRun, type RunState } from "./run-state.ts";
 import { saveArtifacts } from "./saved-artifacts.ts";
 
@@ -121,24 +121,18 @@ async function decideWithDefinitions(
   checkRunTakes(run, input);
   const version =
     input.type === "start" ? input.definitionsVersion : (run as RunState).definitionsVersion;
-  const definitions = await readDefinitions(ports.blobs, version);
-  if (definitions !== null) {
-    return decide(run, input, definitions);
+  let definitions: RunDefinitions;
+  try {
+    definitions = await definitionsOf(ports.blobs, version);
+  } catch (error) {
+    // A starting run is refused instead: it has nothing stored to fail.
+    if (run === null || !(error instanceof UnreadableDefinitions)) throw error;
+    return {
+      events: [{ type: "run.failed", state: run.state, error: error.message, reason: "error" }],
+      effects: tellParent({ ...run, status: "failed" }),
+    };
   }
-  if (run === null) {
-    throw new Error(missingDefinitionsError(version));
-  }
-  return {
-    events: [
-      {
-        type: "run.failed",
-        state: run.state,
-        error: missingDefinitionsError(version),
-        reason: "error",
-      },
-    ],
-    effects: tellParent({ ...run, status: "failed" }),
-  };
+  return decide(run, input, definitions);
 }
 
 /** Numbers the decided events after `lastSeq` and stamps them with the input's time. */

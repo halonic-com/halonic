@@ -26,7 +26,47 @@ export async function keepDefinitions(
 }
 
 /**
+ * A run's definitions can't be used: their blob is missing, or it isn't
+ * definitions. The message says so as {@link missingDefinitionsError} does,
+ * then why, and `cause` keeps the error that caused it.
+ */
+export class UnreadableDefinitions extends Error {
+  constructor(version: string, why?: { readonly text: string; readonly cause?: unknown }) {
+    const detail = why === undefined ? "" : ` It can't be read: ${why.text}`;
+    super(`${missingDefinitionsError(version)}${detail}`, { cause: why?.cause });
+    this.name = "UnreadableDefinitions";
+  }
+}
+
+/**
  * Reads the definitions a run started with.
+ *
+ * @param version - the run's `definitionsVersion`, the hash {@link keepDefinitions} returned
+ * @throws UnreadableDefinitions when the blob is missing or isn't definitions, with why
+ */
+export async function definitionsOf(
+  blobs: Pick<BlobStore, "get">,
+  version: string,
+): Promise<RunDefinitions> {
+  const data = await blobs.get(version);
+  if (data === null) {
+    throw new UnreadableDefinitions(version);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decodeUtf8(data));
+  } catch (error) {
+    const text = error instanceof Error ? error.message : String(error);
+    throw new UnreadableDefinitions(version, { text: `it isn't JSON (${text}).`, cause: error });
+  }
+  if (!isDefinitions(parsed)) {
+    throw new UnreadableDefinitions(version, { text: "it doesn't hold a workflow and its files." });
+  }
+  return parsed;
+}
+
+/**
+ * Reads the definitions a run started with, as {@link definitionsOf} does.
  *
  * @param version - the run's `definitionsVersion`, the hash {@link keepDefinitions} returned
  * @returns the definitions, or `null` when the blob is missing or isn't definitions
@@ -35,24 +75,24 @@ export async function readDefinitions(
   blobs: Pick<BlobStore, "get">,
   version: string,
 ): Promise<RunDefinitions | null> {
-  const data = await blobs.get(version);
-  if (data === null) {
-    return null;
-  }
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(decodeUtf8(data));
-  } catch {
-    return null;
+    return await definitionsOf(blobs, version);
+  } catch (error) {
+    // `null` is this function's answer for both; `definitionsOf` says why.
+    if (error instanceof UnreadableDefinitions) return null;
+    throw error;
   }
-  return isPlainObject(parsed) &&
+}
+
+function isDefinitions(parsed: unknown): parsed is RunDefinitions {
+  return (
+    isPlainObject(parsed) &&
     isPlainObject(parsed["workflow"]) &&
     (parsed["agents"] === undefined || isPlainObject(parsed["agents"])) &&
     (parsed["workflows"] === undefined || isPlainObject(parsed["workflows"])) &&
     (parsed["collections"] === undefined || isPlainObject(parsed["collections"])) &&
     (parsed["knowledge"] === undefined || isPlainObject(parsed["knowledge"]))
-    ? (parsed as unknown as RunDefinitions)
-    : null;
+  );
 }
 
 /** The error a run fails with when its definitions can't be read. */
