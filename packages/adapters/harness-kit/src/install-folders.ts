@@ -48,7 +48,8 @@ export const realPathOnDisk: RealPath = (path) => realpath(path);
  * can start: the real folder of {@link HarnessInstall.program} and the real
  * {@link HarnessInstall.packageFolder}, each only when it is inside the user
  * profile. The user folders are resolved too, so a profile reached through a
- * junction compares as it is on disk. The answer has no duplicates, and is
+ * junction compares as it is on disk, also while Halonic's data folder
+ * doesn't exist yet. The answer has no duplicates, and is
  * empty for a harness installed outside the profile, such as in
  * `%ProgramFiles%`.
  *
@@ -65,8 +66,8 @@ export async function windowsInstallReadPaths(
   folders: WindowsUserFolders,
   realPath: RealPath = realPathOnDisk,
 ): Promise<string[]> {
-  const userProfile = await realOrAsWritten(folders.userProfile, realPath);
-  const halonicData = await realOrAsWritten(folders.halonicData, realPath);
+  const userProfile = await realThroughNearest(folders.userProfile, realPath);
+  const halonicData = await realThroughNearest(folders.halonicData, realPath);
   const wanted: Array<{ name: string; folder: string }> = [
     {
       name: "program's folder",
@@ -105,12 +106,24 @@ async function needed(name: string, path: string, realPath: RealPath): Promise<s
   }
 }
 
-/** The real place of a folder to compare against, or the folder as written when it doesn't exist yet. */
-async function realOrAsWritten(folder: string, realPath: RealPath): Promise<string> {
-  try {
-    return await realPath(folder);
-  } catch {
-    return folder;
+/**
+ * The real place of a folder to compare against, also when it doesn't exist
+ * yet: the real place of the nearest folder on its way that exists, with the
+ * rest of its names added. A data folder not made yet, in a profile reached
+ * through a junction, then still compares where it will be.
+ */
+async function realThroughNearest(folder: string, realPath: RealPath): Promise<string> {
+  const missingNames: string[] = [];
+  let nearest = folder;
+  for (;;) {
+    try {
+      return win32.join(await realPath(nearest), ...missingNames.reverse());
+    } catch {
+      const parent = win32.dirname(nearest);
+      if (parent === nearest) return folder;
+      missingNames.push(win32.basename(nearest));
+      nearest = parent;
+    }
   }
 }
 

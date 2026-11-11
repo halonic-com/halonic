@@ -108,6 +108,20 @@ verifies("harness-kit.windows-install-folders", () => {
       ]);
     });
 
+    it("compares against where Halonic's data folder will be, before it exists", async () => {
+      const movedProfile = windowsPath("D", "Users", "acme");
+      const movedData = `${movedProfile}\\AppData\\Local\\halonic`;
+      const install = { program: `${movedData}\\agent-host\\node.exe`, packageFolder: null };
+      const moved = disk(
+        { [userProfile]: movedProfile, [localAppData]: `${movedProfile}\\AppData\\Local` },
+        [folders.halonicData],
+      );
+
+      await expect(windowsInstallReadPaths(install, folders, moved)).rejects.toThrow(
+        /overlaps Halonic's data folder/,
+      );
+    });
+
     it("refuses a program straight in the user profile", async () => {
       const install = { program: `${userProfile}\\claude.exe`, packageFolder: null };
 
