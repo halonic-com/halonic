@@ -64,26 +64,37 @@ verifies("sandbox-srt.check", () => {
 
   describe("the programs it starts", () => {
     it("starts only bwrap, socat and rg, with fixed arguments and no input from a caller", async () => {
-      const started = vi.mocked(execFile);
+      // The probes are asked once per module, so earlier tests may have asked them
+      // already. A fresh copy of the module asks them again, on every runner.
+      vi.resetModules();
+      const fresh = await import("./machine.ts");
+      const started = vi.mocked((await import("node:child_process")).execFile);
       started.mockClear();
-      await systemMachine.hasBubblewrap();
-      await systemMachine.hasLinuxHelpers();
-      await systemMachine.userNamespacesRestricted();
+      await fresh.systemMachine.hasBubblewrap();
+      await fresh.systemMachine.hasLinuxHelpers();
+      await fresh.systemMachine.userNamespacesRestricted();
       // The runner is not exported: only the fixed probes above can start a program.
       // One expect for however many programs this machine started, so the test makes
       // the same number of expect calls on every machine.
-      const unexpected = started.mock.calls
-        .map(([file, args]) => ({ file, first: (args as string[])[0] }))
-        .filter(
-          ({ file, first }) =>
-            !["bwrap", "socat", "rg"].includes(file) ||
-            !["--version", "-V", "--ro-bind"].includes(first ?? ""),
-        );
+      const programs = started.mock.calls.map(([file, args]) => ({
+        file,
+        first: (args as string[])[0],
+      }));
+      const unexpected = programs.filter(
+        ({ file, first }) =>
+          !["bwrap", "socat", "rg"].includes(file) ||
+          !["--version", "-V", "--ro-bind"].includes(first ?? ""),
+      );
       expect(unexpected).toEqual([]);
-      expect(Object.keys(await import("./machine.ts")).sort()).toEqual([
-        "cgroupNamesContainer",
-        "systemMachine",
-      ]);
+      // Whatever is installed, the three version probes always start.
+      expect(programs).toEqual(
+        expect.arrayContaining([
+          { file: "bwrap", first: "--version" },
+          { file: "socat", first: "-V" },
+          { file: "rg", first: "--version" },
+        ]),
+      );
+      expect(Object.keys(fresh).sort()).toEqual(["cgroupNamesContainer", "systemMachine"]);
     });
   });
 });
