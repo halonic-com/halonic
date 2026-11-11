@@ -3,7 +3,6 @@
 - Task: HAL-5845 (follow-up from the security review of #1830, HAL-5390; rows W2 and W4 of the HAL-5407 review)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-5845](/HAL/issues/HAL-5845)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xFsAEW5TQaT9QFkW1hYyS7Xu3kY57oPioZTy5iZgmIL2vJqayXKYzaj7kjnDhYzqxZyCGlznHxu3GOw39GgIAg==
 
 ## What changes
 
