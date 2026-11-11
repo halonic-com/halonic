@@ -47,6 +47,20 @@ aside and then renamed into place, so a reader never sees half a file; a write t
 temporary file.
 Tests pass a `SettingsFolderWriter` that keeps the files in memory.
 
+## Install folders on Windows
+
+On Windows, the agent host's `--sandbox-setup` doesn't give sandboxed
+programs srt's read grant for the user profile, so a harness installed in
+it can't start unless the session profile names its folders.
+`windowsInstallReadPaths(install, folders)` gives those paths, to add to the
+profile's `readOnlyPaths`: the real folder of the program the sandbox starts
+(`claude.exe`, or the `node.exe` of an nvm or fnm install) and, for a harness
+that runs on Node, its package folder under `%APPDATA%\npm\node_modules`.
+Each is named only when it is inside `%USERPROFILE%`; an install in
+`%ProgramFiles%` adds nothing. It never names the user profile itself, and
+refuses a folder that is the profile or overlaps Halonic's data folder.
+Tests pass a `RealPath` that resolves links without a disk.
+
 ## Example
 
 ```ts

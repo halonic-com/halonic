@@ -4,7 +4,7 @@ Owner: owen · Layer: adapters · Read the root `AGENTS.md` first; this file add
 
 ## Scope
 
-What the harness adapters share: reading a program's output line by line, and keeping the bridge token and anything after the final agent.finished out of a run's events.
+What the harness adapters share: reading a program's output line by line, keeping the bridge token and anything after the final agent.finished out of a run's events, writing the agent's settings folder, and naming a harness's install folders in a Windows profile.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
