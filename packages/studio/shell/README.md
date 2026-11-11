@@ -911,9 +911,10 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   A command source (`shell.command-sources`) is `{ id, commands }`, for commands that come and go
   while Studio runs, such as those of the plugins that are on. Each time the shell lists commands or
   looks one up, it calls `commands()` again and lists what it gives with the feature that added the
-  source. A command of a source must have an id that starts with the source's id and a dot, be a
-  valid id and not repeat one, or it is left out; a source that throws gives none, and the other
-  commands still show. Two sources with one id, or a command or source whose id starts with a
+  source. A command of a source must be readable, have an id that starts with the source's id and a
+  dot, be a valid id and not repeat one, have a `title` that is text and, when it has a `source`,
+  one that is text, or it is left out (one unreadable command, such as a getter that throws, drops
+  only itself); a source that throws or gives no list gives none, and the other commands still show. Two sources with one id, or a command or source whose id starts with a
   source's id and a dot, throw a `ShellError` naming both.
 
 A view is a `ViewRef`: the name of a named export and a `load` that imports its module. `loadView`
