@@ -206,7 +206,9 @@ pub fn file_sha256(path: &Path) -> Result<String, WslError> {
 }
 
 /// Hashes the archive and streams it to `command` from the same open file,
-/// so it can't be swapped between the check and the send.
+/// so renaming another file into its place between the check and the send
+/// changes nothing. A write into the same file can still change what is sent:
+/// the updater's own SHA-256 check refuses that.
 fn send_archive(command: Command, archive: &Path, sha256: &str) -> Result<(), WslError> {
     let mut file = File::open(archive).map_err(archive_error)?;
     if reader_sha256(&mut file)? != sha256 {

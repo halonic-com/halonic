@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Halonic's runtime updater inside the distro (HAL-3779 section 5.3, HAL-5396).
 # Studio runs it as root from Windows:
 #   %SystemRoot%\System32\wsl.exe -d halonic -u root --exec /usr/local/sbin/halonic-runtime <command> ...
@@ -183,11 +183,16 @@ SRC
 # The image has no setuid or setgid programs (HAL-5845), and dpkg-statoverride
 # keeps the bit off when a package is upgraded. A file an upgrade brings in
 # new has no override yet: drop its bit and add one, as the image build does.
+# Only root's files under /usr (merged /usr: /bin, /sbin and /lib point there):
+# halonic can't write there, so it can't swap a file for a link mid-loop.
+# Owner, group and mode come from the same find, NUL-separated (bash's read -d),
+# never from a later stat.
 drop_setuid() {
-  find / -xdev -type f -perm /6000 | while IFS= read -r file; do
-    mode="$(printf '%o' $(( 0$(stat -c %a "$file") & 0777 )))"
+  find /usr -xdev -type f -uid 0 -perm /6000 -printf '%u %g %m\0%p\0' |
+  while IFS=' ' read -r -d '' owner group mode && IFS= read -r -d '' file; do
+    mode="$(printf '%o' $(( 0$mode & 0777 )))"
     if ! dpkg-statoverride --list "$file" >/dev/null; then
-      dpkg-statoverride --update --add "$(stat -c %U "$file")" "$(stat -c %G "$file")" "$mode" "$file"
+      dpkg-statoverride --update --add "$owner" "$group" "$mode" "$file"
     fi
     chmod ug-s "$file"
     echo "dropped setuid/setgid from $file"

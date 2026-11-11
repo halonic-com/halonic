@@ -105,10 +105,18 @@ cat > "$root/usr/sbin/apt-get" <<'APT'
 case " $* " in *" upgrade "*) printf '#!/bin/sh\n' > /usr/bin/new-suid; chmod 4755 /usr/bin/new-suid ;; esac
 APT
 chmod 0755 "$root/usr/sbin/apt-get"
+# halonic's own setuid file is outside /usr: the updater must not touch it, or
+# halonic could swap it for a link and have root chown its target.
+chroot "$root" su halonic -s /bin/sh -c 'touch ~/own-suid && chmod 4755 ~/own-suid'
+own="$(chroot "$root" su halonic -s /bin/sh -c 'echo ~/own-suid')"
 chroot "$root" "$updater" security-update | grep -q '^security updates installed' || fail "security updates didn't run"
 rm "$root/usr/sbin/apt-get"
 [ "$(stat -c %a "$root/usr/bin/new-suid")" = 755 ] || fail "an upgrade left a setuid program"
 chroot "$root" dpkg-statoverride --list /usr/bin/new-suid | grep -q ' 755 ' || fail "no statoverride keeps it off"
+[ "$(stat -c %a "$root$own")" = 4755 ] || fail "the updater changed a file in halonic's home folder"
+if chroot "$root" dpkg-statoverride --list "$own" >/dev/null; then
+  fail "the updater added a statoverride for a file in halonic's home folder"
+fi
 chroot "$root" "$updater" status | grep -q '"securityUpdated":"[0-9]\{4\}-' || fail "status doesn't say when updates ran"
 chroot "$root" "$updater" security-update | grep -q '^skipped' || fail "security updates ran twice in a day"
 echo "OK: image checks passed"
