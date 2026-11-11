@@ -16,7 +16,7 @@ export type SkipReason = CatchUpReason | "busy" | "changed" | "target-unavailabl
 
 /**
  * Why a routine's target can't be started (flow-routines 3.9): it isn't in
- * the live version (`never-live`, "Briefing isn't live yet"), or it is live
+ * the live version (`never-live`, "Briefing isn't live"), or it is live
  * but its saved file is gone, as in the trash (`in-trash`, "Briefing is in
  * the trash"). A target that was live once but left the live version, say
  * moved to the trash before a new version, reads as `never-live` too.
