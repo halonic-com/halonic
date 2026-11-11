@@ -2,6 +2,7 @@
 
 - Approval: follow-up Liam asked for in his review of PR 1626 ([HAL-4987](/HAL/issues/HAL-4987)), tracked on [HAL-5125](/HAL/issues/HAL-5125); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:W/ydTPWeXX/qzch19VS2SLqq3TgkvnzzPC3RzcXq0o4U8jKXRMjKmNLCtPm6iWFDWD//68gmEnOpgkOAeJhyBw==
 
 ## What changes
 
