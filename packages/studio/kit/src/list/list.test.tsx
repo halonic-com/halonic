@@ -242,6 +242,24 @@ verifies("kit.list", () => {
     expect(onOpen.mock.calls).toEqual([["writer"], ["checker"]]);
   });
 
+  it("shows the current row selected, with aria-current and no checkbox, and still opens rows", async () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <List label="Inbox" rows={agents} onOpen={onOpen} current="writer" />,
+    );
+    expect(rowsIn(container)[1]?.getAttribute("aria-current")).toBe("true");
+    expect(mainCell(container, 1).className).toContain("bg-accent-soft");
+    expect(mainCell(container, 1).className).toContain("selected-bar");
+    expect(rowsIn(container)[0]?.hasAttribute("aria-current")).toBe(false);
+    expect(rowsIn(container)[0]?.hasAttribute("aria-selected")).toBe(false);
+    expect(mainCell(container, 0).className).not.toContain("selected-bar");
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    focus(mainCell(container, 1));
+    press(mainCell(container, 1), "Enter");
+    await click(mainCell(container, 2));
+    expect(onOpen.mock.calls).toEqual([["writer"], ["checker"]]);
+  });
+
   it("opens a new tab on Ctrl Enter, ⌘ Enter, a Ctrl-click or a middle click", async () => {
     const onOpen = vi.fn();
     const onOpenInNewTab = vi.fn();
