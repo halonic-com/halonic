@@ -15,6 +15,7 @@ import {
   type Harness,
   type HarnessEvent,
   type HarnessRun,
+  ModelCallError,
   type OpenHarnessBridge,
   RunFailureError,
   type Sandbox,
@@ -110,6 +111,7 @@ export interface HarnessCall {
  * the log.
  *
  * @returns the `output` of the agent's own `agent.finished`
+ * @throws {ModelCallError} `local-only` when the workspace is local only, before anything starts
  * @throws RunFailureError `sandbox-start-failed` when the sandbox doesn't open in time, or
  *   `harness-start-failed` when the host has no such harness, or it fails or sends nothing
  *   before its first event is due
@@ -127,6 +129,12 @@ export async function runHarnessCall(
   stop: StopSignal,
 ): Promise<unknown> {
   const { effect } = call;
+  if (options.localOnly === true) {
+    throw new ModelCallError(
+      "local-only",
+      `Agent "${effect.agent}" runs in ${effect.harness}, which sends its work to its own cloud model, and the workspace is local only, so Halonic didn't start it.`,
+    );
+  }
   const harness = options.harnesses[effect.harness];
   if (harness === undefined) {
     throw new RunFailureError(

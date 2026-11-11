@@ -122,4 +122,11 @@ export interface HarnessRunsOptions {
    * the harness's first event. Defaults: 30 s and 60 s.
    */
   readonly startTimeoutsMs?: Readonly<Partial<Record<StartPhase, number>>>;
+  /**
+   * Whether the workspace is local only (`privacy.localOnly: true`): then
+   * every call is refused before anything starts, because a harness program
+   * sends the work to its own cloud model. The local executor sets it from
+   * its own `localOnly`.
+   */
+  readonly localOnly?: boolean;
 }

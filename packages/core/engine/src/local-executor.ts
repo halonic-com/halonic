@@ -45,7 +45,7 @@ import {
   runConnectorsOf,
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
-import type { LocalRunsOptions } from "./run/local-runs-options.ts";
+import { type LocalRunsOptions, runsOptionsOf } from "./run/local-runs-options.ts";
 import { refusalLog } from "./run/refusal-log.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
@@ -105,8 +105,8 @@ export interface LocalExecutorOptions {
   ): Promise<Readonly<Record<string, Connector["tools"]>>>;
   /**
    * Local-only workspace (`privacy.localOnly`): Halonic's own loop skips models that aren't
-   * `local` (a run left with none fails `local-only`) and uses only `local` connectors. Agents
-   * in a harness program (`runs.harnesses`) aren't covered yet (HAL-5922).
+   * `local` (a run left with none fails `local-only`) and uses only `local` connectors. An agent
+   * in a harness program (`runs.harnesses`) is refused before it starts.
    */
   readonly localOnly?: boolean;
 }
@@ -147,19 +147,19 @@ export class LocalExecutor implements RunExecutor {
     const connectors = options.connectors.filter((each) => !options.localOnly || each.local);
     this.options = { ...options, connectors };
     this.maxRounds = maxRounds;
-    const connectorCalls = options.runs?.connectorCalls;
+    const runs = runsOptionsOf(options.runs, options.localOnly === true);
+    const connectorCalls = runs?.connectorCalls;
     this.runs =
-      options.runs === undefined
+      runs === undefined
         ? undefined
         : new LocalRuns(
-            options.runs,
+            runs,
             options.clock,
             (run, call) => this.callModel(run, call),
             connectorCalls === undefined
               ? undefined
               : (effect) => makeConnectorCall(connectors, effectBoundary(connectorCalls), effect),
           );
-    const runs = options.runs;
     this.chatHarnesses =
       runs?.harnesses === undefined
         ? undefined

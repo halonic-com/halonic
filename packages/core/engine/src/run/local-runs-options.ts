@@ -77,3 +77,16 @@ export function budgetCheckOf(options: LocalRunsOptions): BudgetCheck | undefine
   if (budget === undefined) return undefined;
   return { budget, spend: (run, at) => spendOf(options.store, run, at) };
 }
+
+/**
+ * The runs options with a local-only workspace's `localOnly` handed on to
+ * their harnesses, so each harness call, a run's or a chat turn's, refuses
+ * before anything starts (requirement `engine.local-only`).
+ */
+export function runsOptionsOf(
+  runs: LocalRunsOptions | undefined,
+  localOnly: boolean,
+): LocalRunsOptions | undefined {
+  if (!localOnly || runs?.harnesses === undefined) return runs;
+  return { ...runs, harnesses: { ...runs.harnesses, localOnly } };
+}

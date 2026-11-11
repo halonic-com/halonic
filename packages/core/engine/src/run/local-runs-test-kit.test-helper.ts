@@ -133,6 +133,8 @@ export interface RunsSetup {
   readonly proposalFolders?: RunProposalFolders;
   /** The params of the alias the scripted model answers as; none when left out. */
   readonly aliasParams?: ChatParams;
+  /** Whether the workspace is local only; it isn't when left out. */
+  readonly localOnly?: boolean;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -170,6 +172,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     ...(setup.knowledgeOptions === undefined ? {} : { knowledge: setup.knowledgeOptions }),
     secrets: secretsWith(),
     clock,
+    ...(setup.localOnly === undefined ? {} : { localOnly: setup.localOnly }),
     chatAgentOf: async ({ agentId }) =>
       agentId !== undefined && agents !== undefined && Object.hasOwn(agents, agentId)
         ? agents[agentId]
