@@ -12,8 +12,8 @@ with `noun` when the call ends. A missing `verb` means `sent`, so logs written b
 sheets without one, read as before. The requirement gains the rule, a rule that a call without
 `outcome` is neither sent nor "may have sent", and two examples.
 
-`events.run-log-contract`: its third example listed fifteen fields that come with the engine. It
-now lists sixteen, with `tool.result.verb`, which is optional and covered by `events.tool-result-risk`.
+`events.run-log-contract`: its third example listed twenty-two fields that come with the engine. It
+now lists twenty-three, with `tool.result.verb`, which is optional and covered by `events.tool-result-risk`.
 No reference field changes. The type test that pins the exact `tool.result` shape gains the field.
 
 `events.upgrade-old-run-logs`: its example for logs written before `risk` and `noun` now names
