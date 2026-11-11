@@ -69,13 +69,18 @@ afterEach(() => {
 
 verifies("ports.definition-store-watch", () => {
   describe("folder watch", () => {
-    it("reports a checkout that touches 50 files as one batch", async () => {
+    // The watch reads each of the 50 files, one after the other, when it opens and again for the
+    // batch. On Windows that took 9–25 s in CI, close to the 30 s it gets there (HAL-5473). The
+    // test writes the files at once; their events still come apart, half a quiet pause each.
+    it("reports a checkout that touches 50 files as one batch", { timeout: 60_000 }, async () => {
       const files = Object.fromEntries(
         Array.from({ length: 50 }, (_, index) => [`agents/a${index}.agent.yaml`, "v: 1\n"]),
       );
       const { root, hand, batches, settle } = await watched(files);
+      await Promise.all(
+        Object.keys(files).map((path) => writeFile(join(root, path), "v: 2\n", "utf8")),
+      );
       for (const path of Object.keys(files)) {
-        await writeFile(join(root, path), "v: 2\n", "utf8");
         hand.notice(path.replace("/", "\\"));
         await vi.advanceTimersByTimeAsync(quietMs / 2);
       }
