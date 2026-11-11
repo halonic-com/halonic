@@ -1,6 +1,6 @@
 import { stepPrompt } from "@halonicjs/workflow";
+import { checkAnswer } from "../../kernel/agent-answer.ts";
 import { agentCallEffect } from "../../kernel/agent-call.ts";
-import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type { DecidedEvent, DecideInput } from "../../kernel/decide-types.ts";
 import {
   nothing,
@@ -24,7 +24,8 @@ import {
  * harness other than Halonic's own loop, for one harness run. It finishes with
  * `done` when the answer comes back. When the agent's output is a `choice`,
  * an answer that isn't one of its options fails the run with
- * `answer-not-an-option`. When the agent stops at a tool call that needs a
+ * `answer-not-an-option`; when it is `json`, the answer is parsed into data,
+ * and text that isn't JSON fails the run. When the agent stops at a tool call that needs a
  * person's OK, the state waits for `approve` or `reject`, then the agent goes
  * on with the answer: in a new model call, or in the harness call that
  * asked, which kept running while the run waited. When it stops before a
@@ -94,12 +95,9 @@ function finishAgent(
   pending: PendingCall,
   answer: unknown,
 ): StateStep {
-  const checked = checkChoiceAnswer(agents, pending.agent, answer);
+  const checked = checkAnswer(agents, pending.agent, answer);
   if ("error" in checked) {
-    return {
-      ...nothing,
-      outcome: { type: "fail", error: checked.error, reason: "answer-not-an-option" },
-    };
+    return { ...nothing, outcome: { type: "fail", ...checked } };
   }
   const output = checked.output;
   const events: DecidedEvent[] = [

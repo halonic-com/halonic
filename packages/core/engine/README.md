@@ -193,7 +193,12 @@ A branch whose agent's output is a `choice` must answer with one of its options 
 around it is trimmed, nothing else is forgiven); any other answer ends that branch the same way, with
 reason `answer-not-an-option`, and `join` and `continueOnError` decide what follows. A `foreach` item
 is checked the same way, but one wrong answer fails the run, naming the item. A `task` state fails the
-run too (`kernel/choice-answer.ts`, requirement `engine.task-choice-answer`).
+run too (`kernel/agent-answer.ts`, requirement `engine.task-choice-answer`). When the agent's output is
+`json`, its text answer is parsed into data, alone or inside one Markdown code fence, so a later
+`{{context.fields.amount}}` finds it. Text that isn't JSON ends the branch, item or run the same way,
+with reason `error` and an error that quotes the answer; the engine never keeps the text in its place
+(requirement `engine.task-json-answer`). The engine doesn't check the answer against the output's
+`schema` yet.
 
 A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
 kept with its definitions; a run kept without them can't start one. The child's id is the parent's

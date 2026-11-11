@@ -273,3 +273,39 @@ verifies("engine.task-choice-answer", () => {
     expect(run).toMatchObject({ status: "failed", foreach: null });
   });
 });
+
+const jsonAgents = {
+  labeler: { ...writerAgent(), id: "labeler", output: { type: "json" as const } },
+};
+
+verifies("engine.task-json-answer", () => {
+  it("gives an item the data its json agent answered", () => {
+    const { decisions } = play(
+      triageWorkflow(),
+      [start, answer("call-1", '{"ok": true}')],
+      jsonAgents,
+    );
+    expect(decisions[1]?.events[0]).toEqual({
+      type: "agent.finished",
+      state: "triage",
+      agent: "labeler",
+      output: { ok: true },
+      item: 0,
+    });
+  });
+
+  it("fails the run, naming the item, when its json agent's answer isn't JSON", () => {
+    const { decisions } = play(triageWorkflow(), [start, answer("call-2", "ok")], jsonAgents);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "triage",
+        error:
+          'Item 1 of for-each state "triage" failed: Agent "labeler" answered "ok", ' +
+          "which isn't the JSON its output asks for. " +
+          "Tighten the agent's instructions or use a larger model.",
+        reason: "error",
+      },
+    ]);
+  });
+});

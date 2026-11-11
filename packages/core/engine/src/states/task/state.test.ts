@@ -112,3 +112,63 @@ verifies("engine.task-choice-answer", () => {
     });
   });
 });
+
+function checkerAgent(harness?: Agent["harness"]): Agent {
+  return { ...triageAgent(harness), id: "checker", output: { type: "json" } };
+}
+
+verifies("engine.task-json-answer", () => {
+  it("parses a json agent's answer into data for agent.finished and the context", () => {
+    const agents = { triage: checkerAgent() };
+    const { decisions, run } = play(triage, [start, answer(' {"ok": true}\n')], agents);
+    expect(decisions[1]?.events.slice(0, 2)).toEqual([
+      { type: "agent.finished", state: "sort", agent: "triage", output: { ok: true } },
+      { type: "context.updated", key: "kind", value: { ok: true } },
+    ]);
+    expect(run?.status).toBe("completed");
+  });
+
+  it.each([
+    ["with a language tag", '```json\n{"amount": 12}\n```'],
+    ["without a language tag", '```\n{"amount": 12}```'],
+  ])("parses the JSON inside one code fence %s", (_case, output) => {
+    const { run } = play(triage, [start, answer(output)], { triage: checkerAgent() });
+    expect(run?.context).toEqual({ kind: { amount: 12 } });
+  });
+
+  it("keeps an answer that is already data, as a harness can give", () => {
+    const agents = { triage: checkerAgent("claude-code") };
+    const { run } = play(triage, [start, answer({ ok: false }, "harness")], agents);
+    expect(run?.context).toEqual({ kind: { ok: false } });
+  });
+
+  it.each([
+    ["text", "The amount looks fine."],
+    ["half an object", '{"ok": true'],
+    ["two fences", '```\n{"a": 1}\n```\n```\n{"b": 2}\n```'],
+  ])("fails the run on %s, and never keeps the text", (_case, output) => {
+    const { decisions, run } = play(triage, [start, answer(output)], { triage: checkerAgent() });
+    const quoted = JSON.stringify(output);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "sort",
+        error:
+          `Agent "triage" answered ${quoted}, which isn't the JSON its output asks for. ` +
+          "Tighten the agent's instructions or use a larger model.",
+        reason: "error",
+      },
+    ]);
+    expect(run?.status).toBe("failed");
+    expect(run?.context).not.toHaveProperty("kind");
+  });
+
+  it("parses a harness's text result as it does a model's answer", () => {
+    const agents = { triage: checkerAgent("claude-code") };
+    const parsed = play(triage, [start, answer("[1, 2]", "harness")], agents);
+    expect(parsed.run?.context).toEqual({ kind: [1, 2] });
+
+    const failed = play(triage, [start, answer("ok", "harness")], agents);
+    expect(failed.log.at(-1)).toMatchObject({ type: "run.failed", reason: "error" });
+  });
+});

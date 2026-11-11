@@ -1,7 +1,7 @@
 import type { RunFailureReason } from "@halonicjs/events";
 import { stepPrompt } from "@halonicjs/workflow";
+import { checkAnswer } from "../../kernel/agent-answer.ts";
 import { programHarnessOf } from "../../kernel/agent-call.ts";
-import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type { DecidedEvent, DecideInput, Effect } from "../../kernel/decide-types.ts";
 import {
   nothing,
@@ -103,10 +103,9 @@ function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): 
   return { ...join, events: [finished, ...join.events] };
 }
 
-/** A branch's answer; one that isn't among its agent's options ends the branch with an error. */
+/** A branch's answer; one its agent's output doesn't allow ends the branch with an error. */
 function answered({ agents }: StateContext, branch: RunningBranch, answer: unknown): BranchEnd {
-  const checked = checkChoiceAnswer(agents, branch.call?.agent ?? "", answer);
-  return "error" in checked ? { error: checked.error, reason: "answer-not-an-option" } : checked;
+  return checkAnswer(agents, branch.call?.agent ?? "", answer);
 }
 
 /** The branch's `agent.finished`: its answer, its failure, or the step it couldn't try. */

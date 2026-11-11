@@ -1,5 +1,5 @@
 import { render } from "@halonicjs/workflow";
-import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
+import { checkAnswer } from "../../kernel/agent-answer.ts";
 import type {
   ChildInput,
   DecidedEvent,
@@ -81,10 +81,10 @@ function takeCallResult(context: StateContext, input: EffectDoneInput): StateSte
   if (result.type === "tool") {
     return nothing;
   }
-  const checked = checkChoiceAnswer(context.agents, agent, result.output);
+  const checked = checkAnswer(context.agents, agent, result.output);
   if ("error" in checked) {
     const error = `Item ${running.item} of for-each state "${context.stateId}" failed: ${checked.error}`;
-    return { ...nothing, outcome: { type: "fail", error, reason: "answer-not-an-option" } };
+    return { ...nothing, outcome: { type: "fail", error, reason: checked.reason } };
   }
   const output = checked.output;
   const finished: DecidedEvent = {

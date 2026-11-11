@@ -14,20 +14,6 @@
     ]
   },
   {
-    "id": "json-output-stays-text",
-    "task": "HAL-4756",
-    "area": "workflow runs: an agent JSON output",
-    "old": "784f78d parsed the answer of an agent whose output is json (checker) into data, for agent.finished and the context.",
-    "new": "The engine keeps the answer as text, so later paths such as {{context.fields.amount}} find nothing.",
-    "tests": [
-      "billing/batch/each line runs the line-check workflow",
-      "billing/invoice/an approved invoice is paid and announced",
-      "billing/invoice/a rejection with a comment ends in rejected",
-      "billing/invoice/an approval nobody answers expires after two days",
-      "billing/invoice/without a decision the run waits"
-    ]
-  },
-  {
     "id": "task-method-ignored",
     "task": "HAL-4757",
     "area": "workflow runs: a task step method and with",

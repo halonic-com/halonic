@@ -375,3 +375,33 @@ verifies("engine.task-choice-answer", () => {
     expect(run?.status).toBe("failed");
   });
 });
+
+const jsonAgents = {
+  searcher: { ...writerAgent(), id: "searcher", output: { type: "json" as const } },
+};
+
+verifies("engine.task-json-answer", () => {
+  it("gives a branch the data its json agent answered", () => {
+    const { run } = play(
+      researchWorkflow(),
+      [start, answer("call-2", '{"risk": "low"}'), answer("call-1", "n")],
+      jsonAgents,
+    );
+    expect(run?.context).toMatchObject({ web: { risk: "low" } });
+    expect(run?.status).toBe("completed");
+  });
+
+  it("ends a branch whose json agent's answer isn't JSON, with reason error", () => {
+    const { decisions } = play(
+      researchWorkflow(),
+      [start, answer("call-2", "ok"), answer("call-1", "n")],
+      jsonAgents,
+    );
+    expect(decisions[1]?.events[0]).toMatchObject({
+      type: "agent.finished",
+      branch: "web",
+      output: null,
+      reason: "error",
+    });
+  });
+});
