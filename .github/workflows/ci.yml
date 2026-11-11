@@ -1410,6 +1410,7 @@ jobs:
             if ($LASTEXITCODE -ne $c.code) { throw "Expected exit $($c.code)" }
             if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
           }
+          $global:LASTEXITCODE = 0
       - name: Install again with /RELAUNCH, Halonic reopens
         run: |
           $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version

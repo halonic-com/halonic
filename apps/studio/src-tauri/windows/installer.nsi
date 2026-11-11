@@ -1158,6 +1158,9 @@ Function PageInstall
   ; The buttons say what they do, and Install is the default button.
   GetDlgItem $0 $HWNDPARENT 1
   SendMessage $0 ${WM_SETTEXT} 0 "STR:&Install"
+  ; Nothing comes before this page, so no Back button.
+  GetDlgItem $0 $HWNDPARENT 3
+  ShowWindow $0 ${SW_HIDE}
   Call PageInstallCheckFolder
   nsDialogs::Show
 FunctionEnd
@@ -1240,6 +1243,8 @@ Function PageFinish
   GetDlgItem $0 $HWNDPARENT 1
   SendMessage $0 ${WM_SETTEXT} 0 "STR:&Finish"
   GetDlgItem $0 $HWNDPARENT 2
+  ShowWindow $0 ${SW_HIDE}
+  GetDlgItem $0 $HWNDPARENT 3
   ShowWindow $0 ${SW_HIDE}
   nsDialogs::Show
 FunctionEnd
