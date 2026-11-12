@@ -15,6 +15,8 @@ interface ChangeRow {
 
 const insertChange = `INSERT INTO record_changes (collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?)`;
 const insertSeed = `INSERT INTO record_changes (seq, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, NULL)`;
+const claimCompaction = "INSERT INTO record_compactions (collection, version) VALUES (?, ?)";
+const releaseCompactions = "DELETE FROM record_compactions WHERE collection = ? AND version <= ?";
 
 /**
  * A {@link RecordStore} over a D1 database: every collection's log is rows of one table,
@@ -27,6 +29,11 @@ const insertSeed = `INSERT INTO record_changes (seq, collection, id, at, op, "va
  * `compact` reads a collection's rows, then in one transaction deletes the rows it read and writes
  * the seeds in their place, under the lowest of the same `seq` numbers. A change appended while it
  * ran has a higher number, so it stays after the seeds and is folded onto them, never lost.
+ *
+ * Two compactions of one collection must not overlap: the second to write would delete the first's
+ * seeds and write seeds that miss what the first folded in. So each claims the collection's next
+ * compaction version in its transaction, and the one that read an out-of-date log fails to claim it
+ * and rolls back. That call rejects; the log is untouched, and calling `compact` again is safe.
  *
  * @example
  * const records = new D1RecordStore(env.DB);
@@ -67,6 +74,8 @@ export class D1RecordStore implements RecordStore {
   }
 
   async compact(collection: string): Promise<void> {
+    // The version is read before the rows: a compaction that lands in between fails our claim.
+    const version = await this.#compactionVersion(collection);
     const rows = await this.#rows(collection);
     const last = rows.at(-1);
     if (last === undefined) {
@@ -74,6 +83,8 @@ export class D1RecordStore implements RecordStore {
     }
     const seeds = compactedChanges(collection, rows.map(toChange));
     await this.#db.batch([
+      this.#db.prepare(claimCompaction).bind(collection, version + 1),
+      this.#db.prepare(releaseCompactions).bind(collection, version),
       this.#db
         .prepare("DELETE FROM record_changes WHERE collection = ? AND seq <= ?")
         .bind(collection, last.seq),
@@ -90,6 +101,17 @@ export class D1RecordStore implements RecordStore {
           ),
       ),
     ]);
+  }
+
+  async #compactionVersion(collection: string): Promise<number> {
+    await this.#migrated();
+    const { results } = await this.#db
+      .prepare(
+        "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions WHERE collection = ?",
+      )
+      .bind(collection)
+      .all<{ version: number }>();
+    return results[0]?.version ?? 0;
   }
 
   async #rows(collection: string): Promise<ChangeRow[]> {

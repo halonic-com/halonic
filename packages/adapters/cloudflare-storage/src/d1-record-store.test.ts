@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { SqlDatabase, SqlStatement } from "./d1-database.ts";
 import { runMigrations } from "./d1-migrations.ts";
 import { D1RecordStore } from "./d1-record-store.ts";
+import { migrations } from "./migrations/index.ts";
 
 // These tests run over a stand-in for D1 (Node's SQLite), for the coverage of `src` and for the
 // cases that need to reach inside the database. The proof that the store works on D1 is the
@@ -15,9 +16,13 @@ import { D1RecordStore } from "./d1-record-store.ts";
  * its coverage can be measured. It is not the proof: D1 itself is, through the contract suites
  * run in workerd (`record-store.test.ts`).
  */
-function sqliteDatabase(): SqlDatabase & { failNextBatch(error: Error): void } {
+function sqliteDatabase(): SqlDatabase & {
+  failNextBatch(error: Error): void;
+  beforeNextBatch(hook: () => Promise<void>): void;
+} {
   const sqlite = new DatabaseSync(":memory:");
   let failure: Error | undefined;
+  let hook: (() => Promise<void>) | undefined;
 
   const statement = (sql: string, values: SQLInputValue[] = []): SqlStatement => ({
     bind: (...bound) => statement(sql, bound as SQLInputValue[]),
@@ -28,6 +33,11 @@ function sqliteDatabase(): SqlDatabase & { failNextBatch(error: Error): void } {
   return {
     prepare: (sql) => statement(sql),
     batch: async (statements) => {
+      if (hook !== undefined) {
+        const run = hook;
+        hook = undefined;
+        await run();
+      }
       if (failure !== undefined) {
         const error = failure;
         failure = undefined;
@@ -48,6 +58,9 @@ function sqliteDatabase(): SqlDatabase & { failNextBatch(error: Error): void } {
     },
     failNextBatch: (error) => {
       failure = error;
+    },
+    beforeNextBatch: (run) => {
+      hook = run;
     },
   };
 }
@@ -113,7 +126,7 @@ verifies("cloudflare-storage.d1-record-store", () => {
       expect(await store.changes("leads")).toEqual([]);
       await store.append([change("1", "add", { name: "Ada" }, 1)]);
       const applied = await db.prepare("SELECT id FROM schema_migrations").all();
-      expect(applied.results.length).toBe(1);
+      expect(applied.results.length).toBe(migrations.length);
     });
 
     it("tries the migrations again after a failed run", async () => {
@@ -142,13 +155,52 @@ verifies("cloudflare-storage.d1-record-store", () => {
         change("1", "update", { name: "Ada L." }, 2),
       ]);
       // The compact reads the log, then the update arrives, then the compact writes.
-      const reading = store.compact("leads");
-      await store.append([change("1", "update", { city: "Paris" }, 3)]);
-      await reading;
+      db.beforeNextBatch(() => store.append([change("1", "update", { city: "Paris" }, 3)]));
+      await store.compact("leads");
 
       const log = await store.changes("leads");
       expect(log.at(-1)?.op).toBe("update");
       expect(foldRecords(log).get("1")?.values).toEqual({ name: "Ada L.", city: "Paris" });
+    });
+
+    it("fails a compact that read the log before another compact finished", async () => {
+      const db = sqliteDatabase();
+      const store = new D1RecordStore(db);
+      await store.append([
+        change("1", "add", { name: "Ada", city: "London" }, 1),
+        change("1", "update", { name: "Ada L." }, 2),
+      ]);
+      // Compact A has read the log. Before it writes, a change arrives and compact B runs to the end.
+      db.beforeNextBatch(async () => {
+        await store.append([change("1", "update", { city: "Paris" }, 3)]);
+        await store.compact("leads");
+      });
+
+      await expect(store.compact("leads")).rejects.toThrow();
+
+      const log = await store.changes("leads");
+      expect(foldRecords(log).get("1")?.values).toEqual({ name: "Ada L.", city: "Paris" });
+      expect(log.length).toBe(1);
+    });
+
+    it("lets a compact run again after one failed", async () => {
+      const db = sqliteDatabase();
+      const store = new D1RecordStore(db);
+      await store.append([
+        change("1", "add", { name: "Ada" }, 1),
+        change("1", "update", { name: "Bo" }, 2),
+      ]);
+      db.beforeNextBatch(async () => {
+        await store.compact("leads");
+      });
+      await expect(store.compact("leads")).rejects.toThrow();
+
+      await store.append([change("1", "update", { name: "Cy" }, 3)]);
+      await store.compact("leads");
+
+      expect(foldRecords(await store.changes("leads")).get("1")?.values).toEqual({ name: "Cy" });
+      const claims = await db.prepare("SELECT version FROM record_compactions").all();
+      expect(claims.results.length).toBe(1);
     });
 
     it("compacts an empty collection to nothing", async () => {
