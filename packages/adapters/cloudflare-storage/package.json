@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-cloudflare-storage",
   "private": true,
   "type": "module",
-  "description": "The storage ports over Cloudflare's storage products, for the Worker: the BlobStore over R2.",
+  "description": "The storage ports over Cloudflare's storage products, for the Worker: the BlobStore over R2 and the RecordStore over D1.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@halonicjs/adapter-token-store": "workspace:*",
     "@halonicjs/target-cloudflare-testing": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",

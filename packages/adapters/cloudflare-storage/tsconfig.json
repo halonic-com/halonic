@@ -12,6 +12,10 @@
   "include": [
     "src/index.ts",
     "src/r2-blob-store.ts",
+    "src/d1-database.ts",
+    "src/d1-migrations.ts",
+    "src/d1-record-store.ts",
+    "src/migrations/*.ts",
     "src/**/*.workerd.test.ts"
   ]
 }

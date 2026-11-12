@@ -25,6 +25,8 @@ const inMemoryStorage = {
 export interface WorkerdBindings {
   /** Names of R2 buckets, such as `"BLOBS"`, read as `env.BLOBS`. */
   r2Buckets?: readonly string[];
+  /** Names of D1 databases, such as `"DB"`, read as `env.DB`. */
+  d1Databases?: readonly string[];
 }
 
 /** The Worker's address inside Miniflare; nothing listens on a real port. */
@@ -56,6 +58,7 @@ export class WorkerdRunner {
       compatibilityDate,
       ...inMemoryStorage,
       r2Buckets: [...(bindings.r2Buckets ?? [])],
+      d1Databases: [...(bindings.d1Databases ?? [])],
     });
     try {
       await miniflare.ready;

@@ -1,8 +1,8 @@
 # @halonicjs/adapter-cloudflare-storage
 
 The storage ports over Cloudflare's storage products, for the Worker. Today that is the
-`BlobStore` over R2; the D1 record store and the R2 definition store follow
-([build plan](https://github.com/halonic-com/halonic) part 2 to 4, HAL-197).
+`BlobStore` over R2 and the `RecordStore` over D1, with its migrations; the R2 definition store
+follows ([build plan](https://github.com/halonic-com/halonic) part 2 to 4, HAL-197).
 
 - **Layer:** adapters
 - **Owner:** priya

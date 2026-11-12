@@ -25,6 +25,10 @@ export interface Matchers {
   toBe(expected: unknown): void;
   /** Deeply equal, ignoring properties that are `undefined`. */
   toEqual(expected: unknown): void;
+  /** An array or a set that has `expected` (found with `===`), or a string that contains it. */
+  toContain(expected: unknown): void;
+  /** A value made by `expected`, a class, or one of its subclasses. */
+  toBeInstanceOf(expected: ErrorClass): void;
   /** A number at or above `expected`. */
   toBeGreaterThanOrEqual(expected: number | bigint): void;
   /** Exactly `null`. */
@@ -81,6 +85,14 @@ const matchers: Record<keyof Matchers, MatcherImplementation> = {
   toEqual: (actual, expected) => ({
     pass: deepEqual(actual, expected),
     expectation: `to equal ${describeValue(expected)}`,
+  }),
+  toContain: (actual, expected) => ({
+    pass: contains(actual, expected),
+    expectation: `to contain ${describeValue(expected)}`,
+  }),
+  toBeInstanceOf: (actual, expected) => ({
+    pass: actual instanceof requireClass(expected),
+    expectation: `to be an instance of ${describeValue(expected)}`,
   }),
   toBeGreaterThanOrEqual: (actual, expected) => ({
     pass: requireComparable(actual, "actual") >= requireComparable(expected, "expected"),
@@ -259,6 +271,30 @@ function requireComparable(value: unknown, role: "actual" | "expected"): number 
     return value;
   }
   throw new TypeError(`${role} value must be number or bigint, received ${describeValue(value)}`);
+}
+
+/**
+ * Whether an array, a set or a string holds `expected`. Like Vitest, an array is searched with
+ * `===`, so it never finds `NaN`, and any other value holds nothing, also under `not`.
+ */
+function contains(actual: unknown, expected: unknown): boolean {
+  if (typeof actual === "string") {
+    return typeof expected === "string" && actual.includes(expected);
+  }
+  if (Array.isArray(actual)) {
+    return actual.some((item) => item === expected);
+  }
+  return actual instanceof Set && actual.has(expected);
+}
+
+/** Returns `expected` when it is a class; otherwise the check fails, also under `not`, as in Vitest. */
+function requireClass(expected: unknown): ErrorClass {
+  if (typeof expected !== "function") {
+    throw new AssertionError(
+      `the instanceof check needs a class, received ${describeValue(expected)}`,
+    );
+  }
+  return expected as ErrorClass;
 }
 
 function describeValue(value: unknown): string {
