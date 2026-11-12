@@ -35,6 +35,17 @@ verifies("cli.commands.tools.revoke", () => {
     expect(run.noColour.exit).toBe(exitCode.notFound);
   });
 
+  it("says nothing was removed when several tools were named", async () => {
+    const run = await kit.expectGolden("revoke-not-approved-several", [
+      "tools",
+      "revoke",
+      "notes-mcp",
+      "send",
+      "archive",
+    ]);
+    expect(run.noColour.exit).toBe(exitCode.notFound);
+  });
+
   it("removes none when one of the tools isn't approved", async () => {
     const run = await kit.tools(["revoke", "notes-mcp", "send", "archive", "--json"]);
     expect(run.code).toBe(exitCode.notFound);
