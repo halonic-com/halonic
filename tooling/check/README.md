@@ -14,7 +14,8 @@ Imports are read with the TypeScript parser, not regular expressions.
   `pnpm check:leaks`, `pnpm check:licences`, `pnpm check:audit`, `pnpm check:sbom`,
   `pnpm check:bundle`, `pnpm check:pr-title`, `pnpm check:coverage-floors`,
   `pnpm decision sign <pull request number>`, `pnpm version:sync`,
-  `node tooling/check/src/cli/requirement-guard.ts` (CI runs it)
+  `node tooling/check/src/cli/requirement-guard.ts`, `cloud-affected.ts` and `live-sweep.ts`
+  (CI runs them)
 - **Public API:** `src/index.ts`: `rules`, `loadContext`, `Report` and the layout helpers, so
   `tooling/discover` and tests can run the rules. The command lines are in `src/cli/`.
 - **Settings:** `policy.json` (core order, published packages, file size),

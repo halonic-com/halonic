@@ -1731,6 +1731,76 @@ jobs:
   # so ci-ok fails within a minute. Pull requests don't use it: the author
   # should see every failure at once. It runs no repository code (no
   # checkout), so the write permission below is only used by the `gh` calls here.
+  live-cloud:
+    # ADR 5.9: a change to a cloud path merges only after the live suites
+    # passed on it. They run in live-cloud.yml once the pull request is ready
+    # for review, so here the pull request only gets a notice, and the merge
+    # queue waits for that workflow's `live-cloud` job on the pull request's
+    # head. Only a run of live-cloud.yml from this repository counts, never a
+    # fork's. Off, with a notice, until LIVE_CLOUD_ENABLED is "true".
+    name: Live cloud suites passed
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - id: affected
+        name: Changes a cloud path?
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: node tooling/check/src/cli/cloud-affected.ts --base "$BASE"
+      - name: Wait for the live suites
+        if: steps.affected.outputs.affected == 'true'
+        env:
+          ENABLED: ${{ vars.LIVE_CLOUD_ENABLED }}
+          EVENT: ${{ github.event_name }}
+          MERGE_REF: ${{ github.event.merge_group.head_ref }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$ENABLED" != "true" ]; then
+            echo "::notice title=Live cloud suites::This changes a cloud path, but there is no CI Cloudflare token yet (HAL-198), so nothing is required."
+            exit 0
+          fi
+          if [ "$EVENT" = "pull_request" ]; then
+            echo "::notice title=Live cloud suites::This changes a cloud path. The live suites run once the pull request is ready for review, and the merge queue requires them to pass."
+            exit 0
+          fi
+          pr=$(sed -nE 's#^refs/heads/gh-readonly-queue/[^/]+/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<< "$MERGE_REF")
+          [ -n "$pr" ] || { echo "::error::Can't read the pull request number from $MERGE_REF."; exit 1; }
+          sha=$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)
+          # A live job still running is waited for, up to 45 minutes: the merge
+          # queue drops an entry after 60.
+          for _ in $(seq 45); do
+            runs=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$sha&event=pull_request&per_page=20" \
+              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$REPO\") | .id")
+            results=""
+            for run in $runs; do
+              results+=$(gh api "repos/$REPO/actions/runs/$run/jobs" \
+                --jq '.jobs[] | select(.name == "live-cloud") | (.conclusion // "running")')$'\n'
+            done
+            if grep -qx success <<< "$results"; then
+              echo "The live suites passed on $sha."
+              exit 0
+            fi
+            grep -qx running <<< "$results" || break
+            sleep 60
+          done
+          echo "::error::Pull request #$pr changes a cloud path, but the live-cloud job has not passed on its head $sha. Mark it ready for review, or re-run the Live cloud workflow, then queue it again."
+          exit 1
+
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
@@ -1855,6 +1925,7 @@ jobs:
         android,
         e2e,
         docs,
+        live-cloud,
       ]
     runs-on: ubuntu-24.04
     timeout-minutes: 2

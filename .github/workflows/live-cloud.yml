@@ -1,0 +1,196 @@
+# The live suites against the real Cloudflare test account (ADR 5.9,
+# HAL-198). An emulator misses differences in the real service, so a pull
+# request that changes a cloud path (tooling/check's cloud-affected) must pass
+# them before it merges: ci.yml's `live-cloud` gate fails `ci-ok` in the merge
+# queue until the `live-cloud` job here passed on the pull request's head.
+#
+# To stay inside the CI budget (D36) they start only once a pull request is
+# ready for review, and a pass is reused when none of its inputs changed.
+# Every night they run on main again, without reuse, to catch changes on the
+# provider's side. The sweeper deletes what a dead run left behind. Opening
+# one issue per target for a failed night comes with the first live suite.
+#
+# Everything here is off until the repository variable LIVE_CLOUD_ENABLED is
+# "true". Set it once the protected `live-cloud` environment holds the test
+# account's token (HALONIC_CLOUDFLARE_API_TOKEN); until then each job skips
+# with a notice. Forks never get the token. Changes to this file, the live
+# test code and the sweeper need Julian's review.
+
+name: Live cloud
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "23 2 * * *" # nightly on main: sweep, then every live suite
+    - cron: "41 */6 * * *" # every 6 hours: the sweeper only
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: live-cloud-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NIGHTLY_CRON: "23 2 * * *"
+  SWEEP_CRON: "41 */6 * * *"
+
+jobs:
+  plan:
+    name: What to run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      live: ${{ steps.plan.outputs.live }}
+      sweep: ${{ steps.plan.outputs.sweep }}
+      nightly: ${{ steps.plan.outputs.nightly }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - id: plan
+        name: Decide
+        env:
+          ENABLED: ${{ vars.LIVE_CLOUD_ENABLED }}
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          skip() {
+            echo "::notice title=Live cloud suites skipped::$1"
+            printf 'live=false\nsweep=false\nnightly=false\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ "$ENABLED" != "true" ]; then
+            skip "There is no CI Cloudflare token yet (LIVE_CLOUD_ENABLED is not true; HAL-198). Nothing ran against a real account."
+          fi
+          if [ "$EVENT" = "schedule" ] && [ "$SCHEDULE" = "$SWEEP_CRON" ]; then
+            printf 'live=false\nsweep=true\nnightly=false\n' >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" != "pull_request" ]; then
+            printf 'live=true\nsweep=true\nnightly=true\n' >> "$GITHUB_OUTPUT"
+          elif [ "$HEAD_REPO" != "$REPO" ]; then
+            skip "A fork never gets the test account's token. A maintainer pushes the branch into this repository to run the live suites (CONTRIBUTING.md)."
+          elif [ "$DRAFT" = "true" ]; then
+            skip "Draft pull request: the live suites start when it is marked ready for review."
+          else
+            node tooling/check/src/cli/cloud-affected.ts --base "$BASE" | tee "$RUNNER_TEMP/affected.txt"
+            if grep -qx 'affected=true' "$RUNNER_TEMP/affected.txt"; then
+              printf 'live=true\nsweep=false\nnightly=false\n' >> "$GITHUB_OUTPUT"
+            else
+              skip "No cloud path changed, so the live suites aren't needed. The nightly run on main covers the rest."
+            fi
+          fi
+
+  sweep:
+    # Before the nightly run, and every 6 hours on its own. The nightly run
+    # fails if anything was left behind: a leak in `destroy` or a test.
+    name: Sweep hlt- leftovers
+    needs: plan
+    if: needs.plan.outputs.sweep == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: live-cloud
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Sweep
+        env:
+          HALONIC_CLOUDFLARE_API_TOKEN: ${{ secrets.HALONIC_CLOUDFLARE_API_TOKEN }}
+          NIGHTLY: ${{ needs.plan.outputs.nightly }}
+        run: |
+          if [ "$NIGHTLY" = "true" ]; then
+            node tooling/check/src/cli/live-sweep.ts --fail-on-delete
+          else
+            node tooling/check/src/cli/live-sweep.ts
+          fi
+
+  live-cloud:
+    # ci.yml's merge-queue gate looks for this job by name on the pull
+    # request's head. Keep the name.
+    name: live-cloud
+    needs: [plan, sweep]
+    if: ${{ !cancelled() && needs.plan.outputs.live == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: live-cloud
+    permissions:
+      contents: read
+      actions: read # to find an earlier pass with the same inputs
+    env:
+      HALONIC_LIVE_PREFIX: hlt-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - id: inputs
+        name: Hash the inputs
+        run: node tooling/check/src/cli/cloud-affected.ts --inputs-hash
+      # Pull requests only: the nightly run never reuses, because it is there
+      # to catch changes on the provider's side. Only passes uploaded by a run
+      # of this repository count, never one from a fork.
+      - id: reuse
+        name: Look for an earlier pass with the same inputs
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REPO_ID: ${{ github.repository_id }}
+          INPUTS: ${{ steps.inputs.outputs.inputs }}
+        run: |
+          found=$(gh api "repos/$REPO/actions/artifacts?name=live-cloud-pass-$INPUTS&per_page=20" \
+            --jq "[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id == $REPO_ID)] | length")
+          if [ "$found" != "0" ]; then
+            echo "::notice title=Live cloud suites reused::An earlier run passed with exactly these inputs ($INPUTS)."
+            echo "reused=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run the live suites
+        if: steps.reuse.outputs.reused != 'true'
+        env:
+          HALONIC_CLOUDFLARE_API_TOKEN: ${{ secrets.HALONIC_CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$HALONIC_CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::LIVE_CLOUD_ENABLED is true, but the live-cloud environment has no HALONIC_CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+          if ! git grep -q '"test:live"' -- 'packages/**/package.json' 'apps/**/package.json'; then
+            echo "::notice title=Live cloud suites::No package has a live suite (a test:live script) yet; nothing to run."
+            exit 0
+          fi
+          # One suite at a time: they share one account and its limits.
+          pnpm -r --workspace-concurrency=1 --if-present run test:live
+      # Runs on failure and cancel too. Each suite removes its own resources;
+      # this sweep catches what an earlier dead run left. It reuses each
+      # target's own `destroy`; until a target has one it only reports.
+      - name: Sweep
+        if: always() && steps.reuse.outputs.reused != 'true'
+        env:
+          HALONIC_CLOUDFLARE_API_TOKEN: ${{ secrets.HALONIC_CLOUDFLARE_API_TOKEN }}
+        run: node tooling/check/src/cli/live-sweep.ts
+      - name: Record the pass
+        if: github.event_name == 'pull_request' && steps.reuse.outputs.reused != 'true'
+        env:
+          INPUTS: ${{ steps.inputs.outputs.inputs }}
+        run: echo "$INPUTS" > "$RUNNER_TEMP/live-cloud-pass.txt"
+      - if: github.event_name == 'pull_request' && steps.reuse.outputs.reused != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-cloud-pass-${{ steps.inputs.outputs.inputs }}
+          path: ${{ runner.temp }}/live-cloud-pass.txt
+          retention-days: 7

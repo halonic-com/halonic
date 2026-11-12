@@ -18,6 +18,8 @@ machine](#running-checks-on-your-machine).
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
 | `pnpm check:pr-title` | the pull request title as a Conventional Commits title (`PR_TITLE` when run locally); CI runs it |
 | `pnpm check:coverage-floors <base-sha> <head-sha>` | fails when the change lowers a package's coverage floor; CI runs it (see [Coverage floors](#coverage-floors)) |
+| `node tooling/check/src/cli/cloud-affected.ts --base <commit>` | whether a change touches a cloud path and so needs the live cloud suites; `--inputs-hash` prints what a live result depends on. CI runs it (`live-cloud.yml`) |
+| `node tooling/check/src/cli/live-sweep.ts [--fail-on-delete]` | deletes `hlt-` live test resources older than 2 hours on the test account; CI runs it |
 | `pnpm discover [--fix \| --check]` | writes the generated files (`pnpm install` runs it too); `--fix` also rewrites the Studio's feature list and the folder-discovery globs in `turbo.json` |
 | `pnpm new package <layer>/<name>` | creates an empty package that passes every check (adapters: add `--runtime <r>`) |
 | `pnpm new feature <name>` | creates an empty Studio feature and adds it to the Studio's feature list |
