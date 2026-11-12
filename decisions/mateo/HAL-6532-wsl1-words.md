@@ -3,6 +3,7 @@
 - Task: HAL-6532 (part 3 of HAL-6518)
 - Approval: the words are the team's call on an approved screen (board, HAL-2282), decided by Sofia on [HAL-6526](/HAL/issues/HAL-6526) and in her first-run walk, [HAL-6538](/HAL/issues/HAL-6538) items 12 and 13; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HK7QenOfl/39/vt7yCbbxbBk3zeRqx51K3RRE4j3lgoASH6JYn65Z3YYyPBpXYKZB45N10h8wbXhEgK2dEtHDw==
 
 ## What changes
 
