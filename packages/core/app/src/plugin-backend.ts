@@ -11,16 +11,11 @@
 // `windows` (Julian's build conditions (a) and (b), HAL-1873 design 11).
 
 import type { Plugin } from "@halonicjs/format";
-import type { Digest, FolderReader } from "@halonicjs/ports";
-import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
+import type { Digest, FolderReader, Sandbox } from "@halonicjs/ports";
+import { type PluginFolder, type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
 import { pluginSecretNames } from "./plugin-secret-names.ts";
 import type { PluginSettingValues } from "./plugin-settings.ts";
-import type {
-  GatedRunner,
-  GatedStart,
-  RunnerStartGate,
-  StartInSandbox,
-} from "./runner-start-gate.ts";
+import type { GatedRunner, GatedStart, RunnerStartGate } from "./runner-start-gate.ts";
 import type { TrustService } from "./trust-service.ts";
 
 /**
@@ -59,6 +54,27 @@ export class PluginBackendNotTrustedError extends Error {
   }
 }
 
+/**
+ * The plugin as it was read and found trusted at this start: what the person
+ * trusted, and so the only files and manifest the start may run. `startIn`
+ * gets it, so nothing has to read the folder a second time and take what a
+ * change in between left there.
+ */
+export interface TrustedPluginBackend extends PluginFolder {
+  /** The fingerprint the trust covers: the hash of the manifest and of every file in `files`. */
+  readonly fingerprint: string;
+}
+
+/**
+ * Starts the runner in the sandbox the gate picked, for the plugin that was
+ * checked. Load only the files in `trusted.files`, and only when each one's
+ * bytes still hash to what is listed there.
+ */
+export type StartTrustedBackend<Runner extends GatedRunner> = (
+  sandbox: Sandbox,
+  trusted: TrustedPluginBackend,
+) => Promise<Runner>;
+
 /** What {@link PluginBackendStart} needs from the host. */
 export interface PluginBackendStartOptions {
   /** The profile's plugin folder, which holds one folder per plugin, named by its id. */
@@ -76,7 +92,9 @@ export interface PluginBackendStartOptions {
  *
  * @example
  * const starts = new PluginBackendStart({ plugins, digest, trust, gate });
- * const gated = await starts.start("weather", (sandbox) => startRunner({ ...options, sandbox }));
+ * const gated = await starts.start("weather", (sandbox, trusted) =>
+ *   startRunner({ ...options, sandbox, files: trusted.files }),
+ * );
  * if (gated.run === "needs-yes") showTrustCheck(gated.reason);
  */
 export class PluginBackendStart {
@@ -89,7 +107,8 @@ export class PluginBackendStart {
   /**
    * Reads the plugin `id` as it is in the plugins folder now, checks that
    * its trust is `trusted` for exactly these files and this manifest, then
-   * starts its backend's runner through the start gate.
+   * starts its backend's runner through the start gate. `startIn` gets
+   * the plugin as it was checked, so it runs those files and no others.
    *
    * @param id - the plugin's id, which is its folder's name
    * @throws a `RangeError` when `id` isn't a single folder name
@@ -98,13 +117,13 @@ export class PluginBackendStart {
    */
   async start<Runner extends GatedRunner>(
     id: string,
-    startIn: StartInSandbox<Runner>,
+    startIn: StartTrustedBackend<Runner>,
   ): Promise<GatedStart<Runner>> {
-    await this.#checkTrust(id);
-    return await this.#options.gate.start(startIn);
+    const trusted = await this.#checkTrust(id);
+    return await this.#options.gate.start((sandbox) => startIn(sandbox, trusted));
   }
 
-  async #checkTrust(id: string): Promise<void> {
+  async #checkTrust(id: string): Promise<TrustedPluginBackend> {
     const { plugins, digest, trust } = this.#options;
     if (id === "" || id === "." || id === ".." || /[/\\]/u.test(id)) {
       throw new RangeError(`${JSON.stringify(id)} isn't a plugin id`);
@@ -116,16 +135,27 @@ export class PluginBackendStart {
     const { plugin, location, files } = read.value;
     if (plugin.backend === undefined) throw new PluginBackendNotTrustedError(id, "no-backend");
     const check = await trust.checkPlugin({ location, plugin, files });
-    switch (check.status) {
-      case "trusted":
-        return;
-      case "new":
-        throw new PluginBackendNotTrustedError(id, "not-trusted");
-      case "changed":
-        throw new PluginBackendNotTrustedError(id, "changed");
-      case "unreadable":
-        throw new PluginBackendNotTrustedError(id, "record-unreadable");
-    }
+    // Anything but `trusted` refuses, so a status added later fails closed.
+    if (check.status === "trusted")
+      return { plugin, location, files, fingerprint: check.fingerprint };
+    throw new PluginBackendNotTrustedError(id, untrustedReason(check.status));
+  }
+}
+
+/** The reason a check that isn't `trusted` gives for refusing the start. */
+function untrustedReason(
+  status: Exclude<Awaited<ReturnType<TrustService["checkPlugin"]>>["status"], "trusted">,
+): PluginBackendTrustReason {
+  switch (status) {
+    case "new":
+      return "not-trusted";
+    case "changed":
+      return "changed";
+    case "unreadable":
+      return "record-unreadable";
+    default:
+      // A status added later still refuses; it needs a reason of its own.
+      return "not-trusted";
   }
 }
 
@@ -156,9 +186,16 @@ export function pluginBackendChoices(
 ): PluginBackendChoices {
   const stored = pluginSecretNames(plugin);
   const secretNames = Object.fromEntries(
-    Object.keys(plugin.backend?.secrets ?? {}).map((name) => [name, stored[name] ?? name]),
+    Object.keys(plugin.backend?.secrets ?? {}).map((name) => [name, storedName(stored, name)]),
   );
   return { settings, secretNames };
+}
+
+/** Where the secret `name` is stored; a declared secret always has a name, so a missing one is a bug, never a fallback to the bare name. */
+function storedName(stored: Record<string, string>, name: string): string {
+  const storedAs = stored[name];
+  if (storedAs === undefined) throw new Error(`The plugin's secret ${name} has no stored name.`);
+  return storedAs;
 }
 
 function readFailed(error: unknown): PluginProblem {

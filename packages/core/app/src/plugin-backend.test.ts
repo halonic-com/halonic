@@ -1,10 +1,11 @@
 import type { Clock, Digest, Sandbox, SandboxCheck, SandboxFence } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   PluginBackendNotTrustedError,
   PluginBackendStart,
   pluginBackendChoices,
+  type TrustedPluginBackend,
 } from "./plugin-backend.ts";
 import { readPluginFolder } from "./plugin-folder.ts";
 import { type GatedRunner, RunnerStartGate } from "./runner-start-gate.ts";
@@ -101,8 +102,9 @@ async function setup({
     [`${id}/plugin.yaml`]: manifest,
     [`${id}/backend/index.js`]: "export default {};\n",
   });
+  const store = new TestTrustStore();
   const trust = new TrustService({
-    store: new TestTrustStore(),
+    store,
     digest,
     clock,
     appVersion: "0.1.0",
@@ -116,7 +118,7 @@ async function setup({
   });
   const starts = new PluginBackendStart({ plugins, digest, trust, gate });
   const started: FakeRunner[] = [];
-  const startIn = async (picked: Sandbox) => {
+  const startIn = async (picked: Sandbox, _trusted?: TrustedPluginBackend) => {
     const runner = new FakeRunner((picked as Sandbox & { name: string }).name);
     started.push(runner);
     return runner;
@@ -136,7 +138,7 @@ async function setup({
     expect((await trust.grantPlugin(subject, shown.fingerprint, "cli")).ok).toBe(true);
   };
 
-  return { id, plugins, trust, runs, starts, started, startIn, read, trustIt };
+  return { id, plugins, store, trust, runs, starts, started, startIn, read, trustIt };
 }
 
 async function refusal(promise: Promise<unknown>): Promise<PluginBackendNotTrustedError> {
@@ -155,6 +157,21 @@ verifies("app.plugin-backend", () => {
       await trustIt();
       expect((await starts.start(id, startIn)).run).toBe("fenced");
       expect(started.map((runner) => runner.startedIn)).toEqual(["fenced"]);
+    });
+
+    it("hands the checked plugin, its files and fingerprint to the start", async () => {
+      const { id, starts, read, trust, trustIt } = await setup();
+      await trustIt();
+      const handed: TrustedPluginBackend[] = [];
+      await starts.start(id, async (_sandbox, trusted) => {
+        handed.push(trusted);
+        return new FakeRunner("fenced");
+      });
+      const subject = await read();
+      expect(handed).toEqual([
+        { ...subject, fingerprint: (await trust.checkPlugin(subject)).fingerprint },
+      ]);
+      expect(handed[0]?.files.map((file) => file.path)).toContain("backend/index.js");
     });
 
     it("starts no process for a plugin nobody trusted", async () => {
@@ -195,6 +212,29 @@ verifies("app.plugin-backend", () => {
       const error = await refusal(starts.start(id, startIn));
       expect(error.reason).toBe("unreadable");
       expect(error.problems).toEqual([expect.objectContaining({ code: "link" })]);
+      expect(started).toEqual([]);
+    });
+
+    it("starts nothing when the folder can't be read at all", async () => {
+      const { id, plugins, starts, started, startIn, trustIt } = await setup();
+      await trustIt();
+      vi.spyOn(plugins, "entries").mockRejectedValue(new Error("disk gone"));
+      const error = await refusal(starts.start(id, startIn));
+      expect(error.reason).toBe("unreadable");
+      expect(error.problems).toEqual([
+        expect.objectContaining({
+          code: "read-failed",
+          message: expect.stringContaining("disk gone"),
+        }),
+      ]);
+      expect(started).toEqual([]);
+    });
+
+    it("starts nothing when the trust record can't be read", async () => {
+      const { id, store, starts, started, startIn, trustIt } = await setup();
+      await trustIt();
+      store.breakRecords();
+      expect((await refusal(starts.start(id, startIn))).reason).toBe("record-unreadable");
       expect(started).toEqual([]);
     });
 
