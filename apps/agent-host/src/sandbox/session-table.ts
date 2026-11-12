@@ -57,6 +57,11 @@ export class SessionTable {
     return this.stopping;
   }
 
+  /** How many sessions are open: each is a sandboxed program running now. */
+  get openCount(): number {
+    return this.sessions.size;
+  }
+
   /**
    * Takes a place for a session about to open, so that sessions opening at
    * the same time can't go past the limit together. Call the returned
