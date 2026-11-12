@@ -227,6 +227,14 @@ async function mirrored() {
   }
   const saved = existsSync(wslconfig) ? readFileSync(wslconfig) : undefined;
   await new Promise((done) => routeServer.listen(0, "0.0.0.0", done));
+  // Windows Firewall drops what the distro sends to the host. A rule for both
+  // ports leaves the canary's 127.0.0.1 bind as the only thing between them.
+  const rule = "name=halonic-d3";
+  const ports = `${port},${routeServer.address().port}`;
+  const opened = await outsideSrt(
+    `netsh advfirewall firewall add rule ${rule} dir=in action=allow protocol=TCP localport=${ports}`,
+  );
+  record("D3 another distro", "firewall rule for the two ports", "INFO", say(opened));
   try {
     await networkMode("nat");
     await networkMode("mirrored");
@@ -234,6 +242,7 @@ async function mirrored() {
     if (saved === undefined) rmSync(wslconfig, { force: true });
     else writeFileSync(wslconfig, saved);
     await outsideSrt(`${wsl} --shutdown`);
+    await outsideSrt(`netsh advfirewall firewall delete rule ${rule}`);
     routeServer.close();
   }
 }
