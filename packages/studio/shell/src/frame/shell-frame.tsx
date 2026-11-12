@@ -6,7 +6,7 @@ import {
   type ToastStore,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { CloseStack } from "../close-stack/close-stack.ts";
 import type { ShellEngine } from "../engine/engine-connection.ts";
@@ -50,6 +50,11 @@ export interface ShellFrameProps {
    * Left out on an opened item, so the page can put its own bar at the bottom: one bar at a time.
    */
   readonly phoneNavigation?: ReactNode;
+  /**
+   * Receives the toolbar's Places button while the window is narrow, for a dialog opened from the
+   * drawer to give focus back to.
+   */
+  readonly placesButton?: RefObject<HTMLButtonElement | null>;
   /** The page. */
   readonly children: ReactNode;
 }
@@ -108,7 +113,7 @@ export function ShellFrame(props: ShellFrameProps) {
  */
 function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentation }) {
   const desktop = props.presentation === "desktop";
-  const drawer = usePlacesDrawer(props.sidebar !== undefined);
+  const drawer = usePlacesDrawer(props.sidebar !== undefined, props.placesButton);
   return (
     <div
       data-layout={props.presentation}

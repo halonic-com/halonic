@@ -156,6 +156,8 @@ export function StudioWindow(props: StudioWindowProps) {
     }
   }, [paletteOpen, desktop, closePalette]);
   useEffect(() => announceSaveNotes(workspace.saving, announcer), [workspace, announcer]);
+  // The Places button is the frame's; Settings opened from the drawer gives focus back to it.
+  const placesButton = useRef<HTMLButtonElement>(null);
   // A phone shows its own place's page, not the active tab's, so the title names that page.
   const tabTitle = useActiveTabTitle(tabs);
   useWindowTitle(desktop ? tabTitle : phone.topBar.title, workspace.name);
@@ -163,6 +165,7 @@ export function StudioWindow(props: StudioWindowProps) {
   return (
     <ShellFrame
       announcer={announcer}
+      placesButton={placesButton}
       closeStack={shell.closeStack}
       engine={shell.engine}
       toasts={shell.toasts}
@@ -268,15 +271,10 @@ export function StudioWindow(props: StudioWindowProps) {
           contextFor={contextFor}
           announcer={announcer}
           onClose={settings.close}
-          returnFocus={placesButton}
+          returnFocus={() => placesButton.current}
         />
       )}
       <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );
-}
-
-/** The toolbar's Places button, in a narrow window, where Settings opened from the drawer closes. */
-function placesButton(): HTMLElement | null {
-  return document.querySelector<HTMLElement>("[data-places-button] button");
 }
