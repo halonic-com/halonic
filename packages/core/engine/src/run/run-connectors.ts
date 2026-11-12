@@ -129,6 +129,14 @@ export class RunsConnectors {
     await this.#connectors.end(runId);
   }
 
+  /**
+   * Ends the connectors of a run that failed to start, so nothing the host
+   * kept for it stays: it has no log, so {@link RunsConnectors.ended} can't tell.
+   */
+  async notStarted(runId: string): Promise<void> {
+    await this.#connectors?.end(runId);
+  }
+
   async #topLevelOf(run: RunState): Promise<RunState> {
     if (run.parent === null) return run;
     const runId = await topLevelRunOf(this.#runs, run);

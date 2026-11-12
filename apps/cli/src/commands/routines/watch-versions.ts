@@ -173,7 +173,8 @@ export class WatchedVersions implements WorkspaceVersions {
    * The definitions a routine run starts with: from the live version at
    * its commit, or from the saved files as they are now. The version is
    * checked first, becomes {@link latest} once it passes, and is kept for
-   * the run's connectors until {@link forget}.
+   * the run's connectors until {@link forget}. A run whose start then fails
+   * is forgotten by the engine, as it has no end to do it.
    *
    * @throws when the version changes local only, fails its check, or has no such workflow
    */
@@ -186,9 +187,10 @@ export class WatchedVersions implements WorkspaceVersions {
     const workspace = await this.#workspaceAllowedAt(version);
     await this.#checks.trust(workspace);
     await this.#checks.sandbox(workspace, { hubId, workflowId });
+    const definitions = runDefinitionsOf(workspace, hubId, workflowId);
     this.#latest = workspace;
     this.#workspaceOfRun.set(runId, workspace);
-    return runDefinitionsOf(workspace, hubId, workflowId);
+    return definitions;
   }
 
   /**

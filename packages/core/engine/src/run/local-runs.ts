@@ -22,7 +22,6 @@ import type {
   StartChildEffect,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
-import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { appendFailed } from "./append-failed.ts";
@@ -33,6 +32,7 @@ import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
 import { RunsProposalFolders } from "./proposal-folders.ts";
+import { type RecordStartPorts, recordStart } from "./record-start.ts";
 import {
   type CallTool,
   noConnectorCalls,
@@ -42,7 +42,7 @@ import type { RunsConnectors } from "./run-connectors.ts";
 import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
-import { checkStartRequest, startInputOf } from "./start-request.ts";
+import { checkStartRequest } from "./start-request.ts";
 import { UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
 import { WatchedRuns } from "./watched-runs.ts";
@@ -78,7 +78,7 @@ export class LocalRuns {
   readonly #harnessCalls: LocalHarnessCalls;
   readonly #modelCalls: LocalModelCalls;
   readonly #folders: RunsProposalFolders;
-  readonly #connectors: Pick<RunsConnectors, "ended"> | undefined;
+  readonly #connectors: Pick<RunsConnectors, "ended" | "notStarted"> | undefined;
   #started: Promise<void> | undefined;
   /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
   #closed = false;
@@ -92,7 +92,7 @@ export class LocalRuns {
     clock: Clock,
     callModel: CallModel,
     callTool: CallTool = noConnectorCalls,
-    connectors?: Pick<RunsConnectors, "ended">,
+    connectors?: Pick<RunsConnectors, "ended" | "notStarted">,
   ) {
     checkStartTimeouts(options.harnesses?.startTimeoutsMs);
     this.#options = options;
@@ -146,24 +146,16 @@ export class LocalRuns {
     const runId = request.runId ?? this.#options.ids.next("run");
     const existing = await this.store.get(runId);
     if (existing !== null) return existing;
-    const { hubId, workflowId, harness, version } = request;
+    const { hubId, workflowId, version } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId, version, runId);
-    const definitionsVersion = await keepDefinitions(this.#options.blobs, definitions);
-    const folderRun = { runId, hubId, workflowId, version: version ?? null };
-    const opened = await this.#folders.open(folderRun, definitions, harness);
     try {
-      await this.#record(runId, startInputOf(request, runId, definitionsVersion, this.#now()));
+      await recordStart(this.#startPorts(), request, runId, definitions);
+      return await this.#summary(runId);
     } catch (error) {
-      // A start repeated at the same moment: the other one recorded it.
-      if (error instanceof InputRefused && error.code === "engine.run-exists") {
-        return this.#summary(runId);
-      }
-      if (opened && (await this.store.get(runId)) === null) {
-        await this.#folders.notStarted(runId);
-      }
+      // The host kept something for the run when it read its definitions: with no start recorded, nothing ends it.
+      if ((await this.store.get(runId)) === null) await this.#connectors?.notStarted(runId);
       throw error;
     }
-    return this.#summary(runId);
   }
 
   /**
@@ -483,6 +475,16 @@ export class LocalRuns {
   async #fail(runId: string, error: string, reason: RunFailureReason = "error"): Promise<void> {
     if (!(await appendFailed(this.store, runId, error, reason, () => this.#now()))) return;
     await this.#tellParentOf(runId);
+  }
+
+  #startPorts(): RecordStartPorts {
+    return {
+      blobs: this.#options.blobs,
+      store: this.store,
+      folders: this.#folders,
+      record: (runId, input) => this.#record(runId, input),
+      now: () => this.#now(),
+    };
   }
 
   async #summary(runId: string): Promise<RunSummary> {
