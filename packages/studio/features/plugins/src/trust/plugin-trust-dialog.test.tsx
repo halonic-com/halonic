@@ -111,7 +111,7 @@ async function settle() {
   });
 }
 
-verifies("plugins.trust-check", () => {
+verifies("plugins.plugin-trust-check", () => {
   it("shows the title, source line and summary, with Not now focused and no ✕", () => {
     open(weather, { origin: fromGit });
 
