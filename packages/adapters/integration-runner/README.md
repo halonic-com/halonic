@@ -57,9 +57,12 @@ must be stopped with exactly one block, or answered without stopping, and never 
   Node starts through `prlimit --data` (`dataLimitMiB`: Node's start, the heap and 256 MiB of
   buffers), and an allocation past it fails with a `RangeError` (HAL-7565). macOS and Windows have
   no such limit, so the gap stays open there; so does it on a Linux machine without `prlimit`, which
-  the start looks up on the host and, when it is missing, goes without and says so once (HAL-7794). Each start has a fresh nonce. The connection carries the session's
-  fence proof (`fence`), what the fence refuses is reported through `onBlocked` as a `fence`
-  block, and the session closes when the runner stops for any reason.
+  the start looks up on the host and, when it is missing, goes without and reports once through
+  `onNotice`, if the caller passes one (HAL-7794).
+
+  Each start has a fresh nonce. The connection carries the session's fence proof (`fence`), what
+  the fence refuses is reported through `onBlocked` as a `fence` block, and the session closes
+  when the runner stops for any reason.
 - **The runner process, `src/runner/main.ts`:** `node --permission … <runner> <nonce> <folder>
   <entry file> <export>`. The console goes to stderr, so stdout carries only frames. It loads the
   integration after `start`, sends its declaration with only the fields the protocol knows, and

@@ -9,8 +9,8 @@
 // behind an `ArrayBuffer` or a typed array lies outside the heap, so on Linux
 // the runner starts through `prlimit --data`, which caps the whole data
 // segment and makes such an allocation fail with a `RangeError` (HAL-7565).
-// macOS doesn't enforce that limit for `mmap` and Windows has no rlimits, so
-// there only the heap limit holds; the gap stays open in the design (HAL-958).
+// macOS and Windows have no such limit here, so there only the heap limit
+// holds; the gap stays open in the design (HAL-958).
 // A Linux machine without `prlimit` (NixOS, a minimal Alpine) gets the same
 // heap-limit-only start, so the runner can still start there (HAL-7794).
 
