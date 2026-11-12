@@ -3,10 +3,10 @@
 // checks the answer against it, and the executor tells the model how to
 // reply by it, so both read it from the step's definition.
 
-import type { Agent, AgentOutput, WorkflowState } from "@halonicjs/format";
+import type { Agent, AgentOutput } from "@halonicjs/format";
 import type { RunDefinitions } from "./decide-types.ts";
 import { agentIn } from "./kept-definitions.ts";
-import { callStateOf, methodOf, methodOutputOf } from "./step-method.ts";
+import { callStepOf, type MethodStep, methodOf, methodOutputOf } from "./step-method.ts";
 
 /**
  * What a step's answer is checked against instead of its agent's own
@@ -17,7 +17,7 @@ import { callStateOf, methodOf, methodOutputOf } from "./step-method.ts";
 export function stepOutputOf(
   agents: Readonly<Record<string, Agent>>,
   agentId: string,
-  step: WorkflowState,
+  step: MethodStep,
 ): AgentOutput | undefined {
   if (step.format !== undefined) return { type: step.format };
   const method = step.method === undefined ? undefined : methodOf(agents, agentId, step.method);
@@ -25,8 +25,8 @@ export function stepOutputOf(
 }
 
 /**
- * The agent a run's model call for `stateId` is made as, from the
- * definitions the run started with: its `output` is the step's own
+ * The agent a run's model call for `stateId` (and `branch` of a `parallel`
+ * state) is made as, from the definitions the run started with: its `output` is the step's own
  * ({@link stepOutputOf}) when the step has one, so the model is told to
  * reply as the step asks. `undefined` for an agent the definitions have no
  * file for.
@@ -35,10 +35,11 @@ export function callAgentOf(
   definitions: RunDefinitions,
   stateId: string,
   agentId: string,
+  branch?: string,
 ): Agent | undefined {
   const agent = agentIn(definitions, agentId);
-  const state = callStateOf(definitions, stateId);
+  const step = callStepOf(definitions, stateId, branch);
   const stepOutput =
-    state === undefined ? undefined : stepOutputOf(definitions.agents ?? {}, agentId, state);
+    step === undefined ? undefined : stepOutputOf(definitions.agents ?? {}, agentId, step);
   return agent === undefined || stepOutput === undefined ? agent : { ...agent, output: stepOutput };
 }

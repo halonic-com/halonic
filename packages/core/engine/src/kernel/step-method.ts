@@ -19,41 +19,68 @@ export function methodOf(
   return methods !== undefined && Object.hasOwn(methods, name) ? methods[name] : undefined;
 }
 
-/** The state types whose `method` their agent calls; a `parallel` state's branches name their own. */
+/** The state types whose own `method` their agent calls; a `parallel` state's branches name their own. */
 const methodStates: ReadonlySet<string> = new Set(["task", "foreach"]);
 
 /**
- * The method a run's model call for `stateId` calls: the state's `method`
+ * What a step says about how its agent answers: a `task` or `foreach`
+ * state, or a `parallel` branch (which has a `method` and no `format`).
+ */
+export type MethodStep = Pick<WorkflowState, "method" | "format">;
+
+/**
+ * The method a run's model call for `stateId` calls: the step's `method`
  * of the call's agent, from the definitions the run started with.
- * `undefined` when the state calls none.
+ * `branch` names the branch of a `parallel` state the call belongs to.
+ * `undefined` when the step calls none.
  */
 export function callMethodOf(
   definitions: RunDefinitions,
   stateId: string,
   agentId: string,
+  branch?: string,
 ): AgentMethod | undefined {
-  const state = callStateOf(definitions, stateId);
-  if (state?.method === undefined) return undefined;
-  return methodOf(definitions.agents ?? {}, agentId, state.method);
+  const step = callStepOf(definitions, stateId, branch);
+  if (step?.method === undefined) return undefined;
+  return methodOf(definitions.agents ?? {}, agentId, step.method);
 }
 
 /**
- * The state of the run's workflow that a model call for `stateId` belongs
+ * The step of the run's workflow that a model call for `stateId` belongs
  * to, when it is one whose own `method` and `format` count: a `task` or a
- * `foreach` state. `undefined` for any other.
+ * `foreach` state, or the `branch` of a `parallel` state. `undefined` for
+ * any other.
  */
-export function callStateOf(
+export function callStepOf(
   definitions: RunDefinitions,
   stateId: string,
-): WorkflowState | undefined {
+  branch?: string,
+): MethodStep | undefined {
   const states = definitions.workflow.states;
   const state = Object.hasOwn(states, stateId) ? states[stateId] : undefined;
-  return state !== undefined && methodStates.has(state.type) ? state : undefined;
+  if (state === undefined) return undefined;
+  if (branch !== undefined) {
+    const branches = state.branches ?? {};
+    return state.type === "parallel" && Object.hasOwn(branches, branch)
+      ? branches[branch]
+      : undefined;
+  }
+  return methodStates.has(state.type) ? state : undefined;
 }
 
 /** A method's answer as an agent's `output` says it: text, or JSON for a method that answers with fields. */
 export function methodOutputOf(method: AgentMethod): AgentOutput {
   return method.output === "text" ? { type: "text" } : { type: "json" };
+}
+
+/** Why a `parallel` state's branch can't call `name`: its agent has no such method. */
+export function noBranchMethodError(
+  stateId: string,
+  branch: string,
+  agentId: string,
+  name: string,
+): string {
+  return `Branch "${branch}" of parallel state "${stateId}" calls method "${name}", which agent "${agentId}" doesn't have.`;
 }
 
 /** Why a step can't call `name`: its agent has no such method. */
