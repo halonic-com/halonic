@@ -2,8 +2,8 @@
 //! with the requirement it proves (`sandbox_elevate_`).
 
 use halonic_sandbox_elevate::{
-    FOLDER, Folders, Machine, PROGRAM, SRT_WIN, TEMP, Value, Verb, code, environment, run,
-    sha256_hex, uninstall_entry, verb,
+    FOLDER, Folders, Hashes, Machine, PROGRAM, RUNTIME, RUNTIME_SHIPPED, SRT_WIN, TEMP, Value,
+    Verb, code, environment, run, sha256_hex, uninstall_entry, verb,
 };
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 const SHIPPED: &[u8] = b"srt-win as shipped";
 const SWAPPED: &[u8] = b"srt-win from someone else";
+const RUNTIME_BYTES: &[u8] = b"the pinned C++ runtime";
 const HELPER: &[u8] = b"helper";
 /// The publisher the pretend release is signed by.
 const PUBLISHER: &str = "Halonic";
@@ -65,6 +66,7 @@ impl Pretend {
         files.insert(from.join(PROGRAM), HELPER.to_vec());
         if let Some(bytes) = srt_win {
             files.insert(from.join(SRT_WIN), bytes.to_vec());
+            files.insert(from.join(RUNTIME_SHIPPED), RUNTIME_BYTES.to_vec());
         }
         Pretend {
             elevated: true,
@@ -86,7 +88,12 @@ impl Pretend {
     }
 
     fn run(&self, verb: Verb) -> i32 {
-        run(verb, self, &sha256_hex(SHIPPED), self.signer)
+        let (srt_win, runtime) = (sha256_hex(SHIPPED), sha256_hex(RUNTIME_BYTES));
+        let hashes = Hashes {
+            srt_win: &srt_win,
+            runtime: &runtime,
+        };
+        run(verb, self, hashes, self.signer)
     }
 
     fn file(&self, path: PathBuf) -> Option<Vec<u8>> {
@@ -224,7 +231,11 @@ fn sandbox_elevate_sets_up_from_the_checked_copy_in_the_admin_only_folder() {
     // Both are written for Administrators only, and shared once checked.
     assert_eq!(
         *machine.written.borrow(),
-        vec![folder().join(SRT_WIN), folder().join(PROGRAM)]
+        vec![
+            folder().join(SRT_WIN),
+            folder().join(RUNTIME),
+            folder().join(PROGRAM)
+        ]
     );
     assert!(machine.private.borrow().is_empty());
 }
@@ -478,4 +489,77 @@ fn sandbox_elevate_never_copies_srt_win_onto_itself() {
     assert_eq!(machine.run(Verb::SetUp), code::FOLDER);
     assert!(machine.ran().is_empty());
     assert_eq!(machine.file(app().join(SRT_WIN)).as_deref(), Some(SHIPPED));
+}
+
+#[test]
+fn sandbox_elevate_runtime_goes_beside_srt_win_and_never_into_the_app_folder() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    // Under its own name in the admin-only folder, for Users to read and run.
+    assert_eq!(
+        machine.file(folder().join(RUNTIME)).as_deref(),
+        Some(RUNTIME_BYTES)
+    );
+    assert!(machine.shared.borrow().contains(&folder().join(RUNTIME)));
+    // The app folder holds it only under the shipped name, which no program
+    // loads, and the helper wrote nothing there.
+    assert_eq!(machine.file(app().join(RUNTIME)), None);
+    assert!(
+        machine
+            .written
+            .borrow()
+            .iter()
+            .all(|file| file.parent() == Some(folder().as_path()))
+    );
+}
+
+#[test]
+fn sandbox_elevate_runtime_refuses_a_swapped_copy_and_deletes_the_one_in_the_folder() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    machine
+        .files
+        .borrow_mut()
+        .insert(app().join(RUNTIME_SHIPPED), b"a planted runtime".to_vec());
+    // A copy from an earlier setup.
+    machine
+        .files
+        .borrow_mut()
+        .insert(folder().join(RUNTIME), RUNTIME_BYTES.to_vec());
+    assert_eq!(machine.run(Verb::SetUp), code::WRONG_SRT_WIN);
+    assert!(machine.ran().is_empty());
+    assert_eq!(machine.file(folder().join(RUNTIME)), None);
+    assert!(!machine.written.borrow().contains(&folder().join(RUNTIME)));
+    assert_eq!(*machine.entry.borrow(), None);
+}
+
+#[test]
+fn sandbox_elevate_runtime_missing_stops_setup() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    machine
+        .files
+        .borrow_mut()
+        .remove(&app().join(RUNTIME_SHIPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::NO_SRT_WIN);
+    assert!(machine.ran().is_empty());
+}
+
+#[test]
+fn sandbox_elevate_runtime_is_removed_with_the_folder_and_an_older_setup_still_removes() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    let mut from_installed_apps = Pretend::new(folder(), Some(SHIPPED));
+    from_installed_apps.files = machine.files;
+    from_installed_apps.entry = machine.entry;
+    // A setup before the runtime was shipped left none.
+    from_installed_apps
+        .files
+        .borrow_mut()
+        .remove(&folder().join(RUNTIME));
+    assert_eq!(from_installed_apps.run(Verb::Remove), code::OK);
+    assert!(
+        from_installed_apps
+            .deleted
+            .borrow()
+            .contains(&folder().join(RUNTIME))
+    );
 }

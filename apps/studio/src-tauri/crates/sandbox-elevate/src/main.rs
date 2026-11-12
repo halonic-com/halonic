@@ -25,7 +25,7 @@ fn run(verb: halonic_sandbox_elevate::Verb) -> i32 {
     halonic_sandbox_elevate::run(
         verb,
         &halonic_sandbox_elevate::Windows,
-        halonic_sandbox_elevate::SRT_WIN_SHA256,
+        halonic_sandbox_elevate::Hashes::SHIPPED,
         halonic_sandbox_elevate::SIGNER,
     )
 }

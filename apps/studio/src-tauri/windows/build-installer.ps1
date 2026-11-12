@@ -53,6 +53,11 @@ if ($Step -ne 'pack') {
   Copy-Item (Join-Path $shell "target/elevate/$triple/release/halonic-sandbox-elevate.exe") $packedHelper -Force
   $srtWin = Join-Path $repo 'packages/adapters/sandbox-srt/node_modules/@anthropic-ai/sandbox-runtime/vendor/srt-win/x64/srt-win.exe'
   Copy-Item $srtWin (Join-Path $bin 'srt-win.exe') -Force
+# srt-win imports vcruntime140.dll, which a clean Windows doesn't have. The
+# pinned, hash-checked copy ships next to the helper, which puts it beside
+# srt-win in Program Files. It is named vcruntime140.dll.pinned here, so
+# nothing started from the app folder can load it from there (HAL-8068).
+& (Join-Path $PSScriptRoot 'fetch-vcruntime.ps1')
 
   # The licences of the npm libraries the app and the agent host bundle
   # (HAL-6225) and of the Rust crates the app links for $triple (HAL-6962).
