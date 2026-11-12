@@ -114,6 +114,43 @@ const openerFeature = defineFeature({
   },
 });
 
+function AppearanceSection() {
+  return <p className="appearance-section">Appearance</p>;
+}
+
+/** A Settings section, and a Home card that opens it as a phone page. */
+const settingsSectionFeature = defineFeature({
+  id: "display",
+  title: "Display",
+  register(studio) {
+    studio.settings.add({
+      id: "appearance",
+      title: "Appearance",
+      scope: "display",
+      order: 10,
+      view: "AppearanceSection",
+      load: async () => ({ AppearanceSection }),
+    });
+    studio.home.addCard({
+      id: "needs-you",
+      view: "OpenAppearanceCard",
+      load: async () => ({ OpenAppearanceCard }),
+    });
+  },
+});
+
+function OpenAppearanceCard({ context }: HomeCardProps) {
+  return (
+    <button
+      type="button"
+      className="open-appearance"
+      onClick={() => context.openSettings?.("appearance")}
+    >
+      Open Appearance
+    </button>
+  );
+}
+
 function renderPhoneWindow(features = [inboxFeature, agentsFeature]) {
   const shell = createShell({ features, timers: new FakeTimers() });
   const services = new MapTarget();
@@ -207,6 +244,18 @@ verifies("shell.studio-phone", () => {
 
     act(() => button("Back")?.click());
     expect(heading()).toBe("More");
+  });
+
+  it("pads a Settings section's page 16px left and right, with room under the last control", async () => {
+    const { container } = renderPhoneWindow([settingsSectionFeature]);
+    await settle();
+    act(() => container.querySelector<HTMLElement>(".open-appearance")?.click());
+    await settle();
+    const wrapper = container
+      .querySelector(".appearance-section")
+      ?.closest('[data-testid="settings-section-page"]');
+    expect(wrapper?.classList.contains("px-4")).toBe(true);
+    expect(wrapper?.classList.contains("pb-6")).toBe(true);
   });
 
   it("opens the Search sheet from the top bar", () => {
