@@ -37,6 +37,9 @@ async function watchAcme(): Promise<WatchedVersions> {
   return versions;
 }
 
+/** A run that read the saved files. */
+const savedRun = { runId: "run-1", version: { reads: "saved-files" } } as const;
+
 /** The ids of the workspace's provider files. */
 function providersOf(workspace: LoadedWorkspace): string[] {
   return filesOf(workspace, "provider").map((file) => file.value.id);
@@ -58,7 +61,7 @@ verifies("cli.local-engine", () => {
       "id: ollama\ntype: ollama\nlocal: true\n",
     );
 
-    const read = await watched.trustedVersionOf({ reads: "saved-files" });
+    const read = await watched.trustedVersionOf(savedRun);
 
     expect(checked).toEqual([["mock", "ollama"]]);
     expect(read.trust).toBe(contractGrant);
@@ -70,7 +73,7 @@ verifies("cli.local-engine", () => {
   it("gives no grant until the watch sets its checks", async () => {
     const watched = await watchAcme();
 
-    const read = await watched.trustedVersionOf({ reads: "saved-files" });
+    const read = await watched.trustedVersionOf(savedRun);
 
     expect(read.trust).toBeNull();
   });
@@ -91,9 +94,46 @@ verifies("cli.local-engine", () => {
       (await readFile(file, "utf8")).replace("localOnly: true", "localOnly: false"),
     );
 
-    await expect(watched.trustedVersionOf({ reads: "saved-files" })).rejects.toThrow(
-      "turns local only on or off",
-    );
+    await expect(watched.trustedVersionOf(savedRun)).rejects.toThrow("turns local only on or off");
     expect(checks).toBe(0);
+  });
+
+  it("gives a run's connectors the load its definitions came from, not an edit made since", async () => {
+    const watched = await watchAcme();
+    const checked: string[][] = [];
+    watched.checkWith({
+      trust: async (workspace) => {
+        checked.push(providersOf(workspace));
+        return contractGrant;
+      },
+      sandbox: async () => {},
+    });
+    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
+    await writeFile(
+      join(acme, "providers", "ollama.yaml"),
+      "id: ollama\ntype: ollama\nlocal: true\n",
+    );
+
+    const read = await watched.trustedVersionOf(savedRun);
+
+    expect(providersOf(read.workspace)).toEqual(["mock"]);
+    // Trust is checked again, on the kept load, not on the edited files.
+    expect(checked).toEqual([["mock"], ["mock"]]);
+  });
+
+  it("reads the saved files as they are now for a run it didn't start, or one that ended", async () => {
+    const watched = await watchAcme();
+    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
+    await writeFile(
+      join(acme, "providers", "ollama.yaml"),
+      "id: ollama\ntype: ollama\nlocal: true\n",
+    );
+
+    const older = await watched.trustedVersionOf({ ...savedRun, runId: "older" });
+    watched.forget(savedRun.runId);
+    const ended = await watched.trustedVersionOf(savedRun);
+
+    expect(providersOf(older.workspace)).toEqual(["mock", "ollama"]);
+    expect(providersOf(ended.workspace)).toEqual(["mock", "ollama"]);
   });
 });

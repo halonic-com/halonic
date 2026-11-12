@@ -30,6 +30,8 @@ export interface LocalRunsOptions {
    * `version`, the one the run records: a host that can read more than one
    * version gives the run that version's definitions, so the version a run
    * records is the one it runs. Without it, the workspace as it is now.
+   * `runId` is the id of the run being started, so a host can keep what it
+   * read for that run, such as the files its connectors start from.
    *
    * @throws when the hub or the workflow doesn't exist
    */
@@ -37,6 +39,7 @@ export interface LocalRunsOptions {
     hubId: string,
     workflowId: string,
     version: RunVersion | undefined,
+    runId: string,
   ): Promise<RunDefinitions>;
   /**
    * What runs whose agents name a harness need. Without it, such a run fails

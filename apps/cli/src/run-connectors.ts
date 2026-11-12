@@ -32,6 +32,8 @@ export interface FolderRunConnectorsInput {
    * @throws when that version can't be read or may not run here; the step that needed a connector fails
    */
   versionOf(run: VersionedRun): Promise<RunConnectorsVersion>;
+  /** Hears that a run has ended, whether or not it started connectors. */
+  runEnded(runId: string): void;
   /** Hears what couldn't be closed or released when a run's connectors end. */
   reportError(error: unknown): void;
 }
@@ -109,6 +111,7 @@ export class FolderRunConnectors implements RunConnectors {
   }
 
   async end(runId: string): Promise<void> {
+    this.#input.runEnded(runId);
     const opening = this.#open.get(runId);
     if (opening === undefined) return;
     this.#open.delete(runId);

@@ -24,7 +24,6 @@ import {
   openLocalEngine,
   type RoutineEngine,
   type RoutineTicks,
-  type WorkspaceVersions,
 } from "./local-engine-host.ts";
 import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
@@ -45,6 +44,7 @@ import {
   stuckTimerWatch,
 } from "./stuck-timers.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
+import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 /** What opening a workspace's engine uses on this computer, so tests can fix it. */
 export interface WorkspaceEngineSetup {
