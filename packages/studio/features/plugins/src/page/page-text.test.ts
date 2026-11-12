@@ -23,6 +23,14 @@ verifies("plugins.plugin-page", () => {
       expect(shown).not.toContain("fake-token");
     });
 
+    it("never shows a password that has an @ in it", () => {
+      const address = ["https://me", "p@ss-word@github.com/example/halonic-weather.git"].join(":");
+      const shown = originText({ kind: "git", address, commit: "3f9c2a1" });
+
+      expect(shown).toBe("github.com/example/halonic-weather");
+      expect(shown).not.toContain("ss-word");
+    });
+
     it("leaves out a user alone, and keeps an @ in the path", () => {
       expect(
         originText({ kind: "git", address: "ssh://git@example.com/team/@weather", commit: "1" }),
