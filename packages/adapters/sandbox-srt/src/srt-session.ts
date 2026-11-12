@@ -23,6 +23,7 @@ import {
 import { describeForgetFailures, type ForgetFailure, type KeptGrants } from "./kept-grants.ts";
 import { makeLauncherTemp } from "./launcher-temp.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
+import { removeFolder } from "./remove-folder.ts";
 import { assertSharedFolders } from "./shared-folders.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
@@ -45,15 +46,6 @@ interface Started {
 function exitReason(started: Started): SandboxExit["reason"] {
   if (started.timedOut) return "timeout";
   return started.stopped ? "stopped" : "exited";
-}
-
-/**
- * Removes a folder the session made. On Windows a program the session started
- * can still hold the folder for a moment after it exits (EBUSY), so the remove
- * retries, waiting a little longer each time, before it gives up (HAL-8071).
- */
-function removeFolder(folder: string): Promise<void> {
-  return rm(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }
 
 /**
