@@ -9,7 +9,7 @@ import {
   FileSystemPluginFolder,
   FileTrustStore,
 } from "@halonicjs/adapter-fs-node";
-import { PluginService } from "@halonicjs/app";
+import { type DeletePluginSecret, PluginService } from "@halonicjs/app";
 import type { Clock } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
@@ -55,3 +55,10 @@ export function openPluginService(setup: PluginSetup): PluginService {
     clock,
   });
 }
+
+/**
+ * How `plugin remove` deletes a plugin's secrets on this computer: there is
+ * nothing to delete. The CLI reads secrets from the environment, which
+ * Halonic never writes, so it never stores a plugin's secret either.
+ */
+export const deletePluginSecret: DeletePluginSecret = async () => {};

@@ -4,6 +4,7 @@ import { trustMessages } from "../../messages/trust.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
 import { addPlugin } from "./add.ts";
 import { listPlugins } from "./list.ts";
+import { removePlugin } from "./remove.ts";
 
 /**
  * `halonic plugin`, with the setup passed in so tests can fix the profile
@@ -16,7 +17,7 @@ export function pluginCommandWith(setup: PluginSetup): CliCommand {
     summary: pluginMessages.summary(),
     action: () => pluginMessages.listAction(),
     options: {},
-    subcommands: [addCommandWith(setup), listCommandWith(setup)],
+    subcommands: [addCommandWith(setup), listCommandWith(setup), removeCommandWith(setup)],
     run: (input, context) => listPlugins(input, context, setup),
   };
 }
@@ -52,5 +53,22 @@ function listCommandWith(setup: PluginSetup): CliCommand {
   };
 }
 
-/** `halonic plugin`: add or list plugins in this computer's profile. */
+/**
+ * `halonic plugin remove <id>`: removes the plugin with its trust, settings
+ * and secrets, after asking (cli-output 3.6).
+ */
+function removeCommandWith(setup: PluginSetup): CliCommand {
+  return {
+    name: "remove",
+    usage: "<id> [--yes]",
+    summary: pluginMessages.removeHelp(),
+    action: () => pluginMessages.removeAction(),
+    options: {
+      yes: { type: "boolean", description: pluginMessages.removeYesOption() },
+    },
+    run: (input, context) => removePlugin(input, context, setup),
+  };
+}
+
+/** `halonic plugin`: add, list or remove plugins in this computer's profile. */
 export const pluginCommand: CliCommand = pluginCommandWith({});

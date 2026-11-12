@@ -28,6 +28,8 @@ export const pluginMessages = defineMessages("plugin", {
   listAction: () => phrase`list the plugins`,
   /** What `plugin add` was doing, for "✕ Couldn't add the plugin: …". */
   addAction: () => phrase`add the plugin`,
+  /** What `plugin remove` was doing, for "✕ Couldn't remove the plugin: …". */
+  removeAction: () => phrase`remove the plugin`,
 
   /** The live line while a git address is copied; without a commit, the remote's default branch is. */
   copying: (name: string, commit: string | undefined) =>
@@ -103,6 +105,16 @@ export const pluginMessages = defineMessages("plugin", {
       ? phrase`Remove ${name}? Its settings and the API key you entered are removed from this computer.`
       : phrase`Remove ${name}? Its settings are removed from this computer.`,
   removed: (name: string, version: string) => phrase`Removed ${name} ${version} and its trust.`,
+  /** The same for a plugin that can't be read, so it has no version: named by its id. */
+  removedUnread: (id: string) => phrase`Removed ${id} and its trust.`,
+  /** `plugin remove` without an id. */
+  removeNeedsId: () => phrase`Say which plugin to remove, by its id.`,
+  removeUsage: () => phrase`halonic plugin remove <id> [--yes]`,
+  removeYesOption: () => phrase`Remove it without asking.`,
+  /** A secret the host couldn't delete, by its declared name; its folder and settings are kept. */
+  secretNotDeleted: (secret: string, reason: string) =>
+    phrase`its secret ${secret} couldn't be deleted: ${reason}`,
+  secretNotDeletedFix: () => phrase`Run halonic plugin remove again to finish removing it.`,
   /** Answer No, or Enter: exit 1. */
   notRemoved: (name: string) => phrase`Not removed. ${name} is still added.`,
   /** No terminal, or `CI` set, without `--yes`: exit 2 (F6). */
