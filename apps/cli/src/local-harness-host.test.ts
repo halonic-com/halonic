@@ -434,9 +434,10 @@ verifies("cli.local-harness-host", () => {
       const folders = await realpath(await workspaceFolderInProfile());
       for (const path of given?.reopenedPaths ?? []) {
         expect(
-          [join(folders, "proposal-worktrees"), join(folders, "harness-temp")].some((own) =>
-            path.startsWith(`${own}/`),
-          ),
+          [join(folders, "proposal-worktrees"), join(folders, "harness-temp")].some((own) => {
+            const inside = relative(own, path);
+            return inside !== "" && !inside.startsWith("..") && !isAbsolute(inside);
+          }),
         ).toBe(true);
       }
     },
