@@ -13,6 +13,8 @@ In `.github/workflows/ci.yml`:
 
 Nothing else in the workflow changes.
 
+In `tooling/check/` (a guard path since it is the guard's own code): `check:sbom --notices` learns `--cargo` and `--cargo-target`, reads the crates from `cargo metadata`, and writes their licence texts from `tooling/check/licence-texts/crates/` (or the crate's own licence file) into `THIRD-PARTY-NOTICES.txt`. The vendored files become their own section of the notices, under the same dedupe of identical licence texts. No guard rule changes.
+
 ## Why
 
 `Halonic.exe` links about 280 Rust crates whose licences must ship with it. The release step fails when a crate has no licence text, its stored text is for another version, or its licence isn't allowed by `deny.toml`. Without this step a new crate would first fail at release time. With it, the pull request that changes `Cargo.lock` shows the problem.
@@ -20,3 +22,4 @@ Nothing else in the workflow changes.
 ## Covers
 
 - .github/
+- tooling/check/
