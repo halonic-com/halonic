@@ -8,9 +8,9 @@
 //! checked as `isHostSettingKey` checks them, at most 256 KiB of values, a
 //! save through a temporary file and a rename, the file with mode `600`, and
 //! a link refused on read and replaced on save. The limits and saved shapes
-//! are the port's golden cases
-//! (`packages/core/ports/src/golden/host-settings-limits.json`), which both
-//! sides are tested against.
+//! are the golden cases next to the port's contract suite
+//! (`packages/testing/contracts/src/golden/host-settings-limits.json`), which
+//! both sides are tested against.
 //!
 //! The store only keeps JSON values by key. What a setting means, and its
 //! default, belong to `HostSettings` in the page. This crate holds no Tauri

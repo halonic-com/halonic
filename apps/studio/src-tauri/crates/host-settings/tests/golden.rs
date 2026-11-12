@@ -1,6 +1,6 @@
-//! The port's golden cases
-//! (`packages/core/ports/src/golden/host-settings-limits.json`), which the
-//! TypeScript adapters pass through the contract suite, so the shell and the
+//! The golden cases next to the port's contract suite
+//! (`packages/testing/contracts/src/golden/host-settings-limits.json`), which
+//! the TypeScript adapters pass through the contract suite, so the shell and the
 //! CLI agree on which keys, sizes and saved settings they take. Requirement
 //! `host-settings-file`; these tests' names start with `host_settings_file_`.
 

@@ -10,9 +10,10 @@ use halonic_host_settings::FileHostSettingsStore;
 use serde_json::Value;
 
 /// The limits and saved shapes every adapter agrees on, shared with the
-/// TypeScript port and its contract suite.
-const GOLDEN: &str =
-    include_str!("../../../../../../../packages/core/ports/src/golden/host-settings-limits.json");
+/// TypeScript contract suite.
+const GOLDEN: &str = include_str!(
+    "../../../../../../../packages/testing/contracts/src/golden/host-settings-limits.json"
+);
 
 /// The golden cases, parsed.
 pub fn golden() -> Value {
