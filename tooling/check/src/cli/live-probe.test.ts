@@ -183,6 +183,20 @@ verifies("check.live-probe", () => {
       );
     });
 
+    test("fails the same way when the headers arrive and the body stalls", async () => {
+      const stalledBodyFetch = (async (_url: string, init?: RequestInit) => {
+        const body = new ReadableStream({
+          start(controller) {
+            init?.signal?.addEventListener("abort", () => controller.error(init.signal?.reason));
+          },
+        });
+        return new Response(body, { status: 200 });
+      }) as typeof fetch;
+      await expect(cloudflareGet(accountToken, stalledBodyFetch, 20)("/accounts")).rejects.toThrow(
+        "the request timed out after 0.02 s.",
+      );
+    });
+
     test("sends the token as a bearer header and parses the body", async () => {
       const calls: { url: string; auth: string | null }[] = [];
       const fakeFetch = (async (url: string, init?: RequestInit) => {
