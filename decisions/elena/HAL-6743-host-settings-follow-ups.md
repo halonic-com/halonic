@@ -2,6 +2,7 @@
 
 - Approval: decided on [HAL-6743](/HAL/issues/HAL-6743) (Liam's review follow-ups from HAL-6216), a technical team decision with no board card; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hnFUw62YYa/hC1G+qz3FVC/03hn1hCc6sZWsU39d0XLes1smDl6gzqEBHoqC50Hr+r00wa+OWaHNZ3u3mWWnCg==
 - Task: HAL-6743
 
 ## What changes
