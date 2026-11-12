@@ -244,7 +244,7 @@ verifies("cli.sandbox-gate", () => {
       expect(printed(error)).toEqual([
         "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
         "  bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
-        "  More: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)",
+        "  More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
       ]);
     });
 

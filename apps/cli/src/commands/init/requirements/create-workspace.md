@@ -10,7 +10,7 @@ The `halonic init [folder]` command shall lay out a new, empty workspace with `i
 
 - Given an empty folder,
   when `halonic init acme` runs in it,
-  then `acme/workspace.yaml` holds the id and name `acme`, and it prints "✓ Created the workspace acme in ./acme.", an empty line, "Next:", then, indented, `cd acme`, `halonic validate` with "check the files as you edit them", and "Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool", and exits with 0.
+  then `acme/workspace.yaml` holds the id and name `acme`, and it prints "✓ Created the workspace acme in ./acme.", an empty line, "Next:", then, indented, `cd acme`, `halonic validate` with "check the files as you edit them", and "Add your first agent: https://docs.halonic.dev/examples/agent-with-a-tool", and exits with 0.
 - Given the empty folder `acme` as the current folder,
   when `halonic init` runs,
   then it prints "✓ Created the workspace acme in this folder." and no `cd` line.

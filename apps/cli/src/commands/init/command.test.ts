@@ -49,7 +49,7 @@ verifies("cli.commands.init.create-workspace", () => {
         "Next:",
         "  cd acme",
         "  halonic validate                    check the files as you edit them",
-        "  Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool",
+        "  Add your first agent: https://docs.halonic.dev/examples/agent-with-a-tool",
       ]);
       expect(io.stderr).toEqual([]);
       expect(readFileSync(join(folder, "acme", "workspace.yaml"), "utf8")).toContain("id: acme");

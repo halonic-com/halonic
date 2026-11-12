@@ -69,7 +69,7 @@ describe("init's sentences", () => {
       "check the files as you edit them",
       "halonic test",
       "run its tests (no key, nothing sent)",
-      "Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool",
+      "Add your first agent: https://docs.halonic.dev/examples/agent-with-a-tool",
     ]);
     expect(initMessages.nextTestWhy().phrase).toEqual([
       dim("run its tests (no key, nothing sent)"),

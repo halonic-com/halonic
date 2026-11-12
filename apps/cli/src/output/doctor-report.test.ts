@@ -87,7 +87,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              bubblewrap isn't installed, and the sandbox needs it.",
       "              Fix: install it, for example on Ubuntu or Debian with sudo apt install bubblewrap. Then run halonic doctor again.",
-      "              More: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)",
+      "              More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
       "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
       "",
       "1 problem. Agents set to run in a sandbox won't start until it's fixed.",
@@ -244,7 +244,7 @@ describe("doctorReportLines", () => {
   it("links the sandbox page for a reason without its own section", () => {
     const windows: SandboxLine = { ...bubblewrapMissing, reason: "windows" };
     const lines = check(printed(reportOf({ sandbox: windows, disk: diskFree })), "Sandbox");
-    expect(lines.at(-1)).toBe("              More: https://docs.halonic.com/sandbox (windows)");
+    expect(lines.at(-1)).toBe("              More: https://docs.halonic.dev/sandbox (windows)");
   });
 
   it("words the other harness problems and the low disk", () => {

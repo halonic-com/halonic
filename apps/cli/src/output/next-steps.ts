@@ -24,7 +24,7 @@ const leastGap = 2;
  *
  * @example
  * nextSteps([{ command: initMessages.nextChangeFolder("acme").phrase }], firstAgentLine);
- * // ["", "Next:", "  cd acme", "  Add your first agent: https://docs.halonic.com/…"]
+ * // ["", "Next:", "  cd acme", "  Add your first agent: https://docs.halonic.dev/…"]
  */
 export function nextSteps(steps: readonly NextStep[], last?: Phrase): Phrase[] {
   return [

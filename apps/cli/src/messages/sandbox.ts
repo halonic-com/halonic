@@ -1,5 +1,6 @@
 import type { SandboxUnavailableReason } from "@halonicjs/ports";
 import { defineMessages } from "./define.ts";
+import { docsBase } from "./docs.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 
 /**
@@ -110,7 +111,7 @@ function doctorFix(fix: string, note?: string): Phrase {
 }
 
 /** The sandbox page of the docs, which `More:` links under a sandbox that can't start. */
-const sandboxDocs = "https://docs.halonic.com/sandbox";
+const sandboxDocs = `${docsBase}/sandbox`;
 
 /**
  * The section of {@link sandboxDocs} for each reason that cli-output names
@@ -127,8 +128,8 @@ const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
  * The docs link for `More:` under a sandbox that can't start.
  *
  * @example
- * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.com/sandbox#bubblewrap"
- * sandboxDocsLink("windows"); // "https://docs.halonic.com/sandbox"
+ * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.dev/sandbox#bubblewrap"
+ * sandboxDocsLink("windows"); // "https://docs.halonic.dev/sandbox"
  */
 export function sandboxDocsLink(code: string): string {
   const section = docsSections[known(code)];

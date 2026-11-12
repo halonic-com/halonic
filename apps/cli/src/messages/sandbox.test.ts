@@ -105,12 +105,12 @@ describe("the sandbox sentences", () => {
 
   it("links each reason to its section of the sandbox guide, or to the guide itself", () => {
     expect(worded.map((code) => sandboxDocsLink(code))).toEqual([
-      "https://docs.halonic.com/sandbox",
-      "https://docs.halonic.com/sandbox#container",
-      "https://docs.halonic.com/sandbox#apparmor",
-      "https://docs.halonic.com/sandbox#bubblewrap",
-      "https://docs.halonic.com/sandbox",
-      "https://docs.halonic.com/sandbox",
+      "https://docs.halonic.dev/sandbox",
+      "https://docs.halonic.dev/sandbox#container",
+      "https://docs.halonic.dev/sandbox#apparmor",
+      "https://docs.halonic.dev/sandbox#bubblewrap",
+      "https://docs.halonic.dev/sandbox",
+      "https://docs.halonic.dev/sandbox",
     ]);
   });
 

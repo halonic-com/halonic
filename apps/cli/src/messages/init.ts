@@ -1,5 +1,6 @@
 import { counted, countInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
+import { docsBase } from "./docs.ts";
 import { bold, dim, markPart, type Phrase, phrase } from "./phrase.ts";
 
 /** What the Acme example holds, for the line under "Created a copy of the Acme example". */
@@ -47,9 +48,7 @@ export const initMessages = defineMessages("init", {
    * The last `Next:` line of a plain `init`, dimmed: the guide to a first
    * agent. It named Studio until 0.1.0, which has no Studio (HAL-6007).
    */
-  nextFirstAgent: () => [
-    dim("Add your first agent: https://docs.halonic.com/examples/agent-with-a-tool"),
-  ],
+  nextFirstAgent: () => [dim(`Add your first agent: ${docsBase}/examples/agent-with-a-tool`)],
 
   /** The help line for `--example <name>`. */
   exampleOption: () => phrase`Make a copy of this example instead of an empty workspace.`,

@@ -84,14 +84,14 @@ describe("the general sentences", () => {
 
   it("dims the whole line with the docs link and the code", () => {
     const more = errorMessages.more(
-      "https://docs.halonic.com/sandbox#bubblewrap",
+      "https://docs.halonic.dev/sandbox#bubblewrap",
       "bubblewrap-missing",
     );
     expect(renderPhrase(more.phrase, piped)).toBe(
-      "More: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)",
+      "More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
     );
     expect(renderPhrase(more.phrase, coloured)).toBe(
-      "\u001b[2mMore: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)\u001b[22m",
+      "\u001b[2mMore: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)\u001b[22m",
     );
   });
 
