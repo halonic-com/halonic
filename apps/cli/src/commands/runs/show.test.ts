@@ -231,6 +231,44 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("says one answer settles only the first of several tool approvals (HAL-7937)", async () => {
+      const ask = (time: string, callId: string, tool: string) =>
+        [
+          today(time),
+          {
+            type: "approval.requested",
+            state: "draft",
+            agent: "writer",
+            tool,
+            args: {},
+            callId,
+            resume: { messages: [], calls: [], step: 0 },
+          },
+        ] as const;
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "draft" }],
+          ask("10:41:00", "call-1", "gmail__send"),
+          ask("10:41:01", "call-2", "gmail__delete"),
+          [
+            today("10:41:01"),
+            { type: "run.waiting", state: "draft", events: ["approve", "reject"] },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(-5)).toEqual([
+        "",
+        "! Waiting for your approval: Writer wants to use gmail__send",
+        "! Waiting for your approval: Writer wants to use gmail__delete",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+        "  Each answer settles the first one listed.",
+      ]);
+    });
+
     it("ends with the wait step's title as the engine filled it in (HAL-7012)", async () => {
       await storeRuns({
         ...waiting,

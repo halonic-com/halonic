@@ -190,6 +190,8 @@ export const runMessages = defineMessages("run", {
    */
   waitingForApproval: (agent: string, tool: string) =>
     phrase`Waiting for your approval: ${printable(agent)} wants to use ${printable(tool)}`,
+  /** Under the answer line, when several tool calls wait: one answer settles only the first listed. */
+  oneAnswerTakesTheFirst: () => phrase`Each answer settles the first one listed.`,
   /** With a !, for a wait step without a description. */
   waitingInStep: (step: string) => phrase`Waiting for you in the step ${step}.`,
   /**

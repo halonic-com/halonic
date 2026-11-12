@@ -176,7 +176,7 @@ function cancelledAt(
  * word (cli-output 3.4): "! Waiting for you: Approve this reply?" and how to
  * answer. A run waiting for tool approvals has one "! Waiting for your
  * approval: Writer wants to use send_email" line for each, oldest first, and
- * the same answer line: one answer takes the oldest. A run waiting for its
+ * the same answer line: one answer takes the oldest, and a line under the answer says so. A run waiting for its
  * child run or a time has no such lines; its step line already says what it
  * waits for.
  */
@@ -202,6 +202,7 @@ function waitingEnding(
     [],
     ...waiting.map((line) => phrase`${markPart("needsYou")} ${line}`),
     phrase`  ${answer.phrase}`,
+    ...(waiting.length > 1 ? [phrase`  ${runMessages.oneAnswerTakesTheFirst().phrase}`] : []),
   ];
 }
 
