@@ -264,7 +264,7 @@ async function refuseHarnessAgents(
   });
 }
 
-/** "✕ There's no workflow called "suport-reply" in acme." with the near one when there is one. */
+/** "✕ There's no workflow called "suport-reply" in Acme." with the near one when there is one. */
 function noWorkflow(workspace: LoadedWorkspace, typed: string, name: string): OwnLineError {
   const ids = hubWorkflows(workspace).map((each) => each.workflow.id);
   const near = nearMatch(typed, ids);
