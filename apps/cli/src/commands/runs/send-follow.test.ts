@@ -15,6 +15,7 @@ import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { heavyTestTimeout } from "../../test/golden.ts";
+import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
@@ -148,10 +149,11 @@ async function addNotesConnector(): Promise<void> {
 }
 
 /**
- * Puts Writer in Claude Code, which needs the sandbox, and trusts Acme as it
- * is then, so only the sandbox check can stop a send.
+ * Puts Writer in Claude Code, which needs the sandbox and isn't local, and
+ * trusts Acme as it is then, so only the sandbox check can stop a send.
  */
 async function writerInClaudeCode(): Promise<void> {
+  await turnOffLocalOnly(acme);
   const file = join(acme, "hubs/support/agents/writer.agent.yaml");
   await writeFile(file, `${await readFile(file, "utf8")}harness: claude-code\n`);
   await trustAcme();

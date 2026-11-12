@@ -13,6 +13,7 @@ import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
+import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { testRunSetup } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
@@ -231,6 +232,7 @@ describe("halonic run's refusals", () => {
   });
 
   it("names the connector file whose URL can't be trusted, without its password, and starts nothing (HAL-5421)", async () => {
+    await turnOffLocalOnly(acme);
     await mkdir(join(acme, "library/connectors"), { recursive: true });
     await writeFile(
       join(acme, "library/connectors/web.connector.yaml"),
