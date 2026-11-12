@@ -1361,8 +1361,17 @@ jobs:
       # without the cache, and only what the sandbox package needs.
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - name: Install the dependencies
-        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..."
+        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..." --filter "@halonicjs/adapter-integration-runner..."
         shell: bash
+      # The runner's attack list with Node's layer only (HAL-958, section
+      # 4.3): on native Windows Halonic starts the runner through the launcher,
+      # with no OS fence. The cases that get through are recorded as known
+      # gaps, so one that starts or stops getting through fails. Before srt's
+      # install, so the machine is as a user's is without it.
+      - name: Integration runner attacks with Node's layer only
+        working-directory: packages/adapters/integration-runner
+        shell: bash
+        run: pnpm test:fence:windows
       - name: Install the sandbox (srt windows-install)
         working-directory: packages/adapters/sandbox-srt
         shell: bash

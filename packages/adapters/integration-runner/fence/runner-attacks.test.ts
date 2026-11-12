@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { SrtSandbox, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { socketFolders } from "../src/halonic/runner-profile.ts";
 import {
@@ -108,6 +108,7 @@ async function attack(nodeLayer: NodeLayer, script: string, folders?: AttackFold
       homeFolder,
       socketFolders: [...socketFolders(process.env), join(base, "sockets")],
     },
+    sandboxFolders: [sandboxRuntimeFolder()],
   });
 }
 
