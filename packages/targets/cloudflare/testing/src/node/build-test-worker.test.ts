@@ -91,6 +91,36 @@ describe("the test Worker", () => {
       await runner.stop();
     }
   });
+
+  it("binds a Durable Object class a suite exports, with the suite and the object in one isolate", async () => {
+    const file = await suiteFile(
+      [
+        'import { env } from "cloudflare:workers";',
+        'import { describe, expect, it } from "vitest";',
+        "// The object reads this on every call; the suite moves it. Coordination tests rely on that.",
+        "export const shared = { now: 1000 };",
+        "export class AcmeObject {",
+        "  async fetch() { return new Response(String(shared.now)); }",
+        "}",
+        'describe("acme", () => {',
+        '  it("reaches the object", async () => {',
+        '    const stub = env.ACME.get(env.ACME.idFromName("one"));',
+        '    expect(await (await stub.fetch("http://acme.invalid/")).text()).toBe("1000");',
+        "    shared.now = 2000;",
+        '    expect(await (await stub.fetch("http://acme.invalid/")).text()).toBe("2000");',
+        "  });",
+        "});",
+      ].join("\n"),
+    );
+    const runner = await WorkerdRunner.start(await buildTestWorker([file]), {
+      durableObjects: { ACME: "AcmeObject" },
+    });
+    try {
+      expect(await runner.run("1")).toEqual({ status: "passed", assertions: 2 });
+    } finally {
+      await runner.stop();
+    }
+  });
 });
 
 describe("the compatibility date", () => {
