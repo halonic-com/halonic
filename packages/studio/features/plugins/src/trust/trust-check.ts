@@ -1,6 +1,6 @@
 import type { Plugin } from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
-import { hostWords, secretHow, type TrustCounts } from "./trust-text.ts";
+import { hostWords, type SecretKind, secretHow, type TrustCounts } from "./trust-text.ts";
 
 /** A tool for agents, as Tools for agents lists it. */
 export interface TrustTool {
@@ -28,6 +28,8 @@ export interface TrustSecret {
   readonly goesTo: readonly string[];
   /** How it goes in a request; a program's secret has none. */
   readonly how: string | undefined;
+  /** Whose request carries it, which decides what the dialog says about who sees its value. */
+  readonly kind: SecretKind;
 }
 
 /** One address the plugin may reach. */
@@ -77,12 +79,14 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
       name,
       goesTo: unique(secret.hosts.map((host) => hostWords(host, labelOf))),
       how: secretHow(secret),
+      kind: "backend" as const,
     })),
     ...localTools.flatMap((local) =>
       Object.entries(local.secrets).map(([name, secret]) => ({
         name,
         goesTo: unique(secret.hosts.map((host) => hostWords(host, labelOf))),
         how: undefined,
+        kind: "program" as const,
       })),
     ),
   ];

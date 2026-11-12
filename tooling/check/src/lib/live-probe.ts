@@ -35,13 +35,30 @@ export function tokenKind(token: string): TokenKind | undefined {
   return token.startsWith("cfut_") ? "user" : undefined;
 }
 
-/** A GET with the token, through `fetch`. */
-export function cloudflareGet(token: string, fetchImpl: typeof fetch = fetch): ApiGet {
+/** How long one request may take, in milliseconds, before the probe gives up on it. */
+export const requestTimeoutMs = 20_000;
+
+/** A GET with the token, through `fetch`; it fails after `timeoutMs` instead of hanging. */
+export function cloudflareGet(
+  token: string,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = requestTimeoutMs,
+): ApiGet {
   return async (path) => {
-    const response = await fetchImpl(`${cloudflareApiBase}${path}`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
-    const text = await response.text();
+    let text: string;
+    let response: Response;
+    try {
+      response = await fetchImpl(`${cloudflareApiBase}${path}`, {
+        headers: { authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      text = await response.text();
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new Error(`the request timed out after ${timeoutMs / 1000} s.`);
+      }
+      throw error;
+    }
     let body: unknown;
     try {
       body = JSON.parse(text);
@@ -120,6 +137,17 @@ export async function probeAccount(
   accountId: string,
   token: string,
 ): Promise<ProbeResult[]> {
+  const results = await runChecks(get, accountId, token);
+  // Some Cloudflare errors repeat the request path, which holds the account ID.
+  return results.map((result) => ({
+    ...result,
+    detail: result.detail
+      .replaceAll(accountId, "<account-id>")
+      .replaceAll(encodeURIComponent(accountId), "<account-id>"),
+  }));
+}
+
+async function runChecks(get: ApiGet, accountId: string, token: string): Promise<ProbeResult[]> {
   const account = encodeURIComponent(accountId);
   const results: ProbeResult[] = [];
 

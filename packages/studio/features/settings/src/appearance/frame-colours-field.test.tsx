@@ -2,12 +2,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DisplaySettings } from "../display-settings.ts";
+import { saveSetting } from "../save-setting.ts";
 import { change, control, typeAndLeave, typeAndPressEnter } from "../test-support/controls.ts";
 import { MemoryDisplayPrefs } from "../test-support/memory-display-prefs.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { frameColoursPref } from "./appearance-prefs.ts";
 import { FrameColoursField } from "./frame-colours-field.tsx";
-import { saveSetting } from "./save-setting.ts";
 
 afterEach(unmountAll);
 

@@ -1,4 +1,5 @@
 import { deepEqual } from "./equality.ts";
+import { containsMatch } from "./partial-match.ts";
 
 /**
  * The `expect` of the vitest shim. It has only the matchers the contract
@@ -25,6 +26,10 @@ export interface Matchers {
   toBe(expected: unknown): void;
   /** Deeply equal, ignoring properties that are `undefined`. */
   toEqual(expected: unknown): void;
+  /** An object or array that contains everything `expected` describes; see `containsMatch`. */
+  toMatchObject(expected: object): void;
+  /** A string, array or other value whose `length` is `expected`. */
+  toHaveLength(expected: number): void;
   /** A number at or above `expected`. */
   toBeGreaterThanOrEqual(expected: number | bigint): void;
   /** Exactly `null`. */
@@ -81,6 +86,14 @@ const matchers: Record<keyof Matchers, MatcherImplementation> = {
   toEqual: (actual, expected) => ({
     pass: deepEqual(actual, expected),
     expectation: `to equal ${describeValue(expected)}`,
+  }),
+  toMatchObject: (actual, expected) => ({
+    pass: isObject(actual) && isObject(expected) && containsMatch(actual, expected),
+    expectation: `to match object ${describeValue(expected)}`,
+  }),
+  toHaveLength: (actual, expected) => ({
+    pass: lengthOf(actual) === expected,
+    expectation: `to have length ${describeValue(expected)}`,
   }),
   toBeGreaterThanOrEqual: (actual, expected) => ({
     pass: requireComparable(actual, "actual") >= requireComparable(expected, "expected"),
@@ -259,6 +272,27 @@ function requireComparable(value: unknown, role: "actual" | "expected"): number 
     return value;
   }
   throw new TypeError(`${role} value must be number or bigint, received ${describeValue(value)}`);
+}
+
+/** Vitest fails `toMatchObject` on a value that isn't an object, and `not` turns that into a pass. */
+function isObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * The `length` of a string, array or the like. A value without a numeric one
+ * fails even under `not`, as in Vitest. (Vitest also takes a `length` that is
+ * a numeric string; the shim doesn't.)
+ */
+function lengthOf(value: unknown): number {
+  if (value === null || value === undefined) {
+    throw new AssertionError("Target cannot be null or undefined.");
+  }
+  const length = (value as { length?: unknown }).length;
+  if (typeof length !== "number") {
+    throw new AssertionError(`expected ${describeValue(value)} to have property 'length'`);
+  }
+  return length;
 }
 
 function describeValue(value: unknown): string {

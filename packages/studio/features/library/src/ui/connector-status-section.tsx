@@ -47,7 +47,7 @@ export function ConnectorStatusSection({ model, announceState }: ConnectorStatus
           headingId={headingId}
           loaded={state.loaded}
           error={state.error}
-          lines={state.refusals.map(refusalLine)}
+          rows={state.refusals.map(({ refusal, at }) => ({ line: refusalLine(refusal), at }))}
           retry={() => void model.refresh()}
         />
       </div>
@@ -82,13 +82,13 @@ function Refusals({
   headingId,
   loaded,
   error,
-  lines,
+  rows,
   retry,
 }: {
   readonly headingId: string;
   readonly loaded: boolean;
   readonly error: unknown;
-  readonly lines: readonly string[];
+  readonly rows: readonly { readonly line: string; readonly at: Date }[];
   readonly retry: () => void;
 }) {
   if (!loaded && error !== undefined) {
@@ -114,7 +114,7 @@ function Refusals({
       </div>
     );
   }
-  if (lines.length === 0) {
+  if (rows.length === 0) {
     return <p className="px-4 py-1 text-body text-fg-muted">{statusWords.nothingRefused}</p>;
   }
   return (
@@ -126,17 +126,20 @@ function Refusals({
         aria-labelledby={headingId}
         className="m-0 list-none rounded-md border border-border p-0"
       >
-        {lines.map((line, index) => (
+        {rows.map(({ line, at }, index) => (
           // A refusal has no id of its own, and the list only grows at the top, so the line and its place are the key.
           <li
             key={`${index}:${line}`}
             className="min-h-10 min-w-0 border-b border-border px-4 py-3 text-body text-fg [overflow-wrap:anywhere] last:border-b-0"
           >
-            {line}
+            <time dateTime={at.toISOString()} className="block text-small text-fg-muted">
+              {statusWords.time(at)}
+            </time>
+            <span>{line}</span>
           </li>
         ))}
       </ul>
-      {lines.length >= refusalLimit ? (
+      {rows.length >= refusalLimit ? (
         <p className="px-4 text-small text-fg-muted">{statusWords.capNote(refusalLimit)}</p>
       ) : null}
     </>

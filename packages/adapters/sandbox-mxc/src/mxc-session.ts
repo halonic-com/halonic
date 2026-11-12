@@ -20,6 +20,7 @@ import { proveFence } from "./fence-proof.ts";
 import { grantPath } from "./grant-path.ts";
 import type { MxcMachine } from "./machine.ts";
 import { spawnOptions } from "./mxc-process.ts";
+import { copyReadOnlyFiles, type ReadOnlyCopy, readOnlyCopiesFolder } from "./read-only-copies.ts";
 
 /** What a session needs besides its profile. */
 export interface MxcSessionDeps {
@@ -32,11 +33,18 @@ export interface MxcSessionDeps {
 
 /**
  * A session on MXC. It owns a box folder, made fresh for it and removed when
- * it closes, that holds the files of its fence proof. The program never gets
- * the folder, except the readable part of it for the proof's own probe.
+ * it closes, that holds the files of its fence proof and the copies of the
+ * profile's read-only files. The program never gets the folder, except the
+ * readable part of it for the proof's own probe and the folder of the copies.
  */
 export class MxcSession implements SandboxSession {
   readonly profile: SandboxProfile;
+  /**
+   * The profile's read-only files, copied into the box folder because MXC
+   * grants only folders. The program reads a file at its `copy`, not at its
+   * `original`, which the box doesn't grant.
+   */
+  readonly readOnlyCopies: readonly ReadOnlyCopy[];
   readonly #deps: MxcSessionDeps;
   readonly #policy: BoxPolicy;
   readonly #box: BoxFolder;
@@ -54,6 +62,7 @@ export class MxcSession implements SandboxSession {
     profile: SandboxProfile,
     policy: BoxPolicy,
     box: BoxFolder,
+    readOnlyCopies: readonly ReadOnlyCopy[],
     deps: MxcSessionDeps,
     startedAt: number,
     signal: AbortSignal | undefined,
@@ -61,6 +70,7 @@ export class MxcSession implements SandboxSession {
     this.profile = profile;
     this.#policy = policy;
     this.#box = box;
+    this.readOnlyCopies = readOnlyCopies;
     this.#deps = deps;
     this.#files = fenceFiles(box.path);
     this.#startedAt = startedAt;
@@ -74,12 +84,12 @@ export class MxcSession implements SandboxSession {
   }
 
   /**
-   * Opens a session: builds the policy, makes the session's own box folder
-   * and proves the fence. The proof is settled before this returns, and its
-   * time counts against the limit. A fence that isn't proven is not an error
+   * Opens a session: builds the policy, makes the session's own box folder,
+   * copies the read-only files into it and proves the fence. The proof is
+   * settled before this returns, and its time counts against the limit. A fence that isn't proven is not an error
    * here: the session opens `not-fenced`, and `start` throws.
    *
-   * @throws when the profile can't be applied (see {@link boxPolicy}) or the box folder can't be made
+   * @throws when the profile can't be applied (see {@link boxPolicy}), the box folder can't be made or a read-only file can't be copied (see {@link copyReadOnlyFiles})
    */
   static async open(
     profile: SandboxProfile,
@@ -87,11 +97,27 @@ export class MxcSession implements SandboxSession {
     options: { signal?: AbortSignal } = {},
   ): Promise<MxcSession> {
     const startedAt = Date.now();
-    const policy = await boxPolicy(profile, deps.disk);
+    const wanted = await boxPolicy(profile, deps.disk);
     const box = await deps.boxes.create();
     let session: MxcSession | null = null;
     try {
-      session = new MxcSession(profile, policy, box, deps, startedAt, options.signal);
+      const copies = await copyReadOnlyFiles(
+        deps.disk,
+        box.path,
+        wanted.readOnlyFiles,
+        wanted.deniedPaths,
+      );
+      const policy: BoxPolicy =
+        copies.length === 0
+          ? wanted
+          : {
+              ...wanted,
+              readOnlyFolders: [
+                ...wanted.readOnlyFolders,
+                grantPath(readOnlyCopiesFolder(box.path)),
+              ],
+            };
+      session = new MxcSession(profile, policy, box, copies, deps, startedAt, options.signal);
       const fence = await session.#prove();
       // A session that closed during the proof (an aborted signal) stays stopped.
       if (session.#closing === null) session.#fence = fence;

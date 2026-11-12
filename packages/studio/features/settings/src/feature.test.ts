@@ -2,9 +2,33 @@ import { createShell, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { DisplaySettingsService } from "./api.ts";
+import { DisplaySettings } from "./display-settings.ts";
 import { sectionsByName, settingsFeature, settingsSections } from "./feature.ts";
 
 describe("settingsFeature", () => {
+  it("sums Appearance up in one line for the phone's list", () => {
+    const shell = createShell({
+      features: [settingsFeature],
+      hostServices: [DisplaySettingsService],
+    });
+    const [appearance] = shell.contributions.settings.list();
+    const context = (theme: unknown, characters: unknown) =>
+      ({
+        services: {
+          get: () =>
+            new DisplaySettings({
+              read: (key: string) => (key === "appearance.theme" ? theme : characters),
+              write: async () => undefined,
+              subscribe: () => () => undefined,
+            }),
+        },
+      }) as unknown as WorkspaceContext;
+    expect(appearance?.summary?.(context(undefined, undefined))).toBe(
+      "System theme · characters on",
+    );
+    expect(appearance?.summary?.(context("dark", false))).toBe("Dark theme · characters off");
+  });
+
   it("is registered under its folder name", () => {
     expect(settingsFeature.id).toBe("settings");
   });

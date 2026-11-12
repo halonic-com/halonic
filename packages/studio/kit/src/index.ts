@@ -57,6 +57,7 @@ export { copyText } from "./copy-button/copy-text.ts";
 export { Dialog } from "./dialog/dialog.tsx";
 export type {
   ConfirmingDialogProps,
+  DialogAlternative,
   DialogConfirm,
   DialogProps,
   DialogSize,

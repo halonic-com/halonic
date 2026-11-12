@@ -80,6 +80,7 @@ function fixture(options: { closeFails?: boolean; files?: readonly Connector[] }
       trust: null,
       workingFoldersOf: async (folder) => [`${folder}/files/agents/coder`],
     }),
+    runEnded: (runId) => void log.push(`ended ${runId}`),
     reportError: (error) => reported.push(error),
   });
   return { connectors, log, reported, contexts };
@@ -146,7 +147,20 @@ verifies("cli.local-engine", () => {
     await connectors.end("run_1");
     await connectors.end("run_1");
 
-    expect(log.slice(2)).toEqual(["close notes", "release /copies/1"]);
+    expect(log.slice(2)).toEqual([
+      "ended run_1",
+      "close notes",
+      "release /copies/1",
+      "ended run_1",
+    ]);
+  });
+
+  it("tells the host a run ended even when none of its connectors started", async () => {
+    const { connectors, log } = fixture();
+
+    await connectors.end("run_1");
+
+    expect(log).toEqual(["ended run_1"]);
   });
 
   it("reports a connector that didn't close, and still releases its copy", async () => {

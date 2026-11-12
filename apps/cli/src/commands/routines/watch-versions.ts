@@ -18,7 +18,6 @@ import {
   VersionSource,
 } from "@halonicjs/workspace";
 import { OwnLineError } from "../../command.ts";
-import type { WorkspaceVersions } from "../../local-engine-host.ts";
 import type { TrustedVersion } from "../../local-run-connectors.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
@@ -30,6 +29,7 @@ import {
   openGitHistory,
 } from "../../run-workspace.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
+import type { WorkspaceVersions } from "../../workspace-versions.ts";
 
 /**
  * The checks a version passes before anything starts from it, as the watch
@@ -86,6 +86,12 @@ export class WatchedVersions implements WorkspaceVersions {
   #latest: LoadedWorkspace;
   /** The last version loaded at a commit, so the routines due at one time load it once. */
   #atCommit: { readonly commit: string; readonly workspace: LoadedWorkspace } | undefined;
+  /**
+   * The workspace each running run's definitions were read from, so its
+   * connectors start from that same load, however long after its start
+   * they open. Forgotten when the run ends.
+   */
+  readonly #workspaceOfRun = new Map<string, LoadedWorkspace>();
   #checks: VersionChecks = noChecks;
 
   private constructor(
@@ -166,7 +172,8 @@ export class WatchedVersions implements WorkspaceVersions {
   /**
    * The definitions a routine run starts with: from the live version at
    * its commit, or from the saved files as they are now. The version is
-   * checked first, and becomes {@link latest} once it passes.
+   * checked first, becomes {@link latest} once it passes, and is kept for
+   * the run's connectors until {@link forget}.
    *
    * @throws when the version changes local only, fails its check, or has no such workflow
    */
@@ -174,22 +181,38 @@ export class WatchedVersions implements WorkspaceVersions {
     hubId: string,
     workflowId: string,
     version: RunVersion | undefined,
+    runId: string,
   ): Promise<RunDefinitions> {
-    const { workspace } = await this.#trustedAt(version);
+    const workspace = await this.#workspaceAllowedAt(version);
+    await this.#checks.trust(workspace);
     await this.#checks.sandbox(workspace, { hubId, workflowId });
     this.#latest = workspace;
+    this.#workspaceOfRun.set(runId, workspace);
     return runDefinitionsOf(workspace, hubId, workflowId);
   }
 
   /**
-   * The version a run read, as its connectors start from it: checked for
-   * trust again, as a run that started in an earlier watch was checked
-   * there, with the grant of that check. It doesn't change {@link latest}.
+   * The version a run read, as its connectors start from it: the load its
+   * definitions came from, checked for trust again, as a run that started
+   * in an earlier watch was checked there, with the grant of that check. A
+   * run this watch didn't start has no load kept: its version is loaded now,
+   * which for the saved files is how they are now. It doesn't change
+   * {@link latest}.
    *
    * @throws when the version changes local only, can't be read, or fails its trust check
    */
-  async trustedVersionOf(version: RunVersion): Promise<TrustedVersion> {
-    return await this.#trustedAt(version);
+  async trustedVersionOf(run: {
+    readonly runId: string;
+    readonly version: RunVersion;
+  }): Promise<TrustedVersion> {
+    const workspace =
+      this.#workspaceOfRun.get(run.runId) ?? (await this.#workspaceAllowedAt(run.version));
+    return { workspace, trust: await this.#checks.trust(workspace) };
+  }
+
+  /** Forgets the load kept for a run that has ended. */
+  forget(runId: string): void {
+    this.#workspaceOfRun.delete(runId);
   }
 
   /** Closes the history. */
@@ -197,13 +220,13 @@ export class WatchedVersions implements WorkspaceVersions {
     await this.#history?.close();
   }
 
-  /** The workspace a run of `version` reads, if it keeps local only and passes its trust check. */
-  async #trustedAt(version: RunVersion | undefined): Promise<TrustedVersion> {
+  /** The workspace a run of `version` reads, if it keeps local only. */
+  async #workspaceAllowedAt(version: RunVersion | undefined): Promise<LoadedWorkspace> {
     const workspace = await this.#workspaceAt(version);
     if (isLocalOnly(workspace) !== this.#localOnly) {
       throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
     }
-    return { workspace, trust: await this.#checks.trust(workspace) };
+    return workspace;
   }
 
   /** The workspace a run of `version` reads; the one read last for a start that names none. */

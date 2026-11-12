@@ -86,16 +86,15 @@ section[hidden] {
   display: none;
 }
 
+/*
+ * The logo: the ring from halonic.dev and the film's end card, an inline SVG
+ * whose stroke is 16% of the diameter (0.16 x 100 in the viewBox), so it
+ * scales with the mark. Blue to teal at 135deg.
+ */
 .logo {
   align-self: center;
   width: 56px;
   height: 56px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 0.75rem;
-  display: grid;
-  place-items: center;
-  font-size: 0.625rem;
-  color: var(--color-fg-muted);
 }
 
 h1 {

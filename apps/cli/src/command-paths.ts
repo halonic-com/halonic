@@ -3,9 +3,8 @@
 // changes the fingerprint. Every command that checks trust (`doctor`,
 // `trust`, `run`) finds the paths here, so they all compute one fingerprint.
 
-import { constants } from "node:fs";
-import { access, stat } from "node:fs/promises";
-import { delimiter, isAbsolute, join } from "node:path";
+import { stat } from "node:fs/promises";
+import { delimiter, isAbsolute, sep } from "node:path";
 import { commandPaths as sharedCommandPaths } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
 
@@ -54,15 +53,56 @@ export async function commandPaths(
 export async function findCommand(command: string, search: CommandSearch): Promise<string | null> {
   if (command === "" || /[\\/]/.test(command)) return null;
   const names = candidateNames(command, search.endings);
-  for (const folder of (search.path ?? "").split(delimiter)) {
+  const windows = delimiter === ";";
+  for (const folder of splitPath(search.path ?? "", windows)) {
     // An empty or relative entry would mean the current folder; skip it.
-    if (!isAbsolute(folder)) continue;
+    if (!isAbsoluteFolder(folder, windows)) continue;
     for (const name of names) {
-      const candidate = join(folder, name);
+      const candidate = joinPlain(folder, name);
       if (await isProgram(candidate)) return candidate;
     }
   }
   return null;
+}
+
+/**
+ * The entries of `PATH`. On Windows (`;`), double quotes group an entry and
+ * are dropped, as the shell's `split_paths` does.
+ */
+export function splitPath(path: string, windows: boolean): string[] {
+  if (!windows) return path.split(":");
+  const entries: string[] = [];
+  let entry = "";
+  let quoted = false;
+  for (const char of path) {
+    if (char === '"') quoted = !quoted;
+    else if (char === ";" && !quoted) {
+      entries.push(entry);
+      entry = "";
+    } else entry += char;
+  }
+  entries.push(entry);
+  return entries;
+}
+
+/**
+ * Absolute as the shell sees it. On Windows that is a drive (`C:\`, `C:/`) or
+ * a UNC server and share (`\\server\share`, or with `/`), not just `\tools`.
+ */
+export function isAbsoluteFolder(folder: string, windows: boolean): boolean {
+  if (!windows) return isAbsolute(folder);
+  return /^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/][^\\/]+)/.test(folder);
+}
+
+/**
+ * `folder` and `name` with a separator between, and the folder as written:
+ * no `//`, `./` or `..` is tidied away, because the shell keeps them too and
+ * the trust check fingerprints the string.
+ */
+function joinPlain(folder: string, name: string): string {
+  const last = folder.slice(-1);
+  const ends = last === "/" || (sep === "\\" && last === "\\");
+  return ends ? `${folder}${name}` : `${folder}${sep}${name}`;
 }
 
 /**
@@ -79,9 +119,10 @@ function candidateNames(command: string, endings: readonly string[]): string[] {
 
 async function isProgram(path: string): Promise<boolean> {
   try {
-    if (!(await stat(path)).isFile()) return false;
-    await access(path, constants.X_OK);
-    return true;
+    const info = await stat(path);
+    if (!info.isFile()) return false;
+    // Any execute bit, as the shell checks, not only the current user's.
+    return process.platform === "win32" || (info.mode & 0o111) !== 0;
   } catch {
     return false;
   }

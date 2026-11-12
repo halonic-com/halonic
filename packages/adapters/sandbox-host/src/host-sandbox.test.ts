@@ -167,6 +167,29 @@ verifies("sandbox-host.start", () => {
       await session.close();
     });
 
+    it("starts in a read-only path's folder, and never in a denied one (HAL-6884)", async () => {
+      const workspace = await realpath(await mkdtemp(join(tmpdir(), "hs-workspace-")));
+      try {
+        await mkdir(join(workspace, "tools"));
+        await mkdir(join(workspace, "agent"));
+        const session = await createHostSandbox().open(
+          profile({ readOnlyPaths: [workspace], deniedPaths: [join(workspace, "agent")] }),
+        );
+        const tool = await session.start({
+          program: node,
+          args: ["-e", "process.stdout.write(process.cwd())"],
+          cwd: join(workspace, "tools"),
+        });
+        expect(await text(tool.stdout)).toBe(join(workspace, "tools"));
+        await expect(
+          session.start({ program: node, args: [], cwd: join(workspace, "agent") }),
+        ).rejects.toThrow("denied to it");
+        await session.close();
+      } finally {
+        await rm(workspace, { recursive: true, force: true });
+      }
+    });
+
     it("ends a program it can't find with a non-zero code instead of throwing", async () => {
       const session = await createHostSandbox().open(profile({ env: { PATH: work } }));
       for (const name of ["no-such-program", "./no-such-program"]) {

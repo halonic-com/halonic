@@ -54,11 +54,14 @@ verifies("sandbox-mxc.box-request", () => {
       expect(await files.kind(settings)).toBe("folder");
     });
 
-    it("refuses a read-only file instead of granting the folder around it", async () => {
-      const files = disk().file(`${tools}\\config.json`);
-      await expect(
-        boxPolicy({ ...profile, readOnlyPaths: [`${tools}\\config.json`] }, files),
-      ).rejects.toThrow(/grants only folders.*config\.json/);
+    it("keeps a read-only file apart from the folders, since MXC grants only folders", async () => {
+      const file = `${tools}\\config.json`;
+      const files = disk().file(file);
+      const policy = await boxPolicy({ ...profile, readOnlyPaths: [file] }, files);
+      expect(policy).toMatchObject({ readOnlyFolders: [], readOnlyFiles: [file] });
+      expect(boxRequest(policy, { program: "tool.exe", args: [] }, 1000).filesystem).toMatchObject({
+        readonlyPaths: [],
+      });
     });
 
     it.each([

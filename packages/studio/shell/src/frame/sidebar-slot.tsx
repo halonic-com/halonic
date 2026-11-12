@@ -26,10 +26,14 @@ export interface PlacesDrawerState {
 }
 
 /** Whether the sidebar is the Places drawer now, and whether that drawer is open. */
-export function usePlacesDrawer(hasSidebar: boolean): PlacesDrawerState {
+export function usePlacesDrawer(
+  hasSidebar: boolean,
+  buttonRef?: RefObject<HTMLButtonElement | null>,
+): PlacesDrawerState {
   const narrow = useNarrowWindow() && hasSidebar;
   const [open, setOpen] = useState(false);
-  const button = useRef<HTMLButtonElement>(null);
+  const ownButton = useRef<HTMLButtonElement>(null);
+  const button = buttonRef ?? ownButton;
   const toggle = useCallback(() => setOpen((wasOpen) => !wasOpen), []);
   const close = useCallback(() => setOpen(false), []);
   if (!narrow && open) {
@@ -53,7 +57,7 @@ export interface PlacesButtonProps {
  */
 export function PlacesButton({ open, onToggle, ref }: PlacesButtonProps) {
   return (
-    <span data-places-button="" className={open ? "rounded-sm bg-surface-muted" : undefined}>
+    <span className={open ? "rounded-sm bg-surface-muted" : undefined}>
       <Button
         ref={ref}
         variant="ghost"

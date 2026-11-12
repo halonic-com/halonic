@@ -13,12 +13,18 @@ export interface ConnectorStatus {
   readonly reason?: string;
 }
 
+/** One refusal and the time it arrived. */
+export interface RecordedRefusal {
+  readonly refusal: ChatTurnRefusal;
+  readonly at: Date;
+}
+
 /** The connectors and what they refused. The app provides it. */
 export interface ConnectorStatusHost {
   /** Every connector of the open workspace. */
   list(): Promise<readonly ConnectorStatus[]>;
   /** What the engine refused since Halonic started, newest first. Never more than 20 rows per connector. */
-  refusals(connectorId: string): Promise<readonly ChatTurnRefusal[]>;
+  refusals(connectorId: string): Promise<readonly RecordedRefusal[]>;
   /** Calls `listener` whenever a connector's state or refusals may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

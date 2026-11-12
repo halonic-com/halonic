@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { deniedGrantPaths, type GrantDisk, grantPath, readOnlyFolders } from "./grant-path.ts";
+import { deniedGrantPaths, type GrantDisk, grantPath, readOnlyGrants } from "./grant-path.ts";
 
 /** A disk where `files` are files, `folders` are folders and nothing else is there. */
 function disk(entries: { files?: string[]; folders?: string[] }): GrantDisk & { asked: string[] } {
@@ -58,30 +58,32 @@ verifies("sandbox-mxc.grant-paths", () => {
     });
   });
 
-  describe("readOnlyFolders", () => {
+  describe("readOnlyGrants", () => {
     it("grants folders in plain form, once each", async () => {
       const tools = "C:\\acme\\tools"; // leak-guard: allow absolute-path made-up Windows path for a test
-      const folders = await readOnlyFolders(["c:/acme/tools/", tools], disk({ folders: [tools] }));
-      expect(folders).toEqual([tools]);
+      const grants = await readOnlyGrants(["c:/acme/tools/", tools], disk({ folders: [tools] }));
+      expect(grants).toEqual({ folders: [tools], files: [] });
     });
 
-    it("refuses a single file and never grants the folder around it", async () => {
+    it("sorts a single file apart and never grants the folder around it", async () => {
       const file = "C:\\acme\\tools\\runner.mjs"; // leak-guard: allow absolute-path made-up Windows path for a test
-      const onDisk = disk({ files: [file], folders: ["C:\\acme\\tools"] }); // leak-guard: allow absolute-path made-up Windows path for a test
       const docs = "C:\\acme\\docs"; // leak-guard: allow absolute-path made-up Windows path for a test
-      await expect(readOnlyFolders([docs, file], onDisk)).rejects.toThrow(
-        `the read-only path "${file}" is a file`,
-      );
+      const onDisk = disk({ files: [file], folders: [docs, "C:\\acme\\tools"] }); // leak-guard: allow absolute-path made-up Windows path for a test
+      expect(await readOnlyGrants([docs, file, "c:/acme/tools/runner.mjs"], onDisk)).toEqual({
+        folders: [docs],
+        files: [file],
+      });
       expect(onDisk.asked).not.toContain("C:\\acme\\tools"); // leak-guard: allow absolute-path made-up Windows path for a test
     });
 
     it("leaves out a path that isn't there, since there is nothing to read", async () => {
-      expect(await readOnlyFolders(["C:\\acme\\gone"], disk({}))).toEqual([]); // leak-guard: allow absolute-path made-up Windows path for a test
+      const gone = "C:\\acme\\gone"; // leak-guard: allow absolute-path made-up Windows path for a test
+      expect(await readOnlyGrants([gone], disk({}))).toEqual({ folders: [], files: [] });
     });
 
     it("refuses a drive root before asking the disk", async () => {
       const onDisk = disk({ folders: ["C:"] });
-      await expect(readOnlyFolders(["C:\\"], onDisk)).rejects.toThrow(/drive root/);
+      await expect(readOnlyGrants(["C:\\"], onDisk)).rejects.toThrow(/drive root/);
       expect(onDisk.asked).toEqual([]);
     });
   });

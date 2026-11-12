@@ -1,4 +1,5 @@
 import type { ColourPreset } from "@halonicjs/studio-kit";
+import { saveFailed } from "../save-failed.ts";
 import type { FramePreset, Theme } from "./appearance-prefs.ts";
 
 /**
@@ -24,19 +25,6 @@ export const AGENT_CHARACTERS_SENTENCE = "Show agents as orbs. Off shows initial
 /** Panel opacity as the slider shows and says it: 0.8 is "80%". */
 export function percent(opacity: number): string {
   return `${Math.round(opacity * 100)}%`;
-}
-
-/** A failed save's words: the line under the control, and what the dialog says. */
-export interface SaveFailedText {
-  /** "Couldn't save the theme on this computer." */
-  readonly line: string;
-  /** The line, then what the setting is back to: "… Theme is back to System.", or "… Agent characters are back on." */
-  readonly announce: (back: string) => string;
-}
-
-export function saveFailed(what: string, back: (to: string) => string): SaveFailedText {
-  const line = `Couldn't save ${what} on this computer.`;
-  return { line, announce: (to) => `${line} ${back(to)}` };
 }
 
 export const THEME_NOT_SAVED = saveFailed("the theme", (to) => `${THEME} is back to ${to}.`);

@@ -7,7 +7,7 @@ import { win32 } from "node:path";
 import type { SandboxBridge, SandboxProfile } from "@halonicjs/ports";
 import { symlinkFlags, windowsCommandLine } from "./command-line.ts";
 import type { MxcDisk } from "./disk.ts";
-import { deniedGrantPaths, grantPath, readOnlyFolders } from "./grant-path.ts";
+import { deniedGrantPaths, grantPath, readOnlyGrants } from "./grant-path.ts";
 import type { MxcNetwork, MxcRequest } from "./mxc-process.ts";
 
 /**
@@ -18,6 +18,12 @@ import type { MxcNetwork, MxcRequest } from "./mxc-process.ts";
 export interface BoxPolicy {
   workingFolder: string;
   readOnlyFolders: string[];
+  /**
+   * Read-only files of the profile. MXC grants only folders, so the session
+   * copies them into a folder it owns and adds that folder to `readOnlyFolders`
+   * (see {@link copyReadOnlyFiles}); {@link boxRequest} never grants these paths.
+   */
+  readOnlyFiles: string[];
   readWriteFolders: string[];
   deniedPaths: string[];
   /** Only what the profile gave, plus `TEMP`, `TMP` and the Node flags in `NODE_OPTIONS`. */
@@ -33,7 +39,6 @@ export interface BoxPolicy {
  * @throws when `reopenedPaths` isn't empty (MXC's denied paths win over every grant, so it can't reopen one)
  * @throws when the bridge isn't a loopback bridge on `127.0.0.1` with a port
  * @throws when the working folder isn't a folder, or a path isn't one {@link grantPath} takes
- * @throws when a read-only path is a single file
  * @throws when a variable's name or value can't be passed on
  */
 export async function boxPolicy(profile: SandboxProfile, disk: MxcDisk): Promise<BoxPolicy> {
@@ -56,9 +61,11 @@ export async function boxPolicy(profile: SandboxProfile, disk: MxcDisk): Promise
   const settingsFolder = profile.settingsFolder === null ? null : grantPath(profile.settingsFolder);
   const ownFolders = settingsFolder === null ? [tempFolder] : [tempFolder, settingsFolder];
   for (const folder of ownFolders) await disk.makeFolder(folder);
+  const readOnly = await readOnlyGrants(profile.readOnlyPaths, disk);
   return {
     workingFolder,
-    readOnlyFolders: await readOnlyFolders(profile.readOnlyPaths, disk),
+    readOnlyFolders: readOnly.folders,
+    readOnlyFiles: readOnly.files,
     readWriteFolders: [...new Set([workingFolder, ...ownFolders])],
     deniedPaths: deniedGrantPaths(profile.deniedPaths),
     environment: boxEnvironment(profile.env, tempFolder),

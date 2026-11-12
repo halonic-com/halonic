@@ -534,7 +534,16 @@ Function .onInit
     ${GetOptions} $CMDLINE "/SANDBOX=" $R0
     ${IfNot} ${Errors}
     ${AndIf} $R0 == "1"
-      StrCpy $SandboxState ${BST_CHECKED}
+      ; Halonic change (HAL-7414): a silent install can't let anyone answer
+      ; Windows' prompt, so it sets the sandbox up only from an elevated
+      ; prompt, as a silent uninstall removes it (HAL-7385, S-8).
+      System::Call 'shell32::IsUserAnAdmin() i .R1'
+      ${If} ${Silent}
+      ${AndIf} $R1 = 0
+        StrCpy $SandboxOutcome "skipped"
+      ${Else}
+        StrCpy $SandboxState ${BST_CHECKED}
+      ${EndIf}
     ${EndIf}
   ${EndIf}
 
@@ -899,7 +908,8 @@ Section SandboxStep
       ${EndIf}
       ; The agent host asks Windows itself, through the signed helper, as
       ; Settings › Agent sandbox does (HAL-1451). A silent install gets here
-      ; only from an elevated prompt (/SANDBOX=1), where Windows doesn't ask.
+      ; only from an elevated prompt (/SANDBOX=1, checked in .onInit), where
+      ; Windows doesn't ask.
       Call ProfileFolder
       Pop $1
       nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
@@ -928,6 +938,8 @@ Section SandboxStep
         !insertmacro SetStep $LineSetup "! The agent sandbox isn't set up: $SandboxReason"
         !insertmacro SetStep $LineCheck "○ Checking the agent sandbox, skipped"
       ${EndIf}
+    ${ElseIf} $SandboxOutcome == "skipped"
+      DetailPrint "○ The agent sandbox isn't set up: a silent install sets it up only from an elevated prompt."
     ${EndIf}
   !endif
 

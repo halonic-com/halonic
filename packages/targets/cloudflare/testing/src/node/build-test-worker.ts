@@ -62,6 +62,8 @@ const contractsWithoutSideEffects: Plugin = {
  * Bundles the test Worker with the given suite files into one ES module
  * script for workerd. Each suite file registers its cases when it loads,
  * usually by calling a contract suite from `@halonicjs/testing-contracts`.
+ * A suite file may also export Durable Object classes, which the Worker
+ * then exports too; bind them with `WorkerdRunner.start`.
  *
  * @param suiteFiles - absolute paths or `file:` URLs of the suite files
  * @returns the Worker's script
@@ -72,7 +74,8 @@ const contractsWithoutSideEffects: Plugin = {
 export async function buildTestWorker(suiteFiles: readonly (string | URL)[]): Promise<string> {
   const entry = [
     `export { testWorker as default } from ${JSON.stringify(testWorkerFile)};`,
-    ...suiteFiles.map((file) => `import ${JSON.stringify(toPath(file))};`),
+    // `export *`, not `import`, so a suite file can export Durable Object classes: workerd finds them on the Worker's exports.
+    ...suiteFiles.map((file) => `export * from ${JSON.stringify(toPath(file))};`),
   ].join("\n");
   const result = await build({
     stdin: {
@@ -87,6 +90,8 @@ export async function buildTestWorker(suiteFiles: readonly (string | URL)[]): Pr
     platform: "neutral",
     mainFields: ["module", "main"],
     target: "es2024",
+    // workerd provides `cloudflare:workers` (the bindings in `env`) when the Worker loads.
+    external: ["cloudflare:*"],
     write: false,
     metafile: true,
     logLevel: "silent",

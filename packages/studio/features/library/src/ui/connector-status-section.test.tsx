@@ -3,7 +3,11 @@ import type { ChatTurnRefusal } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConnectorStatus, ConnectorStatusHost } from "../connector-status-host.ts";
+import type {
+  ConnectorStatus,
+  ConnectorStatusHost,
+  RecordedRefusal,
+} from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
@@ -31,7 +35,9 @@ function fakeHost(answer: { connectors: ConnectorStatus[]; refusals: ChatTurnRef
     },
     async refusals() {
       if (host.fail !== undefined) throw host.fail;
-      return answer.refusals;
+      return answer.refusals.map(
+        (refusal) => ({ refusal, at: new Date(0) }) satisfies RecordedRefusal,
+      );
     },
     subscribe(listener) {
       listeners.add(listener);
@@ -65,7 +71,7 @@ async function openSection(host: ConnectorStatusHost, announceState?: () => void
 }
 
 const lines = (root: HTMLElement) =>
-  [...root.querySelectorAll("li")].map((item) => item.textContent);
+  [...root.querySelectorAll("li span")].map((item) => item.textContent);
 
 verifies("library.status-section", () => {
   describe("with an answer", () => {
@@ -79,6 +85,16 @@ verifies("library.status-section", () => {
         'notes: left out "tool 1": why 1',
         'notes: left out "tool 2": why 2',
       ]);
+    });
+
+    it("shows the time of each refusal", async () => {
+      const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1), refusal(2)] });
+      const { root } = await openSection(host);
+      const times = [...root.querySelectorAll("li time")];
+      expect(times).toHaveLength(2);
+      for (const time of times) {
+        expect(time.getAttribute("datetime")).toBe(new Date(0).toISOString());
+      }
     });
 
     it("names the list by its heading, as a list, and draws no landmark or live region", async () => {

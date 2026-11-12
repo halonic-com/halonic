@@ -100,4 +100,14 @@ verifies("kit.dialog-return-focus", () => {
     rerender(<Opener open={false} opener />);
     expect(document.activeElement).toBe(buttonNamed(container, "More actions for Writer"));
   });
+
+  it("skips an opener that sits under hidden", () => {
+    const { container, rerender } = render(<Opener open={false} opener />);
+    const opener = buttonNamed(container, "More actions for Sorter");
+    opener.focus();
+    rerender(<Opener open opener />);
+    opener.setAttribute("hidden", "");
+    rerender(<Opener open={false} opener />);
+    expect(document.activeElement).toBe(buttonNamed(container, "More actions for Writer"));
+  });
 });

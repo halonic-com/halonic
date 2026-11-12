@@ -48,7 +48,10 @@ export interface BlockedSitesPanelProps {
   readonly noConnectionProven: boolean;
   /** On a phone the action is a line naming where to fix it, with no link. */
   readonly place: "desktop" | "phone";
-  /** Opens the agent at Configuration › Harness with focus on the allowed sites field. Desktop only. */
+  /**
+   * Opens the agent at Configuration › Harness with focus on the allowed sites field. Desktop
+   * only; without it a desktop panel has no action, never the phone's "your computer" line.
+   */
   readonly onOpenAllowedSites?: () => void;
   /** Takes focus when the "Blocked 3 sites" line opened the entry. */
   readonly headingRef?: Ref<HTMLHeadingElement>;
@@ -94,12 +97,15 @@ export function BlockedSitesPanel(props: BlockedSitesPanelProps) {
 }
 
 function Action({ agent, place, onOpenAllowedSites }: BlockedSitesPanelProps) {
-  if (place === "phone" || onOpenAllowedSites === undefined) {
+  if (place === "phone") {
     return (
       <p className="text-small text-fg-muted">
         {fill("sandbox.blocked-sites.phone-fix", { agent })}
       </p>
     );
+  }
+  if (onOpenAllowedSites === undefined) {
+    return null;
   }
   return (
     <button

@@ -1,6 +1,6 @@
-import type { DisplayPref } from "../display-prefs.ts";
-import type { DisplaySettings } from "../display-settings.ts";
-import type { SaveFailedText } from "./appearance-text.ts";
+import type { DisplayPref } from "./display-prefs.ts";
+import type { DisplaySettings } from "./display-settings.ts";
+import type { SaveFailedText } from "./save-failed.ts";
 
 /**
  * Saves a setting from its control. When the save fails, and no newer change came in meanwhile,

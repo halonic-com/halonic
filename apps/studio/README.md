@@ -71,6 +71,11 @@ libraries and of the Rust crates the app links, which the script writes to
 `src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. Only the "Set up the agent sandbox" step asks Windows for
 administrator rights, once, and the uninstaller asks again to remove the sandbox.
 
+The release runs the script in two steps, `-Step build` and `-Step pack`, and
+signs the sandbox helper in between, so the helper inside the installer is
+signed too (HAL-7491). With `HALONIC_SANDBOX_SIGNER` set, `pack` refuses a
+helper that isn't validly signed by that publisher.
+
 What it shows (design: the install flow, sections 2.2 to 2.7):
 
 - One page (folder, sandbox box, desktop shortcut box), the step lines, and a
@@ -101,8 +106,12 @@ What it shows (design: the install flow, sections 2.2 to 2.7):
   an elevated prompt.
 
 Silent (`/S`) and passive installs show none of this and skip the sandbox step;
-`/S /SANDBOX=1` from an elevated prompt runs it. `/RELAUNCH` reopens Halonic
-after a silent install.
+`/S /SANDBOX=1` from an elevated prompt runs it. Without administrator rights
+a silent install can't let anyone answer Windows' prompt, so it skips the step
+even with `/SANDBOX=1`. From an elevated prompt the installer runs
+`halonic-agent-host.exe --sandbox-setup` elevated from the install folder it
+has just written: whoever started it as an administrator chose that.
+`/RELAUNCH` reopens Halonic after a silent install.
 
 The `installer-windows` CI job builds it, walks the pages and the messages
 (the pictures are in the job's artifacts), installs it silently into a

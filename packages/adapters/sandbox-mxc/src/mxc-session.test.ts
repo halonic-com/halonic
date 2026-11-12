@@ -1,3 +1,4 @@
+import { win32 } from "node:path";
 import type { SandboxBlock, SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { readText, sandboxFenceContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -17,6 +18,7 @@ import { fenceFiles } from "./fence-files.ts";
 import { grantPath } from "./grant-path.ts";
 import { MemoryDisk } from "./memory-disk.test-helper.ts";
 import { MxcSandbox } from "./mxc-sandbox.ts";
+import type { MxcSession } from "./mxc-session.ts";
 
 // Made-up Windows paths, each marked for the leak guard on its own line.
 const work = "C:\\acme\\work"; // leak-guard: allow absolute-path made-up Windows path for a test
@@ -176,6 +178,36 @@ verifies("sandbox-mxc.session", () => {
       });
       expect(fake.requests).toEqual([]);
       await session.close();
+    });
+  });
+
+  describe("read-only files", () => {
+    const file = `${tools}\\config.json`;
+
+    it("copies a read-only file into the box folder and grants only the folder of copies", async () => {
+      const { sandbox, fake, disk } = setup();
+      disk.file(file, "settings");
+      const session = (await open(sandbox, { readOnlyPaths: [file] })) as MxcSession;
+      const [copy] = session.readOnlyCopies;
+      expect(copy?.original).toBe(file);
+      expect(copy?.copy).toContain("box-4242-1");
+      expect(await disk.readText(copy?.copy ?? "")).toBe("settings");
+      const granted = fake.requests.flatMap((request) => request.filesystem.readonlyPaths ?? []);
+      expect(granted).toContain(grantPath(`${win32.dirname(win32.dirname(copy?.copy ?? ""))}`));
+      expect(granted).not.toContain(tools);
+      expect(granted).not.toContain(file);
+      await session.close();
+      expect(disk.fileNames().filter((name) => name.includes("mxc-boxes"))).toEqual([]);
+    });
+
+    it("refuses a file inside a denied path and removes the box folder", async () => {
+      const { sandbox, disk, fake } = setup();
+      disk.file(file);
+      await expect(open(sandbox, { readOnlyPaths: [file], deniedPaths: [tools] })).rejects.toThrow(
+        "inside a denied path",
+      );
+      expect(fake.requests).toEqual([]);
+      expect(disk.fileNames().filter((name) => name.includes("mxc-boxes"))).toEqual([]);
     });
   });
 

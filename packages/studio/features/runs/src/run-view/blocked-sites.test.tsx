@@ -204,6 +204,15 @@ verifies("runs.run-view.blocked-sites", () => {
     expect(onOpenAllowedSites).toHaveBeenCalledOnce();
   });
 
+  it("has no action on the desktop without a way to open the agent, never the phone's line", () => {
+    const container = render(
+      <BlockedSitesPanel step={install} agent="Writer" noConnectionProven place="desktop" />,
+    );
+
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.textContent).not.toContain("your computer");
+  });
+
   it("doesn't say no connection was made where that isn't proven yet (a run on Windows)", () => {
     const container = render(
       <BlockedSitesPanel

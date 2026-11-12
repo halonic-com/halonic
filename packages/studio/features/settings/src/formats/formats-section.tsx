@@ -2,8 +2,8 @@ import { Field, Select } from "@halonicjs/studio-kit";
 import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useMemo } from "react";
 import { DisplaySettingsService } from "../api.ts";
-import { saveSetting } from "../appearance/save-setting.ts";
 import type { DisplaySettings } from "../display-settings.ts";
+import { saveSetting } from "../save-setting.ts";
 import { useDisplaySetting } from "../use-display-setting.ts";
 import {
   type FormatChoice,

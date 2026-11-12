@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
@@ -13,7 +13,8 @@ import { launcherEnv, programEnv } from "./srt-session-env.ts";
 let base: string;
 
 beforeEach(async () => {
-  base = await mkdtemp(join(tmpdir(), "srt-session-test-"));
+  // The real path: on macOS the temp folder is behind a symbolic link, and the program starts in the real folder.
+  base = await realpath(await mkdtemp(join(tmpdir(), "srt-session-test-")));
 });
 
 afterEach(async () => {

@@ -1,5 +1,8 @@
-import type { ChatTurnRefusal } from "@halonicjs/ports";
-import type { ConnectorStatus, ConnectorStatusHost } from "./connector-status-host.ts";
+import type {
+  ConnectorStatus,
+  ConnectorStatusHost,
+  RecordedRefusal,
+} from "./connector-status-host.ts";
 
 /** The most refusals the status shows. */
 export const refusalLimit = 20;
@@ -13,7 +16,7 @@ export interface ConnectorStatusState {
   /** The connector, once the host listed it; absent when the host doesn't list this id. */
   readonly connector?: ConnectorStatus;
   /** Newest first, never more than {@link refusalLimit}. */
-  readonly refusals: readonly ChatTurnRefusal[];
+  readonly refusals: readonly RecordedRefusal[];
 }
 
 /**

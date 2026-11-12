@@ -57,6 +57,14 @@ How a run goes:
    so the trace check and the requirement guard read the results as usual.
    A failure shows workerd's message and stack.
 
+A suite file may export Durable Object classes. The Worker exports them too,
+and `runSuitesInWorkerd(files, { durableObjects: { NAME: "ClassName" } })`
+binds them to `env.NAME`; a suite reads `env` from `cloudflare:workers`
+(allowed only in `cloudflare-*` adapters). The suite and the objects run in
+one workerd isolate, so a test can move a clock the objects read. A test
+that depends on that is only for workerd; the live runner has to give the
+objects their time another way.
+
 The code under `src/worker` runs in workerd and is typechecked against
 `@cloudflare/workers-types` (`tsconfig.worker.json`); `src/node` runs in Node.
 `miniflare`, `esbuild` and this package are test tooling and never ship in a

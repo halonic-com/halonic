@@ -107,15 +107,17 @@ verifies("cli.local-engine", () => {
 
   it("starts a run's connectors from the version it read, with that version's grant", async () => {
     const asked: RunVersion[] = [];
+    const forgotten: string[] = [];
     const created: Created[] = [];
     const read = await acmeWithNotes();
     const { runConnectors } = connectorsOn({
       created,
       versions: {
-        trustedVersionOf: async (version) => {
-          asked.push(version);
+        trustedVersionOf: async (run) => {
+          asked.push(run.version);
           return { workspace: read, trust: contractGrant };
         },
+        forget: (runId) => void forgotten.push(runId),
       },
     }).runs;
 
@@ -124,6 +126,8 @@ verifies("cli.local-engine", () => {
     expect(asked).toEqual([reportRun.version]);
     expect(clients.map((client) => client.id)).toEqual(["notes"]);
     expect(created).toEqual([{ id: "notes", trust: contractGrant }]);
+    await runConnectors.end(reportRun.runId);
+    expect(forgotten).toEqual([reportRun.runId]);
   });
 
   it("starts no connector of a run whose version may not run here, saying why", async () => {
@@ -134,6 +138,7 @@ verifies("cli.local-engine", () => {
         trustedVersionOf: async () => {
           throw new Error("Acme changed since it was trusted.");
         },
+        forget: () => {},
       },
     }).runs;
 
