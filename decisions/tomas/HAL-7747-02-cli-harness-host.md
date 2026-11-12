@@ -1,6 +1,6 @@
 # Decision: the CLI's engine now has harnesses, so cli.local-engine drops "no harnesses"
 
-- Approval: scope decided on [HAL-6476](/HAL/issues/HAL-6476), option 1 (Liam); the package owner (Liam) approves this note in review on [HAL-7747](/HAL/issues/HAL-7747)
+- Approval: scope decided on HAL-6476, option 1 (Liam); the package owner (Liam) approves this note in review on HAL-7747
 - Kind: internal
 
 ## What changes
