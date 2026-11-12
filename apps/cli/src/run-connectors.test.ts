@@ -19,9 +19,9 @@ const live: RunVersion = {
   versionDate: "2026-11-11T10:42:00.000Z",
 };
 
-/** A top-level run of Support reply that read `version`. */
-function runOf(runId: string, version: RunVersion | null = live): ConnectorsRun {
-  return { runId, hubId: "support", workflowId: "support-reply", version, localOnly: false };
+/** A top-level run of Support reply that read `version`, in a workspace that is local only or not. */
+function runOf(runId: string, version: RunVersion | null = live, localOnly = false): ConnectorsRun {
+  return { runId, hubId: "support", workflowId: "support-reply", version, localOnly };
 }
 
 const notes: Connector = {
@@ -93,6 +93,29 @@ verifies("cli.local-engine", () => {
     expect(again).toBe(first);
     expect(log).toEqual(["folder /copies/1", "create notes in /copies/1"]);
     expect(contexts[0]?.workingFolders).toEqual(["/copies/1/files/agents/coder"]);
+  });
+
+  it("marks a connector that runs on this computer as local, so a local-only run calls it", async () => {
+    const { connectors } = fixture();
+
+    const opened = await connectors.open(runOf("run_1", live, true));
+
+    expect(opened.map(({ id, local }) => ({ id, local }))).toEqual([{ id: "notes", local: true }]);
+  });
+
+  it("doesn't start a connector its file says isn't local in a local-only run", async () => {
+    const remote = { ...notes, id: "remote", local: false } as Connector;
+    const { connectors, log } = fixture({ files: [notes, remote] });
+
+    const opened = await connectors.open(runOf("run_1", live, true));
+    await connectors.open(runOf("run_2"));
+
+    expect(opened.map((each) => each.id)).toEqual(["notes"]);
+    expect(log.filter((line) => line.startsWith("create"))).toEqual([
+      "create notes in /copies/1",
+      "create notes in /copies/2",
+      "create remote in /copies/2",
+    ]);
   });
 
   it("gives each top-level run its own copy", async () => {

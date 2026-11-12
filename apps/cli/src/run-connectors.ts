@@ -10,7 +10,7 @@
 
 import { type ConnectorFactories, connectorConfigOf } from "@halonicjs/app";
 import type { ConnectorsRun, RunConnectors } from "@halonicjs/engine";
-import type { Connector } from "@halonicjs/format";
+import { type Connector, connectorIsLocal } from "@halonicjs/format";
 import type { ConnectorClient, ConnectorFactoryContext } from "@halonicjs/ports";
 import type { ProgramFolders } from "./program-folders.ts";
 
@@ -119,10 +119,13 @@ export class FolderRunConnectors implements RunConnectors {
         workingFolders: await this.#input.workingFoldersOf(folder.path),
       };
       for (const file of files) {
+        const local = connectorIsLocal(file);
+        // The engine would drop it anyway (`engine.local-only`): don't start it.
+        if (run.localOnly && !local) continue;
         const config = connectorConfigOf(file);
         // Such as the built-in Google connector: a call to it says it isn't connected.
         if (!this.#input.factories.serves(config.transport.kind)) continue;
-        clients.push(this.#input.factories.create(config, context));
+        clients.push(markedLocal(this.#input.factories.create(config, context), local));
       }
       return { clients, release: () => folder.release() };
     } catch (error) {
@@ -133,4 +136,19 @@ export class FolderRunConnectors implements RunConnectors {
       throw error;
     }
   }
+}
+
+/**
+ * `client`, saying whether its connector runs on this computer, as
+ * `connectorIsLocal` reads its file. In a local-only workspace the engine
+ * calls only the connectors marked `local` (`engine.local-only`).
+ */
+function markedLocal(client: ConnectorClient, local: boolean): ConnectorClient {
+  return {
+    id: client.id,
+    local,
+    listTools: () => client.listTools(),
+    callTool: (name, args, options) => client.callTool(name, args, options),
+    close: () => client.close(),
+  };
 }
