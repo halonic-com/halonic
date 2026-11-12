@@ -35,7 +35,10 @@ export interface ServerErrorBody {
  * Counts requests per deployment and UTC day, for `limits.dailyRequests`.
  * Each host supplies one that survives a restart: `targets/node/runtime` keeps
  * it on disk, the Cloudflare target in its own durable store. The count is
- * atomic, so parallel requests never get past the ceiling.
+ * atomic, so parallel requests never get past the ceiling. It is its own
+ * port, not a `Coordination.increment` counter, so a host can back the count
+ * of every request with a store of its own choice, apart from the shared
+ * login limits and sessions.
  */
 export interface RequestCountStore {
   /**
@@ -58,9 +61,9 @@ export interface ServerConfig {
   /** The oldest Android app this server works with, as `GET /api/hello` reports it. */
   readonly minAppVersion: string;
   /**
-   * The `Host` names the server answers to, lowercase and without a port
-   * unless the host listens on a fixed one. A request with any other `Host`
-   * is refused. A server with no password accepts only loopback names,
+   * The `Host` names the server answers to, each lowercase. A name has no
+   * port, unless the host listens on a fixed port, and then it includes it. A
+   * request with any other `Host` is refused. A server with no password accepts only loopback names,
    * whatever this holds.
    */
   readonly allowedHosts: readonly string[];
@@ -84,7 +87,10 @@ export interface ServerPorts {
   readonly requestCounts: RequestCountStore;
   /** The time; replaced in tests to cross a UTC day. */
   readonly clock: Clock;
-  /** New session tokens and request ids. */
+  /**
+   * Request ids only. They are not secret and tests make them predictable, so
+   * session tokens must not come from here: they use `crypto.getRandomValues`.
+   */
   readonly ids: IdGenerator;
 }
 
