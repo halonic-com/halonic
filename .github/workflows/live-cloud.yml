@@ -33,8 +33,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  NIGHTLY_CRON: "23 2 * * *"
-  SWEEP_CRON: "41 */6 * * *"
+  SWEEP_CRON: "41 */6 * * *" # keep equal to the schedule above
 
 jobs:
   plan:
