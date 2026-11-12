@@ -47,26 +47,17 @@ interface FenceStart {
 }
 
 /**
- * Starts the built runner for `source` in the fence. When the runner exits
- * before it is ready, it tries once more (HAL-6577): that failed once in 60 CI
- * runs on bubblewrap, exit code 1 in about half a second, while the attack
- * tests passed in the same job. Until its stderr says why, the first failure is
- * written to the log in full and only a second one fails the test, so the
- * required job stays green and the next occurrence tells us the cause.
+ * Starts the built runner for `source` in the fence. A start that fails says
+ * how the runner stopped, what it and srt wrote to stderr and what the fence
+ * refused (HAL-6577: a runner that exited before it was ready left no reason
+ * in the log).
  */
 async function startInFence(source: string): Promise<StartedRunner> {
-  const first = startOnce(source);
+  const start = startOnce(source);
   try {
-    return await first.started;
+    return await start.started;
   } catch (error) {
-    if (!exitedBeforeReady(error)) throw explained(error, first);
-    console.warn(`HAL-6577: retrying a runner start that failed.\n${diagnosis(error, first)}`);
-  }
-  const second = startOnce(source);
-  try {
-    return await second.started;
-  } catch (error) {
-    throw explained(error, second);
+    throw explained(error, start);
   }
 }
 
@@ -74,11 +65,6 @@ async function startInFence(source: string): Promise<StartedRunner> {
 function startOnce(source: string): FenceStart {
   const { process: _process, nonce: _nonce, ...connect } = bridgeOptions(fakeRunnerProcess());
   return { started: startRunnerFor(source, connect), log: connect.log, blocks: connect.blocks };
-}
-
-/** Whether the runner stopped by exiting before it was ready: the HAL-6577 flake. */
-function exitedBeforeReady(error: unknown): boolean {
-  return error instanceof RunnerStoppedError && error.stop.reason === "exited";
 }
 
 /** The error with how the runner stopped, its stderr and the fence's blocks in its message. */

@@ -18,6 +18,12 @@
 // before the profile is built, and an entry to hide that is a symlink into
 // what the runner needs (such as `~/.nvm/current`) is left alone, because
 // denying its real place would hide the runner's own files.
+//
+// Hiding entry by entry races with the folder changing. bubblewrap mounts over
+// each entry, and an entry removed after it was listed has no mount point left:
+// bubblewrap can't create one in the read-only folder and the start fails
+// (HAL-6577). So keep a runner's paths, the temp folder above all, out of a
+// folder that changes often, such as the shared `/tmp`; there it is hidden as one.
 
 import { readdirSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
@@ -126,7 +132,8 @@ export function realRunnerPaths(
 
 /**
  * The untrusted profile for one runner start. Every path must already be real;
- * see {@link realRunnerPaths}.
+ * see {@link realRunnerPaths}. On Linux, keep the temp folder out of a folder to
+ * hide that changes often, such as `/tmp`: see the race at the top of this file.
  *
  * @throws when a path the runner needs is, or holds, the home folder or a socket folder
  * @throws when a folder on the way to a path the runner needs can't be listed

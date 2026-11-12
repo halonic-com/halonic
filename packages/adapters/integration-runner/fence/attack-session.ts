@@ -62,10 +62,18 @@ process.on("beforeExit", () => {
  * A fresh base folder for fence tests, at its real place. srt puts its socket
  * in the session's temp folder, and a socket path may be only 104 bytes on
  * macOS, where `tmpdir()` is already a long path under `/var/folders`. So the
- * base goes in `/tmp`, with a short name.
+ * base gets a short name in a short folder.
+ *
+ * On Linux that folder is `/var/tmp`, not `/tmp` (HAL-6577). `/tmp` is a socket
+ * folder the profile hides; with a kept path inside it, the profile lists `/tmp`
+ * and hides each entry. Another session can remove its own entry between that
+ * list and bubblewrap's mount, and bubblewrap then fails to create the mount
+ * point in the read-only `/tmp`. Outside it, `/tmp` is hidden as one folder.
+ * Seatbelt on macOS mounts nothing, so `/tmp` has no such race there.
  */
 export async function fenceTestBase(prefix: string): Promise<string> {
-  return realpath(await mkdtemp(join("/tmp", prefix)));
+  const parent = process.platform === "linux" ? "/var/tmp" : "/tmp";
+  return realpath(await mkdtemp(join(parent, prefix)));
 }
 
 /** The folders one attack run uses. */
