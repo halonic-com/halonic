@@ -61,11 +61,14 @@ fn settings_folder_matches_every_golden_case() {
     for case in &cases {
         let name = case["name"].as_str().unwrap_or_default();
         let Some(expected) = case["settings"].as_str() else {
-            assert!(case["settings"].is_null(), "{name}: settings is text or null");
+            assert!(
+                case["settings"].is_null(),
+                "{name}: settings is text or null"
+            );
             continue;
         };
-        let profile = profile_folder(&environment_of(case))
-            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        let profile =
+            profile_folder(&environment_of(case)).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(profile.settings_folder(), with_drive(expected), "{name}");
         checked += 1;
     }
