@@ -20,6 +20,13 @@ comes to the front, and tells the page only when a run changed. The window has
 no engine of its own yet, so answering a run in the Inbox fails as
 `unavailable` until it does (HAL-6602; `studio.workspace-runs`).
 
+## Settings in the desktop app
+
+The desktop app registers the Settings feature too (`desktopFeatures`), so the
+window opens Settings on Ctrl , (⌘ , on macOS) and from **Settings** in Ctrl K,
+with every section a registered feature adds (`studio.settings`). The served
+Studio registers no features yet, so it has no Settings.
+
 ## The shell
 
 `src-tauri/` is the Tauri shell, a Cargo workspace whose root package is the

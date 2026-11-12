@@ -366,7 +366,7 @@ start, in this order, because its fix comes first.
   separate sandbox user account with network filters. It needs srt's install
   for the whole machine, once, as an administrator (D44); `setUp()` runs it for
   the installer, leaving out srt's grant to read your profile. Without the
-  install `check()` reports `windows` and nothing runs. On Windows there are
+  install `check()` reports `setup-needed` and nothing runs. On Windows there are
   no process groups, so stopping a program ends its whole tree at once with
   no grace period, and a program, argument or variable with a double quote,
   a percent sign or a line break is refused rather than quoted. If the

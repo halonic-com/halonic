@@ -238,3 +238,16 @@ verifies("studio.workspace-runs", () => {
     expect(heard).toHaveBeenCalledTimes(1);
   });
 });
+
+verifies("studio.run-log", () => {
+  it("reads a run's whole log", async () => {
+    const { engine, runId } = await waitingRun();
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
+
+    const listed = await runs.list();
+    const log = await runs.log(runId);
+
+    expect(log[0]?.type).toBe("run.started");
+    expect(log.at(-1)?.seq).toBe(listed[0]?.summary.lastSeq);
+  });
+});

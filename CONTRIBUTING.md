@@ -18,6 +18,22 @@ Security problems go to [SECURITY.md](SECURITY.md), never to a public issue.
   requests, and run `pnpm who-touches <package>` to list
   the open pull requests that change the package you plan to work on.
 
+## Your first contribution
+
+Issues labelled
+[`good first issue`](https://github.com/halonic-com/halonic/labels/good%20first%20issue)
+are small and ready to pick up. Each one says which files to look at, what done
+means, how to check it, and its size (S or M). The ones also labelled `design`
+need no code.
+
+- Comment on the issue to say you're taking it. We don't assign issues.
+- If two pull requests fix the same issue, the first complete one with passing
+  checks is the one we review.
+- One pull request per person per issue, and at most 3 open pull requests from
+  you at a time.
+- If someone has taken an issue but opened no pull request after 7 days, anyone
+  may pick it up.
+
 ## Setup
 
 > **One check doesn't block yet.** The requirement guard (the test-weakening
@@ -274,5 +290,5 @@ As described above, AI tools are welcome here, with these rules:
 3. A maintainer approves and merges. Pull requests merge one at a time, so
    `main` always passes its checks.
 
-We try to give a first response within a week. If you haven't heard from us,
-a friendly comment on the pull request is welcome.
+We aim to give a first response within 2 working days. If you haven't heard
+from us, a friendly comment on the pull request is welcome.

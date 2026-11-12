@@ -45,6 +45,7 @@ export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
         version: halonicVersion,
         system: computer.system,
         sandboxKind: computer.sandboxKind,
+        ...(computer.wslDistro === undefined ? {} : { wslDistro: computer.wslDistro }),
         ...(given === undefined ? {} : { dir: given }),
       });
       return {

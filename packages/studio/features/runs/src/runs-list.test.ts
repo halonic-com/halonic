@@ -57,6 +57,7 @@ describe("RunsList", () => {
     const answers: ((runs: SourcedRun[]) => void)[] = [];
     const source: RunsSource = {
       list: () => new Promise((resolve) => answers.push(resolve)),
+      log: async () => [],
       workflow: () => undefined,
       routine: () => undefined,
       currency: () => "EUR",

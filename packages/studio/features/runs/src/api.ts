@@ -3,7 +3,7 @@
  * other only through this file. The app provides `RunsSourceService` for
  * each open workspace; the Runs list, the run page and Home read it.
  */
-import type { RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
@@ -45,6 +45,11 @@ export interface RunRoutine {
 export interface RunsSource {
   /** Every run, real and test, newest start first. */
   readonly list: () => Promise<SourcedRun[]>;
+  /**
+   * One run's whole log, oldest event first, the events `halonic runs show`
+   * reads; empty when the run has no log. The run page reads it for Every step.
+   */
+  readonly log: (runId: string) => Promise<RunEvent[]>;
   /** The run's workflow; `undefined` when it's no longer in the workspace. */
   readonly workflow: (hubId: string, workflowId: string) => RunWorkflow | undefined;
   /**

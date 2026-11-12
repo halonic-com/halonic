@@ -43,6 +43,12 @@ export interface CommandContext {
    */
   debug(line: Phrase): void;
   /**
+   * Whether the command line has `--debug`, for a result whose words change
+   * with it: a failed run's line 2 doesn't ask for `--debug` again once it
+   * was given (HAL-6613). Left out, it reads as without `--debug`.
+   */
+  readonly debugging?: boolean;
+  /**
    * Prints a result line now, because it is final, such as a step's ✓ line
    * while the run goes on (requirement `cli.print-ahead`). The command still
    * returns every line in its result, with the lines printed ahead first and
@@ -117,6 +123,14 @@ export interface CommandResult {
   readonly lines: readonly Phrase[];
   /** The command's own `--json` fields. */
   readonly json: JsonFields;
+  /**
+   * What the result holds for an engineer, such as a failed run's own error
+   * texts: with `--debug`, `runCli` prints it to stderr after the result,
+   * with every loaded secret removed from the whole text before it is split
+   * into lines, as an error's `--debug` text is. Without `--debug` it goes
+   * nowhere, and it is never part of stdout or `--json`.
+   */
+  readonly debugText?: string;
 }
 
 /**

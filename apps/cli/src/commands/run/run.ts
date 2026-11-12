@@ -136,7 +136,14 @@ export async function runWorkflow(
       return followed;
     }
     const { run, unusedEvents } = followed;
-    const result = runResult(run, { workspace, workspaceName, dir: typedDir, clock, unusedEvents });
+    const result = runResult(run, {
+      workspace,
+      workspaceName,
+      dir: typedDir,
+      clock,
+      unusedEvents,
+      debugging: context.debugging === true,
+    });
     return { ...result, lines: [...warnings, ...result.lines] };
   } finally {
     live.end();

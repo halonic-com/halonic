@@ -4,7 +4,8 @@
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
 //! commands, `pick_folder`, the `trust_*` commands, the `host_settings_*`
 //! commands, the `run_*` commands, the `agent_host_*` commands, the `fs_*`
-//! commands and the `blob_*` and `record_*` commands.
+//! commands, the `blob_*` and `record_*` commands and the `update_*`
+//! commands.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -12,6 +13,9 @@ use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
 use tauri::webview::{InvokeRequest, WebviewWindow};
 
 use crate::shell;
+
+#[cfg(desktop)]
+mod updates;
 
 /// Where the connect page runs, as Tauri sees it on this platform.
 const CONNECT_PAGE: &str = if cfg!(any(windows, target_os = "android")) {
@@ -126,6 +130,22 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "fs_unwatch",
         "plugin:opener|open_url",
         "plugin:event|listen",
+    ] {
+        assert!(
+            commands.iter().any(|command| command == expected),
+            "{expected} missing from {commands:?}"
+        );
+    }
+    #[cfg(desktop)]
+    for expected in [
+        "update_status",
+        "update_watch",
+        "update_check",
+        "update_download",
+        "update_cancel",
+        "update_restart",
+        "update_set_automatic",
+        "plugin:updater|check",
     ] {
         assert!(
             commands.iter().any(|command| command == expected),

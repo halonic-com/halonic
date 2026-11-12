@@ -7,7 +7,14 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { Inbox, InboxRuns } from "./inbox.ts";
 
 export { type InboxDecisions, inboxDecisions } from "./decide.ts";
-export type { Inbox, InboxRuns, InboxSetupSource, InboxState, SetupEntry } from "./inbox.ts";
+export type {
+  Inbox,
+  InboxRuns,
+  InboxSetupSource,
+  InboxState,
+  SetupEntry,
+  SetupViewProps,
+} from "./inbox.ts";
 export { inboxSignal } from "./inbox-count.ts";
 export {
   type ApprovalItem,

@@ -15,7 +15,7 @@ import { workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
 import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
-import { showEnding } from "../runs/show-ending.ts";
+import { failedRunDebugText, showEnding } from "../runs/show-ending.ts";
 
 /** What the result is about besides the run. */
 export interface RunResultFacts {
@@ -27,6 +27,8 @@ export interface RunResultFacts {
   readonly clock: RunClock;
   /** The `--event`s the run ended before it took, said in one dim line at the end. */
   readonly unusedEvents?: readonly string[];
+  /** `--debug` was given: a failed run's general lines don't ask for it again. */
+  readonly debugging?: boolean;
 }
 
 /**
@@ -48,14 +50,17 @@ export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult 
 /**
  * What {@link runResult} prints after the heading: a blank line and the step
  * lines, then the ending. `halonic runs send` prints the same once the run
- * it answered ends or waits again.
+ * it answered ends or waits again. A failed run's log about its failure is
+ * the result's `debugText`, which only `--debug` prints.
  */
 export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResult {
   const { summary, events } = run;
   const definitions = runViewDefinitions(facts.workspace, summary);
   const title = workflowTitle(definitions.workflow, summary);
   const steps = runStepLines(events, summary, definitions, facts.clock);
+  const debugText = failedRunDebugText(run);
   return {
+    ...(debugText === undefined ? {} : { debugText }),
     // A run that couldn't try every step didn't pass, so a script must not take it as done.
     exitCode:
       summary.status === "failed" || summary.status === "cant-try" ? exitCode.failed : exitCode.ok,
@@ -111,7 +116,7 @@ function ending(
   facts: RunResultFacts,
 ): Phrase[] {
   const models = () => workspaceModelsOf(facts.workspace, run.summary.hubId);
-  const lines = showEnding(run, title, definitions, models, facts.dir);
+  const lines = showEnding(run, title, definitions, models, facts.dir, facts.debugging);
   if (run.summary.status !== "completed") {
     return lines;
   }

@@ -88,7 +88,7 @@ async function readSddl(folder: string, start: RunProgram): Promise<string> {
  * it already is left alone, since writing an access list makes Windows walk
  * all the folder holds.
  *
- * @throws when `icacls` fails, so the session doesn't start with a fence it can't prove
+ * @throws when a folder still lacks the entry after `icacls`, so the session doesn't start with a fence it can't prove
  */
 export async function letSandboxReadParents(
   parents: readonly string[],
@@ -97,7 +97,28 @@ export async function letSandboxReadParents(
 ): Promise<void> {
   for (const parent of parents) {
     if (letsReadAttributes(await readSddl(parent, start), sid)) continue;
-    await start("icacls.exe", [parent, "/grant", `*${sid}:(RA)`]);
+    await grantReadAttributes(parent, sid, start);
+  }
+}
+
+/**
+ * Grants `sid` read attributes on `folder`, and proves it by the folder's
+ * access list rather than by how `icacls` ended. Windows writes the folder's
+ * list first and then walks all it holds, and that walk can fail or run past
+ * the time limit on a busy machine: `AppData` holds the temp folder, where
+ * other programs make and delete files all the time (HAL-7431). The entry
+ * isn't inherited, so the walk changes nothing below the folder.
+ */
+async function grantReadAttributes(folder: string, sid: string, start: RunProgram): Promise<void> {
+  try {
+    await start("icacls.exe", [folder, "/grant", `*${sid}:(RA)`]);
+  } catch (error) {
+    // A list that can't be read proves nothing: then the grant's own failure is the one to report.
+    const granted = await readSddl(folder, start).then(
+      (sddl) => letsReadAttributes(sddl, sid),
+      () => false,
+    );
+    if (!granted) throw error;
   }
 }
 

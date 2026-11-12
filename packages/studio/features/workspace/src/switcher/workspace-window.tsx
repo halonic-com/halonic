@@ -65,7 +65,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
         recent={{
           workspaces: switcher.recent.list(),
           onOpen: (location) => switcher.openLocation(location),
-          onRemove: (location) => switcher.recent.forget(location),
+          onRemove: (location) => switcher.removeFromRecent(location),
         }}
       />
     );

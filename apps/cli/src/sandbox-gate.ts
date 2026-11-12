@@ -33,6 +33,8 @@ export interface SandboxGateMachine {
    * (HAL-6517). Left out, it doesn't.
    */
   readonly windowsNodeInWsl?: boolean;
+  /** The WSL distro the CLI runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
+  readonly wslDistro?: string | undefined;
 }
 
 /** An agent set to "On this computer": `halonic run` prints one ! line for it before the run. */
@@ -55,12 +57,12 @@ export class SandboxRefusedError extends KindedError {
   /** The sandbox page of the docs, for the code's section. */
   readonly docs: string;
 
-  constructor(code: string, ending: Message, missing: readonly string[]) {
+  constructor(code: string, ending: Message, missing: readonly string[], wslDistro?: string) {
     super(
       "unavailable",
       `${plainText(sandboxMessages.cantStart().phrase)} ${plainText(ending.phrase)}`,
       {
-        fix: plainText(sandboxMessages.refusedFix(code).phrase),
+        fix: plainText(sandboxMessages.refusedFix(code, { distro: wslDistro, missing }).phrase),
         ...(missing.length === 0 ? {} : { cause: new Error(missing.join(" ")) }),
       },
     );
@@ -163,7 +165,7 @@ export async function checkRunSandbox(
     const check = await machine.sandbox.check();
     if (!check.ok) {
       const code = machine.windowsNodeInWsl === true ? windowsNodeInWsl : check.reason;
-      throw new SandboxRefusedError(code, ending, check.missing);
+      throw new SandboxRefusedError(code, ending, check.missing, machine.wslDistro);
     }
   }
   return unsandboxed;

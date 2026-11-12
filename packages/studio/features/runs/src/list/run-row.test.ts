@@ -183,7 +183,7 @@ verifies("runs.row-columns", () => {
       expect(scheduled.startedBy).toBe("Schedule · weekdays at 08:00");
       expect(scheduled.startedByTooltip).toBe("Morning brief");
       expect(scheduled.label).toBe(
-        "Run 01jd8q, Support reply, running, in Draft. Started by the schedule, weekdays at 08:00, 10:40.",
+        "Run 01jd8q, Support reply, running, in Draft. Started by the schedule for weekdays at 08:00, 10:40.",
       );
       expect(every.startedBy).toBe("Schedule · every 2 hours (UTC)");
       expect(gone.startedBy).toBe("Schedule");
