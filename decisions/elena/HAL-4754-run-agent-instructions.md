@@ -2,7 +2,7 @@
 
 - Requirements: `engine.run-agent-instructions` (new), `workspace.run-definitions` (edited)
 - Task: HAL-4754
-- Approval: [HAL-4754](/HAL/issues/HAL-4754), the CTO's review of this pull request
+- Approval: HAL-4754, the CTO's review of this pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HnWCIojKznmA+WMHx5dKPVqjeIukS7IV3a8hR1l8IB/peJvYRqg641Nj0lKNJJFp5k6xBJ2c+tPzDbRQPjDODg==
 

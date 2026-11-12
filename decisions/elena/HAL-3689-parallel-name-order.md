@@ -1,6 +1,6 @@
 # Decision: parallel branches run in name order, an allowed parity difference
 
-- Approval: Liam (CTO, core owner) chose option 1 on [HAL-3703](/HAL/issues/HAL-3703); he signs off the allowed difference in review
+- Approval: Liam (CTO, core owner) chose option 1 on HAL-3703; he signs off the allowed difference in review
 - Kind: internal
 - Task: HAL-3689
 
@@ -19,7 +19,7 @@ say so, two tests pin it, and the parity allowed-differences file lists it as
   file format (option 3, a board question). The old runner never promised an order.
 - **The difference is narrow.** It covers only the order of sibling branch entries inside one
   parallel state. The set of branches, each branch's own events, the results and the final output
-  must still match exactly. When step 8 ([HAL-1541](/HAL/issues/HAL-1541)) builds the run compare,
+  must still match exactly. When step 8 (HAL-1541) builds the run compare,
   it attaches the fixture to this entry and allows no more than that.
 - **No shared writes.** Branch names are keys of one map, so no two branches write the same context
   key; `output` is written once, after every branch. A test checks that the results are the same

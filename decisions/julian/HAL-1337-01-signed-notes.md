@@ -1,6 +1,6 @@
 # Decision: the guard checks a signed note offline instead of asking Paperclip
 
-- Approval: Liam decided this on [HAL-3434](/HAL/issues/HAL-3434) and [HAL-3444](/HAL/issues/HAL-3444); the design is written into [HAL-1337](/HAL/issues/HAL-1337)
+- Approval: Liam decided this on HAL-3434 and HAL-3444; the design is written into HAL-1337
 - Kind: internal
 
 GitHub's runners can't reach Paperclip, so the approval lookup that waited for a Paperclip API token

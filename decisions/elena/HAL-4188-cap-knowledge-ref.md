@@ -1,6 +1,6 @@
 # Decision: drop knowledge hits and documents with a ref over 512 characters
 
-- Approval: [HAL-4188](/HAL/issues/HAL-4188)
+- Approval: HAL-4188
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KG5jFGj+OLziwzC8jKBtBc2p/DMLdL7+ex7KOeStiAL1Pc18YrueKue4bpAMLBDkOEsFLH+8OxqyVARvf3o+CQ==
 

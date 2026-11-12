@@ -1,6 +1,6 @@
 # Decision: the phone Select shows an option's reason and an empty text
 
-- Approval: component specs 15.3 ([HAL-175](/HAL/issues/HAL-175#document-component-specs)), findings 1 and 2 of Sofia's design check ([HAL-3734](/HAL/issues/HAL-3734)); the package owner (Elena) approves this note, Liam reviews it in the pull request
+- Approval: component specs 15.3 (HAL-175), findings 1 and 2 of Sofia's design check (HAL-3734); the package owner (Elena) approves this note, Liam reviews it in the pull request
 - Kind: internal
 - Task: HAL-3804
 

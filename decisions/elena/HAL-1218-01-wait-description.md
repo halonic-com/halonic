@@ -1,6 +1,6 @@
 # Decision: a wait step's description is filled in once, by core
 
-- Approval: Liam decided this on [HAL-1218](/HAL/issues/HAL-1218) (architecture decision from the halonic#741 review, HAL-2560); the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-1218 (architecture decision from the halonic#741 review, HAL-2560); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1218
 

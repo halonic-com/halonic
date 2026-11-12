@@ -1,6 +1,6 @@
 # Decision: `runDefinitionsOf` and its tests move from the CLI into core/workspace
 
-- Approval: Liam's review of the test runner plan on [HAL-4224](/HAL/issues/HAL-4224) ("Move
+- Approval: Liam's review of the test runner plan on HAL-4224 ("Move
   `runDefinitionsOf` from `apps/cli` into `core/workspace` … together with its tests"); the
   maintainer approves this note in review
 - Kind: internal

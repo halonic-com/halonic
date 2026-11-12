@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6799; [HAL-136](/HAL/issues/HAL-136#document-decision) ("the runtime refuses unknown or weaker parameters")
+- Source: HAL-6799; HAL-136 ("the runtime refuses unknown or weaker parameters")
 
 When `verify` is given a hash that is malformed, in another format or out of range, the hasher shall reject with a `RangeError` before it starts any PBKDF2 work, and the error shall not repeat the hash. For a valid hash it shall run PBKDF2 exactly as many times as the hash's `n` says.
 

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1218; [ux-checklists-approvals](/HAL/issues/HAL-1250#document-ux-checklists-approvals) 2.1, 2.4 and 2.6; [ux-checklists](/HAL/issues/HAL-1069#document-ux-checklists) 2.8; Liam's decision on the wait step's description (HAL-2560)
+- Source: HAL-1218; ux-checklists-approvals (HAL-1250) 2.1, 2.4 and 2.6; ux-checklists (HAL-1069) 2.8; Liam's decision on the wait step's description (HAL-2560)
 
 The Inbox shall list what waits for you in the runs it is given, newest first: one item for each tool call a run waits on your OK for, named by its run and its call id, with the agent, the subagent that asked for it (when one did), the tool, the connector it comes from, the arguments and when it was asked; and one item for each run waiting at a `wait` step, with the step's description as core filled it in (its first line as the title, else the step's id with a capital first letter, and the rest as the body), the answers the step takes and when its timer moves it on. A run that waits on its child run, a run at a `wait` step that takes no answer (only timers), a run that isn't waiting and a test run have no item.
 

@@ -1,6 +1,6 @@
 # Decision: wording fixes from the 10–11 Nov words check
 
-- Approval: Liam decided this on [HAL-5005](/HAL/issues/HAL-5005) (Sofia's words check on HAL-4989), small wording, a team decision with no board card; the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-5005 (Sofia's words check on HAL-4989), small wording, a team decision with no board card; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s1DRjE7x8nJwngd++uhoBB4H5lTMZ8e6Wp7Pp0rzeUn+2ixxxYr/L9ELV/EecH2tbyyYcuq35abznwAjIQUUCg==
 - Task: HAL-5005

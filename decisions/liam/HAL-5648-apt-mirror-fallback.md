@@ -1,6 +1,6 @@
 # Decision: the fence job falls back from the Azure Ubuntu mirror
 
-- Approval: Liam planned it on [HAL-5648](/HAL/issues/HAL-5648) and Julian reviewed the pull request on [HAL-5933](/HAL/issues/HAL-5933), then Liam signs this note
+- Approval: Liam planned it on HAL-5648 and Julian reviewed the pull request on HAL-5933, then Liam signs this note
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JZDevVMvmSZlx5NEz5I40m0080qi63DGx0Njh4uUJnOlQzkjsOCw0684ifBpreNxg8kWG47uSh+FAAKBHez5BA==
 - Task: HAL-5648

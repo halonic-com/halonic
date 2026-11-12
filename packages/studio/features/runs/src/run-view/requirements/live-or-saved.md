@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: save model 2.3 (HAL-1102, HAL-3236 task 2); [req-runs](/HAL/issues/HAL-110#document-req-runs); wording by Elena with Sofia, a team decision under HAL-2282 (HAL-5175); HAL-4966 condition 2; `events.run-started-version` (HAL-5173)
+- Source: save model 2.3 (HAL-1102, HAL-3236 task 2); req-runs (HAL-110); wording by Elena with Sofia, a team decision under HAL-2282 (HAL-5175); HAL-4966 condition 2; `events.run-started-version` (HAL-5173)
 
 The run view shall show for each run, in one line of secondary text under the run's title (not a badge), what it ran, from the `version` its `run.started` records:
 

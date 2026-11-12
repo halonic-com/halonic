@@ -1,6 +1,6 @@
 # Decision: `halonic run` refuses an agent in a harness
 
-- Approval: [HAL-5219](/HAL/issues/HAL-5219)
+- Approval: HAL-5219
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U8DllRIo4+sPXKykI8GLJR0mwZCSF60zRUsJyAcWYE7CMvYdu/Q76zgGd4CGsmnXHgnQrKjohYKIxU2qxXyQCQ==
 

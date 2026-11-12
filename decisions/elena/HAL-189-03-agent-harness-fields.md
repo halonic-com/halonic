@@ -1,6 +1,6 @@
 # Decision: three optional agent fields for harness agents
 
-- Approval: stack 2a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved with changes by Liam on [HAL-1967](/HAL/issues/HAL-1967); the package owner (Elena) and Liam review; Julian reviews the validation tests
+- Approval: stack 2a of the HAL-189 implementation plan, approved with changes by Liam on HAL-1967; the package owner (Elena) and Liam review; Julian reviews the validation tests
 - Kind: internal
 - Task: HAL-189
 

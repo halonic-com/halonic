@@ -1,6 +1,6 @@
 # Decision: a skip any same-reason row holds adds nothing
 
-- Approval: asked for by the package owner (Liam) in his review of #1032 on [HAL-3553](/HAL/issues/HAL-3553), follow-up 2; he approves this note in review
+- Approval: asked for by the package owner (Liam) in his review of #1032 on HAL-3553, follow-up 2; he approves this note in review
 - Kind: internal
 - Task: HAL-2524
 

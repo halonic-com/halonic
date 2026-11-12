@@ -1,6 +1,6 @@
 # Decision: a wait step's answer labels travel with `run.waiting`
 
-- Approval: Liam decided this on [HAL-4014](/HAL/issues/HAL-4014) (for the Inbox answer labels, HAL-4008); the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-4014 (for the Inbox answer labels, HAL-4008); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-4014, HAL-4072 (the CLI part)
 

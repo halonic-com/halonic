@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1740; ADR `docs/adr/2026-11-09-plugins.md` section 5; [plugin screens](/HAL/issues/HAL-1739#document-design) section 8.4; [UX acceptance for P7](/HAL/issues/HAL-1952#document-ux-acceptance) section 1
+- Source: HAL-1740; ADR `docs/adr/2026-11-09-plugins.md` section 5; plugin screens (HAL-1739) section 8.4; UX acceptance for P7 (HAL-1952) section 1
 
 The Studio shall show a plugin tool's answer the way its command or card says, `text`, `markdown` or `table`, and shall never turn any of it into HTML or script. `text` is plain text with its line breaks. `markdown` reads only paragraphs, headings (drawn as a bold line), bullet and numbered lists, quotes, code, bold, italics and links; an image, HTML and a link to anything but an `http` or `https` page stay as their own characters. A link opens through `ExternalLink`, is followed by its host in muted text, such as "(example.com)", so keyboard and touch users see where it goes too, and shows its full address on hover. The host is the one the URL parser reads, with any port: an international name shows in its `xn--` form and an IP address as itself. `table` reads a JSON list of objects, one row each, with a column for every key in the order it first appears; an answer that isn't such a list shows as plain text.
 

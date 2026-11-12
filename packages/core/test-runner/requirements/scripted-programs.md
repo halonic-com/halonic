@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: the [HAL-4248 proposal](/HAL/issues/HAL-4248#document-proposal), approved by Liam on HAL-4258 and HAL-4313; task HAL-4248
+- Source: the HAL-4248 proposal, approved by Liam on HAL-4258 and HAL-4313; task HAL-4248
 
 While a case runs, the test runner shall carry out every step whose agent runs in a program harness (`claude-code` or `codex`) with a scripted program that never starts a real program, opens a real sandbox or serves a real bridge. Each program start of an agent shall get the next of the case's `programs` results for that agent id, whatever its prompt, in the order the engine starts that agent's programs. A string result or `{ output }` shall finish the program with that output, as a model reply would; `{ fails }` shall fail the program, so its run fails with that message.
 

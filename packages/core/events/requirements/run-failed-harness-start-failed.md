@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-1967](/HAL/issues/HAL-1967), Liam's review of the HAL-189 plan (point 3); task HAL-1728
+- Source: HAL-1967, Liam's review of the HAL-189 plan (point 3); task HAL-1728
 
 The events package shall let a `run.failed` event give the reason `harness-start-failed` when the harness program (such as Claude Code or Codex) failed to start for this run, or did not send its first event within its time limit (60 seconds by default).
 

@@ -1,6 +1,6 @@
 # Decision: the filter chips get the picker chip
 
-- Approval: component specs 15.7 rev. 33 ([HAL-175](/HAL/issues/HAL-175#document-component-specs), from Sofia's [HAL-1346](/HAL/issues/HAL-1346)); the package owner (Elena) approves this note, Liam reviews it in the pull request
+- Approval: component specs 15.7 rev. 33 (HAL-175, from Sofia's HAL-1346); the package owner (Elena) approves this note, Liam reviews it in the pull request
 - Kind: internal
 - Task: HAL-3517
 

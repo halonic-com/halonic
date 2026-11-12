@@ -1,6 +1,6 @@
 # Decision: extract's words follow cli-output revision 50
 
-- Approval: decided on [HAL-6910](/HAL/issues/HAL-6910) (Sofia's check of cli-output revision 50 on HAL-6886), small wording on approved output, a team decision with no board card (HAL-2282); the package owner (Liam) approves this note in review
+- Approval: decided on HAL-6910 (Sofia's check of cli-output revision 50 on HAL-6886), small wording on approved output, a team decision with no board card (HAL-2282); the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:L01RiQ4lDhegE6d9H/VPp5MW27dkoHdV6bV27F5vfIjiDP9umrRXT2dRh11hVqJdx8d8xORPO2QKWQM5VqyXCw==
 - Task: HAL-6910

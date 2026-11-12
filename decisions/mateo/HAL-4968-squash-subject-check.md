@@ -1,7 +1,7 @@
 # Decision: the pull request checks read the subject that will land on main
 
 - Task: HAL-4968 (halonic#1581 was dropped from the merge queue several times for a too-long squash subject)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-4968](/HAL/issues/HAL-4968)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-4968
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p7JU/qeOH2740cz7XDcBxvEV8gv27fN9YwgFVyfhyj97kteE3gsAohHWUhUwpfmEdjWG4vojycWX66Z/y+dzBQ==
 

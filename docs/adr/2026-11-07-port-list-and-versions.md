@@ -301,7 +301,7 @@ call from being made twice on its own. `ConnectorClient` stays at version 1.
 
 _2026-11-12, decided by Liam on HAL-6789, built in HAL-6799 (Cloud track part 8)._
 The table above gives `PasswordHasher` one fixed scrypt format on every
-runtime. A day later, [HAL-136](/HAL/issues/HAL-136#document-decision)
+runtime. A day later, HAL-136
 moved cloud targets to chained PBKDF2-SHA256 from WebCrypto
 (`$pbkdf2-sha256-chain$i=100000,n=6$<salt>$<hash>`), because WebCrypto has
 no memory-hard hash and a Worker has too little memory for scrypt at safe

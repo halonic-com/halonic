@@ -1,6 +1,6 @@
 # Decision: the CLI's docs links use docs.halonic.dev for 0.1.0
 
-- Approval: Chief decided this on [HAL-6561](/HAL/issues/HAL-6561) (Sofia's first-run walk on HAL-6538, flow item B), a team decision with no board card (HAL-2282 rule); the package owner (Liam) approves this note in review
+- Approval: Chief decided this on HAL-6561 (Sofia's first-run walk on HAL-6538, flow item B), a team decision with no board card (HAL-2282 rule); the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZvkQpbdbUfDc/iSoR+2C0gI0UbBMPjcvKk50JkVTZFsRiDBhD+T4JXE5rq4OOfuKpz5+FAtOqdPI7JS80Up5CQ==
 - Task: HAL-6561

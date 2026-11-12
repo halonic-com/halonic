@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-2831](/HAL/issues/HAL-2831), Liam's decision of 10 Nov; the field is `events.tool-result-risk`
+- Source: HAL-2831, Liam's decision of 10 Nov; the field is `events.tool-result-risk`
 
 When the engine writes the `tool.result` of a call to a server's tool whose listing gives a `risk`, the engine shall copy that `risk` into the event. It shall leave `risk` out when the listing gives none, and for Halonic's own tools, so readers count those calls as unknown, never as sending nothing.
 

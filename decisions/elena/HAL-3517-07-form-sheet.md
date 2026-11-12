@@ -1,6 +1,6 @@
 # Decision: the ActionBar takes an id and a reason per button, and marks only the first busy one
 
-- Approval: component specs 8 and 15.3 ([HAL-175](/HAL/issues/HAL-175#document-component-specs)) and Liam's note on #1041; the package owner (Elena) approves this note, Liam reviews it in the pull request
+- Approval: component specs 8 and 15.3 (HAL-175) and Liam's note on #1041; the package owner (Elena) approves this note, Liam reviews it in the pull request
 - Kind: internal
 - Task: HAL-3517
 

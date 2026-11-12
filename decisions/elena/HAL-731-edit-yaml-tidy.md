@@ -2,7 +2,7 @@
 
 - Requirement: `yaml.edit-preserve-entries` (`packages/core/yaml/requirements/edit-preserve-entries.md`)
 - Task: HAL-731, from the review of HAL-656 (pull request #236)
-- Approval: [HAL-731](/HAL/issues/HAL-731) asks for this change; the maintainer approves it in review
+- Approval: HAL-731 asks for this change; the maintainer approves it in review
 - Kind: user-visible
 
 ## What changes

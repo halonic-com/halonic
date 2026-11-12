@@ -1,8 +1,8 @@
 # Decision: a plugin may have cards without a panel
 
-- Approval: the board's decision D3 on [HAL-1801](/HAL/issues/HAL-1801) (cards show on Home, in a
+- Approval: the board's decision D3 on HAL-1801 (cards show on Home, in a
   Cards section after Recent runs); the maintainer approves this note in review on
-  [HAL-5453](/HAL/issues/HAL-5453)
+  HAL-5453
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8PdeuT3rf8ID3uZjKEwae13iqEPVPWPVzhvLLDTiG+F0AjcspueTyyXAcUmbwumRK3kpgWo96hm3ZpRGFNZyCw==
 - Task: HAL-5453

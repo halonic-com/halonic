@@ -1,6 +1,6 @@
 # Decision: the phone Select opens the picker sheet
 
-- Approval: component specs 4 ("On a phone: a picker field") and 15.3 ([HAL-175](/HAL/issues/HAL-175#document-component-specs)), and `aria-haspopup="dialog"` decided on [HAL-3514](/HAL/issues/HAL-3514); the package owner (Elena) approves this note, Liam reviews it in the pull request
+- Approval: component specs 4 ("On a phone: a picker field") and 15.3 (HAL-175), and `aria-haspopup="dialog"` decided on HAL-3514; the package owner (Elena) approves this note, Liam reviews it in the pull request
 - Kind: internal
 - Task: HAL-3517
 

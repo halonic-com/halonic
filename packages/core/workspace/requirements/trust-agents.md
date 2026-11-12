@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: plan v1.17 and plan 11 (new trust-prompt lines: harness programs, allowed sites); stack 3c of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved with changes by Liam on HAL-1967
+- Source: plan v1.17 and plan 11 (new trust-prompt lines: harness programs, allowed sites); stack 3c of the HAL-189 implementation plan, approved with changes by Liam on HAL-1967
 
 The workspace package shall add each agent whose harness isn't Halonic's own loop to the trust content, sorted by id, with its harness, its allowed sites in their stored form (lowercase, Punycode, each once, sorted) and its working folder, normalised, when it isn't `files/agents/<id>`. Agents without a harness or with `halonic` add nothing, and a workspace without harness agents shall have the same content and fingerprint as before. The trust changes shall list harness agents that are new, changed (with the fields that differ) and removed, and a change that only removes whole harness agents, or connectors, shall be the only kind that shrinks the record without asking.
 

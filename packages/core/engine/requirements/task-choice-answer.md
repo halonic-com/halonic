@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-3375](/HAL/issues/HAL-3375) (Elena's decision); task HAL-3379; parallel branches and for-each items: [HAL-4456](/HAL/issues/HAL-4456)
+- Source: HAL-3375 (Elena's decision); task HAL-3379; parallel branches and for-each items: HAL-4456
 
 When the answer to a plain `task` state's call comes back and the agent's output is a `choice`, the engine shall compare the answer, with the whitespace around it trimmed, to each option, exactly and case-sensitively. When it matches one, the engine shall finish the state as for any answer, with the option itself as the output. When it matches none, or isn't text, the engine shall fail the run with the reason `answer-not-an-option` and an error that names the agent and its options and says to tighten the agent's instructions or use a larger model. It shall not ask again, nor pick the closest option. Model answers and harness results are checked alike. A `parallel` branch's answer and a `foreach` item's answer shall be checked the same way: a matching branch or item keeps the option itself as its output; a branch that matches none shall end as a failed branch with the reason `answer-not-an-option` (see `engine.parallel-state`), and an item that matches none shall fail the run with that reason and an error that names the item.
 
