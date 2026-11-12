@@ -1968,6 +1968,9 @@ importers:
 
   packages/studio/features/plugins:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
