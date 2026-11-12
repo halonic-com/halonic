@@ -1,11 +1,12 @@
 //! A stand-in host in the test's own threads takes the frames the relay
 //! writes and answers with frames of its own, over pipes.
 
-use std::io::{self, PipeWriter, Read, Write};
+use std::io::{self, PipeReader, PipeWriter, Read, Write};
 use std::net::{Ipv4Addr, Shutdown, TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
+use super::limits::{BACKLOG_LIMIT, CONNECTION_LIMIT, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION};
 use super::{DATA, END, FRAME_LIMIT, OPEN, RESET, Relay, frame};
 
 /// Long enough for a thread to run on a busy CI machine.
@@ -60,23 +61,19 @@ impl StandIn {
 }
 
 fn relay() -> (Relay, StandIn) {
-    relay_with_backlog_limit(super::BACKLOG_LIMIT)
+    relay_with_limits(BACKLOG_LIMIT, CONNECTION_LIMIT)
 }
 
-fn relay_with_backlog_limit(limit: usize) -> (Relay, StandIn) {
-    let mut relay = Relay::bind_with_backlog_limit(limit).expect("bind the relay");
+fn relay_with_limits(backlog_limit: usize, connection_limit: usize) -> (Relay, StandIn) {
+    let mut relay =
+        Relay::bind_with_limits(backlog_limit, connection_limit).expect("bind the relay");
     let (mut input, relay_input) = io::pipe().expect("a pipe");
     let (relay_output, output) = io::pipe().expect("a pipe");
     relay.serve(relay_input, relay_output);
     let (sender, frames) = mpsc::channel();
     std::thread::spawn(move || {
-        let mut header = [0_u8; 9];
-        while input.read_exact(&mut header).is_ok() {
-            let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
-            let length = u32::from_be_bytes([header[5], header[6], header[7], header[8]]);
-            let mut bytes = vec![0_u8; length as usize];
-            input.read_exact(&mut bytes).expect("a whole frame");
-            if sender.send((id, header[4], bytes)).is_err() {
+        while let Some(frame) = read_frame(&mut input) {
+            if sender.send(frame).is_err() {
                 return;
             }
         }
@@ -86,6 +83,26 @@ fn relay_with_backlog_limit(limit: usize) -> (Relay, StandIn) {
         output: Some(output),
     };
     (relay, stand_in)
+}
+
+/// The next frame the relay wrote to the host's input, until it closes it.
+fn read_frame(input: &mut PipeReader) -> Option<Frame> {
+    let mut header = [0_u8; 9];
+    input.read_exact(&mut header).ok()?;
+    let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
+    let length = u32::from_be_bytes([header[5], header[6], header[7], header[8]]);
+    let mut bytes = vec![0_u8; length as usize];
+    input.read_exact(&mut bytes).expect("a whole frame");
+    Some((id, header[4], bytes))
+}
+
+/// Waits until `done` holds, for state the test can't wait on otherwise.
+fn wait_until(mut done: impl FnMut() -> bool) {
+    let deadline = Instant::now() + WAIT;
+    while !done() {
+        assert!(Instant::now() < deadline, "waited too long");
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
 
 fn connect(relay: &Relay) -> TcpStream {
@@ -208,7 +225,7 @@ fn relay_resets_a_connection_when_its_client_drops_it() {
 
 #[test]
 fn relay_resets_a_client_that_reads_nothing_past_the_backlog_limit() {
-    let (relay, mut host) = relay_with_backlog_limit(4 * FRAME_LIMIT);
+    let (relay, mut host) = relay_with_limits(4 * FRAME_LIMIT, CONNECTION_LIMIT);
     let _idle = connect(&relay);
     assert_eq!(host.next(), (1, OPEN, Vec::new()));
 
@@ -226,6 +243,63 @@ fn relay_resets_a_client_that_reads_nothing_past_the_backlog_limit() {
     });
 
     assert_eq!(host.next(), (1, RESET, Vec::new()));
+}
+
+#[test]
+fn relay_limits_shut_connections_past_the_limit_until_one_closes() {
+    let (relay, mut host) = relay_with_limits(BACKLOG_LIMIT, 2);
+    let _first = connect(&relay);
+    assert_eq!(host.next(), (1, OPEN, Vec::new()));
+    let _second = connect(&relay);
+    assert_eq!(host.next(), (2, OPEN, Vec::new()));
+
+    let mut third = connect(&relay);
+    assert!(closed(&mut third));
+
+    host.send(1, RESET, &[]);
+    wait_until(|| relay.shared.connections().open.len() == 1);
+    let mut fourth = connect(&relay);
+    assert_eq!(
+        host.next(),
+        (3, OPEN, Vec::new()),
+        "a refused one takes no id"
+    );
+    host.send(3, END, &[]);
+    assert_eq!(read_all(&mut fourth), b"");
+}
+
+#[test]
+fn relay_limits_leave_room_in_the_queue_while_one_client_sends_a_big_body() {
+    let mut relay = Relay::bind().expect("bind the relay");
+    let (mut input, relay_input) = io::pipe().expect("a pipe");
+    let (relay_output, _output) = io::pipe().expect("a pipe");
+    relay.serve(relay_input, relay_output);
+    let mut big = connect(&relay);
+    // Far more than the queue to the host holds, and the host reads nothing yet.
+    let body = vec![7_u8; 2 * QUEUED_FRAMES * FRAME_LIMIT];
+    // Ends when the relay stops and shuts the socket.
+    let _writer = std::thread::spawn(move || big.write_all(&body));
+    let quota = || {
+        let connections = relay.shared.connections();
+        connections
+            .open
+            .get(&1)
+            .map(|connection| connection.quota.queued())
+    };
+    wait_until(|| quota() == Some(QUEUED_FRAMES_PER_CONNECTION));
+
+    let _small = connect(&relay);
+
+    assert_eq!(read_frame(&mut input), Some((1, OPEN, Vec::new())));
+    let mut before = 0;
+    while read_frame(&mut input).expect("a frame").1 != OPEN {
+        before += 1;
+    }
+    // Its share, one being written, and what the pipe holds: not the whole queue.
+    assert!(
+        before <= QUEUED_FRAMES_PER_CONNECTION + 2,
+        "{before} frames first"
+    );
 }
 
 #[test]
@@ -311,7 +385,7 @@ fn relay_stop_wakes_no_one_when_nothing_accepts() {
 
     relay.stop();
 
-    let (listener, _) = relay.waiting.take().expect("never served");
+    let (listener, _, _) = relay.waiting.take().expect("never served");
     listener.set_nonblocking(true).expect("non-blocking");
     let waiting = listener.accept().map(|_| ()).map_err(|error| error.kind());
     assert_eq!(waiting, Err(io::ErrorKind::WouldBlock));
