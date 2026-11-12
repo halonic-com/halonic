@@ -5,6 +5,7 @@
 //   <box folder>\files\<number>\<file name>   one folder per file, so equal names never meet
 
 import { win32 } from "node:path";
+import type { SandboxCommand } from "@halonicjs/ports";
 import { isInside } from "./box-policy.ts";
 import type { MxcDisk } from "./disk.ts";
 import { grantPath } from "./grant-path.ts";
@@ -58,6 +59,36 @@ export async function copyReadOnlyFiles(
     copies.push({ original, copy });
   }
   return copies;
+}
+
+/**
+ * The command with each read-only file it names replaced by its copy, because
+ * the program can't read the original (HAL-8066). A file is named by the
+ * program, by an argument that is just its path, or by an option's value as in
+ * `--allow-fs-read=<path>`. Paths compare as Windows does, ignoring case. A
+ * part of an argument that only contains a path is left alone.
+ */
+export function commandOnCopies(
+  command: SandboxCommand,
+  copies: readonly ReadOnlyCopy[],
+): SandboxCommand {
+  if (copies.length === 0) return command;
+  const copyOf = (path: string): string | undefined =>
+    copies.find((entry) => sameFile(entry.original, path))?.copy;
+  const onCopy = (argument: string): string => {
+    const whole = copyOf(argument);
+    if (whole !== undefined) return whole;
+    const equals = argument.startsWith("-") ? argument.indexOf("=") : -1;
+    const value = copyOf(argument.slice(equals + 1));
+    return equals < 0 || value === undefined
+      ? argument
+      : `${argument.slice(0, equals + 1)}${value}`;
+  };
+  return { ...command, program: onCopy(command.program), args: command.args.map(onCopy) };
+}
+
+function sameFile(a: string, b: string): boolean {
+  return win32.normalize(a).toLowerCase() === win32.normalize(b).toLowerCase();
 }
 
 /** The denied paths that exist, as they really are: a denied folder may itself be reached through a link. */

@@ -43,8 +43,9 @@ These follow Mateo's grant rules from HAL-3503:
 
 - **Folders only.** MXC grants folders, so a read-only path that is a single file is copied into
   the session's own box folder (one folder per file) and only that folder is granted to read. The
-  copy is a snapshot made when the session opens, and the program reads the copy: the session's
-  `readOnlyCopies` lists each original and its copy. A file inside a denied path is refused. The
+  copy is a snapshot made when the session opens, and the program reads the copy: `start` puts the copy
+  in place of the original in the command (as the program, an argument or an option's value), and
+  the session's `readOnlyCopies` lists each original and its copy. A file inside a denied path is refused. The
   adapter never grants the file's folder instead, because the program could then read everything
   next to the file. Denied paths may name single files.
 - **One path form.** Every path MXC gets is a plain absolute Windows path: a drive letter in

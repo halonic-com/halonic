@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { MemoryDisk } from "./memory-disk.test-helper.ts";
-import { copyReadOnlyFiles, readOnlyCopiesFolder } from "./read-only-copies.ts";
+import { commandOnCopies, copyReadOnlyFiles, readOnlyCopiesFolder } from "./read-only-copies.ts";
 
 // Made-up Windows paths, each marked for the leak guard on its own line.
 const box = "C:\\acme\\data\\mxc-boxes\\box-1-a"; // leak-guard: allow absolute-path made-up Windows path for a test
@@ -71,6 +71,31 @@ verifies("sandbox-mxc.read-only-files", () => {
       const disk = new MemoryDisk().folder(box).file(config, "one").link(other, config);
       const copies = await copyReadOnlyFiles(disk, box, [other], []);
       expect(await disk.readText(copies[0]?.copy ?? "")).toBe("one");
+    });
+  });
+
+  describe("commandOnCopies", () => {
+    const copy = `${readOnlyCopiesFolder(box)}\\1\\config.json`;
+    const copies = [{ original: config, copy }];
+
+    it("puts the copy in place of the file as the program, an argument or an option's value", () => {
+      expect(
+        commandOnCopies(
+          { program: config, args: [config, `--allow-fs-read=${config}`, "--go"] },
+          copies,
+        ),
+      ).toEqual({ program: copy, args: [copy, `--allow-fs-read=${copy}`, "--go"] });
+    });
+
+    it("ignores case and leaves a path that only contains the file alone", () => {
+      const inside = `${config}.bak`;
+      const command = { program: "node", args: [config.toUpperCase(), inside, `x=${inside}`] };
+      expect(commandOnCopies(command, copies).args).toEqual([copy, inside, `x=${inside}`]);
+    });
+
+    it("keeps the command as it is when nothing was copied", () => {
+      const command = { program: "node", args: [config] };
+      expect(commandOnCopies(command, [])).toBe(command);
     });
   });
 });
