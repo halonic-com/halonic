@@ -1,8 +1,7 @@
 # Decision: sandbox-mxc starts the program on its read-only copies
 
-- Approval: Liam approves this note in review on [HAL-8066](/HAL/issues/HAL-8066)
+- Approval: Liam approves this note in review on HAL-8066
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J+WWfmQVbO6ysPKB4AWK+tEo7BYmd7fznjbub/8TmadyPnfoMHOmOXOfsqWpqJFfYJDl+5qA1gb/0JAGa4MLAA==
 - Task: HAL-8066
 
 ## What changes
