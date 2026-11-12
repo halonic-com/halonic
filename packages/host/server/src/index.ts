@@ -1,5 +1,6 @@
 export type {
   CreateServer,
+  ErrorLog,
   RequestCountStore,
   Server,
   ServerConfig,
@@ -7,3 +8,4 @@ export type {
   ServerOptions,
   ServerPorts,
 } from "./api.ts";
+export { createServer } from "./create-server.ts";
