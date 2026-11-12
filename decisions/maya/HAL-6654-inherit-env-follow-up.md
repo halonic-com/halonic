@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-6654 (Liam's review of halonic#1976 and halonic#2057; design on HAL-6266)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Mn9Vw+WvXjWsFWKpzLaInR+Zdo1BpjX3E4WAPFhi1ltIT/g+RlfIyQjSDIaWeYhs8aLo2FTOXcGlrkJqpQk5BA==
 
 Liam's review of halonic#1976 left four small points for after the launch change (halonic#2057). This
 change makes them, each with its own example and test.
