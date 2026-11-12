@@ -36,7 +36,7 @@ export async function startSmallestSandbox(
       deniedPaths: [],
       env: {},
       // Nothing listens there: srt only needs a bridge to set one up.
-      network: { bridge: { host: "127.0.0.1", port: 9 }, allowedSites: [] },
+      network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 9 }, allowedSites: [] },
       timeLimitMs: timeoutMs,
     };
     await mkdir(profile.workingFolder);
