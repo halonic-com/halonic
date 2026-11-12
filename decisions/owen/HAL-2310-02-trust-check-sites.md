@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-2310 (D45, board on HAL-2257 Q3; decided by Liam on HAL-2303); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Um8FX1c1HBXYMjPtUJiFbGOtYaeQMaxGbk2kpEVib672kngXpOODAXUSVVQCGEZLuAg9j327V2ZVSgciedjqBg==
 
 HAL-2310 adds `sites` to a stdio connector (halonic#2067): the sites its program may reach when it runs
 in a sandbox. The trust fingerprint covers them; this makes the trust check show them, so a person sees
