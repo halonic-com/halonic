@@ -41,8 +41,24 @@ function option(argv: readonly string[], flag: string): string | undefined {
   return at === -1 ? undefined : argv[at + 1];
 }
 
+// On Windows `pnpm` is `pnpm.cmd`, which `execFileSync` can't start without a
+// shell. Under `pnpm check:sbom`, pnpm names its own entry point in
+// `npm_execpath`, so run that instead.
+function pnpmCommand(): [string, string[]] {
+  const execPath = process.env["npm_execpath"];
+  if (execPath === undefined || !/pnpm/i.test(execPath)) {
+    return ["pnpm", []];
+  }
+  return /\.[cm]?js$/i.test(execPath) ? [process.execPath, [execPath]] : [execPath, []];
+}
+
 function pnpm(root: string, args: readonly string[]): string {
-  return execFileSync("pnpm", args, { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const [file, prefix] = pnpmCommand();
+  return execFileSync(file, [...prefix, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+  });
 }
 
 function licenceText(paths: readonly string[] | undefined): string | undefined {
