@@ -5,9 +5,10 @@
 //! swapped (Julian's design on HAL-1415, risks 1 to 5).
 //!
 //! It takes one fixed verb, `setup` or `remove`, and no options: every value
-//! that shapes the sandbox is a constant here. It copies `srt-win.exe` from
-//! next to itself into an admin-only folder under Program Files, checks the
-//! copy's SHA-256 against the one built in, and runs the copy from System32.
+//! that shapes the sandbox is a constant here. It reads `srt-win.exe` from
+//! next to itself, checks its SHA-256 against the one built in, writes those
+//! same bytes into an admin-only folder under Program Files, and runs that
+//! copy from System32.
 //! Its exit code is srt-win's, or one of its own from 30 up ([`code`]).
 //! A release build also checks that the copy of itself it leaves for
 //! Installed apps shows the same publisher as the one Windows asked about
@@ -217,9 +218,11 @@ pub trait Machine {
     /// to Administrators and its access list to Administrators and SYSTEM
     /// full control, Users read and run, inheriting nothing.
     fn protect_folder(&self, folder: &Path) -> io::Result<()>;
-    /// Deletes `to` if it's there, then copies `from` to it. The copy
-    /// takes the folder's access list.
-    fn replace_file(&self, from: &Path, to: &Path) -> io::Result<()>;
+    /// Deletes `to` if it's there, then writes `bytes` to a new file at `to`
+    /// that only Administrators and SYSTEM can open.
+    fn write_private(&self, to: &Path, bytes: &[u8]) -> io::Result<()>;
+    /// Gives `file` the folder's access list, so Users can read and run it.
+    fn share(&self, file: &Path) -> io::Result<()>;
     /// Whether `one` and `other` are the same file or folder, however each
     /// is written: letter case, a short 8.3 name, a `\\?\` prefix or a link.
     /// False when either can't be opened.
@@ -290,38 +293,48 @@ fn steps(
     machine.protect_folder(&folder).map_err(|_| code::FOLDER)?;
     machine.protect_folder(&temp).map_err(|_| code::FOLDER)?;
     let srt_win = folder.join(SRT_WIN);
-    if !in_folder {
-        if !machine.exists(&from.join(SRT_WIN)) {
-            return Err(code::NO_SRT_WIN);
-        }
-        copy(machine, &from.join(SRT_WIN), &srt_win)?;
-    }
-    if !machine.exists(&srt_win) {
+    let source = if in_folder {
+        srt_win.clone()
+    } else {
+        from.join(SRT_WIN)
+    };
+    if !machine.exists(&source) {
         return Err(code::NO_SRT_WIN);
     }
-    // The copy, not the original: nothing the user runs can change it now.
-    if !machine
-        .read(&srt_win)
-        .is_ok_and(|bytes| sha256_hex(&bytes) == srt_win_sha256)
-    {
+    // Read once and checked in memory, then written from those same bytes:
+    // the folder only ever holds srt-win as shipped. Whatever else the app
+    // folder's name reached, a link to an admin-only file included, is never
+    // written where Users can read it (HAL-7386).
+    let Some(bytes) = machine
+        .read(&source)
+        .ok()
+        .filter(|bytes| sha256_hex(bytes) == srt_win_sha256)
+    else {
         machine.delete(&srt_win);
         return Err(code::WRONG_SRT_WIN);
+    };
+    if !in_folder {
+        place(machine, &source, &srt_win, &bytes)?;
+        machine.share(&srt_win).map_err(|_| code::FOLDER)?;
     }
     match verb {
         Verb::SetUp => {
             let helper = folder.join(PROGRAM);
             if !in_folder {
-                copy(machine, &own, &helper)?;
-            }
-            // Installed apps runs this copy elevated, for every user of the
-            // computer. What was copied is whatever had the helper's name in
-            // the app folder by then, so it has to show the publisher Windows
-            // asked about (HAL-7385, S-4).
-            if let Some(signer) = signer
-                && machine.signer(&helper).as_deref() != Some(signer)
-            {
-                machine.delete(&helper);
-                return Err(code::ENTRY);
+                let own_bytes = machine.read(&own).map_err(|_| code::FOLDER)?;
+                place(machine, &own, &helper, &own_bytes)?;
+                // Installed apps runs this copy elevated, for every user of
+                // the computer. What was read is whatever had the helper's
+                // name in the app folder by then, so it has to show the
+                // publisher Windows asked about before anyone else can open
+                // it (HAL-7385, S-4).
+                if let Some(signer) = signer
+                    && machine.signer(&helper).as_deref() != Some(signer)
+                {
+                    machine.delete(&helper);
+                    return Err(code::ENTRY);
+                }
+                machine.share(&helper).map_err(|_| code::FOLDER)?;
             }
             let status = machine
                 .run(&srt_win, &["install"], &system, &environment)
@@ -350,13 +363,14 @@ fn steps(
     }
 }
 
-/// Copies `from` over `to`, unless they are one file under two names:
-/// deleting `to` first would then delete the only copy (HAL-7385, S-5).
-fn copy(machine: &impl Machine, from: &Path, to: &Path) -> Result<(), i32> {
+/// Writes `bytes`, read from `from`, to `to` as a file only Administrators
+/// can open, unless `from` and `to` are one file under two names: deleting
+/// `to` first would then delete the only copy (HAL-7385, S-5).
+fn place(machine: &impl Machine, from: &Path, to: &Path, bytes: &[u8]) -> Result<(), i32> {
     if machine.same_file(from, to) {
         return Err(code::FOLDER);
     }
-    machine.replace_file(from, to).map_err(|_| code::FOLDER)
+    machine.write_private(to, bytes).map_err(|_| code::FOLDER)
 }
 
 /// The SHA-256 of `bytes` in lower-case hex, as `sha256sum` prints it.

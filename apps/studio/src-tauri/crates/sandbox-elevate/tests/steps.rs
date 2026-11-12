@@ -6,7 +6,7 @@ use halonic_sandbox_elevate::{
     sha256_hex, uninstall_entry, verb,
 };
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -39,6 +39,12 @@ struct Pretend {
     /// Pairs of names that reach the same file or folder.
     same: Vec<(PathBuf, PathBuf)>,
     files: RefCell<BTreeMap<PathBuf, Vec<u8>>>,
+    /// Files written that Users can't open yet.
+    private: RefCell<BTreeSet<PathBuf>>,
+    /// Every file written, in order.
+    written: RefCell<Vec<PathBuf>>,
+    /// Every file shared with Users, in order.
+    shared: RefCell<Vec<PathBuf>>,
     runs: RefCell<Vec<(PathBuf, Vec<String>, PathBuf)>>,
     environments: RefCell<Vec<Vec<(&'static str, OsString)>>>,
     protected: RefCell<Vec<PathBuf>>,
@@ -62,6 +68,9 @@ impl Pretend {
             signer: Some(PUBLISHER),
             same: Vec::new(),
             files: RefCell::new(files),
+            private: RefCell::new(BTreeSet::new()),
+            written: RefCell::new(Vec::new()),
+            shared: RefCell::new(Vec::new()),
             runs: RefCell::new(Vec::new()),
             environments: RefCell::new(Vec::new()),
             protected: RefCell::new(Vec::new()),
@@ -116,11 +125,17 @@ impl Machine for Pretend {
             Ok(())
         }
     }
-    fn replace_file(&self, from: &Path, to: &Path) -> io::Result<()> {
-        let bytes = self
-            .file(from.to_path_buf())
-            .ok_or(io::ErrorKind::NotFound)?;
-        self.files.borrow_mut().insert(to.to_path_buf(), bytes);
+    fn write_private(&self, to: &Path, bytes: &[u8]) -> io::Result<()> {
+        self.files
+            .borrow_mut()
+            .insert(to.to_path_buf(), bytes.to_vec());
+        self.private.borrow_mut().insert(to.to_path_buf());
+        self.written.borrow_mut().push(to.to_path_buf());
+        Ok(())
+    }
+    fn share(&self, file: &Path) -> io::Result<()> {
+        self.private.borrow_mut().remove(file);
+        self.shared.borrow_mut().push(file.to_path_buf());
         Ok(())
     }
     fn same_file(&self, one: &Path, other: &Path) -> bool {
@@ -166,6 +181,7 @@ impl Machine for Pretend {
     fn delete(&self, path: &Path) {
         self.deleted.borrow_mut().push(path.to_path_buf());
         self.files.borrow_mut().remove(path);
+        self.private.borrow_mut().remove(path);
     }
 }
 
@@ -202,6 +218,12 @@ fn sandbox_elevate_sets_up_from_the_checked_copy_in_the_admin_only_folder() {
         machine.entry.borrow().clone(),
         Some(uninstall_entry(&folder()))
     );
+    // Both are written for Administrators only, and shared once checked.
+    assert_eq!(
+        *machine.written.borrow(),
+        vec![folder().join(SRT_WIN), folder().join(PROGRAM)]
+    );
+    assert!(machine.private.borrow().is_empty());
 }
 
 #[test]
@@ -291,10 +313,24 @@ fn sandbox_elevate_builds_the_environment_from_windows_paths() {
 #[test]
 fn sandbox_elevate_refuses_a_swapped_srt_win_and_deletes_the_copy() {
     let machine = Pretend::new(app(), Some(SWAPPED));
+    // A copy from an earlier setup.
+    machine
+        .files
+        .borrow_mut()
+        .insert(folder().join(SRT_WIN), SHIPPED.to_vec());
     assert_eq!(machine.run(Verb::SetUp), code::WRONG_SRT_WIN);
     assert!(machine.ran().is_empty());
     assert_eq!(machine.file(folder().join(SRT_WIN)), None);
     assert_eq!(*machine.entry.borrow(), None);
+}
+
+#[test]
+fn sandbox_elevate_never_writes_srt_win_bytes_it_hasnt_checked() {
+    // Whatever the app folder's name reaches, an admin-only file through a
+    // link included, is checked in memory and never written (HAL-7386).
+    let machine = Pretend::new(app(), Some(SWAPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::WRONG_SRT_WIN);
+    assert!(machine.written.borrow().is_empty());
 }
 
 #[test]
@@ -399,6 +435,10 @@ fn sandbox_elevate_refuses_a_swapped_helper_copy_and_writes_no_entry() {
     assert!(machine.ran().is_empty());
     assert_eq!(machine.file(folder().join(PROGRAM)), None);
     assert_eq!(*machine.entry.borrow(), None);
+    // It was written for Administrators only and deleted unshared: no
+    // user's program could open it in between (HAL-7386).
+    assert!(machine.written.borrow().contains(&folder().join(PROGRAM)));
+    assert!(!machine.shared.borrow().contains(&folder().join(PROGRAM)));
 }
 
 #[test]

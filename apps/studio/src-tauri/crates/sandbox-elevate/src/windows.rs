@@ -2,15 +2,17 @@
 
 use crate::{Machine, UNINSTALL_KEY, Value};
 use std::ffi::{OsStr, OsString, c_void};
-use std::io;
+use std::io::{self, Write};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
-use std::os::windows::io::AsRawHandle;
+use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::ptr;
-use windows_sys::Win32::Foundation::{CloseHandle, ERROR_FILE_NOT_FOUND, HANDLE, LocalFree};
+use windows_sys::Win32::Foundation::{
+    CloseHandle, ERROR_FILE_NOT_FOUND, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE, LocalFree,
+};
 use windows_sys::Win32::Security::Authorization::{
     ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
 };
@@ -25,12 +27,13 @@ use windows_sys::Win32::Security::WinTrust::{
 };
 use windows_sys::Win32::Security::{
     DACL_SECURITY_INFORMATION, GetTokenInformation, OWNER_SECURITY_INFORMATION,
-    PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SetFileSecurityW, TOKEN_ELEVATION,
-    TOKEN_QUERY, TokenElevation,
+    PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES,
+    SetFileSecurityW, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS,
-    GetFileInformationByHandle, MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
+    BY_HANDLE_FILE_INFORMATION, CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_NORMAL,
+    FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS, GetFileInformationByHandle,
+    MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
 };
 use windows_sys::Win32::System::Com::CoTaskMemFree;
 use windows_sys::Win32::System::LibraryLoader::{
@@ -55,6 +58,13 @@ use windows_sys::core::GUID;
 /// Owner Administrators; Administrators and SYSTEM full control, Users read
 /// and run, for the folder and everything in it; nothing inherited.
 const FOLDER_ACCESS: &str = "O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)";
+
+/// A file in the folder before it's checked: owner Administrators,
+/// Administrators and SYSTEM full control, nobody else (HAL-7386).
+const PRIVATE_ACCESS: &str = "O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)";
+
+/// A file in the folder once it's checked: as [`FOLDER_ACCESS`].
+const SHARED_ACCESS: &str = "O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FRFX;;;BU)";
 
 /// Makes every library this process loads from now on come from System32
 /// only. The link flag in `build.rs` covers the libraries in the import
@@ -150,44 +160,47 @@ impl Machine for Windows {
         if !metadata.is_dir() || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
             return Err(io::Error::other("not a plain folder"));
         }
-        let access = wide(OsStr::new(FOLDER_ACCESS));
-        let mut descriptor: PSECURITY_DESCRIPTOR = ptr::null_mut();
-        // SAFETY: `access` is NUL-terminated; `descriptor` outlives the call
-        // and on success holds memory this code frees below.
-        let made = unsafe {
-            ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                access.as_ptr(),
-                SDDL_REVISION_1,
-                &mut descriptor,
-                ptr::null_mut(),
-            )
-        };
-        if made == 0 {
-            return Err(io::Error::last_os_error());
-        }
-        let path = wide(folder.as_os_str());
-        // SAFETY: `path` is NUL-terminated and `descriptor` is the one made above.
-        let set = unsafe {
-            SetFileSecurityW(
-                path.as_ptr(),
-                OWNER_SECURITY_INFORMATION
-                    | DACL_SECURITY_INFORMATION
-                    | PROTECTED_DACL_SECURITY_INFORMATION,
-                descriptor,
-            )
-        };
-        let error = io::Error::last_os_error();
-        // SAFETY: `descriptor` was allocated by the conversion, freed once.
-        unsafe { LocalFree(descriptor) };
-        if set == 0 { Err(error) } else { Ok(()) }
+        set_access(folder, FOLDER_ACCESS)
     }
 
-    fn replace_file(&self, from: &Path, to: &Path) -> io::Result<()> {
+    fn write_private(&self, to: &Path, bytes: &[u8]) -> io::Result<()> {
         match std::fs::remove_file(to) {
             Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
             _ => {}
         }
-        std::fs::copy(from, to).map(|_| ())
+        with_descriptor(PRIVATE_ACCESS, |descriptor| {
+            let attributes = SECURITY_ATTRIBUTES {
+                nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
+                lpSecurityDescriptor: descriptor,
+                bInheritHandle: 0,
+            };
+            let path = wide(to.as_os_str());
+            // SAFETY: `path` is NUL-terminated and `attributes` points at the
+            // descriptor, which outlives the call. `CREATE_NEW` fails on any
+            // name already there, a link included.
+            let handle = unsafe {
+                CreateFileW(
+                    path.as_ptr(),
+                    GENERIC_WRITE,
+                    0,
+                    &attributes,
+                    CREATE_NEW,
+                    FILE_ATTRIBUTE_NORMAL,
+                    ptr::null_mut(),
+                )
+            };
+            if handle == INVALID_HANDLE_VALUE {
+                return Err(io::Error::last_os_error());
+            }
+            // SAFETY: `handle` was just opened and nothing else owns it; the
+            // `File` closes it once.
+            let mut file = unsafe { std::fs::File::from_raw_handle(handle) };
+            file.write_all(bytes)
+        })
+    }
+
+    fn share(&self, file: &Path) -> io::Result<()> {
+        set_access(file, SHARED_ACCESS)
     }
 
     fn same_file(&self, one: &Path, other: &Path) -> bool {
@@ -401,6 +414,54 @@ unsafe fn publisher(state: HANDLE) -> Option<String> {
         return None;
     }
     String::from_utf16(&name[..length - 1]).ok()
+}
+
+/// Gives `path` the owner and access list in `access`, inheriting nothing.
+fn set_access(path: &Path, access: &str) -> io::Result<()> {
+    with_descriptor(access, |descriptor| {
+        let path = wide(path.as_os_str());
+        // SAFETY: `path` is NUL-terminated and `descriptor` is valid for the call.
+        let set = unsafe {
+            SetFileSecurityW(
+                path.as_ptr(),
+                OWNER_SECURITY_INFORMATION
+                    | DACL_SECURITY_INFORMATION
+                    | PROTECTED_DACL_SECURITY_INFORMATION,
+                descriptor,
+            )
+        };
+        if set == 0 {
+            Err(io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    })
+}
+
+/// Runs `with` on the security descriptor `access` describes, then frees it.
+fn with_descriptor<T>(
+    access: &str,
+    with: impl FnOnce(PSECURITY_DESCRIPTOR) -> io::Result<T>,
+) -> io::Result<T> {
+    let access = wide(OsStr::new(access));
+    let mut descriptor: PSECURITY_DESCRIPTOR = ptr::null_mut();
+    // SAFETY: `access` is NUL-terminated; `descriptor` outlives the call
+    // and on success holds memory this code frees below.
+    let made = unsafe {
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            access.as_ptr(),
+            SDDL_REVISION_1,
+            &mut descriptor,
+            ptr::null_mut(),
+        )
+    };
+    if made == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let result = with(descriptor);
+    // SAFETY: `descriptor` was allocated by the conversion, freed once.
+    unsafe { LocalFree(descriptor) };
+    result
 }
 
 /// The volume and file index that name `path`'s file or folder on this
