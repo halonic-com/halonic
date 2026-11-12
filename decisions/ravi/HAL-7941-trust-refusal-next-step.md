@@ -3,6 +3,7 @@
 - Task: HAL-7941
 - Approval: the team's call on HAL-7941, from Sofia's UX check on HAL-7925 and Mara's notes on halonic#2294
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ObSY0ceLkqiNZjOyFKYlKU7wp+y+5d2HcJIFqScRBT1fKtN0trJvWKlKe5ybUFXKjg1/kwSyADX75rd+w5HSCw==
 
 ## What changes
 
