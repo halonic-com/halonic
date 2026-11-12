@@ -357,11 +357,14 @@ describe.skipIf(!isMac)("an integration in the fence on macOS, Node's layer off"
     // securityd answers. The keychain goes on the user's search list, where
     // the login keychain is, so the attack asks for the item by name and
     // never names the file. The CI runner is thrown away after the job;
-    // `afterAll` still puts the list back.
+    // `afterAll` still puts the list back. On a developer's Mac, a run killed
+    // before `afterAll` leaves the temporary keychain on the user's search list.
     folders = await attackFolders(base, "a36");
-    keychain = join(folders.integrationFolder, "attack.keychain-db");
+    const created = join(folders.integrationFolder, "attack.keychain-db");
     const password = Math.random().toString(36).slice(2);
-    execFileSync("security", ["create-keychain", "-p", password, keychain]);
+    execFileSync("security", ["create-keychain", "-p", password, created]);
+    // Set only once it exists, so `afterAll` doesn't delete a missing keychain and hide the error.
+    keychain = created;
     execFileSync("security", [
       "add-generic-password",
       "-s",
