@@ -1,5 +1,5 @@
 import { Dialog } from "@halonicjs/studio-kit";
-import { saveReasonWords } from "@halonicjs/studio-shell";
+import { couldNotSaveText } from "@halonicjs/studio-shell";
 import type { CloseRequest } from "./workspace-switcher.ts";
 
 /** The props of {@link CloseWorkspaceDialog}. */
@@ -10,17 +10,17 @@ export interface CloseWorkspaceDialogProps {
   readonly onTryAgain: () => void;
 }
 
-/** "Acme couldn't be saved: the disk is full." A reason with no words of its own ends after the name. */
+/** "Couldn't save Acme: the disk is full." The same line as the toolbar's and the toast's. */
 export function notSavedLine(request: CloseRequest): string {
-  const words = saveReasonWords(request.reason);
-  return words === undefined
-    ? `${request.name} couldn't be saved.`
-    : `${request.name} couldn't be saved: ${words}.`;
+  return couldNotSaveText(request.name, request.reason);
 }
+
+/** What **Close anyway** costs, said before it is pressed. */
+export const closeAnywayCost = "Close anyway throws away the changes.";
 
 /**
  * "Close Acme?" (UX checklist 1.3): asked only when the workspace's changes couldn't be saved.
- * **Cancel** is focused, **Close anyway** gives the changes up and **Try again** saves them again.
+ * **Cancel** is focused, **Close anyway** throws the changes away and **Try again** saves them again.
  *
  * @example
  * <CloseWorkspaceDialog request={request} onCancel={cancel} onCloseAnyway={close} onTryAgain={retry} />
@@ -39,7 +39,7 @@ export function CloseWorkspaceDialog({
       onConfirm={onTryAgain}
       onCancel={onCancel}
     >
-      <p>{notSavedLine(request)}</p>
+      <p>{notSavedLine(request)} {closeAnywayCost}</p>
     </Dialog>
   );
 }

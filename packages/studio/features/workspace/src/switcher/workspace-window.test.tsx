@@ -262,7 +262,7 @@ verifies("workspace.saves-itself", () => {
     await act(() => switcher.closeShown());
     expect(document.querySelector("dialog h2")?.textContent).toBe("Close acme?");
     expect(document.querySelector("dialog p")?.textContent).toBe(
-      "acme couldn't be saved: the disk is full.",
+      "Couldn't save acme: the disk is full. Close anyway throws away the changes.",
     );
     expect(switcherButton()).not.toBeNull();
 
