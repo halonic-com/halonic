@@ -76,7 +76,8 @@ class FakeSandbox implements Sandbox {
   lastNonce(): string {
     const command = this.commands.at(-1);
     if (command === undefined) throw new Error("no runner was started");
-    return readRunnerArgs(command.args.slice(4)).nonce;
+    // The runner's own four arguments come last, after Node's flags and the runner file.
+    return readRunnerArgs(command.args.slice(-4)).nonce;
   }
 }
 
@@ -144,10 +145,11 @@ verifies("integration-runner.start", () => {
       expect(profile?.network).toEqual({ bridge: null, allowedSites: [] });
       expect(profile?.env).toEqual({ TMPDIR: "/fake-temp/halonic-run" });
       expect(profile?.deniedPaths).toEqual(["/fake-home", "/run"]);
-      expect(sandbox.commands[0]?.args.slice(0, 4)).toEqual([
+      expect(sandbox.commands[0]?.args.slice(0, 5)).toEqual([
         "--permission",
         "--allow-fs-read=/opt/halonic/runner.js",
         `--allow-fs-read=${folder}`,
+        "--max-old-space-size=256",
         "/opt/halonic/runner.js",
       ]);
       await connection.close();
@@ -242,6 +244,7 @@ verifies("integration-runner.start", () => {
       ]);
       expect(sandbox.commands[0]?.args.slice(2)).toEqual([
         `--allow-fs-read=${folder}`,
+        "--max-old-space-size=256",
         "/opt/halonic/runner.js",
         sandbox.lastNonce(),
         folder,

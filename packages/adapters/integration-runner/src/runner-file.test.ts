@@ -82,12 +82,14 @@ interface StartOptions {
   readonly files?: Readonly<Record<string, string>>;
   /** Whether Node's permission layer is on; off shows what the module hook stops on its own. */
   readonly nodeLayer?: boolean;
+  /** The runner's heap limit in MiB; lower than the real one so a test reaches it fast. */
+  readonly heapLimitMiB?: number;
 }
 
 /** Starts the built runner as Node would inside the fence, without the fence itself. */
 async function startBuiltRunner(
   source: string,
-  { files = {}, nodeLayer = true }: StartOptions = {},
+  { files = {}, nodeLayer = true, heapLimitMiB }: StartOptions = {},
 ): Promise<SandboxProcess> {
   const integrationFolder = join(folder, `integration-${Math.random().toString(36).slice(2)}`);
   await mkdir(integrationFolder);
@@ -100,6 +102,7 @@ async function startBuiltRunner(
   const command = runnerCommand(
     { node: process.execPath, nodeFolder: "", runnerFile: runner.path, integrationFolder },
     { nonce: testNonce, folder: integrationFolder, entryFile, exportName: "weather" },
+    heapLimitMiB,
   );
   const args = nodeLayer ? command.args : command.args.filter((arg) => !arg.startsWith("--"));
   const child = spawn(command.program, args, { stdio: ["pipe", "pipe", "pipe"], env: {} });
@@ -204,6 +207,46 @@ verifies("integration-runner.module-fence", () => {
         },
       });
       expect(answer).toBe("got number");
+    });
+  });
+});
+
+// Keeps every object it allocates, so only a heap limit ends it (A24).
+const hungrySource = `export const weather = {
+  name: "weather",
+  version: "1.0.0",
+  tools: [],
+  connect: () => ({
+    callTool: async () => {
+      const kept = [];
+      for (;;) kept.push(new Array(100_000).fill(kept.length));
+    },
+    close: async () => undefined,
+  }),
+};
+`;
+
+verifies("integration-runner.heap-limit", () => {
+  // Two runner starts and a full heap: on a busy CI machine that takes longer
+  // than Vitest's 5 s, though it takes half a second on its own.
+  describe("the built runner's heap limit", { timeout: 20_000 }, () => {
+    it("ends a runner whose integration fills its heap, and only that runner", async () => {
+      const hungry = bridgeOptions(fakeRunnerProcess(), {
+        process: await startBuiltRunner(hungrySource, { heapLimitMiB: 32 }),
+      });
+      const connection = await connectRunner(hungry);
+      await expect(connection.callTool("forecast", {})).rejects.toMatchObject({
+        stop: { reason: "exited" },
+      });
+      const stop = await connection.stopped;
+      expect(stop.reason).toBe("exited");
+      if (stop.reason === "exited") {
+        expect(stop.exit.code !== 0 || stop.exit.signal !== null).toBe(true);
+      }
+      expect(hungry.log.join("")).toMatch(/heap/i);
+
+      // Halonic goes on, and the next runner serves its integration.
+      expect(await answerTo(integrationSource, {})).toBe("forecast in https://api.example.com");
     });
   });
 });
