@@ -76,8 +76,10 @@ question as a review of what the workspace can start (HAL-5519).
 - **It isn't a sandbox.** After you trust a workspace, its programs run with
   your rights, and can read your files. A stdio connector
   gets only a small base of your environment, such as `PATH` and your proxy,
-  plus the variables and secrets its connector names. A key it names in
-  `secretEnv` still reaches it, so read the names the trust check lists (see the
+  plus the variables and secrets its connector names in `env`, `secretEnv` and
+  `inheritEnv`. A key it names in `secretEnv`, or a variable it takes with
+  `inheritEnv` that holds a password, still reaches it, so read the names the
+  trust check lists (see the
   [threat model's known limits](threat-model.md#44-secrets-tokens-and-outbound-calls-b4)).
   Trust only workspaces from people you trust.
 - **It covers what the check lists, not what the files say.** Prompts,

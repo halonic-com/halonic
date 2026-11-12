@@ -177,7 +177,7 @@ Its text is attacker text. The rules are the requirement
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
 | A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
-| A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **On `main`** (`app.connector-base-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
+| A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv` and the variables it names in `inheritEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `inheritEnv` refuses a name that looks like it holds a secret, such as `ANTHROPIC_API_KEY`, and the trust check lists the names it takes. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **On `main`** (`app.connector-base-env`, `app.connector-inherited-env`, `format.connector-inherit-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
 | A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | The bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
 
 **Known limits.**
@@ -201,18 +201,23 @@ Its text is attacker text. The rules are the requirement
 - **A program a workspace starts gets only part of your environment, but it
   still runs as you.** A `stdio` connector started on this computer gets a
   small base of the app's environment and, on top, only its connector's `env`
-  and `secretEnv` (`app.connector-base-env`). So a model key
-  in your shell doesn't reach it, unless the connector names it in
+  and `secretEnv` and the variables it names in `inheritEnv`, such as
+  `AWS_PROFILE` (`app.connector-base-env`, `app.connector-inherited-env`). So
+  a model key in your shell doesn't reach it, unless the connector names it in
   `secretEnv`; the trust check lists those names, so read them before you
   trust a workspace. But the base keeps your proxy settings, so a password in
   a proxy address such as `HTTPS_PROXY` does reach it. And the program runs
   with your rights, so it can read your files, such as `~/.aws/credentials`,
   and ask the keychain (see above). Halonic still removes known secret values
   from the program's error output it shows you.
-- **A connector can't yet name other variables to take from your
-  environment.** A program that needs one, such as `AWS_PROFILE`, gets it only
-  through `env` or `secretEnv`. A list of names to inherit (`inheritEnv`)
-  lands with #1976.
+- **`inheritEnv` can't tell every secret by its name.** It refuses a name
+  that looks like it holds one, such as `ANTHROPIC_API_KEY` or `GITHUB_TOKEN`,
+  but not one such as `DATABASE_URL`, whose value may hold a password. The
+  trust check ends a program's row with the names it takes ("takes
+  AWS_PROFILE from your environment"), so that row is the real check: read it
+  before you trust a workspace. A pinned connector can't name a variable that
+  moves its registry, proxy or certificates, and a connector in a sandbox
+  can't use `inheritEnv` at all.
 - **The desktop app doesn't use the keychain yet.** The bridge that gives
   Studio's services the keychain is on `main`; the code in the app that builds
   those services is Planned (HAL-2952). Until then, no desktop token reaches the
