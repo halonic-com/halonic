@@ -19,14 +19,14 @@ Every issue form adds `needs-triage`. Whoever triages an issue:
    - `duplicate`: link the original issue and close it;
    - `question`: move it to Discussions Q&A;
    - `not-now` or `wontfix`: say why when you close it.
-3. **Sets a priority** on every bug (see below).
+3. **Sets a priority** on every bug or install problem (see below).
 4. **Removes `needs-triage`.**
 
 The `needs-triage` queue should be empty at the end of each day.
 
 ## Priority
 
-Every bug gets exactly one priority label.
+Every bug or install problem gets exactly one priority label.
 
 | Label | Use it when | What happens |
 | --- | --- | --- |
@@ -34,8 +34,13 @@ Every bug gets exactly one priority label.
 | `priority: high` | A common workflow is blocked and there is no easy workaround | Fixed in the current release |
 | `priority: low` | It is minor, or there is a workaround | Fixed when there is time |
 
-A bug with no priority label has not been triaged yet. A security problem is
-never a public issue: point the reporter to [SECURITY.md](../../SECURITY.md).
+A bug with no priority label has not been triaged yet.
+
+A security problem is never a public issue. If one arrives as an issue, edit
+the details out of it, delete the old revision from the edit history (or ask
+an admin to delete the issue), and point the reporter to
+[SECURITY.md](../../SECURITY.md). Do the same with a key, token or password in
+an issue, and ask the reporter to revoke it.
 
 ## Good first issues
 
