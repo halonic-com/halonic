@@ -4,7 +4,8 @@
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
 //! commands, `pick_folder`, the `trust_*` commands, the `host_settings_*`
 //! commands, the `run_*` commands, the `agent_host_*` commands, the `fs_*`
-//! commands and the `blob_*` and `record_*` commands.
+//! commands, the `blob_*` and `record_*` commands and the `update_*`
+//! commands.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -126,6 +127,22 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "fs_unwatch",
         "plugin:opener|open_url",
         "plugin:event|listen",
+    ] {
+        assert!(
+            commands.iter().any(|command| command == expected),
+            "{expected} missing from {commands:?}"
+        );
+    }
+    #[cfg(desktop)]
+    for expected in [
+        "update_status",
+        "update_watch",
+        "update_check",
+        "update_download",
+        "update_cancel",
+        "update_restart",
+        "update_set_automatic",
+        "plugin:updater|check",
     ] {
         assert!(
             commands.iter().any(|command| command == expected),
@@ -447,6 +464,46 @@ fn served_page_test_sees_host_settings_granted_to_the_local_main_window_only() {
             "allow-host-settings-read",
             "allow-host-settings-set",
             "allow-host-settings-remove"
+        ])
+    );
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_read_the_update_status_on_desktop() {
+    let window = app_window();
+    let status = invoke(&window, CONNECT_PAGE, "update_status", json!({}))
+        .expect("the local page reads the update status");
+    assert_eq!(status["state"], json!({ "kind": "never-checked" }));
+    assert_eq!(status["automatic"], true);
+    assert_eq!(status["checking"], false);
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_updater_plugin_granted_to_no_page() {
+    // The page acts through the update_* commands only: the plugin's own
+    // commands would let it install whatever the release page offers.
+    let window = app_window();
+    let Err(refusal) = invoke(&window, CONNECT_PAGE, "plugin:updater|check", json!({})) else {
+        panic!("the updater plugin must be refused to the local page too");
+    };
+    assert!(refusal.to_string().contains("not allowed"), "{refusal}");
+    let text = include_str!("../capabilities/desktop-updates.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([
+            "allow-update-status",
+            "allow-update-watch",
+            "allow-update-check",
+            "allow-update-download",
+            "allow-update-cancel",
+            "allow-update-restart",
+            "allow-update-set-automatic"
         ])
     );
 }

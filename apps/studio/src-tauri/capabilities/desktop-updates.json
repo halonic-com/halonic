@@ -1,0 +1,22 @@
+{
+  "identifier": "desktop-updates",
+  "description": "On desktop, the app's own page may read and follow the updater's status and act on it through the update_* commands (HAL-1206, flow-install-update section 4): check now, download, cancel, restart to update, and the automatic switch. The updater's own plugin commands are granted to no page. It is local only, so the Studio the computer serves gets no update command.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-update-status",
+    "allow-update-watch",
+    "allow-update-check",
+    "allow-update-download",
+    "allow-update-cancel",
+    "allow-update-restart",
+    "allow-update-set-automatic"
+  ]
+}

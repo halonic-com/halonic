@@ -43,6 +43,7 @@ halonic-run-store = { path = "crates/run-store" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-trust-grant = { path = "crates/trust-grant" }
 halonic-trust-store = { path = "crates/trust-store" }
+halonic-update-state = { path = "crates/update-state" }
 halonic-workspace-files = { path = "crates/workspace-files" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -62,6 +63,13 @@ tauri-plugin-opener = "=2.7.2"
 # default on Linux, and Windows needs common-controls-v6 for custom buttons.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 rfd = { version = "=0.17.2", default-features = false, features = ["gtk3", "common-controls-v6"] }
+# The desktop updater (HAL-1206, plan 4.2, flow-install-update section 4):
+# checks latest.json on the release page, checks the installer's signature
+# against the key in tauri.conf.json, and runs the NSIS installer. Pinned
+# with tauri: 2.14.1 needs tauri ^2.12. Only rustls-tls, as for the http
+# plugin: no system proxy (a blocked check is fine, C58), and no zip, which
+# only old .zip update bundles need. Never granted to a page.
+tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["rustls-tls"] }
 
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.

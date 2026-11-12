@@ -273,6 +273,17 @@ pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
     }
 }
 
+/// Stops the host, as dropping it does, before the updater's installer
+/// replaces its file: the updater ends the shell with `exit`, which drops
+/// nothing (HAL-1206).
+pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
+    let Some(state) = app.try_state::<AgentHostState>() else {
+        return;
+    };
+    let host = state.host.lock().ok().and_then(|mut host| host.take());
+    drop(host);
+}
+
 fn named_route(name: &str, answer: Answer) -> Result<Route, HostRefusal> {
     find_route(name, answer).ok_or_else(|| {
         HostRefusal::new(
