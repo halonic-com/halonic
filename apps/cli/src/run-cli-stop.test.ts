@@ -84,6 +84,15 @@ verifies("cli.stop", () => {
     expect((await stopWith("SIGTERM")).code).toBe(143);
   });
 
+  it("stops as at Ctrl C when the terminal is closed, and ends with 129 for SIGHUP", async () => {
+    const { code, io, exits } = await stopWith("SIGHUP");
+    expect(code).toBe(129);
+    expect(io.stderr).toEqual([
+      "Stopped. The run 01JD8Q was cancelled after the step Classify. Nothing after it ran.",
+    ]);
+    expect(exits).toEqual([]);
+  });
+
   it("with --json, ends stdout with one document that isn't ok, and leaves stderr empty", async () => {
     const { code, io } = await stopWith("SIGINT", ["--json"]);
     expect(code).toBe(130);
@@ -108,6 +117,8 @@ verifies("cli.stop", () => {
   for (const [first, second, expected] of [
     ["SIGINT", "SIGTERM", 143],
     ["SIGTERM", "SIGINT", 130],
+    ["SIGHUP", "SIGINT", 130],
+    ["SIGINT", "SIGHUP", 129],
   ] as const) {
     it(`at ${second} after ${first}, prints only Stopped. and exits at once with ${expected}`, async () => {
       const io = captureIo("/work");

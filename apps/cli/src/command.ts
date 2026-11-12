@@ -120,9 +120,9 @@ export interface CommandResult {
 }
 
 /**
- * What a command returns when Ctrl C or SIGTERM stopped it. `runCli` prints
- * "Stopped." and what stopping meant to stderr, and exits with the signal's
- * code, 130 or 143, rather than an {@link ExitCode}.
+ * What a command returns when Ctrl C, SIGTERM or SIGHUP stopped it. `runCli`
+ * prints "Stopped." and what stopping meant to stderr, and exits with the
+ * signal's code, 130, 143 or 129, rather than an {@link ExitCode}.
  */
 export interface StoppedResult {
   readonly stopped: true;

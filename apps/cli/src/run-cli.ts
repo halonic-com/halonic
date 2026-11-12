@@ -84,7 +84,7 @@ export interface CliSetup {
   readonly stop?: { readonly signals: SignalSource; exitNow(code: number): void };
 }
 
-/** What a command line ends with: an {@link ExitCode}, or 130 or 143 when Ctrl C or SIGTERM stopped it. */
+/** What a command line ends with: an {@link ExitCode}, or 129, 130 or 143 when SIGHUP, Ctrl C or SIGTERM stopped it. */
 export type CliExit = ExitCode | (typeof stopExitCode)[keyof typeof stopExitCode];
 
 /**

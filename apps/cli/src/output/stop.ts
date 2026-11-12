@@ -1,11 +1,12 @@
 /**
  * The signals that stop a command, each with the exit code a shell expects
  * for it (cli-output 1.5 and section 2): 130 for Ctrl C, 143 for SIGTERM, which
- * a CI system sends when a job is cancelled.
+ * a CI system sends when a job is cancelled, and 129 for SIGHUP, which the
+ * terminal sends when its window is closed (HAL-6558).
  */
-export const stopExitCode = { SIGINT: 130, SIGTERM: 143 } as const;
+export const stopExitCode = { SIGHUP: 129, SIGINT: 130, SIGTERM: 143 } as const;
 
-/** Ctrl C (`SIGINT`) or `SIGTERM`. */
+/** Ctrl C (`SIGINT`), `SIGTERM` or a closed terminal (`SIGHUP`). */
 export type StopSignal = keyof typeof stopExitCode;
 
 /** Where the signals come from: the real `process`, or a stand-in in a test. */
@@ -14,9 +15,9 @@ export interface SignalSource {
   off(signal: StopSignal, listener: () => void): unknown;
 }
 
-/** A command's watch for Ctrl C and SIGTERM, from {@link watchForStop}. */
+/** A command's watch for Ctrl C, SIGTERM and SIGHUP, from {@link watchForStop}. */
 export interface StopWatch {
-  /** Aborted at the first Ctrl C or SIGTERM; the command passes it on, so its work winds down. */
+  /** Aborted at the first Ctrl C, SIGTERM or SIGHUP; the command passes it on, so its work winds down. */
   readonly signal: AbortSignal;
   /** The signal that stopped the command, or `undefined` while nothing has. */
   stoppedBy(): StopSignal | undefined;
@@ -27,10 +28,12 @@ export interface StopWatch {
 const stopSignals = Object.keys(stopExitCode) as StopSignal[];
 
 /**
- * Watches for Ctrl C and SIGTERM while a command runs (cli-output 1.5). The
- * first one aborts {@link StopWatch.signal}, so the command can stop cleanly,
- * end with the line from `stopMessages.stopped` saying what that meant, and
- * exit with the signal's {@link stopExitCode}. A second one doesn't wait for
+ * Watches for Ctrl C, SIGTERM and SIGHUP while a command runs (cli-output
+ * 1.5). Closing the terminal stops a command as Ctrl C does, so a run ends
+ * cancelled rather than killed mid-step (HAL-6558). The first one aborts
+ * {@link StopWatch.signal}, so the command can stop cleanly, end with the
+ * line from `stopMessages.stopped` saying what that meant, and exit with the
+ * signal's {@link stopExitCode}. A second one doesn't wait for
  * that: `exitNow` ends the process at once with the code, for when stopping
  * itself hangs.
  *
@@ -108,15 +111,20 @@ export interface ErrorEmitter {
   on(event: "error", listener: (error: Error) => void): unknown;
 }
 
+/** The write errors that mean nobody reads the output any more: a closed pipe, a closed terminal. */
+const readerIsGone: ReadonlySet<string> = new Set(["EPIPE", "EIO"]);
+
 /**
  * Makes a closed pipe end the output quietly, as when `halonic run … | head -2`
  * has read its two lines (HAL-6007): text written after that is dropped and
- * the command finishes its work. Any other write error still throws, as it
- * did without this.
+ * the command finishes its work. A closed terminal window is treated the
+ * same way: writing to it fails with `EIO`, and a run stopped by SIGHUP
+ * still has to wind down after its step (HAL-6558). Any other write error
+ * still throws, as it did without this.
  */
 export function quietOnClosedPipe(stream: ErrorEmitter): void {
   stream.on("error", (error) => {
-    if ((error as NodeJS.ErrnoException).code === "EPIPE") return;
+    if (readerIsGone.has((error as NodeJS.ErrnoException).code ?? "")) return;
     throw error;
   });
 }

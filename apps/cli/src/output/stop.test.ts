@@ -55,6 +55,17 @@ verifies("cli.stop", () => {
     expect(stopExitCode.SIGTERM).toBe(143);
   });
 
+  it("asks the command to stop when the terminal is closed, and ends with 129", () => {
+    const source = signals();
+    const exits: number[] = [];
+    const watch = watchForStop(source, (code) => exits.push(code));
+    source.send("SIGHUP");
+    expect(watch.signal.aborted).toBe(true);
+    expect(watch.stoppedBy()).toBe("SIGHUP");
+    expect(stopExitCode.SIGHUP).toBe(129);
+    expect(exits).toEqual([]);
+  });
+
   it("exits at once at a second signal, when stopping hangs", () => {
     const source = signals();
     const exits: number[] = [];
@@ -67,7 +78,7 @@ verifies("cli.stop", () => {
   it("leaves the signals to the process once the command is done", () => {
     const source = signals();
     const watch = watchForStop(source, () => {});
-    expect(source.count()).toBe(2);
+    expect(source.count()).toBe(3);
     watch.dispose();
     expect(source.count()).toBe(0);
   });
@@ -109,6 +120,13 @@ verifies("cli.stop", () => {
     const full = Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
     expect(() => stdout.emit("error", closed)).not.toThrow();
     expect(() => stdout.emit("error", full)).toThrow("no space left on device");
+  });
+
+  it("ends the output quietly when the terminal window is closed", () => {
+    const stderr = new EventEmitter();
+    quietOnClosedPipe(stderr);
+    const closed = Object.assign(new Error("write EIO"), { code: "EIO" });
+    expect(() => stderr.emit("error", closed)).not.toThrow();
   });
 
   it("says Stopped, then what that meant", () => {

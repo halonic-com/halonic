@@ -39,7 +39,7 @@ verifies("cli.messages", () => {
       "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input ·",
       "3 not trusted · 4 not found · 5 conflict · 6 signed out · 7 not allowed ·",
       "8 limit reached · 9 didn't answer or the sandbox can't start ·",
-      "130 or 143 stopped",
+      "129, 130 or 143 stopped",
     ]);
     for (const line of lines) expect(line.length).toBeLessThan(80);
   });
