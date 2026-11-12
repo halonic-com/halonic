@@ -466,6 +466,29 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("with --debug, escapes control characters in the provider's text", async () => {
+      await storeRuns(
+        triage("run_mfx3k2a1_0f0f04", [
+          ...enteredRead,
+          [
+            today("10:20:02"),
+            {
+              type: "run.failed",
+              state: "read",
+              error: "the bank is offline",
+              reason: "error",
+              providerText: { status: 503, text: "\u001b[31mupstream down" },
+            },
+          ],
+        ]),
+      );
+
+      const { io } = await showIn(acme, "0f0f04", "--debug");
+
+      expect(io.stderr).toContain("The provider said (HTTP 503): \\u001b[31mupstream down");
+      expect(io.stderr.join("\n")).not.toContain("\u001b");
+    });
+
     it("says where a cancel landed: in a step, between steps, or before any", async () => {
       const cancelled = (state: string | null) =>
         ({ type: "run.failed", state, error: "cancelled", reason: "cancelled" }) as const;
