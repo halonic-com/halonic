@@ -1,12 +1,13 @@
 {
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
-  "//": "Tests run in Node, the browser storage ones in jsdom, so they need the DOM types.",
+  "//": "Tests run in Node, the browser ones in jsdom. They read the kit, which brings the DOM types and JSX.",
   "compilerOptions": {
     "lib": [
       "es2024",
       "dom",
       "dom.iterable"
-    ]
+    ],
+    "jsx": "react-jsx"
   },
   "include": [
     "src",
