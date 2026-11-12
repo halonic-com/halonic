@@ -1,4 +1,4 @@
-import { escapeHidden } from "./hidden-characters.ts";
+import { escapeHidden } from "@halonicjs/std";
 
 /** What one argument's value shows as. */
 export type ArgumentValue =

@@ -417,7 +417,7 @@ verifies("integration-runner.start", () => {
         entryFile: "/fake-home/code/weather/index.js",
         exportName: "weather",
       };
-      const command = runnerCommand(files, args);
+      const command = runnerCommand(files, args, { platform: "darwin" });
       expect(command.program).toBe(files.node);
       expect(command.args).toEqual([
         "--permission",
@@ -431,6 +431,33 @@ verifies("integration-runner.start", () => {
         "weather",
       ]);
       expect(readRunnerArgs(command.args.slice(5))).toEqual(args);
+    });
+
+    it("starts Node through prlimit on Linux, with a limit on the whole data segment (A24)", () => {
+      const args = {
+        nonce: "n-1",
+        folder: "/fake-home/code/weather",
+        entryFile: "/fake-home/code/weather/index.js",
+        exportName: "weather",
+      };
+      const plain = runnerCommand(files, args, { platform: "darwin" });
+      const command = runnerCommand(files, args, { platform: "linux" });
+      expect(command.program).toBe("/usr/bin/prlimit");
+      // 640 MiB for Node's start, 256 for the heap and 256 for buffers.
+      expect(command.args).toEqual([`--data=${1152 * 1024 * 1024}`, plain.program, ...plain.args]);
+    });
+
+    it("starts plain Node on Linux when prlimit isn't there", () => {
+      const args = {
+        nonce: "n-1",
+        folder: "/fake-home/code/weather",
+        entryFile: "/fake-home/code/weather/index.js",
+        exportName: "weather",
+      };
+      const plain = runnerCommand(files, args, { platform: "darwin" });
+      expect(runnerCommand(files, args, { platform: "linux", prlimitAvailable: false })).toEqual(
+        plain,
+      );
     });
 
     it("refuses runner arguments that are missing or extra", () => {

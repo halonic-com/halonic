@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: plan v1.17 (the per-machine "this computer" choice in `core/app`); stack 3b of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved with changes by Liam on HAL-1967 (the fingerprint is SHA-256 over the agent file's raw bytes); Julian's condition on HAL-1709 (a changed agent file cancels the choice)
+- Source: plan v1.17 (the per-machine "this computer" choice in `core/app`); stack 3b of the HAL-189 implementation plan, approved with changes by Liam on HAL-1967 (the fingerprint is SHA-256 over the agent file's raw bytes); Julian's condition on HAL-1709 (a changed agent file cancels the choice)
 
 The app shall say where an agent's harness runs: on this computer only when the `AgentPlacementStore` holds a choice for that workspace and agent whose `agentFingerprint` is the fingerprint of the agent's file now, and in a sandbox otherwise. The fingerprint shall be `sha256:` and the SHA-256, in hex, of the file's raw bytes, taken through the `Digest` port. A sandbox answer shall say why: no choice, a choice for another version of the file, or a choice that can't be read, which also gives the store's error to the host.
 

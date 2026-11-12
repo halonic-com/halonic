@@ -1,6 +1,6 @@
 # @halonicjs/studio-feature-runs
 
-The Studio Runs: the runs list, the run page with its receipt and what each run ran, Home's Recent runs and Ctrl K's run rows. It reads the open workspace's runs from `RunsSourceService`, which the app provides, and says about each run what `halonic runs` says: where a run stands and what it waits for come from `runStanding` and `runWait` in `@halonicjs/app`, and money from `moneyAmount`.
+The Studio Runs: the runs list, the run page and what each run ran, and later the receipt, Home's Recent runs and Ctrl K's run rows. It reads the open workspace's runs from `RunsSourceService`, which the app provides, and says about each run what `halonic runs` says: where a run stands and what it waits for come from `runStanding` and `runWait` in `@halonicjs/app`, and money from `moneyAmount`.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -81,7 +81,7 @@ const [install] = blockedSites(events, { limit: entrySiteLimit });
 
 ## The run page
 
-A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). What it shows is worked out in `run-view/run-page-model.ts`:
+A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). A run's tab stays open when the run leaves the workspace (the kind's `tab.exists` is always true): the page says so itself. What it shows is worked out in `run-view/run-page-model.ts`:
 
 ```ts
 import { runBanner, runHeader } from "./run-view/run-page-model.ts";
@@ -99,4 +99,13 @@ everyStep(events, summary, workflow, new Date());
 // [{ id: "step-0", name: "Read", mark: "done", line: "Took 1 min", time: "10:40", label: "Read, done, 10:40, Took 1 min" }, …]
 ```
 
-Not there yet: the receipt and Details; an entry's events in the side panel and Show the run log; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).
+Under the timeline, **Show the run log** shows the run's events in its place, numbered by `seq`, the same events `halonic runs show --json` returns, and **Show every step** brings the timeline back (requirement `runs.run-view.run-log`). Each line's fields are one line of JSON with hidden characters escaped (`escapeHidden` in `@halonicjs/std`), and a step's blocked sites read "Blocked: registry.npmjs.org (12 tries)" once:
+
+```ts
+import { runLogLines } from "./run-view/run-log-model.ts";
+
+runLogLines(events);
+// [{ kind: "event", seq: 1, time: "10:40:00", type: "run.started", fields: '{"hubId":"acme",…}' }, …]
+```
+
+Not there yet: the receipt and Details; an entry's events in the side panel; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).

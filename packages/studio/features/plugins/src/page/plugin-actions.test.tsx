@@ -171,6 +171,15 @@ verifies("plugins.plugin-actions", () => {
     expect(toastTitles()).toEqual(["Weather removed"]);
   });
 
+  it("closes the dialog once removed, before the list drops the plugin", async () => {
+    const { view } = await showPage(withSettings(), recordingActions().actions);
+
+    await pick(view, "Remove plugin…");
+    await act(async () => button("Remove plugin").click());
+
+    expect(document.querySelector("dialog")).toBeNull();
+  });
+
   it("keeps the dialog open and names the secret it couldn't delete", async () => {
     const { actions } = recordingActions({
       removed: { kind: "secret", secret: "api-key", reason: "the keychain is locked" },

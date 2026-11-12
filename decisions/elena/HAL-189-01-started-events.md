@@ -1,6 +1,6 @@
 # Decision: `sandbox.started` and `harness.started` run log events
 
-- Approval: failure-path rule 1 in the [HAL-1668 decisions](/HAL/issues/HAL-1668#document-decisions); stack 1a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved by Liam on [HAL-1967](/HAL/issues/HAL-1967); the package owner (Liam) approves this note in review
+- Approval: failure-path rule 1 in the HAL-1668 decisions; stack 1a of the HAL-189 implementation plan, approved by Liam on HAL-1967; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-189
 

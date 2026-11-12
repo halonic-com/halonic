@@ -19,6 +19,7 @@ fn main() {
         "trust_revoke",
         "reopen_folder",
         "forget_folder",
+        "command_paths",
         "host_settings_read",
         "host_settings_set",
         "host_settings_remove",

@@ -43,6 +43,7 @@ const machine: Machine = {
   appArmorRestrictsUserNamespaces: async () => false,
   hasRipgrep: async () => true,
   hasSeatbelt: async () => true,
+  packageManager: async () => null,
   hasWindowsSandbox: async () => false,
   installWindowsSandbox: async () => "installed" as const,
   letSandboxReadParents: async () => undefined,

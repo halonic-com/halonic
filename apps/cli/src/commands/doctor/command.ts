@@ -9,6 +9,7 @@ import {
   doctorService,
   type MachineWorkspace,
   nodeDoctorMachine,
+  withHarnessSettingsFolders,
 } from "../../doctor-machine.ts";
 import { doctorWorkspace } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
@@ -38,7 +39,10 @@ export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
       const given = givenDir(input);
       const read = await readWorkspace(workspaceDir(input, context.cwd), given !== undefined);
       const computer = machine();
-      const workspace = read === null ? null : withWindowsDrive(read, computer);
+      const workspace =
+        read === null
+          ? null
+          : await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile);
       const doctor = await doctorService(computer, context.secrets, workspace);
       const report = await doctor.check(workspace?.workspace ?? null);
       const lines = doctorReportLines(report, {
@@ -46,6 +50,7 @@ export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
         system: computer.system,
         sandboxKind: computer.sandboxKind,
         ...(computer.wslDistro === undefined ? {} : { wslDistro: computer.wslDistro }),
+        signInShell: computer.signInShell,
         ...(given === undefined ? {} : { dir: given }),
       });
       return {

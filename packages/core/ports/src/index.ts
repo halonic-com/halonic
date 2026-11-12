@@ -108,6 +108,7 @@ export {
   harnessBridgeServerVersion,
   type OpenHarnessBridge,
 } from "./harness-bridge-server.ts";
+export { type SignInShell, signInCommandText } from "./harness-sign-in-command.ts";
 export {
   changeSavedHostSettings,
   type HostSettingsStore,
@@ -244,12 +245,15 @@ export {
   type SandboxExit,
   type SandboxFence,
   type SandboxFileAccess,
+  type SandboxFix,
   type SandboxNetwork,
+  type SandboxPackageManager,
   type SandboxProcess,
   type SandboxProfile,
   type SandboxSession,
   type SandboxStrength,
   type SandboxUnavailableReason,
+  sandboxPackageManagers,
   sandboxUnavailableReasons,
   sandboxVersion,
 } from "./sandbox.ts";
@@ -269,6 +273,8 @@ export {
   isSecretName,
   maxSecretNameLength,
   pluginSecretNamePrefix,
+  pluginSecretSeparator,
+  pluginSecrets,
   type Secrets,
   secretKey,
   secretsVersion,

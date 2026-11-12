@@ -22,8 +22,14 @@ const places = [
   showPlace("changes", { mark: "count", value: 4, spoken: "4 to review" }),
 ];
 
-function renderMore(shown: readonly ShownPlace[] = places, badge?: string, withSwitcher = true) {
+function renderMore(
+  shown: readonly ShownPlace[] = places,
+  badge?: string,
+  withSwitcher = true,
+  withSettings = false,
+) {
   const opened: SidebarPlace[] = [];
+  let settingsOpens = 0;
   let workspacePicks = 0;
   const switcher = {
     workspace: acme,
@@ -35,13 +41,27 @@ function renderMore(shown: readonly ShownPlace[] = places, badge?: string, withS
     <MorePage
       switcher={withSwitcher ? switcher : undefined}
       places={shown}
+      onSettings={
+        withSettings
+          ? () => {
+              settingsOpens += 1;
+            }
+          : undefined
+      }
       onOpen={(place) => opened.push(place)}
       badge={badge === undefined ? undefined : <button type="button">{badge}</button>}
     />,
   );
   const rows = [...container.querySelectorAll("tr")];
   const row = (title: string) => rows.find((tr) => tr.textContent?.includes(title)) as Element;
-  return { container, rows, row, opened, workspacePicks: () => workspacePicks };
+  return {
+    container,
+    rows,
+    row,
+    opened,
+    workspacePicks: () => workspacePicks,
+    settingsOpens: () => settingsOpens,
+  };
 }
 
 function tap(element: Element): void {
@@ -110,5 +130,29 @@ verifies("shell.more-page", () => {
     expect(container.querySelector('button[aria-label^="Workspace:"]')).toBeNull();
     expect(container.querySelector("h1")?.textContent).toBe("More");
     expect(container.textContent).toContain("Editing workflows is easier on a computer.");
+  });
+});
+
+verifies("shell.settings-list-page", () => {
+  it("ends the list with a Settings row when the window can open Settings, and passes its tap on", () => {
+    const { rows, row, opened, settingsOpens } = renderMore(places, undefined, true, true);
+
+    expect(rows.map((tr) => tr.querySelector("[role=gridcell]")?.textContent).at(-1)).toBe(
+      "Settings",
+    );
+    expect(row("Settings").querySelector("svg")).not.toBeNull();
+    act(() => {
+      row("Settings")
+        .querySelector("[role=gridcell]")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    expect(settingsOpens()).toBe(1);
+    expect(opened).toEqual([]);
+  });
+
+  it("has no Settings row when the window can't open Settings", () => {
+    const { rows } = renderMore();
+
+    expect(rows.some((tr) => tr.textContent?.includes("Settings"))).toBe(false);
   });
 });

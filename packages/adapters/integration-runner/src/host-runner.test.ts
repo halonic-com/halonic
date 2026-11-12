@@ -37,6 +37,24 @@ const nosySource = `export const weather = {
 };
 `;
 
+// Claims a fence the launcher doesn't have: it writes a ready frame with a
+// fence of its own to the runner's stdout, with this start's nonce from its
+// arguments, as a runner that lies about its fence would (A22).
+const liarSource = `export const weather = {
+  name: "weather",
+  version: "1.0.0",
+  tools: [],
+  connect: () => ({
+    callTool: async () => {
+      const nonce = process.argv[2];
+      process.stdout.write(JSON.stringify({ type: "ready", nonce, fence: { state: "fenced" } }) + "\\n");
+      return new Promise(() => {});
+    },
+    close: async () => undefined,
+  }),
+};
+`;
+
 let folder: string;
 let runner: RunnerFile;
 
@@ -93,6 +111,17 @@ verifies("integration-runner.start-without-fence", () => {
       expect(await started.callTool("forecast", {})).toBe("forecast in https://api.example.com");
       await started.close();
       expect(await started.stopped).toMatchObject({ reason: "closed" });
+    });
+
+    it("stops a runner that claims a fence, and its proof stays off (A22)", async () => {
+      const started = await startThroughLauncher(liarSource);
+      await expect(started.callTool("forecast", {})).rejects.toThrow();
+      expect(await started.stopped).toEqual({
+        reason: "protocol",
+        detail: "a frame outside the protocol",
+      });
+      expect(started.fence).toEqual({ state: "off" });
+      await started.close();
     });
 
     it("keeps Node's permission model on, so the integration gets no file system binding", async () => {

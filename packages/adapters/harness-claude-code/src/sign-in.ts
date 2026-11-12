@@ -74,10 +74,17 @@ export function findSignInMessage(text: string): SignInProblem | undefined {
   return findSignInProblem(message);
 }
 
-/** What a person reads for each problem, with the one thing to do. */
+/**
+ * What a person reads for each problem, with the one thing to do (HAL-5231).
+ * A run uses the agent's own sign-in, in its settings folder, so signing in
+ * in the person's own terminal doesn't help: `halonic doctor` shows the
+ * sign-in command for each agent that needs one.
+ */
 const signInSentences: Readonly<Record<SignInProblem, string>> = {
-  "signed-out": "Claude Code isn't signed in on this computer. Sign in with `claude auth login`.",
-  "sign-in-expired": "Claude Code's sign-in has expired. Sign in again with `claude auth login`.",
+  "signed-out":
+    "Claude Code isn't signed in for this agent. Sign in for this agent, not in your own terminal: `halonic doctor` shows the command.",
+  "sign-in-expired":
+    "Claude Code's sign-in for this agent has expired. Sign in again for this agent: `halonic doctor` shows the command.",
 };
 
 /**

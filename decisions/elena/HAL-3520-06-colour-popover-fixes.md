@@ -1,6 +1,6 @@
 # Decision: the ColourPopover closes on Shift+Tab onto its button, and its focus ring sits on `surface-raised`
 
-- Approval: Liam's review of #1076 on [HAL-3648](/HAL/issues/HAL-3648) asked for these as follow-ups; Noah's visual check asked for the ring's gap; Liam (package reviewer) approves this note in review
+- Approval: Liam's review of #1076 on HAL-3648 asked for these as follow-ups; Noah's visual check asked for the ring's gap; Liam (package reviewer) approves this note in review
 - Kind: internal
 - Task: HAL-3520
 

@@ -6,22 +6,29 @@ import type {
   Sandbox,
   SandboxCapabilities,
   SandboxCheck,
+  SandboxFix,
   SandboxNetwork,
   SandboxProfile,
   SandboxSession,
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
+import { HelperError } from "./elevate-helper.ts";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
+import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
 import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
 
-/** One reason the sandbox can't start, with the sentence that says what is missing. */
+/**
+ * One reason the sandbox can't start, with the sentence that says what is
+ * missing and, when this machine has one, the fix as data.
+ */
 interface Unavailable {
   reason: SandboxUnavailableReason;
   missing: string;
+  fix?: SandboxFix;
 }
 
 /**
@@ -33,11 +40,22 @@ interface Unavailable {
  */
 const readyChecks = new WeakMap<Runner, Promise<string | null>>();
 
-/** What setting up the sandbox gave: done, or why not, in one line. */
-export type SandboxSetup = { ok: true } | { ok: false; reason: string };
+/**
+ * What setting up the sandbox gave: done, or how it ended and why not, in one
+ * line. `cancelled`: the administrator prompt was turned down. `failed`: the
+ * setup didn't happen. `check_failed`: it happened, but the check doesn't
+ * pass. These are the installer finish page's outcomes, which Studio and
+ * `halonic sandbox setup --json` show too (HAL-1415, 2 point 4). `code` is
+ * the helper's exit code, shown after the reason in small text.
+ */
+export type SandboxSetup =
+  | { ok: true }
+  | { ok: false; outcome: "cancelled" | "failed" | "check_failed"; reason: string; code?: number };
 
-/** What removing the sandbox gave: done, or why not, in one line. */
-export type SandboxRemoval = SandboxSetup;
+/** What removing the sandbox gave: done, or how it ended and why not, in one line. */
+export type SandboxRemoval =
+  | { ok: true }
+  | { ok: false; outcome: "cancelled" | "failed"; reason: string; code?: number };
 
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
 const promptCancelled = "the administrator prompt was cancelled; nothing changed";
@@ -102,12 +120,15 @@ export class SrtSandbox implements Sandbox {
       unavailable = { reason: "other", missing: "the machine could not be examined" };
     }
     if (unavailable === null) return { ok: true, reason: null, missing: [] };
-    return { ok: false, reason: unavailable.reason, missing: [unavailable.missing] };
+    const { reason, missing, fix } = unavailable;
+    return { ok: false, reason, missing: [missing], ...(fix === undefined ? {} : { fix }) };
   }
 
   /**
-   * The one-time setup the installer runs, as an administrator. On Windows it
-   * runs srt's install, without srt's profile read grant, then checks the
+   * The one-time setup that Studio's Settings, `halonic sandbox setup` and the
+   * installer run. On Windows it runs srt's install through Halonic's signed
+   * helper, with one administrator prompt, without srt's profile read grant
+   * (see {@link Machine.installWindowsSandbox}), then checks the
    * sandbox, so `ok` means {@link SrtSandbox.check} passes. The install is for
    * the whole machine, so it serves every user, also when an administrator
    * other than the person at the keyboard answered the prompt. Running it
@@ -117,17 +138,19 @@ export class SrtSandbox implements Sandbox {
   async setUp(): Promise<SandboxSetup> {
     const machine = this.#machine;
     if (machine.platform !== "win32") {
-      return { ok: false, reason: `only Windows has a sandbox setup, not ${machine.platform}` };
+      const reason = `only Windows has a sandbox setup, not ${machine.platform}`;
+      return { ok: false, outcome: "failed", reason };
     }
     try {
       if ((await machine.installWindowsSandbox()) === "cancelled") {
-        return { ok: false, reason: promptCancelled };
+        return { ok: false, outcome: "cancelled", reason: promptCancelled };
       }
     } catch (error) {
-      return { ok: false, reason: errorLine(error) };
+      return { ok: false, outcome: "failed", ...failure(error) };
     }
     const check = await this.check();
-    return check.ok ? { ok: true } : { ok: false, reason: oneLine(check.missing.join("; ")) };
+    if (check.ok) return { ok: true };
+    return { ok: false, outcome: "check_failed", reason: oneLine(check.missing.join("; ")) };
   }
 
   /**
@@ -143,10 +166,10 @@ export class SrtSandbox implements Sandbox {
     if (this.#machine.platform !== "win32") return { ok: true };
     try {
       if ((await this.#machine.uninstallWindowsSandbox()) === "cancelled") {
-        return { ok: false, reason: promptCancelled };
+        return { ok: false, outcome: "cancelled", reason: promptCancelled };
       }
     } catch (error) {
-      return { ok: false, reason: errorLine(error) };
+      return { ok: false, outcome: "failed", ...failure(error) };
     }
     return { ok: true };
   }
@@ -160,7 +183,7 @@ export class SrtSandbox implements Sandbox {
    *
    * @param profileFolder - Halonic's profile folder, which holds the sessions' temp folders
    */
-  async cleanUp(profileFolder: string): Promise<SandboxSetup> {
+  async cleanUp(profileFolder: string): Promise<{ ok: true } | { ok: false; reason: string }> {
     if (this.#machine.platform !== "win32") return { ok: true };
     try {
       await this.#machine.forgetSandboxParents(profileFolder);
@@ -242,9 +265,12 @@ export class SrtSandbox implements Sandbox {
       if (!(await machine.hasSeatbelt())) {
         return { reason: "other", missing: "sandbox-exec is not installed" };
       }
-      return (await machine.hasRipgrep())
-        ? null
-        : { reason: "ripgrep-missing", missing: "ripgrep is not installed" };
+      if (await machine.hasRipgrep()) return null;
+      return {
+        reason: "ripgrep-missing",
+        missing: "ripgrep is not installed",
+        fix: installFix(await machine.packageManager(), ["ripgrep"]),
+      };
     }
     if (machine.platform !== "linux") {
       return { reason: "other", missing: `${machine.platform} has no sandbox` };
@@ -269,14 +295,21 @@ export class SrtSandbox implements Sandbox {
     }
     if (!(await machine.hasBubblewrap())) {
       // Without bubblewrap, the AppArmor setting says nothing: Ubuntu 24.04's
-      // profile for bubblewrap lets it through once it is installed.
-      return { reason: "bubblewrap-missing", missing: "bubblewrap is not installed" };
+      // profile for bubblewrap lets it through once it is installed. The fix
+      // installs the helpers too, so one command does it.
+      const helpers = await machine.missingLinuxHelpers();
+      return {
+        reason: "bubblewrap-missing",
+        missing: "bubblewrap is not installed",
+        fix: installFix(await machine.packageManager(), ["bubblewrap", ...helpers]),
+      };
     }
     const bubblewrapError = await machine.bubblewrapUserNamespaceError();
     if (bubblewrapError !== null && (await machine.appArmorRestrictsUserNamespaces())) {
       return {
         reason: "user-namespaces-restricted",
         missing: "the system doesn't let programs create user namespaces",
+        fix: appArmorFix(),
       };
     }
     const helpers = await machine.missingLinuxHelpers();
@@ -284,6 +317,7 @@ export class SrtSandbox implements Sandbox {
       return {
         reason: "linux-tools-missing",
         missing: `${helpers.join(" and ")} ${helpers.length === 1 ? "is" : "are"} not installed`,
+        fix: installFix(await machine.packageManager(), helpers),
       };
     }
     if (bubblewrapError !== null) {
@@ -317,6 +351,12 @@ function grantedPaths(profile: SandboxProfile): string[] {
     ...(settingsFolder === null ? [] : [settingsFolder]),
     ...readOnlyPaths,
   ];
+}
+
+/** A failed setup's or removal's reason, with the helper's code when the helper gave one. */
+function failure(error: unknown): { reason: string; code?: number } {
+  const reason = errorLine(error);
+  return error instanceof HelperError ? { reason, code: error.code } : { reason };
 }
 
 /** What `error` says, on one line. */

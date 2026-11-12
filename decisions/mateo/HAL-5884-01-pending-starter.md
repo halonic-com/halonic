@@ -1,6 +1,6 @@
 # Decision: a process-starter entry can merge before its code
 
-- Approval: [HAL-5884](/HAL/issues/HAL-5884)
+- Approval: HAL-5884
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bAaCaaW4y/nxRm2rm742kaxLVtgww8gwNnD7T7NvZQQmRjVGnNVWl4h8rPkfOzUNW32w9U0l8PaTb1LctwJ4DA==
 

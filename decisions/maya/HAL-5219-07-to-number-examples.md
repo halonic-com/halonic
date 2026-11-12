@@ -1,6 +1,6 @@
 # Decision: show the thousands reading of `toNumber` in its requirement
 
-- Approval: [HAL-5219](/HAL/issues/HAL-5219)
+- Approval: HAL-5219
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:H1T0OZMqK7brW4H26cHt9TSEVTFtaZPuZYAYJu/RY76I/vRF+zu/O8puusGFhZS+bJoGkdx58XaprVz4Yv01CQ==
 

@@ -23,3 +23,6 @@ The kit's `Slider` shall be a native range input without its own look, named by 
 - Given an unavailable Slider with the reason "Turn on See-through panels first.",
   when the user presses the right arrow on it,
   then the key does nothing, it stays at 40 and focusable, and it is described by the reason.
+- Given a Slider with an `onEnd`,
+  when the pointer is cancelled or the Slider loses focus,
+  then `onEnd` is called, after `onCommit` when a value was saved.

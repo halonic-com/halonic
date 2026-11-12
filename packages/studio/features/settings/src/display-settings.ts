@@ -36,6 +36,8 @@ export class DisplaySettings {
    */
   private readonly shown = new Map<string, unknown>();
   private readonly failures = new Map<string, unknown>();
+  /** The keys shown by `preview` that no `set` has taken over yet. */
+  private readonly previewing = new Set<string>();
   /**
    * The latest save of each key while it is saving, so an older save that ends later can't undo a
    * newer one, and a change from another window doesn't overwrite a value that is still saving.
@@ -63,6 +65,29 @@ export class DisplaySettings {
   }
 
   /**
+   * Shows `value` without storing it, while a slider is dragged, so the window follows the thumb.
+   * The `set` when it lets go stores it. Another window's change, or listening starting or
+   * stopping, puts the stored value back.
+   */
+  preview<Value>(pref: DisplayPref<Value>, value: Value): void {
+    this.shown.set(pref.key, value);
+    this.previewing.add(pref.key);
+    this.changed();
+  }
+
+  /**
+   * Puts the stored value back after a `preview` that no `set` followed: a drag that never let go
+   * because the dialog closed, the pointer was cancelled or the slider lost focus. Does nothing
+   * when the setting isn't previewing, or a `set` has taken over.
+   */
+  endPreview(pref: DisplayPref<unknown>): void {
+    if (this.previewing.delete(pref.key) && !this.latest.has(pref.key)) {
+      this.shown.delete(pref.key);
+      this.changed();
+    }
+  }
+
+  /**
    * Shows `value` at once and stores it. On a failure the stored value comes back (the value from
    * before, or one another window stored meanwhile), unless a newer change to the same setting came
    * in meanwhile.
@@ -70,6 +95,7 @@ export class DisplaySettings {
   async set<Value>(pref: DisplayPref<Value>, value: Value): Promise<SaveOutcome<Value>> {
     const save = ++this.saves;
     this.latest.set(pref.key, save);
+    this.previewing.delete(pref.key);
     this.shown.set(pref.key, value);
     this.changed();
     try {
@@ -139,6 +165,7 @@ export class DisplaySettings {
       return;
     }
     this.shown.delete(key);
+    this.previewing.delete(key);
     this.failures.delete(key);
     this.changed();
   }

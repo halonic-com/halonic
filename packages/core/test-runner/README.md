@@ -28,6 +28,11 @@ own: fresh stores, a test clock that starts at the given clock's time and moves 
 `{ advance }`, the scripted model made from the case's `mocks`, connectors that answer from its
 `tools`, and programs that answer from its `programs`. Each case's run is the `test` run `test_1`. A failed test is a result, never an error.
 
+The scripted model answers every model call, but each call is named as in a real run: the agent's
+model, or the default, resolved from the workspace's aliases, so the run logs that model and prices
+the call from the alias's `price` (`test-runner.test-model`). A name with no alias logs `test`, at
+cost 0.
+
 The expectations follow the old runner: `context` is a partial match (objects key by key, arrays
 whole), `artifacts` means "at least these" and is checked against the run's `artifact.created`
 events, `final` without `status` expects the run to finish, and a run that fails with no `status`

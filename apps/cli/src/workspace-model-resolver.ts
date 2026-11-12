@@ -12,14 +12,15 @@ import type {
   ChatTurnRequest,
   HttpClient,
   LlmProvider,
-  ModelPrice,
   Secrets,
 } from "@halonicjs/ports";
 import {
+  callModelName,
   definitionsOf,
   type HubDefinitions,
   type LoadedWorkspace,
   type ModelTarget,
+  modelPrice,
   resolveModel,
 } from "@halonicjs/workspace";
 import { modelMessages } from "./messages/models.ts";
@@ -98,12 +99,7 @@ export function workspaceModelResolver(
       return unsavedModel(request.agent, context);
     }
     const definitions = definitionsFor(request.hubId);
-    // `default` is the format's own default, for a workspace.yaml that didn't parse.
-    const name =
-      request.alias ??
-      agentModel(definitions, request.agentId) ??
-      definitions.defaultModel ??
-      "default";
+    const name = callModelName(definitions, request);
     const target = resolveModel(input.workspace, request.hubId, name);
     if (target === undefined) {
       throw new WorkspaceModelError(
@@ -141,11 +137,6 @@ export function latestModelResolver(
   };
 }
 
-/** The `model` of the agent a call is for, in its hub; `undefined` without one. */
-function agentModel(definitions: HubDefinitions, agentId: string | undefined): string | undefined {
-  return agentId === undefined ? undefined : definitions.agents[agentId]?.model;
-}
-
 /**
  * The model a provider file and a target make, with its alias's params. The
  * mock model runs on this computer whatever its file says, so its calls cost nothing.
@@ -164,21 +155,6 @@ function resolvedModel(
     ...(file.secret === undefined ? {} : { secret: file.secret }),
     ...(target.price === undefined ? {} : { price: modelPrice(target.price) }),
     ...(params === undefined ? {} : { params }),
-  };
-}
-
-/**
- * An alias's price as the engine takes it: the file format reads a cache
- * price it doesn't have as `undefined`, the engine wants it left out.
- */
-function modelPrice(price: NonNullable<ModelTarget["price"]>): ModelPrice {
-  const { input, output, cacheRead, cacheWrite, cacheWrite1h } = price;
-  return {
-    input,
-    output,
-    ...(cacheRead === undefined ? {} : { cacheRead }),
-    ...(cacheWrite === undefined ? {} : { cacheWrite }),
-    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }),
   };
 }
 

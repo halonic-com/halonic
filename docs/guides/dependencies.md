@@ -46,8 +46,9 @@ What runs at a cloud provider (a Cloudflare Worker, later a container image)
 carries **only our own code, the provider's own code and `zod`**. The runtime
 never reads YAML: the deploy step ships the workspace as checked JSON.
 Passwords are checked with WebCrypto, not `@noble/hashes`. `main` has no cloud
-target yet (`packages/targets/` doesn't exist), so these rules and
-`pnpm check:bundle` wait for the first runtime build.
+runtime yet (only the Cloudflare test harness, `packages/targets/cloudflare/testing`,
+which never ships), so these rules and `pnpm check:bundle` wait for the first
+runtime build.
 
 - `"cloudRuntime": true` in `dependencies.json` puts a library on the
   runtime list. Today only `zod` has it, and a test pins that. Only core

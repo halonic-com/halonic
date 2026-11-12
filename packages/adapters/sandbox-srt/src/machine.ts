@@ -1,6 +1,17 @@
 import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
+import { join } from "node:path";
+import type { SandboxPackageManager } from "@halonicjs/ports";
+import {
+  findHelper,
+  HELPER_DIDNT_START,
+  listsElevated,
+  type Spawn,
+  throughHelper,
+} from "./elevate-helper.ts";
+import { KeptGrants } from "./kept-grants.ts";
+import { findPackageManager } from "./package-manager.ts";
 import {
   forgetSandboxParents,
   letSandboxReadParents,
@@ -44,16 +55,25 @@ export interface Machine {
   appArmorRestrictsUserNamespaces(): Promise<boolean>;
   /** Whether Apple's `sandbox-exec` is there. */
   hasSeatbelt(): Promise<boolean>;
+  /**
+   * The package manager that installs bubblewrap, `socat` and ripgrep here:
+   * `apt`, `dnf`, `pacman` or `zypper` on Linux, `brew` on macOS, `null` when
+   * there is none Halonic knows. Only for the fix a refused check names.
+   */
+  packageManager(): Promise<SandboxPackageManager | null>;
   /** Whether srt's Windows install is there and usable: the sandbox account, its network filters and a matching setup version. */
   hasWindowsSandbox(): Promise<boolean>;
   /**
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
    * once, unless this process already runs as one. Running it again repairs
-   * the install or changes nothing.
+   * the install or changes nothing. With Halonic's signed helper next to this
+   * program (the agent host in the app folder), the helper runs it from its
+   * admin-only copy of srt-win (HAL-1451); without it (the CLI run by Node),
+   * srt asks for itself.
    *
    * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
-   * @throws with srt's own words when the install fails
+   * @throws {HelperError} with a reason sentence and the helper's code, or with srt's own words, when the install fails
    */
   installWindowsSandbox(): Promise<"installed" | "cancelled">;
   /**
@@ -66,7 +86,11 @@ export interface Machine {
    */
   letSandboxReadParents(folders: readonly string[]): Promise<void>;
   /**
-   * Runs srt's Windows uninstall (`srt windows-uninstall`): the sandbox
+   * Runs srt's Windows uninstall (`srt windows-uninstall`), through the helper
+   * as {@link Machine.installWindowsSandbox} does, which also takes away its
+   * Installed apps entry, and then, in this process and only when it runs
+   * without administrator rights, takes back the grants srt kept for this
+   * user (HAL-7544): the sandbox
    * account and its profile, the sandbox group, the network filters, the
    * `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants this user's
    * sessions kept on their folders. It asks for an administrator once, unless
@@ -74,7 +98,7 @@ export interface Machine {
    * nothing, so running it again is safe.
    *
    * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
-   * @throws with srt's own words when the uninstall fails, also while a sandboxed program runs
+   * @throws {HelperError} or with srt's own words when the uninstall fails, also while a sandboxed program runs
    */
   uninstallWindowsSandbox(): Promise<"removed" | "cancelled">;
   /**
@@ -177,6 +201,53 @@ function linuxHelpersMissing(): Promise<LinuxHelper[]> {
   return linuxHelpersProbe;
 }
 
+/** Runs a program and gives its exit code and stderr, for the sandbox helper. Never rejects. */
+const spawnHelper: Spawn = (file, args) =>
+  new Promise((resolve) => {
+    execFile(file, args, { windowsHide: true }, (error, _stdout, stderr) => {
+      if (error === null) {
+        resolve({ code: 0, stderr: String(stderr ?? "") });
+        return;
+      }
+      const code = typeof error.code === "number" ? error.code : HELPER_DIDNT_START;
+      resolve({ code, stderr: String(stderr ?? "") || error.message });
+    });
+  });
+
+/** This process's groups, as `whoami /groups` lists them, or null when they can't be read. */
+const whoamiGroups = (): Promise<string | null> =>
+  new Promise((resolve) => {
+    const root = process.env["SystemRoot"];
+    if (root === undefined) {
+      resolve(null);
+      return;
+    }
+    const whoami = join(root, "System32", "whoami.exe");
+    const args = ["/groups", "/fo", "csv", "/nh"];
+    execFile(whoami, args, { windowsHide: true, encoding: "utf8" }, (error, stdout) => {
+      resolve(error === null ? stdout : null);
+    });
+  });
+
+/**
+ * The half of srt's uninstall that is this user's own, after the helper's
+ * machine-wide half: take back the grants srt kept for them (HAL-7544). Not
+ * from a process with administrator rights, as when an uninstaller runs from
+ * an elevated prompt: those grants change access lists on paths from the
+ * user's own session store, which their programs can change. They then stay
+ * recorded, naming a group that is gone, until a removal runs without them.
+ *
+ * @throws when a grant stays recorded, with why
+ */
+async function forgetUsersGrants(): Promise<void> {
+  if (listsElevated(await whoamiGroups())) return;
+  const failed = await new KeptGrants().forgetAll();
+  if (failed.length === 0) return;
+  throw new Error(
+    `not all the access it kept on your folders could be taken back (${failed.join("; ")}); close what runs in the sandbox and remove it again`,
+  );
+}
+
 /** The machine this process runs on. */
 export const systemMachine: Machine = {
   platform: process.platform,
@@ -193,6 +264,7 @@ export const systemMachine: Machine = {
     failure("bwrap", ["--ro-bind", "/", "/", "--unshare-user", "--", "true"]),
   appArmorRestrictsUserNamespaces: async () => (await readOrEmpty(restrictSetting)).trim() === "1",
   hasSeatbelt: () => exists("/usr/bin/sandbox-exec"),
+  packageManager: () => findPackageManager(process.platform, process.env["PATH"] ?? ""),
   async hasWindowsSandbox() {
     if (process.platform !== "win32") return false;
     try {
@@ -208,6 +280,12 @@ export const systemMachine: Machine = {
     }
   },
   async installWindowsSandbox() {
+    const helper = findHelper("setup");
+    if (helper !== null) {
+      return (await throughHelper(helper, "setup", spawnHelper)) === "done"
+        ? "installed"
+        : "cancelled";
+    }
     const { installWindowsSandboxAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
     );
@@ -233,6 +311,12 @@ export const systemMachine: Machine = {
     await letSandboxReadParents(parents, sid);
   },
   async uninstallWindowsSandbox() {
+    const helper = findHelper("remove");
+    if (helper !== null) {
+      if ((await throughHelper(helper, "remove", spawnHelper)) === "cancelled") return "cancelled";
+      await forgetUsersGrants();
+      return "removed";
+    }
     const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
     );

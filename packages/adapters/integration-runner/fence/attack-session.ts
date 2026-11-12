@@ -1,9 +1,11 @@
 // Runs one attack script in the runner's own untrusted profile, in a real
-// `sandbox-srt` session (design HAL-958, section 6). The script is started the
-// way the runner is: the same profile, the same Node, and with Node's layer on
-// the same permission flags. With Node's layer off it is plain Node, so only
-// the OS fence stands between the script and the machine. That is what an
-// integration has once it gets past the module hook and Node's layer.
+// sandbox session (design HAL-958, section 6): `sandbox-srt` where the fence
+// runs, or `sandbox-host` on native Windows, where the runner has Node's layer
+// only. The script is started the way the runner is: the same profile, the
+// same Node, and with Node's layer on the same permission flags. With Node's
+// layer off it is plain Node, so only the OS fence stands between the script
+// and the machine. That is what an integration has once it gets past the
+// module hook and Node's layer.
 //
 // An attack script prints one JSON object: for each attempt its name and
 // whether it was `refused`, `allowed` or `timed out`, with the error code or
@@ -12,8 +14,8 @@
 // may have left and gone unanswered, so it never counts as `refused`.
 
 import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import type { Sandbox, SandboxCommand } from "@halonicjs/ports";
 import { runnerCommand } from "../src/halonic/runner-command.ts";
 import {
@@ -80,10 +82,17 @@ process.on("beforeExit", () => {
  * list and bubblewrap's mount, and bubblewrap then fails to create the mount
  * point in the read-only `/tmp`. Outside it, `/tmp` is hidden as one folder.
  * Seatbelt on macOS mounts nothing, so `/tmp` has no such race there.
+ *
+ * Windows has no `/tmp`, and no srt socket in the runs that use this, so the
+ * base goes in the usual temp folder there.
  */
 export async function fenceTestBase(prefix: string): Promise<string> {
-  const parent = process.platform === "linux" ? "/var/tmp" : "/tmp";
-  return realpath(await mkdtemp(join(parent, prefix)));
+  return realpath(await mkdtemp(join(baseParent(process.platform), prefix)));
+}
+
+function baseParent(platform: NodeJS.Platform): string {
+  if (platform === "win32") return tmpdir();
+  return platform === "linux" ? "/var/tmp" : "/tmp";
 }
 
 /** The folders one attack run uses. */
@@ -113,6 +122,8 @@ export interface RunAttackOptions {
   readonly nodeLayer: NodeLayer;
   /** The home folder and the socket folders the profile hides. */
   readonly hidden: Pick<RunnerMachine, "homeFolder" | "socketFolders">;
+  /** The sandbox's own folders the profile keeps readable: srt's runtime, or none for `sandbox-host`. */
+  readonly sandboxFolders: readonly string[];
 }
 
 /**
@@ -134,7 +145,7 @@ export async function runAttack(options: RunAttackOptions): Promise<AttackResult
     {
       ...options.hidden,
       systemFiles: systemFiles(process.platform),
-      sandboxFolders: [sandboxRuntimeFolder()],
+      sandboxFolders: options.sandboxFolders,
       tempFolder: options.folders.tempFolder,
       timeLimitMs: 30_000,
     },
@@ -175,7 +186,8 @@ function attackCommand(files: RunnerFiles, nodeLayer: NodeLayer): SandboxCommand
     exportName: "attack",
   });
   if (nodeLayer === "on") return command;
-  return { ...command, args: command.args.slice(command.args.indexOf(files.runnerFile)) };
+  // The attack script runs in Node's place, without the memory limit around it.
+  return { program: files.node, args: command.args.slice(command.args.indexOf(files.runnerFile)) };
 }
 
 async function readText(stream: ReadableStream<Uint8Array>): Promise<string> {

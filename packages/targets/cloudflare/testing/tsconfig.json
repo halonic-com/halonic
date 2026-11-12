@@ -1,9 +1,11 @@
 {
+  "//": "The Node side. The Worker side (src/worker) is checked against workerd's own types in tsconfig.worker.json.",
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
   "include": [
     "src"
   ],
   "exclude": [
+    "src/worker",
     "src/**/*.test.ts",
     "src/**/*.test.tsx"
   ]

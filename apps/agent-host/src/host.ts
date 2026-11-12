@@ -3,15 +3,16 @@ import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { type SandboxSetup, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
-import { bridgeSocketFolder } from "./bridge/socket-folder.ts";
+import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
+import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
@@ -61,8 +62,8 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  *
  * - `--version` prints its version;
  * - `--sandbox-check` prints whether the sandbox works on this machine, as JSON;
- * - `--sandbox-setup` sets the sandbox up, once, for the installer (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON;
- * - `--sandbox-remove` removes what the setup left, for the uninstaller (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
+ * - `--sandbox-setup` sets the sandbox up, for the installer and Studio, with one administrator prompt (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON: `ok`, or the `outcome` (`cancelled`, `failed`, `check_failed`) and the `reason`;
+ * - `--sandbox-remove` removes what the setup left, for the uninstaller and Studio (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
  * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
@@ -74,6 +75,8 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * the executable passes on). If it gets it, it sweeps the kept Windows grants
  * inside each `--sweep-root` the launcher gives (see {@link SrtSandbox.sweepOnce});
  * while another live host holds the lock, it serves without a sweep (HAL-6256).
+ * The holder also removes, before it serves, the bridges' run folders that a
+ * crashed host left in the profile (see {@link sweepLeftOverBridges}).
  *
  * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep; tests make one on a fake machine
  * @returns the exit code
@@ -101,10 +104,7 @@ export async function run(
   if (args.includes("--sandbox-cleanup")) {
     const profileFolder = argumentAfter(args, "--profile-folder");
     if (profileFolder === undefined) {
-      const missing: SandboxSetup = {
-        ok: false,
-        reason: "--sandbox-cleanup needs --profile-folder.",
-      };
+      const missing = { ok: false, reason: "--sandbox-cleanup needs --profile-folder." };
       return answer(io, missing);
     }
     return answer(io, await makeSandbox([]).cleanUp(profileFolder));
@@ -124,7 +124,11 @@ export async function run(
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
   if (lock !== null) void sandbox.sweepOnce();
-  const host = hostServices(version, sandbox, bridgeSocketFolder(profileFolder));
+  const socketFolder = bridgeSocketFolder(profileFolder);
+  if (lock !== null && socketFolder !== undefined) {
+    await sweepLeftOverBridges(socketFolder, (text) => io.writeError(text));
+  }
+  const host = hostServices(version, sandbox, socketFolder);
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
     await serve(io, host);
@@ -227,6 +231,7 @@ function hostServices(
   const routes = [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
+    ...setupRoutes(new SetupJobs(sandbox), sessions),
     ...bridgeRoutes(
       (secrets) =>
         new NodeHarnessBridgeServer({

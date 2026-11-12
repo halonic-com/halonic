@@ -94,6 +94,7 @@ next to the ports:
 | --- | --- | --- |
 | `isSecretName`, `secretKey`, `isQuotableSecretName`, `describeSecretName` | the `Secrets` name rule: a letter, then letters, digits, `-` or `_`, at most 128 characters; `secretKey` gives the matching form (upper case, `-` as `_`) and throws a `RangeError` for a bad name | `secret-name-rule` |
 | `workspaceSecrets`, `halonicSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets, token names and plugin secrets | `workspace-secrets` |
+| `pluginSecrets`, `pluginSecretSeparator` | a view of `Secrets` for one plugin's backend; it reads only the names stored for that plugin and refuses every other | `plugin-secrets` |
 | `checkWorkspacePath`, `checkPublicWorkspacePath`, `isPrivateWorkspacePath` | the path rules of `DefinitionSource`: refuse unsafe paths, and private ones for the public check | `workspace-path-checks` |
 | `segmentAsOpened` | a path segment as the private-entry rule compares names: without the code points HFS+ ignores, case folded, without trailing dots and spaces | `segment-as-opened` |
 | `checkRunAppend`, `matchesRunFilter`, `startedAtOrAfter`, `compareRunSummaries`, `runLockFormat`, `runLockStaleAfterMs` | the append checks, list filter (`startedAtOrAfter` compares two ISO times as times), order and lock rules of `RunStore` | `run-store-checks` |
@@ -103,8 +104,10 @@ next to the ports:
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
 | `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |
+| `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
+| `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 
 The types these use (`RunFilter`, `RecordChange`, `ToolCall` and the rest) are exported from

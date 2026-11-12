@@ -666,9 +666,11 @@ and where it can talk to, and a yes lets those programs run with your rights.
 The sandbox is a fence built from the operating system's own controls, not a
 virtual machine. It has no CPU or memory limits, on Windows it is a preview,
 and an agent you run "on this computer" has none of it. The limits are written
-out on two pages that must agree with this one:
+out on pages that must agree with this one:
 
 - [Workspace trust](trust.md): what the CLI asks for, what Studio doesn't ask
   for and what trust does not protect against.
 - [The sandbox's limits](sandbox.md): the fence, its reason codes, Windows and
   "this computer".
+- [Plugins and security](plugins.md): the worker and sandbox fences, why a
+  plugin's screens carry no code and what trust doesn't cover.

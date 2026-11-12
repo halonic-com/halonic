@@ -1,6 +1,6 @@
 # Decision: `init --example acme` fits 80 columns
 
-- Approval: [HAL-6419](/HAL/issues/HAL-6419)
+- Approval: HAL-6419
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:48wNxLlqk0/IXYAkmXVSuYjuc5w2KsbjUP+DNd4w2aFSJwOJjwidBztKYRZdpqeBNtcgV9JoddVlLY4dYCWvCQ==
 

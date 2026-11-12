@@ -23,6 +23,7 @@ function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): M
     bubblewrapUserNamespaceError: async () => null,
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => false,
+    packageManager: async () => null,
     hasWindowsSandbox: async () => state.installed,
     installWindowsSandbox: async () => {
       if (cancelled) return "cancelled";
@@ -99,7 +100,7 @@ describe("run", () => {
     const cancelled = new SrtSandbox(windows({ installed: false, prompt: "cancelled" }));
     expect(await run(["--sandbox-setup"], "1.2.3", io, () => cancelled)).toBe(1);
     expect(lines).toEqual([
-      '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
+      '{"ok":false,"outcome":"cancelled","reason":"the administrator prompt was cancelled; nothing changed"}\n',
     ]);
   });
 
@@ -127,7 +128,7 @@ describe("run", () => {
     expect(await run(["--sandbox-remove"], "1.2.3", io, () => cancelled)).toBe(1);
     expect(state.installed).toBe(true);
     expect(lines).toEqual([
-      '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
+      '{"ok":false,"outcome":"cancelled","reason":"the administrator prompt was cancelled; nothing changed"}\n',
     ]);
   });
 

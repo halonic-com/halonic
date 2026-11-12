@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1708 (board, [HAL-1601](/HAL/issues/HAL-1601#document-proposals) proposal 2); [sandbox-screens](/HAL/issues/HAL-1747#document-sandbox-screens) 2; microcopy 23.2; [ux-checklists-sandbox](/HAL/issues/HAL-1833#document-ux-checklists-sandbox) Part 2; Julian's conditions (HAL-1673) and the hint's wording (HAL-6208); `events.blocked-sites`, `std.site-name`
+- Source: HAL-1708 (board, HAL-1601 proposal 2); sandbox-screens (HAL-1747) 2; microcopy 23.2; ux-checklists-sandbox (HAL-1833) Part 2; Julian's conditions (HAL-1673) and the hint's wording (HAL-6208); `events.blocked-sites`, `std.site-name`
 
 The run view shall name each site a step's sandbox refused once, with its tries, from the step's `blockedSites`:
 

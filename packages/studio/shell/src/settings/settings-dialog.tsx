@@ -1,7 +1,17 @@
-import { Dialog } from "@halonicjs/studio-kit";
-import { type ComponentType, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Dialog, isComposing } from "@halonicjs/studio-kit";
+import {
+  type ComponentType,
+  lazy,
+  type RefObject,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { SettingsSectionContribution } from "../points/frame.ts";
+import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { settingsSectionToOpen } from "../points/settings-sections.ts";
 import { loadView } from "../view.ts";
@@ -9,6 +19,7 @@ import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { listedSections, type SettingsPlace, settingsGroups } from "./settings-groups.ts";
 import { SettingsNav } from "./settings-nav.tsx";
+import { isSettingsKey } from "./settings-opening.ts";
 
 /** What a settings section's view gets. */
 export interface SettingsSectionProps {
@@ -45,12 +56,22 @@ export interface SettingsDialogProps {
   readonly lastShown?: string | undefined;
   /** Called with each section shown, the first one too, so the window can remember it for `lastShown`. */
   readonly onShown?: (sectionId: string) => void;
+  /**
+   * In the desktop app, its platform: Mod , then puts the focus back on the current section's row.
+   * Served Studio leaves it out, so the key stays the browser's.
+   */
+  readonly rowKey?: KeyboardPlatform | undefined;
   /** A feature's context: `(featureId) => shell.services.contextFor(featureId, workspace)`. */
   readonly contextFor: (featureId: string) => WorkspaceContext;
   /** Says the section's name when it switches; while Settings is open it speaks in the dialog. */
   readonly announcer: Announcer;
   /** The ✕, Escape, a click outside, and a section's link to a page. */
   readonly onClose: () => void;
+  /**
+   * Where the focus goes on close when the opener is gone or hidden, such as the Settings row of
+   * the narrow window's closed Places drawer: the toolbar's Places button.
+   */
+  readonly returnFocus?: (() => HTMLElement | null) | undefined;
 }
 
 /** Settings' height on a desktop window taller than 704px; a shorter one gets the window less 64px. */
@@ -66,7 +87,8 @@ const settingsHeight = 640;
  * (`settingsSectionToOpen`), with the focus on that section's row, never on a field. Switching
  * says the section's name through the announcer, which speaks inside the dialog while it is open.
  * Escape closes it unless a menu or a confirmation on top of it is open: the kit closes one layer
- * per Escape and gives the focus back to the opener.
+ * per Escape and gives the focus back to the opener. In the desktop app, Mod , while it is open
+ * puts the focus back on the current section's row, unless a dialog on top of it has the focus.
  *
  * Render it while Settings is open; each opening starts on the section `settingsSectionToOpen` picks.
  *
@@ -89,6 +111,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
   );
   const nav = useRef<HTMLElement>(null);
   const section = listed.find((candidate) => candidate.id === current);
+  useRowKey(nav, props.rowKey);
 
   // The section it opened on counts as shown too, so Ctrl , returns to a section a link opened.
   useEffect(() => {
@@ -115,6 +138,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       height={settingsHeight}
       flush
       onCancel={props.onClose}
+      {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}
       initialFocus={() => currentRow(nav.current)}
     >
       <div className="flex h-full min-h-0">
@@ -135,23 +159,61 @@ export function SettingsDialog(props: SettingsDialogProps) {
   );
 }
 
+/**
+ * Mod , pressed inside Settings puts the focus on the current section's row, as opening it does.
+ * A press inside a dialog on top of Settings, such as a confirmation, is that dialog's.
+ */
+function useRowKey(nav: RefObject<HTMLElement | null>, platform: KeyboardPlatform | undefined) {
+  useEffect(() => {
+    const dialog = nav.current?.closest("dialog");
+    if (platform === undefined || dialog == null) {
+      return;
+    }
+    const keys = platform;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || isComposing(event) || !isSettingsKey(event, keys)) {
+        return;
+      }
+      if (event.target instanceof Element && event.target.closest("dialog") !== dialog) {
+        return;
+      }
+      event.preventDefault();
+      currentRow(nav.current)?.focus();
+    }
+    dialog.addEventListener("keydown", onKeyDown);
+    return () => dialog.removeEventListener("keydown", onKeyDown);
+  }, [nav, platform]);
+}
+
 /** The current section's row, which takes the focus when Settings opens (a11y checklist 3.2). */
 function currentRow(nav: HTMLElement | null): HTMLElement | null {
   return nav?.querySelector<HTMLElement>('[aria-current="page"]') ?? null;
 }
 
-function SectionView({
-  section,
-  context,
-  closeSettings,
-  place,
-}: SettingsSectionProps & { readonly section: Registered<SettingsSectionContribution> }) {
+/** Props for {@link SectionView}. */
+export interface SectionViewProps extends SettingsSectionProps {
+  readonly section: Registered<SettingsSectionContribution>;
+  /**
+   * The section's page on a phone: its name is the page's `h1` for screen readers only, since the
+   * top bar shows it. In the dialog it is a visible `h3`.
+   */
+  readonly page?: boolean;
+}
+
+/** A section's name, its saved line where it has one, and its view, as the dialog and the phone show it. */
+export function SectionView({ section, context, closeSettings, place, page }: SectionViewProps) {
   const View = useSectionView(section);
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
-      <h3 id={`settings-section-${section.id}`} className="text-section text-fg">
-        {section.title}
-      </h3>
+      {page === true ? (
+        <h1 id={`settings-section-${section.id}`} tabIndex={-1} className="sr-only">
+          {section.title}
+        </h1>
+      ) : (
+        <h3 id={`settings-section-${section.id}`} className="text-section text-fg">
+          {section.title}
+        </h3>
+      )}
       {section.scope === "display" ? (
         <p className="mt-1 text-small text-fg-muted">{displaySavedLines[place]}</p>
       ) : null}

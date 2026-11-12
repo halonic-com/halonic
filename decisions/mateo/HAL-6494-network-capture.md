@@ -1,7 +1,7 @@
 # Decision: a manual network capture of a CLI session on Linux and macOS
 
 - Task: HAL-6494 (follow-up from HAL-6488, whose check was a libc-level trace without a packet capture)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-6494](/HAL/issues/HAL-6494)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-6494
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bQj/jVwc0QqSF0wHYojchYHA0iwmlPh1adVbj9UhhHTvAPTIsIbFcffOiZHl62LayKIC+CJz0oqQB7NiLnZZCg==
 

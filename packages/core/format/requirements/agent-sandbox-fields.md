@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: stack 2a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), with Liam's changes from HAL-1967; Julian's site cap from HAL-1708; Liam's and Julian's review fixes from HAL-2228 and HAL-2221; Julian's re-review follow-ups from HAL-2430; dot-folders at any depth from HAL-5951; `isInWorkingFolder` from HAL-4732; task HAL-189
+- Source: stack 2a of the HAL-189 implementation plan, with Liam's changes from HAL-1967; Julian's site cap from HAL-1708; Liam's and Julian's review fixes from HAL-2228 and HAL-2221; Julian's re-review follow-ups from HAL-2430; dot-folders at any depth from HAL-5951; `isInWorkingFolder` from HAL-4732; task HAL-189
 
 When `parseFile` reads an agent file, the format shall accept three optional fields that say how a harness agent runs, and leave each out when the file does, so older files read as before:
 

@@ -49,6 +49,11 @@ commit. A `baseline-walked-back` warning names it.
   unchanged.
 - The pull request that repairs `main` can pass `ci-ok`, and the guard
   compares it against a green baseline, not against `main`'s red results.
+- The guard takes only the test results (and its own code) from the green
+  commit. It still compares the pull request's files with the `main` commit
+  its merge ref was built on, and leaves out the tests in files `main`
+  changed between the two, so it doesn't blame the pull request for what
+  `main` changed in between (HAL-7660).
 - Every other job still runs the pull request's own code, so a pull request
   that doesn't fix the break stays red in `Typecheck, lint, test, build`.
 

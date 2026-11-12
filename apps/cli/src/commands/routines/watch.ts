@@ -36,7 +36,7 @@ import { checkRunTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
 import { watchReport } from "./watch-report.ts";
 import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
-import { type VersionCheck, WatchedVersions } from "./watch-versions.ts";
+import { type VersionChecks, WatchedVersions } from "./watch-versions.ts";
 
 /**
  * Watches until Ctrl C or SIGTERM, then returns that it stopped: exit 130
@@ -81,12 +81,12 @@ async function watchVersions(
   const typedDir = givenDir(input, dir);
   const trust = await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   // The routines as the last tick listed them, for the names the lines give.
-  let routines: readonly PlacedRoutine[] = await versions.routines.list();
+  let routines: readonly PlacedRoutine[] = await versions.routines.listLoaded();
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
   const warnings = unsandboxedWarnings(context);
   // Set before the engine opens, so no tick starts a run from a version that wasn't checked.
-  versions.checkWith(laterVersionCheck(setup, dir, typedDir, warnings));
+  versions.checkWith(laterVersionChecks(setup, dir, typedDir, warnings));
   let scheduler: RoutineScheduler | undefined;
   let runStore: RunStore | undefined;
   const engine = await openWorkspaceEngine(context, setup, {
@@ -151,21 +151,24 @@ function stuckReports(
 }
 
 /**
- * The check a version made while the watch runs passes before a run starts
+ * The checks a version made while the watch runs passes before a run starts
  * from it: the trust and sandbox checks the watch made on its first
  * version, for the one workflow the run starts. A version that fails starts
- * no run, and the watch prints that run's ✕ line and goes on.
+ * no run, and the watch prints that run's ✕ line and goes on. The trust
+ * check's grant is what the run's connectors start with.
  */
-function laterVersionCheck(
+function laterVersionChecks(
   setup: RunSetup,
   dir: OpenWorkspaceDir,
   typedDir: string | undefined,
   warnings: UnsandboxedWarnings,
-): VersionCheck {
-  return async (workspace, run) => {
-    await checkRunTrust(dir, workspace, setup.trust(), typedDir);
-    const ending = runMessages.nothingRan();
-    warnings.print(await checkEngineRuns(setup, { dir, workspace, runs: [run], ending }));
+): VersionChecks {
+  const ending = runMessages.nothingRan();
+  return {
+    trust: async (workspace) => await checkRunTrust(dir, workspace, setup.trust(), typedDir),
+    sandbox: async (workspace, run) => {
+      warnings.print(await checkEngineRuns(setup, { dir, workspace, runs: [run], ending }));
+    },
   };
 }
 

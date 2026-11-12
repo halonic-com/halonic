@@ -17,7 +17,7 @@ import {
   connectRunner,
   type RunnerConnection,
 } from "./connect-runner.ts";
-import { runnerCommand } from "./runner-command.ts";
+import { prlimitProgram, runnerCommand } from "./runner-command.ts";
 import {
   diskOnThisMachine,
   isInsideOrSame,
@@ -42,6 +42,8 @@ export interface StartRunnerOptions extends Omit<ConnectRunnerOptions, "process"
   signal?: AbortSignal;
   /** Where the paths are resolved and, on Windows, the folders to hide are listed; this machine's disk unless a test passes another. */
   disk?: RunnerDisk;
+  /** Hears a plain sentence about a limit the runner starts without, once per process; nothing happens to the start. */
+  onNotice?: (message: string) => void;
 }
 
 /** A started runner. */
@@ -60,9 +62,19 @@ export interface StartedRunner extends RunnerConnection {
  * @throws when the sandbox can't open the session or start the runner, such as a fence proof that is `not-fenced`
  */
 export async function startRunner(options: StartRunnerOptions): Promise<StartedRunner> {
-  const { sandbox, entry, signal, disk = diskOnThisMachine, ...connect } = withoutPaths(options);
+  const {
+    sandbox,
+    entry,
+    signal,
+    disk = diskOnThisMachine,
+    onNotice,
+    ...connect
+  } = withoutPaths(options);
   const { files, machine } = realRunnerPaths(options.files, options.machine, disk);
   const entryFile = realEntryFile(entry.file, files, disk);
+  const platform = machine.platform ?? process.platform;
+  const prlimitAvailable = platform !== "linux" || prlimitIsThere(disk);
+  if (!prlimitAvailable) noticeMissingPrlimit(onNotice);
   const nonce = randomUUID();
   const session = await sandbox.open(
     runnerProfile(files, machine, disk),
@@ -76,12 +88,16 @@ export async function startRunner(options: StartRunnerOptions): Promise<StartedR
   let connection: RunnerConnection;
   try {
     const process = await session.start(
-      runnerCommand(files, {
-        nonce,
-        folder: files.integrationFolder,
-        entryFile,
-        exportName: entry.exportName,
-      }),
+      runnerCommand(
+        files,
+        {
+          nonce,
+          folder: files.integrationFolder,
+          entryFile,
+          exportName: entry.exportName,
+        },
+        { platform, prlimitAvailable },
+      ),
     );
     connection = await connectRunner({ ...connect, process, nonce });
   } catch (error) {
@@ -103,6 +119,39 @@ export async function startRunner(options: StartRunnerOptions): Promise<StartedR
       await sessionClosed;
     },
   };
+}
+
+/**
+ * Whether `prlimit` is on this machine. It is looked up here, on the host,
+ * because inside the sandbox a missing program only shows as a runner that
+ * never starts.
+ */
+function prlimitIsThere(disk: RunnerDisk): boolean {
+  try {
+    disk.realPath(prlimitProgram);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let saidPrlimitIsMissing = false;
+
+/**
+ * Tells once per process that the runner starts without the data limit. A
+ * start without `onNotice` says nothing and leaves the sentence for the next.
+ */
+function noticeMissingPrlimit(onNotice: ((message: string) => void) | undefined): void {
+  if (saidPrlimitIsMissing || onNotice === undefined) return;
+  saidPrlimitIsMissing = true;
+  onNotice(
+    `${prlimitProgram} is missing, so the integration runner starts without its limit on memory outside the JavaScript heap`,
+  );
+}
+
+/** Lets the next start say again that `prlimit` is missing; for tests only. */
+export function forgetPrlimitNotice(): void {
+  saidPrlimitIsMissing = false;
 }
 
 /** The options without the paths as given, so only the real ones are used. */

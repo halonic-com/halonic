@@ -66,9 +66,10 @@ export function onLine(
  */
 export function originText(origin: PluginOrigin): string {
   if (origin.kind === "folder") return origin.path;
+  // The user part runs up to the last @ before the first /: a typed password may hold an @.
   return origin.address
     .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
-    .replace(/^[^/@]*@/, "")
+    .replace(/^[^/]*@/, "")
     .replace(/\.git\/?$/, "");
 }
 

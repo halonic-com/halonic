@@ -787,7 +787,19 @@ so the page's `h1` is for screen readers only.
 />;
 ```
 
-Not yet: Settings joins the list when T11 adds it with its icon.
+Pass `onSettings` (the window's `openSettings`) and **Settings** ends the list, with its icon and a
+chevron; without it there is no row, as the sidebar has none. Its tap opens the Settings list page.
+
+### The Settings list page
+
+On a phone Settings is a page, not a dialog (`shell.settings-list-page`, flow-settings 13). The
+More page's Settings row, and `openSettings` from a view, push `settingsLocation` on the More
+stack. `SettingsListPage` lists the sections the window has, in the desktop's order
+(`settingsGroups`), as a flush List with a chevron on each row; a tap opens the section as the next
+page (`sectionLocation`, key `settings/<id>`), drawn by `SectionView` with the section's name as
+the page's `h1` for screen readers, as the top bar shows it. Back returns one page at a time: to
+the list, then to More. `openSettings("assistant")` opens the list and that section above it.
+Groups and summaries on the list come later (HAL-7832 part 2).
 
 ### Joined, and Android's back
 
@@ -963,10 +975,13 @@ Enter or a click switches and says the section's name. A section's view gets
 that fails to load leaves its heading and the list working.
 
 Settings opens over the window (`shell.settings-window`): the context the window gives views and
-commands has `openSettings(sectionId?)`, the `settings.open` of flow-settings, and the desktop app
-opens it on Mod , as well. The window draws `SettingsDialog` with `contributions.settings.list()`,
-places it as the app's or the served Studio's, and remembers the section shown last for the next
-opening (`useSettingsOpening`). Closing it gives the focus back to the opener.
+commands has `openSettings(sectionId?)`, the `settings.open` of flow-settings, and
+`settingsSections`, the id and title of each section features added, so Ctrl K offers only those.
+The sidebar's **Settings** row, last under a divider, opens it too (`shell.sidebar-settings`), and
+the desktop app opens it on Mod , as well; Mod , while it is open puts the focus back on the current
+section's row. The window draws `SettingsDialog` with `contributions.settings.list()`, places it
+as the app's or the served Studio's, and remembers the section shown last for the next opening
+(`useSettingsOpening`). Closing it gives the focus back to the opener.
 
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search
@@ -1044,7 +1059,7 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 - **Errors:** `ErrorContext`, `ErrorMessage`, `ErrorAction`, `RulePlace`.
 - **Features:** `Feature`, `FeatureDefinition`, `Shell`, `ShellOptions`, `Studio`, `ServiceKey`,
   `ServiceTarget`, `ServiceFactory`, `ServiceLookup`, `FeatureServices`, `WorkspaceContext`,
-  `ViewRef`, `ShellError`.
+  `SettingsSectionName`, `ViewRef`, `ShellError`.
 - **Points:** `FramePoints`, `FrameContributions`, `LayoutPoints`, `LayoutContributions`,
   `CommandPoints`, `CommandContributions`, `ContextFor`, `Point`, `Ordered`, `Contributed`, `Registered`,
   `KeyboardPlatform`, and the contribution types: `CardContribution`, `PanelWindowContribution`,

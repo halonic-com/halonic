@@ -3,7 +3,7 @@
 // decide the marks. It holds no words: the CLI words the report from its
 // message catalogue (cli-output 3.7), and the Studio can show the same report.
 
-import type { Harness, Sandbox, Secrets } from "@halonicjs/ports";
+import type { Sandbox, Secrets } from "@halonicjs/ports";
 import {
   type DetectedHarness,
   type DoctorLine,
@@ -12,6 +12,7 @@ import {
   type HarnessAgent,
   type HarnessesLine,
   harnessesLine,
+  type SignedOutAgent,
 } from "./doctor-checks.ts";
 import {
   type DiskLine,
@@ -31,6 +32,11 @@ import {
   modelsLine,
 } from "./doctor-models-line.ts";
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
+import {
+  type AgentSettingsFolder,
+  type DoctorHarness,
+  signedOutAgents,
+} from "./doctor-sign-ins.ts";
 import type { ProviderModels, ResourceReport } from "./resource-report.ts";
 import type { SandboxChoiceService } from "./sandbox-choice.ts";
 import type { TrustCheck, TrustSubject } from "./trust-service.ts";
@@ -83,6 +89,14 @@ export interface DoctorWorkspace {
    * leaves a file out, so the Workspace line fails while there are any (HAL-6613).
    */
   fileProblems?: number;
+  /**
+   * The folder an agent's harness keeps its own settings in, its sign-in
+   * among them, as `WorkspaceFolders.harnessSettingsFolder` gives it, or
+   * `undefined` for an agent whose id can't name a folder. Left out where
+   * the host has none: then the Harnesses line doesn't ask about the
+   * agents' own sign-ins.
+   */
+  harnessSettingsFolder?: (agentId: string, harnessId: string) => string | undefined;
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -100,8 +114,8 @@ export interface DoctorServiceOptions {
    * provider on this computer, so `doctor` asks each of them only once.
    */
   resources: Pick<ResourceReport, "read">;
-  /** Every harness Halonic can start other than its own loop. */
-  harnesses: readonly Pick<Harness, "id" | "name" | "detect">[];
+  /** Every harness Halonic can start other than its own loop, with its sign-in where it has one. */
+  harnesses: readonly DoctorHarness[];
   /** The store the providers' keys are in, as `runCli` wrapped it. */
   secrets: Secrets;
   /**
@@ -164,7 +178,7 @@ export class DoctorService {
         : this.options.trust.check(workspace.trust),
       sandbox.check(),
       this.options.resources.read(),
-      this.detectHarnesses(),
+      this.checkHarnesses(workspace),
       this.storedKeys(workspace?.providers ?? []),
       this.options.node?.() ?? null,
     ]);
@@ -187,12 +201,29 @@ export class DoctorService {
     const choice = this.options.sandboxChoice?.current() ?? null;
     const mxc = choice === null ? undefined : mxcLine(choice);
     if (mxc !== undefined) report.mxc = mxc;
-    const harnessLine = harnessesLine(harnesses, harnessAgents(workspace));
+    const harnessLine = harnessesLine(
+      harnesses.detected,
+      harnessAgents(workspace),
+      harnesses.signedOut,
+    );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
     const runtime = nodeLine(node);
     if (runtime !== undefined) report.node = runtime;
 
     return { ...report, summary: doctorSummary(linesOf(report)) };
+  }
+
+  /** What each harness's `detect()` finds, then which agents aren't signed in in their own folder. */
+  private async checkHarnesses(
+    workspace: DoctorWorkspace | null,
+  ): Promise<{ detected: DetectedHarness[]; signedOut: SignedOutAgent[] }> {
+    const detected = await this.detectHarnesses();
+    const signedOut = await signedOutAgents(
+      this.options.harnesses,
+      detected,
+      agentSettingsFolders(workspace),
+    );
+    return { detected, signedOut };
   }
 
   private detectHarnesses(): Promise<DetectedHarness[]> {
@@ -258,6 +289,18 @@ function harnessAgents(workspace: DoctorWorkspace | null): HarnessAgent[] {
       ? []
       : [{ agent: agent.name, harness: agent.harness }],
   );
+}
+
+/** The harness agents with their settings folders, where the host gives them. */
+function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsFolder[] {
+  const folderOf = workspace?.harnessSettingsFolder;
+  if (workspace === null || folderOf === undefined) return [];
+  return workspace.trust.agents.flatMap((agent) => {
+    if (agent.harness === undefined || agent.harness === "halonic") return [];
+    const settingsFolder = folderOf(agent.id, agent.harness);
+    if (settingsFolder === undefined) return [];
+    return [{ agent: agent.name, harness: agent.harness, settingsFolder }];
+  });
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {

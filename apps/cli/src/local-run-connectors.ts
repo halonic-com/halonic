@@ -1,15 +1,15 @@
 // The connectors of the CLI engine's runs, as `openLocalEngine` wires them
 // into the executor (HAL-6277): each top-level run's own, started from its
-// hub's connector files in the folder its programs start in, and what a
-// connector call checks at the engine's side-effect boundary.
+// hub's connector files in the version it read, in the folder its programs
+// start in, and what a connector call checks at the engine's side-effect
+// boundary.
 
 import type { ConnectorFactories, SendingSettings } from "@halonicjs/app";
-import type { ConnectorsRun } from "@halonicjs/engine";
-import type { Connector } from "@halonicjs/format";
+import type { RunVersion } from "@halonicjs/events";
 import type { ConnectorFactoryContext, Secrets, TrustGrant } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { ProgramFolders } from "./program-folders.ts";
-import { FolderRunConnectors } from "./run-connectors.ts";
+import { FolderRunConnectors, type VersionedRun } from "./run-connectors.ts";
 import { programWorkingFolders } from "./working-folders.ts";
 
 /** What the engine's runs start their connectors with, as the command gives it. */
@@ -20,21 +20,33 @@ export interface LocalRunConnectorsInput {
   readonly context: Pick<ConnectorFactoryContext, "tokens" | "http">;
   /**
    * The grant from the command's trust check: `null` when the workspace
-   * isn't trusted, so no connector program starts.
+   * can only reach the test model, so no connector program starts. An
+   * engine over several versions starts each run's with the grant of the
+   * version it read instead.
    */
+  readonly trust: TrustGrant | null;
+}
+
+/** A version of the workspace a run read, with the grant of its trust check. */
+export interface TrustedVersion {
+  readonly workspace: LoadedWorkspace;
+  /** `null` for a version that can only reach the test model, which starts no program. */
   readonly trust: TrustGrant | null;
 }
 
 /** The parts of the engine the runs' connectors are built on. */
 export interface RunConnectorsEngine {
-  /** The workspace the engine's runs read. */
+  /** The workspace the engine's runs read, when they read one version. */
   readonly workspace: LoadedWorkspace;
   /**
-   * Whether every run reads `workspace`. An engine over several versions
-   * (`versions`) starts no run's connectors yet: a run's connector files may
-   * be of another version than the one it read last.
+   * The versions the engine's runs read, as `routines watch`'s do: a run's
+   * connectors then start from the version it read, never the one read
+   * last, with that version's grant.
    */
-  readonly readsOneVersion: boolean;
+  readonly versions?: {
+    /** @throws when that version can't be read or may not run here */
+    trustedVersionOf(version: RunVersion): Promise<TrustedVersion>;
+  };
   /** The workspace's real path, which with a connector's id keys its settings. */
   readonly location: string;
   readonly secrets: Secrets;
@@ -79,9 +91,16 @@ export function localRunConnectors(
   const runConnectors = new FolderRunConnectors({
     factories: given.factories,
     programFolders: engine.programFolders,
-    context: { ...given.context, secrets: engine.secrets, trust: given.trust },
-    connectorsOf: async (run) => connectorFilesOf(engine, run),
-    workingFoldersOf: (folder) => programWorkingFolders(folder, engine.location, engine.workspace),
+    context: { ...given.context, secrets: engine.secrets },
+    versionOf: async (run) => {
+      const read = await versionRead(given, engine, run);
+      return {
+        connectors: Object.values(definitionsOf(read.workspace, run.hubId).connectors),
+        trust: read.trust,
+        workingFoldersOf: (folder) =>
+          programWorkingFolders(folder, engine.location, read.workspace),
+      };
+    },
     reportError: engine.reportError,
   });
   return {
@@ -107,15 +126,19 @@ export function localRunConnectors(
 }
 
 /**
- * The connector files a run's hub can see.
+ * The version `run` read, and the grant its connectors start with: the
+ * engine's one workspace and the command's grant, or the run's own version
+ * of an engine over several.
  *
- * @throws when the engine's runs read more than one version
+ * @throws when the run's version can't be read or may not run here
  */
-function connectorFilesOf(engine: RunConnectorsEngine, run: ConnectorsRun): Connector[] {
-  if (!engine.readsOneVersion) {
-    throw new Error(
-      `Run "${run.runId}" read one of several versions of the workspace, and its connectors can't start from those yet.`,
-    );
+async function versionRead(
+  given: LocalRunConnectorsInput,
+  engine: RunConnectorsEngine,
+  run: VersionedRun,
+): Promise<TrustedVersion> {
+  if (engine.versions === undefined) {
+    return { workspace: engine.workspace, trust: given.trust };
   }
-  return Object.values(definitionsOf(engine.workspace, run.hubId).connectors);
+  return await engine.versions.trustedVersionOf(run.version);
 }

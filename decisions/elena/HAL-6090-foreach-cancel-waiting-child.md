@@ -1,6 +1,6 @@
 # Decision: a foreach item's child run that waits is cancelled, not left waiting
 
-- Approval: the engine bug decisions on [HAL-185](/HAL/issues/HAL-185#document-engine-bug-decisions) fix E8; Liam (CTO, core owner) signs off in review on [HAL-6090](/HAL/issues/HAL-6090)
+- Approval: the engine bug decisions on HAL-185 fix E8; Liam (CTO, core owner) signs off in review on HAL-6090
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:06I5bXF9nD0HRlfjO8+hMq/M8COW/cA11KKEuCYyq78Lqtge1WnaIfEKZVLkS4kKo+BHgztgeJsGvgHiLWjRDQ==
 

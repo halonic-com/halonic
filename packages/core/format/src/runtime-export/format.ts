@@ -7,20 +7,26 @@ import { deploymentId } from "../shared/fields.ts";
  * of `halonic deploy export` and `import` (multi-cloud ADR, rule 3 and 5.6).
  *
  * The folder holds the manifest, `halonic-export.json`, and the files it
- * lists, in the layout `halonic serve` keeps in the profile:
+ * lists, in the layout `halonic serve` will keep in the profile:
  *
  * - `runs/<run id>.jsonl`: a run's event log, one event per line. Inbox
  *   items are run events, so they travel with their runs.
- * - `records/<SHA-256 of the collection name>.jsonl`: a collection's log of
- *   record changes, agent memory included.
+ * - `records/<SHA-256 of the collection name in UTF-16LE>.jsonl`: a
+ *   collection's log of record changes, agent memory included.
  * - `blobs/<first two hex characters>/<SHA-256>`: the bytes of a file or a
  *   large payload, named by their hash.
  *
- * Nothing else has a place. Secrets, sign-in tokens, sessions, harness
- * sign-ins and encryption keys aren't runtime data in this sense, and the
- * schema refuses any key or path it doesn't list, so an export can't carry
- * them (no-secrets rule). Run snapshots and run lists are left out too: an
- * import rebuilds them from the logs.
+ * Nothing else has a place. The stores of secrets, sign-in tokens, sessions,
+ * harness sign-ins and encryption keys aren't runtime data in this sense, and
+ * the schema refuses any key or path it doesn't list, so an export can't carry
+ * those stores (no-secrets rule). It can't see inside a file, so a secret a
+ * run handled can still be in its log: the export step scans the contents
+ * (HAL-7193). Tool approvals, trust and settings are left out on purpose, and
+ * so are run snapshots and run lists, which an import rebuilds from the logs.
+ *
+ * Runs are kept per deployment, but records and blobs are kept per workspace,
+ * and `halonic serve` isn't built yet, so the export step decides which
+ * records and blobs an export carries.
  *
  * It imports only schema-kit and ports, never `yaml`, so a Worker that
  * writes an export doesn't bundle the YAML parser.
@@ -46,12 +52,15 @@ const exportPath =
 const pathRule =
   "use runs/<run id>.jsonl, records/<sha-256>.jsonl or blobs/<first two characters>/<sha-256>";
 
+const utcShape = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
 /** A moment in UTC, as `Date.prototype.toISOString` writes it. */
 const utcTime = s
   .string()
-  .regex(
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/,
-    "use a UTC time such as 2026-11-12T06:00:00.000Z",
+  .regex(utcShape, "use a UTC time such as 2026-11-12T06:00:00.000Z")
+  .refine(
+    (time) => !utcShape.test(time) || isRealTime(time),
+    "use a date and time that exist, such as 2026-11-12T06:00:00.000Z",
   );
 
 const exportFile = s
@@ -75,13 +84,25 @@ export const runtimeExportManifestSchema = s
     /** The deployment the data was exported from. */
     deployment: deploymentId,
     exportedAt: utcTime,
-    /** Every file in the folder but the manifest, each once. */
+    /** Every file in the folder but the manifest, each once, in order of path. */
     files: s.array(exportFile),
   })
   .strict()
   .superRefine((manifest, context) => {
     const seen = new Set<string>();
+    let previous: string | undefined;
     manifest.files.forEach((file, index) => {
+      // In order, two exports of the same data list their files the same way. A path refused already isn't refused twice.
+      if (exportPath.test(file.path)) {
+        if (previous !== undefined && file.path < previous) {
+          context.addIssue({
+            code: "custom",
+            path: ["files", index, "path"],
+            message: "List the files in order of their path",
+          });
+        }
+        previous = file.path;
+      }
       // Run ids may hold capitals, and macOS and Windows open `R1` and `r1` as one file.
       const opened = file.path.toLowerCase();
       if (seen.has(opened)) {
@@ -104,6 +125,18 @@ export const runtimeExportManifestSchema = s
 
 /** A runtime export's manifest. */
 export type RuntimeExportManifest = Infer<typeof runtimeExportManifestSchema>;
+
+/** Whether a time of the right shape names a moment that exists, so month 13 or 30 February don't pass. */
+function isRealTime(time: string): boolean {
+  const moment = new Date(time);
+  if (Number.isNaN(moment.getTime())) {
+    return false;
+  }
+  const written = moment.toISOString();
+  return time.length === written.length
+    ? time === written
+    : `${time.slice(0, -1)}.000Z` === written;
+}
 
 /** The path of the blob with this hash, in the layout `halonic serve` keeps its blobs in. */
 function blobPath(sha256: string): string {

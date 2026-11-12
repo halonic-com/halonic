@@ -266,7 +266,9 @@ verifies("cli.commands.trust.plugin", () => {
     const { code, io } = await trust(["--plugin", "weather"], terminal);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr.join("\n")).toContain("See them with halonic plugin list.");
+    expect(io.stderr.join("\n")).toContain(
+      "Remove it with halonic plugin remove weather, then add a version that works.",
+    );
     expect(io.stdout.some((line) => fullFingerprint.test(line))).toBe(false);
     expect(await plugins()).toEqual(["broken"]);
   });
@@ -296,7 +298,9 @@ verifies("cli.commands.trust.plugin", () => {
     const { code, io } = await trust(["--plugin", "weather"]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr.join("\n")).toContain("See them with halonic plugin list.");
+    expect(io.stderr.join("\n")).toContain(
+      "Remove it with halonic plugin remove weather, then add a version that works.",
+    );
     expect(await plugins()).toEqual(["broken"]);
   });
 

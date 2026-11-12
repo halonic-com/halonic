@@ -1,9 +1,9 @@
 # WSL 2 release check
 
-Halonic offers WSL 2 in v0.1 as a Linux host ([HAL-770](/HAL/issues/HAL-770)).
+Halonic offers WSL 2 in v0.1 as a Linux host (HAL-770).
 The automated suites run on Linux, macOS and Windows runners, but none of them
 runs WSL 2 with the workspace on a Windows drive. This check closes that gap.
-It is a condition for the sign-off in [HAL-196](/HAL/issues/HAL-196).
+It is a condition for the sign-off in HAL-196.
 
 ## What it proves
 
@@ -40,7 +40,7 @@ Run on 10 Nov 2026, on the board's own PC, from `main` at
 | Field | Value |
 | --- | --- |
 | Date | 10 Nov 2026 |
-| Run by | The board ([HAL-3743](/HAL/issues/HAL-3743)) |
+| Run by | The board (HAL-3743) |
 | Windows build | Windows 11 Pro 10.0.26200 |
 | WSL and kernel | 6.18.33.2-microsoft-standard-WSL2; fresh Ubuntu 26.04.1 LTS distro, systemd on, normal user |
 | srt version | 0.0.82 (`@anthropic-ai/sandbox-runtime`), bubblewrap 0.11.1, socat, ripgrep from Ubuntu |

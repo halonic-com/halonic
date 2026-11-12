@@ -1,0 +1,39 @@
+{
+  "name": "@halonicjs/studio-feature-library",
+  "private": true,
+  "type": "module",
+  "description": "The Library feature of the Studio.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 85
+    }
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
+    "react": "catalog:"
+  }
+}

@@ -13,7 +13,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import type { RunningItem } from "../../kernel/run-items.ts";
-import { methodOf } from "../../kernel/step-method.ts";
+import { stepOutputOf } from "../../kernel/step-output.ts";
 import { signalSent } from "../../kernel/step-signal.ts";
 import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
 
@@ -86,9 +86,8 @@ function takeCallResult(context: StateContext, input: EffectDoneInput): StateSte
   if (result.type === "tool") {
     return nothing;
   }
-  const { method } = context.state;
-  const called = method === undefined ? undefined : methodOf(context.agents, agent, method);
-  const checked = checkAnswer(context.agents, agent, result.output, called);
+  const stepOutput = stepOutputOf(context.agents, agent, context.state);
+  const checked = checkAnswer(context.agents, agent, result.output, stepOutput);
   if ("error" in checked) {
     const error = `Item ${running.item} of for-each state "${context.stateId}" failed: ${checked.error}`;
     return { ...nothing, outcome: { type: "fail", error, reason: checked.reason } };

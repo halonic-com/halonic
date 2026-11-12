@@ -7,7 +7,7 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   bridgeOptions,
   type FakeRunnerProcess,
@@ -16,7 +16,7 @@ import {
 } from "../pipes.test-helper.ts";
 import { readRunnerArgs } from "../runner-args.ts";
 import { RunnerStoppedError } from "./limits.ts";
-import { type StartRunnerOptions, startRunner } from "./start-runner.ts";
+import { forgetPrlimitNotice, type StartRunnerOptions, startRunner } from "./start-runner.ts";
 
 /** A sandbox whose sessions start fake runners, and that records what it was asked. */
 class FakeSandbox implements Sandbox {
@@ -47,7 +47,10 @@ class FakeSandbox implements Sandbox {
       profile,
       fence: this.fence,
       async start(command) {
-        if (sandbox.fence.state !== "fenced") throw new Error("the fence proof failed");
+        // As in the real sandboxes: `off` (the launcher) starts, a failed proof doesn't.
+        if (sandbox.fence.state === "not-fenced" || sandbox.fence.state === "stopped") {
+          throw new Error("the fence proof failed");
+        }
         sandbox.commands.push(command);
         const runner = fakeRunnerProcess();
         sandbox.runners.push(runner);
@@ -122,6 +125,32 @@ function startOptions(sandbox: FakeSandbox): StartRunnerOptions & { blocks: unkn
   };
 }
 
+/** The arguments Node gets, without the `prlimit` that wraps it on Linux. */
+function nodeArgs(command: SandboxCommand | undefined): string[] {
+  const args = command?.args ?? [];
+  return command?.program === "/usr/bin/prlimit" ? args.slice(2) : args;
+}
+
+/** Options for a Linux machine where `/usr/bin/prlimit` doesn't exist. */
+function linuxWithoutPrlimit(
+  sandbox: FakeSandbox,
+  onNotice?: (message: string) => void,
+): ReturnType<typeof startOptions> {
+  const options = startOptions(sandbox);
+  return {
+    ...options,
+    machine: { ...options.machine, platform: "linux" },
+    disk: {
+      ...fakeDisk,
+      realPath: (path) => {
+        if (path === "/usr/bin/prlimit") throw new Error("no such file");
+        return realPath(path);
+      },
+    },
+    ...(onNotice === undefined ? {} : { onNotice }),
+  };
+}
+
 /** Starts a runner and plays its side until `start`. */
 async function started(sandbox: FakeSandbox, options = startOptions(sandbox)) {
   const starting = startRunner(options);
@@ -137,6 +166,8 @@ async function until(done: () => boolean): Promise<void> {
 
 verifies("integration-runner.start", () => {
   describe("startRunner", () => {
+    beforeEach(forgetPrlimitNotice);
+
     it("starts the runner in a session of its own with the untrusted profile", async () => {
       const sandbox = new FakeSandbox();
       const { connection } = await started(sandbox);
@@ -145,7 +176,7 @@ verifies("integration-runner.start", () => {
       expect(profile?.network).toEqual({ bridge: null, allowedSites: [] });
       expect(profile?.env).toEqual({ TMPDIR: "/fake-temp/halonic-run" });
       expect(profile?.deniedPaths).toEqual(["/fake-home", "/run"]);
-      expect(sandbox.commands[0]?.args.slice(0, 5)).toEqual([
+      expect(nodeArgs(sandbox.commands[0]).slice(0, 5)).toEqual([
         "--permission",
         "--allow-fs-read=/opt/halonic/runner.js",
         `--allow-fs-read=${folder}`,
@@ -153,6 +184,36 @@ verifies("integration-runner.start", () => {
         "/opt/halonic/runner.js",
       ]);
       await connection.close();
+    });
+
+    it("starts plain Node on Linux when prlimit is missing, and says so once (HAL-7794)", async () => {
+      const sandbox = new FakeSandbox();
+      const notices: string[] = [];
+      const withoutPrlimit = linuxWithoutPrlimit(sandbox, (message) => notices.push(message));
+
+      const first = await started(sandbox, withoutPrlimit);
+      expect(sandbox.commands[0]?.program).toBe("/usr/bin/node");
+      await first.connection.close();
+      sandbox.runners.length = 0;
+      const second = await started(sandbox, withoutPrlimit);
+      expect(sandbox.commands[1]?.program).toBe("/usr/bin/node");
+      await second.connection.close();
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toContain("/usr/bin/prlimit is missing");
+    });
+
+    it("keeps the sentence for a start that hears it when an earlier start had no onNotice (HAL-7794)", async () => {
+      const sandbox = new FakeSandbox();
+      const notices: string[] = [];
+      const silent = await started(sandbox, linuxWithoutPrlimit(sandbox));
+      await silent.connection.close();
+      sandbox.runners.length = 0;
+      const listening = await started(
+        sandbox,
+        linuxWithoutPrlimit(sandbox, (message) => notices.push(message)),
+      );
+      await listening.connection.close();
+      expect(notices).toHaveLength(1);
     });
 
     it("gives every start a fresh nonce", async () => {
@@ -174,6 +235,28 @@ verifies("integration-runner.start", () => {
       await runner.send({ type: "ready", nonce: "an-old-nonce" });
       await expect(starting).rejects.toBeInstanceOf(RunnerStoppedError);
       expect(sandbox.closedSessions).toBe(1);
+    });
+
+    it("reports the session's fence proof, never what the runner says about itself (A22)", async () => {
+      // The launcher's session, whose proof is `off`: a runner that claims a
+      // fence in its ready is stopped, and one that doesn't stays `off`.
+      const sandbox = new FakeSandbox({ state: "off" });
+      const starting = startRunner(startOptions(sandbox));
+      await until(() => sandbox.runners.length === 1);
+      await new HandDrivenRunner(sandbox.runners[0] as FakeRunnerProcess).send({
+        type: "ready",
+        nonce: sandbox.lastNonce(),
+        fence: { state: "fenced" },
+      });
+      await expect(starting).rejects.toMatchObject({
+        stop: { reason: "protocol", detail: "a frame outside the protocol" },
+      });
+      expect(sandbox.closedSessions).toBe(1);
+
+      sandbox.runners.length = 0;
+      const { connection } = await started(sandbox);
+      expect(connection.fence).toEqual({ state: "off" });
+      await connection.close();
     });
 
     it("closes the session and connects nothing when the fence proof failed", async () => {
@@ -242,7 +325,7 @@ verifies("integration-runner.start", () => {
         "/opt/halonic/runner.js",
         folder,
       ]);
-      expect(sandbox.commands[0]?.args.slice(2)).toEqual([
+      expect(nodeArgs(sandbox.commands[0]).slice(2)).toEqual([
         `--allow-fs-read=${folder}`,
         "--max-old-space-size=256",
         "/opt/halonic/runner.js",

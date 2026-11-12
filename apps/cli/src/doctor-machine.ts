@@ -25,9 +25,15 @@ import type {
   RunStore,
   Sandbox,
   Secrets,
+  SignInShell,
   TrustStore,
 } from "@halonicjs/ports";
-import { type ProfileFolder, profileFolder, trustFolder } from "@halonicjs/profile";
+import {
+  type ProfileFolder,
+  profileFolder,
+  trustFolder,
+  workspaceFolders,
+} from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { findCommand, nodeCommandSearch } from "./command-paths.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
@@ -37,7 +43,7 @@ import {
   localLoadedModels,
 } from "./local-model-servers.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
-import { nodeProfileEnvironment } from "./workspace-runs.ts";
+import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 import { nodeIsWsl, nodeProblemOf, windowsDriveOf } from "./wsl.ts";
 
@@ -64,6 +70,8 @@ export interface DoctorMachine {
   readonly node?: () => Promise<NodeProblem | null>;
   /** The WSL distro `doctor` runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
   readonly wslDistro?: string | undefined;
+  /** The terminal a person types a harness's sign-in into: PowerShell on Windows, `sh` elsewhere. */
+  readonly signInShell: SignInShell;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -118,6 +126,7 @@ export function nodeDoctorMachine(): DoctorMachine {
         findPnpm: () => findCommand("pnpm", nodeCommandSearch()),
       }),
     wslDistro: process.env["WSL_DISTRO_NAME"],
+    signInShell: system === "win32" ? "powershell" : "sh",
   };
 }
 
@@ -153,6 +162,30 @@ export async function doctorService(
     secrets,
     ...(machine.node === undefined ? {} : { node: machine.node }),
   });
+}
+
+/**
+ * `workspace`, with the folder each agent's harness keeps its own settings
+ * in, as its runs get it, so the Harnesses line asks about the sign-in those
+ * runs use (HAL-5649).
+ */
+export async function withHarnessSettingsFolders(
+  workspace: MachineWorkspace,
+  profile: ProfileFolder,
+): Promise<MachineWorkspace> {
+  const { location } = workspace.workspace.trust;
+  const folders = await workspaceFolders(profile, location, webCryptoDigest);
+  const harnessSettingsFolder = (agentId: string, harnessId: string): string | undefined => {
+    try {
+      return folders.harnessSettingsFolder(agentId, harnessId);
+    } catch (error) {
+      // An id the agent format allows but a folder can't take, such as one
+      // over 64 characters: the agent has no settings folder to sign in to.
+      if (error instanceof RangeError) return undefined;
+      throw error;
+    }
+  };
+  return { ...workspace, workspace: { ...workspace.workspace, harnessSettingsFolder } };
 }
 
 /** Whether the workspace is trusted on this computer as it is now; `false` outside one. */

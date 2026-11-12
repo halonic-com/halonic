@@ -10,6 +10,8 @@ import { ShellPalette } from "../palette/shell-palette.tsx";
 import { BottomNavigation } from "../phone/bottom-navigation.tsx";
 import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
+import { settingsLocation } from "../phone/place-stacks.ts";
+import { sectionLocation } from "../phone/settings-list-page.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
@@ -58,8 +60,8 @@ export interface StudioWindowProps {
  * (`shell.studio-window`): the window tabs in the title bar, the toolbar with Back, Forward, the
  * path and the save note, the sidebar, the active tab's page with the last five kept mounted, the
  * status bar items, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
- * Settings opens over it (`shell.settings-window`) from the context's `openSettings` and, in the
- * desktop app, Mod ,.
+ * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
+ * sidebar's Settings row and, in the desktop app, Mod ,.
  *
  * On a phone (`shell.studio-phone`): the top bar with Back and **Search**, the page of the phone
  * place the user is in, and the bottom navigation, with Android's back handled by the shell. The
@@ -75,9 +77,35 @@ export function StudioWindow(props: StudioWindowProps) {
   const { announcer, contributions } = shell;
   const palette = usePaletteOpening(platform);
   const settings = useSettingsOpening(host, platform);
-  const openSettings = settings.show;
+  const showSettingsDialog = settings.show;
+  const settingsSections = useMemo(
+    () => contributions.settings.list().map(({ id, title }) => ({ id, title })),
+    [contributions],
+  );
   const desktop = usePresentationFromWidth() === "desktop";
   const phone = usePhonePlaces();
+  const { open: openPhone } = phone;
+  // Settings is a dialog on the desktop and a page on the More stack below 600px (flow-settings 13).
+  // Read when it opens, so the context stays the same as the window narrows or widens.
+  const onDesktop = useRef(desktop);
+  onDesktop.current = desktop;
+  const openSettings = useCallback(
+    (sectionId?: string) => {
+      if (onDesktop.current) {
+        showSettingsDialog(sectionId);
+        return;
+      }
+      openPhone(settingsLocation, { list: true });
+      const section =
+        sectionId === undefined
+          ? undefined
+          : contributions.settings.list().find((candidate) => candidate.id === sectionId);
+      if (section !== undefined) {
+        openPhone(sectionLocation(section));
+      }
+    },
+    [showSettingsDialog, openPhone, contributions],
+  );
   const focusNewPage = usePageHeadingFocus();
   // Read when a view opens a place, so the context stays the same as the window narrows or widens.
   const openPlaceHere = useRef<(place: SidebarPlace) => void>(phone.openPlace);
@@ -101,8 +129,9 @@ export function StudioWindow(props: StudioWindowProps) {
       openPlace: (place) => openPlaceHere.current(place),
       openItem: (item) => openHere.current(locationOfItem(item)),
       openSettings,
+      settingsSections,
     }),
-    [shell, workspace, openSettings],
+    [shell, workspace, openSettings, settingsSections],
   );
   /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
   function locationOfItem(item: ItemRef): TabLocation {
@@ -156,6 +185,7 @@ export function StudioWindow(props: StudioWindowProps) {
           platform={platform}
           contextFor={contextFor}
           onSearch={palette.show}
+          onSettings={() => openSettings()}
           switcher={props.switcher}
         />
       }
@@ -200,6 +230,9 @@ export function StudioWindow(props: StudioWindowProps) {
           places={phone}
           shown={shown}
           switcher={props.phoneSwitcher}
+          onSettings={() => openSettings()}
+          settingsPlace={host === "desktop-app" ? "app" : "served"}
+          workspaceName={workspace.name}
           shell={shell}
           tabs={tabs}
           announcer={announcer}
@@ -231,12 +264,19 @@ export function StudioWindow(props: StudioWindowProps) {
           requested={settings.requested}
           lastShown={settings.lastShown}
           onShown={settings.remember}
+          rowKey={host === "desktop-app" ? platform : undefined}
           contextFor={contextFor}
           announcer={announcer}
           onClose={settings.close}
+          returnFocus={placesButton}
         />
       )}
       <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );
+}
+
+/** The toolbar's Places button, in a narrow window, where Settings opened from the drawer closes. */
+function placesButton(): HTMLElement | null {
+  return document.querySelector<HTMLElement>("[data-places-button] button");
 }

@@ -1,5 +1,6 @@
 // The public API of @halonicjs/workspace. Internal code imports by relative path.
 
+export { callModelName, modelPrice } from "./call-model.ts";
 export {
   type CopiedWorkspace,
   type CopyWorkspaceError,

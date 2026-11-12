@@ -86,7 +86,7 @@ async function readSddl(folder: string, start: RunProgram): Promise<string> {
  * entry stays when the session closes: other sessions use the same parents,
  * srt doesn't count our entries, and it gives nothing away. A folder that has
  * it already is left alone, since writing an access list makes Windows walk
- * all the folder holds.
+ * all the folder holds ({@link grantLimitMs}).
  *
  * @throws when a folder still lacks the entry after `icacls`, so the session doesn't start with a fence it can't prove
  */
@@ -102,16 +102,25 @@ export async function letSandboxReadParents(
 }
 
 /**
+ * How long one grant may run. `icacls` walks all the folder holds before it
+ * writes the folder's own list, and a stopped `icacls` has written nothing,
+ * so a limit shorter than the walk fails at every session. On a Windows
+ * runner it walked AppData's 6,000 items in 3.5 s, and 40,000 items in 2 s
+ * on a quiet machine but 11.7 s while other programs wrote files; past 15 s,
+ * the limit for other programs, it failed the fence tests (HAL-7431). A
+ * user's AppData can hold far more, and the grant runs once per folder.
+ */
+export const grantLimitMs = 600_000;
+
+/**
  * Grants `sid` read attributes on `folder`, and proves it by the folder's
- * access list rather than by how `icacls` ended. Windows writes the folder's
- * list first and then walks all it holds, and that walk can fail or run past
- * the time limit on a busy machine: `AppData` holds the temp folder, where
- * other programs make and delete files all the time (HAL-7431). The entry
- * isn't inherited, so the walk changes nothing below the folder.
+ * access list rather than by how `icacls` ended: the walk can fail on an
+ * item below the folder, and the entry isn't inherited, so the walk changes
+ * nothing there.
  */
 async function grantReadAttributes(folder: string, sid: string, start: RunProgram): Promise<void> {
   try {
-    await start("icacls.exe", [folder, "/grant", `*${sid}:(RA)`]);
+    await start("icacls.exe", [folder, "/grant", `*${sid}:(RA)`], grantLimitMs);
   } catch (error) {
     // A list that can't be read proves nothing: then the grant's own failure is the one to report.
     const granted = await readSddl(folder, start).then(

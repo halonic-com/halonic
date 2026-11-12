@@ -1,7 +1,7 @@
 # Decision: a known srt limit stays an expected failure in the kept-grants fence test
 
 - Task: HAL-5884
-- Approval: Liam reviews and approves this note on [HAL-6110](/HAL/issues/HAL-6110)
+- Approval: Liam reviews and approves this note on HAL-6110
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RBOj2PU88E+HD+ITwwsapBnO62y4AkJWSPBhT7hGNY2r6ivrAi70vJrA2csxpO0WtNrKpqE/pXQnDUy8J3SSAQ==
 

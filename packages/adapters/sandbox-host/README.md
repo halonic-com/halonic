@@ -48,6 +48,8 @@ from the fenced sandbox's `check()` and the user's saved yes (`UnfencedRuns` in 
   can't find or start ends with exit code 127 instead of throwing, as inside the fence;
 - refuses a program, argument or folder under a skill's `scripts/` folder, as written or through
   a symbolic link, before anything starts;
+- refuses a bridge that isn't a loopback address, and one on a Unix socket, which only a sandbox's
+  own proxy can reach;
 - stops a program and its process group (on Windows its process tree, with `taskkill /T /F`) on
   `kill`, on `close`, when the time limit runs out and when the open signal aborts: SIGTERM
   first, SIGKILL after 2 seconds. It also stops them when the launcher exits or gets SIGINT or

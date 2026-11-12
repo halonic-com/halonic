@@ -1,9 +1,9 @@
-import type { Harness } from "@halonicjs/ports";
+import { type Harness, signInCommandText } from "@halonicjs/ports";
 import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import type { TerminalCommand, TerminalOpened } from "../terminal/open-terminal.ts";
-import { manualSignInCommand, type SignInRouteDeps, signInRoute } from "./sign-in-route.ts";
+import { type SignInRouteDeps, signInRoute } from "./sign-in-route.ts";
 
 const token = randomLaunchToken();
 
@@ -87,7 +87,7 @@ describe("POST /v1/harnesses/sign-in", () => {
     expect(await answer.json()).toEqual({
       opened: false,
       reason: "No terminal was found.",
-      command: manualSignInCommand(signIn, settingsFolder, "linux"),
+      command: signInCommandText(signIn, settingsFolder, "sh"),
     });
   });
 
@@ -120,20 +120,5 @@ describe("POST /v1/harnesses/sign-in", () => {
     expect(await answer.json()).toEqual({
       error: { kind: "sign_in_refused", message: "Halonic never runs a skill's scripts." },
     });
-  });
-});
-
-describe("manualSignInCommand", () => {
-  it("quotes the folder for sh", () => {
-    expect(manualSignInCommand(signIn, "/data/it's here", "darwin")).toBe(
-      "FAKE_CONFIG_DIR='/data/it'\\''s here' fake auth login",
-    );
-  });
-
-  it("sets the variable in PowerShell on Windows", () => {
-    const drive = "W:\\"; // leak-guard: allow absolute-path an invented Windows drive
-    expect(manualSignInCommand(signIn, `${drive}it's here`, "win32")).toBe(
-      `$env:FAKE_CONFIG_DIR = '${drive}it''s here'; fake auth login`,
-    );
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
 import { methodOf, noMethodError } from "../../kernel/step-method.ts";
+import { stepOutputOf } from "../../kernel/step-output.ts";
 import { signalSent } from "../../kernel/step-signal.ts";
 import { answerApproval, askForApproval, askForHarnessApproval } from "./approval.ts";
 import { artifactOf } from "./artifact.ts";
@@ -126,9 +127,8 @@ function finishAgent(
   pending: PendingCall,
   answer: unknown,
 ): StateStep {
-  const method =
-    state.method === undefined ? undefined : methodOf(agents, pending.agent, state.method);
-  const checked = checkAnswer(agents, pending.agent, answer, method);
+  const stepOutput = stepOutputOf(agents, pending.agent, state);
+  const checked = checkAnswer(agents, pending.agent, answer, stepOutput);
   if ("error" in checked) {
     return { ...nothing, outcome: { type: "fail", ...checked } };
   }

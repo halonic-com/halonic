@@ -94,7 +94,7 @@ export function fakeModel(script: ModelScript): ScriptedModel & { requests: Chat
     chat: async (request): Promise<ChatResponse> => {
       requests.push(request);
       const reply = queues.get(request.meta?.agentId ?? "")?.shift() ?? "";
-      const usage = { inputTokens: 1, outputTokens: 1 };
+      const usage = usageOf(request, reply);
       const call = /^tool:(\S+) (.*)$/s.exec(reply);
       if (call === null) return { content: reply, toolCalls: [], usage, finishReason: "stop" };
       calls += 1;
@@ -112,6 +112,12 @@ export function fakeModel(script: ModelScript): ScriptedModel & { requests: Chat
     requests,
     remaining: () => Object.fromEntries([...queues].map(([agent, left]) => [agent, left.length])),
   };
+}
+
+/** Tokens at about four characters a token, as the mock model and the old runner count them. */
+function usageOf(request: ChatRequest, reply: string): ChatResponse["usage"] {
+  const characters = request.messages.reduce((total, message) => total + message.content.length, 0);
+  return { inputTokens: Math.ceil(characters / 4), outputTokens: Math.ceil(reply.length / 4) };
 }
 
 /** A clock that stands still at 10 Nov 2026, 09:00 UTC. */

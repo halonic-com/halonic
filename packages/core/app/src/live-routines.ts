@@ -26,6 +26,11 @@ export interface LiveRoutinesOptions {
   readonly vcs: Pick<Vcs, "status" | "log" | "readAt" | "listAt"> | null;
   /** The saved files. */
   readonly saved: DefinitionSource;
+  /**
+   * The live version the caller has loaded already, so the first read of that
+   * commit doesn't load it again.
+   */
+  readonly loaded?: { readonly commit: string; readonly workspace: LoadedWorkspace };
 }
 
 /** One live routine, with the path of its file, before its saved `enabled` is applied. */
@@ -86,6 +91,9 @@ export class LiveRoutines {
 
   constructor(options: LiveRoutinesOptions) {
     this.#options = options;
+    if (options.loaded !== undefined) {
+      this.#kept = keptVersion(options.loaded.commit, options.loaded.workspace);
+    }
   }
 
   /** The routines to schedule, in the order of their files' paths: what the scheduler's `routines` returns. */
@@ -98,7 +106,20 @@ export class LiveRoutines {
     if (live.kind === "none-yet" || vcs === null) {
       return [];
     }
-    const { routines } = await this.#liveVersion(vcs, live.commit.hash);
+    return await this.#scheduled((await this.#liveVersion(vcs, live.commit.hash)).routines);
+  }
+
+  /**
+   * The routines of the version given as `loaded`, as {@link list} returns
+   * them, without looking up the live version again: for the caller that has
+   * just read it. Falls back to {@link list} when none was given.
+   */
+  async listLoaded(): Promise<PlacedRoutine[]> {
+    return this.#kept === null ? await this.list() : await this.#scheduled(this.#kept.routines);
+  }
+
+  /** `routines` with each one's saved `enabled`, without those that have no saved file. */
+  async #scheduled(routines: readonly LiveRoutineFile[]): Promise<PlacedRoutine[]> {
     const scheduled: PlacedRoutine[] = [];
     for (const { path, placed } of routines) {
       const enabled = await this.#savedEnabled(path, placed.routine.enabled);
@@ -163,11 +184,7 @@ export class LiveRoutines {
       const workspace = await loadWorkspace(
         new VersionSource(vcs, commit, this.#options.saved.location),
       );
-      const routines = filesOf(workspace, "routine").map((file) => ({
-        path: file.path,
-        placed: { hub: file.hub, routine: file.value },
-      }));
-      this.#kept = { commit, routines, targets: targetFiles(workspace) };
+      this.#kept = keptVersion(commit, workspace);
     }
     return this.#kept;
   }
@@ -201,6 +218,15 @@ export class LiveRoutines {
       }
     }
   }
+}
+
+/** The routines and targets of the live version `workspace`, loaded at `commit`. */
+function keptVersion(commit: string, workspace: LoadedWorkspace): KeptVersion {
+  const routines = filesOf(workspace, "routine").map((file) => ({
+    path: file.path,
+    placed: { hub: file.hub, routine: file.value },
+  }));
+  return { commit, routines, targets: targetFiles(workspace) };
 }
 
 /** A workflow or agent a routine can start, as `<kind>:<hub>/<id>`. */

@@ -1,6 +1,6 @@
 # Decision: a Home section's count, and opening a place from a view
 
-- Approval: Home's Needs you with its count is part of [HAL-1218](/HAL/issues/HAL-1218); the package owner (Liam) approves this note in review
+- Approval: Home's Needs you with its count is part of HAL-1218; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VxhFvOP12H0+qvdUaZVFc/tP6EHtTCq6GfAWUSlHr2DeV7IvhwViAx1bUvcjnO0kzbbVtm+z5lP1TwS0aaSBCQ==
 - Task: HAL-1218

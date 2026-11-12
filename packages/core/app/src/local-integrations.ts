@@ -5,9 +5,9 @@
 // (`TrustedRunnerStart`) reads it, so the code hash a person trusts is the
 // one checked when the integration starts.
 
-import { type IntegrationFolder, readIntegrationFolder } from "@halonicjs/app";
 import type { Digest, FolderEntry, FolderReader } from "@halonicjs/ports";
 import type { LocalIntegrationInput } from "@halonicjs/workspace";
+import { type IntegrationFolder, readIntegrationFolder } from "./integration-folder.ts";
 
 /** The workspace's folder for local integrations, one folder each. */
 export const integrationsFolder = "integrations";

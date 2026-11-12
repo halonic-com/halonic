@@ -3,7 +3,7 @@
 // The words come from the CLI's message catalogue (cli-output 3.7), so this
 // file names facts, never sentences.
 
-import type { HarnessDetection } from "@halonicjs/ports";
+import type { HarnessDetection, HarnessSignIn } from "@halonicjs/ports";
 
 /** A line's mark: ✓ `ok`, ! `warning`, ✕ `failed`. The same values `--json` prints. */
 export type DoctorStatus = "ok" | "warning" | "failed";
@@ -37,10 +37,29 @@ export interface InstalledHarness {
   version: string;
 }
 
-/** One ! under the Harnesses line. Each names the harness, and `missing` names the agent too. */
+/**
+ * An agent whose harness says no one is signed in, asked about the agent's
+ * own settings folder: the sign-in its runs use (HAL-5649).
+ */
+export interface SignedOutAgent {
+  /** The agent's name as a person reads it, such as "Writer". */
+  agent: string;
+  /** The value of `harness` in the agent's file, such as "claude-code". */
+  harness: string;
+  /** The harness's name, such as "Claude Code". */
+  name: string;
+  /** The harness program's own sign-in, which signs in for this agent when given its folder. */
+  signIn: HarnessSignIn;
+  /** The agent's settings folder for this harness. */
+  settingsFolder: string;
+}
+
+/** One ! under the Harnesses line. Each names the harness, and `missing` and `signed-out` name the agent too. */
 export type HarnessProblem =
   /** "*Writer* uses *Codex*, and it isn't installed." One per agent, so each agent that can't start is named. */
   | { problem: "missing"; agent: string; harness: string; name: string }
+  /** "*Writer* isn't signed in to *Claude Code*." The fix under it is the agent's own sign-in command. */
+  | ({ problem: "signed-out" } & SignedOutAgent)
   /** "*Claude Code 0.9.1* isn't supported. Halonic needs *1.0.0* or newer." */
   | { problem: "unsupported"; harness: string; name: string; version: string; supported: string }
   /** "Halonic found *Claude Code* but couldn't ask its version: *error*" */
@@ -53,7 +72,7 @@ export interface HarnessesLine extends DoctorLine {
   status: "ok" | "warning";
   /** The harnesses that are ready, in the order given. */
   installed: InstalledHarness[];
-  /** In the order of the agents, then of the harnesses. */
+  /** Each agent whose harness is missing, then each harness that can't run, then each agent that isn't signed in. */
   problems: HarnessProblem[];
 }
 
@@ -67,6 +86,7 @@ export interface HarnessesLine extends DoctorLine {
  *
  * @param harnesses every harness Halonic can start other than its own, with what `detect()` found
  * @param agents the workspace's agents whose harness isn't Halonic's own, or none outside a workspace
+ * @param signedOut the agents whose harness says they aren't signed in, in their own settings folder
  * @throws Error when an agent names a harness that isn't in `harnesses`, because the agent file's
  *   format only allows harnesses Halonic has
  *
@@ -81,6 +101,7 @@ export interface HarnessesLine extends DoctorLine {
 export function harnessesLine(
   harnesses: readonly DetectedHarness[],
   agents: readonly HarnessAgent[],
+  signedOut: readonly SignedOutAgent[] = [],
 ): HarnessesLine | undefined {
   const byId = new Map(harnesses.map((harness) => [harness.id, harness]));
   for (const { agent, harness } of agents) {
@@ -91,7 +112,11 @@ export function harnessesLine(
   }
 
   const installed = harnesses.flatMap(installedHarness);
-  const problems = [...missingProblems(byId, agents), ...harnessProblems(harnesses, agents)];
+  const problems: HarnessProblem[] = [
+    ...missingProblems(byId, agents),
+    ...harnessProblems(harnesses, agents),
+    ...signedOut.map((agent) => ({ problem: "signed-out" as const, ...agent })),
+  ];
   if (installed.length === 0 && problems.length === 0) return undefined;
 
   return {

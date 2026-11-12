@@ -1,4 +1,15 @@
 import { matcherNames } from "../worker/expect.ts";
+import { describe, it, test, vi } from "../worker/vitest-shim.ts";
+
+/**
+ * The properties each of the shim's `vitest` exports has, read from the
+ * exports themselves: `vi.waitFor` today, and nothing on `it`, `test` or
+ * `describe`. A suite's `it.each` or `vi.fn` is missing until the shim
+ * adds it.
+ */
+const shimProperties: ReadonlyMap<string, readonly string[]> = new Map(
+  Object.entries({ describe, it, test, vi }).map(([name, value]) => [name, Object.keys(value)]),
+);
 
 /**
  * The `to…` methods of JavaScript's own types, such as `toISOString` and
@@ -25,20 +36,26 @@ const expectPropertyNames: ReadonlySet<string> = new Set(["getState", "setState"
 
 /**
  * Vitest's modifiers between `expect(…)` and the matcher that the shim
- * doesn't have yet. `.not` is the only one it has. Without this list,
- * `expect(promise).rejects.toBe(x)` would pass the build and only fail
+ * doesn't have yet; it has `.not` and `.rejects`. Without this list,
+ * `expect(promise).resolves.toBe(x)` would pass the build and only fail
  * inside workerd.
  */
-const missingModifierNames: readonly string[] = ["rejects", "resolves"];
+const missingModifierNames: readonly string[] = ["resolves"];
 
 const matcherCall = /\.\s*(to[A-Z]\w*)\s*\(/g;
 const expectProperty = /\bexpect\.(\w+)/g;
 const modifier = new RegExp(String.raw`\.\s*(${missingModifierNames.join("|")})\b`, "g");
+// Not after a dot or a name character, so `/x/.test(…)` and `context.it` don't count.
+const shimProperty = new RegExp(
+  String.raw`(?<![.\w$])(${[...shimProperties.keys()].join("|")})\.(\w+)`,
+  "g",
+);
 
 /**
- * Finds the matchers, `expect.X` helpers and modifiers (`.rejects`,
- * `.resolves`) a test file uses that the vitest shim doesn't have. The named imports are checked by esbuild
- * already; matchers are method calls, so this reads the source.
+ * Finds the matchers, `expect.X` helpers, modifiers (`.resolves`) and
+ * `it.X`, `test.X`, `describe.X` and `vi.X` properties a test file uses
+ * that the vitest shim doesn't have. esbuild already checks the named
+ * imports; these are property reads, so this reads the source.
  *
  * @param source - the text of a test file that imports from `vitest`
  * @returns the missing names, sorted, without repeats
@@ -57,6 +74,11 @@ export function missingShimApis(source: string): string[] {
   }
   for (const [, name = ""] of source.matchAll(modifier)) {
     missing.add(`.${name}`);
+  }
+  for (const [, owner = "", property = ""] of source.matchAll(shimProperty)) {
+    if (!shimProperties.get(owner)?.includes(property)) {
+      missing.add(`${owner}.${property}`);
+    }
   }
   return [...missing].sort();
 }

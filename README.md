@@ -4,8 +4,8 @@
      "Approve from your Android phone." goes between its two sentences once
      approving from the phone works on the release candidate (HAL-195, HAL-7650). -->
 
-> **Studio runs on Windows. The command line runs on Windows, macOS and
-> Linux.** 0.1.0 isn't released yet, and nothing here is a stable interface
+> **Studio runs on Windows. The command line runs on Windows (WSL 2),
+> macOS and Linux.** 0.1.0 isn't released yet, and nothing here is a stable interface
 > yet.
 
 Halonic is a local-first Studio, engine and command-line tool for designing,

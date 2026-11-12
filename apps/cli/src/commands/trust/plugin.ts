@@ -70,7 +70,7 @@ export async function trustPlugin(
 
   const entry = await findPlugin(service, id);
   if (entry.status === "broken") {
-    throw brokenPluginError(entry.problems);
+    throw brokenPluginError(entry.folder, entry.problems);
   }
   const { plugin } = entry;
   if (fingerprint !== undefined && fingerprint !== entry.fingerprint) {

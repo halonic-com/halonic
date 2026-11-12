@@ -21,6 +21,7 @@ import {
   rowLabelWords,
   rowLineWords,
   startedByWords,
+  stepName,
   whenWords,
 } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
@@ -266,16 +267,4 @@ export function currentStepName(summary: RunSummary, workflow: RunWorkflow | und
   const stateId =
     summary.approvals[0]?.state ?? summary.state ?? summary.statesVisited.at(-1) ?? "";
   return stepName(stateId, workflow?.stepDescription(stateId));
-}
-
-/**
- * How a step is named (cli-output 3.4): the first line of its description,
- * trimmed, else its id with only the first letter made a capital.
- */
-export function stepName(stateId: string, description: string | undefined): string {
-  const firstLine = description?.split("\n")[0]?.trim() ?? "";
-  if (firstLine !== "") {
-    return firstLine;
-  }
-  return stateId.charAt(0).toUpperCase() + stateId.slice(1);
 }

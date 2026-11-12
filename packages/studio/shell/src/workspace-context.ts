@@ -32,4 +32,15 @@ export interface WorkspaceContext {
    * gives it to the views and commands it draws; a context built without a window has none.
    */
   readonly openSettings?: (sectionId?: string) => void;
+  /**
+   * The sections features added to Settings, which `openSettings` can show, in Settings' order, so
+   * Ctrl K can offer a section by its name only when it is there. Given with `openSettings`.
+   */
+  readonly settingsSections?: readonly SettingsSectionName[];
+}
+
+/** A Settings section as Ctrl K names it: its id and the title its row shows. */
+export interface SettingsSectionName {
+  readonly id: string;
+  readonly title: string;
 }

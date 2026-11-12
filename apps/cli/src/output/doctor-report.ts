@@ -16,6 +16,7 @@ import type {
   SandboxLine,
   WorkspaceLine,
 } from "@halonicjs/app";
+import { type SignInShell, signInCommandText } from "@halonicjs/ports";
 import type { Message } from "../messages/define.ts";
 import { type DataUse, doctorMessages } from "../messages/doctor.ts";
 import { errorMessages } from "../messages/general.ts";
@@ -43,6 +44,8 @@ export interface DoctorFacts {
   readonly dir?: string;
   /** The WSL distro `doctor` runs in, for the WSL 1 fix's command. */
   readonly wslDistro?: string;
+  /** The terminal the person types a harness's sign-in into: PowerShell on Windows, `sh` elsewhere. */
+  readonly signInShell: SignInShell;
 }
 
 /** The labels' column: the longest label, "Workspace" or "Harnesses", and three spaces. */
@@ -85,7 +88,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
     report.workspace && workspaceCheck(report.workspace, facts.dir),
     report.models && modelsCheck(report.models),
     sandboxCheck(report.sandbox, facts, report.node),
-    report.harnesses && harnessesCheck(report.harnesses),
+    report.harnesses && harnessesCheck(report.harnesses, facts.signInShell),
     report.node && nodeCheck(report.node),
     diskCheck(report.disk),
   ].filter((check) => check !== undefined);
@@ -262,7 +265,7 @@ function toolSentence(missing: readonly string[]): string | undefined {
 }
 
 /** The harnesses that are ready on one line, then each problem with its fix under it. */
-function harnessesCheck(line: HarnessesLine): CheckLines {
+function harnessesCheck(line: HarnessesLine, shell: SignInShell): CheckLines {
   const ready = line.installed.map(
     ({ name, version }) => doctorMessages.harnessReady(name, printable(version)).phrase,
   );
@@ -270,17 +273,24 @@ function harnessesCheck(line: HarnessesLine): CheckLines {
   return {
     status: line.status,
     label: doctorMessages.harnessesLabel(),
-    lines: [...readyLine, ...line.problems.flatMap(harnessProblem)],
+    lines: [...readyLine, ...line.problems.flatMap((problem) => harnessProblem(problem, shell))],
   };
 }
 
-function harnessProblem(problem: HarnessProblem): Phrase[] {
+function harnessProblem(problem: HarnessProblem, shell: SignInShell): Phrase[] {
   switch (problem.problem) {
     case "missing":
       return [
         doctorMessages.harnessMissing(problem.agent, problem.name).phrase,
         doctorMessages.installHarness(problem.name).phrase,
       ];
+    case "signed-out": {
+      const command = signInCommandText(problem.signIn, problem.settingsFolder, shell);
+      return [
+        doctorMessages.agentSignedOut(problem.name, problem.agent).phrase,
+        doctorMessages.signInForAgent(problem.agent, printable(command)).phrase,
+      ];
+    }
     case "unsupported":
       return [
         doctorMessages.harnessUnsupported(

@@ -234,7 +234,28 @@ export const everyStepWords = {
   running: "Running",
 };
 
+/** Show the run log (checklist part 1, 1.10; mc 1.2 and 3.D W-D3). */
+export const runLogWords = {
+  show: "Show the run log",
+  /** Team decision (HAL-2282): the same button, back to the timeline. */
+  hide: "Show every step",
+  /** The numbered list's name for screen readers. */
+  label: "Run log",
+};
+
 /** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
 function asSentence(text: string): string {
   return /[.?!]$/.test(text) ? text : `${text}.`;
+}
+
+/**
+ * How a step is named (cli-output 3.4): the first line of its description,
+ * trimmed, else its id with only the first letter made a capital.
+ */
+export function stepName(stateId: string, description: string | undefined): string {
+  const firstLine = description?.split("\n")[0]?.trim() ?? "";
+  if (firstLine !== "") {
+    return firstLine;
+  }
+  return stateId.charAt(0).toUpperCase() + stateId.slice(1);
 }

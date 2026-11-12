@@ -42,6 +42,7 @@ export {
   type CommandMap,
   type CommandSpec,
 } from "./command-bus.ts";
+export { type CommandFinder, commandPaths } from "./command-paths.ts";
 export {
   ConnectionSettings,
   type ConnectionSettingsOptions,
@@ -71,6 +72,7 @@ export {
   type HarnessProblem,
   harnessesLine,
   type InstalledHarness,
+  type SignedOutAgent,
 } from "./doctor-checks.ts";
 export {
   type DataSpace,
@@ -101,6 +103,11 @@ export {
   type DoctorServiceOptions,
   type DoctorWorkspace,
 } from "./doctor-service.ts";
+export {
+  type AgentSettingsFolder,
+  type DoctorHarness,
+  signedOutAgents,
+} from "./doctor-sign-ins.ts";
 export {
   EventBus,
   type EventListener,
@@ -141,6 +148,7 @@ export {
   type LiveVersionReader,
   liveVersionOf,
 } from "./live-version.ts";
+export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
 export { defaultCurrency, moneyAmount } from "./money-amount.ts";
 export {
   type OpenWorkspaceOptions,
@@ -162,6 +170,14 @@ export {
 export { readPackageSpec } from "./package-spec.ts";
 export { isPackageManagerVariable } from "./pin-overrides.ts";
 export { pinnedRunnerArgs } from "./pinned-args.ts";
+export {
+  type PluginBackendChoices,
+  PluginBackendNotTrustedError,
+  PluginBackendStart,
+  type PluginBackendStartOptions,
+  type PluginBackendTrustReason,
+  pluginBackendChoices,
+} from "./plugin-backend.ts";
 export {
   type AddPluginCommand,
   type PluginCommands,
@@ -432,6 +448,11 @@ export {
   type TrustShrink,
   type TrustSubject,
 } from "./trust-service.ts";
+export {
+  type TrustSubjectInput,
+  trustContentInputOf,
+  trustSubjectOf,
+} from "./trust-subject.ts";
 export {
   IntegrationNotTrustedError,
   type IntegrationTrustReason,

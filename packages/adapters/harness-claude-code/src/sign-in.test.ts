@@ -41,19 +41,19 @@ verifies("harness-claude-code.sign-in-expired", () => {
   });
 
   describe("SignInError", () => {
-    it("says to sign in again when the sign-in has expired", () => {
+    it("says to sign in again for the agent, with `halonic doctor`, when its sign-in has expired", () => {
       const error = new SignInError("sign-in-expired");
       expect(error).toBeInstanceOf(Error);
       expect(error.name).toBe("SignInError");
       expect(error.problem).toBe("sign-in-expired");
       expect(error.message).toBe(
-        "Claude Code's sign-in has expired. Sign in again with `claude auth login`.",
+        "Claude Code's sign-in for this agent has expired. Sign in again for this agent: `halonic doctor` shows the command.",
       );
     });
 
-    it("says to sign in when no one is signed in", () => {
+    it("says to sign in for the agent, not in the person's own terminal, when no one is signed in", () => {
       expect(new SignInError("signed-out").message).toBe(
-        "Claude Code isn't signed in on this computer. Sign in with `claude auth login`.",
+        "Claude Code isn't signed in for this agent. Sign in for this agent, not in your own terminal: `halonic doctor` shows the command.",
       );
     });
   });

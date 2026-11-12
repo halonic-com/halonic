@@ -1,7 +1,6 @@
 import {
   type Clock,
   type ConnectorTool,
-  type Digest,
   type IntegrationTool,
   type ToolServer,
   waitingVersionKeptMs,
@@ -19,13 +18,7 @@ import {
 } from "./approve-listed-tools.ts";
 import { TestToolApprovalStore } from "./testing/test-tool-approval-store.ts";
 import { readToolListing } from "./tool-listing.ts";
-
-/** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
-const digest: Digest = {
-  async sha256(data) {
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};
+import { digest } from "./web-crypto-digest.test-helper.ts";
 
 const location = "/workspaces/acme";
 const notesServer: ToolServer = {

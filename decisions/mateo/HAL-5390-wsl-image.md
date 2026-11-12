@@ -1,7 +1,7 @@
 # Decision: a CI workflow that builds Halonic's WSL image
 
 - Task: HAL-5390 (WSL image, design HAL-3779 section 5.2; ADR 2026-11-11-pluggable-sandbox-layer)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-5390](/HAL/issues/HAL-5390)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-5390
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hnma5Pbcvf3inyEzieS6HDxrNHMqrBhiwJOfU+CukUuzoY6z8zXnoTSMVsMIfTMnPP37TuRUpb65q7yCLoSECQ==
 

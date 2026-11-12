@@ -1,9 +1,9 @@
 # Decision: the Dialog follows Sofia's design check (D1, D2, D3, D5, D6, D7)
 
 - Approval: Sofia asked for these changes in her design check of the Dialog
-  ([design-check-dialog on HAL-2601](/HAL/issues/HAL-2601#document-design-check-dialog), D1 to
+  (design-check-dialog on HAL-2601, D1 to
   D7), and Liam asked for the two notes in his review of halonic#739 on
-  [HAL-2568](/HAL/issues/HAL-2568); Liam approves this note in review
+  HAL-2568; Liam approves this note in review
 - Kind: internal
 - Task: HAL-2609
 

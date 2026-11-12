@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4846 (Liam's decision on HAL-2824: the CLI reads a source's tool listing outside a run, for `halonic tools`, HAL-2827); HAL-3070 (an untrusted workspace starts no connector, exit 3); stack 4h of the [HAL-189 plan](/HAL/issues/HAL-189#document-implementation-plan) (Julian's condition on HAL-4739: the harness agents' working folders)
+- Source: HAL-4846 (Liam's decision on HAL-2824: the CLI reads a source's tool listing outside a run, for `halonic tools`, HAL-2827); HAL-3070 (an untrusted workspace starts no connector, exit 3); stack 4h of the HAL-189 plan (Julian's condition on HAL-4739: the harness agents' working folders)
 
 The CLI shall read a workspace source's tool listing outside a run through one set of connector factories, for `stdio` and `http`, built in its composition root. It shall check the workspace's trust first and, when the workspace isn't trusted as it is now, refuse with the trust check and exit code 3 before any program starts or any server is reached. A trusted source shall be connected with the workspace's grant, the command's secrets, the workspace folder and the working folder of every harness agent in the workspace as real absolute paths, so a `stdio` program that would run or load a file from one of them doesn't start, and closed once its tools are read. An `http` connector's address shall lead only to the class it is written as: a name to the internet, `localhost` to this computer, and an address written as numbers to its own class.
 

@@ -27,13 +27,15 @@ export interface StudioSidebarProps {
   readonly contextFor: (featureId: string) => WorkspaceContext;
   /** Opens the Ctrl K palette. */
   readonly onSearch: () => void;
+  /** Opens Settings, from the Settings row last in the sidebar. Without it, there's no such row. */
+  readonly onSettings?: (() => void) | undefined;
   /** The workspace switcher, once the app has a workspace menu (T3); without it, none shows. */
   readonly switcher?: WorkspaceSwitcherProps | undefined;
 }
 
 /**
  * The desktop sidebar (component specs 24.4): the workspace switcher, the Search box, then the
- * places, followed by its resize edge. It starts 264px wide and keeps the width the edge sets while
+ * places and Settings, followed by its resize edge. It starts 264px wide and keeps the width the edge sets while
  * the window is open. In a narrow window the frame puts it in the Places drawer, which sets its
  * width, and the edge hides itself.
  *
@@ -42,7 +44,8 @@ export interface StudioSidebarProps {
  *
  * @example
  * <StudioSidebar places={shell.contributions.places.list()} tabs={workspace.tabs}
- *   announcer={shell.announcer} platform={platform} contextFor={contextFor} onSearch={palette.show} />
+ *   announcer={shell.announcer} platform={platform} contextFor={contextFor} onSearch={palette.show}
+ *   onSettings={() => openSettings()} />
  */
 export function StudioSidebar(props: StudioSidebarProps) {
   const { tabs, contextFor } = props;
@@ -64,7 +67,12 @@ export function StudioSidebar(props: StudioSidebarProps) {
       >
         {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
         <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
-        <PlacesList places={places} tabs={tabs} announcer={props.announcer} />
+        <PlacesList
+          places={places}
+          tabs={tabs}
+          announcer={props.announcer}
+          onSettings={props.onSettings}
+        />
       </div>
       <SidebarResizeEdge
         width={width}

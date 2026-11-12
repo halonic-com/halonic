@@ -8,4 +8,8 @@ export {
   NodeHarnessBridgeServer,
   type NodeHarnessBridgeServerOptions,
 } from "./server.ts";
-export { maxSocketPathBytes } from "./socket-folder.ts";
+export {
+  emptyRunFolderMinAgeMs,
+  maxSocketPathBytes,
+  sweepRunSocketFolders,
+} from "./socket-folder.ts";

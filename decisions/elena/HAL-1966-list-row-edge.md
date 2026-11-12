@@ -1,7 +1,7 @@
 # Decision: the List matches the states sheet (row edge, More button, heading, avatars, error dot)
 
 - Approval: Noah, the kit's owner and designer, asked for these changes in his design check of
-  the kit states page on [HAL-1966](/HAL/issues/HAL-1966) (L1 to L5); he approves this note in review
+  the kit states page on HAL-1966 (L1 to L5); he approves this note in review
 - Kind: internal
 - Task: HAL-1966
 

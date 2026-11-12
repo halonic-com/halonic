@@ -13,9 +13,10 @@ import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import type { TurnLog } from "../agent/turn-log.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { ModelCallResult } from "../kernel/decide-types.ts";
-import { agentIn } from "../kernel/kept-definitions.ts";
+import { branchOfCall } from "../kernel/run-branches.ts";
 import type { PendingCall } from "../kernel/run-state.ts";
 import { callMethodOf } from "../kernel/step-method.ts";
+import { callAgentOf } from "../kernel/step-output.ts";
 import type { AgentKnowledge } from "../knowledge/agent-knowledge.ts";
 import { defaultRunMaxRounds, type RunTurn } from "../local-subagent.ts";
 import type { AbortOnStop } from "./abort-on-stop.ts";
@@ -88,8 +89,9 @@ export interface RunModelCall {
  */
 export async function runModelCall(input: RunModelCall): Promise<ModelCallResult> {
   const { turn, call, stop } = input;
-  const agent = agentIn(turn.definitions, call.agent);
-  const method = callMethodOf(turn.definitions, call.state, call.agent);
+  const branch = branchOfCall(turn.run.parallel, call.callId)?.name;
+  const agent = callAgentOf(turn.definitions, call.state, call.agent, branch);
+  const method = callMethodOf(turn.definitions, call.state, call.agent, branch);
   const messages = runTurnMessages(agent, turn.definitions, call.prompt);
   const model = await input.resolveModel({
     hubId: turn.run.hubId,

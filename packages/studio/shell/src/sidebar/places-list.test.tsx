@@ -127,3 +127,35 @@ verifies("shell.sidebar-places", () => {
     });
   });
 });
+
+verifies("shell.sidebar-settings", () => {
+  it("shows Settings last, after a divider, as a button that is never where you are", () => {
+    let opened = 0;
+    const container = render(
+      <PlacesList
+        places={places}
+        tabs={new TabSet()}
+        announcer={createAnnouncer({ timers: new FakeTimers() })}
+        onSettings={() => {
+          opened += 1;
+        }}
+      />,
+    );
+    const nav = container.querySelector("nav") as HTMLElement;
+    const last = nav.lastElementChild as HTMLElement;
+
+    expect(last.tagName).toBe("BUTTON");
+    expect(last.textContent).toBe("Settings");
+    expect(last.hasAttribute("aria-current")).toBe(false);
+    expect(last.previousElementSibling?.tagName).toBe("HR");
+    click(last);
+    expect(opened).toBe(1);
+  });
+
+  it("has no Settings row when the window gives no way to open it", () => {
+    const { container } = renderPlaces();
+
+    expect(container.querySelector("nav button")).toBeNull();
+    expect(container.querySelector("nav hr")).toBeNull();
+  });
+});

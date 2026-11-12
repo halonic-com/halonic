@@ -23,6 +23,10 @@ const ranStatuses = ["passed", "failed"];
  *   (see `timingOnlyDrops`).
  * Both checkouts' tests must have run first. A missing or unreadable result
  * file is a finding too, so the guard fails closed.
+ *
+ * When the base side's results come from an older green commit (`tested`),
+ * the tests in files main changed since then are left out on both sides:
+ * the pull request didn't make those changes (HAL-7660).
  */
 export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
   const { base, head } = checkouts;
@@ -32,8 +36,9 @@ export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
       findings.push({ subject: file, file, message: `The test file ${file} was deleted.` });
     }
   }
-  const before = ranTests(base, "merge base", findings);
-  const after = ranTests(head, "pull request", findings);
+  const comparable = unchangedOnMain(checkouts);
+  const before = ranTests(checkouts.tested ?? base, "merge base", findings).filter(comparable);
+  const after = ranTests(head, "pull request", findings).filter(comparable);
   // A deleted file has its own finding above.
   const fewerInFile = compareCounts(
     countBy(before, byFile),
@@ -99,6 +104,30 @@ function ranTests(context: CheckContext, side: string, findings: GuardFinding[])
     });
   }
   return ran;
+}
+
+/**
+ * Whether a test's file is the same on the tested commit and on `base`.
+ * Without a separate tested commit every test is.
+ */
+function unchangedOnMain({ base, tested }: Checkouts): (test: TestOutcome) => boolean {
+  if (tested === undefined) {
+    return () => true;
+  }
+  const testedFiles = new Set(tested.files);
+  const baseFiles = new Set(base.files);
+  const unchanged = new Map<string, boolean>();
+  return (test) => {
+    let same = unchanged.get(test.file);
+    if (same === undefined) {
+      same =
+        testedFiles.has(test.file) &&
+        baseFiles.has(test.file) &&
+        tested.read(test.file) === base.read(test.file);
+      unchanged.set(test.file, same);
+    }
+    return same;
+  };
 }
 
 const byFile = (test: TestOutcome): string | undefined => test.file;

@@ -10,8 +10,9 @@
 
 import { type ConnectorFactories, connectorConfigOf } from "@halonicjs/app";
 import type { ConnectorsRun, RunConnectors } from "@halonicjs/engine";
+import type { RunVersion } from "@halonicjs/events";
 import { type Connector, connectorIsLocal } from "@halonicjs/format";
-import type { ConnectorClient, ConnectorFactoryContext } from "@halonicjs/ports";
+import type { ConnectorClient, ConnectorFactoryContext, TrustGrant } from "@halonicjs/ports";
 import type { ProgramFolders } from "./program-folders.ts";
 
 /** What {@link FolderRunConnectors} starts a run's connectors with. */
@@ -21,24 +22,42 @@ export interface FolderRunConnectorsInput {
   /** Where a run's programs start: a copy at its commit for a live run. */
   readonly programFolders: Pick<ProgramFolders, "folderFor">;
   /**
-   * What every connector starts with, but its folder: the secrets, sign-ins,
-   * HTTP client and the trust grant from the command's trust check, `null`
-   * when the workspace isn't trusted, so no program starts.
+   * What every connector starts with, but its folder and its grant: the
+   * secrets, sign-ins and HTTP client.
    */
-  readonly context: Omit<ConnectorFactoryContext, "workspaceRoot" | "workingFolders">;
+  readonly context: Omit<ConnectorFactoryContext, "workspaceRoot" | "workingFolders" | "trust">;
   /**
-   * The connector files the run's hub can see, in the version the run read.
+   * The version the run read, as its connectors start from it.
    *
-   * @throws when that version can't be read; the step that needed a connector fails
+   * @throws when that version can't be read or may not run here; the step that needed a connector fails
    */
-  connectorsOf(run: ConnectorsRun): Promise<readonly Connector[]>;
-  /**
-   * The real working folders of the harness agents under `folder`, so a
-   * program that would start from one is refused (`format.working-folder-start`).
-   */
-  workingFoldersOf(folder: string): Promise<readonly string[]>;
+  versionOf(run: VersionedRun): Promise<RunConnectorsVersion>;
   /** Hears what couldn't be closed or released when a run's connectors end. */
   reportError(error: unknown): void;
+}
+
+/** A run that names the version of the workspace it read, as every run's connectors need. */
+export type VersionedRun = ConnectorsRun & { readonly version: RunVersion };
+
+/**
+ * What a run's connectors start from: the version of the workspace the run
+ * read, so a run calls the connectors it started with, not the workspace's
+ * as they are now.
+ */
+export interface RunConnectorsVersion {
+  /** The connector files the run's hub can see in that version. */
+  readonly connectors: readonly Connector[];
+  /**
+   * The grant from that version's trust check, `null` when the version can
+   * only reach the test model, so no program starts.
+   */
+  readonly trust: TrustGrant | null;
+  /**
+   * The real working folders of that version's harness agents under
+   * `folder`, so a program that would start from one is refused
+   * (`format.working-folder-start`).
+   */
+  workingFoldersOf(folder: string): Promise<readonly string[]>;
 }
 
 /** A run's started connectors, and the hold on the folder they started in. */
@@ -52,7 +71,7 @@ interface OpenConnectors {
  * steps of a run that open them at once share one start.
  *
  * @example
- * const connectors = new FolderRunConnectors({ factories, programFolders, context, connectorsOf, workingFoldersOf, reportError });
+ * const connectors = new FolderRunConnectors({ factories, programFolders, context, versionOf, reportError });
  * new LocalExecutor({ …, runs: { …, runConnectors: connectors } });
  * // once the executor and scheduler have closed:
  * await connectors.closeAll();
@@ -111,21 +130,23 @@ export class FolderRunConnectors implements RunConnectors {
   }
 
   async #start(run: ConnectorsRun): Promise<OpenConnectors> {
-    if (run.version === null) {
+    const { version } = run;
+    if (version === null) {
       throw new Error(
         `Run "${run.runId}" doesn't name the version of the workspace it read, so its connectors can't start.`,
       );
     }
-    const files = await this.#input.connectorsOf(run);
-    const folder = await this.#input.programFolders.folderFor(run.version);
+    const read = await this.#input.versionOf({ ...run, version });
+    const folder = await this.#input.programFolders.folderFor(version);
     const clients: ConnectorClient[] = [];
     try {
       const context: ConnectorFactoryContext = {
         ...this.#input.context,
+        trust: read.trust,
         workspaceRoot: folder.path,
-        workingFolders: await this.#input.workingFoldersOf(folder.path),
+        workingFolders: await read.workingFoldersOf(folder.path),
       };
-      for (const file of files) {
+      for (const file of read.connectors) {
         const local = connectorIsLocal(file);
         // The engine would drop it anyway (`engine.local-only`): don't start it.
         if (run.localOnly && !local) continue;

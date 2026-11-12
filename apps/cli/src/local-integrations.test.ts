@@ -9,6 +9,7 @@ import {
   IntegrationNotTrustedError,
   RunnerStartGate,
   readIntegrationFolder,
+  readLocalIntegrations,
   TrustedRunnerStart,
   UnfencedRuns,
 } from "@halonicjs/app";
@@ -24,7 +25,6 @@ import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
-import { readLocalIntegrations } from "./workspace-integrations.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import {
   assertTrustable,

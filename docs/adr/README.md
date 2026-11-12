@@ -45,6 +45,7 @@ code is built the way it is, before you change something they describe.
 | [Pluggable sandbox layer](2026-11-11-pluggable-sandbox-layer.md) | One choice over a list of backends, no fall-through; srt in WSL first on Windows (v6) |
 | [Harness detect for one agent](2026-11-11-harness-detect-for-one-agent.md) | `detect()` can ask about an agent's settings folder; the probe sets only that variable (v3) |
 | [Sandbox bridge on a socket](2026-11-11-sandbox-bridge-on-a-socket.md) | The profile's bridge says its kind: a loopback port, or a name srt's proxy sends to a Unix socket (v7) |
+| [Sandbox check fix data](2026-11-12-sandbox-check-fix-data.md) | A refused check may name its fix as data: an install with the package manager found, or an AppArmor profile for one program (v7, optional) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

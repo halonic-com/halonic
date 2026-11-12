@@ -1,7 +1,7 @@
 # Decision: the CLI words the nine reason codes of `Sandbox` port version 6
 
 - Task: HAL-5900; asked for by Liam in his review of #1836 (HAL-5750)
-- Approval: Liam approved the change in review on [HAL-5926](/HAL/issues/HAL-5926) and signs this note
+- Approval: Liam approved the change in review on HAL-5926 and signs this note
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9/2WBaIf87LL6qeP5ZjeGWZzjgUcnlP5SqkxmCLpQBkIGnrRweQvLea0p5dsctXp8ytCEejvBa/cDzjabL63AA==
 

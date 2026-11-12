@@ -13,10 +13,13 @@ gives the first reason when it can't: Windows without srt's install (`setup-need
 there and fails, and only while AppArmor's `apparmor_restrict_unprivileged_userns` is `1`), or `socat`
 or ripgrep (`rg`) missing, which srt starts next to bubblewrap (`linux-tools-missing`, naming which),
 or ripgrep missing on macOS, where srt starts it next to Seatbelt (`ripgrep-missing`).
+For a missing package, the refusal's `fix` names one install of everything missing with the package
+manager it finds (`apt`, `dnf`, `pacman`, `zypper`, `brew`, or `null`); for AppArmor, the profile for
+`/usr/bin/bwrap` alone that CI loads on Ubuntu 24.04, never the machine-wide setting.
 On Linux it is ready only once srt has started its smallest real sandbox and run `true` in it, within
 10 seconds; a pass is kept for the process, a failure is asked again at the next check; anything else that stops it is `other`, with bubblewrap's or srt's own
 line. `open()` checks first, refuses a bridge that isn't a
-loopback address, then opens a session that proves its fence (a canary file the fence hides and a
+loopback address or is on a Unix socket (srt's rule for it comes with HAL-6348), and a profile that denies the key store when srt's own settings would drop that deny, naming the dropped services; then it opens a session that proves its fence (a canary file the fence hides and a
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and
 never run a file under a skill's `scripts/` folder. When a session ends, it undoes any `commondir`
 file the program changed in the working folder's git folders and moves aside any `.git` the program

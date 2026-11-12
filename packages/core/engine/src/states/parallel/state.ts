@@ -1,5 +1,6 @@
 import type { RunFailureReason } from "@halonicjs/events";
-import { stepPrompt } from "@halonicjs/workflow";
+import type { Branch } from "@halonicjs/format";
+import { methodPrompt, stepPrompt, withGets } from "@halonicjs/workflow";
 import { checkAnswer } from "../../kernel/agent-answer.ts";
 import { programHarnessOf } from "../../kernel/agent-call.ts";
 import type { DecidedEvent, DecideInput, Effect } from "../../kernel/decide-types.ts";
@@ -16,6 +17,8 @@ import {
   endBranch,
   type RunningBranch,
 } from "../../kernel/run-branches.ts";
+import { methodOf, noBranchMethodError } from "../../kernel/step-method.ts";
+import { stepOutputOf } from "../../kernel/step-output.ts";
 import { joinBranches } from "./join.ts";
 
 /**
@@ -33,7 +36,8 @@ export const parallelState: StateHandler<"parallel"> = {
   onInput: takeBranchResult,
 };
 
-function startBranches({ run, stateId, state, scope, agents }: StateContext): StateStep {
+function startBranches(context: StateContext): StateStep {
+  const { run, stateId, state, agents } = context;
   const branches = branchesOf(state);
   if (branches.length === 0) {
     return failed(`Parallel state "${stateId}" has no branches.`);
@@ -52,7 +56,8 @@ function startBranches({ run, stateId, state, scope, agents }: StateContext): St
     }
     // Each agent.started takes the next call id as it is folded in.
     const callId = `call-${run.calls + events.length + 1}`;
-    const prompt = stepPrompt(branch.input, state.gets, scope, run.input);
+    const prompt = promptOf(context, name, branch);
+    if (typeof prompt !== "string") return failed(prompt.error);
     events.push({
       type: "agent.started",
       state: stateId,
@@ -63,6 +68,25 @@ function startBranches({ run, stateId, state, scope, agents }: StateContext): St
     effects.push({ type: "call-model", callId, state: stateId, agent: branch.agent, prompt });
   }
   return { events, effects };
+}
+
+/**
+ * The branch's prompt: its method's prompt with the picked data after it, or
+ * its `input`, or the error when its agent has no such method.
+ */
+function promptOf(
+  { run, stateId, state, scope, agents }: StateContext,
+  name: string,
+  branch: Branch,
+): string | { readonly error: string } {
+  if (branch.method === undefined) {
+    return stepPrompt(branch.input, state.gets, scope, run.input);
+  }
+  const method = methodOf(agents, branch.agent, branch.method);
+  if (method === undefined) {
+    return { error: noBranchMethodError(stateId, name, branch.agent, branch.method) };
+  }
+  return withGets(methodPrompt(branch.method, method, branch.with, scope), state.gets, scope);
 }
 
 /**
@@ -104,8 +128,15 @@ function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): 
 }
 
 /** A branch's answer; one its agent's output doesn't allow ends the branch with an error. */
-function answered({ agents }: StateContext, branch: RunningBranch, answer: unknown): BranchEnd {
-  return checkAnswer(agents, branch.call?.agent ?? "", answer);
+function answered(
+  { state, agents }: StateContext,
+  branch: RunningBranch,
+  answer: unknown,
+): BranchEnd {
+  const agent = branch.call?.agent ?? "";
+  const step = state.branches?.[branch.name];
+  const stepOutput = step === undefined ? undefined : stepOutputOf(agents, agent, step);
+  return checkAnswer(agents, agent, answer, stepOutput);
 }
 
 /** The branch's `agent.finished`: its answer, its failure, or the step it couldn't try. */

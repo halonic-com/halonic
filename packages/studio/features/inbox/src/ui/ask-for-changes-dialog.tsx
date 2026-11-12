@@ -1,5 +1,6 @@
-import { Dialog, Field, TextArea } from "@halonicjs/studio-kit";
+import { Button, Dialog, Field, TextArea } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
+import { secretHold } from "../plain/secret-hold.ts";
 
 /** The empty note's field error (mc 10.2, state-coverage D6). */
 export const emptyNoteError = "Say what should change.";
@@ -23,15 +24,25 @@ export interface AskForChangesDialogProps {
  * focused. Enter adds a line and Ctrl Enter sends, the same as **Send note**; a note is a message
  * to the agent, so no key approves or rejects. **Send note** is never disabled: with an empty note
  * it shows "Say what should change." under the field and focuses it.
+ *
+ * A note that looks like a secret is held, because the run log keeps it: the field shows why and
+ * keeps its text and focus, and **Send anyway** sends it as typed. The line never repeats the text.
  */
 export function AskForChangesDialog(props: AskForChangesDialogProps) {
   const { note, busy } = props;
   const field = useRef<HTMLTextAreaElement>(null);
   const [empty, setEmpty] = useState(false);
+  const [held, setHeld] = useState<string | null>(null);
 
   function send() {
     if (note.trim() === "") {
       setEmpty(true);
+      field.current?.focus();
+      return;
+    }
+    const hold = secretHold(note);
+    if (hold !== undefined) {
+      setHeld(hold.line);
       field.current?.focus();
       return;
     }
@@ -48,17 +59,25 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
       onConfirm={send}
       onCancel={props.onCancel}
     >
-      <Field label="Note" error={empty ? emptyNoteError : null}>
+      <Field label="Note" error={empty ? emptyNoteError : held}>
         <TextArea
           ref={field}
           value={note}
           submitOnCtrlEnter
           onChange={(event) => {
             setEmpty(false);
+            setHeld(null);
             props.onNoteChange(event.target.value);
           }}
         />
       </Field>
+      {held === null ? null : (
+        <div className="mt-3">
+          <Button variant="secondary" onClick={() => props.onSend(note)}>
+            Send anyway
+          </Button>
+        </div>
+      )}
     </Dialog>
   );
 }

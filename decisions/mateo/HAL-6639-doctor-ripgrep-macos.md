@@ -1,7 +1,7 @@
 # Decision: the sandbox check asks for ripgrep on macOS too, with its own reason code
 
 - Task: HAL-6639
-- Approval: decided for 0.1.0 on [HAL-6606](/HAL/issues/HAL-6606) (item 2); Liam approves this note in review on [HAL-6639](/HAL/issues/HAL-6639)
+- Approval: decided for 0.1.0 on HAL-6606 (item 2); Liam approves this note in review on HAL-6639
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:O+j2TUn4GOQ3tN8ti5PWCJgh00LTD5dde6rG5/Pw2a7LSp6BGoVhk2d4+laoy6i1MhEfat+lL2hH65AwFguABA==
 

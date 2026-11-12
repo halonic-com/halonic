@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-7084 and HAL-7094 (T8); [ux-checklists-t8-t9](/HAL/issues/HAL-1360#document-ux-checklists-t8-t9) revision 10, 1.2; microcopy revision 94, 15.1 and 19.3 Run row (HAL-751); kit List columns (HAL-6764)
+- Source: HAL-7084 and HAL-7094 (T8); ux-checklists-t8-t9 (HAL-1360) revision 10, 1.2; microcopy revision 94, 15.1 and 19.3 Run row (HAL-751); kit List columns (HAL-6764)
 
 The Runs list shall lay its rows out in columns, in `halonic runs`' order: the status chip, the short id, what ran with its line and Test tag, what started the run, and the time the run started, with how long it took under it once it has ended. It shall be one list with an `h3` for each day the runs started. A failed row shall show its line as the error reason with the Failed chip. Screen readers shall hear one sentence for each row: its short id, what ran, its status and line, what started it and the time it started, with ", test run" for a test run.
 

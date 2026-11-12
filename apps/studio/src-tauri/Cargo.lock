@@ -1507,6 +1507,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-command-paths"
+version = "0.1.0"
+
+[[package]]
 name = "halonic-connect"
 version = "0.1.0"
 dependencies = [
@@ -1584,6 +1588,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-sandbox-elevate"
+version = "0.1.0"
+dependencies = [
+ "sha2",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-secrets"
 version = "0.1.0"
 
@@ -1593,6 +1605,7 @@ version = "0.1.0"
 dependencies = [
  "halonic-agent-host",
  "halonic-blob-store",
+ "halonic-command-paths",
  "halonic-connect",
  "halonic-git-guard",
  "halonic-host-settings",

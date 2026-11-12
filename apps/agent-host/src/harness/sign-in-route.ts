@@ -1,12 +1,8 @@
 import { findProgram } from "@halonicjs/adapter-system-node";
-import type { Harness, HarnessSignIn } from "@halonicjs/ports";
+import { type Harness, signInCommandText } from "@halonicjs/ports";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
-import {
-  quoteForSh,
-  type TerminalCommand,
-  type TerminalOpened,
-} from "../terminal/open-terminal.ts";
+import type { TerminalCommand, TerminalOpened } from "../terminal/open-terminal.ts";
 import { signInBody } from "./harness-schemas.ts";
 
 /**
@@ -59,7 +55,9 @@ export function signInRoute(deps: SignInRouteDeps): HostRoute {
       if (signIn === undefined) {
         return sendError(response, 422, "no_sign_in", `${harness.name} has no sign-in of its own.`);
       }
-      const byHand = manualSignInCommand(signIn, body.settingsFolder, platform);
+      // In the person's own terminal: PowerShell on Windows, `sh` elsewhere.
+      const shell = platform === "win32" ? "powershell" : "sh";
+      const byHand = signInCommandText(signIn, body.settingsFolder, shell);
       const program = await find(signIn.program);
       if (program === undefined) {
         const reason = `${harness.name} wasn't found on this computer.`;
@@ -80,29 +78,6 @@ export function signInRoute(deps: SignInRouteDeps): HostRoute {
       sendJson(response, 200, answer);
     },
   };
-}
-
-/**
- * The sign-in as a person types it into their own terminal: PowerShell on
- * Windows (its default terminal), `sh` elsewhere. It names the program by
- * its name, as the person's `PATH` finds it, and quotes the folder.
- *
- * @example
- * manualSignInCommand(claudeCodeSignIn, "/data/agents/writer", "linux");
- * // CLAUDE_CONFIG_DIR='/data/agents/writer' claude auth login
- */
-export function manualSignInCommand(
-  signIn: HarnessSignIn,
-  settingsFolder: string,
-  platform: NodeJS.Platform,
-): string {
-  const words = [signIn.program, ...signIn.args].join(" ");
-  if (platform === "win32") {
-    // PowerShell keeps a single-quoted string as it is, apart from `''` for one `'`.
-    const folder = `'${settingsFolder.replaceAll("'", "''")}'`;
-    return `$env:${signIn.folderVariable} = ${folder}; ${words}`;
-  }
-  return `${signIn.folderVariable}=${quoteForSh(settingsFolder)} ${words}`;
 }
 
 function messageOf(error: unknown): string {

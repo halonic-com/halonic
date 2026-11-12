@@ -3,8 +3,10 @@ import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/prom
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { RunHistory } from "@halonicjs/app";
 import type { ProfileEnvironment } from "@halonicjs/profile";
+import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliCommand } from "../../command.ts";
@@ -15,9 +17,11 @@ import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
 import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
-import { testRunSetup } from "../../test/run-setup.ts";
+import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { leakedAddressParts, userInfoConnectorYaml } from "../../test/user-info-connector.ts";
+import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { runCommandWith } from "./command.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
@@ -55,6 +59,17 @@ async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }>
 }
 
 const samsEmail = ["--input", "examples/refund-question.json"];
+
+/** Trusts Acme as it is now, in the trust store `halonic run` reads here. */
+async function trustAcme(): Promise<void> {
+  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
+  const read = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const { subject } = read;
+  const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
+  const check = await trust.check(subject);
+  assertTrustable(check, read);
+  expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
+}
 
 verifies("cli.run", () => {
   it("follows Support reply until it waits for the reply's approval, in every mode", {
@@ -135,6 +150,36 @@ verifies("cli.run", () => {
     );
     // The fix, then the receipt, as `halonic runs show` ends the same run.
     expect(io.stdout.slice(failed + 1).map((line) => line.startsWith("  "))).toEqual([true, true]);
+  });
+
+  it("names the secret of a model whose key isn't set, and how to set it (HAL-6585)", async () => {
+    // Leave local only and connect a provider, steps 1 to 6, in a shell without the key.
+    const workspace = join(acme, "workspace.yaml");
+    await writeFile(
+      workspace,
+      (await readFile(workspace, "utf8")).replace("localOnly: true", "localOnly: false"),
+    );
+    await writeFile(
+      join(acme, "providers/anthropic.yaml"),
+      "id: anthropic\nname: Anthropic\ntype: anthropic\nsecret: anthropic\n",
+    );
+    const models = join(acme, "models.yaml");
+    await writeFile(
+      models,
+      `${await readFile(models, "utf8")}  smart:\n    provider: anthropic\n    model: a-model\n`,
+    );
+    const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
+    await writeFile(writer, `${await readFile(writer, "utf8")}model: smart\n`);
+    await trustAcme();
+
+    const { code, io } = await run("support-reply", ...samsEmail);
+
+    expect(code).toBe(exitCode.failed);
+    const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+    expect(io.stdout.slice(failed, failed + 2)).toEqual([
+      "✕ Support reply failed in the step Read the email: there's no key in the secret anthropic (HALONIC_SECRET_ANTHROPIC), used by the model alias smart.",
+      "  Set HALONIC_SECRET_ANTHROPIC to your Anthropic key, then run again.",
+    ]);
   });
 });
 

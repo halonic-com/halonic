@@ -163,9 +163,13 @@ grant couldn't be read and Node couldn't load a script from its working folder
 under `%LOCALAPPDATA%`, while the same tests passed in CI.
 
 The canary uses the same kinds of paths as a real run (the project folder and
-Halonic's own folder under `%LOCALAPPDATA%`), never a fresh temporary folder,
-so it fails where a real run would. The adapter builds the canary's profile
-and probe; `core/app` runs them and decides the code.
+a fresh box folder under Halonic's data folder in `%LOCALAPPDATA%`), never
+`%TEMP%`, so it fails where a real run would. The adapter builds the canary's
+profile and probe; `core/app` runs them and decides the code.
+
+A third control joins the two: Node lists and writes its work folder. It is
+part of the work-folder control, so a failure is `too-strict` too (HAL-3503,
+rule 6).
 
 | Reason code | Fails when |
 | --- | --- |
@@ -174,7 +178,7 @@ and probe; `core/app` runs them and decides the code.
 | `port-reachable` | a canary listener on the host, other than the bridge, can be reached (on `127.0.0.1`, `::1` and the host's own addresses), or the host can connect to a listener inside the box (over loopback and over the host's own addresses) |
 | `internet-reachable` | an address outside the host, public or on the local network (the default gateway and one other private address), can be reached, either directly (by IP and by name, bypassing the proxy) or through the bridge (`CONNECT`, or a request for another host or port) |
 | `dns-reachable` | a lookup sent straight to a public DNS server (UDP 53) gets an answer |
-| `too-strict` | nothing leaked, but a control failed: the read-only file can't be read, or Node can't load the script from the working folder |
+| `too-strict` | nothing leaked, but a control failed: the read-only file can't be read, or Node can't load the script from the working folder, list it and write in it |
 | `did-not-start` | `check()` passed, but the box or the probe program didn't start |
 | `other` | anything else, including a fence proof that failed with no probe to say which, and the time limit |
 

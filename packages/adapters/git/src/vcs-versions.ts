@@ -3,8 +3,9 @@ import { copyFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { checkCommitId, checkPublicWorkspacePath, isPrivateWorkspacePath } from "@halonicjs/ports";
 import type { ConfigEntry } from "./hardening.ts";
+import { fitsOnBatchLine, isRegularFileMode, readObjects, treeEntries } from "./object-batch.ts";
 import { inPathBatches } from "./path-batches.ts";
-import type { Repository } from "./repository.ts";
+import type { GitCalls, Repository } from "./repository.ts";
 
 /**
  * Commits every public file on disk, new ones included and ignored ones
@@ -49,13 +50,42 @@ export async function snapshotCommit(
  * @throws Error `Unknown version <id>` when the repository has no such commit
  */
 export async function readAtCommit(
-  open: () => Promise<Repository>,
+  open: () => Promise<GitCalls>,
   version: string,
   path: string,
 ): Promise<string | null> {
   checkCommitId(version);
   checkPublicWorkspacePath(path);
   const repository = await open();
+  if (!fitsOnBatchLine(path)) return readAtCommitCallByCall(repository, version, path);
+  // One call reads the commit (for its type), the folder's tree (for the
+  // file's mode) and the file. Each call checks the repository first, so one
+  // call in place of three checks it once (HAL-7589).
+  const slash = path.lastIndexOf("/");
+  const [commit, folder, file] = await readObjects(repository, [
+    version,
+    `${version}:${path.slice(0, Math.max(slash, 0))}`,
+    `${version}:${path}`,
+  ]);
+  checkIsCommit(version, commit?.type ?? null);
+  if (folder?.type !== "tree" || file?.type !== "blob") return null;
+  const name = Buffer.from(path.slice(slash + 1), "utf8");
+  const entry = treeEntries(folder.content, version.length / 2).find((found) =>
+    found.name.equals(name),
+  );
+  if (entry === undefined || !isRegularFileMode(entry.mode) || entry.id !== file.id) return null;
+  return file.content.toString("utf8");
+}
+
+/**
+ * {@link readAtCommit} for a path that can't go on a line of
+ * `cat-file --batch`'s input, with one call for each step.
+ */
+async function readAtCommitCallByCall(
+  repository: GitCalls,
+  version: string,
+  path: string,
+): Promise<string | null> {
   await checkKnownVersion(repository, version);
   const entry = (await filesAt(repository, version, path)).find((file) => file.path === path);
   if (entry === undefined) return null;
@@ -71,7 +101,7 @@ export async function readAtCommit(
  * @throws as {@link readAtCommit}
  */
 export async function listAtCommit(
-  open: () => Promise<Repository>,
+  open: () => Promise<GitCalls>,
   version: string,
   dir?: string,
 ): Promise<string[] | null> {
@@ -98,11 +128,7 @@ interface TreeFile {
 const fileModes = new Set(["100644", "100755"]);
 
 /** The regular files of the commit's tree, under `path` when given. */
-async function filesAt(
-  repository: Repository,
-  version: string,
-  path?: string,
-): Promise<TreeFile[]> {
+async function filesAt(repository: GitCalls, version: string, path?: string): Promise<TreeFile[]> {
   const args = ["ls-tree", "-r", "-z", version, ...(path === undefined ? [] : ["--", path])];
   const files: TreeFile[] = [];
   for (const line of nulSeparated(await repository.output({ args }))) {
@@ -122,11 +148,19 @@ async function filesAt(
  *
  * @throws as {@link readAtCommit}
  */
-export async function checkKnownVersion(repository: Repository, version: string): Promise<void> {
+export async function checkKnownVersion(repository: GitCalls, version: string): Promise<void> {
   const found = await repository.run({ args: ["cat-file", "-t", version] });
-  if (found.code !== 0) throw new Error(`Unknown version ${version}`);
+  checkIsCommit(version, found.code === 0 ? text(found.stdout) : null);
+}
+
+/**
+ * Refuses a version by the type of object it names, `null` when there is none.
+ *
+ * @throws as {@link readAtCommit}
+ */
+function checkIsCommit(version: string, type: string | null): void {
+  if (type === null) throw new Error(`Unknown version ${version}`);
   // A full id may name a tree, a file or a tag; only a commit is a version.
-  const type = text(found.stdout);
   if (type !== "commit")
     throw new RangeError(`Invalid version ${version}: it names a ${type}, not a commit.`);
 }

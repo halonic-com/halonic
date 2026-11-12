@@ -102,10 +102,40 @@ export type SandboxUnavailableReason = (typeof sandboxUnavailableReasons)[number
  * - `missing` says what is missing, one plain sentence each, such as
  *   "bubblewrap is not installed". For logs and support, not for people:
  *   Studio words the refusal from `reason`.
+ * - `fix`, when set, is what fixes it on this machine, as data (since
+ *   HAL-5393; optional, so the port stays at its version). See {@link SandboxFix}.
  */
 export type SandboxCheck =
   | { ok: true; reason: null; missing: [] }
-  | { ok: false; reason: SandboxUnavailableReason; missing: string[] };
+  | { ok: false; reason: SandboxUnavailableReason; missing: string[]; fix?: SandboxFix };
+
+/**
+ * Every package manager a {@link SandboxFix} can name: `apt` (Debian,
+ * Ubuntu), `dnf` (Fedora), `pacman` (Arch), `zypper` (openSUSE) and `brew`
+ * (Homebrew on macOS). The list is closed, and a new one is a port change.
+ */
+export const sandboxPackageManagers = ["apt", "dnf", "pacman", "zypper", "brew"] as const;
+
+/** A package manager a {@link SandboxFix} can name: one of {@link sandboxPackageManagers}. */
+export type SandboxPackageManager = (typeof sandboxPackageManagers)[number];
+
+/**
+ * What fixes a refused {@link SandboxCheck} on this machine, as data and
+ * never as words or a command line: Studio and the CLI word it. It is advice
+ * to show the person. No caller runs it or asks for administrator rights on
+ * its own; offering to run it is a new flow that needs the board's approval
+ * (docs/adr/2026-11-12-sandbox-check-fix-data.md).
+ *
+ * - `install`: install every package in `packages` with `packageManager`,
+ *   as one command. `packageManager` is `null` when the machine has none
+ *   that Halonic knows; then Studio names the packages only.
+ * - `apparmor-profile`: write `profile` to `path` and load it, which lets
+ *   `program`, and only it, create user namespaces. The machine-wide setting
+ *   stays on.
+ */
+export type SandboxFix =
+  | { kind: "install"; packageManager: SandboxPackageManager | null; packages: string[] }
+  | { kind: "apparmor-profile"; program: string; path: string; profile: string };
 
 /**
  * What a program in the sandbox may reach. Halonic builds it from the

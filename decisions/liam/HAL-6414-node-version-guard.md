@@ -1,7 +1,7 @@
 # Decision: CI's fresh-install check runs the `halonic` launcher with pnpm's Node 26
 
 - Task: HAL-6414 (Julian's clean-machine run on HAL-6398 crashed with a raw `ERR_UNKNOWN_FILE_EXTENSION` on an old Node.js)
-- Approval: the task asks for this change; Mateo reviewed it on [HAL-6427](/HAL/issues/HAL-6427), Liam signs this note as the CTO
+- Approval: the task asks for this change; Mateo reviewed it on HAL-6427, Liam signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qq0snX8djdUrtt8EOJDKTNR7+4OXVTvfk4mAUoTGY4P9Pg9i8i3ZzXC8ON9USa/YmCUxamWVrbq1elsMaUxeBw==
 

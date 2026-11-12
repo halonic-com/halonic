@@ -11,6 +11,7 @@ import type { ScriptedModel, TestDeps, TestKnowledge } from "../test-deps.ts";
 import type { TestFailure, TestRun } from "../test-result.ts";
 import { ScriptedPrograms, type UnscriptedProgram } from "./scripted-programs.ts";
 import { ScriptedTools } from "./scripted-tools.ts";
+import { testModelResolver } from "./test-model.ts";
 import { TestClock, TestScheduler } from "./test-time.ts";
 
 /** The id of each case's own run. Every case has an engine of its own, so they never clash. */
@@ -52,7 +53,7 @@ export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun
   const tools = new ScriptedTools(toRun.testCase.tools);
   const programs = new ScriptedPrograms(toRun.testCase.programs);
   const executor = new LocalExecutor({
-    resolveModel: async () => ({ provider: model.provider, model: "test", local: true }),
+    resolveModel: testModelResolver(toRun.workspace, model.provider),
     halonicTools: deps.halonicTools ?? [],
     ...(deps.knowledge === undefined ? {} : { knowledge: knowledgeOf(deps.knowledge) }),
     connectors: tools.clients(connectorsOf(toRun.workspace)),

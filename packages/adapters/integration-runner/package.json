@@ -11,10 +11,12 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "test:fence": "vitest run --config vitest.fence.config.ts"
+    "test:fence": "vitest run --config vitest.fence.config.ts",
+    "test:fence:windows": "vitest run --config vitest.fence-windows.config.ts"
   },
   "dependencies": {
     "@halonicjs/adapter-integration-kit": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*"

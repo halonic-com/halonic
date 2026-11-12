@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, rm, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
@@ -38,6 +38,15 @@ function startHost(args: readonly string[]) {
   return { input, errors, given, sandboxes, handshake, running };
 }
 
+/** Makes a run folder in the profile's `bridges` folder as a crashed host leaves one: empty, and long unchanged. */
+async function leftOverBridgeFolder(profile: string): Promise<string> {
+  const folder = join(profile, "bridges", "crashed");
+  await mkdir(folder, { recursive: true, mode: 0o700 });
+  const longAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await utimes(folder, longAgo, longAgo);
+  return folder;
+}
+
 const exists = (file: string) =>
   access(file).then(
     () => true,
@@ -74,7 +83,22 @@ verifies("agent-host.sweep-lock", () => {
       expect(host.errors).toEqual([]);
     });
 
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] the host serves sockets only on Linux and macOS: removes the bridge folders a crashed host left before it serves",
+      async () => {
+        const leftOver = await leftOverBridgeFolder(profile);
+        const host = startHost(["--profile-folder", profile]);
+        await host.handshake;
+        expect(await exists(leftOver)).toBe(false);
+        expect(await readdir(join(profile, "bridges"))).toEqual([]);
+        host.input.end();
+        expect(await host.running).toBe(0);
+        expect(host.errors).toEqual([]);
+      },
+    );
+
     it("serves without a sweep while another live host holds the lock, and says why", async () => {
+      const leftOver = await leftOverBridgeFolder(profile);
       await mkdir(join(profile, "agent-host"));
       const other = await holdLock(hostLockFile(profile), {
         onLost: () => {},
@@ -86,6 +110,7 @@ verifies("agent-host.sweep-lock", () => {
         expect(host.given).toEqual([[]]);
         expect(host.sandboxes[0]?.sweepOnce).not.toHaveBeenCalled();
         expect(host.errors.join()).toMatch(/doesn't sweep kept grants: The lock .* is held/);
+        expect(await exists(leftOver)).toBe(true);
         host.input.end();
         expect(await host.running).toBe(0);
         // The other host's lock is still there.

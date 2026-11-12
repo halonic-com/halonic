@@ -20,6 +20,7 @@ machine](#running-checks-on-your-machine).
 | `pnpm check:coverage-floors <base-sha> <head-sha>` | fails when the change lowers a package's coverage floor; CI runs it (see [Coverage floors](#coverage-floors)) |
 | `node tooling/check/src/cli/cloud-affected.ts --base <commit>` | whether a change touches a cloud path and so needs the live cloud suites; `--inputs-hash` prints what a live result depends on. CI runs it (`live-cloud.yml`) |
 | `node tooling/check/src/cli/live-sweep.ts [--fail-on-delete]` | deletes `hlt-` live test resources older than 2 hours on the test account; CI runs it |
+| `node tooling/check/src/cli/live-probe.ts` | checks that the CI token reaches the live test account and can list Workers scripts, D1 databases and R2 buckets; CI runs it before the live suites |
 | `pnpm discover [--fix \| --check]` | writes the generated files (`pnpm install` runs it too); `--fix` also rewrites the Studio's feature list and the folder-discovery globs in `turbo.json` |
 | `pnpm new package <layer>/<name>` | creates an empty package that passes every check (adapters: add `--runtime <r>`) |
 | `pnpm new feature <name>` | creates an empty Studio feature and adds it to the Studio's feature list |
@@ -401,7 +402,15 @@ on (its first parent) before anything runs and reads no
 cache (neither Turbo's nor the pnpm store, which a pull request's runs can
 write). A third job, which also runs no pull-request code, installs only
 the merge base's dependencies, takes both sides' result files and runs
-both checks with the merge base's code and Node. To run the guard locally:
+both checks with the merge base's code and Node.
+
+If the main commit the merge ref was built on has a failing test, the merge
+base's tests job walks back to the newest green main commit and uses that
+commit for the guard's code and test results only. The guard still compares
+files (requirements and tests) with the commit the merge ref was built on
+(`--built-on`), so other commits' edits on main aren't blamed on the pull
+request. Tests in files main changed between the two commits are left out
+on both sides. To run the guard locally:
 
 ```sh
 git worktree add --detach ../merge-base "$(git merge-base origin/main HEAD)"
@@ -777,6 +786,7 @@ requirement guard, and the workflow lint unless the group changes
 | Windows installer | when the Tauri shell or `apps/agent-host` changes: builds the installer from the custom NSIS template, installs it silently into a temporary folder and uninstalls it |
 | Android shell | when the Tauri shell or Studio's connect page changes: builds the debug APK |
 | End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
+| Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`): a pull request gets only a notice; in the merge queue it waits for `live-cloud.yml`'s `live-cloud` job to have passed on the pull request's head. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
 | Cancel the run on the first failure | merge queue only: watches the run's other jobs and cancels the run when one fails |
 
 **The merge queue.** `main` merges through GitHub's merge queue. The queue builds each pull request
@@ -813,6 +823,15 @@ code. The score per package goes into the job summary. It only reports for
 now; see [tooling/mutation](../../tooling/mutation/README.md). To run it on a
 branch without running Stryker locally, start `.github/workflows/mutation.yml`:
 `gh workflow run mutation.yml --ref <branch> -f packages=<folder>`.
+
+`.github/workflows/live-cloud.yml` runs the live suites against the
+Cloudflare test account (ADR 5.9). On a pull request it runs only when the
+change touches a cloud path and the pull request is ready for review, and it
+reuses an earlier pass when none of its inputs changed. A fork never gets the
+token. Every night it runs every live suite on `main` again, without reuse,
+and every 6 hours it deletes the `hlt-` test resources older than 2 hours. The
+token is in the protected `cloudflare-live` environment. Until the repository
+variable `LIVE_CLOUD_ENABLED` is `true`, every job skips with a notice.
 
 `.github/workflows/cargo-lock.yml` runs only by hand. It regenerates the
 Tauri shell's `Cargo.lock` for a branch, for anyone without a Rust
