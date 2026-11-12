@@ -129,6 +129,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "fs_remove",
         "fs_watch",
         "fs_unwatch",
+        "folder_entries",
+        "folder_read",
+        "folder_location",
         "plugin:opener|open_url",
         "plugin:event|listen",
     ] {
@@ -359,7 +362,10 @@ fn served_page_test_sees_the_connect_page_allowed_the_file_commands_on_desktop()
         ("fs_list", json!({"workspace": ".", "dir": null})),
         ("fs_read", file.clone()),
         ("fs_write", write),
-        ("fs_remove", file),
+        ("fs_remove", file.clone()),
+        ("folder_entries", json!({"workspace": ".", "dir": null})),
+        ("folder_read", file),
+        ("folder_location", json!({"workspace": ".", "path": null})),
     ] {
         let answer = invoke(&window, CONNECT_PAGE, command, body);
         let refusal = answer.expect_err("no folder is opened yet");
@@ -386,7 +392,10 @@ fn served_page_test_sees_files_granted_to_the_local_main_window_only() {
             "allow-fs-write",
             "allow-fs-remove",
             "allow-fs-watch",
-            "allow-fs-unwatch"
+            "allow-fs-unwatch",
+            "allow-folder-entries",
+            "allow-folder-read",
+            "allow-folder-location"
         ])
     );
 }

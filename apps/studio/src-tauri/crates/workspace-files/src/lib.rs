@@ -13,6 +13,7 @@
 mod error;
 mod fence;
 mod folder;
+mod folder_reader;
 mod links;
 mod temporary_write;
 mod watch;
@@ -22,6 +23,7 @@ mod write_locks;
 pub use error::FileError;
 pub use fence::Fence;
 pub use folder::{WorkspaceFolder, WriteOutcome, content_digest};
+pub use folder_reader::{EntryKind, FolderEntry, FolderReader};
 pub use watch::{FolderSnapshot, WatchMessage, Watches};
 pub use workspace_path::{
     check_public_workspace_path, check_workspace_path, is_private_workspace_path, segment_as_opened,

@@ -6,12 +6,14 @@ use std::path::PathBuf;
 
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
-use halonic_workspace_files::{Fence, FileError, WatchMessage, WriteOutcome};
+use halonic_workspace_files::{
+    EntryKind, Fence, FileError, FolderEntry, WatchMessage, WriteOutcome,
+};
 use serde_json::{Value, json};
 
 use super::{
-    FileFolder, FileRefusal, WatchEvent, WatchStart, WriteAnswer, profile_fence, review_root,
-    workspace_root,
+    EntryAnswer, FileFolder, FileRefusal, WatchEvent, WatchStart, WriteAnswer, profile_fence,
+    review_root, workspace_root,
 };
 
 fn as_json(value: impl serde::Serialize) -> Value {
@@ -190,4 +192,35 @@ fn files_name_the_unreadable_folder_and_only_then_a_path() {
         assert!(refusal.get("path").is_none(), "{refusal}");
         assert!(refusal["message"].is_string(), "{refusal}");
     }
+}
+
+#[test]
+fn files_answer_a_folder_entry_with_a_size_for_a_file_only() {
+    let entry = |path: &str, kind, size| {
+        as_json(EntryAnswer::from(FolderEntry {
+            path: path.to_owned(),
+            kind,
+            size,
+        }))
+    };
+    assert_eq!(
+        entry("a/b", EntryKind::File, Some(4)),
+        json!({"path": "a/b", "kind": "file", "size": 4})
+    );
+    for (kind, name) in [
+        (EntryKind::Folder, "folder"),
+        (EntryKind::Link, "link"),
+        (EntryKind::Other, "other"),
+    ] {
+        assert_eq!(entry("a", kind, None), json!({"path": "a", "kind": name}));
+    }
+}
+
+#[test]
+fn files_name_a_special_file_refusal_for_the_page() {
+    let refusal = as_json(FileRefusal::from(FileError::SpecialPath {
+        path: "acme/socket".to_owned(),
+    }));
+    assert_eq!(refusal["kind"], "special_path");
+    assert!(refusal.get("path").is_none(), "{refusal}");
 }
