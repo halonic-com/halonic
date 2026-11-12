@@ -1,3 +1,4 @@
+export { DisplaySettingsService } from "./api.ts";
 export {
   agentCharactersPref,
   type FrameColourPair,

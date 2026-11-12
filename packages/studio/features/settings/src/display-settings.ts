@@ -63,6 +63,16 @@ export class DisplaySettings {
   }
 
   /**
+   * Shows `value` without storing it, while a slider is dragged, so the window follows the thumb.
+   * The `set` when it lets go stores it. Another window's change, or listening starting or
+   * stopping, puts the stored value back.
+   */
+  preview<Value>(pref: DisplayPref<Value>, value: Value): void {
+    this.shown.set(pref.key, value);
+    this.changed();
+  }
+
+  /**
    * Shows `value` at once and stores it. On a failure the stored value comes back (the value from
    * before, or one another window stored meanwhile), unless a newer change to the same setting came
    * in meanwhile.
