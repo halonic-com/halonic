@@ -250,6 +250,27 @@ verifies("cli.commands.trust.plugin", () => {
     expect(io.stdout.at(-1)).toBe(current);
   });
 
+  it("trusts nothing when the files break during the question, and says it can't be read", async () => {
+    await addWeatherOff();
+    const terminal: Terminal = {
+      ...terminalTyping().terminal,
+      questions: {
+        write: () => undefined,
+        readLine: async () => {
+          await writeFile(join(weatherFolder(), "plugin.yaml"), "id: [weather\n");
+          return "y";
+        },
+      },
+    };
+
+    const { code, io } = await trust(["--plugin", "weather"], terminal);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.join("\n")).toContain("See them with halonic plugin list.");
+    expect(io.stdout.some((line) => fullFingerprint.test(line))).toBe(false);
+    expect(await plugins()).toEqual(["broken"]);
+  });
+
   it("exits 3 for a --fingerprint that isn't the current one, also when it's already on", async () => {
     const fingerprint = await addWeatherOff();
     await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
