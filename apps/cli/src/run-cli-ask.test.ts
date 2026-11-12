@@ -128,7 +128,7 @@ verifies("cli.questions", () => {
     const io = captureIo("/work");
     expect(await runCli(["remove"], io, [removeCommand])).toBe(exitCode.usage);
     expect(io.stderr).toEqual([
-      "✕ Removing mail-mcp deletes its settings and secrets, and there's no terminal to ask you.",
+      "✕ Removing mail-mcp deletes its settings, and there's no terminal to ask you.",
       "  To remove it anyway, pass --yes.",
     ]);
   });

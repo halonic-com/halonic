@@ -17,7 +17,7 @@ verifies("cli.messages", () => {
       "Removed Weather 1.2.0 and its trust.",
     );
     expect(words(pluginMessages.removeNoTerminal("Weather"))).toBe(
-      "Removing Weather deletes its settings and secrets, and there's no terminal to ask you.",
+      "Removing Weather deletes its settings, and there's no terminal to ask you.",
     );
     expect(words(pluginMessages.removeNoTerminalFix())).toBe("To remove it anyway, pass --yes.");
   });
@@ -107,7 +107,13 @@ describe("plugin's sentences", () => {
       "Not removed. Weather is still added.",
     );
     expect(words(pluginMessages.removeHelp())).toBe(
-      "Removes the plugin and its settings and secrets. To only turn it off: halonic trust --plugin <id> --remove",
+      "Removes the plugin and its settings. To only turn it off: halonic trust --plugin <id> --remove",
+    );
+    expect(words(pluginMessages.removeNeedsId())).toBe(
+      "halonic plugin remove needs the plugin's id.",
+    );
+    expect(words(pluginMessages.secretNotDeletedFix("weather"))).toBe(
+      "Run halonic plugin remove weather again to finish removing it.",
     );
     expect(words(pluginMessages.unknownPlugin("wether"))).toBe(
       'There\'s no plugin called "wether".',
@@ -116,5 +122,17 @@ describe("plugin's sentences", () => {
       'There\'s no plugin called "wether". Did you mean weather?',
     );
     expect(words(pluginMessages.unknownPluginFix())).toBe("See them with halonic plugin list.");
+  });
+
+  it("has add's usage lines and the fix for a plugin that can't be read, from cli-output revision 49", () => {
+    expect(words(pluginMessages.addNeedsSource())).toBe(
+      "halonic plugin add needs a folder or a git address.",
+    );
+    expect(words(pluginMessages.yesNeedsFingerprintFix())).toBe(
+      "Add it without --yes to see the check; the fingerprint is in it, above the question.",
+    );
+    expect(words(pluginMessages.brokenPluginFix("junk"))).toBe(
+      "Remove it with halonic plugin remove junk, then add a version that works.",
+    );
   });
 });
