@@ -39,6 +39,8 @@ export interface GitCall {
   network?: boolean;
   /** An absolute index file to use in place of the repository's own (`GIT_INDEX_FILE`). */
   indexFile?: string;
+  /** What git reads as its input, such as the object names `cat-file --batch` takes. */
+  input?: Buffer;
 }
 
 /** What git gave back. A non-zero `code` is git's answer, not an error of the runner. */
@@ -131,6 +133,7 @@ export class GitRunner {
       env: hardenedEnvironment(this.#environment, extra, config),
       timeoutMs: call.network === true ? this.#networkTimeoutMs : this.#localTimeoutMs,
       maxOutputBytes: this.#maxOutputBytes,
+      ...(call.input === undefined ? {} : { input: call.input }),
     });
   }
 

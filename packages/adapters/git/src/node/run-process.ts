@@ -14,6 +14,8 @@ export interface ProcessCall {
   timeoutMs: number;
   /** Stopped once its output and error output together pass this many bytes. */
   maxOutputBytes: number;
+  /** What it reads as its input, which then ends; no input at all without it. */
+  input?: Buffer;
 }
 
 /** What a finished program gave back. */
@@ -25,7 +27,8 @@ export interface ProcessResult {
 }
 
 /**
- * Runs one program with no shell and no input, and collects its output.
+ * Runs one program with no shell, and with no input unless the call gives
+ * some, and collects its output.
  *
  * Past its time or output limit the program is stopped together with
  * every program it started (git starts `ssh`, `git-remote-https` and
@@ -42,7 +45,8 @@ export function runProcess(call: ProcessCall): Promise<ProcessResult> {
       cwd: call.cwd,
       env: call.env,
       shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
+      // Its input ends at once without `call.input`, which reads as no input.
+      stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
       detached: ownGroup,
     });
@@ -65,6 +69,10 @@ export function runProcess(call: ProcessCall): Promise<ProcessResult> {
       }
       into.push(chunk);
     };
+    // A program that exits before it has read everything closes its input
+    // early; its exit code says what went wrong, not the failed write.
+    child.stdin.on("error", () => undefined);
+    child.stdin.end(call.input);
     child.stdout.on("data", collect(stdout));
     child.stderr.on("data", collect(stderr));
 
