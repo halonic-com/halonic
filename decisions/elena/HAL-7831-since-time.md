@@ -2,6 +2,7 @@
 
 - Approval: the wording is the Inbox's settled rule, set on [HAL-7831](/HAL/issues/HAL-7831) by Liam; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p8P5dzVinE+pUVFd0R5gkTnqSLQLA0icJZJLkFWycFBoCQRpNi+6yBpkXTmZtDnEE1KtbYPoBB/6L4DqcFHPAw==
 
 ## What changes
 
