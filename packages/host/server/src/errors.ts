@@ -13,6 +13,18 @@ export const serverErrors = {
     message: "Requests from other origins are refused.",
   },
   bodyTooLarge: { status: 413, code: "body_too_large", message: "The request body is too large." },
+  badRequest: {
+    status: 400,
+    code: "bad_request",
+    message: "The request isn't what this address expects.",
+  },
+  notSignedIn: { status: 401, code: "not_signed_in", message: "Sign in first." },
+  wrongPassword: { status: 401, code: "wrong_password", message: "The password is wrong." },
+  tooManyAttempts: {
+    status: 429,
+    code: "too_many_attempts",
+    message: "Too many sign-in attempts. Try again later.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,
@@ -25,7 +37,10 @@ export const serverErrors = {
 export type ServerError = (typeof serverErrors)[keyof typeof serverErrors];
 
 /** Builds the JSON response of an error: a code and a short message, nothing else. */
-export function errorResponse(error: ServerError): Response {
+export function errorResponse(error: ServerError, headers?: Record<string, string>): Response {
   const body: ServerErrorBody = { code: error.code, message: error.message };
-  return Response.json(body, { status: error.status });
+  return Response.json(
+    body,
+    headers === undefined ? { status: error.status } : { status: error.status, headers },
+  );
 }
