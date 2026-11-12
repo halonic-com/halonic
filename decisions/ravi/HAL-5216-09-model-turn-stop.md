@@ -2,6 +2,7 @@
 
 - Approval: the plan was approved by Liam on [HAL-5556](/HAL/issues/HAL-5556) for finding 658 on [HAL-5216](/HAL/issues/HAL-5216); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uUrJTJyHj0cuFkwrwrIkQzTxOEXfQjm7mSq6+uvEsmlmvMAD2z5eTbRFfR2ZFwN7qKmlzmBEAMYRbv2PHVE8Cw==
 - Task: HAL-5216
 
 ## What changes
