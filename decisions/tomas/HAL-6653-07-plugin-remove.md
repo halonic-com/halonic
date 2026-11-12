@@ -4,6 +4,7 @@
   request on HAL-6837; it puts back cli-output 3.6's wording for `plugin remove`, approved on
   HAL-2123, and the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/n3J+txkNFOuP8zMxlJ9d+P8lEE4CZbcOj0k5X+6d+qJMgxgaZ3Kr5S6SHs55A+qSrsQFxzTafHLKwKSpKIuDQ==
 - Task: HAL-6888
 
 ## What changes
