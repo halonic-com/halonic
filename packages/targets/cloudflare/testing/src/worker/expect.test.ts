@@ -12,9 +12,26 @@ describe("the shim's expect", () => {
     shimExpect(null).toBeNull();
     shimExpect(undefined).toBeUndefined();
     expect(() => shimExpect("a").toBe("b")).toThrow(new AssertionError('expected "a" to be "b"'));
-    expect(() => shimExpect(new Date(0)).toBeGreaterThanOrEqual(0)).toThrow(
-      "expected Date(1970-01-01T00:00:00.000Z) to be greater than or equal to 0",
+    expect(() => shimExpect(0).toBeGreaterThanOrEqual(1)).toThrow(
+      new AssertionError("expected 0 to be greater than or equal to 1"),
     );
+  });
+
+  it("throws a TypeError for values it can't compare, with or without not", () => {
+    expect(() => shimExpect(new Date(0)).toBeGreaterThanOrEqual(0)).toThrow(
+      new TypeError(
+        "actual value must be number or bigint, received Date(1970-01-01T00:00:00.000Z)",
+      ),
+    );
+    expect(() => shimExpect([]).not.toBeGreaterThanOrEqual(1)).toThrow(TypeError);
+    const notANumber = "0" as unknown as number;
+    expect(() => shimExpect(1).not.toBeGreaterThanOrEqual(notANumber)).toThrow(
+      new TypeError('expected value must be number or bigint, received "0"'),
+    );
+  });
+
+  it("starts the failure text with the message given to expect", () => {
+    expect(() => shimExpect(1, "retries").toBe(2)).toThrow("retries: expected 1 to be 2");
   });
 
   it("negates every matcher under not", () => {
@@ -22,7 +39,6 @@ describe("the shim's expect", () => {
     shimExpect(0).not.toBeNull();
     expect(() => shimExpect(null).not.toBeNull()).toThrow("expected null not to be null");
     expect(() => shimExpect(new Date(Number.NaN)).not.toBeUndefined()).not.toThrow();
-    expect(() => shimExpect([]).not.toBeGreaterThanOrEqual(1)).not.toThrow();
     expect(() => shimExpect(5n).not.toBe(5n)).toThrow("expected 5n not to be 5n");
   });
 

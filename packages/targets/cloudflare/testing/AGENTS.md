@@ -4,7 +4,8 @@ Owner: priya · Layer: testing · Read the root `AGENTS.md` first; this file add
 
 ## Scope
 
-Runs the port contract suites inside workerd through Miniflare, and is the live test runner Worker.
+Will run the port contract suites inside workerd through Miniflare and become the live test runner
+Worker (HAL-6791). So far: the vitest shim's `expect` and the check for matchers the shim lacks.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

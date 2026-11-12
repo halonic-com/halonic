@@ -28,7 +28,8 @@ export type Assertion = Matchers & { readonly not: Matchers };
 
 /** The shim's `expect`: a function plus the state calls Vitest's `expect` has. */
 export interface ShimExpect {
-  (actual: unknown): Assertion;
+  /** `message`, when given, starts the failure text, as in Vitest. */
+  (actual: unknown, message?: string): Assertion;
   /** The current counters. */
   getState(): ExpectState;
   /** Overwrites some of the counters. */
@@ -49,7 +50,7 @@ const matchers: Record<keyof Matchers, MatcherImplementation> = {
     expectation: `to be ${describeValue(expected)}`,
   }),
   toBeGreaterThanOrEqual: (actual, expected) => ({
-    pass: isComparable(actual) && isComparable(expected) && actual >= expected,
+    pass: requireComparable(actual, "actual") >= requireComparable(expected, "expected"),
     expectation: `to be greater than or equal to ${describeValue(expected)}`,
   }),
   toBeNull: (actual) => ({ pass: actual === null, expectation: "to be null" }),
@@ -72,9 +73,12 @@ export class AssertionError extends Error {
  */
 export function createExpect(): ShimExpect {
   const state: ExpectState = { assertionCalls: 0 };
-  const expect = (actual: unknown): Assertion => {
+  const expect = (actual: unknown, message?: string): Assertion => {
     state.assertionCalls += 1;
-    return { ...bindMatchers(actual, false), not: bindMatchers(actual, true) };
+    return {
+      ...bindMatchers(actual, false, message),
+      not: bindMatchers(actual, true, message),
+    };
   };
   expect.getState = (): ExpectState => ({ ...state });
   expect.setState = (update: Partial<ExpectState>): void => {
@@ -83,22 +87,33 @@ export function createExpect(): ShimExpect {
   return expect;
 }
 
-function bindMatchers(actual: unknown, negated: boolean): Matchers {
+function bindMatchers(actual: unknown, negated: boolean, message: string | undefined): Matchers {
   const bound: Partial<Record<keyof Matchers, (expected?: unknown) => void>> = {};
   for (const name of Object.keys(matchers) as (keyof Matchers)[]) {
     bound[name] = (expected?: unknown) => {
       const check = matchers[name](actual, expected);
       if (check.pass === negated) {
         const not = negated ? "not " : "";
-        throw new AssertionError(`expected ${describeValue(actual)} ${not}${check.expectation}`);
+        const prefix = message === undefined ? "" : `${message}: `;
+        throw new AssertionError(
+          `${prefix}expected ${describeValue(actual)} ${not}${check.expectation}`,
+        );
       }
     };
   }
   return bound as Matchers;
 }
 
-function isComparable(value: unknown): value is number | bigint {
-  return typeof value === "number" || typeof value === "bigint";
+/**
+ * Returns `value` when it is a number or a bigint and throws a `TypeError`
+ * otherwise, before any `not` is applied, as Vitest's matcher does. A plain
+ * failed check would turn into a pass under `not`.
+ */
+function requireComparable(value: unknown, role: "actual" | "expected"): number | bigint {
+  if (typeof value === "number" || typeof value === "bigint") {
+    return value;
+  }
+  throw new TypeError(`${role} value must be number or bigint, received ${describeValue(value)}`);
 }
 
 function describeValue(value: unknown): string {

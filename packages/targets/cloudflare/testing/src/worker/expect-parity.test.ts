@@ -4,7 +4,8 @@ import { createExpect, type Matchers, matcherNames } from "./expect.ts";
 /**
  * One input for a matcher: the value under test, the matcher's argument and
  * whether the check is negated with `not`. Every row runs through the shim
- * and through Vitest, and both must agree on pass or fail.
+ * and through Vitest, and both must agree on the outcome: a pass, a failed
+ * check, or a `TypeError` for a value the matcher can't check.
  */
 interface ParityRow {
   readonly matcher: keyof Matchers;
@@ -31,6 +32,11 @@ const rows: readonly ParityRow[] = [
   { matcher: "toBeGreaterThanOrEqual", actual: 3n, expected: 2n },
   { matcher: "toBeGreaterThanOrEqual", actual: Number.NaN, expected: 0 },
   { matcher: "toBeGreaterThanOrEqual", actual: 0, expected: 1, negated: true },
+  { matcher: "toBeGreaterThanOrEqual", actual: new Date(0), expected: 0 },
+  { matcher: "toBeGreaterThanOrEqual", actual: new Date(0), expected: 0, negated: true },
+  { matcher: "toBeGreaterThanOrEqual", actual: [], expected: 1, negated: true },
+  { matcher: "toBeGreaterThanOrEqual", actual: 1, expected: "0" },
+  { matcher: "toBeGreaterThanOrEqual", actual: 1, expected: "0", negated: true },
   { matcher: "toBeNull", actual: null },
   { matcher: "toBeNull", actual: undefined },
   { matcher: "toBeNull", actual: 0, negated: true },
@@ -39,14 +45,14 @@ const rows: readonly ParityRow[] = [
   { matcher: "toBeUndefined", actual: "", negated: true },
 ];
 
-type Outcome = "passes" | "fails";
+type Outcome = "passes" | "fails" | "throws a TypeError";
 
 function outcomeOf(check: () => void): Outcome {
   try {
     check();
     return "passes";
-  } catch {
-    return "fails";
+  } catch (error) {
+    return error instanceof TypeError ? "throws a TypeError" : "fails";
   }
 }
 
