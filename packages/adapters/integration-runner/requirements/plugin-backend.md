@@ -25,3 +25,11 @@ When Halonic loads a plugin's backend, it shall treat it as a local integration:
   then loading throws that and offers nothing.
 - Given the loaded backend's host,
   then a request to an address its sheet doesn't declare is refused.
+- Given the loaded backend's host and a request to a declared host that asks for a declared secret,
+  then the host's client places the secret's value, and the service sees it.
+- Given a service that echoes the secret back in its response,
+  then the response the host gives the code doesn't hold the secret's value.
+- Given a request to a host the secret isn't declared for,
+  then nothing is sent.
+- Given the runner's start,
+  then the secret's value is only in the filter forms, not in the client, the settings or the tool names.

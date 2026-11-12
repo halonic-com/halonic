@@ -227,5 +227,66 @@ verifies("integration-runner.plugin-backend", () => {
       if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
       await expect(loaded.value.host.http.fetch("https://evil.example.org/")).rejects.toThrow();
     });
+    describe("a secret's value", () => {
+      const placement = { secret: "weather-key", as: "bearer" } as const;
+
+      /** Answers like a service that echoes the request's headers back in its body. */
+      function echoingTransport(seen: Request[]): AddressCheckingHttpClient {
+        const transport: HttpClient = {
+          fetch: async (input, init) => {
+            const request = new Request(input, init);
+            seen.push(request);
+            return new Response(
+              JSON.stringify({ authorization: request.headers.get("authorization") }),
+            );
+          },
+        };
+        return transport as AddressCheckingHttpClient;
+      }
+
+      it("is placed on a request to a declared host by the host's client, which the code never writes", async () => {
+        const seen: Request[] = [];
+        const { loaded } = await load(fakeRunner(declaration()), {
+          transport: echoingTransport(seen),
+        });
+        if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+        await loaded.value.host.http.fetch("https://api.example.com/forecast?city=Ghent", {
+          auth: placement,
+        });
+        expect(seen.map((request) => request.headers.get("authorization"))).toEqual([
+          `Bearer ${fakeSecret}`,
+        ]);
+      });
+
+      it("is not in what the code gets back when the service echoes it", async () => {
+        const { loaded } = await load(fakeRunner(declaration()), {
+          transport: echoingTransport([]),
+        });
+        if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+        const response = await loaded.value.host.http.fetch("https://api.example.com/forecast", {
+          auth: placement,
+        });
+        expect(await response.text()).not.toContain(fakeSecret);
+      });
+
+      it("is not placed on a request to a host the secret isn't declared for", async () => {
+        const seen: Request[] = [];
+        const { loaded } = await load(fakeRunner(declaration()), {
+          transport: echoingTransport(seen),
+        });
+        if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+        await expect(loaded.value.host.http.fetch("https://evil.example.org/")).rejects.toThrow();
+        expect(seen).toEqual([]);
+      });
+
+      it("reaches the runner only as the bridge's filter forms, never in its client, settings or tool names", async () => {
+        const { starts } = await load(fakeRunner(declaration()));
+        const { secrets, ...whatTheCodeGets } = starts[0] as LocalRunnerBridge;
+        expect(secrets.texts).toContain(fakeSecret);
+        expect(JSON.stringify(whatTheCodeGets.settings)).not.toContain(fakeSecret);
+        expect(JSON.stringify(whatTheCodeGets.tools)).not.toContain(fakeSecret);
+        expect(Object.keys(whatTheCodeGets).sort()).toEqual(["http", "settings", "tools"]);
+      });
+    });
   });
 });
