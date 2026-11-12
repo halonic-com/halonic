@@ -41,6 +41,7 @@ const machine: Machine = {
   missingLinuxHelpers: async () => [],
   bubblewrapUserNamespaceError: async () => null,
   appArmorRestrictsUserNamespaces: async () => false,
+  hasRipgrep: async () => true,
   hasSeatbelt: async () => true,
   hasWindowsSandbox: async () => false,
   installWindowsSandbox: async () => "installed" as const,
