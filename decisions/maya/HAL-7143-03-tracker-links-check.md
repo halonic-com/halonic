@@ -3,6 +3,7 @@
 - Task: HAL-7143 (the guard) and HAL-7167 (its leftovers)
 - Approval: Liam approved the guard and asked for these leftovers in his review on HAL-7151, and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:N/Pp8gZ5ARq8ZdZTJucP8gSZupDuc51HazBswwhrl4MpI0ggbZTkOObTLkdqmvdJ8bTZmbWPulN2pWcLMTTcBw==
 
 ## What changes
 
