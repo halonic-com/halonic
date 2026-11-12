@@ -2,6 +2,7 @@
 
 - Approval: [HAL-7196](/HAL/issues/HAL-7196)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Tz4fvubuOjVTGy/658mPLqKZDnktp8Dw7MVJcIAcbsr3l6VqYx5w3b3fUnr9c02L2CXRmuZ9DQh61crBZ8hDCA==
 
 The `cloudflare.domain` pattern in `deployments.yaml` (HAL-6699) checked the
 253-character cap with a lookahead, `^(?=.{1,253}$)`. Go's `regexp` and
