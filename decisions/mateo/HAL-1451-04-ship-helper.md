@@ -12,6 +12,8 @@ In `.github/workflows/ci.yml`, the `installer-windows` job's list of files the s
 
 From this pull request on, `build-installer.ps1` builds the sandbox's elevated helper and puts it and srt-win.exe next to `Halonic.exe`, where the agent host finds the helper. An installer without them would quietly fall back to srt's own elevation, so the job fails instead.
 
+The helper inside the install must be signed for a release: its UAC prompt shows the publisher, and its check of its own copy for Installed apps relies on it. The release signs only the setup .exe today, and doesn't build Studio yet. So `build-installer.ps1` refuses to pack the helper when a publisher is built in (`HALONIC_SANDBOX_SIGNER`, set only by a release) and the helper isn't validly signed by it. Signing it before it is packed is [HAL-7491](/HAL/issues/HAL-7491), which blocks any release that ships Studio (Liam's review on [HAL-7386](/HAL/issues/HAL-7386)). CI builds set no publisher, so this job is unchanged by it.
+
 ## Covers
 
 - .github/
