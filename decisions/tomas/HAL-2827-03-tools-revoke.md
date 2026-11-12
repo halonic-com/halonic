@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the command and its output in his review of halonic#2182 on [HAL-7396](/HAL/issues/HAL-7396), a team decision with no board card; the package owner (Liam) approves this note in that review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ICKzBygRahDYusODwhIlfCI18UuOxxA7u2jCf4MzJjTvpyAA8nNTxeMDBydy86ipxnhvZ4FkcBsF3NGxXaoxBQ==
 
 `halonic tools revoke` adds three golden files that pin its text output: removing approvals
 (`revoke.txt`), a tool that isn't approved (`revoke-not-approved.txt`) and an unknown source
