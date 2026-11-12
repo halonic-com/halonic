@@ -3,7 +3,7 @@
 // turn together (HAL-998). Nothing here knows which host it runs in; the
 // host's composition root hands in the factories it can serve.
 
-import type { Connector } from "@halonicjs/format";
+import { asciiAllowedSites, type Connector } from "@halonicjs/format";
 import type {
   ConnectorClient,
   ConnectorConfig,
@@ -99,7 +99,7 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
     };
   }
   if ("stdio" in transport) {
-    const { command, args, env, secretEnv, inheritEnv, cwd } = transport.stdio;
+    const { command, args, env, secretEnv, inheritEnv, cwd, sites } = transport.stdio;
     return {
       id: connector.id,
       transport: {
@@ -109,6 +109,8 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
         env: env ?? {},
         ...(inheritEnv === undefined ? {} : { inheritEnv: [...inheritEnv] }),
         ...(cwd === undefined ? {} : { cwd }),
+        // In the form the sandbox and the trust record use, so `API.acme.test` is `api.acme.test`.
+        ...(sites === undefined ? {} : { sites: asciiAllowedSites(sites) }),
       },
       secretEnv: secretEnv ?? {},
     };

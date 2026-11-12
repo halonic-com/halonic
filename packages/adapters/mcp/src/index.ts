@@ -34,6 +34,7 @@ export {
 } from "./protocol/index.ts";
 export { nodeProgramStarter } from "./stdio/node-program-starter.ts";
 export type {
+  AgentWorkingFolders,
   ProgramExit,
   ProgramLaunch,
   ProgramStarter,
@@ -51,3 +52,4 @@ export { McpStdioConnectorFactory, type McpStdioOptions } from "./stdio/stdio-co
 export { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio/stdio-transport.ts";
 export { ConnectorStoppedError } from "./stdio/stopped-error.ts";
 export { ConnectorToolError, resultText, toConnectorTool } from "./stdio/tool-mapping.ts";
+export { refuseWorkingFolders } from "./stdio/working-folder-guard.ts";

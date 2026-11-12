@@ -18,3 +18,9 @@ export {
   type UndeclaredTool,
 } from "./sandbox-connector.ts";
 export { sandboxProgram } from "./sandbox-program.ts";
+export {
+  refuseAgentFolderStart,
+  type WorkspaceConnectorSetting,
+  workspaceConnectorPlace,
+  workspaceStartFolder,
+} from "./workspace-connector-place.ts";
