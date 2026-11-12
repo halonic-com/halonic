@@ -198,6 +198,32 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("ends with the wait step's title as the engine filled it in (HAL-7012)", async () => {
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "review" }],
+          [
+            today("10:41:00"),
+            {
+              type: "run.waiting",
+              state: "review",
+              events: ["approve", "reject"],
+              title: "Approve the reply to Ada",
+              body: "Hi Ada, thanks for writing.",
+            },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(-2)).toEqual([
+        "! Waiting for you: Approve the reply to Ada",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+      ]);
+    });
+
     it("writes the author's label after each answer that has one", async () => {
       await storeRuns({
         ...waiting,

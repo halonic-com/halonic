@@ -102,6 +102,68 @@ describe("listedRun", () => {
     });
   });
 
+  it("shows the wait step's title as the engine filled it in, not as written (HAL-7012)", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "review" },
+        {
+          type: "run.waiting",
+          state: "review",
+          events: ["approve", "reject"],
+          title: "Approve the reply to Ada",
+          body: "Hi Ada, thanks for writing.",
+        },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({
+      status: "needsYou",
+      what: "Waiting for you: Approve the reply to Ada",
+    });
+  });
+
+  it("falls back to the wait step's description as written for a log without the filled-in title", () => {
+    const placeholder = {
+      ...supportReply,
+      states: {
+        ...supportReply.states,
+        review: { type: "wait", description: "Approve the reply to {{context.name}}" },
+      },
+    } as unknown as WorkflowDefinition;
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "review" },
+        { type: "run.waiting", state: "review", events: ["approve", "reject"] },
+      ],
+      today,
+    );
+
+    const listed = listedRun({ summary }, () => placeholder, clock);
+
+    expect(plainText(listed.what)).toBe("Waiting for you: Approve the reply to {{context.name}}");
+  });
+
+  it("shows an escape code in the filled-in title as its code", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "review" },
+        {
+          type: "run.waiting",
+          state: "review",
+          events: ["approve"],
+          title: "Approve \u001b[31mthis",
+        },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({ what: "Waiting for you: Approve \\u001b[31mthis" });
+  });
+
   it("names the step when the wait step has no description", () => {
     const summary = runOf(
       [

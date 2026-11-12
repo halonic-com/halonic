@@ -185,16 +185,20 @@ function needsYouWhat(
 }
 
 /**
- * The first line of the wait step's description, as written but made
- * printable: it comes from a workflow file, perhaps a shared one
- * (cli-output section 5). `undefined` when it has none.
+ * The first line of the wait step's description, filled in by the engine
+ * (`waitingFor.title`), so a placeholder shows its value as in Studio. A log
+ * from before that field falls back to the line as written in the workflow
+ * file. Either way it is made printable: the filled-in value can be model
+ * output, and the file perhaps a shared one (cli-output section 5).
+ * `undefined` when it has none.
  */
 export function waitDescription(
   summary: RunSummary,
   workflow: WorkflowDefinition | undefined,
 ): string | undefined {
-  const description =
+  const asWritten =
     summary.state === null ? undefined : workflow?.states[summary.state]?.description;
+  const description = summary.waitingFor === null ? asWritten : summary.waitingFor.title;
   const firstLine = description?.split("\n")[0]?.trim();
   return firstLine === undefined || firstLine === "" ? undefined : printable(firstLine);
 }
