@@ -72,10 +72,21 @@ verifies("app.run-steps", () => {
       ...finishedAt("14:02:30"),
     ]);
     expect(steps).toEqual([
-      { stateId: "read", agentId: "writer", end: { kind: "done", tookMs: 1000 } },
-      { stateId: "draft", agentId: "writer", end: { kind: "done", tookMs: 9000 } },
+      {
+        stateId: "read",
+        startedAt: "2026-11-10T14:00:00.000Z",
+        agentId: "writer",
+        end: { kind: "done", tookMs: 1000 },
+      },
+      {
+        stateId: "draft",
+        startedAt: "2026-11-10T14:00:01.000Z",
+        agentId: "writer",
+        end: { kind: "done", tookMs: 9000 },
+      },
       {
         stateId: "review",
+        startedAt: "2026-11-10T14:00:10.000Z",
         agentId: undefined,
         end: { kind: "answered", event: "approve", at: "2026-11-10T14:02:30.000Z" },
       },
@@ -103,7 +114,12 @@ verifies("app.run-steps", () => {
       ...finishedAt("14:00:04"),
     ]);
     expect(steps).toEqual([
-      { stateId: "checks", agentId: undefined, end: { kind: "done", tookMs: 4000 } },
+      {
+        stateId: "checks",
+        startedAt: "2026-11-10T14:00:00.000Z",
+        agentId: undefined,
+        end: { kind: "done", tookMs: 4000 },
+      },
     ]);
   });
 
@@ -158,8 +174,20 @@ verifies("app.run-steps", () => {
     const steps = stepsOf(upToReview.slice(0, 4));
     expect(steps.at(-1)).toEqual({
       stateId: "draft",
+      startedAt: "2026-11-10T14:00:01.000Z",
       agentId: "writer",
       end: { kind: "running", since: "2026-11-10T14:00:01.000Z" },
     });
+  });
+});
+
+verifies("app.run-step-entered", () => {
+  it("says when the run entered each step", () => {
+    const steps = stepsOf([...upToReview]);
+    expect(steps.map((step) => step.startedAt)).toEqual([
+      "2026-11-10T14:00:00.000Z",
+      "2026-11-10T14:00:01.000Z",
+      "2026-11-10T14:00:10.000Z",
+    ]);
   });
 });

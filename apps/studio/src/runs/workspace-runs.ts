@@ -6,7 +6,7 @@ import {
   routineClocks,
   workflowIn,
 } from "@halonicjs/app";
-import { type RunSummary, sendsOf } from "@halonicjs/events";
+import { type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
 import type { DefinitionStore, DefinitionWatch, RunStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
@@ -102,6 +102,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
         madeToolCalls: await this.#madeToolCalls(summary),
       })),
     );
+  }
+
+  log(runId: string): Promise<RunEvent[]> {
+    return this.#options.runs.events(runId);
   }
 
   workflow(hubId: string, workflowId: string): RunWorkflow | undefined {

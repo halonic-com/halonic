@@ -199,6 +199,41 @@ export const runPageWords = {
   cancelledBeforeStart: (workflow: string) => `${workflow} was cancelled before it started.`,
 };
 
+/**
+ * Every step's heading and each entry's line (checklist part 1, 1.10;
+ * mc 15.2 and 19.3). The lines say what `halonic runs show` says after a
+ * step's name (cli-output 3.4), as a sentence.
+ */
+export const everyStepWords = {
+  heading: "Every step",
+  /** The word a screen reader hears first for an entry (mc 19.3). */
+  state: {
+    done: "done",
+    failed: "failed",
+    cancelled: "cancelled",
+    stopped: "stopped",
+    needsYou: "waiting for you",
+    waiting: "waiting",
+    running: "running",
+  },
+  took: (took: string) => `Took ${took}`,
+  failed: (took: string) => `Failed after ${took}`,
+  /** mc 15.2 revision 70, "Cancelled, the step's timeline line". */
+  cancelled: "Cancelled in this step",
+  budget: (took: string) => `Budget reached after ${took}`,
+  /** The user's answer at a wait step; "approve" and "reject" read as verbs, any other event as written. */
+  answered: (event: string, time: string) => {
+    if (event === "approve") return `You approved at ${time}`;
+    if (event === "reject") return `You rejected at ${time}`;
+    return `You answered ${event} at ${time}`;
+  },
+  waitingForYou: "Waiting for you",
+  waitingForApproval: "Waiting for your approval",
+  waitingUntil: (time: string) => `Waiting until ${time}`,
+  waitingForChildRun: (shortId: string) => `Waiting for child run ${shortId}`,
+  running: "Running",
+};
+
 /** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
 function asSentence(text: string): string {
   return /[.?!]$/.test(text) ? text : `${text}.`;
