@@ -90,10 +90,9 @@ pub mod code {
     /// Started without administrator rights. srt-win would ask a second
     /// time, so the helper stops instead.
     pub const NOT_ELEVATED: i32 = 31;
-    /// No `srt-win.exe` next to the helper, or no [`RUNTIME`].
+    /// No `srt-win.exe` next to the helper.
     pub const NO_SRT_WIN: i32 = 32;
-    /// The copy's SHA-256 isn't the one built in, for srt-win or for
-    /// [`RUNTIME`]. The copy is deleted.
+    /// srt-win's SHA-256 isn't the one built in. The copy is deleted.
     pub const WRONG_SRT_WIN: i32 = 33;
     /// The admin-only folder couldn't be made, secured or filled.
     pub const FOLDER: i32 = 34;
@@ -104,6 +103,11 @@ pub mod code {
     /// srt-win couldn't be started, or the helper couldn't limit the
     /// libraries it loads to System32, so it didn't start srt-win.
     pub const SRT_WIN_DIDNT_START: i32 = 36;
+    /// No `vcruntime140.dll.pinned` next to the helper.
+    pub const NO_RUNTIME: i32 = 37;
+    /// The shipped [`RUNTIME`]'s SHA-256 isn't the one built in. The copy is
+    /// deleted.
+    pub const WRONG_RUNTIME: i32 = 38;
 }
 
 /// What the helper was asked to do.
@@ -334,6 +338,7 @@ fn steps(
         machine,
         (SRT_WIN, SRT_WIN),
         hashes.srt_win,
+        (code::NO_SRT_WIN, code::WRONG_SRT_WIN),
         (&from, &folder),
         in_folder,
     )?;
@@ -344,6 +349,7 @@ fn steps(
             machine,
             (RUNTIME_SHIPPED, RUNTIME),
             hashes.runtime,
+            (code::NO_RUNTIME, code::WRONG_RUNTIME),
             (&from, &folder),
             in_folder,
         )?;
@@ -414,6 +420,7 @@ fn install_file(
     machine: &impl Machine,
     (shipped, name): (&str, &str),
     sha256: &str,
+    (missing, wrong): (i32, i32),
     (from, folder): (&Path, &Path),
     in_folder: bool,
 ) -> Result<(), i32> {
@@ -424,7 +431,7 @@ fn install_file(
         from.join(shipped)
     };
     if !machine.exists(&source) {
-        return Err(code::NO_SRT_WIN);
+        return Err(missing);
     }
     let Some(bytes) = machine
         .read(&source)
@@ -432,7 +439,7 @@ fn install_file(
         .filter(|bytes| sha256_hex(bytes) == sha256)
     else {
         machine.delete(&target);
-        return Err(code::WRONG_SRT_WIN);
+        return Err(wrong);
     };
     if in_folder {
         return Ok(());
