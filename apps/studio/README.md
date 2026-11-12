@@ -8,6 +8,16 @@ checked by `pnpm check features`. Vite builds two pages apart, so the Android ap
 - **Layer:** apps
 - **Owner:** elena
 
+## Runs in the desktop app
+
+The desktop app registers the Inbox and Runs features. For each folder it
+opens, `WorkspaceRuns` (`src/runs/`) gives both the folder's run logs, the
+ones the CLI writes, through the shell's `run_*` and `fs_*` commands. While a
+page listens, it reads the runs again every 10 seconds and when the window
+comes to the front, and tells the page only when a run changed. The window has
+no engine of its own yet, so answering a run in the Inbox fails as
+`unavailable` until it does (HAL-6602; `studio.workspace-runs`).
+
 ## The shell
 
 `src-tauri/` is the Tauri shell, a Cargo workspace whose root package is the

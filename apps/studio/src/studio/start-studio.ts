@@ -1,4 +1,9 @@
+import { TauriDefinitionStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry } from "@halonicjs/app";
+import { inboxFeature } from "@halonicjs/studio-feature-inbox";
+import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { runsFeature } from "@halonicjs/studio-feature-runs";
+import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -7,7 +12,13 @@ import {
   RecentWorkspaces,
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
-import { provideShellSecrets, type TauriIpc, tauriIpc } from "@halonicjs/studio-services";
+import {
+  provideShellSecrets,
+  TauriChannel,
+  type TauriIpc,
+  tauriChannelIpc,
+  tauriIpc,
+} from "@halonicjs/studio-services";
 import {
   createShell,
   type KeyboardPlatform,
@@ -16,6 +27,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 
 /**
  * The language of the Studio's words. Every text is English in v0.1, so the window's
@@ -68,8 +80,9 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * (`studio.open-folder`). The served Studio opens the one workspace it serves. The window is the
  * shell's or the workspace feature's; the app only starts it, as AGENTS.md asks of screens.
  *
- * No feature registers yet: the generated feature list still holds each feature's id and title,
- * not a `defineFeature`, so a window shows Home and the Search box until features move to it.
+ * The desktop app registers the Inbox and Runs, over the runs in each open folder. The served
+ * Studio registers no feature yet: nothing serves it runs until `halonic serve` is built, so it
+ * shows Home and the Search box.
  *
  * @example
  * startStudio({ element: root, window, userAgent: navigator.userAgent, storage: localStorage });
@@ -77,11 +90,12 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
 export function startStudio(page: StudioPage): StartedStudio {
   const host = studioHost(page.window);
   const platform = keyboardPlatform(page.userAgent);
-  const shell = createShell({ features: [], host, platform });
   const ipc = tauriIpc(page.window);
   if (ipc !== undefined) {
+    const shell = createShell({ ...desktopFeatures, host, platform });
     return startDesktopApp(page, { shell, ipc, platform });
   }
+  const shell = createShell({ features: [], host, platform });
   const services = new ServiceRegistry();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
@@ -101,6 +115,15 @@ export function startStudio(page: StudioPage): StartedStudio {
     },
   };
 }
+
+/**
+ * The features of the desktop app, and the services the app gives them for each open folder
+ * ({@link openFolder}).
+ */
+export const desktopFeatures = {
+  features: [inboxFeature, runsFeature],
+  hostServices: [InboxRunsService, RunsSourceService],
+};
 
 /** What the desktop app's window is made of. */
 interface DesktopParts {
@@ -135,16 +158,45 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
 /**
  * Opens the workspace in a folder with services of its own. The OS keychain becomes its secrets
  * and tokens before any feature's services are built, so no token lands in the data folder
- * (threat model 4.4, HAL-2952). Its name is the folder's until the workspace's files are read
- * (HAL-3335).
+ * (threat model 4.4, HAL-2952). In the shell, its runs are the run logs in the folder's run
+ * folder, the ones the CLI writes (`studio.workspace-runs`). Its name is the folder's until the
+ * workspace's files are read (HAL-3335).
  */
 export function openFolder(shell: Shell, window: object, location: string): OpenedWorkspace {
   const name = folderName(location);
   const services = new ServiceRegistry();
   provideShellSecrets(services, window);
+  provideWorkspaceRuns(services, window, location);
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
   return { name, workspace, dispose: () => services.dispose() };
+}
+
+/**
+ * Gives the workspace in `location` its runs, read through the shell, as both the Runs
+ * feature's and the Inbox's source. Outside the shell it provides nothing.
+ */
+function provideWorkspaceRuns(services: ServiceRegistry, window: object, location: string): void {
+  const ipc = tauriChannelIpc(window);
+  if (ipc === undefined) return;
+  const files = {
+    invoke: (command: string, args?: Record<string, unknown>) => ipc.invoke(command, args),
+    openChannel: (onMessage: (message: unknown) => void) => new TauriChannel(ipc, onMessage),
+  };
+  const runs = new WorkspaceRuns({
+    runs: new TauriRunStore(ipc, location),
+    definitions: new TauriDefinitionStore(files, location),
+    onFocus: (listener) => focusOf(window, listener),
+  });
+  services.provide(RunsSourceService, runs);
+  services.provide(InboxRunsService, runs);
+}
+
+/** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */
+function focusOf(window: object, listener: () => void): () => void {
+  if (!(window instanceof EventTarget)) return () => {};
+  window.addEventListener("focus", listener);
+  return () => window.removeEventListener("focus", listener);
 }
 
 /** The shell's folder picker: the picked folder's location, or `undefined` when cancelled. */

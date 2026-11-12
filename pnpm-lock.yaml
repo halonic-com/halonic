@@ -414,12 +414,24 @@ importers:
 
   apps/studio:
     dependencies:
+      '@halonicjs/adapter-fs-tauri':
+        specifier: workspace:*
+        version: link:../../packages/adapters/fs-tauri
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../packages/core/events
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../packages/core/ports
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../packages/core/std
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../../packages/studio/features/inbox
@@ -441,6 +453,9 @@ importers:
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../packages/studio/shell
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../packages/core/workspace
     devDependencies:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
@@ -451,18 +466,9 @@ importers:
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../packages/core/engine
-      '@halonicjs/events':
-        specifier: workspace:*
-        version: link:../../packages/core/events
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
-      '@halonicjs/ports':
-        specifier: workspace:*
-        version: link:../../packages/core/ports
-      '@halonicjs/std':
-        specifier: workspace:*
-        version: link:../../packages/core/std
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../packages/studio/kit

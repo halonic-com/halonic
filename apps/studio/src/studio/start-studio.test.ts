@@ -95,14 +95,19 @@ verifies("studio.entry", () => {
   });
 });
 
-/** The desktop app's webview: Tauri's IPC, answering `pick_folder` and the keychain. */
+/**
+ * The desktop app's webview: Tauri's IPC, answering `pick_folder`, the keychain, and a run
+ * folder without runs.
+ */
 function desktopWebview(picked: string | null) {
   const calls: { command: string; args: Record<string, unknown> | undefined }[] = [];
   const invoke = async (command: string, args?: Record<string, unknown>) => {
     calls.push({ command, args });
-    return command === "pick_folder" ? picked : null;
+    if (command === "pick_folder") return picked;
+    return command === "run_logs" ? [] : null;
   };
-  return { calls, page: { __TAURI_INTERNALS__: { invoke } } };
+  const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
+  return { calls, page: { __TAURI_INTERNALS__: internals } };
 }
 
 function memoryStorage() {

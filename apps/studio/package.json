@@ -12,24 +12,26 @@
     "studio": "vite --mode studio"
   },
   "dependencies": {
+    "@halonicjs/adapter-fs-tauri": "workspace:*",
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-plugins": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-feature-settings": "workspace:*",
     "@halonicjs/studio-feature-workspace": "workspace:*",
     "@halonicjs/studio-services": "workspace:*",
-    "@halonicjs/studio-shell": "workspace:*"
+    "@halonicjs/studio-shell": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/engine": "workspace:*",
-    "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
-    "@halonicjs/ports": "workspace:*",
-    "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
