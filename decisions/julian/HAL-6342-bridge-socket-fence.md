@@ -20,8 +20,13 @@ sandbox. Without the trigger, a bridge change could merge without that test runn
 
 ## Tests
 
-No test was weakened or skipped.
+No test was weakened. Two new test files skip on purpose where the thing they check does not
+exist: the W9 socket check (in both files) reads `/proc/net`, which only Linux has. They run
+on Linux in the `sandbox-fence` job, on both backends where the backend applies. Nothing that ran
+before is skipped.
 
 ## Covers
 
 - .github/
+- packages/adapters/sandbox-srt/fence/own-sockets.test.ts
+- packages/adapters/sandbox-srt/fence/srt-bridge-socket.test.ts
