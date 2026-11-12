@@ -1,7 +1,9 @@
 # Decision: the plugin commands say what cli-output revision 49 says
 
-- Approval: Paperclip task HAL-7536 (Liam's approval of this pull request's wording)
-- Kind: user-visible
+- Approval: the board approved the wording as cli-output revision 49; Liam approved this pull
+  request's wording on HAL-7536 and signs this note on HAL-7706. Internal until a user key is
+  pinned (HAL-3434, docs/guides/checks.md)
+- Kind: internal
 
 The board approved revision 49 of the CLI output rules. This pull request brings three plugin
 requirements in line with it:
