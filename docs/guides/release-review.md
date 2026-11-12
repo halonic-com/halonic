@@ -20,7 +20,8 @@ A full review runs before each of these:
 3. **Anything new becoming public:** a repository going public, a first package
    on npm, a new public package, or docs moving to a new public domain.
 
-Deploys of halonic.dev and docs.halonic.dev from `develop` don't need one. The
+Deploys of halonic.dev and docs.halonic.dev from `develop` in the
+`halonic-com/website` repository don't need one. The
 rule applies again when that content goes to halonic.com.
 
 ### How fresh it must be
@@ -96,8 +97,8 @@ Every report starts with this table. Fill in every row.
   security reviewer checks every close.
 - A fix counts only when it is merged with a test that fails without it, and
   the security reviewer (or a delta review) agrees that it closes the finding.
-- **Exceptions:** only the board signs one, on the release card, one line per
-  finding: the risk in plain words, why it can wait, and the date by which it
+- **Exceptions:** only the board signs one, on the release card (the approval
+  card in Paperclip, not in this repository), one line per finding: the risk in plain words, why it can wait, and the date by which it
   must be fixed. No exception carries over to the next release.
 - **Medium and Low** don't block. Before the release, each one has a task with
   an owner or is rejected with a reason.
@@ -131,7 +132,7 @@ The repository is public. Until the fix is released:
   within a day. The key lives in the secret store, never in the repository,
   a task or a comment.
 - **What a run costs:** a full run uses most of one 5-hour usage window on a
-  Max seat, roughly 2.5 to 4 million tokens, most of it input read again. On
-  the API that is roughly $30 to $150, depending on caching. Write the real
-  number in the header each time; the board adjusts the cap after two API
+  Max seat, roughly 2.5 to 4 million tokens, most of it cached input read
+  again. On the API the cost depends mostly on how much of that is cached.
+  Write the real number in the header each time; the board adjusts the cap after two API
   runs.
