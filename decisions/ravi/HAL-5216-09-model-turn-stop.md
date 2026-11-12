@@ -9,7 +9,9 @@
 `engine.local-run-cancel` said a model call going on finishes and the run takes its result no
 more. It now says the cancel stops the run's model calls as it stops its harness calls, as the
 new `engine.model-call-stop` describes. Connector calls still finish. Every other promise and
-example stays as it was. No test was removed or weakened.
+example stays as it was. No test was removed or weakened. `run/live-harness-calls.test.ts`
+moves with its registry to `run/live-calls.test.ts`: every test it had is still there, and one
+test is added.
 
 ## Why
 
@@ -34,3 +36,4 @@ during a `delegate_*` call doesn't wait for the subagent's whole turn.
 ## Covers
 
 - engine.local-run-cancel
+- packages/core/engine/src/run/live-harness-calls.test.ts
