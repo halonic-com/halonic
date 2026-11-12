@@ -3,6 +3,7 @@
 - Task: HAL-8068 (S-9 of HAL-7414)
 - Approval: the task asks for this change; Liam reviewed the ci.yml part on HAL-8094 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9i/NPKefMAWeC2yeq+I2tI2idPb6dmj6pYEyhkkkO2b7XONkdWDuPD8zcbTUGzAX4NOpjytAOW/p4NzhT5JjBg==
 
 ## What changes
 
