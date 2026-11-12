@@ -6,6 +6,7 @@ import { approveWaitingTool } from "./approve-listed-tools.ts";
 import {
   checkConnectorTools,
   connectorToolServer,
+  hasToolApproval,
   revokeNamedTool,
 } from "./connector-tool-check.ts";
 import { stdioToolServer, writtenDigest } from "./listed-tool-fingerprint.ts";
@@ -165,6 +166,9 @@ verifies("app.listed-tool-review", () => {
     }
     store.breakApproval("send");
     const key = (name: string) => ({ location, source: "notes-mcp", name });
+    expect(await hasToolApproval(store, key("lookup"))).toBe(true);
+    expect(await hasToolApproval(store, key("send"))).toBe(true);
+    expect(await hasToolApproval(store, key("archive"))).toBe(false);
 
     expect(await revokeNamedTool(store, key("lookup"))).toBe("revoked");
     expect(await revokeNamedTool(store, key("send"))).toBe("revoked");

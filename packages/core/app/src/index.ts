@@ -77,6 +77,7 @@ export {
   type ConnectorToolCheckInput,
   checkConnectorTools,
   connectorToolServer,
+  hasToolApproval,
   type NamedToolRevoke,
   revokeNamedTool,
 } from "./connector-tool-check.ts";

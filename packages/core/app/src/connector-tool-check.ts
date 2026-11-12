@@ -143,7 +143,27 @@ export async function revokeNamedTool(
   store: ToolApprovalStore,
   key: ToolApprovalKey,
 ): Promise<NamedToolRevoke> {
-  const approved = await store.get(key).then(
+  if (!(await hasToolApproval(store, key))) {
+    return "not_approved";
+  }
+  await store.revoke(key);
+  return "revoked";
+}
+
+/**
+ * Whether a listed tool has an approval {@link revokeNamedTool} would
+ * remove: one that can be read, or one that can't. So a command can check
+ * every name it was given before it removes any.
+ *
+ * @example
+ * await hasToolApproval(store, { location: "/work/acme", source: "notes-mcp", name: "lookup" });
+ * // => true
+ */
+export async function hasToolApproval(
+  store: ToolApprovalStore,
+  key: ToolApprovalKey,
+): Promise<boolean> {
+  return await store.get(key).then(
     (approval) => approval !== null,
     (error: unknown) => {
       if (isUnreadableToolApprovalError(error)) {
@@ -152,9 +172,4 @@ export async function revokeNamedTool(
       throw error;
     },
   );
-  if (!approved) {
-    return "not_approved";
-  }
-  await store.revoke(key);
-  return "revoked";
 }
