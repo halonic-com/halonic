@@ -122,6 +122,18 @@ verifies("engine.run-turn-log", () => {
     expect(blobs.blobs.size).toBeGreaterThan(1);
   });
 
+  it("logs the llm.skipped of a model whose key isn't set, so the run names it (HAL-6585)", async () => {
+    const { model, runs } = await runReply([textAnswer("Dear support")], new KernelRuns(), {
+      scriptedAlias: { alias: "smart", secret: "anthropic" },
+    });
+
+    expect(model.requests).toEqual([]);
+    expect(runs.logs.get("run_1")?.slice(-2)).toMatchObject([
+      { type: "llm.skipped", alias: "smart", model: "scripted-1", reason: "no-key" },
+      { type: "run.failed", reason: "key-refused" },
+    ]);
+  });
+
   it("logs a subagent's turn under the call that delegated to it, with its cost", async () => {
     const agents: Record<string, Agent> = {
       writer: { ...writerAgent(), subagents: ["checker"] },
