@@ -3,6 +3,7 @@
 - Task: HAL-6884 (workspace `stdio` connectors start in the sandbox, HAL-2310 part 3, D45)
 - Approval: option A, agreed with Mateo (`sandbox-srt` owner) on [HAL-6884](/HAL/issues/HAL-6884) with his four conditions; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HTck0HRWHtSHZxGKh285gxMwiMFRzOZtVE9OdT9q+KMGKASRjgXk76v1oxX64FWjbdTMep+ayGPwd9zJ1P/ACw==
 
 ## What changes
 
