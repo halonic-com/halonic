@@ -132,6 +132,20 @@ async function lockFile(text?: string): Promise<string> {
   return file;
 }
 
+/**
+ * The system the lock's busy retries use by default, but waiting without
+ * `node:timers/promises`, which this file counts the waits for a held lock
+ * in. On Windows a scanner or a pending delete makes a step busy for a
+ * while, and its retries must not count as waits for a held lock.
+ */
+const realBusySystem: BusySystem = {
+  get platform() {
+    return process.platform;
+  },
+  now: () => performance.now(),
+  wait: (ms) => new Promise((resolve) => globalThis.setTimeout(resolve, ms)),
+};
+
 /** Waits until the lock is free: each wait for it removes it, after the first `held` waits. */
 function freeLockAfter(file: string, held = 0): void {
   hooks.onWait = async () => {
@@ -163,21 +177,21 @@ verifies("fs-node.run-store-lock", () => {
   it("waits while a live writer on this computer holds the lock", async () => {
     const file = await lockFile(JSON.stringify(record(process.pid)));
     freeLockAfter(file, 2);
-    expect(await withRunLock(file, async () => "done")).toBe("done");
+    expect(await withRunLock(file, async () => "done", realBusySystem)).toBe("done");
     expect(hooks.waits).toBe(3);
   });
 
   it("waits on a fresh lock from another computer, whose process it can't check", async () => {
     const file = await lockFile(JSON.stringify(record(exitedPid(), "another-computer")));
     freeLockAfter(file);
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(1);
   });
 
   it("removes a lock from another computer once it is too old", async () => {
     const old = record(process.pid, "another-computer", runLockStaleAfterMs + 60_000);
     const file = await lockFile(JSON.stringify(old));
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(0);
   });
 
@@ -185,7 +199,7 @@ verifies("fs-node.run-store-lock", () => {
     const file = await lockFile(
       JSON.stringify(record(process.pid, hostname(), -runLockStaleAfterMs - 60_000)),
     );
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(0);
   });
 
@@ -195,7 +209,7 @@ verifies("fs-node.run-store-lock", () => {
       const old = new Date(Date.now() - runLockStaleAfterMs - 60_000);
       await utimes(file, old, old);
     };
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(1);
   });
 
@@ -232,7 +246,7 @@ verifies("fs-node.run-store-lock", () => {
       heldDuringWait = await readFile(file, "utf8");
       await rm(`${file}.takeover`);
     };
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(heldDuringWait).toBe(stale);
     expect(hooks.waits).toBe(1);
   });
@@ -243,7 +257,7 @@ verifies("fs-node.run-store-lock", () => {
     await writeFile(takeover, JSON.stringify(record(exitedPid())), "utf8");
     const old = new Date(Date.now() - runLockTakeoverStaleAfterMs - 1_000);
     await utimes(takeover, old, old);
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(1);
     expect(await readdir(join(file, ".."))).toEqual([]);
   });
@@ -290,7 +304,7 @@ verifies("fs-node.run-store-lock", () => {
     hooks.afterRead = async () => {
       await rm(file);
     };
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(0);
   });
 
@@ -317,7 +331,7 @@ verifies("fs-node.run-store-lock", () => {
   it("tries again straight away when the lock is released between create and read", async () => {
     const file = await lockFile();
     hooks.failNextCreate = true;
-    await withRunLock(file, async () => {});
+    await withRunLock(file, async () => {}, realBusySystem);
     expect(hooks.waits).toBe(0);
   });
 
