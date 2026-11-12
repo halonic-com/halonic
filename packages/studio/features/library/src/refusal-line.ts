@@ -3,8 +3,8 @@ import type { ChatTurnRefusal } from "@halonicjs/ports";
 /** What the status says the host did, for each kind of refusal. */
 const whatWasRefused: Record<ChatTurnRefusal["refused"], string> = {
   tool: "left out",
-  keyword: "changed",
-  listing: "left out the listing",
+  keyword: "left out a keyword of",
+  listing: "left out its tool list",
   call: "refused a call to",
 };
 
