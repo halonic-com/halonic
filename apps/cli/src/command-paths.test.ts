@@ -2,6 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import type { Connector } from "@halonicjs/format";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { commandPaths } from "./command-paths.ts";
 
@@ -30,69 +31,101 @@ function startsCommand(command: string): Connector {
   return { id: command, transport: { stdio: { command, args: [] } } } as unknown as Connector;
 }
 
-describe("commandPaths", () => {
-  it("finds each command in the first folder of PATH that has it", async () => {
-    program("first", "mail");
-    const later = program("second", "mail");
-    const files = program("second", "files");
-    const path = [join(folder, "missing"), join(folder, "second"), join(folder, "first")].join(
-      delimiter,
-    );
+verifies("cli.command-paths", () => {
+  describe("commandPaths", () => {
+    it("finds each command in the first folder of PATH that has it", async () => {
+      program("first", "mail");
+      const later = program("second", "mail");
+      const files = program("second", "files");
+      const path = [join(folder, "missing"), join(folder, "second"), join(folder, "first")].join(
+        delimiter,
+      );
 
-    const paths = await commandPaths([startsCommand("mail"), startsCommand("files")], {
-      path,
-      endings: [],
+      const paths = await commandPaths([startsCommand("mail"), startsCommand("files")], {
+        path,
+        endings: [],
+      });
+
+      expect(paths).toEqual(
+        new Map([
+          ["mail", later],
+          ["files", files],
+        ]),
+      );
     });
 
-    expect(paths).toEqual(
-      new Map([
-        ["mail", later],
-        ["files", files],
-      ]),
-    );
-  });
+    it("keeps a command with a folder in it, or one it can't find, as written only", async () => {
+      program("bin", "mail");
 
-  it("keeps a command with a folder in it, or one it can't find, as written only", async () => {
-    program("bin", "mail");
+      const paths = await commandPaths([startsCommand("./bin/mail"), startsCommand("absent")], {
+        path: join(folder, "bin"),
+        endings: [],
+      });
 
-    const paths = await commandPaths([startsCommand("./bin/mail"), startsCommand("absent")], {
-      path: join(folder, "bin"),
-      endings: [],
+      expect(paths).toEqual(new Map());
     });
 
-    expect(paths).toEqual(new Map());
-  });
+    it("skips a relative folder in PATH, which would mean the current folder", async () => {
+      program("bin", "mail");
 
-  it("skips a relative folder in PATH, which would mean the current folder", async () => {
-    program("bin", "mail");
+      const paths = await commandPaths([startsCommand("mail")], { path: "bin", endings: [] });
 
-    const paths = await commandPaths([startsCommand("mail")], { path: "bin", endings: [] });
-
-    expect(paths).toEqual(new Map());
-  });
-
-  it("tries Windows' endings, and never the bare name, when there are endings", async () => {
-    program("bin", "npx");
-    const cmd = program("bin", "npx.cmd");
-
-    const paths = await commandPaths([startsCommand("npx"), startsCommand("npx.cmd")], {
-      path: join(folder, "bin"),
-      endings: [".EXE", ".CMD"],
+      expect(paths).toEqual(new Map());
     });
 
-    expect(paths).toEqual(
-      new Map([
-        ["npx", cmd],
-        ["npx.cmd", cmd],
-      ]),
+    it("tries Windows' endings, and never the bare name, when there are endings", async () => {
+      program("bin", "npx");
+      const cmd = program("bin", "npx.cmd");
+
+      const paths = await commandPaths([startsCommand("npx"), startsCommand("npx.cmd")], {
+        path: join(folder, "bin"),
+        endings: [".EXE", ".CMD"],
+      });
+
+      expect(paths).toEqual(
+        new Map([
+          ["npx", cmd],
+          ["npx.cmd", cmd],
+        ]),
+      );
+    });
+
+    it("finds nothing for an HTTP connector", async () => {
+      const http = { id: "web", transport: { http: { url: "https://example.com" } } };
+
+      expect(
+        await commandPaths([http as unknown as Connector], { path: folder, endings: [] }),
+      ).toEqual(new Map());
+    });
+
+    it.skipIf(process.platform === "win32")(
+      "gives the folder as written, with a // or ./ entry kept, and takes any execute bit",
+      async () => {
+        const bin = program("bin", "mail");
+        const dir = join(folder, "bin");
+        const other = join(folder, "other");
+        mkdirSync(other);
+        writeFileSync(join(other, "mail"), "");
+        chmodSync(join(other, "mail"), 0o611);
+
+        const doubled = await commandPaths([startsCommand("mail")], {
+          path: `${folder}//bin`,
+          endings: [],
+        });
+        const dotted = await commandPaths([startsCommand("mail")], {
+          path: `${folder}/./bin`,
+          endings: [],
+        });
+        const groupOnly = await commandPaths([startsCommand("mail")], {
+          path: other,
+          endings: [],
+        });
+
+        expect(doubled).toEqual(new Map([["mail", `${folder}//bin/mail`]]));
+        expect(dotted).toEqual(new Map([["mail", `${folder}/./bin/mail`]]));
+        expect(groupOnly).toEqual(new Map([["mail", join(other, "mail")]]));
+        expect(bin).toBe(join(dir, "mail"));
+      },
     );
-  });
-
-  it("finds nothing for an HTTP connector", async () => {
-    const http = { id: "web", transport: { http: { url: "https://example.com" } } };
-
-    expect(
-      await commandPaths([http as unknown as Connector], { path: folder, endings: [] }),
-    ).toEqual(new Map());
   });
 });

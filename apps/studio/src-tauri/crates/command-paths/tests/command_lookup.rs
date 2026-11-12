@@ -1,6 +1,6 @@
 //! Proves requirements/command-lookup.md.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -124,4 +124,18 @@ fn command_lookup_leaves_out_what_it_cant_find() {
     let found = find_commands(&["npx".to_owned(), "missing".to_owned()], &path, &[]);
     assert_eq!(found.len(), 1);
     assert_eq!(found["npx"], folder.path().join("npx").to_str().unwrap());
+}
+
+#[cfg(unix)]
+#[test]
+fn command_lookup_keeps_the_folder_as_written() {
+    let folder = Scratch::new("f8");
+    let bin = folder.path().join("bin");
+    fs::create_dir(&bin).unwrap();
+    program(&bin, "npx");
+    let root = folder.path().to_str().unwrap();
+    for entry in [format!("{root}//bin"), format!("{root}/./bin")] {
+        let found = find_commands(&["npx".to_owned()], OsStr::new(&entry), &[]);
+        assert_eq!(found["npx"], format!("{entry}/npx"));
+    }
 }
