@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-password-pbkdf2",
+  "private": true,
+  "type": "module",
+  "description": "The PasswordHasher port with chained PBKDF2-SHA256 from Web Crypto, for cloud targets.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "priya",
+    "coverage": {
+      "lines": 100,
+      "branches": 100
+    },
+    "runtime": "any"
+  }
+}

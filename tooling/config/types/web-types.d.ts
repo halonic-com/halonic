@@ -232,6 +232,13 @@ interface Algorithm {
 }
 
 type AlgorithmIdentifier = Algorithm | string;
+
+/** PBKDF2 for `deriveBits`: the salt, the rounds and the HMAC hash. */
+interface Pbkdf2Params extends Algorithm {
+  hash: AlgorithmIdentifier;
+  iterations: number;
+  salt: BufferSource;
+}
 type KeyFormat = "jwk" | "pkcs8" | "raw" | "spki";
 type KeyType = "private" | "public" | "secret";
 type KeyUsage =
@@ -259,6 +266,11 @@ interface CryptoKeyPair {
 /** The raw-key subset; JSON Web Keys come when a port needs them. */
 interface SubtleCrypto {
   decrypt(algorithm: AlgorithmIdentifier, key: CryptoKey, data: BufferSource): Promise<ArrayBuffer>;
+  deriveBits(
+    algorithm: AlgorithmIdentifier | Pbkdf2Params,
+    baseKey: CryptoKey,
+    length: number,
+  ): Promise<ArrayBuffer>;
   digest(algorithm: AlgorithmIdentifier, data: BufferSource): Promise<ArrayBuffer>;
   encrypt(algorithm: AlgorithmIdentifier, key: CryptoKey, data: BufferSource): Promise<ArrayBuffer>;
   exportKey(format: Exclude<KeyFormat, "jwk">, key: CryptoKey): Promise<ArrayBuffer>;
