@@ -157,6 +157,21 @@ verifies("runs.row-columns", () => {
       expect(triggered({ type: "manual", at }).startedByTooltip).toBeUndefined();
     });
 
+    it("gives the sentence its own words for what started the run", () => {
+      const heard = (row: RunRow) => row.label.slice(row.label.indexOf("Started by"));
+
+      expect(heard(triggered({ type: "manual", at }))).toBe("Started by you, with Run, 10:40.");
+      expect(heard(triggered({ type: "mail", at, messageId: "m1" }))).toBe(
+        "Started by a message, 10:40.",
+      );
+      expect(heard(triggered({ type: "signal", at, signalId: "run_1:4" }))).toBe(
+        "Started by a signal, 10:40.",
+      );
+      expect(heard(rowOf({ parentRunId: "run_mfx3k2a1_7k2m9p" }))).toBe(
+        "Started by run 7k2m9p, 10:40.",
+      );
+    });
+
     it("says a routine's schedule, with the routine's name in the tooltip", () => {
       const scheduled = triggered({ type: "schedule", at, routineId }, morningBrief);
       const every = triggered(
@@ -168,7 +183,7 @@ verifies("runs.row-columns", () => {
       expect(scheduled.startedBy).toBe("Schedule · weekdays at 08:00");
       expect(scheduled.startedByTooltip).toBe("Morning brief");
       expect(scheduled.label).toBe(
-        "Run 01jd8q, Support reply, running, in Draft. Started by schedule · weekdays at 08:00, 10:40.",
+        "Run 01jd8q, Support reply, running, in Draft. Started by the schedule, weekdays at 08:00, 10:40.",
       );
       expect(every.startedBy).toBe("Schedule · every 2 hours (UTC)");
       expect(gone.startedBy).toBe("Schedule");
@@ -184,7 +199,7 @@ verifies("runs.row-columns", () => {
       expect(row.startedBy).toBe("Caught up after sleep");
       expect(row.startedByTooltip).toBe("Morning brief");
       expect(row.label).toBe(
-        "Run 01jd8q, Support reply, running, in Draft. Started by caught up after sleep, 10:40.",
+        "Run 01jd8q, Support reply, running, in Draft. Started by a catch-up after sleep, 10:40.",
       );
     });
 
@@ -199,6 +214,9 @@ verifies("runs.row-columns", () => {
       );
 
       expect(named.startedBy).toBe("Test “Refund over €100”");
+      expect(named.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by the test case “Refund over €100”, 10:40, test run.",
+      );
       expect(rowOf({ kind: "test" }).startedBy).toBe("A test case");
       expect(rowOf({ parentRunId: "run_mfx3k2a1_7k2m9p" }).startedBy).toBe("Run 7k2m9p");
     });

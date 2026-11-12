@@ -14,6 +14,25 @@ place of "… Started at 10:40.". Its first example and the tests that check tho
 with it, and three examples for the column's words are new. No example was removed, and every
 other assertion stays as it was.
 
+The sentence has its own words for what started the run, so it reads on from "Started by" without
+the column's "arrived" or "·" (Liam's review on [HAL-7125](/HAL/issues/HAL-7125); small wording on
+approved mc 19.3, the team's call under HAL-2282):
+
+| Started by column | The sentence says "Started by …" |
+| --- | --- |
+| You, with Run | you, with Run |
+| You, in the terminal | you, in the terminal |
+| A message arrived | a message |
+| A signal arrived | a signal |
+| Schedule · weekdays at 08:00 | the schedule, weekdays at 08:00 |
+| Caught up after sleep | a catch-up after sleep |
+| Test “Refund over €100” | the test case “Refund over €100” |
+| A test case | a test case |
+| Run 7k2m9p | run 7k2m9p |
+
+The column's words stay as they were. The routine's schedule example in `runs.row-columns` now also
+states its spoken words.
+
 ## Why
 
 [HAL-7084](/HAL/issues/HAL-7084) left the column out because the Runs source didn't give a

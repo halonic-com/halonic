@@ -117,7 +117,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
     startedAt: summary.startedAt,
     time,
     took: summary.endedAt === null ? undefined : whenWords.took(took(summary)),
-    label: rowLabelWords.row(shortId, workflow, spoken, lowerFirst(started.words), time, test),
+    label: rowLabelWords.row(shortId, workflow, spoken, started.spoken, time, test),
   };
 }
 
@@ -125,41 +125,45 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
  * What started the run (mc 15.1): its test case, the run it's a child of, or
  * its trigger. A run without a trigger was started in the terminal. A
  * routine's run on a clock says the routine's schedule, with its name in the
- * tooltip.
+ * tooltip. `spoken` is what the row's sentence says after "Started by".
  */
 function startedBy(
   run: SourcedRun,
   routine: RunRoutine | undefined,
-): { readonly words: string; readonly tooltip: string | undefined } {
+): { readonly words: string; readonly spoken: string; readonly tooltip: string | undefined } {
   const { summary } = run;
-  const words = (text: string) => ({ words: text, tooltip: undefined });
+  const spoken = rowLabelWords.startedBy;
+  const words = (text: string, said: string) => ({ words: text, spoken: said, tooltip: undefined });
   if (summary.kind === "test") {
-    return words(
-      run.testCase === undefined ? startedByWords.testCase : startedByWords.test(run.testCase),
-    );
+    return run.testCase === undefined
+      ? words(startedByWords.testCase, spoken.testCase)
+      : words(startedByWords.test(run.testCase), spoken.test(run.testCase));
   }
   if (summary.parentRunId !== null) {
-    return words(startedByWords.parent(shortRunId(summary.parentRunId)));
+    const parent = shortRunId(summary.parentRunId);
+    return words(startedByWords.parent(parent), spoken.parent(parent));
   }
   const { trigger } = summary;
   switch (trigger?.type) {
     case undefined:
-      return words(startedByWords.terminal);
+      return words(startedByWords.terminal, spoken.terminal);
     case "manual":
-      return words(startedByWords.run);
+      return words(startedByWords.run, spoken.run);
     case "mail":
-      return words(startedByWords.mail);
+      return words(startedByWords.mail, spoken.mail);
     case "signal":
-      return words(startedByWords.signal);
+      return words(startedByWords.signal, spoken.signal);
     case "schedule":
-    case "every":
-      return {
-        words:
-          trigger.catchUp === undefined
-            ? startedByWords.schedule(routine?.schedule)
-            : startedByWords.catchUp,
-        tooltip: routine?.name ?? trigger.routineId,
-      };
+    case "every": {
+      const tooltip = routine?.name ?? trigger.routineId;
+      return trigger.catchUp === undefined
+        ? {
+            words: startedByWords.schedule(routine?.schedule),
+            spoken: spoken.schedule(routine?.schedule),
+            tooltip,
+          }
+        : { words: startedByWords.catchUp, spoken: spoken.catchUp, tooltip };
+    }
   }
 }
 

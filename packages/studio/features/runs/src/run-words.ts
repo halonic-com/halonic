@@ -64,9 +64,27 @@ export const startedByWords = {
 /**
  * What a screen reader hears for a row (mc 19.3 Run row, revision 68):
  * "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by
- * a message arrived, 10:40."
+ * a message, 10:40."
  */
 export const rowLabelWords = {
+  /**
+   * What follows "Started by" in the sentence: the Started by column's
+   * meaning, in words that read on from it (HAL-7125).
+   */
+  startedBy: {
+    run: "you, with Run",
+    terminal: "you, in the terminal",
+    mail: "a message",
+    signal: "a signal",
+    schedule: (when: string | undefined) =>
+      when === undefined
+        ? "the schedule"
+        : `the schedule, ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+    catchUp: "a catch-up after sleep",
+    test: (testCase: string) => `the test case “${testCase}”`,
+    testCase: "a test case",
+    parent: (shortId: string) => `run ${shortId}`,
+  },
   standing: {
     running: "running",
     "needs-you": "needs you",

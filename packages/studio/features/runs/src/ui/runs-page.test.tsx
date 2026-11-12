@@ -273,7 +273,7 @@ verifies("runs.row-columns", () => {
 
     expect(shown(root)).toEqual([
       "# Today",
-      "Run 5c5c5c, Support reply, running, in Draft. Started by schedule · weekdays at 08:00, 10:40.",
+      "Run 5c5c5c, Support reply, running, in Draft. Started by the schedule, weekdays at 08:00, 10:40.",
     ]);
     expect(columnsOf(root, "5c5c5c")[3]).toContain("Schedule · weekdays at 08:00");
     const tooltip = root.ownerDocument.querySelector('[role="tooltip"]');
