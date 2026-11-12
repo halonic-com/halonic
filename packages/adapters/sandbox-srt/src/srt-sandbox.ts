@@ -21,8 +21,11 @@ interface Unavailable {
 }
 
 /**
- * The ready check's answer for each runner, asked once per process: what the
- * machine can run doesn't change while Halonic runs, and `open()` checks too.
+ * The ready check for each runner. A pass is kept for the rest of the process:
+ * what the machine can run doesn't change while Halonic runs, and `open()`
+ * checks too. A failure is dropped once it is known, so the next check asks
+ * again: one timeout under load mustn't leave a long-running host "not ready"
+ * until it restarts. Checks that come while one is running share it.
  */
 const readyChecks = new WeakMap<Runner, Promise<string | null>>();
 
@@ -287,8 +290,12 @@ export class SrtSandbox implements Sandbox {
     const runner = this.#runner;
     let ready = readyChecks.get(runner);
     if (ready === undefined) {
-      ready = startSmallestSandbox(runner);
-      readyChecks.set(runner, ready);
+      const asked = startSmallestSandbox(runner);
+      ready = asked;
+      readyChecks.set(runner, asked);
+      void asked.then((error) => {
+        if (error !== null && readyChecks.get(runner) === asked) readyChecks.delete(runner);
+      });
     }
     const srtError = await ready;
     return srtError === null

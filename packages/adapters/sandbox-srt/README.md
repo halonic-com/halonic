@@ -12,8 +12,8 @@ gives the first reason when it can't: Windows without srt's install (`setup-need
 (`not-supported`), bubblewrap missing, user namespaces refused by AppArmor (asked only once bubblewrap is
 there), or `socat` or ripgrep (`rg`) missing, which srt starts next to bubblewrap (`linux-tools-missing`),
 or ripgrep missing on macOS, where srt starts it next to Seatbelt (`ripgrep-missing`).
-On Linux it is ready only once srt has started its smallest real sandbox and run `true` in it, once per
-process and within 10 seconds; anything else that stops it is `other`, with bubblewrap's or srt's own
+On Linux it is ready only once srt has started its smallest real sandbox and run `true` in it, within
+10 seconds; a pass is kept for the process, a failure is asked again at the next check; anything else that stops it is `other`, with bubblewrap's or srt's own
 line. `open()` checks first, refuses a bridge that isn't a
 loopback address, then opens a session that proves its fence (a canary file the fence hides and a
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and

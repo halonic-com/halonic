@@ -181,6 +181,37 @@ verifies("sandbox-srt.check", () => {
       expect(started).toEqual(["true"]);
     });
 
+    it("asks again after a failure, and keeps the pass that follows (HAL-7062)", async () => {
+      const codes = [1, 0, 1];
+      let started = 0;
+      const runner: Runner = {
+        run: async () => endedProgram(codes[started++] ?? 1, "Error: timed out\n"),
+      };
+      expect((await srt(machine(), runner).check()).ok).toBe(false);
+      expect((await srt(machine(), runner).check()).ok).toBe(true);
+      expect((await srt(machine(), runner).check()).ok).toBe(true);
+      expect(started).toBe(2);
+    });
+
+    it("lets checks that come while one is running share it, even when it fails (HAL-7062)", async () => {
+      let started = 0;
+      let end: (code: number) => void = () => {};
+      const runner: Runner = {
+        run: () => {
+          started++;
+          return new Promise((resolve) => {
+            end = (code) => resolve(endedProgram(code, "Error: timed out\n"));
+          });
+        },
+      };
+      const checks = [srt(machine(), runner).check(), srt(machine(), runner).check()];
+      await vi.waitFor(() => expect(started).toBe(1));
+      end(1);
+      const answers = await Promise.all(checks);
+      expect(answers.map((answer) => answer.ok)).toEqual([false, false]);
+      expect(started).toBe(1);
+    });
+
     it("starts no sandbox when an earlier reason applies, or off Linux", async () => {
       const started: string[] = [];
       const runner: Runner = {
