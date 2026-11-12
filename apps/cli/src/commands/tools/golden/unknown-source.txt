@@ -1,0 +1,27 @@
+## colour: halonic tools revoke notes-mpc send
+exit 4
+stdout:
+stderr:
+  \e[31m✕\e[39m There's no connector called "notes-mpc" in acme.
+    Did you mean notes-mcp?
+
+## NO_COLOR: halonic tools revoke notes-mpc send
+exit 4
+stdout:
+stderr:
+  ✕ There's no connector called "notes-mpc" in acme.
+    Did you mean notes-mcp?
+
+## --json: halonic tools revoke notes-mpc send
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "message": "There's no connector called \"notes-mpc\" in acme.",
+      "fix": "Did you mean notes-mcp?"
+    }
+  }
+stderr:

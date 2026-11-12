@@ -1,0 +1,24 @@
+## colour: halonic tools revoke notes-mcp archive
+exit 4
+stdout:
+stderr:
+  \e[31m✕\e[39m Couldn't remove the approval for archive: it isn't approved in notes-mcp.
+
+## NO_COLOR: halonic tools revoke notes-mcp archive
+exit 4
+stdout:
+stderr:
+  ✕ Couldn't remove the approval for archive: it isn't approved in notes-mcp.
+
+## --json: halonic tools revoke notes-mcp archive
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "message": "Couldn't remove the approval for archive: it isn't approved in notes-mcp."
+    }
+  }
+stderr:
