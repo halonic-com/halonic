@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-6316 (the socket bridge on macOS, after the fence tests in HAL-6348)
 
-Before it creates a run's socket folder, the Node bridge server shall check the socket's path against the limit of the system it runs on: 107 bytes on Linux and 103 on macOS. When the path is longer, it shall fail with a message that names the length, the system and its limit, and create nothing.
+When the Node bridge server makes a run's socket folder, it shall first check the socket's path against the limit of the system it runs on, 107 bytes on Linux and 103 on macOS, and for a longer path fail with a message that names the length, the system and its limit, and create nothing.
 
 ## Examples
 
