@@ -3,6 +3,7 @@
 - Task: HAL-7660 (follow-up to HAL-5568)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ThEkwFObS9mrX+h5KrLI/GEZ3tn3ztInpy2bmHlG+luJHtCrw6UjNFj5oWTL72lka6GPV1cPZ6cMu2Z3hpZcDg==
 
 ## What changes
 
