@@ -182,6 +182,13 @@ export { readPackageSpec } from "./package-spec.ts";
 export { isPackageManagerVariable } from "./pin-overrides.ts";
 export { pinnedRunnerArgs } from "./pinned-args.ts";
 export {
+  type AddPluginCommand,
+  type PluginCommands,
+  type PluginCommandsHost,
+  registerPluginCommands,
+  type TrustPluginCommand,
+} from "./plugin-commands.ts";
+export {
   type PluginToolSet,
   type PluginUiContribution,
   trustedPluginTools,
@@ -223,13 +230,6 @@ export {
   type PluginTrustRefusal,
   type ReadPlugin,
 } from "./plugin-service.ts";
-export {
-  type AddPluginCommand,
-  type PluginCommands,
-  type PluginCommandsHost,
-  registerPluginCommands,
-  type TrustPluginCommand,
-} from "./plugin-commands.ts";
 export {
   type PluginSettingProblem,
   PluginSettings,
