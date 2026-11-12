@@ -21,6 +21,7 @@ export function pageView(
         plugin={plugin}
         settings={options.settings}
         secrets={options.secrets}
+        actions={options.actions}
         onOpenPanel={() => options.openPanel(plugin.plugin)}
       />
     );

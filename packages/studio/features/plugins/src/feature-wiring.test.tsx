@@ -15,7 +15,13 @@ import { PluginsHostService, PluginsService } from "./api.ts";
 import { pluginsFeature } from "./feature.ts";
 import type { InstalledPlugin } from "./page/plugin-pages.ts";
 import { fakeModal, restoreModal } from "./test-support/modal.ts";
-import { feedOf, noSettings, WorkspaceServices, weather } from "./test-support/plugins.ts";
+import {
+  feedOf,
+  noActions,
+  noSettings,
+  WorkspaceServices,
+  weather,
+} from "./test-support/plugins.ts";
 import { render, unmountAll } from "./test-support/render.tsx";
 
 beforeEach(fakeModal);
@@ -30,7 +36,12 @@ function studioWith(plugins: readonly InstalledPlugin[]) {
   const call = vi.fn(async () => "Sunny");
   const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
   const workspace = new WorkspaceServices();
-  workspace.provide(PluginsHostService, { feed, caller: { call }, ...noSettings() });
+  workspace.provide(PluginsHostService, {
+    feed,
+    caller: { call },
+    ...noSettings(),
+    ...noActions(),
+  });
   shell.services.instantiate(workspace);
   const opened: ItemRef[] = [];
   const context: WorkspaceContext = {

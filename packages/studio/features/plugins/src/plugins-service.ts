@@ -2,6 +2,7 @@ import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import type { PluginToolCaller } from "./commands/plugin-command-dialog.tsx";
 import { PluginCommandOpener } from "./commands/plugin-command-source.ts";
 import { timedToolCaller } from "./commands/tool-call-timeout.ts";
+import type { PluginActions } from "./page/plugin-actions.ts";
 import {
   type InstalledPluginFeed,
   type PluginPageOptions,
@@ -25,6 +26,8 @@ export interface PluginsHost {
   readonly settings: PluginSettingsReader;
   /** The keychain: `TauriSecrets` on the desktop. */
   readonly secrets: PluginSecretStore;
+  /** Remove trust, Remove plugin, Check again and Open folder, from a plugin's page. */
+  readonly actions: PluginActions;
 }
 
 /**
@@ -37,6 +40,7 @@ export interface StudioPlugins {
   readonly opener: PluginCommandOpener;
   readonly settings: PluginSettingsReader;
   readonly secrets: PluginSecretStore;
+  readonly actions: PluginActions;
 }
 
 /** The plugins of a workspace, built from what the app gives. */
@@ -47,6 +51,7 @@ export function studioPlugins(host: PluginsHost): StudioPlugins {
     opener: new PluginCommandOpener(),
     settings: host.settings,
     secrets: host.secrets,
+    actions: host.actions,
   };
 }
 
@@ -68,6 +73,7 @@ export function pageOptions(plugins: StudioPlugins, context: WorkspaceContext): 
     feed: plugins.feed,
     settings: plugins.settings,
     secrets: plugins.secrets,
+    actions: plugins.actions,
     openPanel: (plugin) => context.openItem?.(pluginPanelItem(plugin)),
   };
 }

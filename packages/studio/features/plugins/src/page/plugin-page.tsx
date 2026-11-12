@@ -1,27 +1,26 @@
-import { Button, Callout, DashedRingIcon } from "@halonicjs/studio-kit";
+import { Button, Menu, type MenuEntry, MoreIcon, useToastStore } from "@halonicjs/studio-kit";
 import { saveNoteWords } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
-import type { PluginCardStatus } from "../cards/plugin-card.tsx";
-import { CHANGED_LINE, NOT_TRUSTED_LINE } from "../panel/panel-text.ts";
 import {
   type PluginSecretStore,
   type PluginSettingsReader,
   PluginSettingsSection,
   type SettingsSaveState,
 } from "../settings/plugin-settings-section.tsx";
+import { OPEN_PANEL, PLUGIN, quoted } from "./page-text.ts";
 import {
-  CANT_LOAD_LINE,
-  cantLoadTitle,
-  changedSince,
-  NOT_TRUSTED_YET,
-  ON,
-  OPEN_PANEL,
-  onLine,
-  PLUGIN,
-  quoted,
-  trustedDay,
-} from "./page-text.ts";
-import type { InstalledPlugin, PluginLoadProblem } from "./plugin-pages.ts";
+  ACTION_WORDS,
+  actionFailedLine,
+  moreActionsFor,
+  OPEN_FOLDER,
+  type PluginActions,
+  REMOVE_PLUGIN_ELLIPSIS,
+  REMOVE_TRUST,
+  removedToast,
+} from "./plugin-actions.ts";
+import type { InstalledPlugin } from "./plugin-pages.ts";
+import { messageOf, RemovePluginDialog } from "./remove-plugin-dialog.tsx";
+import { StatusBox } from "./status-box.tsx";
 import { WhatItAdds } from "./what-it-adds.tsx";
 
 /** The props of `PluginPage`. */
@@ -31,6 +30,8 @@ export interface PluginPageProps {
   readonly secrets: PluginSecretStore;
   /** **Open panel**: opens the plugin's panel in its tab. */
   readonly onOpenPanel: () => void;
+  /** Remove trust, Remove plugin…, Check again and Open folder, through the app. */
+  readonly actions: PluginActions;
   /** Today, for the trust date's year. */
   readonly now?: () => Date;
 }
@@ -43,10 +44,14 @@ export interface PluginPageProps {
  *
  * While the plugin is off (not trusted yet, changed, can't load), Settings and What it adds stay
  * readable at full contrast and the fields use the kit's unavailable state, with the status box as
- * the reason. A plugin that can't load shows its problems, path in mono, then the message.
+ * the reason. A plugin that can't load shows its problems, path in mono, then the message, with
+ * **Check again** and **Open folder**.
+ *
+ * The ⋮ (F17) has Open panel, Open folder, Remove trust (while it's trusted) and **Remove
+ * plugin…**, which asks first (F18). An action that fails says so in a toast.
  *
  * @example
- * <PluginPage plugin={weather} settings={pluginService} secrets={keychain}
+ * <PluginPage plugin={weather} settings={pluginService} secrets={keychain} actions={actions}
  *   onOpenPanel={() => openPanel("weather")} />
  */
 export function PluginPage({
@@ -54,10 +59,13 @@ export function PluginPage({
   settings,
   secrets,
   onOpenPanel,
+  actions,
   now = () => new Date(),
 }: PluginPageProps) {
   const statusId = useId();
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
+  const [removing, setRemoving] = useState(false);
+  const { run, toastRemoved } = usePageActions();
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
   return (
@@ -79,12 +87,44 @@ export function PluginPage({
             {OPEN_PANEL}
           </Button>
         )}
+        <Menu
+          align="end"
+          entries={menuEntries(plugin, {
+            openPanel: onOpenPanel,
+            openFolder: () => run("openFolder", () => actions.openFolder(plugin.plugin)),
+            revoke: () => run("revoke", () => actions.revoke(plugin.plugin)),
+            remove: () => setRemoving(true),
+          })}
+          trigger={(trigger) => (
+            <Button
+              {...trigger}
+              variant="ghost"
+              size="sm"
+              icon={<MoreIcon />}
+              label={moreActionsFor(plugin.name)}
+            />
+          )}
+        />
       </header>
+      {removing ? (
+        <RemovePluginDialog
+          plugin={plugin}
+          remove={actions.remove}
+          onRemoved={() => toastRemoved(plugin.name)}
+          onCancel={() => setRemoving(false)}
+        />
+      ) : null}
       <div className="flex max-w-3xl flex-col gap-6 p-4">
         {manifest === undefined || manifest.description === "" ? null : (
           <p className="text-body text-fg-muted wrap-anywhere">{quoted(manifest.description)}</p>
         )}
-        <StatusBox id={statusId} plugin={plugin} now={now} />
+        <StatusBox
+          id={statusId}
+          plugin={plugin}
+          now={now}
+          onCheckAgain={() => run("reload", actions.reload)}
+          onOpenFolder={() => run("openFolder", () => actions.openFolder(plugin.plugin))}
+        />
         {manifest === undefined ? null : (
           <>
             <PluginSettingsSection
@@ -121,91 +161,45 @@ function SaveNote({ state }: { readonly state: SettingsSaveState | undefined }) 
   );
 }
 
-/** The one status box (T12): on, not trusted yet, changed, or the can't-load Callout. */
-function StatusBox({
-  id,
-  plugin,
-  now,
-}: {
-  readonly id: string;
-  readonly plugin: InstalledPlugin;
-  readonly now: () => Date;
-}) {
-  if (plugin.status === "cant-load") {
-    return (
-      <div id={id}>
-        <Callout tone="danger" title={cantLoadTitle(plugin.name)}>
-          <p>{CANT_LOAD_LINE}</p>
-          <Problems problems={plugin.problems} />
-        </Callout>
-      </div>
-    );
-  }
-  const trusted = trustedDay(plugin.trustedAt, now());
-  const box = statusWords(plugin.status, plugin, trusted);
-  return (
-    <div id={id} className="flex gap-2 rounded-md bg-surface-subtle p-3">
-      <span
-        aria-hidden="true"
-        className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full"
-      >
-        {plugin.status === "on" ? "✓" : <DashedRingIcon />}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-body-strong">{box.title}</p>
-        {box.line === "" ? null : (
-          <p className="text-small text-fg-muted wrap-anywhere">{box.line}</p>
-        )}
-      </div>
-    </div>
-  );
+/** What the ⋮ does. */
+interface MenuActions {
+  readonly openPanel: () => void;
+  readonly openFolder: () => void;
+  readonly revoke: () => void;
+  readonly remove: () => void;
 }
 
-function statusWords(
-  status: Exclude<PluginCardStatus, "cant-load">,
-  plugin: InstalledPlugin,
-  trusted: string | undefined,
-): { readonly title: string; readonly line: string } {
-  switch (status) {
-    case "on":
-      return {
-        title: ON,
-        line:
-          plugin.manifest === undefined
-            ? ""
-            : onLine(trusted, plugin.manifest.version, plugin.origin),
-      };
-    case "changed":
-      return { title: changedSince(trusted), line: CHANGED_LINE };
-    case "not-trusted":
-      return { title: NOT_TRUSTED_YET, line: NOT_TRUSTED_LINE };
-  }
+/** The ⋮'s items (F17): Remove trust only while there's trust to remove. */
+function menuEntries(plugin: InstalledPlugin, act: MenuActions): MenuEntry[] {
+  const trusted = plugin.status === "on" || plugin.status === "changed";
+  return [
+    ...(plugin.panel === undefined
+      ? []
+      : [{ id: "panel", label: OPEN_PANEL, onSelect: act.openPanel }]),
+    { id: "folder", label: OPEN_FOLDER, onSelect: act.openFolder },
+    ...(trusted ? [{ id: "revoke", label: REMOVE_TRUST, onSelect: act.revoke }] : []),
+    "divider",
+    { id: "remove", label: REMOVE_PLUGIN_ELLIPSIS, danger: true, onSelect: act.remove },
+  ];
 }
 
-/** Each problem: where, in mono, then the loader's message, as plain text. */
-function Problems({ problems }: { readonly problems: readonly PluginLoadProblem[] }) {
-  if (problems.length === 0) return null;
-  return (
-    <ul className="mt-2 flex list-none flex-col gap-1">
-      {problems.map((problem, index) => {
-        const place = problemPlace(problem);
-        return (
-          // The loader can give two problems at the same place, so the index keeps keys apart.
-          <li key={index} className="wrap-anywhere">
-            {place === "" ? null : (
-              <>
-                <span className="font-mono">{place}</span>{" "}
-              </>
-            )}
-            <span>{problem.message}</span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-/** "plugin.yaml ui.commands.0.tool", or just the file, or `""` for the folder itself. */
-function problemPlace(problem: PluginLoadProblem): string {
-  return [problem.file, problem.path.map(String).join(".")].filter((part) => part !== "").join(" ");
+/**
+ * Runs a page action, and says in a toast when it fails: "Couldn't remove trust: *reason*."
+ * `toastRemoved` is the Remove dialog's success: "*name* removed".
+ */
+function usePageActions() {
+  const toasts = useToastStore();
+  return {
+    run: async (action: keyof typeof ACTION_WORDS, work: () => Promise<void>) => {
+      try {
+        await work();
+      } catch (error) {
+        const title = actionFailedLine(ACTION_WORDS[action], messageOf(error));
+        toasts?.show({ tone: "danger", title });
+      }
+    },
+    toastRemoved: (name: string) => {
+      toasts?.show({ tone: "success", title: removedToast(name) });
+    },
+  };
 }
