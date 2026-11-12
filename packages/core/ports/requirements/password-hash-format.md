@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: new in the core ports package: one hash format on every runtime, so a hash made locally verifies in the cloud
+- Source: new in the core ports package: one hash format for every scrypt adapter, so a hash made by one verifies on all of them. Cloud targets use the other format, `ports.password-hash-format-pbkdf2-chain` (HAL-136, port change decided on HAL-6789)
 
-The `PasswordHasher` adapters shall all produce and accept hashes in the form `$scrypt$ln=<log2 N>,r=<r>,p=<p>$<salt>$<key>`, with exactly a 16-byte salt and a 32-byte key in standard base64 without padding, over the NFC-normalised UTF-8 password. New hashes shall use ln=14, r=8, p=5, and `needsRehash` shall return `true` for any other settings. If a hash is malformed (another salt or key length, or `=` padding), in another format, or uses settings outside ln 14 to 15, r 8 and p 5 to 16, then `verify` and `needsRehash` shall throw a `RangeError`.
+The scrypt `PasswordHasher` adapters shall all produce and accept hashes in the form `$scrypt$ln=<log2 N>,r=<r>,p=<p>$<salt>$<key>`, with exactly a 16-byte salt and a 32-byte key in standard base64 without padding, over the NFC-normalised UTF-8 password. New hashes shall use ln=14, r=8, p=5, and `needsRehash` shall return `true` for any other settings. If a hash is malformed (another salt or key length, or `=` padding), in another format, or uses settings outside ln 14 to 15, r 8 and p 5 to 16, then `verify` and `needsRehash` shall throw a `RangeError`.
 
 The vectors below were computed with Node's `crypto.scryptSync` (OpenSSL), not with `core/std`, so they check the in-house scrypt against an independent implementation. The salt is the bytes 0 to 15.
 
@@ -34,6 +34,9 @@ The vectors below were computed with Node's `crypto.scryptSync` (OpenSSL), not w
 - Given the first hash above with `=` added to its salt, or with its key cut to 31 bytes,
   when it is verified,
   then a `RangeError` says the hash is malformed.
+- Given the hash in the cloud targets' format `$pbkdf2-sha256-chain$i=100000,n=6$AAECAwQFBgcICQoLDA0ODw$rfDFKdlz6hQsDnqes4jawGjfp+mn20j77PR84Xj0KfE`,
+  when it is verified,
+  then a `RangeError` is thrown, never `false`.
 - Given the hash `$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA`, or the text `not a hash`,
   when it is verified,
   then a `RangeError` is thrown, never `false`.

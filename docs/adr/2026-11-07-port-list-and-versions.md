@@ -41,7 +41,7 @@ milliseconds as numbers, so every runtime can keep them as they are.
 | `RunExecutor` | new, replaces `Runtime` and `RunHost`: `start`, `startAgent`, `send`, `subscribe` and `chatTurn`. A start may carry its own `runId`, and repeating it returns the existing run, so routine fires, mails and signals start one run each. `subscribe` takes `onEvent` and `onClose(error?)`, so a client can tell a dropped stream from a quiet run. Subflows are internal to the executor, so the request has no `parent` |
 | `Scheduler` | new: `schedule`, `cancel` and `pending` timers per key, and a `SchedulerFactory` that takes the `SchedulerListener`. Timers may arrive late or twice; `at` is the time the timer was set for. A timer set again during `onTimer` stays. A rejecting `onTimer` is retried with backoff from 1 second up to 15 minutes, never dropped |
 | `Coordination` | new: leases (`tryAcquire`, `renew` keeping the token, `release`), `read` and `compareAndSet` values (`null` deletes), `increment` with a limit, and `countInWindow` for login limits. Keys up to 256 bytes; amounts are positive whole numbers, money in micro-units; bad input throws `RangeError` |
-| `PasswordHasher` | new: `hash`, `verify`, `needsRehash`. Fixed format `$scrypt$ln=14,r=8,p=5$<salt>$<key>` over the NFC password, with a known-answer vector; `verify` throws on a malformed hash. The old server compared SHA-256 of a plain-text password |
+| `PasswordHasher` | new: `hash`, `verify`, `needsRehash`. Fixed format `$scrypt$ln=14,r=8,p=5$<salt>$<key>` over the NFC password, with a known-answer vector; `verify` throws on a malformed hash. The old server compared SHA-256 of a plain-text password. Cloud targets got a second format on 12 Nov (see "Amended: a second password hash format") |
 
 **Left out of the ports on purpose:**
 
@@ -265,6 +265,29 @@ things. An adapter may pass it on, so a server that knows it can drop a
 duplicate. The guarantee doesn't rest on it: the run log, the unknown
 outcome and a person's `retry` or `skip` (`engine.unknown-outcome`) keep a
 call from being made twice on its own. `ConnectorClient` stays at version 1.
+
+## Amended: a second password hash format
+
+_2026-11-12, decided by Liam on HAL-6789, built in HAL-6799 (Cloud track part 8)._
+The table above gives `PasswordHasher` one fixed scrypt format on every
+runtime. A day later, [HAL-136](/HAL/issues/HAL-136#document-decision)
+moved cloud targets to chained PBKDF2-SHA256 from WebCrypto
+(`$pbkdf2-sha256-chain$i=100000,n=6$<salt>$<hash>`), because WebCrypto has
+no memory-hard hash and a Worker has too little memory for scrypt at safe
+settings. So the port now has two formats: `$scrypt$…` for `serve` and
+`$pbkdf2-sha256-chain$…` for cloud targets. Each adapter makes exactly one
+format and the target decides which; a hash verifies on any adapter of the
+same format, and a hash in the other format makes `verify` throw a
+`RangeError` (`ports.password-hash-format`,
+`ports.password-hash-format-pbkdf2-chain`).
+
+The chained PBKDF2 adapter is a complete `PasswordHasher`, not a
+verify-only one: `halonic deploy` makes the hash on your machine with it,
+and the Worker checks it with the same code. `PasswordHasher` stays at
+version 1. No hasher existed yet and nothing used the port, so nobody is
+affected; a version bump would cost something and protect nobody. A
+separate cloud-only port was rejected too: it would be the same interface
+twice, and the host would handle two port types for one job.
 
 ## Consequences
 
