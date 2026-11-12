@@ -12,7 +12,7 @@ import { ListHeading, type ListHeadingProps } from "../list-heading/list-heading
 import { SkeletonBar, type SkeletonBarWidth } from "../skeleton-bar/skeleton-bar.tsx";
 import { boxClasses, type ListLook, lineClasses } from "./list-lines.ts";
 import type { ListColumn } from "./list-props.ts";
-import { columnWidthClasses } from "./row-columns.tsx";
+import { columnKey, columnWidthClasses } from "./row-columns.tsx";
 
 /** The skeleton waits this long before it shows, so a fast load doesn't flash. */
 export const SKELETON_AFTER_MS = 300;
@@ -208,10 +208,7 @@ function ColumnsSkeletonRow({
   return (
     <div className="hidden min-h-14 items-center gap-3 bg-surface px-4 @list-wide:flex">
       {columns.map((column) => (
-        <div
-          key={column.kind === "main" ? "main" : column.key}
-          className={columnWidthClasses[column.kind]}
-        >
+        <div key={columnKey(column)} className={columnWidthClasses[column.kind]}>
           {bars[column.kind]}
         </div>
       ))}

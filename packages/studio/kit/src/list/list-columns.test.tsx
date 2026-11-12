@@ -206,6 +206,23 @@ verifies("kit.list-columns", () => {
     quiet.mockRestore();
   });
 
+  it("lets a column be keyed main beside the main column", () => {
+    const warnings = vi.spyOn(console, "error").mockImplementation(() => {});
+    const keyedMain: readonly ListColumn[] = [{ kind: "code", key: "main" }, { kind: "main" }];
+    const row: ListColumnsRow = {
+      id: "01JD9A",
+      title: "Support reply",
+      cells: { main: { value: "01JD9A" } },
+    };
+    const { container } = render(<List label="Runs" rows={[row]} columns={keyedMain} />);
+    const { wide } = layoutsOf(cellOf(container, 0));
+    expect(wide?.children).toHaveLength(2);
+    expect(wide?.children[0]?.textContent).toBe("01JD9A");
+    expect(wide?.children[1]?.textContent).toBe("Support reply");
+    expect(warnings).not.toHaveBeenCalled();
+    warnings.mockRestore();
+  });
+
   it("takes no `dense` and no `trailing` part with columns, and no `cells` without", () => {
     // @ts-expect-error: a columned row holds a title over a meta line, so it's never dense.
     const dense = <List label="Runs" rows={[needsYou]} columns={columns} dense />;

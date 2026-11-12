@@ -28,6 +28,14 @@ export const columnWidthClasses: Record<ListColumnKind, string> = {
 };
 
 /**
+ * A column's React key. The main column has no `key` of its own, and the others' keys are the
+ * screen's to choose, so they get a prefix: a column keyed "main" can't clash with the main one.
+ */
+export function columnKey(column: ListColumn): string {
+  return column.kind === "main" ? "main" : `cell:${column.key}`;
+}
+
+/**
  * Exactly one `main` column, which holds the title, and every other column's key used once, since
  * the cells are found and drawn by it: a mistake here is the screen's, not the user's. A List
  * without columns has nothing to check.
@@ -255,12 +263,7 @@ export function RowColumns({ row, columns, phone, reasonId, afterCheck }: RowCol
         {phone ? null : (
           <div className={`hidden min-h-14 items-center gap-3 py-2 @list-wide:flex ${padding}`}>
             {columns.map((column) => (
-              <WideCell
-                key={column.kind === "main" ? "main" : column.key}
-                row={row}
-                column={column}
-                columns={columns}
-              />
+              <WideCell key={columnKey(column)} row={row} column={column} columns={columns} />
             ))}
           </div>
         )}
