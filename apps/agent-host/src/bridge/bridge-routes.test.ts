@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { type HarnessBridgeServer, harnessBridgeTokenHeader, type Secrets } from "@halonicjs/ports";
 import { afterEach, describe, expect, it } from "vitest";
@@ -54,7 +57,7 @@ afterEach(async () => {
   opening.called = signal();
 });
 
-async function started(table = new BridgeTable()): Promise<string> {
+async function started(table = new BridgeTable(), socketFolder?: string): Promise<string> {
   bridges = table;
   const fetch = async (_input: unknown, init?: RequestInit): Promise<Response> => {
     providerKeys.push(new Headers(init?.headers).get("x-api-key"));
@@ -66,7 +69,12 @@ async function started(table = new BridgeTable()): Promise<string> {
     return new Response(JSON.stringify(reply), { headers: { "content-type": "application/json" } });
   };
   const serverFor = (secrets: Secrets): HarnessBridgeServer => {
-    const real = new NodeHarnessBridgeServer({ secrets, fetch, closeTimeoutMs: 1_000 });
+    const real = new NodeHarnessBridgeServer({
+      secrets,
+      fetch,
+      closeTimeoutMs: 1_000,
+      ...(socketFolder === undefined ? {} : { socketFolder }),
+    });
     return {
       open: async (options) => {
         opening.called.settle();
@@ -99,7 +107,11 @@ class FakeStudio {
   readonly calls: ChannelCallLine[] = [];
   readonly lines: { type: string; call?: string }[] = [];
   readonly stopped = new AbortController();
-  bridge = { bridge: "", url: "", token: "" };
+  bridge: { bridge: string; url: string; token: string; socketPath?: string } = {
+    bridge: "",
+    url: "",
+    token: "",
+  };
   done: Promise<void> = Promise.resolve();
 
   static async open(url: string, handlers: Handlers): Promise<FakeStudio> {
@@ -166,6 +178,30 @@ describe("bridgeRoutes", () => {
     expect(body.result.tools.map((listed) => listed.name)).toContain("send_mail");
     expect(studio.calls[0]).toMatchObject({ method: "tools.list" });
   });
+
+  // The host serves sockets only on Linux and macOS, and the bridge checks the folder's POSIX mode.
+  it.skipIf(process.platform === "win32")(
+    "gives the socket path of a bridge on a Unix socket, and none on a port",
+    async () => {
+      const folder = await mkdtemp(join(tmpdir(), "agent-host-bridges-"));
+      try {
+        const onSocket = await FakeStudio.open(await started(new BridgeTable(), folder), {});
+        expect(onSocket.bridge).toMatchObject({
+          type: "opened",
+          url: "http://bridge.halonic.invalid",
+          socketPath: expect.stringMatching(/bridge\.sock$/),
+        });
+        expect(onSocket.bridge.socketPath?.startsWith(folder)).toBe(true);
+        await bridges.closeAll();
+        await server?.close();
+
+        const onPort = await FakeStudio.open(await started(), {});
+        expect(onPort.bridge).not.toHaveProperty("socketPath");
+      } finally {
+        await rm(folder, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("asks Studio for the provider key, prices the call and records it there", async () => {
     const url = await started();

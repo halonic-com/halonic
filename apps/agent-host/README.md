@@ -124,19 +124,19 @@ A session is named by an id the host makes; any other id gets `404 unknown_sessi
 `harness-bridge` runs here, next to the sandbox whose program calls it, but the engine's recorder, tools, approvals and provider keys stay in Studio. Studio opens a bridge for one run with `{ runId, agentId, providers, prices }`; `prices` is each provider's models with a price, because the bridge asks for a price without waiting. The answer stays open as a stream:
 
 ```
-{"type":"opened","bridge":"<id>","url":"http://127.0.0.1:41817","token":"<run token>"}
+{"type":"opened","bridge":"<id>","url":"http://bridge.halonic.invalid","token":"<run token>","socketPath":"<profile>/bridges/<run>/bridge.sock"}
 {"type":"call","call":"1","method":"secrets.get","params":{"name":"anthropic-key"}}
 {"type":"call","call":"2","method":"recorder.record","params":{"type":"llm.request",...}}
 {"type":"cancel","call":"3"}
 ```
 
-The first line is `opened`, or `{"type":"failed","message"}` when the bridge couldn't listen. Each `call` is one of `recorder.record`, `tools.list`, `tools.check`, `tools.call`, `approvals.request` and `secrets.get`, with the port's arguments; Studio answers it with `POST /v1/bridge/answer` and `{ bridge, call, result }` or `{ bridge, call, error }`. A `cancel` means the bridge stopped waiting (the program went away), so Studio can stop the tool call or withdraw the approval. The host checks each answer against the port's shape, and asks only for the secrets the run's `providers` name. A bridge is named by a random id the host makes, like a session, because call ids (`1`, `2`, …) repeat from bridge to bridge.
+The first line is `opened`, or `{"type":"failed","message"}` when the bridge couldn't listen. On Linux (WSL's distro included) and macOS each bridge serves a Unix socket in a new private folder under `bridges` in the profile folder (`--profile-folder`), and `opened` gives its `socketPath`: the sandbox keeps the program off the host's loopback ports there, and srt's proxy sends the bridge's name, `bridge.halonic.invalid`, to the socket. On Windows, or without a profile folder, the bridge listens on a loopback port (`"url":"http://127.0.0.1:41817"`) and `opened` has no `socketPath`. Each `call` is one of `recorder.record`, `tools.list`, `tools.check`, `tools.call`, `approvals.request` and `secrets.get`, with the port's arguments; Studio answers it with `POST /v1/bridge/answer` and `{ bridge, call, result }` or `{ bridge, call, error }`. A `cancel` means the bridge stopped waiting (the program went away), so Studio can stop the tool call or withdraw the approval. The host checks each answer against the port's shape, and asks only for the secrets the run's `providers` name. A bridge is named by a random id the host makes, like a session, because call ids (`1`, `2`, …) repeat from bridge to bridge.
 
 Studio must answer `recorder.record`, `tools.list`, `tools.check` and `secrets.get` within 30 seconds, or the host sends a `cancel` and the bridge's request fails, so a Studio that hangs can't hold it forever. `tools.call` and `approvals.request` have no limit, because a tool's run and a person's approval rightly take long. A call fails too when Studio answers it with an error, or when the stream ends (Studio crashed or reloaded) before it answers.
 
 The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
 
-Each bridge listens on a port of its own, so the host keeps at most 64 bridges open, counting those still opening and those still closing; past that, opening one answers `429 too_many_bridges` before any stream starts.
+Each bridge listens on a port or socket of its own, so the host keeps at most 64 bridges open, counting those still opening and those still closing; past that, opening one answers `429 too_many_bridges` before any stream starts.
 
 ## The harnesses over loopback
 
