@@ -5,7 +5,6 @@
 // boundary.
 
 import type { ConnectorFactories, SendingSettings } from "@halonicjs/app";
-import type { RunVersion } from "@halonicjs/events";
 import type { ConnectorFactoryContext, Secrets, TrustGrant } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { ProgramFolders } from "./program-folders.ts";
@@ -45,7 +44,9 @@ export interface RunConnectorsEngine {
    */
   readonly versions?: {
     /** @throws when that version can't be read or may not run here */
-    trustedVersionOf(version: RunVersion): Promise<TrustedVersion>;
+    trustedVersionOf(run: VersionedRun): Promise<TrustedVersion>;
+    /** Hears that a run has ended, so what was kept for it can go. */
+    forget(runId: string): void;
   };
   /** The workspace's real path, which with a connector's id keys its settings. */
   readonly location: string;
@@ -101,6 +102,7 @@ export function localRunConnectors(
           programWorkingFolders(folder, engine.location, read.workspace),
       };
     },
+    runEnded: (runId) => engine.versions?.forget(runId),
     reportError: engine.reportError,
   });
   return {
@@ -140,5 +142,5 @@ async function versionRead(
   if (engine.versions === undefined) {
     return { workspace: engine.workspace, trust: given.trust };
   }
-  return await engine.versions.trustedVersionOf(run.version);
+  return await engine.versions.trustedVersionOf(run);
 }

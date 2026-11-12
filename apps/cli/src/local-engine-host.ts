@@ -40,8 +40,7 @@ import {
   type SetTimer,
   systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
-import { LocalExecutor, type RunDefinitions } from "@halonicjs/engine";
-import type { RunVersion } from "@halonicjs/events";
+import { LocalExecutor } from "@halonicjs/engine";
 import type { Agent } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
@@ -74,16 +73,13 @@ import {
   type LocalHarnessParts,
   openLocalHarnessHost,
 } from "./local-harness-host.ts";
-import {
-  type LocalRunConnectorsInput,
-  localRunConnectors,
-  type TrustedVersion,
-} from "./local-run-connectors.ts";
+import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-connectors.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import { latestModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
+import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 /** The collection of the workspace's record store that keeps the run timers. */
 export const runTimerCollection = "halonic.run-timers";
@@ -167,35 +163,6 @@ export interface LocalEngineInput {
    * `halonic run`.
    */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
-}
-
-/** The versions of a workspace an engine's runs read, as {@link LocalEngineInput.versions} says. */
-export interface WorkspaceVersions {
-  /**
-   * The version read last, checked and trusted as `workspace` is. The
-   * executor keeps the `privacy.localOnly` of `workspace`, so a version
-   * that changes it must not be given here.
-   */
-  latest(): LoadedWorkspace;
-  /**
-   * The definitions a new run of the workflow starts with, from `version`:
-   * the start's, which the run records.
-   *
-   * @throws when the hub or the workflow isn't in that version, or that
-   *   version may not run on this computer
-   */
-  definitionsOf(
-    hubId: string,
-    workflowId: string,
-    version: RunVersion | undefined,
-  ): Promise<RunDefinitions>;
-  /**
-   * The version a run read, as its connectors start from it, with the
-   * grant of that version's trust check.
-   *
-   * @throws when that version can't be read or may not run on this computer
-   */
-  trustedVersionOf(version: RunVersion): Promise<TrustedVersion>;
 }
 
 /** What the routine scheduler is built on: the engine's own parts. */
@@ -399,10 +366,10 @@ function engineOn(
       blobs: new FolderBlobStore(folders.blobsFolder()),
       scheduler,
       ids: input.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock),
-      definitionsOf: async (hubId, workflowId, version) =>
+      definitionsOf: async (hubId, workflowId, version, runId) =>
         versions === undefined
           ? runDefinitionsOf(input.workspace, hubId, workflowId)
-          : await versions.definitionsOf(hubId, workflowId, version),
+          : await versions.definitionsOf(hubId, workflowId, version, runId),
       ...connectors?.runs,
     },
   });

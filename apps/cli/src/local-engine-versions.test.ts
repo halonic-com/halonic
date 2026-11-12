@@ -10,8 +10,9 @@ import type { ProfileEnvironment } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { type LocalEngine, openLocalEngine, type WorkspaceVersions } from "./local-engine-host.ts";
+import { type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
+import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 /** The Acme example, on the test model. */
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -51,7 +52,7 @@ afterEach(async () => {
 
 /** The engine over `versions`. It starts no run's connectors, so it reads no version for them. */
 async function openEngine(
-  versions: Omit<WorkspaceVersions, "trustedVersionOf">,
+  versions: Omit<WorkspaceVersions, "trustedVersionOf" | "forget">,
 ): Promise<LocalEngine> {
   const engine = await openLocalEngine({
     workspace,
@@ -60,6 +61,7 @@ async function openEngine(
       trustedVersionOf: async () => {
         throw new Error("This engine starts no connectors.");
       },
+      forget: () => {},
     },
     workspaceRoot: acme,
     secrets,
