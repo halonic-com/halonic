@@ -1,13 +1,10 @@
 import type { RunFailureReason } from "@halonicjs/events";
-import type { Agent, AgentMethod } from "@halonicjs/format";
-import { methodOutputOf } from "./step-method.ts";
+import type { Agent, AgentOutput } from "@halonicjs/format";
 
 /** An agent's answer, checked against its output: the output to keep, or why it can't be kept. */
 export type CheckedAnswer =
   | { readonly output: unknown }
   | { readonly error: string; readonly reason: RunFailureReason };
-
-type AgentOutput = NonNullable<Agent["output"]>;
 
 /**
  * Checks an agent's answer against the agent's output. When the output is a
@@ -19,16 +16,16 @@ type AgentOutput = NonNullable<Agent["output"]>;
  * the parsed value; any other text fails with an error that says so. The
  * engine never keeps the text in its place. Any other answer is kept as it
  * is. A plain `task` state, a `parallel` branch and a `foreach` item all
- * check their answers here. When the step calls one of the agent's methods,
- * the method's `output` takes the place of the agent's: fields are JSON.
+ * check their answers here. A step's own output, from its `format` or the
+ * method it calls (`stepOutputOf`), takes the place of the agent's.
  */
 export function checkAnswer(
   agents: Readonly<Record<string, Agent>>,
   agentId: string,
   answer: unknown,
-  method?: AgentMethod,
+  stepOutput?: AgentOutput,
 ): CheckedAnswer {
-  const output = method === undefined ? outputOf(agents, agentId) : methodOutputOf(method);
+  const output = stepOutput ?? outputOf(agents, agentId);
   switch (output?.type) {
     case "choice":
       return checkChoice(agentId, output.options, answer);

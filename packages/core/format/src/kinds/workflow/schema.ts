@@ -63,7 +63,7 @@ export const WorkflowState = s
     output: s.string().optional(),
     /** Task states: a context key that keeps the conversation across turns. */
     conversation: s.string().optional(),
-    /** Task states: the reply format for this step, instead of the agent's own. */
+    /** Task and for-each states: the reply format, instead of the method's or the agent's. */
     format: s.enum(["text", "json"]).optional(),
     /** After this step: a signal routines can start on. */
     signal: s

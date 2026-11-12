@@ -78,7 +78,8 @@ export function startItem(
 
 /**
  * What an item's agent is asked: the method's prompt when the state calls
- * one, else its `input`, each with the picked data after it, else the item.
+ * one, else its `input`, else the item itself, each with the picked data
+ * after it.
  */
 function itemPrompt(
   { run, state, agents }: StateContext,
@@ -94,9 +95,9 @@ function itemPrompt(
       itemScope,
     );
   }
-  return state.input === undefined
-    ? asText(item)
-    : withGets(promptFor(state.input, itemScope, run.input), state.gets, itemScope);
+  const prompt =
+    state.input === undefined ? asText(item) : promptFor(state.input, itemScope, run.input);
+  return withGets(prompt, state.gets, itemScope);
 }
 
 /** With no `input`, the child gets `{ <as>: item }`. */
