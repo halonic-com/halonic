@@ -2,7 +2,6 @@
 
 - Approval: the board-approved workspace flow ([flow-workspace](/HAL/issues/HAL-177#document-flow-workspace) 2.1 and 2.2) built in [HAL-1291](/HAL/issues/HAL-1291); the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yTgbvdU44KdbUvOCW5FnnPHX3Gsqzhhkci8+hIOxrYlJy5iYFToKPtnabG+b/OUL6l3+BAsKyq9hDvpleQbBCg==
 
 ## What changes
 
