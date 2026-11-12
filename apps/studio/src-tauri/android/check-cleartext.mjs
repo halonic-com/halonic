@@ -132,6 +132,47 @@ function readStringPool(view, start, size) {
   return strings;
 }
 
+/** Reads the resource ids of a resource map chunk, one per attribute name. */
+function readResourceIds(view, at, size) {
+  const ids = [];
+  for (let i = 8; i + 4 <= size; i += 4) ids.push(view.getUint32(at + i, true));
+  return ids;
+}
+
+/** Reads a start element chunk into `{ name, attributes, children }`. */
+function readStartElement(view, at, size, string, resourceIds) {
+  const body = at + 16;
+  const attributeStart = view.getUint16(body + 8, true);
+  const attributeSize = view.getUint16(body + 10, true);
+  const attributeCount = view.getUint16(body + 12, true);
+  const attributes = [];
+  for (let i = 0; i < attributeCount; i += 1) {
+    const a = body + attributeStart + i * attributeSize;
+    if (a + 20 > at + size) throw new Error("The manifest ends inside an attribute.");
+    const nameIndex = view.getInt32(a + 4, true);
+    const raw = view.getInt32(a + 8, true);
+    const dataType = view.getUint8(a + 15);
+    const data = view.getUint32(a + 16, true);
+    attributes.push({
+      namespace: string(view.getInt32(a, true)),
+      name: string(nameIndex),
+      value: raw >= 0 ? string(raw) : String(data),
+      id: resourceIds[nameIndex],
+      boolean: dataType === TYPE_BOOLEAN ? data !== 0 : undefined,
+    });
+  }
+  return { name: string(view.getInt32(body + 4, true)), attributes, children: [] };
+}
+
+/** Reads the type and size of the chunk at `at`, and checks it ends by `total`. */
+function chunkAt(view, at, total) {
+  if (at + 8 > total) throw new Error("The manifest ends inside a chunk header.");
+  const type = view.getUint16(at, true);
+  const size = view.getUint32(at + 4, true);
+  if (size < 8 || at + size > total) throw new Error("The manifest ends inside a chunk.");
+  return { type, size };
+}
+
 /**
  * Reads an APK's binary XML manifest into the same shape readElement gives:
  * `{ name, attributes: [{ namespace, name, value, id, boolean }], children }`.
@@ -148,44 +189,17 @@ function readBinaryManifest(buffer) {
   const string = (index) => (index >= 0 && index < strings.length ? strings[index] : "");
   const total = Math.min(view.getUint32(4, true), buffer.length);
   for (let at = view.getUint16(2, true); at < total; ) {
-    if (at + 8 > total) throw new Error("The manifest ends inside a chunk header.");
-    const type = view.getUint16(at, true);
-    const size = view.getUint32(at + 4, true);
-    if (size < 8 || at + size > total) throw new Error("The manifest ends inside a chunk.");
+    const { type, size } = chunkAt(view, at, total);
     if (type === STRING_POOL) {
       strings = readStringPool(view, at, size);
     } else if (type === 0x0180) {
-      for (let i = 8; i + 4 <= size; i += 4) resourceIds.push(view.getUint32(at + i, true));
+      resourceIds = resourceIds.concat(readResourceIds(view, at, size));
     } else if (type === START_ELEMENT) {
-      const body = at + 16;
-      const attributeStart = view.getUint16(body + 8, true);
-      const attributeSize = view.getUint16(body + 10, true);
-      const attributeCount = view.getUint16(body + 12, true);
-      const attributes = [];
-      for (let i = 0; i < attributeCount; i += 1) {
-        const a = body + attributeStart + i * attributeSize;
-        if (a + 20 > at + size) throw new Error("The manifest ends inside an attribute.");
-        const nameIndex = view.getInt32(a + 4, true);
-        const raw = view.getInt32(a + 8, true);
-        const dataType = view.getUint8(a + 15);
-        const data = view.getUint32(a + 16, true);
-        attributes.push({
-          namespace: string(view.getInt32(a, true)),
-          name: string(nameIndex),
-          value: raw >= 0 ? string(raw) : String(data),
-          id: resourceIds[nameIndex],
-          boolean: dataType === TYPE_BOOLEAN ? data !== 0 : undefined,
-        });
-      }
-      const element = {
-        name: string(view.getInt32(body + 4, true)),
-        attributes,
-        children: [],
-      };
+      const element = readStartElement(view, at, size, string, resourceIds);
       stack[stack.length - 1].children.push(element);
       stack.push(element);
-    } else if (type === 0x0103) {
-      if (stack.length > 1) stack.pop();
+    } else if (type === 0x0103 && stack.length > 1) {
+      stack.pop();
     }
     at += size;
   }
