@@ -29,9 +29,9 @@ export interface SettingsDialogProps {
   readonly workspaceName: string | undefined;
   readonly place: SettingsPlace;
   /** The section a caller asked for, such as `assistant` from the session picker. */
-  readonly requested?: string;
+  readonly requested?: string | undefined;
   /** The section shown when Settings last closed in this window. */
-  readonly lastShown?: string;
+  readonly lastShown?: string | undefined;
   /** Called with each section shown, the first one too, so the window can remember it for `lastShown`. */
   readonly onShown?: (sectionId: string) => void;
   /** A feature's context: `(featureId) => shell.services.contextFor(featureId, workspace)`. */

@@ -1,10 +1,15 @@
-import { TauriDefinitionStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import {
+  TauriDefinitionStore,
+  TauriPickedFolders,
+  TauriRunStore,
+} from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { ServiceRegistry } from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { settingsFeature } from "@halonicjs/studio-feature-settings";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -27,6 +32,7 @@ import {
   type KeyboardPlatform,
   mountStudioWindow,
   type Shell,
+  type ShellOptions,
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
@@ -83,19 +89,21 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * (`studio.open-folder`). The served Studio opens the one workspace it serves. The window is the
  * shell's or the workspace feature's; the app only starts it, as AGENTS.md asks of screens.
  *
- * The desktop app registers the Inbox and Runs, over the runs in each open folder. The served
- * Studio registers no feature yet: nothing serves it runs until `halonic serve` is built, so it
- * shows Home and the Search box.
+ * The desktop app registers the Inbox and Runs, over the runs in each open folder, and Settings
+ * (`studio.settings`). The served Studio registers no feature yet: nothing serves it runs until
+ * `halonic serve` is built, so it shows Home and the Search box.
+ *
+ * @param desktop the desktop app's features and the services it gives them, `desktopFeatures`
  *
  * @example
  * startStudio({ element: root, window, userAgent: navigator.userAgent, storage: localStorage });
  */
-export function startStudio(page: StudioPage): StartedStudio {
+export function startStudio(page: StudioPage, desktop = desktopFeatures): StartedStudio {
   const host = studioHost(page.window);
   const platform = keyboardPlatform(page.userAgent);
   const ipc = tauriIpc(page.window);
   if (ipc !== undefined) {
-    const shell = createShell({ ...desktopFeatures, host, platform });
+    const shell = createShell({ ...desktop, host, platform });
     return startDesktopApp(page, { shell, ipc, platform });
   }
   const shell = createShell({ features: [], host, platform });
@@ -123,8 +131,8 @@ export function startStudio(page: StudioPage): StartedStudio {
  * The features of the desktop app, and the services the app gives them for each open folder
  * ({@link openFolder}).
  */
-export const desktopFeatures = {
-  features: [inboxFeature, runsFeature],
+export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
+  features: [inboxFeature, runsFeature, settingsFeature],
   hostServices: [InboxRunsService, RunsSourceService],
 };
 
@@ -146,11 +154,18 @@ interface DesktopParts {
   readonly platform: KeyboardPlatform;
 }
 
-/** The desktop app: Welcome, then the folders the user opens (`studio.open-folder`). */
+/**
+ * The desktop app: Welcome, then the folders the user opens (`studio.open-folder`). The shell
+ * gives the page only the folders the user picked in it, and remembers them across restarts, so
+ * a Recent row reopens its folder in the shell first and Remove from Recent forgets it there.
+ */
 function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopParts): StartedStudio {
+  const picked = new TauriPickedFolders(ipc);
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
     openFolder: async (location) => openFolder(shell, page.window, location),
+    reopenFolder: (location) => picked.reopen(location),
+    forgetFolder: (location) => picked.forget(location),
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     toasts: shell.toasts,
   });

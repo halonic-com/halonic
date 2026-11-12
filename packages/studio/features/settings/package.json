@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
   },
   "devDependencies": {

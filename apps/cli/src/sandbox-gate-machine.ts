@@ -16,7 +16,7 @@ import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { isWslShare } from "./wsl.ts";
 
 /** What the sandbox check reads that isn't the workspace's: the sandbox and the person's choices. */
-export type SandboxGateHost = Pick<SandboxGateMachine, "sandbox" | "placement">;
+export type SandboxGateHost = Pick<SandboxGateMachine, "sandbox" | "placement" | "wslDistro">;
 
 /**
  * The folder of the "On this computer" choices, `placements` in the profile
@@ -28,7 +28,8 @@ export function placementFolder(profile: ProfileFolder): string {
 }
 
 /**
- * This computer's sandbox and choices, in the profile from `environment`.
+ * This computer's sandbox and choices, in the profile from `environment`,
+ * and the WSL distro the CLI runs in, if any.
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
@@ -43,6 +44,7 @@ export function nodeSandboxGateHost(
       digest: webCryptoDigest,
       clock: systemClock,
     }),
+    wslDistro: process.env["WSL_DISTRO_NAME"],
   };
 }
 

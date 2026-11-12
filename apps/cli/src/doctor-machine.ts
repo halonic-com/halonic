@@ -62,6 +62,8 @@ export interface DoctorMachine {
   readonly windowsDrive?: (folder: string) => string | null;
   /** What is wrong with the Node.js that runs Halonic, for the Node.js line; left out, no line. */
   readonly node?: () => Promise<NodeProblem | null>;
+  /** The WSL distro `doctor` runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
+  readonly wslDistro?: string | undefined;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -115,6 +117,7 @@ export function nodeDoctorMachine(): DoctorMachine {
         wsl: nodeIsWsl,
         findPnpm: () => findCommand("pnpm", nodeCommandSearch()),
       }),
+    wslDistro: process.env["WSL_DISTRO_NAME"],
   };
 }
 

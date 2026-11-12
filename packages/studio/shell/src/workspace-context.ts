@@ -26,4 +26,10 @@ export interface WorkspaceContext {
    * it to the views and commands it draws; a context built without a window has none.
    */
   readonly openItem?: (item: ItemRef) => void;
+  /**
+   * Opens Settings (`settings.open`) on the section asked for, such as `agent-sandbox` from the
+   * Harness page's **Open Settings ›**, else on the one `settingsSectionToOpen` picks. The window
+   * gives it to the views and commands it draws; a context built without a window has none.
+   */
+  readonly openSettings?: (sectionId?: string) => void;
 }

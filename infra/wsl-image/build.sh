@@ -19,7 +19,9 @@ SOURCE_DATE_EPOCH="$(date -u -d "${DEBIAN_SNAPSHOT:0:8}" +%s)"
 export SOURCE_DATE_EPOCH
 export HALONIC_SUITE="$DEBIAN_SUITE" HALONIC_SNAPSHOT="$DEBIAN_SNAPSHOT"
 
-packages=(bubblewrap socat ripgrep git ca-certificates passwd)
+# libcap2-bin: getcap and setcap for the updater, which removes file
+# capabilities an upgrade brings (HAL-7379). Neither is setuid.
+packages=(bubblewrap socat ripgrep git ca-certificates passwd libcap2-bin)
 
 mmdebstrap \
   --variant=minbase \

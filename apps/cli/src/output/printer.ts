@@ -12,6 +12,7 @@ import {
 } from "../print-error.ts";
 import { jsonText, resultDocument, scrubbedDocument } from "./json.ts";
 import { type Paint, paintFor } from "./paint.ts";
+import { printable } from "./printable.ts";
 import { printedAhead } from "./printed-ahead.ts";
 import { type Clock, type Progress, startProgress } from "./progress.ts";
 import { type Asking, askYesNo, type Question } from "./question.ts";
@@ -36,7 +37,8 @@ export interface Printer {
   /**
    * What a command did: its lines after those printed ahead, or with `--json`
    * its document. When the lines printed ahead don't start the result, a bug,
-   * every line is printed.
+   * every line is printed. With `--debug`, its `debugText` follows on
+   * stderr, scrubbed and made printable.
    */
   result(result: CommandResult): void;
   /**
@@ -150,6 +152,13 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
         writeDocument(result);
       } else {
         printLines(out, rest);
+      }
+      if (options.debug && result.debugText !== undefined) {
+        // Scrubbed as a whole before it is split, so a secret over two lines is still found.
+        // It quotes outside text, such as a provider's reply, so each line is made printable.
+        for (const line of options.scrubber.scrub(result.debugText).split(/\r?\n/)) {
+          err(phrase`${printable(line)}`);
+        }
       }
     },
     stopped(result = notSaid) {

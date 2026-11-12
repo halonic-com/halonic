@@ -105,7 +105,7 @@ pub enum RuntimeStep<'a> {
     Rollback,
     /// Debian security updates, at most once a day.
     SecurityUpdate,
-    /// Print `{"current","previous"}`.
+    /// Print `{"current","previous","securityUpdated"}`.
     Status,
 }
 

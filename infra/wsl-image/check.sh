@@ -131,10 +131,18 @@ done
 code=0; chroot "$root" su halonic -s /bin/sh -c "$updater rollback" 2>/dev/null || code=$?
 [ "$code" -eq 2 ] || fail "halonic could roll back (exit $code)"
 # Security updates, with a stand-in apt-get (first on the updater's PATH) whose
-# upgrade brings a new setuid program: its bit must go, and stay gone.
+# upgrade brings a new setuid program, a setgid program of another system user
+# and a program with a file capability: the bits and the capability must go,
+# and the bits stay gone.
 cat > "$root/usr/sbin/apt-get" <<'APT'
 #!/bin/sh
-case " $* " in *" upgrade "*) printf '#!/bin/sh\n' > /usr/bin/new-suid; chmod 4755 /usr/bin/new-suid ;; esac
+case " $* " in *" upgrade "*)
+  for f in new-suid new-sgid new-cap; do printf '#!/bin/sh\n' > "/usr/bin/$f"; chmod 0755 "/usr/bin/$f"; done
+  chmod 4755 /usr/bin/new-suid
+  chown daemon:daemon /usr/bin/new-sgid
+  chmod 2755 /usr/bin/new-sgid
+  setcap cap_net_raw+ep /usr/bin/new-cap ;;
+esac
 APT
 chmod 0755 "$root/usr/sbin/apt-get"
 # halonic's own setuid file is outside /usr: the updater must not touch it, or
@@ -145,6 +153,10 @@ chroot "$root" "$updater" security-update | grep -q '^security updates installed
 rm "$root/usr/sbin/apt-get"
 [ "$(stat -c %a "$root/usr/bin/new-suid")" = 755 ] || fail "an upgrade left a setuid program"
 chroot "$root" dpkg-statoverride --list /usr/bin/new-suid | grep -q ' 755 ' || fail "no statoverride keeps it off"
+[ "$(stat -c '%U %a' "$root/usr/bin/new-sgid")" = "daemon 755" ] || fail "an upgrade left another user's setgid program"
+chroot "$root" dpkg-statoverride --list /usr/bin/new-sgid | grep -q '^daemon daemon 755 ' ||
+  fail "no statoverride keeps another user's setgid bit off"
+[ -z "$(getcap -r "$root/usr")" ] || fail "an upgrade left a file capability: $(getcap -r "$root/usr")"
 [ "$(stat -c %a "$root$own")" = 4755 ] || fail "the updater changed a file in halonic's home folder"
 if chroot "$root" dpkg-statoverride --list "$own" >/dev/null; then
   fail "the updater added a statoverride for a file in halonic's home folder"
