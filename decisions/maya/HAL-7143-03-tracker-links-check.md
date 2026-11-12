@@ -1,12 +1,17 @@
-# Decision: write task ids as plain text in the Source line of 13 more requirements
+# Decision: the tracker-links check, and plain task ids in the Source line of 13 more requirements
 
-- Task: HAL-7167, the leftovers of HAL-7143 for the guard (#2126)
-- Approval: Liam asked for these leftovers in his review on HAL-7151 and signs this note
+- Task: HAL-7143 (the guard) and HAL-7167 (its leftovers)
+- Approval: Liam approved the guard and asked for these leftovers in his review on HAL-7151, and signs this note
 - Kind: internal
 
 ## What changes
 
-Only the `- Source:` line of each covered requirement. These thirteen gained a tracker link after
+A new `tracker-links` rule in `tooling/check/` fails `pnpm check` on a Markdown link to the
+task tracker, as agreed on HAL-7136. It comes with its requirement `check.tracker-links` and its
+tests. The guard counts any change under `tooling/check/` as a change to its own paths, so it
+needs this note.
+
+In the covered requirements, only the `- Source:` line changes. These thirteen gained a tracker link after
 the cleanup in #2124 and #2125 ran, so the new `tracker-links` check in this pull request would
 fail on them. The same script as in part 1 rewrote them, with no hand edits: a link such as
 `[HAL-4758](/HAL/issues/HAL-4758)` becomes `HAL-4758`.
@@ -17,6 +22,7 @@ this note.
 
 ## Covers
 
+- tooling/check/
 - engine.step-signal
 - engine.task-conversation
 - inbox.setup-items
