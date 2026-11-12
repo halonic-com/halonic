@@ -322,11 +322,11 @@ describe("the engine lock under attack", () => {
     async function mailWorkspace(): Promise<void> {
       // The mail connector isn't local, so a local-only workspace would never offer it.
       const settings = join(acme, "workspace.yaml");
-      await writeFile(
-        settings,
-        (await readFile(settings, "utf8")).replace("localOnly: true", "localOnly: false"),
-        "utf8",
-      );
+      const original = await readFile(settings, "utf8");
+      const relaxed = original.replace("localOnly: true", "localOnly: false");
+      // Fails loudly if acme's wording changes and the replace stops matching.
+      expect(relaxed).not.toBe(original);
+      await writeFile(settings, relaxed, "utf8");
       await mkdir(join(acme, "library/connectors"), { recursive: true });
       await writeFile(
         join(acme, "library/connectors/mail.connector.yaml"),
