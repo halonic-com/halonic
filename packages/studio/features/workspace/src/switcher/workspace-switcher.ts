@@ -5,11 +5,13 @@ import {
   copyDetails,
   copyDetailsWords,
   removeFromRecentLabel,
+  type SaveReason,
   type StudioWorkspace,
   type WelcomeOpenProblem,
 } from "@halonicjs/studio-shell";
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
+import type { WorkspaceSaving } from "./workspace-saving.ts";
 
 /** A workspace the app opened in a folder: what the window shows and how to let it go. */
 export interface OpenedWorkspace {
@@ -17,8 +19,19 @@ export interface OpenedWorkspace {
   readonly name: string;
   /** Its tabs, Recent places, save state and services. */
   readonly workspace: StudioWorkspace;
+  /** Saves its files by itself and says whether it can close; absent when it has no files to save. */
+  readonly saving?: WorkspaceSaving | undefined;
   /** Stops its services. Called once, when it closes. */
   dispose(): Promise<void>;
+}
+
+/** A close that couldn't save first: what "Close Acme?" says and asks (UX checklist 1.3). */
+export interface CloseRequest {
+  /** The folder of the workspace asked to close. */
+  readonly location: string;
+  readonly name: string;
+  /** Why saving failed. */
+  readonly reason: SaveReason;
 }
 
 /** What {@link WorkspaceSwitcher} needs from the app. */
@@ -61,6 +74,7 @@ export class WorkspaceSwitcher {
   readonly #listeners = new Set<() => void>();
   #busy = false;
   #buttonBusy = false;
+  #closeRequest: CloseRequest | undefined;
 
   constructor(options: WorkspaceSwitcherOptions) {
     this.#options = options;
@@ -178,15 +192,76 @@ export class WorkspaceSwitcher {
     });
   }
 
-  /** Closes the shown workspace and stops its services (`workspace.switcher.close-keeps-a-slot`). */
+  /**
+   * Closes the shown workspace and stops its services (`workspace.switcher.close-keeps-a-slot`).
+   * It saves what is waiting first, and asks nothing when that works (save model 1.6). When it
+   * fails, the workspace stays open and {@link closeRequest} says why, until the user cancels,
+   * tries again or closes anyway.
+   */
   async closeShown(): Promise<void> {
     const shown = this.open.shown;
     if (shown === undefined) {
       return;
     }
-    this.open.close(shown.location);
-    shown.value.workspace.dispose();
-    await shown.value.dispose();
+    if (shown.value.saving !== undefined && !(await shown.value.saving.saveNow())) {
+      this.#setCloseRequest({
+        location: shown.location,
+        name: shown.value.name,
+        reason: shown.value.saving.problem?.reason ?? "failed",
+      });
+      return;
+    }
+    await this.#closeSlot(shown.location);
+  }
+
+  /** The close waiting for the user's answer, or `undefined`. A new object for every request. */
+  get closeRequest(): CloseRequest | undefined {
+    return this.#closeRequest;
+  }
+
+  /** **Cancel** in "Close Acme?": the workspace stays open. */
+  cancelClose(): void {
+    this.#setCloseRequest(undefined);
+  }
+
+  /** **Close anyway**: closes the workspace and its unsaved changes are lost. */
+  async closeAnyway(): Promise<void> {
+    const request = this.#closeRequest;
+    this.#setCloseRequest(undefined);
+    if (request !== undefined) {
+      await this.#closeSlot(request.location);
+    }
+  }
+
+  /** **Try again**: saves again and closes, or asks again with the new reason. */
+  async tryCloseAgain(): Promise<void> {
+    const request = this.#closeRequest;
+    const slot = request === undefined ? undefined : this.open.find(request.location);
+    if (request === undefined || slot === undefined) {
+      this.#setCloseRequest(undefined);
+      return;
+    }
+    if (slot.value.saving !== undefined && !(await slot.value.saving.saveNow())) {
+      this.#setCloseRequest({ ...request, reason: slot.value.saving.problem?.reason ?? "failed" });
+      return;
+    }
+    this.#setCloseRequest(undefined);
+    await this.#closeSlot(request.location);
+  }
+
+  async #closeSlot(location: string): Promise<void> {
+    const closed = this.open.close(location);
+    if (closed === undefined) {
+      return;
+    }
+    closed.value.saving?.dispose();
+    closed.value.workspace.dispose();
+    await closed.value.dispose();
+  }
+
+  #setCloseRequest(request: CloseRequest | undefined): void {
+    this.#closeRequest = request;
+    this.#notify();
   }
 
   /** Shows the open workspace at a position counted from 1, for Ctrl 1 to Ctrl 9. */
@@ -199,9 +274,7 @@ export class WorkspaceSwitcher {
   /** Stops every open workspace's services, when the window goes. */
   async dispose(): Promise<void> {
     for (const slot of this.open.all) {
-      this.open.close(slot.location);
-      slot.value.workspace.dispose();
-      await slot.value.dispose();
+      await this.#closeSlot(slot.location);
     }
   }
 
@@ -247,6 +320,10 @@ export class WorkspaceSwitcher {
       return;
     }
     this.#buttonBusy = busy;
+    this.#notify();
+  }
+
+  #notify(): void {
     for (const listener of this.#listeners) {
       listener();
     }

@@ -47,6 +47,11 @@ const reasonWords: Readonly<Record<Exclude<SaveReason, "failed">, string>> = {
   "in-use": "another app is using the file",
 };
 
+/** The words after "couldn't be saved:" for a reason that has some, such as "the disk is full". */
+export function saveReasonWords(reason: SaveReason): string | undefined {
+  return reason === "failed" ? undefined : reasonWords[reason];
+}
+
 /**
  * The error toast's title: "Couldn't save *Support reply*: the disk is full." A reason with no
  * words of its own ends after the name; the error's code and message never go on screen.

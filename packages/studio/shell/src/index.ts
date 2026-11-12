@@ -297,6 +297,7 @@ export {
   type SaveNote,
   SaveState,
   type SavingItem,
+  saveReasonWords,
 } from "./save/save-state.ts";
 export { SearchPage, type SearchPageProps } from "./search/search-page.tsx";
 export {

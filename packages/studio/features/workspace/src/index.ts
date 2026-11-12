@@ -12,6 +12,14 @@ export {
 } from "./switcher/recent-workspaces.ts";
 export { type WorkspaceMenuOptions, workspaceMenu } from "./switcher/workspace-menu.ts";
 export {
+  AUTOSAVE_DELAY_MS,
+  historyKey,
+  type SavableFiles,
+  WorkspaceSaving,
+  type WorkspaceSavingOptions,
+} from "./switcher/workspace-saving.ts";
+export {
+  type CloseRequest,
   folderName,
   type OpenedWorkspace,
   WorkspaceSwitcher,
