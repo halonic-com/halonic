@@ -1,4 +1,5 @@
 import { shortRunId } from "@halonicjs/app";
+import { summarize } from "@halonicjs/events";
 import { Callout, type CalloutAction, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useSyncExternalStore } from "react";
@@ -6,6 +7,8 @@ import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
+import { EveryStep, useRunLog } from "./every-step.tsx";
+import { everyStep } from "./every-step-model.ts";
 import {
   type BannerAction,
   type RunBanner,
@@ -53,8 +56,9 @@ export interface RunViewProps {
  * runs as the Runs list, so it updates in place as the run moves on (R14,
  * D1), and keeps what it showed when a later load fails (R18).
  *
- * Not here yet: the receipt, Every step and Details (the next pull request),
- * Started by, the header's ⋮, Run again (T7) and the failed banners by cause
+ * Under them, Every step, from the run's log.
+ *
+ * Not here yet: the receipt and Details (the next pull requests), Started by, the header's ⋮, Run again (T7) and the failed banners by cause
  * (HAL-1845).
  */
 export function RunView({
@@ -68,6 +72,7 @@ export function RunView({
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
+  const log = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 
@@ -76,6 +81,17 @@ export function RunView({
     return (
       <RunLayout run={run} context={context} showingLast={state.error !== undefined}>
         <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
+        {log === undefined ? null : (
+          <EveryStep
+            entries={everyStep(
+              log,
+              // The log's own summary, so each step's end agrees with the log it came from.
+              summarize(log) ?? run.summary,
+              context.workflow,
+              context.now,
+            )}
+          />
+        )}
       </RunLayout>
     );
   }
