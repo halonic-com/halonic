@@ -107,7 +107,7 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(calls).toEqual([]);
     });
 
-    it("sweeps the run folder once, on the first open, and logs a failure", async () => {
+    it("sweeps the roots once, on the first open, and logs a failure", async () => {
       const runs = join(base, "runs");
       const { calls, grants } = fakeGrants((args) =>
         args[0] === "user"
@@ -120,7 +120,7 @@ verifies("sandbox-srt.kept-grants", () => {
       );
       const warnings: string[] = [];
       const sandbox = new SrtSandbox(windows, fakeRunner().runner, null, {
-        runsFolder: runs,
+        sweepRoots: [runs],
         grants,
         warn: (message) => warnings.push(message),
       });
@@ -130,10 +130,30 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(warnings.join()).toMatch(/can't be listed/);
     });
 
+    it("sweeps once when the host starts the sweep before the first open", async () => {
+      const { calls, grants } = fakeGrants((args) =>
+        args[0] === "user" ? { stdout: JSON.stringify({ persistent_grants: { roots: [] } }) } : {},
+      );
+      const sandbox = new SrtSandbox(windows, fakeRunner().runner, null, {
+        sweepRoots: [join(base, "runs"), join(base, "workspace")],
+        grants,
+      });
+      await sandbox.sweepOnce();
+      await (await sandbox.open(makeProfile(base))).close();
+      expect(calls.filter((call) => call[0] === "user")).toHaveLength(1);
+    });
+
+    it("doesn't list the kept grants without a sweep root", async () => {
+      const { calls, grants } = fakeGrants();
+      const sandbox = new SrtSandbox(windows, fakeRunner().runner, null, { grants });
+      await (await sandbox.open(makeProfile(base))).close();
+      expect(calls.filter((call) => call[0] === "user")).toEqual([]);
+    });
+
     it("never starts srt-win on Linux", async () => {
       const { calls, grants } = fakeGrants();
       const sandbox = new SrtSandbox(linux, fakeRunner().runner, null, {
-        runsFolder: base,
+        sweepRoots: [base],
         grants,
       });
       await (await sandbox.open(makeProfile(base))).close();

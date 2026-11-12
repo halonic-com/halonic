@@ -265,6 +265,9 @@ importers:
 
   apps/agent-host:
     dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/fs-node
       '@halonicjs/adapter-harness-bridge':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-bridge
@@ -296,6 +299,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core/std
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../packages/testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../tooling/config

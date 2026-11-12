@@ -39,7 +39,7 @@ export class SrtSandbox implements Sandbox {
   readonly #runner: Runner;
   readonly #journalFolder: string | null;
   readonly #grants: KeptGrants;
-  readonly #runsFolder: string | null;
+  readonly #sweepRoots: readonly string[];
   readonly #warn: (message: string) => void;
   #swept: Promise<void> | null = null;
 
@@ -47,9 +47,10 @@ export class SrtSandbox implements Sandbox {
    * @param journalFolder where each session keeps its `commondir` snapshot so
    *   `recoverGitFolders` can undo it after a host crash. Give a folder only this
    *   user can write (it is created with mode 0700); without one, nothing is kept.
-   * @param options.runsFolder on Windows, the folder that holds the sessions'
-   *   run folders: the first `open` takes back the kept grants inside it that
-   *   no live session holds (sessions that crashed before they closed).
+   * @param options.sweepRoots on Windows, the folders that hold the sessions'
+   *   working and temp folders: the sweep takes back the kept grants inside
+   *   them that no live session holds (sessions that crashed before they
+   *   closed). Give them only to the one host that holds the profile's lock.
    * @param options.grants takes back srt's kept Windows grants; a test passes a fake
    * @param options.warn where a failure that no caller can get is logged; stderr by default
    */
@@ -58,7 +59,7 @@ export class SrtSandbox implements Sandbox {
     runner: Runner = srtRunner,
     journalFolder: string | null = null,
     options: {
-      runsFolder?: string | null;
+      sweepRoots?: readonly string[];
       grants?: KeptGrants;
       warn?: (message: string) => void;
     } = {},
@@ -67,7 +68,7 @@ export class SrtSandbox implements Sandbox {
     this.#runner = runner;
     this.#journalFolder = journalFolder;
     this.#grants = options.grants ?? new KeptGrants();
-    this.#runsFolder = options.runsFolder ?? null;
+    this.#sweepRoots = options.sweepRoots ?? [];
     this.#warn = options.warn ?? ((message) => void process.stderr.write(`${message}\n`));
   }
 
@@ -168,7 +169,7 @@ export class SrtSandbox implements Sandbox {
     const windows = this.#machine.platform === "win32";
     if (windows) {
       this.#grants.assertSupported();
-      await this.#sweepOnce();
+      await this.sweepOnce();
       // The temp folder's parents are only there once it is.
       await mkdir(profile.tempFolder, { recursive: true });
       await this.#machine.letSandboxReadParents(grantedPaths(profile));
@@ -181,8 +182,12 @@ export class SrtSandbox implements Sandbox {
     });
   }
 
-  /** The sweep of kept grants runs once, when the host first opens a session; a failure is logged, never thrown. */
-  #sweepOnce(): Promise<void> {
+  /**
+   * Runs the sweep of kept grants once: the host starts it as soon as it holds
+   * the profile's lock, and the first `open` waits for it. A failure is
+   * logged, never thrown.
+   */
+  sweepOnce(): Promise<void> {
     this.#swept ??= this.sweepKeptGrants().then((result) => {
       if (result.failed.length > 0) this.#warn(describeForgetFailures(result.failed));
     });
@@ -190,15 +195,13 @@ export class SrtSandbox implements Sandbox {
   }
 
   /**
-   * On Windows, forgets the kept grants inside the run folder that no live
-   * session holds. Elsewhere, or without a run folder, it does nothing.
+   * On Windows, forgets the kept grants inside the sweep roots that no live
+   * session holds. Elsewhere, or without a root, it does nothing.
    * Never rejects.
    */
   async sweepKeptGrants(): Promise<ForgetResult> {
-    if (this.#machine.platform !== "win32" || this.#runsFolder === null) {
-      return { heldByOthers: [], failed: [] };
-    }
-    return this.#grants.sweep(this.#runsFolder);
+    if (this.#machine.platform !== "win32") return { heldByOthers: [], failed: [] };
+    return this.#grants.sweep(this.#sweepRoots);
   }
 
   /** The first reason, in the order the port lists them, because its fix comes first. */

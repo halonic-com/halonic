@@ -11,6 +11,7 @@ import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
+import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
@@ -68,27 +69,33 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * The sandbox commands exit with 0 when the answer is `ok`, and 1 when it
  * isn't, so the installer needn't read the JSON.
  *
- * @param sandbox - the sandbox on this machine; tests pass one on a fake machine
+ * When it serves, the host takes the profile's lock (`--profile-folder`, which
+ * the executable passes on). If it gets it, it sweeps the kept Windows grants
+ * inside each `--sweep-root` the launcher gives (see {@link SrtSandbox.sweepOnce});
+ * while another live host holds the lock, it serves without a sweep (HAL-6256).
+ *
+ * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep; tests make one on a fake machine
  * @returns the exit code
  */
 export async function run(
   args: readonly string[],
   version: string,
   io: HostIo = standardIo(),
-  sandbox: SrtSandbox = new SrtSandbox(),
+  makeSandbox: (sweepRoots: readonly string[]) => SrtSandbox = (roots) =>
+    new SrtSandbox(undefined, undefined, null, { sweepRoots: roots }),
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
     return 0;
   }
   if (args.includes("--sandbox-check")) {
-    return answer(io, await sandbox.check());
+    return answer(io, await makeSandbox([]).check());
   }
   if (args.includes("--sandbox-setup")) {
-    return answer(io, await sandbox.setUp());
+    return answer(io, await makeSandbox([]).setUp());
   }
   if (args.includes("--sandbox-remove")) {
-    return answer(io, await sandbox.remove());
+    return answer(io, await makeSandbox([]).remove());
   }
   if (args.includes("--sandbox-cleanup")) {
     const profileFolder = argumentAfter(args, "--profile-folder");
@@ -99,13 +106,33 @@ export async function run(
       };
       return answer(io, missing);
     }
-    return answer(io, await sandbox.cleanUp(profileFolder));
+    return answer(io, await makeSandbox([]).cleanUp(profileFolder));
   }
-  if (args.includes("--stdio")) {
-    return serveOverFrames(args, version, io, sandbox);
+  const given = sweepRoots(args);
+  if ("error" in given) {
+    io.writeError(given.error);
+    return 2;
   }
-  await serve(version, io, sandbox);
-  return 0;
+  const profileFolder = argumentAfter(args, "--profile-folder");
+  // Says why it doesn't sweep only when it was asked to.
+  const warn = (text: string) => {
+    if (given.roots.length > 0) io.writeError(text);
+  };
+  const lock = profileFolder === undefined ? null : await takeHostLock(profileFolder, warn);
+  const sandbox = makeSandbox(lock === null ? [] : given.roots);
+  // Right after the lock is taken, so a host starting next skips its sweep
+  // before any session of ours could lose a grant to it.
+  if (lock !== null) void sandbox.sweepOnce();
+  try {
+    if (args.includes("--stdio")) return await serveOverFrames(args, version, io, sandbox);
+    await serve(version, io, sandbox);
+    return 0;
+  } finally {
+    // After serving: its sessions are closed by then.
+    await lock?.release().catch((error: unknown) => {
+      io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
+    });
+  }
 }
 
 /** The value after `name` in `args`, when there is one. */

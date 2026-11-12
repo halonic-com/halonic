@@ -79,22 +79,22 @@ describe("run", () => {
   it("exits with 1 when the sandbox can't start here", async () => {
     const { io, lines } = starter();
     const noWindowsInstall = new SrtSandbox(windows({ installed: false }));
-    expect(await run(["--sandbox-check"], "1.2.3", io, noWindowsInstall)).toBe(1);
+    expect(await run(["--sandbox-check"], "1.2.3", io, () => noWindowsInstall)).toBe(1);
     expect(JSON.parse(lines[0] ?? "")).toMatchObject({ ok: false, reason: "setup-needed" });
   });
 
   it("sets the sandbox up with --sandbox-setup, and says so on one JSON line", async () => {
     const { io, lines } = starter();
     const sandbox = new SrtSandbox(windows({ installed: false }));
-    expect(await run(["--sandbox-setup"], "1.2.3", io, sandbox)).toBe(0);
-    expect(await run(["--sandbox-setup"], "1.2.3", io, sandbox)).toBe(0);
+    expect(await run(["--sandbox-setup"], "1.2.3", io, () => sandbox)).toBe(0);
+    expect(await run(["--sandbox-setup"], "1.2.3", io, () => sandbox)).toBe(0);
     expect(lines).toEqual(['{"ok":true}\n', '{"ok":true}\n']);
   });
 
   it("exits with 1 and gives the setup's reason when it didn't work", async () => {
     const { io, lines } = starter();
     const cancelled = new SrtSandbox(windows({ installed: false, prompt: "cancelled" }));
-    expect(await run(["--sandbox-setup"], "1.2.3", io, cancelled)).toBe(1);
+    expect(await run(["--sandbox-setup"], "1.2.3", io, () => cancelled)).toBe(1);
     expect(lines).toEqual([
       '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
     ]);
@@ -104,16 +104,16 @@ describe("run", () => {
     const { io, lines } = starter();
     const state = { installed: true };
     const sandbox = new SrtSandbox(windows(state));
-    expect(await run(["--sandbox-remove"], "1.2.3", io, sandbox)).toBe(0);
+    expect(await run(["--sandbox-remove"], "1.2.3", io, () => sandbox)).toBe(0);
     expect(state.installed).toBe(false);
-    expect(await run(["--sandbox-remove"], "1.2.3", io, sandbox)).toBe(0);
+    expect(await run(["--sandbox-remove"], "1.2.3", io, () => sandbox)).toBe(0);
     expect(lines).toEqual(['{"ok":true}\n', '{"ok":true}\n']);
   });
 
   it("is done with --sandbox-remove when the sandbox was never set up", async () => {
     const { io, lines } = starter();
     const sandbox = new SrtSandbox(windows({ installed: false }));
-    expect(await run(["--sandbox-remove"], "1.2.3", io, sandbox)).toBe(0);
+    expect(await run(["--sandbox-remove"], "1.2.3", io, () => sandbox)).toBe(0);
     expect(lines).toEqual(['{"ok":true}\n']);
   });
 
@@ -121,7 +121,7 @@ describe("run", () => {
     const { io, lines } = starter();
     const state = { installed: true, prompt: "cancelled" as const };
     const cancelled = new SrtSandbox(windows(state));
-    expect(await run(["--sandbox-remove"], "1.2.3", io, cancelled)).toBe(1);
+    expect(await run(["--sandbox-remove"], "1.2.3", io, () => cancelled)).toBe(1);
     expect(state.installed).toBe(true);
     expect(lines).toEqual([
       '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
@@ -138,13 +138,13 @@ describe("run", () => {
       forgotten.push(profileFolder);
     };
     const cleanup = ["--profile-folder", chosenProfile, "--sandbox-cleanup"];
-    expect(await run(cleanup, "1.2.3", io, new SrtSandbox(machine))).toBe(0);
+    expect(await run(cleanup, "1.2.3", io, () => new SrtSandbox(machine))).toBe(0);
     expect(forgotten).toEqual([chosenProfile]);
     machine.forgetSandboxParents = async () => {
       throw new Error("icacls failed");
     };
-    expect(await run(cleanup, "1.2.3", io, new SrtSandbox(machine))).toBe(1);
-    expect(await run(["--sandbox-cleanup"], "1.2.3", io, new SrtSandbox(machine))).toBe(1);
+    expect(await run(cleanup, "1.2.3", io, () => new SrtSandbox(machine))).toBe(1);
+    expect(await run(["--sandbox-cleanup"], "1.2.3", io, () => new SrtSandbox(machine))).toBe(1);
     expect(lines).toEqual([
       '{"ok":true}\n',
       '{"ok":false,"reason":"icacls failed"}\n',
@@ -188,7 +188,7 @@ describe("run --stdio", () => {
       takeOutput: () => relay.streams.output,
     };
     const sandbox = new SrtSandbox(windows({ installed: true }));
-    return { relay, errors, running: run(args, "1.2.3", io, sandbox) };
+    return { relay, errors, running: run(args, "1.2.3", io, () => sandbox) };
   }
 
   it("serves every route over frames after a handshake with only the token, until its input ends", async () => {

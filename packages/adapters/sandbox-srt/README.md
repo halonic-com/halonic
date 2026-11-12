@@ -105,10 +105,11 @@ module, `src/kept-grants.ts`, which fails closed: only the sandbox-runtime versi
 `--all`, not for named folders, so the module counts which folders the live sessions of this host
 use, and a folder another of them still uses is forgotten when that one closes. If forgetting
 fails, `close()` rejects naming the folder and the reason. Give
-`new SrtSandbox(machine, runner, journalFolder, { runsFolder })` the folder that holds the run
-folders, and the first `open` also forgets the kept grants inside it (sessions that crashed before
-they closed); a failure of the sweep is logged to stderr. The sweep can't see sessions of another
-host process, so give each host a runs folder of its own. While two
+`new SrtSandbox(machine, runner, journalFolder, { sweepRoots })` the folders that hold the
+sessions' working and temp folders, and `sweepOnce()` (or else the first `open`) forgets the kept
+grants inside them (sessions that crashed before they closed); a failure of the sweep is logged to
+stderr. The sweep can't see sessions of another host process, so only the host that holds the
+profile's lock gets sweep roots (the agent host's `--sweep-root`, HAL-6256). While two
 sessions are open at once, srt still lets one read the other (known limit, `it.fails` in
 `fence/srt-kept-grants.windows.test.ts`).
 

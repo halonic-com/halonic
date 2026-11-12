@@ -9,6 +9,7 @@ const inRuns = "Z:\\Runs\\run_1\\files"; // leak-guard: allow absolute-path made
 const inRunsLower = "z:\\runs\\run_2"; // leak-guard: allow absolute-path made-up Windows path for a test
 const outside = "Z:\\Other\\project"; // leak-guard: allow absolute-path made-up Windows path for a test
 const sibling = "Z:\\RunsX"; // leak-guard: allow absolute-path made-up Windows path for a test
+const workspace = "Z:\\Other"; // leak-guard: allow absolute-path made-up Windows path for a test
 
 /** A fake `srt-win` that records its calls and answers from `answer`. */
 function fakeSrtWin(answer: (args: string[]) => Partial<SrtWinResult> = () => ({})) {
@@ -88,7 +89,7 @@ verifies("sandbox-srt.kept-grants", () => {
           : {},
       );
       grants.hold([inRunsLower]);
-      const result = await grants.sweep(runsFolder);
+      const result = await grants.sweep([runsFolder]);
       expect(result).toEqual({ heldByOthers: [inRunsLower], failed: [] });
       const forgotten = calls.filter((call) => call[0] === "acl").map((call) => call[2]);
       expect(forgotten).toEqual([inRuns]);
@@ -98,16 +99,36 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(calls[0]).toEqual(["user", "status"]);
     });
 
+    it("lists the grants once for several roots, and forgets those inside any of them", async () => {
+      const roots = [inRuns, outside, sibling];
+      const { calls, grants } = fakeSrtWin((args) =>
+        args[0] === "user" ? { stdout: JSON.stringify({ persistent_grants: { roots } }) } : {},
+      );
+      const result = await grants.sweep([runsFolder, workspace]);
+      expect(result).toEqual({ heldByOthers: [], failed: [] });
+      expect(calls).toEqual([
+        ["user", "status"],
+        ["acl", "forget", inRuns],
+        ["acl", "forget", outside],
+      ]);
+    });
+
+    it("starts nothing without a root", async () => {
+      const { calls, grants } = fakeSrtWin();
+      expect(await grants.sweep([])).toEqual({ heldByOthers: [], failed: [] });
+      expect(calls).toEqual([]);
+    });
+
     it("reports a sweep that can't list the grants", async () => {
       const { calls, grants } = fakeSrtWin(() => ({ status: 1, stderr: "no install" }));
-      const result = await grants.sweep(runsFolder);
+      const result = await grants.sweep([runsFolder]);
       expect(result.failed[0]?.reason).toMatch(/can't be listed: exit 1: no install/);
       expect(calls).toHaveLength(1);
     });
 
     it("reports a sweep that can't read the list", async () => {
       const { grants } = fakeSrtWin(() => ({ stdout: "not json" }));
-      expect((await grants.sweep(runsFolder)).failed).toHaveLength(1);
+      expect((await grants.sweep([runsFolder])).failed).toHaveLength(1);
     });
 
     // A sandbox-runtime bump fails here, on every system, not only on Windows or a user's machine.

@@ -336,8 +336,9 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
   });
   const entry = placeOf(folder, manifest.entry);
   const host = createRequire(entry)(entry) as HostModule;
-  // The host gets --profile-folder too: --sandbox-cleanup reads it, and
-  // HALONIC_HOME can put the profile anywhere (HAL-6214).
+  // The host gets --profile-folder too: --sandbox-cleanup reads it, the host
+  // takes the profile's host lock there before it sweeps kept grants, and
+  // HALONIC_HOME can put the profile anywhere (HAL-6214, HAL-6256).
   return host.run(args, version);
 }
 

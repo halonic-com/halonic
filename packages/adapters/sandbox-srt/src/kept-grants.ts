@@ -151,21 +151,23 @@ export class KeptGrants {
   }
 
   /**
-   * Forgets the kept grants of this user inside `runsFolder` that no live
+   * Forgets the kept grants of this user inside any of `roots` that no live
    * session of this host holds: those of sessions that crashed before they
-   * closed. A live session of another host process on the same folder would
-   * lose its grant, so give each host a runs folder of its own.
+   * closed. A live session of another host process inside a root would lose
+   * its grant, so only the one host that holds the profile's lock sweeps.
+   * Lists the grants once, and starts nothing without a root.
    * Never rejects.
    */
-  async sweep(runsFolder: string): Promise<ForgetResult> {
-    let roots: string[];
+  async sweep(roots: readonly string[]): Promise<ForgetResult> {
+    if (roots.length === 0) return { heldByOthers: [], failed: [] };
+    let kept: string[];
     try {
       const run = await this.#run(["user", "status"]);
       if (run.status !== 0)
         throw new Error(`exit ${run.status}: ${oneLine(run.stderr || run.stdout)}`);
       const parsed = JSON.parse(run.stdout) as { persistent_grants?: { roots?: unknown } };
       const listed = parsed.persistent_grants?.roots;
-      roots = Array.isArray(listed)
+      kept = Array.isArray(listed)
         ? listed.filter((root): root is string => typeof root === "string")
         : [];
     } catch (error) {
@@ -173,13 +175,15 @@ export class KeptGrants {
         heldByOthers: [],
         failed: [
           {
-            folder: runsFolder,
+            folder: roots.join(", "),
             reason: `the kept grants can't be listed: ${oneLine(error instanceof Error ? error.message : String(error))}`,
           },
         ],
       };
     }
-    return this.#forgetUnheld(roots.filter((root) => isInsideWindows(runsFolder, root)));
+    return this.#forgetUnheld(
+      kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder))),
+    );
   }
 }
 
