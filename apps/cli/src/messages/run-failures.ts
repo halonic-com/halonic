@@ -1,4 +1,5 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
+import type { ModelSkipReason } from "@halonicjs/events";
 import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages } from "./general.ts";
@@ -16,6 +17,8 @@ export interface FailedRun {
   readonly runId: string;
   /** The user's own `--dir`, repeated in any `halonic` command line 2 suggests. */
   readonly dir?: string | undefined;
+  /** `--debug` was given: the general lines' fix doesn't ask for it again (HAL-6613). */
+  readonly debugging?: boolean;
 }
 
 /** What both key errors name: the provider, the secret that holds its key, and the alias that uses it. */
@@ -292,8 +295,8 @@ const lineTwo = {
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
-  error: () => errorMessages.internalFix().phrase,
-  internal: () => errorMessages.internalFix().phrase,
+  error: (run) => bugFix(run),
+  internal: (run) => bugFix(run),
 } satisfies ByReason;
 
 /** Line 1 of a run that started and then failed, keyed `runFailed.<reason>`. */
@@ -316,6 +319,13 @@ export function runFailedLines(
   const fix = runFailedFixMessages[failure.reason] as AnyReason;
   const causeKnown = failure.reason === "error" && failure.causeKnown === true;
   return { message: message(run, failure), fix: causeKnown ? undefined : fix(run, failure) };
+}
+
+/** The general lines' fix: report it, asking for `--debug` only when it wasn't given. */
+function bugFix(run: FailedRun): Phrase {
+  return run.debugging === true
+    ? errorMessages.reportWithDetails().phrase
+    : errorMessages.internalFix().phrase;
 }
 
 function failedIn(run: FailedRun, reason: Phrase): Phrase {
@@ -353,3 +363,37 @@ function busyInWords(provider: string, retried: BusyRetries | undefined): Phrase
 function tryLater(): Phrase {
   return phrase`Run it again in a few minutes.`;
 }
+
+/**
+ * What `--debug` prints under a failed run's lines, from its run log
+ * (HAL-6613, decided with Sofia): the engine's own error, the provider's
+ * own text, and the model calls of the step it failed in. These are for an
+ * engineer, so they quote the log as it is.
+ */
+export const runFailedDebugMessages = defineMessages("runFailedDebug", {
+  /** The `error` of `run.failed`. */
+  engineSaid: (text: string) => phrase`The engine said: ${text}`,
+  /** The `providerText` of `run.failed` or `llm.fallback`, with its HTTP status when it has one. */
+  providerSaid: (text: string, status?: number) =>
+    status === undefined
+      ? phrase`The provider said: ${text}`
+      : phrase`The provider said (HTTP ${String(status)}): ${text}`,
+  /** Above the model calls, one per line under it. */
+  modelCalls: () => phrase`Model calls in this step:`,
+  noModelCalls: () => phrase`No model calls in this step.`,
+  /** An `llm.request`, with how many times in a row the same call was made. */
+  called: (agent: string, model: string, provider: string, times: number) =>
+    times === 1
+      ? phrase`${agent} called ${model} at ${provider}`
+      : phrase`${agent} called ${model} at ${provider} ${timesInWords(times)}`,
+  /** An `llm.fallback`. */
+  movedOn: (agent: string, from: string, to: string, error: string) =>
+    phrase`${agent} moved from ${from} to ${to}: ${error}`,
+  /** An `llm.skipped`, with the alias tried next when there was one. */
+  skipped: (agent: string, alias: string, reason: ModelSkipReason, next?: string) => {
+    const why = reason === "no-key" ? "its key isn't set" : "the workspace is local only";
+    return next === undefined
+      ? phrase`${agent} skipped ${alias}: ${why}`
+      : phrase`${agent} skipped ${alias}: ${why}, then tried ${next}`;
+  },
+});

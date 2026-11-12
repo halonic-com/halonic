@@ -11,6 +11,7 @@ import { runMessages } from "../../messages/run.ts";
 import { runFailedLines } from "../../messages/run-failures.ts";
 import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
+import { runFailureDetails } from "../../run-failure-details.ts";
 import {
   failedModelOf,
   type RunFailedEvent,
@@ -27,6 +28,7 @@ import { waitDescription } from "./listed-run.ts";
  * run's two waiting lines. A running run ends with its step lines.
  *
  * @param models - the workspace's models, read only for a failed run
+ * @param debugging - `--debug` was given, so a failed run's general lines don't ask for it
  */
 export function showEnding(
   run: RunDetail,
@@ -34,12 +36,13 @@ export function showEnding(
   definitions: RunDefinitions,
   models: () => WorkspaceModels,
   dir: string | undefined,
+  debugging = false,
 ): Phrase[] {
   switch (run.summary.status) {
     case "completed":
       return finishedEnding(run, title);
     case "failed":
-      return failedEnding(run, title, definitions, models, dir);
+      return failedEnding(run, title, definitions, models, { dir, debugging });
     case "cant-try":
       return cantTryEnding(run, title, definitions);
     case "waiting":
@@ -61,7 +64,7 @@ function failedEnding(
   title: string,
   definitions: RunDefinitions,
   models: () => WorkspaceModels,
-  dir: string | undefined,
+  { dir, debugging }: { dir: string | undefined; debugging: boolean },
 ): Phrase[] {
   const failed = runFailedEvent(run);
   const named = (stepId: string) =>
@@ -76,6 +79,7 @@ function failedEnding(
       step: named(failed.state ?? run.summary.state ?? ""),
       runId: shortRunId(run.summary.id),
       dir,
+      debugging,
     };
     const { message, fix } = runFailedLines(failedRun, failure);
     lines = fix === undefined ? [message.phrase] : [message.phrase, phrase`  ${fix.phrase}`];
@@ -88,6 +92,21 @@ function failedEnding(
     ...rest,
     ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
   ];
+}
+
+/**
+ * What `--debug` prints under a failed run's lines (HAL-6613): what its
+ * log holds about the failure, as {@link runFailureDetails} words it.
+ *
+ * @returns `undefined` for a run that didn't fail, or was cancelled, since
+ *   a cancelled run has no failure to explain
+ */
+export function failedRunDebugText(run: RunDetail): string | undefined {
+  if (run.summary.status !== "failed") {
+    return undefined;
+  }
+  const failed = runFailedEvent(run);
+  return failed.reason === "cancelled" ? undefined : runFailureDetails(run.events, failed);
 }
 
 /**

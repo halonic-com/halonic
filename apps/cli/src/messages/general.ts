@@ -18,6 +18,11 @@ export const errorMessages = defineMessages("error", {
   /** Line 2 of a bug: the approved step (F16, microcopy L4), with `--debug` from HAL-2147. */
   internalFix: () =>
     phrase`Run it again with --debug to see the details, and report it: ${issuesLink}`,
+  /**
+   * Line 2 of a bug when `--debug` was given, so it doesn't ask for it again;
+   * the details follow under the lines (HAL-6613, decided with Sofia).
+   */
+  reportWithDetails: () => phrase`Report it with the details below: ${issuesLink}`,
   /** With `--debug`, the first line of each error a bug wraps, after its own stack. */
   causedBy: (text: string) => phrase`Caused by: ${text}`,
   /** Optional line 3, dimmed as a whole: the docs page and the detailed code, for searching and bug reports. */

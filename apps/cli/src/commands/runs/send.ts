@@ -110,6 +110,7 @@ export async function sendToRun(
     workspaceName: named.name,
     dir,
     clock: setup.clock(),
+    debugging: context.debugging === true,
   };
   const engine = new EngineOnSend(context, setup, {
     dir: workspace,
