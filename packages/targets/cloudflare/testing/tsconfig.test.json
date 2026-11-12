@@ -1,7 +1,12 @@
 {
+  "//": "Tests and the Node side. The Worker's entry and suites use workerd's types and are checked in tsconfig.worker.json.",
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
   "include": [
     "src",
     "vitest.config.ts"
+  ],
+  "exclude": [
+    "src/worker/test-worker.ts",
+    "src/worker/suites"
   ]
 }
