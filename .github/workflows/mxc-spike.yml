@@ -128,9 +128,13 @@ jobs:
           Copy-Item spikes\mxc\realpc\mxc-diag.cmd $env:SystemDrive\mxc-spike\
           $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
+          # v2 (HAL-3503): Start-Process keeps the runner's profile variables, so v1 tried the runner admin's AppData and stopped.
+          $userHome = "$env:SystemDrive\Users\mxcuser"
+          $userEnv = @{ USERPROFILE = $userHome; LOCALAPPDATA = "$userHome\AppData\Local"; APPDATA = "$userHome\AppData\Roaming"; TEMP = "$userHome\AppData\Local\Temp"; TMP = "$userHome\AppData\Local\Temp"; USERNAME = "mxcuser" }
           $out = "$env:SystemDrive\mxc-spike\out-diag.txt"; $err = "$env:SystemDrive\mxc-spike\err-diag.txt"
           $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'mxc-diag.cmd < NUL' -WorkingDirectory $env:SystemDrive\mxc-spike `
-            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
+            -Environment $userEnv
           Write-Host "=== diagnosis as normal user, exit $($p.ExitCode)"
           Get-Content $out -ErrorAction SilentlyContinue
           Get-Content $err -ErrorAction SilentlyContinue
@@ -154,9 +158,13 @@ jobs:
           Copy-Item spikes\mxc\realpc\mxc-check.cmd $env:SystemDrive\mxc-spike\
           $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
+          # v2 (HAL-3503): Start-Process keeps the runner's profile variables, so v1 tried the runner admin's AppData and stopped.
+          $userHome = "$env:SystemDrive\Users\mxcuser"
+          $userEnv = @{ USERPROFILE = $userHome; LOCALAPPDATA = "$userHome\AppData\Local"; APPDATA = "$userHome\AppData\Roaming"; TEMP = "$userHome\AppData\Local\Temp"; TMP = "$userHome\AppData\Local\Temp"; USERNAME = "mxcuser" }
           $out = "$env:SystemDrive\mxc-spike\out-realpc.txt"; $err = "$env:SystemDrive\mxc-spike\err-realpc.txt"
           $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'mxc-check.cmd < NUL' -WorkingDirectory $env:SystemDrive\mxc-spike `
-            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
+            -Environment $userEnv
           Write-Host "=== real-PC script as normal user, exit $($p.ExitCode)"
           Get-Content $out -ErrorAction SilentlyContinue
           Get-Content $err -ErrorAction SilentlyContinue

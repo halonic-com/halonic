@@ -53,8 +53,10 @@ say(`MXC support: ${support.isSupported ? "yes" : "NO"}; tier: ${support.isolati
 say(`Node: ${process.version} at ${process.execPath}`);
 
 const drive = process.env.SystemDrive ?? "C:";
+// v2: the AppData places get their own folder name. v1 used the script's own folder there, so it removed its report and skipped the place.
 const places = [
-  ["AppData\\Local", join(process.env.LOCALAPPDATA, "halonic-mxc-diag")],
+  ["AppData\\Local", join(process.env.LOCALAPPDATA, "halonic-mxc-diag-place")],
+  ["AppData\\Roaming", join(process.env.APPDATA ?? join(process.env.USERPROFILE, "AppData", "Roaming"), "halonic-mxc-diag-place")],
   ["drive root", join(drive + "\\", "halonic-mxc-diag")],
   ["Users\\Public", join(process.env.PUBLIC ?? drive + "\\Users\\Public", "halonic-mxc-diag")],
   ["Temp", join(process.env.TEMP ?? process.env.LOCALAPPDATA, "halonic-mxc-diag")],
@@ -91,6 +93,9 @@ for (const [place, base] of places) {
   // 1. rw work folder readable from inside
   await t("cmd reads a file in its own rw work folder", () => box(typeCmd(join(work, "w.txt")), { work }));
   await t("cmd lists its own rw work folder (dir)", () => box(`cmd.exe /c dir ${q(work)}`, { work }));
+  // v2: plain dir also reads the drive's volume label; /b skips that, so these tell a listing denial from a volume-label denial.
+  await t("cmd lists its own rw work folder (dir /b)", () => box(`cmd.exe /c dir /b ${q(work)}`, { work }));
+  await t("cmd lists the working folder (dir /b, no path)", () => box("cmd.exe /c dir /b", { work }));
   // 2. grant forms for the read-only folder
   await t("ro grant: plain folder path", () => box(typeCmd(ctl), { work, ro: [allowed] }));
   await t("ro grant: folder path with trailing backslash", () => box(typeCmd(ctl), { work, ro: [allowed + "\\"] }));
@@ -115,6 +120,17 @@ for (const [place, base] of places) {
   const child2 = join(work, "child2.mjs");
   writeFileSync(child2, `import { readFileSync } from "node:fs"; console.log(readFileSync(${JSON.stringify(ctl)}, "utf8"));\n`);
   await t("node reads the ro-granted control.txt (flags)", () => box(`${q(process.execPath)} --preserve-symlinks --preserve-symlinks-main ${q(child2)}`, { work, ro: [nodeDir, allowed] }));
+  // v2: what real tools do in their work folder: list it, write to it, list a read-only folder.
+  const child3 = join(work, "child3.mjs");
+  writeFileSync(child3, `import { readdirSync, writeFileSync } from "node:fs";
+const r = {};
+try { r.listWork = readdirSync(${JSON.stringify(work)}).length; } catch (e) { r.listWork = e.code; }
+try { writeFileSync(${JSON.stringify(join(work, "out.txt"))}, "x"); r.writeWork = "ok"; } catch (e) { r.writeWork = e.code; }
+try { r.listRo = readdirSync(${JSON.stringify(allowed)}).length; } catch (e) { r.listRo = e.code; }
+console.log(JSON.stringify(r));
+process.exit(Object.values(r).every((v) => typeof v === "number" || v === "ok") ? 0 : 1);
+`);
+  await t("node lists + writes its work folder, lists the ro folder (flags)", () => box(`${q(process.execPath)} --preserve-symlinks --preserve-symlinks-main ${q(child3)}`, { work, ro: [nodeDir, allowed] }).then((r) => (ok(r) ? r : { ...r, err: r.out || r.err })));
   // 4. what does the box see?
   const who = await box("cmd.exe /c whoami /all", { work });
   say(`  whoami inside: ${(who.out || who.err || who.error || "").split(/\r?\n/).filter((l) => /S-1-|User Name|AppContainer|Mandatory/i.test(l)).map((l) => l.trim().slice(0, 110)).slice(0, 6).join(" | ")}`);
