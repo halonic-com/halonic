@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { errorLine } from "./fence-proof.ts";
 import { makeLauncherTemp } from "./launcher-temp.ts";
+import { removeFolder } from "./remove-folder.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import type { Runner } from "./srt-runner.ts";
 import { launcherEnv, programEnv } from "./srt-session-env.ts";
@@ -55,8 +56,8 @@ export async function startSmallestSandbox(
   } catch (error) {
     return errorLine(error instanceof Error ? error.message : String(error)) || "srt didn't start";
   } finally {
-    if (folder !== null) await rm(folder, { recursive: true, force: true });
-    if (launcherTemp !== null) await rm(launcherTemp, { recursive: true, force: true });
+    if (folder !== null) await removeFolder(folder);
+    if (launcherTemp !== null) await removeFolder(launcherTemp);
   }
 }
 
