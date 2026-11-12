@@ -5,7 +5,8 @@
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`
-//! commands (capabilities/desktop-trust.json) and the `run_*` commands
+//! commands (capabilities/desktop-trust.json) and the `host_settings_*`
+//! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `agent_host_*` commands
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
 //! (capabilities/desktop-files.json) and the `blob_*` commands
@@ -19,6 +20,7 @@ mod blobs;
 mod connect;
 mod files;
 mod git;
+mod host_settings;
 mod native_dialogs;
 mod navigation;
 mod profile;
@@ -49,6 +51,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(git::GitState::default())
         .manage(secrets::SecretsState::default())
         .manage(halonic_trust_grant::TrustState::default())
+        .manage(host_settings::HostSettingsState::default())
         .manage(runs::RunState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
@@ -95,6 +98,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             trust::trust_revoke,
             trust::reopen_folder,
             trust::forget_folder,
+            host_settings::host_settings_read,
+            host_settings::host_settings_set,
+            host_settings::host_settings_remove,
             runs::run_append,
             runs::run_events,
             runs::run_snapshot,

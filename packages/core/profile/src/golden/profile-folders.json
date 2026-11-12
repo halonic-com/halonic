@@ -5,7 +5,8 @@
     "homeFolder": "/srv/acme",
     "variables": {},
     "profile": "/srv/acme/.local/share/halonic",
-    "trust": "/srv/acme/.local/share/halonic/trust"
+    "trust": "/srv/acme/.local/share/halonic/trust",
+    "settings": "/srv/acme/.local/share/halonic/settings"
   },
   {
     "name": "Linux with an absolute XDG_DATA_HOME",
@@ -15,7 +16,8 @@
       "XDG_DATA_HOME": "/srv/data"
     },
     "profile": "/srv/data/halonic",
-    "trust": "/srv/data/halonic/trust"
+    "trust": "/srv/data/halonic/trust",
+    "settings": "/srv/data/halonic/settings"
   },
   {
     "name": "Linux with a relative XDG_DATA_HOME",
@@ -25,7 +27,8 @@
       "XDG_DATA_HOME": "data"
     },
     "profile": "/srv/acme/.local/share/halonic",
-    "trust": "/srv/acme/.local/share/halonic/trust"
+    "trust": "/srv/acme/.local/share/halonic/trust",
+    "settings": "/srv/acme/.local/share/halonic/settings"
   },
   {
     "name": "Linux with an empty XDG_DATA_HOME",
@@ -35,7 +38,8 @@
       "XDG_DATA_HOME": ""
     },
     "profile": "/srv/acme/.local/share/halonic",
-    "trust": "/srv/acme/.local/share/halonic/trust"
+    "trust": "/srv/acme/.local/share/halonic/trust",
+    "settings": "/srv/acme/.local/share/halonic/settings"
   },
   {
     "name": "macOS, which ignores XDG_DATA_HOME",
@@ -45,7 +49,8 @@
       "XDG_DATA_HOME": "/srv/data"
     },
     "profile": "/srv/acme/Library/Application Support/halonic",
-    "trust": "/srv/acme/Library/Application Support/halonic/trust"
+    "trust": "/srv/acme/Library/Application Support/halonic/trust",
+    "settings": "/srv/acme/Library/Application Support/halonic/settings"
   },
   {
     "name": "Windows with LOCALAPPDATA",
@@ -55,7 +60,8 @@
       "LOCALAPPDATA": "<drive>\\people\\acme\\AppData\\Local"
     },
     "profile": "<drive>\\people\\acme\\AppData\\Local\\halonic",
-    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust"
+    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust",
+    "settings": "<drive>\\people\\acme\\AppData\\Local\\halonic\\settings"
   },
   {
     "name": "Windows without LOCALAPPDATA",
@@ -63,7 +69,8 @@
     "homeFolder": "<drive>\\people\\acme",
     "variables": {},
     "profile": "<drive>\\people\\acme\\AppData\\Local\\halonic",
-    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust"
+    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust",
+    "settings": "<drive>\\people\\acme\\AppData\\Local\\halonic\\settings"
   },
   {
     "name": "Windows with a relative LOCALAPPDATA",
@@ -73,7 +80,8 @@
       "LOCALAPPDATA": "AppData"
     },
     "profile": "<drive>\\people\\acme\\AppData\\Local\\halonic",
-    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust"
+    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust",
+    "settings": "<drive>\\people\\acme\\AppData\\Local\\halonic\\settings"
   },
   {
     "name": "Windows with a network-share home",
@@ -81,7 +89,8 @@
     "homeFolder": "\\\\files\\people\\acme",
     "variables": {},
     "profile": "\\\\files\\people\\acme\\AppData\\Local\\halonic",
-    "trust": "\\\\files\\people\\acme\\AppData\\Local\\halonic\\trust"
+    "trust": "\\\\files\\people\\acme\\AppData\\Local\\halonic\\trust",
+    "settings": "\\\\files\\people\\acme\\AppData\\Local\\halonic\\settings"
   },
   {
     "name": "HALONIC_HOME with a trailing separator",
@@ -91,7 +100,8 @@
       "HALONIC_HOME": "/srv/halonic/"
     },
     "profile": "/srv/halonic",
-    "trust": "/srv/halonic/trust"
+    "trust": "/srv/halonic/trust",
+    "settings": "/srv/halonic/settings"
   },
   {
     "name": "HALONIC_HOME on macOS",
@@ -101,7 +111,8 @@
       "HALONIC_HOME": "/srv/halonic"
     },
     "profile": "/srv/halonic",
-    "trust": "/srv/halonic/trust"
+    "trust": "/srv/halonic/trust",
+    "settings": "/srv/halonic/settings"
   },
   {
     "name": "HALONIC_HOME as the root",
@@ -111,7 +122,8 @@
       "HALONIC_HOME": "/"
     },
     "profile": "/",
-    "trust": "/trust"
+    "trust": "/trust",
+    "settings": "/settings"
   },
   {
     "name": "HALONIC_HOME on Windows",
@@ -121,7 +133,8 @@
       "HALONIC_HOME": "<drive>\\halonic\\"
     },
     "profile": "<drive>\\halonic",
-    "trust": "<drive>\\halonic\\trust"
+    "trust": "<drive>\\halonic\\trust",
+    "settings": "<drive>\\halonic\\settings"
   },
   {
     "name": "HALONIC_HOME as a Windows drive root",
@@ -131,7 +144,8 @@
       "HALONIC_HOME": "<drive>\\"
     },
     "profile": "<drive>\\",
-    "trust": "<drive>\\trust"
+    "trust": "<drive>\\trust",
+    "settings": "<drive>\\settings"
   },
   {
     "name": "HALONIC_HOME as a verbatim Windows path, kept as written",
@@ -141,7 +155,8 @@
       "HALONIC_HOME": "\\\\?\\<drive>\\halonic"
     },
     "profile": "\\\\?\\<drive>\\halonic",
-    "trust": "\\\\?\\<drive>\\halonic\\trust"
+    "trust": "\\\\?\\<drive>\\halonic\\trust",
+    "settings": "\\\\?\\<drive>\\halonic\\settings"
   },
   {
     "name": "HALONIC_HOME with forward slashes on Windows, joined with a backslash",
@@ -151,7 +166,8 @@
       "HALONIC_HOME": "<drive>/halonic/"
     },
     "profile": "<drive>/halonic",
-    "trust": "<drive>/halonic\\trust"
+    "trust": "<drive>/halonic\\trust",
+    "settings": "<drive>/halonic\\settings"
   },
   {
     "name": "HALONIC_HOME with .. kept as written, not normalised",
@@ -161,7 +177,8 @@
       "HALONIC_HOME": "/srv/acme/../tmp"
     },
     "profile": "/srv/acme/../tmp",
-    "trust": "/srv/acme/../tmp/trust"
+    "trust": "/srv/acme/../tmp/trust",
+    "settings": "/srv/acme/../tmp/settings"
   },
   {
     "name": "HALONIC_HOME as a network-share root with a trailing separator",
@@ -171,7 +188,8 @@
       "HALONIC_HOME": "\\\\server\\share\\"
     },
     "profile": "\\\\server\\share",
-    "trust": "\\\\server\\share\\trust"
+    "trust": "\\\\server\\share\\trust",
+    "settings": "\\\\server\\share\\settings"
   },
   {
     "name": "HALONIC_HOME with non-ASCII text and a trailing separator",
@@ -181,7 +199,8 @@
       "HALONIC_HOME": "/srv/Café/"
     },
     "profile": "/srv/Café",
-    "trust": "/srv/Café/trust"
+    "trust": "/srv/Café/trust",
+    "settings": "/srv/Café/settings"
   },
   {
     "name": "HALONIC_HOME with non-ASCII text on Windows",
@@ -191,7 +210,8 @@
       "HALONIC_HOME": "<drive>\\Café\\"
     },
     "profile": "<drive>\\Café",
-    "trust": "<drive>\\Café\\trust"
+    "trust": "<drive>\\Café\\trust",
+    "settings": "<drive>\\Café\\settings"
   },
   {
     "name": "an empty HALONIC_HOME counts as unset",
@@ -201,7 +221,8 @@
       "HALONIC_HOME": ""
     },
     "profile": "/srv/acme/.local/share/halonic",
-    "trust": "/srv/acme/.local/share/halonic/trust"
+    "trust": "/srv/acme/.local/share/halonic/trust",
+    "settings": "/srv/acme/.local/share/halonic/settings"
   },
   {
     "name": "a relative HALONIC_HOME is refused",
@@ -211,7 +232,8 @@
       "HALONIC_HOME": "profile"
     },
     "profile": null,
-    "trust": null
+    "trust": null,
+    "settings": null
   },
   {
     "name": "a drive-relative HALONIC_HOME is refused",
@@ -221,7 +243,8 @@
       "HALONIC_HOME": "<drive>halonic"
     },
     "profile": null,
-    "trust": null
+    "trust": null,
+    "settings": null
   },
   {
     "name": "a Unix HALONIC_HOME is refused on Windows",
@@ -231,7 +254,8 @@
       "HALONIC_HOME": "/srv/halonic"
     },
     "profile": null,
-    "trust": null
+    "trust": null,
+    "settings": null
   },
   {
     "name": "a relative home is refused",
@@ -239,6 +263,7 @@
     "homeFolder": "acme",
     "variables": {},
     "profile": null,
-    "trust": null
+    "trust": null,
+    "settings": null
   }
 ]
