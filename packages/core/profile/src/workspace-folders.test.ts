@@ -56,9 +56,11 @@ verifies("profile.workspace-folders", () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     expect(folders.proposalWorktreesFolder()).toBe(`${folders.folder}/proposal-worktrees`);
     expect(folders.proposalRecordsFolder()).toBe(`${folders.folder}/proposals`);
+    expect(folders.harnessTempFolder()).toBe(`${folders.folder}/harness-temp`);
     const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
     expect(windows.proposalWorktreesFolder()).toBe(`${windows.folder}\\proposal-worktrees`);
     expect(windows.proposalRecordsFolder()).toBe(`${windows.folder}\\proposals`);
+    expect(windows.harnessTempFolder()).toBe(`${windows.folder}\\harness-temp`);
   });
 
   it("keys the folder by the SHA-256 of the real path", async () => {

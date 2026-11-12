@@ -97,6 +97,13 @@ export interface WorkspaceFolders {
    * workspace, so a pull can't make one.
    */
   proposalRecordsFolder(): string;
+  /**
+   * The folder for the temp folders of harness sessions, one per sandbox
+   * session. The session's host removes its own when the session closes;
+   * only the engine holding the workspace's engine lock uses it, and it
+   * removes what a stopped engine left there.
+   */
+  harnessTempFolder(): string;
 }
 
 /**
@@ -163,6 +170,9 @@ export async function workspaceFolders(
     },
     proposalRecordsFolder(): string {
       return joinPath(profile.platform, folder, "proposals");
+    },
+    harnessTempFolder(): string {
+      return joinPath(profile.platform, folder, "harness-temp");
     },
   };
 }
