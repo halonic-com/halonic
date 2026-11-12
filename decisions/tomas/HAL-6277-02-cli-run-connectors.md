@@ -9,8 +9,9 @@
 ## What changes
 
 `cli.local-engine` said that in 0.1 the engine offers no connectors. Now each top-level run of
-`halonic run`, `halonic runs send` and `halonic routines watch` starts the connectors its hub can
-see, through the engine's `RunConnectors` port (#1969, `engine.run-connectors`):
+`halonic run` and `halonic runs send` starts the connectors its hub can see, through the engine's
+`RunConnectors` port (#1969, `engine.run-connectors`). `halonic routines watch` gets the same
+wiring, but starts none yet (see the last point):
 
 - They start in `programFolders.folderFor(version)`: a copy of the workspace at the run's commit
   for a live run, the workspace folder for the saved files. So a connector's script that was
@@ -33,8 +34,11 @@ see, through the engine's `RunConnectors` port (#1969, `engine.run-connectors`):
   labelled `send` are affected; other calls work as before, with a person's OK where the
   connector file asks for one.
 - An engine over the versions of a workspace (`versions`, HAL-6084) starts no run's connectors
-  yet: its runs' connector files may be of another version than the one it read last. No command
-  passes `versions` today.
+  yet: its runs' connector files may be of another version than the one it read last, and the
+  command's grant is for the version it started from. Since #2095, `routines watch` is such an
+  engine: there, the turn of an agent that lists a connector fails with that reason, and an agent
+  that lists none runs as before. Starting them from the version a run read, with that version's
+  grant, is a follow-up.
 
 A chat turn still calls the connectors it is given, none by default.
 
