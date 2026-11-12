@@ -56,7 +56,7 @@ starts nothing, a connector that can't be created releases the copy and is tried
 engine's close ends every run, and nothing starts after it. `local-run-connectors.test.ts` has 3:
 sending is off with its reason (now "the CLI can't switch it on yet", as `runs send` and `routines
 watch` show it too), a settings error names its connector, and an engine over several versions
-starts no run's connectors. `workspace-engine.test.ts` has 5 new ones: the runs' connectors get
+starts no run's connectors. The new `workspace-engine-connectors.test.ts` has 5: the runs' connectors get
 the command's grant, and `null` for a run that reaches only the test model; a failed clean-up
 is only a `--debug` line, however often; a lost engine lock still counts toward stopping
 the command, as before; and, through a real run of Weekly report, each connector program is
