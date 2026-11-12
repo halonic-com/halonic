@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2270; the `DoctorWorkspace` input of `app.doctor-service`
+- Source: HAL-2270; the `DoctorWorkspace` input of `app.doctor-service`; file problems from HAL-6613
 
-The `halonic doctor` command shall read from the workspace's files the workspace's name, every connector and agent for the trust check, the model aliases of `models.yaml` and of each hub, and how each provider those aliases use is reached. The test model shall need no key. A provider with `local: true` shall be reached at the host of its `baseUrl`, or at its server's default address. Any other provider shall need the key in its `secret` when it names one. A provider without a file, or on this computer at an unknown address, shall be left out together with its aliases. The command shall also read whether a run in the workspace can only reach the test model, by the rule `halonic run` skips trust by (`reachesOnlyTheTestModel`), so the Workspace line doesn't ask for a trust `run` doesn't need (HAL-6007).
+The `halonic doctor` command shall read from the workspace's files the workspace's name, every connector and agent for the trust check, the model aliases of `models.yaml` and of each hub, and how each provider those aliases use is reached. The test model shall need no key. A provider with `local: true` shall be reached at the host of its `baseUrl`, or at its server's default address. Any other provider shall need the key in its `secret` when it names one. A provider without a file, or on this computer at an unknown address, shall be left out together with its aliases. The command shall also read whether a run in the workspace can only reach the test model, by the rule `halonic run` skips trust by (`reachesOnlyTheTestModel`), so the Workspace line doesn't ask for a trust `run` doesn't need (HAL-6007). It shall also read how many errors `halonic validate` finds in the workspace's files; a workspace with any is never on the test model only, since the file left out may be a provider's (HAL-6613).
 
 ## Examples
 

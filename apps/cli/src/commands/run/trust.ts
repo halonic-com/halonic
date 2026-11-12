@@ -12,6 +12,7 @@ import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import { startsAProgram } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
+import { refuseFileProblems } from "../../workspace-problems.ts";
 import {
   trustContentInputOf,
   trustedGrant,
@@ -23,8 +24,11 @@ import {
 export type RunTrustMachine = WorkspaceTrustMachine;
 
 /**
- * Refuses to go on unless the workspace is trusted on this computer, or
- * its run can only reach the test model. A run that names a harness program
+ * Refuses to go on when the workspace's files have errors, then unless the
+ * workspace is trusted on this computer, or its run can only reach the test
+ * model. A file with an error is left out of the loaded workspace, so the
+ * trust rule would judge a workspace the user didn't write, such as one
+ * whose provider file was dropped for a pasted key (HAL-6613). A run that names a harness program
  * for all its agents, such as with `--harness codex`, reaches more than the
  * test model, so it always needs trust. A trust record that can't be read
  * counts as no trust: the run fails closed. `runs send` checks it too before
@@ -33,6 +37,8 @@ export type RunTrustMachine = WorkspaceTrustMachine;
  * @param nothingDone - the end of line 1 saying nothing happened:
  *   `runMessages.nothingRan()`, the default, or `sandboxMessages.nothingSent()`
  * @param harness - the harness the run names for all its agents, if any
+ * @throws WorkspaceFileProblemsError when `halonic validate` would find an
+ *   error in the workspace's files; nothing ran (exit 2)
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown, and nothing ran (exit 3)
  */
@@ -44,6 +50,7 @@ export async function checkRunTrust(
   nothingDone: Message = runMessages.nothingRan(),
   harness?: string,
 ): Promise<void> {
+  refuseFileProblems(dir, workspace, nothingDone, typedDir);
   const integrations = await workspaceIntegrations(dir.root, dir.shown);
   if (
     !startsAProgram(harness) &&

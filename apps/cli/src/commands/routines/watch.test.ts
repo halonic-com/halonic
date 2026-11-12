@@ -191,10 +191,12 @@ verifies("cli.commands.routines.watch", () => {
   it("prints a ✕ line for a routine whose run didn't start, and keeps watching", {
     timeout: watchTestTimeout,
   }, async () => {
+    // The local engine can't start an agent's run yet, though the routine's files are fine.
     await writeFiles(acmeRuns.acme, {
+      "hubs/support/agents/writer.agent.yaml": "id: writer\nname: Writer\ninstructions: Reply.\n",
       "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
-        "workflow: follow-up",
-        "workflow: gone",
+        "run: { workflow: follow-up }",
+        "run: { agent: writer, prompt: Follow up on the open emails. }",
       ),
     });
     const time = fakeTime(engineStart);
@@ -234,6 +236,27 @@ verifies("cli.commands.routines.watch", () => {
     expect(io.stderr).toContain(
       "✕ Couldn't watch the routines in acme: Acme isn't trusted on this computer yet. Nothing ran.",
     );
+    expect(await storedRuns()).toEqual([]);
+  });
+});
+
+verifies("cli.workspace-file-problems", () => {
+  it("refuses to watch when the workspace's files have problems, and writes nothing to the run log", async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
+        "workflow: follow-up",
+        "workflow: gone",
+      ),
+    });
+    const io = captureIo(acmeRuns.acme);
+
+    const code = await runCli(["routines", "watch"], io, [watchCommand(fakeTime(engineStart))]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Couldn't watch the routines in acme: Acme has 1 problem in its files. Nothing ran.",
+      "  See them with: halonic validate",
+    ]);
     expect(await storedRuns()).toEqual([]);
   });
 });

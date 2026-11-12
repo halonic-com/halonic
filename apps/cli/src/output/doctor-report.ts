@@ -123,6 +123,9 @@ function workspaceCheck(line: WorkspaceLine, dir: string | undefined): CheckLine
 }
 
 function workspaceTrust(line: WorkspaceLine, dir: string | undefined): Message {
+  if (line.fileProblems !== undefined) {
+    return doctorMessages.fileProblems(line.name, line.fileProblems, dir);
+  }
   switch (line.trust) {
     case "trusted":
       return doctorMessages.trusted(line.name);

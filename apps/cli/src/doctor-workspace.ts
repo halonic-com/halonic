@@ -11,6 +11,7 @@ import {
   modelAliases,
   reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
+import { fileProblemsOf } from "./workspace-problems.ts";
 import { trustContentInputOf, trustSubjectOf } from "./workspace-trust.ts";
 
 /**
@@ -48,6 +49,9 @@ export interface DoctorWorkspaceInput {
  * - **Providers:** each one an alias uses, once, with how it runs (see
  *   {@link doctorProvider}). One that has no file is left out, with its
  *   aliases: `halonic validate` reports it.
+ * - **File problems:** the errors `halonic validate` finds. Each leaves a
+ *   file out, so a workspace with any is never on the test model only:
+ *   the file left out may be a provider's (HAL-6613).
  *
  * @example
  * doctorWorkspace({ workspace, integrations: [], location: "/work/acme", fallbackName: "acme", commandPaths });
@@ -60,13 +64,17 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
   const providers = usedProviders(workspace, allAliases);
   // The Models line takes only aliases whose provider it was given.
   const listed = new Set(providers.map((provider) => provider.provider));
+  const fileProblems = fileProblemsOf(workspace);
   return {
     name: settings?.name ?? input.fallbackName,
     trust: trustSubjectOf(input),
     aliases: allAliases.filter((alias) => listed.has(alias.provider)),
     providers,
     // The rule `run` skips trust by, so doctor doesn't ask for a trust `run` wouldn't.
-    testModelOnly: reachesOnlyTheTestModel(trustContentInputOf(workspace, input.integrations)),
+    testModelOnly:
+      fileProblems === 0 &&
+      reachesOnlyTheTestModel(trustContentInputOf(workspace, input.integrations)),
+    ...(fileProblems === 0 ? {} : { fileProblems }),
   };
 }
 
