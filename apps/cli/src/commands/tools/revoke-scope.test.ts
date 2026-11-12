@@ -61,7 +61,7 @@ verifies("cli.commands.tools.revoke", () => {
   });
 
   it("prints a tool name with terminal controls escaped", async () => {
-    const run = await kit.tools(["revoke", "notes-mcp", "\u001b[2Jsend‮\r"]);
+    const run = await kit.tools(["revoke", "notes-mcp", "\u001b[2Jsend\u202e\r"]);
     expect(run.code).toBe(exitCode.notFound);
     const printed = run.stderr.join("\n");
     expect(printed).toContain("\\u001b[2Jsend\\u202e\\u000d");
