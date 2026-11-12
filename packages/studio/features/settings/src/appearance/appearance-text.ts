@@ -34,7 +34,7 @@ export interface SaveFailedText {
   readonly announce: (back: string) => string;
 }
 
-function saveFailed(what: string, back: (to: string) => string): SaveFailedText {
+export function saveFailed(what: string, back: (to: string) => string): SaveFailedText {
   const line = `Couldn't save ${what} on this computer.`;
   return { line, announce: (to) => `${line} ${back(to)}` };
 }
