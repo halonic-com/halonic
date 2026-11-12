@@ -1,6 +1,6 @@
 //! Proves requirements/command-lookup.md.
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -135,7 +135,7 @@ fn command_lookup_keeps_the_folder_as_written() {
     program(&bin, "npx");
     let root = folder.path().to_str().unwrap();
     for entry in [format!("{root}//bin"), format!("{root}/./bin")] {
-        let found = find_commands(&["npx".to_owned()], OsStr::new(&entry), &[]);
+        let found = find_commands(&["npx".to_owned()], std::ffi::OsStr::new(&entry), &[]);
         assert_eq!(found["npx"], format!("{entry}/npx"));
     }
 }

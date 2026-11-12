@@ -1,6 +1,6 @@
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, sep } from "node:path";
 import type { Connector } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -98,34 +98,24 @@ verifies("cli.command-paths", () => {
       ).toEqual(new Map());
     });
 
-    it.skipIf(process.platform === "win32")(
-      "gives the folder as written, with a // or ./ entry kept, and takes any execute bit",
-      async () => {
-        const bin = program("bin", "mail");
-        const dir = join(folder, "bin");
+    it("gives the folder as written, with a // or ./ entry kept, and takes any execute bit", async () => {
+      program("bin", "mail");
+      const doubled = `${folder}//bin`;
+      const dotted = `${folder}/./bin`;
+
+      for (const entry of [doubled, dotted]) {
+        const paths = await commandPaths([startsCommand("mail")], { path: entry, endings: [] });
+        expect(paths).toEqual(new Map([["mail", `${entry}${sep}mail`]]));
+      }
+
+      if (process.platform !== "win32") {
         const other = join(folder, "other");
         mkdirSync(other);
         writeFileSync(join(other, "mail"), "");
         chmodSync(join(other, "mail"), 0o611);
-
-        const doubled = await commandPaths([startsCommand("mail")], {
-          path: `${folder}//bin`,
-          endings: [],
-        });
-        const dotted = await commandPaths([startsCommand("mail")], {
-          path: `${folder}/./bin`,
-          endings: [],
-        });
-        const groupOnly = await commandPaths([startsCommand("mail")], {
-          path: other,
-          endings: [],
-        });
-
-        expect(doubled).toEqual(new Map([["mail", `${folder}//bin/mail`]]));
-        expect(dotted).toEqual(new Map([["mail", `${folder}/./bin/mail`]]));
-        expect(groupOnly).toEqual(new Map([["mail", join(other, "mail")]]));
-        expect(bin).toBe(join(dir, "mail"));
-      },
-    );
+        const paths = await commandPaths([startsCommand("mail")], { path: other, endings: [] });
+        expect(paths).toEqual(new Map([["mail", join(other, "mail")]]));
+      }
+    });
   });
 });
