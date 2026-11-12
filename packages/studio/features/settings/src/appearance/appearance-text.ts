@@ -1,4 +1,5 @@
-import type { Theme } from "./appearance-prefs.ts";
+import type { ColourPreset } from "@halonicjs/studio-kit";
+import type { FramePreset, Theme } from "./appearance-prefs.ts";
 
 /**
  * The words of Settings → Appearance: flow-settings 5 for the controls, the microcopy (13.1 and
@@ -46,3 +47,40 @@ export const AGENT_CHARACTERS_NOT_SAVED = saveFailed("agent characters", AGENT_C
 export function onOrOff(on: boolean): string {
   return on ? "on" : "off";
 }
+
+export const FRAME_COLOURS = "Frame colours";
+export const FIRST_COLOUR = "First colour";
+export const SECOND_COLOUR = "Second colour";
+export const YOUR_OWN = "Your own";
+/** A typed colour that isn't six hex digits (microcopy 13.1); the colour popover's hex field too. */
+export const COLOUR_ERROR = "Enter a colour like #3B8BFF.";
+export const FRAME_COLOURS_NOT_SAVED = saveFailed("the frame colours", FRAME_COLOURS, "are");
+
+/** The Frame colours select's presets, in the order it lists them, then "Your own". */
+export const framePresetNames: Readonly<Record<FramePreset, string>> = {
+  "blue-and-purple": "Blue and purple",
+  "green-and-blue": "Green and blue",
+  "yellow-and-orange": "Yellow and orange",
+  "pink-and-violet": "Pink and violet",
+};
+
+/** A colour field's swatch button: "Choose the first colour, now #3B8BFF" (microcopy 19.8). */
+export function chooseColour(which: "first" | "second", colour: string): string {
+  return `Choose the ${which} colour, now ${colour}`;
+}
+
+/**
+ * The swatches the colour popover offers: each colour the presets use, once, named for a screen
+ * reader (team decision, HAL-1294).
+ */
+export const colourSwatches: readonly ColourPreset[] = [
+  { value: "#3B8BFF", name: "Blue" },
+  { value: "#B05ED9", name: "Purple" },
+  { value: "#10B981", name: "Green" },
+  { value: "#FBBF24", name: "Yellow" },
+  { value: "#F97316", name: "Orange" },
+  { value: "#EC4899", name: "Pink" },
+  { value: "#8B5CF6", name: "Violet" },
+];
+export const PRESETS = "Presets";
+export const HEX_COLOUR = "Hex colour";
