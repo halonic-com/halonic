@@ -158,7 +158,7 @@ verifies("cli.doctor-windows-drive", () => {
     ]);
 
     expect(code).toBe(exitCode.ok);
-    expect(asked).toEqual([realpathSync(join(folder, "acme"))]);
+    expect(asked).toEqual([realpathSync.native(join(folder, "acme"))]);
     const document = JSON.parse(io.stdout.join("\n"));
     expect(document.checks[0]).toEqual({
       check: "workspace",
