@@ -66,11 +66,14 @@ function Invoke-Driver {
   }
 }
 
-# Started from this shell, so WebView2 opens its DevTools port for the driver.
+# The shell gives WebView2 its own browser arguments, which beat the
+# WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS variable. WebView2's registry policy
+# beats them, and also covers the Halonic the installer reopens after an update.
+$policyKey = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
 function Start-Halonic {
-  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$devtools"
-  try { Start-Process (Join-Path $dir 'Halonic.exe') | Out-Null }
-  finally { Remove-Item Env:\WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS }
+  New-Item -Path $policyKey -Force | Out-Null
+  New-ItemProperty -Path $policyKey -Name 'Halonic.exe' -Value "--remote-debugging-port=$devtools" -PropertyType String -Force | Out-Null
+  Start-Process (Join-Path $dir 'Halonic.exe') | Out-Null
 }
 
 function Stop-Halonic {
@@ -185,6 +188,7 @@ try {
 } finally {
   Stop-Halonic
   $server | Stop-Process -Force -ErrorAction SilentlyContinue
+  Remove-Item -Path $policyKey -Recurse -ErrorAction SilentlyContinue
   $uninstall = Join-Path $dir 'uninstall.exe'
   if (Test-Path $uninstall) { Start-Process $uninstall -ArgumentList '/S' -Wait | Out-Null }
 }

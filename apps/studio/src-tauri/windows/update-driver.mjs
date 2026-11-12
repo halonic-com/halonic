@@ -9,8 +9,8 @@
 //   node update-driver.mjs <port> call <command>         calls a command and
 //     prints its answer; a Halonic that closes on the call counts as done
 //
-// Halonic must run with WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS set to
-// --remote-debugging-port=<port>.
+// Halonic must run with WebView2 given
+// --remote-debugging-port=<port> (test-update.ps1 sets the registry policy).
 
 const [port, action, argument, seconds = "180"] = process.argv.slice(2);
 
