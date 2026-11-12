@@ -17,6 +17,7 @@ packages:
 catalog:
   "@anthropic-ai/sandbox-runtime": 0.0.81
   "@biomejs/biome": 2.6.5
+  "@noble/hashes": 2.4.0
   "@changesets/cli": ^3.0.3
   "@cloudflare/workers-types": 5.20260730.1
   "@playwright/test": ^1.65.0

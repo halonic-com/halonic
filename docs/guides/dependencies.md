@@ -24,7 +24,7 @@ the wrapper, so the rest of the code never depends on the library directly.
 | --- | --- | --- |
 | `zod` | `core/schema-kit`, `core/format` | `@halonicjs/schema-kit` |
 | `yaml` | `core/yaml` | `@halonicjs/yaml` |
-| `@noble/hashes` | `adapters/password-scrypt` (listed, but not built yet) | the `PasswordHasher` port (SHA-256 comes from the hashing port, backed by WebCrypto) |
+| `@noble/hashes` | `adapters/password-scrypt` | the `PasswordHasher` port (SHA-256 comes from the hashing port, backed by WebCrypto) |
 | `remark`, `remark-gfm` | `studio/kit` | the Markdown view in `@halonicjs/studio-kit` |
 | `react-data-grid` | `studio/kit` | the data grid in `@halonicjs/studio-kit` |
 

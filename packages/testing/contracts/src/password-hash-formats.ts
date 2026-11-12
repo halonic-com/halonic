@@ -80,3 +80,56 @@ export const pbkdf2ChainFormat: PasswordHashFormatCases = {
     "not a hash",
   ],
 };
+
+const scryptPrefix = "$scrypt$";
+const scryptStapleHash = "D7lSJtJDGLLVcrxL7dWjkoRxbs+pMvcVYIJ+gbuyltk";
+
+/** Hashes the scrypt rule refuses, with its own vector's salt and hash. */
+function scryptHash(settings: string, saltText = salt, hashText = scryptStapleHash): string {
+  return `${scryptPrefix}${settings}$${saltText}$${hashText}`;
+}
+
+/** The cases of `ports.password-hash-format` (scrypt, `serve`). */
+export const scryptFormat: PasswordHashFormatCases = {
+  requirement: "ports.password-hash-format",
+  newHash: /^\$scrypt\$ln=14,r=8,p=5\$[A-Za-z0-9+/]{22}\$[A-Za-z0-9+/]{43}$/,
+  matching: [
+    { password: "correct horse battery staple", hash: scryptHash("ln=14,r=8,p=5") },
+    // "Café" typed with a combining acute accent (U+0301), as the requirement gives it.
+    {
+      password: "Cafe\u0301",
+      hash: scryptHash("ln=14,r=8,p=5", salt, "uTLaEKfxixfKWAEXnGRbMwK/H3yGuy+bJGUxguLKks0"),
+    },
+    {
+      password: `pa${umlaut}sswo${umlaut}rd fu${umlaut}r halonic`,
+      hash: scryptHash("ln=14,r=8,p=5", salt, "5xpUriSnys1jxwA53x9/dOke3j0A6P99N9rEtR2Y7/g"),
+    },
+  ],
+  wrongPassword: { password: "correct horse battery stapler", hash: scryptHash("ln=14,r=8,p=5") },
+  olderSettings: {
+    password: "correct horse battery staple",
+    hash: scryptHash("ln=15,r=8,p=5", salt, "3T6pNmo3t+nZj7qyvUUgodgTIdUgGw/KiKN+3CuUUVo"),
+  },
+  outOfRange: [
+    scryptHash("ln=13,r=8,p=5"),
+    scryptHash("ln=16,r=8,p=5"),
+    scryptHash("ln=20,r=8,p=5"),
+    scryptHash("ln=14,r=16,p=5"),
+    scryptHash("ln=14,r=8,p=4"),
+    scryptHash("ln=14,r=8,p=17"),
+  ],
+  malformed: [
+    scryptHash("ln=14,r=8,p=5", `${salt}=`),
+    // The salt's last character carries stray bits after its 16 bytes.
+    scryptHash("ln=14,r=8,p=5", "AAECAwQFBgcICQoLDA0ODx"),
+    scryptHash("ln=14,r=8,p=5", "AAECAwQFBgcICQoLDA0O"),
+    scryptHash("ln=14,r=8,p=5", salt, "D7lSJtJDGLLVcrxL7dWjkoRxbs+pMvcVYIJ+gbuylQ"),
+    scryptHash("r=8,ln=14,p=5"),
+    scryptHash("ln=014,r=8,p=5"),
+  ],
+  otherFormats: [
+    chainHash("i=100000,n=6"),
+    "$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA",
+    "not a hash",
+  ],
+};
