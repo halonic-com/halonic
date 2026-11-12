@@ -5,7 +5,7 @@ mod common;
 
 use common::{HELPER, Pretend, SHIPPED, SWAPPED, app, folder, system, uninstall_step};
 use halonic_sandbox_elevate::{
-    Folders, PROGRAM, SRT_WIN, TEMP, Value, Verb, code, environment, uninstall_entry, verb,
+    Folders, PROGRAM, RUNTIME, SRT_WIN, TEMP, Value, Verb, code, environment, uninstall_entry, verb,
 };
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
