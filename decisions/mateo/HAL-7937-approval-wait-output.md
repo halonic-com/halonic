@@ -1,6 +1,5 @@
 # Decision: a run waiting for a tool approval says what it asks and how to answer
 
-- Requirements: `cli.run`, `cli.commands.runs.show`
 - Task: HAL-7937, found by Maya while running the Examples recipes (HAL-971)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
@@ -12,3 +11,8 @@ Only the end of the output of `halonic run`, `halonic runs show` and `halonic ru
 ## Why
 
 The wait printed only `! Answer  Handbook reader · default`, with no tool and no way to answer. The tool arguments can be long and come from outside, so they are not printed. The words follow the existing "Waiting for you" lines (checked by Mara, HAL-2282).
+
+## Covers
+
+- cli.run
+- cli.commands.runs.show
