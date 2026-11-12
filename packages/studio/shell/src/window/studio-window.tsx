@@ -268,9 +268,15 @@ export function StudioWindow(props: StudioWindowProps) {
           contextFor={contextFor}
           announcer={announcer}
           onClose={settings.close}
+          returnFocus={placesButton}
         />
       )}
       <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );
+}
+
+/** The toolbar's Places button, in a narrow window, where Settings opened from the drawer closes. */
+function placesButton(): HTMLElement | null {
+  return document.querySelector<HTMLElement>("[data-places-button] button");
 }

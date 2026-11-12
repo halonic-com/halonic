@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
 import type { HomeCardProps } from "../home/home-page.tsx";
 import { searchPageLocation } from "../search/search-page-names.ts";
@@ -18,11 +18,13 @@ import type { PlaceViewProps } from "./studio-page.tsx";
 import { StudioWindow } from "./studio-window.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
 
+let media: FakeMediaQueries;
 let restoreMedia: () => void;
 let restoreModal: () => void;
 
 beforeEach(() => {
-  restoreMedia = new FakeMediaQueries(1280).install();
+  media = new FakeMediaQueries(1280);
+  restoreMedia = media.install();
   restoreModal = fakeShowModal();
 });
 
@@ -223,5 +225,48 @@ verifies("shell.studio-window", () => {
     expect(workspace.recent.list.map((place) => place.key)).not.toContain(
       searchPageLocation("refund").key,
     );
+  });
+
+  describe("when Settings closes", () => {
+    const settingsRow = (container: HTMLElement) =>
+      Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent === "Settings",
+      );
+    const places = (container: HTMLElement) =>
+      container.querySelector<HTMLButtonElement>('button[aria-label="Places"]');
+    const pressEscape = (container: HTMLElement) =>
+      act(() => {
+        container
+          .querySelector("dialog[open]")
+          ?.dispatchEvent(new Event("cancel", { cancelable: true }));
+      });
+
+    it("gives the focus back to the sidebar's Settings row in a wide window", () => {
+      const { container } = renderWindow();
+      act(() => settingsRow(container)?.focus());
+      act(() => settingsRow(container)?.click());
+      expect(container.querySelector("dialog[open]")).not.toBeNull();
+
+      pressEscape(container);
+
+      expect(container.querySelector("dialog[open]")).toBeNull();
+      expect(document.activeElement).toBe(settingsRow(container));
+    });
+
+    it("gives the focus back to the Places button when it opened from the narrow drawer", () => {
+      act(() => media.resize(700));
+      const { container } = renderWindow();
+      act(() => places(container)?.click());
+      act(() => settingsRow(container)?.focus());
+      act(() => settingsRow(container)?.click());
+      // The dialog takes the focus, so the drawer closes and hides its row.
+      act(() => container.querySelector<HTMLElement>("dialog[open] button")?.focus());
+      expect(places(container)?.getAttribute("aria-expanded")).toBe("false");
+
+      pressEscape(container);
+
+      expect(container.querySelector("dialog[open]")).toBeNull();
+      expect(document.activeElement).toBe(places(container));
+    });
   });
 });

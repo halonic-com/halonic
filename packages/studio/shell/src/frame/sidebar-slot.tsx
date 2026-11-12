@@ -53,7 +53,7 @@ export interface PlacesButtonProps {
  */
 export function PlacesButton({ open, onToggle, ref }: PlacesButtonProps) {
   return (
-    <span className={open ? "rounded-sm bg-surface-muted" : undefined}>
+    <span data-places-button="" className={open ? "rounded-sm bg-surface-muted" : undefined}>
       <Button
         ref={ref}
         variant="ghost"
