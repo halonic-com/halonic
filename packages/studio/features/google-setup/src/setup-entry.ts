@@ -9,8 +9,17 @@ const addServiceSteps: readonly SetupStep["id"][] = ["apis", "scopes", "sign-in"
 /** Shows an ISO time as you read it, such as "02:10". */
 export type TimeFormat = (iso: string) => string;
 
-/** UTC as `HH:MM`, for hosts that give no format of their own. */
+/** UTC as `HH:MM`, so tests read the same in every time zone. */
 export const utcTime: TimeFormat = (iso) => iso.slice(11, 16);
+
+const localClock = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** The user's local time as `HH:MM`. It is what the app shows. */
+export const localTime: TimeFormat = (iso) => localClock.format(new Date(iso));
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
@@ -36,11 +45,17 @@ function onHold(account: GoogleSetupAccount): string {
     : ` · ${plural(account.routinesOnHold, "routine", "routines")} on hold`;
 }
 
-/** The services that signed in but failed their check. */
+/**
+ * The listed services that signed in but failed their check. The record keeps the result of a
+ * service the user later unticked, so only the services still listed count.
+ */
 function failing(account: GoogleSetupAccount): number {
-  return Object.values(account.record.services).filter(
-    ({ result }) => result.kind !== "works" && result.kind !== "allowed",
-  ).length;
+  return account.services.filter((service) => {
+    const checked = account.record.services[service.id];
+    return (
+      checked !== undefined && checked.result.kind !== "works" && checked.result.kind !== "allowed"
+    );
+  }).length;
 }
 
 /**
@@ -56,7 +71,7 @@ export function setupEntry(account: GoogleSetupAccount, time: TimeFormat): Setup
   if (account.services.length === 0) return undefined;
   const { record, email } = account;
   const entry = (title: string, progress: string): SetupEntry => ({
-    account: account.ref,
+    account: record.accountRef,
     title,
     progress,
     changedAt: account.changedAt,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { account, atlas, ledger, record } from "./accounts.test-helper.ts";
-import { setupEntry, utcTime } from "./setup-entry.ts";
+import { localTime, setupEntry, utcTime } from "./setup-entry.ts";
 
 const allSteps = ["project", "apis", "consent", "scopes", "client", "credentials", "sign-in"];
 const fine = { result: { kind: "works" as const }, checkedAt: "2026-11-12T02:10:00.000Z" };
@@ -25,6 +25,21 @@ describe("setupEntry", () => {
       services: { ledger: { result: { kind: "unreachable" }, checkedAt: fine.checkedAt } },
     });
     expect(setupEntry(account(failed), utcTime)?.progress).toBe("Step 7 of 7 · 1 service to fix");
+  });
+
+  it("ignores a failed check of a service that is no longer listed", () => {
+    const stale = record(allSteps, {
+      services: { atlas: { result: { kind: "unreachable" }, checkedAt: fine.checkedAt } },
+    });
+    expect(setupEntry(account(stale), utcTime)).toBeUndefined();
+  });
+
+  it("shows the time as the user's local time", () => {
+    const iso = "2026-11-12T02:10:00.000Z";
+    const local = new Date(iso);
+    const hh = String(local.getHours()).padStart(2, "0");
+    const mm = String(local.getMinutes()).padStart(2, "0");
+    expect(localTime(iso)).toBe(`${hh}:${mm}`);
   });
 
   it("has no entry when everything works", () => {

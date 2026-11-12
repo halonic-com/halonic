@@ -1931,15 +1931,9 @@ importers:
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../inbox
-      '@halonicjs/studio-kit':
-        specifier: workspace:*
-        version: link:../../kit
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../shell
-      react:
-        specifier: 'catalog:'
-        version: 19.3.1
     devDependencies:
       '@halonicjs/tooling-config':
         specifier: workspace:*
@@ -1947,15 +1941,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.3.0(@types/react@19.3.0)
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.3.1(react@19.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

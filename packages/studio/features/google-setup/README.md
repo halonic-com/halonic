@@ -15,7 +15,9 @@ workspace opens. Step counts and names come from `setupSteps`, so Studio never n
 ## Example
 
 ```ts
-import { googleSetupSource } from "./google-setup-source.ts";
+import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
+import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 
-inbox.addSetupSource(googleSetupSource(accounts));
+// Add `googleSetupFeature` to the app's features, and provide the accounts for each workspace:
+studio.services.provide(GoogleSetupAccountsService, () => hostAccounts);
 ```

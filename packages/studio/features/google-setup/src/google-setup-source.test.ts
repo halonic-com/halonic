@@ -6,10 +6,7 @@ const done = ["project", "apis", "consent", "scopes", "client", "credentials", "
 
 describe("googleSetupSource", () => {
   it("lists only the accounts that need you", async () => {
-    const fake = fakeAccounts([
-      account(record(["project"])),
-      account(record(done), { ref: "gaccount_2" }),
-    ]);
+    const fake = fakeAccounts([account(record(["project"])), account(record(done))]);
     const entries = await googleSetupSource(fake.source).list();
     expect(entries.map((entry) => entry.account)).toEqual(["gaccount_1"]);
   });

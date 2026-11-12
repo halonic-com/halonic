@@ -15,9 +15,6 @@
   "devDependencies": {
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
@@ -31,8 +28,6 @@
   "dependencies": {
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
-    "@halonicjs/studio-kit": "workspace:*",
-    "@halonicjs/studio-shell": "workspace:*",
-    "react": "catalog:"
+    "@halonicjs/studio-shell": "workspace:*"
   }
 }

@@ -8,11 +8,9 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** One Google account as the host reads it from the setup records and the connector settings. */
 export interface GoogleSetupAccount {
-  /** The random ref the account's setup record is kept under. Never an e-mail address. */
-  readonly ref: string;
   /** The account's address, from the connector settings. It appears only in titles. */
   readonly email: string;
-  /** The saved progress. */
+  /** The saved progress. Its `accountRef` is the random ref, never an e-mail address. */
   readonly record: SetupRecord;
   /** The services the setup is for, in the order Studio shows them. */
   readonly services: readonly SetupService[];

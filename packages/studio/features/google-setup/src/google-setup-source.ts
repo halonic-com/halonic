@@ -1,6 +1,6 @@
 import type { InboxSetupSource, SetupEntry } from "@halonicjs/studio-feature-inbox/api";
 import type { GoogleSetupAccounts } from "./api.ts";
-import { setupEntry, type TimeFormat, utcTime } from "./setup-entry.ts";
+import { localTime, setupEntry, type TimeFormat } from "./setup-entry.ts";
 
 /**
  * The Inbox's setup source for Google: one entry for each connected account that needs setup,
@@ -12,7 +12,7 @@ import { setupEntry, type TimeFormat, utcTime } from "./setup-entry.ts";
  */
 export function googleSetupSource(
   accounts: GoogleSetupAccounts,
-  time: TimeFormat = utcTime,
+  time: TimeFormat = localTime,
 ): InboxSetupSource {
   return {
     provider: "google",

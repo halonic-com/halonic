@@ -45,7 +45,6 @@ export function account(
   extra: Partial<GoogleSetupAccount> = {},
 ): GoogleSetupAccount {
   return {
-    ref: setup.accountRef,
     email: "x@example.com",
     record: setup,
     services: [ledger],
