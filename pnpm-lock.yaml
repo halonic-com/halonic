@@ -613,6 +613,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 5.20260730.1
+      '@halonicjs/adapter-token-store':
+        specifier: workspace:*
+        version: link:../token-store
       '@halonicjs/target-cloudflare-testing':
         specifier: workspace:*
         version: link:../../targets/cloudflare/testing

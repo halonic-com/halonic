@@ -19,7 +19,8 @@ const headerLength = 1 + keyIdLength + nonceLength;
 const additionalDataPrefix = "halonic-token-v1:";
 
 const encoder = new TextEncoder();
-const decoder = new TextDecoder("utf-8", { fatal: true });
+// `ignoreBOM: false` is the default; workerd's types ask for it, and the Worker bundle is checked with them.
+const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
 
 /** A stored token that can't be opened. The message names the token, never its value. */
 export class UnreadableTokenError extends Error {
