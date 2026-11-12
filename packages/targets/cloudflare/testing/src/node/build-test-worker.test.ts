@@ -38,10 +38,10 @@ describe("the test Worker", () => {
 
   it("doesn't build when a suite calls a matcher the shim doesn't have", async () => {
     const file = await suiteFile(
-      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toContain(1));\n',
+      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toBeTypeOf("number"));\n',
     );
     await expect(buildTestWorker([file])).rejects.toThrow(
-      /lacks what a suite uses[\s\S]*suite\.ts uses toContain/,
+      /lacks what a suite uses[\s\S]*suite\.ts uses toBeTypeOf/,
     );
   });
 

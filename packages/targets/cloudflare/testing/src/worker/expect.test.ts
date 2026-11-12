@@ -83,6 +83,8 @@ describe("the shim's expect", () => {
       "toEqual",
       "toMatchObject",
       "toHaveLength",
+      "toContain",
+      "toBeInstanceOf",
       "toBeGreaterThanOrEqual",
       "toBeNull",
       "toBeUndefined",
