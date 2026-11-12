@@ -13,13 +13,12 @@ as plain files in your own git repository.
 For 0.1.0 the `halonic` command installs from this repository. You need
 [git](https://git-scm.com/), [Node.js](https://nodejs.org/) 26.12 or later and
 [pnpm](https://pnpm.io/installation) 12.18 or later. On Windows, run all of
-this inside [WSL2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
+this inside [WSL 2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
 not in PowerShell or Command Prompt.
 
 Check your Node.js first with `node --version`: it must say v26.12 or later.
-With an older Node.js every step below seems to work, but `halonic` then fails
-with `Unknown file extension ".ts"`. Many Linux package managers install an
-older version, so this is worth checking.
+With an older Node.js, `halonic` stops and says which version it needs. Many
+Linux package managers install an older version, so this is worth checking.
 
 ```sh
 git clone https://github.com/halonic-com/halonic.git
