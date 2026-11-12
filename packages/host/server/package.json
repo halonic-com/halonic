@@ -1,0 +1,31 @@
+{
+  "name": "@halonicjs/host-server",
+  "private": true,
+  "type": "module",
+  "description": "The Request to Response handler behind halonic serve.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "host",
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    }
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  }
+}
