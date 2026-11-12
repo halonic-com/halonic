@@ -423,13 +423,14 @@ verifies("integration-runner.start", () => {
         "--permission",
         "--allow-fs-read=/opt/halonic/runner.js",
         "--allow-fs-read=/fake-home/code/weather",
+        "--max-old-space-size=256",
         "/opt/halonic/runner.js",
         "n-1",
         "/fake-home/code/weather",
         "/fake-home/code/weather/index.js",
         "weather",
       ]);
-      expect(readRunnerArgs(command.args.slice(4))).toEqual(args);
+      expect(readRunnerArgs(command.args.slice(5))).toEqual(args);
     });
 
     it("refuses runner arguments that are missing or extra", () => {
