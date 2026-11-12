@@ -1,11 +1,11 @@
-import { cp, mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { ConnectorFactories } from "@halonicjs/app";
-import type { TrustGrant } from "@halonicjs/ports";
+import { ConnectorFactories, WorkflowRuns } from "@halonicjs/app";
+import type { ConnectorFactory, TrustGrant } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -158,7 +158,100 @@ verifies("cli.local-engine", () => {
 
     expect(stuck.signal.reason).toEqual(new Error("lock taken"));
   });
+
+  it("gives a run's connector programs the grant, and goes on when three fail to close", async () => {
+    const { trusts, debugLines, stuck } = await runReportWithNotes(contractGrant);
+
+    expect(trusts).toEqual([contractGrant, contractGrant, contractGrant]);
+    // As many failures as stop the command when a step fails them in a row.
+    expect(stuck).toBe(false);
+    expect(debugLines.filter((line) => line.includes("close a run's connectors")).sort()).toEqual(
+      ["notes", "notes-2", "notes-3"].map(
+        (id) => `the engine couldn't close a run's connectors: ${id} didn't stop`,
+      ),
+    );
+  });
 });
+
+/** What the connectors of {@link runReportWithNotes}'s run started with, and how the command went. */
+interface NotesRun {
+  /** The trust grant each connector program was created with. */
+  readonly trusts: readonly (TrustGrant | null)[];
+  readonly debugLines: readonly string[];
+  readonly stuck: boolean;
+}
+
+/**
+ * Adds three connector files to the workspace, `notes` and two more, and
+ * runs Weekly report on the saved files in an engine opened with `trust`,
+ * its Reporter calling `notes`' tool once. The connectors are fakes that
+ * remember the grant they were created with, and whose close fails.
+ */
+async function runReportWithNotes(trust: TrustGrant | null): Promise<NotesRun> {
+  await mkdir(join(acme, "library", "connectors"), { recursive: true });
+  for (const id of ["notes", "notes-2", "notes-3"]) {
+    await writeFile(
+      join(acme, "library", "connectors", `${id}.connector.yaml`),
+      `id: ${id}\nname: ${id}\ntransport:\n  stdio:\n    command: node\ntools:\n  allow: [which]\n  read: [which]\n`,
+    );
+  }
+  await writeFile(
+    join(acme, "hubs", "reports", "agents", "reporter.agent.yaml"),
+    "id: reporter\nname: Reporter\nconnectors: [notes]\ninstructions: Ask the notes.\n",
+  );
+  await writeFile(
+    join(acme, "providers", "mock.yaml"),
+    'id: mock\nname: Test model\ntype: mock\nlocal: true\noptions:\n  script:\n    reporter: ["tool:which {}", "Done"]\n',
+  );
+  const trusts: (TrustGrant | null)[] = [];
+  const stdio: ConnectorFactory = {
+    transport: "stdio",
+    create: (config, factoryContext) => {
+      trusts.push(factoryContext.trust);
+      return {
+        id: config.id,
+        listTools: async () => [{ name: "which", description: "Says which.", parameters: {} }],
+        callTool: async () => "the notes",
+        close: async () => {
+          throw new Error(`${config.id} didn't stop`);
+        },
+      };
+    },
+  };
+  const debugLines: string[] = [];
+  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
+  const workspace = await loadWorkspace(dir.store);
+  const engine = await openWorkspaceEngine(
+    { ...context(new AbortController().signal), debug: (line) => debugLines.push(plainText(line)) },
+    {
+      ...setup(),
+      runConnectors: (grant) => ({
+        factories: new ConnectorFactories([stdio]),
+        context: { http: setup().http, tokens: new MemoryTokenStore() },
+        trust: grant,
+      }),
+    },
+    {
+      dir,
+      workspace,
+      trust,
+      runs: [{ hubId: "reports", workflowId: "weekly-report" }],
+      ending: runMessages.nothingRan(),
+    },
+  );
+  try {
+    const started = await new WorkflowRuns(engine.executor).startRun(
+      workspace,
+      "reports/weekly-report",
+      {},
+      { version: { reads: "saved-files" } },
+    );
+    expect(started.found).toBe("one");
+  } finally {
+    await engine.close();
+  }
+  return { trusts, debugLines, stuck: engine.stuck.aborted };
+}
 
 /**
  * How long a wait for the engine may take before the test fails. A stuck run's step
