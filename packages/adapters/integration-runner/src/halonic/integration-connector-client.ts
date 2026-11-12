@@ -21,7 +21,7 @@ export interface IntegrationConnectorClientOptions {
  * Wraps `loaded` as a connector client. It offers the sheet's tools and no
  * others: a tool the runner lists that the sheet doesn't name is not offered
  * and can't be called. The connection is made on the first use, so a client
- * that is never used connects nothing; once closed, every call fails rather
+ * that is never used asks for none until it closes; once closed, every call fails rather
  * than connect again.
  *
  * @example
@@ -60,11 +60,17 @@ class IntegrationConnectorClient implements ConnectorClient {
     return await this.#connect().callTool(name, args);
   }
 
+  /**
+   * Stops the integration's runner. The loader started the first runner to
+   * check what the code declares and stops it only when the last connection
+   * closes, so a client that never connected opens one just to close it.
+   */
   async close(): Promise<void> {
+    if (this.#closed) return;
     this.#closed = true;
-    const connection = this.#connection;
+    const connection = this.#connect();
     this.#connection = undefined;
-    await connection?.close();
+    await connection.close();
   }
 
   #connect(): IntegrationConnection {

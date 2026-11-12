@@ -1,7 +1,11 @@
-import type { LoadedIntegration } from "@halonicjs/adapter-integration-kit";
+import type {
+  AddressCheckingHttpClient,
+  LoadedIntegration,
+} from "@halonicjs/adapter-integration-kit";
 import type { IntegrationConnection, IntegrationHost, IntegrationTool } from "@halonicjs/ports";
 import { describe, expect, it } from "vitest";
 import { integrationConnectorClient } from "./integration-connector-client.ts";
+import { loadLocalIntegration } from "./local-integration.ts";
 
 const forecast: IntegrationTool = {
   name: "forecast",
@@ -88,10 +92,62 @@ describe("integrationConnectorClient", () => {
     expect(seen.connects).toBe(1);
   });
 
-  it("closing a client that never connected starts nothing", async () => {
-    const { seen, value } = loaded();
-    await integrationConnectorClient({ id: "weather", loaded: value }).close();
-    expect(seen.connects).toBe(0);
-    expect(seen.closes).toBe(0);
+  it("closing a client that never connected stops the runner the load started", async () => {
+    let runnerClosed = 0;
+    const tool = {
+      name: "forecast",
+      description: "Today's forecast for a city.",
+      parameters: {
+        type: "object",
+        properties: { city: { type: "string", description: "The city." } },
+        required: ["city"],
+      },
+      risk: "read" as const,
+      untrusted: true,
+    };
+    const sheet = {
+      id: "weather",
+      version: "1.0.0",
+      kit: 1,
+      provides: ["connector"],
+      hosts: [],
+      secrets: {},
+      tools: [
+        {
+          name: "forecast",
+          description: tool.description,
+          arguments: { city: "The city." },
+          risk: "read",
+          untrusted: true,
+        },
+      ],
+    };
+    const loadedIntegration = await loadLocalIntegration({
+      sheet,
+      approvedSheet: sheet,
+      folder: "/work/weather",
+      folderDisk: {
+        entries: () => [{ name: "index.js", kind: "file" }],
+        realPath: (path) => path,
+        identity: (file) => ({ id: file, names: 1 }),
+      },
+      choices: { secretNames: {} },
+      transport: { fetch: async () => new Response("{}") } as AddressCheckingHttpClient,
+      secrets: { get: async () => null },
+      tokens: { get: async () => null, set: async () => undefined, remove: async () => undefined },
+      start: async () => ({
+        declaration: { name: "weather", version: "1.0.0", tools: [tool] },
+        stopped: new Promise(() => undefined),
+        callTool: async () => "sunny",
+        close: async () => {
+          runnerClosed += 1;
+        },
+      }),
+    });
+    if (!loadedIntegration.ok) expect.fail(JSON.stringify(loadedIntegration.error));
+    const client = integrationConnectorClient({ id: "weather", loaded: loadedIntegration.value });
+    await client.listTools();
+    await client.close();
+    expect(runnerClosed).toBe(1);
   });
 });
