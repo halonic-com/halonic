@@ -19,7 +19,6 @@ import type {
   AnswerHarnessEffect,
   DecideInput,
   Effect,
-  ModelCallResult,
   StartChildEffect,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
@@ -44,7 +43,7 @@ import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest, startInputOf } from "./start-request.ts";
-import { resumeTimer, UnfinishedEffects } from "./unfinished-effects.ts";
+import { UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
 import { WatchedRuns } from "./watched-runs.ts";
 
