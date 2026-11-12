@@ -48,7 +48,12 @@ async function clickWith(element: Element, init: MouseEventInit): Promise<void> 
 
 /** A screen that keeps its own selection, as a real screen does. */
 function Selectable(
-  props: Partial<Omit<ListProps, "heading" | "label" | "loading" | "loadingLabel">> & {
+  props: Partial<
+    Omit<
+      ListProps,
+      "heading" | "label" | "loading" | "loadingLabel" | "groups" | "groupHeadingLevel"
+    >
+  > & {
     readonly multiple?: boolean;
   },
 ) {

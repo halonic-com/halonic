@@ -52,6 +52,8 @@ export interface ListSkeletonProps {
    * for screen readers, so heading navigation still finds the section.
    */
   readonly heading: Pick<ListHeadingProps, "name" | "detail" | "headingLevel"> | undefined;
+  /** The List has groups: a heading bar stands above the box, where the first group's heading goes. */
+  readonly grouped: boolean;
   readonly shape: ListSkeletonShape;
   /** What the status line says: "Loading skills". */
   readonly label: string;
@@ -72,6 +74,7 @@ export function ListSkeleton({
   look,
   phone,
   heading,
+  grouped,
   shape,
   label,
   onRetry,
@@ -96,6 +99,7 @@ export function ListSkeleton({
       <div aria-busy="true">
         {wait === "early" ? null : (
           <>
+            {grouped ? <HeadingBar /> : null}
             {/* Nothing in it takes focus, so it can clip the rows to the box's corners. */}
             <div aria-hidden="true" className={`overflow-hidden ${boxClasses[look]}`}>
               {/* The heading is the box's first line, as in the real List. */}

@@ -69,6 +69,22 @@ function Agents({
   );
 }
 
+/** Rows by day, as the Runs list: each day its own box, one grid for them all. */
+function AgentsByDay() {
+  return (
+    <div className="w-80 phone:w-full">
+      <List
+        label="Agents"
+        groups={[
+          { id: "today", heading: { name: "Today" }, rows: [customerSupport, mailTriage] },
+          { id: "yesterday", heading: { name: "Yesterday" }, rows: [invoices] },
+        ]}
+        onOpen={ignore}
+      />
+    </div>
+  );
+}
+
 /** Two rows still loading, built from SkeletonBars the way a screen builds them. */
 function LoadingAgents() {
   return (
@@ -117,7 +133,8 @@ export const listSection: PartSection = {
   id: "list",
   number: "6, 18.3, 19.3",
   name: "List, ListHeading, SkeletonBar",
-  order: "kit 6, 18.3, 19.3 · a List with two rows; the state is on the first row",
+  order:
+    "kit 6, 18.3, 19.3 · a List with two rows; the state is on the first row; Groups puts them under day headings (HAL-6764)",
   notApplicable: "read-only, busy",
   rows: [
     { name: "Default", copies: () => <Agents heading /> },
@@ -139,5 +156,6 @@ export const listSection: PartSection = {
       ),
     },
     { name: "Error", copies: () => <Agents first={invoices} /> },
+    { name: "Groups", copies: () => <AgentsByDay /> },
   ],
 };

@@ -8,6 +8,9 @@ import type { ListRow, ListSelection } from "./list-props.ts";
  */
 const widthClasses = "w-11 pl-4 touch:w-touch phone:w-touch";
 
+/** The same widths without the inset, for the column the cell sits in. */
+export const checkColumnWidth = "w-11 touch:w-touch phone:w-touch";
+
 interface CheckCellProps<Id extends string> {
   readonly row: ListRow<Id>;
   readonly selection: ListSelection<Id>;

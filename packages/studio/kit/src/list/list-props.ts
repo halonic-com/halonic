@@ -54,9 +54,21 @@ export interface ListSelection<Id extends string = string> {
   readonly verb?: string;
 }
 
-interface ListBase<Id extends string> {
+/**
+ * Rows under one heading, as the Runs list's days: "Today", "Yesterday". Each group is its own box,
+ * and the whole list stays one grid with one Tab stop.
+ */
+export interface ListGroup<Id extends string = string> {
+  /** Stable, never the index: "2026-11-12". */
+  readonly id: string;
+  /** Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. */
+  readonly heading: { readonly name: string; readonly detail?: string };
+  /** A group with no rows isn't drawn, heading and all. */
   readonly rows: readonly ListRow<Id>[];
-  /** Default 2. */
+}
+
+interface ListBase<Id extends string> {
+  /** The heading's level. Default 2. */
   readonly headingLevel?: 2 | 3 | 4;
   /**
    * Enter or a click on a row. Without it, a click toggles the selection. With a `selection` too,
@@ -90,15 +102,35 @@ interface ListBase<Id extends string> {
   readonly onRetry?: () => void;
 }
 
+/** A list of rows, in one box. */
+interface ListOfRows<Id extends string> extends ListBase<Id> {
+  readonly rows: readonly ListRow<Id>[];
+  readonly groups?: never;
+  readonly groupHeadingLevel?: never;
+}
+
 /** A list named by its heading, the box's first line (18.3). */
-interface ListWithHeading<Id extends string> extends ListBase<Id> {
+interface ListWithHeading<Id extends string> extends ListOfRows<Id> {
   readonly heading: { readonly name: string; readonly detail?: string };
   readonly label?: never;
 }
 
 /** A list without a heading, named by a label: "Agents". */
-interface ListWithLabel<Id extends string> extends ListBase<Id> {
+interface ListWithLabel<Id extends string> extends ListOfRows<Id> {
   readonly label: string;
+  readonly heading?: never;
+}
+
+/**
+ * A list of groups, each under its own heading, named by a label: "Runs". It has no heading of its
+ * own: the groups' headings are its headings.
+ */
+interface ListWithGroups<Id extends string> extends ListBase<Id> {
+  readonly groups: readonly ListGroup<Id>[];
+  /** The groups' headings' level. Default 3, as the Runs list's days (a11y 13.1). */
+  readonly groupHeadingLevel?: 2 | 3 | 4;
+  readonly label: string;
+  readonly rows?: never;
   readonly heading?: never;
 }
 
@@ -119,6 +151,13 @@ type ListLoading =
       readonly loadingLabel: string;
     };
 
-/** A list always has a name: a `heading` or a `label`, never both. */
-export type ListProps<Id extends string = string> = (ListWithHeading<Id> | ListWithLabel<Id>) &
+/**
+ * A list always has a name: a `heading` or a `label`, never both. It holds `rows`, or `groups` of
+ * rows under their own headings.
+ */
+export type ListProps<Id extends string = string> = (
+  | ListWithHeading<Id>
+  | ListWithLabel<Id>
+  | ListWithGroups<Id>
+) &
   ListLoading;
