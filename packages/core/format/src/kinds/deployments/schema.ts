@@ -67,6 +67,7 @@ export const Deployment = s
     shadow: s.boolean().default(false),
     /** Settings used when `host` is `cloudflare`. */
     cloudflare: CloudflareSettings.optional(),
+    /** Ceilings on what the deployment answers, such as requests per day. */
     limits: DeploymentLimits.optional(),
   })
   .strict();
