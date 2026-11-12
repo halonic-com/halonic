@@ -1623,6 +1623,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-update-state"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "halonic-workspace-files"
 version = "0.1.0"
 dependencies = [

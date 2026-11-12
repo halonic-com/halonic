@@ -1,0 +1,17 @@
+[package]
+name = "halonic-update-state"
+description = "What the Studio shell's updater knows: the update states it shows the page, when it checks, and its record of installs and bad signatures."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# The status goes to the page as JSON and the record is a JSON file, read and
+# written as `halonic-run-lock` reads and writes its lock record.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
