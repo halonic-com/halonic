@@ -38,8 +38,10 @@ function normalised(written: Connector): Connector {
   const connector = { ...written, tools };
   const { transport } = connector;
   if ("stdio" in transport) {
-    const cwd = folder(transport.stdio.cwd ?? ".");
-    return { ...connector, transport: { stdio: { ...transport.stdio, cwd } } };
+    const { inheritEnv, ...stdio } = transport.stdio;
+    const cwd = folder(stdio.cwd ?? ".");
+    const inherits = inheritEnv?.length ? { inheritEnv: [...inheritEnv].sort() } : {};
+    return { ...connector, transport: { stdio: { ...stdio, cwd, ...inherits } } };
   }
   if ("http" in transport) {
     const url = new URL(transport.http.url).href;

@@ -117,9 +117,23 @@ function storageCases(make: MakeToolApprovalStore): void {
         settings: { url: "https://notes.example.com/mcp", depth: 2, tags: ["a"] },
       },
     } satisfies ToolApproval;
+    const inherits = {
+      ...toolApproval({ name: "inherits" }),
+      server: {
+        kind: "stdio",
+        command: "aws-mcp",
+        args: [],
+        pin: null,
+        cwd: ".",
+        env: null,
+        secretEnv: null,
+        inheritEnv: ["AWS_PROFILE", "AWS_REGION"],
+      },
+    } satisfies ToolApproval;
     await store.approve(http);
     await store.approve(integration);
-    expect(await store.list("/workspaces/acme", "notes")).toEqual([http, integration]);
+    await store.approve(inherits);
+    expect(await store.list("/workspaces/acme", "notes")).toEqual([http, inherits, integration]);
   });
 
   it("replaces the approval when the same tool is approved again", async () => {

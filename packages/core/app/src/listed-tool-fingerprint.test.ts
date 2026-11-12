@@ -228,6 +228,26 @@ verifies("ports.listed-tool-approval", () => {
     expect(JSON.stringify(notes)).not.toContain("notes-token");
   });
 
+  it("asks again when a stdio server takes another variable from the app's environment", async () => {
+    const at = async (inheritEnv?: string[]) =>
+      stdioToolServer(
+        {
+          command: "aws-mcp",
+          args: [],
+          env: {},
+          ...(inheritEnv === undefined ? {} : { inheritEnv }),
+        },
+        digest,
+      );
+    const profile = await at(["AWS_REGION", "AWS_PROFILE"]);
+    expect(profile).toMatchObject({ inheritEnv: ["AWS_PROFILE", "AWS_REGION"] });
+    expect(sameToolServer(profile, await at(["AWS_PROFILE"]))).toBe(false);
+    expect(sameToolServer(profile, await at(["AWS_PROFILE", "AWS_REGION"]))).toBe(true);
+    // Without names, the address is the one an approval was given at before `inheritEnv`.
+    expect(await at([])).not.toHaveProperty("inheritEnv");
+    expect(sameToolServer(await at(), await at([]))).toBe(true);
+  });
+
   it("compares integration settings as canonical JSON", () => {
     const settings = { url: "https://notes.example.com/mcp", team: "a" };
     expect(

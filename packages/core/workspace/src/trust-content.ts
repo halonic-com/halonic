@@ -203,8 +203,11 @@ function transportContent(
       cwd: posixPath.normalize(stdio.cwd ?? "."),
       env: { ...stdio.env },
       secretEnv: mapValues(stdio.secretEnv ?? {}, secretReference),
-      // Only when written, so a connector without it keeps the content it was trusted with.
-      ...(stdio.inheritEnv === undefined ? {} : { inheritEnv: sorted(stdio.inheritEnv) }),
+      // Only when it names one, so a connector without it, or with `[]`, keeps the
+      // content it was trusted with.
+      ...((stdio.inheritEnv ?? []).length === 0
+        ? {}
+        : { inheritEnv: sorted(stdio.inheritEnv ?? []) }),
       // In the form the sandbox uses, so `API.example.com` and `api.example.com` are one site.
       ...(stdio.sites === undefined ? {} : { sites: sorted(asciiAllowedSites(stdio.sites)) }),
       ...(path === undefined ? {} : { path }),

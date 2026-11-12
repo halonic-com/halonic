@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-684; "Fingerprint coverage" in the HAL-188 plan (from HAL-675); `TrustStore` port v1
+- Source: HAL-6654 (`inheritEnv`, from Liam's review of halonic#1976); HAL-684; "Fingerprint coverage" in the HAL-188 plan (from HAL-675); `TrustStore` port v1
 
-The trust fingerprint of a workspace's connectors shall change when an attacker edits anything that decides what runs or where it talks to: a program's command, arguments, folder, variables (`NODE_OPTIONS`, `PYTHONSTARTUP`, `LD_PRELOAD`, a changed value, a `${VAR}` pointed elsewhere, a variable set from a secret), an HTTP address's scheme, host, port, path or query, its header names, the transport, the secret a connector uses, the Google account, and the workspace's approval, offered-tool and local settings. It shall stay the same when the files only write the same connectors differently: keys in another order, connectors or tool names in another order, a folder through `..`, a host in Unicode or punycode, or in capitals.
+The trust fingerprint of a workspace's connectors shall change when an attacker edits anything that decides what runs or where it talks to: a program's command, arguments, folder, variables (`NODE_OPTIONS`, `PYTHONSTARTUP`, `LD_PRELOAD`, a changed value, a `${VAR}` pointed elsewhere, a variable set from a secret, a variable taken from the person's environment with `inheritEnv`), an HTTP address's scheme, host, port, path or query, its header names, the transport, the secret a connector uses, the Google account, and the workspace's approval, offered-tool and local settings. It shall stay the same when the files only write the same connectors differently: keys in another order, connectors or tool names in another order, a folder through `..`, a host in Unicode or punycode, or in capitals, `inheritEnv` names in another order, or an empty `inheritEnv`.
 
 ## Examples
 

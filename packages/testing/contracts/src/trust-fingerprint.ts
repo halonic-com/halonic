@@ -95,6 +95,11 @@ export const fingerprintAttacks = {
     stdio(),
     stdio({ secretEnv: { NODE_OPTIONS: "files-token" } }),
   ),
+  "takes a variable from the person's environment": edit(
+    "a",
+    stdio(),
+    stdio({ inheritEnv: ["AWS_PROFILE"] }),
+  ),
   "moves the program to another folder": edit("b", stdio(), stdio({ cwd: "./scripts" })),
   "moves the program to another folder through ..": edit(
     "b",
@@ -164,6 +169,12 @@ export const fingerprintControls = {
     id: "files",
     version: 1,
   }),
+  "names the inherited variables in another order": edit(
+    "a",
+    stdio({ inheritEnv: ["AWS_PROFILE", "AWS_REGION"] }),
+    stdio({ inheritEnv: ["AWS_REGION", "AWS_PROFILE"] }),
+  ),
+  "writes an empty list of inherited variables": edit("a", stdio(), stdio({ inheritEnv: [] })),
   "writes the same folder through ..": edit(
     "b",
     stdio({ cwd: "./scripts" }),

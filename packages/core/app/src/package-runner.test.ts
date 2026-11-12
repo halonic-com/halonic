@@ -129,8 +129,16 @@ verifies("app.package-runner-launch", () => {
     expect(refused(stdio({ pin, inheritEnv: ["AWS_PROFILE", "npm_config_registry"] }))).toContain(
       "sets npm_config_registry",
     );
-    expect(refused(stdio({ pin, inheritEnv: ["HTTPS_PROXY"] }))).toContain("another server");
+    expect(refused(stdio({ pin, inheritEnv: ["NODE_TLS_REJECT_UNAUTHORIZED"] }))).toContain(
+      "only claims to be the registry",
+    );
+    expect(refused(stdio({ pin, inheritEnv: ["Https_Proxy"] }))).toContain("another server");
     expect(checkPackageRunnerLaunch(stdio({ pin, inheritEnv: ["AWS_PROFILE"] })).ok).toBe(true);
+  });
+
+  it("lets a pinned connector name a variable the base already gives it", () => {
+    const named = ["HTTPS_PROXY", "https_proxy", "NODE_EXTRA_CA_CERTS", "HOME", "PATH"];
+    expect(checkPackageRunnerLaunch(stdio({ pin, inheritEnv: named })).ok).toBe(true);
   });
 
   it("refuses a pinned runner with an option that fetches from another registry", () => {

@@ -5,6 +5,7 @@
 
 import type { ConnectorPin, ConnectorTransport } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
+import { isConnectorBaseName } from "./connector-base-env.ts";
 import { checkPinVersion, isSamePackage, type PinRegistry } from "./connector-pin.ts";
 import { readPackageSpec } from "./package-spec.ts";
 import { checkAllowedOptions } from "./pin-allowed-options.ts";
@@ -146,7 +147,9 @@ export function checkPackageRunnerLaunch(
     return ok(null);
   }
   // A variable taken from the app's environment moves the registry as much as one set here.
-  const inherited = Object.fromEntries((inheritEnv ?? []).map((name) => [name, ""]));
+  // One the base already gives, such as the person's proxy, changes nothing by being named.
+  const named = (inheritEnv ?? []).filter((name) => !isConnectorBaseName(name));
+  const inherited = Object.fromEntries(named.map((name) => [name, ""]));
   const variables = findBlockedVariables({ ...env, ...inherited });
   if (variables !== undefined) {
     return err(

@@ -180,6 +180,7 @@ function serverFields(server: ToolServer): ToolServer {
         cwd: server.cwd,
         env: server.env,
         secretEnv: server.secretEnv,
+        ...(server.inheritEnv === undefined ? {} : { inheritEnv: [...server.inheritEnv] }),
       };
     case "integration":
       return {
@@ -208,21 +209,8 @@ function serverFrom(value: unknown): ToolServer | null {
       if (typeof url !== "string" || !isWrittenDigest(headers)) return null;
       return { kind: "http", url, headers };
     }
-    case "stdio": {
-      const { command, args, pin, cwd, env, secretEnv } = value;
-      const connectorPin = pin === null ? null : pinFrom(pin);
-      if (
-        typeof command !== "string" ||
-        !isTextList(args) ||
-        connectorPin === undefined ||
-        typeof cwd !== "string" ||
-        !isWrittenDigest(env) ||
-        !isWrittenDigest(secretEnv)
-      ) {
-        return null;
-      }
-      return { kind: "stdio", command, args, pin: connectorPin, cwd, env, secretEnv };
-    }
+    case "stdio":
+      return stdioServerFrom(value);
     case "integration": {
       const { id, version, settings } = value;
       if (typeof id !== "string" || typeof version !== "string" || !isPlainObject(settings)) {
@@ -233,6 +221,34 @@ function serverFrom(value: unknown): ToolServer | null {
     default:
       return null;
   }
+}
+
+/** A stored `stdio` address, or `null` when a field isn't what it should be. */
+function stdioServerFrom(value: Record<string, unknown>): ToolServer | null {
+  const { command, args, pin, cwd, env, secretEnv, inheritEnv } = value;
+  const connectorPin = pin === null ? null : pinFrom(pin);
+  if (
+    typeof command !== "string" ||
+    !isTextList(args) ||
+    connectorPin === undefined ||
+    typeof cwd !== "string" ||
+    !isWrittenDigest(env) ||
+    !isWrittenDigest(secretEnv) ||
+    (inheritEnv !== undefined && !isTextList(inheritEnv))
+  ) {
+    return null;
+  }
+  const server: ToolServer = {
+    kind: "stdio",
+    command,
+    args,
+    pin: connectorPin,
+    cwd,
+    env,
+    secretEnv,
+  };
+  // Only when stored, so an address written before `inheritEnv` reads as it was.
+  return inheritEnv === undefined ? server : { ...server, inheritEnv };
 }
 
 /** The pin in `value`, or `undefined` when it isn't one. */

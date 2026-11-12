@@ -112,6 +112,18 @@ export function connectorBaseEnv(
   return base;
 }
 
+/**
+ * Whether every platform gives a program `name` without its connector
+ * naming it, as written: `HTTPS_PROXY` or `https_proxy`, not `Https_Proxy`.
+ *
+ * @example
+ * isConnectorBaseName("HTTPS_PROXY"); // true
+ * isConnectorBaseName("AWS_PROFILE"); // false
+ */
+export function isConnectorBaseName(name: string): boolean {
+  return isBaseVariable(name, false);
+}
+
 function isBaseVariable(name: string, windows: boolean): boolean {
   const written = windows ? name.toUpperCase() : name;
   if (written.startsWith(localePrefix)) return true;

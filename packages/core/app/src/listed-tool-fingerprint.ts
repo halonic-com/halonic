@@ -214,7 +214,9 @@ export async function httpToolServer(
  * The address of a `stdio` connector: its command and arguments as written,
  * its pin or `null`, the folder it starts in as the trust content writes it
  * (`.` when none is written), and its environment and secret environment
- * (variable name to secret name) each as a {@link writtenDigest}.
+ * (variable name to secret name) each as a {@link writtenDigest}, and the
+ * names it takes from the app's environment, sorted, only when it names one,
+ * so an approval given before `inheritEnv` existed keeps its address.
  *
  * @example
  * await stdioToolServer(
@@ -230,6 +232,7 @@ export async function stdioToolServer(
     readonly env: Readonly<Record<string, string>>;
     readonly cwd?: string;
     readonly secretEnv?: Readonly<Record<string, string>>;
+    readonly inheritEnv?: readonly string[];
     readonly pin?: ConnectorPin;
   },
   digest: Digest,
@@ -242,6 +245,9 @@ export async function stdioToolServer(
     cwd: posixPath.normalize(connector.cwd ?? "."),
     env: await writtenDigest(connector.env, digest),
     secretEnv: await writtenDigest(connector.secretEnv ?? {}, digest),
+    ...((connector.inheritEnv ?? []).length === 0
+      ? {}
+      : { inheritEnv: [...(connector.inheritEnv ?? [])].sort() }),
   };
 }
 

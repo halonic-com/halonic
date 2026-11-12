@@ -40,4 +40,14 @@ verifies("format.connector-inherit-env", () => {
       "transport.stdio.inheritEnv.2 inherit-env-name 2",
     ]);
   });
+
+  it("refuses a name written twice, in any letter case", () => {
+    const text = yaml(
+      "id: aws",
+      "transport: { stdio: { command: uvx, inheritEnv: [AWS_PROFILE, KUBECONFIG, aws_profile] } }",
+    );
+    const problems = problemsOf("connector", text);
+    expect(summary(problems)).toEqual(["transport.stdio.inheritEnv.2 inherit-env-duplicate 2"]);
+    expect(problems[0]?.message).toContain("aws_profile");
+  });
 });

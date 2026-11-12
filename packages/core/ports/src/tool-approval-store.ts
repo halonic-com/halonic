@@ -23,8 +23,10 @@ export const toolApprovalStoreVersion = 1;
  *   trust content writes it (`.` when the workspace writes none), the
  *   environment as its {@link WrittenDigest}, for the same reason, and the
  *   secret environment (variable name to secret name) as its
- *   {@link WrittenDigest}. So a wrapper pointed at another server through
- *   its environment, its folder or another secret asks again.
+ *   {@link WrittenDigest}, and the names it takes from the app's environment
+ *   (`inheritEnv`), sorted, only when it names one. So a wrapper pointed at
+ *   another server through its environment, its folder, another secret or
+ *   another variable of the person's asks again.
  * - `integration`: the integration's id, its version and the settings the
  *   workspace gives it, such as the `url` of an MCP server. A new version
  *   asks again, because its reviewed code may talk to the server
@@ -43,6 +45,7 @@ export type ToolServer =
       cwd: string;
       env: WrittenDigest | null;
       secretEnv: WrittenDigest | null;
+      inheritEnv?: string[];
     }
   | { kind: "integration"; id: string; version: string; settings: Record<string, unknown> };
 
