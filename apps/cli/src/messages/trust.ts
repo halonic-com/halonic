@@ -160,6 +160,12 @@ export const trustMessages = defineMessages("trust", {
   notTrusted: () => phrase`Not trusted. Nothing was started.`,
   alreadyTrusted: (name: string, trustedOn: string) =>
     phrase`${name} is already trusted on this computer. Nothing changed since ${trustedOn}.`,
+  /**
+   * With a ✓, instead of the check, when a run there can only reach the test
+   * model, so `run` doesn't ask for trust (team, HAL-6631 and HAL-6580).
+   */
+  notNeeded: (name: string) =>
+    phrase`${name} needs no trust: it reaches only the test model and starts nothing.`,
   /** With a !, before the check, when the record of what's trusted can't be read. */
   listUnreadable: () =>
     phrase`Halonic couldn't read its list of trusted workspaces, so it's asking again.`,

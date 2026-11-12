@@ -5,7 +5,7 @@ import { parseFile } from "@halonicjs/format";
 import type { Clock, TrustRecord, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { settingsPath } from "@halonicjs/workspace";
+import { reachesOnlyTheTestModel, settingsPath } from "@halonicjs/workspace";
 import {
   type CliCommand,
   type CommandContext,
@@ -112,7 +112,9 @@ export const trustCommand: CliCommand = createTrustCommand(nodeTrustMachine);
  * Checks the workspace and, when it isn't trusted yet, shows the check and
  * asks; with a program that isn't pinned, asks a second time. Both answers
  * must be yes, or nothing is saved. `--yes` answers both, but only with the
- * `--fingerprint` of what the check showed (cli-output 1.7).
+ * `--fingerprint` of what the check showed (cli-output 1.7). A workspace
+ * whose runs can only reach the test model needs no trust: it says so and
+ * saves nothing.
  *
  * @throws UsageError for `--yes` without `--fingerprint`, before anything is read
  * @throws NotTrustedError when the fingerprint given isn't the current one,
@@ -134,10 +136,20 @@ async function reviewAndTrust(
   }
   const opened = await openWorkspaceDir(input, context);
   const workspace = await readWorkspaceTrust(opened, machine.commandSearch);
+  const facts = { name: workspace.name, folder: opened.shown };
+  // The rule `run` and `doctor` skip trust by: a run there starts nothing,
+  // so there is nothing to check, ask or save (HAL-6631). A `--fingerprint`
+  // has nothing to match, so it is left unused.
+  if (reachesOnlyTheTestModel(workspace.subject)) {
+    return {
+      exitCode: exitCode.ok,
+      lines: [marked(trustMessages.notNeeded(workspace.name))],
+      json: { ...facts, status: "not-needed" },
+    };
+  }
   const trust = cliTrustService(machine.store, machine.clock);
   const check = await trust.check(workspace.subject);
   assertTrustable(check, workspace);
-  const facts = { name: workspace.name, folder: opened.shown };
   const lines = trustCheckLines(check, facts);
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
