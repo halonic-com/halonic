@@ -5,6 +5,7 @@ import type { MxcDisk } from "./disk.ts";
 export class MemoryDisk implements MxcDisk {
   readonly #folders = new Set<string>();
   readonly #files = new Map<string, string>();
+  readonly #links = new Map<string, string>();
 
   /** Puts a folder (and its parents) there. */
   folder(path: string): this {
@@ -19,6 +20,18 @@ export class MemoryDisk implements MxcDisk {
     this.folder(win32.dirname(path));
     this.#files.set(key(path), text);
     return this;
+  }
+
+  /** Makes `path` a link (or junction) to `target`, which a file or folder may be. */
+  link(path: string, target: string): this {
+    this.folder(win32.dirname(path));
+    this.#links.set(key(path), target);
+    return this;
+  }
+
+  async realPath(path: string): Promise<string | null> {
+    const resolved = this.#follow(path);
+    return (await this.kind(resolved)) === "missing" ? null : resolved;
   }
 
   async kind(path: string): Promise<"folder" | "file" | "missing"> {
@@ -36,7 +49,7 @@ export class MemoryDisk implements MxcDisk {
   }
 
   async copyFile(from: string, to: string): Promise<void> {
-    const text = this.#files.get(key(from));
+    const text = this.#files.get(key(this.#follow(from)));
     if (text === undefined) throw new Error(`no file ${from}`);
     await this.writeText(to, text);
   }
@@ -55,6 +68,18 @@ export class MemoryDisk implements MxcDisk {
     }
   }
 
+  /** `path` with every link on it followed, from the top folder down. */
+  #follow(path: string): string {
+    let resolved = path;
+    for (let hops = 0; hops < 16; hops++) {
+      const link = [...this.#links].find(([from]) => isUnder(from, key(resolved)));
+      if (link === undefined) return resolved;
+      const [from, target] = link;
+      resolved = target + key(resolved).slice(from.length);
+    }
+    throw new Error(`too many links on ${path}`);
+  }
+
   /** Every file there, by lower-case path. */
   fileNames(): string[] {
     return [...this.#files.keys()];
@@ -63,4 +88,8 @@ export class MemoryDisk implements MxcDisk {
 
 function key(path: string): string {
   return win32.normalize(path).replace(/\\+$/, "").toLowerCase();
+}
+
+function isUnder(folder: string, path: string): boolean {
+  return path === folder || path.startsWith(`${folder}\\`);
 }

@@ -85,8 +85,8 @@ export class MxcSession implements SandboxSession {
 
   /**
    * Opens a session: builds the policy, makes the session's own box folder,
-   * copies the read-only files into it and proves the fence. The proof is settled before this returns, and its
-   * time counts against the limit. A fence that isn't proven is not an error
+   * copies the read-only files into it and proves the fence. The proof is
+   * settled before this returns, and its time counts against the limit. A fence that isn't proven is not an error
    * here: the session opens `not-fenced`, and `start` throws.
    *
    * @throws when the profile can't be applied (see {@link boxPolicy}), the box folder can't be made or a read-only file can't be copied (see {@link copyReadOnlyFiles})

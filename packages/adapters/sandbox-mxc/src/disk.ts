@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import type { GrantDisk } from "./grant-path.ts";
 
 /**
@@ -13,6 +13,8 @@ export interface MxcDisk extends GrantDisk {
   writeText(path: string, text: string): Promise<void>;
   /** A text file's content, or `null` when it isn't there. */
   readText(path: string): Promise<string | null>;
+  /** Where a path really is once every link and junction on it is followed, or `null` when it isn't there. */
+  realPath(path: string): Promise<string | null>;
   /** Copies a file to `to`, replacing one that is there. The folder of `to` must exist. */
   copyFile(from: string, to: string): Promise<void>;
   /** Removes a file or folder; nothing happens when it isn't there. */
@@ -34,6 +36,15 @@ export const fileDisk: MxcDisk = {
   },
   writeText: (path, text) => writeFile(path, text),
   copyFile: (from, to) => copyFile(from, to),
+  realPath: async (path) => {
+    try {
+      // Windows may answer with a `\\?\` prefix, which the policy's paths never carry.
+      return (await realpath(path)).replace(/^\\\\\?\\/, "");
+    } catch (error) {
+      if (isMissing(error)) return null;
+      throw error;
+    }
+  },
   readText: async (path) => {
     try {
       return await readFile(path, "utf8");
