@@ -635,6 +635,18 @@
     ]
   },
   {
+    "id": "method-fields-by-name",
+    "requirement": "engine.task-method",
+    "area": "workflow runs: the fields line of a method prompt",
+    "old": "784f78d's prompt for a step that calls a method named the fields of the method's JSON answer in the order the agent file lists them (the base fixture's extract: vendor, amount, note).",
+    "new": "The engine names them in name order (amount, note, vendor). The rest of the prompt, each field's type and the answer are the same.",
+    "why": "Runs keep their definitions as canonical JSON (HAL-186 decision 5), which sorts keys, so the file's order is gone when a run reads them; the same cause as parallel-branch-name-order. The line tells the model which fields to answer with, and the answer is read as JSON by name, so the order changes the prompt, not a result.",
+    "status": "proposed",
+    "runRules": [
+      "method-fields-by-name"
+    ]
+  },
+  {
     "id": "child-run-ids-from-the-step",
     "requirement": "engine.local-child-runs",
     "area": "run logs: child run IDs",

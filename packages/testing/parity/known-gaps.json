@@ -18,19 +18,6 @@
     ]
   },
   {
-    "id": "task-method-ignored",
-    "task": "HAL-4757",
-    "area": "workflow runs: a task step method and with",
-    "old": "784f78d built the prompt of the extract step from the clerk extract method and its with values, and used the method model, steps, tools and output fields.",
-    "new": "The engine ignores method and with: the clerk gets the run input as JSON.",
-    "tests": [
-      "billing/invoice/an approved invoice is paid and announced",
-      "billing/invoice/a rejection with a comment ends in rejected",
-      "billing/invoice/an approval nobody answers expires after two days",
-      "billing/invoice/without a decision the run waits"
-    ]
-  },
-  {
     "id": "step-signal-and-conversation-ignored",
     "task": "HAL-4758",
     "area": "workflow runs: a step signal and conversation",

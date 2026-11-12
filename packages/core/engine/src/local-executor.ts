@@ -23,6 +23,7 @@ import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn, definitionsOf } from "./kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
+import { callMethodOf } from "./kernel/step-method.ts";
 import {
   type AgentKnowledge,
   agentKnowledge,
@@ -42,6 +43,7 @@ import {
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import { runsOptionsOf } from "./run/local-runs-options.ts";
+import { methodConnectors, methodHalonicTools } from "./run/method-tools.ts";
 import { refusalLog } from "./run/refusal-log.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
@@ -375,6 +377,9 @@ export class LocalExecutor implements RunExecutor {
    * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
    * turn's full run log comes in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
    *
+   * A call for a step with `method` uses the method's `model` as the alias, its `maxSteps` as the
+   * round limit, and only the tools its `tools` names ({@link methodHalonicTools}).
+   *
    * A `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item
    * started or below it ({@link callAlongsideOthers}), is offered only the connector tools whose
    * listing says they read and their kept file doesn't put under `approve` ({@link openRunConnectorsOf}):
@@ -398,10 +403,12 @@ export class LocalExecutor implements RunExecutor {
       alongsideOthers: await callAlongsideOthers(this.options.runs?.store, run, call.callId),
     };
     const agent = agentIn(turn.definitions, call.agent);
+    const method = callMethodOf(turn.definitions, call.state, call.agent);
     const messages = runTurnMessages(agent, turn.definitions, call.prompt);
     const model = await this.options.resolveModel({
       hubId: run.hubId,
       agentId: call.agent,
+      ...(method?.model === undefined ? {} : { alias: method.model }),
       messages,
       tools: [],
     });
@@ -410,20 +417,23 @@ export class LocalExecutor implements RunExecutor {
     const connectors =
       connectorCalls === undefined
         ? []
-        : await openRunConnectorsOf(
-            () => this.connectorsOfRun(run),
-            agent,
-            connectorTools,
-            turn.alongsideOthers,
+        : methodConnectors(
+            await openRunConnectorsOf(
+              () => this.connectorsOfRun(run),
+              agent,
+              connectorTools,
+              turn.alongsideOthers,
+            ),
+            method,
           );
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
-    const maxRounds = agent?.maxSteps ?? defaultRunMaxRounds;
+    const maxRounds = method?.maxSteps ?? agent?.maxSteps ?? defaultRunMaxRounds;
     const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
       messages,
-      halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
+      halonicTools: methodHalonicTools(this.runToolsOf(turn, call.agent, 0, knowledge), method),
       connectors,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
       ...agentParamsOf(agent),
