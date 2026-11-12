@@ -34,6 +34,20 @@ const methodWorkflow: Workflow = {
   },
 };
 
+/** The reply workflow, with its `draft` step a `parallel` state whose one branch calls the `draft` method. */
+const branchMethodWorkflow: Workflow = {
+  ...replyWorkflow,
+  states: {
+    ...replyWorkflow.states,
+    draft: {
+      type: "parallel",
+      branches: { reply: { agent: "writer", method: "draft", with: { to: "{{input.from}}" } } },
+      output: "reply",
+      on: [{ to: "sent", event: "done" }],
+    },
+  },
+};
+
 const tools = [
   halonicTool("lookup", async () => "found"),
   halonicTool("publish", async () => "published"),
@@ -115,5 +129,78 @@ verifies("engine.task-method", () => {
     const [narrowed] = methodConnectors([connector], draft);
     expect((await narrowed?.listTools())?.map((tool) => tool.name)).toEqual(["lookup"]);
     expect(methodConnectors([connector], { ...draft, tools: undefined })).toEqual([connector]);
+  });
+});
+
+verifies("engine.parallel-branch-method", () => {
+  it("makes a branch's call with its method's model, tools and reply format", async () => {
+    const asked: ChatTurnRequest[] = [];
+    const runs = new KernelRuns();
+    const setup = runsOn([textAnswer('{"subject": "Hi"}')], runs, {
+      workflow: branchMethodWorkflow,
+      agents: {
+        writer: {
+          ...writerAgent(),
+          methods: { draft: { ...draft, output: { subject: "string" } } },
+        },
+      },
+      halonicTools: tools,
+      onResolveModel: (request) => asked.push(request),
+    });
+    await setup.executor.start(replyStart);
+    await setup.scheduler.runDue();
+    expect(asked.map((request) => request.alias)).toEqual(["careful"]);
+    expect(offered(setup.model.requests[0])).toEqual(["lookup"]);
+    expect(setup.model.requests[0]?.messages[0]).toEqual({
+      role: "system",
+      content: "Reply with JSON only.",
+    });
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("gives two branches of one agent each its own method's prompt, model and tools", async () => {
+    const summarize: AgentMethod = {
+      input: ["to"],
+      instructions: "Summarize the thread with {{to}}.",
+      tools: ["publish"],
+      model: "quick",
+      output: "text",
+    };
+    const twoBranchWorkflow: Workflow = {
+      ...replyWorkflow,
+      states: {
+        ...replyWorkflow.states,
+        draft: {
+          type: "parallel",
+          branches: {
+            reply: { agent: "writer", method: "draft", with: { to: "{{input.from}}" } },
+            recap: { agent: "writer", method: "summarize", with: { to: "{{input.from}}" } },
+          },
+          output: "reply",
+          on: [{ to: "sent", event: "done" }],
+        },
+      },
+    };
+    const asked: ChatTurnRequest[] = [];
+    const runs = new KernelRuns();
+    const setup = runsOn([textAnswer("Dear support"), textAnswer("A recap")], runs, {
+      workflow: twoBranchWorkflow,
+      agents: { writer: { ...writerAgent(), methods: { draft, summarize } } },
+      halonicTools: tools,
+      onResolveModel: (request) => asked.push(request),
+    });
+    await setup.executor.start(replyStart);
+    await setup.scheduler.runDue();
+    expect(asked.map((request) => request.alias).sort()).toEqual(["careful", "quick"]);
+    const offeredByPrompt = new Map(
+      setup.model.requests.map((request) => [request.messages.at(-1)?.content, offered(request)]),
+    );
+    expect(offeredByPrompt).toEqual(
+      new Map([
+        ['Method "draft".\n\nDraft a reply to support.', ["lookup"]],
+        ['Method "summarize".\n\nSummarize the thread with support.', ["publish"]],
+      ]),
+    );
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 });

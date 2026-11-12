@@ -1,5 +1,5 @@
 import type { RunFailureReason } from "@halonicjs/events";
-import type { Workflow, WorkflowState } from "@halonicjs/format";
+import type { Agent, AgentMethod, Workflow, WorkflowState } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { DecideInput, StartInput } from "../../kernel/decide-types.ts";
@@ -402,6 +402,67 @@ verifies("engine.task-json-answer", () => {
       branch: "web",
       output: null,
       reason: "error",
+    });
+  });
+});
+
+/** A method that answers with fields, called by one branch of a `parallel` state. */
+const extractMethod: AgentMethod = {
+  description: "Pull the vendor and amount out of an invoice.",
+  input: ["invoice"],
+  instructions: "Extract the vendor and amount from: {{invoice}}",
+  tools: [],
+  maxSteps: 2,
+  output: { vendor: "string", amount: "number" },
+};
+
+const clerk: Agent = { ...writerAgent(), id: "clerk", methods: { extract: extractMethod } };
+
+function methodBranchWorkflow(method = "extract"): Workflow {
+  return researchWorkflow({
+    branches: {
+      extract: { agent: "clerk", method, with: { invoice: "{{input.topic}}" } },
+      notes: { agent: "reader", input: "Read the notes on {{input.topic}}" },
+    },
+  });
+}
+
+verifies("engine.parallel-branch-method", () => {
+  it("asks a branch with its method's prompt, and a plain branch with its input", () => {
+    const { decisions } = play(methodBranchWorkflow(), [start], { clerk });
+    expect(decisions[0]?.effects).toMatchObject([
+      {
+        agent: "clerk",
+        prompt: expect.stringContaining("Extract the vendor and amount from: tea"),
+      },
+      { agent: "reader", prompt: "Read the notes on tea" },
+    ]);
+  });
+
+  it("checks a branch's answer against its method's fields", () => {
+    const reply = '```json\n{"vendor": "Acme Paper", "amount": 120}\n```';
+    const { log } = play(
+      methodBranchWorkflow(),
+      [start, answer("call-1", reply), answer("call-2", "Notes")],
+      { clerk },
+    );
+    expect(log).toContainEqual(
+      expect.objectContaining({
+        type: "context.updated",
+        key: "findings",
+        value: { extract: { vendor: "Acme Paper", amount: 120 }, notes: "Notes" },
+      }),
+    );
+  });
+
+  it("fails the run before any branch starts when the agent has no such method", () => {
+    const { run, log } = play(methodBranchWorkflow("missing"), [start], { clerk });
+    expect(run?.status).toBe("failed");
+    expect(log.some((event) => event.type === "agent.started")).toBe(false);
+    expect(log.at(-1)).toMatchObject({
+      error:
+        'Branch "extract" of parallel state "research" calls method "missing", ' +
+        'which agent "clerk" doesn\'t have.',
     });
   });
 });
