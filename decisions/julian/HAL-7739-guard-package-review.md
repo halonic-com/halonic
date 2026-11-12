@@ -10,3 +10,4 @@
 
 - tooling/check/
 - check.guard-two-guardians
+- check.guard-notes-own-paths
