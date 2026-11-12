@@ -66,6 +66,9 @@ export const pbkdf2ChainFormat: PasswordHashFormatCases = {
   ],
   malformed: [
     chainHash("i=100000,n=6", `${salt}=`),
+    // The salt's last character carries stray bits after its 16 bytes: a
+    // second text for the same salt, so it is refused.
+    chainHash("i=100000,n=6", "AAECAwQFBgcICQoLDA0ODx"),
     chainHash("i=100000,n=6", "AAECAwQFBgcICQoLDA0O"),
     chainHash("i=100000,n=6", salt, "rfDFKdlz6hQsDnqes4jawGjfp+mn20j77PR84Xj0KQ"),
     chainHash("n=6,i=100000"),
