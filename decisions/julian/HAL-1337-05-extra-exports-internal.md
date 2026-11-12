@@ -2,6 +2,7 @@
 
 - Approval: Liam and Chief decided this on [HAL-3434](/HAL/issues/HAL-3434); the change is built in [HAL-1337](/HAL/issues/HAL-1337). The guard change is signed as `internal` under the interim rule from [HAL-5221](/HAL/issues/HAL-5221), until a user key is pinned
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:P+V9fFpl4gb0cvbP3iqXfLX4FDO7qJOzrIZtgcrWhF8aeuReFliU9Hkxr+hBJrMTVMhmgQ3PMX/6G9yjQMERBA==
 
 Registering a package's deliberate extra entry point in `extraExports` of `tooling/check/policy.json`
 is routine, but `policy.json` sits under `tooling/check/`, so each one needed a board-signed note. Now a
