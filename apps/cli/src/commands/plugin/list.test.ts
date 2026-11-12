@@ -62,7 +62,7 @@ verifies("cli.commands.plugin.list", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      "No plugins yet. Add one from a folder with halonic plugin add <folder>.",
+      "No plugins yet. Add one with halonic plugin add <folder or git address>.",
     ]);
   });
 

@@ -1,12 +1,20 @@
-// `halonic plugin add <folder>`: copies a plugin into the profile's plugins
-// folder, shows the trust check and asks whether to trust it (cli-output
-// 3.6). A thin command over `PluginService.add` and `trust`: the service
-// reads, checks and places the plugin, this file shows and asks.
+// `halonic plugin add <folder or git address>[@commit]`: copies a plugin
+// into the profile's plugins folder, shows the trust check and asks whether
+// to trust it (cli-output 3.6). A thin command over `PluginService.add` and
+// `trust`: the service reads, checks and places the plugin, this file shows
+// and asks. A git address is first exported to a temporary folder outside
+// every workspace (`git-source.ts`).
 
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
-import type { PluginAddRefusal, PluginEntry, PluginProblem, PluginService } from "@halonicjs/app";
+import type {
+  PluginAddRefusal,
+  PluginEntry,
+  PluginInstall,
+  PluginProblem,
+  PluginService,
+} from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import {
   type CommandContext,
@@ -22,6 +30,12 @@ import { trustMessages } from "../../messages/trust.ts";
 import { printable } from "../../output/printable.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
+import {
+  exportToTemporaryFolder,
+  exportWithGit,
+  type GitSource,
+  gitSourceOf,
+} from "./git-source.ts";
 
 /** An added plugin that was read and checked. */
 type AddedPlugin = Exclude<PluginEntry, { status: "broken" }>;
@@ -55,21 +69,101 @@ export async function addPlugin(
     );
   }
 
-  const folder = resolve(context.cwd, source);
-  if (!(await isFolder(folder))) {
-    throw refusal("invalid_input", pluginMessages.notAFolder(printable(source)).phrase);
-  }
+  const opened = await openSource(source, context, setup);
   const service = openPluginService(setup);
-  const added = await service.add(new FileSystemFolderReader(folder), {
-    from: { kind: "folder", path: folder },
-    replace: false,
-  });
+  let added: Awaited<ReturnType<PluginService["add"]>>;
+  try {
+    added = await service.add(new FileSystemFolderReader(opened.folder), {
+      from: opened.from,
+      replace: false,
+    });
+  } finally {
+    await opened.close();
+  }
   if (!added.ok) throw refused(added.error);
   const entry = added.value;
   if (entry.status === "broken") {
     throw refusal("invalid_input", firstProblem(entry.problems));
   }
-  return await trustAdded(service, entry, { context, yes, fingerprint });
+  const result = await trustAdded(service, entry, { context, yes, fingerprint });
+  return { ...result, lines: [...opened.printedAhead, ...result.lines] };
+}
+
+/** A source's files in a folder on this computer, and where they came from. */
+interface OpenedSource {
+  readonly folder: string;
+  readonly from: PluginInstall["source"];
+  /** The lines opening it printed ahead, which lead the result's lines. */
+  readonly printedAhead: readonly Phrase[];
+  /** Deletes what opening it made; nothing for a folder. */
+  close(): Promise<void>;
+}
+
+/**
+ * The folder to add from: the source itself, or for a git address one
+ * commit of it, exported to a temporary folder.
+ *
+ * @throws KindedError when the folder isn't one, or the git address or commit is refused or can't be fetched
+ */
+async function openSource(
+  source: string,
+  context: CommandContext,
+  setup: PluginSetup,
+): Promise<OpenedSource> {
+  const git = gitSourceOf(source);
+  if (git !== null) return await exportGitSource(git, context, setup);
+  const folder = resolve(context.cwd, source);
+  if (!(await isFolder(folder))) {
+    throw refusal("invalid_input", pluginMessages.notAFolder(printable(source)).phrase);
+  }
+  return {
+    folder,
+    from: { kind: "folder", path: folder },
+    printedAhead: [],
+    close: async () => {},
+  };
+}
+
+/** How many characters of a commit the lines show, as git does. */
+const shownCommitLength = 7;
+
+async function exportGitSource(
+  git: GitSource,
+  context: CommandContext,
+  setup: PluginSetup,
+): Promise<OpenedSource> {
+  const progress = context.progress(
+    pluginMessages.copying(printable(repositoryName(git.address)), git.commit).phrase,
+  );
+  let exported: Awaited<ReturnType<typeof exportToTemporaryFolder>>;
+  try {
+    exported = await exportToTemporaryFolder(git, setup.exportGit ?? exportWithGit);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw refusal("invalid_input", phrase`${printable(reason)}`);
+  } finally {
+    progress.end();
+  }
+  const { commit, branch } = exported;
+  const printedAhead: Phrase[] = [];
+  if (git.commit === undefined && branch !== undefined) {
+    const short = commit.slice(0, shownCommitLength);
+    const latest = pluginMessages.latestCommit(short, printable(branch), commit);
+    printedAhead.push(phrase`${markPart("needsYou")} ${latest.phrase}`);
+  }
+  for (const line of printedAhead) context.printAhead(line);
+  return {
+    folder: exported.folder,
+    from: { kind: "git", address: git.address, commit },
+    printedAhead,
+    close: () => exported.remove(),
+  };
+}
+
+/** The last part of a git address without `.git`, such as `weather`, for the live line. */
+function repositoryName(address: string): string {
+  const last = address.split(/[/:]/u).findLast((part) => part !== "") ?? address;
+  return last.replace(/\.git$/u, "");
 }
 
 /** Says it's on, or asks whether to trust it, with `plugin add`'s words around the question. */
@@ -98,7 +192,7 @@ function addedLine(plugin: AddedPlugin["plugin"]) {
   return phrase`${markPart("done")} ${pluginMessages.added(plugin.name, plugin.version).phrase}`;
 }
 
-/** The refusal for a plugin that wasn't added, with its reason and "Check the folder.". */
+/** The refusal for a plugin that wasn't added, with its reason and "Check the folder or git address.". */
 function refused(error: PluginAddRefusal): KindedError {
   if (error.kind === "taken") {
     return new KindedError("conflict", plainOf(pluginMessages.alreadyAdded(error.id)), {
@@ -113,7 +207,7 @@ function firstProblem(problems: readonly PluginProblem[]): Phrase {
   return phrase`${printable(problems[0]?.message ?? "")}`;
 }
 
-/** "Couldn't add the plugin: <reason> · Check the folder." */
+/** "Couldn't add the plugin: <reason> · Check the folder or git address." */
 function refusal(kind: "invalid_input", reason: Phrase): KindedError {
   return new KindedError(kind, plainText(reason), {
     fix: plainOf(pluginMessages.refusedSourceFix()),

@@ -209,7 +209,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.join("\n")).toContain("isn't a folder");
-    expect(io.stderr.join("\n")).toContain("Check the folder.");
+    expect(io.stderr.join("\n")).toContain("Check the folder or git address.");
   });
 
   it("refuses a link inside the folder that points outside it, and writes nothing", async () => {
@@ -220,7 +220,7 @@ verifies("cli.commands.plugin.add", () => {
     const { code, io } = await add([source]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr.join("\n")).toContain("Check the folder.");
+    expect(io.stderr.join("\n")).toContain("Check the folder or git address.");
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
 

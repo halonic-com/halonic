@@ -19,6 +19,7 @@ import {
   trustFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import type { GitExporter } from "./commands/plugin/git-source.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
@@ -28,6 +29,8 @@ export interface PluginSetup {
   readonly profile?: ProfileEnvironment;
   /** The computer's own clock by default. */
   readonly clock?: Clock;
+  /** How `plugin add` exports a git address; the git on the `PATH`, hardened, by default. */
+  readonly exportGit?: GitExporter;
 }
 
 /**

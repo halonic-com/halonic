@@ -21,11 +21,11 @@ export function pluginCommandWith(setup: PluginSetup): CliCommand {
   };
 }
 
-/** `halonic plugin add <folder>`: copies the plugin into the profile, shows its trust check and asks (cli-output 3.6). */
+/** `halonic plugin add <folder or git address>[@commit]`: copies the plugin into the profile, shows its trust check and asks (cli-output 3.6). */
 function addCommandWith(setup: PluginSetup): CliCommand {
   return {
     name: "add",
-    usage: "<folder> [--yes --fingerprint <fingerprint>]",
+    usage: "<folder|git-address>[@commit] [--yes --fingerprint <fingerprint>]",
     summary: pluginMessages.addSummary(),
     action: () => pluginMessages.addAction(),
     options: {

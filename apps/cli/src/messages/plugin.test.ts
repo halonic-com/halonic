@@ -40,7 +40,8 @@ describe("plugin's sentences", () => {
   it("has add's lines", () => {
     expect([
       words(pluginMessages.copying("weather", "3f2c1ab")),
-      words(pluginMessages.latestCommit("3f2c1ab", "main")),
+      words(pluginMessages.copying("weather", undefined)),
+      words(pluginMessages.latestCommit("3f2c1ab", "main", "3f2c1ab9")),
       words(pluginMessages.trustQuestion("Weather")),
       words(pluginMessages.added("Weather", "1.2.0")),
       words(pluginMessages.addedButOff("Weather", "weather")),
@@ -48,12 +49,13 @@ describe("plugin's sentences", () => {
       words(pluginMessages.refusedSourceFix()),
     ]).toEqual([
       "Copying weather at 3f2c1ab into your plugins folder…",
-      "Using commit 3f2c1ab, the latest on main. Add @3f2c1ab to pin it.",
+      "Copying weather into your plugins folder…",
+      "Using commit 3f2c1ab, the latest on main. Add @3f2c1ab9 to pin it.",
       "Trust Weather and turn it on?",
       "Added Weather 1.2.0. It's on.",
       "Weather is added but off. Nothing from it runs until you trust it: halonic trust --plugin weather",
       "add the plugin",
-      "Check the folder.",
+      "Check the folder or git address.",
     ]);
   });
 
@@ -93,7 +95,7 @@ describe("plugin's sentences", () => {
       "changed since you trusted it - halonic trust --plugin notes",
     );
     expect(words(pluginMessages.noPlugins())).toBe(
-      "No plugins yet. Add one from a folder with halonic plugin add <folder>.",
+      "No plugins yet. Add one with halonic plugin add <folder or git address>.",
     );
   });
 
