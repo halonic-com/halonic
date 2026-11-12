@@ -1,15 +1,19 @@
 // The fence proof at `open`, before any program of the caller starts: a probe
 // program runs in the box under the real policy and must find the hidden file
-// and the denied file inside the readable folder unreadable, the loopback ports
-// of listeners on this computer (`127.0.0.1` and `::1`) unreachable, and the allowed folder's control
-// file readable (without that control, "hidden" proves nothing). Anything
-// else, including a probe that couldn't run, is `not-fenced`.
+// and the denied file inside the readable folder unreadable, the ports of
+// listeners on this computer (loopback and its other addresses) unreachable,
+// the internet and public DNS servers unreachable, and the allowed folder's
+// control file readable (without that control, "hidden" proves nothing). A
+// network probe that failed for another reason than a refusal proves nothing
+// either (`network-probes.ts`). Anything else, including a probe that couldn't
+// run, is `not-fenced`.
 
-import type { SandboxCommand, SandboxFence, SandboxProcess } from "@halonicjs/ports";
+import type { SandboxBridge, SandboxCommand, SandboxFence, SandboxProcess } from "@halonicjs/ports";
 import type { MxcDisk } from "./disk.ts";
 import { type FenceFiles, writeFenceFiles } from "./fence-files.ts";
-import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
-import { parseLeakReport } from "./probe-scripts.ts";
+import { type LoopbackListener, listenOnEveryAddress } from "./loopback-listener.ts";
+import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
+import { type LeakReport, parseLeakReport } from "./probe-scripts.ts";
 import { errorLine, runToEnd } from "./run-to-end.ts";
 
 /** How long the probe may take before the fence counts as unproven. */
@@ -23,6 +27,8 @@ export interface FenceProofInput {
   launch(command: SandboxCommand): Promise<SandboxProcess>;
   /** The Node program the probe runs as. */
   nodeProgram: string;
+  /** The bridge the session's profile allows: the probe's network control. `null` when it has none. */
+  bridge: SandboxBridge | null;
 }
 
 /**
@@ -34,10 +40,17 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
   const { files } = input;
   let listeners: LoopbackListener[] = [];
   try {
-    listeners = await listenOnLoopbacks();
+    listeners = await listenOnEveryAddress();
     await writeFenceFiles(input.disk, files);
     const ports = listeners.map(({ host, port }) => ({ host, port }));
-    const settings = { control: files.control, hidden: files.canary, denied: files.denied, ports };
+    const network = networkSettings(input.bridge);
+    const settings = {
+      control: files.control,
+      hidden: files.canary,
+      denied: files.denied,
+      ports,
+      ...network,
+    };
     await input.disk.writeText(files.config, JSON.stringify(settings));
     const probe = await input.launch({
       program: input.nodeProgram,
@@ -45,7 +58,9 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
     });
     const { stdout, stderr, exit } = await runToEnd(probe, probeTimeoutMs);
     if (listeners.some((listener) => listener.reached())) {
-      return notFenced("a program inside the fence reached a loopback port it should not reach");
+      return notFenced(
+        "a program inside the fence reached a port of this computer it should not reach",
+      );
     }
     const report = parseLeakReport(stdout);
     if (report === null) {
@@ -54,27 +69,12 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
         `the fence probe did not report (exit ${exit.code ?? exit.signal})${detail === "" ? "" : `: ${detail}`}`,
       );
     }
-    if (report.control !== "readable") {
-      return notFenced(
-        "the fence probe could not read the allowed folder, so its result proves nothing",
-      );
-    }
-    if (report.hidden !== "hidden") {
-      return notFenced("a program inside the fence could read a file the fence should hide");
-    }
-    if (report.denied !== "hidden") {
-      return notFenced(
-        "a program inside the fence could read a denied file inside a folder it may read",
-      );
-    }
-    if (
-      report.ports.length !== ports.length ||
-      report.ports.some((port) => port.state !== "blocked")
-    ) {
-      return notFenced(
-        "a program inside the fence could connect to a loopback port it should not reach",
-      );
-    }
+    const problem = problemWith(report, {
+      ports: ports.length,
+      internet: network.internet.length,
+      dns: network.dns.length,
+    });
+    if (problem !== null) return notFenced(problem);
     return { state: "fenced" };
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
@@ -82,6 +82,33 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
   } finally {
     for (const listener of listeners) listener.close();
   }
+}
+
+/** The sentence for what the probe's report shows is wrong with the fence, or `null` when nothing is. */
+function problemWith(report: LeakReport, asked: NetworkAsked): string | null {
+  if (report.control !== "readable") {
+    return "the fence probe could not read the allowed folder, so its result proves nothing";
+  }
+  if (report.hidden !== "hidden") {
+    return "a program inside the fence could read a file the fence should hide";
+  }
+  if (report.denied !== "hidden") {
+    return "a program inside the fence could read a denied file inside a folder it may read";
+  }
+  const found = judgeNetwork(report, asked);
+  if (found.portReached) {
+    return "a program inside the fence could connect to a port of this computer it should not reach";
+  }
+  if (found.internetReached) {
+    return "a program inside the fence could connect to an address on the internet";
+  }
+  if (found.dnsReached) {
+    return "a program inside the fence got an answer from a public DNS server";
+  }
+  if (found.unproven.length > 0) {
+    return `the network probes did not prove the block, so the fence is unproven: ${found.unproven[0]}`;
+  }
+  return null;
 }
 
 function notFenced(reason: string): SandboxFence {

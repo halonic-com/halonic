@@ -1,4 +1,5 @@
 import { execFile, spawnSync } from "node:child_process";
+import { createSocket } from "node:dgram";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -53,7 +54,10 @@ verifies("sandbox-mxc.session", () => {
         control: "readable",
         hidden: "hidden",
         denied: "readable",
-        ports: [{ host: "127.0.0.1", port, state: "blocked" }],
+        ports: [{ host: "127.0.0.1", port, state: "refused", code: "ECONNREFUSED" }],
+        internet: [],
+        dns: [],
+        network: null,
       });
     });
 
@@ -77,7 +81,7 @@ verifies("sandbox-mxc.session", () => {
           join(folder, "probe.json"),
         ]);
         expect(parseLeakReport(output)?.ports).toEqual([
-          { host: "127.0.0.1", port, state: "connected" },
+          { host: "127.0.0.1", port, state: "connected", code: null },
         ]);
       } finally {
         await new Promise<void>((resolve) => open.close(() => resolve()));
@@ -111,6 +115,93 @@ verifies("sandbox-mxc.session", () => {
     });
   });
 
+  describe("the network attempts of the leak probe program", () => {
+    /** A port nobody listens on. */
+    async function closedPort(): Promise<number> {
+      const closed = createServer();
+      await new Promise<void>((resolve) => closed.listen(0, "127.0.0.1", resolve));
+      const address = closed.address();
+      const port = typeof address === "object" && address !== null ? address.port : 0;
+      await new Promise<void>((resolve) => closed.close(() => resolve()));
+      return port;
+    }
+
+    it("reports the bridge, the internet targets and the DNS targets, each with its own state", async () => {
+      const bridge = createServer((socket) => socket.destroy());
+      await new Promise<void>((resolve) => bridge.listen(0, "127.0.0.1", resolve));
+      const address = bridge.address();
+      const bridgePort = typeof address === "object" && address !== null ? address.port : 0;
+      const refusedPort = await closedPort();
+      try {
+        writeFileSync(join(folder, "probe.cjs"), leakProbeScript);
+        const settings = {
+          control: "x",
+          hidden: "x",
+          denied: "x",
+          ports: [],
+          internet: [{ host: "127.0.0.1", port: refusedPort }],
+          dns: [{ host: "127.0.0.1", port: refusedPort }],
+          bridge: { host: "127.0.0.1", port: bridgePort },
+        };
+        writeFileSync(join(folder, "probe.json"), JSON.stringify(settings));
+        const { stdout } = await execFileAsync(process.execPath, [
+          join(folder, "probe.cjs"),
+          join(folder, "probe.json"),
+        ]);
+        const report = parseLeakReport(stdout);
+        expect(report?.network).toEqual({
+          host: "127.0.0.1",
+          port: bridgePort,
+          state: "connected",
+          code: null,
+        });
+        expect(report?.internet[0]).toMatchObject({ state: "refused", code: "ECONNREFUSED" });
+        // A UDP packet to a closed port comes back as nothing here, or as a refusal: never as an answer.
+        expect(report?.dns[0]?.state).not.toBe("connected");
+      } finally {
+        await new Promise<void>((resolve) => bridge.close(() => resolve()));
+      }
+    });
+
+    it("reports a DNS answer as connected", async () => {
+      const server = createSocket("udp4");
+      server.on("message", (message, remote) => server.send(message, remote.port, remote.address));
+      await new Promise<void>((resolve) => server.bind(0, "127.0.0.1", resolve));
+      const port = server.address().port;
+      try {
+        writeFileSync(join(folder, "probe.cjs"), leakProbeScript);
+        const settings = {
+          control: "x",
+          hidden: "x",
+          denied: "x",
+          ports: [],
+          dns: [{ host: "127.0.0.1", port }],
+        };
+        writeFileSync(join(folder, "probe.json"), JSON.stringify(settings));
+        const { stdout } = await execFileAsync(process.execPath, [
+          join(folder, "probe.cjs"),
+          join(folder, "probe.json"),
+        ]);
+        expect(parseLeakReport(stdout)?.dns).toEqual([
+          { host: "127.0.0.1", port, state: "connected", code: null },
+        ]);
+      } finally {
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
+    });
+
+    it("reports an error that is not a refusal as failed, with its code", () => {
+      const output = run(leakProbeScript, folder, {
+        control: "x",
+        hidden: "x",
+        denied: "x",
+        ports: [{ host: "not an address", port: 1 }],
+      });
+      const [attempt] = parseLeakReport(output)?.ports ?? [];
+      expect(attempt?.state).toBe("failed");
+    });
+  });
+
   describe("the work probe program", () => {
     it("lists the folder, writes a file in it and removes it again", () => {
       writeFileSync(join(folder, "project.txt"), "project");
@@ -136,6 +227,9 @@ verifies("sandbox-mxc.session", () => {
         hidden: "hidden",
         denied: "hidden",
         ports: [],
+        internet: [],
+        dns: [],
+        network: null,
       });
       for (const output of [
         "",

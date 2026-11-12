@@ -31,7 +31,7 @@ const ok: SandboxCheck = { ok: true, reason: null, missing: [] };
 const clean: CanaryFindings = {
   started: true,
   leaks: [],
-  controls: { readOnlyFileRead: true, workFolderScriptLoaded: true },
+  controls: { readOnlyFileRead: true, workFolderScriptLoaded: true, networkBlockProven: true },
   nameLookupsLeave: true,
   missing: [],
 };
@@ -77,8 +77,10 @@ verifies("app.sandbox-trust-check", () => {
 
   it("fails with too-strict when nothing leaked but a control failed", async () => {
     for (const controls of [
-      { readOnlyFileRead: false, workFolderScriptLoaded: true },
-      { readOnlyFileRead: true, workFolderScriptLoaded: false },
+      { readOnlyFileRead: false, workFolderScriptLoaded: true, networkBlockProven: true },
+      { readOnlyFileRead: true, workFolderScriptLoaded: false, networkBlockProven: true },
+      // A probe that failed for another reason than a block proves no block (HAL-7840).
+      { readOnlyFileRead: true, workFolderScriptLoaded: true, networkBlockProven: false },
     ]) {
       const missing = ["the read-only file couldn't be read"];
       const { sandbox, canary } = fakes({ findings: { ...clean, controls, missing } });
@@ -91,7 +93,11 @@ verifies("app.sandbox-trust-check", () => {
   });
 
   it("reports a leak before a failed control", async () => {
-    const controls = { readOnlyFileRead: false, workFolderScriptLoaded: false };
+    const controls = {
+      readOnlyFileRead: false,
+      workFolderScriptLoaded: false,
+      networkBlockProven: true,
+    };
     const { sandbox, canary } = fakes({
       findings: { ...clean, leaks: ["file-readable"], controls },
     });

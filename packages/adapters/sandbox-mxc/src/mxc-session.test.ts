@@ -12,6 +12,7 @@ import {
   type Leaks,
   nodeFolder,
   nodeProgram,
+  type ProbeSettings,
   testBoxes,
 } from "./fake-mxc.test-helper.ts";
 import { fenceFiles } from "./fence-files.ts";
@@ -125,10 +126,43 @@ verifies("sandbox-mxc.session", () => {
       await session.close();
     });
 
+    it("probes the internet and DNS, with the bridge as the network control, and counts a timeout as blocked once the control connected", async () => {
+      const seen: ProbeSettings[] = [];
+      const { sandbox } = setup((disk) => {
+        const healthy = healthyBox(disk, { blockedAttemptsTimeOut: true });
+        return async (call) => {
+          if (call.settings?.internet !== undefined) seen.push(call.settings);
+          return healthy(call);
+        };
+      });
+      const session = await open(sandbox);
+      expect(session.fence).toEqual({ state: "fenced" });
+      expect(seen[0]).toMatchObject({ bridge: { host: "127.0.0.1", port: 4100 } });
+      expect(seen[0]?.internet?.length).toBeGreaterThan(0);
+      expect(seen[0]?.dns?.length).toBeGreaterThan(0);
+      await session.close();
+    });
+
     it.each<[string, Leaks, RegExp]>([
       ["the hidden file is readable", { hidden: true }, /could read a file the fence should hide/],
       ["the denied file is readable", { denied: true }, /denied file inside a folder it may read/],
-      ["a loopback port is reached", { reachPort: true }, /loopback port it should not reach/],
+      [
+        "a port of this computer is reached",
+        { reachPort: true },
+        /port of this computer it should not reach/,
+      ],
+      ["an address on the internet is reached", { reachInternet: true }, /address on the internet/],
+      ["a public DNS server answers", { reachDns: true }, /public DNS server/],
+      [
+        "the network probes fail with an error that is no refusal (Winsock without SystemRoot)",
+        { networkFailsWith: "UNKNOWN" },
+        /did not prove the block.*not a refusal/,
+      ],
+      [
+        "blocked probes time out and the bridge can't be reached",
+        { blockedAttemptsTimeOut: true, bridgeUnreachable: true },
+        /did not prove the block.*could not reach its bridge/,
+      ],
       ["the allowed folder can't be read", { controlUnreadable: true }, /proves nothing/],
     ])(
       "is not-fenced when %s, and start throws and starts nothing",

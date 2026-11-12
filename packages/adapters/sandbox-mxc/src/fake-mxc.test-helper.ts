@@ -57,6 +57,9 @@ export interface ProbeSettings {
   hidden: string;
   denied: string;
   ports?: { host: string; port: number }[];
+  internet?: { host: string; port: number }[];
+  dns?: { host: string; port: number }[];
+  bridge?: { host: string; port: number } | null;
   writes?: { create: string; existing: string }[];
   folder?: string;
   name?: string;
@@ -171,6 +174,16 @@ export interface Leaks {
   /** The allowed folder's control file can't be read. */
   controlUnreadable?: boolean;
   reachPort?: boolean;
+  /** The probe connects to an address on the internet. */
+  reachInternet?: boolean;
+  /** A public DNS server answers the probe's query. */
+  reachDns?: boolean;
+  /** Every network attempt fails with this code, the bridge too: Winsock failing to start, say. */
+  networkFailsWith?: string;
+  /** Attempts that are blocked time out, rather than being refused. */
+  blockedAttemptsTimeOut?: boolean;
+  /** The probe can't reach the bridge, the network control. */
+  bridgeUnreachable?: boolean;
   writeOutside?: boolean;
   /** Node can't list or write the working folder. */
   workFolderBroken?: boolean;
@@ -210,15 +223,25 @@ async function actOutside(disk: MemoryDisk, settings: ProbeSettings, leaks: Leak
 }
 
 function leakReport(settings: ProbeSettings, leaks: Leaks): FakeResult {
+  const attempt = (reached: boolean) => (target: { host: string; port: number }) => {
+    const broken = leaks.networkFailsWith;
+    if (reached) return { ...target, state: "connected", code: null };
+    if (broken !== undefined) return { ...target, state: "failed", code: broken };
+    if (leaks.blockedAttemptsTimeOut === true) return { ...target, state: "timeout", code: null };
+    return { ...target, state: "refused", code: "ECONNREFUSED" };
+  };
+  const bridge = settings.bridge ?? null;
   const report = {
     control: leaks.controlUnreadable === true ? "hidden" : "readable",
     hidden: leaks.hidden === true ? "readable" : "hidden",
     denied: leaks.denied === true ? "readable" : "hidden",
-    ports: (settings.ports ?? []).map(({ host, port }) => ({
-      host,
-      port,
-      state: leaks.reachPort === true ? "connected" : "blocked",
-    })),
+    ports: (settings.ports ?? []).map(attempt(leaks.reachPort === true)),
+    internet: (settings.internet ?? []).map(attempt(leaks.reachInternet === true)),
+    dns: (settings.dns ?? []).map(attempt(leaks.reachDns === true)),
+    network:
+      bridge === null
+        ? null
+        : attempt(leaks.networkFailsWith === undefined && leaks.bridgeUnreachable !== true)(bridge),
   };
   return { stdout: `${JSON.stringify(report)}\n`, exitCode: 0 };
 }

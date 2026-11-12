@@ -7,16 +7,35 @@
 /**
  * Reads the control file, the hidden file and the denied file; tries to write
  * where nothing may be written (the host looks at the disk afterwards, so
- * what the box says about it doesn't matter); and connects to each port.
+ * what the box says about it doesn't matter); and tries the network: a TCP
+ * connection to each port, to each internet address and to the bridge (the
+ * network control), and a DNS query sent straight to each public DNS server.
  *
- * Settings: `{ control, hidden, denied, writes: [{ create, existing }], ports: [{ host, port }] }`.
- * It prints `{ control, hidden, denied, ports: [{ host, port, state }] }`, where
- * a file is `readable` or `hidden` and a port is `connected` or `blocked`.
+ * Settings: `{ control, hidden, denied, writes: [{ create, existing }],
+ * ports: [{ host, port }], internet: [{ host, port }], dns: [{ host, port }],
+ * bridge: { host, port } | null }`.
+ *
+ * It prints `{ control, hidden, denied, ports, internet, dns, network }`. A file
+ * is `readable` or `hidden`. A network attempt is `{ host, port, state, code }`:
+ * `connected` (a connection, or a DNS answer), `refused` (the system said no:
+ * ECONNREFUSED, EACCES, EPERM or an unreachable network), `timeout` (nothing
+ * came back) or `failed` (any other error, such as Winsock not starting). Only
+ * `refused` proves a block by itself: see `network-probes.ts`.
  */
 export const leakProbeScript = `
 const fs = require("node:fs");
 const net = require("node:net");
+const dgram = require("node:dgram");
 const config = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const attemptTimeoutMs = 3000;
+const refusalCodes = new Set([
+  "ECONNREFUSED",
+  "EACCES",
+  "EPERM",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
+  "ENETDOWN",
+]);
 const readState = (file) => {
   try {
     fs.readFileSync(file);
@@ -32,31 +51,74 @@ const attempt = (action) => {
     // Refused, as it should be.
   }
 };
-const reach = ({ host, port }) =>
+const stateOf = (error) => {
+  if (error.code === "ETIMEDOUT") return "timeout";
+  return refusalCodes.has(error.code) ? "refused" : "failed";
+};
+const outcome = ({ host, port }, state, code) => ({ host, port, state, code: code ?? null });
+const reach = (target) =>
   new Promise((resolve) => {
-    const socket = net.connect({ host, port });
-    const finish = (state) => {
+    let socket = null;
+    const finish = (state, code) => {
       clearTimeout(timer);
-      socket.destroy();
-      resolve({ host, port, state });
+      socket?.destroy();
+      resolve(outcome(target, state, code));
     };
-    const timer = setTimeout(() => finish("blocked"), 3000);
+    const timer = setTimeout(() => finish("timeout"), attemptTimeoutMs);
+    try {
+      socket = net.connect(target);
+    } catch (error) {
+      finish("failed", error.code);
+      return;
+    }
     socket.once("connect", () => finish("connected"));
-    socket.once("error", () => finish("blocked"));
+    socket.once("error", (error) => finish(stateOf(error), error.code));
+  });
+// A DNS query for an A record of example.com: a header, then one question.
+const dnsQuery = Buffer.concat([
+  Buffer.from([0x12, 0x34, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+  ...["example", "com"].map((label) => Buffer.concat([Buffer.from([label.length]), Buffer.from(label)])),
+  Buffer.from([0x00]),
+  Buffer.from([0x00, 0x01, 0x00, 0x01]),
+]);
+const ask = (target) =>
+  new Promise((resolve) => {
+    let socket = null;
+    const finish = (state, code) => {
+      clearTimeout(timer);
+      socket?.close();
+      resolve(outcome(target, state, code));
+    };
+    const timer = setTimeout(() => finish("timeout"), attemptTimeoutMs);
+    try {
+      socket = dgram.createSocket(target.host.includes(":") ? "udp6" : "udp4");
+      socket.once("message", () => finish("connected"));
+      socket.once("error", (error) => finish(stateOf(error), error.code));
+      socket.send(dnsQuery, target.port, target.host, (error) => {
+        if (error) finish(stateOf(error), error.code);
+      });
+    } catch (error) {
+      finish("failed", error.code);
+    }
   });
 async function main() {
   const report = {
     control: readState(config.control),
     hidden: readState(config.hidden),
     denied: readState(config.denied),
-    ports: [],
   };
   for (const { create, existing } of config.writes ?? []) {
     attempt(() => fs.writeFileSync(create, "written by the box"));
     attempt(() => fs.writeFileSync(existing, "changed by the box"));
     attempt(() => fs.rmSync(existing));
   }
-  for (const target of config.ports) report.ports.push(await reach(target));
+  // All at once, so the slowest wait is one timeout, not their sum.
+  [report.ports, report.internet, report.dns, report.network] = await Promise.all([
+    Promise.all(config.ports.map(reach)),
+    Promise.all((config.internet ?? []).map(reach)),
+    Promise.all((config.dns ?? []).map(ask)),
+    config.bridge ? reach(config.bridge) : null,
+  ]);
   console.log(JSON.stringify(report));
 }
 main();
@@ -91,12 +153,29 @@ try {
 console.log(JSON.stringify(result));
 `;
 
+/** How a network attempt of the probe ended: see {@link leakProbeScript}. */
+export type AttemptState = "connected" | "refused" | "timeout" | "failed";
+
+/** One network attempt of the leak probe. */
+export interface NetworkAttempt {
+  host: string;
+  port: number;
+  state: AttemptState;
+  /** The error code (`ECONNREFUSED`, ...), or `null` when it connected or timed out. */
+  code: string | null;
+}
+
 /** What {@link leakProbeScript} printed. */
 export interface LeakReport {
   control: string;
   hidden: string;
   denied: string;
-  ports: { host: string; port: number; state: string }[];
+  /** The loopback and host-address listeners. */
+  ports: NetworkAttempt[];
+  internet: NetworkAttempt[];
+  dns: NetworkAttempt[];
+  /** The bridge, the network control; `null` when the box has none. */
+  network: NetworkAttempt | null;
 }
 
 /** What {@link workProbeScript} printed. */
@@ -114,16 +193,43 @@ function lastLine(output: string): unknown {
   }
 }
 
+const attemptStates: readonly string[] = [
+  "connected",
+  "refused",
+  "timeout",
+  "failed",
+] satisfies AttemptState[];
+
+function isAttempt(value: unknown): value is NetworkAttempt {
+  if (typeof value !== "object" || value === null) return false;
+  const { host, port, state } = value as Partial<NetworkAttempt>;
+  return (
+    typeof host === "string" && typeof port === "number" && attemptStates.includes(state ?? "")
+  );
+}
+
 /** The leak probe's report, or `null` when the program printed anything else: a crash, nothing, or other text. */
 export function parseLeakReport(output: string): LeakReport | null {
   const report = lastLine(output) as Partial<LeakReport> | null;
   if (typeof report !== "object" || report === null) return null;
-  const { control, hidden, denied, ports } = report;
+  const { control, hidden, denied, ports, internet, dns, network } = report;
   if (typeof control !== "string" || typeof hidden !== "string" || typeof denied !== "string") {
     return null;
   }
-  if (!Array.isArray(ports)) return null;
-  return { control, hidden, denied, ports };
+  if (!Array.isArray(ports) || !ports.every(isAttempt)) return null;
+  // A probe settings file without internet or DNS targets prints none.
+  const lists = [internet ?? [], dns ?? []];
+  if (!lists.every((list) => Array.isArray(list) && list.every(isAttempt))) return null;
+  if (network !== null && network !== undefined && !isAttempt(network)) return null;
+  return {
+    control,
+    hidden,
+    denied,
+    ports,
+    internet: lists[0] as NetworkAttempt[],
+    dns: lists[1] as NetworkAttempt[],
+    network: network ?? null,
+  };
 }
 
 /** The work probe's report, or `null` when the program printed anything else. */

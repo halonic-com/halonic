@@ -208,6 +208,7 @@ export class MxcSession implements SandboxSession {
         disk: this.#deps.disk,
         files,
         nodeProgram: this.#deps.nodeProgram,
+        bridge: this.profile.network.bridge,
         launch: async (command) => (await this.#launch(command, proofPolicy)).asSandboxProcess(),
       });
     } catch (error) {

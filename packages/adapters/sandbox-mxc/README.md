@@ -80,8 +80,11 @@ holds the files of the fence proof and nothing the program may read.
 
 **Fence proof.** Before anything runs, a Node probe starts in the box under the session's own
 policy. It must be refused a file no grant names, a denied file inside a folder it may read and
-a loopback port of a listener on this computer, and it must read a file in a folder it may read
-(without that control "hidden" proves nothing). Anything else, including a probe that can't run
+a port of a listener on this computer (loopback and its other addresses), the internet and a
+public DNS server asked directly, and it must read a file in a folder it may read
+(without that control "hidden" proves nothing). A network probe counts as blocked only when the system refused it, or when it timed out and the
+box did connect to its bridge (the network control): any other failure, such as Winsock not
+starting without `SystemRoot`, proves nothing. Anything else, including a probe that can't run
 or a box folder inside a denied path, makes the fence `not-fenced`, and `start` throws.
 
 **Trust check.** `MxcCanary` builds the canary profile and probe for `core/app`'s trust check.
@@ -97,10 +100,11 @@ their address and port. Messages without a path or address, such as cmd.exe's "A
 denied.", are not reported, so a program that doesn't print its errors reports nothing.
 
 **Not covered yet.** `reopenedPaths` makes `open` throw: MXC's denied paths win over every
-grant, so a path inside one can't be reopened. The canary doesn't yet probe the internet, DNS
-or other addresses of this computer (`internet-reachable`, `dns-reachable`, and the host's own
-addresses for `port-reachable`), and it reports `nameLookupsLeave: true`, which is a known
-limit of MXC. No release ships MXC before those probes exist. The refusal of files under a
+grant, so a path inside one can't be reopened. The probes don't yet cover the default
+gateway or other private addresses, nor the bridge itself (`CONNECT`, or a request for another
+host or port): they need the bridge, which isn't in this package. The canary reports
+`nameLookupsLeave: true`, which is a known limit of MXC. No release ships MXC before the gateway
+and bridge probes exist (HAL-7840 follow-up). The refusal of files under a
 skill's `scripts/` folder, which `sandbox-srt` applies, isn't ported.
 
 ## Example
