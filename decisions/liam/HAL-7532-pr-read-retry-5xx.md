@@ -3,6 +3,7 @@
 - Task: HAL-7532
 - Approval: Mateo reviewed and approved it on [HAL-7542](/HAL/issues/HAL-7542), Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QLU/d4T4jPGoQ97w60sntUYIuACpzm/gF4oLQAc3HuqvbP0SePABLFAis7FnJc6AOr28ZhIfDVvsdBTAZl6bBw==
 
 ## What changes
 
