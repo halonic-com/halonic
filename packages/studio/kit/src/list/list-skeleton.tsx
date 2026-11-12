@@ -126,7 +126,8 @@ export function ListSkeleton({
                 if (columns === undefined || phone) {
                   return <Fragment key={widths.title}>{row}</Fragment>;
                 }
-                // From 800px the columns' row shows, below it the stacked row.
+                // From 800px the columns' row shows, below it the stacked row. The skeleton rows
+                // have no checkbox or More cell, so the box is what's measured.
                 return (
                   <div key={widths.title} className={line}>
                     <ColumnsSkeletonRow widths={widths} columns={columns} />

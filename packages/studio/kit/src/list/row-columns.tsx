@@ -5,9 +5,14 @@ import { Leading } from "./row-parts.tsx";
 
 /*
  * The inside of a List row's main cell when the List has columns (spec HAL-6764, sections 2 and 3).
- * It's drawn twice, side by side and stacked, and the List's width picks one: from 800px
+ * It's drawn twice, side by side and stacked, and the cell's own width picks one: from 800px
  * (`@list-wide:`) the columns sit side by side, below it each row stacks them on three lines, the
  * phone row (PL 10). Both are hidden from screen readers, which hear the row's `label` instead.
+ *
+ * The cell, not the List, is measured: a checkbox column (44px) and a More column take their
+ * width from the List first, and the columns must fit in what's left. The Runs list's columns need
+ * 752px with their gaps and padding, so they fit from 800px. A List whose columns need more than
+ * 800px would overflow just above it, so it needs fewer columns or a wider breakpoint.
  */
 
 /**
@@ -24,9 +29,13 @@ export const columnWidthClasses: Record<ListColumnKind, string> = {
 
 /**
  * Exactly one `main` column, which holds the title, and every other column's key used once, since
- * the cells are found and drawn by it: a mistake here is the screen's, not the user's.
+ * the cells are found and drawn by it: a mistake here is the screen's, not the user's. A List
+ * without columns has nothing to check.
  */
-export function checkColumns(columns: readonly ListColumn[]): void {
+export function checkColumns(columns: readonly ListColumn[] | undefined): void {
+  if (columns === undefined) {
+    return;
+  }
   const mains = columns.filter((column) => column.kind === "main").length;
   if (mains !== 1) {
     throw new Error(`A List's columns have exactly one main column, not ${mains}.`);
@@ -241,27 +250,26 @@ export function RowColumns({ row, columns, phone, reasonId, afterCheck }: RowCol
           {row.unavailable.reason}
         </span>
       )}
-      {phone ? null : (
+      {/* The container `@list-wide:` measures: this cell, so the columns fit beside the others. */}
+      <div aria-hidden="true" className="@container">
+        {phone ? null : (
+          <div className={`hidden min-h-14 items-center gap-3 py-2 @list-wide:flex ${padding}`}>
+            {columns.map((column) => (
+              <WideCell
+                key={column.kind === "main" ? "main" : column.key}
+                row={row}
+                column={column}
+                columns={columns}
+              />
+            ))}
+          </div>
+        )}
         <div
-          aria-hidden="true"
-          className={`hidden min-h-14 items-center gap-3 py-2 @list-wide:flex ${padding}`}
+          className={`flex min-h-14 items-center gap-3 py-3 ${phone ? "" : "@list-wide:hidden"} ${padding}`}
         >
-          {columns.map((column) => (
-            <WideCell
-              key={column.kind === "main" ? "main" : column.key}
-              row={row}
-              column={column}
-              columns={columns}
-            />
-          ))}
+          <Leading row={row} small={false} />
+          <Stacked row={row} columns={columns} phone={phone} />
         </div>
-      )}
-      <div
-        aria-hidden="true"
-        className={`flex min-h-14 items-center gap-3 py-3 ${phone ? "" : "@list-wide:hidden"} ${padding}`}
-      >
-        <Leading row={row} small={false} />
-        <Stacked row={row} columns={columns} phone={phone} />
       </div>
     </>
   );

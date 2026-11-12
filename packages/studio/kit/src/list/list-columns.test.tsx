@@ -61,18 +61,29 @@ function cellOf(container: HTMLElement, index: number): HTMLElement {
 
 /** The side-by-side layout and the stacked one, in a row's main cell. */
 function layoutsOf(cell: HTMLElement): { wide: Element | null; stacked: Element | null } {
-  const hidden = Array.from(cell.querySelectorAll(':scope > [aria-hidden="true"]'));
+  const layouts = Array.from(cell.querySelectorAll(":scope > .\\@container > *"));
   return {
-    wide: hidden.find((element) => element.className.includes("@list-wide:flex")) ?? null,
-    stacked: hidden.find((element) => !element.className.includes("@list-wide:flex")) ?? null,
+    wide: layouts.find((element) => element.className.includes("@list-wide:flex")) ?? null,
+    stacked: layouts.find((element) => !element.className.includes("@list-wide:flex")) ?? null,
   };
 }
 
 verifies("kit.list-columns", () => {
-  it("lays the cells out side by side at fixed widths from 800px of List width", () => {
-    const { container } = renderRuns();
-    expect(container.querySelector(".\\@container")).not.toBeNull();
-    const { wide } = layoutsOf(cellOf(container, 0));
+  it("lays the cells out side by side at fixed widths from 800px of the main cell's width", () => {
+    const { container } = render(
+      <List
+        label="Runs"
+        rows={[needsYou]}
+        columns={columns}
+        onOpen={() => undefined}
+        selection={{ selected: new Set<string>(), onToggle: () => undefined }}
+      />,
+    );
+    // The main cell is measured, not the List, which also holds the checkbox column.
+    const cell = cellOf(container, 1);
+    expect(container.querySelectorAll(".\\@container")).toHaveLength(1);
+    expect(cell.querySelector(":scope > .\\@container")).not.toBeNull();
+    const { wide } = layoutsOf(cell);
     expect(wide?.className).toContain("hidden");
     const widths = Array.from(wide?.children ?? []).map((part) => part.className);
     expect(widths[0]).toContain("w-30");
@@ -113,7 +124,10 @@ verifies("kit.list-columns", () => {
     const { container } = renderRuns();
     const first = cellOf(container, 0);
     expect(first.querySelector(".sr-only")?.textContent).toBe(label);
-    expect(first.querySelectorAll(':scope > [aria-hidden="true"]')).toHaveLength(2);
+    // One hidden wrapper holds both layouts.
+    const hidden = first.querySelectorAll(':scope > [aria-hidden="true"]');
+    expect(hidden).toHaveLength(1);
+    expect(hidden[0]?.children).toHaveLength(2);
     expect(cellOf(container, 1).querySelector(".sr-only")?.textContent).toBe(
       "Mail triage, Sent nothing",
     );

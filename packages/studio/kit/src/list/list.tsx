@@ -52,9 +52,7 @@ export function List<Id extends string>({
   loadingLabel,
   onRetry,
 }: ListProps<Id>) {
-  if (columns !== undefined) {
-    checkColumns(columns);
-  }
+  checkColumns(columns);
   const phone = usePresentation() === "phone";
   const look: ListLook = (flushProp ?? phone) ? "flush" : "bordered";
   const headingId = useId();
@@ -129,7 +127,7 @@ export function List<Id extends string>({
         </>
       ) : (
         // Not overflow-hidden, which would cut the focus rings of the first and last rows.
-        <div className={boxWrapperClasses(look, grouped, columns !== undefined)}>
+        <div className={grouped ? "" : boxClasses[look]}>
           {headingNode}
           <GridTable
             sections={sections}
@@ -201,15 +199,6 @@ function GridTable<Id extends string>({
       ))}
     </table>
   );
-}
-
-/**
- * The box round the table: none with groups, whose cells draw a box per group. With columns it's
- * the container the rows' layout follows (`@list-wide:`): the List's own width, not the window's.
- */
-function boxWrapperClasses(look: ListLook, grouped: boolean, hasColumns: boolean): string {
-  const box = grouped ? "" : boxClasses[look];
-  return hasColumns ? `@container ${box}` : box;
 }
 
 /** A run of rows in one box: a group under its heading, or all of a List's `rows`. */
