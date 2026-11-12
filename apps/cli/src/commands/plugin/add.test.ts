@@ -194,7 +194,9 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.conflict);
     expect(io.stderr.join("\n")).toContain("weather is already added.");
-    expect(io.stderr.join("\n")).toContain("See it with halonic plugin list.");
+    expect(io.stderr.join("\n")).toContain(
+      "To add another version, remove it first: halonic plugin remove weather",
+    );
     expect(await readdir(pluginsFolder())).toEqual(["weather"]);
   });
 

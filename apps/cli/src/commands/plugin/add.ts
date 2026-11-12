@@ -209,7 +209,7 @@ function addedLine(plugin: AddedPlugin["plugin"]) {
 function refused(error: PluginAddRefusal): KindedError {
   if (error.kind === "taken") {
     return new KindedError("conflict", plainOf(pluginMessages.alreadyAdded(error.id)), {
-      fix: plainOf(pluginMessages.alreadyAddedFix()),
+      fix: plainOf(pluginMessages.alreadyAddedFix(error.id)),
     });
   }
   return refusal("invalid_input", firstProblem(error.problems));

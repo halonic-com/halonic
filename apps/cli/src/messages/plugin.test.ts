@@ -34,7 +34,7 @@ verifies("cli.messages", () => {
 
 describe("plugin's sentences", () => {
   it("has the summary", () => {
-    expect(words(pluginMessages.summary())).toBe("Add or list plugins");
+    expect(words(pluginMessages.summary())).toBe("Add, list or remove plugins");
   });
 
   it("has add's lines", () => {

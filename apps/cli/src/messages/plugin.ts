@@ -16,12 +16,10 @@ const stateWords: Readonly<Record<PluginState, string>> = {
  * (microcopy 24 T6–T9), without "In Studio", because 0.1 has no Studio to
  * draw a plugin's settings, commands, cards or panel (HAL-6417); a section
  * shows only when it has something in it.
- * `remove` isn't built yet, so the lines users see don't name it; it comes
- * back with its command (HAL-1736).
  * Plugins live in the profile, so nothing here says "into your workspace".
  */
 export const pluginMessages = defineMessages("plugin", {
-  summary: () => phrase`Add or list plugins`,
+  summary: () => phrase`Add, list or remove plugins`,
   addSummary: () => phrase`Add a plugin from a folder or a git address and ask whether to trust it`,
   listSummary: () => phrase`List the plugins and whether each is on`,
   /** What `plugin list` was doing, for "✕ Couldn't list the plugins: …". */
@@ -63,7 +61,8 @@ export const pluginMessages = defineMessages("plugin", {
   hostFromSetting: (setting: string) => phrase`the address in the setting ${setting}`,
   /** The refusal when a plugin with the id is already added; adding it again would be a conflict. */
   alreadyAdded: (id: string) => phrase`${id} is already added.`,
-  alreadyAddedFix: () => phrase`See it with halonic plugin list.`,
+  alreadyAddedFix: (id: string) =>
+    phrase`To add another version, remove it first: halonic plugin remove ${id}`,
   /** `plugin add` without a folder or git address. */
   addNeedsSource: () => phrase`Say which plugin to add: a folder or a git address.`,
   addUsage: () => phrase`halonic plugin add <folder or git address>[@commit]`,
