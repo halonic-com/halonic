@@ -4,6 +4,7 @@ import {
   isPrivateWorkspacePath,
 } from "@halonicjs/ports";
 import {
+  checkSnapshotVersion,
   DefinitionSnapshotError,
   defaultSnapshotPrefix,
   parseSnapshotManifest,
@@ -53,6 +54,9 @@ export class R2DefinitionSource implements DefinitionSource {
     const prefix = options.keyPrefix ?? defaultSnapshotPrefix;
     this.#bucket = bucket;
     this.#keys = snapshotKeys(prefix);
+    if (options.version !== undefined) {
+      checkSnapshotVersion(options.version);
+    }
     this.#fixedVersion = options.version;
     this.location = `r2:${prefix}`;
   }
@@ -83,7 +87,11 @@ export class R2DefinitionSource implements DefinitionSource {
   }
 
   #loadManifest(): Promise<SnapshotManifest> {
-    this.#manifest ??= this.#fetchManifest();
+    // A failed load isn't kept, so the next call tries again (a deploy may have finished).
+    this.#manifest ??= this.#fetchManifest().catch((error: unknown) => {
+      this.#manifest = undefined;
+      throw error;
+    });
     return this.#manifest;
   }
 
@@ -107,7 +115,9 @@ export class R2DefinitionSource implements DefinitionSource {
     if (object === null) {
       throw new DefinitionSnapshotError("No workspace snapshot has been deployed.");
     }
-    return new TextDecoder().decode(await object.arrayBuffer()).trim();
+    const version = new TextDecoder().decode(await object.arrayBuffer()).trim();
+    checkSnapshotVersion(version);
+    return version;
   }
 
   async #readFile(version: string, entry: SnapshotFileEntry): Promise<string> {
@@ -116,7 +126,7 @@ export class R2DefinitionSource implements DefinitionSource {
       throw new DefinitionSnapshotError(`The snapshot ${version} lacks the file ${entry.path}.`);
     }
     const bytes = new Uint8Array(await object.arrayBuffer());
-    if ((await sha256Hex(bytes)) !== entry.sha256) {
+    if (bytes.length !== entry.bytes || (await sha256Hex(bytes)) !== entry.sha256) {
       throw new DefinitionSnapshotError(`The file ${entry.path} doesn't match its manifest hash.`);
     }
     return new TextDecoder().decode(bytes);

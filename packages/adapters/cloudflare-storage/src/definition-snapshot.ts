@@ -1,4 +1,4 @@
-import { isPrivateWorkspacePath } from "@halonicjs/ports";
+import { checkWorkspacePath, isPrivateWorkspacePath } from "@halonicjs/ports";
 import { bytesToHex } from "@halonicjs/std";
 
 /** Where in the bucket the snapshots go, unless the caller names another place. */
@@ -29,6 +29,16 @@ export class DefinitionSnapshotError extends Error {
   override readonly name = "DefinitionSnapshotError";
 }
 
+const versionPattern = /^sha256:[0-9a-f]{64}$/;
+const sha256Pattern = /^[0-9a-f]{64}$/;
+
+/** Refuses a version that isn't `sha256:` and 64 lowercase hex characters, so it can't change a key. */
+export function checkSnapshotVersion(version: string): void {
+  if (!versionPattern.test(version)) {
+    throw new DefinitionSnapshotError(`${JSON.stringify(version)} isn't a snapshot version.`);
+  }
+}
+
 /** The three kinds of object a snapshot keeps, named by the version they belong to. */
 export function snapshotKeys(prefix: string) {
   return {
@@ -42,26 +52,35 @@ export function snapshotKeys(prefix: string) {
 /**
  * Makes the manifest of a workspace's files. Private files (`.git`, `.env` and
  * the like) are left out, so they never reach the bucket.
+ *
+ * @throws RangeError for a path the port forbids, such as `../x` or `a//b`
  */
 export async function buildSnapshotManifest(
   files: Readonly<Record<string, string>>,
 ): Promise<SnapshotManifest> {
+  const paths = Object.keys(files).sort();
+  paths.forEach(checkWorkspacePath);
   const entries: SnapshotFileEntry[] = [];
-  for (const path of Object.keys(files).sort()) {
+  for (const path of paths) {
     if (isPrivateWorkspacePath(path)) {
       continue;
     }
     const bytes = utf8(files[path] ?? "");
     entries.push({ path, bytes: bytes.length, sha256: await sha256Hex(bytes) });
   }
-  const listing = entries.map((entry) => `${entry.path} ${entry.bytes} ${entry.sha256}\n`).join("");
-  const version = `sha256:${await sha256Hex(utf8(listing))}`;
+  // JSON, not lines of text: a path may hold a newline, and two workspaces must never share a version.
+  const version = `sha256:${await sha256Hex(utf8(JSON.stringify(entries)))}`;
   return { formatVersion: snapshotFormatVersion, version, files: entries };
 }
 
 /** Reads `manifest.json`'s text; the files are checked one by one, as they are read. */
 export function parseSnapshotManifest(text: string): SnapshotManifest {
-  const manifest: unknown = JSON.parse(text);
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(text);
+  } catch {
+    throw new DefinitionSnapshotError("The snapshot's manifest isn't valid JSON.");
+  }
   if (
     !isObject(manifest) ||
     !Array.isArray(manifest.files) ||
@@ -74,18 +93,41 @@ export function parseSnapshotManifest(text: string): SnapshotManifest {
       `This snapshot is in format ${String(manifest.formatVersion)}, and this Halonic reads format ${snapshotFormatVersion}. Update Halonic.`,
     );
   }
-  const files = manifest.files.map((entry: unknown): SnapshotFileEntry => {
-    if (
-      !isObject(entry) ||
-      typeof entry.path !== "string" ||
-      typeof entry.bytes !== "number" ||
-      typeof entry.sha256 !== "string"
-    ) {
-      throw new DefinitionSnapshotError("A file entry in the snapshot's manifest is malformed.");
+  checkSnapshotVersion(manifest.version);
+  const files = manifest.files.map(parseFileEntry);
+  files.forEach((entry, index) => {
+    const previous = files[index - 1];
+    if (previous !== undefined && previous.path >= entry.path) {
+      throw new DefinitionSnapshotError(
+        `The manifest lists ${JSON.stringify(entry.path)} twice or out of order.`,
+      );
     }
-    return { path: entry.path, bytes: entry.bytes, sha256: entry.sha256 };
   });
   return { formatVersion: snapshotFormatVersion, version: manifest.version, files };
+}
+
+function parseFileEntry(entry: unknown): SnapshotFileEntry {
+  if (
+    !isObject(entry) ||
+    typeof entry.path !== "string" ||
+    typeof entry.bytes !== "number" ||
+    typeof entry.sha256 !== "string"
+  ) {
+    throw new DefinitionSnapshotError("A file entry in the snapshot's manifest is malformed.");
+  }
+  try {
+    checkWorkspacePath(entry.path);
+  } catch {
+    throw new DefinitionSnapshotError(
+      `The manifest lists the unsafe path ${JSON.stringify(entry.path)}.`,
+    );
+  }
+  if (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0 || !sha256Pattern.test(entry.sha256)) {
+    throw new DefinitionSnapshotError(
+      `The manifest's size or hash for ${JSON.stringify(entry.path)} is malformed.`,
+    );
+  }
+  return { path: entry.path, bytes: entry.bytes, sha256: entry.sha256 };
 }
 
 /** SHA-256 of the bytes as 64 lowercase hex characters. */

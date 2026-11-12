@@ -87,6 +87,65 @@ describe("R2DefinitionSource", () => {
       await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow("Update Halonic");
     });
 
+    it("gives two workspaces that differ only by a newline in a path two versions", async () => {
+      const bucket = new MapBucket();
+      const a = await writeDefinitionSnapshot(bucket, { "a\nb": "x" });
+      const b = await writeDefinitionSnapshot(bucket, { a: "b", b: "x" });
+      expect(a).not.toBe(b);
+    });
+
+    it("refuses to upload a path the port forbids", async () => {
+      for (const path of ["../x", "a//b", "/abs"]) {
+        await expect(writeDefinitionSnapshot(new MapBucket(), { [path]: "x" })).rejects.toThrow(
+          RangeError,
+        );
+      }
+    });
+
+    it("refuses a manifest that can't be trusted", async () => {
+      const hash = "a".repeat(64);
+      const entry = { path: "a.yaml", bytes: 1, sha256: hash };
+      const bad: Record<string, unknown[]> = {
+        "unsafe path": [{ ...entry, path: "../a.yaml" }],
+        duplicate: [entry, entry],
+        unsorted: [{ ...entry, path: "b.yaml" }, entry],
+        "bad hash": [{ ...entry, sha256: "xyz" }],
+        "bad bytes": [{ ...entry, bytes: -1 }],
+      };
+      for (const [name, entries] of Object.entries(bad)) {
+        const bucket = new MapBucket();
+        const version = `sha256:${hash}`;
+        await bucket.put(keys.current, version);
+        await bucket.put(
+          keys.manifest(version),
+          JSON.stringify({ formatVersion: 1, version, files: entries }),
+        );
+        await expect(new R2DefinitionSource(bucket).list(), name).rejects.toThrow(
+          DefinitionSnapshotError,
+        );
+      }
+    });
+
+    it("refuses broken JSON, a bad current and a bad version option", async () => {
+      const bucket = new MapBucket();
+      const version = await writeDefinitionSnapshot(bucket, files);
+      await bucket.put(keys.manifest(version), "{");
+      await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow(DefinitionSnapshotError);
+      await bucket.put(keys.current, "../evil");
+      await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow(DefinitionSnapshotError);
+      expect(() => new R2DefinitionSource(bucket, { version: "../evil" })).toThrow(
+        DefinitionSnapshotError,
+      );
+    });
+
+    it("tries again after a failed load", async () => {
+      const bucket = new MapBucket();
+      const source = new R2DefinitionSource(bucket);
+      await expect(source.list()).rejects.toThrow("No workspace snapshot");
+      await writeDefinitionSnapshot(bucket, files);
+      expect(await source.list()).toHaveLength(2);
+    });
+
     it("has no way to write", () => {
       const source = new R2DefinitionSource(new MapBucket());
       expect("write" in source).toBe(false);
