@@ -66,6 +66,19 @@ verifies("shell.settings-container", () => {
       ]);
     });
 
+    it("keeps On this computer in the desktop app, even for a narrow window's phone list", () => {
+      const groups = settingsGroups({
+        sections,
+        workspaceName: "Acme",
+        place: "app",
+        phone: true,
+      });
+      expect(headings(groups).map((group) => group.heading)).toEqual([
+        "Acme, Workspace settings",
+        "On this computer",
+      ]);
+    });
+
     it("leaves out the workspace's group when no workspace is open", () => {
       const groups = settingsGroups({ sections, workspaceName: undefined, place: "app" });
       expect(headings(groups).map((group) => group.heading)).toEqual(["On this computer"]);

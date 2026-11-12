@@ -24,8 +24,9 @@ export interface SettingsGroupsInput {
   readonly workspaceName: string | undefined;
   readonly place: SettingsPlace;
   /**
-   * The list is a phone's page: Developer and any section with `phone: false` are left out, and
-   * the headings read "On this phone" and "On your computer" (flow-settings 13).
+   * The list is a phone's page: Developer and any section with `phone: false` are left out,
+   * and, when served, the headings read "On this phone" and "On your computer" (flow-settings 13).
+   * In the desktop app, even in a narrow window, the headings stay "On this computer".
    */
   readonly phone?: boolean;
 }
@@ -64,7 +65,7 @@ export function settingsGroups(input: SettingsGroupsInput): SettingsGroup[] {
       sections: inScope("workspace"),
     });
   }
-  if (input.phone === true) {
+  if (input.phone === true && input.place === "served") {
     groups.push({ key: "phone", name: "On this phone", sections: inScope("display") });
     groups.push({ key: "host", name: "On your computer", sections: inScope("host") });
   } else if (input.place === "app") {
