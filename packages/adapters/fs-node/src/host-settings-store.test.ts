@@ -78,8 +78,9 @@ verifies("fs-node.host-settings-store", () => {
       expect(await readFile(elsewhere, "utf8")).toBe(planted);
     });
 
+    // Windows has no read permission bits, and root reads any file.
     it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-      "throws on a save when the file can't be read, and changes nothing",
+      "[platform:win32] has no read permission bits: throws on a save when the file can't be read, and changes nothing",
       async () => {
         const root = await tempFolder();
         const store = new FileHostSettingsStore(root);
