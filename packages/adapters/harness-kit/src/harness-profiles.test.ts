@@ -110,7 +110,7 @@ verifies("harness-kit.harness-profile", () => {
       const socketPath = join(computer.data, "bridges", "r1", "bridge.sock");
       const onSocket = { url: "http://bridge.halonic.invalid", token: "run-token", socketPath };
 
-      const { profile } = await profilesWith().profileOf(agentWith(null), onSocket);
+      const { profile } = await profilesWith().profileOf(writerAgent(null), onSocket);
 
       expect(profile.network.bridge).toEqual({
         kind: "socket",
@@ -118,7 +118,7 @@ verifies("harness-kit.harness-profile", () => {
         socketPath,
       });
       const onAnotherPort = { ...onSocket, url: "http://bridge.halonic.invalid:8080" };
-      await expect(profilesWith().profileOf(agentWith(null), onAnotherPort)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(null), onAnotherPort)).rejects.toThrow(
         "must be plain http on port 80",
       );
     });

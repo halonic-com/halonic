@@ -146,7 +146,10 @@ describe("a site the profile doesn't allow, on Windows", () => {
       readOnlyPaths: [],
       deniedPaths: [],
       env: {},
-      network: { bridge: { host: "127.0.0.1", port }, allowedSites: ["allowed.example"] },
+      network: {
+        bridge: { kind: "loopback", host: "127.0.0.1", port },
+        allowedSites: ["allowed.example"],
+      },
       timeLimitMs: 120_000,
     });
   });

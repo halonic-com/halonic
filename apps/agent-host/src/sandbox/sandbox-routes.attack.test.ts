@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type {
   Sandbox,
   SandboxBlockListener,
+  SandboxBridge,
   SandboxCapabilities,
   SandboxCheck,
   SandboxFence,
@@ -37,6 +38,11 @@ const profile: SandboxProfile = {
   network: { bridge: null, allowedSites: [] },
   timeLimitMs: 60_000,
 };
+
+/** A loopback bridge on any port, including ones the routes must refuse. */
+function loopbackBridgeOn(port: number): SandboxBridge {
+  return { kind: "loopback", host: "127.0.0.1", port };
+}
 
 class FakeSession implements SandboxSession {
   readonly listeners = new Set<SandboxBlockListener>();
@@ -369,17 +375,8 @@ describe("sandbox routes, attacked by a caller with the token", () => {
       { ...profile, extra: true },
       { ...profile, network: { bridge: null, allowedSites: [], all: true } },
       { ...profile, network: { allowedSites: [] } },
-      {
-        ...profile,
-        network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 0 }, allowedSites: [] },
-      },
-      {
-        ...profile,
-        network: {
-          bridge: { kind: "loopback", host: "127.0.0.1", port: 65_536 },
-          allowedSites: [],
-        },
-      },
+      { ...profile, network: { bridge: loopbackBridgeOn(0), allowedSites: [] } },
+      { ...profile, network: { bridge: loopbackBridgeOn(65_536), allowedSites: [] } },
       { ...profile, timeLimitMs: 0 },
       { ...profile, timeLimitMs: 1.5 },
       { ...profile, deniedPaths: ["relative"] },
