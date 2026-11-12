@@ -61,21 +61,24 @@ const knownStatements = new Set([
   "DELETE FROM record_changes WHERE collection = ? AND seq <= ?",
 ]);
 
-/** A statement the store prepared, and the values it bound to it. */
+/** A statement the store prepared, and the values it bound to it (none, if it never bound any). */
 interface Sent {
   sql: string;
   values: unknown[];
 }
 
-/** The real database, remembering every statement's text and the values bound to each. */
+/**
+ * The real database, remembering every statement the moment it is prepared, so one that is never
+ * bound (or is built by joining text) is seen too, and the values bound to it once they are.
+ */
 function watching(db: D1Database): { db: SqlDatabase; sent: Sent[] } {
   const sent: Sent[] = [];
   const real = new Map<SqlStatement, D1PreparedStatement>();
-  const watch = (sql: string, statement: D1PreparedStatement): SqlStatement => {
+  const watch = (entry: Sent, statement: D1PreparedStatement): SqlStatement => {
     const view: SqlStatement = {
       bind: (...values) => {
-        sent.push({ sql, values });
-        return watch(sql, statement.bind(...values));
+        entry.values = values;
+        return watch(entry, statement.bind(...values));
       },
       all: <Row>() => statement.all<Row>(),
       run: () => statement.run(),
@@ -86,7 +89,11 @@ function watching(db: D1Database): { db: SqlDatabase; sent: Sent[] } {
   return {
     sent,
     db: {
-      prepare: (sql) => watch(sql, db.prepare(sql)),
+      prepare: (sql) => {
+        const entry: Sent = { sql, values: [] };
+        sent.push(entry);
+        return watch(entry, db.prepare(sql));
+      },
       batch: (statements) =>
         db.batch(statements.map((statement) => real.get(statement) as D1PreparedStatement)),
     },
@@ -111,7 +118,8 @@ const appended = (sent: Sent[]) => boundTo(sent, "INSERT INTO record_changes (co
 
 /**
  * The text is in no statement, neither as it is nor as a quote-doubling escape would leave it.
- * Text the store's own statements contain, such as `?`, can't be told apart there, so it is skipped.
+ * Text the store's own statements contain, such as `?` or a table name, can't be told apart there,
+ * so it is skipped here, and the exact-match check against the known statements covers it.
  */
 function expectInNoStatement(sent: Sent[], text: string): void {
   for (const { sql } of sent) {
