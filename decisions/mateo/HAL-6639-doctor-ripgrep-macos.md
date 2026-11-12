@@ -10,6 +10,8 @@ srt starts ripgrep (`rg`) next to Seatbelt on macOS, as it does next to bubblewr
 
 The `Sandbox` port's closed list gains `ripgrep-missing`, after `linux-tools-missing`. sandbox-srt's check gives it on macOS when Seatbelt is there and `rg --version` doesn't start (asked once, like the Linux helpers). `doctor`'s Sandbox line is then ✕ with that code, and the CLI words it "ripgrep isn't installed, and the sandbox needs it." with the fix `brew install ripgrep`. The requirements gain one example each, and the port's requirement names the new code.
 
+CI's Seatbelt fence job installs ripgrep with Homebrew before its tests, because the macos-15 runner image doesn't ship it and the check now refuses to start without it.
+
 ## Why
 
 `linux-tools-missing` names `socat` and an `apt` fix, both wrong on a Mac. A code of its own lets the CLI and Studio give the one fix that works there. The words build on the doctor screen the board approved, so the team decides them (board, HAL-2282).
@@ -19,3 +21,4 @@ The `Sandbox` port's closed list gains `ripgrep-missing`, after `linux-tools-mis
 - sandbox-srt.check
 - app.doctor-sandbox
 - ports.sandbox-check-reason
+- .github/
