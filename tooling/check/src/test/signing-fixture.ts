@@ -37,6 +37,7 @@ export function keyPair(): { publicKey: KeyObject; privatePem: string } {
 export function approvers(entries: {
   internal?: KeyObject[];
   "user-visible"?: KeyObject[];
+  guardians?: KeyObject[];
 }): string {
   const list = (keys: KeyObject[] = []) =>
     keys.map((key) => ({
@@ -47,5 +48,6 @@ export function approvers(entries: {
   return JSON.stringify({
     internal: list(entries.internal),
     "user-visible": list(entries["user-visible"]),
+    ...(entries.guardians === undefined ? {} : { guardians: list(entries.guardians) }),
   });
 }

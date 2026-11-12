@@ -2,14 +2,13 @@ import { resolve } from "node:path";
 import { type PullRequest, signedApprovals } from "../guard/approvals.ts";
 import { gitObjects } from "../guard/git-objects.ts";
 import { checkRequirementGuard, guardChecks } from "../guard/guard.ts";
-import { reviewSourceFromEnv } from "../guard/reviews.ts";
 import { checkTestRuns } from "../guard/test-runs.ts";
 import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
 const usage =
-  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--skip-test-runs] [--repo <owner/name> --pr <number> --head-sha <sha> --base-sha <sha>]";
+  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--built-on <checkout>] [--skip-test-runs] [--repo <owner/name> --pr <number> --head-sha <sha> --base-sha <sha>]";
 
 /**
  * node <merge base>/tooling/check/src/cli/requirement-guard.ts --base <dir> --branch <name>
@@ -21,6 +20,13 @@ const usage =
  * weaken the guard that checks it. With `--skip-test-runs` it leaves out
  * the one check that reads test result files, so it runs without the tests
  * (`pnpm check:enqueue` does that; CI runs the full guard).
+ *
+ * `--built-on` points at a checkout of the main commit the pull request's
+ * merge ref was built on, when CI walked back from it to an older green
+ * commit because main was red. `--base` is then that green commit, with its
+ * test results, and the guard compares the pull request's files with
+ * `--built-on`, so it doesn't report what main changed in between
+ * (HAL-7660).
  *
  * `--repo`, `--pr`, `--head-sha` and `--base-sha` name the pull request a
  * note's signature must be for; both commits must be in the current
@@ -35,11 +41,14 @@ async function main(argv: readonly string[]): Promise<number> {
   }
   const started = performance.now();
   const headRoot = findRepoRoot();
+  const builtOn = flagValue(argv, "--built-on");
+  const tested = loadContext(resolve(base));
   const report = await checkRequirementGuard({
-    base: loadContext(resolve(base)),
+    base: builtOn === undefined ? tested : loadContext(resolve(builtOn)),
     head: loadContext(headRoot),
+    ...(builtOn === undefined ? {} : { tested }),
     branch,
-    approvals: signedApprovals(pullRequestOf(argv), gitObjects(headRoot), reviewSourceFromEnv()),
+    approvals: signedApprovals(pullRequestOf(argv), gitObjects(headRoot)),
     checks: argv.includes("--skip-test-runs")
       ? guardChecks.filter((check) => check !== checkTestRuns)
       : guardChecks,

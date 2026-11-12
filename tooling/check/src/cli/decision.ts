@@ -10,7 +10,7 @@ const usage = "Usage: pnpm decision sign <pull request number>";
  *
  * Signs a pull request's decision note with the key in
  * PAPERCLIP_AGENT_PRIVATE_KEY (HAL-1337) and prints the `- Signature:` line
- * to add under the note's `- Kind:` line. It runs only in a clean checkout
+ * to add under the note's `- Kind:` line. A change to the guard's trust roots needs two guardians: the second adds their line under the first. It runs only in a clean checkout
  * of origin/main and reads the pull request from git's objects, so none of
  * the pull request's code, hooks or config runs while the key is loaded. It
  * never writes the key anywhere.

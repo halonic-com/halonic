@@ -5,16 +5,9 @@ name: Guard notes
 # the base branch, and the job runs only the base's code: the pull request's
 # head is fetched as git objects and only read. No install, no cache, no
 # secret, a read-only token. It checks that a change to the guard's own
-# paths has a user-visible note, and that any note is approved: a signature
-# that verifies against the base's approvers.json, or for a user-visible
-# note without one, the pinned GitHub account's approving review of the
-# head commit, read live through the read-only token. The test-result
-# comparison stays in ci.yml's guard job.
-#
-# There is no pull_request_review trigger. GitHub runs that event from the
-# pull request's own merge commit, so a pull request could ship a copy of
-# this job that reports success. After the user's approval, re-run this
-# job (the run reads the reviews live); the merge queue run reads them too.
+# paths has a signed note, and that any note's signature
+# verifies against the base's approvers.json. The test-result comparison
+# stays in ci.yml's guard job.
 #
 # On merge_group, GitHub runs this file from the merge group's commit, which
 # includes the pull request's changes, so a pull request that edits this
@@ -51,9 +44,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
-      # Blocking. This job fails the pull request, but it blocks a merge
-      # only once it is a required check next to ci-ok: ci-ok can't wait
-      # for it, because it runs in another workflow.
+      # Blocking. An `internal` note signed by the CTO key covers routine
+      # changes to .github/ and tooling/check/; a change to a trust root
+      # needs two guardians' signatures (check.guard-two-guardians). This job fails the pull request, but it blocks a
+      # merge only once it is a required check next to ci-ok: ci-ok can't
+      # wait for it, because it runs in another workflow.
       - name: Check the decision note (base branch's code)
         env:
           GH_TOKEN: ${{ github.token }}

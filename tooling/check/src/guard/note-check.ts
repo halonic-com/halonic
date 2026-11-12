@@ -2,7 +2,6 @@ import { Report } from "../lib/problems.ts";
 import { type PullRequest, signedApprovals } from "./approvals.ts";
 import { decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
-import type { ReviewSource } from "./reviews.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
 /**
@@ -13,20 +12,24 @@ import { approversFile, type GitObjects } from "./signatures.ts";
 export const ownPaths: readonly string[] = [...guardedPaths, approversFile];
 
 /**
- * Own paths an `internal` note signed by the CTO key may cover (HAL-3434,
- * decided on HAL-7701): the board approved the user's GitHub review for
- * rare changes, and these folders change about 45 times a day. A change
- * under one still needs the user when it touches a path of `userPaths`.
+ * Own paths an `internal` note signed by the CTO key may cover (decided on
+ * HAL-7701): these folders change about 45 times a day. A change under one
+ * still needs two guardians when it touches a path of `trustRoots`.
  */
 export const internalOwnPaths: readonly string[] = [".github/", "tooling/check/", ".gitattributes"];
 
 /**
- * The files and folders inside `internalOwnPaths` that are the guard's real
- * trust roots: its note check, its code, the two guard commands, the `lib/` helpers
- * they import and its approvers. A change to one needs a `user-visible` note. A folder ends in `/`.
+ * The files and folders inside `internalOwnPaths` that are the guard's
+ * trust roots: its note check, its code, the two guard commands, the `lib/`
+ * helpers they import, its approvers, `.gitattributes` and `policy.json`
+ * (outside `extraExports`). A change to one needs a `user-visible` note
+ * with the signatures of two different guardians (HAL-1337, HAL-7740). A
+ * folder ends in `/`.
  */
-export const userPaths: readonly string[] = [
+export const trustRoots: readonly string[] = [
   approversFile,
+  ".gitattributes",
+  policyFile,
   ".github/workflows/guard-notes.yml",
   "tooling/check/src/guard/",
   "tooling/check/src/cli/guard-notes.ts",
@@ -56,22 +59,20 @@ export interface NoteCheckRun {
   /** The commit `changed` is counted from, where `policy.json` is compared. */
   readonly mergeBase: string;
   readonly git: GitObjects;
-  /** Reads the pull request's reviews, for a `user-visible` note with no signature. */
-  readonly reviews?: ReviewSource | undefined;
 }
 
 /**
  * The note check that `guard-notes.yml` runs from the base branch: a
  * pull request that touches an own path needs a `user-visible` note listing
- * it, and any note it adds must be approved, by a valid signature or, for
- * a `user-visible` note, a GitHub review. A change to `policy.json` in `extraExports`
+ * it, and any note it adds must carry a valid signature, two different
+ * guardians' for a change to a trust root. A change to `policy.json` in `extraExports`
  * only needs a note that lists `policy.json`, of either kind. The
  * test-result comparison stays in the requirement guard.
  */
 export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   const report = new Report("guard-notes");
   const file = decisionNoteFile(run.branch);
-  const { touched, exports } = touchedPaths(run);
+  const { touched, exports, changed } = touchedPaths(run);
   const text = run.git.readFile(run.pull.head, file);
   if (text === undefined) {
     for (const path of touched) {
@@ -95,8 +96,8 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     }
     return report;
   }
-  const reachesUserPath = run.changed.some((each) => matches(userPaths, each));
-  const needUser = touched.filter((path) => !internalOwnPaths.includes(path) || reachesUserPath);
+  const reachesRoot = changed.some((each) => matches(trustRoots, each));
+  const needUser = touched.filter((path) => !internalOwnPaths.includes(path) || reachesRoot);
   if (parsed.note.kind !== "user-visible" && needUser.length > 0) {
     report.error(
       file,
@@ -116,8 +117,9 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
       `Changes extraExports in ${path}, but the note doesn't list "${path}" under Covers.`,
     );
   }
-  const verdict = await signedApprovals(run.pull, run.git, run.reviews).check({
+  const verdict = await signedApprovals(run.pull, run.git).check({
     note: parsed.note,
+    guardians: reachesRoot,
   });
   if (!verdict.approved) {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
@@ -130,7 +132,11 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
  * and `policy.json` when it changes in `extraExports` only, which needs a
  * note of either kind.
  */
-function touchedPaths(run: NoteCheckRun): { touched: string[]; exports: string[] } {
+function touchedPaths(run: NoteCheckRun): {
+  touched: string[];
+  exports: string[];
+  changed: readonly string[];
+} {
   const exportsOnly =
     run.changed.includes(policyFile) &&
     onlyExtraExportsChanged(
@@ -139,7 +145,7 @@ function touchedPaths(run: NoteCheckRun): { touched: string[]; exports: string[]
     );
   const changed = exportsOnly ? run.changed.filter((path) => path !== policyFile) : run.changed;
   const touched = ownPaths.filter((path) => changed.some((each) => matches([path], each)));
-  return { touched, exports: exportsOnly ? [policyFile] : [] };
+  return { touched, exports: exportsOnly ? [policyFile] : [], changed };
 }
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */

@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { approvers, type Files, fakeGit, keyPair } from "../test/signing-fixture.ts";
 import type { PullRequest } from "./approvals.ts";
 import { policyFile } from "./guarded-paths.ts";
-import { checkNotes, userPaths } from "./note-check.ts";
+import { checkNotes, trustRoots } from "./note-check.ts";
 import {
   approversFile,
   coveredObjects,
@@ -15,7 +15,7 @@ import {
   signedText,
 } from "./signatures.ts";
 
-const user = keyPair();
+const julian = keyPair();
 const cto = keyPair();
 const branch = "julian/HAL-1337-example";
 const noteFile = `decisions/${branch}.md`;
@@ -23,7 +23,11 @@ const base = "b".repeat(40);
 const head = "a".repeat(40);
 const pull: PullRequest = { repo: "halonic-com/halonic", number: 7, head, base };
 const baseFiles: Files = {
-  [approversFile]: approvers({ internal: [cto.publicKey], "user-visible": [user.publicKey] }),
+  [approversFile]: approvers({
+    internal: [cto.publicKey],
+    "user-visible": [cto.publicKey],
+    guardians: [cto.publicKey, julian.publicKey],
+  }),
   ".github/workflows/ci.yml": "on: pull_request\n",
 };
 
@@ -42,7 +46,7 @@ ${covers.map((entry) => `- ${entry}`).join("\n")}
 /** Runs the check on a pull request that changes ci.yml and adds `text`, signed by `signer`. */
 async function errorsOf(
   text: string | undefined,
-  signer = user.privatePem,
+  signer: string | readonly string[] = cto.privatePem,
   changedFile = ".github/workflows/ci.yml",
 ): Promise<string[]> {
   const headFiles = { ...baseFiles, [changedFile]: "on: [pull_request]\n" };
@@ -52,7 +56,13 @@ async function errorsOf(
       ? headFiles
       : {
           ...headFiles,
-          [noteFile]: text.replace(/(- Kind: .*\n)/, `$1${sign(text, git, signer)}\n`),
+          [noteFile]: text.replace(
+            /(- Kind: .*\n)/,
+            `$1${[signer]
+              .flat()
+              .map((key) => `${sign(text, git, key)}\n`)
+              .join("")}`,
+          ),
         };
   const report = await checkNotes({
     pull,
@@ -106,15 +116,12 @@ verifies("check.guard-notes-own-paths", () => {
     ]);
   });
 
-  test("passes it with a user-visible note that lists .github/ and the user's signature", async () => {
+  test("passes it with a user-visible note that lists .github/ and the CTO's signature", async () => {
     expect(await errorsOf(note("user-visible", ".github/"))).toEqual([]);
   });
 
-  test("passes .github/, .gitattributes and tooling/check/ with an internal note the CTO signed", async () => {
+  test("passes .github/ and tooling/check/ with an internal note the CTO signed", async () => {
     expect(await errorsOf(note("internal", ".github/"), cto.privatePem)).toEqual([]);
-    expect(
-      await errorsOf(note("internal", ".gitattributes"), cto.privatePem, ".gitattributes"),
-    ).toEqual([]);
     expect(
       await errorsOf(note("internal", "tooling/check/"), cto.privatePem, "tooling/check/src/x.ts"),
     ).toEqual([]);
@@ -127,6 +134,7 @@ verifies("check.guard-notes-own-paths", () => {
       ["tooling/check/", "tooling/check/src/cli/guard-notes.ts"],
       ["tooling/check/", "tooling/check/src/cli/requirement-guard.ts"],
       [approversFile, approversFile],
+      [".gitattributes", ".gitattributes"],
       ["turbo.json", "turbo.json"],
     ];
     for (const [path, changed] of cases) {
@@ -140,14 +148,14 @@ verifies("check.guard-notes-own-paths", () => {
   test("fails a note that doesn't list the path, or whose signature doesn't verify", async () => {
     const unlisted = await errorsOf(note("user-visible", "turbo.json"));
     expect(unlisted[0]).toMatch(/doesn't list "\.github\/" under Covers/);
-    const wrongKey = await errorsOf(note("user-visible", ".github/"), cto.privatePem);
+    const wrongKey = await errorsOf(note("user-visible", ".github/"), julian.privatePem);
     expect(wrongKey).toEqual([
-      expect.stringMatching(/approval isn't verified: the key .* may only sign internal notes/),
+      expect.stringMatching(/approval isn't verified: the key .* isn't in the merge base's/),
     ]);
   });
-  test("lists every file the guard commands import as a path that needs the user", () => {
+  test("lists every file the guard commands import as a trust root", () => {
     const covered = (file: string) =>
-      userPaths.some((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
+      trustRoots.some((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
     expect(guardImports().filter((file) => !covered(file))).toEqual([]);
   });
 });
@@ -159,7 +167,7 @@ const policy = (extraExports: Record<string, string[]>, published: string[] = []
 async function policyErrorsOf(
   after: string,
   text: string | undefined,
-  signer: string,
+  signer: string | readonly string[],
   extra: Files = {},
 ): Promise<string[]> {
   const before = { ...baseFiles, [policyFile]: policy({}) };
@@ -177,13 +185,14 @@ async function policyErrorsOf(
 }
 
 /** `text` with a signature line over its Covers paths at the head, made with `privatePem`. */
-function signed(text: string, headFiles: Files, privatePem: string): string {
+function signed(text: string, headFiles: Files, privatePem: string | readonly string[]): string {
   const git = fakeGit({ [base]: baseFiles, [head]: headFiles });
   const kind = text.includes("Kind: internal") ? "internal" : "user-visible";
   const covers = (text.split("## Covers")[1] ?? "").match(/(?<=^- ).+$/gm) ?? [];
   const objects = coveredObjects(coveredPaths(covers, git, head, base), git, head);
   const facts = { repo: pull.repo, pr: pull.number, kind, unsigned: text, objects } as const;
-  return text.replace(/(- Kind: .*\n)/, `$1${signatureLine(signedText(facts), privatePem)}\n`);
+  const lines = [privatePem].flat().map((pem) => `${signatureLine(signedText(facts), pem)}\n`);
+  return text.replace(/(- Kind: .*\n)/, `$1${lines.join("")}`);
 }
 
 verifies("check.guard-extra-exports", () => {
@@ -205,10 +214,15 @@ verifies("check.guard-extra-exports", () => {
   test("counts any other change to policy.json as a change under tooling/check/", async () => {
     const other = policy({ "@halonicjs/std": ["./error-kind"] }, ["@halonicjs/std"]);
     expect(await policyErrorsOf(other, note("internal", policyFile), cto.privatePem)).toEqual([
+      `${noteFile}: Changes the guard's own paths (tooling/check/), so the note's Kind must be user-visible.`,
       `${noteFile}: Changes the guard's own path tooling/check/, but the note doesn't list "tooling/check/" under Covers.`,
+      expect.stringMatching(/needs 2 different guardians/),
     ]);
     expect(
-      await policyErrorsOf(other, note("user-visible", "tooling/check/"), user.privatePem),
+      await policyErrorsOf(other, note("user-visible", "tooling/check/"), [
+        cto.privatePem,
+        julian.privatePem,
+      ]),
     ).toEqual([]);
   });
 
@@ -218,12 +232,130 @@ verifies("check.guard-extra-exports", () => {
     expect(errors).toEqual([
       `${noteFile}: Changes the guard's own paths (tooling/check/), so the note's Kind must be user-visible.`,
       `${noteFile}: Changes the guard's own path tooling/check/, but the note doesn't list "tooling/check/" under Covers.`,
+      expect.stringMatching(/needs 2 different guardians/),
     ]);
   });
 
   test("fails an internal note signed by a key other than the CTO's", async () => {
-    expect(await policyErrorsOf(added, note("internal", policyFile), user.privatePem)).toEqual([
+    expect(await policyErrorsOf(added, note("internal", policyFile), julian.privatePem)).toEqual([
       expect.stringMatching(/approval isn't verified/),
     ]);
+  });
+});
+
+verifies("check.guard-two-guardians", () => {
+  const guardianKeys = [cto.privatePem, julian.privatePem];
+  const roots = note("user-visible", "tooling/check/");
+  const changed = "tooling/check/src/guard/approvals.ts";
+  const outsider = keyPair();
+
+  test("passes a trust-root change signed by two different guardians", async () => {
+    expect(await errorsOf(roots, guardianKeys, changed)).toEqual([]);
+  });
+
+  test("fails one signature, the same key twice, or a key that isn't a guardian", async () => {
+    expect(await errorsOf(roots, cto.privatePem, changed)).toEqual([
+      expect.stringMatching(/needs 2 different guardians' signatures; it has 1/),
+    ]);
+    expect(await errorsOf(roots, [cto.privatePem, cto.privatePem], changed)).toEqual([
+      expect.stringMatching(/needs 2 different guardians' signatures; it has 1/),
+    ]);
+    expect(await errorsOf(roots, [cto.privatePem, outsider.privatePem], changed)).toEqual([
+      expect.stringMatching(/isn't a guardian in the merge base's/),
+    ]);
+  });
+
+  test("fails a second guardian who the pull request adds to approvers.json itself", async () => {
+    const own = {
+      ...baseFiles,
+      [approversFile]: approvers({
+        internal: [cto.publicKey],
+        guardians: [cto.publicKey, outsider.publicKey],
+      }),
+    };
+    const text = roots.replace(/(- Kind: .*\n)/, "$1");
+    const unsigned = text;
+    const headFiles = { ...own, [changed]: "x\n" };
+    const git = fakeGit({ [base]: baseFiles, [head]: headFiles });
+    const lines = [cto.privatePem, outsider.privatePem].map(
+      (pem) => `${sign(unsigned, git, pem)}\n`,
+    );
+    const files = {
+      ...headFiles,
+      [noteFile]: unsigned.replace(/(- Kind: .*\n)/, `$1${lines.join("")}`),
+    };
+    const report = await checkNotes({
+      pull,
+      branch,
+      changed: [changed, approversFile],
+      mergeBase: base,
+      git: fakeGit({ [base]: baseFiles, [head]: files }),
+    });
+    expect(report.problems.map((problem) => problem.message)).toContainEqual(
+      expect.stringMatching(/isn't a guardian in the merge base's/),
+    );
+  });
+
+  test("fails a guardian removed in the same pull request, which still counts at the base", async () => {
+    const removed = {
+      ...baseFiles,
+      [approversFile]: approvers({ internal: [cto.publicKey], guardians: [cto.publicKey] }),
+    };
+    const headFiles = { ...removed, [changed]: "x\n" };
+    const git = fakeGit({ [base]: baseFiles, [head]: headFiles });
+    const files = {
+      ...headFiles,
+      [noteFile]: roots.replace(/(- Kind: .*\n)/, `$1${sign(roots, git, cto.privatePem)}\n`),
+    };
+    const report = await checkNotes({
+      pull,
+      branch,
+      changed: [changed, approversFile],
+      mergeBase: base,
+      git: fakeGit({ [base]: baseFiles, [head]: files }),
+    });
+    expect(report.problems.map((problem) => problem.message)).toContainEqual(
+      expect.stringMatching(/needs 2 different guardians' signatures; it has 1/),
+    );
+  });
+
+  test("fails the signatures replayed on another pull request, or after the note was edited", async () => {
+    const headFiles = { ...baseFiles, [changed]: "x\n" };
+    const git = fakeGit({ [base]: baseFiles, [head]: headFiles });
+    const lines = guardianKeys.map((pem) => `${sign(roots, git, pem)}\n`).join("");
+    const run = async (text: string, number: number) =>
+      (
+        await checkNotes({
+          pull: { ...pull, number },
+          branch,
+          changed: [changed],
+          mergeBase: base,
+          git: fakeGit({ [base]: baseFiles, [head]: { ...headFiles, [noteFile]: text } }),
+        })
+      ).problems.map((problem) => problem.message);
+    const text = roots.replace(/(- Kind: .*\n)/, `$1${lines}`);
+    expect(await run(text, pull.number)).toEqual([]);
+    expect(await run(text, 8)).toContainEqual(expect.stringMatching(/doesn't match/));
+    expect(await run(text.replace("The build", "The deploy"), pull.number)).toContainEqual(
+      expect.stringMatching(/doesn't match/),
+    );
+  });
+
+  test("needs only the one guardian the base pins when it pins one (the bootstrap)", async () => {
+    const one = { ...baseFiles, [approversFile]: approvers({ internal: [cto.publicKey] }) };
+    const headFiles = { ...one, [changed]: "x\n" };
+    const git = fakeGit({ [base]: one, [head]: headFiles });
+    const files = {
+      ...headFiles,
+      [noteFile]: roots.replace(/(- Kind: .*\n)/, `$1${sign(roots, git, cto.privatePem)}\n`),
+    };
+    const report = await checkNotes({
+      pull,
+      branch,
+      changed: [changed],
+      mergeBase: base,
+      git: fakeGit({ [base]: one, [head]: files }),
+    });
+    expect(report.problems).toEqual([]);
   });
 });

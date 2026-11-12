@@ -250,13 +250,13 @@ What changes and why.
 - packages/core/workflow/src/timer.test.ts
 ```
 
-`Kind` says who approves: `user-visible` changes need the user's
-approval, `internal` ones the maintainer's. The `Approval` link is the audit
+`Kind` says what the change is: `user-visible` or `internal`. Both are approved by
+signature, and no person has to approve on GitHub. The `Approval` link is the audit
 trail; the guard doesn't call Paperclip. It checks the **signature line**
 instead, offline, with no token and no network, so fork pull requests are
 checked the same way. The approver signs with their Ed25519 key, and the
 guard accepts the signature only from a key that the base branch's
-`tooling/check/approvers.json` pins for the note's kind. A pull request
+`tooling/check/approvers.json` pins for the note's kind (today the CTO's key for both). A pull request
 can't add its own key: the guard reads that file from the base branch's
 commit (`pull_request.base.sha`), never from the pull request.
 
@@ -278,7 +278,7 @@ path. So a signature can't be reused on another pull request (a fork's
 branch with the same name included), and editing the note, a covered file
 or a test file that names a covered requirement ID after signing (or
 removing one) breaks it. Editing other files or rebasing
-doesn't. The note fails when it has no signature or more than one, when the
+doesn't. The note fails when it has no signature or more than two, when the
 signature isn't in the header (the `- ` lines above the first paragraph),
 when it has a carriage return (save it with LF line endings), and when the
 base branch already has the note: a branch name that was used before needs
@@ -286,27 +286,32 @@ a new name. Both guards fail the pull request when they find an error. A
 change to a requirement needs an approved note of either kind. A change to
 the guard's own paths needs a `user-visible` note, except routine changes
 under `.github/`, `tooling/check/` and `.gitattributes`, where the CTO's
-signed `internal` note is enough (see the note guard below).
+signed `internal` note is enough, unless the change reaches a trust root
+(see the two guardians above).
 
-**A `user-visible` note is approved on GitHub, not by signature.** The user
-approves the pull request with an "Approve" review from their own GitHub
-account, and the note carries no `- Signature:` line. The guard accepts it
-only when the guard's own code pins that account by its numeric user ID
-(`userReviewers` in `src/guard/reviews.ts`; a rename can't hand the approval
-to someone else, and the pin changes only with the user's own review of that
-folder), and the account's latest review that isn't a plain comment is an
-approval made on the pull request's current head commit. The guard reads the
-reviews live with the run's read-only token, so a push after the approval
-needs a new approval, a dismissed approval or a later "Request changes"
-withdraws it, and a missing token or a GitHub error counts as not approved.
-GitHub doesn't run the check again when a review is submitted (the
-`pull_request_review` event would run the pull request's own copy of the
-workflow, which could report success), so after the approval re-run the
-`Decision note and the guard's own paths` job and the requirement guard
-job in `ci.yml`, which reads the reviews too; the merge queue run reads the
-reviews again. A `user-visible` note that does carry a signature line is
-checked as a signature, against the `user-visible` keys, of which none are
-pinned.
+**Two guardians for the trust roots.** A change to the guard's trust roots needs
+two `- Signature:` lines from two different guardians, one under the other in
+the header, both over the same text above. The trust roots are
+`tooling/check/approvers.json`, `.gitattributes`, `tooling/check/policy.json`
+outside `extraExports`, `.github/workflows/guard-notes.yml`,
+`tooling/check/src/guard/`, the two guard commands (`guard-notes.ts`,
+`requirement-guard.ts`) and the `lib/` helpers they import. The guardians are
+the keys under `guardians` in `approvers.json`: the CTO's and the security
+reviewer's. A key counts once, so the same key twice fails, and neither
+guardian passes alone. Nobody can add themselves: the list comes from the base
+branch, so adding or removing a guardian is approved under the list as it is
+now, never under the pull request's version. Until a second guardian is pinned
+(and for a file with no `guardians` list, which means the `internal` keys),
+the threshold is the number of guardians there are, up to two; that is how the
+second key is added, and it can't be lowered again because lowering it changes
+the list. The reason is agent-only approval, with two keys so that one agent
+that is wrong or compromised can't change the guard. Both keys live in
+Paperclip, so a compromise of Paperclip itself would reach both.
+
+A process rule the code can't enforce: a guardian doesn't sign a pull request
+they wrote. If one of the two guardians wrote it, the other signs, and Mateo
+(who is not a guardian in `approvers.json`) checks it and signs off on the
+review task before that. The code still asks for the two guardian keys.
 
 **Signing.** The approver signs only from a clean worktree of
 `origin/main`, never from the pull request's checkout: there the
@@ -322,10 +327,12 @@ cd ../sign && pnpm decision sign <pull request number>
 covered files from git's objects at the pull request's head (as
 `git show <head>:decisions/<branch>.md` would), prints exactly the text it
 signs and then the `- Signature:` line. The author adds that line under
-`- Kind:` and pushes. The key comes from `PAPERCLIP_AGENT_PRIVATE_KEY`, and
-the tool never writes it anywhere. It refuses a note that is already signed,
-malformed or already on `main`, and a key that `approvers.json` doesn't pin
-for the note's kind.
+`- Kind:` and pushes. The second guardian of a trust-root change runs it again
+on the pushed head and adds their line under the first; the text they sign is the
+same, because it leaves out every signature line. The key comes from `PAPERCLIP_AGENT_PRIVATE_KEY`, and
+the tool never writes it anywhere. It refuses a note that already has two
+signatures or one from the same key, a malformed note or one already on `main`,
+and a key that `approvers.json` pins neither for the note's kind nor as a guardian.
 
 **The note check runs in its own workflow**, `.github/workflows/guard-notes.yml`,
 on `pull_request_target` and in the merge queue. On `pull_request_target`
@@ -343,20 +350,20 @@ that path as written here and its approval is verified. The note must be
 `user-visible`, except for `.github/`, `tooling/check/` and `.gitattributes`,
 where the CTO's signed `internal` note is enough. That cover ends where the
 change reaches one of the guard's trust roots: `tooling/check/approvers.json`,
+`.gitattributes`, `tooling/check/policy.json` outside `extraExports`,
 `.github/workflows/guard-notes.yml`, `tooling/check/src/guard/`, the two
 guard commands `tooling/check/src/cli/guard-notes.ts` and
 `tooling/check/src/cli/requirement-guard.ts`, and the `tooling/check/src/lib/`
-helpers they import (a test walks the imports to keep the list whole). A change to one of those, or to
-any other own path, needs the user's approval, so an agent key alone can't
-loosen the guard or add a signer. These folders change about 45 times a day
-and the board approved the user's review for rare changes (HAL-3434),
-so the routine ones stay with the CTO (decided on HAL-7701). One
+helpers they import (a test walks the imports to keep the list whole). A change to one of those needs a
+`user-visible` note with two different guardians' signatures (see above), so
+an agent key alone can't loosen the guard or add a signer. Any other own
+path needs a `user-visible` note with the CTO's signature. These folders
+change about 45 times a day, so the routine ones stay with the CTO (decided on HAL-7701). One
 more exception: a change to `tooling/check/policy.json` that touches
 nothing but `extraExports` (a package's deliberate extra entry point) needs
 a note that lists `tooling/check/policy.json`, and an `internal` note the
-CTO signs is enough, also once a user key is pinned. Any other change to
-`policy.json`, even in the same pull request, counts as a change under
-`tooling/check/`. The check also
+CTO signs is enough. Any other change to `policy.json`, even in the same
+pull request, is a trust-root change. The check also
 checks any note's approval again in the merge queue, against the queue
 base's `approvers.json`. The merge queue is different: there GitHub runs
 the file from the merge group's commit, which holds the pull request's own

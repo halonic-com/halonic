@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1337
 
-When the requirement guard checks a decision note's approval, the guard shall verify it, unless `check.guard-user-review` applies, only if the note has exactly one `- Signature:` line in its header, made by a key that the base branch's `tooling/check/approvers.json` pins for the note's kind, over this repo, this pull request's number, the note without that line, and the pull request head's contents of every path and requirement the note covers, and the base branch doesn't already have the note.
+When the requirement guard checks a decision note's approval, the guard shall verify it only if the note has one `- Signature:` line in its header (two for a change to a trust root, see `check.guard-two-guardians`), made by a key that the base branch's `tooling/check/approvers.json` pins for the note's kind, over this repo, this pull request's number, the note without that line, and the pull request head's contents of every path and requirement the note covers, and the base branch doesn't already have the note.
 
 ## Examples
 

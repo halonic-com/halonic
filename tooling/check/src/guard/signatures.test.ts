@@ -191,7 +191,11 @@ verifies("check.guard-signed-notes", () => {
   const line = signatureLine("x", cto.privatePem);
   test.each([
     ["no signature", note(), /no signature line/],
-    ["two signature lines", note().replace("- Kind", `${line}\n${line}\n- Kind`), /more than one/],
+    [
+      "three signature lines",
+      note().replace("- Kind", `${line}\n${line}\n${line}\n- Kind`),
+      /more than 2/,
+    ],
     ["a signature below the header", `${note()}\n${line}\n`, /isn't in the note's header/],
     ["a carriage return", note().replace("\n", "\r\n"), /carriage return/],
     [
