@@ -7,12 +7,17 @@ import { deploymentId, version } from "../../shared/fields.ts";
  */
 const WORKER_NAME_MAX_LENGTH = 63;
 
+/** The most characters a host name may have in DNS. */
+const HOST_NAME_MAX_LENGTH = 253;
+
 /**
  * A host name: lowercase labels of letters, digits and inner `-`, joined by
- * dots, at most 253 characters, with a top-level label that isn't all digits.
+ * dots, with a top-level label that isn't all digits. The length cap is a
+ * separate `maxLength`, not a lookahead, so the JSON Schema's pattern also
+ * works in Go and Rust regex libraries, which have no lookaround.
  */
 const HOST_NAME_PATTERN =
-  /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 /**
  * Non-secret settings for a deployment with `host: cloudflare` (ADR HAL-35,
@@ -36,6 +41,7 @@ export const CloudflareSettings = s
     /** A custom domain the Worker also serves at, such as `halonic.example.com`. */
     domain: s
       .string()
+      .max(HOST_NAME_MAX_LENGTH, `use at most ${HOST_NAME_MAX_LENGTH} characters`)
       .regex(HOST_NAME_PATTERN, "use a lowercase host name such as halonic.example.com")
       .optional(),
     /**
