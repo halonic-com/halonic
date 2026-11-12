@@ -2,7 +2,6 @@
 
 - Approval: [HAL-6707](/HAL/issues/HAL-6707)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8b+/oy1s5XAyjFyDatSMCR7P8uIEeFRnr1pNA5R+ECPMvMxyUzLRI5wNpSRZ75lkV6najzTUT4OQk+oF93AdAA==
 
 Step 1b of the cloud track (HAL-198 build plan, multi-cloud ADR on HAL-35,
 rule 3 and 5.6) adds the folder format of `halonic deploy export` and
@@ -20,8 +19,10 @@ one fails with a message that says to update Halonic.
 The new golden JSON Schema `runtime-export.schema.json` is the format
 outsiders read. Its `$id` names the format version. Nothing that existed
 before changes. The new requirement `format.runtime-export` describes the
-rules and their examples.
+rules and their examples. The entry point is listed under `extraExports` in
+`tooling/check/policy.json`, so the exports check lets it through.
 
 ## Covers
 
 - packages/core/format/spec/runtime-export.schema.json
+- tooling/check/policy.json
