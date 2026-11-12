@@ -152,6 +152,7 @@ export { PlusIcon } from "./icons/plus-icon.tsx";
 export { RefreshIcon } from "./icons/refresh-icon.tsx";
 export { RestoreIcon } from "./icons/restore-icon.tsx";
 export { SearchIcon } from "./icons/search-icon.tsx";
+export { SettingsIcon } from "./icons/settings-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";

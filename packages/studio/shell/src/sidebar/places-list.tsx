@@ -1,4 +1,4 @@
-import { PlaceIcon, StatusChip } from "@halonicjs/studio-kit";
+import { PlaceIcon, SettingsIcon, StatusChip } from "@halonicjs/studio-kit";
 import { useCallback, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { PlaceSignal, ShownPlace } from "../points/frame.ts";
@@ -20,6 +20,8 @@ export interface PlacesListProps {
    * place is the first of them: on the workflow "Support reply", you are in Workflows.
    */
   readonly parentsOf?: ((location: TabLocation) => readonly TabLocation[]) | undefined;
+  /** Opens Settings: the window's `openSettings`. Without it, the list has no Settings row. */
+  readonly onSettings?: (() => void) | undefined;
 }
 
 /**
@@ -32,10 +34,13 @@ export interface PlacesListProps {
  * A click opens the place in the active tab and moves focus to the page's `h1`. A Ctrl-click or a
  * middle-click opens it in a new tab next to it and says so, as the toolbar's path does.
  *
+ * Settings comes last, under a divider (`shell.sidebar-settings`). It is a button, not a link: it
+ * opens the Settings dialog over the page, so it is never where you are.
+ *
  * @example
  * <PlacesList places={shownPlaces} tabs={workspace.tabs} announcer={shell.announcer} />
  */
-export function PlacesList({ places, tabs, announcer, parentsOf }: PlacesListProps) {
+export function PlacesList({ places, tabs, announcer, parentsOf, onSettings }: PlacesListProps) {
   // One `subscribe` per tab set, so React doesn't subscribe again on every render.
   const subscribe = useCallback((listener: () => void) => tabs.subscribe(listener), [tabs]);
   useSyncExternalStore(subscribe, () => tabs.state);
@@ -73,6 +78,18 @@ export function PlacesList({ places, tabs, announcer, parentsOf }: PlacesListPro
           );
         })}
       </ul>
+      {onSettings === undefined ? null : (
+        <>
+          {/* 1px `border`, 8px above and below (component specs 24.4). */}
+          <hr className="my-2 border-border" />
+          <button type="button" className={settingsClasses} onClick={onSettings}>
+            <span className={iconClasses(false)}>
+              <SettingsIcon />
+            </span>
+            <span className="min-w-0 flex-1 truncate">Settings</span>
+          </button>
+        </>
+      )}
     </nav>
   );
 }
@@ -116,6 +133,9 @@ const placeClasses = {
   ].join(" "),
   other: [placeBase, "text-fg-muted hover:bg-surface-muted hover:text-fg"].join(" "),
 } as const;
+
+// A place's row as a button: the full width, its name at the start.
+const settingsClasses = `${placeClasses.other} w-full text-start`;
 
 function iconClasses(current: boolean): string {
   const colour = current ? "text-accent forced-colors:text-[CanvasText]" : "text-fg-muted";
