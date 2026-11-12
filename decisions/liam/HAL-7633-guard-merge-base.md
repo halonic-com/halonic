@@ -3,6 +3,7 @@
 - Task: HAL-7633 (found on HAL-6791)
 - Approval: the task [HAL-7633](/HAL/issues/HAL-7633) asks for this fix; the maintainer (Liam) approves this note. A guard change is signed as `internal` under the interim rule from [HAL-5221](/HAL/issues/HAL-5221), until a user key is pinned
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TSba11j8MHnG9khvNCBS/hYWV0f06COmsm3xr9QOoHP/0uYP65LOqXlURllKW2ZiJpbfEpld9vIkswgyKHXjDQ==
 
 ## What changes
 
