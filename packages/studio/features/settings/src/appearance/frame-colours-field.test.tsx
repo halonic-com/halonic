@@ -126,6 +126,7 @@ describe("a failed save", () => {
       expect(view.textContent).toContain("Couldn't save the frame colours on this computer.");
       expect(announce).toHaveBeenCalledWith(
         "Couldn't save the frame colours on this computer. Frame colours are back to Blue and purple.",
+        expect.anything(),
       );
     });
   });
