@@ -117,14 +117,12 @@ verifies("cli.run", () => {
   });
 
   it("ends a failed run with its two lines and exit 1", async () => {
-    // The test model refuses Writer's first call, so the first step's model call fails.
+    // Writer's script in the test model's file isn't all text, so the test model can't
+    // answer Writer and the first step fails.
     const mock = join(acme, "providers/mock.yaml");
     const script = await readFile(mock, "utf8");
     const firstReply = "- Sam wants a refund for order 1042, which arrived damaged.";
-    await writeFile(
-      mock,
-      script.replace(firstReply, "- refuse: The test model refuses this call."),
-    );
+    await writeFile(mock, script.replace(firstReply, "- refuse: not a text reply"));
 
     const { code, io } = await run("support-reply", ...samsEmail);
 
