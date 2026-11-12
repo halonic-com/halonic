@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use sha2::{Digest, Sha256};
 
 use crate::error::FileError;
+use crate::fence::Fence;
 use crate::links::{entry_at, is_missing, native_path};
 use crate::temporary_write::{is_temporary_write, temporary_write_name};
 use crate::workspace_path::{check_public_workspace_path, is_private_workspace_path};
@@ -20,11 +21,13 @@ pub enum WriteOutcome {
 }
 
 /// A folder the person opened, as `FolderDefinitionStore` in `fs-node`
-/// keeps it: plain files under the root, never through a link.
+/// keeps it: plain files under the root, never through a link, and never
+/// in its [`Fence`].
 #[derive(Debug)]
 pub struct WorkspaceFolder<'a> {
     root: PathBuf,
     locks: &'a WriteLocks,
+    fence: Fence,
 }
 
 impl<'a> WorkspaceFolder<'a> {
@@ -32,13 +35,25 @@ impl<'a> WorkspaceFolder<'a> {
     /// opened folder and made canonical. Writes and removes take turns
     /// through `locks`, which every call on the folder must share.
     pub fn new(root: PathBuf, locks: &'a WriteLocks) -> Self {
-        Self { root, locks }
+        Self {
+            root,
+            locks,
+            fence: Fence::Outside,
+        }
+    }
+
+    /// The same folder, refusing every path in `fence` as private and
+    /// leaving it out of lists.
+    #[must_use]
+    pub fn fenced(self, fence: Fence) -> Self {
+        Self { fence, ..self }
     }
 
     /// Every file under `dir` (the whole folder for `None`), recursively,
     /// relative to the root and sorted as JavaScript sorts strings. A `dir`
     /// that isn't a folder gives none. Private entries, links and temporary
-    /// write files are left out, with everything under them.
+    /// write files are left out, with everything under them, and so is the
+    /// fence.
     pub fn list(&self, dir: Option<&str>) -> Result<Vec<String>, FileError> {
         let mut paths = Vec::new();
         let mut add = |path: String, _: &DirEntry| {
@@ -46,11 +61,14 @@ impl<'a> WorkspaceFolder<'a> {
             Ok::<(), FileError>(())
         };
         match dir {
-            None => walk(&self.root, "", &mut add)?,
+            None => {
+                self.fence.check("")?;
+                walk(&self.root, "", &self.fence, &mut add)?;
+            }
             Some(dir) => {
-                check_public_workspace_path(dir)?;
+                self.check(dir)?;
                 if entry_at(&self.root, dir)?.is_some_and(|entry| entry.is_dir()) {
-                    walk(&native_path(&self.root, dir), dir, &mut add)?;
+                    walk(&native_path(&self.root, dir), dir, &self.fence, &mut add)?;
                 }
             }
         }
@@ -60,7 +78,7 @@ impl<'a> WorkspaceFolder<'a> {
 
     /// The file's text, or `None` when there is no file at `path`.
     pub fn read(&self, path: &str) -> Result<Option<String>, FileError> {
-        check_public_workspace_path(path)?;
+        self.check(path)?;
         self.current_text(path)
     }
 
@@ -78,7 +96,7 @@ impl<'a> WorkspaceFolder<'a> {
         text: &str,
         expected: Option<&str>,
     ) -> Result<WriteOutcome, FileError> {
-        check_public_workspace_path(path)?;
+        self.check(path)?;
         let _turn = self.locks.turn(&native_path(&self.root, path));
         if let Some(expected) = expected {
             let current = self.current_text(path)?;
@@ -93,7 +111,7 @@ impl<'a> WorkspaceFolder<'a> {
     /// Deletes the file. Nothing at `path`, or a folder there, is not an
     /// error, as in `fs-node`.
     pub fn remove(&self, path: &str) -> Result<(), FileError> {
-        check_public_workspace_path(path)?;
+        self.check(path)?;
         let file = native_path(&self.root, path);
         let _turn = self.locks.turn(&file);
         if !entry_at(&self.root, path)?.is_some_and(|entry| entry.is_file()) {
@@ -104,6 +122,12 @@ impl<'a> WorkspaceFolder<'a> {
             // Another program removed it in the meantime: it is gone, as asked.
             _ => Ok(()),
         }
+    }
+
+    /// Refuses an unsafe or private path, and one in the fence.
+    fn check(&self, path: &str) -> Result<(), FileError> {
+        check_public_workspace_path(path)?;
+        self.fence.check(path)
     }
 
     /// The text at a checked path, or `None` when no file is there.
@@ -223,11 +247,13 @@ fn write_flushed(file: &Path, text: &str, replaced: Option<&Metadata>) -> io::Re
 
 /// Calls `visit` with the workspace path and entry of every file under
 /// `folder`, whose workspace path is `prefix`, as `#collect` in `fs-node`
-/// walks it. A folder that is gone gives nothing; one the account may not
-/// read is `FolderUnreadable`, naming it (`""` for the root).
+/// walks it, leaving out `fence`. A folder that is gone gives nothing; one
+/// the account may not read is `FolderUnreadable`, naming it (`""` for the
+/// root).
 pub(crate) fn walk(
     folder: &Path,
     prefix: &str,
+    fence: &Fence,
     visit: &mut dyn FnMut(String, &DirEntry) -> Result<(), FileError>,
 ) -> Result<(), FileError> {
     let entries = match fs::read_dir(folder) {
@@ -259,10 +285,10 @@ pub(crate) fn walk(
         } else {
             format!("{prefix}/{name}")
         };
-        if kind.is_symlink() {
+        if kind.is_symlink() || fence.holds(&path) {
             continue;
         } else if kind.is_dir() {
-            walk(&entry.path(), &path, visit)?;
+            walk(&entry.path(), &path, fence, visit)?;
         } else if kind.is_file() {
             visit(path, &entry)?;
         }

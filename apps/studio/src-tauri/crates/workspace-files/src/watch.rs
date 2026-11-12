@@ -12,21 +12,24 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use crate::error::FileError;
+use crate::fence::Fence;
 use crate::folder::{sort_as_javascript, walk};
 
 /// The files under a folder at one look, by workspace path, with their size
-/// and modified time. Private entries, links and temporary write files are
-/// left out, as in `WorkspaceFolder::list`.
+/// and modified time. Private entries, links, temporary write files and the
+/// fence are left out, as in `WorkspaceFolder::list`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FolderSnapshot {
     files: BTreeMap<String, (u64, Option<SystemTime>)>,
 }
 
 impl FolderSnapshot {
-    /// Looks at every file under `root`.
-    pub fn of(root: &Path) -> Result<Self, FileError> {
+    /// Looks at every file under `root`, outside `fence`. A root in the
+    /// fence is refused as private.
+    pub fn of(root: &Path, fence: &Fence) -> Result<Self, FileError> {
+        fence.check("")?;
         let mut files = BTreeMap::new();
-        walk(root, "", &mut |path: String, entry: &std::fs::DirEntry| {
+        let mut add = |path: String, entry: &std::fs::DirEntry| {
             match entry.metadata() {
                 Ok(metadata) => {
                     files.insert(path, (metadata.len(), metadata.modified().ok()));
@@ -37,7 +40,8 @@ impl FolderSnapshot {
                 Err(error) => return Err(FileError::io(&path, &error)),
             }
             Ok(())
-        })?;
+        };
+        walk(root, "", fence, &mut add)?;
         Ok(Self { files })
     }
 

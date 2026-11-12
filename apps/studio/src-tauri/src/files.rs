@@ -11,6 +11,13 @@
 //! workspace's review folder in the profile instead (HAL-1291), which the
 //! shell works out itself, as `reviewFolder` in `@halonicjs/profile` does,
 //! so the page never names a path outside an opened folder.
+//!
+//! The profile is off limits in a workspace (HAL-7039): with the home folder
+//! opened, a workspace path could otherwise reach the trust records, the
+//! runs or the picked folders that open after a restart without a dialog.
+//! Every workspace call refuses a path in it as private, and lists and
+//! watches leave it out. The review folder, which is in the profile, is the
+//! shell's own and unaffected.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -18,7 +25,8 @@ use std::time::Duration;
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::ProfileFolder;
 use halonic_workspace_files::{
-    FileError, FolderSnapshot, WatchMessage, Watches, WorkspaceFolder, WriteLocks, WriteOutcome,
+    Fence, FileError, FolderSnapshot, WatchMessage, Watches, WorkspaceFolder, WriteLocks,
+    WriteOutcome,
 };
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
@@ -137,6 +145,12 @@ pub(crate) fn workspace_root(
     })
 }
 
+/// Where the profile is under a workspace's real path `root`. A call whose
+/// profile can't be found is refused, so the fence is never left off.
+pub(crate) fn profile_fence(profile: &ProfileFolder, root: &Path) -> Fence {
+    Fence::around(root, Path::new(&profile.root))
+}
+
 /// The review folder of `workspace` in `profile`, as `reviewFolder` names
 /// it. `workspace` must be a folder the person opened in the shell, or
 /// inside one; its real path names the folder, as the CLI's `realpath` does.
@@ -180,19 +194,25 @@ where
 {
     tauri::async_runtime::spawn_blocking(move || {
         let opened = app.state::<GitState>().folders();
-        let root = match folder.unwrap_or_default() {
-            FileFolder::Workspace => workspace_root(&opened, &workspace)?,
+        let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let (root, fence) = match folder.unwrap_or_default() {
+            FileFolder::Workspace => {
+                let root = workspace_root(&opened, &workspace)?;
+                let fence = profile_fence(&profile, &root);
+                (root, fence)
+            }
             FileFolder::Review => {
-                let profile = cli_profile(&app).map_err(FileRefusal::io)?;
                 let root = review_root(&opened, &profile, &workspace)?;
                 if making == Making::Folder {
                     std::fs::create_dir_all(&root).map_err(FileRefusal::io)?;
                 }
-                root
+                (root, Fence::Outside)
             }
         };
         let state = app.state::<FileState>();
-        Ok(call(WorkspaceFolder::new(root, &state.locks))?)
+        Ok(call(
+            WorkspaceFolder::new(root, &state.locks).fenced(fence),
+        )?)
     })
     .await
     .map_err(FileRefusal::io)?
@@ -273,7 +293,9 @@ pub async fn fs_watch<R: Runtime>(
     tauri::async_runtime::spawn_blocking(move || {
         let opened = app.state::<GitState>().folders();
         let root = workspace_root(&opened, &workspace)?;
-        let scan = move || look_while_open(&opened, &root);
+        let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let fence = profile_fence(&profile, &root);
+        let scan = move || look_while_open(&opened, &root, &fence);
         let send = move |message: WatchMessage| channel.send(WatchEvent::from(message)).is_ok();
         let state = app.state::<FileState>();
         let watch_id = state.watches.start(&page, WATCH_INTERVAL, scan, send)?;
@@ -301,14 +323,18 @@ pub fn end_page_watches<R: Runtime>(app: &AppHandle<R>, page: &str) {
     }
 }
 
-/// One look at `root`, while it is still an opened folder.
-fn look_while_open(opened: &OpenedFolders, root: &Path) -> Result<FolderSnapshot, FileError> {
+/// One look at `root`, outside `fence`, while it is still an opened folder.
+fn look_while_open(
+    opened: &OpenedFolders,
+    root: &Path,
+    fence: &Fence,
+) -> Result<FolderSnapshot, FileError> {
     if opened.check(root).is_err() {
         return Err(FileError::Io {
             message: "the workspace is no longer an opened folder".to_owned(),
         });
     }
-    FolderSnapshot::of(root)
+    FolderSnapshot::of(root, fence)
 }
 
 #[cfg(test)]

@@ -6,11 +6,12 @@ use std::path::PathBuf;
 
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
-use halonic_workspace_files::{FileError, WatchMessage, WriteOutcome};
+use halonic_workspace_files::{Fence, FileError, WatchMessage, WriteOutcome};
 use serde_json::{Value, json};
 
 use super::{
-    FileFolder, FileRefusal, WatchEvent, WatchStart, WriteAnswer, review_root, workspace_root,
+    FileFolder, FileRefusal, WatchEvent, WatchStart, WriteAnswer, profile_fence, review_root,
+    workspace_root,
 };
 
 fn as_json(value: impl serde::Serialize) -> Value {
@@ -92,6 +93,19 @@ fn files_find_an_opened_workspace_s_review_folder_in_the_profile() {
     );
     assert!(expected.ends_with("review"), "{expected:?}");
     assert!(!expected.exists(), "finding the folder makes nothing");
+}
+
+#[test]
+fn files_fence_the_profile_in_a_workspace_that_holds_it() {
+    let scratch = Scratch::new("fence");
+    let profile = profile(&scratch);
+    let home = std::fs::canonicalize(&scratch.0).expect("the real path");
+    assert_eq!(
+        profile_fence(&profile, &home),
+        Fence::At(vec!["profile".to_owned()])
+    );
+    let workspace = home.join("workspace");
+    assert_eq!(profile_fence(&profile, &workspace), Fence::Outside);
 }
 
 #[test]

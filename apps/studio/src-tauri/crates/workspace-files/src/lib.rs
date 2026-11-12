@@ -7,9 +7,11 @@
 //! here as `checkPublicWorkspacePath` in `@halonicjs/ports` checks it, and no
 //! call reads, writes or removes through a symbolic link or a junction.
 //! Which folders may be used at all is the shell's to decide (`git-guard`'s
-//! `OpenedFolders`): a [`WorkspaceFolder`] trusts the root it is given.
+//! `OpenedFolders`): a [`WorkspaceFolder`] trusts the root it is given, but
+//! never reaches into the [`Fence`] the shell names, the profile.
 
 mod error;
+mod fence;
 mod folder;
 mod links;
 mod temporary_write;
@@ -18,6 +20,7 @@ mod workspace_path;
 mod write_locks;
 
 pub use error::FileError;
+pub use fence::Fence;
 pub use folder::{WorkspaceFolder, WriteOutcome, content_digest};
 pub use watch::{FolderSnapshot, WatchMessage, Watches};
 pub use workspace_path::{

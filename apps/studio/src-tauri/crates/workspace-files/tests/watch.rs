@@ -8,7 +8,7 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use halonic_workspace_files::{FileError, FolderSnapshot, WatchMessage, Watches};
+use halonic_workspace_files::{Fence, FileError, FolderSnapshot, WatchMessage, Watches};
 use support::Scratch;
 
 /// Short, so the tests don't wait long; they wait for messages, never for
@@ -23,7 +23,7 @@ fn folder_poll_reports_added_changed_and_removed_files() {
     scratch.put("hubs/a/hub.yaml", "a");
     scratch.put("hubs/b/hub.yaml", "b");
     scratch.put("agents/review.yaml", "one");
-    let before = FolderSnapshot::of(scratch.path()).expect("a first look");
+    let before = FolderSnapshot::of(scratch.path(), &Fence::Outside).expect("a first look");
 
     scratch.put("agents/review.yaml", "one more");
     scratch.put("agents/new.yaml", "new");
@@ -33,7 +33,7 @@ fn folder_poll_reports_added_changed_and_removed_files() {
         "half",
     );
     fs::remove_dir_all(scratch.at("hubs")).expect("a folder goes away");
-    let after = FolderSnapshot::of(scratch.path()).expect("a second look");
+    let after = FolderSnapshot::of(scratch.path(), &Fence::Outside).expect("a second look");
 
     assert_eq!(
         after.changed_since(&before),
@@ -51,9 +51,9 @@ fn folder_poll_reports_added_changed_and_removed_files() {
 fn folder_poll_sends_each_change_as_a_batch_until_stopped() {
     let scratch = Scratch::new("watch");
     scratch.put("a.yaml", "a");
-    let first = FolderSnapshot::of(scratch.path()).expect("a look");
+    let first = FolderSnapshot::of(scratch.path(), &Fence::Outside).expect("a look");
     scratch.put("b.yaml", "b");
-    let second = FolderSnapshot::of(scratch.path()).expect("a look");
+    let second = FolderSnapshot::of(scratch.path(), &Fence::Outside).expect("a look");
     let looks = Arc::new(Mutex::new(vec![first.clone(), first, second]));
     let (sent, received) = mpsc::channel();
     let watches = Watches::default();
