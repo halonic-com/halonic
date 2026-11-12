@@ -4,6 +4,7 @@
 
 const secondInMs = 1000;
 const minuteInSeconds = 60;
+const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const shortMonths = [
   "Jan",
   "Feb",
@@ -58,6 +59,26 @@ export function dueWords(due: Date, now: Date): string {
     return `tomorrow ${time}`;
   }
   return `${due.getDate()} ${shortMonths[due.getMonth()]} ${time}`;
+}
+
+/**
+ * The day a run started, as the Runs list's day headings name it: "Today",
+ * "Yesterday", then the weekday and date, with the year when it isn't this
+ * year's.
+ *
+ * @example
+ * dayWords(new Date(2026, 10, 6, 9, 0), new Date(2026, 10, 9, 10, 40)); // "Fri 6 Nov"
+ * dayWords(new Date(2025, 11, 30, 9, 0), new Date(2026, 10, 9, 10, 40)); // "Tue 30 Dec 2025"
+ */
+export function dayWords(day: Date, now: Date): string {
+  if (sameDay(day, now)) {
+    return "Today";
+  }
+  if (sameDay(day, new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) {
+    return "Yesterday";
+  }
+  const date = `${shortDays[day.getDay()]} ${day.getDate()} ${shortMonths[day.getMonth()]}`;
+  return day.getFullYear() === now.getFullYear() ? date : `${date} ${day.getFullYear()}`;
 }
 
 /** The time of day, "09:05". */

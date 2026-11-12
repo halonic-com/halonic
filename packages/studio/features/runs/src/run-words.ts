@@ -44,3 +44,35 @@ export const costWords = {
 
 /** What joins the parts of a line: "Sent nothing · estimated cost €0.004". */
 export const lineSeparator = " · ";
+
+/** What the Runs list says in place of rows (mc 15.1; states R1 to R6, R10 and R17). */
+export const emptyListWords = {
+  noRunsTitle: "No runs yet",
+  noRunsBody:
+    "A run is one time a workflow or agent does its job. Start one from a workflow's Run button, or let a routine start it.",
+  goToWorkflows: "Go to Workflows",
+  onlyTestRuns: "Only test runs so far.",
+  showTestRuns: "Show test runs",
+  /** A status chip with no runs; no button, since All is next to it (D13). */
+  status: {
+    live: "Nothing is running.",
+    "needs-you": "Nothing is waiting for you.",
+    failed: "No failed runs.",
+  },
+  loading: "Loading runs",
+  loadFailed: "Couldn't load runs",
+  notAnswering: "The engine isn't answering. It may still be starting.",
+  showingLast: "The engine isn't answering. Showing what it said last.",
+};
+
+/** The Runs page's own words (checklist part 1, 1.2, 1.3 and R-D1). */
+export const pageWords = {
+  title: "Runs",
+  sentence: "A run is one time a workflow or agent does its job.",
+  filters: "Filters",
+  status: "Status",
+  statusChips: { all: "All", live: "Live", "needs-you": "Needs you", failed: "Failed" },
+  testRuns: "Test runs",
+  testTag: "Test",
+  running: (count: number) => `${count} running`,
+};

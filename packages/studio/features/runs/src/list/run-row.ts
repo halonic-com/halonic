@@ -37,6 +37,8 @@ export interface RunRow {
   readonly line: string;
   /** A test case's run, which carries the outline Test tag. */
   readonly test: boolean;
+  /** When the run started, as the run log writes it; the list groups rows by its day. */
+  readonly startedAt: string;
 }
 
 /** What a row needs besides the run: its workflow, the workspace's currency and the time now. */
@@ -76,6 +78,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
     workflow: context.workflow?.name ?? summary.workflowId,
     line: rowLine(run, standing, context),
     test: summary.kind === "test",
+    startedAt: summary.startedAt,
   };
 }
 
