@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in review on HAL-8066
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1W0ULU84onwulWdERypZSgvF3y5KzdaBTMVbQ5mJ/Ss7A1bW6HQq5yCJjai39tJLynM3X9sZptQioJUpy40yAg==
 - Task: HAL-8066
 
 ## What changes
