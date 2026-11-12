@@ -174,11 +174,10 @@ export class DoctorService {
       disk: diskLine(resources),
     };
     if (workspace !== null) {
-      report.workspace = workspaceLine(
-        workspace.name,
-        trust?.status ?? "not-needed",
-        { windowsDrive: workspace.windowsDrive, fileProblems: workspace.fileProblems },
-      );
+      report.workspace = workspaceLine(workspace.name, trust?.status ?? "not-needed", {
+        windowsDrive: workspace.windowsDrive,
+        fileProblems: workspace.fileProblems,
+      });
       const providers = workspace.providers.map((provider) =>
         providerState(provider, resources.models, keys),
       );

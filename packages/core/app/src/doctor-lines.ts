@@ -49,9 +49,9 @@ export interface WorkspaceLine extends DoctorLine {
 /** What else doctor found about the workspace, besides its trust. */
 export interface WorkspaceFindings {
   /** The Windows drive it is on under WSL, such as "/mnt/c". */
-  windowsDrive?: string;
+  windowsDrive?: string | undefined;
   /** The errors in the workspace's files, as `halonic validate` counts them. */
-  fileProblems?: number;
+  fileProblems?: number | undefined;
 }
 
 /**
@@ -78,15 +78,26 @@ export function workspaceLine(
   trust: WorkspaceTrust,
   { windowsDrive, fileProblems = 0 }: WorkspaceFindings = {},
 ): WorkspaceLine {
-  const trustOk = trust === "trusted" || trust === "not-needed";
   return {
     check: "workspace",
-    status: fileProblems > 0 ? "failed" : trustOk && windowsDrive === undefined ? "ok" : "warning",
+    status: workspaceStatus(trust, windowsDrive, fileProblems),
     name,
     trust,
     ...(windowsDrive === undefined ? {} : { windowsDrive }),
     ...(fileProblems === 0 ? {} : { fileProblems }),
   };
+}
+
+function workspaceStatus(
+  trust: WorkspaceTrust,
+  windowsDrive: string | undefined,
+  fileProblems: number,
+): WorkspaceLine["status"] {
+  if (fileProblems > 0) {
+    return "failed";
+  }
+  const trustOk = trust === "trusted" || trust === "not-needed";
+  return trustOk && windowsDrive === undefined ? "ok" : "warning";
 }
 
 /** The Sandbox line. */

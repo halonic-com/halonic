@@ -52,7 +52,9 @@ verifies("app.doctor-workspace", () => {
       fileProblems: 2,
     });
     expect(workspaceLine("acme", "trusted", { fileProblems: 1 }).status).toBe("failed");
-    expect(doctorSummary([workspaceLine("acme", "trusted", { fileProblems: 1 })]).needsFixing).toBe(true);
+    expect(doctorSummary([workspaceLine("acme", "trusted", { fileProblems: 1 })]).needsFixing).toBe(
+      true,
+    );
   });
 });
 
