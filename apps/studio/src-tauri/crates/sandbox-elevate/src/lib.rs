@@ -8,7 +8,10 @@
 //! that shapes the sandbox is a constant here. It reads `srt-win.exe` from
 //! next to itself, checks its SHA-256 against the one built in, writes those
 //! same bytes into an admin-only folder under Program Files, and runs that
-//! copy from System32.
+//! copy from System32. The Microsoft C++ runtime srt-win imports, which a
+//! clean Windows lacks, goes the same way: a pinned copy shipped next to the
+//! helper under another name, checked, and written beside srt-win as
+//! `vcruntime140.dll`, never in the user's app folder.
 //! Its exit code is srt-win's, or one of its own from 30 up ([`code`]).
 //! A release build also checks that the copy of itself it leaves for
 //! Installed apps shows the same publisher as the one Windows asked about
@@ -31,6 +34,15 @@ pub use windows::{Windows, system32_only_libraries};
 pub const PROGRAM: &str = "halonic-sandbox-elevate.exe";
 /// srt's Windows program, shipped next to the helper.
 pub const SRT_WIN: &str = "srt-win.exe";
+/// The Microsoft C++ runtime srt-win imports, as it is named in
+/// [`FOLDER`], beside srt-win. A clean Windows doesn't have it (HAL-7414,
+/// S-9).
+pub const RUNTIME: &str = "vcruntime140.dll";
+/// The pinned copy of [`RUNTIME`] shipped next to the helper. Under another
+/// name, so that nothing started from the user's app folder can load it
+/// from there: the library only ever exists under its own name in the
+/// admin-only [`FOLDER`].
+pub const RUNTIME_SHIPPED: &str = "vcruntime140.dll.pinned";
 /// The admin-only folder under Program Files the helper runs srt-win from.
 pub const FOLDER: &str = "Halonic Sandbox";
 /// srt-win's `TEMP`, `TMP` and `LOCALAPPDATA`: an admin-only folder inside
@@ -59,6 +71,15 @@ pub const SRT_WIN_SHA256: &str = "c7b204c8fab94059dbf7a6a805b844abad3deb82614e07
 #[cfg(not(target_arch = "aarch64"))]
 pub const SRT_WIN_SHA256: &str = "a8e22bc098ac1146ec9b9151d5f1770c05b897cd1ac588161e1287a248cc9176";
 
+/// The SHA-256 of the `vcruntime140.dll` for this computer's architecture,
+/// from Microsoft's Visual C++ Redistributable 14.44 (the release
+/// `windows/vcruntime.json` pins). `tests/runtime_hash.rs` checks it against
+/// that file, so a new runtime can't ship without a new value here.
+#[cfg(target_arch = "aarch64")]
+pub const RUNTIME_SHA256: &str = "d8a8513921544569837e400d37cc71302819967ae6defa932266a7ecb41dbaf9";
+#[cfg(not(target_arch = "aarch64"))]
+pub const RUNTIME_SHA256: &str = "d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066";
+
 /// Exit codes. srt-win's own pass through unchanged: 0 done, 1 other,
 /// 10 cancelled, 12 network filters, 13 set up with other settings,
 /// 14 account, 17 write denies. The helper's start at 30.
@@ -69,9 +90,10 @@ pub mod code {
     /// Started without administrator rights. srt-win would ask a second
     /// time, so the helper stops instead.
     pub const NOT_ELEVATED: i32 = 31;
-    /// No `srt-win.exe` next to the helper.
+    /// No `srt-win.exe` next to the helper, or no [`RUNTIME`].
     pub const NO_SRT_WIN: i32 = 32;
-    /// The copy's SHA-256 isn't the one built in. The copy is deleted.
+    /// The copy's SHA-256 isn't the one built in, for srt-win or for
+    /// [`RUNTIME`]. The copy is deleted.
     pub const WRONG_SRT_WIN: i32 = 33;
     /// The admin-only folder couldn't be made, secured or filled.
     pub const FOLDER: i32 = 34;
@@ -251,10 +273,25 @@ pub trait Machine {
     fn delete(&self, path: &Path);
 }
 
-/// Runs `verb` and gives the exit code. `srt_win_sha256` is
-/// [`SRT_WIN_SHA256`] and `signer` is [`SIGNER`] outside tests.
-pub fn run(verb: Verb, machine: &impl Machine, srt_win_sha256: &str, signer: Option<&str>) -> i32 {
-    match steps(verb, machine, srt_win_sha256, signer) {
+/// The SHA-256 each shipped file must have. [`Hashes::SHIPPED`] outside tests.
+#[derive(Clone, Copy, Debug)]
+pub struct Hashes<'a> {
+    pub srt_win: &'a str,
+    pub runtime: &'a str,
+}
+
+impl Hashes<'static> {
+    /// [`SRT_WIN_SHA256`] and [`RUNTIME_SHA256`].
+    pub const SHIPPED: Self = Hashes {
+        srt_win: SRT_WIN_SHA256,
+        runtime: RUNTIME_SHA256,
+    };
+}
+
+/// Runs `verb` and gives the exit code. `hashes` is [`Hashes::SHIPPED`] and
+/// `signer` is [`SIGNER`] outside tests.
+pub fn run(verb: Verb, machine: &impl Machine, hashes: Hashes, signer: Option<&str>) -> i32 {
+    match steps(verb, machine, hashes, signer) {
         Ok(code) | Err(code) => code,
     }
 }
@@ -262,7 +299,7 @@ pub fn run(verb: Verb, machine: &impl Machine, srt_win_sha256: &str, signer: Opt
 fn steps(
     verb: Verb,
     machine: &impl Machine,
-    srt_win_sha256: &str,
+    hashes: Hashes,
     signer: Option<&str>,
 ) -> Result<i32, i32> {
     if !machine.elevated() {
@@ -293,29 +330,23 @@ fn steps(
     machine.protect_folder(&folder).map_err(|_| code::FOLDER)?;
     machine.protect_folder(&temp).map_err(|_| code::FOLDER)?;
     let srt_win = folder.join(SRT_WIN);
-    let source = if in_folder {
-        srt_win.clone()
-    } else {
-        from.join(SRT_WIN)
-    };
-    if !machine.exists(&source) {
-        return Err(code::NO_SRT_WIN);
-    }
-    // Read once and checked in memory, then written from those same bytes:
-    // the folder only ever holds srt-win as shipped. Whatever else the app
-    // folder's name reached, a link to an admin-only file included, is never
-    // written where Users can read it (HAL-7386).
-    let Some(bytes) = machine
-        .read(&source)
-        .ok()
-        .filter(|bytes| sha256_hex(bytes) == srt_win_sha256)
-    else {
-        machine.delete(&srt_win);
-        return Err(code::WRONG_SRT_WIN);
-    };
-    if !in_folder {
-        place(machine, &source, &srt_win, &bytes)?;
-        machine.share(&srt_win).map_err(|_| code::FOLDER)?;
+    install_file(
+        machine,
+        (SRT_WIN, SRT_WIN),
+        hashes.srt_win,
+        (&from, &folder),
+        in_folder,
+    )?;
+    // A removal run from Installed apps by a copy an older setup left has no
+    // runtime beside it, and still has to work.
+    if !(in_folder && verb == Verb::Remove) {
+        install_file(
+            machine,
+            (RUNTIME_SHIPPED, RUNTIME),
+            hashes.runtime,
+            (&from, &folder),
+            in_folder,
+        )?;
     }
     match verb {
         Verb::SetUp => {
@@ -364,12 +395,50 @@ fn steps(
             }
             machine.delete_entry().map_err(|_| code::ENTRY)?;
             machine.delete(&srt_win);
+            machine.delete(&folder.join(RUNTIME));
             machine.delete(&temp);
             machine.delete(&folder.join(PROGRAM));
             machine.delete(&folder);
             Ok(status)
         }
     }
+}
+
+/// Puts the shipped file `shipped`, as `name` in the folder, into `folder` for Users to read and run, from
+/// the user's app folder (or from `folder` when the helper runs from there).
+/// Read once and checked in memory, then written from those same bytes: the
+/// folder only ever holds the file as shipped. Whatever else the app
+/// folder's name reached, a link to an admin-only file included, is never
+/// written where Users can read it (HAL-7386). A miss deletes any copy there.
+fn install_file(
+    machine: &impl Machine,
+    (shipped, name): (&str, &str),
+    sha256: &str,
+    (from, folder): (&Path, &Path),
+    in_folder: bool,
+) -> Result<(), i32> {
+    let target = folder.join(name);
+    let source = if in_folder {
+        target.clone()
+    } else {
+        from.join(shipped)
+    };
+    if !machine.exists(&source) {
+        return Err(code::NO_SRT_WIN);
+    }
+    let Some(bytes) = machine
+        .read(&source)
+        .ok()
+        .filter(|bytes| sha256_hex(bytes) == sha256)
+    else {
+        machine.delete(&target);
+        return Err(code::WRONG_SRT_WIN);
+    };
+    if in_folder {
+        return Ok(());
+    }
+    place(machine, &source, &target, &bytes)?;
+    machine.share(&target).map_err(|_| code::FOLDER)
 }
 
 /// Writes `bytes`, read from `from`, to `to` as a file only Administrators

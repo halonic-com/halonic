@@ -12,6 +12,7 @@
     ],
     "resources": {
       "binaries/srt-win.exe": "srt-win.exe",
+      "binaries/vcruntime140.dll": "vcruntime140.dll.pinned",
       "windows/sandbox-step.ps1": "sandbox-step.ps1",
       "windows/sandbox-remove.ps1": "sandbox-remove.ps1",
       "../../../LICENSE": "LICENSE",

@@ -1,192 +1,14 @@
 //! The helper's steps against a pretend Windows. Each test's name starts
 //! with the requirement it proves (`sandbox_elevate_`).
 
+mod common;
+
+use common::{HELPER, Pretend, SHIPPED, SWAPPED, app, folder, system, uninstall_step};
 use halonic_sandbox_elevate::{
-    FOLDER, Folders, Machine, PROGRAM, SRT_WIN, TEMP, Value, Verb, code, environment, run,
-    sha256_hex, uninstall_entry, verb,
+    Folders, PROGRAM, RUNTIME, SRT_WIN, TEMP, Value, Verb, code, environment, uninstall_entry, verb,
 };
-use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
-use std::io;
 use std::path::{Path, PathBuf};
-
-const SHIPPED: &[u8] = b"srt-win as shipped";
-const SWAPPED: &[u8] = b"srt-win from someone else";
-const HELPER: &[u8] = b"helper";
-/// The publisher the pretend release is signed by.
-const PUBLISHER: &str = "Halonic";
-
-fn app() -> PathBuf {
-    PathBuf::from("user-app-folder")
-}
-
-fn folder() -> PathBuf {
-    PathBuf::from("program-files").join(FOLDER)
-}
-
-fn system() -> PathBuf {
-    PathBuf::from("system32")
-}
-
-/// srt-win's arguments for a removal: the machine-wide half only, so the
-/// helper never runs the user's half with administrator rights.
-fn uninstall_step() -> Vec<String> {
-    vec!["uninstall".into(), "--elevated-step".into()]
-}
-
-struct Pretend {
-    elevated: bool,
-    own: PathBuf,
-    folder_fails: bool,
-    exit: i32,
-    /// [`SIGNER`](halonic_sandbox_elevate::SIGNER) as built in.
-    signer: Option<&'static str>,
-    /// Pairs of names that reach the same file or folder.
-    same: Vec<(PathBuf, PathBuf)>,
-    files: RefCell<BTreeMap<PathBuf, Vec<u8>>>,
-    /// Files written that Users can't open yet.
-    private: RefCell<BTreeSet<PathBuf>>,
-    /// Every file written, in order.
-    written: RefCell<Vec<PathBuf>>,
-    /// Every file shared with Users, in order.
-    shared: RefCell<Vec<PathBuf>>,
-    runs: RefCell<Vec<(PathBuf, Vec<String>, PathBuf)>>,
-    environments: RefCell<Vec<Vec<(&'static str, OsString)>>>,
-    protected: RefCell<Vec<PathBuf>>,
-    deleted: RefCell<Vec<PathBuf>>,
-    entry: RefCell<Option<Vec<(&'static str, Value)>>>,
-}
-
-impl Pretend {
-    /// A helper started from `from`, with `srt_win` next to it.
-    fn new(from: PathBuf, srt_win: Option<&[u8]>) -> Self {
-        let mut files = BTreeMap::new();
-        files.insert(from.join(PROGRAM), HELPER.to_vec());
-        if let Some(bytes) = srt_win {
-            files.insert(from.join(SRT_WIN), bytes.to_vec());
-        }
-        Pretend {
-            elevated: true,
-            own: from.join(PROGRAM),
-            folder_fails: false,
-            exit: 0,
-            signer: Some(PUBLISHER),
-            same: Vec::new(),
-            files: RefCell::new(files),
-            private: RefCell::new(BTreeSet::new()),
-            written: RefCell::new(Vec::new()),
-            shared: RefCell::new(Vec::new()),
-            runs: RefCell::new(Vec::new()),
-            environments: RefCell::new(Vec::new()),
-            protected: RefCell::new(Vec::new()),
-            deleted: RefCell::new(Vec::new()),
-            entry: RefCell::new(None),
-        }
-    }
-
-    fn run(&self, verb: Verb) -> i32 {
-        run(verb, self, &sha256_hex(SHIPPED), self.signer)
-    }
-
-    fn file(&self, path: PathBuf) -> Option<Vec<u8>> {
-        self.files.borrow().get(&path).cloned()
-    }
-
-    fn ran(&self) -> Vec<(PathBuf, Vec<String>, PathBuf)> {
-        self.runs.borrow().clone()
-    }
-}
-
-impl Machine for Pretend {
-    fn elevated(&self) -> bool {
-        self.elevated
-    }
-    fn program_files(&self) -> io::Result<PathBuf> {
-        Ok(PathBuf::from("program-files"))
-    }
-    fn program_data(&self) -> io::Result<PathBuf> {
-        Ok(PathBuf::from("program-data"))
-    }
-    fn public(&self) -> io::Result<PathBuf> {
-        Ok(PathBuf::from("public"))
-    }
-    fn windows_folder(&self) -> io::Result<PathBuf> {
-        Ok(PathBuf::from("C:windows"))
-    }
-    fn system_folder(&self) -> io::Result<PathBuf> {
-        Ok(system())
-    }
-    fn own_path(&self) -> io::Result<PathBuf> {
-        Ok(self.own.clone())
-    }
-    fn protect_folder(&self, folder: &Path) -> io::Result<()> {
-        if self.folder_fails {
-            Err(io::Error::other("denied"))
-        } else {
-            self.protected.borrow_mut().push(folder.to_path_buf());
-            Ok(())
-        }
-    }
-    fn write_private(&self, to: &Path, bytes: &[u8]) -> io::Result<()> {
-        self.files
-            .borrow_mut()
-            .insert(to.to_path_buf(), bytes.to_vec());
-        self.private.borrow_mut().insert(to.to_path_buf());
-        self.written.borrow_mut().push(to.to_path_buf());
-        Ok(())
-    }
-    fn share(&self, file: &Path) -> io::Result<()> {
-        self.private.borrow_mut().remove(file);
-        self.shared.borrow_mut().push(file.to_path_buf());
-        Ok(())
-    }
-    fn same_file(&self, one: &Path, other: &Path) -> bool {
-        one == other
-            || self
-                .same
-                .iter()
-                .any(|(a, b)| (a == one && b == other) || (a == other && b == one))
-    }
-    /// Only the helper as shipped is signed.
-    fn signer(&self, file: &Path) -> Option<String> {
-        (self.file(file.to_path_buf()).as_deref() == Some(HELPER)).then(|| PUBLISHER.into())
-    }
-    fn read(&self, file: &Path) -> io::Result<Vec<u8>> {
-        self.file(file.to_path_buf())
-            .ok_or(io::ErrorKind::NotFound.into())
-    }
-    fn exists(&self, file: &Path) -> bool {
-        self.files.borrow().contains_key(file)
-    }
-    fn run(
-        &self,
-        program: &Path,
-        args: &[&str],
-        folder: &Path,
-        environment: &[(&'static str, OsString)],
-    ) -> io::Result<i32> {
-        self.environments.borrow_mut().push(environment.to_vec());
-        let args = args.iter().map(|arg| (*arg).to_string()).collect();
-        self.runs
-            .borrow_mut()
-            .push((program.to_path_buf(), args, folder.to_path_buf()));
-        Ok(self.exit)
-    }
-    fn write_entry(&self, values: &[(&'static str, Value)]) -> io::Result<()> {
-        *self.entry.borrow_mut() = Some(values.to_vec());
-        Ok(())
-    }
-    fn delete_entry(&self) -> io::Result<()> {
-        *self.entry.borrow_mut() = None;
-        Ok(())
-    }
-    fn delete(&self, path: &Path) {
-        self.deleted.borrow_mut().push(path.to_path_buf());
-        self.files.borrow_mut().remove(path);
-        self.private.borrow_mut().remove(path);
-    }
-}
 
 #[test]
 fn sandbox_elevate_reads_one_fixed_verb_and_nothing_else() {
@@ -224,7 +46,11 @@ fn sandbox_elevate_sets_up_from_the_checked_copy_in_the_admin_only_folder() {
     // Both are written for Administrators only, and shared once checked.
     assert_eq!(
         *machine.written.borrow(),
-        vec![folder().join(SRT_WIN), folder().join(PROGRAM)]
+        vec![
+            folder().join(SRT_WIN),
+            folder().join(RUNTIME),
+            folder().join(PROGRAM)
+        ]
     );
     assert!(machine.private.borrow().is_empty());
 }
