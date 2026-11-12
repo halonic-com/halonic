@@ -360,7 +360,7 @@ describe("a session on one project reading another (srt-wsl, W1 on HAL-5407)", (
     await mkdir(join(home, "projects", "b", "src"), { recursive: true });
     await mkdir(join(home, "temp-a"), { recursive: true });
     await mkdir(mounts, { recursive: true });
-    await writeFile(join(home, "projects", "a", "own.txt"), "own-project");
+    await writeFile(join(home, "projects", "a", "own.txt"), "own-project\n");
     await writeFile(join(home, "projects", "b", "src", "canary.txt"), "canary-of-b");
     const shared = new SrtSandbox(undefined, undefined, null, { sharedFolders: [home, mounts] });
     session = await shared.open({
