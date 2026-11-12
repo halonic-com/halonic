@@ -3,6 +3,7 @@
 - Task: HAL-6254
 - Approval: Liam approves this note in review on [HAL-6254](/HAL/issues/HAL-6254)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ktvj36qoxcL9O6Gil7y6DHBdzfFeMIxL+th9kh6tiIRTJkZ2uBd0bJ0nu9wGwFHLvawFDfI3Fxt+SG1+2vP3Cw==
 
 ## What changes
 
