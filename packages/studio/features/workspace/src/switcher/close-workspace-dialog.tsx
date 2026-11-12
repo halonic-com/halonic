@@ -39,7 +39,9 @@ export function CloseWorkspaceDialog({
       onConfirm={onTryAgain}
       onCancel={onCancel}
     >
-      <p>{notSavedLine(request)} {closeAnywayCost}</p>
+      <p>
+        {notSavedLine(request)} {closeAnywayCost}
+      </p>
     </Dialog>
   );
 }
