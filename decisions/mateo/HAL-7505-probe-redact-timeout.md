@@ -3,7 +3,6 @@
 - Task: HAL-7505 (follow-up to HAL-7483)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7YyG+EliVD3SsQWIpklARwmcwIP7D4NnE5GeMAo98+YR8xs3CgXhg/wJu4SQ40u7/cvqDRrGI0q6nEwwNMGXBw==
 
 ## What changes
 
@@ -23,4 +22,5 @@ No test was skipped or weakened. `live-probe.test.ts` gains tests for a 403 that
 
 ## Covers
 
+- check.live-probe
 - tooling/check/
