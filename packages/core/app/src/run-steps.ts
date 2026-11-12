@@ -1,6 +1,8 @@
 // The steps a run reached, read from its run log (cli-output 3.4): which
 // state each step was, the agent it ran, and how it ended or where it is
-// now. `run-view.ts` turns them into the lines `halonic runs show` prints.
+// now. The command line's `halonic runs show` and the Studio's Every step
+// both read them from here, so the two say the same about a run. Only the
+// facts are here; each one words them itself.
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 

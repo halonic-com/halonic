@@ -44,6 +44,7 @@ Device-wide settings such as the theme live outside any scope.
 | `RunHistory.sends` | what a run sent and may have sent, and whether it made a tool call, so the list says it as the receipt does | `app.run-list-facts` |
 | `runStanding`, `runWait` | where a run stands (running, needs you, waiting, done, failed, stopped at its budget, cancelled) and what it waits for, first that applies: approvals, a child run, a wait step, a timer | `app.run-standing` |
 | `moneyAmount` | an amount in the workspace's currency: two decimals, three below one cent, "under €0.001" for less | `app.money-amount` |
+| `runSteps` | the steps a run reached, from its log: each step's state, its agent, and how it ended (done, failed, answered) or where it is now (waiting for an OK, a child run, an answer or a time, or running) | `app.run-steps` |
 | `RunEvents.sendEvent` | sends an event to a run only while it waits for it, answering the oldest waiting item; refuses with `RunEventRefused` otherwise | `app.run-send` |
 | `lookUpWorkflow` | the workflow a typed id or `hub/id` points to; none, or several hubs with that id | `app.workflow-lookup` |
 | `WorkflowRuns.startRun` | starts the workflow a typed id or `hub/id` points to and follows the run; none or several start nothing | `app.run-start` |

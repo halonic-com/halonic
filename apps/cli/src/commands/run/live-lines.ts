@@ -6,13 +6,13 @@
 // repeats them word for word (requirement `cli.print-ahead`), so they come
 // from the same helpers `result.ts` uses.
 
+import { runSteps, type StepEnd } from "@halonicjs/app";
 import { type RunEvent, summarize } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext } from "../../command.ts";
 import { printable } from "../../output/printable.ts";
 import type { Progress } from "../../output/progress.ts";
 import { type WorkspaceModels, workspaceModelsOf } from "../../run-failure-of.ts";
-import { runSteps, type StepEnd } from "../../run-steps.ts";
 import type { RunClock } from "../../run-times.ts";
 import {
   type RunDefinitions,

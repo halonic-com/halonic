@@ -5,7 +5,14 @@
 // words are the catalogue's (`runMessages`, `runsMessages`), so this file
 // holds no text.
 
-import { hubWorkflows, shortRunId, type WorkflowDefinition, workflowIn } from "@halonicjs/app";
+import {
+  hubWorkflows,
+  type RunStep,
+  runSteps,
+  shortRunId,
+  type WorkflowDefinition,
+  workflowIn,
+} from "@halonicjs/app";
 import { type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
@@ -18,7 +25,6 @@ import { runsListMessages, startedInWords } from "./messages/runs-list.ts";
 import { stepName } from "./messages/step-name.ts";
 import type { Mark } from "./output/paint.ts";
 import { printable } from "./output/printable.ts";
-import { type RunStep, runSteps } from "./run-steps.ts";
 import { dueAt, type RunClock, startedAt } from "./run-times.ts";
 
 /** An agent as the workspace defines it. */

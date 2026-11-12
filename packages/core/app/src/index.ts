@@ -371,6 +371,7 @@ export {
   runVersionOf,
 } from "./run-source.ts";
 export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
+export { type RunStep, runSteps, type StepEnd } from "./run-steps.ts";
 export {
   type RunnerFence,
   type RunnerFenceInputs,

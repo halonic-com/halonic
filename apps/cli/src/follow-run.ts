@@ -3,13 +3,12 @@
 // the run stops being followed, and the command says after which step it was
 // cancelled, or that it couldn't be cancelled (HAL-4356).
 
-import { RunFollowStopped, shortRunId } from "@halonicjs/app";
+import { RunFollowStopped, runSteps, shortRunId } from "@halonicjs/app";
 import { type RunEvent, summarize } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { StoppedResult } from "./command.ts";
 import { runMessages } from "./messages/run.ts";
 import { stepName } from "./messages/step-name.ts";
-import { runSteps } from "./run-steps.ts";
 import { runViewDefinitions } from "./run-view.ts";
 import type { WorkspaceEngine } from "./workspace-engine.ts";
 
