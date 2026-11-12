@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { account, atlas, ledger, record } from "./accounts.test-helper.ts";
 import { localTime, setupEntry, utcTime } from "./setup-entry.ts";
 
 const allSteps = ["project", "apis", "consent", "scopes", "client", "credentials", "sign-in"];
 const fine = { result: { kind: "works" as const }, checkedAt: "2026-11-12T02:10:00.000Z" };
 
-describe("setupEntry", () => {
+verifies("google-setup.setup-source", () => {
   it("names the next step of a setup under way", () => {
     const entry = setupEntry(account(record(["project", "apis", "consent"])), utcTime);
     expect(entry).toMatchObject({

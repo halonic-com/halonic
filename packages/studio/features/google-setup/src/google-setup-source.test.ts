@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { account, fakeAccounts, record } from "./accounts.test-helper.ts";
 import { googleSetupSource } from "./google-setup-source.ts";
 
 const done = ["project", "apis", "consent", "scopes", "client", "credentials", "sign-in"];
 
-describe("googleSetupSource", () => {
+verifies("google-setup.setup-source", () => {
   it("lists only the accounts that need you", async () => {
     const fake = fakeAccounts([account(record(["project"])), account(record(done))]);
     const entries = await googleSetupSource(fake.source).list();
