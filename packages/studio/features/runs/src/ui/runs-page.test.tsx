@@ -51,11 +51,23 @@ async function openPage(
   return { root, list };
 }
 
-/** Each day's heading, then its rows' text: what ran, the line, the tag, short id and chip. */
+/** Each day's heading, then the sentence a screen reader hears for each of its rows. */
 function shown(root: HTMLElement): string[] {
-  return [...root.querySelectorAll('[role="grid"] tr, h2')].map((node) =>
-    node.tagName === "H2" ? `# ${node.textContent}` : (node.textContent ?? ""),
+  return [...root.querySelectorAll('[role="grid"] tr')].map((row) => {
+    const heading = row.querySelector("h3");
+    return heading === null
+      ? (row.querySelector(".sr-only")?.textContent ?? "")
+      : `# ${heading.textContent}`;
+  });
+}
+
+/** Each column's text in the row of `title`, from 800px of list width. */
+function columnsOf(root: HTMLElement, title: string): string[] {
+  const row = [...root.querySelectorAll('[role="grid"] tr')].find((candidate) =>
+    candidate.querySelector(".sr-only")?.textContent?.includes(title),
   );
+  const wide = row?.querySelector('[aria-hidden="true"] > div');
+  return [...(wide?.children ?? [])].map((cell) => cell.textContent ?? "");
 }
 
 /** The button or the status chip's radio with this name. */
@@ -115,12 +127,12 @@ verifies("runs.list", () => {
       expect(root.textContent).toContain("A run is one time a workflow or agent does its job.");
       expect(shown(root)).toEqual([
         "# Today",
-        "Support replyIn Draft7k2m9pRunning",
-        "Support replyWaiting for your approval in the step Send01jd8qNeeds you",
-        "Support replyBudget reached in Draft after 2 min9x8y7zStopped · budget",
-        "Support replyWaiting until 11:40Testt1t1t1Waiting",
+        "Run 7k2m9p, Support reply, running, in Draft. Started at 10:40.",
+        "Run 01jd8q, Support reply, needs you, waiting for your approval in the step Send. Started at 10:40.",
+        "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started at 10:40.",
+        "Run t1t1t1, Support reply, waiting, waiting until 11:40. Started at 10:40, test run.",
         "# Yesterday",
-        "Support replySent nothing4f2a1bDone",
+        "Run 4f2a1b, Support reply, done, sent nothing. Started at 16:00.",
       ]);
     });
 
@@ -131,7 +143,7 @@ verifies("runs.list", () => {
       await click(control(root, "Failed"));
       expect(shown(root)).toEqual([
         "# Today",
-        "Support replyBudget reached in Draft after 2 min9x8y7zStopped · budget",
+        "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started at 10:40.",
       ]);
       await click(control(root, "Live 2"));
       expect(shown(root)).toHaveLength(3);
@@ -139,7 +151,10 @@ verifies("runs.list", () => {
 
     it("shows finished test runs once Test runs is on", async () => {
       const { root } = await openPage(fakeSource([done, finishedTest]).source);
-      expect(shown(root)).toEqual(["# Yesterday", "Support replySent nothing4f2a1bDone"]);
+      expect(shown(root)).toEqual([
+        "# Yesterday",
+        "Run 4f2a1b, Support reply, done, sent nothing. Started at 16:00.",
+      ]);
       const testRuns = control(root, "Test runs");
       expect(testRuns.getAttribute("aria-pressed")).toBe("false");
       await click(testRuns);
@@ -152,7 +167,10 @@ verifies("runs.list", () => {
       const { root } = await openPage(fake.source);
       fake.change([summaryWith({ id: "run_a_7k2m9p", status: "completed" })]);
       await settled();
-      expect(shown(root)).toEqual(["# Today", "Support replySent nothing7k2m9pDone"]);
+      expect(shown(root)).toEqual([
+        "# Today",
+        "Run 7k2m9p, Support reply, done, sent nothing. Started at 10:40.",
+      ]);
     });
   });
 
@@ -223,5 +241,43 @@ verifies("runs.list", () => {
     await click(root.querySelector<HTMLElement>('[role="grid"] [role="gridcell"]') ?? root);
 
     expect(openRun).toHaveBeenCalledWith(running);
+  });
+});
+
+verifies("runs.row-columns", () => {
+  it("lays a row out as its chip, short id, what ran with its Test tag, and when over took", async () => {
+    const ended = summaryWith({
+      id: "run_g_e2e2e2",
+      kind: "test",
+      status: "completed",
+      endedAt: minutesLater(2),
+    });
+    const { root } = await openPage(fakeSource([ended]).source);
+    await click(control(root, "Test runs"));
+
+    expect(columnsOf(root, "e2e2e2")).toEqual([
+      "Done",
+      "e2e2e2",
+      "Support replyTestSent nothing",
+      "10:40took 2 min",
+    ]);
+  });
+
+  it("gives a failed row the failed sentence in danger and the Failed chip", async () => {
+    const failed = summaryWith({ id: "run_h_f4f4f4", status: "failed", reason: "model-missing" });
+    const { root } = await openPage(fakeSource([failed]).source);
+
+    expect(shown(root)).toEqual([
+      "# Today",
+      "Run f4f4f4, Support reply, failed in the step Draft. Started at 10:40.",
+    ]);
+    expect(columnsOf(root, "f4f4f4")).toEqual([
+      "Failed",
+      "f4f4f4",
+      "Support replySupport reply failed in the step Draft.",
+      "10:40",
+    ]);
+    const danger = [...root.querySelectorAll(".text-danger")].map((node) => node.textContent);
+    expect(danger).toContain("Support reply failed in the step Draft.");
   });
 });

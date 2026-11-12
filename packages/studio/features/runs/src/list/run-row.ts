@@ -1,6 +1,7 @@
 // One run as a row of the Runs list shows it (checklist part 1, 1.2; mc 9.7
-// Row line, 15.2 Status chips): its chip, its short id, what ran, and the
-// line under it. The line says what the What column of `halonic runs` says.
+// Row line, 15.2 Status chips, 19.3 Run row): its chip, its short id, what
+// ran, the line under it, and when it started over how long it took. The
+// line says what the What column of `halonic runs` says.
 
 import {
   moneyAmount,
@@ -13,8 +14,15 @@ import {
 import type { RunSummary } from "@halonicjs/events";
 import type { StatusChipTone } from "@halonicjs/studio-kit";
 import type { RunWorkflow, SourcedRun } from "../api.ts";
-import { chipWords, costWords, lineSeparator, rowLineWords } from "../run-words.ts";
-import { dueWords, tookWords } from "../time-words.ts";
+import {
+  chipWords,
+  costWords,
+  lineSeparator,
+  rowLabelWords,
+  rowLineWords,
+  whenWords,
+} from "../run-words.ts";
+import { clockTime, dueWords, tookWords } from "../time-words.ts";
 
 /** A run's status chip: the same word everywhere, and a dot only while the run is live. */
 export interface RunChip {
@@ -39,6 +47,12 @@ export interface RunRow {
   readonly test: boolean;
   /** When the run started, as the run log writes it; the list groups rows by its day. */
   readonly startedAt: string;
+  /** The When column: the time the run started, "10:40"; its day is the group's heading. */
+  readonly time: string;
+  /** Under the time once the run has ended: "took 2 min". */
+  readonly took: string | undefined;
+  /** The sentence a screen reader hears for the row, in place of its columns (mc 19.3). */
+  readonly label: string;
 }
 
 /** What a row needs besides the run: its workflow, the workspace's currency and the time now. */
@@ -70,15 +84,27 @@ const chipLooks: Readonly<Record<RunStanding, Omit<RunChip, "word">>> = {
 export function runRow(run: SourcedRun, context: RowContext): RunRow {
   const { summary } = run;
   const standing = runStanding(summary);
+  const shortId = shortRunId(summary.id);
+  const workflow = context.workflow?.name ?? summary.workflowId;
+  const line = rowLine(run, standing, context);
+  const test = summary.kind === "test";
+  const time = clockTime(new Date(summary.startedAt));
+  const spoken =
+    standing === "failed"
+      ? rowLabelWords.failedIn(currentStepName(summary, context.workflow))
+      : `${rowLabelWords.standing[standing]}, ${line.charAt(0).toLowerCase()}${line.slice(1)}`;
   return {
     id: summary.id,
-    shortId: shortRunId(summary.id),
+    shortId,
     standing,
     chip: { word: chipWords[standing], ...chipLooks[standing] },
-    workflow: context.workflow?.name ?? summary.workflowId,
-    line: rowLine(run, standing, context),
-    test: summary.kind === "test",
+    workflow,
+    line,
+    test,
     startedAt: summary.startedAt,
+    time,
+    took: summary.endedAt === null ? undefined : whenWords.took(took(summary)),
+    label: rowLabelWords.row(shortId, workflow, spoken, time, test),
   };
 }
 

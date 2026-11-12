@@ -4,7 +4,8 @@ import {
   EmptyState,
   FilterChips,
   List,
-  type ListRow,
+  type ListColumn,
+  type ListColumnsRow,
   StatusChip,
 } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
@@ -54,13 +55,13 @@ export interface RunsViewProps {
 /**
  * The Runs list on the desktop (checklist part 1, 1.2 to 1.4): "Runs", its
  * sentence, the status chips and the Test runs chip, then the runs grouped by
- * the day they started, newest first. A row shows what ran with the line
- * under it, its short id and its status chip. Refreshes update the rows in
- * place (D1); the filters work on the runs already loaded, so a filter change
- * never waits (K4).
+ * the day they started, newest first. A row's columns are its status chip,
+ * its short id, what ran with the line under it, and when it started over
+ * how long it took. Refreshes update the rows in place (D1); the filters work
+ * on the runs already loaded, so a filter change never waits (K4).
  *
  * Not here yet: the spend line (T4), opening a run in a new tab, the text
- * and hub filters, the row's ⋮, and the Started by, When and Took columns.
+ * and hub filters, the row's ⋮, and the Started by column.
  */
 export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() }: RunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -198,6 +199,7 @@ function Runs({
       <List
         label={pageWords.title}
         rows={[]}
+        columns={runColumns}
         loading
         loadingLabel={emptyListWords.loading}
         onRetry={retry}
@@ -205,7 +207,7 @@ function Runs({
     );
   }
   if (empty === undefined) {
-    return <DayLists rows={rows} openRow={openRow} now={now} />;
+    return <DayList rows={rows} openRow={openRow} now={now} />;
   }
   if (empty.kind === "only-test-runs") {
     return (
@@ -263,8 +265,19 @@ function Filters({
   );
 }
 
-/** The runs under one heading per day they started; a click or Enter on a row opens its run. */
-function DayLists({
+/** A row's columns, in `halonic runs`' order (checklist 1.2; T8-F1). */
+const runColumns: readonly ListColumn[] = [
+  { kind: "status", key: "status" },
+  { kind: "code", key: "run" },
+  { kind: "main" },
+  { kind: "time", key: "when" },
+];
+
+/**
+ * The runs in one list, under an `h3` for each day they started, which ↑ ↓
+ * pass over; a click or Enter on a row opens its run.
+ */
+function DayList({
   rows,
   openRow,
   now,
@@ -274,34 +287,43 @@ function DayLists({
   readonly now: Date;
 }) {
   return (
-    <div className="flex flex-col gap-4">
-      {dayGroups(rows, now).map((group) => (
-        <List
-          key={group.day}
-          heading={{ name: group.day }}
-          rows={group.rows.map(listRow)}
-          {...(openRow === undefined ? {} : { onOpen: openRow })}
-        />
-      ))}
-    </div>
+    <List
+      label={pageWords.title}
+      groups={dayGroups(rows, now).map((group) => ({
+        id: group.day,
+        heading: { name: group.day },
+        rows: group.rows.map(listRow),
+      }))}
+      columns={runColumns}
+      {...(openRow === undefined ? {} : { onOpen: openRow })}
+    />
   );
 }
 
-/** A run as a List row: what ran over its line, then its Test tag, short id and status chip. */
-function listRow(row: RunRow): ListRow {
+/**
+ * A run as a List row: its chip, short id, what ran over its line with its
+ * Test tag, and when it started. A failed row's line is the kit's error
+ * reason, in `danger`, with the Failed chip.
+ */
+function listRow(row: RunRow): ListColumnsRow {
   return {
     id: row.id,
     title: row.workflow,
     meta: row.line,
-    trailing: (
-      <span className="flex items-center gap-3">
-        {row.test ? <StatusChip tone="outline">{pageWords.testTag}</StatusChip> : null}
-        <span className="text-code text-fg-muted">{row.shortId}</span>
-        <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
-          {row.chip.word}
-        </StatusChip>
-      </span>
-    ),
+    ...(row.test ? { tag: <StatusChip tone="outline">{pageWords.testTag}</StatusChip> } : {}),
+    cells: {
+      status: {
+        value: (
+          <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
+            {row.chip.word}
+          </StatusChip>
+        ),
+      },
+      run: { value: row.shortId },
+      when: { value: row.time, ...(row.took === undefined ? {} : { detail: row.took }) },
+    },
+    label: row.label,
+    ...(row.standing === "failed" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
   };
 }
 

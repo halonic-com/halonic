@@ -39,7 +39,9 @@ emptyList(rows, filters); // { kind: "status", line: "No failed runs." }, or und
 dayGroups(filterRuns(rows, filters), new Date()); // [{ day: "Today", rows }, { day: "Yesterday", rows }]
 ```
 
-Not on the list yet: the spend line (it needs T4's spend function), opening a run (with the run page), the text and hub filters, the row's ⋮, and the Started by, When and Took columns.
+The page draws them as one kit List with `groups` and `columns`: an `h3` for each day, which ↑ ↓ pass over, and in each row the status chip, the short id, what ran with its line and Test tag, and the start time over how long the run took. Below 800px of list width the kit stacks the columns. Screen readers hear the row's `label` instead: "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started at 10:40.".
+
+Not on the list yet: the spend line (it needs T4's spend function), opening a run in a new tab, the text and hub filters, the row's ⋮, and the Started by column, which needs the test case's name and the routine's schedule from the run source.
 
 The run page says under its title what the run ran, from the version its run.started records:
 

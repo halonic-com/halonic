@@ -116,3 +116,24 @@ verifies("runs.row", () => {
     });
   });
 });
+
+verifies("runs.row-columns", () => {
+  it("gives when it started, how long it took once it ended, and the sentence a screen reader hears", () => {
+    const live = rowOf({ status: "waiting", approvals: [approvalAt(1), approvalAt(2)] });
+    const ended = rowOf({ kind: "test", status: "completed", endedAt: minutesLater(3) }, false);
+    const failed = rowOf({ status: "failed", reason: "model-missing", endedAt: minutesLater(1) });
+
+    expect(live.time).toBe("10:40");
+    expect(live.took).toBeUndefined();
+    expect(live.label).toBe(
+      "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started at 10:40.",
+    );
+    expect(ended.took).toBe("took 3 min");
+    expect(ended.label).toBe(
+      "Run 01jd8q, Support reply, done, sent nothing. Started at 10:40, test run.",
+    );
+    expect(failed.label).toBe(
+      "Run 01jd8q, Support reply, failed in the step Draft. Started at 10:40.",
+    );
+  });
+});

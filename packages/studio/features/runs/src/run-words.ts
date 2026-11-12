@@ -33,6 +33,32 @@ export const rowLineWords = {
   cancelledIn: (step: string, took: string) => `Cancelled in ${step} after ${took}`,
 };
 
+/** The When column's detail under the start time, once the run has ended (checklist 1.2). */
+export const whenWords = {
+  took: (took: string) => `took ${took}`,
+};
+
+/**
+ * What a screen reader hears for a row (mc 19.3 Run row, revision 68), until
+ * the Started by column comes: "Run 01jd8q, Support reply, needs you,
+ * waiting for 2 approvals. Started at 10:40."
+ */
+export const rowLabelWords = {
+  standing: {
+    running: "running",
+    "needs-you": "needs you",
+    waiting: "waiting",
+    done: "done",
+    failed: "failed",
+    budget: "stopped at its budget",
+    cancelled: "stopped",
+    "cant-try": "couldn't try",
+  },
+  failedIn: (step: string) => `failed in the step ${step}`,
+  row: (shortId: string, workflow: string, what: string, time: string, test: boolean) =>
+    `Run ${shortId}, ${workflow}, ${what}. Started at ${time}${test ? ", test run" : ""}.`,
+};
+
 /** The cost part of a run's line (mc 15.2, W1 and revision 68). */
 export const costWords = {
   estimated: (amount: string) => `estimated cost ${amount}`,
