@@ -66,7 +66,7 @@ export type CanaryFindings =
       controls: {
         /** A file in a read-only allowed folder could be read. */
         readOnlyFileRead: boolean;
-        /** Node loaded a script from the read-write working folder. */
+        /** Node loaded a script from the read-write working folder, listed it and wrote in it. */
         workFolderScriptLoaded: boolean;
       };
       /**
@@ -87,9 +87,9 @@ export type CanaryFindings =
 export interface TrustCanary {
   /**
    * The canary session's profile. It uses the same kinds of paths as a real
-   * run, the project folder and Halonic's own folder under `%LOCALAPPDATA%`,
-   * never a fresh temporary folder, so the check fails where a real run
-   * would. Its time limit is the check's.
+   * run, the project folder and a fresh box folder under Halonic's data
+   * folder, never `%TEMP%`, so the check fails where a real run would. Its
+   * time limit is the check's.
    */
   profile(): Promise<SandboxProfile>;
   /**

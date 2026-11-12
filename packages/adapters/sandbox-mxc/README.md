@@ -12,11 +12,12 @@ is on HAL-3292.
 
 ## Status
 
-This is the first of three pull requests (HAL-3305). It says where MXC is offered and whether
-it can start, and it holds the grant-path and box-folder rules. Sessions come in the next pull
-request, so `open()` refuses for now. The adapter doesn't depend on MXC's SDK
-(`@microsoft/mxc-sdk`) yet: until it does, `systemMachine()` reports the SDK as missing, so
-`check()` says `other` on Windows 11.
+This is the second of three pull requests (HAL-3305). The first said where MXC is offered
+and whether it can start, and holds the grant-path and box-folder rules. This one adds
+sessions: `open()` builds the box request, proves the fence and starts programs through MXC's
+`spawn`. The next adds the fence tests and the `windows-11-arm` CI job. The adapter doesn't
+depend on MXC's SDK (`@microsoft/mxc-sdk`) yet: until it does, `systemMachine()` reports the
+SDK as missing, so `check()` says `other` on Windows 11 and no session opens.
 
 ## Loading MXC's SDK
 
@@ -24,7 +25,8 @@ The SDK is optional and Windows only. `mxcSdkLoader` loads it the first time `of
 `check()` needs it, never at module top level, and `systemMachine()` keeps the answer for the
 rest of the process. On every other system, and whenever the SDK can't be imported, MXC
 doesn't start: `check()` says `other` on Windows 11. The adapter reads only the SDK's platform
-support and backends. It never turns on the SDK's telemetry.
+support, backends and `spawn`. Every `spawn` call passes `telemetry: { enabled: false }`, and
+the adapter never asks for telemetry consent.
 
 ## Where MXC is offered
 
@@ -50,12 +52,59 @@ These follow Mateo's grant rules from HAL-3503:
   removes the folders that crashed processes left behind. The base folder is one constant,
   `boxFoldersBase`.
 
+## Sessions
+
+`open(profile)` turns the profile into one policy and starts every program under it:
+
+- **Files.** The working, temp and settings folders are read and write (the temp and settings
+  folders are made when missing), `readOnlyPaths` are read, and `deniedPaths` win over both.
+  `TEMP` and `TMP` point at the temp folder.
+- **Network.** `egress: deny` with no rule, and the bridge as MXC's proxy
+  (`networkProxy: http://127.0.0.1:<bridge port>`, host loopback allowed), so the bridge is the
+  one local port the box reaches. Without a bridge, no loopback at all. A non-empty
+  `allowedSites` makes `open` throw, and so does a bridge host other than `127.0.0.1`.
+- **Environment.** Only the profile's variables, plus `TEMP`, `TMP` and `NODE_OPTIONS` with the two
+  symlink flags (`--preserve-symlinks --preserve-symlinks-main`). A program that is Node itself
+  also gets the flags as arguments.
+- **UI.** On, with no clipboard and no input injection: without it Node and git don't start.
+- **Command line.** MXC takes one string, so the program and arguments are quoted the way
+  Windows reads them back. A batch file (`.cmd`, `.bat`) is refused: `cmd.exe` reads its
+  arguments by rules no quoting makes safe.
+
+**Box folder.** Every session gets a new folder under `mxc-boxes`, removed when it closes. It
+holds the files of the fence proof and nothing the program may read.
+
+**Fence proof.** Before anything runs, a Node probe starts in the box under the session's own
+policy. It must be refused a file no grant names, a denied file inside a folder it may read and
+a loopback port of a listener on this computer, and it must read a file in a folder it may read
+(without that control "hidden" proves nothing). Anything else, including a probe that can't run
+or a box folder inside a denied path, makes the fence `not-fenced`, and `start` throws.
+
+**Trust check.** `MxcCanary` builds the canary profile and probe for `core/app`'s trust check.
+Its box is built exactly like a real session's, with a fresh box folder under Halonic's data
+folder, never `%TEMP%`. The probe re-runs the leak probes, reports a file written where
+nothing may be written, and adds the third control: Node loads a script from the working
+folder, lists the folder and writes a file in it. A failed control is `too-strict`.
+
+**`onBlocked`.** MXC's denial capture crashed the host process (HAL-3303), so the adapter never
+uses it. It reports what the program's own error output shows: Node's `EACCES`/`EPERM` errors
+that name a path (`open` and calls that only look count as reads) and refused connections with
+their address and port. Messages without a path or address, such as cmd.exe's "Access is
+denied.", are not reported, so a program that doesn't print its errors reports nothing.
+
+**Not covered yet.** `reopenedPaths` makes `open` throw: MXC's denied paths win over every
+grant, so a path inside one can't be reopened. The canary doesn't yet probe the internet, DNS
+or other addresses of this computer (`internet-reachable`, `dns-reachable`, and the host's own
+addresses for `port-reachable`), and it reports `nameLookupsLeave: true`, which is a known
+limit of MXC. No release ships MXC before those probes exist. The refusal of files under a
+skill's `scripts/` folder, which `sandbox-srt` applies, isn't ported.
+
 ## Example
 
 ```ts
-import { MxcSandbox, systemMachine } from "@halonicjs/adapter-sandbox-mxc";
+import { BoxFolders, MxcSandbox, systemMachine } from "@halonicjs/adapter-sandbox-mxc";
 
-const mxc = new MxcSandbox(systemMachine());
+const mxc = new MxcSandbox(systemMachine(), new BoxFolders(dataFolder, process.pid));
 if (await mxc.offered()) {
   const check = await mxc.check(); // { ok: false, reason: "other", missing: ["MXC's SDK can't be loaded or asked: …"] }
 }

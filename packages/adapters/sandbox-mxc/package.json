@@ -28,6 +28,7 @@
     "runtime": "node"
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   }
 }

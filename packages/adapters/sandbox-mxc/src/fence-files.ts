@@ -37,6 +37,9 @@ export interface FenceFiles {
 /** What the victim file holds, so a change is seen. */
 export const victimText = "original";
 
+/** What the control file holds, so a change is seen. */
+export const controlText = "control";
+
 /** The paths of a proof inside `folder`, a box folder. */
 export function fenceFiles(folder: string): FenceFiles {
   const inside = (...parts: string[]) => win32.join(folder, ...parts);
@@ -59,7 +62,7 @@ export function fenceFiles(folder: string): FenceFiles {
 export async function writeFenceFiles(disk: MxcDisk, files: FenceFiles): Promise<void> {
   await disk.makeFolder(files.readable);
   await disk.makeFolder(files.hidden);
-  await disk.writeText(files.control, "control");
+  await disk.writeText(files.control, controlText);
   await disk.writeText(files.denied, randomBytes(16).toString("hex"));
   await disk.writeText(files.canary, randomBytes(16).toString("hex"));
   await disk.writeText(files.victim, victimText);
