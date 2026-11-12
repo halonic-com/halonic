@@ -2,6 +2,7 @@
 
 - Approval: [HAL-7196](/HAL/issues/HAL-7196)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Kf2aS9U/tMF8rpjT6NOvPuhhZNZNt+Anwe12tlimvkYb07GTOmL7lhXRUaEF7dMrPzeIwcyC2LA3oD1jKMKmAg==
 
 Deployment ids (`deployments.yaml`) and agent ids (agent files) name folders
 in the profile, so they refuse the names Windows keeps for devices (`con`,
