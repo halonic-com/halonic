@@ -203,7 +203,7 @@ verifies("cli.doctor-node", () => {
       "✕ Sandbox     can't start on this computer",
       "              Windows' Node.js can't start the sandbox in a WSL folder.",
       "              Fix: install Node.js inside WSL and open a WSL terminal. Then run halonic doctor again.",
-      "              More: https://docs.halonic.com/sandbox (windows-node-in-wsl)",
+      "              More: https://docs.halonic.dev/sandbox (windows-node-in-wsl)",
     ]);
   });
 

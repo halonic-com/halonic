@@ -10,7 +10,7 @@ While the CLI runs on Linux under WSL (`/proc/version` names Microsoft) and the 
 
 - Given WSL and the trusted workspace Acme in a folder on `/mnt/c`,
   when `halonic doctor --dir acme` runs,
-  then it prints "! Workspace   Acme · trusted on this computer", then "The workspace is on the Windows drive /mnt/c, so runs are slow and Halonic doesn't notice edits made in Windows." and "Fix: move it into your Linux home folder (~), then run halonic doctor again." and "More: https://docs.halonic.com/sandbox#wsl2-folder", counts one warning, and exits with 0.
+  then it prints "! Workspace   Acme · trusted on this computer", then "The workspace is on the Windows drive /mnt/c, so runs are slow and Halonic doesn't notice edits made in Windows." and "Fix: move it into your Linux home folder (~), then run halonic doctor again." and "More: https://docs.halonic.dev/sandbox#wsl2-folder", counts one warning, and exits with 0.
 - Given WSL and a workspace in `~/acme`,
   when `halonic doctor` runs,
   then the Workspace line says nothing about a drive.

@@ -10,7 +10,7 @@ While Windows' Node.js runs Halonic (`process.platform` is `win32`) and the work
 
 - Given Windows' Node.js, a workspace in a WSL folder and a sandbox that needs setting up,
   when `halonic run support-reply` is refused,
-  then line 2 is "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal." and line 3 is "More: https://docs.halonic.com/sandbox (windows-node-in-wsl)".
+  then line 2 is "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal." and line 3 is "More: https://docs.halonic.dev/sandbox (windows-node-in-wsl)".
 - Given a workspace that isn't in a WSL folder and bubblewrap missing,
   when the run is refused,
   then the code is `bubblewrap-missing`.

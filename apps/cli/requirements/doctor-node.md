@@ -13,7 +13,7 @@
   then it prints "! Node.js     This is Windows' Node.js, running in a WSL folder." and "Fix: install Node.js inside WSL, then run halonic doctor again from a WSL terminal.", and exits with 0.
 - Given Windows' Node.js in a WSL folder and a sandbox that doesn't work on Windows,
   when `halonic doctor` runs,
-  then the Sandbox line says "Windows' Node.js can't start the sandbox in a WSL folder.", "Fix: install Node.js inside WSL and open a WSL terminal. Then run halonic doctor again." and "More: https://docs.halonic.com/sandbox (windows-node-in-wsl)".
+  then the Sandbox line says "Windows' Node.js can't start the sandbox in a WSL folder.", "Fix: install Node.js inside WSL and open a WSL terminal. Then run halonic doctor again." and "More: https://docs.halonic.dev/sandbox (windows-node-in-wsl)".
 - Given WSL and Windows' pnpm first on the `PATH`, on the drive `/mnt/c`,
   when `halonic doctor` runs,
   then it prints "pnpm on the PATH is Windows' one:" with its path, and "Fix: install pnpm inside WSL, for example with npm install -g pnpm, then run halonic doctor again.".
