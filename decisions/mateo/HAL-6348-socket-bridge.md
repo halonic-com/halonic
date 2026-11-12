@@ -4,6 +4,7 @@
 - Task: HAL-6348, PR 3 of the HAL-6316 plan (each run's bridge on a private Unix socket, W9)
 - Approval: the maintainer (Liam) approved the HAL-6316 plan on HAL-6340 and approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sfSlMzNRv4OsmZ/P7v9NYBIqiy1mtflzalmpcUboFGi6Kw9/6vQNN62SgaRvYVfNZgrTpS4oSjQrZWQnrkDzDQ==
 
 ## What changes
 
