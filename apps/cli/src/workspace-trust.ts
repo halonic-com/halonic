@@ -12,6 +12,7 @@ import {
   type LoadedWorkspace,
   type LocalIntegrationInput,
   loadWorkspace,
+  type RefusedKind,
 } from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import type { Message } from "./messages/define.ts";
@@ -103,8 +104,22 @@ export interface WorkspaceTrust {
   /** The workspace's name from `workspace.yaml`, or the folder's own name when it has none. */
   readonly name: string;
   readonly subject: TrustSubject;
-  /** Each connector's file, workspace-relative, by connector id, so a refusal can say which file to fix. */
+  /**
+   * Each connector's and provider's file, workspace-relative, by
+   * {@link refusedFileKey}, so a refusal can say which file to fix.
+   */
   readonly files: ReadonlyMap<string, string>;
+}
+
+/**
+ * The key of a connector's or provider's file in {@link WorkspaceTrust.files}.
+ * A connector and a provider may share an id, so the kind is part of it.
+ *
+ * @example
+ * refusedFileKey("provider", "claude"); // "provider:claude"
+ */
+export function refusedFileKey(kind: RefusedKind, id: string): string {
+  return `${kind}:${id}`;
 }
 
 /**
@@ -132,7 +147,14 @@ export async function readWorkspaceTrust(
     location: await realpath(dir.root),
     commandPaths: await commandPaths(connectors, search),
   });
-  const files = new Map(connectorFiles.map((file) => [file.value.id, file.path]));
+  const files = new Map([
+    ...connectorFiles.map(
+      (file) => [refusedFileKey("connector", file.value.id), file.path] as const,
+    ),
+    ...filesOf(workspace, "provider").map(
+      (file) => [refusedFileKey("provider", file.value.id), file.path] as const,
+    ),
+  ]);
   return { name, subject, files };
 }
 
@@ -150,8 +172,8 @@ export function assertTrustable(
   if (check.status !== "refused") {
     return;
   }
-  const refused = check.refused.map(({ id, reason }) => ({
-    file: workspace.files.get(id) ?? id,
+  const refused = check.refused.map(({ kind, id, reason }) => ({
+    file: workspace.files.get(refusedFileKey(kind, id)) ?? id,
     reason,
   }));
   throw new KindedError("invalid_input", plainText(trustMessages.refused(refused).phrase), {

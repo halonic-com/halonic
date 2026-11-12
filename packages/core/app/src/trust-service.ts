@@ -9,7 +9,7 @@ import type { TrustGrant, TrustRecord } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import {
   type LocalIntegrationInput,
-  type RefusedConnector,
+  type RefusedItem,
   type TrustChanges,
   type TrustContent,
   trustChanges,
@@ -91,7 +91,7 @@ interface RefusedTrust {
   readonly status: "refused";
   readonly content: TrustContent;
   /** What can't be trusted and why, sorted by id. Never its address, which may hold a password. */
-  readonly refused: readonly RefusedConnector[];
+  readonly refused: readonly RefusedItem[];
 }
 
 /** What a record lost when it shrank, by id and in the order the content lists them. */

@@ -204,7 +204,9 @@ verifies("app.trust-service", () => {
     );
 
     expectStatus(check, "refused");
-    expect(check.refused).toEqual([{ id: "mail", reason: "the URL has user info" }]);
+    expect(check.refused).toEqual([
+      { kind: "connector", id: "mail", reason: "the URL has user info" },
+    ]);
     expect(check).not.toHaveProperty("fingerprint");
     expect(check).not.toHaveProperty("grant");
     expect(JSON.stringify(check)).not.toContain("pw");
@@ -221,7 +223,9 @@ verifies("app.trust-service", () => {
     });
 
     expectStatus(check, "refused");
-    expect(check.refused).toEqual([{ id: "claude", reason: "the URL has user info" }]);
+    expect(check.refused).toEqual([
+      { kind: "provider", id: "claude", reason: "the URL has user info" },
+    ]);
     expect(check).not.toHaveProperty("grant");
     expect(JSON.stringify(check)).not.toContain("pw");
   });
@@ -230,7 +234,7 @@ verifies("app.trust-service", () => {
     const { service, store } = setup();
     await trustAsPerson(service, subject(program("files"), program("mail")));
     const record = (await store.get(location)) as TrustRecord;
-    const refused = [{ id: "web", reason: "the URL has user info" }];
+    const refused = [{ kind: "connector", id: "web", reason: "the URL has user info" }];
     await store.grant({ ...record, content: { ...(record.content as object), refused } });
 
     const check = await service.check(subject(program("files")));

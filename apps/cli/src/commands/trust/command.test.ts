@@ -189,6 +189,40 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(await store.list()).toEqual([]);
   });
 
+  it("names the file of a provider whose address has user info, not its id (HAL-5569)", async () => {
+    writeAcme({
+      "providers/claude.yaml":
+        "id: claude\ntype: anthropic\nbaseUrl: https://ops:pw@api.anthropic.com/v1\n",
+    });
+    const io = captureIo(folder);
+
+    const code = await runCli(["trust", "--dir", "acme"], io, commands());
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.join("\n")).toContain(
+      "providers/claude.yaml can't be trusted, because the URL has user info.",
+    );
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("pw");
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("names the provider's file when a connector has the same id (HAL-5569)", async () => {
+    writeAcme({
+      "library/connectors/mail.connector.yaml":
+        "name: Mail\ntransport:\n  http:\n    url: https://mail.example.com/mcp\ntools:\n  approve: []\n",
+      "providers/mail.yaml":
+        "id: mail\ntype: anthropic\nbaseUrl: https://ops:pw@api.anthropic.com/v1\n",
+    });
+    const io = captureIo(folder);
+
+    const code = await runCli(["trust", "--dir", "acme"], io, commands());
+
+    expect(code).toBe(exitCode.usage);
+    const stderr = io.stderr.join("\n");
+    expect(stderr).toContain("providers/mail.yaml can't be trusted");
+    expect(stderr).not.toContain("mail.connector.yaml");
+  });
+
   it("refuses a fingerprint made before the workspace changed, also in a terminal", async () => {
     writeAcme();
     const old = await fingerprintOfAcme();

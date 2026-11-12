@@ -1,4 +1,4 @@
-import type { Provider } from "@halonicjs/format";
+import type { Connector, Provider } from "@halonicjs/format";
 import type { Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -101,10 +101,33 @@ verifies("workspace.trust-providers", () => {
           provider({ id: "b", baseUrl: "https://evil.test\\@api.anthropic.com/v1" }),
         ],
       });
-      expect(content.refused?.map((refused) => refused.id)).toEqual(["a", "b"]);
+      expect(content.refused).toEqual([
+        { kind: "provider", id: "a", reason: "the URL has user info" },
+        { kind: "provider", id: "b", reason: "the URL has a backslash before its query" },
+      ]);
       expect(content.providers).toBeUndefined();
       expect(JSON.stringify(content)).not.toContain("pw");
       await expect(trustFingerprint(content, digest)).rejects.toThrow(RangeError);
+    });
+
+    it("tells a refused provider from a refused connector with the same id, in one order (HAL-5569)", () => {
+      const refusedProvider = provider({
+        id: "mail",
+        baseUrl: "https://ops:pw@api.anthropic.com/v1",
+      });
+      const refusedConnector: Connector = {
+        version: 1,
+        id: "mail",
+        transport: { http: { url: "https://ops:pw@mcp.acme.test/" } },
+        tools: { approve: [] },
+      };
+      const expected = [
+        { kind: "connector", id: "mail", reason: "the URL has user info" },
+        { kind: "provider", id: "mail", reason: "the URL has user info" },
+      ];
+      expect(
+        trustContent({ connectors: [refusedConnector], providers: [refusedProvider] }).refused,
+      ).toEqual(expected);
     });
   });
 

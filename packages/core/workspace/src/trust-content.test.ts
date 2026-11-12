@@ -251,8 +251,8 @@ verifies("workspace.trust-content", () => {
       const content = trustContent({ connectors: [sneaky, stdio(), password] });
       expect(content.connectors.map((connector) => connector.id)).toEqual(["files"]);
       expect(content.refused).toEqual([
-        { id: "password", reason: "the URL has user info" },
-        { id: "sneaky", reason: "the URL has a backslash before its query" },
+        { kind: "connector", id: "password", reason: "the URL has user info" },
+        { kind: "connector", id: "sneaky", reason: "the URL has a backslash before its query" },
       ]);
       expect(JSON.stringify(content)).not.toContain("pw");
     });
