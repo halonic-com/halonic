@@ -3,7 +3,6 @@
 - Task: HAL-5900; asked for by Liam in his review of #1836 (HAL-5750)
 - Approval: Liam approved the change in review on [HAL-5926](/HAL/issues/HAL-5926) and signs this note
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wPLlCA6pnByKffUHmruifung7QT8bC47QJ1GncYYluY3I9vtna9BwmwDC9hcFzb/Ps9lmanPR/85vOe7Ix0LDg==
 
 ## What changes
 
