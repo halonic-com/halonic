@@ -154,6 +154,30 @@ verifies("studio.open-folder", () => {
     ]);
   });
 
+  it("reopens a Recent row's folder in the shell after a restart, then shows it", async () => {
+    const webview = desktopWebview(null);
+    const storage = memoryStorage();
+    new RecentWorkspaces(storage).remember({ location: "/work/acme", name: "acme" });
+    started = startStudio({
+      element,
+      window: webview.page,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage,
+    });
+    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+
+    const row = [...element.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("/work/acme"),
+    );
+    row?.click();
+    await drawn(element);
+
+    expect(webview.calls.find((call) => call.command === "reopen_folder")?.args).toEqual({
+      location: "/work/acme",
+    });
+    expect(element.querySelector('button[aria-label="Workspace: acme"]')).not.toBeNull();
+  });
+
   it("gives an opened workspace the keychain as its secrets, before its features' services", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
