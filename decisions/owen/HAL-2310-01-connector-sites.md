@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-2310 (D45, board on HAL-2257 Q3; decided by Liam on HAL-2303); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JHTDCrpOyv0MQX5jf4F0NjVVj3f33urCSUSjC9Z/pR2kZ+48gjOpSgsybXuRLv/nhNZCySM+hdRXEEwT7Y+GDQ==
 
 D45 runs a workspace's stdio connector programs in the agent sandbox in 0.1, with network limited to
 the sites the connector declares. This adds the field that declares them: `sites`, an optional list on
