@@ -182,7 +182,18 @@ try {
   Invoke-Driver wait ready 300
   Invoke-Driver call update_restart
   Wait-Until { (Get-InstalledVersion) -eq '0.1.2' } 120 '0.1.2 installing'
-  Wait-Until { (Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue) } 240 'going back to 0.1.1'
+  try {
+    Wait-Until { (Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue) } 240 'going back to 0.1.1'
+  } catch {
+    # Say where the way back stopped: which installer ran, what started, what the log says.
+    Write-Output "installed: $(Get-InstalledVersion)"
+    Get-Process | Where-Object { $_.Name -match 'Halonic|setup|agent|whoami|uninstall' } | Format-Table Id, Name, StartTime, Path -AutoSize | Out-String | Write-Output
+    Get-ChildItem $updates -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "$($_.FullName)  $($_.Length)  $($_.LastWriteTime)" } | Write-Output
+    Get-Content (Join-Path $updates 'updates.log') -ErrorAction SilentlyContinue | Write-Output
+    Get-Content (Join-Path $updates 'updater.json') -ErrorAction SilentlyContinue | Write-Output
+    Get-ChildItem $dir -ErrorAction SilentlyContinue | ForEach-Object { "$($_.Name)  $($_.LastWriteTime)" } | Write-Output
+    throw
+  }
   Wait-Until { $saved = Get-Record; $saved.install.target -eq '0.1.2' -and $saved.install.failures -eq 1 } 60 "0.1.1 counting 0.1.2 as didn't install"
   $log = Get-Content (Join-Path $updates 'updates.log') -Raw
   if ($log -notmatch 'Installing 0\.1\.2 over 0\.1\.1\. If 0\.1\.2 doesn''t start, run .+Halonic-0\.1\.1-windows-x64-setup\.exe to go back') { throw "updates.log doesn't say how to go back: $log" }
