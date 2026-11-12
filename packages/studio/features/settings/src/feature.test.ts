@@ -51,7 +51,10 @@ verifies("settings.feature", () => {
 });
 
 verifies("settings.section-commands", () => {
-  const shell = createShell({ features: [settingsFeature], hostServices: [DisplaySettingsService] });
+  const shell = createShell({
+    features: [settingsFeature],
+    hostServices: [DisplaySettingsService],
+  });
 
   function contextWith(ids: readonly string[], opened: (string | undefined)[] = []) {
     const titles: Record<string, string> = {
