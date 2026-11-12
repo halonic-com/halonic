@@ -189,6 +189,7 @@ async function trustAcme(): Promise<void> {
   const store = new FileTrustStore(join(acmeRuns.folder, "trust"));
   const trust = cliTrustService(store, fixedClock(engineStart));
   const check = await trust.check(subject);
+  if (check.status === "refused") throw new Error("Acme has no connector to refuse.");
   expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
 }
 
