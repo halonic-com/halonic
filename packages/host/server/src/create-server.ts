@@ -1,9 +1,7 @@
 import type { CreateServer, ServerConfig } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
-
-/** The secret that holds the sign-in password hash. No value means the server has no password. */
-const passwordSecretName = "serve-password";
+import { createSignIn, passwordSecretName } from "./sign-in.ts";
 
 function checkConfig(config: ServerConfig): void {
   if (config.allowedHosts.length === 0) {
@@ -23,12 +21,29 @@ function isWholeNumberAboveZero(value: number): boolean {
 
 /**
  * Builds the server. Every request passes the security layer first: the
- * `Host` check, the `Origin` check, then the body limit. Routes come in later
- * pull requests; until then every path answers 404.
+ * `Host` check, the `Origin` check, then the body limit. Then the sign-in
+ * routes answer. A route behind the sign-in needs a session when a password is set.
  */
 export const createServer: CreateServer = ({ config, ports }) => {
   checkConfig(config);
   const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
+  const signIn = createSignIn(ports);
+
+  async function route(request: Request, body: Uint8Array): Promise<Response> {
+    const endpoint = `${request.method} ${new URL(request.url).pathname}`;
+    switch (endpoint) {
+      case "POST /api/login":
+        return signIn.login(request, body);
+      case "POST /api/logout":
+        return signIn.logout(request);
+      case "GET /api/session":
+        return (await signIn.isSignedIn(request))
+          ? Response.json({ signedIn: true })
+          : errorResponse(serverErrors.notSignedIn);
+      default:
+        return errorResponse(serverErrors.notFound);
+    }
+  }
 
   async function answer(request: Request): Promise<Response> {
     const hasPassword = (await ports.secrets.get(passwordSecretName)) !== null;
@@ -40,7 +55,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
     if (!body.ok) {
       return errorResponse(serverErrors.bodyTooLarge);
     }
-    return errorResponse(serverErrors.notFound);
+    return route(request, body.bytes);
   }
 
   return {
