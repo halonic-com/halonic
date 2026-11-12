@@ -2,7 +2,7 @@
   "name": "@halonicjs/studio-services",
   "private": true,
   "type": "module",
-  "description": "The Studio's platform bridges: services that come from the shell the Studio runs in, such as the OS keychain in the desktop app.",
+  "description": "The Studio's platform bridges: services that come from the shell the Studio runs in, such as the OS keychain and the host settings in the desktop app.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@halonicjs/adapter-agent-host-client": "workspace:*",
+    "@halonicjs/adapter-fs-tauri": "workspace:*",
     "@halonicjs/adapter-harness-claude-code": "workspace:*",
     "@halonicjs/adapter-harness-codex": "workspace:*",
     "@halonicjs/adapter-secrets-tauri": "workspace:*",
