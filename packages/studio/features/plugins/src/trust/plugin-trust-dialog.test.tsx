@@ -134,7 +134,7 @@ verifies("plugins.plugin-trust-check", () => {
 
     expect(rows.slice(0, 4)).toEqual([
       ["Tools for agents (3)", true],
-      ["Programs (1)", false],
+      ["Programs on this computer (1)", false],
       ["Secrets (1)", false],
       ["Addresses (2)", false],
     ]);
