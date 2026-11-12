@@ -1387,6 +1387,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/ports
     devDependencies:
+      '@halonicjs/adapter-harness-bridge':
+        specifier: workspace:*
+        version: link:../harness-bridge
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts
