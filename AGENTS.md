@@ -48,6 +48,9 @@ Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine;
   changes that); CI sets `TURBO_CONCURRENCY` itself. Leave full runs to CI and the merge queue.
   A change under `examples/` alone selects nothing with that filter (Turborepo only maps files to packages),
   so also add `--filter=halonic --filter=@halonicjs/workspace --filter=@halonicjs/test-runner`, the three packages whose tests read it.
+- Inside Paperclip, run tests only through the package scripts, which carry the worker cap: never
+  `vitest` with `--maxWorkers` above 2 or `node --test --test-concurrency=0`. Run one test suite at a
+  time, and run `pnpm install` or `npm ci` only when the lockfile changed (HAL-7132).
 - Before you queue a pull request, typecheck every package on top of the latest `main`:
   `pnpm exec turbo run typecheck`, or run `pnpm check:enqueue`: it merges the latest
   `origin/main`, then checks the lockfile, typechecks every package, runs the `@halonicjs/format`
