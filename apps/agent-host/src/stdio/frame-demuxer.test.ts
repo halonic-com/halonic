@@ -104,6 +104,23 @@ describe("demuxFrames", () => {
     expect(accepted.map((connection) => connection.id)).toEqual([1, 2]);
   });
 
+  it("ignores frames the relay sent after its own reset, and goes on", async () => {
+    const { relay, accepted, ended } = demuxed();
+    relay.sendFrame(1, FrameKind.open);
+    relay.sendFrame(1, FrameKind.reset);
+    // Late frames both right after the reset and once the connection has closed.
+    relay.sendFrame(1, FrameKind.data, Buffer.from("late"));
+    await settle();
+    relay.sendFrame(1, FrameKind.data, Buffer.from("later"));
+    relay.sendFrame(1, FrameKind.end);
+    relay.sendFrame(2, FrameKind.open);
+    await settle();
+    expect(accepted.map((connection) => connection.id)).toEqual([1, 2]);
+    expect(accepted[0]?.readableLength).toBe(0);
+    expect(relay.received).toEqual([]);
+    await expect(Promise.race([ended, settle().then(() => "running")])).resolves.toBe("running");
+  });
+
   it("answers an open past the cap with reset, and ignores what follows on it", async () => {
     const { relay, accepted } = demuxed(2);
     for (const id of [1, 2, 3]) relay.sendFrame(id, FrameKind.open);

@@ -2,7 +2,7 @@
 //! writes and answers with frames of its own, over pipes.
 
 use std::io::{self, PipeWriter, Read, Write};
-use std::net::{Ipv4Addr, Shutdown, TcpStream};
+use std::net::{Ipv4Addr, Shutdown, TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::Duration;
 
@@ -287,4 +287,32 @@ fn relay_stop_closes_the_host_input_and_every_client() {
 
     assert!(host.input_closed());
     assert!(closed(&mut client));
+}
+
+#[test]
+fn relay_closes_a_connection_accepted_while_it_stops() {
+    let relay = Relay::bind().expect("bind the relay");
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind");
+    let mut client =
+        TcpStream::connect(listener.local_addr().expect("an address")).expect("connect");
+    client.set_read_timeout(Some(WAIT)).expect("a read timeout");
+    let (socket, _) = listener.accept().expect("accept");
+
+    relay.stop();
+    assert!(relay.shared.open(socket).is_ok());
+
+    assert!(relay.shared.connections().open.is_empty());
+    assert!(closed(&mut client));
+}
+
+#[test]
+fn relay_stop_wakes_no_one_when_nothing_accepts() {
+    let mut relay = Relay::bind().expect("bind the relay");
+
+    relay.stop();
+
+    let (listener, _) = relay.waiting.take().expect("never served");
+    listener.set_nonblocking(true).expect("non-blocking");
+    let waiting = listener.accept().map(|_| ()).map_err(|error| error.kind());
+    assert_eq!(waiting, Err(io::ErrorKind::WouldBlock));
 }

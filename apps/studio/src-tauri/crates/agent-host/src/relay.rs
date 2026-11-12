@@ -81,6 +81,7 @@ impl Relay {
             port,
             backlog_limit,
             stopped: AtomicBool::new(false),
+            accepting: AtomicBool::new(false),
             to_host,
             connections: Mutex::default(),
         });
@@ -112,6 +113,7 @@ impl Relay {
         });
         let shared = Arc::clone(&self.shared);
         spawn("relay-from-host", move || shared.pass_host_frames(output));
+        self.shared.accepting.store(true, Ordering::SeqCst);
         let shared = Arc::clone(&self.shared);
         spawn("relay-accept", move || shared.accept(&listener));
     }
@@ -142,6 +144,9 @@ struct Shared {
     port: u16,
     backlog_limit: usize,
     stopped: AtomicBool,
+    /// True while a thread waits to accept connections, so stopping must
+    /// wake it. Once it's gone, the port may be another process's.
+    accepting: AtomicBool,
     to_host: SyncSender<ToHost>,
     connections: Mutex<Connections>,
 }
@@ -192,15 +197,17 @@ impl Shared {
     fn accept(self: &Arc<Self>, listener: &TcpListener) {
         for socket in listener.incoming() {
             if self.stopped.load(Ordering::SeqCst) {
-                return;
+                break;
             }
             // A client that went before it was accepted fails here; others go on.
             let Ok(socket) = socket else { continue };
             if self.open(socket).is_err() {
+                self.accepting.store(false, Ordering::SeqCst);
                 self.stop();
                 return;
             }
         }
+        self.accepting.store(false, Ordering::SeqCst);
     }
 
     /// Opens a connection for `socket`, tells the host, and starts passing
@@ -216,6 +223,12 @@ impl Shared {
         let backlog = Arc::new(AtomicUsize::new(0));
         let id = {
             let mut connections = self.connections();
+            // Stopping drains the connections under this lock: one opened
+            // after that would stay open.
+            if self.stopped.load(Ordering::SeqCst) {
+                let _ = socket.shutdown(Shutdown::Both);
+                return Ok(());
+            }
             // Ids are never reused; after 4 billion connections the relay stops.
             let id = connections.last_id.checked_add(1).ok_or(Broken)?;
             connections.last_id = id;
@@ -440,6 +453,9 @@ impl Shared {
             }
         }
         // Wakes the thread waiting to accept, which then sees the relay stopped.
+        if !self.accepting.load(Ordering::SeqCst) {
+            return;
+        }
         let address = SocketAddr::from((Ipv4Addr::LOCALHOST, self.port));
         let _ = TcpStream::connect_timeout(&address, WAKE_TIMEOUT);
     }
