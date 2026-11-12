@@ -23,9 +23,12 @@ pub struct UpdateStatus {
 
 /// The update this start finished.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JustUpdated {
     pub from: String,
     pub to: String,
+    /// The settings a migration couldn't carry over (FS6), for Studio to show.
+    pub not_carried_over: Vec<String>,
 }
 
 /// Where the updater is. `notesUrl` is the release page of that version.
