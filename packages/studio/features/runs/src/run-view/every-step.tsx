@@ -15,15 +15,23 @@ const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time"
  * run's numbered events in the timeline's place and, as **Show every step**,
  * brings the timeline back. Nothing until the run's log has loaded.
  *
- * Not here yet: opening an entry's events in the side panel, child runs'
- * links, branch and for-each groups, and Show on canvas (T7).
+ * Enter or a click on an entry opens its events in the side panel; that
+ * entry is the List's current row.
+ *
+ * Not here yet: child runs' links, branch and for-each groups, and Show on
+ * canvas (T7).
  */
 export function EveryStep({
   entries,
   log,
+  openEntry,
+  onOpenEntry,
 }: {
   readonly entries: readonly StepEntry[];
   readonly log: readonly RunEvent[];
+  /** The entry whose events the side panel shows. */
+  readonly openEntry: string | undefined;
+  readonly onOpenEntry: (id: string) => void;
 }) {
   const [showLog, setShowLog] = useState(false);
   const lines = useMemo(() => (showLog ? runLogLines(log) : []), [showLog, log]);
@@ -33,7 +41,11 @@ export function EveryStep({
   return (
     <section className="flex flex-col items-start gap-2">
       <div className="w-full">
-        {showLog ? <RunLog lines={lines} /> : <Timeline entries={entries} />}
+        {showLog ? (
+          <RunLog lines={lines} />
+        ) : (
+          <Timeline entries={entries} openEntry={openEntry} onOpenEntry={onOpenEntry} />
+        )}
       </div>
       <Button variant="ghost" size="sm" onClick={() => setShowLog(!showLog)}>
         {showLog ? runLogWords.hide : runLogWords.show}
@@ -43,7 +55,15 @@ export function EveryStep({
 }
 
 /** The timeline itself, nothing for a run that hasn't reached a step. */
-function Timeline({ entries }: { readonly entries: readonly StepEntry[] }) {
+function Timeline({
+  entries,
+  openEntry,
+  onOpenEntry,
+}: {
+  readonly entries: readonly StepEntry[];
+  readonly openEntry: string | undefined;
+  readonly onOpenEntry: (id: string) => void;
+}) {
   if (entries.length === 0) {
     return null;
   }
@@ -51,6 +71,8 @@ function Timeline({ entries }: { readonly entries: readonly StepEntry[] }) {
     <List
       heading={{ name: everyStepWords.heading }}
       columns={timelineColumns}
+      onOpen={onOpenEntry}
+      {...(openEntry === undefined ? {} : { current: openEntry })}
       rows={entries.map((entry) => ({
         id: entry.id,
         title: entry.name,

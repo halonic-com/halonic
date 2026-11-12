@@ -243,6 +243,21 @@ export const runLogWords = {
   label: "Run log",
 };
 
+/**
+ * An entry's events in the side panel (checklist part 1, 1.10). The token line and "cached, no
+ * model call" are the receipt's (kit 24.2); the headings, Close and the empty line are a team
+ * decision under HAL-2282 (HAL-1301).
+ */
+export const stepEventsWords = {
+  modelCalls: "Model calls",
+  toolCalls: "Tool calls",
+  tokens: (input: number, output: number) =>
+    `${input.toLocaleString("en")} in · ${output.toLocaleString("en")} out`,
+  cached: "cached, no model call",
+  none: "This step made no model or tool calls.",
+  close: (step: string) => `Close ${step}`,
+};
+
 /** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
 function asSentence(text: string): string {
   return /[.?!]$/.test(text) ? text : `${text}.`;
