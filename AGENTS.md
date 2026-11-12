@@ -50,7 +50,12 @@ Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine;
   so also add `--filter=halonic --filter=@halonicjs/workspace --filter=@halonicjs/test-runner`, the three packages whose tests read it.
 - Inside Paperclip, run tests only through the package scripts, which carry the worker cap: never
   `vitest` with `--maxWorkers` above 2 or `node --test --test-concurrency=0`. Run one test suite at a
-  time, and run `pnpm install` or `npm ci` only when the lockfile changed (HAL-7132).
+  time, and run `pnpm install` or `npm ci` only when the lockfile changed (HAL-7132), never next to a
+  full test run or a render.
+- Inside Paperclip, search only inside your own workspace or the repo you're working in: never
+  `find /`, `bfs /`, or `rg` / `grep -r` from `/`, and never search the Paperclip folders or another
+  agent's workspace. A whole-disk search fills the shared memory. For a file from another repo, use
+  `git ls-files` in a clone of it, or ask on the task (HAL-7399).
 - Before you queue a pull request, typecheck every package on top of the latest `main`:
   `pnpm exec turbo run typecheck`, or run `pnpm check:enqueue`: it merges the latest
   `origin/main`, then checks the lockfile, typechecks every package, runs the `@halonicjs/format`
