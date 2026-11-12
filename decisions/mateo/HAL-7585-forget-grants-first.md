@@ -1,9 +1,8 @@
 # Decision: forget the user's kept grants before the sandbox's machine-wide removal
 
 - Task: HAL-7585 (Liam's follow-ups from his review of HAL-7558 on #2138)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-7585](/HAL/issues/HAL-7585)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-7585
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:I4sEnRRUU73Pm40meVoU3AqrGU5Mrhbct9Rwow34K8eDiGOgbcP7ffZcXv4McGD2l3EpfXA2cjpEWhq2gIPFAg==
 
 ## What changes
 
