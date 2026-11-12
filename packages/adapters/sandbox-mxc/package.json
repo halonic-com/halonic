@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/adapter-sandbox-mxc",
+  "private": true,
+  "type": "module",
+  "description": "The Sandbox port on MXC, Windows 11's process container.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  }
+}
