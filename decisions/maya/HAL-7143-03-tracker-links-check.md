@@ -1,4 +1,4 @@
-# Decision: the tracker-links check, and plain task ids in the Source line of 13 more requirements
+# Decision: the tracker-links check, and plain task ids in the Source line of 14 more requirements
 
 - Task: HAL-7143 (the guard) and HAL-7167 (its leftovers)
 - Approval: Liam approved the guard and asked for these leftovers in his review on HAL-7151, and signs this note
@@ -11,7 +11,7 @@ task tracker, as agreed on HAL-7136. It comes with its requirement `check.tracke
 tests. The guard counts any change under `tooling/check/` as a change to its own paths, so it
 needs this note.
 
-In the covered requirements, only the `- Source:` line changes. These thirteen gained a tracker link after
+In the covered requirements, only the `- Source:` line changes. These fourteen gained a tracker link after
 the cleanup in #2124 and #2125 ran, so the new `tracker-links` check in this pull request would
 fail on them. The same script as in part 1 rewrote them, with no hand edits: a link such as
 `[HAL-4758](/HAL/issues/HAL-4758)` becomes `HAL-4758`.
@@ -36,3 +36,4 @@ this note.
 - runs.every-step
 - engine.step-format
 - engine.foreach-item-gets
+- runs.run-view.run-log
