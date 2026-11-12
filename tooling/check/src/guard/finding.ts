@@ -17,6 +17,12 @@ export interface GuardFinding {
 export interface Checkouts {
   readonly base: CheckContext;
   readonly head: CheckContext;
+  /**
+   * The commit whose test results the base side has, when that isn't
+   * `base`: main's newest commit was red, so CI walked back to an older
+   * green one (HAL-7660). `base` stays the commit the merge ref was built on.
+   */
+  readonly tested?: CheckContext;
 }
 
 /** How a file differs between the checkouts: "added", "deleted", "changed" or not at all. */
