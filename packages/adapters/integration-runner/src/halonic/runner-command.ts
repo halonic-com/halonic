@@ -11,6 +11,8 @@
 // segment and makes such an allocation fail with a `RangeError` (HAL-7565).
 // macOS doesn't enforce that limit for `mmap` and Windows has no rlimits, so
 // there only the heap limit holds; the gap stays open in the design (HAL-958).
+// A Linux machine without `prlimit` (NixOS, a minimal Alpine) gets the same
+// heap-limit-only start, so the runner can still start there (HAL-7794).
 
 import type { SandboxCommand } from "@halonicjs/ports";
 import { type RunnerArgs, runnerArgList } from "../runner-args.ts";
@@ -38,10 +40,12 @@ export interface RunnerLimits {
   readonly heapLimitMiB?: number;
   /** The system, as `process.platform` names it; this one unless a test passes another. */
   readonly platform?: NodeJS.Platform;
+  /** Whether `prlimit` is on this machine; the caller checks, and it is taken as there unless a caller says it isn't. */
+  readonly prlimitAvailable?: boolean;
 }
 
 /** `prlimit` by its full path, because the runner's environment has no `PATH`. */
-const prlimitProgram = "/usr/bin/prlimit";
+export const prlimitProgram = "/usr/bin/prlimit";
 
 /** The data segment limit in MiB: Node's own start, the heap and the buffer allowance. */
 export function dataLimitMiB(heapLimitMiB: number): number {
@@ -52,7 +56,11 @@ export function dataLimitMiB(heapLimitMiB: number): number {
 export function runnerCommand(
   files: RunnerFiles,
   args: RunnerArgs,
-  { heapLimitMiB = runnerHeapLimitMiB, platform = process.platform }: RunnerLimits = {},
+  {
+    heapLimitMiB = runnerHeapLimitMiB,
+    platform = process.platform,
+    prlimitAvailable = true,
+  }: RunnerLimits = {},
 ): SandboxCommand {
   const node: SandboxCommand = {
     program: files.node,
@@ -65,7 +73,7 @@ export function runnerCommand(
       ...runnerArgList(args),
     ],
   };
-  if (platform !== "linux") return node;
+  if (platform !== "linux" || !prlimitAvailable) return node;
   return {
     program: prlimitProgram,
     args: [`--data=${dataLimitMiB(heapLimitMiB) * 1024 * 1024}`, node.program, ...node.args],

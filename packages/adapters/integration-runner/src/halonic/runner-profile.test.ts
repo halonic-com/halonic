@@ -447,6 +447,19 @@ verifies("integration-runner.start", () => {
       expect(command.args).toEqual([`--data=${1152 * 1024 * 1024}`, plain.program, ...plain.args]);
     });
 
+    it("starts plain Node on Linux when prlimit isn't there", () => {
+      const args = {
+        nonce: "n-1",
+        folder: "/fake-home/code/weather",
+        entryFile: "/fake-home/code/weather/index.js",
+        exportName: "weather",
+      };
+      const plain = runnerCommand(files, args, { platform: "darwin" });
+      expect(runnerCommand(files, args, { platform: "linux", prlimitAvailable: false })).toEqual(
+        plain,
+      );
+    });
+
     it("refuses runner arguments that are missing or extra", () => {
       expect(() => readRunnerArgs(["n-1", "/a", "/a/b.js"])).toThrow(/four arguments/);
       expect(() => readRunnerArgs(["n-1", "/a", "/a/b.js", "x", "y"])).toThrow(/four arguments/);

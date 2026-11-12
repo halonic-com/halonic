@@ -164,6 +164,33 @@ verifies("integration-runner.start", () => {
       await connection.close();
     });
 
+    it("starts plain Node on Linux when prlimit is missing, and says so once (HAL-7794)", async () => {
+      const sandbox = new FakeSandbox();
+      const options = startOptions(sandbox);
+      const notices: string[] = [];
+      const withoutPrlimit: ReturnType<typeof startOptions> = {
+        ...options,
+        machine: { ...options.machine, platform: "linux" },
+        disk: {
+          ...fakeDisk,
+          realPath: (path) => {
+            if (path === "/usr/bin/prlimit") throw new Error("no such file");
+            return realPath(path);
+          },
+        },
+        onNotice: (message) => notices.push(message),
+      };
+      const first = await started(sandbox, withoutPrlimit);
+      expect(sandbox.commands[0]?.program).toBe("/usr/bin/node");
+      await first.connection.close();
+      sandbox.runners.length = 0;
+      const second = await started(sandbox, withoutPrlimit);
+      expect(sandbox.commands[1]?.program).toBe("/usr/bin/node");
+      await second.connection.close();
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toContain("/usr/bin/prlimit is missing");
+    });
+
     it("gives every start a fresh nonce", async () => {
       const sandbox = new FakeSandbox();
       const first = await started(sandbox);
