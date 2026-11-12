@@ -93,6 +93,22 @@ verifies("kit.slider", () => {
     expect(onCommit).toHaveBeenCalledWith(70);
   });
 
+  it("tells the screen when the pointer is cancelled or the focus leaves", () => {
+    const onEnd = vi.fn();
+    const { container } = render(<Opacity onCommit={vi.fn()} onEnd={onEnd} />);
+    const range = rangeIn(container);
+    move(range, 50);
+    expect(onEnd).not.toHaveBeenCalled();
+    act(() => {
+      range.dispatchEvent(new Event("pointercancel"));
+    });
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    act(() => {
+      range.dispatchEvent(new FocusEvent("blur"));
+    });
+    expect(onEnd).toHaveBeenCalledTimes(2);
+  });
+
   it("saves on every key step, because each one is a pick", () => {
     const onCommit = vi.fn();
     const { container } = render(<Opacity onCommit={onCommit} step={5} />);

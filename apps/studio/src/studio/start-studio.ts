@@ -14,6 +14,7 @@ import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
+  type DisplayStorage,
   settingsFeature,
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
@@ -283,9 +284,9 @@ function focusOf(window: object, listener: () => void): () => void {
  * the whole window at once. They are kept in the page's storage until the app profile keeps them
  * (HAL-1294 plan); a change in another window comes in through the page's `storage` event.
  */
-function displaySettingsOf(page: StudioPage): DisplaySettings {
+export function displaySettingsOf(page: Pick<StudioPage, "window" | "storage">): DisplaySettings {
   const events = page.window instanceof EventTarget ? page.window : new EventTarget();
-  return new DisplaySettings(new BrowserDisplayPrefs(page.storage ?? noStorage, events));
+  return new DisplaySettings(new BrowserDisplayPrefs(page.storage ?? unsavedStorage, events));
 }
 
 /** The page's `<html>`, where the Appearance settings show, so the whole window follows them. */
@@ -298,6 +299,17 @@ async function pickFolder(ipc: TauriIpc): Promise<string | undefined> {
   const picked = await ipc.invoke("pick_folder");
   return typeof picked === "string" ? picked : undefined;
 }
+
+/**
+ * The display settings on a page without storage: saving fails, so Settings says so and puts the
+ * value back, instead of "saving" something nothing keeps.
+ */
+const unsavedStorage: DisplayStorage = {
+  getItem: () => null,
+  setItem: () => {
+    throw new Error("This page has no storage.");
+  },
+};
 
 /** Recent on a page without storage: nothing is remembered. */
 const noStorage: RecentStorage = {

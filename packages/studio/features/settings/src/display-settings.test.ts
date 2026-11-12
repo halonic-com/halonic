@@ -71,6 +71,23 @@ verifies("settings.display-prefs", () => {
     expect(settings.get(theme)).toBe("dark");
   });
 
+  it("puts the stored value back when a preview ends without a set", () => {
+    const { prefs, settings } = setup();
+    prefs.stored.set(theme.key, "light");
+    settings.preview(theme, "dark");
+    settings.endPreview(theme);
+    expect(settings.get(theme)).toBe("light");
+  });
+
+  it("leaves a value that is saving alone when a preview ends", async () => {
+    const { settings } = setup();
+    settings.preview(theme, "dark");
+    const saving = settings.set(theme, "dark");
+    settings.endPreview(theme);
+    expect(settings.get(theme)).toBe("dark");
+    await saving;
+  });
+
   it("shows a preview without storing it, until another window stores a value", () => {
     const { prefs, settings, changed } = setup();
     settings.preview(theme, "dark");
