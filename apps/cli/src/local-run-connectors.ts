@@ -63,7 +63,7 @@ export interface LocalRunConnectors {
 const sendingOff: SendingSettings = {
   checkSending: async ({ connector }) => ({
     allowed: false,
-    reason: `sending is off for the connector "${connector}": halonic run can't switch it on yet`,
+    reason: `sending is off for the connector "${connector}": the CLI can't switch it on yet`,
   }),
 };
 
@@ -90,7 +90,17 @@ export function localRunConnectors(
       connectorCalls: {
         location: engine.location,
         sending: sendingOff,
-        reportSettingsError: (_connector, error) => engine.reportError(error),
+        reportSettingsError: (connector, error) => {
+          const reason = error instanceof Error ? error.message : String(error);
+          engine.reportError(
+            new Error(
+              `The sending settings of the connector "${connector}" couldn't be read: ${reason}`,
+              {
+                cause: error,
+              },
+            ),
+          );
+        },
       },
     },
   };

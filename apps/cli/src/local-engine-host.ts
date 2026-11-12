@@ -70,7 +70,6 @@ import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import { latestModelResolver } from "./workspace-model-resolver.ts";
-
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 /** The collection of the workspace's record store that keeps the run timers. */
@@ -384,8 +383,12 @@ function engineOn(
             await scheduler.close();
           } finally {
             // After the scheduler, so no step still has a program running in a copy.
-            await connectors?.runs.runConnectors.closeAll();
-            await programFolders.close();
+            try {
+              await connectors?.runs.runConnectors.closeAll();
+            } finally {
+              // Even when a connector failed to close: the copies are released all the same.
+              await programFolders.close();
+            }
           }
         } finally {
           // Last, so no other engine starts while this one still delivers a timer.

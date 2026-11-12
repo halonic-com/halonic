@@ -18,8 +18,11 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-/** The runs' connectors on an empty workspace, whose program folder is `folder`. */
-function connectorsOn(readsOneVersion: boolean): LocalRunConnectors {
+/**
+ * The runs' connectors on an empty workspace, whose program folder is
+ * `folder`; the errors they report go to `reported`.
+ */
+function connectorsOn(readsOneVersion: boolean, reported: unknown[] = []): LocalRunConnectors {
   return localRunConnectors(
     {
       factories: new ConnectorFactories([]),
@@ -38,7 +41,7 @@ function connectorsOn(readsOneVersion: boolean): LocalRunConnectors {
         folderFor: async () => ({ path: folder, release: async () => {} }),
         close: async () => {},
       },
-      reportError: () => {},
+      reportError: (error) => reported.push(error),
     },
   );
 }
@@ -54,8 +57,21 @@ verifies("cli.local-engine", () => {
 
     expect(check).toEqual({
       allowed: false,
-      reason: `sending is off for the connector "mail": halonic run can't switch it on yet`,
+      reason: `sending is off for the connector "mail": the CLI can't switch it on yet`,
     });
+  });
+
+  it("names the connector whose sending settings couldn't be read", () => {
+    const reported: unknown[] = [];
+    const { connectorCalls } = connectorsOn(true, reported).runs;
+
+    connectorCalls.reportSettingsError("mail", new Error("settings file unreadable"));
+
+    expect(reported).toEqual([
+      new Error(
+        `The sending settings of the connector "mail" couldn't be read: settings file unreadable`,
+      ),
+    ]);
   });
 
   it("starts no connector of a run in an engine over several versions", async () => {

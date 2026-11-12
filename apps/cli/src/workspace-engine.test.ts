@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
+import { MemoryTokenStore } from "@halonicjs/adapter-memory";
+import { ConnectorFactories } from "@halonicjs/app";
+import type { TrustGrant } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
+import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -11,11 +15,15 @@ import type { CommandContext } from "./command.ts";
 import { type RoutineTicks, runTimerCollection } from "./local-engine-host.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
-import type { GaveUpRun, StuckTimer } from "./stuck-timers.ts";
+import { type GaveUpRun, type StuckTimer, stuckTimerWatch } from "./stuck-timers.ts";
 import { engineStart } from "./test/run-setup.ts";
 import { waitUntil } from "./test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
-import { openWorkspaceEngine, type WorkspaceEngineSetup } from "./workspace-engine.ts";
+import {
+  engineErrorReporter,
+  openWorkspaceEngine,
+  type WorkspaceEngineSetup,
+} from "./workspace-engine.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -85,6 +93,70 @@ verifies("cli.run", () => {
     await engine.close();
 
     expect(engine.signal.aborted).toBe(false);
+  });
+});
+
+verifies("cli.local-engine", () => {
+  it.each([
+    ["a trusted workspace's grant", contractGrant],
+    ["no grant, for a run that reaches only the test model", null],
+  ])("starts the runs' connectors with %s", async (_case, trust) => {
+    const given: (TrustGrant | null)[] = [];
+    const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
+    const workspace = await loadWorkspace(dir.store);
+    const engine = await openWorkspaceEngine(
+      context(new AbortController().signal),
+      {
+        ...setup(),
+        runConnectors: (grant) => {
+          given.push(grant);
+          return {
+            factories: new ConnectorFactories([]),
+            context: { http: setup().http, tokens: new MemoryTokenStore() },
+            trust: grant,
+          };
+        },
+      },
+      {
+        dir,
+        workspace,
+        trust,
+        runs: [{ hubId: "support", workflowId: "support-reply" }],
+        ending: runMessages.nothingRan(),
+      },
+    );
+    await engine.close();
+
+    expect(given).toEqual([trust]);
+  });
+
+  it("only shows a failed clean-up with --debug, however often it fails", () => {
+    const stuck = stuckTimerWatch();
+    const debugLines: string[] = [];
+    const reportError = engineErrorReporter(stuck, (line) => debugLines.push(plainText(line)));
+
+    for (let failure = 0; failure < 4; failure += 1) {
+      reportError(new Error("program still running"), "run-connectors");
+      reportError(new Error("git is gone"), "program-copies");
+    }
+
+    expect(stuck.signal.aborted).toBe(false);
+    expect(debugLines.slice(0, 2)).toEqual([
+      "the engine couldn't close a run's connectors: program still running",
+      "the engine couldn't sweep a leftover program copy: git is gone",
+    ]);
+    expect(debugLines).toHaveLength(8);
+  });
+
+  it("still counts a lost engine lock towards stopping the command", () => {
+    const stuck = stuckTimerWatch();
+    const reportError = engineErrorReporter(stuck, () => {});
+
+    for (let failure = 0; failure < 3; failure += 1) {
+      reportError(new Error("lock taken"), "engine-lock");
+    }
+
+    expect(stuck.signal.reason).toEqual(new Error("lock taken"));
   });
 });
 
