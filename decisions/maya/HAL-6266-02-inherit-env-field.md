@@ -17,12 +17,15 @@ names on `transport.stdio`.
 - `app.package-runner-launch`: a pinned connector that names a blocked variable in `inheritEnv` is
   refused like one that sets it in `env`. One clause and one example are added.
 - `app.connector-factories`: `inheritEnv` is passed on to the factories' config as written.
+- `packages/core/format/spec/connector.schema.json`: the public connector schema gains the optional
+  `inheritEnv` list on `transport.stdio`. Adding an optional field keeps every file valid before.
 
 Nothing is removed and no test is removed or weakened. A later pull request makes both launchers
-read `inheritEnv`, once halonic#1971 has merged.
+read `inheritEnv`, on top of halonic#1971 (merged).
 
 ## Covers
 
 - workspace.trust-content
 - app.package-runner-launch
 - app.connector-factories
+- packages/core/format/spec/connector.schema.json
