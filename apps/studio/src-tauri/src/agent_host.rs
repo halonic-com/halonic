@@ -37,7 +37,9 @@ use crate::profile::cli_profile;
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};
 
-/// How long the host may take to unpack its files and serve.
+/// How long the host may take to unpack its files and serve. The installer's
+/// wait for `started-<version>` (windows/installer.nsi, `WaitForStartOrGoBack`)
+/// must stay well above this.
 const START_WAIT: Duration = Duration::from_secs(60);
 
 /// The longest JSON answer or stream line the shell reads. The host's own

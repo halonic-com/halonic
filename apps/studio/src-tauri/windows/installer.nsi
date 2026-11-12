@@ -1006,11 +1006,24 @@ Function KeepInstaller
   ${EndIf}
 FunctionEnd
 
-; Halonic change (HAL-1206, failure path 2): after "Restart to update", waits
-; up to 60 s for the new version to prove it starts. If it doesn't, the
-; installer kept for the version before runs with `/ROLLBACK`, which closes
-; the new one, installs the old one and reopens it. Nothing to go back to
-; (a first install, or no kept installer) means nothing to wait for.
+; Halonic change (HAL-1206, failure path 2; HAL-8156): after "Restart to
+; update", waits up to 180 s for the new version to prove it starts. If it
+; doesn't, the installer kept for the version before runs with `/ROLLBACK`,
+; which closes the new one, installs the old one and reopens it. Nothing to
+; go back to (a first install, or no kept installer) means nothing to wait for.
+;
+; The 180 s must stay well above the shell's own worst case: the marker is
+; written only after the agent host answers, and the host alone may take
+; START_WAIT (60 s, apps/studio/src-tauri/src/agent_host.rs) to unpack and
+; serve, on top of the window opening and the page loading. 180 s is three
+; times START_WAIT, so a slow or busy machine doesn't lose a working update.
+; Keep it above START_WAIT plus a generous margin if either number changes.
+;
+; If the user quits the new version before it proves it starts, the marker is
+; never written and the installer goes back after the wait. That is on
+; purpose: a version that quit before it proved itself can't be told from one
+; that crashed, and the version before is the one known to work. Telling them
+; apart would need a "quit cleanly" record from the shell for little gain.
 Function WaitForStartOrGoBack
   ${If} $OldVersion == ""
   ${OrIf} $OldVersion == "${VERSION}"
@@ -1030,7 +1043,7 @@ Function WaitForStartOrGoBack
     ${EndIf}
     Sleep 1000
     IntOp $3 $3 + 1
-  ${LoopUntil} $3 >= 60
+  ${LoopUntil} $3 >= 180
   Exec '"$2" /P /UPDATE /ROLLBACK /RELAUNCH'
 FunctionEnd
 
