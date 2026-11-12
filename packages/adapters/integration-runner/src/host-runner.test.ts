@@ -5,7 +5,7 @@ import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
-import { socketFolders } from "./halonic/runner-profile.ts";
+import { socketFolders, systemFiles } from "./halonic/runner-profile.ts";
 import { type StartedRunner, startRunner } from "./halonic/start-runner.ts";
 import { bridgeOptions, fakeRunnerProcess } from "./pipes.test-helper.ts";
 
@@ -72,6 +72,8 @@ async function startThroughLauncher(source: string): Promise<StartedRunner> {
     machine: {
       homeFolder: homedir(),
       socketFolders: socketFolders(process.env),
+      systemFiles: systemFiles(process.platform),
+      sandboxFolders: [],
       tempFolder,
       timeLimitMs: 60_000,
     },

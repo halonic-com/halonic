@@ -18,9 +18,11 @@ import {
   isInsideOrSame,
   type RunnerDisk,
   type RunnerFiles,
+  type RunnerMachine,
   realRunnerPaths,
   runnerProfile,
   socketFolders,
+  systemFiles,
 } from "./runner-profile.ts";
 
 /** A small file tree: each folder with its names. */
@@ -47,14 +49,32 @@ const files: RunnerFiles = {
   runnerFile: "/opt/halonic/runner.js",
   integrationFolder: "/fake-home/code/weather",
 };
-const machine = {
+const machine: RunnerMachine = {
   homeFolder: "/fake-home",
   socketFolders: ["/run", "/shared-tmp"],
+  systemFiles: null,
+  sandboxFolders: [],
   tempFolder: "/shared-tmp/halonic-run-1",
   timeLimitMs: 60_000,
   platform: "linux",
 } as const;
 const onWindows = { ...machine, platform: "win32" } as const;
+
+/** The same machine on a system whose fence opens reads by default, with a merged `/usr`. */
+const topLevelLinks: Record<string, string> = {
+  ...links,
+  "/bin": "/usr/bin",
+  "/etc/localtime": "/usr/share/zoneinfo/UTC",
+};
+const topLevelDisk: RunnerDisk = {
+  listFolder,
+  realPath: (path) => topLevelLinks[path] ?? path,
+};
+const openMachine: RunnerMachine = {
+  ...machine,
+  systemFiles: ["/usr", "/bin", "/etc/ld.so.cache", "/etc/localtime"],
+  sandboxFolders: ["/opt/halonic/sandbox-runtime"],
+};
 
 verifies("integration-runner.start", () => {
   describe("runnerProfile", () => {
@@ -131,6 +151,63 @@ verifies("integration-runner.start", () => {
     });
   });
 
+  describe("runnerProfile where the fence opens reads by default", () => {
+    const real = realRunnerPaths(files, openMachine, topLevelDisk);
+    const profile = runnerProfile(real.files, real.machine, topLevelDisk);
+
+    it("denies / as a whole and reopens what the runner needs", () => {
+      expect(profile.deniedPaths).toEqual(["/"]);
+      expect(profile.reopenedPaths).toEqual(
+        expect.arrayContaining([
+          files.nodeFolder,
+          files.runnerFile,
+          files.integrationFolder,
+          machine.tempFolder,
+          "/usr",
+          "/etc/ld.so.cache",
+        ]),
+      );
+      for (const hidden of ["/fake-home/.ssh", "/run", "/shared-tmp/someone-elses.sock", "/etc"]) {
+        expect(profile.reopenedPaths).not.toContain(hidden);
+      }
+    });
+
+    it("reopens a system file at its real place, such as /bin on a merged /usr", () => {
+      expect(real.machine.systemFiles).toEqual([
+        "/usr",
+        "/usr/bin",
+        "/etc/ld.so.cache",
+        "/usr/share/zoneinfo/UTC",
+      ]);
+      expect(profile.reopenedPaths).toContain("/usr/share/zoneinfo/UTC");
+      expect(profile.reopenedPaths).not.toContain("/bin");
+    });
+
+    it("keeps the sandbox's own folder readable and read-only", () => {
+      expect(profile.readOnlyPaths).toContain("/opt/halonic/sandbox-runtime");
+      expect(profile.reopenedPaths).toContain("/opt/halonic/sandbox-runtime");
+      expect(profile.reopenedPaths).not.toContain("/opt/halonic/settings");
+    });
+
+    it("lists no folder, so a file that comes or goes in /tmp can't break the start", () => {
+      const listsNothing: RunnerDisk = {
+        ...topLevelDisk,
+        listFolder: (folder) => {
+          throw new Error(`listed ${folder}`);
+        },
+      };
+      expect(runnerProfile(real.files, real.machine, listsNothing)).toEqual(profile);
+    });
+
+    it("reopens each path once", () => {
+      expect(new Set(profile.reopenedPaths).size).toBe(profile.reopenedPaths?.length);
+    });
+
+    it("keeps the system files readable without making them read-only, so /dev/null stays writable", () => {
+      expect(profile.readOnlyPaths).not.toContain("/usr");
+    });
+  });
+
   describe("runnerProfile refusals", () => {
     it.each([
       ["Node's folder", { ...files, nodeFolder: "/" }, machine],
@@ -139,6 +216,8 @@ verifies("integration-runner.start", () => {
       ["integration's folder", { ...files, integrationFolder: "/fake-home" }, machine],
       ["integration's folder", { ...files, integrationFolder: "/shared-tmp" }, machine],
       ["temp folder", files, { ...machine, tempFolder: "/shared-tmp" }],
+      ["sandbox's folder", files, { ...machine, sandboxFolders: ["/fake-home"] }],
+      ["system file", files, { ...machine, systemFiles: ["/"] }],
     ])("refuses a %s that is or holds a folder to hide", (name, someFiles, someMachine) => {
       expect(() => runnerProfile(someFiles, someMachine, disk)).toThrow(`the ${name} `);
     });
@@ -174,6 +253,29 @@ verifies("integration-runner.start", () => {
       );
       expect(real.files.nodeFolder).toBe("/fake-home/.nvm/versions/node/v26.0.0");
       expect(real.machine.socketFolders).toEqual(["/run", "/no-xdg"]);
+    });
+
+    it("leaves out system files that this machine doesn't have", () => {
+      const noLib32 = (path: string) => {
+        if (path === "/lib32") throw new Error("ENOENT");
+        return topLevelDisk.realPath(path);
+      };
+      const real = realRunnerPaths(
+        files,
+        { ...openMachine, systemFiles: ["/usr", "/lib32", "/bin"] },
+        { ...topLevelDisk, realPath: noLib32 },
+      );
+      expect(real.machine.systemFiles).toEqual(["/usr", "/usr/bin"]);
+    });
+
+    it("fails when the sandbox's own folder can't be resolved", () => {
+      const noSandbox = (path: string) => {
+        if (path === "/opt/halonic/sandbox-runtime") throw new Error("ENOENT");
+        return path;
+      };
+      expect(() => realRunnerPaths(files, openMachine, { ...disk, realPath: noSandbox })).toThrow(
+        "can't find the sandbox's folder /opt/halonic/sandbox-runtime",
+      );
     });
 
     it("fails when a path the runner needs can't be resolved", () => {
@@ -216,6 +318,8 @@ verifies("integration-runner.start", () => {
       {
         homeFolder: home,
         socketFolders: [join(base, "run")],
+        systemFiles: null,
+        sandboxFolders: [],
         tempFolder: join(base, "run", "halonic-run-1"),
         timeLimitMs: 60_000,
         platform: "linux",
@@ -280,6 +384,28 @@ verifies("integration-runner.start", () => {
 
     it("leaves out relative paths", () => {
       expect(socketFolders({ XDG_RUNTIME_DIR: "run" })).toEqual(["/run", "/var/run", "/tmp"]);
+    });
+  });
+
+  describe("systemFiles", () => {
+    it("hides nothing at the top level on Windows, where the fence opens no reads", () => {
+      expect(systemFiles("win32")).toBeNull();
+    });
+
+    it("keeps Node's libraries and the fresh /proc and /dev on Linux", () => {
+      expect(systemFiles("linux")).toEqual(
+        expect.arrayContaining(["/usr", "/lib", "/etc/ld.so.cache", "/proc", "/dev"]),
+      );
+      expect(systemFiles("linux")).not.toContain("/etc");
+    });
+
+    it("keeps the system's frameworks on macOS, but not the data volume that reaches every file", () => {
+      const mac = systemFiles("darwin") ?? [];
+      expect(mac).toEqual(expect.arrayContaining(["/usr", "/System/Library", "/dev"]));
+      for (const path of mac) {
+        expect(isInsideOrSame("/System/Volumes/Data", path), path).toBe(false);
+        expect(isInsideOrSame(path, "/System/Volumes/Data"), path).toBe(false);
+      }
     });
   });
 

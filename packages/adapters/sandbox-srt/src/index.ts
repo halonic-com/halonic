@@ -2,5 +2,5 @@ export { recoverGitFolders } from "./git-folder-check.ts";
 export { type LinuxHelper, type Machine, systemMachine } from "./machine.ts";
 export { WSL_SHARED_FOLDERS } from "./shared-folders.ts";
 export { buildSrtConfig } from "./srt-config.ts";
-export { type Runner, srtRunner } from "./srt-runner.ts";
+export { type Runner, sandboxRuntimeFolder, srtRunner } from "./srt-runner.ts";
 export { type SandboxRemoval, type SandboxSetup, SrtSandbox } from "./srt-sandbox.ts";

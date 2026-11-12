@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
 import { promisify } from "node:util";
 import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
@@ -101,6 +101,15 @@ export function installedSrtVersion(): string {
   if (typeof version !== "string")
     throw new Error("the version of sandbox-runtime is not readable");
   return version;
+}
+
+/**
+ * The folder of sandbox-runtime itself. Its seccomp helper runs inside the
+ * fence on Linux, so a profile that hides the folder around it must keep it
+ * readable.
+ */
+export function sandboxRuntimeFolder(): string {
+  return dirname(dirname(srtCliPath()));
 }
 
 /**

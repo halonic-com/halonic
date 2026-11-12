@@ -179,20 +179,31 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
     expect(foundNothing(attempts["list home"]), JSON.stringify(attempts["list home"])).toBe(true);
   });
 
-  it("A12, known gap: without Node's layer, reads a file outside the home and socket folders", async () => {
-    // srt leaves reads open on Linux and macOS and denies only the hidden
-    // folders. So once an integration is past Node's layer, a folder outside
-    // them, such as `/mnt/c` on WSL2 or a workspace outside the home folder,
-    // is readable. This package's own manifest stands in for such a file.
+  it("A12: reads nothing outside the folders it needs, such as a workspace outside the home folder", async () => {
+    // srt leaves reads open on Linux and macOS, so the profile hides every
+    // top-level folder but the system files Node needs. This package's own
+    // manifest stands in for a file outside the home and socket folders, such
+    // as one in `/mnt/c` on WSL2.
     const outside = join(import.meta.dirname, "..", "package.json");
+    // On macOS every file on the disk is also under `/System/Volumes/Data`.
+    const throughData = `/System/Volumes/Data${homeKey}`;
     const { attempts } = await attack(
       layer,
       `
       const fs = await import("node:fs/promises");
       await attempt("outside file", () => fs.readFile(${JSON.stringify(outside)}, "utf8"));
+      await attempt("list the top level", async () => (await fs.readdir("/")).join(","));
+      ${isMac ? `await attempt("key through the data volume", () => fs.readFile(${JSON.stringify(throughData)}, "utf8"));` : ""}
       `,
     );
-    expect(attempts["outside file"]?.outcome).toBe(layer === "on" ? "refused" : "allowed");
+    expect(attempts["outside file"]?.outcome).toBe("refused");
+    if (isMac) {
+      expect(attempts["key through the data volume"]).toMatchObject({ outcome: "refused" });
+      expect(attempts["key through the data volume"]?.detail).not.toContain(canary);
+    }
+    // Node's layer refuses listing `/`. Without it the names are there, but
+    // what is behind them is hidden; the cases above read through them.
+    expect(attempts["list the top level"]?.outcome).toBe(layer === "on" ? "refused" : "allowed");
   });
 
   it("A13: writes nothing outside its temp folder, and can't replace its own code", async () => {
@@ -209,21 +220,14 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
       folders,
     );
     expect(attempts["own code"]?.outcome).toBe("refused");
-    // Without Node's layer on Linux, the outcome of both writes depends on
-    // where the test's folders land: under `/tmp`, a hidden socket folder, a
-    // write may land in a throwaway in-memory folder bubblewrap lays over the
-    // hidden folder; elsewhere the fence refuses it. So only the real folders
-    // below are the proof there.
+    // Without Node's layer on Linux, bubblewrap hides `/` behind an empty
+    // in-memory folder and creates in it the folders that lead to a path it
+    // reopens. A write next to the integration's folder lands there and goes
+    // with the session. The home folder isn't on such a path, so it doesn't
+    // exist in the fence at all. The real folders stay as they were either way.
     const throwaway = layer === "off" && !isMac;
-    for (const name of ["next to its folder", "home folder"]) {
-      const outcome = attempts[name]?.outcome;
-      if (throwaway) {
-        expect(["allowed", "refused"], name).toContain(outcome);
-      } else {
-        expect(outcome, name).toBe("refused");
-      }
-    }
-    // The real folders stay as they were either way.
+    expect(attempts["next to its folder"]?.outcome).toBe(throwaway ? "allowed" : "refused");
+    expect(attempts["home folder"]?.outcome).toBe("refused");
     expect(existsSync(join(base, "planted.txt"))).toBe(false);
     expect(existsSync(join(homeFolder, ".bashrc"))).toBe(false);
     // The runner gets no write grant from Node; the fence allows its temp folder.
@@ -236,7 +240,8 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
       `
       const { spawnSync } = await import("node:child_process");
       await attempt("shell", () => {
-        const run = spawnSync("sh", ["-c", ${JSON.stringify(`echo started; cat ${homeKey}`)}], { encoding: "utf8" });
+        // By its full path: a search of PATH stops at the first hidden folder on macOS, where the fence answers EPERM.
+        const run = spawnSync("/bin/sh", ["-c", ${JSON.stringify(`echo started; cat ${homeKey}`)}], { encoding: "utf8" });
         if (run.error) throw run.error;
         return run.stdout;
       });

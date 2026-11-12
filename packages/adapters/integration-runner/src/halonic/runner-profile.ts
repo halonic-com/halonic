@@ -1,17 +1,25 @@
 // The untrusted profile: the `Sandbox` profile a runner starts in (design
 // HAL-958, section 5). No network, not even a loopback bridge. Read only the
-// runtime and the code. Write only a private temp folder. The home folder and
-// the socket folders a network namespace doesn't cover are hidden. The
-// environment holds only `TMPDIR`. The OS key store is denied: on macOS the
-// Keychain answers over Mach, past the file fence (attack case A36).
+// runtime and the code. Write only a private temp folder. Every top-level
+// folder is hidden except the system files Node and the fence's own shell
+// need, and the home folder and the socket folders a network namespace
+// doesn't cover are hidden as well. The environment holds only `TMPDIR`.
+// The OS key store is denied: on macOS the Keychain answers over Mach, past
+// the file fence (attack case A36).
+//
+// srt leaves reads open on Linux and macOS, so without hiding the top-level
+// folders a runner past Node's layer could read anything outside the home
+// folder, such as `/mnt/c` on WSL2 or a workspace in `/srv`. On Windows srt
+// opens no reads by default, so there is nothing outside to hide.
 //
 // The code or the runtime often lives inside the home folder, and the temp
-// folder often inside the shared `/tmp`. So each folder to hide is denied as
-// a whole, and the paths the runner needs inside it are reopened
-// (`SandboxProfile.reopenedPaths`). Nothing is listed, so a folder made in
-// the home folder after the profile is built is denied too (HAL-5808). The
-// reverse can't be done: a path the runner needs that is, or holds, a folder
-// to hide would leave that folder readable, so the profile refuses it.
+// folder often inside the shared `/tmp`. So on Linux and macOS the profile
+// denies `/` as a whole and reopens the paths the runner needs
+// (`SandboxProfile.reopenedPaths`). Nothing is listed, so a folder made after
+// the profile is built is denied too (HAL-5808), and a file removed from
+// `/tmp` before the fence is up can't break the start (HAL-6164). The reverse
+// can't be done: a path the runner needs that is, or holds, a folder to hide
+// would leave that folder readable, so the profile refuses it.
 //
 // On Windows a deny on a folder also takes the right to look at the folders
 // on the way to a path inside it, and Node looks at each of them to resolve
@@ -52,6 +60,14 @@ export interface RunnerMachine {
   readonly homeFolder: string;
   /** Socket folders to hide; see {@link socketFolders}. */
   readonly socketFolders: readonly string[];
+  /**
+   * The system files and folders the runner reads; everything else at the top
+   * level is hidden. `null` where the fence opens no reads by default, so
+   * nothing at the top level needs hiding. See {@link systemFiles}.
+   */
+  readonly systemFiles: readonly string[] | null;
+  /** The sandbox's own files that run inside the fence, such as srt's seccomp helper, read-only. */
+  readonly sandboxFolders: readonly string[];
   /** A fresh private temp folder for this start: the one folder the runner may write to. */
   readonly tempFolder: string;
   /** How long the runner may live, in milliseconds. */
@@ -96,6 +112,49 @@ export function socketFolders(env: {
 }
 
 /**
+ * The system files Node and the fence's own shell (`bash` and `env`) need on
+ * this platform: the programs and libraries, the dynamic loader's settings
+ * and the time zone. Linux keeps `/proc` and `/dev`, which bubblewrap mounts
+ * fresh for the session. macOS keeps `/dev` and the parts of `/System` that
+ * hold the frameworks and the shared library cache, but not
+ * `/System/Volumes/Data`, which reaches every file on the disk. Paths that
+ * don't exist on a machine are left out when they are resolved.
+ * `null` on Windows; see {@link RunnerMachine.systemFiles}.
+ */
+export function systemFiles(platform: NodeJS.Platform): readonly string[] | null {
+  if (platform === "win32") return null;
+  if (platform === "darwin") {
+    return [
+      "/usr",
+      "/bin",
+      "/dev",
+      "/System/Library",
+      "/System/Cryptexes",
+      "/System/Volumes/Preboot/Cryptexes",
+      "/private/var/db/dyld", // leak-guard: allow absolute-path macOS system folder
+      "/private/var/db/timezone", // leak-guard: allow absolute-path macOS system folder
+      "/private/var/select", // leak-guard: allow absolute-path macOS system folder
+      "/private/etc/localtime",
+    ];
+  }
+  return [
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/lib",
+    "/lib32",
+    "/lib64",
+    "/libx32",
+    "/etc/ld.so.cache",
+    "/etc/ld.so.conf",
+    "/etc/ld.so.conf.d",
+    "/etc/localtime",
+    "/proc",
+    "/dev",
+  ];
+}
+
+/**
  * The same files and machine with every path resolved to its real place, so
  * that what the profile keeps and hides matches what the fence denies.
  * A folder to hide that doesn't exist stays as written; there is nothing in it.
@@ -121,6 +180,13 @@ export function realRunnerPaths(
       return folder;
     }
   };
+  const ifPresent = (path: string) => {
+    try {
+      return [disk.realPath(path)];
+    } catch {
+      return [];
+    }
+  };
   return {
     files: {
       node: needed("Node program", files.node),
@@ -132,6 +198,9 @@ export function realRunnerPaths(
       ...machine,
       homeFolder: toHide(machine.homeFolder),
       socketFolders: [...new Set(machine.socketFolders.map(toHide))],
+      systemFiles:
+        machine.systemFiles === null ? null : [...new Set(machine.systemFiles.flatMap(ifPresent))],
+      sandboxFolders: machine.sandboxFolders.map((folder) => needed("sandbox's folder", folder)),
       tempFolder: needed("temp folder", machine.tempFolder),
     },
   };
@@ -141,7 +210,11 @@ export function realRunnerPaths(
  * The untrusted profile for one runner start. Every path must already be real;
  * see {@link realRunnerPaths}.
  *
- * @throws when a path the runner needs is, or holds, the home folder or a socket folder
+ * The system files are kept readable but not made read-only: the runner
+ * writes to `/dev/null` like any program, and the fence keeps the rest of
+ * them read-only anyway.
+ *
+ * @throws when a path the runner needs is, or holds, the home folder, a socket folder or `/`
  * @throws on Windows, when a folder on the way to a path the runner needs can't be listed
  */
 export function runnerProfile(
@@ -149,25 +222,68 @@ export function runnerProfile(
   machine: RunnerMachine,
   disk: RunnerDisk = diskOnThisMachine,
 ): SandboxProfile {
-  const readOnlyPaths = [files.nodeFolder, files.runnerFile, files.integrationFolder];
-  const kept = [...readOnlyPaths, machine.tempFolder];
+  const readOnlyPaths = [
+    files.nodeFolder,
+    files.runnerFile,
+    files.integrationFolder,
+    ...machine.sandboxFolders,
+  ];
+  const kept = [...readOnlyPaths, machine.tempFolder, ...(machine.systemFiles ?? [])];
   refuseKeptHoldingHidden(files, machine);
-  const hidden = [machine.homeFolder, ...machine.socketFolders];
-  const byName = (machine.platform ?? process.platform) === "win32";
   return {
     workingFolder: machine.tempFolder,
     tempFolder: machine.tempFolder,
     settingsFolder: null,
     readOnlyPaths,
-    deniedPaths: byName ? hidden.flatMap((folder) => hiddenAround(folder, kept, disk)) : hidden,
-    reopenedPaths: byName
-      ? []
-      : [...new Set(kept.filter((path) => hidden.some((folder) => isInsideOrSame(path, folder))))],
+    ...hiding(machine, kept, disk),
     env: { TMPDIR: machine.tempFolder },
     network: { bridge: null, allowedSites: [] },
     timeLimitMs: machine.timeLimitMs,
     keyStore: "denied",
   };
+}
+
+/**
+ * How the profile hides everything the runner doesn't need: each folder to
+ * hide denied as a whole with the kept paths inside it reopened, or on
+ * Windows denied around the kept paths by name (see the top of this file).
+ * With `/` among the folders to hide, the home and socket folders inside it
+ * need no entry of their own.
+ */
+function hiding(
+  machine: RunnerMachine,
+  kept: readonly string[],
+  disk: RunnerDisk,
+): Pick<SandboxProfile, "deniedPaths" | "reopenedPaths"> {
+  const hidden = foldersToHide(machine);
+  if ((machine.platform ?? process.platform) === "win32") {
+    const byName = hidden.flatMap((folder) => hiddenAround(folder, kept, disk));
+    return { deniedPaths: withoutNested(byName), reopenedPaths: [] };
+  }
+  const reopened = kept.filter((path) => hidden.some((folder) => isInsideOrSame(path, folder)));
+  return { deniedPaths: withoutNested(hidden), reopenedPaths: [...new Set(reopened)] };
+}
+
+/** The folders the profile hides, around what the runner needs: `/` when the fence opens reads by default, the home folder and the socket folders. */
+function foldersToHide(machine: RunnerMachine): string[] {
+  const root = machine.systemFiles === null ? [] : ["/"];
+  return [...root, machine.homeFolder, ...machine.socketFolders];
+}
+
+/**
+ * The paths without repeats and without those inside another one, such as a
+ * socket folder inside the home folder: a path inside one that is hidden
+ * needs no entry of its own.
+ */
+function withoutNested(paths: readonly string[]): string[] {
+  const unique = new Set(paths);
+  const insideAnother = (path: string) => {
+    for (let parent = dirname(path); parent !== path; path = parent, parent = dirname(path)) {
+      if (unique.has(parent)) return true;
+    }
+    return false;
+  };
+  return [...unique].filter((path) => !insideAnother(path));
 }
 
 /**
@@ -215,14 +331,16 @@ function linksToKept(entry: string, kept: readonly string[], disk: RunnerDisk): 
  * `/`. The profile can't hide such a folder, so the start must not go ahead.
  */
 function refuseKeptHoldingHidden(files: RunnerFiles, machine: RunnerMachine): void {
-  const keptByName = {
-    "Node's folder": files.nodeFolder,
-    "runner file": files.runnerFile,
-    "integration's folder": files.integrationFolder,
-    "temp folder": machine.tempFolder,
-  };
-  const hidden = [machine.homeFolder, ...machine.socketFolders];
-  for (const [name, path] of Object.entries(keptByName)) {
+  const keptByName: [string, string][] = [
+    ["Node's folder", files.nodeFolder],
+    ["runner file", files.runnerFile],
+    ["integration's folder", files.integrationFolder],
+    ["temp folder", machine.tempFolder],
+    ...machine.sandboxFolders.map((path): [string, string] => ["sandbox's folder", path]),
+    ...(machine.systemFiles ?? []).map((path): [string, string] => ["system file", path]),
+  ];
+  const hidden = foldersToHide(machine);
+  for (const [name, path] of keptByName) {
     const held = hidden.find((folder) => isInsideOrSame(folder, path));
     if (held !== undefined) {
       throw new Error(
