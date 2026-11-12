@@ -1,7 +1,9 @@
 import type { SandboxRemoval, SandboxSetup } from "@halonicjs/adapter-sandbox-srt";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { profileFolder } from "@halonicjs/profile";
 import type { CliCommand } from "../../command.ts";
 import { sandboxSetupMessages } from "../../messages/sandbox-setup.ts";
+import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { removeSandbox, setUpSandbox } from "./setup.ts";
 
 /** What the commands need of the sandbox, so tests can hand in a fake one. */
@@ -9,6 +11,8 @@ export interface SandboxSetter {
   readonly platform: NodeJS.Platform;
   setUp(): Promise<SandboxSetup>;
   remove(): Promise<SandboxRemoval>;
+  /** Folders other programs may keep write access to in this sandbox, for the warning before `remove`; `unknown` when it can't be told. */
+  otherUse(): Promise<{ folders: string[]; unknown: boolean }>;
 }
 
 const yes = { type: "boolean", description: sandboxSetupMessages.yesOption() } as const;
@@ -51,5 +55,11 @@ export function sandboxCommandWith(sandbox: () => SandboxSetter): CliCommand {
 /** `halonic sandbox`: set up or remove the agent sandbox on this computer. */
 export const sandboxCommand: CliCommand = sandboxCommandWith(() => {
   const srt = new SrtSandbox();
-  return { platform: process.platform, setUp: () => srt.setUp(), remove: () => srt.remove() };
+  return {
+    platform: process.platform,
+    setUp: () => srt.setUp(),
+    remove: () => srt.remove(),
+    // Everything Halonic works in is in its profile folder; any other kept grant isn't ours.
+    otherUse: () => srt.otherUse([profileFolder(nodeProfileEnvironment()).root]),
+  };
 });

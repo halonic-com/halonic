@@ -21,7 +21,11 @@ afterEach(async () => {
 });
 
 /** Windows, where setup and remove answer `setup` and `removal` and count their calls. */
-function windows(setup: SandboxSetup = { ok: true }, removal: SandboxRemoval = { ok: true }) {
+function windows(
+  setup: SandboxSetup = { ok: true },
+  removal: SandboxRemoval = { ok: true },
+  otherUse: { folders: string[]; unknown: boolean } = { folders: [], unknown: false },
+) {
   const calls = { setUp: 0, remove: 0 };
   const sandbox: SandboxSetter = {
     platform: "win32",
@@ -33,6 +37,7 @@ function windows(setup: SandboxSetup = { ok: true }, removal: SandboxRemoval = {
       calls.remove++;
       return removal;
     },
+    otherUse: async () => otherUse,
   };
   return { sandbox, calls };
 }
@@ -171,6 +176,40 @@ verifies("cli.commands.sandbox.remove", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual(["✓ Removed the agent sandbox"]);
     expect(calls.remove).toBe(1);
+  });
+
+  const afterwards =
+    "Remove the agent sandbox? Agents set to run in a sandbox won't start until you set it up again. Windows asks for administrator rights once. [y/N] ";
+
+  it("warns first, naming the folders, when srt keeps access outside Halonic's", async () => {
+    const [notes, app, work] = [
+      "C:\\Tools\\notes", // leak-guard: allow absolute-path made-up Windows path for a test
+      "D:\\src\\app", // leak-guard: allow absolute-path made-up Windows path for a test
+      "E:\\work", // leak-guard: allow absolute-path made-up Windows path for a test
+    ] as const;
+    const folders = [notes, app, work, "F:\\a", "G:\\b"]; // leak-guard: allow absolute-path made-up Windows path for a test
+    const { sandbox } = windows(undefined, undefined, { folders, unknown: false });
+    const { terminal, written } = terminalTyping("n");
+    await sandboxCli(sandbox, ["remove"], terminal);
+    expect(written()).toBe(
+      `Another program on this computer may also use this sandbox (for ${notes}, ${app}, ${work} and 2 more), and removing it stops that program's sandbox from working too.\n${afterwards}`,
+    );
+    const two = windows(undefined, undefined, { folders: [notes, app], unknown: true });
+    const typed = terminalTyping("n");
+    await sandboxCli(two.sandbox, ["remove"], typed.terminal);
+    expect(typed.written()).toContain(`(for ${notes} and ${app})`);
+  });
+
+  it("warns without folders when srt can't tell, and prints nothing with --yes", async () => {
+    const { sandbox } = windows(undefined, undefined, { folders: [], unknown: true });
+    const { terminal, written } = terminalTyping("n");
+    await sandboxCli(sandbox, ["remove"], terminal);
+    expect(written()).toBe(
+      `Another program on this computer may also use this sandbox, and removing it stops that program's sandbox from working too.\n${afterwards}`,
+    );
+    const { code, io } = await sandboxCli(sandbox, ["remove", "--yes"]);
+    expect(code).toBe(exitCode.ok);
+    expect(io.stderr).toEqual([]);
   });
 
   it("removes nothing on No", async () => {
