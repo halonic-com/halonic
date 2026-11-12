@@ -4,8 +4,14 @@ import { errorResponse, serverErrors } from "./errors.ts";
 /** The secret that holds the sign-in password hash. No value means the server has no password. */
 export const passwordSecretName = "serve-password";
 
-/** `__Host-` makes a browser keep the cookie to this exact host, over HTTPS, for the whole site. */
-const sessionCookieName = "__Host-halonic-session";
+/**
+ * `__Host-` makes a browser keep the cookie to this exact host, over HTTPS, for the whole
+ * site. A browser drops a `Secure` cookie set over plain HTTP, and `serve --network` is
+ * open over `http://<LAN address>:<port>`, so that path gets the same cookie without
+ * the prefix and without `Secure`.
+ */
+const secureCookieName = "__Host-halonic-session";
+const plainCookieName = "halonic-session";
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 
 /** Every attempt counts, so a wrong guess costs one counter step and never a password check. */
@@ -44,7 +50,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
     return `session:${toHex(new Uint8Array(digest))}`;
   }
 
-  async function startSession(): Promise<Response> {
+  async function startSession(request: Request): Promise<Response> {
     const token = newSessionToken();
     const expiresAt = new Date(clock.now().getTime() + sessionLifetimeMs);
     const stored = await coordination.compareAndSet(
@@ -57,7 +63,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
       throw new Error("the session store refused a new session token");
     }
     const response = Response.json({ signedIn: true });
-    response.headers.append("Set-Cookie", sessionCookie(token, sessionLifetimeMs / 1000));
+    response.headers.append("Set-Cookie", sessionCookie(request, token, sessionLifetimeMs / 1000));
     return response;
   }
 
@@ -84,7 +90,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
       if (!(await passwordHasher.verify(password, hash))) {
         return errorResponse(serverErrors.wrongPassword);
       }
-      return startSession();
+      return startSession(request);
     },
 
     async logout(request) {
@@ -97,7 +103,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
         }
       }
       const response = new Response(null, { status: 204 });
-      response.headers.append("Set-Cookie", sessionCookie("", 0));
+      response.headers.append("Set-Cookie", sessionCookie(request, "", 0));
       return response;
     },
 
@@ -109,15 +115,23 @@ export function createSignIn(ports: SignInPorts): SignIn {
       if (token === null) {
         return false;
       }
-      const expiresAt = await coordination.read(await sessionKey(token));
-      return expiresAt !== null && clock.now().getTime() < Date.parse(expiresAt);
+      const key = await sessionKey(token);
+      const expiresAt = await coordination.read(key);
+      if (expiresAt === null) {
+        return false;
+      }
+      if (clock.now().getTime() >= Date.parse(expiresAt)) {
+        await coordination.compareAndSet(key, expiresAt, null);
+        return false;
+      }
+      return true;
     },
   };
 }
 
 /** The password from a JSON body of the form `{ "password": "…" }`, or `null` when the body is anything else. */
 function readPassword(request: Request, body: Uint8Array): string | null {
-  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+  if (mediaType(request.headers.get("content-type")) !== "application/json") {
     return null;
   }
   try {
@@ -131,7 +145,17 @@ function readPassword(request: Request, body: Uint8Array): string | null {
   }
 }
 
+/** The media type of a `Content-Type` value, without its parameters, in lower case. */
+function mediaType(contentType: string | null): string {
+  return (contentType ?? "").split(";", 1)[0]?.trim().toLowerCase() ?? "";
+}
+
+function isSecure(request: Request): boolean {
+  return new URL(request.url).protocol === "https:";
+}
+
 function readSessionToken(request: Request): string | null {
+  const sessionCookieName = isSecure(request) ? secureCookieName : plainCookieName;
   for (const part of (request.headers.get("cookie") ?? "").split(";")) {
     const [name, ...value] = part.trim().split("=");
     if (name === sessionCookieName) {
@@ -141,8 +165,11 @@ function readSessionToken(request: Request): string | null {
   return null;
 }
 
-function sessionCookie(token: string, maxAgeSeconds: number): string {
-  return `${sessionCookieName}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}`;
+function sessionCookie(request: Request, token: string, maxAgeSeconds: number): string {
+  const secure = isSecure(request);
+  const name = secure ? secureCookieName : plainCookieName;
+  const attributes = secure ? "Path=/; Secure; HttpOnly" : "Path=/; HttpOnly";
+  return `${name}=${token}; ${attributes}; SameSite=Strict; Max-Age=${maxAgeSeconds}`;
 }
 
 /** 32 random bytes as hex text. These come from the system's random source, never from `ports.ids`. */

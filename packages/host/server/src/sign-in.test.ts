@@ -6,6 +6,7 @@ import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./t
 
 const host = "halonic.acme.example";
 const cookieName = "__Host-halonic-session";
+const plainCookieName = "halonic-session";
 
 function setup(passwordHash: string | null = "hash:correct horse") {
   const clock = new TestClock();
@@ -21,9 +22,14 @@ function setup(passwordHash: string | null = "hash:correct horse") {
   return { clock, coordination, passwordHasher, server };
 }
 
-function login(server: Server, body: unknown, type = "application/json"): Promise<Response> {
+function login(
+  server: Server,
+  body: unknown,
+  type = "application/json",
+  scheme = "https",
+): Promise<Response> {
   return server.handle(
-    new Request(`https://${host}/api/login`, {
+    new Request(`${scheme}://${host}/api/login`, {
       method: "POST",
       headers: { host, "content-type": type },
       body: typeof body === "string" ? body : JSON.stringify(body),
@@ -31,10 +37,10 @@ function login(server: Server, body: unknown, type = "application/json"): Promis
   );
 }
 
-function get(server: Server, path: string, cookie?: string): Promise<Response> {
+function get(server: Server, path: string, cookie?: string, scheme = "https"): Promise<Response> {
   const headers: Record<string, string> = { host };
   if (cookie !== undefined) headers["cookie"] = cookie;
-  return server.handle(new Request(`https://${host}${path}`, { headers }));
+  return server.handle(new Request(`${scheme}://${host}${path}`, { headers }));
 }
 
 /** The `name=value` part of the cookie a sign-in set. */
@@ -67,6 +73,7 @@ describe("sign-in", () => {
         [{ password: "x".repeat(1025) }],
         [null],
         [{ password: "correct horse" }, "text/plain"],
+        [{ password: "correct horse" }, "application/jsonx"],
       ];
       for (const [body, type] of bodies) {
         const response = await login(server, body, type);
@@ -110,6 +117,48 @@ describe("sign-in", () => {
         expect(header, attribute).toContain(attribute);
       }
       expect(header).not.toContain("Domain");
+    });
+
+    it("sets a plain cookie without Secure over HTTP, and reads and clears it", async () => {
+      const { server } = setup();
+      const response = await login(server, { password: "correct horse" }, undefined, "http");
+      const header = response.headers.get("set-cookie");
+      expect(header).toMatch(new RegExp(`^${plainCookieName}=[0-9a-f]{64}; `));
+      for (const attribute of ["Path=/", "HttpOnly", "SameSite=Strict"]) {
+        expect(header, attribute).toContain(attribute);
+      }
+      expect(header).not.toContain("Secure");
+      expect(header).not.toContain("__Host-");
+
+      const cookie = sessionCookieOf(response);
+      expect((await get(server, "/api/session", cookie, "http")).status).toBe(200);
+      const out = await server.handle(
+        new Request(`http://${host}/api/logout`, { method: "POST", headers: { host, cookie } }),
+      );
+      expect(out.headers.get("set-cookie")).toMatch(
+        new RegExp(`^${plainCookieName}=; .*Max-Age=0`),
+      );
+      expect((await get(server, "/api/session", cookie, "http")).status).toBe(401);
+    });
+
+    it("ignores the cookie of the other scheme", async () => {
+      const { server } = setup();
+      const secure = sessionCookieOf(await login(server, { password: "correct horse" }));
+      const plain = sessionCookieOf(
+        await login(server, { password: "correct horse" }, undefined, "http"),
+      );
+      expect((await get(server, "/api/session", secure, "http")).status).toBe(401);
+      expect((await get(server, "/api/session", plain, "https")).status).toBe(401);
+    });
+
+    it("deletes a session once it has ended", async () => {
+      const { server, clock, coordination } = setup();
+      const cookie = sessionCookieOf(await login(server, { password: "correct horse" }));
+      clock.advance(31 * 24 * 60 * 60 * 1000);
+      expect((await get(server, "/api/session", cookie)).status).toBe(401);
+      expect([...coordination.values.keys()].filter((key) => key.startsWith("session:"))).toEqual(
+        [],
+      );
     });
 
     it("gives every sign-in its own token and stores only a hash of it", async () => {
