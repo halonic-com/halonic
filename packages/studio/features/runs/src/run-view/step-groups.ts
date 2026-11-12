@@ -37,7 +37,7 @@ interface Part {
 /**
  * The branches and items of one step, from its events (`eventsOfStep`).
  * Branches are in the order they started, items in list order. A part
- * ends with its `agent.finished` or `workflow.finished`. A part with no
+ * ends with its own agent's `agent.finished` (not a subagent's) or `workflow.finished`. A part with no
  * end while the step is still `running` is running; once the step is over
  * it is "Didn't finish". A for-each's total is known only when the step
  * `ended` fine, because the log never says how long the list was.
@@ -63,7 +63,8 @@ export function stepGroups(
       part = { key, branch: event.branch, item: event.item, startedAt: event.at, end: undefined };
       parts.set(key, part);
     }
-    if (event.type === "agent.finished") {
+    // A subagent's events carry the branch or item too; only the part's own agent ends it.
+    if (event.type === "agent.finished" && event.parent === undefined) {
       part.end = { at: event.at, failed: event.error !== undefined };
     } else if (event.type === "workflow.finished") {
       part.end = { at: event.at, failed: event.status !== "completed" };

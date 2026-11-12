@@ -74,6 +74,20 @@ verifies("runs.run-view.step-groups", () => {
     expect(steps[0]?.groups.map((g) => [g.mark, g.line])).toEqual([["stopped", "Didn't finish"]]);
   });
 
+  it("doesn't end a branch or item when only its subagent finished", () => {
+    const sub = (where: { branch: string } | { item: number }) =>
+      of(1, { ...ended(), parent: "writer" } as RunEventBody, where);
+    const steps = stepsOf([
+      [0, entered("fan")],
+      of(0, begin, { branch: "a" }),
+      of(0, begin, { item: 0 }),
+      sub({ branch: "a" }),
+      sub({ item: 0 }),
+      [1, { type: "run.failed", state: "fan", error: "Boom" }],
+    ]);
+    expect(steps[0]?.groups.map((g) => g.mark)).toEqual(["stopped", "stopped"]);
+  });
+
   it("has no groups for a step that ran none", () => {
     expect(stepsOf([[0, entered("read")]])[0]?.groups).toEqual([]);
   });

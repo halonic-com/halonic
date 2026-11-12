@@ -8,7 +8,7 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { RunWorkflow } from "../api.ts";
 import { everyStepWords, stepName } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
-import { eventsOfStep } from "./step-events-model.ts";
+import { eventsBySteps } from "./step-events-model.ts";
 import { type StepGroup, stepGroups } from "./step-groups.ts";
 
 /** The 16px dot's mark (component specs 23.5); the run page has no "not reached" entries yet. */
@@ -27,7 +27,10 @@ export interface StepEntry {
   readonly time: string;
   /** What a screen reader hears, state first (mc 19.3): "Draft reply, failed, 10:41, Failed after 2 s". */
   readonly label: string;
-  /** The branches or for-each items the step ran, in order; empty for a step that ran none. */
+  /**
+   * The branches or for-each items the step ran, in order; empty for a step that ran none.
+   * They draw as plain rows until the kit has indented child rows (HAL-8173).
+   */
   readonly groups: readonly StepGroup[];
 }
 
@@ -47,6 +50,7 @@ export function everyStep(
   workflow: RunWorkflow | undefined,
   now: Date,
 ): StepEntry[] {
+  const eventsOfSteps = eventsBySteps(events);
   return runSteps(events, summary).map((step, index) => {
     const name = stepName(step.stateId, workflow?.stepDescription(step.stateId));
     const time = clockTime(new Date(step.startedAt));
@@ -65,7 +69,7 @@ export function everyStep(
         : [name, state, time, line]
       ).join(", "),
       groups: stepGroups(
-        eventsOfStep(events, id),
+        eventsOfSteps[index] ?? [],
         id,
         over ? "over" : "running",
         step.end.kind === "done" || step.end.kind === "answered",
