@@ -35,9 +35,11 @@ afterEach(() => {
 const machine: Machine = {
   platform: "linux",
   insideContainer: async () => false,
+  isWsl1: async () => false,
   hasBubblewrap: async () => true,
-  hasLinuxHelpers: async () => true,
-  userNamespacesRestricted: async () => false,
+  missingLinuxHelpers: async () => [],
+  bubblewrapUserNamespaceError: async () => null,
+  appArmorRestrictsUserNamespaces: async () => false,
   hasSeatbelt: async () => true,
   hasWindowsSandbox: async () => false,
   installWindowsSandbox: async () => "installed" as const,
