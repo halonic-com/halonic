@@ -12,8 +12,9 @@ Port version 6 (HAL-5389) added `not-supported`, `blocked-by-policy`, `virtualis
 `sign-in-needed`. The CLI read them as `other`. Each now has its own reason and fix in
 `apps/cli/src/messages/sandbox.ts`, for a refused `run` and for `halonic doctor`.
 
-- The test "words version 6's codes as other until the sandbox design words them" is replaced
-  by the word-for-word tests that cover every code, in the port's order. It checked a stopgap
+- The test "words version 6's codes as other until the sandbox design words them", in
+  `apps/cli/src/messages/sandbox.test.ts`, is replaced by the word-for-word tests that cover
+  every code, in the port's order, so that file runs one test fewer. It checked a stopgap
   this change removes; no expectation is weakened. A code this version doesn't know still reads
   as `other`, and that test stays.
 - `cli.sandbox-gate` gains an example: Windows without the sandbox's one-time setup
@@ -55,3 +56,4 @@ change in risk. `windows` as "has no Windows mode" fits the runner as well as a 
 
 - cli.sandbox-gate
 - cli.messages
+- apps/cli/src/messages/sandbox.test.ts
