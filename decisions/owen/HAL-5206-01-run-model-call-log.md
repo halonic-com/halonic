@@ -4,6 +4,7 @@
 - Task: HAL-5206
 - Approval: [HAL-5206](/HAL/issues/HAL-5206), the CTO's review of this pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DOxBHIBnsvIygoiOcXl3C/KzDk1mQrC+GtUiqDYNPCww8iiBM0GC2nuMBVnyS03QbzEPYbtEF3Q8sRbiWUa7Dg==
 
 ## What changes
 
