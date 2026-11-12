@@ -48,6 +48,15 @@ function exitReason(started: Started): SandboxExit["reason"] {
 }
 
 /**
+ * Removes a folder the session made. On Windows a program the session started
+ * can still hold the folder for a moment after it exits (EBUSY), so the remove
+ * retries, waiting a little longer each time, before it gives up (HAL-8071).
+ */
+function removeFolder(folder: string): Promise<void> {
+  return rm(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+}
+
+/**
  * A sandbox-runtime session. It owns a private folder (the settings file and
  * the canary of the fence proof) that the program can't read, and outside
  * Windows the launcher's own temp folder, both removed when the session closes.
@@ -188,8 +197,8 @@ export class SrtSession implements SandboxSession {
       );
       return session;
     } catch (error) {
-      await rm(folder, { recursive: true, force: true });
-      if (launcherTemp !== null) await rm(launcherTemp, { recursive: true, force: true });
+      await removeFolder(folder);
+      if (launcherTemp !== null) await removeFolder(launcherTemp);
       if (journal !== null) await rm(journal, { force: true });
       // The fence proof ran a program on the folders, so srt may have kept grants on them.
       const forgotten = await grants?.forget([profile.workingFolder, profile.tempFolder]);
@@ -276,8 +285,8 @@ export class SrtSession implements SandboxSession {
     const notForgotten = await this.#forgetGrants();
     this.#fence = { state: "stopped" };
     this.#listeners.clear();
-    await rm(this.#folder, { recursive: true, force: true });
-    if (this.#launcherTemp !== null) await rm(this.#launcherTemp, { recursive: true, force: true });
+    await removeFolder(this.#folder);
+    if (this.#launcherTemp !== null) await removeFolder(this.#launcherTemp);
     // A journal whose undo failed stays, so a later `recoverGitFolders` tries again.
     if (this.#journal.file !== null && failed.length === 0) {
       await rm(this.#journal.file, { force: true });
