@@ -21,6 +21,12 @@ const inMemoryStorage = {
   cachePersist: false,
 } as const;
 
+/** The storage bindings the test Worker gets in `env`. Each one starts empty. */
+export interface WorkerdBindings {
+  /** Names of R2 buckets, such as `"BLOBS"`, read as `env.BLOBS`. */
+  r2Buckets?: readonly string[];
+}
+
 /**
  * The Worker's address for `dispatchFetch`. Miniflare still opens a loopback
  * port for the Worker; `dispatchFetch` just bypasses it, so the host name
@@ -44,14 +50,16 @@ export class WorkerdRunner {
    * Starts workerd with the given Worker script.
    *
    * @param script - an ES module Worker, from `buildTestWorker`
+   * @param bindings - the storage the Worker gets, empty when workerd starts
    * @returns the running Worker
    */
-  static async start(script: string): Promise<WorkerdRunner> {
+  static async start(script: string, bindings: WorkerdBindings = {}): Promise<WorkerdRunner> {
     const miniflare = new Miniflare({
       modules: true,
       script,
       compatibilityDate,
       ...inMemoryStorage,
+      r2Buckets: [...(bindings.r2Buckets ?? [])],
     });
     try {
       await miniflare.ready;

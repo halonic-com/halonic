@@ -3,7 +3,7 @@ import type {} from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import type { CaseResult, CaseTree } from "../worker/protocol.ts";
 import { buildTestWorker } from "./build-test-worker.ts";
-import { WorkerdRunner } from "./workerd-runner.ts";
+import { type WorkerdBindings, WorkerdRunner } from "./workerd-runner.ts";
 
 /** A case that failed inside workerd, with workerd's message and stack. */
 export class WorkerdCaseError extends Error {
@@ -24,14 +24,19 @@ export class WorkerdCaseError extends Error {
  * `await` at the top of a test file.
  *
  * @param suiteFiles - absolute paths or `file:` URLs of the suite files (see `buildTestWorker`)
+ * @param bindings - the storage the suites read from the Worker's `env`; it
+ *   is empty when this file starts, whatever other test files did
  * @throws Error when the Worker doesn't build or start, or registers no cases
  *
  * @example
  * await runSuitesInWorkerd([new URL("./worker/suites/clock.ts", import.meta.url)]);
  */
-export async function runSuitesInWorkerd(suiteFiles: readonly (string | URL)[]): Promise<void> {
+export async function runSuitesInWorkerd(
+  suiteFiles: readonly (string | URL)[],
+  bindings: WorkerdBindings = {},
+): Promise<void> {
   const script = await buildTestWorker(suiteFiles);
-  const runner = await WorkerdRunner.start(script);
+  const runner = await WorkerdRunner.start(script, bindings);
   afterAll(() => runner.stop());
   // If collection fails, the file fails before any test runs and afterAll may never run.
   try {

@@ -7,5 +7,5 @@
 export { buildTestWorker } from "./node/build-test-worker.ts";
 export { missingShimApis } from "./node/matcher-check.ts";
 export { runSuitesInWorkerd, WorkerdCaseError } from "./node/run-in-workerd.ts";
-export { compatibilityDate, WorkerdRunner } from "./node/workerd-runner.ts";
+export { compatibilityDate, type WorkerdBindings, WorkerdRunner } from "./node/workerd-runner.ts";
 export type { CaseNode, CaseResult, CaseTree, SuiteMeta, SuiteNode } from "./worker/protocol.ts";
