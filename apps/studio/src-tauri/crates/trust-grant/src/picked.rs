@@ -45,9 +45,9 @@ pub(crate) struct PickedFolder {
     pub identity: Option<FolderIdentity>,
 }
 
-/// A folder's device and inode on Unix. Windows has no stable call for its
-/// file ID in the standard library yet, so a Windows entry has none
-/// (follow-up on HAL-6637).
+/// A folder's device and inode on Unix, where every entry must have one.
+/// Windows has no stable call for its file ID in the standard library yet,
+/// so a Windows entry has none (follow-up on HAL-6637).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct FolderIdentity {
     pub device: u64,
@@ -120,7 +120,13 @@ impl PickedFolders {
             }
         };
         match serde_json::from_str::<ListFile>(&text) {
-            Ok(list) if list.version == FORMAT_VERSION => list.folders,
+            Ok(list) if list.version == FORMAT_VERSION => {
+                // The shell never writes more; a longer list is read capped
+                // too, so a written file can't make `find` search without end.
+                let mut folders = list.folders;
+                folders.truncate(MAX_PICKED_FOLDERS);
+                folders
+            }
             Ok(list) => {
                 eprintln!(
                     "picked folders: {} has version {}, not {FORMAT_VERSION}, so none are remembered",

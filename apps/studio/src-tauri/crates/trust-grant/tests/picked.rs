@@ -68,15 +68,12 @@ impl Shell {
 
     /// Picks `folder` in the dialog and remembers it, as `pick_folder` does.
     fn pick(&self, scratch: &Scratch, folder: &str) -> String {
-        let location = self
-            .state
-            .pick(&self.folders, || Some(scratch.path(folder)))
-            .expect("picking a folder works")
-            .expect("a folder was picked");
         self.state
-            .remember_pick(&scratch.list(), &location)
-            .expect("the pick is remembered");
-        location
+            .pick_remembered(&self.folders, &scratch.list(), || {
+                Some(scratch.path(folder))
+            })
+            .expect("picking a folder works")
+            .expect("a folder was picked")
     }
 
     fn reopen(&self, scratch: &Scratch, location: &str) -> Result<(), &'static str> {
@@ -221,6 +218,43 @@ fn trust_grants_read_a_damaged_list_as_empty() {
     // The next pick writes a good list over the damaged one.
     let other = Shell::start().pick(&scratch, "work/other");
     assert_eq!(scratch.list().locations(), [other]);
+}
+
+#[cfg(unix)]
+#[test]
+fn trust_grants_refuse_to_reopen_an_entry_without_an_identity_on_unix() {
+    let scratch = Scratch::new("no-identity");
+    let acme = scratch.location("work/acme");
+    // Written by hand: the shell never writes an entry without one on Unix.
+    let list = json!({"version": 1, "folders": [{"location": acme}]});
+    fs::create_dir_all(scratch.path("profile/studio")).expect("the folder can be made");
+    fs::write(scratch.list_file(), list.to_string()).expect("the file can be written");
+
+    let shell = Shell::start();
+    assert_eq!(shell.reopen(&scratch, &acme), Err("folder_changed"));
+    assert!(!shell.is_open(&acme));
+    assert_eq!(scratch.list().locations(), [acme]);
+}
+
+#[test]
+fn trust_grants_read_a_list_longer_than_the_cap_capped() {
+    let scratch = Scratch::new("long-list");
+    let picked = Shell::start().pick(&scratch, "work/acme");
+    let entry = fs::read_to_string(scratch.list_file()).expect("the list was written");
+    let entry: serde_json::Value = serde_json::from_str(&entry).expect("the list is JSON");
+    let entry = entry["folders"][0].clone();
+    // Nine other entries first, then the real pick as the tenth.
+    let mut folders: Vec<_> = (0..MAX_PICKED_FOLDERS)
+        .map(|number| json!({"location": format!("/nowhere/{number}")}))
+        .collect();
+    folders.push(entry);
+    let list = json!({"version": 1, "folders": folders});
+    fs::write(scratch.list_file(), list.to_string()).expect("the file can be written");
+
+    assert_eq!(scratch.list().locations().len(), MAX_PICKED_FOLDERS);
+    let shell = Shell::start();
+    assert_eq!(shell.reopen(&scratch, &picked), Err("not_picked"));
+    assert!(!shell.is_open(&picked));
 }
 
 #[test]

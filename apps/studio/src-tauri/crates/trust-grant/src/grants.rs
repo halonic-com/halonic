@@ -8,7 +8,7 @@ use halonic_git_guard::{OpenedFolders, plain_path};
 use halonic_trust_store::FileTrustStore;
 use serde_json::Value;
 
-use crate::picked::{PickedFolder, PickedFolders, folder_identity};
+use crate::picked::{FolderIdentity, PickedFolder, PickedFolders, folder_identity};
 use crate::question::question_text;
 use crate::refusal::TrustRefusal;
 
@@ -39,6 +39,45 @@ impl TrustState {
         folders: &OpenedFolders,
         choose: impl FnOnce() -> Option<PathBuf>,
     ) -> Result<Option<String>, TrustRefusal> {
+        Ok(self
+            .pick_canonical(folders, choose)?
+            .map(|(_, location)| location))
+    }
+
+    /// Picks as [`Self::pick`] does and remembers the folder in `list`, so
+    /// [`Self::reopen`] can open it after a restart. Its identity is taken
+    /// from the canonical path that opened, so the folder remembered is the
+    /// folder opened. A pick that can't be remembered, such as one whose
+    /// identity can't be read on Unix, still opens for now; why goes to the
+    /// log.
+    pub fn pick_remembered(
+        &self,
+        folders: &OpenedFolders,
+        list: &PickedFolders,
+        choose: impl FnOnce() -> Option<PathBuf>,
+    ) -> Result<Option<String>, TrustRefusal> {
+        let Some((canonical, location)) = self.pick_canonical(folders, choose)? else {
+            return Ok(None);
+        };
+        let remembered = known_identity(&location, &canonical).and_then(|identity| {
+            list.remember(PickedFolder {
+                location: location.clone(),
+                identity,
+            })
+        });
+        if let Err(refusal) = remembered {
+            eprintln!("pick_folder: {location:?} can't be remembered: {refusal:?}");
+        }
+        Ok(Some(location))
+    }
+
+    /// Shows the dialog and opens the folder picked: its canonical path and
+    /// its location.
+    fn pick_canonical(
+        &self,
+        folders: &OpenedFolders,
+        choose: impl FnOnce() -> Option<PathBuf>,
+    ) -> Result<Option<(PathBuf, String)>, TrustRefusal> {
         let chosen = {
             let _asking = self.start_asking()?;
             choose()
@@ -50,9 +89,9 @@ impl TrustState {
         self.open(folders, &location, &canonical);
         let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
         if !picked.contains(&canonical) {
-            picked.push(canonical);
+            picked.push(canonical.clone());
         }
-        Ok(Some(location))
+        Ok(Some((canonical, location)))
     }
 
     /// Saves the record and opens its folder, if the person chose the
@@ -120,28 +159,17 @@ impl TrustState {
         }
     }
 
-    /// Remembers a folder [`Self::pick`] answered, so [`Self::reopen`] can
-    /// open it after a restart. The location is checked again as `reopen`
-    /// checks it, and its identity is taken now: a link swapped in since the
-    /// pick is refused as `folder_changed`, never remembered.
-    pub fn remember_pick(&self, list: &PickedFolders, location: &str) -> Result<(), TrustRefusal> {
-        let canonical = folder_at(location)?;
-        list.remember(PickedFolder {
-            location: location.to_owned(),
-            identity: folder_identity(&canonical),
-        })
-    }
-
     /// Opens a folder the person picked before, as a pick does, without the
     /// dialog. Only a location in the list opens, and only while it is
-    /// still the folder they picked: the same canonical path and, where the
-    /// system tells, the same folder. Otherwise it is refused, and the entry
+    /// still the folder they picked: the same canonical path and, on Unix,
+    /// the same device and inode. Otherwise it is refused, and the entry
     /// stays so they can pick the folder again:
     ///
     /// - `not_picked`: the location isn't in the list;
     /// - `folder_missing`: nothing is at the path any more;
-    /// - `folder_changed`: a link was swapped in, or the folder was deleted
-    ///   and made again;
+    /// - `folder_changed`: a link was swapped in, the folder was deleted and
+    ///   made again, or, on Unix, the entry or the folder has no identity
+    ///   (the shell never writes such an entry, so it fails closed);
     /// - `folder_unreadable`: something else is at the path, or it can't be
     ///   read.
     pub fn reopen(
@@ -157,7 +185,8 @@ impl TrustState {
             ));
         };
         let canonical = folder_at(location)?;
-        if entry.identity.is_some() && entry.identity != folder_identity(&canonical) {
+        let identity = folder_identity(&canonical);
+        if !same_folder(entry.identity, identity) {
             return Err(TrustRefusal::new(
                 "folder_changed",
                 format!("{location:?} isn't the folder the person picked any more"),
@@ -173,7 +202,12 @@ impl TrustState {
         // Reopening is the person using the folder again, as Recent moves
         // its row up, so the entry moves first and isn't the next dropped.
         // The folder is already open; if moving fails, it stays where it is.
-        if let Err(refusal) = list.remember(entry) {
+        // The identity written back is the one just checked.
+        let checked = PickedFolder {
+            location: entry.location,
+            identity,
+        };
+        if let Err(refusal) = list.remember(checked) {
             eprintln!("reopen_folder: {location:?} can't be moved first: {refusal:?}");
         }
         Ok(())
@@ -269,6 +303,35 @@ fn checked_location(location: &str) -> Result<PathBuf, TrustRefusal> {
         ));
     }
     Ok(canonical)
+}
+
+/// The identity to remember for a picked folder: on Unix it must have one,
+/// so a pick whose device and inode can't be read isn't remembered. Windows
+/// has none yet (see [`FolderIdentity`]).
+fn known_identity(
+    location: &str,
+    canonical: &Path,
+) -> Result<Option<FolderIdentity>, TrustRefusal> {
+    let identity = folder_identity(canonical);
+    if cfg!(unix) && identity.is_none() {
+        return Err(TrustRefusal::new(
+            "folder_unreadable",
+            format!("{location:?} has no device and inode to remember it by"),
+        ));
+    }
+    Ok(identity)
+}
+
+/// Whether a remembered identity matches the folder's now. On Unix both
+/// must be known and equal: an entry without one fails closed, because the
+/// shell never writes one. Elsewhere an entry without one passes, as the
+/// system gives none.
+fn same_folder(remembered: Option<FolderIdentity>, now: Option<FolderIdentity>) -> bool {
+    if cfg!(unix) {
+        remembered.is_some() && remembered == now
+    } else {
+        remembered.is_none() || remembered == now
+    }
 }
 
 /// The canonical folder at a picked location, if it is still the folder

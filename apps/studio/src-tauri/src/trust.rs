@@ -66,15 +66,14 @@ pub async fn pick_folder<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>
     on_worker(app, |app| {
         let folders = app.state::<GitState>().folders();
         let state = app.state::<TrustState>();
-        let location = state.pick(&folders, || show_folder_picker(app))?;
-        if let Some(location) = &location {
-            let remembered =
-                picked_folders(app).and_then(|list| state.remember_pick(&list, location));
-            if let Err(refusal) = remembered {
-                eprintln!("pick_folder: {location:?} can't be remembered: {refusal:?}");
+        let choose = || show_folder_picker(app);
+        match picked_folders(app) {
+            Ok(list) => state.pick_remembered(&folders, &list, choose),
+            Err(refusal) => {
+                eprintln!("pick_folder: picks can't be remembered: {refusal:?}");
+                state.pick(&folders, choose)
             }
         }
-        Ok(location)
     })
     .await
 }
