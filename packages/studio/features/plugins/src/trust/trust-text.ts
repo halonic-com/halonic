@@ -12,6 +12,38 @@ export function trustTitle(reason: TrustCheckReason, name: string): string {
   return reason === "add" ? `Trust ${name} and turn it on?` : `Trust ${name}?`;
 }
 
+/** The source line's start: "Plugin · version 1.2.0"; " · from *source*" follows (design section 5). */
+export function sourceLead(version: string): string {
+  return `Plugin · version ${version}`;
+}
+
+/** Between the source line's parts. */
+export const FROM = " · from ";
+export const AT = " at ";
+
+/** The primary while trust is being saved (kit busy rule, a11y A1). */
+export const TRUSTING = "Trusting…";
+
+/**
+ * Why trust wasn't saved, in the dialog's error slot (checklist 15, G2): the workspace check's
+ * words (microcopy 4.3).
+ */
+export function trustNotSavedLine(reason: string): string {
+  return `Couldn't save trust: ${afterColon(reason)}. Nothing was started.`;
+}
+
+/**
+ * A host's message after a colon: no closing full stop, and a capital that only starts the
+ * sentence lower-cased ("The disk is full." is "the disk is full"), so a name such as "Windows"
+ * keeps its capital.
+ */
+function afterColon(reason: string): string {
+  const trimmed = reason.trim().replace(/\.$/, "");
+  return /^\p{Lu}\p{Ll}/u.test(trimmed) && !/^\S+\p{Lu}/u.test(trimmed)
+    ? trimmed.charAt(0).toLowerCase() + trimmed.slice(1)
+    : trimmed;
+}
+
 /** The focused button that leaves the plugin off (T10). */
 export const NOT_NOW = "Not now";
 
