@@ -67,6 +67,8 @@ export function PluginPage({
           <span className="shrink-0 text-caption uppercase tracking-label text-fg-subtle">
             {PLUGIN}
           </span>
+          {/* A space for screen readers, so the heading reads "Plugin Weather". */}
+          <span className="sr-only"> </span>
           <span className="truncate text-body-strong" title={plugin.name}>
             {plugin.name}
           </span>
@@ -185,16 +187,20 @@ function Problems({ problems }: { readonly problems: readonly PluginLoadProblem[
   if (problems.length === 0) return null;
   return (
     <ul className="mt-2 flex list-none flex-col gap-1">
-      {problems.map((problem, index) => (
-        // The loader can give two problems at the same place, so the index keeps keys apart.
-        <li key={index} className="wrap-anywhere">
-          {problemPlace(problem) === "" ? null : (
-            <span className="font-mono">{problemPlace(problem)}</span>
-          )}
-          {problemPlace(problem) === "" ? null : " "}
-          <span>{problem.message}</span>
-        </li>
-      ))}
+      {problems.map((problem, index) => {
+        const place = problemPlace(problem);
+        return (
+          // The loader can give two problems at the same place, so the index keeps keys apart.
+          <li key={index} className="wrap-anywhere">
+            {place === "" ? null : (
+              <>
+                <span className="font-mono">{place}</span>{" "}
+              </>
+            )}
+            <span>{problem.message}</span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

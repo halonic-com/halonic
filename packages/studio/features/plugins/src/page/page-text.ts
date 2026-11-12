@@ -56,10 +56,20 @@ export function onLine(
     .join(" · ");
 }
 
-/** A git address without `https://` and `.git`, or a folder's path as it was given. */
+/**
+ * A git address without `https://`, a user and password, and `.git`, or a folder's path as it
+ * was given. Core keeps the address as the person typed it, so `https://user:token@…` must never
+ * show its token here.
+ *
+ * @example
+ * originText({ kind: "git", address: "https://me:t0k@github.com/x/y.git", commit: "3f9c" }); // "github.com/x/y"
+ */
 export function originText(origin: PluginOrigin): string {
   if (origin.kind === "folder") return origin.path;
-  return origin.address.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\.git\/?$/, "");
+  return origin.address
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
+    .replace(/^[^/@]*@/, "")
+    .replace(/\.git\/?$/, "");
 }
 
 const shortMonths = [
@@ -79,6 +89,7 @@ const shortMonths = [
 
 /**
  * The day of an ISO time, as the page says it: "3 Nov", with the year when it isn't this year's.
+ * Both the time and `now` are read in the computer's time zone, the person's day.
  * Text that isn't a time gives `undefined`, so the line leaves the date out.
  *
  * @example
