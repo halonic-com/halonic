@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { SandboxProcess, SandboxProfile } from "@halonicjs/ports";
@@ -21,7 +21,8 @@ export interface RealMxc {
  * profile, as Halonic's data folder is: `%TEMP%` is never used for a box.
  */
 export async function realMxc(): Promise<RealMxc> {
-  const root = join(homedir(), "AppData", "Local", "halonic-fence-tests");
+  const local = process.env["LOCALAPPDATA"] ?? join(homedir(), "AppData", "Local");
+  const root = join(local, "halonic-fence-tests");
   await mkdir(root, { recursive: true });
   const folder = await mkdtemp(join(root, "run-"));
   const dataFolder = join(folder, "data");
@@ -56,12 +57,29 @@ export async function makeFolders(base: string): Promise<TestFolders> {
     secret: join(base, "secrets", "key.txt"),
     outside: join(base, "outside"),
   };
-  for (const folder of [folders.work, folders.temp, folders.readOnly, folders.secrets]) {
+  for (const folder of [
+    folders.work,
+    folders.temp,
+    folders.readOnly,
+    folders.secrets,
+    folders.outside,
+  ]) {
     await mkdir(folder, { recursive: true });
   }
   await writeFile(folders.secret, "hunter2");
   await writeFile(join(folders.readOnly, "hello.txt"), "hello");
+  // Host-side control: the folder outside the grants can be written by this
+  // process, so a refused write by a boxed program is the fence's doing.
+  await writeFile(join(folders.outside, "control.txt"), "control");
   return folders;
+}
+
+/**
+ * A junction made on the host, as a cloned repository can hold one. Junctions
+ * need no special rights on Windows, so a failure here is a real failure.
+ */
+export async function makeJunction(target: string, link: string): Promise<void> {
+  await symlink(target, link, "junction");
 }
 
 /** A profile over `folders`. Node's own folder is read-only so a boxed program can run Node. */

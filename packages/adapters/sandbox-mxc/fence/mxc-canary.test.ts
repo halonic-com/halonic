@@ -30,6 +30,7 @@ describe("MxcCanary with the real fence", () => {
       expect(findings).toMatchObject({
         started: true,
         leaks: [],
+        missing: [],
         controls: { readOnlyFileRead: true, workFolderScriptLoaded: true },
       });
     } finally {

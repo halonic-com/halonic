@@ -98,17 +98,20 @@ describe("MxcSandbox with the real fence", () => {
     const first = await mxc.sandbox.open(profileOver(folders));
     const second = await mxc.sandbox.open(profileOver(folders));
     const during = (await readdir(base)).filter((name) => name.startsWith(`box-${process.pid}-`));
-    expect(new Set(during).size).toBeGreaterThanOrEqual(2);
+    // The main session, `first` and `second`.
+    expect(new Set(during).size).toBe(3);
     await first.close();
     await second.close();
     const after = (await readdir(base)).filter((name) => name.startsWith(`box-${process.pid}-`));
-    expect(after.length).toBeLessThan(during.length);
-    // Only the main session of this file is still open.
-    expect(after.length).toBeLessThanOrEqual(1);
+    // Only the main session of this file is still open, and the two new names are gone.
+    expect(after).toHaveLength(1);
+    expect(during.filter((name) => after.includes(name))).toHaveLength(1);
   });
 
   it("stops a program when the time limit runs out", async () => {
-    const short = await mxc.sandbox.open(profileOver(folders, { timeLimitMs: 4_000 }));
+    // The limit counts from the start of `open`, whose fence proof may take
+    // up to 15 s on a slow start, so the limit is well past that.
+    const short = await mxc.sandbox.open(profileOver(folders, { timeLimitMs: 30_000 }));
     try {
       const started = await short.start({
         program: process.execPath,
