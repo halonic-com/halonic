@@ -8,9 +8,8 @@ import { testGit } from "@halonicjs/adapter-git/testing";
 import { WorkflowRuns } from "@halonicjs/app";
 import type { Harness, SandboxSession } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
-import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type LocalEngine, openLocalEngine } from "../src/local-engine-host.ts";
 import { nodeProfileEnvironment } from "../src/workspace-runs.ts";
 
@@ -149,7 +148,7 @@ function standIn(root: string, seen: { attempts: Attempts | null }): Harness {
   };
 }
 
-verifies("cli.local-harness-host", () => {
+describe("a harness run in the real srt sandbox", () => {
   it(
     "runs a harness program in the real srt sandbox: the profile root denied, only its own folders written, its file in the proposal",
     async () => {
