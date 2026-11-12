@@ -15,14 +15,15 @@
 # test account's token and ID (CLOUDFLARE_LIVE_API_TOKEN,
 # CLOUDFLARE_LIVE_ACCOUNT_ID; HAL-6708); until then each job skips with a
 # notice. Its protection rules are in decisions/mateo/HAL-6701-live-cloud-ci.md.
-# Forks never get the token. Changes to this file, the live test code and the
-# sweeper need Julian's review.
+# Forks never get the token. Changes to this file, the live test code, the
+# account probe and the sweeper need Julian's review.
 
 name: Live cloud
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  # The plan job reads these from this file: the second one is sweep-only.
   schedule:
     - cron: "23 2 * * *" # nightly on main: sweep, then every live suite
     - cron: "41 */6 * * *" # every 6 hours: the sweeper only
@@ -33,9 +34,6 @@ permissions: {}
 concurrency:
   group: live-cloud-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  SWEEP_CRON: "41 */6 * * *" # keep equal to the schedule above
 
 jobs:
   plan:
@@ -88,7 +86,12 @@ jobs:
             echo "::error::LIVE_CLOUD_ENABLED is true, but the cloudflare-live environment is missing or lacks its branch rules or has admin bypass on. Set it up as decisions/mateo/HAL-6701-live-cloud-ci.md says (HAL-6708)."
             exit 1
           fi
-          if [ "$EVENT" = "schedule" ] && [ "$SCHEDULE" = "$SWEEP_CRON" ]; then
+          if [ "$EVENT" = "schedule" ]; then
+            # yq comes with the runner image. A scheduled run uses the default
+            # branch's copy of this file, the one checked out here.
+            sweep_cron=$(yq '.on.schedule[1].cron' .github/workflows/live-cloud.yml)
+          fi
+          if [ "$EVENT" = "schedule" ] && [ "$SCHEDULE" = "$sweep_cron" ]; then
             printf 'live=false\nsweep=true\nnightly=false\n' >> "$GITHUB_OUTPUT"
           elif [ "$EVENT" != "pull_request" ]; then
             printf 'live=true\nsweep=true\nnightly=true\n' >> "$GITHUB_OUTPUT"
@@ -157,7 +160,8 @@ jobs:
         run: node tooling/check/src/cli/cloud-affected.ts --inputs-hash
       # Pull requests only: the nightly run never reuses, because it is there
       # to catch changes on the provider's side. Only passes uploaded by a run
-      # of this repository count, never one from a fork.
+      # of this workflow from this repository count, never one from a fork or
+      # from another workflow.
       - id: reuse
         name: Look for an earlier pass with the same inputs
         if: github.event_name == 'pull_request'
@@ -167,13 +171,19 @@ jobs:
           REPO_ID: ${{ github.repository_id }}
           INPUTS: ${{ steps.inputs.outputs.inputs }}
         run: |
-          found=$(gh api "repos/$REPO/actions/artifacts?name=live-cloud-pass-$INPUTS&per_page=20" \
-            --jq "[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id == $REPO_ID)] | length")
-          if [ "$found" != "0" ]; then
-            echo "::notice title=Live cloud suites reused::An earlier run passed with exactly these inputs ($INPUTS)."
-            echo "reused=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Run the live suites
+          workflow=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml" --jq .id)
+          runs=$(gh api "repos/$REPO/actions/artifacts?name=live-cloud-pass-$INPUTS&per_page=20" \
+            --jq ".artifacts[] | select(.expired == false and .workflow_run.head_repository_id == $REPO_ID) | .workflow_run.id")
+          for run in $runs; do
+            if [ "$(gh api "repos/$REPO/actions/runs/$run" --jq .workflow_id)" = "$workflow" ]; then
+              echo "::notice title=Live cloud suites reused::Run $run of this workflow passed with exactly these inputs ($INPUTS)."
+              echo "reused=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+      # Before any suite: the token reaches the test account and can do the
+      # harmless reads (HAL-6804). Read-only; it creates nothing to sweep.
+      - name: Account probe
         if: steps.reuse.outputs.reused != 'true'
         env:
           CLOUDFLARE_LIVE_API_TOKEN: ${{ secrets.CLOUDFLARE_LIVE_API_TOKEN }}
@@ -183,6 +193,13 @@ jobs:
             echo "::error::LIVE_CLOUD_ENABLED is true, but the cloudflare-live environment lacks CLOUDFLARE_LIVE_API_TOKEN or CLOUDFLARE_LIVE_ACCOUNT_ID."
             exit 1
           fi
+          node tooling/check/src/cli/live-probe.ts
+      - name: Run the live suites
+        if: steps.reuse.outputs.reused != 'true'
+        env:
+          CLOUDFLARE_LIVE_API_TOKEN: ${{ secrets.CLOUDFLARE_LIVE_API_TOKEN }}
+          CLOUDFLARE_LIVE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
+        run: |
           if ! git grep -q '"test:live"' -- 'packages/**/package.json' 'apps/**/package.json'; then
             echo "::notice title=Live cloud suites::No package has a live suite (a test:live script) yet; nothing to run."
             exit 0

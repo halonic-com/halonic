@@ -2056,7 +2056,17 @@ jobs:
         name: Changes a cloud path?
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-        run: node tooling/check/src/cli/cloud-affected.ts --base "$BASE"
+        run: |
+          # The base commit's copy decides, like the leak guard, so a change
+          # can't take itself off the cloud paths. A base from before the
+          # script existed has no copy, so the change's own one runs.
+          git worktree add --detach "$RUNNER_TEMP/base" "$BASE"
+          script=tooling/check/src/cli/cloud-affected.ts
+          if [ -f "$RUNNER_TEMP/base/$script" ]; then
+            node "$RUNNER_TEMP/base/$script" --base "$BASE"
+          else
+            node "$script" --base "$BASE"
+          fi
       - name: Wait for the live suites
         if: steps.affected.outputs.affected == 'true'
         env:
