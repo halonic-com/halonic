@@ -8,8 +8,18 @@
 # built in (tests/runtime_hash.rs keeps the two equal). Anything that doesn't
 # match stops the build. Needs 7-Zip (`7z`) on PATH, as the GitHub runners have.
 #
+# It extracts the x64 DLL only. -Target names the helper it is for and stops
+# the build for any other, so an arm64 installer can't ship the x64 DLL
+# (HAL-8151); vcruntime.json already pins the arm64 file for when it exists.
+#
 # Run from apps/studio/src-tauri on Windows x64:  pwsh windows/fetch-vcruntime.ps1
+param(
+  [string]$Target = 'x86_64-pc-windows-msvc'
+)
 $ErrorActionPreference = 'Stop'
+if ($Target -ne 'x86_64-pc-windows-msvc') {
+  throw "fetch-vcruntime.ps1 only extracts the x64 DLL, not the one for $Target (HAL-8151)"
+}
 $shell = Split-Path -Parent $PSScriptRoot
 $pin = Get-Content (Join-Path $PSScriptRoot 'vcruntime.json') -Raw | ConvertFrom-Json
 $bin = Join-Path $shell 'binaries'

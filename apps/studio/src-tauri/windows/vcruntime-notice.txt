@@ -1,0 +1,14 @@
+Microsoft Visual C++ Redistributable
+------------------------------------
+
+The Windows installer ships Microsoft's vcruntime140.dll, version 14.44.35211.0,
+taken unchanged from the Microsoft Visual C++ Redistributable (VC_redist.x64.exe)
+of the same version. It is installed beside the Halonic sandbox helper
+(srt-win.exe), which needs it on a Windows that has no Visual C++ runtime.
+
+vcruntime140.dll is Microsoft's software, not Halonic's, and is not open source.
+It is redistributed under Microsoft's licence terms for Visual C++ Redistributable
+files ("Distributable Code"):
+https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
+
+Microsoft and Visual C++ are trademarks of the Microsoft group of companies.

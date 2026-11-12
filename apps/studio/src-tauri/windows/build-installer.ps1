@@ -75,7 +75,7 @@ if ($Step -ne 'pack') {
 # pinned, hash-checked copy ships next to the helper, which puts it beside
 # srt-win in Program Files. It is named vcruntime140.dll.pinned here, so
 # nothing started from the app folder can load it from there (HAL-8068).
-& (Join-Path $PSScriptRoot 'fetch-vcruntime.ps1')
+& (Join-Path $PSScriptRoot 'fetch-vcruntime.ps1') -Target $triple
 
   # The licences of the npm libraries the app and the agent host bundle
   # (HAL-6225) and of the Rust crates the app links for $triple (HAL-6962).
@@ -90,6 +90,11 @@ if ($Step -ne 'pack') {
     pnpm check:sbom --name halonic-studio --version $version --out $legal --notices --cargo apps/studio/src-tauri --cargo-target $triple
     if ($LASTEXITCODE -ne 0) { throw 'check:sbom failed' }
   } finally { Pop-Location }
+  # The Microsoft runtime the installer ships beside the helper is not an npm
+  # library or a crate, so check:sbom doesn't list it (HAL-8151).
+  $notices = Join-Path $legal 'THIRD-PARTY-NOTICES.txt'
+  Add-Content $notices "`n$('=' * 72)`n" -Encoding utf8
+  Add-Content $notices (Get-Content (Join-Path $PSScriptRoot 'vcruntime-notice.txt') -Raw) -Encoding utf8
 
   # The app itself, not yet packed.
   Push-Location $shell
