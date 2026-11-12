@@ -74,6 +74,7 @@ export class WorkspaceSwitcher {
   readonly #listeners = new Set<() => void>();
   #busy = false;
   #buttonBusy = false;
+  #retrying = false;
   #closeRequest: CloseRequest | undefined;
 
   constructor(options: WorkspaceSwitcherOptions) {
@@ -224,8 +225,16 @@ export class WorkspaceSwitcher {
     this.#setCloseRequest(undefined);
   }
 
-  /** **Close anyway**: closes the workspace and its unsaved changes are lost. */
+  /** Whether **Try again** is saving: the dialog shows "Saving…" and waits for it. */
+  get retrying(): boolean {
+    return this.#retrying;
+  }
+
+  /** **Close anyway**: closes the workspace and its unsaved changes are lost. Waits while retrying. */
   async closeAnyway(): Promise<void> {
+    if (this.#retrying) {
+      return;
+    }
     const request = this.#closeRequest;
     this.#setCloseRequest(undefined);
     if (request !== undefined) {
@@ -235,18 +244,31 @@ export class WorkspaceSwitcher {
 
   /** **Try again**: saves again and closes, or asks again with the new reason. */
   async tryCloseAgain(): Promise<void> {
+    if (this.#retrying) {
+      return;
+    }
     const request = this.#closeRequest;
     const slot = request === undefined ? undefined : this.open.find(request.location);
     if (request === undefined || slot === undefined) {
       this.#setCloseRequest(undefined);
       return;
     }
-    if (slot.value.saving !== undefined && !(await slot.value.saving.saveNow())) {
-      this.#setCloseRequest({ ...request, reason: slot.value.saving.problem?.reason ?? "failed" });
-      return;
+    this.#retrying = true;
+    this.#notify();
+    try {
+      if (slot.value.saving !== undefined && !(await slot.value.saving.saveNow())) {
+        this.#setCloseRequest({
+          ...request,
+          reason: slot.value.saving.problem?.reason ?? "failed",
+        });
+        return;
+      }
+      this.#setCloseRequest(undefined);
+      await this.#closeSlot(request.location);
+    } finally {
+      this.#retrying = false;
+      this.#notify();
     }
-    this.#setCloseRequest(undefined);
-    await this.#closeSlot(request.location);
   }
 
   async #closeSlot(location: string): Promise<void> {

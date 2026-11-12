@@ -10,5 +10,5 @@ When the files of a shown workspace change, the workspace shall save them by its
 
 - Given the user changed a file, when 1 second passes with no other change, then the file is saved.
 - Given the user changed a file 400 ms ago, when they choose **Close workspace** and the save works, then the workspace closes at once and nothing is asked.
-- Given the disk is full, when they choose **Close workspace**, then "Close acme?" says "acme couldn't be saved: the disk is full." and the workspace stays open until they answer.
+- Given the disk is full, when they choose **Close workspace**, then "Close Acme?" says "Couldn't save Acme: the disk is full. Close anyway throws away the changes." and the workspace stays open until they answer.
 - Given focus is in a text field, when they press Ctrl Z, then the field undoes its own text and the workspace's history stays.

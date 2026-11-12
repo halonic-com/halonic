@@ -387,6 +387,30 @@ verifies("workspace.saves-itself", () => {
     expect(acme.disposed()).toBe(true);
   });
 
+  it("waits mid-retry: Close anyway and a second Try again do nothing until the save ends", async () => {
+    const { switcher, acme, saveNow } = await openWithSaving(false);
+    await switcher.closeShown();
+    let finish: (saved: boolean) => void = () => undefined;
+    saveNow.mockImplementationOnce(() => new Promise<boolean>((resolve) => (finish = resolve)));
+    const notified = vi.fn();
+    switcher.subscribe(notified);
+
+    const retry = switcher.tryCloseAgain();
+    expect(switcher.retrying).toBe(true);
+    expect(notified).toHaveBeenCalled();
+    await switcher.closeAnyway();
+    await switcher.tryCloseAgain();
+    expect(saveNow).toHaveBeenCalledTimes(2);
+    expect(acme.disposed()).toBe(false);
+    expect(switcher.closeRequest).toBeDefined();
+
+    finish(false);
+    await retry;
+    expect(switcher.retrying).toBe(false);
+    expect(switcher.closeRequest?.reason).toBe("disk-full");
+    expect(acme.disposed()).toBe(false);
+  });
+
   it("does nothing on an answer when no close is waiting", async () => {
     const { switcher } = await openWithSaving();
 

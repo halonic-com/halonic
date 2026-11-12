@@ -50,6 +50,10 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     (onChange) => switcher.subscribe(onChange),
     () => switcher.closeRequest,
   );
+  const retrying = useSyncExternalStore(
+    (onChange) => switcher.subscribe(onChange),
+    () => switcher.retrying,
+  );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const position = workspaceKeyPosition(event, platform);
@@ -112,6 +116,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
           onCancel={() => switcher.cancelClose()}
           onCloseAnyway={() => void switcher.closeAnyway()}
           onTryAgain={() => void switcher.tryCloseAgain()}
+          busy={retrying}
         />
       )}
     </>
