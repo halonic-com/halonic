@@ -178,6 +178,8 @@ verifies("plugins.plugin-actions", () => {
     await act(async () => button("Remove plugin").click());
 
     expect(document.querySelector("dialog")).toBeNull();
+    // Focus goes back to the page, not to the document body, so a keyboard user isn't lost.
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   it("keeps the dialog open and names the secret it couldn't delete", async () => {

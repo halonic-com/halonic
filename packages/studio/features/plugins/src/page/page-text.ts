@@ -66,11 +66,23 @@ export function onLine(
  */
 export function originText(origin: PluginOrigin): string {
   if (origin.kind === "folder") return origin.path;
-  // The user part runs up to the last @ before the first /: a typed password may hold an @.
-  return origin.address
-    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
-    .replace(/^[^/]*@/, "")
-    .replace(/\.git\/?$/, "");
+  const address = origin.address.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  return withoutUser(address).replace(/\.git\/?$/, "");
+}
+
+/**
+ * Drops the user and password at the front. The user part runs up to the last @ before the first
+ * `/`, `?` or `#`: a typed password may hold an @. A password may hold a `/` too, which git can't
+ * read but core may still keep as typed: a `user:` followed by something that isn't a port is
+ * read as a password, and then the user part runs up to the last @ before the first `?` or `#`.
+ */
+function withoutUser(address: string): string {
+  const query = address.search(/[?#]/);
+  const beforeQuery = query === -1 ? address : address.slice(0, query);
+  const authority = beforeQuery.split("/", 1)[0] ?? "";
+  const hasPassword = /^[^:@/]*:(?!\d+(?:$|@))/.test(authority);
+  const cut = (hasPassword ? beforeQuery : authority).lastIndexOf("@");
+  return cut === -1 ? address : address.slice(cut + 1);
 }
 
 const shortMonths = [

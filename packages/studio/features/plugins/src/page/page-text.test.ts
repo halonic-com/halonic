@@ -31,6 +31,20 @@ verifies("plugins.plugin-page", () => {
       expect(shown).not.toContain("ss-word");
     });
 
+    it("never shows a password that has a / in it", () => {
+      const address = ["https://me", "pa/ss@github.com/x/y.git"].join(":");
+      const shown = originText({ kind: "git", address, commit: "3f9c2a1" });
+
+      expect(shown).toBe("github.com/x/y");
+      expect(shown).not.toContain("pa/ss");
+    });
+
+    it("keeps a port and an @ in the path", () => {
+      expect(
+        originText({ kind: "git", address: "ssh://example.com:22/team/@weather", commit: "1" }),
+      ).toBe("example.com:22/team/@weather");
+    });
+
     it("leaves out a user alone, and keeps an @ in the path", () => {
       expect(
         originText({ kind: "git", address: "ssh://git@example.com/team/@weather", commit: "1" }),
