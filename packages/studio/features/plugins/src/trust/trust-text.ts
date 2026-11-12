@@ -33,7 +33,7 @@ export const TRUST_CHECK_LAST_LINE =
 
 /** The section titles, in the order the dialog shows them (T7). */
 export const TOOLS_SECTION = "Tools for agents";
-export const PROGRAMS_SECTION = "Programs";
+export const PROGRAMS_SECTION = "Programs on this computer";
 export const SECRETS_SECTION = "Secrets";
 export const ADDRESSES_SECTION = "Addresses";
 export const IN_STUDIO_SECTION = "In Studio";
