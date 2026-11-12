@@ -18,6 +18,7 @@
 
 mod agent_host;
 mod blobs;
+mod command_paths;
 mod connect;
 mod files;
 mod git;
@@ -123,6 +124,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             trust::trust_revoke,
             trust::reopen_folder,
             trust::forget_folder,
+            command_paths::command_paths,
             host_settings::host_settings_read,
             host_settings::host_settings_set,
             host_settings::host_settings_remove,

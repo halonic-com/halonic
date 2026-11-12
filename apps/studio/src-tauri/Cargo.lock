@@ -1507,6 +1507,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-command-paths"
+version = "0.1.0"
+
+[[package]]
 name = "halonic-connect"
 version = "0.1.0"
 dependencies = [
@@ -1601,6 +1605,7 @@ version = "0.1.0"
 dependencies = [
  "halonic-agent-host",
  "halonic-blob-store",
+ "halonic-command-paths",
  "halonic-connect",
  "halonic-git-guard",
  "halonic-host-settings",
