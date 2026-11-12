@@ -25,7 +25,7 @@ The `halonic routines` command shall list every routine of the workspace, in the
   then its Last column says "Last 10:40 · ! Needs you".
 - Given a workspace without routines,
   when `halonic routines` is run,
-  then it prints "No routines in acme yet. Add one as workflows/routines/<id>.routine.yaml in a hub." and exits 0.
+  then it prints "No routines in Acme yet. Add one as workflows/routines/<id>.routine.yaml in a hub." and exits 0.
 - Given a folder without a workspace,
   when `halonic routines` is run,
   then it stops with "✕ Couldn't list the routines in downloads: there's no workspace.yaml here.", exit 4.

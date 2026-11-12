@@ -16,16 +16,16 @@ The `halonic runs` command shall list the workspace's real runs, never its test 
   then it prints one row and "Showing the newest of 3 runs. See them all with halonic runs --limit 3.".
 - Given no runs,
   when `halonic runs --dir ./acme` is run,
-  then it prints "No runs in acme yet. Start one with halonic run --dir ./acme <workflow>." and exits 0.
+  then it prints "No runs in Acme yet. Start one with halonic run --dir ./acme <workflow>." and exits 0.
 - Given a completed run and no failed run,
   when `halonic runs --status failed` is run,
-  then it prints "No failed runs in acme." and " See every run with halonic runs.", and exits 0.
+  then it prints "No failed runs in Acme." and " See every run with halonic runs.", and exits 0.
 - Given `--status done`,
   when `halonic runs` is run,
   then it stops with "✕ --status takes running, waiting, completed or failed, and you gave "done"." and "Did you mean completed?", exit 2.
 - Given `--workflow suport-reply` and no run of that workflow,
   when `halonic runs` is run,
-  then it stops with "✕ There's no workflow called "suport-reply" in acme." and "Did you mean support-reply?", exit 4.
+  then it stops with "✕ There's no workflow called "suport-reply" in Acme." and "Did you mean support-reply?", exit 4.
 - Given the workflow `reply` in the hubs `sales` and `support`,
   when `halonic runs --workflow reply` is run,
   then it stops with "✕ There's a workflow called "reply" in two hubs." and "Name the hub: sales/reply or support/reply.", exit 2.

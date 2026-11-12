@@ -101,7 +101,7 @@ function oneRunId(input: CommandInput): string {
   return runId;
 }
 
-/** "Support reply in acme · run 01jd8q · started 14:01, finished 14:02". */
+/** "Support reply in Acme · run 01jd8q · started 14:01, finished 14:02". */
 function heading(run: RunDetail, title: string, workspaceName: string, clock: RunClock): Phrase {
   const { summary } = run;
   const started = startedInWords(startedAt(new Date(summary.startedAt), clock));

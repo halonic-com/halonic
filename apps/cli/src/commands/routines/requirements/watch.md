@@ -10,7 +10,7 @@ The `halonic routines watch` command shall start the workspace's routines when t
 
 - Given a routine that runs Follow up every hour, at 14:01,
   when `halonic routines watch` is run,
-  then it prints "Watching 1 routine in acme. Stop with Ctrl C.".
+  then it prints "Watching 1 routine in Acme. Stop with Ctrl C.".
 - Given that watch, when the clock passes 15:00,
   then it starts the run due at 15:00 and prints "✓ Started Hourly follow-up · run <id> · due 15:00".
 - Given that run,

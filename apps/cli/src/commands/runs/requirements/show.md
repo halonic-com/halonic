@@ -10,7 +10,7 @@ The `halonic runs show <run-id>` command shall show one run of the workspace, re
 
 - Given a run of Support reply that finished at 10:31,
   when `halonic runs show a1b2c3` is run,
-  then it starts with "Support reply in acme · run a1b2c3 · started 10:31, finished 10:31" and exits 0.
+  then it starts with "Support reply in Acme · run a1b2c3 · started 10:31, finished 10:31" and exits 0.
 - Given a run of Mail triage whose step Read the email took 1 s and that finished in 18 s without a tool call,
   when `halonic runs show 0a0b0c` is run,
   then after the heading it prints "", "✓ Read the email Writer · default 1 s", "", "✓ Mail triage finished in 18 s." and " Sent nothing".
@@ -46,10 +46,10 @@ The `halonic runs show <run-id>` command shall show one run of the workspace, re
   then it shows that run.
 - Given no run 01jd8x,
   when `halonic runs show 01jd8x --dir ./acme` is run,
-  then it stops with "✕ There's no run 01jd8x in acme." and "See recent runs with halonic runs --dir ./acme.", exit 4.
+  then it stops with "✕ There's no run 01jd8x in Acme." and "See recent runs with halonic runs --dir ./acme.", exit 4.
 - Given two runs whose ids end in a1b2c3,
   when `halonic runs show A1B2C3` is run,
-  then it stops with "✕ Two runs in acme end in a1b2c3." and "Use the full id, as halonic runs --json shows it.", exit 2.
+  then it stops with "✕ Two runs in Acme end in a1b2c3." and "Use the full id, as halonic runs --json shows it.", exit 2.
 - Given no run id,
   when `halonic runs show` is run,
   then it stops with "✕ halonic runs show needs a run id." and its usage line, exit 2.
