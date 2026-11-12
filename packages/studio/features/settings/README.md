@@ -9,7 +9,10 @@ this package fills its sections.
 `settingsFeature` adds each section in `settingsSections` (in `src/feature.ts`) through the shell's
 `settings` contribution point, and the command **Settings** (`settings.open`), which opens Settings
 through the window's `openSettings` (`settings.feature`). A new section goes into that list, with its
-`scope` deciding its group. The desktop app registers the feature; the served Studio doesn't yet.
+`scope` deciding its group. Ctrl K also gets a command per section in `sectionsByName` (Appearance,
+Formats, Assistant, Trusted sources, Agent sandbox) that a feature added, named as its row, which
+opens Settings on it (`settings.section-commands`); the window's `settingsSections` says which are
+there. The desktop app registers the feature; the served Studio doesn't yet.
 
 - **Layer:** studio
 - **Owner:** elena
