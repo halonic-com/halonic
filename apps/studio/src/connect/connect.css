@@ -100,7 +100,11 @@ section[hidden] {
   height: 56px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgb(var(--ring-a)), rgb(var(--ring-b)));
-  mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring)), #000 calc(100% - var(--ring) + 0.6px));
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - var(--ring)),
+    #000 calc(100% - var(--ring) + 0.6px)
+  );
 }
 
 @media (prefers-color-scheme: dark) {
