@@ -2,7 +2,6 @@
 
 - Approval: HAL-7826 (Liam, CTO, decided it in review of the session pull request)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7gngX12lbzVk/fQ2+PxXMONTyEzeCz1GgunsVTilUAhv+9vYuQrePQz8PxLXej8/PC4BrZ9PewU5pOIrseT5BA==
 - Task: HAL-3305
 
 ## What changes
@@ -31,4 +30,4 @@ inside a sandbox.
 
 ## Covers
 
-- packages/adapters/sandbox-mxc/requirements/sdk-loading.md
+- sandbox-mxc.sdk-loading
