@@ -5,9 +5,9 @@ import { checkCoverage } from "./coverage.ts";
 import { type DecisionNote, decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import { changeOf, type GuardCheck, type GuardFinding } from "./finding.ts";
 import { checkGoldenFiles } from "./golden-files.ts";
-import { checkGuardedPaths } from "./guarded-paths.ts";
+import { checkGuardedPaths, policyFile } from "./guarded-paths.ts";
 import { checkMocks } from "./mocks.ts";
-import { isTrustRoot } from "./note-check.ts";
+import { reachesTrustRoot } from "./note-check.ts";
 import { checkReleasedSpecs } from "./released-specs.ts";
 import { checkRequirementChanges } from "./requirement-changes.ts";
 import { checkSkips } from "./skips.ts";
@@ -112,7 +112,10 @@ async function reportNeedingNote(
  */
 function changesTrustRoot({ base, head }: GuardRun): boolean {
   const files = new Set([...base.files, ...head.files]);
-  return [...files].some((file) => isTrustRoot(file) && changeOf(file, base, head) !== undefined);
+  const changed = [...files].filter((file) => changeOf(file, base, head) !== undefined);
+  const policy = (side: CheckContext): string | undefined =>
+    side.files.includes(policyFile) ? side.read(policyFile) : undefined;
+  return reachesTrustRoot(changed, policy(base), policy(head));
 }
 
 function reportAgainstNote(

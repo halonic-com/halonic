@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { type ApprovalLookup, signedApprovals } from "../guard/approvals.ts";
@@ -6,6 +7,12 @@ import type { GuardCheck } from "../guard/finding.ts";
 import type { GitObjects } from "../guard/signatures.ts";
 import { noteCovering, noteFile, runGuard } from "./guard-fixture.ts";
 
+const policyFile = "tooling/check/policy.json";
+const realPolicy = JSON.parse(
+  readFileSync(new URL("../../policy.json", import.meta.url), "utf8"),
+) as Record<string, unknown>;
+const policyWith = (changes: Record<string, unknown>): string =>
+  `${JSON.stringify({ ...realPolicy, ...changes }, null, 2)}\n`;
 const file = "packages/core/workflow/requirements/timer-fires.md";
 /** A check that always finds one change, standing in for the real ones. */
 const findsAnEdit: GuardCheck = () => [
@@ -133,5 +140,31 @@ verifies("check.guard-needs-approved-note", () => {
     const untouched = { ...edited, note: userVisible };
     expect((await runGuard({ ...untouched, approvals: pinned("ceo") })).errors).toEqual([]);
     expect((await runGuard({ ...untouched, approvals: pinned("cto") })).errors).toHaveLength(1);
+  });
+
+  test("keeps the single-key check when policy.json changes in extraExports only", async () => {
+    const exportsOnly = {
+      ...edited,
+      baseOutside: { [policyFile]: policyWith({}) },
+      headOutside: {
+        [policyFile]: policyWith({ extraExports: { "@halonicjs/example": ["./node"] } }),
+      },
+      note: noteCovering("workflow.timer-fires"),
+    };
+    /** The guardians are `ceo` only; the internal key `cto` isn't one. */
+    const lookup: ApprovalLookup = {
+      check: ({ guardians = false }) =>
+        Promise.resolve(
+          guardians ? { approved: false, reason: "cto isn't a guardian" } : { approved: true },
+        ),
+    };
+    expect((await runGuard({ ...exportsOnly, approvals: lookup })).errors).toEqual([]);
+    const rootToo = {
+      ...exportsOnly,
+      headOutside: { ...exportsOnly.headOutside, ".gitattributes": "* text=auto\n" },
+    };
+    expect(await runGuard({ ...rootToo, approvals: lookup })).toMatchObject({
+      errors: [expect.stringContaining("cto isn't a guardian")],
+    });
   });
 });
