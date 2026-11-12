@@ -45,9 +45,10 @@ The interface is decided in
 4. **Give every tool a `risk`.** `read` changes nothing; `write` changes data
    (mail, files, records); `send` reaches people outside. When in doubt,
    pick the higher one: the conformance suite fails a sheet that declares
-   less than the code. Once the engine checks tool calls (HAL-998), every
-   risk above `read` needs a person's OK before the tool runs; only `read`
-   runs at once. Set `untrusted: true` on a tool whose result carries
+   less than the code. The engine checks every tool call: every risk above
+   `read` needs a person's OK before the tool runs; only `read` runs at
+   once. A run stops and waits for that OK; a chat turn, which can't wait,
+   refuses the call. Set `untrusted: true` on a tool whose result carries
    outside content, such as mail or web pages. Every `send` tool needs a `noun`
    in the sheet, such as `{ one: email, many: emails }`, so a run can say
    "Sent 1 email". Use lower-case words, never a value from the call; only

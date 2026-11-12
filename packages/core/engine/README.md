@@ -125,8 +125,8 @@ run as code (`engine.record-computed`), and `find` takes a `where` or a named vi
 are added once, before the first read. A record keeps the time of its last change as `updatedAt`;
 the old `createdAt` is gone, because the record store's fold keeps only that time.
 
-Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
-(HAL-998): `offerListedTools`, the call check and `passResultToModel`, in `src/agent/`.
+Three steps of the loop are named functions that apply the HAL-803 rules (HAL-998):
+`offerListedTools`, the call check and `passResultToModel`, in `src/agent/`.
 `offerListedTools` fences what a server wrote in its tools, and `passResultToModel` fences every
 result of a server's tool. Each model request that holds fenced text gets the fixed line of
 `withFencedTextsNotice`. A run's model

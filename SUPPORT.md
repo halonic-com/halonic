@@ -25,7 +25,8 @@ ours.
 
 - Read the pinned Known issues in 0.1.0 issue.
 - Search the existing issues and discussions. Someone may have asked already.
-- Check that you're on the latest release.
+- Check that the problem is still there on the latest `main`. Until the first
+  release, fixes land there.
 
 ## When you ask
 
