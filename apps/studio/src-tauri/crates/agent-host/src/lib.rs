@@ -210,7 +210,7 @@ impl AgentHost {
         };
         match answer {
             Ok((handshake, output)) => {
-                relay.serve(stdin, output);
+                relay.serve(stdin, output, handshake.token());
                 Ok(Self {
                     child,
                     stdin: None,

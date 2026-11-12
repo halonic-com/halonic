@@ -2,6 +2,7 @@
 //! shell's memory or threads, or keep Studio's own requests waiting.
 
 use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 
 /// The most bytes from the host a connection may have waiting for its client.
 /// A client that reads no further is reset, so it can't fill the shell's memory.
@@ -20,9 +21,39 @@ pub(super) const QUEUED_FRAMES_PER_CONNECTION: usize = 8;
 /// relay shuts any further one at once (HAL-7379).
 pub(super) const CONNECTION_LIMIT: usize = 256;
 
-/// A connection's share of the frames waiting for the host's input.
-#[derive(Default)]
+/// How long the host may take to read one frame. A host that reads none
+/// for that long stops the relay, so no client waits on it for good (HAL-7659).
+pub(super) const HOST_READ_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// How long a connection may stay open without sending the token in its
+/// first request, so a process without it can't hold every connection
+/// (HAL-7659).
+pub(super) const TOKEN_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// What one relay holds at most and waits for at most.
+#[derive(Clone, Copy)]
+pub(super) struct Limits {
+    pub(super) backlog: usize,
+    pub(super) connections: usize,
+    pub(super) host_read: Duration,
+    pub(super) token: Duration,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            backlog: BACKLOG_LIMIT,
+            connections: CONNECTION_LIMIT,
+            host_read: HOST_READ_TIMEOUT,
+            token: TOKEN_TIMEOUT,
+        }
+    }
+}
+
+/// A share of the frames waiting for the host's input: one connection's, or
+/// the whole queue's.
 pub(super) struct Quota {
+    limit: usize,
     state: Mutex<QuotaState>,
     drained: Condvar,
 }
@@ -34,11 +65,19 @@ struct QuotaState {
 }
 
 impl Quota {
-    /// Waits until the connection may queue one more frame. False once it
-    /// has closed: its frames may never drain then.
+    pub(super) fn new(limit: usize) -> Self {
+        Self {
+            limit,
+            state: Mutex::default(),
+            drained: Condvar::new(),
+        }
+    }
+
+    /// Waits until one more frame may be queued. False once it has closed:
+    /// its frames may never drain then.
     pub(super) fn take(&self) -> bool {
         let mut state = self.state();
-        while state.queued >= QUEUED_FRAMES_PER_CONNECTION && !state.closed {
+        while state.queued >= self.limit && !state.closed {
             state = self
                 .drained
                 .wait(state)
@@ -51,7 +90,7 @@ impl Quota {
         true
     }
 
-    /// One of the connection's frames reached the host's input.
+    /// One of its frames reached the host's input.
     pub(super) fn give_back(&self) {
         let mut state = self.state();
         state.queued = state.queued.saturating_sub(1);
@@ -59,13 +98,13 @@ impl Quota {
         self.drained.notify_one();
     }
 
-    /// The connection closed: wakes its client's reader for good.
+    /// The connection, or the relay, closed: wakes whoever waits for good.
     pub(super) fn close(&self) {
         self.state().closed = true;
         self.drained.notify_all();
     }
 
-    /// How many of the connection's frames wait now.
+    /// How many of its frames wait now.
     #[cfg(test)]
     pub(super) fn queued(&self) -> usize {
         self.state().queued
@@ -84,7 +123,7 @@ mod tests {
 
     #[test]
     fn relay_limits_quota_waits_for_room_and_closing_wakes_it_for_good() {
-        let quota = Arc::new(Quota::default());
+        let quota = Arc::new(Quota::new(QUEUED_FRAMES_PER_CONNECTION));
         for _ in 0..QUEUED_FRAMES_PER_CONNECTION {
             assert!(quota.take());
         }
