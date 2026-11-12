@@ -3,6 +3,7 @@
 - Task: HAL-6289 (follow-up of HAL-6225)
 - Approval: Liam asked for this check when he approved the plan in [HAL-6293](/HAL/issues/HAL-6293); the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DilbaE8K8jBhSoTpFNvaZ3BFDDejbBqgI+Pg6XZr75c0H4Qg+EdD/o4NRz6atB1kQDfOmMJEFGTR1RPPapJBBA==
 
 ## What changes
 
