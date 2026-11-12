@@ -161,7 +161,7 @@ verifies("cli.commands.routines.watch", () => {
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time);
     await waitUntil(() => io.stdout.length === 1, slowWatch);
-    expect(io.stdout).toEqual(["Watching 1 routine in acme. Stop with Ctrl C."]);
+    expect(io.stdout).toEqual(["Watching 1 routine in Acme. Stop with Ctrl C."]);
 
     const line = await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
 

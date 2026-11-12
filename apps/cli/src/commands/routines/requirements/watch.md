@@ -17,7 +17,7 @@ The `halonic routines watch` command shall start the workspace's routines when t
   then its `run.started` records `{ reads: "saved-files" }`.
 - Given a workspace whose live version waits 5 minutes in Follow up, with a saved change to 1 minute and a saved routine that was never made live,
   when the watch starts and the clock passes 15:00,
-  then it prints "Watching 1 routine in acme. Stop with Ctrl C.", and the run waits 5 minutes and records `{ reads: "live-version", commit: <the live commit>, versionDate }`.
+  then it prints "Watching 1 routine in Acme. Stop with Ctrl C.", and the run waits 5 minutes and records `{ reads: "live-version", commit: <the live commit>, versionDate }`.
 - Given a new version made while the watch runs,
   when the next routine is due,
   then its run starts from that version and records its commit.
