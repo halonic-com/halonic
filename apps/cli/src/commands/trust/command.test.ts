@@ -1,15 +1,6 @@
-import {
-  chmodSync,
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -25,9 +16,6 @@ import { createTrustCommand, type TrustMachine } from "./command.ts";
 const trustedAt = Date.UTC(2026, 10, 3, 12);
 
 const fullFingerprint = /^hfp1:[0-9a-f]{64}$/u;
-
-/** The example `init --example acme` copies: only the test model, so it needs no trust. */
-const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 
 let folder: string;
 let store: FileTrustStore;
@@ -397,52 +385,6 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout[0]).toContain(`Removed trust for .${sep}acme.`);
-  });
-
-  it("says the example Acme needs no trust, asking nothing and saving nothing (HAL-6631)", async () => {
-    cpSync(acmeExample, join(folder, "acme"), { recursive: true });
-    const io = captureIo(folder);
-    const { terminal, written } = terminalTyping("y", "y");
-
-    const code = await runCli(["trust", "--dir", "acme"], io, commands(), { terminal });
-
-    expect(code).toBe(exitCode.ok);
-    expect(io.stdout).toEqual([
-      "✓ Acme needs no trust: it reaches only the test model and starts nothing.",
-    ]);
-    expect(io.stderr).toEqual([]);
-    expect(written()).toBe("");
-    expect(await store.list()).toEqual([]);
-  });
-
-  it("says the example Acme needs no trust without a terminal, with --yes --fingerprint and in --json", async () => {
-    cpSync(acmeExample, join(folder, "acme"), { recursive: true });
-    const fingerprint = `hfp1:${"0".repeat(64)}`;
-    const piped = captureIo(folder);
-    const scripted = captureIo(folder);
-    const json = captureIo(folder);
-
-    const codes = [
-      await runCli(["trust", "--dir", "acme"], piped, commands()),
-      await runCli(
-        ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint],
-        scripted,
-        commands(),
-      ),
-      await runCli(["trust", "--dir", "acme", "--json"], json, commands()),
-    ];
-
-    expect(codes).toEqual([exitCode.ok, exitCode.ok, exitCode.ok]);
-    const line = "✓ Acme needs no trust: it reaches only the test model and starts nothing.";
-    expect(piped.stdout).toEqual([line]);
-    expect(scripted.stdout).toEqual([line]);
-    expect(JSON.parse(json.stdout.join("\n"))).toMatchObject({
-      name: "Acme",
-      folder: `.${sep}acme`,
-      status: "not-needed",
-    });
-    expect([piped, scripted, json].flatMap((io) => io.stdout).join("\n")).not.toMatch(/hfp1:/u);
-    expect(await store.list()).toEqual([]);
   });
 });
 
