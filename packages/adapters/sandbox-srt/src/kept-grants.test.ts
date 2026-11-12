@@ -65,6 +65,43 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(result.failed[0]?.reason).toBe("srt-win.exe not found");
     });
 
+    it("takes back the profile read grant and every kept write grant, for a removal", async () => {
+      const { calls, grants } = fakeSrtWin();
+      expect(await grants.forgetAll()).toEqual([]);
+      expect(calls).toEqual([
+        ["profile", "forget"],
+        ["acl", "forget", "--all"],
+      ]);
+    });
+
+    it("tries both when one fails, and says which failed and why", async () => {
+      const { calls, grants } = fakeSrtWin((args) =>
+        args[0] === "profile"
+          ? {
+              status: 21,
+              stderr: "srt-win: error: profile forget: 1 sandbox session(s)\nare running",
+            }
+          : {},
+      );
+      expect(await grants.forgetAll()).toEqual([
+        "the profile read grant: exit 21: srt-win: error: profile forget: 1 sandbox session(s) are running",
+      ]);
+      expect(calls).toHaveLength(2);
+    });
+
+    it("forgets nothing for a version of sandbox-runtime it was not tried with", async () => {
+      const calls: string[][] = [];
+      const grants = new KeptGrants(
+        async (args) => {
+          calls.push(args);
+          return { status: 0, stdout: "", stderr: "" };
+        },
+        () => "0.0.99",
+      );
+      expect(await grants.forgetAll()).toEqual([expect.stringMatching(/0\.0\.99 is not tested/)]);
+      expect(calls).toEqual([]);
+    });
+
     it("refuses a version of sandbox-runtime it was not tried with", () => {
       const grants = new KeptGrants(undefined, () => "0.0.99");
       expect(() => grants.assertSupported()).toThrow(/0\.0\.99 is not tested/);

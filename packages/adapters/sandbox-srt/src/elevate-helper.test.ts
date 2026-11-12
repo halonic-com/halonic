@@ -8,6 +8,7 @@ import {
   HelperError,
   helperFailure,
   helperScript,
+  listsElevated,
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
@@ -129,6 +130,16 @@ verifies("sandbox-srt.setup", () => {
         "Windows couldn't start the sandbox helper: The file is not a valid application.",
       );
       expect(helperFailure("setup", 37, "")).toBe("Windows couldn't start the sandbox helper");
+    });
+
+    it("tells a process with administrator rights by its integrity level, and takes one it can't read for one", () => {
+      const level = (sid: string) => `"Mandatory Label\\Level","Label","${sid}",""\r\n`;
+      const users = '"BUILTIN\\Users","Alias","S-1-5-32-545","Mandatory group"\r\n';
+      expect(listsElevated(users + level("S-1-16-8192"))).toBe(false);
+      expect(listsElevated(users + level("S-1-16-12288"))).toBe(true);
+      expect(listsElevated(users + level("S-1-16-16384"))).toBe(true);
+      expect(listsElevated(users)).toBe(true);
+      expect(listsElevated(null)).toBe(true);
     });
   });
 });

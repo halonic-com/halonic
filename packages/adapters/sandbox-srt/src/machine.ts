@@ -1,7 +1,15 @@
 import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { findHelper, HELPER_DIDNT_START, type Spawn, throughHelper } from "./elevate-helper.ts";
+import { join } from "node:path";
+import {
+  findHelper,
+  HELPER_DIDNT_START,
+  listsElevated,
+  type Spawn,
+  throughHelper,
+} from "./elevate-helper.ts";
+import { KeptGrants } from "./kept-grants.ts";
 import {
   forgetSandboxParents,
   letSandboxReadParents,
@@ -72,7 +80,9 @@ export interface Machine {
   /**
    * Runs srt's Windows uninstall (`srt windows-uninstall`), through the helper
    * as {@link Machine.installWindowsSandbox} does, which also takes away its
-   * Installed apps entry: the sandbox
+   * Installed apps entry, and then, in this process and only when it runs
+   * without administrator rights, takes back the grants srt kept for this
+   * user (HAL-7544): the sandbox
    * account and its profile, the sandbox group, the network filters, the
    * `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants this user's
    * sessions kept on their folders. It asks for an administrator once, unless
@@ -196,6 +206,40 @@ const spawnHelper: Spawn = (file, args) =>
     });
   });
 
+/** This process's groups, as `whoami /groups` lists them, or null when they can't be read. */
+const whoamiGroups = (): Promise<string | null> =>
+  new Promise((resolve) => {
+    const root = process.env["SystemRoot"];
+    if (root === undefined) {
+      resolve(null);
+      return;
+    }
+    const whoami = join(root, "System32", "whoami.exe");
+    const args = ["/groups", "/fo", "csv", "/nh"];
+    execFile(whoami, args, { windowsHide: true, encoding: "utf8" }, (error, stdout) => {
+      resolve(error === null ? stdout : null);
+    });
+  });
+
+/**
+ * The half of srt's uninstall that is this user's own, after the helper's
+ * machine-wide half: take back the grants srt kept for them (HAL-7544). Not
+ * from a process with administrator rights, as when an uninstaller runs from
+ * an elevated prompt: those grants change access lists on paths from the
+ * user's own session store, which their programs can change. They then stay
+ * recorded, naming a group that is gone, until a removal runs without them.
+ *
+ * @throws when a grant stays recorded, with why
+ */
+async function forgetUsersGrants(): Promise<void> {
+  if (listsElevated(await whoamiGroups())) return;
+  const failed = await new KeptGrants().forgetAll();
+  if (failed.length === 0) return;
+  throw new Error(
+    `not all the access it kept on your folders could be taken back (${failed.join("; ")}); close what runs in the sandbox and remove it again`,
+  );
+}
+
 /** The machine this process runs on. */
 export const systemMachine: Machine = {
   platform: process.platform,
@@ -260,9 +304,9 @@ export const systemMachine: Machine = {
   async uninstallWindowsSandbox() {
     const helper = findHelper("remove");
     if (helper !== null) {
-      return (await throughHelper(helper, "remove", spawnHelper)) === "done"
-        ? "removed"
-        : "cancelled";
+      if ((await throughHelper(helper, "remove", spawnHelper)) === "cancelled") return "cancelled";
+      await forgetUsersGrants();
+      return "removed";
     }
     const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"

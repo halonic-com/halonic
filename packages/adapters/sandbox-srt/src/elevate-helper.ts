@@ -148,3 +148,17 @@ export async function throughHelper(
   if (code === HELPER_CANCELLED) return "cancelled";
   throw new HelperError(helperFailure(verb, code, stderr), code);
 }
+
+/** The integrity levels of a process with administrator rights: high and system. */
+const elevatedLevels = ["S-1-16-12288", "S-1-16-16384"];
+
+/**
+ * Whether a process runs with administrator rights, from its groups as
+ * `whoami /groups` lists them: its integrity level is high or system. True
+ * when they couldn't be read or name no level, so a process that can't tell
+ * acts as one that has them.
+ */
+export function listsElevated(groups: string | null): boolean {
+  if (groups === null || !groups.includes("S-1-16-")) return true;
+  return elevatedLevels.some((level) => groups.includes(level));
+}
