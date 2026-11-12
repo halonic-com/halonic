@@ -30,6 +30,8 @@ export interface WorkerdBindings {
    * class a suite file exports for it.
    */
   durableObjects?: Readonly<Record<string, string>>;
+  /** Names of D1 databases, such as `"DB"`, read as `env.DB`. */
+  d1Databases?: readonly string[];
 }
 
 /**
@@ -66,6 +68,7 @@ export class WorkerdRunner {
       durableObjects: { ...bindings.durableObjects },
       ...inMemoryStorage,
       r2Buckets: [...(bindings.r2Buckets ?? [])],
+      d1Databases: [...(bindings.d1Databases ?? [])],
     });
     try {
       await miniflare.ready;
