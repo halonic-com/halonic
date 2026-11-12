@@ -106,10 +106,11 @@ if (ok(nodeTest)) {
   await new Promise((d) => server.listen(0, "127.0.0.1", d));
   const port = server.address().port;
   const child = join(work, "child.mjs");
-  writeFileSync(child, `import { readFileSync } from "node:fs";
+  writeFileSync(child, `import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
-const r = { control: "no", file: "unknown", port: "unknown" };
+const r = { control: "no", workFolder: "no", file: "unknown", port: "unknown" };
 try { readFileSync(${JSON.stringify(join(allowed, "control.txt"))}); r.control = "read"; } catch {}
+try { readdirSync(${JSON.stringify(work)}); writeFileSync(${JSON.stringify(join(work, "out.txt"))}, "x"); r.workFolder = "ok"; } catch {}
 try { readFileSync(${JSON.stringify(join(hidden, "canary.txt"))}); r.file = "read"; } catch { r.file = "blocked"; }
 await new Promise((done) => {
   const s = connect({ host: "127.0.0.1", port: ${port} });
@@ -127,6 +128,7 @@ console.log(JSON.stringify(r));
   if (!parsed) add("A Node script runs inside the box (symlink flags, no drive grant)", "FAIL", (r.err.split(/\r?\n/).find((l) => /Error/.test(l)) ?? r.error ?? `exit ${r.exit}`).slice(0, 160));
   else {
     add("A Node script runs inside the box (symlink flags, no drive grant)", parsed.control === "read" ? "PASS" : "FAIL", parsed.control === "read" ? "" : "could not read the allowed folder");
+    add("Node inside can list and write its own work folder (control)", parsed.workFolder === "ok" ? "PASS" : "FAIL", parsed.workFolder === "ok" ? "" : "could not list or write the work folder");
     add("Node inside cannot read a folder we did not allow", parsed.file === "blocked" ? "PASS" : "FAIL", parsed.file === "blocked" ? "" : "LEAK: file was readable");
     add("Node inside cannot reach this PC's local network port", parsed.port === "blocked" && connections === 0 ? "PASS" : "FAIL", connections ? "LEAK: connection reached the PC" : "");
   }
