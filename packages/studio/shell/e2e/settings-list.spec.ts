@@ -17,6 +17,6 @@ test("Back puts the list at the scroll it had, not at the top", async ({ page })
   await page.getByRole("button", { name: "Open" }).click();
   await expect(page.getByRole("heading", { name: "A section" })).toBeVisible();
   await page.getByRole("button", { name: "Back" }).click();
-  await expect(page.getByRole("heading", { name: "Settings" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeFocused();
   expect(await main.evaluate((element) => element.scrollTop)).toBe(before);
 });
