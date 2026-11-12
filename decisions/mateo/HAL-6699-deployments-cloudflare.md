@@ -2,6 +2,7 @@
 
 - Approval: [HAL-6707](/HAL/issues/HAL-6707)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9IKs8PGoK1fI8Mk8DvqDXhK1t6OGbymBYxUWY3g7pT9JVT64AJvhbE8q4L4PvNToYYh7gP1LpP1oW4xyZftLAQ==
 
 Step 1a of the cloud track (HAL-198 build plan, multi-cloud ADR on HAL-35,
 5.7) adds two optional blocks to each deployment in `deployments.yaml`:
