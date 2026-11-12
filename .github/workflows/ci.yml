@@ -1472,9 +1472,20 @@ jobs:
         run: |
           $version = (Get-Content apps/studio/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $setup = Resolve-Path "dist/Halonic-$version-windows-x64-setup.exe"
-          $dir = Join-Path $env:RUNNER_TEMP 'Halonic'
-          $p = Start-Process $setup -ArgumentList '/S', "/D=$dir" -Wait -PassThru
+          # The default folder, outside the profile (%LOCALAPPDATA%\halonic):
+          # an update replaces the install folder, never user data (HAL-1206).
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\Halonic'
+          # The page walk's uninstall keeps its folder as the remembered install
+          # location (only "delete app data" clears it), so forget it first.
+          $pages = Join-Path $env:RUNNER_TEMP 'Halonic-pages'
+          Get-ChildItem HKCU:\Software -ErrorAction SilentlyContinue |
+            ForEach-Object { Join-Path $_.PSPath 'Halonic' } |
+            Where-Object { (Test-Path $_) -and ((Get-Item $_).GetValue('') -eq $pages) } |
+            ForEach-Object { Write-Output "forgetting the page walk's folder: $_"; Remove-Item $_ -Recurse }
+          $p = Start-Process $setup -ArgumentList '/S' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
+          if (-not (Test-Path (Join-Path $dir 'Halonic.exe'))) { throw "Halonic isn't in the default folder $dir" }
+          if (Test-Path (Join-Path $env:LOCALAPPDATA 'halonic\Halonic.exe')) { throw 'The installer wrote into the profile folder' }
           Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 -ExpandProperty FullName | Out-Host
           foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }

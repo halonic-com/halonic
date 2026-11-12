@@ -559,7 +559,11 @@ Function .onInit
         StrCpy $INSTDIR "$PROGRAMFILES\${PRODUCTNAME}"
       ${EndIf}
     !else if "${INSTALLMODE}" == "currentUser"
-      StrCpy $INSTDIR "$LOCALAPPDATA\${PRODUCTNAME}"
+      ; Halonic change (HAL-1206, failure path 2): Tauri's default,
+      ; $LOCALAPPDATA\Halonic, is the profile folder ($LOCALAPPDATA\halonic,
+      ; Windows ignores the case). User data stays out of the folder an
+      ; update replaces, so the app goes where Windows puts per-user apps.
+      StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCTNAME}"
     !endif
 
     Call RestorePreviousInstallLocation
