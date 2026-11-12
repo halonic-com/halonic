@@ -76,12 +76,16 @@ export async function startRunner(options: StartRunnerOptions): Promise<StartedR
   let connection: RunnerConnection;
   try {
     const process = await session.start(
-      runnerCommand(files, {
-        nonce,
-        folder: files.integrationFolder,
-        entryFile,
-        exportName: entry.exportName,
-      }),
+      runnerCommand(
+        files,
+        {
+          nonce,
+          folder: files.integrationFolder,
+          entryFile,
+          exportName: entry.exportName,
+        },
+        machine.platform === undefined ? {} : { platform: machine.platform },
+      ),
     );
     connection = await connectRunner({ ...connect, process, nonce });
   } catch (error) {

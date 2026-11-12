@@ -4,10 +4,13 @@
 // writes, no child processes, no workers, no add-ons, no WASI and no network,
 // because none of those is allowed by a flag.
 //
-// The sandbox sets no memory limit, so Node's own heap limit is the one the
-// runner has: an integration that fills its JavaScript heap makes the runner
-// die at it, and only the runner (A24). Memory behind an `ArrayBuffer` or a
-// typed array lies outside the heap, and no limit covers it yet (HAL-7565).
+// The sandbox sets no memory limit, so the runner brings its own (A24). Node's
+// heap limit makes a runner that fills its JavaScript heap die at it. Memory
+// behind an `ArrayBuffer` or a typed array lies outside the heap, so on Linux
+// the runner starts through `prlimit --data`, which caps the whole data
+// segment and makes such an allocation fail with a `RangeError` (HAL-7565).
+// macOS doesn't enforce that limit for `mmap` and Windows has no rlimits, so
+// there only the heap limit holds; the gap stays open in the design (HAL-958).
 
 import type { SandboxCommand } from "@halonicjs/ports";
 import { type RunnerArgs, runnerArgList } from "../runner-args.ts";
@@ -20,13 +23,38 @@ import type { RunnerFiles } from "./runner-profile.ts";
  */
 export const runnerHeapLimitMiB = 256;
 
-/** The command that starts the runner for one integration. Tests lower the heap limit. */
+/**
+ * What Node's own start takes of the data segment in MiB, before the
+ * integration runs anything. Node 24 takes about 580, mostly the 512 MiB
+ * range V8 reserves for code, so this leaves room for other Node versions.
+ */
+export const nodeBaseMiB = 640;
+
+/** What an integration may keep in `ArrayBuffer`s and typed arrays on top of its heap, in MiB. */
+export const bufferAllowanceMiB = 256;
+
+/** What a test may change: a lower heap limit to reach it fast, and another system. */
+export interface RunnerLimits {
+  readonly heapLimitMiB?: number;
+  /** The system, as `process.platform` names it; this one unless a test passes another. */
+  readonly platform?: NodeJS.Platform;
+}
+
+/** `prlimit` by its full path, because the runner's environment has no `PATH`. */
+const prlimitProgram = "/usr/bin/prlimit";
+
+/** The data segment limit in MiB: Node's own start, the heap and the buffer allowance. */
+export function dataLimitMiB(heapLimitMiB: number): number {
+  return nodeBaseMiB + heapLimitMiB + bufferAllowanceMiB;
+}
+
+/** The command that starts the runner for one integration. */
 export function runnerCommand(
   files: RunnerFiles,
   args: RunnerArgs,
-  heapLimitMiB: number = runnerHeapLimitMiB,
+  { heapLimitMiB = runnerHeapLimitMiB, platform = process.platform }: RunnerLimits = {},
 ): SandboxCommand {
-  return {
+  const node: SandboxCommand = {
     program: files.node,
     args: [
       "--permission",
@@ -36,5 +64,10 @@ export function runnerCommand(
       files.runnerFile,
       ...runnerArgList(args),
     ],
+  };
+  if (platform !== "linux") return node;
+  return {
+    program: prlimitProgram,
+    args: [`--data=${dataLimitMiB(heapLimitMiB) * 1024 * 1024}`, node.program, ...node.args],
   };
 }

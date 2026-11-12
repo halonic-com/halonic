@@ -125,6 +125,12 @@ function startOptions(sandbox: FakeSandbox): StartRunnerOptions & { blocks: unkn
   };
 }
 
+/** The arguments Node gets, without the `prlimit` that wraps it on Linux. */
+function nodeArgs(command: SandboxCommand | undefined): string[] {
+  const args = command?.args ?? [];
+  return command?.program === "/usr/bin/prlimit" ? args.slice(2) : args;
+}
+
 /** Starts a runner and plays its side until `start`. */
 async function started(sandbox: FakeSandbox, options = startOptions(sandbox)) {
   const starting = startRunner(options);
@@ -148,7 +154,7 @@ verifies("integration-runner.start", () => {
       expect(profile?.network).toEqual({ bridge: null, allowedSites: [] });
       expect(profile?.env).toEqual({ TMPDIR: "/fake-temp/halonic-run" });
       expect(profile?.deniedPaths).toEqual(["/fake-home", "/run"]);
-      expect(sandbox.commands[0]?.args.slice(0, 5)).toEqual([
+      expect(nodeArgs(sandbox.commands[0]).slice(0, 5)).toEqual([
         "--permission",
         "--allow-fs-read=/opt/halonic/runner.js",
         `--allow-fs-read=${folder}`,
@@ -267,7 +273,7 @@ verifies("integration-runner.start", () => {
         "/opt/halonic/runner.js",
         folder,
       ]);
-      expect(sandbox.commands[0]?.args.slice(2)).toEqual([
+      expect(nodeArgs(sandbox.commands[0]).slice(2)).toEqual([
         `--allow-fs-read=${folder}`,
         "--max-old-space-size=256",
         "/opt/halonic/runner.js",
