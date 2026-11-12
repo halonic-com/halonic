@@ -44,6 +44,9 @@
     "@halonicjs/adapter-mcp": [
       "./protocol"
     ],
+    "@halonicjs/app": [
+      "./listed-tools"
+    ],
     "@halonicjs/format": [
       "./integration",
       "./recording"
