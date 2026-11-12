@@ -86,9 +86,12 @@ const hourly = [
   "",
 ].join("\n");
 
-/** The watch's waits, and each test's, with git on a busy runner (HAL-5244). */
-const slowWatch = { timeout: 10_000 };
-const gitWatchTimeout = 60_000;
+/**
+ * The watch's waits, and each test's, with git on a busy runner (HAL-5244). Before each line
+ * the watch reads the live version through git, which took over 10 s on main's CI (HAL-7041).
+ */
+const slowWatch = { timeout: 30_000 };
+const gitWatchTimeout = 120_000;
 
 let acmeRuns: AcmeRuns;
 let runner: GitRunner;
