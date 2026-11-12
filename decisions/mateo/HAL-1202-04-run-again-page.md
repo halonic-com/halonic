@@ -3,6 +3,7 @@
 - Task: HAL-1202
 - Approval: Liam approves this note in review on [HAL-1202](/HAL/issues/HAL-1202)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BEvuMVcFmmavU2FFqXm4/uFUP9sdyU9wW7Mtq1x9Kr6HVQpiotFUoymcSk0Aqn1WypQvVYvUHHfEv5o9qNodCg==
 
 ## What changes
 
