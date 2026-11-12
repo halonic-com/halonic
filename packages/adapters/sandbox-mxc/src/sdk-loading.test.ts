@@ -1,8 +1,15 @@
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { testBoxes } from "./fake-mxc.test-helper.ts";
 import { type ImportMxcSdk, type MxcMachine, mxcSdkLoader, systemMachine } from "./machine.ts";
+import { MemoryDisk } from "./memory-disk.test-helper.ts";
 import { MxcSandbox } from "./mxc-sandbox.ts";
+
+/** The adapter on `machine`, with box folders on a memory disk. */
+function sandboxOn(machine: MxcMachine): MxcSandbox {
+  return new MxcSandbox(machine, testBoxes(new MemoryDisk()).boxes);
+}
 
 /** An import of the SDK's module that counts how often it runs. */
 function countingImport(load: () => Promise<unknown>): ImportMxcSdk & { count: () => number } {
@@ -73,7 +80,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
 
     it("can't start MXC, and opens no session", async () => {
       const importSdk = countingImport(async () => sdkModule());
-      const mxc = new MxcSandbox({
+      const mxc = sandboxOn({
         ...systemMachine(mxcSdkLoader("linux", importSdk)),
         platform: "linux",
       });
@@ -86,7 +93,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
 
   describe("SDK missing on Windows 11", () => {
     it("says other, with the import's error, and opens no session", async () => {
-      const mxc = new MxcSandbox(windows11(missing));
+      const mxc = sandboxOn(windows11(missing));
       expect(await mxc.check()).toEqual({
         ok: false,
         reason: "other",
@@ -98,7 +105,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
     });
 
     it("says other until this build declares the SDK", async () => {
-      expect(await new MxcSandbox(windows11()).check()).toMatchObject({
+      expect(await sandboxOn(windows11()).check()).toMatchObject({
         ok: false,
         reason: "other",
         missing: [
@@ -115,7 +122,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
       ],
       ["no module", undefined],
     ])("says other for %s", async (_name, module) => {
-      expect(await new MxcSandbox(windows11(async () => module)).check()).toEqual({
+      expect(await sandboxOn(windows11(async () => module)).check()).toEqual({
         ok: false,
         reason: "other",
         missing: [
@@ -126,7 +133,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
 
     it("tries the import only once per process", async () => {
       const importSdk = countingImport(missing);
-      const mxc = new MxcSandbox(windows11(importSdk));
+      const mxc = sandboxOn(windows11(importSdk));
       await mxc.offered();
       await mxc.check();
       await mxc.check();
@@ -138,7 +145,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
     it("imports it once, on first use, and never asks for telemetry consent", async () => {
       const module = sdkModule();
       const importSdk = countingImport(async () => module);
-      const mxc = new MxcSandbox(windows11(importSdk));
+      const mxc = sandboxOn(windows11(importSdk));
       expect(importSdk.count()).toBe(0);
       expect(await mxc.offered()).toBe(true);
       expect(await mxc.check()).toEqual({ ok: true, reason: null, missing: [] });
