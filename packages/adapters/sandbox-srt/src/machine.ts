@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { findHelper, throughHelper } from "./elevate-helper.ts";
+import { findHelper, HELPER_DIDNT_START, type Spawn, throughHelper } from "./elevate-helper.ts";
 import {
   forgetSandboxParents,
   letSandboxReadParents,
@@ -183,6 +183,19 @@ function linuxHelpersMissing(): Promise<LinuxHelper[]> {
   return linuxHelpersProbe;
 }
 
+/** Runs a program and gives its exit code and stderr, for the sandbox helper. Never rejects. */
+const spawnHelper: Spawn = (file, args) =>
+  new Promise((resolve) => {
+    execFile(file, args, { windowsHide: true }, (error, _stdout, stderr) => {
+      if (error === null) {
+        resolve({ code: 0, stderr: String(stderr ?? "") });
+        return;
+      }
+      const code = typeof error.code === "number" ? error.code : HELPER_DIDNT_START;
+      resolve({ code, stderr: String(stderr ?? "") || error.message });
+    });
+  });
+
 /** The machine this process runs on. */
 export const systemMachine: Machine = {
   platform: process.platform,
@@ -216,7 +229,9 @@ export const systemMachine: Machine = {
   async installWindowsSandbox() {
     const helper = findHelper();
     if (helper !== null) {
-      return (await throughHelper(helper, "setup")) === "done" ? "installed" : "cancelled";
+      return (await throughHelper(helper, "setup", spawnHelper)) === "done"
+        ? "installed"
+        : "cancelled";
     }
     const { installWindowsSandboxAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
@@ -245,7 +260,9 @@ export const systemMachine: Machine = {
   async uninstallWindowsSandbox() {
     const helper = findHelper();
     if (helper !== null) {
-      return (await throughHelper(helper, "remove")) === "done" ? "removed" : "cancelled";
+      return (await throughHelper(helper, "remove", spawnHelper)) === "done"
+        ? "removed"
+        : "cancelled";
     }
     const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"

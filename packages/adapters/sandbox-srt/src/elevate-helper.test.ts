@@ -10,6 +10,8 @@ import {
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
+import type { Machine } from "./machine.ts";
+import { SrtSandbox } from "./srt-sandbox.ts";
 
 /** A spawn that answers with `code` and `stderr`, and keeps what it was asked to run. */
 function answering(code: number, stderr = "") {
@@ -76,6 +78,22 @@ verifies("sandbox-srt.setup", () => {
       }
       expect(helperFailure("setup", 1, "")).toBe("the sandbox setup stopped with an error");
       expect(helperFailure("remove", 99, "")).toBe("the sandbox removal stopped with an error");
+    });
+
+    it("comes through SrtSandbox.setUp as a failed setup, with the sentence and the code", async () => {
+      const windows = {
+        platform: "win32",
+        hasWindowsSandbox: async () => false,
+        installWindowsSandbox: async () => {
+          throw new HelperError("Windows didn't accept the sandbox's network rules", 12);
+        },
+      } as Partial<Machine> as Machine;
+      expect(await new SrtSandbox(windows).setUp()).toEqual({
+        ok: false,
+        outcome: "failed",
+        reason: "Windows didn't accept the sandbox's network rules",
+        code: 12,
+      });
     });
 
     it("says why Windows couldn't start the helper, from the first line it gave", () => {

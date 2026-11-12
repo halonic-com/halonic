@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -16,7 +15,7 @@ export type HelperVerb = "setup" | "remove";
 export const HELPER_CANCELLED = 10;
 
 /** Starting the helper itself failed: Windows didn't run it. The helper's own codes stop at 36. */
-const HELPER_DIDNT_START = 37;
+export const HELPER_DIDNT_START = 37;
 
 /**
  * Where the helper is for a program at `execPath`: next to it, as for the
@@ -55,20 +54,8 @@ export function helperScript(helper: string, verb: HelperVerb): string {
   ].join("\n");
 }
 
-/** Runs a program and gives its exit code and stderr. */
+/** Runs a program and gives its exit code and stderr. `machine.ts` gives the real one. */
 export type Spawn = (file: string, args: string[]) => Promise<{ code: number; stderr: string }>;
-
-const spawnProgram: Spawn = (file, args) =>
-  new Promise((resolve) => {
-    execFile(file, args, { windowsHide: true }, (error, _stdout, stderr) => {
-      if (error === null) {
-        resolve({ code: 0, stderr: String(stderr ?? "") });
-        return;
-      }
-      const code = typeof error.code === "number" ? error.code : HELPER_DIDNT_START;
-      resolve({ code, stderr: String(stderr ?? "") || error.message });
-    });
-  });
 
 /**
  * Starts the helper with `verb` and waits for it, without a time limit: an
@@ -80,7 +67,7 @@ const spawnProgram: Spawn = (file, args) =>
 export async function runHelper(
   helper: string,
   verb: HelperVerb,
-  spawn: Spawn = spawnProgram,
+  spawn: Spawn,
 ): Promise<{ code: number; stderr: string }> {
   const root = process.env["SystemRoot"] ?? process.env["windir"];
   if (root === undefined)
@@ -138,7 +125,7 @@ export function helperFailure(verb: HelperVerb, code: number, stderr: string): s
 export async function throughHelper(
   helper: string,
   verb: HelperVerb,
-  spawn?: Spawn,
+  spawn: Spawn,
 ): Promise<"done" | "cancelled"> {
   const { code, stderr } = await runHelper(helper, verb, spawn);
   if (code === 0) return "done";
