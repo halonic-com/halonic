@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on [HAL-7701](/HAL/issues/HAL-7701), under the interim rule from [HAL-5221](/HAL/issues/HAL-5221); the board approved the GitHub review itself on [HAL-3434](/HAL/issues/HAL-3434), and this pull request needs the user's own approving review on GitHub before it merges
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5EvNfPyJgAgnZOviOG6uDuC5sF65fbVkD15GfAYI4wBmPfDD55tqNRcGhl95Fj3RRbztA7aY3Zc01mT1c2SiCw==
 
 The board decided on [HAL-3434](/HAL/issues/HAL-3434) on 12 Nov: option A, a GitHub review from the user's own account (`timothykorse`, pinned by numeric ID). It is built in [HAL-1337](/HAL/issues/HAL-1337).
 
