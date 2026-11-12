@@ -21,7 +21,10 @@ export interface DialogConfirm {
 
 /** A second way to go on besides the confirming button, such as "Close anyway". */
 export interface DialogAlternative {
-  /** Names the action: "Close anyway". */
+  /**
+   * Says what it does, in plain words: "Close anyway". If it throws something away, the body
+   * says what is lost before the button is pressed.
+   */
   readonly label: string;
   /** Runs on the button. Unavailable while the Dialog is `busy`, as Cancel is. */
   readonly onClick: () => void;
