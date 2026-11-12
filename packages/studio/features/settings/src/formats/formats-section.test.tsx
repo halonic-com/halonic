@@ -58,5 +58,13 @@ verifies("settings.formats-section", () => {
         "Couldn't save the format on this computer. Format is back to Follow this browser: English (United Kingdom).",
       );
     });
+
+    it("clears the line at the next good save", async () => {
+      const { prefs, view } = setup();
+      prefs.failNext(new Error("read-only profile"));
+      await change(control(view, "select"), "nl-NL");
+      await change(control(view, "select"), "de-DE");
+      expect(view.textContent).not.toContain("Couldn't save the format");
+    });
   });
 });
