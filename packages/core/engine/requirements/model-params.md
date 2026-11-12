@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-6450, Liam's decision on HAL-6444 after the findings of HAL-6432 (part 1): an alias's and an agent's `params` never reached the model
 
-Every model call the engine makes, in a run, a subagent's turn or a chat turn, shall send the params of three layers, each over the one before it, key by key: the `params` of the model's alias in `models.yaml`, then the `params` of the agent the call is for, then, on a chat turn, the request's own `params`. A key a layer leaves out shall keep the value below it; `extra` is one key and is replaced whole. When a call moves on to a fallback model (requirements `engine.offline-falls-back`, `engine.busy-falls-back`, `engine.skip-model-without-key`), the bottom layer shall be the fallback's own alias params, not the first model's. A call whose layers set no key shall send no `params`.
+The engine shall send, with every model call it makes in a run, a subagent's turn or a chat turn, the params of three layers, each over the one before it, key by key: the `params` of the model's alias in `models.yaml`, then the `params` of the agent the call is for, then, on a chat turn, the request's own `params`. A key a layer leaves out shall keep the value below it; `extra` is one key and is replaced whole. When a call moves on to a fallback model (requirements `engine.offline-falls-back`, `engine.busy-falls-back`, `engine.skip-model-without-key`), the bottom layer shall be the fallback's own alias params, not the first model's. A call whose layers set no key shall send no `params`.
 
 ## Examples
 
