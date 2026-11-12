@@ -1,20 +1,49 @@
 import type { RunEvent } from "@halonicjs/events";
-import { List, type ListColumn } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useState } from "react";
+import { Button, List, type ListColumn } from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import type { RunsSource } from "../api.ts";
-import { everyStepWords } from "../run-words.ts";
+import { everyStepWords, runLogWords } from "../run-words.ts";
 import type { StepEntry, StepMark } from "./every-step-model.ts";
+import { RunLog } from "./run-log.tsx";
+import { runLogLines } from "./run-log-model.ts";
 
 const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time", key: "time" }];
 
 /**
  * Every step (checklist part 1, 1.10): the `h2` and the timeline, a kit
- * List with one Tab stop and ↑ ↓. Nothing until the run's log has loaded.
+ * List with one Tab stop and ↑ ↓, then **Show the run log**, which shows the
+ * run's numbered events in the timeline's place and, as **Show every step**,
+ * brings the timeline back. Nothing until the run's log has loaded.
  *
- * Not here yet: opening an entry's events in the side panel, Show the run
- * log, child runs' links, branch and for-each groups, and Show on canvas (T7).
+ * Not here yet: opening an entry's events in the side panel, child runs'
+ * links, branch and for-each groups, and Show on canvas (T7).
  */
-export function EveryStep({ entries }: { readonly entries: readonly StepEntry[] }) {
+export function EveryStep({
+  entries,
+  log,
+}: {
+  readonly entries: readonly StepEntry[];
+  readonly log: readonly RunEvent[];
+}) {
+  const [showLog, setShowLog] = useState(false);
+  const lines = useMemo(() => (showLog ? runLogLines(log) : []), [showLog, log]);
+  if (log.length === 0) {
+    return null;
+  }
+  return (
+    <section className="flex flex-col items-start gap-2">
+      <div className="w-full">
+        {showLog ? <RunLog lines={lines} /> : <Timeline entries={entries} />}
+      </div>
+      <Button variant="ghost" size="sm" onClick={() => setShowLog(!showLog)}>
+        {showLog ? runLogWords.hide : runLogWords.show}
+      </Button>
+    </section>
+  );
+}
+
+/** The timeline itself, nothing for a run that hasn't reached a step. */
+function Timeline({ entries }: { readonly entries: readonly StepEntry[] }) {
   if (entries.length === 0) {
     return null;
   }

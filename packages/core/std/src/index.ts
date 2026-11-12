@@ -17,6 +17,7 @@ export {
   KindedError,
 } from "./error-kind.ts";
 export { bytesToHex } from "./hex.ts";
+export { escapeHidden, isHiddenCharacter } from "./hidden-characters.ts";
 export { fixedIds, type IdGenerator, type RandomBytes, randomIds } from "./ids.ts";
 export { KeyedQueue } from "./keyed-queue.ts";
 export {

@@ -83,6 +83,7 @@ export function RunView({
         <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
         {log === undefined ? null : (
           <EveryStep
+            log={log}
             entries={everyStep(
               log,
               // The log's own summary, so each step's end agrees with the log it came from.

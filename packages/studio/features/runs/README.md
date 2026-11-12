@@ -99,4 +99,13 @@ everyStep(events, summary, workflow, new Date());
 // [{ id: "step-0", name: "Read", mark: "done", line: "Took 1 min", time: "10:40", label: "Read, done, 10:40, Took 1 min" }, …]
 ```
 
-Not there yet: the receipt and Details; an entry's events in the side panel and Show the run log; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).
+Under the timeline, **Show the run log** shows the run's events in its place, numbered by `seq`, the same events `halonic runs show --json` returns, and **Show every step** brings the timeline back (requirement `runs.run-view.run-log`). Each line's fields are one line of JSON with hidden characters escaped (`escapeHidden` in `@halonicjs/std`), and a step's blocked sites read "Blocked: registry.npmjs.org (12 tries)" once:
+
+```ts
+import { runLogLines } from "./run-view/run-log-model.ts";
+
+runLogLines(events);
+// [{ kind: "event", seq: 1, time: "10:40:00", type: "run.started", fields: '{"hubId":"acme",…}' }, …]
+```
+
+Not there yet: the receipt and Details; an entry's events in the side panel; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).
