@@ -2,7 +2,6 @@
 
 - Approval: [HAL-6346](/HAL/issues/HAL-6346) (design HAL-958, section 6, attack case A36). Liam approves this note in review of this PR.
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:d/GtubaNbEKmhecDyFACsQRW8/tzdLpXTnMAlvypDeYFd0zhhyxY0xFOIJ+GRppML+zg0oCk3wR8A/PPK7CWCw==
 - Task: HAL-6346
 
 ## What changes
@@ -34,5 +33,6 @@ can keep its own sign-in in the Keychain and must still read it in the fence.
 - sandbox-srt.profile-to-srt-config
 - integration-runner.start
 - packages/adapters/sandbox-srt/fence/srt-keychain.test.ts
+- tooling/check/
 - tooling/check/src/test/fixture-repo.ts
 - tooling/check/src/test/patches.test.ts
