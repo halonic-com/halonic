@@ -2,7 +2,7 @@
 
 - Task: HAL-1451 (S1: set up the agent sandbox from the installed app; Julian's design on HAL-1415)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-1451](/HAL/issues/HAL-1451)
-- Kind: behaviour
+- Kind: internal
 
 ## What changes
 
@@ -16,6 +16,8 @@ Without the helper next to the agent host nothing changes: setup and removal use
 ## Why
 
 S1 needs Studio's Settings button, `halonic sandbox setup` and the installer to share one code path with one UAC prompt (HAL-1451, one-prompt answer on HAL-1415). Studio's Callouts need the ending (`cancelled` shows **Try again**), not only a sentence.
+
+These are the adapter's own requirements, so the note is internal. What users see (the Settings section, its Callouts and the CLI lines) was approved by the board with Sofia's design on HAL-1411 and HAL-1444.
 
 ## Covers
 
