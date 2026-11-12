@@ -3,6 +3,7 @@
 - Task: HAL-7006
 - Approval: Liam asked for this in his review of #2063 on [HAL-6999](/HAL/issues/HAL-6999); he approves this note in review on [HAL-7006](/HAL/issues/HAL-7006)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:R1mSS5ZuLVLnlpkJLmxpoCMptEfPuQNucsO8PuLFJRIoAuxTLydqHrmtGYq5DqnBNgqSVYEH0PYkQp8csfvMDQ==
 
 ## What changes
 
