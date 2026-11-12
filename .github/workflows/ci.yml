@@ -1074,6 +1074,11 @@ jobs:
           Copy-Item (Join-Path $target 'release/halonic-sandbox-elevate.exe') $app
           $srtWin = '../../../packages/adapters/sandbox-srt/node_modules/@anthropic-ai/sandbox-runtime/vendor/srt-win/x64/srt-win.exe'
           Copy-Item $srtWin $app
+          # The installer ships the pinned Visual C++ runtime beside the
+          # helper under a name nothing loads; setup copies it next to
+          # srt-win (HAL-8068, S-9).
+          & ./windows/fetch-vcruntime.ps1
+          Copy-Item 'binaries/vcruntime140.dll' (Join-Path $app 'vcruntime140.dll.pinned')
           $helper = Join-Path $app 'halonic-sandbox-elevate.exe'
 
           # The helper's imports, against this Windows' KnownDLLs. Windows
@@ -1149,6 +1154,11 @@ jobs:
           $code = Invoke-Helper $helper 'setup'
           Assert-NoCanary 'setup'
           if ($code -ne 0) { throw "setup exited $code" }
+          # The runtime beside srt-win is the pinned one, not the planted copy
+          # in the app folder (S-9).
+          $pin = Get-Content 'windows/vcruntime.json' -Raw | ConvertFrom-Json
+          $placed = (Get-FileHash (Join-Path $folder 'vcruntime140.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($placed -ne $pin.files.x64.sha256) { throw "the runtime beside srt-win is not the pinned one: $placed" }
           # srt-win's temporary files go to an admin-only folder (S-1).
           $tempAcl = Get-Acl (Join-Path $folder 'tmp')
           if (-not $tempAcl.AreAccessRulesProtected) { throw 'the tmp folder inherits its access list' }
