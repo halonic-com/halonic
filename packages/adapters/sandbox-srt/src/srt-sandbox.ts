@@ -335,13 +335,13 @@ function grantedPaths(profile: SandboxProfile): string[] {
   ];
 }
 
-/** What `error` says, on one line. */
 /** A failed setup's or removal's reason, with the helper's code when the helper gave one. */
 function failure(error: unknown): { reason: string; code?: number } {
   const reason = errorLine(error);
   return error instanceof HelperError ? { reason, code: error.code } : { reason };
 }
 
+/** What `error` says, on one line. */
 function errorLine(error: unknown): string {
   return oneLine(error instanceof Error ? error.message : String(error));
 }
