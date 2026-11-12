@@ -1894,7 +1894,7 @@ jobs:
           $keys = Join-Path $env:RUNNER_TEMP 'update-keys'
           New-Item -ItemType Directory -Force $keys | Out-Null
           foreach ($name in 'test', 'other') {
-            pnpm exec tauri signer generate --ci --password '' --write-keys (Join-Path $keys "$name.key")
+            pnpm exec tauri signer generate --ci --password= --write-keys (Join-Path $keys "$name.key")
             if ($LASTEXITCODE -ne 0) { throw "tauri signer generate failed" }
           }
           $pubkey = (Get-Content (Join-Path $keys 'test.key.pub') -Raw).Trim()
