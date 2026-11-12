@@ -2,8 +2,8 @@ import type { MouseEvent, ReactNode } from "react";
 import type { ListEmpty } from "./empty-list.tsx";
 import type { ListSkeletonShape } from "./list-skeleton.tsx";
 
-/** One item in a List: an agent, a routine, a run, a file in a picker. */
-export interface ListRow<Id extends string = string> {
+/** What every List row has, with or without columns. */
+interface ListRowBase<Id extends string> {
   /** Stable, never the index: focus and selection follow it. */
   readonly id: Id;
   readonly title: string;
@@ -16,18 +16,6 @@ export interface ListRow<Id extends string = string> {
   readonly icon?: ReactNode;
   /** A 28px avatar before the text, in place of the icon. Hidden from screen readers too. */
   readonly avatar?: ReactNode;
-  /** On the right: a status chip or a value. In a List with `columns`, a `status` column instead. */
-  readonly trailing?: ReactNode;
-  /** In a List with `columns`: an outline tag after the title, never cut: "Test". */
-  readonly tag?: ReactNode;
-  /** In a List with `columns`: the row's value in each column, by the column's `key`. */
-  readonly cells?: Readonly<Record<string, ListCell>>;
-  /**
-   * In a List with `columns`: the sentence a screen reader hears for the row, in its own order
-   * and words, as microcopy 19.3's "Run 01JD8Q, Support reply, needs you, …". The columns are
-   * hidden from screen readers; without it they hear the title and the meta line.
-   */
-  readonly label?: string;
   /** The "More" icon button. Its label names the row: "More actions for Sorter". */
   readonly more?: {
     readonly label: string;
@@ -40,10 +28,39 @@ export interface ListRow<Id extends string = string> {
   readonly unavailable?: ListRowUnavailable;
   /**
    * The row has a problem: the reason takes the meta line's place in `danger`, and a `danger`
-   * chip takes the trailing slot. The row stays openable, so it can be fixed.
+   * chip takes the trailing part's place, or the first `status` column's. The row stays
+   * openable, so it can be fixed.
    */
   readonly error?: { readonly reason: string; readonly chip: string };
 }
+
+/** One item in a List: an agent, a routine, a file in a picker. */
+export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
+  /** On the right: a status chip or a value. */
+  readonly trailing?: ReactNode;
+  readonly tag?: never;
+  readonly cells?: never;
+  readonly label?: never;
+}
+
+/** One item in a List with `columns`: a run in the Runs list. */
+export interface ListColumnsRow<Id extends string = string> extends ListRowBase<Id> {
+  /** An outline tag after the title, never cut: "Test". */
+  readonly tag?: ReactNode;
+  /** The row's value in each column, by the column's `key`. */
+  readonly cells?: Readonly<Record<string, ListCell>>;
+  /**
+   * The sentence a screen reader hears for the row, in its own order and words, as microcopy
+   * 19.3's "Run 01JD8Q, Support reply, needs you, …". The columns are hidden from screen readers;
+   * without it they hear the title and the meta line.
+   */
+  readonly label?: string;
+  /** A chip goes in a `status` column instead. */
+  readonly trailing?: never;
+}
+
+/** Either kind of row, as the List's own parts take them. */
+export type AnyListRow<Id extends string = string> = ListRow<Id> | ListColumnsRow<Id>;
 
 /**
  * A column's kind sets its width, alignment, type and what happens when it doesn't fit, so every
@@ -89,9 +106,10 @@ export interface ListSelection<Id extends string = string> {
 
 /**
  * Rows under one heading, as the Runs list's days: "Today", "Yesterday". Each group is its own box,
- * and the whole list stays one grid with one Tab stop.
+ * and the whole list stays one grid with one Tab stop. A List with `columns` takes
+ * `ListGroup<Id, ListColumnsRow<Id>>`.
  */
-export interface ListGroup<Id extends string = string> {
+export interface ListGroup<Id extends string = string, Row extends AnyListRow<Id> = ListRow<Id>> {
   /**
    * Stable, never the index: "2026-11-12". The heading's row takes the id `group-heading:<id>`,
    * next to the rows' ids, so no row's id may start with `group-heading:`.
@@ -100,7 +118,7 @@ export interface ListGroup<Id extends string = string> {
   /** Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. */
   readonly heading: { readonly name: string; readonly detail?: string };
   /** A group with no rows isn't drawn, heading and all. */
-  readonly rows: readonly ListRow<Id>[];
+  readonly rows: readonly Row[];
 }
 
 interface ListBase<Id extends string> {
@@ -121,14 +139,6 @@ interface ListBase<Id extends string> {
    * `aria-selected` and checkbox still follow the selection. Enter and a click still call `onOpen`.
    */
   readonly current?: Id;
-  /** 32px rows, for menus and pickers; 48px on a phone. Not with `columns`. */
-  readonly dense?: boolean;
-  /**
-   * The rows' columns, in order, as the Runs list: status, run, what ran, started by, when. Side by
-   * side when the List is at least 800px wide; below that, and on a phone, each row stacks them
-   * on three lines. Rows then give `cells` and a `label`, not a `trailing` part.
-   */
-  readonly columns?: readonly ListColumn[];
   /** No outer border or radius and lines from 16px. On by default on a phone. */
   readonly flush?: boolean;
   /**
@@ -143,8 +153,8 @@ interface ListBase<Id extends string> {
 }
 
 /** A list of rows, in one box. */
-interface ListOfRows<Id extends string> extends ListBase<Id> {
-  readonly rows: readonly ListRow<Id>[];
+interface ListOfRows<Id extends string, Row extends AnyListRow<Id>> extends ListBase<Id> {
+  readonly rows: readonly Row[];
   /** The heading's level. Default 2. */
   readonly headingLevel?: 2 | 3 | 4;
   readonly groups?: never;
@@ -152,13 +162,14 @@ interface ListOfRows<Id extends string> extends ListBase<Id> {
 }
 
 /** A list named by its heading, the box's first line (18.3). */
-interface ListWithHeading<Id extends string> extends ListOfRows<Id> {
+interface ListWithHeading<Id extends string, Row extends AnyListRow<Id>>
+  extends ListOfRows<Id, Row> {
   readonly heading: { readonly name: string; readonly detail?: string };
   readonly label?: never;
 }
 
 /** A list without a heading, named by a label: "Agents". */
-interface ListWithLabel<Id extends string> extends ListOfRows<Id> {
+interface ListWithLabel<Id extends string, Row extends AnyListRow<Id>> extends ListOfRows<Id, Row> {
   readonly label: string;
   readonly heading?: never;
 }
@@ -167,8 +178,8 @@ interface ListWithLabel<Id extends string> extends ListOfRows<Id> {
  * A list of groups, each under its own heading, named by a label: "Runs". It has no heading of its
  * own: the groups' headings are its headings.
  */
-interface ListWithGroups<Id extends string> extends ListBase<Id> {
-  readonly groups: readonly ListGroup<Id>[];
+interface ListWithGroups<Id extends string, Row extends AnyListRow<Id>> extends ListBase<Id> {
+  readonly groups: readonly ListGroup<Id, Row>[];
   /** The groups' headings' level. Default 3, as the Runs list's days (a11y 13.1). */
   readonly groupHeadingLevel?: 2 | 3 | 4;
   readonly label: string;
@@ -176,6 +187,31 @@ interface ListWithGroups<Id extends string> extends ListBase<Id> {
   readonly heading?: never;
   /** The List has no heading of its own: `groupHeadingLevel` sets the groups'. */
   readonly headingLevel?: never;
+}
+
+/** A list always has a name: a `heading` or a `label`, never both. */
+type ListShape<Id extends string, Row extends AnyListRow<Id>> =
+  | ListWithHeading<Id, Row>
+  | ListWithLabel<Id, Row>
+  | ListWithGroups<Id, Row>;
+
+/** A List without columns: its rows have a `trailing` part, and it can be dense. */
+interface WithoutColumns {
+  readonly columns?: never;
+  /** 32px rows, for menus and pickers; 48px on a phone. */
+  readonly dense?: boolean;
+}
+
+/** A List with columns: its rows are `ListColumnsRow`s, with `cells` in place of `trailing`. */
+interface WithColumns {
+  /**
+   * The rows' columns, in order, as the Runs list: status, run, what ran, started by, when. Side by
+   * side when a row's main cell is at least 800px wide; below that, and on a phone, each row
+   * stacks them on three lines. Exactly one is `main`, and each other key is used once.
+   */
+  readonly columns: readonly ListColumn[];
+  /** A columned row is never 32px: it holds a title over a meta line. */
+  readonly dense?: never;
 }
 
 /**
@@ -197,11 +233,10 @@ type ListLoading =
 
 /**
  * A list always has a name: a `heading` or a `label`, never both. It holds `rows`, or `groups` of
- * rows under their own headings.
+ * rows under their own headings, and its rows are plain or laid out in `columns`.
  */
 export type ListProps<Id extends string = string> = (
-  | ListWithHeading<Id>
-  | ListWithLabel<Id>
-  | ListWithGroups<Id>
+  | (ListShape<Id, ListRow<Id>> & WithoutColumns)
+  | (ListShape<Id, ListColumnsRow<Id>> & WithColumns)
 ) &
   ListLoading;

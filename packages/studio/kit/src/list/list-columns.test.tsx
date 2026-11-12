@@ -6,7 +6,7 @@ import { PresentationProvider } from "../presentation/presentation.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import { render, unmountAll } from "../test/render.tsx";
 import { List } from "./list.tsx";
-import type { ListColumn, ListRow } from "./list-props.ts";
+import type { ListColumn, ListColumnsRow } from "./list-props.ts";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -24,7 +24,7 @@ const columns: readonly ListColumn[] = [
 const label =
   "Run 01JD9A, Support reply, needs you, waiting for your approval: send an email. Started by an email, 12 minutes ago.";
 
-const needsYou: ListRow = {
+const needsYou: ListColumnsRow = {
   id: "01JD9A",
   title: "Support reply",
   meta: "Waiting for you: Approve this reply?",
@@ -38,7 +38,7 @@ const needsYou: ListRow = {
   label,
 };
 
-const done: ListRow = {
+const done: ListColumnsRow = {
   id: "01JD8W",
   title: "Mail triage",
   meta: "Sent nothing",
@@ -48,7 +48,7 @@ const done: ListRow = {
   },
 };
 
-function renderRuns(rows: readonly ListRow[] = [needsYou, done], phone = false) {
+function renderRuns(rows: readonly ListColumnsRow[] = [needsYou, done], phone = false) {
   const list = <List label="Runs" rows={rows} columns={columns} onOpen={() => undefined} />;
   return render(
     phone ? <PresentationProvider presentation="phone">{list}</PresentationProvider> : list,
@@ -145,7 +145,7 @@ verifies("kit.list-columns", () => {
   });
 
   it("puts an error's danger chip in the first status column and its reason on the meta line", () => {
-    const failed: ListRow = {
+    const failed: ListColumnsRow = {
       ...needsYou,
       error: { reason: "It failed in Review.", chip: "Failed" },
     };
@@ -161,7 +161,7 @@ verifies("kit.list-columns", () => {
   });
 
   it("dims an unavailable row's text, keeps its chips, and is described by its reason", () => {
-    const waiting: ListRow = { ...needsYou, unavailable: { reason: "Still downloading" } };
+    const waiting: ListColumnsRow = { ...needsYou, unavailable: { reason: "Still downloading" } };
     const { container } = renderRuns([waiting]);
     const cell = cellOf(container, 0);
     const { wide } = layoutsOf(cell);
@@ -184,7 +184,10 @@ verifies("kit.list-columns", () => {
   });
 
   it("on a phone, next to a More button, puts the chip at the start of the second line", () => {
-    const withMore: ListRow = { ...needsYou, more: { label: "More", onClick: () => undefined } };
+    const withMore: ListColumnsRow = {
+      ...needsYou,
+      more: { label: "More", onClick: () => undefined },
+    };
     const { container } = renderRuns([withMore], true);
     const { stacked } = layoutsOf(cellOf(container, 0));
     const lines = Array.from(stacked?.querySelector(".flex-col")?.children ?? []);
@@ -201,6 +204,17 @@ verifies("kit.list-columns", () => {
     expect(withColumns([...columns, { kind: "main" }])).toThrow("exactly one main column, not 2");
     expect(withColumns([...columns, { kind: "code", key: "run" }])).toThrow('"run" is used twice');
     quiet.mockRestore();
+  });
+
+  it("takes no `dense` and no `trailing` part with columns, and no `cells` without", () => {
+    // @ts-expect-error: a columned row holds a title over a meta line, so it's never dense.
+    const dense = <List label="Runs" rows={[needsYou]} columns={columns} dense />;
+    const chipped = { id: "01JD9A", title: "Support reply", trailing: "Needs you" };
+    // @ts-expect-error: with columns, a chip goes in a `status` column, not `trailing`.
+    const trailing = <List label="Runs" rows={[chipped]} columns={columns} />;
+    // @ts-expect-error: without columns, a row's `cells` would go nowhere.
+    const cells = <List label="Runs" rows={[needsYou]} />;
+    expect([dense, trailing, cells]).toHaveLength(3);
   });
 
   it("gives the skeleton rows a bar in each column while it loads", () => {

@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { List } from "../../src/list/list.tsx";
-import type { ListColumn, ListGroup, ListRow } from "../../src/list/list-props.ts";
+import type { ListColumn, ListColumnsRow, ListGroup } from "../../src/list/list-props.ts";
 import { StatusChip } from "../../src/status-chip/status-chip.tsx";
 import type { PartSection } from "../state-table.tsx";
 
@@ -18,7 +19,7 @@ interface RunCase {
   readonly id: string;
   readonly title: string;
   readonly meta: string;
-  readonly chip: ListRow["trailing"];
+  readonly chip: ReactNode;
   readonly startedBy: string;
   readonly when: string;
   readonly took?: string;
@@ -26,7 +27,7 @@ interface RunCase {
 }
 
 /** A Runs row from the case's words. A screen reads its words from its own words file. */
-function runRow(run: RunCase): ListRow {
+function runRow(run: RunCase): ListColumnsRow {
   return {
     id: run.id,
     title: run.title,
@@ -80,7 +81,7 @@ const budget = runRow({
   took: "took 3 min",
 });
 
-const failed: ListRow = {
+const failed: ListColumnsRow = {
   ...runRow({
     id: "01JD6M",
     title: "Support reply",
@@ -98,7 +99,7 @@ const failed: ListRow = {
   },
 };
 
-const days: readonly ListGroup[] = [
+const days: readonly ListGroup<string, ListColumnsRow>[] = [
   { id: "today", heading: { name: "Today" }, rows: [running, needsYou, budget] },
   { id: "yesterday", heading: { name: "Yesterday" }, rows: [failed] },
 ];

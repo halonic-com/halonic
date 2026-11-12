@@ -50,7 +50,8 @@ async function clickWith(element: Element, init: MouseEventInit): Promise<void> 
 function Selectable(
   props: Partial<
     Omit<
-      ListProps,
+      // A List without columns: its plain rows.
+      Extract<ListProps, { readonly columns?: never }>,
       "heading" | "label" | "loading" | "loadingLabel" | "groups" | "groupHeadingLevel"
     >
   > & {

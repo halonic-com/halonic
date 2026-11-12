@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { StatusChip } from "../status-chip/status-chip.tsx";
-import type { ListColumn, ListRow } from "./list-props.ts";
+import type { AnyListRow, ListColumn } from "./list-props.ts";
 import { RowColumns } from "./row-columns.tsx";
 import { Leading, MetaLine } from "./row-parts.tsx";
 
@@ -24,7 +24,7 @@ function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean): string
  * The row's chip or value, or an error's `danger` chip in its place. The error chip has its dot,
  * so the state doesn't rest on colour alone.
  */
-function trailingOf(row: ListRow): ReactNode {
+function trailingOf(row: AnyListRow): ReactNode {
   return row.error === undefined ? (
     row.trailing
   ) : (
@@ -35,7 +35,7 @@ function trailingOf(row: ListRow): ReactNode {
 }
 
 export interface RowContentProps {
-  readonly row: ListRow;
+  readonly row: AnyListRow;
   readonly phone: boolean;
   readonly dense: boolean;
   /** The id of the meta line, which an unavailable row's cell names with `aria-describedby`. */

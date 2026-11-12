@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ListRow } from "./list-props.ts";
+import type { AnyListRow } from "./list-props.ts";
 
 /*
  * The parts of a List row's main cell besides its title: the icon or avatar, and the line under
@@ -10,7 +10,7 @@ import type { ListRow } from "./list-props.ts";
  * The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high, on a phone or
  * under a coarse pointer, keeps 20px.
  */
-export function Leading({ row, small }: { readonly row: ListRow; readonly small: boolean }) {
+export function Leading({ row, small }: { readonly row: AnyListRow; readonly small: boolean }) {
   const dim = row.unavailable !== undefined;
   if (row.avatar !== undefined) {
     return (
@@ -33,7 +33,7 @@ export function Leading({ row, small }: { readonly row: ListRow; readonly small:
 }
 
 interface MetaLineProps {
-  readonly row: ListRow;
+  readonly row: AnyListRow;
   readonly text: string | undefined;
   readonly id: string;
   /** On a phone next to a More button, the chip starts the last line (kit 6). */

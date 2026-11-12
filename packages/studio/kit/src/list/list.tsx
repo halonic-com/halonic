@@ -4,7 +4,7 @@ import { ListHeading } from "../list-heading/list-heading.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { EmptyList, useFocusOnEmpty } from "./empty-list.tsx";
 import { boxClasses, type ListLook } from "./list-lines.ts";
-import type { ListGroup, ListProps, ListRow } from "./list-props.ts";
+import type { AnyListRow, ListGroup, ListProps } from "./list-props.ts";
 import { firstFocusColumn, ListColumns, Row, type RowShared } from "./list-row.tsx";
 import { ListSkeleton, useFocusAfterLoading } from "./list-skeleton.tsx";
 import { checkColumns } from "./row-columns.tsx";
@@ -206,13 +206,13 @@ interface ListSection<Id extends string> {
   readonly id: string;
   /** None for a List of `rows`, whose heading, if any, is the box's first line. */
   readonly heading: ListGroup<Id>["heading"] | undefined;
-  readonly rows: readonly ListRow<Id>[];
+  readonly rows: readonly AnyListRow<Id>[];
 }
 
 /** The List's rows as sections. A group with no rows isn't drawn, heading and all. */
 function sectionsOf<Id extends string>(
-  rows: readonly ListRow<Id>[] | undefined,
-  groups: readonly ListGroup<Id>[] | undefined,
+  rows: readonly AnyListRow<Id>[] | undefined,
+  groups: readonly ListGroup<Id, AnyListRow<Id>>[] | undefined,
 ): readonly ListSection<Id>[] {
   if (groups === undefined) {
     return [{ id: "rows", heading: undefined, rows: rows ?? [] }];
@@ -238,7 +238,7 @@ function gridRows<Id extends string>(
 }
 
 /** A row's focusable cells: its checkbox, its main cell and its More button. */
-function gridCells(row: ListRow, hasCheck: boolean, hasMore: boolean): boolean[] {
+function gridCells(row: AnyListRow, hasCheck: boolean, hasMore: boolean): boolean[] {
   return [...(hasCheck ? [true] : []), true, ...(hasMore ? [row.more !== undefined] : [])];
 }
 

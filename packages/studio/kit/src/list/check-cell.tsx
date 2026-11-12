@@ -1,6 +1,6 @@
 import { Checkbox } from "../checkbox/checkbox.tsx";
 import type { GridNavigation } from "../grid-navigation/use-grid-navigation.ts";
-import type { ListRow, ListSelection } from "./list-props.ts";
+import type { AnyListRow, ListSelection } from "./list-props.ts";
 
 /**
  * The checkbox cell's width: 16px inset, the 16px box and the gap to what follows, 12px on
@@ -12,7 +12,7 @@ const widthClasses = "w-11 pl-4 touch:w-touch phone:w-touch";
 export const checkColumnWidth = "w-11 touch:w-touch phone:w-touch";
 
 interface CheckCellProps<Id extends string> {
-  readonly row: ListRow<Id>;
+  readonly row: AnyListRow<Id>;
   readonly selection: ListSelection<Id>;
   readonly isSelected: boolean;
   /** The id of an unavailable row's reason, which the box points at. */

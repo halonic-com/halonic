@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { StatusChip } from "../status-chip/status-chip.tsx";
-import type { ListColumn, ListColumnKind, ListRow } from "./list-props.ts";
+import type { AnyListRow, ListColumn, ListColumnKind } from "./list-props.ts";
 import { Leading } from "./row-parts.tsx";
 
 /*
@@ -48,12 +48,12 @@ export function checkColumns(columns: readonly ListColumn[] | undefined): void {
 }
 
 /** Text in an unavailable row is dimmed; its chips and tags keep their colour: they carry state. */
-function textColour(row: ListRow, normal: string): string {
+function textColour(row: AnyListRow, normal: string): string {
   return row.unavailable === undefined ? normal : "text-fg-disabled text-forced-disabled";
 }
 
 /** The line under the title: an unavailable row's reason, an error's reason, or the meta text. */
-function metaOf(row: ListRow): { readonly text: string | undefined; readonly colour: string } {
+function metaOf(row: AnyListRow): { readonly text: string | undefined; readonly colour: string } {
   if (row.unavailable !== undefined) {
     // At full strength, so it can be read (VRK 0.6).
     return { text: row.unavailable.reason, colour: "text-fg-muted" };
@@ -65,7 +65,7 @@ function metaOf(row: ListRow): { readonly text: string | undefined; readonly col
 }
 
 /** A `status` column's chip. An error's `danger` chip, with its dot, takes the first one's place. */
-function statusOf(row: ListRow, column: ListColumn, columns: readonly ListColumn[]): ReactNode {
+function statusOf(row: AnyListRow, column: ListColumn, columns: readonly ListColumn[]): ReactNode {
   const firstStatus = columns.find((candidate) => candidate.kind === "status");
   if (row.error !== undefined && column === firstStatus) {
     return (
@@ -77,13 +77,13 @@ function statusOf(row: ListRow, column: ListColumn, columns: readonly ListColumn
   return column.kind === "main" ? null : row.cells?.[column.key]?.value;
 }
 
-function Title({ row }: { readonly row: ListRow }) {
+function Title({ row }: { readonly row: AnyListRow }) {
   return (
     <span className={`truncate text-body-strong ${textColour(row, "text-fg")}`}>{row.title}</span>
   );
 }
 
-function Tag({ row }: { readonly row: ListRow }) {
+function Tag({ row }: { readonly row: AnyListRow }) {
   return row.tag === undefined ? null : <span className="flex shrink-0">{row.tag}</span>;
 }
 
@@ -93,7 +93,7 @@ function WideCell({
   column,
   columns,
 }: {
-  readonly row: ListRow;
+  readonly row: AnyListRow;
   readonly column: ListColumn;
   readonly columns: readonly ListColumn[];
 }) {
@@ -156,7 +156,7 @@ function StackedFooter({
   columns,
   tagFirst,
 }: {
-  readonly row: ListRow;
+  readonly row: AnyListRow;
   readonly columns: readonly ListColumn[];
   readonly tagFirst: boolean;
 }) {
@@ -193,7 +193,7 @@ function Stacked({
   columns,
   phone,
 }: {
-  readonly row: ListRow;
+  readonly row: AnyListRow;
   readonly columns: readonly ListColumn[];
   readonly phone: boolean;
 }) {
@@ -228,7 +228,7 @@ function Stacked({
 }
 
 export interface RowColumnsProps {
-  readonly row: ListRow;
+  readonly row: AnyListRow;
   readonly columns: readonly ListColumn[];
   readonly phone: boolean;
   /** The id an unavailable row's cell points `aria-describedby` at. */

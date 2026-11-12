@@ -169,6 +169,7 @@ export type {
   ListCell,
   ListColumn,
   ListColumnKind,
+  ListColumnsRow,
   ListGroup,
   ListProps,
   ListRow,
