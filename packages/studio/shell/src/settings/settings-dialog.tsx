@@ -184,18 +184,30 @@ function currentRow(nav: HTMLElement | null): HTMLElement | null {
   return nav?.querySelector<HTMLElement>('[aria-current="page"]') ?? null;
 }
 
-function SectionView({
-  section,
-  context,
-  closeSettings,
-  place,
-}: SettingsSectionProps & { readonly section: Registered<SettingsSectionContribution> }) {
+/** Props for {@link SectionView}. */
+export interface SectionViewProps extends SettingsSectionProps {
+  readonly section: Registered<SettingsSectionContribution>;
+  /**
+   * The section's page on a phone: its name is the page's `h1` for screen readers only, since the
+   * top bar shows it. In the dialog it is a visible `h3`.
+   */
+  readonly page?: boolean;
+}
+
+/** A section's name, its saved line where it has one, and its view, as the dialog and the phone show it. */
+export function SectionView({ section, context, closeSettings, place, page }: SectionViewProps) {
   const View = useSectionView(section);
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
-      <h3 id={`settings-section-${section.id}`} className="text-section text-fg">
-        {section.title}
-      </h3>
+      {page === true ? (
+        <h1 id={`settings-section-${section.id}`} tabIndex={-1} className="sr-only">
+          {section.title}
+        </h1>
+      ) : (
+        <h3 id={`settings-section-${section.id}`} className="text-section text-fg">
+          {section.title}
+        </h3>
+      )}
       {section.scope === "display" ? (
         <p className="mt-1 text-small text-fg-muted">{displaySavedLines[place]}</p>
       ) : null}

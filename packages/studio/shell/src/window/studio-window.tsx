@@ -10,6 +10,8 @@ import { ShellPalette } from "../palette/shell-palette.tsx";
 import { BottomNavigation } from "../phone/bottom-navigation.tsx";
 import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
+import { settingsLocation } from "../phone/place-stacks.ts";
+import { sectionLocation } from "../phone/settings-list-page.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
@@ -75,13 +77,35 @@ export function StudioWindow(props: StudioWindowProps) {
   const { announcer, contributions } = shell;
   const palette = usePaletteOpening(platform);
   const settings = useSettingsOpening(host, platform);
-  const openSettings = settings.show;
+  const showSettingsDialog = settings.show;
   const settingsSections = useMemo(
     () => contributions.settings.list().map(({ id, title }) => ({ id, title })),
     [contributions],
   );
   const desktop = usePresentationFromWidth() === "desktop";
   const phone = usePhonePlaces();
+  const { open: openPhone } = phone;
+  // Settings is a dialog on the desktop and a page on the More stack below 600px (flow-settings 13).
+  // Read when it opens, so the context stays the same as the window narrows or widens.
+  const onDesktop = useRef(desktop);
+  onDesktop.current = desktop;
+  const openSettings = useCallback(
+    (sectionId?: string) => {
+      if (onDesktop.current) {
+        showSettingsDialog(sectionId);
+        return;
+      }
+      openPhone(settingsLocation, { list: true });
+      const section =
+        sectionId === undefined
+          ? undefined
+          : contributions.settings.list().find((candidate) => candidate.id === sectionId);
+      if (section !== undefined) {
+        openPhone(sectionLocation(section));
+      }
+    },
+    [showSettingsDialog, openPhone, contributions],
+  );
   const focusNewPage = usePageHeadingFocus();
   // Read when a view opens a place, so the context stays the same as the window narrows or widens.
   const openPlaceHere = useRef<(place: SidebarPlace) => void>(phone.openPlace);
@@ -206,6 +230,9 @@ export function StudioWindow(props: StudioWindowProps) {
           places={phone}
           shown={shown}
           switcher={props.phoneSwitcher}
+          onSettings={() => openSettings()}
+          settingsPlace={host === "desktop-app" ? "app" : "served"}
+          workspaceName={workspace.name}
           shell={shell}
           tabs={tabs}
           announcer={announcer}
