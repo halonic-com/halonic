@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { signedApprovals } from "../guard/approvals.ts";
+import { type ApprovalLookup, signedApprovals } from "../guard/approvals.ts";
 import { parseDecisionNote } from "../guard/decision-notes.ts";
 import type { GuardCheck } from "../guard/finding.ts";
 import type { GitObjects } from "../guard/signatures.ts";
@@ -90,5 +90,48 @@ verifies("check.guard-approval-fails-closed", () => {
     const withoutBase = { ...everything, hasCommit: (commit: string) => commit === pull.head };
     const verdict = note && (await signedApprovals(pull, withoutBase).check({ note }));
     expect(verdict).toMatchObject({ approved: false, reason: /can't read/ });
+  });
+});
+
+verifies("check.guard-needs-approved-note", () => {
+  /** Pins `cto` as a guardian only, and `ceo` as the one `user-visible` approver. */
+  const pinned = (signer: string): ApprovalLookup => ({
+    check: ({ note, guardians = false }) => {
+      const singleKey = note.kind === "user-visible" ? "ceo" : "cto";
+      const allowed = guardians ? ["cto"] : [singleKey];
+      return Promise.resolve(
+        allowed.includes(signer)
+          ? { approved: true }
+          : { approved: false, reason: `${signer} may not sign this note` },
+      );
+    },
+  });
+  const userVisible = noteCovering("workflow.timer-fires").replace(
+    "- Kind: internal",
+    "- Kind: user-visible",
+  );
+  const trustRootEdit = {
+    ...edited,
+    baseOutside: { ".gitattributes": "* text=auto\n" },
+    headOutside: { ".gitattributes": "* text=auto eol=lf\n" },
+    note: userVisible,
+  };
+
+  test("accepts a user-visible note signed by a guardian when a trust root changes", async () => {
+    const { errors } = await runGuard({ ...trustRootEdit, approvals: pinned("cto") });
+    expect(errors).toEqual([]);
+  });
+
+  test("rejects the same note signed by a key that isn't a guardian", async () => {
+    const { errors } = await runGuard({ ...trustRootEdit, approvals: pinned("ceo") });
+    expect(errors).toEqual([
+      `${file}: The active requirement "workflow.timer-fires" was edited. ${noteFile} covers it, but its approval isn't verified: ceo may not sign this note.`,
+    ]);
+  });
+
+  test("keeps the single-key check for the note's kind when no trust root changes", async () => {
+    const untouched = { ...edited, note: userVisible };
+    expect((await runGuard({ ...untouched, approvals: pinned("ceo") })).errors).toEqual([]);
+    expect((await runGuard({ ...untouched, approvals: pinned("cto") })).errors).toHaveLength(1);
   });
 });

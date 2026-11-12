@@ -3,10 +3,11 @@ import { Report } from "../lib/problems.ts";
 import type { ApprovalLookup, ApprovalVerdict } from "./approvals.ts";
 import { checkCoverage } from "./coverage.ts";
 import { type DecisionNote, decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
-import type { GuardCheck, GuardFinding } from "./finding.ts";
+import { changeOf, type GuardCheck, type GuardFinding } from "./finding.ts";
 import { checkGoldenFiles } from "./golden-files.ts";
 import { checkGuardedPaths } from "./guarded-paths.ts";
 import { checkMocks } from "./mocks.ts";
+import { isTrustRoot } from "./note-check.ts";
 import { checkReleasedSpecs } from "./released-specs.ts";
 import { checkRequirementChanges } from "./requirement-changes.ts";
 import { checkSkips } from "./skips.ts";
@@ -96,10 +97,22 @@ async function reportNeedingNote(
     }
     return;
   }
-  const verdict = await run.approvals.check({ note: parsed.note });
+  const verdict = await run.approvals.check({
+    note: parsed.note,
+    guardians: changesTrustRoot(run),
+  });
   for (const finding of needNote) {
     reportAgainstNote(finding, parsed.note, verdict, report);
   }
+}
+
+/**
+ * Whether the pull request changes a trust root. Its note is then signed by
+ * guardians, the same rule the note check applies (HAL-8163).
+ */
+function changesTrustRoot({ base, head }: GuardRun): boolean {
+  const files = new Set([...base.files, ...head.files]);
+  return [...files].some((file) => isTrustRoot(file) && changeOf(file, base, head) !== undefined);
 }
 
 function reportAgainstNote(
