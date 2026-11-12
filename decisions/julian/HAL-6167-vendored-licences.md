@@ -3,6 +3,7 @@
 - Task: HAL-6167, on halonic#1921
 - Approval: Liam decided it as the guard's owner on [HAL-6528](/HAL/issues/HAL-6528), after the exception accepted on [HAL-6165](/HAL/issues/HAL-6165), and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Px2wdCXu9kfWQN+IDgWG5KflkkgNd5xfg/EyU/4SUhSsUSM3/RcwiYTD1HzHtvAM5YDGxuOgWrAMIDaG5z6WAg==
 
 ## What changes
 
