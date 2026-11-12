@@ -12,7 +12,7 @@ A new workflow, `.github/workflows/android-play.yml`, and a new composite action
 - The workflow runs by hand from the Actions tab, and as a dry run on a pull request that changes
   either file. It never runs on push, on a tag or in the merge queue.
 - The `build` job makes an unsigned release `.aab` of the Android shell, holds no secret and
-  restores no Rust or Gradle cache. Its version code is the number of minutes since 1 Jan 2026
+  restores no cache at all (no pnpm store, Rust or Gradle cache). Its version code is the number of minutes since 1 Jan 2026
   (UTC), so every build is higher than the one before. A dry run signs a copy with a key made for
   that run.
 - The `sign` job is the only one that reads the upload key. It runs in the `release` environment,

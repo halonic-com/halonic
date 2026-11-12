@@ -74,10 +74,12 @@ jobs:
             echo "dry_run=$dry_run"
           } >> "$GITHUB_OUTPUT"
           echo "::notice title=Version::$version, version code $version_code"
-      # No Rust or Gradle cache here: a release build starts clean, so no
-      # file another run left behind ends up in a bundle we sign. The pnpm
-      # store is checked against the lockfile's hashes on install.
+      # No cache at all here, not the pnpm store and no Rust or Gradle
+      # cache: a release build starts clean, so no file another run left
+      # behind ends up in a bundle we sign.
       - uses: $/.github/actions/setup
+        with:
+          cache: false
       - name: Download the Gradle distribution (with retries)
         working-directory: apps/studio/src-tauri/gen/android
         run: |
