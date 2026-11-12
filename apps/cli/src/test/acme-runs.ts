@@ -67,8 +67,15 @@ export function acmeRunsSetup(runs: AcmeRuns): RunSetup {
   };
 }
 
+/**
+ * Deletes the {@link AcmeRuns} folder. On Windows a file the engine just
+ * deleted, such as the record store's `write.lock`, can stay "delete pending"
+ * for a moment after the engine closed, so removing its folder fails with
+ * ENOTEMPTY; `rm` tries again a few times, 100 ms apart and longer each time
+ * (HAL-7129).
+ */
 export async function removeAcmeRuns(runs: AcmeRuns): Promise<void> {
-  await rm(runs.folder, { recursive: true, force: true });
+  await rm(runs.folder, { recursive: true, force: true, maxRetries: 5 });
 }
 
 /** Writes each file, by its path under `root`, making the folders it needs. */
