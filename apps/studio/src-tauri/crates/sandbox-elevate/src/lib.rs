@@ -112,17 +112,36 @@ pub fn uninstall_entry(folder: &Path) -> Vec<(&'static str, Value)> {
     ]
 }
 
+/// The folders srt-win's environment is built from, each one from Windows.
+#[derive(Clone, Copy, Debug)]
+pub struct Folders<'a> {
+    pub windows: &'a Path,
+    pub system: &'a Path,
+    pub program_files: &'a Path,
+    pub program_data: &'a Path,
+    /// The Public profile. srt-win denies the sandbox writes in it.
+    pub public: &'a Path,
+    /// The local app data of the account the helper runs as. srt-win keeps
+    /// its state database there and reads it again on every sandboxed run,
+    /// so it must be the same folder those runs see.
+    pub local_app_data: &'a Path,
+    pub temp: &'a Path,
+}
+
 /// The whole environment srt-win runs with. An elevated process gets the
 /// user's environment, which any program of theirs can change, so none of
 /// it comes through: every value here is a path Windows gave the helper
 /// (HAL-7385, S-1).
-pub fn environment(
-    windows: &Path,
-    system: &Path,
-    program_files: &Path,
-    program_data: &Path,
-    temp: &Path,
-) -> Option<Vec<(&'static str, OsString)>> {
+pub fn environment(folders: &Folders) -> Option<Vec<(&'static str, OsString)>> {
+    let Folders {
+        windows,
+        system,
+        program_files,
+        program_data,
+        public,
+        local_app_data,
+        temp,
+    } = *folders;
     // The drive, such as `C:`, from the Windows folder. Written out, not
     // with `Path`, so the tests read Windows paths on any computer.
     let drive = windows
@@ -149,6 +168,8 @@ pub fn environment(
         ("SystemDrive", drive.into()),
         ("ProgramData", program_data.into()),
         ("ProgramFiles", program_files.into()),
+        ("PUBLIC", public.into()),
+        ("LOCALAPPDATA", local_app_data.into()),
         ("ComSpec", system.join("cmd.exe").into()),
         ("PATHEXT", ".COM;.EXE;.BAT;.CMD".into()),
         ("PATH", path),
@@ -166,6 +187,10 @@ pub trait Machine {
     fn program_files(&self) -> io::Result<PathBuf>;
     /// ProgramData.
     fn program_data(&self) -> io::Result<PathBuf>;
+    /// The Public profile.
+    fn public(&self) -> io::Result<PathBuf>;
+    /// Local app data of the account this process runs as.
+    fn local_app_data(&self) -> io::Result<PathBuf>;
     /// The Windows folder.
     fn windows_folder(&self) -> io::Result<PathBuf>;
     /// System32.
@@ -218,17 +243,16 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
         .system_folder()
         .map_err(|_| code::SRT_WIN_DIDNT_START)?;
     let temp = folder.join(TEMP);
-    let environment = environment(
-        &machine
-            .windows_folder()
-            .map_err(|_| code::SRT_WIN_DIDNT_START)?,
-        &system,
-        &program_files,
-        &machine
-            .program_data()
-            .map_err(|_| code::SRT_WIN_DIDNT_START)?,
-        &temp,
-    )
+    let didnt_start = |_| code::SRT_WIN_DIDNT_START;
+    let environment = environment(&Folders {
+        windows: &machine.windows_folder().map_err(didnt_start)?,
+        system: &system,
+        program_files: &program_files,
+        program_data: &machine.program_data().map_err(didnt_start)?,
+        public: &machine.public().map_err(didnt_start)?,
+        local_app_data: &machine.local_app_data().map_err(didnt_start)?,
+        temp: &temp,
+    })
     .ok_or(code::SRT_WIN_DIDNT_START)?;
     // From Installed apps the helper already runs from the folder.
     let in_folder = from == folder;

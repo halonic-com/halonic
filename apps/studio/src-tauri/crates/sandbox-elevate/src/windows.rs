@@ -36,7 +36,8 @@ use windows_sys::Win32::System::Threading::{
     CREATE_NO_WINDOW, GetCurrentProcess, OpenProcessToken,
 };
 use windows_sys::Win32::UI::Shell::{
-    FOLDERID_ProgramData, FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, SHGetKnownFolderPath,
+    FOLDERID_LocalAppData, FOLDERID_ProgramData, FOLDERID_ProgramFiles, FOLDERID_Public,
+    KF_FLAG_DEFAULT, SHGetKnownFolderPath,
 };
 use windows_sys::core::GUID;
 
@@ -93,6 +94,14 @@ impl Machine for Windows {
 
     fn program_data(&self) -> io::Result<PathBuf> {
         known_folder(&FOLDERID_ProgramData)
+    }
+
+    fn public(&self) -> io::Result<PathBuf> {
+        known_folder(&FOLDERID_Public)
+    }
+
+    fn local_app_data(&self) -> io::Result<PathBuf> {
+        known_folder(&FOLDERID_LocalAppData)
     }
 
     fn windows_folder(&self) -> io::Result<PathBuf> {

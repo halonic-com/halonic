@@ -2,8 +2,8 @@
 //! with the requirement it proves (`sandbox_elevate_`).
 
 use halonic_sandbox_elevate::{
-    FOLDER, Machine, PROGRAM, SRT_WIN, TEMP, Value, Verb, code, environment, run, sha256_hex,
-    uninstall_entry, verb,
+    FOLDER, Folders, Machine, PROGRAM, SRT_WIN, TEMP, Value, Verb, code, environment, run,
+    sha256_hex, uninstall_entry, verb,
 };
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -83,6 +83,12 @@ impl Machine for Pretend {
     }
     fn program_data(&self) -> io::Result<PathBuf> {
         Ok(PathBuf::from("program-data"))
+    }
+    fn public(&self) -> io::Result<PathBuf> {
+        Ok(PathBuf::from("public"))
+    }
+    fn local_app_data(&self) -> io::Result<PathBuf> {
+        Ok(PathBuf::from("local-app-data"))
     }
     fn windows_folder(&self) -> io::Result<PathBuf> {
         Ok(PathBuf::from("C:windows"))
@@ -185,13 +191,15 @@ fn sandbox_elevate_runs_srt_win_with_only_the_environment_windows_gives() {
     let temp = folder().join(TEMP);
     // srt-win's temporary files go to an admin-only folder of its own.
     assert_eq!(*machine.protected.borrow(), vec![folder(), temp.clone()]);
-    let expected = environment(
-        Path::new("C:windows"),
-        &system(),
-        Path::new("program-files"),
-        Path::new("program-data"),
-        &temp,
-    );
+    let expected = environment(&Folders {
+        windows: Path::new("C:windows"),
+        system: &system(),
+        program_files: Path::new("program-files"),
+        program_data: Path::new("program-data"),
+        public: Path::new("public"),
+        local_app_data: Path::new("local-app-data"),
+        temp: &temp,
+    });
     assert_eq!(machine.environments.borrow().first(), expected.as_ref());
     let names: Vec<&str> = expected.iter().flatten().map(|(name, _)| *name).collect();
     assert_eq!(
@@ -202,6 +210,8 @@ fn sandbox_elevate_runs_srt_win_with_only_the_environment_windows_gives() {
             "SystemDrive",
             "ProgramData",
             "ProgramFiles",
+            "PUBLIC",
+            "LOCALAPPDATA",
             "ComSpec",
             "PATHEXT",
             "PATH",
@@ -219,13 +229,16 @@ fn on_c(rest: &str) -> String {
 #[test]
 fn sandbox_elevate_builds_the_environment_from_windows_paths() {
     let temp = on_c(r"Program Files\Halonic Sandbox\tmp");
-    let environment = environment(
-        Path::new(&on_c("Windows")),
-        Path::new(&on_c(r"Windows\System32")),
-        Path::new(&on_c("Program Files")),
-        Path::new(&on_c("ProgramData")),
-        Path::new(&temp),
-    )
+    let local_app_data = on_c(r"Users\someone\AppData\Local");
+    let environment = environment(&Folders {
+        windows: Path::new(&on_c("Windows")),
+        system: Path::new(&on_c(r"Windows\System32")),
+        program_files: Path::new(&on_c("Program Files")),
+        program_data: Path::new(&on_c("ProgramData")),
+        public: Path::new(&on_c(r"Users\Public")),
+        local_app_data: Path::new(&local_app_data),
+        temp: Path::new(&temp),
+    })
     .expect("an environment");
     let value = |name: &str| {
         environment
@@ -235,19 +248,22 @@ fn sandbox_elevate_builds_the_environment_from_windows_paths() {
     };
     assert_eq!(value("SystemDrive").as_deref(), Some("C:"));
     assert_eq!(value("TEMP"), Some(temp));
+    assert_eq!(value("LOCALAPPDATA"), Some(local_app_data));
     assert!(
         value("PATH")
             .is_some_and(|path| path.starts_with(&on_c(r"Windows\System32")) && path.contains(';'))
     );
     // No drive, no environment: srt-win doesn't start.
     assert_eq!(
-        halonic_sandbox_elevate::environment(
-            Path::new("windows"),
-            &system(),
-            Path::new("program-files"),
-            Path::new("program-data"),
-            Path::new("tmp"),
-        ),
+        halonic_sandbox_elevate::environment(&Folders {
+            windows: Path::new("windows"),
+            system: &system(),
+            program_files: Path::new("program-files"),
+            program_data: Path::new("program-data"),
+            public: Path::new("public"),
+            local_app_data: Path::new("local-app-data"),
+            temp: Path::new("tmp"),
+        }),
         None
     );
 }
