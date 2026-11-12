@@ -9,9 +9,11 @@
 # - sign: signs the bundle with the upload key. It runs only in the
 #   `release` environment, whose secrets hold the key, and only from main.
 #
-# Run it from the Actions tab. A pull request that changes this workflow or
-# the signing action runs it too, always as a dry run. Uploading to Play is
-# by hand for now; CI uploads through Google's API later.
+# Run it from the Actions tab. A pull request that changes this workflow,
+# the signing action or what decides the bundle's cleartext setting (the
+# manifest, the app's Gradle file, its res/xml files, the Android Tauri
+# config, the check itself) runs it too, always as a dry run. Uploading to
+# Play is by hand for now; CI uploads through Google's API later.
 
 name: Android Play build
 
@@ -20,6 +22,11 @@ on:
     paths:
       - .github/workflows/android-play.yml
       - .github/actions/sign-aab/**
+      - apps/studio/src-tauri/android/check-cleartext.mjs
+      - apps/studio/src-tauri/gen/android/app/build.gradle.kts
+      - apps/studio/src-tauri/gen/android/app/src/main/AndroidManifest.xml
+      - apps/studio/src-tauri/gen/android/app/src/main/res/xml/**
+      - apps/studio/src-tauri/tauri.android.conf.json
   workflow_dispatch:
     inputs:
       dry_run:
@@ -111,6 +118,18 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bundle"
           cp src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab \
             "$RUNNER_TEMP/bundle/$BUNDLE"
+      # The bundle must allow plain http:// exactly as HAL-1140 decided
+      # (usesCleartextTraffic true, no network security config), read from
+      # the built file, so a change to gen/android or the Tauri config can't
+      # quietly drop or widen it (HAL-7175). Signing doesn't touch the
+      # manifest, so the unsigned bundle is the one to check.
+      - name: Check the bundle's cleartext setting
+        env:
+          BUNDLE: ${{ steps.plan.outputs.bundle }}
+        run: |
+          unzip -p "$RUNNER_TEMP/bundle/$BUNDLE" base/manifest/AndroidManifest.xml \
+            > "$RUNNER_TEMP/manifest.pb"
+          node apps/studio/src-tauri/android/check-cleartext.mjs "$RUNNER_TEMP/manifest.pb"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-aab-unsigned
