@@ -57,7 +57,6 @@ const knownStatements = new Set([
   `SELECT seq, collection, id, at, op, "values", by FROM record_changes WHERE collection = ? ORDER BY seq`,
   "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions WHERE collection = ?",
   "INSERT INTO record_compactions (collection, version) VALUES (?, ?)",
-  "DELETE FROM record_compactions WHERE collection = ? AND version <= ?",
   "DELETE FROM record_changes WHERE collection = ? AND seq <= ?",
 ]);
 
