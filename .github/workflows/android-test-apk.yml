@@ -1,0 +1,96 @@
+# Android test APK: a small release-type APK for one phone (arm64-v8a only),
+# signed with a key made for this run and thrown away afterwards. It is for
+# sending a test build by chat (Telegram's limit is 50 MB), not for Play or
+# GitHub releases (HAL-8054). Because the key is thrown away, a build from
+# Play or from another run can only be installed after uninstalling this one.
+#
+# Run it from the Actions tab, or it runs on a pull request that changes it.
+
+name: Android test APK
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/android-test-apk.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: android-test-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build the arm64 release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Download the Gradle distribution (with retries)
+        working-directory: apps/studio/src-tauri/gen/android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          for attempt in 1 2 3 4; do
+            ./gradlew --version && exit 0
+            echo "Gradle download failed (attempt $attempt), retrying"
+            sleep $((attempt * 20))
+          done
+          exit 1
+      - name: Install the pinned Rust toolchain and the arm64 Android target
+        working-directory: apps/studio/src-tauri
+        run: |
+          rustup toolchain install
+          rustup target add aarch64-linux-android
+      - name: Build the release APK
+        working-directory: apps/studio
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          pnpm exec tauri android build --apk --target aarch64
+          find src-tauri/gen/android/app/build/outputs/apk -name '*.apk' -print
+      # A release build comes out unsigned, and a phone refuses to install an
+      # unsigned APK. zipalign first, then sign with the throwaway key.
+      - name: Align and sign with a throwaway key
+        run: |
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          unsigned=$(find apps/studio/src-tauri/gen/android/app/build/outputs/apk -name '*-unsigned.apk' | head -n 1)
+          if [ -z "$unsigned" ]; then
+            echo "::error::No unsigned release APK was built."
+            exit 1
+          fi
+          od -An -N16 -tx1 /dev/urandom | tr -d ' \n' > "$RUNNER_TEMP/throwaway-password"
+          "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/throwaway.p12" -storetype PKCS12 \
+            -storepass:file "$RUNNER_TEMP/throwaway-password" \
+            -alias throwaway -keyalg RSA -keysize 2048 -validity 30 \
+            -dname "CN=Halonic test APK"
+          mkdir -p out
+          "$build_tools/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" sign \
+            --ks "$RUNNER_TEMP/throwaway.p12" --ks-key-alias throwaway \
+            --ks-pass "file:$RUNNER_TEMP/throwaway-password" \
+            --out out/halonic-test-arm64-v8a.apk "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" verify --print-certs out/halonic-test-arm64-v8a.apk
+          "$build_tools/aapt2" dump badging out/halonic-test-arm64-v8a.apk | grep -E "^(package|native-code)"
+          size=$(stat -c %s out/halonic-test-arm64-v8a.apk)
+          echo "::notice title=APK size::$size bytes"
+          if [ "$size" -ge 50000000 ]; then
+            echo "::error::The APK is $size bytes, over Telegram's 50 MB limit."
+            exit 1
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-test-apk-arm64
+          path: out/halonic-test-arm64-v8a.apk
+          if-no-files-found: error
+          retention-days: 7
