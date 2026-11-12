@@ -5,6 +5,7 @@ import type { SandboxProfile } from "@halonicjs/ports";
 import { sandboxCheckContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
+import { HelperError } from "./elevate-helper.ts";
 import { cgroupNamesContainer, type Machine } from "./machine.ts";
 import type { Runner } from "./srt-runner.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
@@ -384,6 +385,7 @@ verifies("sandbox-srt.setup", () => {
       const sandbox = srt(windowsMachine(async () => "cancelled"));
       expect(await sandbox.setUp()).toEqual({
         ok: false,
+        outcome: "cancelled",
         reason: "the administrator prompt was cancelled; nothing changed",
       });
     });
@@ -396,14 +398,29 @@ verifies("sandbox-srt.setup", () => {
       );
       expect(await sandbox.setUp()).toEqual({
         ok: false,
+        outcome: "failed",
         reason: "srt-win install: WFP filter install failed: access denied",
+      });
+    });
+
+    it("gives the helper's reason sentence and its code when the helper fails", async () => {
+      const sandbox = srt(
+        windowsMachine(async () => {
+          throw new HelperError("Windows didn't accept the sandbox's network rules", 12);
+        }),
+      );
+      expect(await sandbox.setUp()).toEqual({
+        ok: false,
+        outcome: "failed",
+        reason: "Windows didn't accept the sandbox's network rules",
+        code: 12,
       });
     });
 
     it("gives the check's words when the sandbox still can't start after the install", async () => {
       const sandbox = srt(machine({ platform: "win32" }));
       const setup = await sandbox.setUp();
-      expect(setup.ok).toBe(false);
+      expect(setup).toMatchObject({ ok: false, outcome: "check_failed" });
       expect(setup.ok ? "" : setup.reason).toContain("windows-install");
     });
 
@@ -417,6 +434,7 @@ verifies("sandbox-srt.setup", () => {
       });
       expect(await srt(linux).setUp()).toEqual({
         ok: false,
+        outcome: "failed",
         reason: "only Windows has a sandbox setup, not linux",
       });
       expect(installs).toBe(0);
@@ -456,6 +474,7 @@ verifies("sandbox-srt.remove", () => {
       const sandbox = new SrtSandbox(windowsMachine(async () => "cancelled"));
       expect(await sandbox.remove()).toEqual({
         ok: false,
+        outcome: "cancelled",
         reason: "the administrator prompt was cancelled; nothing changed",
       });
       expect((await sandbox.check()).ok).toBe(true);
@@ -469,6 +488,7 @@ verifies("sandbox-srt.remove", () => {
       );
       expect(await sandbox.remove()).toEqual({
         ok: false,
+        outcome: "failed",
         reason: "srt-win uninstall failed (exit 22): kept_grants_in_use",
       });
     });

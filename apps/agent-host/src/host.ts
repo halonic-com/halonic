@@ -3,7 +3,7 @@ import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { type SandboxSetup, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
@@ -61,8 +61,8 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  *
  * - `--version` prints its version;
  * - `--sandbox-check` prints whether the sandbox works on this machine, as JSON;
- * - `--sandbox-setup` sets the sandbox up, once, for the installer (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON;
- * - `--sandbox-remove` removes what the setup left, for the uninstaller (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
+ * - `--sandbox-setup` sets the sandbox up, for the installer and Studio, with one administrator prompt (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON: `ok`, or the `outcome` (`cancelled`, `failed`, `check_failed`) and the `reason`;
+ * - `--sandbox-remove` removes what the setup left, for the uninstaller and Studio (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
  * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
@@ -103,10 +103,7 @@ export async function run(
   if (args.includes("--sandbox-cleanup")) {
     const profileFolder = argumentAfter(args, "--profile-folder");
     if (profileFolder === undefined) {
-      const missing: SandboxSetup = {
-        ok: false,
-        reason: "--sandbox-cleanup needs --profile-folder.",
-      };
+      const missing = { ok: false, reason: "--sandbox-cleanup needs --profile-folder." };
       return answer(io, missing);
     }
     return answer(io, await makeSandbox([]).cleanUp(profileFolder));

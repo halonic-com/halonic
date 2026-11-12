@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
+import { findHelper, throughHelper } from "./elevate-helper.ts";
 import {
   forgetSandboxParents,
   letSandboxReadParents,
@@ -50,10 +51,13 @@ export interface Machine {
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
    * once, unless this process already runs as one. Running it again repairs
-   * the install or changes nothing.
+   * the install or changes nothing. With Halonic's signed helper next to this
+   * program (the agent host in the app folder), the helper runs it from its
+   * admin-only copy of srt-win (HAL-1451); without it (the CLI run by Node),
+   * srt asks for itself.
    *
    * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
-   * @throws with srt's own words when the install fails
+   * @throws {HelperError} with a reason sentence and the helper's code, or with srt's own words, when the install fails
    */
   installWindowsSandbox(): Promise<"installed" | "cancelled">;
   /**
@@ -66,7 +70,9 @@ export interface Machine {
    */
   letSandboxReadParents(folders: readonly string[]): Promise<void>;
   /**
-   * Runs srt's Windows uninstall (`srt windows-uninstall`): the sandbox
+   * Runs srt's Windows uninstall (`srt windows-uninstall`), through the helper
+   * as {@link Machine.installWindowsSandbox} does, which also takes away its
+   * Installed apps entry: the sandbox
    * account and its profile, the sandbox group, the network filters, the
    * `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants this user's
    * sessions kept on their folders. It asks for an administrator once, unless
@@ -74,7 +80,7 @@ export interface Machine {
    * nothing, so running it again is safe.
    *
    * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
-   * @throws with srt's own words when the uninstall fails, also while a sandboxed program runs
+   * @throws {HelperError} or with srt's own words when the uninstall fails, also while a sandboxed program runs
    */
   uninstallWindowsSandbox(): Promise<"removed" | "cancelled">;
   /**
@@ -208,6 +214,10 @@ export const systemMachine: Machine = {
     }
   },
   async installWindowsSandbox() {
+    const helper = findHelper();
+    if (helper !== null) {
+      return (await throughHelper(helper, "setup")) === "done" ? "installed" : "cancelled";
+    }
     const { installWindowsSandboxAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
     );
@@ -233,6 +243,10 @@ export const systemMachine: Machine = {
     await letSandboxReadParents(parents, sid);
   },
   async uninstallWindowsSandbox() {
+    const helper = findHelper();
+    if (helper !== null) {
+      return (await throughHelper(helper, "remove")) === "done" ? "removed" : "cancelled";
+    }
     const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
     );
