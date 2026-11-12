@@ -2,7 +2,7 @@ import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { entered, logOf } from "./run-log.test-helper.ts";
-import { stepEvents } from "./step-events-model.ts";
+import { stepBlockedSites, stepEvents } from "./step-events-model.ts";
 
 const answered = (
   model: string,
@@ -66,5 +66,39 @@ verifies("runs.run-view.step-events", () => {
     const [call] = stepEvents(sneaky, "step-0").toolCalls;
     expect(call?.tool).toBe("send\\u202eliame");
     expect(call?.args).toContain("Hi\\u200b");
+  });
+});
+
+const refused = (host: string, count: number, branch?: string): RunEventBody => ({
+  type: "sandbox.blocked",
+  state: "install",
+  agent: "writer",
+  block: { kind: "network", host, port: 443 },
+  count,
+  ...(branch === undefined ? {} : { branch }),
+});
+
+verifies("runs.run-view.blocked-sites", () => {
+  const blocked = logOf("run_a_01jd8q", [
+    [0, entered("read")],
+    [1, entered("install")],
+    [1, refused("registry.npmjs.org", 1)],
+    [1, refused("registry.npmjs.org", 12)],
+    [1, refused("cdn.example", 2, "docs")],
+    [2, entered("check")],
+  ]);
+
+  it("gives a step the sites its sandbox refused, a branch's apart, with the agent's name", () => {
+    const install = stepBlockedSites(blocked, "step-1");
+
+    expect(install.map(({ agent, sites }) => [agent, sites.branch, sites.sites])).toEqual([
+      ["Writer", undefined, [{ host: "registry.npmjs.org", tries: 12 }]],
+      ["Writer", "docs", [{ host: "cdn.example", tries: 2 }]],
+    ]);
+  });
+
+  it("has none for a step whose sandbox refused nothing", () => {
+    expect(stepBlockedSites(blocked, "step-0")).toEqual([]);
+    expect(stepBlockedSites(blocked, "step-2")).toEqual([]);
   });
 });
