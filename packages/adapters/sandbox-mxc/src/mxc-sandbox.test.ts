@@ -18,6 +18,9 @@ function machine(overrides: Partial<MxcMachine> = {}): MxcMachine & { sdkAsked: 
       asked += 1;
       return offeringSupport;
     },
+    spawn: async () => {
+      throw new Error("not started in this test");
+    },
     ...overrides,
     sdkAsked: () => asked,
   };

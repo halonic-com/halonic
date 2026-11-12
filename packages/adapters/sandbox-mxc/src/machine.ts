@@ -1,11 +1,14 @@
 import { release, version } from "node:os";
+import type { MxcSpawn } from "./mxc-process.ts";
 
 /**
- * The part of MXC's SDK (`@microsoft/mxc-sdk/v1`) the adapter reads to learn
- * what this computer offers. Our own narrow view, so a test hands in a fake
- * SDK and every other system runs the tests without it.
+ * The part of MXC's SDK (`@microsoft/mxc-sdk/v1`) the adapter uses: what this
+ * computer offers, and starting a program. Our own narrow view, so a test
+ * hands in a fake SDK and every other system runs the tests without it.
  */
 export interface MxcSdk {
+  /** What the SDK's `spawn()` does, as far as the adapter uses it. */
+  spawn: MxcSpawn;
   /** What the SDK's `getPlatformSupport()` returns, as far as the adapter reads it. */
   getPlatformSupport(): { isSupported: boolean; reason?: string; isolationTier?: string };
   /** What the SDK's `getAvailableBackends()` returns, as far as the adapter reads it. */
@@ -55,6 +58,8 @@ export interface MxcMachine {
   windowsRelease(): WindowsRelease;
   /** What MXC's SDK says about this computer. Only asked on Windows 11 client editions. */
   mxcSupport(): Promise<MxcSupport>;
+  /** Starts a program in a box, through the SDK's `spawn`. Only asked once {@link mxcSupport} said the SDK is loaded. */
+  spawn: MxcSpawn;
 }
 
 /** The SDK's backend name for Windows' process container. */
@@ -83,12 +88,17 @@ export function supportOf(sdk: MxcSdk): MxcSupport {
  * @param loadSdk - loads MXC's SDK; the default loads it only on Windows, see {@link mxcSdkLoader}
  */
 export function systemMachine(loadSdk: LoadMxcSdk = mxcSdkLoader(process.platform)): MxcMachine {
+  let sdk: Promise<MxcSdk> | null = null;
   let support: Promise<MxcSupport> | null = null;
+  const loaded = () => {
+    sdk ??= loadSdk();
+    return sdk;
+  };
   return {
     platform: process.platform,
     windowsRelease: () => windowsReleaseOf(release(), version()),
     mxcSupport: () => {
-      support ??= loadSdk()
+      support ??= loaded()
         .then(supportOf)
         .catch((error: unknown) => ({
           loaded: false as const,
@@ -96,6 +106,7 @@ export function systemMachine(loadSdk: LoadMxcSdk = mxcSdkLoader(process.platfor
         }));
       return support;
     },
+    spawn: async (request, options) => (await loaded()).spawn(request, options),
   };
 }
 
@@ -112,8 +123,8 @@ export function windowsReleaseOf(osRelease: string, osVersion: string): WindowsR
 /**
  * Loads MXC's SDK on Windows only, and only when it is called: never at
  * module top level, so other systems never touch the SDK or its native
- * modules. Keeps only the two calls in {@link MxcSdk}, so the adapter can't
- * reach the SDK's telemetry (`requestTelemetryConsent`) or anything else.
+ * modules. Keeps only the three calls in {@link MxcSdk}, so the adapter can't
+ * reach the SDK's telemetry consent (`requestTelemetryConsent`) or anything else.
  * Every failure rejects, and {@link systemMachine} turns that into
  * `loaded: false`, which `check()` reports as `other`.
  *
@@ -133,19 +144,24 @@ export function mxcSdkLoader(
 }
 
 /**
- * The two calls the adapter reads from the SDK's module, and nothing else.
+ * The three calls the adapter uses from the SDK's module, and nothing else.
  *
  * @throws when the module lacks either call
  */
 function mxcSdkOf(module: unknown): MxcSdk {
-  const { getPlatformSupport, getAvailableBackends } =
+  const { getPlatformSupport, getAvailableBackends, spawn } =
     typeof module === "object" && module !== null ? (module as Partial<MxcSdk>) : {};
-  if (typeof getPlatformSupport !== "function" || typeof getAvailableBackends !== "function") {
-    throw new Error("its module has no getPlatformSupport() and getAvailableBackends()");
+  if (
+    typeof getPlatformSupport !== "function" ||
+    typeof getAvailableBackends !== "function" ||
+    typeof spawn !== "function"
+  ) {
+    throw new Error("its module has no getPlatformSupport(), getAvailableBackends() and spawn()");
   }
   return {
     getPlatformSupport: () => getPlatformSupport(),
     getAvailableBackends: () => getAvailableBackends(),
+    spawn: (request, options) => spawn(request, options),
   };
 }
 

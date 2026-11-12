@@ -30,6 +30,9 @@ function sdkModule(): Record<string, unknown> & { consentAsked: () => boolean } 
         capabilities: ["identitylessLoopbackProxy"],
       },
     ],
+    spawn: async () => {
+      throw new Error("not started in this test");
+    },
     requestTelemetryConsent: () => {
       consentAsked = true;
     },
@@ -106,13 +109,17 @@ verifies("sandbox-mxc.sdk-loading", () => {
 
     it.each([
       ["a module without the calls", { getPlatformSupport: () => ({ isSupported: true }) }],
+      [
+        "a module without spawn",
+        { getPlatformSupport: () => ({ isSupported: true }), getAvailableBackends: () => [] },
+      ],
       ["no module", undefined],
     ])("says other for %s", async (_name, module) => {
       expect(await new MxcSandbox(windows11(async () => module)).check()).toEqual({
         ok: false,
         reason: "other",
         missing: [
-          "MXC's SDK can't be loaded or asked: its module has no getPlatformSupport() and getAvailableBackends()",
+          "MXC's SDK can't be loaded or asked: its module has no getPlatformSupport(), getAvailableBackends() and spawn()",
         ],
       });
     });
@@ -139,9 +146,13 @@ verifies("sandbox-mxc.sdk-loading", () => {
       expect(module.consentAsked()).toBe(false);
     });
 
-    it("hands the adapter only the two calls it reads", async () => {
+    it("hands the adapter only the three calls it uses", async () => {
       const sdk = await mxcSdkLoader("win32", async () => sdkModule())();
-      expect(Object.keys(sdk).sort()).toEqual(["getAvailableBackends", "getPlatformSupport"]);
+      expect(Object.keys(sdk).sort()).toEqual([
+        "getAvailableBackends",
+        "getPlatformSupport",
+        "spawn",
+      ]);
     });
   });
 });
