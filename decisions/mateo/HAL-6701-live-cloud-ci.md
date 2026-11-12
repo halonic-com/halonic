@@ -3,7 +3,6 @@
 - Task: HAL-6701 (step 1c of the [HAL-198 build plan](/HAL/issues/HAL-198#document-build-plan), ADR 5.9)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-6701](/HAL/issues/HAL-6701)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HXz2XR5sbCjEKwxGa3yeLQBaJItFMJ7aG1bcCQm4YkLJon8Ma1FHru1GtHZLqoMciVf/P4xEB/kVS11sSBwRDw==
 
 ## What changes
 
@@ -24,7 +23,7 @@ Liam decided this on [HAL-6835](/HAL/issues/HAL-6835#document-decision) (option 
 - **Account:** a Cloudflare account just for CI that holds nothing else (not the halonic.dev or halonic.com account, no domains, no production data), with usage alerts for Workers requests, D1 and R2 sent to the board.
 - **Token:** an account API token for that one account only, with Workers Scripts edit, D1 edit, Workers R2 Storage edit and Account Settings read. No DNS, zone, API Tokens or user scopes. It expires at most 35 days after it is created, so a missed monthly rotation fails closed.
 - **Created by hand:** the environment is set up before the variable is turned on, never by a first run.
-- **Branches:** "Selected branches and tags" with `main` and every branch of this repository (pattern `**`; `*` doesn't match the `/` in our branch names). Forks never get the token: GitHub passes no secrets to fork pull requests, and the workflow skips them.
+- **Branches:** "Selected branches and tags" with the patterns `main`, `*` and `**/*`, so every branch of this repository matches (`*` doesn't match a `/`, so `**/*` covers branches like `mateo/HAL-…` and the merge queue's `gh-readonly-queue/main/…`). Forks never get the token: GitHub passes no secrets to fork pull requests, and the workflow skips them.
 - **No required reviewers, no wait timer, admin bypass off** (`can_admins_bypass: false`). Every agent pushes as `halonic-dev`, so a required reviewer would mean the board approving every live run.
 - **Environment secrets only:** the token and account ID are never repository or organisation secrets, so no other workflow can read them.
 - **Review:** changes to `live-cloud.yml`, the live test code and the sweeper need Julian's review. A change that sends the token anywhere other than the Cloudflare API, or prints it, is rejected.
