@@ -15,6 +15,8 @@ import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
+import { SettingsDialog } from "../settings/settings-dialog.tsx";
+import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
@@ -56,6 +58,8 @@ export interface StudioWindowProps {
  * (`shell.studio-window`): the window tabs in the title bar, the toolbar with Back, Forward, the
  * path and the save note, the sidebar, the active tab's page with the last five kept mounted, the
  * status bar items, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
+ * Settings opens over it (`shell.settings-window`) from the context's `openSettings` and, in the
+ * desktop app, Mod ,.
  *
  * On a phone (`shell.studio-phone`): the top bar with Back and **Search**, the page of the phone
  * place the user is in, and the bottom navigation, with Android's back handled by the shell. The
@@ -70,6 +74,8 @@ export function StudioWindow(props: StudioWindowProps) {
   const { tabs } = workspace;
   const { announcer, contributions } = shell;
   const palette = usePaletteOpening(platform);
+  const settings = useSettingsOpening(host, platform);
+  const openSettings = settings.show;
   const desktop = usePresentationFromWidth() === "desktop";
   const phone = usePhonePlaces();
   const focusNewPage = usePageHeadingFocus();
@@ -94,8 +100,9 @@ export function StudioWindow(props: StudioWindowProps) {
       ...shell.services.contextFor(featureId, workspace.services),
       openPlace: (place) => openPlaceHere.current(place),
       openItem: (item) => openHere.current(locationOfItem(item)),
+      openSettings,
     }),
-    [shell, workspace],
+    [shell, workspace, openSettings],
   );
   /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
   function locationOfItem(item: ItemRef): TabLocation {
@@ -215,6 +222,20 @@ export function StudioWindow(props: StudioWindowProps) {
           onClose={palette.close}
         />
       ) : null}
+      {settings.opening === undefined ? null : (
+        <SettingsDialog
+          key={settings.opening}
+          sections={contributions.settings.list()}
+          workspaceName={workspace.name}
+          place={host === "desktop-app" ? "app" : "served"}
+          requested={settings.requested}
+          lastShown={settings.lastShown}
+          onShown={settings.remember}
+          contextFor={contextFor}
+          announcer={announcer}
+          onClose={settings.close}
+        />
+      )}
       <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );

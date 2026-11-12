@@ -4,6 +4,13 @@ The Settings feature of the Studio: the sections Appearance, Formats and Assista
 settings that save by themselves (board, HAL-1102). The shell owns the Settings dialog itself;
 this package fills its sections.
 
+## The feature
+
+`settingsFeature` adds each section in `settingsSections` (in `src/feature.ts`) through the shell's
+`settings` contribution point, and the command **Settings** (`settings.open`), which opens Settings
+through the window's `openSettings` (`settings.feature`). A new section goes into that list, with its
+`scope` deciding its group. The desktop app registers the feature; the served Studio doesn't yet.
+
 - **Layer:** studio
 - **Owner:** elena
 - **Public API:** `@halonicjs/studio-feature-settings` (the feature) and `@halonicjs/studio-feature-settings/api`
