@@ -2,8 +2,9 @@ import type { RunEvent } from "@halonicjs/events";
 import { Button, CloseIcon, Disclosure, SidePanel } from "@halonicjs/studio-kit";
 import { useEffect, useMemo, useRef } from "react";
 import { stepEventsWords } from "../run-words.ts";
+import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
-import { stepEvents } from "./step-events-model.ts";
+import { stepBlockedSites, stepEvents } from "./step-events-model.ts";
 
 /** Props for {@link StepPanel}. */
 export interface StepPanelProps {
@@ -14,15 +15,22 @@ export interface StepPanelProps {
 }
 
 /**
- * An entry's events in the side panel (checklist part 1, 1.10): the step's
- * model calls with their model and tokens, then its tool calls, each with
- * its arguments folded. Opening it moves focus to its title, and closing it
+ * An entry's events in the side panel (checklist part 1, 1.10): first the
+ * sites the step's sandbox refused (sandbox-screens 2.2), then its model
+ * calls with their model and tokens, then its tool calls, each with its
+ * arguments folded. Opening it moves focus to its title, and closing it
  * moves focus back to the entry (kit `SidePanel`).
  *
- * Not here yet: the step's blocked sites and what it could do (HAL-1707, HAL-1708).
+ * The Blocked sites part has no action yet: the Studio has no agent page to
+ * open at its allowed sites, and the hint already says where to add a site.
+ * It doesn't say "No connection was made." either, because the page can't
+ * tell yet whether the run's sandbox has proven that (HAL-6219).
+ *
+ * Not here yet: what the step could do (HAL-1707).
  */
 export function StepPanel({ entry, log, onClose }: StepPanelProps) {
   const { modelCalls, toolCalls } = useMemo(() => stepEvents(log, entry.id), [log, entry.id]);
+  const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
   const frame = useRef<HTMLDivElement>(null);
   // Escape while focus is in the panel; the shell's close stack isn't open to features.
   useEffect(() => {
@@ -51,6 +59,16 @@ export function StepPanel({ entry, log, onClose }: StepPanelProps) {
           />
         }
       >
+        {blocked.map(({ sites, agent }) => (
+          <div key={sites.firstSeq} className="pb-4">
+            <BlockedSitesPanel
+              step={sites}
+              agent={agent}
+              noConnectionProven={false}
+              place="desktop"
+            />
+          </div>
+        ))}
         {modelCalls.length === 0 && toolCalls.length === 0 ? (
           <p className="text-body text-fg-muted">{stepEventsWords.none}</p>
         ) : null}

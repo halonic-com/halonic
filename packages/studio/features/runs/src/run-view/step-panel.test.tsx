@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -31,7 +32,22 @@ const log = logOf(runId, [
     1,
     { type: "tool.called", agent: "writer", tool: "send_email", args: { to: "sam@acme.example" } },
   ],
+  [2, entered("install")],
+  [2, refused("registry.npmjs.org", 1)],
+  [2, refused("registry.npmjs.org", 12)],
+  [2, refused("objects.githubusercontent.com", 1)],
 ]);
+
+/** A `sandbox.blocked` event of step Install; `count` is the site's running total. */
+function refused(host: string, count: number): RunEventBody {
+  return {
+    type: "sandbox.blocked",
+    state: "install",
+    agent: "writer",
+    block: { kind: "network", host, port: 443 },
+    count,
+  };
+}
 
 async function openRun() {
   const list = new RunsList(
@@ -100,5 +116,37 @@ verifies("runs.run-view.step-events", () => {
     act(() => (root.querySelector('[aria-label="Close Draft"]') as HTMLElement).click());
 
     expect(root.querySelector("aside")).toBeNull();
+  });
+});
+
+verifies("runs.run-view.blocked-sites", () => {
+  it("names the sites a step's sandbox refused at the top of its panel, once each with its tries", async () => {
+    const root = await openRun();
+    act(() => entry(root, 2).click());
+
+    const blocked = root.querySelector("aside section");
+    expect(blocked?.querySelector("h3")?.textContent).toBe("Blocked sites");
+    const rows = [...(blocked?.querySelectorAll("li") ?? [])].map((row) => row.textContent);
+    expect(rows).toEqual(["registry.npmjs.org, 12 tries", "objects.githubusercontent.com, 1 try"]);
+    expect(blocked?.textContent).toContain(
+      "These sites aren't in Writer's allowed sites. To allow one, add it to Writer's allowed sites.",
+    );
+  });
+
+  it("has no action and never says no connection was made, until the panel can know both", async () => {
+    const root = await openRun();
+    act(() => entry(root, 2).click());
+
+    const blocked = root.querySelector("aside section");
+    expect(blocked?.querySelector("button, a")).toBeNull();
+    expect(blocked?.textContent).not.toContain("your computer");
+    expect(blocked?.textContent).not.toContain("No connection was made.");
+  });
+
+  it("has no Blocked sites part for a step whose sandbox refused nothing", async () => {
+    const root = await openRun();
+    act(() => entry(root, 1).click());
+
+    expect(root.querySelector("aside")?.textContent).not.toContain("Blocked sites");
   });
 });

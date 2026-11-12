@@ -21,7 +21,8 @@ export function fill(key: BlockedSitesKey, values: Readonly<Record<string, React
     if (!(part in values)) throw new Error(`${key}: no value for {${part}}`);
     const value = values[part];
     if (typeof value === "string" || typeof value === "number") return String(value);
-    return <Fragment key={part}>{value}</Fragment>;
+    // By place, not by name: a sentence may use one name twice.
+    return <Fragment key={index}>{value}</Fragment>;
   });
 }
 
