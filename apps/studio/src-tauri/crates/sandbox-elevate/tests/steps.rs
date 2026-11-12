@@ -13,6 +13,9 @@ use std::path::{Path, PathBuf};
 
 const SHIPPED: &[u8] = b"srt-win as shipped";
 const SWAPPED: &[u8] = b"srt-win from someone else";
+const HELPER: &[u8] = b"helper";
+/// The publisher the pretend release is signed by.
+const PUBLISHER: &str = "Halonic";
 
 fn app() -> PathBuf {
     PathBuf::from("user-app-folder")
@@ -31,6 +34,10 @@ struct Pretend {
     own: PathBuf,
     folder_fails: bool,
     exit: i32,
+    /// [`SIGNER`](halonic_sandbox_elevate::SIGNER) as built in.
+    signer: Option<&'static str>,
+    /// Pairs of names that reach the same file or folder.
+    same: Vec<(PathBuf, PathBuf)>,
     files: RefCell<BTreeMap<PathBuf, Vec<u8>>>,
     runs: RefCell<Vec<(PathBuf, Vec<String>, PathBuf)>>,
     environments: RefCell<Vec<Vec<(&'static str, OsString)>>>,
@@ -43,7 +50,7 @@ impl Pretend {
     /// A helper started from `from`, with `srt_win` next to it.
     fn new(from: PathBuf, srt_win: Option<&[u8]>) -> Self {
         let mut files = BTreeMap::new();
-        files.insert(from.join(PROGRAM), b"helper".to_vec());
+        files.insert(from.join(PROGRAM), HELPER.to_vec());
         if let Some(bytes) = srt_win {
             files.insert(from.join(SRT_WIN), bytes.to_vec());
         }
@@ -52,6 +59,8 @@ impl Pretend {
             own: from.join(PROGRAM),
             folder_fails: false,
             exit: 0,
+            signer: Some(PUBLISHER),
+            same: Vec::new(),
             files: RefCell::new(files),
             runs: RefCell::new(Vec::new()),
             environments: RefCell::new(Vec::new()),
@@ -62,7 +71,7 @@ impl Pretend {
     }
 
     fn run(&self, verb: Verb) -> i32 {
-        run(verb, self, &sha256_hex(SHIPPED))
+        run(verb, self, &sha256_hex(SHIPPED), self.signer)
     }
 
     fn file(&self, path: PathBuf) -> Option<Vec<u8>> {
@@ -113,6 +122,17 @@ impl Machine for Pretend {
             .ok_or(io::ErrorKind::NotFound)?;
         self.files.borrow_mut().insert(to.to_path_buf(), bytes);
         Ok(())
+    }
+    fn same_file(&self, one: &Path, other: &Path) -> bool {
+        one == other
+            || self
+                .same
+                .iter()
+                .any(|(a, b)| (a == one && b == other) || (a == other && b == one))
+    }
+    /// Only the helper as shipped is signed.
+    fn signer(&self, file: &Path) -> Option<String> {
+        (self.file(file.to_path_buf()).as_deref() == Some(HELPER)).then(|| PUBLISHER.into())
     }
     fn read(&self, file: &Path) -> io::Result<Vec<u8>> {
         self.file(file.to_path_buf())
@@ -176,7 +196,7 @@ fn sandbox_elevate_sets_up_from_the_checked_copy_in_the_admin_only_folder() {
     // The helper copies itself there for Installed apps.
     assert_eq!(
         machine.file(folder().join(PROGRAM)).as_deref(),
-        Some(&b"helper"[..])
+        Some(HELPER)
     );
     assert_eq!(
         machine.entry.borrow().clone(),
@@ -365,4 +385,57 @@ fn sandbox_elevate_names_halonic_in_installed_apps() {
             folder().join(PROGRAM).display()
         )))
     );
+}
+
+#[test]
+fn sandbox_elevate_refuses_a_swapped_helper_copy_and_writes_no_entry() {
+    // Someone renamed the running helper and put their own in its place.
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    machine
+        .files
+        .borrow_mut()
+        .insert(app().join(PROGRAM), b"helper from someone else".to_vec());
+    assert_eq!(machine.run(Verb::SetUp), code::ENTRY);
+    assert!(machine.ran().is_empty());
+    assert_eq!(machine.file(folder().join(PROGRAM)), None);
+    assert_eq!(*machine.entry.borrow(), None);
+}
+
+#[test]
+fn sandbox_elevate_skips_the_helper_check_only_in_an_unsigned_build() {
+    let mut machine = Pretend::new(app(), Some(SHIPPED));
+    machine
+        .files
+        .borrow_mut()
+        .insert(app().join(PROGRAM), b"a dev build".to_vec());
+    machine.signer = None;
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    assert!(machine.entry.borrow().is_some());
+}
+
+#[test]
+fn sandbox_elevate_knows_its_folder_by_any_name() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    // Installed apps starts the copy by another name for the same folder,
+    // such as other letter case or a short name.
+    let other_name = PathBuf::from("PROGRAM-FILES").join("HALONI~1");
+    let mut from_installed_apps = Pretend::new(other_name.clone(), None);
+    from_installed_apps.same = vec![(other_name, folder())];
+    from_installed_apps.files = machine.files;
+    from_installed_apps.entry = machine.entry;
+    assert_eq!(from_installed_apps.run(Verb::Remove), code::OK);
+    assert_eq!(
+        from_installed_apps.ran(),
+        vec![(folder().join(SRT_WIN), vec!["uninstall".into()], system())]
+    );
+}
+
+#[test]
+fn sandbox_elevate_never_copies_srt_win_onto_itself() {
+    let mut machine = Pretend::new(app(), Some(SHIPPED));
+    machine.same = vec![(app().join(SRT_WIN), folder().join(SRT_WIN))];
+    assert_eq!(machine.run(Verb::SetUp), code::FOLDER);
+    assert!(machine.ran().is_empty());
+    assert_eq!(machine.file(app().join(SRT_WIN)).as_deref(), Some(SHIPPED));
 }

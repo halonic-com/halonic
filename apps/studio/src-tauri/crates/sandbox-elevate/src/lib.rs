@@ -9,6 +9,9 @@
 //! next to itself into an admin-only folder under Program Files, checks the
 //! copy's SHA-256 against the one built in, and runs the copy from System32.
 //! Its exit code is srt-win's, or one of its own from 30 up ([`code`]).
+//! A release build also checks that the copy of itself it leaves for
+//! Installed apps shows the same publisher as the one Windows asked about
+//! ([`SIGNER`]).
 //!
 //! The steps are written against [`Machine`], so they are tested anywhere;
 //! the Windows calls are in the `windows` module.
@@ -35,6 +38,17 @@ pub const TEMP: &str = "tmp";
 pub const UNINSTALL_KEY: &str =
     r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox";
 
+/// The publisher a signed release's helper shows in the UAC prompt: its
+/// signing certificate's name, as Windows displays it. The release build
+/// sets `HALONIC_SANDBOX_SIGNER` (HAL-1197); dev and CI builds aren't signed
+/// and leave it out, and only they skip the check of the helper's copy.
+///
+/// It is built in, not read from the helper's own file: that file is in the
+/// user's app folder, and while the helper runs it can be renamed and
+/// another put in its place, which is the very swap this check is for
+/// (HAL-7385, S-4).
+pub const SIGNER: Option<&str> = option_env!("HALONIC_SANDBOX_SIGNER");
+
 /// The SHA-256 of the `srt-win.exe` sandbox-runtime 0.0.81 ships for this
 /// computer's architecture. `tests/srt_win_hash.rs` checks it against the
 /// installed package, so an srt update can't ship without a new value.
@@ -59,7 +73,9 @@ pub mod code {
     pub const WRONG_SRT_WIN: i32 = 33;
     /// The admin-only folder couldn't be made, secured or filled.
     pub const FOLDER: i32 = 34;
-    /// The Installed apps entry couldn't be written or deleted.
+    /// The Installed apps entry couldn't be written or deleted, or the
+    /// helper's copy it would start isn't signed by [`SIGNER`]. That copy is
+    /// deleted, and no entry is written.
     pub const ENTRY: i32 = 35;
     /// srt-win couldn't be started, or the helper couldn't limit the
     /// libraries it loads to System32, so it didn't start srt-win.
@@ -204,6 +220,14 @@ pub trait Machine {
     /// Deletes `to` if it's there, then copies `from` to it. The copy
     /// takes the folder's access list.
     fn replace_file(&self, from: &Path, to: &Path) -> io::Result<()>;
+    /// Whether `one` and `other` are the same file or folder, however each
+    /// is written: letter case, a short 8.3 name, a `\\?\` prefix or a link.
+    /// False when either can't be opened.
+    fn same_file(&self, one: &Path, other: &Path) -> bool;
+    /// The publisher `file` is signed by, as in [`SIGNER`], when Windows
+    /// trusts its signature. `None` for a file that isn't signed, or whose
+    /// signature Windows doesn't trust.
+    fn signer(&self, file: &Path) -> Option<String>;
     fn read(&self, file: &Path) -> io::Result<Vec<u8>>;
     fn exists(&self, file: &Path) -> bool;
     /// Runs `program` with `args` in `folder`, with `environment` and nothing
@@ -224,14 +248,19 @@ pub trait Machine {
 }
 
 /// Runs `verb` and gives the exit code. `srt_win_sha256` is
-/// [`SRT_WIN_SHA256`] outside tests.
-pub fn run(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> i32 {
-    match steps(verb, machine, srt_win_sha256) {
+/// [`SRT_WIN_SHA256`] and `signer` is [`SIGNER`] outside tests.
+pub fn run(verb: Verb, machine: &impl Machine, srt_win_sha256: &str, signer: Option<&str>) -> i32 {
+    match steps(verb, machine, srt_win_sha256, signer) {
         Ok(code) | Err(code) => code,
     }
 }
 
-fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32, i32> {
+fn steps(
+    verb: Verb,
+    machine: &impl Machine,
+    srt_win_sha256: &str,
+    signer: Option<&str>,
+) -> Result<i32, i32> {
     if !machine.elevated() {
         return Err(code::NOT_ELEVATED);
     }
@@ -254,8 +283,10 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
         temp: &temp,
     })
     .ok_or(code::SRT_WIN_DIDNT_START)?;
-    // From Installed apps the helper already runs from the folder.
-    let in_folder = from == folder;
+    // From Installed apps the helper already runs from the folder. Compared
+    // as files, not as names: Windows writes one folder many ways, and a
+    // miss would copy srt-win onto itself (HAL-7385, S-5).
+    let in_folder = machine.same_file(&from, &folder);
     machine.protect_folder(&folder).map_err(|_| code::FOLDER)?;
     machine.protect_folder(&temp).map_err(|_| code::FOLDER)?;
     let srt_win = folder.join(SRT_WIN);
@@ -263,9 +294,7 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
         if !machine.exists(&from.join(SRT_WIN)) {
             return Err(code::NO_SRT_WIN);
         }
-        machine
-            .replace_file(&from.join(SRT_WIN), &srt_win)
-            .map_err(|_| code::FOLDER)?;
+        copy(machine, &from.join(SRT_WIN), &srt_win)?;
     }
     if !machine.exists(&srt_win) {
         return Err(code::NO_SRT_WIN);
@@ -280,10 +309,19 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
     }
     match verb {
         Verb::SetUp => {
+            let helper = folder.join(PROGRAM);
             if !in_folder {
-                machine
-                    .replace_file(&own, &folder.join(PROGRAM))
-                    .map_err(|_| code::FOLDER)?;
+                copy(machine, &own, &helper)?;
+            }
+            // Installed apps runs this copy elevated, for every user of the
+            // computer. What was copied is whatever had the helper's name in
+            // the app folder by then, so it has to show the publisher Windows
+            // asked about (HAL-7385, S-4).
+            if let Some(signer) = signer
+                && machine.signer(&helper).as_deref() != Some(signer)
+            {
+                machine.delete(&helper);
+                return Err(code::ENTRY);
             }
             let status = machine
                 .run(&srt_win, &["install"], &system, &environment)
@@ -310,6 +348,15 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
             Ok(status)
         }
     }
+}
+
+/// Copies `from` over `to`, unless they are one file under two names:
+/// deleting `to` first would then delete the only copy (HAL-7385, S-5).
+fn copy(machine: &impl Machine, from: &Path, to: &Path) -> Result<(), i32> {
+    if machine.same_file(from, to) {
+        return Err(code::FOLDER);
+    }
+    machine.replace_file(from, to).map_err(|_| code::FOLDER)
 }
 
 /// The SHA-256 of `bytes` in lower-case hex, as `sha256sum` prints it.

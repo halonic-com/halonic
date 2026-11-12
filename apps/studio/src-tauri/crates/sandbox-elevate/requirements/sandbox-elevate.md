@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-1451, HAL-1415
+- Source: HAL-1451, HAL-1415, HAL-7414
 
-When the agent sandbox is set up or removed on Windows, the only program that runs with administrator rights shall be the helper, given one fixed verb (`setup` or `remove`) and no options. The helper shall run srt-win only from a copy in an admin-only folder under Program Files whose SHA-256 matches the one built into the helper, with fixed arguments, from System32. It shall not ask for administrator rights a second time. After a setup that passes it shall list "Halonic agent sandbox" in Installed apps, and a removal that passes shall take that entry and its folder away.
+When the agent sandbox is set up or removed on Windows, the only program that runs with administrator rights shall be the helper, given one fixed verb (`setup` or `remove`) and no options. The helper shall run srt-win only from a copy in an admin-only folder under Program Files whose SHA-256 matches the one built into the helper, with fixed arguments, from System32. It shall not ask for administrator rights a second time. After a setup that passes it shall list "Halonic agent sandbox" in Installed apps, and a removal that passes shall take that entry and its folder away. A signed release shall list it only when the helper's copy in that folder is signed by the same publisher as the helper itself.
 
 ## Examples
 
@@ -23,6 +23,12 @@ When the agent sandbox is set up or removed on Windows, the only program that ru
 - Given a sandbox set up by the helper,
   when Installed apps runs the copy's `remove`,
   then srt-win runs `uninstall`, and the entry and the copies are gone.
+- Given a release helper whose file in the app folder was swapped for another program while it ran,
+  when it runs `setup`,
+  then it exits 35, deletes its copy, runs nothing and writes no Installed apps entry.
+- Given the helper's folder reached by another name (other letter case or a short name),
+  when Installed apps runs the copy's `remove`,
+  then the helper knows it runs from the folder and removes the sandbox.
 - Given srt-win refuses to remove the sandbox,
   when the helper runs `remove`,
   then it exits with srt-win's code and the entry stays.

@@ -1012,6 +1012,16 @@ jobs:
       # works without unlocking (HAL-4499).
       - name: Keychain contract (Credential Manager)
         run: cargo test --locked -p halonic-keychain -- --ignored
+      # The helper reads a publisher as Windows shows it, here PowerShell's
+      # own signed program, and refuses a changed copy (HAL-7385, S-4).
+      - name: Sandbox helper's signature check
+        run: |
+          $signed = (Get-Command pwsh).Source
+          $signature = Get-AuthenticodeSignature $signed
+          if ($signature.Status -ne 'Valid') { throw "$signed isn't validly signed: $($signature.Status)" }
+          $env:HALONIC_SIGNED_FILE = $signed
+          $env:HALONIC_SIGNED_PUBLISHER = $signature.SignerCertificate.GetNameInfo('SimpleName', $false)
+          cargo test --locked -p halonic-sandbox-elevate --test windows -- --ignored
       # The agent sandbox's elevated helper on a real Windows (HAL-1451). The
       # runner's user is an administrator with UAC off, so it runs elevated
       # with no prompt. Built with the static C runtime, as the release
@@ -1145,8 +1155,24 @@ jobs:
           & net.exe user srt-sandbox *> $null
           if ($LASTEXITCODE -eq 0) { throw 'remove left the srt-sandbox account' }
           if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'remove left srt-win.exe' }
+
+          # A release build checks the copy of itself it leaves for Installed
+          # apps (HAL-7385, S-4). This build expects a publisher but isn't
+          # signed, as a swapped helper wouldn't be: its copy is refused.
+          $env:HALONIC_SANDBOX_SIGNER = 'Halonic'
+          cargo build --locked --release -p halonic-sandbox-elevate --target-dir $target
+          if ($LASTEXITCODE -ne 0) { throw 'the helper expecting a publisher did not build' }
+          Remove-Item Env:HALONIC_SANDBOX_SIGNER
+          Copy-Item (Join-Path $target 'release/halonic-sandbox-elevate.exe') $app -Force
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 35) { throw "an unsigned copy must be refused with 35, got $code" }
+          if (Test-Path $key) { throw 'an unsigned copy got an Installed apps entry' }
+          if (Test-Path (Join-Path $folder 'halonic-sandbox-elevate.exe')) { throw 'the unsigned copy was kept' }
+          & net.exe user srt-sandbox *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'srt-win ran after the copy was refused' }
           Assert-NoCanary 'the helper'
           Write-Output "The helper loaded none of $($planted -join ', ') from its folder."
+          Write-Output 'The helper refused a copy of itself without the publisher it expects.'
           Write-Output 'The helper set up, refused a swapped srt-win and removed the sandbox.'
           exit 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
