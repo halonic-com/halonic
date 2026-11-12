@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RunHistory } from "@halonicjs/app";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -275,6 +275,6 @@ verifies("cli.workspace-file-problems", () => {
 
     await runCli(["run", "support-reply", "--dir", "acme"], io, [runCommand()]);
 
-    expect(io.stderr[1]).toBe("  See them with: halonic validate --dir ./acme");
+    expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
   });
 });
