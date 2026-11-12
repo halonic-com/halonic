@@ -7,18 +7,27 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{RwLock, RwLockReadGuard};
 use std::time::{Duration, Instant};
 
 const NAMES: &[&str] = &["HALONIC_HOME", "XDG_DATA_HOME", "SEEN_RESOLVING"];
 const ENOUGH: Duration = Duration::from_secs(10);
 const SHORT: Duration = Duration::from_millis(300);
 
-/// Held while a test writes a stand-in shell or starts one. Linux refuses
-/// to run a script while another thread's newly started process still
-/// holds it open for writing ("Text file busy"), which tests running side
-/// by side would otherwise hit now and then.
-static STARTING: Mutex<()> = Mutex::new(());
+/// Taken exclusively while a test writes a stand-in shell, and shared while
+/// a test starts a process. A process started on another thread keeps a
+/// copy of the open write handle until it runs its program, and Linux
+/// refuses to run a script that is open for writing ("Text file busy"),
+/// which tests running side by side would otherwise hit now and then
+/// (HAL-6805). Starts don't hold a write handle, so they share the lock.
+static STARTING: RwLock<()> = RwLock::new(());
+
+/// Holds [`STARTING`] shared, so no test writes a shell meanwhile.
+fn starting() -> RwLockReadGuard<'static, ()> {
+    STARTING
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 /// [`login_variables`], started while no other test writes a shell.
 fn ask(
@@ -26,9 +35,7 @@ fn ask(
     names: &[&str],
     timeout: Duration,
 ) -> Result<BTreeMap<String, OsString>, LoginShellError> {
-    let _starting = STARTING
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let _starting = starting();
     login_variables(shell, names, timeout)
 }
 
@@ -55,8 +62,8 @@ impl Folder {
             "#!/bin/sh\n{rc}\nexport SEEN_RESOLVING=\"${RESOLVING_VARIABLE}\"\n\
              for last; do :; done\nexec /bin/sh -c \"$last\"\n"
         );
-        let _starting = STARTING
-            .lock()
+        let _writing = STARTING
+            .write()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         std::fs::write(&path, script).expect("write the shell");
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
@@ -169,6 +176,7 @@ fn login_shell_answers_when_studio_has_a_terminal() {
     // terminal's foreground (HAL-6597).
     let folder = Folder::new("terminal");
     let test = std::env::current_exe().expect("this test binary");
+    let _starting = starting();
     let status = std::process::Command::new("script")
         .args(["-q", "-e", "-c"])
         .arg(format!(
