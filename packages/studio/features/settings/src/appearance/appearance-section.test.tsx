@@ -83,6 +83,48 @@ verifies("settings.appearance-section", () => {
     expect(prefs.stored.get(panelOpacityPref.key)).toBe(0.5);
   });
 
+  it("puts the stored opacity back when the slider loses focus mid-drag", async () => {
+    const { prefs, settings, view } = setup();
+    const slider = control<HTMLInputElement>(view, '[type="range"]');
+    await act(async () => {
+      setNativeValue(slider, "0.5");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      slider.dispatchEvent(new Event("blur"));
+    });
+    expect(settings.get(panelOpacityPref)).toBe(0.8);
+    expect(prefs.stored.has(panelOpacityPref.key)).toBe(false);
+  });
+
+  it("puts the stored opacity back when the pointer is cancelled mid-drag", async () => {
+    const { settings, view } = setup();
+    const slider = control<HTMLInputElement>(view, '[type="range"]');
+    await act(async () => {
+      setNativeValue(slider, "0.5");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      slider.dispatchEvent(new Event("pointercancel"));
+    });
+    expect(settings.get(panelOpacityPref)).toBe(0.8);
+  });
+
+  it("puts the stored opacity back when the dialog closes mid-drag", async () => {
+    const { settings, view } = setup();
+    const slider = control<HTMLInputElement>(view, '[type="range"]');
+    await act(async () => {
+      setNativeValue(slider, "0.5");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    unmountAll();
+    expect(settings.get(panelOpacityPref)).toBe(0.8);
+  });
+
+  it("keeps a saved opacity when the slider loses focus after the drag", async () => {
+    const { settings, view } = setup();
+    const slider = control<HTMLInputElement>(view, '[type="range"]');
+    await change(slider, "0.5");
+    await act(async () => slider.dispatchEvent(new Event("blur")));
+    expect(settings.get(panelOpacityPref)).toBe(0.5);
+  });
+
   it("turns agent characters off", async () => {
     const { settings, view } = setup();
     await click(control(view, '[role="switch"]'));
@@ -111,7 +153,7 @@ describe("a failed save", () => {
       await click(control(view, '[role="switch"]'));
       expect(control<HTMLInputElement>(view, '[role="switch"]').checked).toBe(true);
       expect(announce).toHaveBeenCalledWith(
-        "Couldn't save agent characters on this computer. Agent characters are back to on.",
+        "Couldn't save agent characters on this computer. Agent characters are back on.",
       );
     });
 

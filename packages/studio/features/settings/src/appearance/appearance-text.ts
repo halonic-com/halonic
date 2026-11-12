@@ -29,18 +29,24 @@ export function percent(opacity: number): string {
 export interface SaveFailedText {
   /** "Couldn't save the theme on this computer." */
   readonly line: string;
-  /** The line, then what the setting is back to: "… Theme is back to System." */
+  /** The line, then what the setting is back to: "… Theme is back to System.", or "… Agent characters are back on." */
   readonly announce: (back: string) => string;
 }
 
-function saveFailed(what: string, name: string, verb = "is"): SaveFailedText {
+function saveFailed(what: string, back: (to: string) => string): SaveFailedText {
   const line = `Couldn't save ${what} on this computer.`;
-  return { line, announce: (back) => `${line} ${name} ${verb} back to ${back}.` };
+  return { line, announce: (to) => `${line} ${back(to)}` };
 }
 
-export const THEME_NOT_SAVED = saveFailed("the theme", THEME);
-export const PANEL_OPACITY_NOT_SAVED = saveFailed("the panel opacity", PANEL_OPACITY);
-export const AGENT_CHARACTERS_NOT_SAVED = saveFailed("agent characters", AGENT_CHARACTERS, "are");
+export const THEME_NOT_SAVED = saveFailed("the theme", (to) => `${THEME} is back to ${to}.`);
+export const PANEL_OPACITY_NOT_SAVED = saveFailed(
+  "the panel opacity",
+  (to) => `${PANEL_OPACITY} is back to ${to}.`,
+);
+export const AGENT_CHARACTERS_NOT_SAVED = saveFailed(
+  "agent characters",
+  (to) => `${AGENT_CHARACTERS} are back ${to}.`,
+);
 
 /** Agent characters' value in the dialog's words: "on" or "off". */
 export function onOrOff(on: boolean): string {

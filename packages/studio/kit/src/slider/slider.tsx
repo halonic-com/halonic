@@ -36,6 +36,12 @@ export interface SliderProps {
    * End, because each one is a pick.
    */
   readonly onCommit: (value: number) => void;
+  /**
+   * Called when a drag or the focus ends, whether or not it saved: the pointer is cancelled or the
+   * slider loses focus. After `onCommit` when it saved. The screen puts back a value that `onChange`
+   * showed and no `onCommit` saved.
+   */
+  readonly onEnd?: (() => void) | undefined;
   /** The value as shown and as screen readers say it: `(v) => \`${v}%\``. */
   readonly format: (value: number) => string;
   /**
@@ -82,6 +88,7 @@ const unavailableClasses = "opacity-45 contrast-more:opacity-60 forced-colors:op
  */
 function useCommitOnPick(
   onCommit: (value: number) => void,
+  onEnd: (() => void) | undefined,
   isUnavailable: boolean,
   ref: Ref<HTMLInputElement> | undefined,
 ): (element: HTMLInputElement | null) => void {
@@ -91,6 +98,7 @@ function useCommitOnPick(
       onCommit(value);
     }
   });
+  const end = useEffectEvent(() => onEnd?.());
   useEffect(() => {
     const element = input.current;
     if (element === null) {
@@ -123,11 +131,15 @@ function useCommitOnPick(
     element.addEventListener("keydown", keyDown);
     element.addEventListener("keyup", letGo);
     element.addEventListener("blur", letGo);
+    element.addEventListener("blur", end);
+    element.addEventListener("pointercancel", end);
     return () => {
       element.removeEventListener("change", change);
       element.removeEventListener("keydown", keyDown);
       element.removeEventListener("keyup", letGo);
       element.removeEventListener("blur", letGo);
+      element.removeEventListener("blur", end);
+      element.removeEventListener("pointercancel", end);
     };
   }, []);
   return useCallback(
@@ -169,13 +181,14 @@ export function Slider({
   value,
   onChange,
   onCommit,
+  onEnd,
   format,
   unavailable,
   ref,
 }: SliderProps) {
   const field = useFieldControl();
   const isUnavailable = unavailable !== undefined;
-  const setInput = useCommitOnPick(onCommit, isUnavailable, ref);
+  const setInput = useCommitOnPick(onCommit, onEnd, isUnavailable, ref);
   const shown = format(value);
   const style = { "--slider-ratio": sliderRatio(value, min, max) } as CSSProperties;
 

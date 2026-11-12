@@ -1,5 +1,6 @@
 import { Field, Select, Slider, Switch } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import { useEffect } from "react";
 import { DisplaySettingsService } from "../api.ts";
 import type { DisplayPref } from "../display-prefs.ts";
 import type { DisplaySettings } from "../display-settings.ts";
@@ -62,6 +63,9 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
   const opacity = useDisplaySetting(settings, panelOpacityPref);
   const characters = useDisplaySetting(settings, agentCharactersPref);
 
+  // The dialog closing mid-drag leaves nothing to save: the stored opacity comes back.
+  useEffect(() => () => settings.endPreview(panelOpacityPref), [settings]);
+
   async function save<Value>(
     pref: DisplayPref<Value>,
     value: Value,
@@ -96,6 +100,7 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
           format={percent}
           onChange={(moved) => settings.preview(panelOpacityPref, moved)}
           onCommit={(picked) => save(panelOpacityPref, picked, PANEL_OPACITY_NOT_SAVED, percent)}
+          onEnd={() => settings.endPreview(panelOpacityPref)}
         />
       </Field>
       <Field

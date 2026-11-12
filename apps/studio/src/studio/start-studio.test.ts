@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
-import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-settings";
+import {
+  BrowserDisplayPrefs,
+  DisplaySettings,
+  themePref,
+} from "@halonicjs/studio-feature-settings";
 import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
@@ -9,6 +13,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   desktopFeatures,
+  displaySettingsOf,
   keyboardPlatform,
   openFolder,
   type StartedStudio,
@@ -316,6 +321,16 @@ verifies("studio.window-appearance", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.removeAttribute("style");
+  });
+});
+
+verifies("studio.window-appearance", () => {
+  it("fails a save on a page without storage, so Settings says it and puts the value back", async () => {
+    const settings = displaySettingsOf({ window: new EventTarget() });
+    const outcome = await settings.set(themePref, "dark");
+
+    expect(outcome).toMatchObject({ saved: false, superseded: false, back: "system" });
+    expect(settings.get(themePref)).toBe("system");
   });
 });
 
