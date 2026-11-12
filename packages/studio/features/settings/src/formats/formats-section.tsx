@@ -12,7 +12,7 @@ import {
   formatOptions,
   formatPref,
 } from "./format-pref.ts";
-import { FORMAT, FORMAT_HINT, FORMAT_NOT_SAVED } from "./formats-text.ts";
+import { FORMAT, FORMAT_NOT_SAVED } from "./formats-text.ts";
 
 /**
  * Settings → Formats as the settings container shows it. "Follow" follows the browser's language
@@ -57,7 +57,7 @@ export function FormatsView({ settings, announce, place, followTag }: FormatsVie
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <Field
         label={FORMAT}
-        hint={`${FORMAT_HINT} ${formatExample(formatLocale(format.value, followTag))}`}
+        hint={formatExample(formatLocale(format.value, followTag))}
         error={format.failed ? FORMAT_NOT_SAVED.line : null}
       >
         <Select
