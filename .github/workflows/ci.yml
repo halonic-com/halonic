@@ -390,17 +390,21 @@ jobs:
       # GitHub OIDC token, and only when GitHub says the event is the merge
       # queue or a push to main. A branch that merely looks like a queue
       # branch can't fake that, whatever its workflow file says. On failure
-      # the token stays empty and the run uses the local cache.
+      # the token stays empty and the run uses the local cache. The job stays
+      # green, so a failure shows as a warning on the run: the remote cache
+      # was off unnoticed for two days once (HAL-7521).
       - name: Get a write token for the remote cache
         id: cache-token
         if: github.event_name != 'pull_request' && vars.TURBO_API != ''
         env:
           TURBO_API: ${{ vars.TURBO_API }}
-        shell: bash # with pipefail, so `|| exit 0` also catches a failed curl
+        shell: bash # with pipefail, so `|| off` also catches a failed curl
         run: |
-          oidc=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=halonic-turbo-cache" | jq -r .value) || exit 0
+          off() { echo "::warning title=Remote cache off::$1, so this run uses only the local cache."; exit 0; }
+          oidc=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=halonic-turbo-cache" | jq -r .value) || off "GitHub gave no OIDC token"
           echo "::add-mask::$oidc"
-          token=$(curl -fsS -X POST -H "Authorization: Bearer $oidc" "${TURBO_API%/}/auth/github" | jq -r '.token // empty') || exit 0
+          token=$(curl -fsS -X POST -H "Authorization: Bearer $oidc" "${TURBO_API%/}/auth/github" | jq -r '.token // empty') || off "The cache refused the token exchange (see the curl error above)"
+          [ -n "$token" ] || off "The cache answered the token exchange without a token"
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
       - name: Run every task through the cache
@@ -412,6 +416,9 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           if [ -z "$TURBO_TOKEN" ] || [ -z "$TURBO_REMOTE_CACHE_SIGNATURE_KEY" ]; then
+            if [ -n "$TURBO_TOKEN" ]; then
+              echo "::warning title=Remote cache off::TURBO_REMOTE_CACHE_SIGNATURE_KEY is missing, so this run uses only the local cache."
+            fi
             cache=local:rw
           else
             cache=local:rw,remote:rw
