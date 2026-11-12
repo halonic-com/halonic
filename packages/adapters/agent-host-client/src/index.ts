@@ -16,6 +16,13 @@ export {
 } from "./harness.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export {
+  AgentHostSandboxSetup,
+  type FinishedSandboxSetup,
+  type SandboxSetupResult,
+  type SandboxSetupStatus,
+  type SandboxSetupVerb,
+} from "./sandbox-setup.ts";
+export {
   type AgentHostAnswer,
   AgentHostError,
   type AgentHostRequestRoute,
