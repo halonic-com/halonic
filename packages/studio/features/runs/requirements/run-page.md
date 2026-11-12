@@ -10,13 +10,13 @@ When a run is opened from the Runs list or from another run, the Studio shall sh
 
 - Given a run that started today at 10:40 and is still running,
   when its page is shown,
-  then the header reads "Run · Support reply", "Run 01JD8Q", the chip Running and "today 10:40 · updates live", with no banner.
+  then the header reads "Run · Support reply", "Run 01jd8q", the chip Running and "today 10:40 · updates live", with no banner.
 - Given a run with one open approval in the step Send,
   when its page is shown,
   then the amber banner reads "Waiting for your approval in the step Send. Nothing runs until you decide." with Review in Inbox.
-- Given a run waiting for its child run 7K2M9P of Verify,
+- Given a run waiting for its child run 7k2m9p of Verify,
   when its page is shown,
-  then the neutral banner reads "Waiting for child run 7K2M9P (Verify)." with Open run 7K2M9P.
+  then the neutral banner reads "Waiting for child run 7k2m9p (Verify)." with Open run 7k2m9p.
 - Given a run cancelled in the step Classify,
   when its page is shown,
   then the chip reads Stopped and the plain note "Support reply was cancelled in the step Classify. Nothing after it ran.".

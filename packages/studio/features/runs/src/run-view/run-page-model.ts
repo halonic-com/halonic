@@ -11,7 +11,7 @@ import { clockTime, dayWords, dueWords, tookWords } from "../time-words.ts";
 
 /** The top of the run page. */
 export interface RunHeader {
-  /** "Run 01JD8Q", the page's `h1` and the tab's name. */
+  /** "Run 01jd8q", the page's `h1` and the tab's name. */
   readonly title: string;
   /** "Run · Support reply". */
   readonly kindLabel: string;
@@ -55,7 +55,7 @@ export interface RunPageContext {
  *
  * @example
  * runHeader(run, context);
- * // { title: "Run 01JD8Q", kindLabel: "Run · Support reply", line: "today 10:40 · updates live", … }
+ * // { title: "Run 01jd8q", kindLabel: "Run · Support reply", line: "today 10:40 · updates live", … }
  */
 export function runHeader(run: SourcedRun, context: RunPageContext): RunHeader {
   const row = runRow(run, context);
@@ -154,7 +154,7 @@ function waiting(text: string, action?: BannerAction): RunBanner {
   };
 }
 
-/** "Waiting for child run 7K2M9P (Verify)." with Open run; without the name until the child is loaded. */
+/** "Waiting for child run 7k2m9p (Verify)." with Open run; without the name until the child is loaded. */
 function childRunBanner(runId: string, context: RunPageContext): RunBanner {
   const shortId = shortRunId(runId);
   const name = context.workflowOfRun(runId);
