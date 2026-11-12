@@ -61,6 +61,8 @@ const places = [
   ["Users\\Public", join(process.env.PUBLIC ?? drive + "\\Users\\Public", "halonic-mxc-diag")],
   ["Temp", join(process.env.TEMP ?? process.env.LOCALAPPDATA, "halonic-mxc-diag")],
   ["Documents", join(process.env.USERPROFILE, "Documents", "halonic-mxc-diag")],
+  // v4: Temp passes on the real PC although it sits in AppData\Local, because it keeps its own ACL instead of inheriting from AppData.
+  ["AppData\\Local, own ACL (like Temp)", join(process.env.LOCALAPPDATA, "halonic-mxc-diag-own-acl"), { protect: true }],
 ];
 // v3: the check reuses its folder from earlier runs, the runners always start fresh. Test inside that old folder too, and log its full ACLs.
 const checkFolder = join(process.env.LOCALAPPDATA, "halonic-mxc-check");
@@ -88,6 +90,7 @@ if (process.env.MXC_ACE_REPRO === "1") {
     ["repro: PC's capability SID ACE", join(aceRoot, "pc-sid", "place"), { aceOn: join(aceRoot, "pc-sid"), sid: PC_SID }],
     ["repro: other capability SID ACE", join(aceRoot, "other-sid", "place"), { aceOn: join(aceRoot, "other-sid"), sid: OTHER_SID }],
     ["repro: PC's ACE on AppData, AppData\\Local", join(process.env.LOCALAPPDATA, "halonic-mxc-diag-place-ace"), { aceOn: join(process.env.USERPROFILE, "AppData"), sid: PC_SID }],
+    ["repro: PC's ACE on AppData, own-ACL folder in AppData\\Local", join(process.env.LOCALAPPDATA, "halonic-mxc-diag-own-acl-ace"), { aceOn: join(process.env.USERPROFILE, "AppData"), sid: PC_SID, protect: true }],
   );
 }
 const setAce = (repro, grant) => {
@@ -105,8 +108,13 @@ for (const [place, base, repro] of places) {
   say(`=== ${place}: ${base}`);
   try {
     rmSync(base, { recursive: true, force: true });
-    if (repro) { mkdirSync(repro.aceOn, { recursive: true }); setAce(repro, true); }
+    if (repro?.aceOn) { mkdirSync(repro.aceOn, { recursive: true }); setAce(repro, true); }
     mkdirSync(base, { recursive: true });
+    if (repro?.protect) {
+      // Inheritance off, then the same three entries Temp has: the user, SYSTEM and Administrators.
+      const r = spawnSync("icacls.exe", [base, "/inheritance:r", "/grant:r", `${process.env.USERDOMAIN}\\${process.env.USERNAME}:(OI)(CI)F`, "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F"], { encoding: "utf8" });
+      say(`  icacls own ACL on ${base}: exit ${r.status}`);
+    }
   } catch (e) { rec(place, "create folder", "SKIP", String(e.message).slice(0, 100)); continue; }
   const work = mkdtempSync(join(base, "work-"));
   const allowed = mkdtempSync(join(base, "allowed-"));
