@@ -22,7 +22,7 @@ export const closeAnywayCost = "Close anyway throws away the changes.";
 
 /**
  * "Close Acme?" (UX checklist 1.3): asked only when the workspace's changes couldn't be saved.
- * **Cancel** is focused, **Close anyway** throws the changes away and **Try again** saves them again.
+ * **Keep open** is focused, **Close anyway** throws the changes away and **Try again** saves them again.
  *
  * @example
  * <CloseWorkspaceDialog request={request} onCancel={cancel} onCloseAnyway={close} onTryAgain={retry} busy={false} />
@@ -41,6 +41,7 @@ export function CloseWorkspaceDialog({
       alternative={{ label: "Close anyway", onClick: onCloseAnyway }}
       onConfirm={onTryAgain}
       busy={busy}
+      cancelLabel="Keep open"
       onCancel={onCancel}
     >
       <p>

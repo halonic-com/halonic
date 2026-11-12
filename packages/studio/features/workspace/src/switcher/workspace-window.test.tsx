@@ -271,12 +271,12 @@ verifies("workspace.saves-itself", () => {
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
   });
 
-  it("keeps the workspace on Cancel", async () => {
+  it("keeps the workspace on Keep open", async () => {
     const { switcher } = start([], [], failingSaving() as unknown as WorkspaceSaving);
     await act(() => switcher.openLocation("/work/acme"));
     await act(() => switcher.closeShown());
 
-    await act(async () => buttonNamed("Cancel")?.click());
+    await act(async () => buttonNamed("Keep open")?.click());
     expect(document.querySelector("dialog")).toBeNull();
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
   });

@@ -67,7 +67,7 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
   readonly confirm: DialogConfirm;
   /**
    * A ghost button between Cancel and the confirming button, for a decision with three ways out:
-   * "Cancel" · "Close anyway" · "Try again". On a phone it sits between them too.
+   * "Keep open" · "Close anyway" · "Try again". On a phone it sits between them too.
    */
   readonly alternative?: DialogAlternative;
   /** Runs on the confirming button or a submit. The screen checks its fields first (23 A1). */
