@@ -453,14 +453,15 @@ routes, isn't built yet, so no app uses the host today.
   leaves two limits on Windows (HAL-5882):
   - **On Windows, a sandboxed run can read folders granted to any other
     sandboxed run that is running at the same time**, whatever its profile
-    denies. Closing this needs srt to keep sessions' reads apart; until it
-    does, this limit goes in the release notes of any release that ships the
-    Windows sandbox.
+    denies. The window ends when the other run closes, not when this one
+    does (HAL-5810). Closing it needs srt to keep sessions' reads apart;
+    until it does, this limit goes in the release notes of any release that
+    ships the Windows sandbox.
   - **On Windows, a sandboxed run can read the working and temp folders of
     every earlier run**, because srt keeps their write grants until
-    `srt-win acl forget` removes them. Closed by HAL-5884 once merged: the
-    host forgets a session's grants when it closes, and sweeps the grants of
-    crashed runs when it starts.
+    `srt-win acl forget` removes them. Closed by HAL-5884: the host forgets
+    a session's grants when it closes, also for runs still open then, and
+    sweeps the grants of crashed runs when it starts.
 
 ### 4.7 Sandbox backends on Windows (B8)
 

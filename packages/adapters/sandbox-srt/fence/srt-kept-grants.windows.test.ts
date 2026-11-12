@@ -94,6 +94,21 @@ describe("kept Windows grants between sessions", () => {
     }
   });
 
+  // HAL-5810: B is already open when A writes, so B's profile names A's run
+  // folder from the start, and only A's grant lets B in. Forgetting it on
+  // A's close ends that window without B reopening.
+  it("hides what session A wrote from session B, open since before A wrote, once A has closed", async () => {
+    const b = await sandbox.open(profile("run_2", [join(runs, "run_1")]));
+    try {
+      const a = await sandbox.open(profile("run_1"));
+      const made = await writeMade(a);
+      await a.close();
+      expect(await readFile(b, made)).toBe("hidden");
+    } finally {
+      await b.close();
+    }
+  });
+
   // Known limit (a): srt does not separate reads between sessions that run at
   // the same time, so B reads A's live folder. This stays open until it does.
   it.fails("hides what session A wrote from session B while both are open", async () => {
