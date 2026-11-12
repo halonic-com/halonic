@@ -2,6 +2,7 @@
 
 - Approval: the requirement edit and the new skip need Liam's review (docs/guides/checks.md, requirement guard); Liam approves this note in review of the data-limit PR on HAL-7565 (review task HAL-7790)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RFs8nHvUTIxzZOj8F2T6ZXWi3S2ifaMZ1p2pztu6v5QcJQnjsaHgPBTcACLQOxTllMmMaxQ0TVrRwsaAZRZhBA==
 - Task: HAL-7565
 
 ## What changes
