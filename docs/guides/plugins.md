@@ -1,9 +1,10 @@
 # Writing a plugin
 
-A **plugin** adds something to Halonic that we don't ship: the tools of an
-outside service, a program on your own computer, or a command, a form or a card
-in Studio. A plugin is a folder with one file at its root, `plugin.yaml`. That
-file is the whole contract.
+A **plugin** adds something to Halonic: the tools of an outside service, a
+program on your own computer, or a command, a form or a card in Studio. A
+plugin is a folder with one file at its root, `plugin.yaml`. That file is the
+whole contract. Start from the sample in
+`packages/testing/integration/examples/acme-orders-plugin`.
 
 An integration is one kind of plugin: a plugin with only a `backend`. The
 [integration guide](integrations.md) rules apply to every plugin backend word
@@ -12,20 +13,23 @@ and the conformance suite. The decision is in
 [the plugins record](../adr/2026-11-09-plugins.md) and
 [plugin cards on Home](../adr/2026-11-11-plugin-cards-on-home.md).
 
-## What works today
+## What works in 0.1
 
-Say so before you build on it. Plugins are built in steps, and not every step
-has shipped:
+Plugins arrive in steps, and not every step is in 0.1:
 
 - You can write a plugin, validate it and run the conformance suite on its
   backend.
 - `halonic plugin add`, `list` and `remove`, and `halonic trust --plugin`,
-  install and trust a plugin from the command line.
+  add and trust a plugin from the command line.
 - Studio's screens for plugins (settings, commands, Home cards, the panel)
-  are still being built. Until they ship, nothing draws a plugin's `ui`.
+  aren't in 0.1. Nothing draws a plugin's `ui` yet, so you can't see your
+  settings or cards; you can still write and validate them.
+- Security tests for local tools are still being built. A local tool is
+  fenced by the sandbox, but check for yourself that yours lists only the
+  tools you declared.
 
 The [plugin sample](../../packages/testing/integration/examples/acme-orders-plugin/README.md)
-is the reference. Start from it.
+is the reference.
 
 ## Write a plugin from the sample
 
@@ -35,10 +39,37 @@ is the reference. Start from it.
    `secrets` and `tools` to your service's.
 3. Change `backend/index.js` so the `Integration` it exports matches the
    manifest: the same name, version and tools.
-4. Record one answer from your service for each tool, with the key scrubbed,
-   and put it in `recordings/`.
+4. Record one answer from your service for each tool and put it in
+   `recordings/`. By hand: make the call yourself, save the answer in the
+   `halonic.recording/1` shape (see below), and remove your key, tokens, names,
+   addresses and any other personal content from it.
 5. Run the conformance suite (see below) until it passes.
-6. Add it to your own profile: `halonic plugin add ./my-plugin`.
+6. Add it to your own profile: `halonic plugin add ./my-plugin`. It asks
+   "Trust *name* and turn it on?". Answer yes to turn it on. No, or no
+   terminal, leaves it added but off; a script passes
+   `--yes --fingerprint <fingerprint>` (see Trust below).
+7. Give an agent its tools: add the plugin's connector to a workspace. A
+   workspace names the plugin; it can't trust it.
+
+## Run it and see errors
+
+- **Check the folder:** `halonic validate ./my-plugin` reports schema and manifest errors.
+- **After you edit:** a changed file changes the fingerprint, so the plugin is
+  off until you trust it again. `halonic plugin list` shows it as "changed
+  since you trusted it"; run `halonic trust --plugin <id>` and read the check.
+- **Adding it twice is refused** ("is already added"). Removing it deletes its
+  settings and the API key you entered, so after `plugin remove` you enter them
+  again. Prefer changing the files and re-trusting over remove and add.
+- **Errors:** a backend or local tool that fails returns an error that names
+  the plugin; the rest of Halonic keeps working.
+
+| You see | Cause | Fix |
+| --- | --- | --- |
+| a validation error naming a field | unknown or mistyped field; every object is strict | fix the field named |
+| "added but off" | you answered No, or there was no terminal | `halonic trust --plugin <id>` |
+| "changed since you trusted it" | a file or the manifest changed | trust it again |
+| a local tool "needs the desktop app" | no sandbox on Android or in the browser | use the desktop app, the CLI or `serve` |
+| a tool refused | the server offers a tool the manifest doesn't declare | declare it, or remove it from the server |
 
 The backend in the sample is plain JavaScript with no imports and no build
 step. If you write TypeScript, build it to one JavaScript file first and point
@@ -87,14 +118,14 @@ number is written once.
 - **`hosts`:** every host the code may call, by exact name. `https` only.
 - **`secrets`:** each secret by name, with its `purpose`, the `hosts` it may go
   to and where it goes (`as`). The code names a secret and Halonic puts the
-  value into the request. The code never sees it.
+  value into the request. The backend's code never sees it.
 - **`tools`:** every tool, with `description`, `risk` (`read`, `write` or
   `send`), `untrusted` and `arguments`.
 
 Two rules are specific to plugins:
 
-- A plugin backend **can't declare `tokens`** yet. Use an API key. Sign-in
-  support for plugins comes with sign-in support for local integrations.
+- A plugin backend **can't declare `tokens`**. Sign-in isn't supported in 0.1.
+  Use an API key.
 - A plugin backend **can't need a process** (`needs: process`). Starting a
   program is what `localTools` is for.
 
@@ -123,16 +154,20 @@ localTools:
   tag. A script is a file in the plugin folder, run by a program the person
   already has (`{ program: node, path: tools/server.js }`).
 - **`env`** maps a variable to a setting or a declared secret. A literal value
-  is not allowed.
-- **`network`** lists the hosts the program may reach, besides the bridge.
+  is not allowed. A secret named here is given to that program, so it does
+  get the value; the trust check lists it.
+- **`network`** lists the hosts the program may reach, besides Halonic's own
+  bridge (the route the program's tools are offered through).
 - **`tools`** lists every tool the program offers. Halonic offers only declared
   tools, with the manifest's description. A tool the server lists but the
   manifest doesn't is refused and logged.
 
-Local tools run only where a sandbox works: the Windows desktop app, the CLI
-and `serve`. On Android and in the browser the plugin still loads, and its
-local tools show as needing the desktop app. Halonic builds the sandbox's
-rules; a plugin can't ask for more. See [the plugins page of the
+Local tools run only in a session whose sandbox is proven: the desktop app,
+the CLI and `serve`. Windows is a preview: the sandbox there has limits, and
+a plugin's backend worker has no operating-system fence on Windows. On Android
+and in the browser the plugin still loads, and its local tools show as needing
+the desktop app. Halonic builds the sandbox's rules; a plugin can't ask for
+more. See [the plugins page of the
 security docs](../security/plugins.md).
 
 ### `ui`
@@ -181,15 +216,18 @@ keep it. A breaking change raises it and comes with a decision record.
 ## Trust, and what changes when a file changes
 
 `halonic plugin add <folder | git address>[@commit]` copies the plugin (or
-clones the repository at one commit) into your profile's plugin folder, never
-into a workspace, and records the SHA-256 of every file. Then it shows the
+clones the repository at one commit) into the plugins folder in your profile
+(your Halonic data on this computer), never into a workspace, and records the SHA-256 of every file. Then it shows the
 trust check and asks.
 
 The check lists what the plugin can do and reach:
 
-- **Tools for agents:** every tool with its `risk`.
+- **Tools for agents:** every tool, as **Reads**, **Changes things** or
+  **Sends**. A tool that changes or sends asks a person first.
 - **Programs on this computer:** local tools, with their pins and network.
 - **Secrets:** each by name and the one address it goes to, never its value.
+  This is the backend's route; a secret named in a local tool's `env` goes to
+  that program.
 - **Addresses:** the hosts the backend may call.
 
 Your yes trusts one fingerprint. It covers the normalised manifest and every
@@ -205,8 +243,10 @@ file in the folder. So:
 
 Other commands: `halonic plugin list` shows each plugin and whether it is on.
 `halonic trust --plugin <id>` turns on a plugin already added;
-`halonic trust --plugin <id> --remove` turns it off. `halonic plugin remove <id>`
-removes it with its trust, settings and secrets. In a script, pass
+`halonic trust --plugin <id> --remove` removes the trust, so the plugin is off
+(its settings and secrets stay). `halonic plugin remove <id>` asks first (or
+needs `--yes`), then removes the plugin with its trust, settings and the API
+key you entered. In a script, pass
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check
 shows now.
 
@@ -215,8 +255,7 @@ Trust is a list, not a sandbox. Read what the check says before you answer. See
 
 ## Run the conformance suite
 
-`@halonicjs/testing-integration` (published as `@halonicjs/testing/integration`)
-runs the same suite on a plugin folder. In your plugin's own tests:
+`@halonicjs/testing/integration` runs the same suite on a plugin folder. In your plugin's own tests:
 
 ```ts
 import { fileURLToPath } from "node:url";
@@ -232,7 +271,7 @@ describePluginConformance({
 });
 ```
 
-It reads `plugin.yaml` the way Halonic does, and fails when:
+It reads `plugin.yaml` the way Halonic does, and checks for these. It fails when:
 
 - the folder has no manifest, or both `plugin.yaml` and `integration.yaml`;
 - the manifest fails its schema or its own checks, or its `sdk` isn't this
@@ -243,7 +282,7 @@ It reads `plugin.yaml` the way Halonic does, and fails when:
   arguments, `risk` or `untrusted`).
 
 Then every backend check runs against your recordings, with fake key values and
-the network replaced by tripwires. It fails a backend that:
+the network replaced by tripwires. It checks for a backend that:
 
 - reaches a host it didn't declare, or sends a secret to a host the secret may
   not go to;
@@ -257,11 +296,23 @@ A recording is a `halonic.recording/1` file: one scenario, its exchanges in call
 order, with keys and personal content scrubbed. On replay, a request that
 doesn't match the next recorded exchange fails closed.
 
-The suite doesn't yet start local tools in a sandbox, so it doesn't check that
-a local tool stays inside its declared tools and hosts. That check is part of
-the plugins security review.
+The suite doesn't start local tools in a sandbox, so it doesn't check that a
+local tool stays inside its declared tools and hosts. Check that yourself: your
+local tool should offer only the tools you declared.
 
-## Keeping this page true
+## Share your plugin
 
-A pull request that changes the manifest, the SDK, the trust check or the
-conformance suite updates this guide in the same pull request.
+Put the folder in a git repository. People add it with
+`halonic plugin add <git address>@<commit>`, so give them a commit to pin. A
+new version is a new commit, which is a new fingerprint and a new trust check
+for everyone who has it. There is no registry yet.
+
+## The whole manifest
+
+`core/format/spec/plugin.schema.json` is the schema editors use. The sample's
+`plugin.yaml` shows every field in use. To report a vulnerability in the plugin
+system, see [SECURITY.md](../../SECURITY.md). Report a bad plugin the same way.
+
+<!-- Keeping this page true: a pull request that changes the manifest, the SDK,
+the trust check or the conformance suite updates this guide in the same pull
+request. -->
