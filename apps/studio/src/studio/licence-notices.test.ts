@@ -110,6 +110,31 @@ verifies("studio.installer-third-party-notices", () => {
     expect(sbom).toBeLessThan(text.indexOf("pnpm exec tauri build"));
   });
 
+  it("appends the Microsoft runtime notice after check:sbom and before it builds the installer", () => {
+    const text = script();
+    const sbom = text.indexOf("pnpm check:sbom");
+    const append = text.indexOf("vcruntime-notice.txt");
+    expect(append).toBeGreaterThan(sbom);
+    expect(append).toBeLessThan(text.indexOf("pnpm exec tauri build"));
+    expect(text).toContain("Add-Content $notices");
+  });
+
+  it("names the pinned runtime version in the notice", () => {
+    const pin = JSON.parse(readFileSync(join(shellFolder, "windows/vcruntime.json"), "utf8")) as {
+      redistributable: { version: string };
+    };
+    const notice = readFileSync(join(shellFolder, "windows/vcruntime-notice.txt"), "utf8");
+    expect(pin.redistributable.version).toMatch(/^\d+\.\d+\.\d+\.\d+$/);
+    expect(notice).toContain(`version ${pin.redistributable.version}`);
+  });
+
+  it("stops the fetch for any target but x64, and the installer script passes its own", () => {
+    const fetch = readFileSync(join(shellFolder, "windows/fetch-vcruntime.ps1"), "utf8");
+    expect(fetch).toContain("[string]$Target = 'x86_64-pc-windows-msvc'");
+    expect(fetch).toMatch(/if \(\$Target -ne 'x86_64-pc-windows-msvc'\) \{\s+throw/);
+    expect(script()).toContain("fetch-vcruntime.ps1') -Target $triple");
+  });
+
   it("keeps the generated folder out of git", () => {
     const ignored = readFileSync(resolve(process.cwd(), "../../.gitignore"), "utf8").split("\n");
     expect(ignored).toContain("apps/studio/src-tauri/legal/");
