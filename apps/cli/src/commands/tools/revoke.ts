@@ -2,7 +2,7 @@
 // approval, so the tool is off until a person approves it again. It reads
 // only the approvals, so it starts no connector and needs no trust.
 
-import { hasToolApproval, revokeNamedTool } from "@halonicjs/app";
+import { hasToolApproval, revokeNamedTool } from "@halonicjs/app/listed-tools";
 import {
   type CommandContext,
   type CommandInput,
