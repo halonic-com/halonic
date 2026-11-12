@@ -3,12 +3,14 @@
 // with `wsl --import`, and if so, do the distro's files and network get past
 // the fence? If it can, native srt stays experimental for good (HAL-3779,
 // section 3). D2: does WSL 2 start on this runner at all, that is, can it host
-// the `srt-wsl` attack suite (section 8)? Report-only: results go to the job
-// summary and to windows-wsl-results.json.
+// the `srt-wsl` attack suite (section 8)? D3 (HAL-7130): Studio's relay listens
+// on Windows' 127.0.0.1 so the agent host in our distro listens on no port (W9).
+// Can another distro reach such a port under mirrored networking, and not under
+// NAT? Report-only: results go to the job summary and to windows-wsl-results.json.
 //
 // Needs HALONIC_PROBE_ROOTFS: a small Linux root file system (.tar.gz) for this
 // runner's architecture, checked by the workflow against a pinned hash.
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, win32 } from "node:path";
 import { createKit } from "./windows-probe-kit.mjs";
 
@@ -129,10 +131,61 @@ async function wsl2() {
   if (imported.code === 0) await outsideSrt(`${wsl} --unregister ${name}`);
 }
 
+// ---- D3: another distro and a Windows loopback port, per networking mode ---
+// The canary on Windows' 127.0.0.1 stands in for Studio's relay. A distro that
+// isn't ours (not `halonic`) tries it in NAT mode (the control) and in mirrored
+// mode. No srt here: this is the person's own distro, outside every sandbox.
+const wslconfig = process.env.USERPROFILE && join(process.env.USERPROFILE, ".wslconfig");
+
+async function networkMode(mode) {
+  const group = `D3 another distro, ${mode} networking`;
+  writeFileSync(wslconfig, `[wsl2]\nnetworkingMode=${mode}\n`);
+  await outsideSrt(`${wsl} --shutdown`);
+  const name = "other-distro";
+  const imported = await outsideSrt(
+    `${wsl} --import ${name} ${join(work, `other-${mode}`)} ${rootfs} --version 2`,
+  );
+  const facts = await outsideSrt(
+    `${wsl} -d ${name} -e sh -c "wslinfo --networking-mode 2>&1; ip -4 -o addr 2>&1 | head -4"`,
+  );
+  record(group, "networking mode in the distro", "INFO", `import ${say(imported)} | ${say(facts)}`);
+  const question = "another distro reaches a port on Windows' 127.0.0.1";
+  if (imported.code !== 0 || facts.code !== 0) {
+    record(group, question, "NOT-TESTABLE", "the distro did not start");
+  } else {
+    const before = canary.connections;
+    const traffic = await outsideSrt(`${wsl} -d ${name} -e nc -w 3 127.0.0.1 ${port}`);
+    const reached = canary.connections - before;
+    // wslinfo reports the mode WSL actually used: a result in the wrong mode
+    // answers nothing.
+    let status = reached === 0 ? "PASS" : "FAIL";
+    if (!facts.out.includes(mode)) status = "INCONCLUSIVE";
+    record(group, question, status, `${reached} connection(s). ${say(traffic)}`);
+  }
+  if (imported.code === 0) await outsideSrt(`${wsl} --unregister ${name}`);
+}
+
+async function mirrored() {
+  if (!wslconfig) {
+    record("D3 another distro", "networking modes", "NOT-TESTABLE", "USERPROFILE is not set");
+    return;
+  }
+  const saved = existsSync(wslconfig) ? readFileSync(wslconfig) : undefined;
+  try {
+    await networkMode("nat");
+    await networkMode("mirrored");
+  } finally {
+    if (saved === undefined) rmSync(wslconfig, { force: true });
+    else writeFileSync(wslconfig, saved);
+    await outsideSrt(`${wsl} --shutdown`);
+  }
+}
+
 if (haveInputs) {
   await sandboxDistro(1);
   await sandboxDistro(2);
   await wsl2();
+  await mirrored();
 } else {
   record(
     "D WSL",
