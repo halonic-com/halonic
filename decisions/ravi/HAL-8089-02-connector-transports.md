@@ -18,3 +18,8 @@ records the two transports and that such a connector is not local unless its fil
 The run host needs a way for a hub to name a local integration or a plugin backend so the
 existing per-run connector lifecycle can start it in the I5 runner. Their permission sheet can
 name outside sites, so treating them as local by default would leak under `privacy.localOnly`.
+
+## Covers
+
+- packages/core/format/spec/connector.schema.json
+- format.connector-runner-transports
