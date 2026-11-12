@@ -509,6 +509,9 @@ jobs:
     # name, but no other job can set this job's outputs.
     outputs:
       sha: ${{ steps.walk-back.outputs.sha || steps.install.outputs.sha }}
+      # The main commit the merge ref was built on. It differs from sha only
+      # after a walk-back; the guard then compares files with this commit.
+      built-on: ${{ steps.merge-base.outputs.sha }}
       results-id: ${{ steps.upload.outputs.artifact-id }}
       results-sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
@@ -653,17 +656,19 @@ jobs:
     env:
       HEAD_DIR: ${{ github.workspace }}/head
       BASE_DIR: ${{ github.workspace }}/base
+      BUILT_ON_DIR: ${{ github.workspace }}/built-on
     steps:
       # Without it the base checkout below would fall back to the pull
       # request's own commit, and the guard would compare it with itself.
       - name: Stop if the merge base or its results are unknown
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
+          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
           RESULTS_ID: ${{ needs.base-tests.outputs.results-id }}
           RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
         run: |
-          if [ -z "$BASE_SHA" ]; then
-            echo "::error::The merge base's tests job didn't report which commit it tested."
+          if [ -z "$BASE_SHA" ] || [ -z "$BUILT_ON_SHA" ]; then
+            echo "::error::The merge base's tests job didn't report which commit it tested and which one the merge ref was built on."
             exit 1
           fi
           if ! grep -qE '^[0-9]+$' <<< "$RESULTS_ID" || ! grep -qE '^[0-9a-f]{64}$' <<< "$RESULTS_SHA256"; then
@@ -680,6 +685,17 @@ jobs:
           persist-credentials: false
           path: base
           ref: ${{ needs.base-tests.outputs.sha }}
+      # After a walk-back the tested commit is older than the main commit the
+      # merge ref was built on, and the merge ref holds everything main
+      # changed in between. The guard compares files with this commit, so it
+      # doesn't blame the pull request for those changes (HAL-7660). Only
+      # read, like the pull request's checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.base-tests.outputs.built-on != needs.base-tests.outputs.sha
+        with:
+          persist-credentials: false
+          path: built-on
+          ref: ${{ needs.base-tests.outputs.built-on }}
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
@@ -739,7 +755,9 @@ jobs:
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
       # Blocking through ci-ok. The base side is the main commit the merge
       # ref was built on (base-tests), so the guard sees only the pull
-      # request's own changes. A note's signature is
+      # request's own changes. After a walk-back, --built-on gives the guard
+      # that commit's files, and the tested commit gives the test results; a
+      # guard older than HAL-7660 ignores the flag. A note's signature is
       # checked offline against the keys in
       # the base branch's tooling/check/approvers.json (pull_request.base.sha,
       # not the commit base-tests may have stepped back to). Both commits
@@ -749,6 +767,7 @@ jobs:
         working-directory: head
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
+          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
           HEAD_BRANCH: ${{ github.head_ref }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -763,7 +782,11 @@ jobs:
             echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
             exit 0
           fi
-          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH" \
+          built_on=()
+          if [ "$BUILT_ON_SHA" != "$BASE_SHA" ]; then
+            built_on=(--built-on "$BUILT_ON_DIR")
+          fi
+          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" "${built_on[@]}" --branch "$HEAD_BRANCH" \
             --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"
 
   scaffold:

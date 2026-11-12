@@ -16,6 +16,11 @@ export interface GuardCase {
   readonly base: Readonly<Record<string, string>>;
   /** The same in the pull request. */
   readonly head: Readonly<Record<string, string>>;
+  /**
+   * The same on an older green commit whose test results the base side
+   * has, after CI walked back from a red main (HAL-7660).
+   */
+  readonly tested?: Readonly<Record<string, string>>;
   /** Files outside the package, in both checkouts. */
   readonly shared?: Readonly<Record<string, string>>;
   /** Files outside the package on the merge base only. */
@@ -54,6 +59,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
     ...guardCase.headOutside,
     ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
   });
+  const testedRoot = guardCase.tested === undefined ? undefined : repo(guardCase.tested, {});
   const approvals: ApprovalLookup = {
     check: () =>
       Promise.resolve(
@@ -66,6 +72,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
     const report = await checkRequirementGuard({
       base: loadContext(baseRoot),
       head: loadContext(headRoot),
+      ...(testedRoot === undefined ? {} : { tested: loadContext(testedRoot) }),
       branch,
       approvals,
       ...(guardCase.checks === undefined ? {} : { checks: guardCase.checks }),
@@ -78,6 +85,9 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
   } finally {
     removeFixtureRepo(baseRoot);
     removeFixtureRepo(headRoot);
+    if (testedRoot !== undefined) {
+      removeFixtureRepo(testedRoot);
+    }
   }
 }
 
