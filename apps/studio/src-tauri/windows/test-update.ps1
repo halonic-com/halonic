@@ -36,7 +36,7 @@ $studio = Resolve-Path (Join-Path $PSScriptRoot '../..')
 function Get-Signature([string]$File, [string]$Version, [string]$KeyFile) {
   Push-Location $studio
   try {
-    pnpm exec tauri signer sign --app-version $Version --private-key-path $KeyFile --password '' $File | Out-Host
+    pnpm exec tauri signer sign --app-version $Version --private-key-path $KeyFile --password= $File | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "signing $File failed" }
   } finally { Pop-Location }
   $text = (Get-Content "$File.sig" -Raw).Trim()
