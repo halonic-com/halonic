@@ -135,4 +135,28 @@ describe("plugin's sentences", () => {
       "Remove it with halonic plugin remove junk, then add a version that works.",
     );
   });
+
+  it("says what to do next for each plugin start refusal, from HAL-7941", () => {
+    expect(words(pluginMessages.startNotTrustedFix("weather"))).toBe(
+      "Review and trust it with halonic trust --plugin weather.",
+    );
+    expect(words(pluginMessages.startChangedFix("weather"))).toBe(
+      "Review what changed and trust it again with halonic trust --plugin weather.",
+    );
+    expect(words(pluginMessages.startRecordUnreadableFix("weather"))).toBe(
+      "Trust it again with halonic trust --plugin weather, which writes the record again.",
+    );
+    expect(words(pluginMessages.startNotChecked("weather"))).not.toContain("trust --plugin");
+    expect(words(pluginMessages.startNotCheckedFix())).toBe(
+      "See where it stands with halonic plugin list.",
+    );
+  });
+
+  it("says a missing secret name is Halonic's bug, by key", () => {
+    const message = pluginMessages.secretNameMissing("weather", "example-key");
+    expect(message.key).toBe("plugin.secretNameMissing");
+    expect(words(message)).toBe(
+      "Halonic can't find where the plugin weather stores its secret example-key. This is a bug in Halonic, not something you did.",
+    );
+  });
 });

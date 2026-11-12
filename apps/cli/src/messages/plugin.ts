@@ -162,4 +162,29 @@ export const pluginMessages = defineMessages("plugin", {
   /** `--plugin <id> --remove`, word for word from the words check on HAL-1991. */
   trustRemoved: (name: string) =>
     phrase`Removed trust for ${name}. Nothing from this plugin runs until you trust it.`,
+
+  /**
+   * A plugin's backend doesn't start for lack of trust (`PluginBackendNotTrustedError`
+   * reasons), by plugin id. Each says why, and its `…Fix` says what to do next (HAL-7941).
+   */
+  startNotTrusted: (id: string) =>
+    phrase`The plugin ${id} runs code, so its backend starts only once you trust it.`,
+  startNotTrustedFix: (id: string) =>
+    phrase`Review and trust it with halonic trust --plugin ${id}.`,
+  startChanged: (id: string) =>
+    phrase`The plugin ${id} changed since you trusted it, so its backend doesn't start.`,
+  startChangedFix: (id: string) =>
+    phrase`Review what changed and trust it again with halonic trust --plugin ${id}.`,
+  startRecordUnreadable: (id: string) =>
+    phrase`The plugin ${id} doesn't start: Halonic can't read its trust record.`,
+  /** Trusting writes the record again, as `doctor` says of a workspace's. */
+  startRecordUnreadableFix: (id: string) =>
+    phrase`Trust it again with halonic trust --plugin ${id}, which writes the record again.`,
+  /** A trust status Halonic doesn't know: neutral, because the person may have trusted it. */
+  startNotChecked: (id: string) =>
+    phrase`The plugin ${id} doesn't start: Halonic couldn't check whether you trust it.`,
+  startNotCheckedFix: () => phrase`See where it stands with halonic plugin list.`,
+  /** For `PluginSecretNameMissingError` (its key `plugin-secret-name-missing`): a bug in Halonic, so nothing for the person to do. */
+  secretNameMissing: (plugin: string, secret: string) =>
+    phrase`Halonic can't find where the plugin ${plugin} stores its secret ${secret}. This is a bug in Halonic, not something you did.`,
 });

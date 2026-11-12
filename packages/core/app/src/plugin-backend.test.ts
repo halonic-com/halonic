@@ -139,7 +139,7 @@ async function setup({
     expect((await trust.grantPlugin(subject, shown.fingerprint, "cli")).ok).toBe(true);
   };
 
-  return { id, plugins, store, trust, runs, starts, started, startIn, read, trustIt };
+  return { id, plugins, digest, gate, store, trust, runs, starts, started, startIn, read, trustIt };
 }
 
 async function refusal(promise: Promise<unknown>): Promise<PluginBackendNotTrustedError> {
@@ -236,6 +236,32 @@ verifies("app.plugin-backend", () => {
       await trustIt();
       store.breakRecords();
       expect((await refusal(starts.start(id, startIn))).reason).toBe("record-unreadable");
+      expect(started).toEqual([]);
+    });
+
+    it("tells the person what to do next in every trust refusal", async () => {
+      const { id, store, starts, startIn, trustIt } = await setup();
+      expect((await refusal(starts.start(id, startIn))).message).toContain(
+        `halonic trust --plugin ${id}`,
+      );
+      await trustIt();
+      store.breakRecords();
+      expect((await refusal(starts.start(id, startIn))).message).toContain(
+        `halonic trust --plugin ${id}`,
+      );
+    });
+
+    it("refuses a status it doesn't know without telling the person to trust the plugin", async () => {
+      const { id, plugins, digest: hashes, gate, started, startIn } = await setup();
+      const starts = new PluginBackendStart({
+        plugins,
+        digest: hashes,
+        gate,
+        trust: { checkPlugin: async () => ({ status: "from-a-later-version" }) as never },
+      });
+      const error = await refusal(starts.start(id, startIn));
+      expect(error.reason).toBe("not-checked");
+      expect(error.message).not.toContain("trust --plugin");
       expect(started).toEqual([]);
     });
 
