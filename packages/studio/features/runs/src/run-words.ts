@@ -238,3 +238,15 @@ export const everyStepWords = {
 function asSentence(text: string): string {
   return /[.?!]$/.test(text) ? text : `${text}.`;
 }
+
+/**
+ * How a step is named (cli-output 3.4): the first line of its description,
+ * trimmed, else its id with only the first letter made a capital.
+ */
+export function stepName(stateId: string, description: string | undefined): string {
+  const firstLine = description?.split("\n")[0]?.trim() ?? "";
+  if (firstLine !== "") {
+    return firstLine;
+  }
+  return stateId.charAt(0).toUpperCase() + stateId.slice(1);
+}
