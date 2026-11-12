@@ -15,4 +15,9 @@ export {
   ConnectorStatusHostService,
   type RecordedRefusal,
 } from "./connector-status-host.ts";
+export {
+  type ListedToolsHost,
+  ListedToolsHostService,
+  type ListedToolsSnapshot,
+} from "./listed-tools-host.ts";
 export { RefusalsFeed } from "./refusals-feed.ts";
