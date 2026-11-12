@@ -40,6 +40,7 @@ import {
 } from "./run-connector-call-runner.ts";
 import type { RunsConnectors } from "./run-connectors.ts";
 import { RunFeed } from "./run-feed.ts";
+import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest, startInputOf } from "./start-request.ts";
 import { resumeTimer, UnfinishedEffects } from "./unfinished-effects.ts";
@@ -61,18 +62,6 @@ export const harnessGoneError =
 
 /** The `error` of a run someone cancelled; screens word the reason themselves. */
 export const cancelledError = "The run was cancelled.";
-
-/**
- * Timer ids: a model call or a harness run to carry out now, a timer a
- * state set (`set-timer`), and a child run to hear from (on the parent's
- * key). A harness call's start limits have their own (see {@link StartDeadlines}),
- * and so does a run whose effects couldn't all be carried out ({@link resumeTimer}).
- */
-const callTimer = "call:";
-const harnessTimer = "harness:";
-const stateTimer = "timer:";
-const childTimer = "child:";
-const toolTimer = "tool:";
 
 /** How a call a run waits on is carried out: a model call, or a run of the agent's harness. */
 type CallKind = "model" | "harness";
