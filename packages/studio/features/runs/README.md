@@ -24,6 +24,23 @@ rows[0]; // { shortId: "01jd8q", chip: { word: "Needs you", tone: "warning", dot
 
 A row's line is never empty and says what the What column of `halonic runs` says (requirement `runs.row`). A finished run shows its cost with the calls that had no price, and never "€0.00".
 
+## The Runs list
+
+The feature keeps one `RunsList` per open workspace, from `RunsSourceService`. The Runs place's page and the sidebar's running dot ("Runs, 1 running") read it, so they change together (requirement `runs.list`). A refresh swaps the rows in place and never shows a skeleton again; when a later load fails the rows stay, under "The engine isn't answering. Showing what it said last.".
+
+What the list shows is worked out in `list/runs-filter.ts`, so the page only draws it:
+
+```ts
+import { dayGroups, emptyList, filterRuns, startFilters } from "./list/runs-filter.ts";
+
+const filters = { ...startFilters, status: "failed" }; // Failed takes every Stopped run too
+filterRuns(rows, filters); // a finished test run stays hidden until Test runs is on
+emptyList(rows, filters); // { kind: "status", line: "No failed runs." }, or undefined with rows
+dayGroups(filterRuns(rows, filters), new Date()); // [{ day: "Today", rows }, { day: "Yesterday", rows }]
+```
+
+Not on the list yet: the spend line (it needs T4's spend function), opening a run (with the run page), the text and hub filters, the row's ⋮, and the Started by, When and Took columns.
+
 The run page says under its title what the run ran, from the version its run.started records:
 
 ```tsx
