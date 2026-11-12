@@ -1,0 +1,27 @@
+## colour: halonic tools approve notes-mcp lookup --all
+exit 2
+stdout:
+stderr:
+  \e[31m✕\e[39m Give either tool names or --all, not both.
+    Run halonic tools approve --help to see its options.
+
+## NO_COLOR: halonic tools approve notes-mcp lookup --all
+exit 2
+stdout:
+stderr:
+  ✕ Give either tool names or --all, not both.
+    Run halonic tools approve --help to see its options.
+
+## --json: halonic tools approve notes-mcp lookup --all
+exit 2
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "usage",
+      "message": "Give either tool names or --all, not both.",
+      "fix": "Run halonic tools approve --help to see its options."
+    }
+  }
+stderr:

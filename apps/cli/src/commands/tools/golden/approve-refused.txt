@@ -1,0 +1,24 @@
+## colour: halonic tools approve notes-mcp look.up
+exit 7
+stdout:
+stderr:
+  \e[31m✕\e[39m Couldn't approve look.up: Halonic refused it: its name breaks the name rule.
+
+## NO_COLOR: halonic tools approve notes-mcp look.up
+exit 7
+stdout:
+stderr:
+  ✕ Couldn't approve look.up: Halonic refused it: its name breaks the name rule.
+
+## --json: halonic tools approve notes-mcp look.up
+exit 7
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "denied",
+      "message": "Couldn't approve look.up: Halonic refused it: its name breaks the name rule."
+    }
+  }
+stderr:

@@ -1,18 +1,22 @@
-// The connector `halonic tools` works on, found in the workspace: the part
-// `review`, `approve` and `revoke` share, so they find a source and fail the
-// same way.
+// The connector `halonic tools` works on, found in the workspace, and its
+// listed tools checked against the approvals: the part `review`, `approve`
+// and `revoke` share, so they find a source and fail the same way.
 
 import { realpath } from "node:fs/promises";
 import { FileToolApprovalStore } from "@halonicjs/adapter-fs-node";
+import { checkConnectorTools, type ListedToolApprovalCheck } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
 import type { Digest, ToolApprovalStore } from "@halonicjs/ports";
 import { profileFolder, toolApprovalFolder } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { type CommandContext, type CommandInput, OwnLineError, UsageError } from "../../command.ts";
 import { type ConnectorMachine, nodeConnectorMachine } from "../../connector-machine.ts";
+import { suggestedCommand } from "../../messages/suggested-command.ts";
 import { toolsMessages } from "../../messages/tools.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
+import { shellWord } from "../../output/shell-word.ts";
+import { readSourceListing } from "../../source-listing.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
@@ -99,4 +103,82 @@ export async function openToolSource(
     connector,
     shown: printable(connector.id),
   };
+}
+
+/**
+ * The source's listed tools now, checked against its approvals. A
+ * connector whose tools are built in, such as Google, lists none, and gets
+ * `built_in`.
+ *
+ * @throws NotTrustedError when the workspace isn't trusted as it is now (exit 3): nothing starts
+ * @throws OwnLineError when Halonic refused the whole listing, or an approval can't be read
+ */
+export async function checkToolSource(
+  source: ToolSource,
+  machine: ToolsMachine,
+  context: Pick<CommandContext, "secrets">,
+): Promise<ListedToolApprovalCheck | "built_in"> {
+  if ("google" in source.connector.transport) {
+    return "built_in";
+  }
+  const listing = await readSourceListing(
+    {
+      dir: source.dir,
+      typedDir: source.typedDir,
+      connector: source.connector,
+      workspace: source.loaded,
+    },
+    machine,
+    context.secrets,
+    toolsMessages.nothingStarted(),
+  );
+  const check = await checkConnectorTools({
+    location: source.location,
+    connector: source.connector,
+    listed: listing.tools,
+    trust: listing.trust,
+    store: machine.approvals,
+    digest: machine.digest,
+    clock: machine.clock,
+  });
+  if (!check.ok) {
+    throw new OwnLineError("denied", toolsMessages.cantList(source.shown, printable(check.error)));
+  }
+  return usableCheck(check.value, source);
+}
+
+/** The check, unless none of its listed tools can be on: then why, as the error. */
+function usableCheck(check: ListedToolApprovalCheck, source: ToolSource): ListedToolApprovalCheck {
+  const refusal = check.refusals.find((found) => found.refused === "listing");
+  if (refusal !== undefined) {
+    throw new OwnLineError(
+      "denied",
+      toolsMessages.listingRefused(source.shown, printable(refusal.reason)),
+    );
+  }
+  if (check.unreadable !== null) {
+    const { toolName } = check.unreadable;
+    if (toolName === null) {
+      throw new OwnLineError("unavailable", toolsMessages.unreadableUnnamed(source.shown));
+    }
+    throw new OwnLineError(
+      "unavailable",
+      toolsMessages.unreadable(printable(toolName), source.shown),
+      toolsMessages.unreadableFix(toolsCommand("revoke", source, shellWord(toolName))),
+    );
+  }
+  return check;
+}
+
+/**
+ * A `halonic tools` command Halonic suggests, with the user's own `--dir`.
+ *
+ * @example
+ * toolsCommand("review", source); // "halonic tools review notes-mcp"
+ * toolsCommand("approve", source, "search --fingerprint htl1:…");
+ */
+export function toolsCommand(subcommand: string, source: ToolSource, rest = ""): string {
+  const words =
+    rest === "" ? shellWord(source.connector.id) : `${shellWord(source.connector.id)} ${rest}`;
+  return suggestedCommand(`tools ${subcommand}`, source.typedDir, words);
 }
