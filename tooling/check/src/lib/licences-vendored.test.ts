@@ -136,5 +136,6 @@ verifies("check.licences-vendored", () => {
     expect(block).toContain(`Public Suffix List (${psl})\nLicence: MPL-2.0`);
     expect(block).toContain(`Source: ${entry.source}`);
     expect(block).toContain("Same licence text as zod 4.0.0 above.");
+    expect(text.split(mpl)).toHaveLength(2);
   });
 });
