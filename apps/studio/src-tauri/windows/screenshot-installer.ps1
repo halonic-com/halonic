@@ -73,6 +73,7 @@ Save-Picture $h '3-finish'
 Start-Sleep -Seconds 5
 Get-Process Halonic -ErrorAction SilentlyContinue | Stop-Process -Force
 if (-not $p.WaitForExit(30000)) { $p | Stop-Process -Force }
-# Take it off again, so the silent install after this starts from nothing.
+# Take it off again, so the silent install after this starts from nothing. The
+# runner is an administrator, so this also removes the sandbox the walk set up.
 Start-Process (Join-Path $InstallFolder 'uninstall.exe') -ArgumentList '/S' -Wait
 Start-Sleep -Seconds 8

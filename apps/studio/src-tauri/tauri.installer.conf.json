@@ -11,6 +11,7 @@
     ],
     "resources": {
       "windows/sandbox-step.ps1": "sandbox-step.ps1",
+      "windows/sandbox-remove.ps1": "sandbox-remove.ps1",
       "../../../LICENSE": "LICENSE",
       "../../../NOTICE": "NOTICE",
       "legal/THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt"

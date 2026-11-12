@@ -3,8 +3,10 @@
 #   - the page opens with Continue, and Continue is disabled while no box is ticked;
 #   - without Repair it copies nothing, with Repair it copies Halonic again;
 #   - both end on the finish page.
-# The page has the sandbox box only when the installed sandbox fails its check;
-# on a runner where an earlier step set it up, it has the "is set up" line.
+# The page has the sandbox box only when the installed sandbox fails its check,
+# else the "is set up" line. In CI it has the box: the uninstall after the page
+# walk removed the sandbox, and the silent install doesn't set it up. The first
+# run sets it up again through the page.
 # Whether files were copied shows by uninstall.exe: taken away first, a copy
 # puts it back.
 param(

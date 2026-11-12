@@ -87,8 +87,8 @@ Var OldMainBinaryName
 
 ; Halonic change (HAL-1202): the sandbox step and the one page.
 ; Remove the next line for a build without the Windows sandbox (flow 2.2, D44 (c)):
-; the checkbox, its three lines, the step and the finish page's sandbox line go,
-; and nothing else moves.
+; the checkbox, its three lines, the step, the finish page's sandbox line and the
+; uninstaller's sandbox removal go, and nothing else moves.
 !define SANDBOX_STEP
 ; What the installer says it uses. CI fails when the real size is off by a quarter.
 !define SIZE_MB 130
@@ -473,49 +473,19 @@ Function RunMainBinary
 FunctionEnd
 
 ; Uninstaller Pages
-; 1. Confirm uninstall page
+; Halonic change (HAL-1202, flow 2.7): our own confirm page and last page.
+; 1. Uninstall Halonic? (flow 2.7)
 Var DeleteAppDataCheckbox
 Var DeleteAppDataCheckboxState
-!define /ifndef WS_EX_LAYOUTRTL         0x00400000
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.ConfirmShow
-Function un.ConfirmShow ; Add add a `Delete app data` check box
-  ; $1 inner dialog HWND
-  ; $2 window DPI
-  ; $3 style
-  ; $4 x
-  ; $5 y
-  ; $6 width
-  ; $7 height
-  FindWindow $1 "#32770" "" $HWNDPARENT ; Find inner dialog
-  System::Call "user32::GetDpiForWindow(p r1) i .r2"
-  ${If} $(^RTL) = 1
-    StrCpy $3 "${__NSD_CheckBox_EXSTYLE} | ${WS_EX_LAYOUTRTL}"
-    IntOp $4 50 * $2
-  ${Else}
-    StrCpy $3 "${__NSD_CheckBox_EXSTYLE}"
-    IntOp $4 0 * $2
-  ${EndIf}
-  IntOp $5 100 * $2
-  IntOp $6 400 * $2
-  IntOp $7 25 * $2
-  IntOp $4 $4 / 96
-  IntOp $5 $5 / 96
-  IntOp $6 $6 / 96
-  IntOp $7 $7 / 96
-  System::Call 'user32::CreateWindowEx(i r3, w "${__NSD_CheckBox_CLASS}", w "$(deleteAppData)", i ${__NSD_CheckBox_STYLE}, i r4, i r5, i r6, i r7, p r1, i0, i0, i0) i .s'
-  Pop $DeleteAppDataCheckbox
-  SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $1
-  SendMessage $DeleteAppDataCheckbox ${WM_SETFONT} $1 1
-FunctionEnd
-!define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.ConfirmLeave
-Function un.ConfirmLeave
-  SendMessage $DeleteAppDataCheckbox ${BM_GETCHECK} 0 0 $DeleteAppDataCheckboxState
-FunctionEnd
-!define MUI_PAGE_CUSTOMFUNCTION_PRE un.SkipIfPassive
-!insertmacro MUI_UNPAGE_CONFIRM
+UninstPage custom un.PageConfirm un.PageConfirmLeave
 
 ; 2. Uninstalling Page
+!define MUI_PAGE_HEADER_TEXT "Uninstalling ${PRODUCTNAME}"
+!define MUI_PAGE_HEADER_SUBTEXT ""
 !insertmacro MUI_UNPAGE_INSTFILES
+
+; 3. Halonic is uninstalled (flow 2.7), with the sandbox's leftovers when there are any
+UninstPage custom un.PageDone
 
 ;Languages
 ; PageReinstall reads the misspelled `choowHowToInstall` as a fallback, and makensis warns
@@ -1015,16 +985,21 @@ Section Uninstall
   ; entries while the agent host is still here. Not on an update, and its
   ; outcome never stops the uninstall. It needs srt's sandbox account, so it
   ; must run before anything that runs --sandbox-remove.
+  ; Halonic change (HAL-1202, flow 2.7): then remove the agent sandbox while
+  ; the agent host is still here, and Halonic is closed (srt removes nothing
+  ; while a sandboxed program runs). An update keeps it.
   !ifdef SANDBOX_STEP
     ${If} $UpdateMode <> 1
-    ${AndIf} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
-      StrCpy $1 "$LOCALAPPDATA\halonic"
-      ReadEnvStr $2 "HALONIC_HOME"
-      ${If} $2 != ""
-        StrCpy $1 $2
+      ${If} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
+        StrCpy $1 "$LOCALAPPDATA\halonic"
+        ReadEnvStr $2 "HALONIC_HOME"
+        ${If} $2 != ""
+          StrCpy $1 $2
+        ${EndIf}
+        nsExec::Exec '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-cleanup'
+        Pop $0
       ${EndIf}
-      nsExec::Exec '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-cleanup'
-      Pop $0
+      Call un.RemoveSandbox
     ${EndIf}
   !endif
 
@@ -1128,17 +1103,31 @@ Section Uninstall
     SetShellVarContext current
     RmDir /r "$APPDATA\${BUNDLEID}"
     RmDir /r "$LOCALAPPDATA\${BUNDLEID}"
+    ; Halonic change (HAL-1202, flow 2.7): what the box names, and no more.
+    ; Recent and appearance are in the folders above (the webview's storage);
+    ; trust records and each agent's harness settings are in the profile
+    ; folder. Runs, records and the rest of the profile folder stay: the CLI
+    ; shares it, and the page doesn't say they go.
+    Call un.ProfileFolder
+    Pop $1
+    RmDir /r "$1\trust"
+    FindFirst $2 $3 "$1\workspaces\*"
+    ${DoWhile} $3 != ""
+      ${If} $3 != "."
+      ${AndIf} $3 != ".."
+        RmDir /r "$1\workspaces\$3\harness-settings"
+      ${EndIf}
+      FindNext $2 $3
+    ${Loop}
+    FindClose $2
   ${EndIf}
 
   !ifmacrodef NSIS_HOOK_POSTUNINSTALL
     !insertmacro NSIS_HOOK_POSTUNINSTALL
   !endif
 
-  ; Auto close if passive mode or updating
-  ${If} $PassiveMode = 1
-  ${OrIf} $UpdateMode = 1
-    SetAutoClose true
-  ${EndIf}
+  ; Go on by itself: to the last page, or out when passive or updating.
+  SetAutoClose true
 SectionEnd
 
 Function RestorePreviousInstallLocation
@@ -1152,9 +1141,6 @@ Function Skip
 FunctionEnd
 
 Function SkipIfPassive
-  ${IfThen} $PassiveMode = 1  ${|} Abort ${|}
-FunctionEnd
-Function un.SkipIfPassive
   ${IfThen} $PassiveMode = 1  ${|} Abort ${|}
 FunctionEnd
 
@@ -1229,8 +1215,11 @@ FunctionEnd
 ; installer (flow 7.1).
 ; ---------------------------------------------------------------------------
 
+; Two helpers both the installer and the uninstaller use: NSIS wants an `un.`
+; copy of a function for the uninstaller.
+!macro HalonicHelpers un
 ; Takes a string from the stack and gives it back without the line end.
-Function TrimEol
+Function ${un}TrimEol
   Exch $R0
   Push $R1
   trim_loop:
@@ -1243,6 +1232,21 @@ Function TrimEol
   Pop $R1
   Exch $R0
 FunctionEnd
+
+; Halonic's profile folder, as the agent host finds it, on the stack.
+Function ${un}ProfileFolder
+  Push $0
+  Push $1
+  StrCpy $1 "$LOCALAPPDATA\halonic"
+  ReadEnvStr $0 "HALONIC_HOME"
+  ${IfThen} $0 != "" ${|} StrCpy $1 $0 ${|}
+  Exch $1
+  Exch
+  Pop $0
+FunctionEnd
+!macroend
+!insertmacro HalonicHelpers ""
+!insertmacro HalonicHelpers "un."
 
 ; "A newer Halonic is already installed" (flow 2.5), then quits: no downgrade
 ; with pages. Silent ones stop in .onInit, as `allowDowngrades` is false.
@@ -1302,18 +1306,6 @@ Function WaitUntilHalonicIsClosed
     SetErrorLevel 1
     Quit
   ${Loop}
-  Pop $0
-FunctionEnd
-
-; Halonic's profile folder, as the agent host finds it, on the stack.
-Function ProfileFolder
-  Push $0
-  Push $1
-  StrCpy $1 "$LOCALAPPDATA\halonic"
-  ReadEnvStr $0 "HALONIC_HOME"
-  ${IfThen} $0 != "" ${|} StrCpy $1 $0 ${|}
-  Exch $1
-  Exch
   Pop $0
 FunctionEnd
 
@@ -1545,4 +1537,138 @@ Function PageFinishLeave
   ${If} $StartAfterState == ${BST_CHECKED}
     Call RunMainBinary
   ${EndIf}
+FunctionEnd
+
+; ---------------------------------------------------------------------------
+; The uninstaller's pages (HAL-1202, flow 2.7)
+; ---------------------------------------------------------------------------
+
+!define /ifndef BS_PUSHBUTTON 0x0
+!define /ifndef BS_DEFPUSHBUTTON 0x1
+!define /ifndef BM_SETSTYLE 0x00F4
+!define /ifndef DM_SETDEFID 0x0401
+!define /ifndef WM_NEXTDLGCTL 0x0028
+
+; "Uninstall Halonic?": workspaces first, because that's the fear; settings
+; stay unless the box is ticked; Cancel is the default, because this page
+; removes things (microcopy 1.2).
+Function un.PageConfirm
+  ${If} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+    Abort
+  ${EndIf}
+  !insertmacro MUI_HEADER_TEXT "Uninstall ${PRODUCTNAME}?" ""
+  nsDialogs::Create 1018
+  Pop $0
+
+  ${NSD_CreateLabel} 0 0 100% 20u "Your workspaces are folders of plain files. ${PRODUCTNAME} doesn't touch them."
+  Pop $0
+  ${NSD_CreateCheckbox} 0 26u 100% 10u "Also remove ${PRODUCTNAME}'s settings on this computer"
+  Pop $DeleteAppDataCheckbox
+  ${NSD_CreateLabel} 12u 38u 96% 20u "Recent workspaces, appearance, trust records and agent settings."
+  Pop $0
+  ${NSD_CreateLabel} 12u 60u 96% 20u "API keys stay in Windows Credential Manager until you remove them there."
+  Pop $0
+
+  GetDlgItem $0 $HWNDPARENT 1
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Uninstall"
+  SendMessage $0 ${BM_SETSTYLE} ${BS_PUSHBUTTON} 1
+  GetDlgItem $0 $HWNDPARENT 3
+  ShowWindow $0 ${SW_HIDE}
+  GetDlgItem $0 $HWNDPARENT 2
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Cancel"
+  SendMessage $0 ${BM_SETSTYLE} ${BS_DEFPUSHBUTTON} 1
+  SendMessage $HWNDPARENT ${DM_SETDEFID} 2 0
+  SendMessage $HWNDPARENT ${WM_NEXTDLGCTL} $0 1
+  nsDialogs::Show
+FunctionEnd
+
+Function un.PageConfirmLeave
+  ${NSD_GetState} $DeleteAppDataCheckbox $DeleteAppDataCheckboxState
+FunctionEnd
+
+; Removes the agent sandbox (flow 2.7, CHECK I9), and sets $SandboxOutcome to
+; "removed", "none" (nothing was set up, nothing asked), "refused", "failed"
+; (with $SandboxReason) or "skipped" (a silent uninstall without administrator
+; rights, which can't ask).
+Function un.RemoveSandbox
+  StrCpy $SandboxOutcome "none"
+  ${IfNot} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
+  ${OrIfNot} ${FileExists} "$INSTDIR\sandbox-remove.ps1"
+    Return
+  ${EndIf}
+  StrCpy $0 ""
+  ${If} ${Silent}
+    System::Call 'shell32::IsUserAnAdmin() i .r1'
+    ${If} $1 = 0
+      StrCpy $SandboxOutcome "skipped"
+      Return
+    ${EndIf}
+    StrCpy $0 "-NoElevate"
+  ${EndIf}
+  DetailPrint "Removing the agent sandbox…"
+  DetailPrint "   If it was set up, Windows asks for administrator rights."
+  Call un.ProfileFolder
+  Pop $1
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1" $0'
+  Pop $2
+  Pop $SandboxReason
+  Push $SandboxReason
+  Call un.TrimEol
+  Pop $SandboxReason
+  ${If} $2 == "0"
+    StrCpy $SandboxOutcome "removed"
+    DetailPrint "✓ Removed the agent sandbox"
+  ${ElseIf} $2 == "20"
+    StrCpy $SandboxOutcome "none"
+  ${ElseIf} $2 == "10"
+    StrCpy $SandboxOutcome "refused"
+    DetailPrint "! The agent sandbox is still set up: Windows didn't give administrator rights."
+  ${Else}
+    StrCpy $SandboxOutcome "failed"
+    ${If} $SandboxReason == ""
+      StrCpy $SandboxReason "the removal ended with code $2 and no reason"
+    ${EndIf}
+    DetailPrint "! The agent sandbox is still set up: $SandboxReason"
+  ${EndIf}
+FunctionEnd
+
+; "Halonic is uninstalled", and what the sandbox left when it couldn't be
+; removed. The uninstaller is gone by now, so the way out is to install and
+; uninstall again, not "run the uninstaller as administrator" (HAL-1202).
+Function un.PageDone
+  ${If} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+    Abort
+  ${EndIf}
+  !insertmacro MUI_HEADER_TEXT "${PRODUCTNAME} is uninstalled" ""
+  nsDialogs::Create 1018
+  Pop $0
+
+  ${If} $SandboxOutcome == "removed"
+    ${NSD_CreateLabel} 0 0 100% 10u "✓ The agent sandbox is removed."
+    Pop $0
+  ${ElseIf} $SandboxOutcome == "refused"
+  ${OrIf} $SandboxOutcome == "failed"
+    ${NSD_CreateLabel} 0 0 100% 20u "! The agent sandbox's Windows account and firewall filters are still on this computer."
+    Pop $0
+    ${If} $SandboxOutcome == "refused"
+      StrCpy $1 "Windows didn't give the uninstaller administrator rights."
+    ${Else}
+      StrCpy $1 "The removal stopped: $SandboxReason"
+    ${EndIf}
+    ; Three lines for the cause, as on the installer's finish page.
+    ${NSD_CreateLabel} 10u 22u 96% 32u "$1"
+    Pop $0
+    ${NSD_CreateLabel} 10u 56u 96% 20u "To remove them, install ${PRODUCTNAME} again, then uninstall it and answer Yes when Windows asks."
+    Pop $0
+  ${EndIf}
+
+  GetDlgItem $0 $HWNDPARENT 1
+  SendMessage $0 ${WM_SETTEXT} 0 "STR:&Close"
+  GetDlgItem $0 $HWNDPARENT 2
+  ShowWindow $0 ${SW_HIDE}
+  GetDlgItem $0 $HWNDPARENT 3
+  ShowWindow $0 ${SW_HIDE}
+  nsDialogs::Show
 FunctionEnd

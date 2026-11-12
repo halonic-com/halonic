@@ -63,7 +63,7 @@ libraries, which the script writes to `src-tauri/legal/` with
 `pnpm check:sbom --notices`. Only the "Set up the agent sandbox" step asks Windows for
 administrator rights, once.
 
-What it shows (design: the install flow, sections 2.2 to 2.5):
+What it shows (design: the install flow, sections 2.2 to 2.7):
 
 - One page (folder, sandbox box, desktop shortcut box), the step lines, and a
   finish page that says whether the sandbox is ready, or why not.
@@ -75,6 +75,22 @@ What it shows (design: the install flow, sections 2.2 to 2.5):
 - **Cancel during the steps:** NSIS disables Cancel while the steps run, so the
   sandbox step ends only when Windows' administrator prompt is answered (No
   counts as refused, and the finish page says so).
+- **Uninstall:** "Uninstall Halonic?" says first that workspaces aren't
+  touched. **Cancel** is the default button. The box "Also remove Halonic's
+  settings on this computer" starts unticked. When it is ticked, it removes
+  Studio's own data folders (`com.halonic.studio` in `%APPDATA%` and
+  `%LOCALAPPDATA%`, which hold Recent and appearance), the profile folder's
+  `trust` folder and every workspace's `harness-settings`. Runs, records and
+  the rest of the profile folder stay, because the CLI shares them. API keys
+  stay in Windows Credential Manager.
+- **The sandbox on uninstall:** when the sandbox's Windows account or group is
+  there, the uninstaller runs `halonic-agent-host --sandbox-remove`
+  (`sandbox-remove.ps1`), and Windows asks for administrator rights once.
+  When nothing was set up, it asks nothing. If the person says No, or the
+  removal stops, the last page says the account and firewall filters are
+  still there, and that installing and uninstalling again removes them. An
+  update never removes the sandbox. A silent uninstall removes it only from
+  an elevated prompt.
 
 Silent (`/S`) and passive installs show none of this and skip the sandbox step;
 `/S /SANDBOX=1` from an elevated prompt runs it. `/RELAUNCH` reopens Halonic
@@ -82,5 +98,6 @@ after a silent install.
 
 The `installer-windows` CI job builds it, walks the pages and the messages
 (the pictures are in the job's artifacts), installs it silently into a
-temporary folder and uninstalls it again. Signing and the uninstall page are
-not built yet.
+temporary folder, and uninstalls it through its pages, removing the sandbox.
+The runner is an administrator, so CI never sees Windows' prompt: the refused
+removal needs a desktop Windows machine. Signing is not built yet.

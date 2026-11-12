@@ -1410,9 +1410,9 @@ jobs:
   installer-windows:
     # The Windows installer (HAL-1202): built with the custom NSIS template,
     # named as HAL-1119 settled, installed silently into a temporary folder
-    # and uninstalled again. Checks the files, the per-user install (no
-    # admin), and that Halonic reopens only on /RELAUNCH (HAL-1139). The
-    # screens, the sandbox step and the signing are later parts of the stack.
+    # and uninstalled again through its pages. Checks the files, the per-user
+    # install (no admin), that Halonic reopens only on /RELAUNCH (HAL-1139),
+    # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: changes
     if: needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true'
@@ -1456,7 +1456,7 @@ jobs:
           $p = Start-Process $setup -ArgumentList '/S', "/D=$dir" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 -ExpandProperty FullName | Out-Host
-          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
+          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
           }
           # Per user: the uninstall entry is in HKCU, none in HKLM.
@@ -1485,7 +1485,12 @@ jobs:
           @echo off
           echo %* | findstr /C:"--sandbox-setup" >nul && goto setup
           echo %* | findstr /C:"--sandbox-check" >nul && goto check
+          echo %* | findstr /C:"--sandbox-remove" >nul && goto remove
           exit /b 2
+          :remove
+          if "%FAKE_REMOVE%"=="ok" goto setupok
+          echo {"ok":false,"reason":"srt-win uninstall failed (exit 22): kept_grants_in_use"}
+          exit /b 1
           :setup
           if "%FAKE_SETUP%"=="ok" goto setupok
           echo {"ok":false,"reason":"the firewall filter isn't active"}
@@ -1512,6 +1517,21 @@ jobs:
             $env:FAKE_SETUP = $c.setup; $env:FAKE_CHECK = $c.check
             $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $step -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -NoElevate -CheckSeconds 3 | Out-String).Trim()
             Write-Output "setup=$($c.setup) check=$($c.check): exit $LASTEXITCODE, '$out'"
+            if ($LASTEXITCODE -ne $c.code) { throw "Expected exit $($c.code)" }
+            if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
+          }
+          # The uninstaller's removal (flow 2.7): nothing set up asks nothing.
+          # The group stands in for the sandbox's: Administrators is always there.
+          $remove = Join-Path $env:HALONIC_TEST_DIR 'sandbox-remove.ps1'
+          $cases = @(
+            @{ group = 'halonic-no-such-group'; remove = 'ok'; code = 20; reason = '' },
+            @{ group = 'Administrators'; remove = 'ok'; code = 0; reason = '' },
+            @{ group = 'Administrators'; remove = 'fail'; code = 11; reason = 'srt-win uninstall failed (exit 22): kept_grants_in_use' }
+          )
+          foreach ($c in $cases) {
+            $env:FAKE_REMOVE = $c.remove
+            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $remove -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -NoElevate -AccountName 'halonic-no-such-account' -GroupName $c.group | Out-String).Trim()
+            Write-Output "group=$($c.group) remove=$($c.remove): exit $LASTEXITCODE, '$out'"
             if ($LASTEXITCODE -ne $c.code) { throw "Expected exit $($c.code)" }
             if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
           }
@@ -1545,13 +1565,16 @@ jobs:
           }
           if (-not $running) { throw 'Halonic was not reopened after /RELAUNCH' }
           $running | Stop-Process -Force
-      - name: Uninstall
-        run: |
-          $u = Join-Path $env:HALONIC_TEST_DIR 'uninstall.exe'
-          Start-Process $u -ArgumentList '/S' -Wait
-          Start-Sleep -Seconds 5
-          if (Test-Path (Join-Path $env:HALONIC_TEST_DIR 'Halonic.exe')) { throw 'Halonic.exe is still there after uninstall' }
-          if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic') { throw 'The uninstall entry is still there' }
+      # Last, because it takes Halonic and the sandbox away.
+      - name: Uninstall through its pages, with the sandbox removal
+        run: pwsh apps/studio/src-tauri/windows/test-uninstall.ps1 -InstallFolder $env:HALONIC_TEST_DIR -OutFolder installer-uninstall
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: halonic-uninstaller-pages
+          path: installer-uninstall/*.png
+          retention-days: 7
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
