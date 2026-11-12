@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kNWE+aceu3vtFTS6+37xwEeXHYOK6Fn3RK1ab5SeiAX2qD6K9wCfN9RijaBvqIZcU7K3z2FupBjqW3HLYSHiDg==
 
 Since HAL-5199 the engine counts every connector tool as `write` (or `send`),
 whatever its server lists, so every connector call in a run waits for a
