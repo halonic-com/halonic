@@ -13,7 +13,7 @@ When a run fails and the command line has `--debug`, `halonic run`, `halonic run
   then line 2 is "Report it with the details below: https://github.com/halonic-com/halonic/issues", and stderr starts with "The engine said:" and the engine's error, and ends with the step's model calls.
 - Given a failed step that called claude at Anthropic twice, then moved from smart to fast after HTTP 529 "overloaded", then skipped fast for want of its key,
   when its details are printed,
-  then they list "writer called claude at anthropic 2 times", the move with "The provider said (HTTP 529): overloaded" under it, and "writer skipped fast: its key isn't set, then tried default".
+  then they list "writer called claude at anthropic twice", the move with "The provider said (HTTP 529): overloaded" under it, and "writer skipped fast: its key isn't set, then tried default".
 - Given a result whose details quote a loaded secret that holds a line break,
   when it is printed with `--debug`,
   then the secret reads "[secret removed]"; without `--debug`, stderr stays empty.

@@ -385,7 +385,7 @@ export const runFailedDebugMessages = defineMessages("runFailedDebug", {
   called: (agent: string, model: string, provider: string, times: number) =>
     times === 1
       ? phrase`${agent} called ${model} at ${provider}`
-      : phrase`${agent} called ${model} at ${provider} ${counted(times, "time", "times")}`,
+      : phrase`${agent} called ${model} at ${provider} ${timesInWords(times)}`,
   /** An `llm.fallback`. */
   movedOn: (agent: string, from: string, to: string, error: string) =>
     phrase`${agent} moved from ${from} to ${to}: ${error}`,

@@ -58,7 +58,7 @@ verifies("cli.run-failure-debug", () => {
       "The engine said: model call failed",
       "The provider said (HTTP 400): max_tokens is too large",
       "Model calls in this step:",
-      "  writer called claude at anthropic 2 times",
+      "  writer called claude at anthropic twice",
       "  writer moved from smart to fast: provider error",
       "    The provider said (HTTP 529): overloaded",
       "  writer skipped fast: its key isn't set, then tried default",
