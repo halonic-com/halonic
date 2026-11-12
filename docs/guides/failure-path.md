@@ -74,8 +74,11 @@ held by another process, an approval, a timer.
 - **Test it in the update test** (`apps/studio/src-tauri/windows/test-update.ps1`,
   the `Windows update` CI job): 0.1.0 updates to 0.1.1 and opens again, and a
   workspace, a run log and the settings are byte-for-byte the same afterwards;
-  a bad signature and a failed download leave 0.1.1 as it was. Still to add
-  (HAL-1206): a new version that fails to start leaves a way back to the old one.
+  a bad signature and a failed download leave 0.1.1 as it was; and a 0.1.2
+  that never proves it starts is replaced by 0.1.1 again. On Windows, every
+  installer keeps a copy of itself in the profile's `updates\installers`
+  folder until the next version has started once, and `updates\updates.log`
+  says how to go back.
 
 ## 3. Resource use is visible
 

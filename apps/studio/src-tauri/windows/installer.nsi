@@ -84,6 +84,10 @@ Var UpdateMode
 Var NoShortcutMode
 Var WixMode
 Var OldMainBinaryName
+; Halonic change (HAL-1206): the installed version before this install, read
+; in .onInit, so an update can go back to it.
+Var OldVersion
+Var RollbackMode
 
 ; Halonic change (HAL-1202): the sandbox step and the one page.
 ; Remove the next line for a build without the Windows sandbox (flow 2.2, D44 (c)):
@@ -519,6 +523,16 @@ Function .onInit
     StrCpy $UpdateMode 1
   ${EndIf}
 
+  ; Halonic change (HAL-1206, failure path 2): `/ROLLBACK` is passed only to
+  ; the installer kept for the version before an update, when the new
+  ; version didn't start (WaitForStartOrGoBack). It may install an older
+  ; version, which `allowDowngrades` refuses to every other install.
+  StrCpy $RollbackMode 0
+  ${GetOptions} $CMDLINE "/ROLLBACK" $R0
+  ${IfNot} ${Errors}
+    StrCpy $RollbackMode 1
+  ${EndIf}
+
   ; Halonic change (HAL-1202, flow 2.6): the sandbox step is on by default on
   ; the page, off for silent and passive installs because they can't ask, and
   ; on for a silent install given `/SANDBOX=1` from an elevated prompt.
@@ -600,6 +614,7 @@ Function .onInit
     Pop $R0
     ; If downgrading
     ${If} $R0 = -1
+    ${AndIf} $RollbackMode <> 1
       ${If} ${Silent}
         System::Call 'kernel32::AttachConsole(i -1)i.r0'
         ${If} $0 <> 0
@@ -614,6 +629,9 @@ Function .onInit
     ${EndIf}
   ${EndIf}
   !endif
+
+  ; Halonic change (HAL-1206): the version this install replaces, if any.
+  ReadRegStr $OldVersion SHCTX "${UNINSTKEY}" "DisplayVersion"
 
   ; Halonic change (HAL-1202, flow 2.5): an older installer stops before any
   ; page, and so does an open Halonic until it is closed. Silent, passive and
@@ -953,6 +971,7 @@ Section SandboxStep
 SectionEnd
 
 Function .onInstSuccess
+  Call KeepInstaller
   ; Halonic change (HAL-1202, HAL-1139): Tauri's template reopens the app after
   ; a passive or silent install when it gets `/R`. Ours reopens it only on
   ; `/RELAUNCH`, which Studio adds for "Restart to update". "Install at quit"
@@ -962,8 +981,57 @@ Function .onInstSuccess
     ${GetOptions} $CMDLINE "/RELAUNCH" $R0
     ${IfNot} ${Errors}
       nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
+      ${If} $UpdateMode = 1
+      ${AndIf} $RollbackMode <> 1
+        Call WaitForStartOrGoBack
+      ${EndIf}
     ${EndIf}
   ${EndIf}
+FunctionEnd
+
+; Halonic change (HAL-1206, failure path 2): keeps a copy of this installer in
+; the profile, `updates\installers\Halonic-<version>-windows-x64-setup.exe`,
+; so a later update can go back to this version. This version proves it
+; starts again (the shell writes `updates\started-<version>` once the window
+; is open and the agent host answers), and then removes the copies kept for
+; other versions.
+Function KeepInstaller
+  Call ProfileFolder
+  Pop $1
+  Delete "$1\updates\started-${VERSION}"
+  StrCpy $2 "$1\updates\installers\Halonic-${VERSION}-windows-x64-setup.exe"
+  ${If} "$EXEPATH" != $2
+    CreateDirectory "$1\updates\installers"
+    CopyFiles /SILENT /FILESONLY "$EXEPATH" $2
+  ${EndIf}
+FunctionEnd
+
+; Halonic change (HAL-1206, failure path 2): after "Restart to update", waits
+; up to 60 s for the new version to prove it starts. If it doesn't, the
+; installer kept for the version before runs with `/ROLLBACK`, which closes
+; the new one, installs the old one and reopens it. Nothing to go back to
+; (a first install, or no kept installer) means nothing to wait for.
+Function WaitForStartOrGoBack
+  ${If} $OldVersion == ""
+  ${OrIf} $OldVersion == "${VERSION}"
+    Return
+  ${EndIf}
+  Call ProfileFolder
+  Pop $1
+  StrCpy $2 "$1\updates\installers\Halonic-$OldVersion-windows-x64-setup.exe"
+  ${IfNot} ${FileExists} $2
+    Return
+  ${EndIf}
+  HideWindow
+  StrCpy $3 0
+  ${Do}
+    ${If} ${FileExists} "$1\updates\started-${VERSION}"
+      Return
+    ${EndIf}
+    Sleep 1000
+    IntOp $3 $3 + 1
+  ${LoopUntil} $3 >= 60
+  Exec '"$2" /P /UPDATE /ROLLBACK /RELAUNCH'
 FunctionEnd
 
 Function un.onInit
@@ -1054,6 +1122,14 @@ Section Uninstall
   RMDir /REBOOTOK "$INSTDIR\\{{this}}"
   {{/each}}
   RMDir "$INSTDIR"
+
+  ; Halonic change (HAL-1206): the installers kept for going back are the app's,
+  ; not the user's, so an uninstall removes them. An update keeps them.
+  ${If} $UpdateMode <> 1
+    Call un.ProfileFolder
+    Pop $R9
+    RMDir /r "$R9\updates\installers"
+  ${EndIf}
 
   ; Remove shortcuts if not updating
   ${If} $UpdateMode <> 1

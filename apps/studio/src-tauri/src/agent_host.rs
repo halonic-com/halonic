@@ -285,6 +285,12 @@ fn poisoned() -> HostRefusal {
     )
 }
 
+/// Whether the host starts, or runs, and answers its handshake: part of the
+/// proof that a newly installed version works (HAL-1206).
+pub async fn host_answers<R: Runtime>(app: &AppHandle<R>) -> bool {
+    running_host(app).await.is_ok()
+}
+
 /// The running host's handshake, starting the host first when there is
 /// none or it has exited. It starts on a worker thread: it unpacks files
 /// and waits for the host's first line.

@@ -8,11 +8,15 @@
 #   2. A 0.1.2 whose signature is made with another key is refused: the
 #      state is signature-mismatch and 0.1.1 stays installed.
 #   3. A 0.1.2 whose download fails changes nothing either.
+#   4. A 0.1.2 that doesn't start (built without its agent host) never
+#      proves it starts, so after 60 s the installer kept for 0.1.1 puts
+#      0.1.1 back, which then reports that 0.1.2 didn't install.
 # The updater is driven through the Studio page's own update_* commands
 # (update-driver.mjs), so the test takes the path a person takes.
 param(
   [Parameter(Mandatory)][string]$OldSetup,
   [Parameter(Mandatory)][string]$NewSetup,
+  [Parameter(Mandatory)][string]$BrokenSetup,
   [Parameter(Mandatory)][string]$Key,
   [Parameter(Mandatory)][string]$OtherKey,
   [Parameter(Mandatory)][string]$Serve
@@ -68,10 +72,22 @@ function Stop-Halonic {
 }
 
 # Halonic.exe's version, as major.minor.patch: Windows may add a fourth part.
+# Empty while an installer has taken it away.
 function Get-InstalledVersion {
-  $text = (Get-Item (Join-Path $dir 'Halonic.exe')).VersionInfo.ProductVersion
-  (($text -split '[.+-]')[0..2]) -join '.'
+  $exe = Get-Item (Join-Path $dir 'Halonic.exe') -ErrorAction SilentlyContinue
+  if (-not $exe) { return '' }
+  (($exe.VersionInfo.ProductVersion -split '[.+-]')[0..2]) -join '.'
 }
+
+function Wait-Until([scriptblock]$Done, [int]$Seconds, [string]$What) {
+  foreach ($i in 1..($Seconds / 2)) {
+    if (& $Done) { return }
+    Start-Sleep -Seconds 2
+  }
+  throw "timed out after $Seconds s: $What"
+}
+
+function Get-Record { Get-Content $record -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json }
 
 function Assert-UserData([hashtable]$Before) {
   foreach ($file in $Before.Keys) {
@@ -119,14 +135,13 @@ try {
   if (-not $reopened) { throw "Halonic didn't reopen as 0.1.1 (installed: $(Get-InstalledVersion))" }
   $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
   if ($entry.DisplayVersion -ne '0.1.1') { throw "the uninstall entry says $($entry.DisplayVersion)" }
-  # The new version's first start reads the install record and clears it.
-  $cleared = $false
-  foreach ($i in 1..30) {
-    Start-Sleep -Seconds 2
-    $saved = Get-Content $record -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
-    if ($saved -and -not $saved.install) { $cleared = $true; break }
-  }
-  if (-not $cleared) { throw "0.1.1 didn't clear the install record: $(Get-Content $record -Raw)" }
+  # The new version's first start reads the install record and clears it,
+  # then proves it starts, and the installer kept for 0.1.0 goes.
+  Wait-Until { $saved = Get-Record; $saved -and -not $saved.install } 60 "0.1.1 clearing the install record"
+  $updates = Join-Path $profileFolder 'updates'
+  Wait-Until { Test-Path (Join-Path $updates 'started-0.1.1') } 120 '0.1.1 proving it starts'
+  if (Test-Path (Join-Path $updates 'installers\Halonic-0.1.0-windows-x64-setup.exe')) { throw "0.1.0's kept installer wasn't removed" }
+  if (-not (Test-Path (Join-Path $updates 'installers\Halonic-0.1.1-windows-x64-setup.exe'))) { throw "0.1.1's installer wasn't kept" }
   Assert-UserData $before
   Stop-Halonic
 
@@ -144,6 +159,20 @@ try {
   Invoke-Driver wait download-failed 300
   Stop-Halonic
   if ((Get-InstalledVersion) -ne '0.1.1') { throw "a failed download changed the install to $(Get-InstalledVersion)" }
+  Assert-UserData $before
+
+  # 4. A 0.1.2 that doesn't start: back to 0.1.1 by itself.
+  $brokenName = Split-Path $BrokenSetup -Leaf
+  Copy-Item $BrokenSetup (Join-Path $Serve $brokenName)
+  Set-Manifest '0.1.2' $brokenName (Get-Signature (Join-Path $Serve $brokenName) '0.1.2' $Key)
+  Start-Halonic
+  Invoke-Driver wait ready 300
+  Invoke-Driver call update_restart
+  Wait-Until { (Get-InstalledVersion) -eq '0.1.2' } 120 '0.1.2 installing'
+  Wait-Until { (Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue) } 240 'going back to 0.1.1'
+  Wait-Until { $saved = Get-Record; $saved.install.target -eq '0.1.2' -and $saved.install.failures -eq 1 } 60 "0.1.1 counting 0.1.2 as didn't install"
+  $log = Get-Content (Join-Path $updates 'updates.log') -Raw
+  if ($log -notmatch 'Installing 0\.1\.2 over 0\.1\.1\. If 0\.1\.2 doesn''t start, run .+Halonic-0\.1\.1-windows-x64-setup\.exe to go back') { throw "updates.log doesn't say how to go back: $log" }
   Assert-UserData $before
   Write-Output 'update test passed'
 } finally {

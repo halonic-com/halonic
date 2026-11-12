@@ -1861,13 +1861,15 @@ jobs:
     # with a test updater key made in this job and a local update address.
     # 0.1.0 updates itself to 0.1.1 through "Restart to update" and opens
     # again, with the user's files unchanged; a bad signature and a failed
-    # download change nothing (windows/test-update.ps1). The keys live in
-    # the runner's temp folder only and are never uploaded.
+    # download change nothing; a 0.1.2 built without its agent host never
+    # proves it starts, so Halonic goes back to 0.1.1 by itself
+    # (windows/test-update.ps1). The keys live in the runner's temp folder
+    # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
     if: needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true'
     runs-on: windows-2025
-    timeout-minutes: 60
+    timeout-minutes: 75
     permissions:
       contents: read
     defaults:
@@ -1896,23 +1898,34 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "tauri signer generate failed" }
           }
           $pubkey = (Get-Content (Join-Path $keys 'test.key.pub') -Raw).Trim()
+          $updater = @{ pubkey = $pubkey; endpoints = @('http://127.0.0.1:8765/latest.json'); dangerousInsecureTransportProtocol = $true }
           foreach ($version in '0.1.0', '0.1.1') {
-            $updater = @{ pubkey = $pubkey; endpoints = @('http://127.0.0.1:8765/latest.json'); dangerousInsecureTransportProtocol = $true }
             @{ version = $version; plugins = @{ updater = $updater } } | ConvertTo-Json -Depth 5 |
               Set-Content (Join-Path $keys "build-$version.json") -Encoding utf8NoBOM
           }
+          # 0.1.2 ships a stand-in under another name instead of the agent
+          # host, so Halonic.exe finds no host and never proves it starts.
+          $binaries = Join-Path $PWD 'src-tauri/binaries'
+          New-Item -ItemType Directory -Force $binaries | Out-Null
+          Copy-Item "$env:WINDIR\System32\whoami.exe" (Join-Path $binaries 'no-agent-host-x86_64-pc-windows-msvc.exe')
+          @{ version = '0.1.2'; plugins = @{ updater = $updater }; bundle = @{ externalBin = @('binaries/no-agent-host') } } |
+            ConvertTo-Json -Depth 5 | Set-Content (Join-Path $keys 'build-0.1.2.json') -Encoding utf8NoBOM
       - name: Build Halonic 0.1.0
         working-directory: apps/studio/src-tauri
         run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.0.json')
       - name: Build Halonic 0.1.1
         working-directory: apps/studio/src-tauri
         run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.1.json')
-      - name: Update 0.1.0 to 0.1.1, then refuse a bad signature and a failed download
+      - name: Build Halonic 0.1.2 without its agent host
+        working-directory: apps/studio/src-tauri
+        run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.2.json')
+      - name: Update 0.1.0 to 0.1.1, refuse a bad signature and a failed download, go back from a 0.1.2 that doesn't start
         run: |
           $keys = Join-Path $env:RUNNER_TEMP 'update-keys'
           pwsh apps/studio/src-tauri/windows/test-update.ps1 `
             -OldSetup (Resolve-Path 'dist/Halonic-0.1.0-windows-x64-setup.exe') `
             -NewSetup (Resolve-Path 'dist/Halonic-0.1.1-windows-x64-setup.exe') `
+            -BrokenSetup (Resolve-Path 'dist/Halonic-0.1.2-windows-x64-setup.exe') `
             -Key (Join-Path $keys 'test.key') -OtherKey (Join-Path $keys 'other.key') `
             -Serve (Join-Path $env:RUNNER_TEMP 'update-serve')
           if ($LASTEXITCODE -ne 0) { throw 'the update test failed' }
