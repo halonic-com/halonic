@@ -20,12 +20,16 @@ import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { deletePluginSecret, openPluginService, type PluginSetup } from "../../plugin-host.ts";
 
-/** What the question and the ✓ line say about the plugin being removed. */
+/**
+ * What the question and the ✓ line say about the plugin being removed. Its
+ * name and version are outside text, so they are made printable once here
+ * (cli-output 5) and every line can print them as they are.
+ */
 interface RemovedPlugin {
   readonly id: string;
-  /** Its manifest's name, or its id when it can't be read. */
+  /** Its manifest's name, or its folder's name when it can't be read, made printable. */
   readonly name: string;
-  /** Its manifest's version, or `undefined` when it can't be read. */
+  /** Its manifest's version made printable, or `undefined` when it can't be read. */
   readonly version: string | undefined;
   /** Whether any secret is kept for it, so the question names the API key. */
   readonly hasSecrets: boolean;
@@ -86,19 +90,18 @@ async function removedPlugin(service: PluginService, entry: PluginEntry): Promis
   if (entry.status !== "broken") {
     const { plugin } = entry;
     const hasSecrets = Object.keys(service.secretNames(plugin)).length > 0;
-    return { id, name: plugin.name, version: plugin.version, hasSecrets };
+    return { id, name: printable(plugin.name), version: printable(plugin.version), hasSecrets };
   }
   // A plugin that can't be read still has the secret names it was added with.
   const install = await service.install(id);
   const hasSecrets = Object.keys(install?.secretNames ?? {}).length > 0;
-  return { id, name: id, version: undefined, hasSecrets };
+  return { id, name: printable(id), version: undefined, hasSecrets };
 }
 
 function removedLine(plugin: RemovedPlugin) {
-  const name = printable(plugin.name);
   return plugin.version === undefined
-    ? pluginMessages.removedUnread(name).phrase
-    : pluginMessages.removed(name, printable(plugin.version)).phrase;
+    ? pluginMessages.removedUnread(plugin.name).phrase
+    : pluginMessages.removed(plugin.name, plugin.version).phrase;
 }
 
 /** "There's no plugin called "wether". Did you mean weather? · See them with halonic plugin list." */

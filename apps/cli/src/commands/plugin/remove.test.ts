@@ -29,10 +29,10 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-const manifest = (id: string, secrets: boolean) => `id: ${id}
+const manifest = (id: string, secrets: boolean, name: string) => `id: ${id}
 version: 1.2.0
 sdk: 1
-name: Weather
+name: ${name}
 backend:
   hosts: [api.weather.example]
 ${
@@ -49,11 +49,14 @@ ${
     - { name: get_forecast, description: The forecast., risk: read, untrusted: true }
 `;
 
-/** Writes a valid plugin with the id `id` to `sources/<id>` and returns that folder. */
-async function writeSource(id: string, secrets = true): Promise<string> {
+/**
+ * Writes a valid plugin with the id `id` to `sources/<id>` and returns that
+ * folder. `name` is the manifest's YAML for it.
+ */
+async function writeSource(id: string, secrets = true, name = "Weather"): Promise<string> {
   const source = join(folder, "sources", id);
   await mkdir(join(source, "backend"), { recursive: true });
-  await writeFile(join(source, "plugin.yaml"), manifest(id, secrets));
+  await writeFile(join(source, "plugin.yaml"), manifest(id, secrets, name));
   await writeFile(join(source, "backend", "index.js"), "export default {};\n");
   return source;
 }
@@ -199,6 +202,25 @@ verifies("cli.commands.plugin.remove", () => {
     expect(code).toBe(exitCode.ok);
     expect(await readdir(pluginsFolder())).toEqual([]);
     expect(await readdir(outside)).toEqual(["keep.txt"]);
+  });
+
+  it("escapes a control character in the plugin's name on every line", async () => {
+    // YAML's "\e" is the escape character, which would start a terminal sequence.
+    const source = await writeSource("weather", true, String.raw`"Wea\e[31mther"`);
+    expect((await plugin(["add", source], terminalTyping("y").terminal)).code).toBe(exitCode.ok);
+    const shown = String.raw`Wea\u001b[31mther`;
+
+    const asked = terminalTyping("n");
+    const no = await plugin(["remove", "weather"], asked.terminal);
+    const noTerminal = await plugin(["remove", "weather"]);
+    const yes = await plugin(["remove", "weather"], terminalTyping("y").terminal);
+
+    expect(asked.written()).toContain(`Remove ${shown}?`);
+    expect(no.io.stdout).toEqual([`Not removed. ${shown} is still added.`]);
+    expect(noTerminal.io.stderr[0]).toBe(
+      `✕ Removing ${shown} deletes its settings and secrets, and there's no terminal to ask you.`,
+    );
+    expect(yes.io.stdout).toEqual([`✓ Removed ${shown} 1.2.0 and its trust.`]);
   });
 
   it("says which plugin to remove when no id is given", async () => {
