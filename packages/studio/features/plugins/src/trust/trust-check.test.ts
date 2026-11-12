@@ -45,7 +45,7 @@ ui:
     - { id: today, title: Today's weather, tool: forecast }
   panel: { title: Weather }`);
 
-verifies("plugins.trust-check", () => {
+verifies("plugins.plugin-trust-check", () => {
   it("titles the check after Add and from Review", () => {
     expect(trustTitle("add", "Weather")).toBe("Trust Weather and turn it on?");
     expect(trustTitle("review", "Weather")).toBe("Trust Weather?");
