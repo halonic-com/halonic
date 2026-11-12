@@ -1,11 +1,18 @@
 import { checkWorkspacePath } from "@halonicjs/ports";
 import { encodeBase64url } from "@halonicjs/std";
-import type { FolderTree } from "@halonicjs/testing-contracts";
 import type { ShellCall } from "./fake-shell.test-helper.ts";
 import type { FolderRefusal, FolderRefusalKind } from "./folder-commands.ts";
 import type { TauriShell } from "./shell.ts";
 
 const encoder = new TextEncoder();
+
+/** The shape of the contract's folder tree, restated so this helper needs no testing package at runtime. */
+interface FolderTree {
+  readonly files?: Readonly<Record<string, Uint8Array | string>>;
+  readonly folders?: readonly string[];
+  readonly links?: Readonly<Record<string, string>>;
+  readonly special?: readonly string[];
+}
 
 /**
  * A shell that answers the `folder_*` commands as the Rust shell does,
