@@ -20,7 +20,7 @@ halonic-sandbox-elevate.exe remove
 srt-win's pass through unchanged: 0 done, 1 other, 10 cancelled, 12 network filters, 13 set up with other settings, 14 account, 17 write denies. The helper's own:
 
 | Code | Meaning |
-|---|---|
+| --- | --- |
 | 30 | Not exactly one argument, or not `setup` or `remove` (and every run on a computer that isn't Windows) |
 | 31 | Started without administrator rights |
 | 32 | No `srt-win.exe` next to the helper |
