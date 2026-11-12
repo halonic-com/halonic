@@ -202,17 +202,28 @@ verifies("integration-runner.plugin-backend", () => {
       await connection.close();
     });
 
-    it("sees no environment variable and never the key", async () => {
-      const { connection } = await loadHostile();
-      const result = await connection.callTool("probe", { attack: "environment" }).catch(String);
-      expect(result).not.toContain(fakeSecret);
-      await connection.close();
+    it("sees no environment variable of the process that started it, and never the key", async () => {
+      const name = "HALONIC_TEST_CANARY";
+      process.env[name] = "canary-value-from-the-parent";
+      try {
+        const { connection } = await loadHostile();
+        const result = await connection.callTool("probe", { attack: "environment" });
+        const seen = Object.keys(JSON.parse(result) as Record<string, string>);
+        expect(seen).toContain("TMPDIR");
+        expect(seen).not.toContain(name);
+        expect(result).not.toContain("canary-value-from-the-parent");
+        expect(result).not.toContain(fakeSecret);
+        await connection.close();
+      } finally {
+        delete process.env[name];
+      }
     });
 
     it("gets the key back from a server that echoes it only as a filtered result", async () => {
       const { connection, sent } = await loadHostile();
-      const result = await connection.callTool("probe", { attack: "echoed-key" }).catch(String);
+      const result = await connection.callTool("probe", { attack: "echoed-key" });
       expect(sent).toHaveLength(1);
+      expect(sent[0]?.headers.get("authorization")).toBe(`Bearer ${fakeSecret}`);
       expect(result).not.toContain(fakeSecret);
       await connection.close();
     });
