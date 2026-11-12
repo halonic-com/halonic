@@ -907,12 +907,16 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   and `itemPage.addSection`. An item page section names a kind some feature adds, and the section's
   feature uses the page's feature only through its `api.ts` (`shell.feature-isolation`).
 - **Frame** (`shell.frame-points`): `cards.add`, `panelWindows.add`, `statusBar.add`,
-  `titleBar.add`, `phoneBar.add` and `settings.add`, with `places.add` and `home.addCard` above.
+  `titleBar.add`, `phoneBar.add`, `dialogs.add` and `settings.add`, with `places.add` and
+  `home.addCard` above. A dialog host (`shell.feature-dialogs`) is a view the window draws once,
+  on the desktop and on a phone, with its feature's context (`DialogHostProps`); it draws nothing
+  while none of its dialogs is open, and one that fails shows nothing.
   A settings section names its `scope` (`workspace`, `display` or `host`: where its values are
   saved), may give a `summary` for the phone's list and `phone: false` to stay off a phone. The
   settings list shows the workspace's group, then "On this computer", each by `order`
-  (`bySettingsGroup`); features never write headings. `settingsSectionToOpen` picks the section
-  `settings.open` shows (`shell.settings-open`).
+  (`bySettingsGroup`); in a browser, "In this browser" heads `display` and "On the computer running
+  Halonic" heads `host` (`settingsGroups`). Features never write headings. `settingsSectionToOpen`
+  picks the section `settings.open` shows (`shell.settings-open`).
 - **Commands** (`shell.commands`, `shell.keybindings`): `commands.add`, `keybindings.add`,
   `commands.addSource`, `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
   contexts with `&&`, each optionally `!`; of the bindings that hold, the one with the most
@@ -921,7 +925,9 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   A command source (`shell.command-sources`) is `{ id, commands }`, for commands that come and go
   while Studio runs, such as those of the plugins that are on. Each time the shell lists commands or
   looks one up, it calls `commands()` again and lists what it gives with the feature that added the
-  source. A command of a source must be readable, have an id that starts with the source's id and a
+  source. When the window lists them it passes `contextFor` (`ContextFor`) to `commands.list` and
+  `commands.get`, and each source gets the context of the feature that added it; without one it
+  gets none (`shell.command-source-context`). A command of a source must be readable, have an id that starts with the source's id and a
   dot, be a valid id and not repeat one, have a `title` that is text and, when it has a `source`,
   one that is text, or it is left out (one unreadable command, such as a getter that throws, drops
   only itself); a source that throws or gives no list gives none, and the other commands still show. Two sources with one id, or a command or source whose id starts with a
@@ -941,7 +947,18 @@ box, Mod K, **+** and Ctrl T. A tab on Home shows `HomePage`, a tab on a search 
 and a tab on a place a feature added that place's view, which gets `PlaceViewProps`: the context of
 the feature that added it. A tab on an item (`kind/hub/id`) shows the `open` view of the kind a
 feature added, which gets `ItemViewProps`: the item and the context of that feature
-(`shell.item-tabs`). The view is imported the first time a tab shows an item of that kind.
+(`shell.item-tabs`). The view is imported the first time a tab shows an item of that kind, and
+only once, however often it's mounted again. The window also draws the features' dialog hosts
+(`FeatureDialogs`), and the context it gives views and commands has `openItem(item)`, which opens
+an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
+(`shell.open-item`).
+
+`SettingsDialog` is the Settings dialog (`shell.settings-container`, `shell.settings-keyboard`):
+the kit's `lg` dialog with no footer, the sections listed by `settingsGroups` on the left and the
+current one under its name on the right. Its list is one Tab stop: ↑, ↓, Home and End move, and
+Enter or a click switches and says the section's name. A section's view gets
+`SettingsSectionProps`: `context` and `closeSettings`, which a link to a page calls first. A view
+that fails to load leaves its heading and the list working. The window doesn't open it yet.
 
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search
@@ -1000,7 +1017,9 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
   `EngineSupervisor`, `engineAnswerTimeoutMs` (30 s), `engineRestartDelayMs` (2 s),
   `engineRestartWindowMs` (60 s), `engineWords`, `EngineWords`, `StudioHost`, `EngineLineProps`.
 - **Frame:** `ShellFrameProps`, `StatusBarItemsProps`, `StatusBarItemProps` (what an item's view
-  gets: `context`), `HomeCardProps`.
+  gets: `context`), `HomeCardProps`, `FeatureDialogsProps`, `DialogHostProps`.
+- **Settings:** `SettingsDialogProps`, `SettingsSectionProps`, `SettingsGroup`,
+  `SettingsGroupsInput`, `SettingsPlace`, `SettingsScope`, `settingsScopes`, `firstSettingsSection`.
 - **Side panel:** `PANEL_DEFAULT_WIDTH` (700), `PANEL_MIN_WIDTH` (420), `PANEL_MAX_WIDTH` (1400),
   `CHAT_MIN_WIDTH` (320), `ITEM_PAGE_LEAD` (40), `PANEL_GAP` (48), `PanelWidthProviderProps`.
 - **Search page:** `SearchScope`, `SearchPageQuery`, `NameResult`, `SearchPageNames`.
@@ -1019,9 +1038,9 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
   `ServiceTarget`, `ServiceFactory`, `ServiceLookup`, `FeatureServices`, `WorkspaceContext`,
   `ViewRef`, `ShellError`.
 - **Points:** `FramePoints`, `FrameContributions`, `LayoutPoints`, `LayoutContributions`,
-  `CommandPoints`, `CommandContributions`, `Point`, `Ordered`, `Contributed`, `Registered`,
+  `CommandPoints`, `CommandContributions`, `ContextFor`, `Point`, `Ordered`, `Contributed`, `Registered`,
   `KeyboardPlatform`, and the contribution types: `CardContribution`, `PanelWindowContribution`,
-  `BarItemContribution`, `PhoneBarContribution`, `SettingsSectionContribution`,
+  `BarItemContribution`, `PhoneBarContribution`, `DialogHostContribution`, `SettingsSectionContribution`,
   `PlaceContribution`, `PlaceSignal`, `PlaceName`, `ShownPlace`, `SidebarPlace`,
   `HomeCardContribution`, `HomePoint`, `HomeSection`, `ItemKindContribution`, `ItemRef`,
   `ItemAction`, `TabBehaviour`, `TabDescription`, `ExplorerGroupContribution`, `ExplorerItem`,

@@ -172,6 +172,12 @@ opened in the shell. `shell` is a `TauriFileShell`: the shell's `invoke` plus `o
 the Studio builds from `window.__TAURI_INTERNALS__` and its own `TauriChannel`, so this package
 needs no Tauri library.
 
+`new TauriDefinitionStore(shell, workspace, { folder: "review" })` keeps the workspace's review
+records instead, for `openWorkspace`'s `reviewRecords`: every call sends `folder: "review"`, and
+the shell works out `<profile>/workspaces/<key>/review` itself (`reviewFolder` in
+`@halonicjs/profile`), making it on the first write only. Its watch reports nothing and calls
+nothing, since only Halonic edits the records. Without `folder` the calls send none, as before.
+
 Paths are checked here with the port's rules before the shell is called, and the shell checks them
 again, since the page isn't trusted; it also refuses any path through a link, which only it can see.
 A write with `expected` is compared and renamed into place in the shell, under a lock it holds for
@@ -195,7 +201,7 @@ change from outside right after it is still reported.
 | anything else | a `KindedError` `unavailable`, without its text |
 
 The package exports `TauriDefinitionStore`, `TauriFileShell`, `TauriChannelHandle`,
-`fileCommands`, `fileRefusalKinds`, the types `FileRefusal` and `FileRefusalKind`, and
+`TauriFileFolder`, `fileCommands`, `fileRefusalKinds`, the types `FileRefusal` and `FileRefusalKind`, and
 `isFileRefusal`. The tests run the definition-store contract against a fake shell; the comparing,
 the rename and the link checks on real files are proved by the Rust tests of the file commands
 (in `apps/studio/src-tauri`).

@@ -163,7 +163,9 @@ Three optional agent fields say how an agent runs in another program
 - `allowedSites`: at most 50 host names or `*.` plus a domain of two or more
   labels. Addresses in any notation and local names (`.local`, `.internal`,
   `.arpa` and the like) fail. `asciiAllowedSites(sites)` gives the stored form: lowercase,
-  Punycode, each once.
+  Punycode, each once. A stdio connector's optional `transport.stdio.sites`, the sites its
+  program may reach in a sandbox, follows the same rules (requirement `connector-sites`); no
+  other transport takes it.
 
 ## Workflow tests
 

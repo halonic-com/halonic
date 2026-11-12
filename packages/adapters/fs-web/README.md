@@ -22,7 +22,9 @@ API (`showDirectoryPicker`). Only Chromium browsers (Chrome, Edge) have it; else
     one path run one after another. A write with `expected` checks the file again right before the
     close, so a change another program made meanwhile is not written over: the write gives
     `changed-on-disk` and the watch reports the change. Only a change in the moment between that
-    last check and the close is lost; the browser has no file lock.
+    last check and the close is lost; the browser has no file lock. The browser makes a new file,
+    empty, as soon as it is opened; when the write fails, that empty file is removed again, and no
+    watch reports it. A file that was there before is left as it was.
   - **`watch()`**: the browser has no file events, so the watch looks each time the page gets
     focus again or becomes visible. It compares when each file last changed and its size with what
     it saw before, and reads only the files where one of them differs. The rest is the shared

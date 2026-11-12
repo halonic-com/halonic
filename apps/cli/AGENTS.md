@@ -30,7 +30,8 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
   checks the Node.js version (`bin/node-floor.js`, equal to the root `devEngines.runtime`) and
   only then imports `src/main.ts`. Keep it that small, so an old Node.js can parse it (HAL-6414).
 - A new command is a new folder `src/commands/<name>/` with `command.ts` exporting `<name>Command`.
-  Never edit a shared list; `pnpm discover` writes `src/generated/commands.ts`.
+  `pnpm discover` writes `src/generated/commands.ts`. The one shared list is `commandOrder` in
+  `src/help.ts`, the help's order: add the new name there, or `src/commands.test.ts` fails.
 - Exit codes: 0 ok, 1 errors found or the command failed (`internal`), 2 wrong usage
   (`invalid_input`), 3 the workspace isn't trusted, then the error kinds: 4 `not_found`,
   5 `conflict`, 6 `unauthenticated`, 7 `denied`, 8 `limit_reached`, 9 `unavailable`. Never

@@ -20,6 +20,24 @@ storing fails, the stored value comes back and the failure stays on that setting
 next saves (`settings.failed-save`), so Settings can show it under the control and say it in the
 dialog, never in a toast. A stored value the setting doesn't accept starts from the default.
 
+## Formats
+
+`formatPref` is Formats → Format, one setting for numbers, dates and money
+(`settings.formats-format`). It stores `follow` (the default) or a tag from `formatTags`, never
+the format's name; any other stored value follows the computer.
+
+```ts
+import { formatExample, formatLocale, formatOptions, formatPref } from "@halonicjs/studio-feature-settings";
+
+formatOptions({ followTag: "en_GB.UTF-8", place: "app" })[0];
+// { value: "follow", label: "Follow this computer: English (United Kingdom)" }
+formatExample(formatLocale(settings.get(formatPref), "en-GB")); // "45.00 · Mon 9 Nov, 08:00"
+```
+
+`followTag` is the system's region format in the desktop app and the browser's language when
+served ("Follow this browser: …"). The options after Follow are the tags this window can format,
+named in English and sorted by name.
+
 ## Example
 
 ```ts

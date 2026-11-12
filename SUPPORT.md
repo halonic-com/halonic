@@ -7,7 +7,8 @@ yet, but there are good places to ask.
 | --- | --- |
 | ask a question | [**Q&A** in GitHub Discussions](https://github.com/halonic-com/halonic/discussions/new?category=q-a) |
 | report a bug | a new issue, using the **Bug report** form |
-| suggest a feature | a new issue, using the **Feature request** form, or a discussion in **Ideas** if it's still an idea |
+| tell us installing or the first run didn't work | a new issue, using the **Install problem** form |
+| suggest a feature | a new issue, using the **Idea or feature request** form, or a discussion in **Ideas** if it's still an idea |
 | ask for an integration with another service | a new issue, using the **Integration request** form |
 | share an idea or show what you built | **Ideas** or **Show and tell** in [GitHub Discussions](https://github.com/halonic-com/halonic/discussions) |
 | report a mistake or gap in the docs | a new issue, using the **Docs problem** form |

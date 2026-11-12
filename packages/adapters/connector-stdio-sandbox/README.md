@@ -33,7 +33,9 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 - **Halonic builds the profile, never the plugin.** `localToolLaunch` builds the session's profile
   (working folder, environment, network, time limit) and the command from the place the host set
   up, the stdio config, the pin and the secrets. The host opens the session with it. Before each
-  start the connector runs the pin check, reads the secrets, builds it again and refuses a session
+  start the connector refuses a config with a `cwd` or with names in `inheritEnv` (the session has
+  no variable from this computer's environment to give; set them under `env` or `secretEnv`), runs
+  the pin check, reads the secrets, builds it again and refuses a session
   whose profile differs, naming the fields, never a value.
 
 ## What it exports

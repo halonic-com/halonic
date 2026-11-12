@@ -28,6 +28,9 @@ the one it last saw, and reports only the files whose text really differs.
 - `WatchEvents` is `(noticed, failed) => stop`. The source calls `noticed(name)` with a workspace
   path (with `/`) that may have changed, or `""` when it can't say which, so every file is checked.
   It calls `failed(error)` when it breaks; the listener hears that once and nothing more after.
+  `stop` (`StopEvents`) stops the events at once; a source that takes a while to stop, such as the
+  desktop shell's `fs_unwatch`, returns a promise for when it has. `close()` waits for it, so a
+  watch opened right after has the workspace to itself; a rejected stop is ignored.
 - Around each of its own writes and removes, the store calls `beginOwnChange(path, change)` with
   the new text's digest (or `"absent"`), then `endOwnChange(path, applied)` once it is over. A
   batch read in between leaves the file out when it holds what the store is writing. When the

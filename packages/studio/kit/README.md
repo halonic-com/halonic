@@ -714,7 +714,7 @@ hover and press (a sidebar row). With more contrast `border` is too dark under `
 
 ## ListHeading
 
-The heading over a group of rows. The List draws it for its own `heading`; it's exported
+The heading over a group of rows. The List draws it for its own `heading` and each group's; it's exported
 alone for a list the kit doesn't draw, such as the shell's Settings nav.
 
 ```tsx
@@ -789,6 +789,8 @@ List draws them.
 | `heading` | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it |
 | `headingLevel` | 2 by default |
 | `label` | The list's name when it has no heading: "Agents". A list needs one of the two |
+| `groups` | In place of `rows`: `ListGroup`s, `{ id, heading: { name, detail }, rows }`, each under its own heading. Needs `label` |
+| `groupHeadingLevel` | The groups' headings' level, 3 by default |
 | `onOpen` | Called with a row's `id` on Enter or a click |
 | `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click |
 | `selection` | `{ selected, onToggle, multiple, verb }`: the screen keeps the set, Space toggles a row |
@@ -823,6 +825,16 @@ the page doesn't jump when a row arrives, and the Empty state's title is a level
   rows={[]}
   empty={{ title: "No agents yet", description: "Agents do the work.", action: newAgent }}
 />;
+```
+
+**Groups.** With `groups`, as the Runs list's days, the List is still one grid and one Tab stop.
+Each group is its own box under its heading, which sits in a row of its own that ↑ ↓ Home End pass
+over (`kit.list-groups`). A group with no rows isn't drawn, heading and all. When the focused row
+goes, the focus goes to the row that took its place, else the one before, never to a heading. Flush and phone lists draw no boxes, and
+while a grouped List loads, a heading bar stands above the skeleton.
+
+```tsx
+<List label="Runs" groups={[{ id: "2026-11-12", heading: { name: "Today" }, rows: today }]} onOpen={openRun} />;
 ```
 
 **Open and select.** With both `onOpen` and `selection`, every row starts with a checkbox cell

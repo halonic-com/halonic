@@ -82,7 +82,9 @@ the fix is there.
 `provideShellSecrets(services, page)` returns whether the page is in the shell, and throws a
 `ServiceError` when `secretsKey` or `tokenStoreKey` is already provided. `tauriIpc(page)` gives a
 `TauriIpc` (just `invoke`), or `undefined` outside the shell. `tauriChannelIpc(page)` adds Tauri's
-callback table (`TauriCallbacks`), which a channel needs.
+callback table (`TauriCallbacks`), which a channel needs. `new TauriChannel(callbacks, onMessage)`
+opens one channel on it: pass its `argument` to the command, and `close()` it to stop reading. The
+desktop app opens one to watch a folder's files.
 
 ## The agent host
 

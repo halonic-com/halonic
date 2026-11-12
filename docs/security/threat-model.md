@@ -344,11 +344,14 @@ start, in this order, because its fix comes first.
   the network reached only through srt's proxy. It needs `bubblewrap`,
   `socat` and `ripgrep`; `check()` reports `linux-tools-missing` without
   `socat` or `ripgrep`. Inside a container (Docker, Podman) it can't nest and
-  reports `container`.
+  reports `container`. Under WSL 1, which can't run bubblewrap, it reports
+  `not-supported`.
 - **Ubuntu 24.04 and later** stop programs from creating user namespaces
   (`kernel.apparmor_restrict_unprivileged_userns`). `check()` asks bubblewrap
   itself, because Ubuntu's bubblewrap profile can let it through, and reports
-  `user-namespaces-restricted` when it can't. There are two fixes. An
+  `user-namespaces-restricted` when it can't and that setting is `1`. When
+  bubblewrap fails with the setting off, the reason is `other`, with
+  bubblewrap's own line. There are two fixes. An
   AppArmor profile for `bwrap` lets only bubblewrap through. Turning the
   setting off lets every program on the machine create user namespaces again,
   which gives local attackers more of the kernel to attack. We recommend the

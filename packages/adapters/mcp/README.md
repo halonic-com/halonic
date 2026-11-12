@@ -56,13 +56,17 @@ any failed step refuses the start before a secret is read or a folder is created
    no folder.
 
 A package runner without a pin starts as configured, like any program the person trusted, in the
-workspace folder (or its `cwd`), with the base of the app's environment, the connector's `env` and
-its secrets. Both kinds start only once the workspace is trusted.
+workspace folder (or its `cwd`), with the base of the app's environment, the variables its
+connector names in `inheritEnv`, the connector's `env` and its secrets. Both kinds start only once
+the workspace is trusted.
 
 **What a program inherits.** Only the base of the app's environment (`connectorBaseEnv` in
 `@halonicjs/app`, `app.connector-base-env`): `PATH`, home, user, temp and locale variables, the
 person's proxy, certificate and library folders, and on Windows the system folders a program needs.
-A model key or token in the person's shell stays out; a program that needs a key gets it through
+To that it adds each variable the connector names in `inheritEnv` that is set
+(`connectorInheritedEnv`, `app.connector-inherited-env`), in any letter case on Windows; the
+connector's `env` replaces a named variable. A name that says it holds a secret is never taken, so
+a model key or token in the person's shell stays out; a program that needs a key gets it through
 `secretEnv`.
 
 ## How a program is started and stopped
