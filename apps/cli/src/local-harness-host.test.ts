@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
@@ -205,7 +205,7 @@ async function openEngine(fakes: Fakes, git = true): Promise<LocalEngine> {
   const notes: ConnectorFactory = {
     transport: "stdio",
     create: (config, context) => {
-      fakes.connectorFolders.push(context.workspaceRoot);
+      fakes.connectorFolders.push(context.workspaceRoot ?? "");
       return {
         id: config.id,
         listTools: async () => [{ name: "which", description: "Says which.", parameters: {} }],
@@ -405,7 +405,8 @@ verifies("cli.local-harness-host", () => {
         given?.settingsFolder ?? undefined,
       ];
       for (const path of writable.filter((each) => each !== undefined)) {
-        expect(path.startsWith(`${root}/`)).toBe(true);
+        const inside = relative(root, path);
+        expect(inside !== "" && !inside.startsWith("..") && !isAbsolute(inside)).toBe(true);
         expect(given?.reopenedPaths ?? []).not.toContain(root);
       }
       // Every reopened path is one of the run's own, never the root or one of the engine's other folders.
