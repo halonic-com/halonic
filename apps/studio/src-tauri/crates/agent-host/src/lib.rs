@@ -92,10 +92,15 @@ pub fn executable_beside(program: &Path) -> Result<PathBuf, AgentHostError> {
     Ok(folder.join(format!("{EXECUTABLE_NAME}{}", std::env::consts::EXE_SUFFIX)))
 }
 
-/// The command that serves the host for one profile folder.
-pub fn host_command(executable: &Path, profile_folder: &Path) -> Command {
+/// The command that serves the host for one profile folder. While it holds
+/// the profile's lock, the host forgets the kept Windows grants inside each
+/// of `sweep_roots` that crashed sessions left (HAL-6256).
+pub fn host_command(executable: &Path, profile_folder: &Path, sweep_roots: &[PathBuf]) -> Command {
     let mut command = Command::new(executable);
     command.arg("--profile-folder").arg(profile_folder);
+    for root in sweep_roots {
+        command.arg("--sweep-root").arg(root);
+    }
     command
 }
 

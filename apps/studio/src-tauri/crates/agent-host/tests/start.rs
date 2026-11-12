@@ -149,13 +149,28 @@ fn lifetime_finds_the_executable_next_to_the_app_and_passes_the_profile() {
     );
 
     let profile = std::env::temp_dir().join("profile");
-    let command = host_command(&executable, &profile);
+    let command = host_command(&executable, &profile, &[]);
     let args: Vec<_> = command.get_args().collect();
     assert_eq!(
         args,
         [
             std::ffi::OsStr::new("--profile-folder"),
             profile.as_os_str()
+        ]
+    );
+
+    let acme = std::env::temp_dir().join("acme");
+    let command = host_command(&executable, &profile, &[profile.clone(), acme.clone()]);
+    let args: Vec<_> = command.get_args().collect();
+    assert_eq!(
+        args,
+        [
+            std::ffi::OsStr::new("--profile-folder"),
+            profile.as_os_str(),
+            std::ffi::OsStr::new("--sweep-root"),
+            profile.as_os_str(),
+            std::ffi::OsStr::new("--sweep-root"),
+            acme.as_os_str()
         ]
     );
 }

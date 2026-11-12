@@ -63,6 +63,14 @@ impl OpenedFolders {
         folders.retain(|opened| opened != folder);
     }
 
+    /// The opened folders, in the order they were opened, as recorded.
+    pub fn list(&self) -> Vec<PathBuf> {
+        self.folders
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
     /// Checks that `folder` is an opened folder or inside one, and returns
     /// its canonical form, which is where git then runs.
     ///

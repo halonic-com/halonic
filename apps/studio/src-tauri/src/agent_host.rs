@@ -12,7 +12,7 @@
 //! host for as long as the shell runs.
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -22,6 +22,7 @@ use halonic_agent_host::{
     AgentHost, Answer, Handshake, LineSplitter, Method, Route, executable_beside, find_route,
     host_command,
 };
+use halonic_git_guard::plain_path;
 use serde::Serialize;
 use serde_json::Value;
 use tauri::async_runtime::JoinHandle;
@@ -29,6 +30,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 use tauri_plugin_http::reqwest;
 
+use crate::git::GitState;
 use crate::profile::cli_profile;
 
 /// How long the host may take to unpack its files and serve.
@@ -313,12 +315,34 @@ async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Handshake, HostR
     .map_err(|error| HostRefusal::new("io", error))?
 }
 
-/// The host next to the shell's executable, for the CLI's profile.
+/// The host next to the shell's executable, for the CLI's profile, with
+/// the folders it may sweep kept grants in.
 fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefusal> {
     let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
     let shell = std::env::current_exe().map_err(|error| HostRefusal::new("io", error))?;
     let executable = executable_beside(&shell).map_err(unavailable)?;
-    Ok(host_command(&executable, Path::new(&profile.root)))
+    let profile = Path::new(&profile.root);
+    let opened = app.state::<GitState>().folders().list();
+    Ok(host_command(
+        &executable,
+        profile,
+        &sweep_roots(profile, &opened),
+    ))
+}
+
+/// The folders the host sweeps kept Windows grants in (HAL-6256): the
+/// profile, which holds every session's temp folder and every workspace's
+/// runs, and each folder the person has open now, which holds working
+/// folders such as `files/agents/<name>`. Without the long-path prefix,
+/// as srt-win lists its grants.
+fn sweep_roots(profile: &Path, opened: &[PathBuf]) -> Vec<PathBuf> {
+    std::iter::once(profile.to_owned())
+        .chain(
+            opened
+                .iter()
+                .map(|folder| PathBuf::from(plain_path(folder))),
+        )
+        .collect()
 }
 
 fn unavailable(error: impl std::fmt::Display) -> HostRefusal {

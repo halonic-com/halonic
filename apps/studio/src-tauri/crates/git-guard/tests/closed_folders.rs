@@ -37,6 +37,22 @@ fn closed_folders_closes_only_the_exact_folder() {
 }
 
 #[test]
+fn closed_folders_lists_only_the_folders_still_open() {
+    let temporary = TemporaryFolder::new();
+    let acme = temporary.folder("acme");
+    let beta = temporary.folder("beta");
+    let folders = OpenedFolders::new();
+    folders.open(&acme).expect("acme opens");
+    folders.open(&beta).expect("beta opens");
+    folders.open(&acme).expect("acme opens again");
+
+    let canonical = |folder: &std::path::Path| std::fs::canonicalize(folder).expect("canonical");
+    assert_eq!(folders.list(), [canonical(&acme), canonical(&beta)]);
+    folders.close(&acme);
+    assert_eq!(folders.list(), [canonical(&beta)]);
+}
+
+#[test]
 fn closed_folders_keeps_a_folder_open_above_it() {
     let temporary = TemporaryFolder::new();
     let acme = temporary.folder("acme");
