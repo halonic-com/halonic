@@ -1,0 +1,109 @@
+name: Write the updater manifest
+description: Signs the final installer for the Tauri updater, writes latest.json with the signature inside and writes SHA256SUMS again. Runs after Authenticode signing, because that changes the installer's bytes. Needs the checkout and the setup action (the Tauri CLI comes from apps/studio).
+inputs:
+  dir:
+    description: Folder with the release files. latest.json and SHA256SUMS are written here. No .sig file is left in it (HAL-1119).
+    default: dist
+  tag:
+    description: The release tag, for example v0.1.1.
+    required: true
+  version:
+    description: The version the signature is bound to, for example 0.1.1. Must be the version in latest.json.
+    required: true
+  installer:
+    description: File name of the installer in `dir`.
+    required: true
+  dry-run:
+    description: "true: sign with a throwaway key made here and deleted right after. false: sign with `private-key` and check it is the key whose public half is in tauri.conf.json."
+    required: true
+  private-key:
+    description: The updater private key (the text `tauri signer generate` writes). Real runs only.
+    default: ""
+  password:
+    description: The private key's password. Real runs only.
+    default: ""
+runs:
+  using: composite
+  steps:
+    # One step, so the key is only ever in this process's environment. The
+    # key is read from the environment, never from the command line.
+    - name: Sign the installer, write latest.json and SHA256SUMS
+      shell: pwsh
+      env:
+        DIR: ${{ inputs.dir }}
+        TAG: ${{ inputs.tag }}
+        VERSION: ${{ inputs.version }}
+        INSTALLER: ${{ inputs.installer }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        PRIVATE_KEY: ${{ inputs.private-key }}
+        KEY_PASSWORD: ${{ inputs.password }}
+        REPO: ${{ github.repository }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        function Get-Lines([string]$base64) {
+          $utf8.GetString([Convert]::FromBase64String($base64.Trim())) -split "`r?`n"
+        }
+        # A minisign key or signature line is 2 bytes of algorithm, then the
+        # 8-byte key id.
+        function Get-KeyId([string]$line) {
+          [BitConverter]::ToString([Convert]::FromBase64String($line)[2..9])
+        }
+
+        if ($env:DRY_RUN -eq "true") {
+          $keyDir = Join-Path $env:RUNNER_TEMP "updater-key"
+          New-Item -ItemType Directory -Force $keyDir | Out-Null
+          pnpm --dir apps/studio exec tauri signer generate --ci -w "$keyDir/key" | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "tauri signer generate failed" }
+          $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw "$keyDir/key"
+          $pubkey = Get-Content -Raw "$keyDir/key.pub"
+          Remove-Item -Recurse -Force $keyDir
+        } else {
+          if (-not $env:PRIVATE_KEY) { throw "No updater private key. It is a secret of the release environment." }
+          $env:TAURI_SIGNING_PRIVATE_KEY = $env:PRIVATE_KEY
+          $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $env:KEY_PASSWORD
+          $pubkey = (Get-Content -Raw apps/studio/src-tauri/tauri.conf.json | ConvertFrom-Json).plugins.updater.pubkey
+          if (-not $pubkey) { throw "tauri.conf.json has no plugins.updater.pubkey" }
+        }
+
+        # --app-version puts the version in the signed trusted comment. The
+        # app sets requireSignedVersion, so without it every update is refused.
+        $file = Join-Path $env:DIR $env:INSTALLER
+        pnpm --dir apps/studio exec tauri signer sign --app-version $env:VERSION (Resolve-Path $file).Path | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "tauri signer sign failed" }
+        Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
+        $signature = (Get-Content -Raw "$file.sig").Trim()
+        Remove-Item "$file.sig"
+
+        $sigLines = Get-Lines $signature
+        $trusted = [string]($sigLines | Where-Object { $_ -like "trusted comment:*" } | Select-Object -First 1)
+        if ($trusted -notmatch "\tversion:$([regex]::Escape($env:VERSION))$") { throw "The signature is not bound to $env:VERSION" }
+        $keyId = Get-KeyId $sigLines[1]
+        if ($keyId -ne (Get-KeyId (Get-Lines $pubkey)[1])) { throw "Signed with key $keyId, which is not the key the app trusts" }
+        "Updater signature by key $keyId for version $env:VERSION"
+
+        # Tauri's static manifest. The url is the installer on this release.
+        $manifest = [ordered]@{
+          version = $env:VERSION
+          notes = "https://github.com/$env:REPO/releases/tag/$env:TAG"
+          pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+          platforms = [ordered]@{
+            "windows-x86_64" = [ordered]@{
+              url = "https://github.com/$env:REPO/releases/download/$env:TAG/$env:INSTALLER"
+              signature = $signature
+            }
+          }
+        }
+        $json = ($manifest | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"
+        [System.IO.File]::WriteAllText((Join-Path $env:DIR "latest.json"), $json + "`n", $utf8)
+
+        # latest.json and the signed installer changed the folder, so write
+        # the checksums again, last. Join with LF and write bytes: Set-Content
+        # would add CRLF, which breaks `sha256sum -c` on Linux and macOS.
+        $lines = Get-ChildItem $env:DIR -File | Where-Object Name -ne SHA256SUMS | Sort-Object Name | ForEach-Object {
+          "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+        }
+        $text = ($lines -join "`n") + "`n"
+        [System.IO.File]::WriteAllBytes((Join-Path $env:DIR "SHA256SUMS"), [System.Text.Encoding]::ASCII.GetBytes($text))
+        Get-Content (Join-Path $env:DIR "latest.json")
+        Get-Content (Join-Path $env:DIR "SHA256SUMS")
