@@ -3,7 +3,6 @@
 - Task: HAL-7505 (follow-up to HAL-7483)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
-- Signature: pending (Liam signs after review)
 
 ## What changes
 
