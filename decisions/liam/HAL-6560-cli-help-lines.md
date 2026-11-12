@@ -3,6 +3,7 @@
 - Task: HAL-6560 (Sofia's first-run walk, HAL-6538 item 8)
 - Approval: Sofia agreed the words on [HAL-6544](/HAL/issues/HAL-6544), Chief chose them over the earlier two-line version, Liam decided on [HAL-6560](/HAL/issues/HAL-6560) as CLI owner (small wording on an approved message, a team decision with no board card, HAL-2282 rule); Elena reviewed it on [HAL-6581](/HAL/issues/HAL-6581), Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Jd44jjJB4eqcr61BpwQqCl339K5VFAnlgJgCJO+viO4Z29wumz4GUCdFOAqJEmV1cRtuNd9ayZxVWZwA0gWuDg==
 
 ## What changes
 
