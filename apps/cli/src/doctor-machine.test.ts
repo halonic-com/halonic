@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import type { DoctorWorkspace } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
+import { workspaceFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -11,8 +12,10 @@ import {
   doctorService,
   type MachineWorkspace,
   nodeDoctorMachine,
+  withHarnessSettingsFolders,
 } from "./doctor-machine.ts";
 import { noSecrets } from "./remembered-secrets.ts";
+import { webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
 let profile: string;
@@ -57,6 +60,7 @@ function machine(asked: string[] = []): DoctorMachine {
       },
     },
     system: "Linux x64",
+    signInShell: "sh",
   };
 }
 
@@ -160,6 +164,19 @@ function studioWorkspace(baseUrl?: string): MachineWorkspace {
   };
   return { workspace, providerFiles: new Map([["studio", lmStudio]]) };
 }
+
+describe("withHarnessSettingsFolders", () => {
+  it("gives each agent the settings folder its runs get, and none for an id a folder can't take", async () => {
+    const linux = { platform: "linux" as const, root: profile };
+    const { workspace } = await withHarnessSettingsFolders(studioWorkspace(), linux);
+    const folders = await workspaceFolders(linux, "/work/acme", webCryptoDigest);
+
+    expect(workspace.harnessSettingsFolder?.("writer", "claude-code")).toBe(
+      folders.harnessSettingsFolder("writer", "claude-code"),
+    );
+    expect(workspace.harnessSettingsFolder?.("w".repeat(65), "claude-code")).toBeUndefined();
+  });
+});
 
 describe("nodeDoctorMachine", () => {
   it("names this computer's system and its Claude Code and Codex harnesses", () => {

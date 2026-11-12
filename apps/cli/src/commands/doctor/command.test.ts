@@ -9,6 +9,7 @@ import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { pastedKey } from "../../test/pasted-key.ts";
+import { profilePlatformOf } from "../../workspace-runs.ts";
 import { createDoctorCommand } from "./command.ts";
 
 const gb = 1024 ** 3;
@@ -34,7 +35,9 @@ const noTrust: TrustStore = {
 /** A computer with 48 GB free, the sandbox answering `sandbox`, no harness, and Ollama with llama3.2 loaded. */
 function machine(sandbox: SandboxCheck = { ok: true, reason: null, missing: [] }): DoctorMachine {
   return {
-    profile: { platform: "linux", root: join(folder, "profile") },
+    // The real platform: the workspace's folders sit under this profile, and
+    // a Windows path isn't absolute on a "linux" profile.
+    profile: { platform: profilePlatformOf(process.platform), root: join(folder, "profile") },
     trustStore: noTrust,
     sandbox: {
       check: async () => sandbox,
@@ -53,6 +56,7 @@ function machine(sandbox: SandboxCheck = { ok: true, reason: null, missing: [] }
         new Response(JSON.stringify({ models: [{ name: "llama3.2:latest", size: 2 * gb }] })),
     },
     system: "Linux x64",
+    signInShell: "sh",
   };
 }
 

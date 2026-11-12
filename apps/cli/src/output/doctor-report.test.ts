@@ -15,7 +15,12 @@ import { type DoctorFacts, doctorReportLines } from "./doctor-report.ts";
 import { paintFor } from "./paint.ts";
 
 const gb = 1024 ** 3;
-const facts: DoctorFacts = { version: "0.1.0", system: "Linux x64", sandboxKind: "bubblewrap" };
+const facts: DoctorFacts = {
+  version: "0.1.0",
+  system: "Linux x64",
+  sandboxKind: "bubblewrap",
+  signInShell: "sh",
+};
 
 const trusted: WorkspaceLine = { check: "workspace", status: "ok", name: "acme", trust: "trusted" };
 const ollamaAndAnthropic: ModelsLine = {
@@ -383,6 +388,38 @@ describe("doctorReportLines", () => {
     const lines = check(printed(reportOf({ sandbox: windows, disk: diskFree })), "Sandbox");
     expect(lines.at(-1)).toBe(
       "              More: https://docs.halonic.dev/sandbox#windows-preview (windows)",
+    );
+  });
+
+  it("names an agent that isn't signed in, with the sign-in for its folder in the person's terminal", () => {
+    const harnesses: HarnessesLine = {
+      check: "harnesses",
+      status: "warning",
+      installed: [{ harness: "claude-code", name: "Claude Code", version: "2.1.0" }],
+      problems: [
+        {
+          problem: "signed-out",
+          agent: "Writer",
+          harness: "claude-code",
+          name: "Claude Code",
+          signIn: {
+            program: "claude",
+            args: ["auth", "login"],
+            folderVariable: "CLAUDE_CONFIG_DIR",
+          },
+          settingsFolder: "/data/harness-settings/writer/claude-code",
+        },
+      ],
+    };
+    const report = reportOf({ sandbox: sandboxReady, harnesses, disk: diskFree });
+    expect(check(printed(report), "Harnesses")).toEqual([
+      "! Harnesses   Claude Code 2.1.0",
+      "              Claude Code isn't signed in for Writer.",
+      "              Fix: sign in for Writer with CLAUDE_CONFIG_DIR='/data/harness-settings/writer/claude-code' claude auth login",
+    ]);
+    const powershell = printed(report, { ...facts, signInShell: "powershell" });
+    expect(check(powershell, "Harnesses").at(-1)).toBe(
+      "              Fix: sign in for Writer with $env:CLAUDE_CONFIG_DIR = '/data/harness-settings/writer/claude-code'; claude auth login",
     );
   });
 
