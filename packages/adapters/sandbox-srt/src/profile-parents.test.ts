@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   forgetSandboxParents,
+  grantLimitMs,
   hasOwnEntry,
   letSandboxReadParents,
   letsReadAttributes,
@@ -119,6 +120,17 @@ describe("letSandboxReadParents", () => {
     expect(grants).toEqual([[local, "/grant", `*${sid}:(RA)`]]);
   });
 
+  // HAL-7431: icacls writes the folder's list only after its walk, so a grant stopped at 15 s granted nothing.
+  it("gives the grant the long time limit, and reads the access lists with the usual one", async () => {
+    const limits: Record<string, number | undefined> = {};
+    const { start } = icacls({});
+    await letSandboxReadParents([appData], sid, async (file, args, limitMs) => {
+      limits[args[1] ?? ""] = limitMs;
+      return start(file, args);
+    });
+    expect(limits).toEqual({ "/save": undefined, "/grant": grantLimitMs });
+  });
+
   it("throws when icacls fails", async () => {
     await expect(
       letSandboxReadParents([appData], sid, async () => {
@@ -127,14 +139,14 @@ describe("letSandboxReadParents", () => {
     ).rejects.toThrow("icacls failed");
   });
 
-  // HAL-7431: the grant on AppData ran past the time limit while Windows walked the temp folder.
+  // HAL-7431: the walk below the folder can fail after the grant.
   it("goes on when icacls fails after the folder's access list has the entry", async () => {
     const sddl: Record<string, string> = {};
     const { grants, start } = icacls(sddl);
     await letSandboxReadParents([appData, local], sid, async (file, args) => {
       if (args[1] === "/grant") {
         sddl[args[0] ?? ""] = `D:AI(A;;LO;;;${sid})`;
-        throw new Error("icacls.exe was stopped after 15 s");
+        throw new Error("icacls.exe ended with exit code 1");
       }
       return start(file, args);
     });

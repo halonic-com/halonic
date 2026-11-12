@@ -67,6 +67,7 @@ describe("fixedRunFailure", () => {
     const failure = {
       code: 5,
       stopped: false,
+      limitMs: 15_000,
       stdout: "Failed processing 1 files\r\n",
       stderr: "Access is denied.\r\n",
     };
@@ -76,9 +77,9 @@ describe("fixedRunFailure", () => {
   });
 
   it("says when the program was stopped at the time limit, and that it printed nothing", () => {
-    const failure = { code: null, stopped: true, stdout: "", stderr: "" };
+    const failure = { code: null, stopped: true, limitMs: 600_000, stdout: "", stderr: "" };
     expect(fixedRunFailure("icacls.exe", args, failure)).toBe(
-      `icacls.exe ${args.join(" ")} was stopped after 15 s; it printed nothing`,
+      `icacls.exe ${args.join(" ")} was stopped after 600 s; it printed nothing`,
     );
   });
 });
