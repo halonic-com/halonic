@@ -2,6 +2,7 @@
 
 - Approval: scope decided on HAL-6476, option 1 (Liam); the package owner (Liam) approves this note in review on HAL-7747
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pzFjzo/xJcHmaA2Ukm4gJdGP4FJjyAkoZw6/RJNggmDXEArVrnigsLXlQ9xMUZ3gDUl6mvkSlDPzRjkl+yxuBw==
 
 ## What changes
 
