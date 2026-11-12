@@ -132,7 +132,8 @@ The repository is public. Until the fix is released:
   within a day. The key lives in the secret store, never in the repository,
   a task or a comment.
 - **What a run costs:** a full run uses most of one 5-hour usage window on a
-  Max seat, roughly 2.5 to 4 million tokens, most of it cached input read
-  again. On the API the cost depends mostly on how much of that is cached.
-  Write the real number in the header each time; the board adjusts the cap after two API
+  Max seat, roughly 2.5 to 4 million tokens, most of it input read again from
+  the cache. On the API that is roughly $10 to $40 at Claude Fable 5.1's
+  prices, depending on how much of the input is cached. Write the real
+  number in the header each time; the board adjusts the cap after two API
   runs.
