@@ -29,6 +29,7 @@ export {
   TauriHostSettingsStore,
   type TauriHostSettingsStoreOptions,
 } from "./host-settings-store.ts";
+export { pickedFolderCommands, TauriPickedFolders } from "./picked-folders.ts";
 export {
   isRecordRefusal,
   type RecordRefusal,

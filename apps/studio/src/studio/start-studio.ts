@@ -1,4 +1,8 @@
-import { TauriDefinitionStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import {
+  TauriDefinitionStore,
+  TauriPickedFolders,
+  TauriRunStore,
+} from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { ServiceRegistry } from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
@@ -150,11 +154,18 @@ interface DesktopParts {
   readonly platform: KeyboardPlatform;
 }
 
-/** The desktop app: Welcome, then the folders the user opens (`studio.open-folder`). */
+/**
+ * The desktop app: Welcome, then the folders the user opens (`studio.open-folder`). The shell
+ * gives the page only the folders the user picked in it, and remembers them across restarts, so
+ * a Recent row reopens its folder in the shell first and Remove from Recent forgets it there.
+ */
 function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopParts): StartedStudio {
+  const picked = new TauriPickedFolders(ipc);
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
     openFolder: async (location) => openFolder(shell, page.window, location),
+    reopenFolder: (location) => picked.reopen(location),
+    forgetFolder: (location) => picked.forget(location),
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     toasts: shell.toasts,
   });

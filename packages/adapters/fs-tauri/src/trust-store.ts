@@ -74,6 +74,10 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   // The page built the record, so a record the shell refuses is our bug.
   invalid_record: "internal",
   io: "unavailable",
+  // Only `reopen_folder` refuses with these (`TauriPickedFolders`), never a `trust_*` command.
+  not_picked: "denied",
+  folder_missing: "not_found",
+  folder_changed: "denied",
 };
 
 /**

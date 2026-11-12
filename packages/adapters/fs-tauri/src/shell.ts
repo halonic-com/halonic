@@ -50,6 +50,15 @@ export const trustRefusalKinds = [
   "invalid_record",
   /** Reading or writing the profile failed. */
   "io",
+  /** `reopen_folder`: the location isn't a folder the person picked, or they forgot it since. */
+  "not_picked",
+  /** `reopen_folder`: nothing is at the picked folder's path any more. */
+  "folder_missing",
+  /**
+   * `reopen_folder`: the picked folder's path now leads to another folder, through a link swapped
+   * in, or the folder was deleted and made again.
+   */
+  "folder_changed",
 ] as const;
 
 /** One of {@link trustRefusalKinds}. */
