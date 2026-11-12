@@ -803,6 +803,7 @@ List draws them.
 | `skeleton` | `{ leading: "icon" \| "avatar", trailing }`: the shape of the rows that are coming |
 | `loadingLabel` | What screen readers hear while it loads: "Loading skills". Needed with `loading` |
 | `onRetry` | Try again, offered once it has loaded for 10 seconds |
+| `columns` | `ListColumn`s in order: one `{ kind: "main" }`, the others `{ kind, key }`. The rows are then `ListColumnsRow`s; see **Columns** below. Not with `dense` |
 
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
@@ -849,6 +850,28 @@ but does nothing; an error row's box stays selectable.
 
 ```tsx
 <List label="Changes" rows={files} onOpen={openDiff} selection={{ ...staged, verb: "Stage" }} />;
+```
+
+**Columns.** With `columns`, as the Runs list, each row lays its `cells` out in columns that line
+up down the List (`kit.list-columns`). The kind sets the width: `status` 120px (a chip, never cut),
+`code` 64px (a short id in `text-code`), `main` the rest and at least 200px (icon, title, `tag` and
+meta line), `text` 192px (two lines, then cut) and `time` 96px, right-aligned (the value over its
+`detail`). A columned row has `cells` by column `key` (`{ value, detail }`), an outline `tag` after
+the title, and a `label`: the sentence screen readers hear in place of the columns. It has no
+`trailing`; an error row's chip takes the first `status` column's place. When a row's main cell is
+narrower than 800px (`--container-list-wide`, measured on the cell, not the window), or on a phone,
+each row stacks its columns on three lines: the title and tag with the `status` chips, the meta
+line, then the other columns joined with " · ". The List throws unless there is exactly one `main`
+column and each other key is used once. While it loads at 800px or more, each skeleton row has a
+bar in each column.
+
+```tsx
+<List
+  label="Runs"
+  columns={[{ kind: "status", key: "status" }, { kind: "code", key: "run" }, { kind: "main" }, { kind: "time", key: "when" }]}
+  rows={[{ id: "01jd8q", title: "Support reply", meta: "Waiting for 2 approvals", label: "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started at 10:40.", cells: { status: { value: <StatusChip tone="warning">Needs you</StatusChip> }, run: { value: "01jd8q" }, when: { value: "10:40", detail: "took 2 min" } } }]}
+  onOpen={openRun}
+/>;
 ```
 
 **Keyboard.** The list is one Tab stop. The up and down arrow keys, Home and End move between

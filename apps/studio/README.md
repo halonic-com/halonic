@@ -5,7 +5,7 @@ The Studio app. It holds the Studio's feature list: one
 kept in step with `packages/studio/features/` by `pnpm discover --fix` and
 checked by `pnpm check features`. Vite builds two pages apart, so the Android app ships none of the Studio: by default the Android app's own page (`connect.html`, into `dist/connect`), and with `--mode studio` the Studio page (`studio.html`, into `dist/studio`) for the desktop app and the served Studio. `pnpm build` runs both, and `pnpm studio` serves the Studio page while you work (`studio.entry`).
 
-On desktop the Studio page starts on the Welcome screen and opens the folders you pick with the `pick_folder` command, each with its own services and the OS keychain as its secrets, and keeps Recent in `localStorage` (`studio.open-folder`). The served Studio opens the one workspace it serves.
+On desktop the Studio page starts on the Welcome screen and opens the folders you pick with the `pick_folder` command, each with its own services and the OS keychain as its secrets, and keeps Recent in `localStorage` (`studio.open-folder`). The shell remembers each picked folder in the profile and can open it again after a restart (`reopen_folder`); the page doesn't call it yet. The served Studio opens the one workspace it serves.
 
 - **Layer:** apps
 - **Owner:** elena
@@ -35,7 +35,8 @@ into `dist/studio`; `tauri build` and `tauri dev` build it first), and on
 Android one with the connect page (`dist/connect`). Tauri reads that folder
 when the shell compiles, so run `pnpm build` here once before a plain
 `cargo clippy` or `cargo test` (`studio.desktop-page`). On desktop only, the
-page may also call the commands for git, secrets, trust, runs and the agent
+page may also call the commands for git, secrets, trust and picked folders
+(`reopen_folder`, `forget_folder`), runs, the workspace's files (`fs_*`) and the agent
 host (`agent_host_request`, `agent_host_stream`, `agent_host_stream_end`),
 each behind its own capability in `src-tauri/capabilities/` (`desktop-*.json`)
 that is local only, so the Studio the computer serves gets none of them. The
@@ -68,7 +69,7 @@ repo root. It installs per user and puts the repo's `LICENSE` and `NOTICE` next
 to the app, with `THIRD-PARTY-NOTICES.txt`: the licences of the bundled npm
 libraries and of the Rust crates the app links, which the script writes to
 `src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. Only the "Set up the agent sandbox" step asks Windows for
-administrator rights, once.
+administrator rights, once, and the uninstaller asks again to remove the sandbox.
 
 What it shows (design: the install flow, sections 2.2 to 2.7):
 

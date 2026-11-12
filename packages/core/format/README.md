@@ -142,6 +142,15 @@ programs its harness starts, used in the order the engine starts them (requireme
 files read as before. Starting these programs in a test needs the test runner's side, which isn't
 in this package.
 
+## Deployments
+
+A deployment in `deployments.yaml` may have a `cloudflare` block (`worker`, required: 1 to 63
+lowercase letters, digits or `-`, not at the start or end; `domain`, a lowercase host name; and
+`location`, only `eu`) and a `limits` block (`dailyRequests`, a whole number above zero). Other
+keys in either block fail. A `cloudflare` block on a deployment whose `host` isn't `cloudflare`
+only warns (`cloudflare-settings-unused`). No account id, token or key goes in the file
+(requirement `deployments-cloudflare`).
+
 ## Harness agents
 
 Three optional agent fields say how an agent runs in another program

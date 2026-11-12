@@ -1,6 +1,6 @@
 # @halonicjs/studio-feature-runs
 
-The Studio Runs: the runs list, the run page with its receipt and what each run ran, Home's Recent runs and Ctrl K's run rows. It reads the open workspace's runs from `RunsSourceService`, which the app provides, and says about each run what `halonic runs` says: where a run stands and what it waits for come from `runStanding` and `runWait` in `@halonicjs/app`, and money from `moneyAmount`.
+The Studio Runs: the runs list, the run page and what each run ran, and later the receipt, Home's Recent runs and Ctrl K's run rows. It reads the open workspace's runs from `RunsSourceService`, which the app provides, and says about each run what `halonic runs` says: where a run stands and what it waits for come from `runStanding` and `runWait` in `@halonicjs/app`, and money from `moneyAmount`.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -81,7 +81,7 @@ const [install] = blockedSites(events, { limit: entrySiteLimit });
 
 ## The run page
 
-A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). What it shows is worked out in `run-view/run-page-model.ts`:
+A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). A run's tab stays open when the run leaves the workspace (the kind's `tab.exists` is always true): the page says so itself. What it shows is worked out in `run-view/run-page-model.ts`:
 
 ```ts
 import { runBanner, runHeader } from "./run-view/run-page-model.ts";

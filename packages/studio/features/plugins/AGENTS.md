@@ -4,7 +4,7 @@ Owner: elena · Layer: studio · Read the root `AGENTS.md` first; this file adds
 
 ## Scope
 
-The Studio side of plugins: what a trusted plugin's `ui` adds to Studio (settings, commands, cards and its panel), drawn by Studio, and the Library's Plugins tab.
+The Studio side of plugins: what a trusted plugin's `ui` adds to Studio (settings, commands, cards, its panel and its page), drawn by Studio, and the Library's Plugins tab.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`, plus `src/api.ts` for other features;
 everything else is internal.

@@ -300,7 +300,7 @@ the `HarnessProfileBuilder` whose `profileOf(agent, bridge)` gives the `HarnessA
 `@halonicjs/adapter-harness-kit` is that builder on a real disk.
 
 When the host gives the local executor proposal folders (`RunProposalFolders`, opened for a
-`ProposalRun`), a top-level run with an agent that runs in a
+`ProposalRun`, which names the version the run's definitions were read from, since the folder opens before `run.started` is recorded), a top-level run with an agent that runs in a
 program harness opens the run's proposal folder before it records `run.started`, and doesn't start when
 it can't. Every harness call of the run and its child runs, `foreach` items included, gets that one
 folder as the agent's `filesFolder`, so the agent writes there and never in the workspace; with no open
