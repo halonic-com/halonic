@@ -1,26 +1,24 @@
 // @vitest-environment jsdom
 
-import { parseFile } from "@halonicjs/format";
 import {
   createShell,
   defineFeature,
+  type ItemRef,
   type ItemViewProps,
   loadView,
-  type TabLocation,
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { PluginCardStatus } from "../cards/plugin-card.tsx";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
 import { PluginCommandHost } from "../commands/plugin-command-host.tsx";
 import { PluginCommandOpener } from "../commands/plugin-command-source.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
+import { feedOf, weather } from "../test-support/plugins.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import {
   type PluginPanelFeed,
-  type PluginPanelUi,
   pluginPanelCommandSource,
   pluginPanelItem,
   pluginPanelKind,
@@ -32,63 +30,13 @@ afterEach(() => {
   restoreModal();
 });
 
-/** The Weather plugin, parsed by the real `plugin` kind, standing where the test says. */
-function weather(status: PluginCardStatus = "on"): PluginPanelUi {
-  const parsed = parseFile(
-    "plugin",
-    `id: weather
-version: 1.2.0
-sdk: 1
-name: Weather
-backend:
-  hosts: [api.example.com]
-  tools:
-    - { name: forecast, description: The forecast., risk: read, untrusted: true }
-ui:
-  commands:
-    - { id: forecast, title: Show the forecast, tool: forecast }
-  cards:
-    - { id: today, title: Today's weather, tool: forecast, args: { place: Ghent } }
-  panel: { title: Weather }`,
-  );
-  if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
-  const { id, name, ui } = parsed.value.value;
-  return {
-    plugin: id,
-    name,
-    status,
-    commands: ui?.commands ?? [],
-    cards: ui?.cards ?? [],
-    panel: ui?.panel,
-  };
-}
-
-/** A feed the test changes while the panel shows. */
-function feedOf(initial: readonly PluginPanelUi[]) {
-  let plugins = initial;
-  const listeners = new Set<() => void>();
-  const feed: PluginPanelFeed = {
-    current: () => plugins,
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-  const set = (next: readonly PluginPanelUi[]) =>
-    act(() => {
-      plugins = next;
-      for (const listener of listeners) listener();
-    });
-  return { feed, set };
-}
-
 const caller: PluginToolCaller = { call: async () => "Sunny" };
 const context = {} as WorkspaceContext;
 
 /** A shell whose plugins feature adds the panel kind and the panels' command source. */
 function shellWith(feed: PluginPanelFeed) {
   const opener = new PluginCommandOpener();
-  const opened: TabLocation[] = [];
+  const opened: ItemRef[] = [];
   const options = { feed, caller, opener, review: vi.fn(), details: vi.fn() };
   const shell = createShell({
     features: [
@@ -96,10 +44,8 @@ function shellWith(feed: PluginPanelFeed) {
         id: "plugins",
         title: "Plugins",
         register: (studio) => {
-          studio.itemKinds.add(pluginPanelKind(options));
-          studio.commands.addSource(
-            pluginPanelCommandSource(feed, (location) => opened.push(location)),
-          );
+          studio.itemKinds.add(pluginPanelKind(() => options));
+          studio.commands.addSource(pluginPanelCommandSource(feed, (item) => opened.push(item)));
         },
       }),
     ],
@@ -169,9 +115,7 @@ verifies("plugins.plugin-panel", () => {
       }),
     ]);
     commands.get("plugins.panels.weather")?.run(context);
-    expect(opened).toEqual([
-      { key: "plugin-panel/this-computer/weather", title: "Weather", kind: "plugin panel" },
-    ]);
+    expect(opened).toEqual([{ kind: "plugin-panel", hub: "this-computer", id: "weather" }]);
 
     set([weather("not-trusted")]);
     expect(commands.list()).toEqual([]);

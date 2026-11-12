@@ -1,4 +1,4 @@
-import type { HomeCardContribution } from "@halonicjs/studio-shell";
+import type { HomeCardContribution, WorkspaceContext } from "@halonicjs/studio-shell";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
 import type { PluginCardStatus, PluginCardUi } from "./plugin-card.tsx";
 
@@ -40,16 +40,20 @@ export interface PluginHomeCardsOptions {
  * Recent runs, two per row on desktop and one on a phone. With no cards the section isn't there.
  * The view is imported only when Home shows.
  *
+ * @param optionsFor - what the cards need, for the context of Home's view
+ *
  * @example
- * studio.home.addCard(pluginHomeCards({ feed, caller: timedToolCaller(pluginTools), review, details }));
+ * studio.home.addCard(pluginHomeCards((context) => panelOptions(context.services.get(PluginsService), context)));
  */
-export function pluginHomeCards(options: PluginHomeCardsOptions): HomeCardContribution {
+export function pluginHomeCards(
+  optionsFor: (context: WorkspaceContext) => PluginHomeCardsOptions,
+): HomeCardContribution {
   return {
     id: "cards",
     view: "PluginHomeCards",
     load: async () => {
       const { homeCardsView } = await import("./plugin-home-cards-view.tsx");
-      return { PluginHomeCards: homeCardsView(options) };
+      return { PluginHomeCards: homeCardsView(optionsFor) };
     },
   };
 }

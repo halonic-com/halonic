@@ -5,9 +5,11 @@ import { PluginCard } from "./plugin-card.tsx";
 import type { PluginHomeCardsOptions } from "./plugin-home-cards.ts";
 
 /** Home's Cards view for the Studio's plugins; see `pluginHomeCards`. */
-export function homeCardsView(options: PluginHomeCardsOptions): ComponentType<HomeCardProps> {
-  return function PluginHomeCards() {
-    return <HomeCards {...options} />;
+export function homeCardsView(
+  optionsFor: (context: HomeCardProps["context"]) => PluginHomeCardsOptions,
+): ComponentType<HomeCardProps> {
+  return function PluginHomeCards({ context }: HomeCardProps) {
+    return <HomeCards {...optionsFor(context)} />;
   };
 }
 

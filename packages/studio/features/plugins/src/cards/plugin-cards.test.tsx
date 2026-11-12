@@ -216,7 +216,7 @@ verifies("plugins.plugin-cards", () => {
             title: "Plugins",
             register: (studio) =>
               studio.home.addCard(
-                pluginHomeCards({ feed, caller, review: vi.fn(), details: vi.fn() }),
+                pluginHomeCards(() => ({ feed, caller, review: vi.fn(), details: vi.fn() })),
               ),
           }),
         ],

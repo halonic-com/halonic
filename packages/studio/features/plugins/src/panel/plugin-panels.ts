@@ -3,6 +3,7 @@ import type {
   ItemKindContribution,
   ItemRef,
   TabLocation,
+  WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import type { PluginCards } from "../cards/plugin-home-cards.ts";
 import { commandSource } from "../commands/command-text.ts";
@@ -84,10 +85,14 @@ export function panelPlugin(
  * in its own tab, named by the panel's title, like any page. The view is imported the first time a
  * panel shows.
  *
+ * @param optionsFor - what a panel needs, for the context of the view or tab asking
+ *
  * @example
- * studio.itemKinds.add(pluginPanelKind({ feed, caller: timedToolCaller(tools), opener, review, details }));
+ * studio.itemKinds.add(pluginPanelKind((context) => panelOptions(context.services.get(PluginsService), context)));
  */
-export function pluginPanelKind(options: PluginPanelOptions): ItemKindContribution {
+export function pluginPanelKind(
+  optionsFor: (context: WorkspaceContext) => PluginPanelOptions,
+): ItemKindContribution {
   return {
     kind: PLUGIN_PANEL_KIND,
     label: PLUGIN_PANEL,
@@ -96,12 +101,14 @@ export function pluginPanelKind(options: PluginPanelOptions): ItemKindContributi
       view: "PluginPanelView",
       load: async () => {
         const { panelView } = await import("./plugin-panel-view.tsx");
-        return { PluginPanelView: panelView(options) };
+        return { PluginPanelView: panelView(optionsFor) };
       },
     },
     tab: {
-      describe: (item) => ({ label: panelPlugin(options.feed, item)?.panel.title ?? item.id }),
-      exists: (item) => panelPlugin(options.feed, item) !== undefined,
+      describe: (item, context) => ({
+        label: panelPlugin(optionsFor(context).feed, item)?.panel.title ?? item.id,
+      }),
+      exists: (item, context) => panelPlugin(optionsFor(context).feed, item) !== undefined,
     },
   };
 }
@@ -111,14 +118,15 @@ export function pluginPanelKind(options: PluginPanelOptions): ItemKindContributi
  * panel, as `plugins.panels.<plugin>`, with the source "*name* plugin". A plugin that's off has
  * none, like its other commands.
  *
- * @param open - opens a place in the active tab, such as `(place) => tabs.openHere(place)`
+ * @param open - opens the panel's item, such as the context's `openItem`, which goes to the tab
+ *   that shows it already, so there's one tab per plugin (D2)
  *
  * @example
- * studio.commands.addSource(pluginPanelCommandSource(feed, (place) => tabs.openHere(place)));
+ * pluginPanelCommandSource(feed, (item) => context.openItem?.(item)).commands();
  */
 export function pluginPanelCommandSource(
   feed: PluginPanelFeed,
-  open: (location: TabLocation) => void,
+  open: (item: ItemRef) => void,
 ): CommandSource {
   return {
     id: PLUGIN_PANELS_SOURCE,
@@ -130,7 +138,7 @@ export function pluginPanelCommandSource(
                 id: `${PLUGIN_PANELS_SOURCE}.${plugin}`,
                 title: openPanelTitle(name),
                 source: commandSource(name),
-                run: () => open(pluginPanelLocation(plugin, panel.title)),
+                run: () => open(pluginPanelItem(plugin)),
               },
             ]
           : [],

@@ -4,8 +4,11 @@ import { PluginPanel } from "./plugin-panel.tsx";
 import { type PluginPanelOptions, panelPlugin } from "./plugin-panels.ts";
 
 /** The `plugin-panel` kind's view for the Studio's plugins; see `pluginPanelKind`. */
-export function panelView(options: PluginPanelOptions): ComponentType<ItemViewProps> {
-  return function PluginPanelView({ item }: ItemViewProps) {
+export function panelView(
+  optionsFor: (context: ItemViewProps["context"]) => PluginPanelOptions,
+): ComponentType<ItemViewProps> {
+  return function PluginPanelView({ item, context }: ItemViewProps) {
+    const options = optionsFor(context);
     // Read again whenever the plugins change, so a plugin turned off shows it at once (G7).
     useSyncExternalStore(options.feed.subscribe, options.feed.current);
     const plugin = panelPlugin(options.feed, item);
