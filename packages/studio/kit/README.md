@@ -340,11 +340,12 @@ screen unmounts it to close it.
 | `closeLabel` | The ✕'s name: "Close" and the title by default, without a trailing "?" |
 | `busy` | The request runs: the confirming button is busy and the rest of the Dialog waits |
 | `error` | A failed request's message, read through the alert slot at the end of the body |
+| `footnote` | One short line above the buttons, outside the body's scroll area: the trust check's last line |
 | `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2) |
 
 Never wider than the window less 32px nor taller than the window less 64px; the body scrolls and
-the header and footer don't. When the window is short (`short:`, under 36em), the header scrolls
-with the body and only the footer stays. It fades in over the `overlay` colour with the enter
+the header, the footnote and the footer don't. When the window is short (`short:`, under 36em),
+the header and the footnote scroll with the body and only the footer stays. It fades in over the `overlay` colour with the enter
 easing, nothing else moves.
 
 | State | What happens |
