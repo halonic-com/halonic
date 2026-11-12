@@ -21,7 +21,8 @@ export const internalOwnPaths: readonly string[] = [".github/", "tooling/check/"
 /**
  * The files and folders inside `internalOwnPaths` that are the guard's
  * trust roots: its note check, its code, the two guard commands, the `lib/`
- * helpers they import, its approvers, `.gitattributes` and `policy.json`
+ * helpers they import, the `package.json` that pins the one package they
+ * load (the TypeScript parser), its approvers, `.gitattributes` and `policy.json`
  * (outside `extraExports`). A change to one needs a `user-visible` note
  * with the signatures of two different guardians (HAL-1337, HAL-7740). A
  * folder ends in `/`.
@@ -31,6 +32,7 @@ export const trustRoots: readonly string[] = [
   ".gitattributes",
   policyFile,
   ".github/workflows/guard-notes.yml",
+  "tooling/check/package.json",
   "tooling/check/src/guard/",
   "tooling/check/src/cli/guard-notes.ts",
   "tooling/check/src/cli/requirement-guard.ts",
