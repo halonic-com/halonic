@@ -140,6 +140,13 @@ rules:
 - An entry with no matching patch is a warning, so the entry can land
   first. Remove it once the patch is gone.
 
+To change a listed patch, approve the new file first, in its own pull
+request: put its hash in the entry's `next-sha256`, next to the `sha256` of
+the patch in use, and update the reason. Either hash passes. Then the pull
+request that changes the patch moves the new hash to `sha256` and removes
+`next-sha256`. Checked against the base commit's list, it gets a warning
+that its patch is the next one, which is expected.
+
 Internal dependencies always use `"workspace:*"`. A version range would let
 pnpm look the name up on the registry. Add one with
 `pnpm add @halonicjs/<name> --workspace`, which writes `"workspace:*"`. A
