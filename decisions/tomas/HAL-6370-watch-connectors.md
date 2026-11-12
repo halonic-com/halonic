@@ -6,6 +6,7 @@
 - Approval: Liam chose this scope (option 1) on HAL-7835, a team decision
   with no board card; he approves this note and signs it in his review of this pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4F9Q4k3Gs3Dn/gQl65sJ+dtwqu0b15YpNRBH1itDa4KUC9ckDwKYiM3Japl2DBt3JLRZNJrPgB7lxvTsb7fVBg==
 
 ## What changes
 
