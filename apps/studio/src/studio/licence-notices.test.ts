@@ -106,6 +106,7 @@ verifies("studio.installer-third-party-notices", () => {
     const call = text.slice(sbom, text.indexOf("\n", sbom));
     expect(call).toContain("--notices");
     expect(call).toContain("--out $legal");
+    expect(call).toContain("--cargo apps/studio/src-tauri --cargo-target $triple");
     expect(sbom).toBeLessThan(text.indexOf("pnpm exec tauri build"));
   });
 

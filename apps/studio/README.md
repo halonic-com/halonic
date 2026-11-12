@@ -59,8 +59,8 @@ it builds the agent host as one executable, builds the installer with
 host binary) and leaves `dist/Halonic-<version>-windows-x64-setup.exe` at the
 repo root. It installs per user and puts the repo's `LICENSE` and `NOTICE` next
 to the app, with `THIRD-PARTY-NOTICES.txt`: the licences of the bundled npm
-libraries, which the script writes to `src-tauri/legal/` with
-`pnpm check:sbom --notices`. Only the "Set up the agent sandbox" step asks Windows for
+libraries and of the Rust crates the app links, which the script writes to
+`src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. Only the "Set up the agent sandbox" step asks Windows for
 administrator rights, once.
 
 What it shows (design: the install flow, sections 2.2 to 2.7):

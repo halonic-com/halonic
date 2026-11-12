@@ -24,15 +24,16 @@ New-Item -ItemType Directory -Force $bin | Out-Null
 Copy-Item (Join-Path $repo 'apps/agent-host/dist/halonic-agent-host.exe') (Join-Path $bin "halonic-agent-host-$triple.exe") -Force
 
 # The licences of the npm libraries the app and the agent host bundle
-# (HAL-6225). Built for the whole workspace, like the CLI release, so a
-# library either one pulls in is never left out. The folder is emptied
+# (HAL-6225) and of the Rust crates the app links for $triple (HAL-6962).
+# Built for the whole workspace, like the CLI release, so a library either
+# one pulls in is never left out. The folder is emptied
 # first, so a failed run can't ship an older file; Tauri fails the build when
 # the file is missing.
 $legal = Join-Path $shell 'legal'
 Remove-Item $legal -Recurse -Force -ErrorAction SilentlyContinue
 Push-Location $repo
 try {
-  pnpm check:sbom --name halonic-studio --version $version --out $legal --notices
+  pnpm check:sbom --name halonic-studio --version $version --out $legal --notices --cargo apps/studio/src-tauri --cargo-target $triple
   if ($LASTEXITCODE -ne 0) { throw 'check:sbom failed' }
 } finally { Pop-Location }
 
