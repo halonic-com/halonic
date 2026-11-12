@@ -5,6 +5,7 @@ import { trustCheckContent } from "./trust-check.ts";
 import {
   inStudioRow,
   secretHow,
+  secretValueLine,
   TRUST_CHECK_LAST_LINE,
   trustButton,
   trustSummary,
@@ -84,7 +85,12 @@ verifies("plugins.plugin-trust-check", () => {
       },
     ]);
     expect(content.secrets).toEqual([
-      { name: "api-key", goesTo: ["api.example.com"], how: "Authorization header" },
+      {
+        name: "api-key",
+        goesTo: ["api.example.com"],
+        how: "Authorization header",
+        kind: "backend",
+      },
     ]);
     expect(content.addresses).toEqual([
       { address: "api.example.com", program: false },
@@ -116,6 +122,15 @@ verifies("plugins.plugin-trust-check", () => {
   });
 
   describe("secrets", () => {
+    it("says who sees a secret's value, by kind", () => {
+      expect(secretValueLine("Weather", "backend")).toBe(
+        "You enter its value in Weather's settings. The plugin's code never sees it.",
+      );
+      expect(secretValueLine("Weather", "program")).toBe(
+        "You enter its value in Weather's settings. Halonic gives it to the program when it starts.",
+      );
+    });
+
     it("says how a backend secret goes in a request", () => {
       expect(secretHow({ as: "bearer" })).toBe("Authorization header");
       expect(secretHow({ as: "header", header: "X-Api-Key" })).toBe("the X-Api-Key header");
