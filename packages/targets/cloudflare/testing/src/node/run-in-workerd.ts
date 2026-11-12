@@ -5,6 +5,16 @@ import type { CaseResult, CaseTree } from "../worker/protocol.ts";
 import { buildTestWorker } from "./build-test-worker.ts";
 import { type WorkerdBindings, WorkerdRunner } from "./workerd-runner.ts";
 
+/** What {@link runSuitesInWorkerd} takes besides the suite files. */
+export interface RunSuitesOptions extends WorkerdBindings {
+  /**
+   * Registers the cases through this function, so a test file can put them
+   * under its own `verifies(…)`: `wrap: (register) => verifies("acme.rule", register)`.
+   * The requirement guard matches a `verifies` call to the file that ran.
+   */
+  wrap?: (register: () => void) => void;
+}
+
 /** A case that failed inside workerd, with workerd's message and stack. */
 export class WorkerdCaseError extends Error {
   override readonly name = "WorkerdCaseError";
@@ -24,8 +34,7 @@ export class WorkerdCaseError extends Error {
  * `await` at the top of a test file.
  *
  * @param suiteFiles - absolute paths or `file:` URLs of the suite files (see `buildTestWorker`)
- * @param bindings - the storage the suites read from the Worker's `env`; it
- *   is empty when this file starts, whatever other test files did
+ * @param options - bindings for the Worker's `env` (see `WorkerdBindings`), and `wrap`
  * @throws Error when the Worker doesn't build or start, or registers no cases
  *
  * @example
@@ -33,8 +42,9 @@ export class WorkerdCaseError extends Error {
  */
 export async function runSuitesInWorkerd(
   suiteFiles: readonly (string | URL)[],
-  bindings: WorkerdBindings = {},
+  options: RunSuitesOptions = {},
 ): Promise<void> {
+  const { wrap = (register) => register(), ...bindings } = options;
   const script = await buildTestWorker(suiteFiles);
   const runner = await WorkerdRunner.start(script, bindings);
   afterAll(() => runner.stop());
@@ -46,7 +56,7 @@ export async function runSuitesInWorkerd(
         "The test Worker registered no cases. Does each suite file call a contract suite?",
       );
     }
-    mirror(tree.children, runner);
+    wrap(() => mirror(tree.children, runner));
   } catch (error) {
     await runner.stop();
     throw error;
