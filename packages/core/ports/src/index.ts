@@ -108,6 +108,7 @@ export {
   harnessBridgeServerVersion,
   type OpenHarnessBridge,
 } from "./harness-bridge-server.ts";
+export { type SignInShell, signInCommandText } from "./harness-sign-in-command.ts";
 export {
   changeSavedHostSettings,
   type HostSettingsStore,

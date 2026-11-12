@@ -1,6 +1,6 @@
 # Decision: a parallel branch and a for-each item check a choice answer too
 
-- Approval: [HAL-4456](/HAL/issues/HAL-4456), which asks for this; the package owner approves this note in review
+- Approval: HAL-4456, which asks for this; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-4456
 

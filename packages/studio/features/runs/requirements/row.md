@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1301 (T8); [ux-checklists-t8-t9](/HAL/issues/HAL-1360#document-ux-checklists-t8-t9) revision 10, 1.2; microcopy revision 94, 9.7 Row line and 15.2 (HAL-751)
+- Source: HAL-1301 (T8); ux-checklists-t8-t9 (HAL-1360) revision 10, 1.2; microcopy revision 94, 9.7 Row line and 15.2 (HAL-751)
 
 The Runs list shall show in each row the run's status chip, its short id, what ran, and one line under it, which is never empty and says what the What column of `halonic runs` says. The chip shall read Running, Needs you, Waiting, Done, Failed, Stopped · budget, Stopped or Couldn't try, and only Running and Needs you shall have a dot. The line shall name the step a running run is in; what a waiting run waits for: an approval, several approvals, a wait step by its description, a child run by its short id, or a time; for a finished run, "Sent nothing" when it made no tool call, then its estimated cost, else the step it finished in; the failed banner's first sentence for a failed run; and where and after how long a run stopped at its budget or was cancelled, with its cost. The cost shall name the calls without a price, and a run with no priced call shall show no amount.
 

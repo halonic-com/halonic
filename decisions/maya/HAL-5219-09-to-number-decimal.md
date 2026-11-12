@@ -1,6 +1,6 @@
 # Decision: read a zero or four-digit decimal in `toNumber` as a decimal
 
-- Approval: [HAL-5219](/HAL/issues/HAL-5219)
+- Approval: HAL-5219
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:itFc9zM7WMc/LUY9FdqCxwKZTFb6VIDXVRG/w3l4Jpe5bWw6js+eJrzluSqCMT2FwpMutHH20NVpORr1ThE5Cw==
 

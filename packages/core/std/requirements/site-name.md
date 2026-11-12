@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: piece 1 of the [HAL-1708 plan](/HAL/issues/HAL-1708#document-plan), approved by Liam on HAL-1721; Julian's conditions on HAL-1673; P7 on HAL-1782; checklist Part 2.3 of [ux-checklists-sandbox](/HAL/issues/HAL-1833#document-ux-checklists-sandbox)
+- Source: piece 1 of the HAL-1708 plan, approved by Liam on HAL-1721; Julian's conditions on HAL-1673; P7 on HAL-1782; checklist Part 2.3 of ux-checklists-sandbox (HAL-1833)
 
 The std package shall write a host name the way a screen shows a site, as plain text in two parts: `prefix`, the labels before the registrable domain, and `domain`, the registrable domain. The name shall be lowercased and lose a trailing dot. Every character other than `a`–`z`, `0`–`9`, `.`, `-`, `:`, `[` and `]` shall be written as `\u{…}` with its code point in hex. Punycode (`xn--`) labels shall stay as they are. The registrable domain shall come from the package's own pinned copy of the public suffix list, private section included, looked up on the host's ASCII form, with no download at run time; an IPv4 or IPv6 address shall be all domain. When the name is longer than 64 characters (`siteNameMaxLength`), counted after escaping, the prefix shall lose its middle to a `…` so the domain stays whole, or be left out when the domain alone is 64 characters; a domain longer than that by itself shall lose its start to a `…`. A shortened name shall have `cut` set, and an escape shall never be split.
 

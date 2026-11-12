@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4475 (C4 of the [HAL-194 build plan](/HAL/issues/HAL-194#document-build-plan); HAL-1710 check 1)
+- Source: HAL-4475 (C4 of the HAL-194 build plan; HAL-1710 check 1)
 
 The header tap shall stand in front of the bridge on a loopback address and pass each request on to the bridge unchanged, with its method, path, headers and body, and pass the bridge's answer back unchanged, streaming included. For each request it shall keep only the method, the path without its query, whether each watched header was sent (present or absent) and the bridge's status, and never a header's value.
 

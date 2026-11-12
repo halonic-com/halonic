@@ -1,6 +1,6 @@
 # Decision: add the cloudflare and limits blocks to deployments.yaml
 
-- Approval: [HAL-6707](/HAL/issues/HAL-6707)
+- Approval: HAL-6707
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9IKs8PGoK1fI8Mk8DvqDXhK1t6OGbymBYxUWY3g7pT9JVT64AJvhbE8q4L4PvNToYYh7gP1LpP1oW4xyZftLAQ==
 

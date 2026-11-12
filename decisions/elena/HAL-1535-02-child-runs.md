@@ -1,7 +1,7 @@
 # Decision: child runs leave the list of effects the local executor can't carry out
 
 - Requirement: `engine.local-runs-unbuilt-effect` (`packages/core/engine/requirements/local-runs-unbuilt-effect.md`)
-- Approval: step 5(a) of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan), approved by Liam on [HAL-1515](/HAL/issues/HAL-1515); the package owner approves this note in review
+- Approval: step 5(a) of the HAL-186 implementation plan, approved by Liam on HAL-1515; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-1535
 

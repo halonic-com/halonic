@@ -17,7 +17,8 @@
 # Both Play jobs run in the `release` environment, which also holds the
 # upload key; they don't see it only because they never read its secrets.
 #
-# Run it from the Actions tab. A pull request that changes this workflow,
+# Run it from the Actions tab, or let the Release workflow call it for a real
+# release (workflow_call). A pull request that changes this workflow,
 # the signing action or what decides the bundle's cleartext setting (the
 # manifest, the app's Gradle file, its res/xml files, the Android Tauri
 # config, the check itself) runs it too, always as a dry run. A dry run
@@ -42,6 +43,17 @@ on:
         required: true
         default: true
         type: boolean
+  workflow_call:
+    inputs:
+      dry_run:
+        description: "Dry run: sign with a throwaway key, not the upload key"
+        required: true
+        type: boolean
+      version:
+        description: "Release version the app must have, from the tag (no leading v)"
+        required: false
+        type: string
+        default: ""
 
 permissions: {}
 
@@ -76,14 +88,19 @@ jobs:
         name: Work out the version code, the file name and the dry run
         working-directory: apps/studio/src-tauri
         env:
-          EVENT: ${{ github.event_name }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          dry_run=true
-          if [ "$EVENT" = "workflow_dispatch" ]; then dry_run="$INPUT_DRY_RUN"; fi
+          # A pull request has no input: it is always a dry run.
+          dry_run="${INPUT_DRY_RUN:-true}"
           epoch=$(date -u -d 2026-01-01T00:00:00Z +%s)
           version_code=$(( ($(date -u +%s) - epoch) / 60 ))
           version=$(jq -r .version tauri.conf.json)
+          # The tag names the release, the app's version names the APK.
+          if [ -n "$RELEASE_VERSION" ] && [ "$RELEASE_VERSION" != "$version" ]; then
+            echo "::error::The release is $RELEASE_VERSION but tauri.conf.json says $version."
+            exit 1
+          fi
           {
             echo "version_code=$version_code"
             echo "bundle=halonic-$version-$version_code.aab"
@@ -169,7 +186,9 @@ jobs:
   sign:
     name: Sign with the upload key
     needs: build
-    if: needs.build.outputs.dry_run != 'true' && github.ref == 'refs/heads/main'
+    # A release runs from a version tag (the Release workflow); the
+    # environment's own rule decides which tags may use the upload key.
+    if: needs.build.outputs.dry_run != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # The only job that can reach the upload key. Required reviewers and the
@@ -314,6 +333,7 @@ jobs:
     timeout-minutes: 20
     environment: release
     permissions:
+      contents: read
       id-token: write
     defaults:
       run:
@@ -325,6 +345,12 @@ jobs:
     outputs:
       apk: ${{ steps.names.outputs.apk }}
     steps:
+      # Only the cleartext check script, for the manifest check below.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/studio/src-tauri/android/check-cleartext.mjs
+          sparse-checkout-cone-mode: false
       # play-upload already checked that this is the code the build set; a
       # re-run of this job alone must still fetch that same version.
       - id: names
@@ -398,7 +424,8 @@ jobs:
           fi
           echo "::notice title=Play signature::Signed with Play's app signing key $expected"
       # The release manifest keeps the settings HAL-1140 decided: plain
-      # http:// to the user's own computer, and no backup of app data.
+      # http:// to the user's own computer (and no network security config),
+      # and no backup of app data.
       - name: Check the APK's manifest
         env:
           APK: apk/${{ steps.names.outputs.apk }}
@@ -409,10 +436,12 @@ jobs:
           fail() { echo "::error::$1"; exit 1; }
           grep -q "^package: name='$PACKAGE' versionCode='$VERSION_CODE'" "$RUNNER_TEMP/badging.txt" \
             || fail "The APK is not $PACKAGE with version code $VERSION_CODE."
-          grep -Eq 'usesCleartextTraffic\(0x[0-9a-f]+\)=(true|\(type 0x12\)0xffffffff)$' "$RUNNER_TEMP/manifest.txt" \
-            || fail "The APK does not allow cleartext traffic, which the connect shell needs (HAL-1140)."
           grep -Eq 'allowBackup\(0x[0-9a-f]+\)=(false|\(type 0x12\)0x0)$' "$RUNNER_TEMP/manifest.txt" \
             || fail "The APK allows backups of app data; the release manifest must keep allowBackup off."
+          # Cleartext: the same rule as the bundle's check (HAL-7175), read
+          # from the APK's binary XML manifest (HAL-7561).
+          unzip -p "$APK" AndroidManifest.xml > "$RUNNER_TEMP/manifest.xml"
+          node "$GITHUB_WORKSPACE/apps/studio/src-tauri/android/check-cleartext.mjs" --apk "$RUNNER_TEMP/manifest.xml"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-apk-play-signed

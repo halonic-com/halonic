@@ -32,15 +32,27 @@ afterEach(() => {
 });
 
 function SectionView({ context }: SettingsSectionProps) {
-  return <p className="section-view">{context.services === undefined ? "" : "drawn"}</p>;
+  return (
+    <>
+      <p className="section-view">{context.services === undefined ? "" : "drawn"}</p>
+      {/* A confirmation on top of Settings, as Remove trust opens one. */}
+      <dialog className="on-top">
+        <button type="button">Cancel</button>
+      </dialog>
+    </>
+  );
 }
 
 function section(id: string, title: string, scope: SettingsScope, order: number) {
   return { id, title, scope, order, view: "SectionView", load: async () => ({ SectionView }) };
 }
 
+/** The sections the card's context listed when it last drew. */
+let cardSections: unknown;
+
 /** Home's card asks for a section, as the Harness page's **Open Settings ›** does. */
 function OpenSettingsCard({ context }: HomeCardProps) {
+  cardSections = context.settingsSections;
   return (
     <>
       <button type="button" className="open" onClick={() => context.openSettings?.()}>
@@ -186,5 +198,89 @@ verifies("shell.settings-window", () => {
 
     expect(pressed.defaultPrevented).toBe(false);
     expect(settingsDialog()).toBeNull();
+  });
+});
+
+verifies("shell.settings-window", () => {
+  it("puts the focus on the current row on Ctrl , while Settings is open", async () => {
+    await renderWindow();
+    await pressKeys({ key: ",", code: "Comma", ctrlKey: true });
+    await click(rowNamed("Formats"));
+    const close = settingsDialog()?.querySelector<HTMLElement>("header button, button[aria-label]");
+    act(() => close?.focus());
+
+    const event = new KeyboardEvent("keydown", {
+      key: ",",
+      code: "Comma",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      close?.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(shownSection()).toBe("Formats");
+    expect(document.activeElement).toBe(rowNamed("Formats"));
+  });
+
+  it("leaves Ctrl , to a dialog on top of Settings", async () => {
+    await renderWindow();
+    await pressKeys({ key: ",", code: "Comma", ctrlKey: true });
+    const cancel = settingsDialog()?.querySelector(".on-top button");
+
+    const event = new KeyboardEvent("keydown", {
+      key: ",",
+      code: "Comma",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      cancel?.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("gives views and commands the sections features added, in Settings' order", async () => {
+    await renderWindow();
+
+    expect(cardSections).toEqual([
+      { id: "appearance", title: "Appearance" },
+      { id: "formats", title: "Formats" },
+      { id: "assistant", title: "Assistant" },
+    ]);
+  });
+});
+
+verifies("shell.sidebar-settings", () => {
+  function sidebarSettings(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('nav[aria-label="Places"] > button');
+  }
+
+  it("opens Settings from the sidebar on the section shown last", async () => {
+    await renderWindow();
+    await pressKeys({ key: ",", code: "Comma", ctrlKey: true });
+    await click(rowNamed("Formats"));
+    await closeSettings();
+
+    await click(sidebarSettings());
+
+    expect(shownSection()).toBe("Formats");
+  });
+
+  it("gives the focus back to the row when Settings closes", async () => {
+    await renderWindow();
+    const row = sidebarSettings();
+    act(() => row?.focus());
+
+    await click(row);
+    expect(settingsDialog()).not.toBeNull();
+    await closeSettings();
+
+    expect(settingsDialog()).toBeNull();
+    expect(document.activeElement).toBe(row);
   });
 });

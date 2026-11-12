@@ -14,12 +14,24 @@ interface ParityRow {
   readonly negated?: boolean;
 }
 
+/** A row for `rejects`: `settle` makes a fresh promise for each run. */
+interface RejectionRow extends Omit<ParityRow, "actual"> {
+  readonly settle: () => Promise<unknown>;
+}
+
 const sharedObject = { name: "acme" };
 const symbolKey = Symbol("key");
 
 class StoreError extends Error {
   override readonly name = "StoreError";
 }
+
+const throwing =
+  (error: unknown): (() => never) =>
+  () => {
+    throw error;
+  };
+const fine = (): void => {};
 
 /** Add rows here with every new matcher: at least one that passes and one that fails. */
 const rows: readonly ParityRow[] = [
@@ -76,41 +88,122 @@ const rows: readonly ParityRow[] = [
   { matcher: "toBeUndefined", actual: undefined },
   { matcher: "toBeUndefined", actual: null },
   { matcher: "toBeUndefined", actual: "", negated: true },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad media type")) },
+  { matcher: "toThrow", actual: fine },
+  { matcher: "toThrow", actual: fine, negated: true },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad media type")), expected: "media" },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad media type")), expected: "hash" },
+  { matcher: "toThrow", actual: throwing("plain text"), expected: "plain" },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad media type")), expected: /^bad/ },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad media type")), expected: /^good/ },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad")), expected: RangeError },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad")), expected: Error },
+  { matcher: "toThrow", actual: throwing(new RangeError("bad")), expected: TypeError },
+  {
+    matcher: "toThrow",
+    actual: throwing(new StoreError("gone")),
+    expected: new StoreError("gone"),
+  },
+  {
+    matcher: "toThrow",
+    actual: throwing(new StoreError("gone")),
+    expected: new StoreError("lost"),
+  },
+  {
+    matcher: "toThrow",
+    actual: throwing(new RangeError("bad")),
+    expected: TypeError,
+    negated: true,
+  },
+  { matcher: "toThrow", actual: fine, expected: TypeError, negated: true },
+  { matcher: "toThrow", actual: 42 },
+  { matcher: "toThrow", actual: 42, negated: true },
+  { matcher: "toThrow", actual: 42, expected: "not a function", negated: true },
+  { matcher: "toThrow", actual: 42, expected: TypeError },
+  { matcher: "toThrow", actual: 42, expected: RangeError, negated: true },
+];
+
+/** Rows for `expect(promise).rejects`. */
+const rejectionRows: readonly RejectionRow[] = [
+  { matcher: "toThrow", settle: () => Promise.reject(new RangeError("bad")), expected: RangeError },
+  { matcher: "toThrow", settle: () => Promise.reject(new RangeError("bad")), expected: TypeError },
+  {
+    matcher: "toThrow",
+    settle: () => Promise.reject(new RangeError("bad type")),
+    expected: "type",
+  },
+  { matcher: "toThrow", settle: () => Promise.resolve("stored"), expected: RangeError },
+  { matcher: "toThrow", settle: () => Promise.resolve("stored"), negated: true },
+  {
+    matcher: "toThrow",
+    settle: () => Promise.reject(new RangeError("bad")),
+    expected: TypeError,
+    negated: true,
+  },
+  { matcher: "toBe", settle: () => Promise.reject(7), expected: 7 },
+  { matcher: "toEqual", settle: () => Promise.reject({ code: 1 }), expected: { code: 1 } },
+  { matcher: "toEqual", settle: () => Promise.reject({ code: 1 }), expected: { code: 2 } },
 ];
 
 type Outcome = "passes" | "fails" | "throws a TypeError";
 
-function outcomeOf(check: () => void): Outcome {
+async function outcomeOf(check: () => unknown): Promise<Outcome> {
   try {
-    check();
+    await check();
     return "passes";
   } catch (error) {
     return error instanceof TypeError ? "throws a TypeError" : "fails";
   }
 }
 
-function runRow(assertion: Matchers & { not: Matchers }, row: ParityRow): void {
-  const matchers = row.negated === true ? assertion.not : assertion;
-  const matcher = matchers[row.matcher] as (expected?: unknown) => void;
-  matcher.call(matchers, row.expected);
+/** The matcher a row names, on the matchers or under `not`, ready to call with the row's argument. */
+function matcherFor<T>(
+  matchers: Record<keyof Matchers, unknown> & { not: unknown },
+  row: Omit<ParityRow, "actual">,
+): () => T {
+  const chosen = (row.negated === true ? matchers.not : matchers) as Record<string, unknown>;
+  const matcher = chosen[row.matcher] as (expected?: unknown) => T;
+  return () => matcher.call(chosen, row.expected);
+}
+
+function describeRow(row: Omit<ParityRow, "actual">, actual: string): unknown[] {
+  return [row.matcher, row.negated === true ? "not" : "", actual, row];
 }
 
 describe("the shim's matchers agree with Vitest's", () => {
   const shimExpect = createExpect();
 
-  it.each(
-    rows.map((row) => [row.matcher, row.negated === true ? "not" : "", String(row.actual), row]),
-  )("%s %s on %s", (_matcher, _not, _actual, row) => {
-    const inShim = outcomeOf(() => runRow(shimExpect(row.actual), row));
-    const inVitest = outcomeOf(() => runRow(expect(row.actual), row));
-    expect(inShim).toBe(inVitest);
-  });
+  it.each(rows.map((row) => describeRow(row, String(row.actual))))(
+    "%s %s on %s",
+    async (_matcher, _not, _actual, row) => {
+      const parityRow = row as ParityRow;
+      const inShim = await outcomeOf(matcherFor(shimExpect(parityRow.actual), parityRow));
+      const inVitest = await outcomeOf(matcherFor(expect(parityRow.actual), parityRow));
+      expect(inShim).toBe(inVitest);
+    },
+  );
 
-  it("has a passing and a failing row for every matcher the shim has", () => {
+  it.each(rejectionRows.map((row) => describeRow(row, String(row.settle))))(
+    "rejects %s %s on %s",
+    async (_matcher, _not, _settle, row) => {
+      const rejectionRow = row as RejectionRow;
+      const inShim = await outcomeOf(
+        matcherFor(shimExpect(rejectionRow.settle()).rejects, rejectionRow),
+      );
+      const inVitest = await outcomeOf(
+        matcherFor(expect(rejectionRow.settle()).rejects, rejectionRow),
+      );
+      expect(inShim).toBe(inVitest);
+    },
+  );
+
+  it("has a passing and a failing row for every matcher the shim has", async () => {
     for (const name of matcherNames) {
-      const outcomes = rows
-        .filter((row) => row.matcher === name)
-        .map((row) => outcomeOf(() => runRow(shimExpect(row.actual), row)));
+      const outcomes = await Promise.all(
+        rows
+          .filter((row) => row.matcher === name)
+          .map((row) => outcomeOf(matcherFor(shimExpect(row.actual), row))),
+      );
       expect(outcomes, name).toContain("passes");
       expect(outcomes, name).toContain("fails");
     }

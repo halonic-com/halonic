@@ -1,7 +1,7 @@
 # Decision: the installer job uninstalls through the uninstaller's pages
 
 - Task: HAL-1202
-- Approval: Liam approves this note in review on [HAL-1202](/HAL/issues/HAL-1202)
+- Approval: Liam approves this note in review on HAL-1202
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:D5vgT/MWsOMn291CjcRpCFF5WXGuL5+SFXsFmAF75Ht4WVpSo+LzU2ydI+wiQW4HnWrCv7mCYkSmQnShgeZhCA==
 

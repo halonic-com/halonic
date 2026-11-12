@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DisplaySettings } from "../display-settings.ts";
+import { change, click, control, setNativeValue } from "../test-support/controls.ts";
 import { MemoryDisplayPrefs } from "../test-support/memory-display-prefs.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { agentCharactersPref, panelOpacityPref, themePref } from "./appearance-prefs.ts";
@@ -16,36 +17,6 @@ function setup() {
   const announce = vi.fn();
   const view = render(<AppearanceView settings={settings} announce={announce} />);
   return { prefs, settings, announce, view };
-}
-
-function control<Element extends HTMLElement>(view: HTMLElement, selector: string): Element {
-  const found = view.querySelector<Element>(selector);
-  if (found === null) {
-    throw new Error(`Nothing matches ${selector}`);
-  }
-  return found;
-}
-
-/**
- * Sets a native control's value as the browser does, past React's own record of it, so React sees
- * the change.
- */
-function setNativeValue(element: HTMLSelectElement | HTMLInputElement, value: string) {
-  const prototype = Object.getPrototypeOf(element) as object;
-  Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(element, value);
-}
-
-/** Picks `value` in a native select, or moves a range input there and lets go. */
-async function change(element: HTMLSelectElement | HTMLInputElement, value: string) {
-  await act(async () => {
-    setNativeValue(element, value);
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
-
-async function click(element: HTMLElement) {
-  await act(async () => element.click());
 }
 
 verifies("settings.appearance-section", () => {

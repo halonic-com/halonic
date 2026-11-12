@@ -1,6 +1,6 @@
 # Decision: a `sandbox.opened` run log event and its display copy of the profile
 
-- Approval: the board approved proposal 1 ("What this run can do") for v0.1 in the `proposals` document on [HAL-1601](/HAL/issues/HAL-1601), with Julian's conditions from [HAL-1673](/HAL/issues/HAL-1673); the package owner (Liam) approves this note in review
+- Approval: the board approved proposal 1 ("What this run can do") for v0.1 in the `proposals` document on HAL-1601, with Julian's conditions from HAL-1673; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1707
 

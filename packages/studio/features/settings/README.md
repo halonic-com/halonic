@@ -9,7 +9,10 @@ this package fills its sections.
 `settingsFeature` adds each section in `settingsSections` (in `src/feature.ts`) through the shell's
 `settings` contribution point, and the command **Settings** (`settings.open`), which opens Settings
 through the window's `openSettings` (`settings.feature`). A new section goes into that list, with its
-`scope` deciding its group. The desktop app registers the feature; the served Studio doesn't yet.
+`scope` deciding its group. Ctrl K also gets a command per section in `sectionsByName` (Appearance,
+Formats, Assistant, Trusted sources, Agent sandbox) that a feature added, named as its row, which
+opens Settings on it (`settings.section-commands`); the window's `settingsSections` says which are
+there. The desktop app registers the feature; the served Studio doesn't yet.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -51,8 +54,8 @@ named in English and sorted by name.
 
 ## Sections
 
-- **Appearance** (`settings.appearance-section`): Theme, Panel opacity and Agent characters. Frame
-  colours follow in their own pull request.
+- **Appearance** (`settings.appearance-section`): Theme, Frame colours (with Your own,
+  `settings.appearance-own-colours`), Panel opacity and Agent characters.
 
 ## Example
 
@@ -71,4 +74,23 @@ if (!outcome.saved && !outcome.superseded) {
   // The theme is back to outcome.back, and settings.failure(theme) says why. A superseded save
   // went nowhere back: a newer change to the theme came in, and its outcome is the one to tell.
 }
+```
+
+## Appearance
+
+`themePref`, `frameColoursPref` and `panelOpacityPref` are Appearance → Theme, Frame colours and
+Panel opacity (`settings.appearance-theme`, `settings.appearance-frame-colours`,
+`settings.appearance-panel-opacity`), and `agentCharactersPref` is Agent characters. The frame
+colours are a preset from `framePresets`, the kit's `haloPresets` (`blue-and-purple` by default),
+or `{ preset: "own", colours }` with two colours of the person's own; `frameColourPair` gives the
+two the frame shows. Panel opacity goes from 0.1 to 1 in steps of 0.1 (`panelOpacityRange`), 0.8 by
+default; a stored value between steps or outside the range goes to the nearest step.
+
+`watchAppearance` shows them on the window's root at once, without a reload: the theme as
+`data-theme` (none for System), the frame colours as `--halo-blue` and `--halo-violet` only, never
+the accent, and the opacity as `--panel-opacity`. It returns a function that stops it; what it set
+stays. The app doesn't call it yet.
+
+```ts
+const stop = watchAppearance(settings, document.documentElement);
 ```

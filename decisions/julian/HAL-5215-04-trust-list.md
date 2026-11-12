@@ -1,7 +1,7 @@
 # Decision: a POSIX-only test for `halonic trust --list`
 
 - Task: HAL-5215
-- Approval: assigned by Liam on [HAL-5215](/HAL/issues/HAL-5215); Liam approves this note in review there
+- Approval: assigned by Liam on HAL-5215; Liam approves this note in review there
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:skUIWVgVhILcBnhtW2cE2xI/dOHzhize+XB50C4XCdONn/uMkiQtBH6KgX7zyBIZQDNhZx28RHDeC5yHOIkdAA==
 

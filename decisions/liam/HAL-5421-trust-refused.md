@@ -1,8 +1,8 @@
 # Decision: a workspace whose files can't be trusted is refused, and the CLI says which file
 
 - Approval: Liam approves this note when he signs it, after Priya's review of this pull request on
-  [HAL-5435](/HAL/issues/HAL-5435), for [HAL-5421](/HAL/issues/HAL-5421), a follow-up of the code
-  review on [HAL-5196](/HAL/issues/HAL-5196)
+  HAL-5435, for HAL-5421, a follow-up of the code
+  review on HAL-5196
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4GZchexN6r3C12RgDbg3HTzzsHM+uuj6TtCImLkc+lKn2TfT7O+5i2zwGsLVSAyp38Vfrz75MV0roCDtjiGKDQ==
 

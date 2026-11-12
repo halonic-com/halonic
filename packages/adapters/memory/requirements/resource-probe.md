@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: stack 5a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan) (a memory adapter with fixed numbers); `ResourceProbe` port v1
+- Source: stack 5a of the HAL-189 implementation plan (a memory adapter with fixed numbers); `ResourceProbe` port v1
 
 The memory resource probe shall give the numbers it was made with, or set to later, and the sizes of the files written to it. When `maxFilesCounted` is set, `folderSize` shall count at most that many files and then say the size is incomplete. It shall refuse with a `RangeError` any number of bytes that isn't whole and 0 or more, and give copies of its processes, so a caller can't change what it holds.
 

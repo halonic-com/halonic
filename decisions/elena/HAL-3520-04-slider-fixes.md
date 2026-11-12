@@ -1,6 +1,6 @@
 # Decision: a held arrow key saves the Slider once, when it's let go, and the fill ends at the thumb's centre
 
-- Approval: Sofia's design check on [HAL-3520](/HAL/issues/HAL-3520) left this to Elena and Liam; Liam (package reviewer) approves this note in review of the follow-up to #1055
+- Approval: Sofia's design check on HAL-3520 left this to Elena and Liam; Liam (package reviewer) approves this note in review of the follow-up to #1055
 - Kind: internal
 - Task: HAL-3520
 

@@ -65,7 +65,11 @@ import {
   runDefinitionsOf,
 } from "@halonicjs/workspace";
 import { abortOnStop } from "./abort-on-stop.ts";
-import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-connectors.ts";
+import {
+  type LocalRunConnectorsInput,
+  localRunConnectors,
+  type TrustedVersion,
+} from "./local-run-connectors.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
@@ -170,6 +174,13 @@ export interface WorkspaceVersions {
     workflowId: string,
     version: RunVersion | undefined,
   ): Promise<RunDefinitions>;
+  /**
+   * The version a run read, as its connectors start from it, with the
+   * grant of that version's trust check.
+   *
+   * @throws when that version can't be read or may not run on this computer
+   */
+  trustedVersionOf(version: RunVersion): Promise<TrustedVersion>;
 }
 
 /** What the routine scheduler is built on: the engine's own parts. */
@@ -322,7 +333,7 @@ function engineOn(
       ? undefined
       : localRunConnectors(input.runConnectors, {
           workspace: input.workspace,
-          readsOneVersion: versions === undefined,
+          ...(versions === undefined ? {} : { versions }),
           location,
           secrets: input.secrets,
           programFolders,

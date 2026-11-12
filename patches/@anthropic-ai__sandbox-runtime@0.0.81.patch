@@ -91,3 +91,59 @@ index d475e55977bf54a2fe00a0c6aba38313761d55aa..7c3db965207789c043516525ece56331
                  ignoreViolations: getIgnoreViolations(),
                  allowPty,
                  allowGitConfig: getAllowGitConfig(),
+diff --git a/dist/sandbox/windows-sandbox-utils.js b/dist/sandbox/windows-sandbox-utils.js
+index 7252de02f505fc0c6d0f608c9d0c5c0926433297..d70d724bbfdce2ebb33f8b1a4a2a84d9c0aa5d7b 100644
+--- a/dist/sandbox/windows-sandbox-utils.js
++++ b/dist/sandbox/windows-sandbox-utils.js
+@@ -827,24 +827,38 @@ export async function verifyWindowsWfpEgress(opts = {}) {
+         // loopback-permit range (a port in-range would be PERMITted
+         // even with the fence active → false `connected`).
+         const [lo, hi] = opts.proxyPortRange ?? DEFAULT_WINDOWS_PROXY_PORT_RANGE;
+-        for (let i = 0; i < 5; i++) {
+-            // A connect that gets through is accepted while `srt-win` runs:
+-            // drop it, and keep its errors from being uncaught.
+-            const s = net.createServer(c => c.on('error', () => { }).destroy());
+-            s.listen(0, '127.0.0.1');
+-            await once(s, 'listening');
+-            const p = s.address().port;
+-            if (p < lo || p > hi) {
+-                server = s;
+-                target = `127.0.0.1:${p}`;
+-                break;
++        // Halonic patch: Windows hands out ephemeral ports in sequence, so
++        // closing a listener that landed in the range and binding again
++        // gets the next port, often in the range too: five attempts that
++        // start at its low end all fail. Each one is kept open until a port
++        // outside the range is found, so no port comes twice, and one more
++        // attempt than the range has ports always finds one.
++        const attempts = hi - lo + 2;
++        const inRange = [];
++        try {
++            for (let i = 0; i < attempts; i++) {
++                // A connect that gets through is accepted while `srt-win` runs:
++                // drop it, and keep its errors from being uncaught.
++                const s = net.createServer(c => c.on('error', () => { }).destroy());
++                s.listen(0, '127.0.0.1');
++                await once(s, 'listening');
++                const p = s.address().port;
++                if (p < lo || p > hi) {
++                    server = s;
++                    target = `127.0.0.1:${p}`;
++                    break;
++                }
++                inRange.push(s);
+             }
+-            s.close();
++        }
++        finally {
++            for (const s of inRange)
++                s.close();
+         }
+         if (!target) {
+             throw new WindowsSandboxError('wfp_verify_bind_failed', `verifyWindowsWfpEgress: could not bind a loopback ` +
+                 `listener outside the WFP permit range [${lo},${hi}] in ` +
+-                `5 attempts`);
++                `${attempts} attempts`);
+         }
+     }
+     const args = ['wfp', 'verify', '--target', target];

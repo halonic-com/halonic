@@ -1,6 +1,6 @@
 # Decision: `read_run` answers `No events yet.` for a run without events
 
-- Approval: Liam's review nits on #872, recorded on [HAL-3080](/HAL/issues/HAL-3080) and carried into [HAL-3086](/HAL/issues/HAL-3086); the package owner (Liam) approves this note in review
+- Approval: Liam's review nits on #872, recorded on HAL-3080 and carried into HAL-3086; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1533
 

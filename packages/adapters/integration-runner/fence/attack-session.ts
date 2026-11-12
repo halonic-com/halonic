@@ -186,7 +186,8 @@ function attackCommand(files: RunnerFiles, nodeLayer: NodeLayer): SandboxCommand
     exportName: "attack",
   });
   if (nodeLayer === "on") return command;
-  return { ...command, args: command.args.slice(command.args.indexOf(files.runnerFile)) };
+  // The attack script runs in Node's place, without the memory limit around it.
+  return { program: files.node, args: command.args.slice(command.args.indexOf(files.runnerFile)) };
 }
 
 async function readText(stream: ReadableStream<Uint8Array>): Promise<string> {

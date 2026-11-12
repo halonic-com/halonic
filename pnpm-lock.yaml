@@ -244,7 +244,7 @@ overrides:
   '@anthropic-ai/sandbox-runtime>zod': 4.6.7
 
 patchedDependencies:
-  '@anthropic-ai/sandbox-runtime@0.0.81': 4e58dc3cce14663a8ce612411a95e8c02370b85c6ffd3f5a8ae51017c1464f42
+  '@anthropic-ai/sandbox-runtime@0.0.81': aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c
 
 importers:
 
@@ -444,6 +444,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/studio-feature-google-setup':
+        specifier: workspace:*
+        version: link:../../packages/studio/features/google-setup
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../../packages/studio/features/inbox
@@ -1281,7 +1284,7 @@ importers:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
-        version: 0.0.81(patch_hash=4e58dc3cce14663a8ce612411a95e8c02370b85c6ffd3f5a8ae51017c1464f42)
+        version: 0.0.81(patch_hash=aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c)
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
@@ -1945,6 +1948,34 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/studio/features/google-setup:
+    dependencies:
+      '@halonicjs/google-setup':
+        specifier: workspace:*
+        version: link:../../../core/google-setup
+      '@halonicjs/studio-feature-inbox':
+        specifier: workspace:*
+        version: link:../inbox
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/studio/features/inbox:
     dependencies:
       '@halonicjs/events':
@@ -1953,6 +1984,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
@@ -4839,7 +4873,7 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/sandbox-runtime@0.0.81(patch_hash=4e58dc3cce14663a8ce612411a95e8c02370b85c6ffd3f5a8ae51017c1464f42)':
+  '@anthropic-ai/sandbox-runtime@0.0.81(patch_hash=aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c)':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0

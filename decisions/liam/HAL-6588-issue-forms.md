@@ -1,7 +1,7 @@
 # Decision: the issue forms ask what 0.1.0 triage needs, and stop promising connectors
 
 - Task: HAL-6588 (forms drafted on HAL-6575 and HAL-6394)
-- Approval: Chief's task, no board card because issue forms publish nothing; Maya reviews it on [HAL-6624](/HAL/issues/HAL-6624), Liam signs this note as the CTO
+- Approval: Chief's task, no board card because issue forms publish nothing; Maya reviews it on HAL-6624, Liam signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U9ffSvCjGuGHVWtY+z7Ec8iLCDqcc1Jfrr3w4jZw2WZFWrs7tEbicf8q4QyYeisVFCb9jbbIb131xchNF+T1Aw==
 

@@ -4,9 +4,11 @@
 // this test holds the two together, as the deployments file's does for
 // deployment ids.
 import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
+import type { JsonSchema } from "@halonicjs/schema-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { parseFile } from "../../index.ts";
+import { jsonSchemaOf, parseFile } from "../../index.ts";
+import { folderIdSchemaAccepts } from "../../test/folder-id.spec.ts";
 import { yaml } from "../../test/parse.spec.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
@@ -84,6 +86,15 @@ verifies("format.agent-file", () => {
       expect(accepted).toContain("a".repeat(64));
       expect(accepted).not.toContain("a".repeat(65));
       expect(accepted).not.toContain("aux");
+    });
+  });
+
+  describe("the JSON Schema's agent ids", () => {
+    const properties = jsonSchemaOf("agent")["properties"] as Record<string, JsonSchema>;
+    const idSchema = properties["id"] as JsonSchema;
+
+    it.each(candidateIds)("agree with the format on %j, without lookaround", (agentId) => {
+      expect(folderIdSchemaAccepts(idSchema, agentId)).toBe(formatAccepts(agentId));
     });
   });
 });

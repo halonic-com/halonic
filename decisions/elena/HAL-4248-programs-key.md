@@ -1,6 +1,6 @@
 # Decision: a `programs` key for scripted program results in workflow tests
 
-- Approval: the [HAL-4248 proposal](/HAL/issues/HAL-4248#document-proposal), approved by Liam on HAL-4258
+- Approval: the HAL-4248 proposal, approved by Liam on HAL-4258
 - Kind: internal
 - Task: HAL-4248
 

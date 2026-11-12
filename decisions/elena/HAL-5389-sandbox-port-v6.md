@@ -1,6 +1,6 @@
 # Decision: `Sandbox` port version 6, reason codes for setup, WSL, policy and sign-in
 
-- Approval: a port change needs Liam's review (ADR 2026-11-11-pluggable-sandbox-layer, "Port version 6"); Liam approves this note in review of the port v6 PR on [HAL-5389](/HAL/issues/HAL-5389)
+- Approval: a port change needs Liam's review (ADR 2026-11-11-pluggable-sandbox-layer, "Port version 6"); Liam approves this note in review of the port v6 PR on HAL-5389
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Pfj0gknXa0MsIB3omplcxCuGsOhSl10oVoJmHz+CMmgZnkDvTyIqhRgS+RMd0a0ueXNh+Pkzn5koheHvEEH6Aw==
 - Task: HAL-5389

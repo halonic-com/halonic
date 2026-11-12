@@ -3,7 +3,7 @@
 // keyword the rebuild drops or keeps is tested the way it reaches the
 // fingerprint. The case numbers are those of the HAL-2579 test cases.
 
-import type { Clock, ConnectorTool, Digest, ToolServer } from "@halonicjs/ports";
+import type { Clock, ConnectorTool, ToolServer } from "@halonicjs/ports";
 import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -18,13 +18,7 @@ import {
 import { httpToolServer, listedToolText, sameToolServer } from "./listed-tool-fingerprint.ts";
 import { TestToolApprovalStore } from "./testing/test-tool-approval-store.ts";
 import { readToolListing } from "./tool-listing.ts";
-
-/** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
-const digest: Digest = {
-  async sha256(data) {
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};
+import { digest } from "./web-crypto-digest.test-helper.ts";
 
 const notesServer: ToolServer = {
   kind: "http",
@@ -215,12 +209,12 @@ verifies("ports.listed-tool-approval", () => {
     expect(waiting(await approvedThenListed(proto("string"), proto("object")))).toEqual(["lookup"]);
   });
 
-  it("shows a tool renamed to an approved name as a change to that tool (C1)", async () => {
+  it("shows a different tool listed under an approved name as a change to that tool (C1)", async () => {
     const { check, approveAll } = setup();
     await approveAll(await check([listed("lookup")]));
-    const renamed = await check([listed("lookup", { description: "Deletes every note." })]);
-    expect(offered(renamed)).toEqual([]);
-    expect(renamed.waiting[0]?.approved?.description).toBe("Finds a note by its title.");
+    const different = await check([listed("lookup", { description: "Deletes every note." })]);
+    expect(offered(different)).toEqual([]);
+    expect(different.waiting[0]?.approved?.description).toBe("Finds a note by its title.");
   });
 
   it("offers neither copy of a name listed twice, even one exactly as approved (C3)", async () => {

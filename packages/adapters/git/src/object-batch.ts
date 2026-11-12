@@ -1,6 +1,6 @@
 // Reading several objects with one `git cat-file --batch` call (HAL-7589).
 
-import type { Repository } from "./repository.ts";
+import type { GitCalls } from "./repository.ts";
 
 /** One object `cat-file --batch` found. */
 export interface BatchObject {
@@ -33,7 +33,7 @@ export function fitsOnBatchLine(name: string): boolean {
  * @throws Error when git fails, or its output isn't what `--batch` writes
  */
 export async function readObjects(
-  repository: Repository,
+  repository: GitCalls,
   names: readonly string[],
 ): Promise<(BatchObject | null)[]> {
   const input = Buffer.from(names.map((name) => `${name}\n`).join(""), "utf8");

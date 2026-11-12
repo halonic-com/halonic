@@ -1,6 +1,6 @@
 # Decision: on a phone the Slider's thumb has no grab area of its own
 
-- Approval: Noah (designer) chose this on [HAL-3670](/HAL/issues/HAL-3670) and agreed that spec 18.6 is updated to match; Liam (package reviewer) approves this note in review of the follow-up to #1055
+- Approval: Noah (designer) chose this on HAL-3670 and agreed that spec 18.6 is updated to match; Liam (package reviewer) approves this note in review of the follow-up to #1055
 - Kind: internal
 - Task: HAL-3520
 

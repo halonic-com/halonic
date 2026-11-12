@@ -1,6 +1,6 @@
 # Decision: the ActionBar draws a `danger` decision, so a danger form sheet keeps its colour
 
-- Approval: component specs 8 and 15.3 ([HAL-175](/HAL/issues/HAL-175#document-component-specs)) and Liam's review of #1142 (HAL-3799); the package owner (Elena) approves this note, Liam reviews it in the pull request
+- Approval: component specs 8 and 15.3 (HAL-175) and Liam's review of #1142 (HAL-3799); the package owner (Elena) approves this note, Liam reviews it in the pull request
 - Kind: internal
 - Task: HAL-3808
 

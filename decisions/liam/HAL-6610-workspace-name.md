@@ -1,6 +1,6 @@
 # Decision: the CLI names the workspace from workspace.yaml
 
-- Approval: Liam decided this on [HAL-6610](/HAL/issues/HAL-6610) (from the CLI output read, HAL-5959), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); Tomas reviewed it on HAL-6693; the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-6610 (from the CLI output read, HAL-5959), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); Tomas reviewed it on HAL-6693; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aJ7QY+4sJ9nRcCNJW3n00AYScwCLsmhkytOH94Ixm8i1lwpcbmPhcbYySy5tQGi3piaZvyLj9cogTns93BDGAg==
 - Task: HAL-6610

@@ -6,7 +6,7 @@
 
 When the runner is started, Node shall get a heap limit, so that an integration that fills its JavaScript heap makes only its own runner die, Halonic reports that the runner exited, and the rest of Halonic goes on.
 
-The limit covers only Node's JavaScript heap. Memory behind an `ArrayBuffer`, a typed array or a `Buffer` lies outside it, so an integration that keeps such memory can still take a machine's memory. No limit covers that yet (HAL-7565).
+The limit covers only Node's JavaScript heap. Memory behind an `ArrayBuffer`, a typed array or a `Buffer` lies outside it. So on Linux the runner is started through `prlimit --data`, a limit on the whole data segment of Node's start, the heap and 256 MiB of buffers, and an allocation past it fails with a `RangeError` (HAL-7565). macOS doesn't enforce that limit for `mmap` and Windows has no such limit, so there an integration that keeps buffer memory can still take a machine's memory. The same holds on a Linux machine without `prlimit` (NixOS, a minimal Alpine): Halonic looks for it on the host before the sandbox runs it, and if it isn't there, starts Node with the heap limit only and says so once, because a runner that can't start is worse than one without the buffer limit (HAL-7794).
 
 ## Examples
 
@@ -16,3 +16,9 @@ The limit covers only Node's JavaScript heap. Memory behind an `ArrayBuffer`, a 
 - Given a runner that died at its heap limit,
   when Halonic starts another runner,
   then that runner serves its integration as before.
+- Given an integration whose tool keeps allocating 50 MiB typed arrays, on Linux,
+  when the tool runs in the built runner,
+  then an allocation fails with a `RangeError` before the runner has used a gigabyte, and the integration can answer.
+- Given a Linux machine without `prlimit`,
+  when Halonic starts a runner,
+  then the runner starts as plain Node with the heap limit, and Halonic says once that the buffer limit is missing.

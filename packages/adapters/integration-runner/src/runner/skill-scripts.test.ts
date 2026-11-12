@@ -59,6 +59,7 @@ verifies("integration-runner.start", () => {
           entryFile: "/work/weather/index.js",
           exportName: "weather",
         },
+        { platform: "linux" },
       );
       expect(args).toContain("--permission");
       for (const flag of [

@@ -7,10 +7,11 @@ import { portVersions } from "./port-versions.ts";
 const sourceFolder = fileURLToPath(new URL(".", import.meta.url));
 const readme = readFileSync(fileURLToPath(new URL("../README.md", import.meta.url)), "utf8");
 
-/** Source files that hold shared types or the package's lists, not a port. */
+/** Source files that hold shared types, a helper for a port or the package's lists, not a port. */
 const notPorts = new Set([
   "cant-try-error.ts",
   "chat.ts",
+  "harness-sign-in-command.ts",
   "index.ts",
   "model-price.ts",
   "port-versions.ts",

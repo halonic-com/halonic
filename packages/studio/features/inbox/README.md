@@ -1,6 +1,6 @@
 # @halonicjs/studio-feature-inbox
 
-The Studio Inbox: what waits for you, its count, and your answers. It works from run summaries: one item for each tool call waiting for your OK (titled with the subagent that asked, when one did), and one for each run at a `wait` step, whose title and body core has already filled in (`RunSummary.waitingFor`).
+The Studio Inbox: what waits for you, its count, and your answers. It works from run summaries: one item for each tool call waiting for your OK (titled with the subagent that asked, when one did), and one for each run at a `wait` step, whose title and body core has already filled in (`RunSummary.waitingFor`). Setup items, which a provider's feature adds, come first.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -25,7 +25,7 @@ const [first] = inbox.state.items;
 if (first !== undefined && isRunItem(first)) await inbox.decisions.approve(first);
 ```
 
-Setup items aren't tied to a run: an account to set up or fix, such as a Google account to sign in again. A provider's feature adds a setup source to the workspace's Inbox, and each account it lists becomes an item keyed `setup:<provider>:<account>`, first in Needs you, with a **Setup** chip and no Approve or Reject (requirement `inbox.setup-items`). The Inbox knows nothing about the provider. The account is the source's own ref, never an e-mail address.
+Setup items aren't tied to a run: an account to set up or fix, such as a Google account to sign in again. A provider's feature adds a setup source to the workspace's Inbox, and each account it lists becomes an item keyed `setup:<provider>:<account>`, first in Needs you, with a **Setup** chip and no Approve or Reject (requirement `inbox.setup-items`). The Inbox knows nothing about the provider. The account is the source's own ref, never an e-mail address. `inboxItems` makes items from runs alone, so it never lists setup items; `setupKey("google", "acct-1")` gives a setup item's key, and `isRunItem` tells a run's item, which takes an answer, from a setup item.
 
 ```ts
 const remove = inbox.addSetupSource({
@@ -39,6 +39,6 @@ The item's `body` and a tool call's `args` can hold model output. Show them as p
 
 The screens show those values through `src/plain/`: arguments as readable fields, hidden characters as `⟦U+202E⟧` markers, and long text folded with "Show 38 more lines" (requirements `inbox.plain-values`, `inbox.argument-fields`, `inbox.waiting-time` and `inbox.approval-title`).
 
-The cards live in `src/ui/`: `ApprovalCard` for a tool call, with its Ask for changes dialog, and `WaitCard` for a `wait` step, which has a button for each answer the step takes (requirements `inbox.approval-card` and `inbox.wait-card`). Both report your decision, never what the run did next.
+The cards live in `src/ui/`: `ApprovalCard` for a tool call, with its Ask for changes dialog, and `WaitCard` for a `wait` step, which has a button for each answer the step takes (requirements `inbox.approval-card` and `inbox.wait-card`). Both report your decision, never what the run did next. `SetupCard` shows a setup item's title and progress line until its source's own view replaces it.
 
 The feature adds the sidebar's Inbox place: its count is the workspace Inbox's, and its page, `InboxPage` in `src/ui/inbox-page.tsx`, shows Needs you beside the open item's card (requirement `inbox.page`). It also adds Home's Needs you, `NeedsYouCard` in `src/ui/needs-you-card.tsx`: the same rows and count, and a row opens its card in the Inbox (requirement `inbox.home`). The workspace's `ServiceRegistry` disposes the Inbox when the workspace closes, and it loads nothing after that.

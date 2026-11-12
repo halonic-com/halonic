@@ -4,7 +4,7 @@ Owner: elena · Layer: studio · Read the root `AGENTS.md` first; this file adds
 
 ## Scope
 
-The Studio Inbox: what waits for you (approvals and wait steps), its count, and your answers.
+The Studio Inbox: what waits for you (approvals, wait steps and setup items), its count, and your answers.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`, plus `src/api.ts` for other features;
 everything else is internal.

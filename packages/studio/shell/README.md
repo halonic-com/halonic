@@ -963,10 +963,13 @@ Enter or a click switches and says the section's name. A section's view gets
 that fails to load leaves its heading and the list working.
 
 Settings opens over the window (`shell.settings-window`): the context the window gives views and
-commands has `openSettings(sectionId?)`, the `settings.open` of flow-settings, and the desktop app
-opens it on Mod , as well. The window draws `SettingsDialog` with `contributions.settings.list()`,
-places it as the app's or the served Studio's, and remembers the section shown last for the next
-opening (`useSettingsOpening`). Closing it gives the focus back to the opener.
+commands has `openSettings(sectionId?)`, the `settings.open` of flow-settings, and
+`settingsSections`, the id and title of each section features added, so Ctrl K offers only those.
+The sidebar's **Settings** row, last under a divider, opens it too (`shell.sidebar-settings`), and
+the desktop app opens it on Mod , as well; Mod , while it is open puts the focus back on the current
+section's row. The window draws `SettingsDialog` with `contributions.settings.list()`, places it
+as the app's or the served Studio's, and remembers the section shown last for the next opening
+(`useSettingsOpening`). Closing it gives the focus back to the opener.
 
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search
@@ -1044,7 +1047,7 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 - **Errors:** `ErrorContext`, `ErrorMessage`, `ErrorAction`, `RulePlace`.
 - **Features:** `Feature`, `FeatureDefinition`, `Shell`, `ShellOptions`, `Studio`, `ServiceKey`,
   `ServiceTarget`, `ServiceFactory`, `ServiceLookup`, `FeatureServices`, `WorkspaceContext`,
-  `ViewRef`, `ShellError`.
+  `SettingsSectionName`, `ViewRef`, `ShellError`.
 - **Points:** `FramePoints`, `FrameContributions`, `LayoutPoints`, `LayoutContributions`,
   `CommandPoints`, `CommandContributions`, `ContextFor`, `Point`, `Ordered`, `Contributed`, `Registered`,
   `KeyboardPlatform`, and the contribution types: `CardContribution`, `PanelWindowContribution`,

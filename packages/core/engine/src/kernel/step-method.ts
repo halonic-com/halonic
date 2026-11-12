@@ -3,7 +3,7 @@
 // and the agent's file, so neither the run log nor the call effects carry it:
 // a resumed call finds the same method the first call used.
 
-import type { Agent, AgentMethod, AgentOutput } from "@halonicjs/format";
+import type { Agent, AgentMethod, AgentOutput, WorkflowState } from "@halonicjs/format";
 import type { RunDefinitions } from "./decide-types.ts";
 
 /**
@@ -32,10 +32,23 @@ export function callMethodOf(
   stateId: string,
   agentId: string,
 ): AgentMethod | undefined {
+  const state = callStateOf(definitions, stateId);
+  if (state?.method === undefined) return undefined;
+  return methodOf(definitions.agents ?? {}, agentId, state.method);
+}
+
+/**
+ * The state of the run's workflow that a model call for `stateId` belongs
+ * to, when it is one whose own `method` and `format` count: a `task` or a
+ * `foreach` state. `undefined` for any other.
+ */
+export function callStateOf(
+  definitions: RunDefinitions,
+  stateId: string,
+): WorkflowState | undefined {
   const states = definitions.workflow.states;
   const state = Object.hasOwn(states, stateId) ? states[stateId] : undefined;
-  if (state?.method === undefined || !methodStates.has(state.type)) return undefined;
-  return methodOf(definitions.agents ?? {}, agentId, state.method);
+  return state !== undefined && methodStates.has(state.type) ? state : undefined;
 }
 
 /** A method's answer as an agent's `output` says it: text, or JSON for a method that answers with fields. */

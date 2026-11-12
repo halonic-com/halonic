@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: the [HAL-4248 proposal](/HAL/issues/HAL-4248#document-proposal), approved by Liam on HAL-4258; task HAL-4248
+- Source: the HAL-4248 proposal, approved by Liam on HAL-4258; task HAL-4248
 
 When `parseFile` reads a workflow test file, the format shall accept an optional `programs` key on each case, and leave it out when the case does, so older files read as before. `programs` maps an agent id to a list of scripted program results. A result is a string (the program's text output), `{ output: <any value> }` (the program's output; the `output` key must be there, even if its value is `null`) or `{ fails: <message> }` (the program fails with a message that isn't only spaces). Any other result, or a result with another key, fails.
 

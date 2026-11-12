@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { reviewServiceKey, workspaceFilesKey } from "@halonicjs/app";
 import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-settings";
 import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
@@ -222,6 +223,21 @@ verifies("studio.open-folder", () => {
     expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
     expect(webview.calls.at(-1)?.args).toEqual({ name: "openai" });
     expect(opened.name).toBe("acme");
+    await opened.dispose();
+  });
+
+  it("opens the folder as a workspace scope over the shell's files", async () => {
+    const webview = desktopWebview(null);
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
+
+    await opened.workspace.services.get(workspaceFilesKey).read("workspace.yaml");
+    expect(opened.workspace.services.has(reviewServiceKey)).toBe(true);
+
+    expect(webview.calls.find((call) => call.command === "fs_read")?.args).toEqual({
+      workspace: "/work/acme",
+      path: "workspace.yaml",
+    });
     await opened.dispose();
   });
 

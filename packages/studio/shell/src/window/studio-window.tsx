@@ -58,8 +58,8 @@ export interface StudioWindowProps {
  * (`shell.studio-window`): the window tabs in the title bar, the toolbar with Back, Forward, the
  * path and the save note, the sidebar, the active tab's page with the last five kept mounted, the
  * status bar items, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
- * Settings opens over it (`shell.settings-window`) from the context's `openSettings` and, in the
- * desktop app, Mod ,.
+ * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
+ * sidebar's Settings row and, in the desktop app, Mod ,.
  *
  * On a phone (`shell.studio-phone`): the top bar with Back and **Search**, the page of the phone
  * place the user is in, and the bottom navigation, with Android's back handled by the shell. The
@@ -76,6 +76,10 @@ export function StudioWindow(props: StudioWindowProps) {
   const palette = usePaletteOpening(platform);
   const settings = useSettingsOpening(host, platform);
   const openSettings = settings.show;
+  const settingsSections = useMemo(
+    () => contributions.settings.list().map(({ id, title }) => ({ id, title })),
+    [contributions],
+  );
   const desktop = usePresentationFromWidth() === "desktop";
   const phone = usePhonePlaces();
   const focusNewPage = usePageHeadingFocus();
@@ -101,8 +105,9 @@ export function StudioWindow(props: StudioWindowProps) {
       openPlace: (place) => openPlaceHere.current(place),
       openItem: (item) => openHere.current(locationOfItem(item)),
       openSettings,
+      settingsSections,
     }),
-    [shell, workspace, openSettings],
+    [shell, workspace, openSettings, settingsSections],
   );
   /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
   function locationOfItem(item: ItemRef): TabLocation {
@@ -156,6 +161,7 @@ export function StudioWindow(props: StudioWindowProps) {
           platform={platform}
           contextFor={contextFor}
           onSearch={palette.show}
+          onSettings={() => openSettings()}
           switcher={props.switcher}
         />
       }
@@ -231,6 +237,7 @@ export function StudioWindow(props: StudioWindowProps) {
           requested={settings.requested}
           lastShown={settings.lastShown}
           onShown={settings.remember}
+          rowKey={host === "desktop-app" ? platform : undefined}
           contextFor={contextFor}
           announcer={announcer}
           onClose={settings.close}

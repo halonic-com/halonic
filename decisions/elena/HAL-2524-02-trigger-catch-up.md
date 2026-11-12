@@ -1,6 +1,6 @@
 # Decision: `trigger.catchUp` on a run's trigger
 
-- Approval: the flag was agreed for Studio on [HAL-540](/HAL/issues/HAL-540), and what it counts on [HAL-2542](/HAL/issues/HAL-2542) (section 4 of the skipped-and-catch-up document on HAL-2538); the package owner (Liam) approves this note in review
+- Approval: the flag was agreed for Studio on HAL-540, and what it counts on HAL-2542 (section 4 of the skipped-and-catch-up document on HAL-2538); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-2524
 

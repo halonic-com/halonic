@@ -74,10 +74,12 @@ function fixture(options: { closeFails?: boolean; files?: readonly Connector[] }
       secrets: { get: async () => null },
       tokens: new MemoryTokenStore(),
       http: { fetch: async () => new Response("unused") },
-      trust: null,
     },
-    connectorsOf: async () => options.files ?? [notes],
-    workingFoldersOf: async (folder) => [`${folder}/files/agents/coder`],
+    versionOf: async () => ({
+      connectors: options.files ?? [notes],
+      trust: null,
+      workingFoldersOf: async (folder) => [`${folder}/files/agents/coder`],
+    }),
     reportError: (error) => reported.push(error),
   });
   return { connectors, log, reported, contexts };
