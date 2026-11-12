@@ -224,6 +224,13 @@ export {
   type ReadPlugin,
 } from "./plugin-service.ts";
 export {
+  type AddPluginCommand,
+  type PluginCommands,
+  type PluginCommandsHost,
+  registerPluginCommands,
+  type TrustPluginCommand,
+} from "./plugin-commands.ts";
+export {
   type PluginSettingProblem,
   PluginSettings,
   type PluginSettingValues,
