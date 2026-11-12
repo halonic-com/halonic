@@ -290,7 +290,7 @@ describe("SrtSandbox with the real fence", () => {
     const port = (server.address() as AddressInfo).port;
     const bridged = await sandbox.open({
       ...profile(),
-      network: { bridge: { host: "127.0.0.1", port }, allowedSites: [] },
+      network: { bridge: { kind: "loopback", host: "127.0.0.1", port }, allowedSites: [] },
     });
     const ask = async (options: string): Promise<string> => {
       const started = await bridged.start({

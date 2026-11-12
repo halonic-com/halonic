@@ -149,7 +149,7 @@ describe("a site the profile doesn't allow", () => {
         deniedPaths: [],
         env: {},
         network: {
-          bridge: { host: "127.0.0.1", port: 4100 },
+          bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
           allowedSites: ["allowed.example"],
         },
         timeLimitMs: 60_000,
