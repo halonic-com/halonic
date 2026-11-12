@@ -94,9 +94,18 @@ export const RUNS_IN_SANDBOX = "In the agent sandbox, in its own empty folder";
 export const GOES_ONLY_TO = "Goes only to";
 export const HOW = "How";
 
-/** Under each secret (T8). */
-export function secretValueLine(name: string): string {
-  return `You enter its value in ${name}'s settings. The plugin's code never sees it.`;
+/** Whose request carries a secret: the plugin's backend, which Halonic's kit sends for, or a program. */
+export type SecretKind = "backend" | "program";
+
+/**
+ * Under a secret (T8, words check M2). A backend's value is placed by Halonic's kit and never
+ * reaches the plugin's code; a program is plugin code and gets it from its environment.
+ */
+export function secretValueLine(name: string, kind: SecretKind): string {
+  const entered = `You enter its value in ${name}'s settings.`;
+  return kind === "backend"
+    ? `${entered} The plugin's code never sees it.`
+    : `${entered} Halonic gives it to the program when it starts.`;
 }
 
 /** After an address that only a program reaches (design section 5). */

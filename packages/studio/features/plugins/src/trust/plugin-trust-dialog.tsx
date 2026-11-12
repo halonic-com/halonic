@@ -3,7 +3,7 @@ import type { Plugin } from "@halonicjs/format";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { originText, type PluginOrigin, quoted, RISK_WORDS } from "../page/page-text.ts";
-import { type TrustCheckContent, trustCheckContent } from "./trust-check.ts";
+import { type TrustCheckContent, type TrustSecret, trustCheckContent } from "./trust-check.ts";
 import {
   ADDRESSES_SECTION,
   AT,
@@ -20,6 +20,7 @@ import {
   RUNS,
   RUNS_IN_SANDBOX,
   SECRETS_SECTION,
+  type SecretKind,
   secretValueLine,
   sectionRow,
   sourceLead,
@@ -208,7 +209,11 @@ function Section({
               </li>
             ))}
           </Items>
-          <p className="text-small text-fg-muted">{secretValueLine(name)}</p>
+          {secretKinds(secrets).map((kind) => (
+            <p key={kind} className="text-small text-fg-muted">
+              {secretValueLine(name, kind)}
+            </p>
+          ))}
         </Disclosure>
       );
     case "addresses":
@@ -255,6 +260,13 @@ function Section({
 
 function Items({ children }: { readonly children: ReactNode }) {
   return <ul className="mt-2 mb-3 flex list-none flex-col gap-3">{children}</ul>;
+}
+
+/** The kinds of secret the plugin has, backend first, each once. */
+function secretKinds(secrets: readonly TrustSecret[]): SecretKind[] {
+  return (["backend", "program"] as const).filter((kind) =>
+    secrets.some((secret) => secret.kind === kind),
+  );
 }
 
 /** A label over its value, as the design's open rows show them. */

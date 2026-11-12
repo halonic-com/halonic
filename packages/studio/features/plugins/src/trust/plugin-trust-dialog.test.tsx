@@ -52,6 +52,21 @@ ui:
     - { id: forecast, title: Show the forecast, tool: forecast }
   panel: { title: Weather }`);
 
+const withProgramSecret = plugin(`id: acme
+version: 0.1.0
+sdk: 1
+name: Acme
+localTools:
+  - id: acme
+    start: { package: { runner: npx, name: acme-mcp, version: 2.0.0 } }
+    env:
+      ACME_KEY: { secret: acme-key }
+    secrets:
+      acme-key: { purpose: Reads your Acme account, hosts: [api.acme.com] }
+    network: [api.acme.com]
+    tools:
+      - { name: accounts, description: The accounts., risk: read, untrusted: false }`);
+
 const readOnly = plugin(`id: notes
 version: 0.1.0
 sdk: 1
@@ -159,6 +174,16 @@ verifies("plugins.plugin-trust-check", () => {
     // The kit reads the caption inside the row: "In Studio, Settings, 1 command and a panel".
     expect(rows[4]?.[0]).toContain("In Studio, Settings, 1 command and a panel");
     expect(rows[4]?.[1]).toBe(false);
+  });
+
+  it("says a program gets its secret when it starts, and a backend never shows it", () => {
+    open(withProgramSecret);
+    const text = dialog().textContent ?? "";
+
+    expect(text).toContain(
+      "You enter its value in Acme's settings. Halonic gives it to the program when it starts.",
+    );
+    expect(text).not.toContain("never sees it");
   });
 
   it("keeps Tools closed when every tool reads, and leaves out empty sections", () => {
