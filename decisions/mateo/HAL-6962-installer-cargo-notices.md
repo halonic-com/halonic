@@ -3,6 +3,7 @@
 - Task: HAL-6962 (follow-up of HAL-6289 and HAL-6225)
 - Approval: Liam approved the plan to add the Rust crates to the installer's THIRD-PARTY-NOTICES.txt in [HAL-6293](/HAL/issues/HAL-6293); the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fvC6fm6RnspTrvdbQet3BWKVNweCw2d8PnT13rDGmblh0UgYCcAjY0/uzr5Ih9dlNUn8fCgPbi+P1Y7EfSkLDg==
 
 ## What changes
 
