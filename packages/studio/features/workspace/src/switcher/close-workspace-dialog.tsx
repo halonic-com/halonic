@@ -42,6 +42,7 @@ export function CloseWorkspaceDialog({
       onConfirm={onTryAgain}
       busy={busy}
       cancelLabel="Keep open"
+      closeLabel={`Keep ${request.name} open`}
       onCancel={onCancel}
     >
       <p>

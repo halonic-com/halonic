@@ -271,6 +271,14 @@ verifies("workspace.saves-itself", () => {
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
   });
 
+  it("names the dialog's close button after what it does", async () => {
+    const { switcher } = start([], [], failingSaving() as unknown as WorkspaceSaving);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.closeShown());
+
+    expect(document.querySelector('dialog [aria-label="Keep acme open"]')).not.toBeNull();
+  });
+
   it("keeps the workspace on Keep open", async () => {
     const { switcher } = start([], [], failingSaving() as unknown as WorkspaceSaving);
     await act(() => switcher.openLocation("/work/acme"));
