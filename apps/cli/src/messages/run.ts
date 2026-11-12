@@ -210,6 +210,9 @@ export const runMessages = defineMessages("run", {
   /** The same for the scheduler's own wake-up or tick, which belongs to no run. */
   schedulerRetried: (what: "wake-up" | "tick", failures: number, most: number, reason: string) =>
     phrase`the scheduler's ${what} failed, try ${failures} of ${most}, retrying: ${reason}`,
+  /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
+  closeAbandoned: (seconds: number) =>
+    phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,
 
   /** "Support reply finished in 18 s.", with the duration as the output writes it. */
   finished: (title: string, duration: string) => phrase`${title} finished in ${duration}.`,

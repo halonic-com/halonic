@@ -154,6 +154,13 @@ export interface LocalEngine {
    * `interrupted` when it was a harness run.
    */
   close(): Promise<void>;
+  /**
+   * Gives up on a {@link close} that hangs, such as on a model call that
+   * doesn't stop: releases the workspace's engine lock now, though a step
+   * may still be in progress. Only for a process that ends straight after,
+   * which ends that step with it, so the next engine can open (HAL-6677).
+   */
+  abandon(): Promise<void>;
 }
 
 /**
@@ -312,6 +319,8 @@ function engineOn(
       })();
       return closing;
     },
+    // Safe while the close still runs: the lock's release is safe to call twice.
+    abandon: () => lock.release(),
   };
 }
 

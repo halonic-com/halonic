@@ -11,6 +11,7 @@ import type { HttpClient } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
@@ -21,6 +22,7 @@ import {
   type RoutineTicks,
 } from "./local-engine-host.ts";
 import type { Message } from "./messages/define.ts";
+import { runMessages } from "./messages/run.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
   nodeSandboxGateHost,
@@ -50,6 +52,8 @@ export interface WorkspaceEngineSetup {
   readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer" | "onWokeUp">;
   /** The sandbox and the "On this computer" choices; this computer's, in `profile`, by default. */
   readonly sandboxGate?: () => SandboxGateHost;
+  /** How long a stopped command waits for the engine to close; {@link stoppedCloseLimitMs} by default. */
+  readonly stoppedCloseLimitMs?: number;
 }
 
 /** The workspace the engine is opened for, and the runs it starts or moves on. */
@@ -169,11 +173,18 @@ export async function openWorkspaceEngine(
     },
   });
   opened = engine;
+  const closeLimitMs = setup.stoppedCloseLimitMs ?? stoppedCloseLimitMs;
   return {
     executor: engine.executor,
     runs: engine.runs,
     programFolders: engine.programFolders,
-    close: () => engine.close(),
+    // Once Ctrl C, SIGTERM or a closed terminal stopped the command, a close that hangs is
+    // given up after a while, so the lock is freed and the process ends (HAL-6677).
+    close: () =>
+      closeAfterStop(engine, context.signal, closeLimitMs, () =>
+        context.debug(runMessages.closeAbandoned(closeLimitMs / 1000).phrase),
+      ),
+    abandon: () => engine.abandon(),
     signal: AbortSignal.any([context.signal, stuck.signal]),
     stuck: stuck.signal,
     unsandboxed: [...unsandboxed.values()],

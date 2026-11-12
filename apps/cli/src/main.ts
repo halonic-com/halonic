@@ -3,7 +3,7 @@ import { profileFolder } from "@halonicjs/profile";
 import { commands } from "./generated/commands.ts";
 import { readGlobalOptions } from "./global-options.ts";
 import { LineReader } from "./output/line-reader.ts";
-import { exitOnceWritten, quietOnClosedPipe } from "./output/stop.ts";
+import { exitOnceWritten, quietOnClosedPipe, stopExitCode } from "./output/stop.ts";
 import { runCli } from "./run-cli.ts";
 import { recoverSandboxSessions } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -22,8 +22,11 @@ await recoverSandboxSessions(
     : undefined,
 );
 
+// Ends the process once what it wrote has gone out.
+const exitNow = exitOnceWritten([process.stdout, process.stderr], (code) => process.exit(code));
+
 // The `halonic` program: the real process's arguments, folder and output streams.
-process.exitCode = await runCli(
+const code = await runCli(
   process.argv.slice(2),
   {
     cwd: process.cwd(),
@@ -47,10 +50,16 @@ process.exitCode = await runCli(
     secrets: new EnvSecrets(process.env),
     stop: {
       signals: process,
-      exitNow: exitOnceWritten([process.stdout, process.stderr], (code) => process.exit(code)),
+      exitNow,
     },
   },
 );
+process.exitCode = code;
+// A stopped command ends the process here: what it left behind, such as a model call that
+// doesn't stop, mustn't keep it open, or a closed terminal would leave it running (HAL-6677).
+if (Object.values<number>(stopExitCode).includes(code)) {
+  exitNow(code);
+}
 
 /** Questions on the real terminal: written to stderr, answered on stdin. */
 function stdinQuestions() {
