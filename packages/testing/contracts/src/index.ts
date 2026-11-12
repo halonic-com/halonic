@@ -88,6 +88,12 @@ export {
   type MakeLlmProvider,
 } from "./llm-provider.ts";
 export {
+  type PasswordAndHash,
+  type PasswordHashFormatCases,
+  pbkdf2ChainFormat,
+} from "./password-hash-formats.ts";
+export { type MakePasswordHasher, passwordHasherContract } from "./password-hasher.ts";
+export {
   type MakePluginFolderWriter,
   type PluginFolderUnderTest,
   pluginFolderWriterContract,
