@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sandbox-runtime": "catalog:",
+    "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   }

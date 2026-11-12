@@ -7,6 +7,7 @@ import { signNote } from "./sign-note.ts";
 import { approversFile } from "./signatures.ts";
 
 const cto = keyPair();
+const julian = keyPair();
 const stranger = keyPair();
 const branch = "julian/HAL-1337-example";
 const noteFile = `decisions/${branch}.md`;
@@ -28,7 +29,10 @@ It never tested anything.
 
 const baseFiles: Files = {
   "packages/core/workflow/src/timer.test.ts": "test('fires')\n",
-  [approversFile]: approvers({ internal: [cto.publicKey] }),
+  [approversFile]: approvers({
+    internal: [cto.publicKey],
+    guardians: [cto.publicKey, julian.publicKey],
+  }),
 };
 
 function sign(text: string, privatePem = cto.privatePem, onBase: Files = baseFiles) {
@@ -62,11 +66,11 @@ verifies("check.decision-sign", () => {
       /isn't pinned for internal/,
     ],
     [
-      "a signed note",
+      "a malformed signature line",
       note.replace("- Kind", "- Signature: x\n- Kind"),
       cto.privatePem,
       baseFiles,
-      /already has a signature/,
+      /isn't "- Signature/,
     ],
     ["a carriage return", note.replace("\n", "\r\n"), cto.privatePem, baseFiles, /carriage return/],
     [
@@ -93,5 +97,23 @@ verifies("check.decision-sign", () => {
   ])("refuses %s", (_case, text, privatePem, onBase, reason) => {
     const { signed } = sign(text, privatePem, onBase);
     expect(signed.ok ? "signed" : signed.reason).toMatch(reason);
+  });
+
+  test("lets a second guardian add a line under the first, and not the same key twice", async () => {
+    const first = sign(note).signed;
+    const once = first.ok
+      ? note.replace("- Kind: internal\n", `- Kind: internal\n${first.line}\n`)
+      : "";
+    const second = sign(once, julian.privatePem);
+    expect(second.signed.ok && second.signed.text).toEqual(first.ok && first.text);
+    const again = sign(once, cto.privatePem).signed;
+    expect(again.ok ? "signed" : again.reason).toMatch(/has already signed/);
+    const line = second.signed.ok ? second.signed.line : "";
+    const twice = once.replace("- Kind: internal\n", `- Kind: internal\n${line}\n`);
+    const parsed = parseDecisionNote(noteFile, twice);
+    const git = fakeGit({ [base]: baseFiles, [head]: { ...baseFiles, [noteFile]: twice } });
+    const verdict =
+      parsed.ok && (await signedApprovals(pull, git).check({ note: parsed.note, guardians: true }));
+    expect(verdict).toEqual({ approved: true });
   });
 });

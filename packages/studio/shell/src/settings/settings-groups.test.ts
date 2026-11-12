@@ -50,6 +50,35 @@ verifies("shell.settings-container", () => {
       ]);
     });
 
+    it("heads a phone's groups On this phone and On your computer, without Developer", () => {
+      const groups = settingsGroups({
+        sections: sections.map((candidate) =>
+          candidate.id === "developer" ? { ...candidate, phone: false as const } : candidate,
+        ),
+        workspaceName: "Acme",
+        place: "served",
+        phone: true,
+      });
+      expect(headings(groups)).toEqual([
+        { heading: "Acme, Workspace settings", ids: ["models", "trust"] },
+        { heading: "On this phone", ids: ["appearance"] },
+        { heading: "On your computer", ids: ["assistant"] },
+      ]);
+    });
+
+    it("keeps On this computer in the desktop app, even for a narrow window's phone list", () => {
+      const groups = settingsGroups({
+        sections,
+        workspaceName: "Acme",
+        place: "app",
+        phone: true,
+      });
+      expect(headings(groups).map((group) => group.heading)).toEqual([
+        "Acme, Workspace settings",
+        "On this computer",
+      ]);
+    });
+
     it("leaves out the workspace's group when no workspace is open", () => {
       const groups = settingsGroups({ sections, workspaceName: undefined, place: "app" });
       expect(headings(groups).map((group) => group.heading)).toEqual(["On this computer"]);

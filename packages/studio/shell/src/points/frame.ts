@@ -54,8 +54,12 @@ export type SettingsScope = (typeof settingsScopes)[number];
 export interface SettingsSectionContribution extends Ordered, ViewRef {
   readonly title: string;
   readonly scope: SettingsScope;
-  /** The line under the section's name in the phone's settings list, or `undefined` for none. */
-  summary?(context: WorkspaceContext): string | undefined;
+  /**
+   * The line under the section's name in the phone's settings list, or `undefined` for none: its
+   * current values in one line, parts separated by " · " ("System theme · characters on"). It may
+   * answer later, as a section that asks the engine does; the list shows the name alone until then.
+   */
+  summary?(context: WorkspaceContext): string | undefined | Promise<string | undefined>;
   /** `false` leaves the section out on a phone, as Developer does. */
   readonly phone?: false;
 }

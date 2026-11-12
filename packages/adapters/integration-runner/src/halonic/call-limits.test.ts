@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HalonicFrame } from "../frames.ts";
 import {
   bridgeOptions,
+  fakeKitClient,
   fakeRunnerProcess,
   fakeSecret,
   HandDrivenRunner,
@@ -169,7 +170,7 @@ verifies("integration-runner.call-limits", () => {
     });
   });
 
-  describe("what leaves the runner (A19, A21)", () => {
+  describe("what leaves the runner (A19, A20, A21)", () => {
     it("filters secrets out of tool results and tool errors", async () => {
       const { runner, connection } = await startedRunner();
       const result = connection.callTool("forecast", {});
@@ -181,6 +182,40 @@ verifies("integration-runner.call-limits", () => {
       await expect(failed).rejects.toEqual(
         new RunnerToolError("Bearer [secret removed] was refused"),
       );
+      await connection.close();
+    });
+
+    it("keeps a key out of every error and the log when a request fails and the integration reports it (A20)", async () => {
+      // A transport error can repeat what it sent, such as a placed header.
+      const http = fakeKitClient(() => {
+        throw new TypeError(`connect failed for Authorization: Bearer ${fakeSecret}`);
+      });
+      const { fake, options, runner, connection, seen } = await startedRunner({ http });
+      const result = connection.callTool("forecast", {});
+      await runner.send({
+        type: "fetch",
+        id: 0,
+        call: 0,
+        url: "https://api.example.com/v1/forecast",
+        method: "GET",
+        headers: [],
+        body: null,
+        auth: [{ secret: "example-key", as: "bearer" }],
+      });
+      await settle();
+      expect(framesOfType(seen, "error")).toEqual([
+        { type: "error", id: 0, code: "failed", message: "the request failed" },
+      ]);
+
+      // The integration only ever holds the failure above, and reports it.
+      await fake.stderr.write(new TextEncoder().encode("forecast failed: the request failed\n"));
+      await runner.send({ type: "result", call: 0, error: "the request failed" });
+      await expect(result).rejects.toEqual(new RunnerToolError("the request failed"));
+      await settle();
+
+      expect(JSON.stringify(seen)).not.toContain(fakeSecret);
+      expect(options.log.join("")).not.toContain(fakeSecret);
+      expect(options.blocks).toEqual([]);
       await connection.close();
     });
 

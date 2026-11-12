@@ -39,7 +39,7 @@ describe("SrtSandbox on Windows, through the session", () => {
     workingFolder: work,
     tempFolder: join(base, "temp"),
     settingsFolder: null,
-    readOnlyPaths: [],
+    readOnlyPaths: [join(base, "workspace")],
     deniedPaths: [join(base, "secrets")],
     env: { HALONIC_FENCE_VAR: "a value with spaces" },
     network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
@@ -65,6 +65,8 @@ describe("SrtSandbox on Windows, through the session", () => {
     await mkdir(work, { recursive: true });
     await mkdir(join(base, "secrets"), { recursive: true });
     await writeFile(join(base, "secrets", "key.txt"), "hunter2");
+    await mkdir(join(base, "workspace"), { recursive: true });
+    await writeFile(join(base, "workspace", "tool.txt"), "the tool");
     canary = createServer((socket) => {
       connections += 1;
       socket.destroy();
@@ -113,6 +115,35 @@ setTimeout(() => done("blocked"), 5000);
     });
     expect(connections).toBe(0);
     expect(await readFile(join(work, "made.txt"), "utf8")).toBe("x");
+  });
+
+  it("starts in a read-only folder, reads there and can't write there (HAL-6884)", async () => {
+    // A connector's script in the workspace, read by relative paths from where it starts.
+    const workspace = join(base, "workspace");
+    await writeFile(
+      join(workspace, "tool.cjs"),
+      `const fs = require("node:fs");
+const result = { read: fs.readFileSync("tool.txt", "utf8") };
+try { fs.writeFileSync("made.txt", "x"); result.write = "written"; } catch { result.write = "refused"; }
+console.log(JSON.stringify(result));
+`,
+    );
+    const started = await session.start({
+      program: process.execPath,
+      args: ["tool.cjs"],
+      cwd: workspace,
+    });
+    const [out, errors, exit] = await Promise.all([
+      read(started.stdout),
+      read(started.stderr),
+      started.exited,
+    ]);
+    expect(exit.code, errors).toBe(0);
+    expect(JSON.parse(out.trim().split(/\r?\n/).pop() ?? "")).toEqual({
+      read: "the tool",
+      write: "refused",
+    });
+    await expect(readFile(join(workspace, "made.txt"), "utf8")).rejects.toThrow();
   });
 
   it("without a bridge, reaches no loopback port and gets none of srt's network variables", async () => {

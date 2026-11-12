@@ -60,6 +60,20 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/sandbox/sessions/close",
         route(Method::Post, "/v1/sandbox/sessions/close", Answer::Json),
     ),
+    // The sandbox's one-time setup and its removal (HAL-1451): desktop
+    // only, since a served page can't call the shell at all.
+    (
+        "GET /v1/sandbox/setup",
+        route(Method::Get, "/v1/sandbox/setup", Answer::Json),
+    ),
+    (
+        "POST /v1/sandbox/setup",
+        route(Method::Post, "/v1/sandbox/setup", Answer::Json),
+    ),
+    (
+        "POST /v1/sandbox/remove",
+        route(Method::Post, "/v1/sandbox/remove", Answer::Json),
+    ),
     (
         "POST /v1/bridge/open",
         route(Method::Post, "/v1/bridge/open", Answer::Stream),

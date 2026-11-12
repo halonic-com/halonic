@@ -43,9 +43,11 @@ integration. Its only way out is the `IntegrationHost`:
 
 A local tool starts only inside a sandbox session, after the session has proven
 its fence. Halonic builds the sandbox's rules, never the plugin: a fresh working
-folder, an environment with only the variables the manifest names (plus `PATH`, `HOME` and the temporary-folder variables Halonic sets itself), and a
+folder, an environment with only the variables the manifest names (plus `PATH` and the folder variables Halonic sets itself, such as `HOME` and the temporary folders), and a
 network limited to Halonic's own bridge (how the program's tools are offered
-to agents) and the hosts the manifest declares (and the registry host of a pinned package). A tool the
+to agents) and the hosts the manifest declares. A pinned package also gets the
+folder, path and registry variables Halonic sets itself, and may reach its
+registry's host (for PyPI on `pypi.org`, also `files.pythonhosted.org`). A tool the
 server offers that the manifest doesn't declare is refused. No proven fence
 means no start, and a yes to run without the sandbox (not offered yet) doesn't cover plugin
 programs. Where no sandbox works (Android, the browser) local tools don't run.

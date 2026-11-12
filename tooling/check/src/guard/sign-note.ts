@@ -5,8 +5,10 @@ import {
   approversFile,
   type GitObjects,
   keyIdOf,
+  maxSignatures,
   parseApprovers,
   signatureLine,
+  splitSignature,
 } from "./signatures.ts";
 
 /** What signing a note gives: the exact text signed and the line to add, or why not. */
@@ -17,9 +19,11 @@ export type SignedNote =
 /**
  * Signs a pull request's decision note (HAL-1337), reading it and every
  * covered file from git's objects at the pull request's head, as the guard
- * will. Refuses a note that already has a signature line, has a carriage
- * return or doesn't parse, a key the base doesn't pin for its kind and a
- * base whose approvers file can't be read.
+ * will. A note a first guardian signed can take a second line: the text
+ * signed leaves every signature line out. Refuses a note with a carriage
+ * return, a second line from the same key or a third line, a note that
+ * doesn't parse, a key the base pins neither for its kind nor as a
+ * guardian and a base whose approvers file can't be read.
  */
 export function signNote(
   pull: PullRequest,
@@ -41,8 +45,14 @@ export function signNote(
   if (text.includes("\r")) {
     return { ok: false, reason: `${file} has a carriage return; save it with LF line endings` };
   }
-  if (/^\s*-\s*Signature\s*:/m.test(text)) {
-    return { ok: false, reason: `${file} already has a signature line; remove it to sign again` };
+  const split = /^\s*-\s*Signature\s*:/m.test(text) ? splitSignature(text) : undefined;
+  if (split !== undefined && !split.ok) {
+    return { ok: false, reason: `${file}: ${split.reason}` };
+  }
+  const unsigned = split?.ok ? split.unsigned : text;
+  const present = split?.ok ? split.signatures : [];
+  if (present.length >= maxSignatures) {
+    return { ok: false, reason: `${file} already has ${maxSignatures} signature lines` };
   }
   const parsed = parseDecisionNote(file, text);
   if (!parsed.ok) {
@@ -56,12 +66,16 @@ export function signNote(
   } catch (error) {
     return { ok: false, reason: `the base's ${approversFile} can't be read: ${String(error)}` };
   }
-  if (!pinned[parsed.note.kind].some((approver) => approver.id === keyId)) {
+  if (present.some((each) => each.keyId === keyId)) {
+    return { ok: false, reason: `your key ${keyId} has already signed ${file}` };
+  }
+  const allowed = [...pinned[parsed.note.kind], ...pinned.guardians];
+  if (!allowed.some((approver) => approver.id === keyId)) {
     return {
       ok: false,
-      reason: `your key ${keyId} isn't pinned for ${parsed.note.kind} notes in the base's ${approversFile}`,
+      reason: `your key ${keyId} isn't pinned for ${parsed.note.kind} notes or as a guardian in the base's ${approversFile}`,
     };
   }
-  const signed = noteSignedText(parsed.note, text, pull, git);
+  const signed = noteSignedText(parsed.note, unsigned, pull, git);
   return { ok: true, text: signed, line: signatureLine(signed, privateKeyPem) };
 }

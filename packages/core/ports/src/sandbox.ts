@@ -242,7 +242,25 @@ export interface SandboxCommand {
   program: string;
   /** Its arguments, passed as they are, never through a shell. */
   args: string[];
-  /** Where it starts: the working folder or a folder inside it. Absent means the working folder. */
+  /**
+   * Where it starts, read against the working folder. Absent means the
+   * working folder. It must lie, where it really is through symbolic links,
+   * inside the working folder or inside a path of
+   * {@link SandboxProfile.readOnlyPaths}, and not inside a path of
+   * {@link SandboxProfile.deniedPaths} unless that part is reopened.
+   * {@link SandboxSession.start} throws on any other folder (HAL-6884).
+   *
+   * A folder in a read-only path stays read-only: a workspace connector
+   * starts where its script and `node_modules` are, but writes only to the
+   * working and temp folders. A program that writes next to its script fails
+   * there, such as `uv run` making `.venv`; the caller points it elsewhere,
+   * as with `UV_PROJECT_ENVIRONMENT`.
+   *
+   * The fence's own write rules for tool settings and git hooks in folders
+   * nested in the working folder, such as `sub/.claude/`, follow the start
+   * folder. Only start outside the working folder when that working folder
+   * is thrown away when the session closes, as a connector's own is.
+   */
   cwd?: string;
 }
 

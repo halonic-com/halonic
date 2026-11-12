@@ -433,7 +433,7 @@ verifies("integration-runner.start", () => {
       expect(readRunnerArgs(command.args.slice(5))).toEqual(args);
     });
 
-    it("starts Node through prlimit on Linux, with a limit on the whole data segment", () => {
+    it("starts Node through prlimit on Linux, with a limit on the whole data segment (A24)", () => {
       const args = {
         nonce: "n-1",
         folder: "/fake-home/code/weather",

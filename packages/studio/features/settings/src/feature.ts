@@ -1,5 +1,7 @@
 import { defineFeature, type SettingsSectionContribution } from "@halonicjs/studio-shell";
 import { DisplaySettingsService } from "./api.ts";
+import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
+import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
 
 /**
  * The sections this feature adds to Settings, in no particular order: the shell lists them by
@@ -11,8 +13,20 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     title: "Appearance",
     scope: "display",
     order: 10,
+    summary(context) {
+      const settings = context.services.get(DisplaySettingsService);
+      return `${themeNames[settings.get(themePref)]} theme · characters ${onOrOff(settings.get(agentCharactersPref))}`;
+    },
     view: "AppearanceSection",
     load: () => import("./appearance/appearance-section.tsx"),
+  },
+  {
+    id: "formats",
+    title: "Formats",
+    scope: "display",
+    order: 20,
+    view: "FormatsSection",
+    load: () => import("./formats/formats-section.tsx"),
   },
 ];
 

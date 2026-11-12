@@ -104,5 +104,6 @@ function focusHeading(heading: HTMLHeadingElement): void {
   if (!heading.hasAttribute("tabindex")) {
     heading.tabIndex = -1;
   }
-  heading.focus();
+  // The page keeps its own scroll (a list put back after Back); focus must not scroll it to the top.
+  heading.focus({ preventScroll: true });
 }

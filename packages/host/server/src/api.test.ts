@@ -14,7 +14,14 @@ verifies("server.api", () => {
 
   typeTest("takes every outside dependency as a port", () => {
     expectTypeOf<keyof ServerPorts>().toEqualTypeOf<
-      "runs" | "secrets" | "passwordHasher" | "coordination" | "requestCounts" | "clock" | "ids"
+      | "runs"
+      | "secrets"
+      | "passwordHasher"
+      | "coordination"
+      | "requestCounts"
+      | "errorLog"
+      | "clock"
+      | "ids"
     >();
   });
 });

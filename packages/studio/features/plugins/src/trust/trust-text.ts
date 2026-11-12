@@ -12,6 +12,35 @@ export function trustTitle(reason: TrustCheckReason, name: string): string {
   return reason === "add" ? `Trust ${name} and turn it on?` : `Trust ${name}?`;
 }
 
+/** The source line's start: "Plugin · version 1.2.0"; " · from *source*" follows (design section 5). */
+export function sourceLead(version: string): string {
+  return `Plugin · version ${version}`;
+}
+
+/** Between the source line's parts. */
+export const FROM = " · from ";
+export const AT = " at ";
+
+/** The primary while trust is being saved (kit busy rule, a11y A1). */
+export const TRUSTING = "Trusting…";
+
+/**
+ * Why trust wasn't saved, in the dialog's error slot (checklist 15, G2): the workspace check's
+ * words (microcopy 4.3).
+ */
+export function trustNotSavedLine(reason: string): string {
+  return `Couldn't save trust: ${afterColon(reason)}. Nothing was started.`;
+}
+
+/**
+ * A host's message after a colon: no closing full stop, and its first letter as the host sent
+ * it ("Windows denied access." is "Windows denied access"), because a capital can't be told
+ * from a name's.
+ */
+function afterColon(reason: string): string {
+  return reason.trim().replace(/\.$/, "");
+}
+
 /** The focused button that leaves the plugin off (T10). */
 export const NOT_NOW = "Not now";
 
@@ -45,7 +74,7 @@ export function sectionRow(title: string, count: number): string {
 
 /** The first line in Tools for agents (T8). */
 export const TOOLS_INTRO =
-  "Agents can use these through a connector. Each one asks a person first unless you change that.";
+  "Agents can use these through a connector. Each one asks a person first.";
 
 /** After a tool whose answers the plugin marks as untrusted (T8). */
 export const OUTSIDE_TEXT = "its answers are treated as outside text";
@@ -62,9 +91,18 @@ export const RUNS_IN_SANDBOX = "In the agent sandbox, in its own empty folder";
 export const GOES_ONLY_TO = "Goes only to";
 export const HOW = "How";
 
-/** Under each secret (T8). */
-export function secretValueLine(name: string): string {
-  return `You enter its value in ${name}'s settings. The plugin's code never sees it.`;
+/** Whose request carries a secret: the plugin's backend, which Halonic's kit sends for, or a program. */
+export type SecretKind = "backend" | "program";
+
+/**
+ * Under a secret (T8, words check M2). A backend's value is placed by Halonic's kit and never
+ * reaches the plugin's code; a program is plugin code and gets it from its environment.
+ */
+export function secretValueLine(name: string, kind: SecretKind): string {
+  const entered = `You enter its value in ${name}'s settings.`;
+  return kind === "backend"
+    ? `${entered} The plugin's code never sees it.`
+    : `${entered} Halonic gives it to the program when it starts.`;
 }
 
 /** After an address that only a program reaches (design section 5). */

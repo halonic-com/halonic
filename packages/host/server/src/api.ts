@@ -61,9 +61,10 @@ export interface ServerConfig {
   /** The oldest Android app this server works with, as `GET /api/hello` reports it. */
   readonly minAppVersion: string;
   /**
-   * The `Host` names the server answers to, each lowercase. A name has no
-   * port, unless the host listens on a fixed port, and then it includes it. A
-   * request with any other `Host` is refused. A server with no password accepts only loopback names,
+   * The `Host` names the server answers to. Letter case doesn't matter: the
+   * server compares them lowercased. A name has no port, unless the host
+   * listens on a fixed port, and then it includes it. A request with any other
+   * `Host` is refused. A server with no password accepts only loopback names,
    * whatever this holds.
    */
   readonly allowedHosts: readonly string[];
@@ -71,6 +72,11 @@ export interface ServerConfig {
   readonly dailyRequests?: number;
   /** The most bytes a request body may have; the limit is enforced while the body streams. */
   readonly maxBodyBytes: number;
+}
+
+/** Records the cause of an unexpected failure, so an operator can find it. It must not throw. */
+export interface ErrorLog {
+  record(error: unknown): void;
 }
 
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
@@ -85,6 +91,8 @@ export interface ServerPorts {
   readonly coordination: Coordination;
   /** The daily request counter. */
   readonly requestCounts: RequestCountStore;
+  /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */
+  readonly errorLog: ErrorLog;
   /** The time; replaced in tests to cross a UTC day. */
   readonly clock: Clock;
   /**

@@ -2,7 +2,7 @@ import { shortRunId } from "@halonicjs/app";
 import { summarize } from "@halonicjs/events";
 import { Callout, type CalloutAction, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
 import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
@@ -16,6 +16,7 @@ import {
   runBanner,
   runHeader,
 } from "./run-page-model.ts";
+import { StepPanel } from "./step-panel.tsx";
 
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
 export function RunPage({ item, context }: ItemViewProps) {
@@ -73,27 +74,40 @@ export function RunView({
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
   const log = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
+  const [openEntry, setOpenEntry] = useState<string>();
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
+    // The log's own summary, so each step's end agrees with the log it came from.
+    const entries =
+      log === undefined
+        ? []
+        : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now);
+    const open = entries.find((entry) => entry.id === openEntry);
     return (
-      <RunLayout run={run} context={context} showingLast={state.error !== undefined}>
-        <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
-        {log === undefined ? null : (
-          <EveryStep
-            log={log}
-            entries={everyStep(
-              log,
-              // The log's own summary, so each step's end agrees with the log it came from.
-              summarize(log) ?? run.summary,
-              context.workflow,
-              context.now,
-            )}
+      <div className="flex min-h-full w-full items-start">
+        <RunLayout run={run} context={context} showingLast={state.error !== undefined}>
+          <Banner
+            banner={runBanner(run, context)}
+            reviewInInbox={reviewInInbox}
+            openRun={openRun}
           />
+          {log === undefined ? null : (
+            <EveryStep
+              log={log}
+              entries={entries}
+              openEntry={open?.id}
+              onOpenEntry={setOpenEntry}
+            />
+          )}
+        </RunLayout>
+        {open === undefined || log === undefined ? null : (
+          // A new key for each entry, so its panel takes focus as it opens.
+          <StepPanel key={open.id} entry={open} log={log} onClose={() => setOpenEntry(undefined)} />
         )}
-      </RunLayout>
+      </div>
     );
   }
   if (state.loaded) {
@@ -141,7 +155,7 @@ function RunLayout({
 }) {
   const header = runHeader(run, context);
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-5">
       <header className="flex flex-col gap-1">
         <p className="text-small text-fg-muted">{header.kindLabel}</p>
         <div className="flex flex-wrap items-center gap-3">

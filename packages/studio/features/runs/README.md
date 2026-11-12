@@ -108,4 +108,14 @@ runLogLines(events);
 // [{ kind: "event", seq: 1, time: "10:40:00", type: "run.started", fields: '{"hubId":"acme",…}' }, …]
 ```
 
-Not there yet: the receipt and Details; an entry's events in the side panel; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).
+Enter or a click on an entry opens its events in a side panel beside the page: the step's model calls with their model and tokens, then its tool calls with their arguments folded. ✕ or Escape closes it, and focus goes back to the entry (requirement `runs.run-view.step-events`):
+
+```ts
+import { stepEvents } from "./run-view/step-events-model.ts";
+
+stepEvents(events, "step-1");
+// { modelCalls: [{ id: 5, model: "claude-sonnet", tokens: "1,204 in · 312 out" }],
+//   toolCalls: [{ id: 6, tool: "send_email", args: '{\n  "to": "sam@acme.example"\n}' }] }
+```
+
+Not there yet: the receipt and Details; the step's blocked sites in its panel; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).

@@ -1,3 +1,4 @@
+import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -195,6 +196,76 @@ verifies("cli.commands.runs.show", () => {
         "",
         "! Waiting for you: Approve this reply?",
         "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+      ]);
+    });
+
+    it("ends a run waiting for a tool approval with who wants which tool, and how to answer (HAL-7937)", async () => {
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "draft" }],
+          [
+            today("10:41:00"),
+            {
+              type: "approval.requested",
+              state: "draft",
+              agent: "writer",
+              tool: "gmail__send",
+              args: { to: "ada@acme.example" },
+              callId: "call-1",
+              resume: { messages: [], calls: [], step: 0 },
+            },
+          ],
+          [
+            today("10:41:00"),
+            { type: "run.waiting", state: "draft", events: ["approve", "reject"] },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(-3)).toEqual([
+        "",
+        "! Waiting for your approval: Writer wants to use gmail__send",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+      ]);
+    });
+
+    it("says one answer settles only the first of several tool approvals (HAL-7937)", async () => {
+      const ask = (time: string, callId: string, tool: string): readonly [string, RunEventBody] => [
+        today(time),
+        {
+          type: "approval.requested",
+          state: "draft",
+          agent: "writer",
+          tool,
+          args: {},
+          callId,
+          resume: { messages: [], calls: [], step: 0 },
+        },
+      ];
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "draft" }],
+          ask("10:41:00", "call-1", "gmail__send"),
+          ask("10:41:01", "call-2", "gmail__delete"),
+          [
+            today("10:41:01"),
+            { type: "run.waiting", state: "draft", events: ["approve", "reject"] },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(-5)).toEqual([
+        "",
+        "! Waiting for your approval: Writer wants to use gmail__send",
+        "! Waiting for your approval: Writer wants to use gmail__delete",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+        "  Each answer settles the first one listed.",
       ]);
     });
 

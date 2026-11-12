@@ -1,7 +1,9 @@
 # The uninstaller's sandbox removal (HAL-1202, flow 2.7). It runs the agent
-# host's `--sandbox-remove`, asking Windows for administrator rights unless it
-# already has them. When nothing was set up, it asks for nothing (checklist
-# 2.8: no prompt when the sandbox was never set up).
+# host's `--sandbox-remove`, the same command Settings › Agent sandbox runs
+# (HAL-1451): the host asks Windows for administrator rights itself, once,
+# through Halonic's signed helper. This script elevates nothing. When nothing
+# was set up, it asks for nothing (checklist 2.8: no prompt when the sandbox
+# was never set up).
 #
 # It prints one line, the reason, and exits with:
 #   0   removed
@@ -14,8 +16,6 @@
 param(
   [Parameter(Mandatory)][string]$HostExe,
   [Parameter(Mandatory)][string]$ProfileFolder,
-  # For an uninstaller that is already elevated or silent: no prompt.
-  [switch]$NoElevate,
   # srt gives its own administrator prompt 120 seconds, so this is longer.
   [int]$RemoveSeconds = 300,
   # The names sandbox-runtime gives them; tests pass others.
@@ -42,33 +42,25 @@ $account = Test-Net "user `"$AccountName`""
 $group = Test-Net "localgroup `"$GroupName`""
 if (-not $account -and -not $group) { exit 20 }
 
-$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$elevated = ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-# The removal's output goes to a file, because an elevated program's output
-# can't be read from here.
-$removeOut = Join-Path $env:TEMP "halonic-sandbox-remove-$PID.json"
-Remove-Item $removeOut -ErrorAction SilentlyContinue
-$line = "`"`"$HostExe`" --profile-folder `"$ProfileFolder`" --sandbox-remove > `"$removeOut`"`""
+$out = Join-Path $env:TEMP "halonic-sandbox-remove-$PID.json"
+Remove-Item $out -ErrorAction SilentlyContinue
 try {
-  if ($elevated -or $NoElevate) {
-    $p = Start-Process cmd.exe -ArgumentList '/c', $line -PassThru -WindowStyle Hidden
-  } else {
-    $p = Start-Process cmd.exe -ArgumentList '/c', $line -Verb RunAs -PassThru -WindowStyle Hidden
-  }
+  $p = Start-Process $HostExe -ArgumentList '--profile-folder', "`"$ProfileFolder`"", '--sandbox-remove' `
+    -RedirectStandardOutput $out -PassThru -WindowStyle Hidden
 } catch {
-  # 1223 is Windows' "The operation was canceled by the user".
-  if ($_.Exception.NativeErrorCode -eq 1223) { exit 10 }
   Write-Output ("the removal couldn't start: " + $_.Exception.Message)
   exit 11
 }
+# Without reading the handle first, ExitCode can be empty once it exits.
+$null = $p.Handle
 if (-not $p.WaitForExit($RemoveSeconds * 1000)) {
   Write-Output "it didn't finish within $RemoveSeconds seconds"
   exit 11
 }
-$removal = Read-Json $removeOut
-Remove-Item $removeOut -ErrorAction SilentlyContinue
+$removal = Read-Json $out
+Remove-Item $out -ErrorAction SilentlyContinue
 if ($removal -and $removal.ok -eq $true) { exit 0 }
+if ($removal -and $removal.outcome -eq 'cancelled') { exit 10 }
 if ($removal -and $removal.reason) { Write-Output ([string]$removal.reason) }
 else { Write-Output "the removal ended with code $($p.ExitCode) and no reason" }
 exit 11

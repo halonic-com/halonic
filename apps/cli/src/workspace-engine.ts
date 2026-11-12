@@ -252,7 +252,7 @@ function computerRunConnectors(trust: TrustGrant | null): LocalRunConnectorsInpu
 /**
  * The engine's `reportError`: a failed step, wake-up, tick or lock renewal
  * goes to `stuck`, which counts it. A run's connectors that failed to close,
- * or a leftover program copy that couldn't be swept, goes to `debug`
+ * a leftover program copy that couldn't be swept, or what a harness run left that couldn't be cleaned up, goes to `debug`
  * instead: it is clean-up, nothing tries it again, and it must never stop the command,
  * however often it happens in a `routines watch` (Liam, HAL-7171).
  *
@@ -266,7 +266,7 @@ export function engineErrorReporter(
   debug: (line: Phrase) => void,
 ): (error: unknown, source: EngineErrorSource) => void {
   return (error, source) => {
-    if (source === "run-connectors" || source === "program-copies") {
+    if (source === "run-connectors" || source === "program-copies" || source === "harness-host") {
       const reason = printable(error instanceof Error ? error.message : String(error));
       debug(runMessages.cleanUpFailed(source, reason).phrase);
       return;

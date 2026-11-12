@@ -1,4 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
+import { loadWorkspace, VersionSource } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { LiveRoutines } from "./live-routines.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
@@ -151,5 +152,32 @@ verifies("app.scheduler-rebuild-on-version-and-watch", () => {
 
     expect(afterFirst).toBeGreaterThan(0);
     expect(lists).toBe(afterFirst);
+  });
+
+  it("lists a version the caller loaded without reading or looking it up again", async () => {
+    const { versions, store } = acme({ [morningPath]: routine("morning") });
+    const { hash: commit } = versions.commit({ [morningPath]: routine("morning") });
+    const workspace = await loadWorkspace(new VersionSource(versions, commit, store.location));
+    let reads = 0;
+    const counted = {
+      status: () => versions.status().finally(() => (reads += 1)),
+      log: (limit: number) => versions.log(limit).finally(() => (reads += 1)),
+      readAt: (...args: Parameters<typeof versions.readAt>) =>
+        versions.readAt(...args).finally(() => (reads += 1)),
+      listAt: (...args: Parameters<typeof versions.listAt>) =>
+        versions.listAt(...args).finally(() => (reads += 1)),
+    };
+    const routines = new LiveRoutines({
+      vcs: counted,
+      saved: store,
+      loaded: { commit, workspace },
+    });
+
+    const first = await routines.listLoaded();
+    await routines.list();
+
+    expect(first.map(({ routine }) => routine.id)).toEqual(["morning"]);
+    // Only the second call looked up the live version; neither loaded it again.
+    expect(reads).toBe(2);
   });
 });

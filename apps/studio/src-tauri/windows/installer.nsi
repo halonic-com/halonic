@@ -893,18 +893,16 @@ Section SandboxStep
   !ifdef SANDBOX_STEP
     ${If} $SandboxState == ${BST_CHECKED}
       !insertmacro SetStep $LineSetup "◌ Setting up the agent sandbox…"
-      StrCpy $0 ""
       ${IfNot} ${Silent}
         DetailPrint "   Windows is asking for administrator rights."
         DetailPrint "   Check the taskbar if you don't see the request."
       ${EndIf}
-      ; Silent: no prompt (an installer that can't ask runs the setup as it is).
-      ${If} ${Silent}
-        StrCpy $0 "-NoElevate"
-      ${EndIf}
+      ; The agent host asks Windows itself, through the signed helper, as
+      ; Settings › Agent sandbox does (HAL-1451). A silent install gets here
+      ; only from an elevated prompt (/SANDBOX=1), where Windows doesn't ask.
       Call ProfileFolder
       Pop $1
-      nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1" $0'
+      nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-step.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
       Pop $2
       Pop $SandboxReason
       Push $SandboxReason
@@ -1601,20 +1599,20 @@ Function un.RemoveSandbox
   ${OrIfNot} ${FileExists} "$INSTDIR\sandbox-remove.ps1"
     Return
   ${EndIf}
-  StrCpy $0 ""
+  ; A silent uninstall can't show Windows' prompt, so it removes the sandbox
+  ; only from an elevated prompt, where Windows doesn't ask.
   ${If} ${Silent}
     System::Call 'shell32::IsUserAnAdmin() i .r1'
     ${If} $1 = 0
       StrCpy $SandboxOutcome "skipped"
       Return
     ${EndIf}
-    StrCpy $0 "-NoElevate"
   ${EndIf}
   DetailPrint "Removing the agent sandbox…"
   DetailPrint "   If it was set up, Windows asks for administrator rights."
   Call un.ProfileFolder
   Pop $1
-  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1" $0'
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\sandbox-remove.ps1" -HostExe "$INSTDIR\halonic-agent-host.exe" -ProfileFolder "$1"'
   Pop $2
   Pop $SandboxReason
   Push $SandboxReason

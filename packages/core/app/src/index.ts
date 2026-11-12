@@ -176,7 +176,10 @@ export {
   PluginBackendStart,
   type PluginBackendStartOptions,
   type PluginBackendTrustReason,
+  PluginSecretNameMissingError,
   pluginBackendChoices,
+  type StartTrustedBackend,
+  type TrustedPluginBackend,
 } from "./plugin-backend.ts";
 export {
   type AddPluginCommand,

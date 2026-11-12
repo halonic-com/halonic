@@ -24,9 +24,13 @@ verifies("integration-kit.declared-hosts-only", () => {
   });
 
   it.each([
-    ["an undeclared host", "https://evil.example/collect", "host-not-allowed"],
+    ["an undeclared host (A1)", "https://evil.example/collect", "host-not-allowed"],
     ["a subdomain of a declared host", "https://x.api.example.com/", "host-not-allowed"],
-    ["a declared host as a prefix", "https://api.example.com.evil.example/", "host-not-allowed"],
+    [
+      "a look-alike that starts with a declared host (A2)",
+      "https://api.example.com.evil.example/",
+      "host-not-allowed",
+    ],
     ["a declared host on another port", "https://api.example.com:8443/", "host-not-allowed"],
     ["plain http", "http://api.example.com/", "scheme-not-allowed"],
     ["a file", "file:///etc/passwd", "scheme-not-allowed"],
@@ -91,7 +95,22 @@ verifies("integration-kit.local-http-hosts", () => {
     expect(sent).toEqual([]);
   });
 
-  it("refuses a key over plain http to another machine on the network", async () => {
+  it.each([
+    ["a loopback name", "https://localhost:3000/mcp", "host-not-allowed"],
+    ["a loopback address", "https://127.0.0.1:3000/mcp", "host-not-allowed"],
+    ["a home-network address", "https://192.168.1.5:8080/mcp", "host-not-allowed"],
+    // Plain http is only for a host the user chose in a setting, so the scheme goes first.
+    ["a home-network address on plain http", "http://192.168.1.5:8080/mcp", "scheme-not-allowed"],
+  ])(
+    "refuses %s built in code when the sheet has no setting host (A30)",
+    async (_what, url, code) => {
+      const { http, sent } = client();
+      expect(await refusal(http.fetch(url))).toBe(code);
+      expect(sent).toEqual([]);
+    },
+  );
+
+  it("refuses a key over plain http to another machine on the network (A31)", async () => {
     const { http, sent } = localClient();
     const request = http.fetch("http://192.168.1.5:8080/mcp", {
       auth: { secret: "example-key", as: "bearer" },
@@ -253,7 +272,7 @@ verifies("integration-kit.secrets-placed-by-kit", () => {
 const transportOptions = ["body", "headers", "method", "redirect", "signal"];
 
 verifies("integration-kit.redirects-checked", () => {
-  it("follows a redirect to a declared host and drops a secret that may not go there", async () => {
+  it("follows a redirect to a declared host and drops a secret that may not go there (A3)", async () => {
     const { http, sent } = client(
       (url) =>
         url.host === "api.example.com"
@@ -275,7 +294,7 @@ verifies("integration-kit.redirects-checked", () => {
     ["an undeclared host", "https://evil.example/steal"],
     ["plain http", "http://api.example.com/v1"],
     ["a file", "file:///etc/passwd"],
-  ])("refuses a redirect to %s", async (_what, location) => {
+  ])("refuses a redirect to %s (A3)", async (_what, location) => {
     const { http, sent } = client(() => redirect(307, location));
     expect(
       await refusal(
@@ -445,7 +464,7 @@ function pieces(
 }
 
 verifies("integration-kit.request-log", () => {
-  it("logs method, host, path, status and time, and no query, header or secret", async () => {
+  it("logs method, host, path, status and time, and no query, header or secret (A20)", async () => {
     const { http, log } = client();
     await http.fetch("https://api.example.com/v1/forecast?city=Ghent&token=abc", {
       auth: { secret: "example-key", as: "bearer" },

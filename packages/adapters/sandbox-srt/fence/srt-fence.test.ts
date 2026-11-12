@@ -37,7 +37,7 @@ describe("SrtSandbox with the real fence", () => {
     workingFolder: join(base, "work"),
     tempFolder: join(base, "temp"),
     settingsFolder: null,
-    readOnlyPaths: [],
+    readOnlyPaths: [join(base, "workspace")],
     deniedPaths: [join(base, "secrets")],
     env: { HOME: join(base, "temp") },
     network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
@@ -50,6 +50,8 @@ describe("SrtSandbox with the real fence", () => {
     await mkdir(join(base, "work"), { recursive: true });
     await mkdir(join(base, "secrets"), { recursive: true });
     await writeFile(secret, "hunter2");
+    await mkdir(join(base, "workspace"), { recursive: true });
+    await writeFile(join(base, "workspace", "tool.txt"), "the tool");
     session = await sandbox.open(profile());
   });
 
@@ -109,6 +111,21 @@ describe("SrtSandbox with the real fence", () => {
       args: ["-c", `echo x > ${join(base, "outside.txt")}`],
     });
     expect((await outside.exited).code).not.toBe(0);
+  });
+
+  it("starts in a read-only folder, reads there and can't write there (HAL-6884)", async () => {
+    const workspace = join(base, "workspace");
+    const reading = await session.start({ program: "cat", args: ["tool.txt"], cwd: workspace });
+    const [out, readExit] = await Promise.all([read(reading.stdout), reading.exited]);
+    expect(out).toBe("the tool");
+    expect(readExit.code).toBe(0);
+    const writing = await session.start({
+      program: "sh",
+      args: ["-c", "echo x > made.txt"],
+      cwd: workspace,
+    });
+    expect((await writing.exited).code).not.toBe(0);
+    await expect(readFile(join(workspace, "made.txt"), "utf8")).rejects.toThrow();
   });
 
   it("denies writing the tool settings in the working folder", async () => {

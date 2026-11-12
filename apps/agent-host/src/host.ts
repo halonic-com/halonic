@@ -12,6 +12,7 @@ import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
+import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
@@ -230,6 +231,7 @@ function hostServices(
   const routes = [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
+    ...setupRoutes(new SetupJobs(sandbox), sessions),
     ...bridgeRoutes(
       (secrets) =>
         new NodeHarnessBridgeServer({

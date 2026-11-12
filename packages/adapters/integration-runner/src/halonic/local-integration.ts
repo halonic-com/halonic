@@ -55,8 +55,6 @@ export interface LoadLocalIntegrationOptions extends Omit<PrepareIntegrationOpti
   readonly sheet: unknown;
   /** The sheet as the user approved it; the loader refuses a sheet that changed since. */
   readonly approvedSheet?: unknown;
-  /** `true` for a plugin's backend: its secrets are read as that plugin's own (`IntegrationSource.plugin`). */
-  readonly plugin?: boolean;
   /** The integration's folder, checked for links out of it before anything starts. */
   readonly folder: string;
   readonly start: StartLocalRunner;
@@ -85,14 +83,33 @@ export interface LoadLocalIntegrationOptions extends Omit<PrepareIntegrationOpti
 export async function loadLocalIntegration(
   options: LoadLocalIntegrationOptions,
 ): Promise<Result<LoadedIntegration, LoadProblem[]>> {
-  const { sheet, approvedSheet, plugin, folder, start, folderDisk, ...ports } = options;
+  return await load(options, false);
+}
+
+/**
+ * Loads a plugin's backend as a local integration, with its secrets read as
+ * that plugin's own (`IntegrationSource.plugin`). Only `loadPluginBackend`
+ * calls it, after the plugin's trust check; it is not exported from the
+ * package, so a caller can't ask for a plugin's secrets with a sheet of its own.
+ */
+export async function loadLocalBackend(
+  options: LoadLocalIntegrationOptions,
+): Promise<Result<LoadedIntegration, LoadProblem[]>> {
+  return await load(options, true);
+}
+
+async function load(
+  options: LoadLocalIntegrationOptions,
+  plugin: boolean,
+): Promise<Result<LoadedIntegration, LoadProblem[]>> {
+  const { sheet, approvedSheet, folder, start, folderDisk, ...ports } = options;
   const prepared = prepareIntegration({
     ...ports,
     source: {
       origin: "local",
       sheet,
       ...(approvedSheet === undefined ? {} : { approvedSheet }),
-      ...(plugin === undefined ? {} : { plugin }),
+      ...(plugin ? { plugin } : {}),
     },
   });
   if (!prepared.ok) {

@@ -25,6 +25,7 @@ export const commandOrder: readonly string[] = [
   "tools",
   "extract",
   "doctor",
+  "sandbox",
   "schema",
 ];
 

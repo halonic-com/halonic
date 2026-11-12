@@ -794,12 +794,17 @@ chevron; without it there is no row, as the sidebar has none. Its tap opens the 
 
 On a phone Settings is a page, not a dialog (`shell.settings-list-page`, flow-settings 13). The
 More page's Settings row, and `openSettings` from a view, push `settingsLocation` on the More
-stack. `SettingsListPage` lists the sections the window has, in the desktop's order
-(`settingsGroups`), as a flush List with a chevron on each row; a tap opens the section as the next
+stack. `SettingsListPage` lists the sections the window has (`settingsGroups` with `phone: true`) as
+a flush List with a chevron on each row, under the headings "Acme · workspace settings" (only with
+a workspace open), "On this phone" and "On your computer". A section with `phone: false`, as
+Developer has, is never listed, and neither a link nor `openSettings(id)` opens it. Each row has an
+icon, the section's name and the one line its `summary(context)` gives ("System theme · characters
+on"); a `summary` that answers later fills in when it does, and the page says "Loading settings" to
+screen readers until then. Back returns to the list where it was scrolled. A tap opens the section as the next
 page (`sectionLocation`, key `settings/<id>`), drawn by `SectionView` with the section's name as
 the page's `h1` for screen readers, as the top bar shows it. Back returns one page at a time: to
 the list, then to More. `openSettings("assistant")` opens the list and that section above it.
-Groups and summaries on the list come later (HAL-7832 part 2).
+The phone's own section pages (HAL-7919) and chips under a summary come later.
 
 ### Joined, and Android's back
 
