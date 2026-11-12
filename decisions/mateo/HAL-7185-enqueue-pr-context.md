@@ -3,6 +3,7 @@
 - Task: HAL-7185
 - Approval: Liam approves this note in review on [HAL-7185](/HAL/issues/HAL-7185)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:W9RDlAXpuPpfUw+MGlKlo0lDn1fAwDEZACqH3TK5n5DCUds715AF44J4owW7USdJ5kM2ExiTbHWXYJCjImXTCQ==
 
 ## What changes
 
