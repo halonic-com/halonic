@@ -1,0 +1,113 @@
+# Android screen captures: the Android connect app's own screens, for the
+# Google Play listing (HAL-6953, HAL-7074). It takes the debug APK that CI's
+# "Android shell (debug APK)" job uploads, runs
+# apps/studio/src-tauri/android/capture-screens.sh in an emulator and uploads
+# connect.png, computer-too-old.png, app-too-old.png and not-answering.png as
+# the `android-screens` artifact.
+#
+# Run it from the Actions tab. By default it takes the newest APK built on
+# main; give a CI run's ID to capture that run's build instead. A pull
+# request that changes this workflow or the capture script runs it too, with
+# main's newest APK, so the script is tested where it changes. It never runs
+# on other pull requests, on push or in the merge queue.
+
+name: Android screen captures
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/android-screens.yml
+      - apps/studio/src-tauri/android/**
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "The CI run whose android-debug-apk to capture. Empty takes the newest one built on main."
+        required: false
+        default: ""
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: android-screens-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Capture the four screens
+    # GitHub's Ubuntu runners have /dev/kvm, which the emulator needs.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # Reads CI's artifacts.
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/studio/src-tauri/android
+      # The PNG writer uses zlib.crc32, which Node has from 22.2 on; the
+      # runner's own Node is older.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      # CI's artifacts last 7 days, so an older run's APK is gone.
+      - name: Download the debug APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh api "repos/$REPO/actions/artifacts?name=android-debug-apk&per_page=100" \
+              --jq '[.artifacts[] | select(.expired | not) | select(.workflow_run.head_branch == "main")][0].workflow_run.id // empty')
+            if [ -z "$RUN_ID" ]; then
+              echo "::error::No android-debug-apk built on main in the last 7 days. Give a CI run's ID instead."
+              exit 1
+            fi
+          fi
+          if ! [[ $RUN_ID =~ ^[0-9]+$ ]]; then
+            echo "::error::The run ID must be a number, as in the run's address: .../actions/runs/<id>."
+            exit 1
+          fi
+          gh run download "$RUN_ID" --repo "$REPO" --name android-debug-apk --dir "$RUNNER_TEMP/apk"
+          source=$(gh run view "$RUN_ID" --repo "$REPO" --json headBranch,headSha \
+            --jq '"\(.headBranch) at \(.headSha[0:8])"')
+          echo "::notice title=APK::From CI run $RUN_ID, $source"
+          echo "APK_SOURCE=CI run $RUN_ID, $source" >> "$GITHUB_ENV"
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm-for-all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The runner's SDK brings the platform tools and the command-line tools,
+      # but no system image.
+      - name: Install the emulator and the Android 15 image
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses >/dev/null || true
+          "$sdkmanager" --install emulator platform-tools "system-images;android-35;google_apis;x86_64" >/dev/null
+      - name: Capture the screens
+        run: |
+          apps/studio/src-tauri/android/capture-screens.sh \
+            "$RUNNER_TEMP/apk/app-universal-debug.apk" "$RUNNER_TEMP/android-screens"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-screens
+          path: |
+            ${{ runner.temp }}/android-screens/connect.png
+            ${{ runner.temp }}/android-screens/computer-too-old.png
+            ${{ runner.temp }}/android-screens/app-too-old.png
+            ${{ runner.temp }}/android-screens/not-answering.png
+          if-no-files-found: error
+          retention-days: 14
+      - name: Summary
+        run: |
+          {
+            echo "### Android screen captures"
+            echo
+            echo "Four screens from $APK_SOURCE, in the \`android-screens\` artifact:"
+            echo "\`connect.png\`, \`computer-too-old.png\`, \`app-too-old.png\` and \`not-answering.png\`."
+          } >> "$GITHUB_STEP_SUMMARY"

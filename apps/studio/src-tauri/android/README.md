@@ -26,12 +26,22 @@ Nothing in a screen is edited. The frame and caption for the listing are added a
 
 ## What it sets up
 
-- **Its own emulator**, `halonic-play-screens`: 1080 × 1920 at 420 dpi, Android 15, a hardware keyboard so the on-screen keyboard stays closed. It starts on port 5584 with no window and its data wiped, and the script stops it when it ends, also on an error or Ctrl+C.
+- **Its own emulator**, `halonic-play-screens`: 1080 × 1920 at 420 dpi, Android 15, with its on-screen keyboard turned off so nothing covers the connect screen. It starts on port 5584 with no window and its data wiped, and the script stops it when it ends, also on an error or Ctrl+C.
 - **The phone:** light scheme, gesture navigation, no animations.
-- **The status bar, with Android's demo mode:** 09:14, full battery, full Wi-Fi and mobile signal, no notifications or other icons.
+- **The status bar, with Android's demo mode:** 09:14, full battery and full Wi-Fi signal, no notifications or other icons. No mobile signal: Android 15's demo mode labels it 3G whatever data type the script asks for.
 - **The address:** `192.168.1.20:4280` on every shot. Inside the emulator, the script points that address at `fake-computer.mjs` on this machine (with `iptables`, which is why it needs a Google APIs image: Google Play images don't allow `adb root`). For "isn't answering" it drops everything sent to the address, as for a computer that's off.
 
 The stand-in computer listens on port 4280 on loopback. If a real Halonic already uses that port, set another: `HOST_PORT=4290 capture-screens.sh …`.
+
+## On GitHub
+
+The "Android screen captures" workflow (`.github/workflows/android-screens.yml`) runs the script on a GitHub runner, which has KVM, and uploads the four PNGs as the `android-screens` artifact. Run it from the Actions tab: by default it captures the newest `android-debug-apk` built on main; give it a CI run's ID to capture that run's build. CI keeps an APK for 7 days.
+
+```sh
+gh workflow run android-screens.yml --ref main -f run_id=<CI run ID>
+```
+
+A pull request that changes this folder or the workflow runs it too, with main's newest APK.
 
 ## On the shared runner
 

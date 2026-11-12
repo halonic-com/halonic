@@ -55,7 +55,7 @@ done
 command -v node >/dev/null || fail "Node.js is needed for the stand-in computer and the PNG files."
 [ -d "$sdk/system-images/android-35/google_apis/$abi" ] ||
   fail "missing the Android 15 image. Install it with: sdkmanager \"$image\""
-if "$adb_tool" devices | grep -q "^$serial"; then
+if "$adb_tool" devices | grep "^$serial" >/dev/null; then
   fail "$serial is already running. Stop it first."
 fi
 # On the shared runner, the emulator's threads count against the process limit.
@@ -90,7 +90,12 @@ trap 'exit 130' INT TERM
 
 # --- The emulator -------------------------------------------------------------
 
-avd_config="${ANDROID_AVD_HOME:-${ANDROID_USER_HOME:-$HOME/.android}/avd}/$avd.avd/config.ini"
+# Set for both tools: without it, a newer avdmanager may create the emulator
+# somewhere other than where this script and the emulator look for it (as
+# under ~/.config/.android on GitHub's runners).
+export ANDROID_AVD_HOME="${ANDROID_AVD_HOME:-${ANDROID_USER_HOME:-$HOME/.android}/avd}"
+mkdir -p "$ANDROID_AVD_HOME"
+avd_config="$ANDROID_AVD_HOME/$avd.avd/config.ini"
 
 set_avd_option() {
   grep -v "^$1=" "$avd_config" >"$work/config.ini" || true
@@ -98,15 +103,14 @@ set_avd_option() {
   cp "$work/config.ini" "$avd_config"
 }
 
-if ! "$emulator_tool" -list-avds | grep -qx "$avd"; then
+if ! "$emulator_tool" -list-avds | grep -x "$avd" >/dev/null; then
   echo "Creating the emulator $avd"
   echo no | "$avdmanager_tool" create avd --name "$avd" --package "$image" --device pixel >/dev/null
 fi
+[ -f "$avd_config" ] || fail "the emulator $avd has no settings at $avd_config."
 set_avd_option hw.lcd.width 1080
 set_avd_option hw.lcd.height 1920
 set_avd_option hw.lcd.density 420
-# A hardware keyboard keeps the on-screen keyboard closed while typing.
-set_avd_option hw.keyboard yes
 
 echo "Starting the emulator (a minute or two)"
 "$emulator_tool" -avd "$avd" -port "${serial#emulator-}" -no-window -no-audio -no-boot-anim \
@@ -122,11 +126,12 @@ wait_for_boot() {
   done
 }
 wait_for_boot
-adb_ root >/dev/null
-# adbd restarts as root; wait until it answers again.
+# adbd restarts as root; ask until it answers as root. Right after starting,
+# the emulator can drop the request.
 deadline=$((SECONDS + 30))
 until [ "$(adb_ shell id -u 2>/dev/null | tr -d '\r')" = 0 ]; do
   [ $SECONDS -lt $deadline ] || fail "adb didn't restart as root. Is this a Google APIs image?"
+  adb_ root >/dev/null 2>&1 || true
   sleep 1
 done
 
@@ -140,7 +145,6 @@ esac
 # --- The phone's settings -----------------------------------------------------
 
 adb_ shell cmd uimode night no >/dev/null
-adb_ shell settings put secure show_ime_with_hard_keyboard 0
 adb_ shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural >/dev/null 2>&1 ||
   echo "Note: couldn't switch to gesture navigation; the captures show the image's default."
 # No animations, so a capture never catches a screen halfway in.
@@ -148,24 +152,59 @@ for scale in window_animation_scale transition_animation_scale animator_duration
   adb_ shell settings put global "$scale" 0
 done
 
-# Demo mode: 09:14, full battery and signal, no notifications or other icons.
-demo() {
-  adb_ shell am broadcast -a com.android.systemui.demo -e command "$@" >/dev/null
+# A freshly wiped phone puts its keyboard and demo mode settings back a while
+# after it has started, so those two are set right before they are needed,
+# and checked.
+
+# No on-screen keyboard: with every keyboard app turned off, nothing covers
+# the connect screen. `input text` sends key presses, which need none. Only
+# turning a keyboard off isn't enough: Android turns its own back on when a
+# text field gets focus and no keyboard is on.
+keyboard_off() {
+  local keyboard
+  for keyboard in $(adb_ shell ime list -a -s | tr -d '\r'); do
+    adb_ shell pm disable-user --user 0 "${keyboard%%/*}" >/dev/null
+  done
 }
-adb_ shell settings put global sysui_demo_allowed 1
-demo enter
-demo clock -e hhmm 0914
-demo battery -e level 100 -e plugged false
-demo network -e wifi show -e level 4 -e fully true
-demo network -e mobile show -e datatype none -e level 4 -e fully true
-demo notifications -e visible false
-demo status -e alarm hide -e bluetooth hide -e location hide -e mute hide -e volume hide -e sync hide
+keyboard_shown() {
+  [[ $(adb_ shell dumpsys input_method) == *"mInputShown=true"* ]]
+}
+
+# Demo mode: 09:14, full battery and Wi-Fi signal, no notifications or other
+# icons. No mobile signal: Android 15's demo mode labels it 3G, whatever the
+# data type asked for.
+demo() {
+  adb_ shell am broadcast -a com.android.systemui.demo -p com.android.systemui \
+    -e command "$@" >/dev/null
+}
+in_demo_mode() {
+  [[ $(adb_ shell dumpsys activity service com.android.systemui/.SystemUIService DemoModeController) == *"isInDemoMode=true"* ]]
+}
+set_status_bar() {
+  adb_ shell settings put global sysui_demo_allowed 1
+  # The status bar ignores demo commands until it has seen that setting.
+  local deadline=$((SECONDS + 15))
+  until in_demo_mode; do
+    [ $SECONDS -lt $deadline ] || fail "the status bar didn't go into demo mode."
+    demo enter
+    sleep 1
+  done
+  demo clock -e hhmm 0914
+  demo battery -e level 100 -e plugged false
+  demo network -e wifi show -e level 4 -e fully true
+  demo network -e mobile hide
+  demo notifications -e visible false
+  demo status -e alarm hide -e bluetooth hide -e location hide -e mute hide -e volume hide -e sync hide
+}
 
 # --- The app ------------------------------------------------------------------
 
 echo "Installing $apk"
 adb_ install -r "$apk" >/dev/null
-app_version=$(adb_ shell dumpsys package "$package" | tr -d '\r' | sed -n '/versionName=/{s/.*versionName=//p;q;}')
+# Read from a file: a pipe into `sed … q` stops early, and pipefail counts
+# the broken pipe as a failure.
+adb_ shell dumpsys package "$package" | tr -d '\r' >"$work/package.txt"
+app_version=$(sed -n '/versionName=/{s/.*versionName=//p;q;}' "$work/package.txt")
 [ -n "$app_version" ] || fail "can't read the installed app's version."
 
 # The address goes to this machine's stand-in computer while it answers, and
@@ -207,19 +246,45 @@ screen_shows() { # text
   [[ $window == *"$1"* ]]
 }
 
-wait_for_text() { # text seconds
+# True when the screen shows `text` within `seconds`.
+shows_within() { # text seconds
   local deadline=$((SECONDS + $2))
   until screen_shows "$1"; do
-    [ $SECONDS -lt $deadline ] || fail "the screen never showed \"$1\"."
+    [ $SECONDS -lt $deadline ] || return 1
     sleep 1
   done
   # The caret and any late layout settle.
   sleep 1
 }
 
+wait_for_text() { # text seconds
+  shows_within "$1" "$2" || fail "the screen never showed \"$1\"."
+}
+
 capture() { # name
-  adb_ exec-out screencap >"$work/$1.raw"
+  set_status_bar
+  sleep 1
+  # Through a file on the phone: `adb pull` checks what arrives, while
+  # `adb exec-out` can cut a large capture short.
+  adb_ shell screencap /sdcard/screen.raw
+  adb_ pull /sdcard/screen.raw "$work/$1.raw" >/dev/null
   node "$here/screencap-to-png.mjs" "$work/$1.raw" "$out/$1.png"
+}
+
+# Types the address into the connect screen's field. Key presses sent while
+# the page is still settling can get lost, so when the field doesn't hold the
+# address it is emptied and typed again.
+type_address() {
+  local attempt
+  for attempt in 1 2 3; do
+    adb_ shell input text "$address"
+    shows_within "text=\"$address\"" 5 && return
+    echo "The address field doesn't hold the address yet (try $attempt); typing it again."
+    adb_ shell input keyevent KEYCODE_MOVE_END
+    # shellcheck disable=SC2046 # One key press per word.
+    adb_ shell input keyevent $(printf 'KEYCODE_DEL %.0s' {1..40})
+  done
+  fail "the address field never held \"$address\"."
 }
 
 # The next minor version after the app's, which the app is too old for.
@@ -233,10 +298,13 @@ route_to_fake_computer
 
 # 1. The connect screen with the address typed. A fresh install remembers no
 #    address, so the app opens on it.
+keyboard_off
 launch_app
 wait_for_text "Connect to Halonic" 60
-adb_ shell input text "$address"
-wait_for_text "$address" 10
+type_address
+if keyboard_shown; then
+  fail "the on-screen keyboard is open over the connect screen. Keyboards on: $(adb_ shell ime list -s | tr -d '\r')"
+fi
 capture connect
 
 # 2. Connect, to a computer older than the app works with. The app now

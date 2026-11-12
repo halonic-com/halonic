@@ -1,4 +1,4 @@
-// Turns what `adb exec-out screencap` writes (raw RGBA pixels) into a 24-bit
+// Turns what `adb shell screencap` writes (raw RGBA pixels) into a 24-bit
 // PNG with no alpha channel, the format Google Play asks for (HAL-6953).
 // Writing the PNG here keeps the capture script free of image tools.
 //
