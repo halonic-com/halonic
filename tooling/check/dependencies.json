@@ -232,7 +232,7 @@
       "layers": [
         "testing"
       ],
-      "reason": "Starts Cloudflare's own Workers runtime (workerd) on this machine with local D1, R2 and Durable Objects, so the port contract suites run against the Cloudflare adapters inside workerd itself, not in Node against a proxy. Called from our own small runner, not @cloudflare/vitest-pool-workers, which brings Wrangler and Zod (plan section 7, HAL-197 build plan). Brings workerd, undici, ws, youch, sharp and source-map-support, which our code never imports. Tests only; never in a runtime bundle."
+      "reason": "Starts Cloudflare's own Workers runtime (workerd) on this machine with local D1, R2 and Durable Objects, so the port contract suites run against the Cloudflare adapters inside workerd itself, not in Node against a proxy. Called from our own small runner, not @cloudflare/vitest-pool-workers, which brings Wrangler and Zod (plan section 7, HAL-197 build plan). Brings workerd, undici, ws, youch, sharp and source-map-support, which our code never imports. sharp is Apache-2.0, but its prebuilt libvips (@img/sharp-libvips-*) is LGPL-3.0-or-later: fine for a dev-only tool we never ship or modify, and the reason it must stay out of anything we distribute. Tests only; never in a runtime bundle."
     },
     "react": {
       "category": "studio-framework",
