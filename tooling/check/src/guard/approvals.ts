@@ -7,6 +7,7 @@ import {
   parseApprovers,
   signedText,
   splitSignature,
+  verifyGuardians,
   verifySigned,
 } from "./signatures.ts";
 
@@ -14,6 +15,11 @@ import {
 export interface ApprovalRequest {
   /** The note, parsed from the pull request's checkout. */
   readonly note: DecisionNote;
+  /**
+   * Whether the pull request changes the guard's trust roots, so the note
+   * needs the signatures of different guardians, not one approver's.
+   */
+  readonly guardians?: boolean;
 }
 
 /** Whether the approval is real, approved by the right person and for this pull request. */
@@ -43,20 +49,29 @@ export interface PullRequest {
 const notApproved = (reason: string): ApprovalVerdict => ({ approved: false, reason });
 
 /**
- * Verifies a note's signature offline (HAL-1337) against the keys the
- * pull request's base pins in `approvers.json` for the note's kind. It
- * FAILS CLOSED: without the pull request's details, without its commits,
- * with a note the base already has, or with a missing, malformed or
- * non-matching signature, the note is not approved.
+ * Verifies a note's approval (HAL-1337). A signature is checked offline
+ * against the keys the pull request's base pins in `approvers.json`: one
+ * approver's key for the note's kind, or, for a change to the guard's trust
+ * roots, the signatures of different guardians (two, or as many as the
+ * base pins if fewer). It FAILS CLOSED: without the pull request's
+ * details, without its commits, with a note the base already has, or with
+ * a missing, malformed or non-matching signature, the note is not approved.
  */
 export function signedApprovals(pull: PullRequest | undefined, git: GitObjects): ApprovalLookup {
   return {
-    check: ({ note }) => Promise.resolve(verifyNote(note, pull, git)),
+    check: async ({ note, guardians = false }) => {
+      try {
+        return verifyNote(note, guardians, pull, git);
+      } catch (error) {
+        return notApproved(`the approval lookup failed: ${String(error)}`);
+      }
+    },
   };
 }
 
 function verifyNote(
   note: DecisionNote,
+  guardians: boolean,
   pull: PullRequest | undefined,
   git: GitObjects,
 ): ApprovalVerdict {
@@ -81,18 +96,22 @@ function verifyNote(
   if (text === undefined) {
     return notApproved(`the pull request's head commit has no ${note.file}`);
   }
-  const split = splitSignature(text);
-  if (!split.ok) {
-    return notApproved(split.reason);
-  }
   let pinned: ReturnType<typeof parseApprovers>;
   try {
     pinned = parseApprovers(approvers);
   } catch (error) {
     return notApproved(`the base branch's ${approversFile} can't be read: ${String(error)}`);
   }
+  const split = splitSignature(text);
+  if (!split.ok) {
+    return notApproved(split.reason);
+  }
   const signed = noteSignedText(note, split.unsigned, pull, git);
-  const verdict = verifySigned(signed, split.keyId, split.signature, note.kind, pinned);
+  const [only] = split.signatures;
+  const verdict =
+    split.signatures.length === 1 && !guardians && only !== undefined
+      ? verifySigned(signed, only.keyId, only.signature, note.kind, pinned)
+      : verifyGuardians(signed, split.signatures, pinned);
   return verdict.ok ? { approved: true } : notApproved(verdict.reason);
 }
 

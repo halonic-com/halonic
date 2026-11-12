@@ -10,7 +10,8 @@ import type { DecisionKind } from "./decision-notes.ts";
  * the merge base's `tooling/check/approvers.json` pins for the note's kind.
  * No network, no token: fork pull requests are checked the same way.
  *
- * The signature is one header line of the note:
+ * The signature is one header line of the note, or two for a change to the
+ * guard's trust roots, which needs two different guardians:
  *
  * ```markdown
  * - Signature: ed25519:sha256:<key ID>:<base64 signature>
@@ -44,20 +45,30 @@ export interface GitObjects {
   readFile(commit: string, path: string): string | undefined;
 }
 
-/** A note split into its signature and the exact text the signature covers. */
+/** One `- Signature:` line of a note. */
+export interface NoteSignature {
+  readonly keyId: string;
+  readonly signature: string;
+}
+
+/** The most signature lines a note has: the two guardians of a trust-root change. */
+export const maxSignatures = 2;
+
+/** A note split into its signatures and the exact text they cover. */
 export type SplitNote =
   | {
       readonly ok: true;
-      readonly keyId: string;
-      readonly signature: string;
-      /** The note without its signature line. */
+      /** The note's signature lines, in order: one, or up to {@link maxSignatures}. */
+      readonly signatures: readonly NoteSignature[];
+      /** The note without its signature lines. */
       readonly unsigned: string;
     }
   | { readonly ok: false; readonly reason: string };
 
 /**
- * Finds the note's one signature line, in the header: the `- ` fields
- * between the heading and the first paragraph or heading.
+ * Finds the note's signature lines, in the header: the `- ` fields
+ * between the heading and the first paragraph or heading. Every one is
+ * removed from the text they sign, so a second signer doesn't change it.
  */
 export function splitSignature(text: string): SplitNote {
   if (text.includes("\r")) {
@@ -68,26 +79,29 @@ export function splitSignature(text: string): SplitNote {
   if (at.length === 0) {
     return { ok: false, reason: "the note has no signature line; ask the approver to sign it" };
   }
-  if (at.length > 1) {
-    return { ok: false, reason: "the note has more than one signature line" };
+  if (at.length > maxSignatures) {
+    return { ok: false, reason: `the note has more than ${maxSignatures} signature lines` };
   }
-  const index = at[0] ?? 0;
   const firstProse = lines.findIndex((line, i) => i > 0 && /^[^-\s]/.test(line));
-  if (index === 0 || (firstProse !== -1 && index > firstProse)) {
-    return { ok: false, reason: "the signature line isn't in the note's header" };
+  const signatures: NoteSignature[] = [];
+  for (const index of at) {
+    if (index === 0 || (firstProse !== -1 && index > firstProse)) {
+      return { ok: false, reason: "the signature line isn't in the note's header" };
+    }
+    const line = lines[index] ?? "";
+    const match = line.startsWith(signaturePrefix)
+      ? signaturePattern.exec(line.slice(signaturePrefix.length).trim())
+      : null;
+    if (match === null) {
+      return {
+        ok: false,
+        reason: 'the signature line isn\'t "- Signature: ed25519:<key ID>:<base64>"',
+      };
+    }
+    signatures.push({ keyId: match[1] ?? "", signature: match[2] ?? "" });
   }
-  const value = (lines[index] ?? "").slice(signaturePrefix.length).trim();
-  const match = (lines[index] ?? "").startsWith(signaturePrefix)
-    ? signaturePattern.exec(value)
-    : null;
-  if (match === null) {
-    return {
-      ok: false,
-      reason: 'the signature line isn\'t "- Signature: ed25519:<key ID>:<base64>"',
-    };
-  }
-  const unsigned = lines.filter((_line, i) => i !== index).join("\n");
-  return { ok: true, keyId: match[1] ?? "", signature: match[2] ?? "", unsigned };
+  const unsigned = lines.filter((_line, i) => !at.includes(i)).join("\n");
+  return { ok: true, signatures, unsigned };
 }
 
 /** What a signature binds a note to. */
@@ -209,8 +223,15 @@ export interface ApproverKey {
   readonly key: KeyObject;
 }
 
-/** The pinned keys per kind, from the merge base's `approvers.json`. */
-export type Approvers = Readonly<Record<DecisionKind, readonly ApproverKey[]>>;
+/**
+ * The pinned keys per kind, from the merge base's `approvers.json`, and the
+ * guardians: the keys that together approve a change to the guard's trust
+ * roots. A file with no `guardians` list has the `internal` keys as its
+ * guardians, which is how the list can be introduced by the one key there is.
+ */
+export type Approvers = Readonly<Record<DecisionKind, readonly ApproverKey[]>> & {
+  readonly guardians: readonly ApproverKey[];
+};
 
 /** The key ID Paperclip gives an Ed25519 public key: `sha256:` and the base64url SPKI hash. */
 export function keyIdOf(key: KeyObject): string {
@@ -221,10 +242,10 @@ export function keyIdOf(key: KeyObject): string {
 /** Parses `approvers.json`. Throws when a key is malformed or its ID isn't its fingerprint. */
 export function parseApprovers(text: string): Approvers {
   const json = JSON.parse(text) as Record<string, unknown>;
-  const read = (kind: DecisionKind): ApproverKey[] => {
-    const entries = json[kind];
+  const read = (name: string): ApproverKey[] => {
+    const entries = json[name];
     if (!Array.isArray(entries)) {
-      throw new Error(`${approversFile}: "${kind}" must be a list`);
+      throw new Error(`${approversFile}: "${name}" must be a list`);
     }
     return entries.map((entry: { id?: unknown; holder?: unknown; publicKey?: unknown }) => {
       const key = createPublicKey(String(entry.publicKey));
@@ -234,7 +255,12 @@ export function parseApprovers(text: string): Approvers {
       return { id: entry.id, holder: String(entry.holder), key };
     });
   };
-  return { "user-visible": read("user-visible"), internal: read("internal") };
+  const internal = read("internal");
+  return {
+    "user-visible": read("user-visible"),
+    internal,
+    guardians: json["guardians"] === undefined ? internal : read("guardians"),
+  };
 }
 
 /** Whether a signature by the key with this ID, pinned for this kind, signs `text`. */
@@ -269,6 +295,48 @@ export function verifySigned(
         ok: false,
         reason:
           "the signature doesn't match: the note, a covered file or the pull request changed after signing",
+      };
+}
+
+/**
+ * Whether `signatures` are enough guardians' signatures over `text`: as
+ * many different pinned guardians as the list has, up to two. The same key
+ * twice counts once, and a key that isn't a guardian doesn't count.
+ */
+export function verifyGuardians(
+  text: string,
+  signatures: readonly NoteSignature[],
+  approvers: Approvers,
+):
+  | { readonly ok: true; readonly holders: readonly string[] }
+  | { readonly ok: false; readonly reason: string } {
+  const needed = Math.min(maxSignatures, approvers.guardians.length);
+  if (needed === 0) {
+    return { ok: false, reason: `the merge base's ${approversFile} pins no guardian` };
+  }
+  const holders = new Map<string, string>();
+  for (const { keyId, signature } of signatures) {
+    const guardian = approvers.guardians.find((each) => each.id === keyId);
+    if (guardian === undefined) {
+      return {
+        ok: false,
+        reason: `the key ${keyId} isn't a guardian in the merge base's ${approversFile}`,
+      };
+    }
+    if (!verify(null, Buffer.from(text, "utf8"), guardian.key, Buffer.from(signature, "base64"))) {
+      return {
+        ok: false,
+        reason:
+          "a signature doesn't match: the note, a covered file or the pull request changed after signing",
+      };
+    }
+    holders.set(keyId, guardian.holder);
+  }
+  return holders.size >= needed
+    ? { ok: true, holders: [...holders.values()] }
+    : {
+        ok: false,
+        reason: `a change to the guard's trust roots needs ${needed} different guardians' signatures; it has ${holders.size}`,
       };
 }
 

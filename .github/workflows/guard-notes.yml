@@ -5,7 +5,7 @@ name: Guard notes
 # the base branch, and the job runs only the base's code: the pull request's
 # head is fetched as git objects and only read. No install, no cache, no
 # secret, a read-only token. It checks that a change to the guard's own
-# paths has a signed user-visible note, and that any note's signature
+# paths has a signed note, and that any note's signature
 # verifies against the base's approvers.json. The test-result comparison
 # stays in ci.yml's guard job.
 #
@@ -44,9 +44,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
-      # Blocking. Until a user key is pinned (HAL-3434), an `internal`
-      # note signed by the CTO key covers .github/, tooling/check/ and
-      # .gitattributes. This job fails the pull request, but it blocks a
+      # Blocking. An `internal` note signed by the CTO key covers routine
+      # changes to .github/ and tooling/check/; a change to a trust root
+      # needs two guardians' signatures (check.guard-two-guardians). This job fails the pull request, but it blocks a
       # merge only once it is a required check next to ci-ok: ci-ok can't
       # wait for it, because it runs in another workflow.
       - name: Check the decision note (base branch's code)
