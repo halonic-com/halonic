@@ -5,8 +5,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { IntegrationDeclaration } from "../frames.ts";
 import { fakeSecret } from "../pipes.test-helper.ts";
+import type { CheckedFilesDisk } from "./checked-files.ts";
 import type { RunnerConnection } from "./connect-runner.ts";
 import type { FolderEntry, IntegrationFolderDisk } from "./integration-folder.ts";
+import { RunnerStoppedError } from "./limits.ts";
 import type { LocalRunnerBridge } from "./local-integration.ts";
 import { type LoadPluginBackendOptions, loadPluginBackend } from "./plugin-backend.ts";
 
@@ -103,6 +105,24 @@ function disk(entries: FolderEntry[], links: Record<string, string> = {}): Integ
   };
 }
 
+/** A folder of files by path, with the text of each as its "hash". */
+function filesOnDisk(folder: Record<string, string>): CheckedFilesDisk {
+  return {
+    filesIn: () => Object.keys(folder),
+    sha256Of: (file) => {
+      const text = folder[file.replace("/plugins/weather/", "")];
+      if (text === undefined) throw new Error(`no file ${file}`);
+      return text;
+    },
+  };
+}
+
+const trustedFiles = [
+  { path: "plugin.yaml", sha256: "aa" },
+  { path: "backend/index.js", sha256: "bb" },
+];
+const trustedDisk = filesOnDisk({ "plugin.yaml": "aa", "backend/index.js": "bb" });
+
 const tidyFolder = disk([{ name: "plugin.yaml", kind: "file" }]);
 
 const emptyTokens: TokenStore = {
@@ -123,6 +143,8 @@ async function load(
     plugin: pluginFrom(manifest),
     folder: "/plugins/weather",
     folderDisk: tidyFolder,
+    files: trustedFiles,
+    filesDisk: trustedDisk,
     choices: {
       settings: { units: "metric" },
       secretNames: { "weather-key": "plugin__weather__weather-key" },
@@ -200,6 +222,70 @@ verifies("integration-runner.plugin-backend", () => {
         "link-out-of-folder",
       ]);
       expect(starts).toEqual([]);
+    });
+
+    describe("the folder against the files that were trusted", () => {
+      it("refuses to start when a trusted file's bytes changed", async () => {
+        const changed = filesOnDisk({ "plugin.yaml": "aa", "backend/index.js": "evil" });
+        const starts: LocalRunnerBridge[] = [];
+        await expect(
+          load(fakeRunner(declaration()), {
+            filesDisk: changed,
+            start: async (bridge) => {
+              starts.push(bridge);
+              return fakeRunner(declaration());
+            },
+          }),
+        ).rejects.toThrow("backend/index.js changed");
+        expect(starts).toEqual([]);
+      });
+
+      it("refuses to start when a file was added or one is missing", async () => {
+        const added = filesOnDisk({
+          "plugin.yaml": "aa",
+          "backend/index.js": "bb",
+          "extra.js": "cc",
+        });
+        await expect(load(fakeRunner(declaration()), { filesDisk: added })).rejects.toThrow(
+          "extra.js was added",
+        );
+        const missing = filesOnDisk({ "plugin.yaml": "aa" });
+        await expect(load(fakeRunner(declaration()), { filesDisk: missing })).rejects.toThrow(
+          "backend/index.js is missing",
+        );
+      });
+
+      it("refuses to start again after an idle stop when the folder changed in between", async () => {
+        const folder = { "plugin.yaml": "aa", "backend/index.js": "bb" };
+        let stopIdle: () => void = () => {};
+        const idle = new Promise<{ reason: "idle" }>((resolve) => {
+          stopIdle = () => resolve({ reason: "idle" });
+        });
+        const first: RunnerConnection = {
+          ...fakeRunner(declaration()),
+          stopped: idle,
+          callTool: async () => {
+            throw new RunnerStoppedError({ reason: "idle" });
+          },
+        };
+        let starts = 0;
+        const { loaded } = await load(undefined, {
+          filesDisk: filesOnDisk(folder),
+          start: async () => {
+            starts += 1;
+            return first;
+          },
+        });
+        if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+        const connection = loaded.value.integration.connect(loaded.value.host);
+        stopIdle();
+        await idle;
+        folder["backend/index.js"] = "evil";
+        await expect(connection.callTool("forecast", { city: "Ghent" })).rejects.toThrow(
+          "backend/index.js changed",
+        );
+        expect(starts).toBe(1);
+      });
     });
 
     it("stops the runner and offers nothing when the code declares other than the manifest", async () => {
