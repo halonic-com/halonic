@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this as follow-up 3 of his review of halonic#1744 (HAL-5575), a team decision with no board card; the package owner (Liam) approves this note in review on [HAL-7192](/HAL/issues/HAL-7192)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:arcHs1qywxSudyUXnPOFHc4ggRpDJUcxfwinQpfDCcShLzK5lSCTbQ/cGa2kj/ZS5LvR3p/G+Omby25QGLpUAg==
 
 ## What changes
 
