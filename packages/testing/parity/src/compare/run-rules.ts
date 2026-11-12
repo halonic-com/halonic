@@ -124,32 +124,6 @@ function branchesByName(events: readonly LogEvent[]): LogEvent[] {
   return sortStretches(byBranch, branchResult, (event) => String(event["key"]));
 }
 
-/** The line of a method's prompt that names the fields of its JSON answer. */
-const methodFieldsLine = /^Answer with JSON with these fields: (.*)\.$/m;
-
-/** One field of that line: its name, then its type in brackets. */
-const methodField = /[^\s,(]+ \([^)]*\)/g;
-
-/** The prompt with the fields of its method's fields line in name order; any other text as it is. */
-function methodFieldsByName(prompt: unknown): unknown {
-  if (typeof prompt !== "string") return prompt;
-  return prompt.replace(methodFieldsLine, (_line, fields: string) => {
-    const sorted = (fields.match(methodField) ?? []).sort((a, b) => (a < b ? -1 : 1));
-    return `Answer with JSON with these fields: ${sorted.join(", ")}.`;
-  });
-}
-
-/** The method prompts of `agent.started` and the knowledge searches made with them, fields by name. */
-const methodPromptsByName = (test: ComparedTest): ComparedTest =>
-  eachEvent(
-    eachEvent(test, "agent.started", (event) => ({
-      ...event,
-      prompt: methodFieldsByName(event["prompt"]),
-    })),
-    "knowledge.searched",
-    (event) => ({ ...event, query: methodFieldsByName(event["query"]) }),
-  );
-
 /** Every run-log rule, in the order the compare applies them. */
 export const runRules: readonly RunRule[] = [
   {
@@ -191,11 +165,6 @@ export const runRules: readonly RunRule[] = [
     id: "parallel-branches-by-name",
     does: "sorts each stretch of the old parallel branch events, and the context they wrote, by branch name",
     old: (test) => eachLog(test, branchesByName),
-  },
-  {
-    id: "method-fields-by-name",
-    does: "sorts the fields of the old method prompts' 'Answer with JSON with these fields' line by name, in agent.started and knowledge.searched",
-    old: methodPromptsByName,
   },
 ];
 

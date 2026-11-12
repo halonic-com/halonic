@@ -82,28 +82,6 @@ verifies("parity.compare-run-logs", () => {
     ]);
   });
 
-  it("puts the fields of an old method prompt in name order, and nothing else", () => {
-    const prompt =
-      'Method "extract": Pull the vendor out.\n\nRead (this, and that).\n\n' +
-      "Answer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).";
-    const sorted =
-      'Method "extract": Pull the vendor out.\n\nRead (this, and that).\n\n' +
-      "Answer with JSON with these fields: amount (number), note (string, may be left out), vendor (string).";
-    const test = oneRun([
-      { type: "agent.started", prompt },
-      { type: "knowledge.searched", query: prompt },
-      { type: "agent.started", prompt: "Vendor: Acme Paper" },
-      { type: "agent.finished", output: prompt },
-    ]);
-    expect(rule("method-fields-by-name").old?.(test).runs[0]?.events).toEqual([
-      { type: "agent.started", prompt: sorted },
-      { type: "knowledge.searched", query: sorted },
-      { type: "agent.started", prompt: "Vendor: Acme Paper" },
-      { type: "agent.finished", output: prompt },
-    ]);
-    expect(rule("method-fields-by-name").new).toBeUndefined();
-  });
-
   it("takes only the named fields out", () => {
     const waiting = oneRun([
       { type: "run.waiting", state: "decide", labels: {}, title: "Approve?" },

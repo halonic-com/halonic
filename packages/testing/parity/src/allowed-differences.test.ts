@@ -196,7 +196,6 @@ verifies("parity.allowed-differences-checked", () => {
       "routines.cron-rejects-bad-expressions",
       "format.connector-approve-all",
       "engine.parallel-state",
-      "engine.task-method",
       "engine.local-child-runs",
       "workspace.definitions",
       "events.waiting-description",
