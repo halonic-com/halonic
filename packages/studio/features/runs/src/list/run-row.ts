@@ -173,7 +173,7 @@ function took(summary: RunSummary): string {
  * The step the run is in or stopped in: the step whose agent asked for an
  * approval, else the current step, else the last one it visited.
  */
-function currentStepName(summary: RunSummary, workflow: RunWorkflow | undefined): string {
+export function currentStepName(summary: RunSummary, workflow: RunWorkflow | undefined): string {
   const stateId =
     summary.approvals[0]?.state ?? summary.state ?? summary.statesVisited.at(-1) ?? "";
   return stepName(stateId, workflow?.stepDescription(stateId));

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { RunSummary } from "@halonicjs/events";
 import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -32,13 +33,18 @@ async function settled(): Promise<void> {
   });
 }
 
-async function openPage(source: RunsSource, goToWorkflows?: () => void) {
+async function openPage(
+  source: RunsSource,
+  goToWorkflows?: () => void,
+  openRun?: (run: RunSummary) => void,
+) {
   const list = new RunsList(source);
   const root = render(
     <RunsView
       list={list}
       now={() => mondayMorning}
       {...(goToWorkflows === undefined ? {} : { goToWorkflows })}
+      {...(openRun === undefined ? {} : { openRun })}
     />,
   );
   await settled();
@@ -208,5 +214,14 @@ verifies("runs.list", () => {
       expect(shown(root)).toHaveLength(2);
       expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
     });
+  });
+
+  it("opens a row's run with a click", async () => {
+    const openRun = vi.fn();
+    const { root } = await openPage(fakeSource([running]).source, undefined, openRun);
+
+    await click(root.querySelector<HTMLElement>('[role="grid"] [role="gridcell"]') ?? root);
+
+    expect(openRun).toHaveBeenCalledWith(running);
   });
 });

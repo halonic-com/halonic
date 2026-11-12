@@ -74,3 +74,16 @@ const [install] = blockedSites(events, { limit: entrySiteLimit });
 - Studio never adds a site: the action opens the agent's allowed sites, and the person adds it.
 - Pass `noConnectionProven={false}` for a run on Windows until the blocked-site suite runs green there (HAL-6219): on Windows a blocked name may still be looked up outside the sandbox, so the hint leaves out "No connection was made."
 - Only traffic through the sandbox's proxy has a site name. A block without one gets no row in 0.1.
+
+## The run page
+
+A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). What it shows is worked out in `run-view/run-page-model.ts`:
+
+```ts
+import { runBanner, runHeader } from "./run-view/run-page-model.ts";
+
+runHeader(run, context); // { title: "Run 01jd8q", kindLabel: "Run · Support reply", line: "today 10:40 · updates live", … }
+runBanner(run, context); // { kind: "callout", tone: "warning", name: "Waiting for you", action: { kind: "review-in-inbox" }, … }
+```
+
+Not there yet: the receipt, Every step and Details; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).

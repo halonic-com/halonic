@@ -76,3 +76,56 @@ export const pageWords = {
   testTag: "Test",
   running: (count: number) => `${count} running`,
 };
+
+/**
+ * The run page's header, banners and states (mc 15.2 revision 94, 9.7 and
+ * 19.3; states R13, R18, R21, R22 and R24). A banner's `name` is its hidden
+ * title, which makes it a named region (a11y 13.2).
+ */
+export const runPageWords = {
+  title: (shortId: string) => `Run ${shortId}`,
+  kindLabel: (workflow: string) => `Run · ${workflow}`,
+  startedToday: (time: string) => `today ${time}`,
+  startedYesterday: (time: string) => `yesterday ${time}`,
+  took: (took: string) => `took ${took}`,
+  updatesLive: "updates live",
+  loading: (shortId: string) => `Loading run ${shortId}`,
+  loadFailed: (shortId: string) => `Couldn't load run ${shortId}`,
+  notHere: "This run isn't in this workspace any more.",
+  reviewInInbox: "Review in Inbox",
+  openRun: (shortId: string) => `Open run ${shortId}`,
+  waitingForYouName: "Waiting for you",
+  waitingName: "Waiting",
+  failedName: "Run failed",
+  budgetName: "Stopped at its budget",
+  /** One tool approval, named by its step until the run page has the approval card's title. */
+  approval: (step: string) =>
+    `Waiting for your approval in the step ${step}. Nothing runs until you decide.`,
+  approvals: (count: number) => `Waiting for ${count} approvals. Nothing runs until you decide.`,
+  waitStep: (description: string) => `Waiting for you: ${description}`,
+  waitStepNoDescription: (step: string) => `Waiting for you in the step ${step}.`,
+  timer: (time: string) => `Waiting until ${time}.`,
+  childRun: (shortId: string, workflow: string) =>
+    `Waiting for child run ${shortId} (${workflow}).`,
+  childRunOnly: (shortId: string) => `Waiting for child run ${shortId}.`,
+  /** R24's general banner, until the banners by cause (HAL-1845). */
+  failed: (workflow: string, step: string, message: string) =>
+    message === ""
+      ? `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`
+      : `${workflow} failed in the step ${step}. Halonic can't tell the cause yet: ${asSentence(message)}`,
+  budgetTitle: "Stopped at its estimated budget",
+  budget: (workflow: string, step: string, message: string) =>
+    message === ""
+      ? `${workflow} stopped in the step ${step}.`
+      : `${workflow} stopped in the step ${step}: ${asSentence(message)}`,
+  budgetChecks:
+    "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
+  cancelledIn: (workflow: string, step: string) =>
+    `${workflow} was cancelled in the step ${step}. Nothing after it ran.`,
+  cancelledBeforeStart: (workflow: string) => `${workflow} was cancelled before it started.`,
+};
+
+/** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
+function asSentence(text: string): string {
+  return /[.?!]$/.test(text) ? text : `${text}.`;
+}

@@ -1,3 +1,4 @@
+import type { RunSummary } from "@halonicjs/events";
 import {
   Button,
   EmptyState,
@@ -6,7 +7,7 @@ import {
   type ListRow,
   StatusChip,
 } from "@halonicjs/studio-kit";
-import { errorMessageFor, type PlaceViewProps } from "@halonicjs/studio-shell";
+import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { type RunRow, runRow } from "../list/run-row.ts";
 import {
@@ -19,16 +20,22 @@ import {
   startFilters,
   statusCounts,
 } from "../list/runs-filter.ts";
+import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
 export function RunsPage({ context }: PlaceViewProps) {
-  const { openPlace } = context;
+  const { openPlace, openItem } = context;
   return (
     <RunsView
       list={context.services.get(RunsListService)}
       {...(openPlace === undefined ? {} : { goToWorkflows: () => openPlace("workflows") })}
+      {...(openItem === undefined
+        ? {}
+        : {
+            openRun: (run: RunSummary) => openItem({ kind: "run", hub: run.hubId, id: run.id }),
+          })}
     />
   );
 }
@@ -38,6 +45,8 @@ export interface RunsViewProps {
   readonly list: RunsList;
   /** Opens Workflows, for the empty state's button; without it the button isn't there. */
   readonly goToWorkflows?: () => void;
+  /** Opens a run's page in the active tab, for a row's click and Enter. */
+  readonly openRun?: (run: RunSummary) => void;
   /** The clock for the day headings and due times; tests pass a fixed one. */
   readonly now?: () => Date;
 }
@@ -50,10 +59,10 @@ export interface RunsViewProps {
  * place (D1); the filters work on the runs already loaded, so a filter change
  * never waits (K4).
  *
- * Not here yet: the spend line (T4), opening a run (the run page), the text
+ * Not here yet: the spend line (T4), opening a run in a new tab, the text
  * and hub filters, the row's ⋮, and the Started by, When and Took columns.
  */
-export function RunsView({ list, goToWorkflows, now = () => new Date() }: RunsViewProps) {
+export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() }: RunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const [filters, setFilters] = useState<RunsFilters>(startFilters);
@@ -67,6 +76,13 @@ export function RunsView({ list, goToWorkflows, now = () => new Date() }: RunsVi
     }),
   );
   const showTestRuns = () => setFilters({ ...filters, testRuns: true });
+  const openRow =
+    openRun === undefined
+      ? undefined
+      : (id: string) => {
+          const run = state.runs.find((candidate) => candidate.summary.id === id);
+          if (run !== undefined) openRun(run.summary);
+        };
 
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
@@ -85,6 +101,7 @@ export function RunsView({ list, goToWorkflows, now = () => new Date() }: RunsVi
         retry={retry}
         showTestRuns={showTestRuns}
         goToWorkflows={goToWorkflows}
+        openRow={openRow}
         now={now()}
       />
     </div>
@@ -100,6 +117,7 @@ function PageBody({
   retry,
   showTestRuns,
   goToWorkflows,
+  openRow,
   now,
 }: {
   readonly state: RunsListState;
@@ -109,6 +127,7 @@ function PageBody({
   readonly retry: () => void;
   readonly showTestRuns: () => void;
   readonly goToWorkflows: (() => void) | undefined;
+  readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
 }) {
   if (!state.loaded && state.error !== undefined) {
@@ -117,7 +136,7 @@ function PageBody({
         tone="error"
         align="start"
         title={emptyListWords.loadFailed}
-        description={failureReason(state.error)}
+        description={loadFailureReason(state.error)}
         action={{ label: "Try again", onClick: retry }}
       />
     );
@@ -135,6 +154,7 @@ function PageBody({
         empty={empty}
         retry={retry}
         showTestRuns={showTestRuns}
+        openRow={openRow}
         now={now}
       />
     </>
@@ -161,6 +181,7 @@ function Runs({
   empty,
   retry,
   showTestRuns,
+  openRow,
   now,
 }: {
   readonly loaded: boolean;
@@ -169,6 +190,7 @@ function Runs({
   readonly empty: Exclude<EmptyList, { kind: "no-runs" }> | undefined;
   readonly retry: () => void;
   readonly showTestRuns: () => void;
+  readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
 }) {
   if (!loaded) {
@@ -183,7 +205,7 @@ function Runs({
     );
   }
   if (empty === undefined) {
-    return <DayLists rows={rows} now={now} />;
+    return <DayLists rows={rows} openRow={openRow} now={now} />;
   }
   if (empty.kind === "only-test-runs") {
     return (
@@ -241,12 +263,25 @@ function Filters({
   );
 }
 
-/** The runs under one heading per day they started. */
-function DayLists({ rows, now }: { readonly rows: readonly RunRow[]; readonly now: Date }) {
+/** The runs under one heading per day they started; a click or Enter on a row opens its run. */
+function DayLists({
+  rows,
+  openRow,
+  now,
+}: {
+  readonly rows: readonly RunRow[];
+  readonly openRow: ((id: string) => void) | undefined;
+  readonly now: Date;
+}) {
   return (
     <div className="flex flex-col gap-4">
       {dayGroups(rows, now).map((group) => (
-        <List key={group.day} heading={{ name: group.day }} rows={group.rows.map(listRow)} />
+        <List
+          key={group.day}
+          heading={{ name: group.day }}
+          rows={group.rows.map(listRow)}
+          {...(openRow === undefined ? {} : { onOpen: openRow })}
+        />
       ))}
     </div>
   );
@@ -288,14 +323,4 @@ function EmptyLine({
       )}
     </p>
   );
-}
-
-/**
- * Why the runs couldn't load (R17): a kinded error's own reason, else that the engine isn't
- * answering, since a load that fails without a kind never reached it.
- */
-function failureReason(error: unknown): string {
-  const message = errorMessageFor(error, { title: emptyListWords.loadFailed });
-  const reason = message.body.trim();
-  return message.kind === "internal" || reason === "" ? emptyListWords.notAnswering : reason;
 }
