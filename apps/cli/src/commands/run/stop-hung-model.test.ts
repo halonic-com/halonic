@@ -1,6 +1,7 @@
 // `halonic run` stopped while its model call never answers (HAL-6677, the
-// walk on HAL-6673): the command still ends with the stop's code, and the
-// workspace's engine lock is free for the next run.
+// walk on HAL-6673): for Ctrl C and a closed terminal alike, the command still
+// ends with the stop's code, and the workspace's engine lock is free for the
+// next run.
 
 import { appendFile, cp, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -13,6 +14,7 @@ import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { engineLockFile } from "../../local-engine-host.ts";
+import type { StopSignal } from "../../output/stop.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
@@ -93,29 +95,39 @@ async function engineLocks(): Promise<string[]> {
   return held;
 }
 
-verifies("cli.local-engine-lock", () => {
-  it("ends a run stopped on a model that never answers with 130, and frees the engine lock", async () => {
-    const server = hungServer();
-    const signals = fakeSignals();
-    const io = captureIo(acme);
-    const command = runCommandWith({
-      ...testRunSetup(folder, profile),
-      http: server,
-      stoppedCloseLimitMs: closeLimitMs,
-    });
-
-    const running = runCli(["run", "support-reply", ...samsEmail, "--debug"], io, [command], {
-      stop: { signals, exitNow: () => {} },
-    });
-    await server.called;
-    signals.send("SIGINT");
-    const code = await running;
-
-    expect(code).toBe(130);
-    expect(io.stderr).toContain(
-      "Stopped. The run 01jd8q was cancelled after the step Read the email. Nothing after it ran.",
-    );
-    expect(io.stderr.some((line) => line.includes("didn't close within 0.2 s"))).toBe(true);
-    expect(await engineLocks()).toEqual([]);
+/** Runs `halonic run support-reply` on the hung server and sends `signal` once Sorter's model is called. */
+async function stopOnHungModel(signal: StopSignal) {
+  const server = hungServer();
+  const signals = fakeSignals();
+  const io = captureIo(acme);
+  const command = runCommandWith({
+    ...testRunSetup(folder, profile),
+    http: server,
+    stoppedCloseLimitMs: closeLimitMs,
   });
+  const running = runCli(["run", "support-reply", ...samsEmail, "--debug"], io, [command], {
+    stop: { signals, exitNow: () => {} },
+  });
+  await server.called;
+  signals.send(signal);
+  return { code: await running, io };
+}
+
+verifies("cli.local-engine-lock", () => {
+  it.each([
+    ["Ctrl C", "SIGINT", 130],
+    ["a closed terminal", "SIGHUP", 129],
+  ] as const)(
+    "ends a run that %s stopped on a model that never answers, and frees the engine lock",
+    async (_name, signal, exit) => {
+      const { code, io } = await stopOnHungModel(signal);
+
+      expect(code).toBe(exit);
+      expect(io.stderr).toContain(
+        "Stopped. The run 01jd8q was cancelled after the step Read the email. Nothing after it ran.",
+      );
+      expect(io.stderr.some((line) => line.includes("didn't close within 0.2 s"))).toBe(true);
+      expect(await engineLocks()).toEqual([]);
+    },
+  );
 });

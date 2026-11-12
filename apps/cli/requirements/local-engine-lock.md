@@ -18,5 +18,5 @@ While the CLI's engine of a workspace (`cli.local-engine`) is open, it shall be 
   when an engine is opened on the workspace,
   then it takes the lock over and opens.
 - Given `halonic run support-reply` on a model that never answers and doesn't stop when asked,
-  when the user presses Ctrl C once,
-  then the command ends with "Stopped." and code 130 at most 15 seconds later, and the next engine on the workspace opens.
+  when the user presses Ctrl C once, or closes the terminal,
+  then the command ends with "Stopped." and code 130, or 129, at most 15 seconds later, and the next engine on the workspace opens.
