@@ -6,6 +6,7 @@ import {
   commandPaths,
   harnessAgent,
   homeStation,
+  leakedAddressParts,
   location,
   pin,
   program,
@@ -13,6 +14,7 @@ import {
   remote,
   setUpTrustService,
   subject,
+  userInfoUrl,
 } from "./testing/trust-service-fixtures.ts";
 import { type TrustCheck, TrustService, type TrustSubject } from "./trust-service.ts";
 
@@ -195,12 +197,12 @@ verifies("app.trust-service", () => {
     expect(check).not.toHaveProperty("grant");
   });
 
-  it("refuses a connector whose URL has user info, with no fingerprint, grant or password (HAL-5421)", async () => {
+  it("refuses a connector whose URL has user info, with no fingerprint, grant or address (HAL-5421)", async () => {
     const { service, store } = setup();
     await trustAsPerson(service, subject(program("files")));
 
     const check = await service.check(
-      subject(program("files"), remote("mail", "https://ops:pw@mail.example.com/mcp")),
+      subject(program("files"), remote("mail", userInfoUrl("/mcp"))),
     );
 
     expectStatus(check, "refused");
@@ -209,7 +211,7 @@ verifies("app.trust-service", () => {
     ]);
     expect(check).not.toHaveProperty("fingerprint");
     expect(check).not.toHaveProperty("grant");
-    expect(JSON.stringify(check)).not.toContain("pw");
+    expect(leakedAddressParts(check)).toEqual([]);
     expect((await store.get(location))?.content).not.toHaveProperty("refused");
   });
 
@@ -219,7 +221,7 @@ verifies("app.trust-service", () => {
 
     const check = await service.check({
       ...subject(program("files")),
-      providers: [provider({ baseUrl: "https://ops:pw@models.example.net/v1" })],
+      providers: [provider({ baseUrl: userInfoUrl("/v1") })],
     });
 
     expectStatus(check, "refused");
@@ -227,7 +229,17 @@ verifies("app.trust-service", () => {
       { kind: "provider", id: "claude", reason: "the URL has user info" },
     ]);
     expect(check).not.toHaveProperty("grant");
-    expect(JSON.stringify(check)).not.toContain("pw");
+    expect(leakedAddressParts(check)).toEqual([]);
+  });
+
+  it("throws on a grant for refused content and saves nothing, keeping the person's record", async () => {
+    const { service, store } = setup();
+    await trustAsPerson(service, subject(program("files")));
+    const record = await store.get(location);
+    const refused = subject(program("files"), remote("mail", userInfoUrl("/mcp")));
+
+    await expect(service.grant(refused, "hfp1:00", "cli")).rejects.toThrow(RangeError);
+    expect(await store.list()).toEqual([record]);
   });
 
   it("never shrinks a record whose content was edited to list refused connectors", async () => {

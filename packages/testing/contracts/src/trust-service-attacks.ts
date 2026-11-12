@@ -43,6 +43,16 @@ const commandPaths = new Map([
   ["bash", "/usr/bin/bash"],
 ]);
 
+/** A connector whose URL has user info: the trust check refuses it, so it has no fingerprint. */
+const userInfoConnector: Connector = {
+  version: 1,
+  id: "web",
+  transport: {
+    http: { url: "https://leak-test-user:Xq7z9@web.example.com/mcp", headers: {} },
+  },
+  tools: { approve: [] },
+};
+
 /**
  * The fingerprint attack cases run through the trust check over a
  * `TrustStore`: after a person trusted the workspace, any attacker edit
@@ -95,6 +105,23 @@ export function trustServiceAttackContract(
           expect(await store.get(location)).toEqual(record);
         });
       }
+      it("never grants a workspace with a refused connector, whatever the record says", async () => {
+        const edited = fingerprintAttacks["adds NODE_OPTIONS to a program"];
+        const { store, service, record, grant } = await trusted(edited);
+        const refused = {
+          location,
+          connectors: [...edited.before, userInfoConnector],
+          commandPaths,
+        };
+
+        const check = await service.check(refused);
+
+        expect(check.status).toBe("refused");
+        expect(check).not.toHaveProperty("fingerprint");
+        expect(check).not.toHaveProperty("grant");
+        await expect(service.grant(refused, grant.fingerprint, "cli")).rejects.toThrow(RangeError);
+        expect(await store.get(location)).toEqual(record);
+      });
       it("asks for a workspace nobody trusted, and writes nothing", async () => {
         const { store } = await make();
         const { before } = fingerprintAttacks["adds NODE_OPTIONS to a program"];
