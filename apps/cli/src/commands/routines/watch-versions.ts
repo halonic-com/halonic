@@ -92,12 +92,21 @@ export class WatchedVersions implements WorkspaceVersions {
     dir: OpenWorkspaceDir,
     history: OpenedHistory | null,
     first: LoadedWorkspace,
+    firstCommit: string | undefined,
   ) {
     this.#dir = dir;
     this.#history = history;
     this.#latest = first;
     this.#localOnly = isLocalOnly(first);
-    this.routines = new LiveRoutines({ vcs: history?.vcs ?? null, saved: dir.store });
+    // The first version is loaded once: the routines and the first run read it from here.
+    const loaded =
+      firstCommit === undefined ? undefined : { commit: firstCommit, workspace: first };
+    this.#atCommit = loaded;
+    this.routines = new LiveRoutines({
+      vcs: history?.vcs ?? null,
+      saved: dir.store,
+      ...(loaded === undefined ? {} : { loaded }),
+    });
   }
 
   /**
@@ -119,18 +128,25 @@ export class WatchedVersions implements WorkspaceVersions {
     }
     try {
       if (history === null) {
-        return new WatchedVersions(dir, null, await loadWorkspace(dir.store));
+        return new WatchedVersions(dir, null, await loadWorkspace(dir.store), undefined);
       }
       const { vcs } = history;
+      const live = await liveVersionOf(vcs);
       const picked = runSourceFor("routine", {
-        live: await liveVersionOf(vcs),
+        live,
         vcs,
         saved: dir.store,
       });
       if (picked.reads === "nothing-live") {
         throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
       }
-      return new WatchedVersions(dir, history, await loadWorkspace(picked.source));
+      const first = await loadWorkspace(picked.source);
+      return new WatchedVersions(
+        dir,
+        history,
+        first,
+        live.kind === "commit" ? live.commit.hash : undefined,
+      );
     } catch (error) {
       await history?.close();
       throw error;

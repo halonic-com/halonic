@@ -81,7 +81,7 @@ async function watchVersions(
   const typedDir = givenDir(input, dir);
   const trust = await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   // The routines as the last tick listed them, for the names the lines give.
-  let routines: readonly PlacedRoutine[] = await versions.routines.list();
+  let routines: readonly PlacedRoutine[] = await versions.routines.listLoaded();
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
   const warnings = unsandboxedWarnings(context);
