@@ -1,5 +1,6 @@
 import type {
   ChatMessage,
+  ChatTurnRefusal,
   ChatTurnRequest,
   ChatTurnResponse,
   RunExecutor,
@@ -64,6 +65,12 @@ export interface ChatAnswerListener {
   onToolCall?(toolCall: ToolCall): void;
   /** A message was added to the answer. */
   onMessage?(message: ChatMessage): void;
+  /**
+   * A model turn refused something, such as a tool listing or a tool call.
+   * Called once per turn that refused anything, for the person's integration
+   * status only. The refusal text never goes back to the model.
+   */
+  onRefusals?(refusals: readonly ChatTurnRefusal[]): void;
 }
 
 /**
