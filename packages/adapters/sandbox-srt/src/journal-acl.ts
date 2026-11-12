@@ -3,8 +3,15 @@ import { execFile } from "node:child_process";
 /** The SIDs of the system and of the Administrators group, which a new folder's default access list names. */
 const defaultEntries = ["S-1-5-18", "S-1-5-32-544"];
 
-/** What {@link restrictToThisUser} starts; a test hands in a fake. */
-export type RunProgram = (file: string, args: string[]) => Promise<{ stdout: string }>;
+/**
+ * What {@link restrictToThisUser} starts; a test hands in a fake. `limitMs`
+ * is how long it may run, {@link runLimitMs} when left out.
+ */
+export type RunProgram = (
+  file: string,
+  args: string[],
+  limitMs?: number,
+) => Promise<{ stdout: string }>;
 
 /** The system folder, from the environment Windows always sets. */
 function system32(): string {
@@ -13,15 +20,17 @@ function system32(): string {
   return `${root}\\System32`;
 }
 
-/** How long a program of the system folder may run before it is stopped. */
-const runLimitMs = 15_000;
+/** How long a program of the system folder may run before it is stopped, unless the caller gives a limit of its own. */
+export const runLimitMs = 15_000;
 
 /** How a program of the system folder ended, when it failed. */
 export interface FixedRunFailure {
   /** Its exit code; `null` when it was stopped. */
   code: number | null;
-  /** Whether it was stopped because it ran past {@link runLimitMs}. */
+  /** Whether it was stopped because it ran past its time limit. */
   stopped: boolean;
+  /** The time limit it had. */
+  limitMs: number;
   stdout: string;
   stderr: string;
 }
@@ -36,7 +45,7 @@ export function fixedRunFailure(
   failure: FixedRunFailure,
 ): string {
   const ended = failure.stopped
-    ? `was stopped after ${runLimitMs / 1000} s`
+    ? `was stopped after ${failure.limitMs / 1000} s`
     : `ended with exit code ${failure.code ?? "unknown"}`;
   const printed = [failure.stderr.trim(), failure.stdout.trim()].filter((text) => text !== "");
   const output = printed.length === 0 ? "it printed nothing" : `it printed: ${printed.join(" | ")}`;
@@ -44,16 +53,16 @@ export function fixedRunFailure(
 }
 
 /** Starts a program of the system folder, never one from the PATH. */
-export const runFixed: RunProgram = (file, args) =>
+export const runFixed: RunProgram = (file, args, limitMs = runLimitMs) =>
   new Promise((resolve, reject) => {
     execFile(
       `${system32()}\\${file}`,
       args,
-      { timeout: runLimitMs, windowsHide: true },
+      { timeout: limitMs, windowsHide: true },
       (error, stdout, stderr) => {
         if (error === null) return resolve({ stdout });
         const code = typeof error.code === "number" ? error.code : null;
-        const failure = { code, stopped: error.killed === true, stdout, stderr };
+        const failure = { code, stopped: error.killed === true, limitMs, stdout, stderr };
         reject(new Error(fixedRunFailure(file, args, failure), { cause: error }));
       },
     );
