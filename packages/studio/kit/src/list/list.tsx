@@ -43,6 +43,7 @@ export function List<Id extends string>({
   selection,
   current,
   dense = false,
+  columns,
   flush: flushProp,
   empty,
   loading = false,
@@ -83,6 +84,7 @@ export function List<Id extends string>({
         phone={phone}
         heading={heading === undefined ? undefined : { ...heading, headingLevel }}
         grouped={groups !== undefined}
+        columns={columns}
         shape={skeleton}
         label={loadingLabel ?? ""}
         onRetry={onRetry}
@@ -104,6 +106,7 @@ export function List<Id extends string>({
     onOpenInNewTab,
     selection,
     current,
+    columns,
   };
 
   // With rows, the heading is the box's first line, so the first row's top corners are square
@@ -122,7 +125,7 @@ export function List<Id extends string>({
         </>
       ) : (
         // Not overflow-hidden, which would cut the focus rings of the first and last rows.
-        <div className={grouped ? "" : boxClasses[look]}>
+        <div className={boxWrapperClasses(look, grouped, columns !== undefined)}>
           {headingNode}
           <GridTable
             sections={sections}
@@ -194,6 +197,15 @@ function GridTable<Id extends string>({
       ))}
     </table>
   );
+}
+
+/**
+ * The box round the table: none with groups, whose cells draw a box per group. With columns it's
+ * the container the rows' layout follows (`@list-wide:`): the List's own width, not the window's.
+ */
+function boxWrapperClasses(look: ListLook, grouped: boolean, hasColumns: boolean): string {
+  const box = grouped ? "" : boxClasses[look];
+  return hasColumns ? `@container ${box}` : box;
 }
 
 /** A run of rows in one box: a group under its heading, or all of a List's `rows`. */

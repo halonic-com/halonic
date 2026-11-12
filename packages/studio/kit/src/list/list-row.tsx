@@ -4,7 +4,7 @@ import type { GridNavigation } from "../grid-navigation/use-grid-navigation.ts";
 import { MoreIcon } from "../icons/more-icon.tsx";
 import { CheckCell, checkColumnWidth } from "./check-cell.tsx";
 import { type ListLook, lineClasses } from "./list-lines.ts";
-import type { ListRow, ListSelection } from "./list-props.ts";
+import type { ListColumn, ListRow, ListSelection } from "./list-props.ts";
 import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
 
@@ -151,6 +151,8 @@ export interface RowShared<Id extends string> {
   readonly selection: ListSelection<Id> | undefined;
   /** The list's `current` row. */
   readonly current: Id | undefined;
+  /** The list's columns, when it has them. */
+  readonly columns: readonly ListColumn[] | undefined;
 }
 
 /** The props of `Row`: the row, where it sits, and what every row shares. */
@@ -241,6 +243,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           dense={dense}
           reasonId={reasonId}
           afterCheck={hasCheck}
+          columns={shared.columns}
         />
       </td>
       {hasMore ? (

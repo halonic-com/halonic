@@ -1,8 +1,18 @@
-import { type FocusEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type FocusEvent,
+  Fragment,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "../button/button.tsx";
 import { ListHeading, type ListHeadingProps } from "../list-heading/list-heading.tsx";
 import { SkeletonBar, type SkeletonBarWidth } from "../skeleton-bar/skeleton-bar.tsx";
 import { boxClasses, type ListLook, lineClasses } from "./list-lines.ts";
+import type { ListColumn } from "./list-props.ts";
+import { columnWidthClasses } from "./row-columns.tsx";
 
 /** The skeleton waits this long before it shows, so a fast load doesn't flash. */
 export const SKELETON_AFTER_MS = 300;
@@ -54,6 +64,8 @@ export interface ListSkeletonProps {
   readonly heading: Pick<ListHeadingProps, "name" | "detail" | "headingLevel"> | undefined;
   /** The List has groups: a heading bar stands above the box, where the first group's heading goes. */
   readonly grouped: boolean;
+  /** The List's columns: from 800px the skeleton rows have a bar in each. */
+  readonly columns: readonly ListColumn[] | undefined;
   readonly shape: ListSkeletonShape;
   /** What the status line says: "Loading skills". */
   readonly label: string;
@@ -75,6 +87,7 @@ export function ListSkeleton({
   phone,
   heading,
   grouped,
+  columns,
   shape,
   label,
   onRetry,
@@ -101,18 +114,28 @@ export function ListSkeleton({
           <>
             {grouped ? <HeadingBar /> : null}
             {/* Nothing in it takes focus, so it can clip the rows to the box's corners. */}
-            <div aria-hidden="true" className={`overflow-hidden ${boxClasses[look]}`}>
+            <div
+              aria-hidden="true"
+              className={`overflow-hidden ${boxClasses[look]} ${columns === undefined ? "" : "@container"}`}
+            >
               {/* The heading is the box's first line, as in the real List. */}
               {heading === undefined ? null : <HeadingBar />}
-              {barWidths.map((widths, index) => (
-                <SkeletonRow
-                  key={widths.title}
-                  widths={widths}
-                  line={index === 0 ? "" : lineClasses[look].main}
-                  phone={phone}
-                  shape={shape}
-                />
-              ))}
+              {barWidths.map((widths, index) => {
+                const line = index === 0 ? "" : lineClasses[look].main;
+                const row = <SkeletonRow widths={widths} phone={phone} shape={shape} line={line} />;
+                if (columns === undefined || phone) {
+                  return <Fragment key={widths.title}>{row}</Fragment>;
+                }
+                // From 800px the columns' row shows, below it the stacked row.
+                return (
+                  <div key={widths.title} className={line}>
+                    <ColumnsSkeletonRow widths={widths} columns={columns} />
+                    <div className="@list-wide:hidden">
+                      <SkeletonRow widths={widths} phone={phone} shape={shape} line="" />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
@@ -133,14 +156,15 @@ function HeadingBar() {
 
 function SkeletonRow({
   widths,
-  line,
   phone,
   shape,
+  line,
 }: {
   readonly widths: { title: SkeletonBarWidth; meta: SkeletonBarWidth };
-  readonly line: string;
   readonly phone: boolean;
   readonly shape: ListSkeletonShape;
+  /** The line above it: none on the first row. */
+  readonly line: string;
 }) {
   // A real row with a meta line: 56px, or at least 64px on a phone.
   const height = phone ? "min-h-16 py-3" : "min-h-14";
@@ -152,6 +176,44 @@ function SkeletonRow({
         <SkeletonBar kind="meta" width={widths.meta} />
       </div>
       {shape.trailing === true ? <SkeletonBar kind="trailing" /> : null}
+    </div>
+  );
+}
+
+/** A bar in each column, at the columns' widths, so the rows that arrive don't move anything. */
+function ColumnsSkeletonRow({
+  widths,
+  columns,
+}: {
+  readonly widths: { title: SkeletonBarWidth; meta: SkeletonBarWidth };
+  readonly columns: readonly ListColumn[];
+}) {
+  const bars: Record<ListColumn["kind"], ReactNode> = {
+    status: <SkeletonBar kind="trailing" />,
+    code: <SkeletonBar kind="meta" width="2/3" />,
+    main: (
+      <span className="flex flex-col gap-2">
+        <SkeletonBar kind="title" width={widths.title} />
+        <SkeletonBar kind="meta" width={widths.meta} />
+      </span>
+    ),
+    text: <SkeletonBar kind="meta" width="3/5" />,
+    time: (
+      <span className="flex justify-end">
+        <SkeletonBar kind="meta" width="1/2" />
+      </span>
+    ),
+  };
+  return (
+    <div className="hidden min-h-14 items-center gap-3 bg-surface px-4 @list-wide:flex">
+      {columns.map((column) => (
+        <div
+          key={column.kind === "main" ? "main" : column.key}
+          className={columnWidthClasses[column.kind]}
+        >
+          {bars[column.kind]}
+        </div>
+      ))}
     </div>
   );
 }

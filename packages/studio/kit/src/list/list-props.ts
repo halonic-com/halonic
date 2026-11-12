@@ -16,8 +16,18 @@ export interface ListRow<Id extends string = string> {
   readonly icon?: ReactNode;
   /** A 28px avatar before the text, in place of the icon. Hidden from screen readers too. */
   readonly avatar?: ReactNode;
-  /** On the right: a status chip or a value. */
+  /** On the right: a status chip or a value. In a List with `columns`, a `status` column instead. */
   readonly trailing?: ReactNode;
+  /** In a List with `columns`: an outline tag after the title, never cut: "Test". */
+  readonly tag?: ReactNode;
+  /** In a List with `columns`: the row's value in each column, by the column's `key`. */
+  readonly cells?: Readonly<Record<string, ListCell>>;
+  /**
+   * In a List with `columns`: the sentence a screen reader hears for the row, in its own order
+   * and words, as microcopy 19.3's "Run 01JD8Q, Support reply, needs you, …". The columns are
+   * hidden from screen readers; without it they hear the title and the meta line.
+   */
+  readonly label?: string;
   /** The "More" icon button. Its label names the row: "More actions for Sorter". */
   readonly more?: {
     readonly label: string;
@@ -33,6 +43,29 @@ export interface ListRow<Id extends string = string> {
    * chip takes the trailing slot. The row stays openable, so it can be fixed.
    */
   readonly error?: { readonly reason: string; readonly chip: string };
+}
+
+/**
+ * A column's kind sets its width, alignment, type and what happens when it doesn't fit, so every
+ * columned List looks the same (spec HAL-6764):
+ * - `status`, 120px: a StatusChip, never cut.
+ * - `code`, 64px: a short id in `text-code`, never cut.
+ * - `main`, the rest and at least 200px: the row's icon, title, tag and meta line.
+ * - `text`, 192px: a short phrase, up to two lines.
+ * - `time`, 96px, right-aligned: a time over its detail, never cut.
+ */
+export type ListColumnKind = "status" | "code" | "main" | "text" | "time";
+
+/** One column of a List with columns. Exactly one is `main`, which holds the title. */
+export type ListColumn =
+  | { readonly kind: "main" }
+  | { readonly kind: Exclude<ListColumnKind, "main">; readonly key: string };
+
+/** A row's value in one column. */
+export interface ListCell {
+  readonly value: ReactNode;
+  /** Only a `time` column draws it, under the value: "took 2 min". */
+  readonly detail?: string;
 }
 
 /** Why a row can't be used right now: "Waiting for the model to download". */
@@ -87,8 +120,14 @@ interface ListBase<Id extends string> {
    * `aria-selected` and checkbox still follow the selection. Enter and a click still call `onOpen`.
    */
   readonly current?: Id;
-  /** 32px rows, for menus and pickers; 48px on a phone. */
+  /** 32px rows, for menus and pickers; 48px on a phone. Not with `columns`. */
   readonly dense?: boolean;
+  /**
+   * The rows' columns, in order, as the Runs list: status, run, what ran, started by, when. Side by
+   * side when the List is at least 800px wide; below that, and on a phone, each row stacks them
+   * on three lines. Rows then give `cells` and a `label`, not a `trailing` part.
+   */
+  readonly columns?: readonly ListColumn[];
   /** No outer border or radius and lines from 16px. On by default on a phone. */
   readonly flush?: boolean;
   /**

@@ -165,7 +165,15 @@ export {
 } from "./line-frame/line-frame.tsx";
 export type { ListEmpty } from "./list/empty-list.tsx";
 export { List } from "./list/list.tsx";
-export type { ListGroup, ListProps, ListRow, ListSelection } from "./list/list-props.ts";
+export type {
+  ListCell,
+  ListColumn,
+  ListColumnKind,
+  ListGroup,
+  ListProps,
+  ListRow,
+  ListSelection,
+} from "./list/list-props.ts";
 export {
   type ListSkeletonShape,
   SKELETON_AFTER_MS,
