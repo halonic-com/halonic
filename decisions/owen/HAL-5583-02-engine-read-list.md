@@ -1,12 +1,14 @@
 # Decision: a connector file's `read` list lets a tool run without asking
 
 - Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approves this note in review
-- Kind: user-visible
+- Kind: internal
 
 Since HAL-5199 the engine counts every connector tool as `write` (or `send`),
 whatever its server lists, so every connector call in a run waits for a
 person's OK and a `parallel` branch gets no connector tools. The board chose
-to let the workspace mark safe tools by name, in the connector file:
+to let the workspace mark safe tools by name, in the connector file.
+The note is `internal` and signed with the CTO key because no user key is
+pinned yet (HAL-3434); the change itself is the board's decision above:
 
 ```yaml
 tools:
