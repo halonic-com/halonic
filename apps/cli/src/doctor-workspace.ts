@@ -2,7 +2,13 @@
 // the trust check covers, its model aliases and the providers they use. The
 // doctor service asks the machine about them; this only reads the files.
 
-import type { AliasProvider, DoctorProvider, DoctorWorkspace } from "@halonicjs/app";
+import {
+  type AliasProvider,
+  type DoctorProvider,
+  type DoctorWorkspace,
+  trustContentInputOf,
+  trustSubjectOf,
+} from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
 import {
   filesOf,
@@ -12,7 +18,6 @@ import {
   reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
 import { fileProblemsOf } from "./workspace-problems.ts";
-import { trustContentInputOf, trustSubjectOf } from "./workspace-trust.ts";
 
 /**
  * Where a model server on this computer answers when its provider file
