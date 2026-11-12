@@ -87,6 +87,16 @@ verifies("library.status-section", () => {
       ]);
     });
 
+    it("shows the time of each refusal", async () => {
+      const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1), refusal(2)] });
+      const { root } = await openSection(host);
+      const times = [...root.querySelectorAll("li time")];
+      expect(times).toHaveLength(2);
+      for (const time of times) {
+        expect(time.getAttribute("datetime")).toBe(new Date(0).toISOString());
+      }
+    });
+
     it("names the list by its heading, as a list, and draws no landmark or live region", async () => {
       const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1)] });
       const { root } = await openSection(host);
