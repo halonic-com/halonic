@@ -31,7 +31,9 @@ lists, in this order (requirement `cli.trust-check`):
   on this computer, its arguments and its environment. A program started by
   `npx`, `uvx` or `pipx run` without a pinned version gets a `!` line, because
   it fetches code from npm or PyPI each time it starts. For those, the prompt
-  asks a second question.
+  asks a second question. A program whose connector names `sites` then lists
+  each site it may reach in a sandbox, one per line, as an agent's allowed
+  sites are, and the summary counts each site once with the agents' sites.
 - **Agents:** every agent that runs in Claude Code or Codex, with its allowed
   sites and its working folder when it isn't the default. Agents in Halonic's
   own harness aren't listed.

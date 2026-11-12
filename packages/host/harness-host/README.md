@@ -14,7 +14,7 @@ Neither calls it yet: in 0.1.0 the CLI's local engine has no harnesses.
 
 | Export | What it does | Requirement |
 | --- | --- | --- |
-| `harnessHostOf` | builds `{ harnesses, proposalFolders, start }` from the host's sandboxes, harnesses, bridge server, services, profile builder, person's choices, agent files and proposal parts | `harness-host.builder` |
+| `harnessHostOf` | builds `{ harnesses, proposalFolders, start }` (`HarnessHost`, from a `HarnessHostInput`) from the host's sandboxes, harnesses, bridge server, services, profile builder, person's choices, agent files and proposal parts | `harness-host.builder` |
 | `FilePlacementPolicy` | the engine's `PlacementPolicy` on `AgentPlacement`: reads the agent's file as it is on disk and answers `sandbox`, or `this-computer` when a person chose that for those bytes | `harness-host.placement` |
 | `AgentFiles` | the port it reads agents' files through, by hub and id, as raw bytes | `harness-host.placement` |
 | `LocalBridgeHost` | the engine's `HarnessBridgeHost` on the `HarnessBridgeServer` port, with what `servicesFor` gives the agent | `harness-host.bridge` |

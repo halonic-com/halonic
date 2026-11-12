@@ -6,7 +6,7 @@ see [docs/guides/checks.md](../docs/guides/checks.md).
 - `core/`: pure TypeScript, no third-party code and no platform APIs
 - `adapters/`: implementations of the core's ports; the only place for outside-world libraries.
   Each adapter declares where it runs: `"halonic": { "runtime": "node" | "web" | "workers" | "any" }`
-- `host/`: runtime-neutral packages. `host/server` is planned, not built yet; it will be the
+- `host/`: runtime-neutral packages, such as `host/google-sign-in` and `host/harness-host`. `host/server` is planned, not built yet; it will be the
   `Request → Response` handler behind `halonic serve`. Web-standard APIs only (`fetch`, `Request`, `Response`, `URL`,
   `crypto.subtle`, streams), no Node APIs and no adapters
 - `targets/<target>/`: runs the host on one platform and wires the adapters.

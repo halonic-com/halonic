@@ -47,7 +47,7 @@ try {
   `bridge.sock` in a new folder of its own inside it, with mode 0700, and
   never on a port. Its `url` is `http://bridge.halonic.invalid` and it gives
   `socketPath`. The sandbox's proxy, outside the fence, sends requests for
-  that name to the socket, so the program needs no Unix socket of its own. The
+  that name to the socket, so the program needs no Unix socket of its own. No sandbox does this yet: `sandbox-srt` refuses a socket bridge until its rule lands (HAL-6348). The
   bridge answers `Host: bridge.halonic.invalid` (with or without `:80`), a
   target in absolute form that names it, and `CONNECT
   bridge.halonic.invalid:80`, whose tunnel gets the same checks on every
