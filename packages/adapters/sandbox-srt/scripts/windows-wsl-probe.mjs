@@ -3,12 +3,15 @@
 // with `wsl --import`, and if so, do the distro's files and network get past
 // the fence? If it can, native srt stays experimental for good (HAL-3779,
 // section 3). D2: does WSL 2 start on this runner at all, that is, can it host
-// the `srt-wsl` attack suite (section 8)? Report-only: results go to the job
-// summary and to windows-wsl-results.json.
+// the `srt-wsl` attack suite (section 8)? D3 (HAL-7130): Studio's relay listens
+// on Windows' 127.0.0.1 so the agent host in our distro listens on no port (W9).
+// Can another distro reach such a port under mirrored networking, and not under
+// NAT? Report-only: results go to the job summary and to windows-wsl-results.json.
 //
 // Needs HALONIC_PROBE_ROOTFS: a small Linux root file system (.tar.gz) for this
 // runner's architecture, checked by the workflow against a pinned hash.
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { join, win32 } from "node:path";
 import { createKit } from "./windows-probe-kit.mjs";
 
@@ -129,10 +132,126 @@ async function wsl2() {
   if (imported.code === 0) await outsideSrt(`${wsl} --unregister ${name}`);
 }
 
+// ---- D3: another distro and a Windows loopback port, per networking mode ---
+// The canary on Windows' 127.0.0.1 stands in for Studio's relay. A distro that
+// isn't ours (not `halonic`) tries it in NAT mode and in mirrored mode. No srt
+// here: this is the person's own distro, outside every sandbox. The distro
+// tries every address that could lead to Windows: under NAT the default
+// gateway (127.0.0.1 there is the VM's own loopback), under mirrored 127.0.0.1
+// and the host's own address. A second listener on all of Windows' interfaces
+// is the route control: a closed canary counts only where it was reached.
+const wslconfig = process.env.USERPROFILE && join(process.env.USERPROFILE, ".wslconfig");
+
+const route = { connections: 0 };
+const routeServer = createServer((socket) => {
+  route.connections += 1;
+  socket.on("error", () => {});
+  socket.destroy();
+});
+
+// Counts the connections `nc` from the distro makes to one listener.
+async function reach(name, address, counter, target) {
+  const before = counter.connections;
+  const r = await outsideSrt(
+    `${wsl} -d ${name} -e sh -c "command -v nc >/dev/null || exit 127; nc -w 3 ${address} ${target} </dev/null"`,
+  );
+  return { reached: counter.connections - before, r };
+}
+
+const inDistro = async (name, command) => {
+  const r = await outsideSrt(`${wsl} -d ${name} -e sh -c "${command}"`);
+  return { r, out: r.out.replace(/[\0\r]/g, "").trim() };
+};
+
+// FAIL when the canary was reached. A closed canary is a PASS only in the mode
+// asked for (wslinfo reports the mode WSL actually used), with `nc` present,
+// and on an address the route control shows leads to Windows.
+function verdict(canaryTry, control, sameMode) {
+  if (canaryTry.reached > 0) return "FAIL";
+  if (!sameMode || canaryTry.r.code === 127 || control.r.code === 127) return "INCONCLUSIVE";
+  return control.reached > 0 ? "PASS" : "INCONCLUSIVE";
+}
+
+async function tryAddress(group, name, address, sameMode) {
+  const question = `another distro reaches a port on Windows' 127.0.0.1 via ${address ?? "(no address)"}`;
+  if (!address) {
+    record(group, question, "INCONCLUSIVE", "no host address in the distro");
+    return;
+  }
+  const control = await reach(name, address, route, routeServer.address().port);
+  const canaryTry = await reach(name, address, canary, port);
+  const detail = `canary: ${canaryTry.reached} connection(s), ${say(canaryTry.r)} | route control: ${control.reached} connection(s), ${say(control.r)}`;
+  record(group, question, verdict(canaryTry, control, sameMode), detail);
+}
+
+async function networkMode(mode) {
+  const group = `D3 another distro, ${mode} networking`;
+  writeFileSync(wslconfig, `[wsl2]\nnetworkingMode=${mode}\n`);
+  await outsideSrt(`${wsl} --shutdown`);
+  const name = "other-distro";
+  const imported = await outsideSrt(
+    `${wsl} --import ${name} ${join(work, `other-${mode}`)} ${rootfs} --version 2`,
+  );
+  const used = await inDistro(name, "wslinfo --networking-mode");
+  const routes = await inDistro(name, "ip route show default");
+  const addrs = await inDistro(name, "ip -4 -o addr");
+  const gateway = routes.out.match(/^default via (\S+)/m)?.[1];
+  const own = addrs.out.match(/^\d+:\s+(?!lo\s)\S+\s+inet\s+([\d.]+)\//m)?.[1];
+  record(
+    group,
+    "networking mode in the distro",
+    "INFO",
+    `import ${say(imported)} | wslinfo: "${used.out}" (${say(used.r)}) | gateway: ${gateway ?? "none"} | own address: ${own ?? "none"}`,
+  );
+  if (imported.code !== 0 || used.r.code !== 0) {
+    record(
+      group,
+      "another distro reaches Windows' 127.0.0.1",
+      "NOT-TESTABLE",
+      "the distro did not start",
+    );
+  } else {
+    // Under NAT, Windows is the default gateway; under mirrored, the distro
+    // shares Windows' own address.
+    const sameMode = used.out === mode;
+    await tryAddress(group, name, "127.0.0.1", sameMode);
+    await tryAddress(group, name, mode === "nat" ? gateway : own, sameMode);
+  }
+  if (imported.code === 0) await outsideSrt(`${wsl} --unregister ${name}`);
+}
+
+async function mirrored() {
+  if (!wslconfig) {
+    record("D3 another distro", "networking modes", "NOT-TESTABLE", "USERPROFILE is not set");
+    return;
+  }
+  const saved = existsSync(wslconfig) ? readFileSync(wslconfig) : undefined;
+  await new Promise((done) => routeServer.listen(0, "0.0.0.0", done));
+  // Windows Firewall drops what the distro sends to the host. A rule for both
+  // ports leaves the canary's 127.0.0.1 bind as the only thing between them.
+  const rule = "name=halonic-d3";
+  const ports = `${port},${routeServer.address().port}`;
+  const opened = await outsideSrt(
+    `netsh advfirewall firewall add rule ${rule} dir=in action=allow protocol=TCP localport=${ports}`,
+  );
+  record("D3 another distro", "firewall rule for the two ports", "INFO", say(opened));
+  try {
+    await networkMode("nat");
+    await networkMode("mirrored");
+  } finally {
+    if (saved === undefined) rmSync(wslconfig, { force: true });
+    else writeFileSync(wslconfig, saved);
+    await outsideSrt(`${wsl} --shutdown`);
+    await outsideSrt(`netsh advfirewall firewall delete rule ${rule}`);
+    routeServer.close();
+  }
+}
+
 if (haveInputs) {
   await sandboxDistro(1);
   await sandboxDistro(2);
   await wsl2();
+  await mirrored();
 } else {
   record(
     "D WSL",

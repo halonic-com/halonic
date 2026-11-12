@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 import { finished, harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
-import { engineStoppedMessage } from "./live-harness-calls.ts";
+import { engineStoppedMessage } from "./live-calls.ts";
 import { runsOn } from "./local-runs-test-kit.test-helper.ts";
 
 const agents = { writer: writerAgent("claude-code"), clerk: { ...writerAgent(), id: "clerk" } };

@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RunHistory } from "@halonicjs/app";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -13,6 +13,8 @@ import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
+import { turnOffLocalOnly } from "../../test/local-only.ts";
+import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { testRunSetup } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
 import { runCommandWith } from "./command.ts";
@@ -116,9 +118,12 @@ verifies("cli.run", () => {
   });
 
   it("ends a failed run with its two lines and exit 1", async () => {
-    // Writer's model alias isn't in the workspace, so the first step's model call fails.
-    const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
-    await writeFile(writer, `${await readFile(writer, "utf8")}model: gone\n`);
+    // Writer's script in the test model's file isn't all text, so the test model can't
+    // answer Writer and the first step fails.
+    const mock = join(acme, "providers/mock.yaml");
+    const script = await readFile(mock, "utf8");
+    const firstReply = "- Sam wants a refund for order 1042, which arrived damaged.";
+    await writeFile(mock, script.replace(firstReply, "- refuse: not a text reply"));
 
     const { code, io } = await run("support-reply", ...samsEmail);
 
@@ -227,6 +232,7 @@ describe("halonic run's refusals", () => {
   });
 
   it("names the connector file whose URL can't be trusted, without its password, and starts nothing (HAL-5421)", async () => {
+    await turnOffLocalOnly(acme);
     await mkdir(join(acme, "library/connectors"), { recursive: true });
     await writeFile(
       join(acme, "library/connectors/web.connector.yaml"),
@@ -244,5 +250,33 @@ describe("halonic run's refusals", () => {
     expect(io.stderr.join("\n")).not.toContain("pw");
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
+  });
+});
+
+verifies("cli.workspace-file-problems", () => {
+  it("refuses a workspace whose provider file has a pasted key, before trust, and never shows the key", async () => {
+    await pasteKeyIntoProvider(acme);
+    const profile = freshProfile();
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran.",
+      "  See them with: halonic validate",
+    ]);
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
+    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
+    expect(listed.total).toBe(0);
+  });
+
+  it("keeps the user's --dir in the command it suggests", async () => {
+    await pasteKeyIntoProvider(acme);
+    const io = captureIo(folder);
+
+    await runCli(["run", "support-reply", "--dir", "acme"], io, [runCommand()]);
+
+    expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
   });
 });

@@ -82,6 +82,12 @@ export interface ModelTurnInput {
    * turn skips every model that isn't `local` before calling it.
    */
   readonly localOnly?: boolean;
+  /**
+   * Stops the turn: the model call going on is aborted, no later model is
+   * tried, and the turn throws the signal's reason. A turn without one runs
+   * until it ends.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -233,7 +239,8 @@ async function askModel(
   tools: TurnTools,
   messages: ChatMessage[],
 ) {
-  const { agent } = input;
+  const { agent, signal } = input;
+  signal?.throwIfAborted();
   const definitions = tools.tools.map((tool) => tool.definition);
   const sent = withFencedTextsNotice(messages, definitions);
   const asked = await models.current();
@@ -250,7 +257,10 @@ async function askModel(
     tools: definitions,
     ...(input.params === undefined ? {} : { params: input.params }),
     meta: { agentId: agent },
+    ...(signal === undefined ? {} : { signal }),
   });
+  // A turn stopped while the model answered takes its answer no more.
+  signal?.throwIfAborted();
   const { response, answeredBy } = answer;
   const cost = callCost(answeredBy, response.usage);
   await input.log?.append({

@@ -2,9 +2,9 @@
 //! checklist): every app and plugin command the shell knows is refused when
 //! the request comes from the computer's address, while the connect page
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
-//! commands, `pick_folder`, the `trust_*` commands, the `run_*` commands,
-//! the `agent_host_*` commands, the `fs_*` commands and the `blob_*` and
-//! `record_*` commands.
+//! commands, `pick_folder`, the `trust_*` commands, the `host_settings_*`
+//! commands, the `run_*` commands, the `agent_host_*` commands, the `fs_*`
+//! commands and the `blob_*` and `record_*` commands.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -103,6 +103,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "trust_revoke",
         "reopen_folder",
         "forget_folder",
+        "host_settings_read",
+        "host_settings_set",
+        "host_settings_remove",
         "run_append",
         "run_events",
         "run_snapshot",
@@ -202,6 +205,22 @@ fn served_page_test_sees_the_connect_page_allowed_the_trust_commands_on_desktop(
     );
     let refusal = answer.expect_err("the folder doesn't exist");
     assert_eq!(refusal["kind"], "folder_unreadable", "{refusal}");
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_the_host_settings_commands_on_desktop() {
+    // Each save gets through to its command, which refuses the key before
+    // it reads or writes the profile.
+    let window = app_window();
+    for (command, body) in [
+        ("host_settings_set", json!({"key": "Not A Key", "value": 1})),
+        ("host_settings_remove", json!({"key": "../host.json"})),
+    ] {
+        let answer = invoke(&window, CONNECT_PAGE, command, body);
+        let refusal = answer.expect_err("the key is invalid");
+        assert_eq!(refusal["kind"], "invalid_key", "{command}: {refusal}");
+    }
 }
 
 #[cfg(desktop)]
@@ -409,6 +428,25 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
             "allow-trust-revoke",
             "allow-reopen-folder",
             "allow-forget-folder"
+        ])
+    );
+}
+
+#[test]
+fn served_page_test_sees_host_settings_granted_to_the_local_main_window_only() {
+    // The served Studio may show the settings, but only through the
+    // computer's own server; it must never change them through the shell.
+    let text = include_str!("../capabilities/desktop-host-settings.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([
+            "allow-host-settings-read",
+            "allow-host-settings-set",
+            "allow-host-settings-remove"
         ])
     );
 }

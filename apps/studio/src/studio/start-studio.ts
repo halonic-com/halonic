@@ -1,4 +1,5 @@
 import { TauriDefinitionStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { ServiceRegistry } from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
@@ -13,6 +14,8 @@ import {
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
 import {
+  hostSettingsStoreKey,
+  provideShellHostSettings,
   provideShellSecrets,
   TauriChannel,
   type TauriIpc,
@@ -96,7 +99,7 @@ export function startStudio(page: StudioPage): StartedStudio {
     return startDesktopApp(page, { shell, ipc, platform });
   }
   const shell = createShell({ features: [], host, platform });
-  const services = new ServiceRegistry();
+  const services = servedServices();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
   const window = mountStudioWindow(page.element, {
@@ -124,6 +127,17 @@ export const desktopFeatures = {
   features: [inboxFeature, runsFeature],
   hostServices: [InboxRunsService, RunsSourceService],
 };
+
+/**
+ * The served Studio's services. Without the shell it can't reach the profile, so its host
+ * settings are kept in memory, as in the browser demo, until `halonic serve` gives it the
+ * server's (HAL-6159 design, section 5). They last until the page is closed.
+ */
+export function servedServices(): ServiceRegistry {
+  const services = new ServiceRegistry();
+  services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
+  return services;
+}
 
 /** What the desktop app's window is made of. */
 interface DesktopParts {
@@ -158,14 +172,16 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
 /**
  * Opens the workspace in a folder with services of its own. The OS keychain becomes its secrets
  * and tokens before any feature's services are built, so no token lands in the data folder
- * (threat model 4.4, HAL-2952). In the shell, its runs are the run logs in the folder's run
- * folder, the ones the CLI writes (`studio.workspace-runs`). Its name is the folder's until the
- * workspace's files are read (HAL-3335).
+ * (threat model 4.4, HAL-2952), and the profile's `settings/host.json` its host settings
+ * (HAL-6261). In the shell, its runs are the run logs in the folder's run folder, the ones the
+ * CLI writes (`studio.workspace-runs`). Its name is the folder's until the workspace's files are
+ * read (HAL-3335).
  */
 export function openFolder(shell: Shell, window: object, location: string): OpenedWorkspace {
   const name = folderName(location);
   const services = new ServiceRegistry();
   provideShellSecrets(services, window);
+  provideShellHostSettings(services, window);
   provideWorkspaceRuns(services, window, location);
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });

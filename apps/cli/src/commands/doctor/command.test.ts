@@ -8,6 +8,7 @@ import type { DoctorMachine } from "../../doctor-machine.ts";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { pastedKey } from "../../test/pasted-key.ts";
 import { createDoctorCommand } from "./command.ts";
 
 const gb = 1024 ** 3;
@@ -198,5 +199,32 @@ verifies("cli.doctor-node", () => {
       problem: "windows-node-in-wsl",
     });
     expect(document.warnings).toBe(1);
+  });
+});
+
+verifies("cli.workspace-file-problems", () => {
+  it("shows the Workspace line as a problem when a provider file has a pasted key, never the key", async () => {
+    const files: Record<string, string> = {
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "models.yaml": "aliases:\n  smart:\n    provider: anthropic\n    model: claude-sonnet-5-5\n",
+      "providers/anthropic.yaml": `id: anthropic\ntype: anthropic\nsecret: ${pastedKey}\napiKey: ${pastedKey}\n`,
+    };
+    for (const [path, text] of Object.entries(files)) {
+      const file = join(folder, "acme", path);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, text);
+    }
+    const io = captureIo(folder);
+
+    const code = await runCli(["doctor", "--dir", "acme"], io, [
+      createDoctorCommand(() => machine()),
+    ]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout[2]).toBe(
+      "✕ Workspace   Acme · 2 problems in its files · halonic validate --dir acme",
+    );
+    expect(io.stdout.at(-1)).toBe("1 problem.");
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
   });
 });

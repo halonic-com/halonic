@@ -105,7 +105,14 @@ verifies("format.deployments-cloudflare", () => {
   it("refuses a domain longer than 253 characters", () => {
     const domain = `${Array.from({ length: 4 }, () => "a".repeat(63)).join(".")}.com`;
     const problems = problemsOf("deployments", cloudflare("worker: acme", `domain: ${domain}`));
-    expect(summary(problems)).toEqual(["deployments.cloud.cloudflare.domain invalid_format 7"]);
+    expect(summary(problems)).toEqual(["deployments.cloud.cloudflare.domain too_big 7"]);
+    expect(problems[0]?.message).toBe("use at most 253 characters");
+  });
+
+  it("accepts a domain of exactly 253 characters", () => {
+    const domain = `${Array.from({ length: 3 }, () => "a".repeat(63)).join(".")}.${"a".repeat(61)}`;
+    const text = cloudflare("worker: acme", `domain: ${domain}`);
+    expect(parsedValue("deployments", text).deployments["cloud"]?.cloudflare?.domain).toBe(domain);
   });
 
   it.each(["us", "EU", "weur"])("refuses the location %s", (location) => {

@@ -129,7 +129,7 @@ rule is that a steered model must not be able to do more than you approved.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once | Planned (HAL-998 for listed tools; see 4.3) |
+| Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once. A run stops before such a call and waits for a person; a chat turn, which can't wait, refuses it. Listed tools: see 4.3 | **On `main`** (`packages/core/engine/src/agent/check-run-tool-call.ts`, `check-chat-tool-call.ts`; `engine.run-tool-calls`, `engine.turn-approval-stop`) |
 | A tool result carries instructions | Results from tools marked untrusted reach the model only inside a fence | **On `main`**: every result of a server's tool, in chat turns and runs (HAL-5205) |
 | Knowledge or documents carry instructions | Knowledge reaches a model only through the engine's `knowledge_search` and `knowledge_read` tools, which fence the titles, snippets and texts of any source not marked `untrusted: false` (`ports.untrusted-knowledge`, `engine.knowledge-tools`). The ref the model sends back stays unfenced, so a hit or a document whose ref is longer than 512 characters is dropped (`knowledgeHitForModel`, `knowledgeDocForModel`). Agents don't get these tools in runs yet (HAL-4174) | **On `main`** |
 | A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). `FolderRunStore` keeps it as `<runId>.jsonl` in the workspace's `runs` folder in your profile, one event per line, and only adds to it. An append names the last event it expects (`expectedSeq`), holds `<runId>.lock` so the CLI and the Studio shell can't both write, and counts as stored only once flushed to disk; a failed append is cut back and stores none of its events, though one cut off by a crash of the program may leave the first events of its batch stored. The folder is private to you (`700`, files `600`), and a log that is a link or has a second name is refused. The CLI uses it for every run; the Studio shell's run store reads and writes the same files under the same lock | **On `main`** (`packages/adapters/fs-node/src/run-store.ts`; `fs-node.run-store-files`, `run-store-lock`, `run-store-recovery`, `run-store-private-files`) |
@@ -156,7 +156,7 @@ Its text is attacker text. The rules are the requirement
 | A listed tool lowers its own risk or marks itself trusted | Its `risk` and `untrusted` are ignored; it counts as `write` unless a trusted workspace sets another risk (`read`, `write` or `send`) | **On `main`** |
 | Two tools share a name | Every clashing listed tool is refused | **On `main`** |
 | The description reaches the model as an instruction | Descriptions and titles come back as `UntrustedText`, whose `toJSON` throws, so they can't be serialised to JSON without the fence. `toString` doesn't throw: a template string gives `[object Object]`, which doesn't leak the text. `structuredClone` or IPC turns it into a plain object and loses the guard. The fence itself is rendered when tools are assembled | **On `main`**: the engine fences every listed tool it offers (HAL-5205) |
-| A call uses arguments the listing never declared | Refused at call time; a listed tool is `write` unless a trusted workspace sets another risk, so it needs approval unless that risk is `read` | **On `main`** as functions; used once the engine puts turns together (HAL-998) |
+| A call uses arguments the listing never declared | Refused at call time; a listed tool is `write` unless a trusted workspace sets another risk, so it needs approval unless that risk is `read` | **On `main`**: the engine checks every call in runs and chat turns with `checkToolCall` (HAL-998) |
 | A server changes its tools after you looked | Pinning and approving listings | Planned (HAL-520) |
 
 **Known limit.** Unfenced strings (names, `enum` values) can still carry up to
@@ -182,11 +182,12 @@ Its text is attacker text. The rules are the requirement
 
 **Known limits.**
 
-- **Old copies stay on disk.** The record store only appends, so a replaced or
-  removed token stays in its history, still encrypted. If the key leaks, old
-  tokens can be read. Removing them for good needs compaction on the
-  `RecordStore` port: Planned (HAL-719). Until then, Halonic says it "deletes"
-  a secret and "stops using it", not that it is gone from disk.
+- **Old copies stay on disk.** After a replace or a remove, the token store
+  compacts `_tokens`, so the old sealed value is no longer in the record store
+  (`token-store.old-values-removed`, HAL-719). Backups, copies and freed disk
+  blocks are outside the record store and may still hold it, encrypted. If the
+  key leaks, those old tokens can be read. So Halonic says it "deletes" a
+  secret and "stops using it", not that it is gone from disk.
 - **The store must not be writable by agents or tools.** Anyone who can append
   to it can remove a token or roll it back. The encryption doesn't prevent
   that.
@@ -510,7 +511,7 @@ root. What matters is the distro reaching Windows.
 | **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). The setup checks whether `halonic` became the default after import, and the trust check reports a residual when Docker's socket or its `/mnt/wsl` folder is present. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | **Planned** (HAL-5394) |
 | A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **Planned** (HAL-5396) |
 | Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record | **Planned** (HAL-5394) |
-| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay and the bridge off its port **Planned** (HAL-5396, HAL-6316) |
+| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge uses the distro's loopback, and the trust check's canary probes run in both modes. Studio's relay listens on Windows' `127.0.0.1`: under NAT (the default) another distro can't reach it. CI probed this through the distro's own `127.0.0.1` and through its gateway to Windows; a control port on all of Windows' addresses was reached through the gateway, the `127.0.0.1` port wasn't (HAL-7130). Under mirrored networking Microsoft documents that a distro reaches Windows' `127.0.0.1`, so expect another distro to reach the relay there: only the host token and the `Host` check stop it, as for the loopback host elsewhere. CI can't run mirrored networking, so this is a real-PC probe | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay and the bridge off its port **Planned** (HAL-5396, HAL-6316) |
 | **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first | **Planned** (HAL-5402) |
 | Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); when updates run **Planned** (HAL-5396) |
 
@@ -578,7 +579,10 @@ The DNS leak is what keeps native srt experimental.
   never a pass, when WSL 2 won't start.
 - **Real-PC test** (Windows 11): WebDAV with native srt, `wsl --import` by the
   sandbox account, a junction in a mounted project folder, Docker Desktop with
-  `halonic` as the only distro, and mirrored networking. CI can't answer these.
+  `halonic` as the only distro, and mirrored networking (does another distro
+  reach a port on Windows' `127.0.0.1`, as Microsoft documents?). CI can't answer these: on the
+  `windows-2025` runner, WSL can't set up mirrored networking and falls back to
+  none (`0x803b0015`).
 
 ## 5. `serve` (B6)
 

@@ -426,6 +426,9 @@ importers:
       '@halonicjs/adapter-fs-tauri':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-tauri
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../packages/adapters/memory
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
@@ -469,9 +472,6 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
-      '@halonicjs/adapter-memory':
-        specifier: workspace:*
-        version: link:../../packages/adapters/memory
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../packages/core/engine
@@ -2186,6 +2186,9 @@ importers:
       '@halonicjs/adapter-agent-host-client':
         specifier: workspace:*
         version: link:../../adapters/agent-host-client
+      '@halonicjs/adapter-fs-tauri':
+        specifier: workspace:*
+        version: link:../../adapters/fs-tauri
       '@halonicjs/adapter-harness-claude-code':
         specifier: workspace:*
         version: link:../../adapters/harness-claude-code

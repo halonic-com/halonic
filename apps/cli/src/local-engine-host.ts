@@ -62,6 +62,7 @@ import {
   type LoadedWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import { abortOnStop } from "./abort-on-stop.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
@@ -310,6 +311,7 @@ function engineOn(
       connectorToolsOf(definitionsOf(latest(), request.hubId)),
     // Without a workspace.yaml that parsed, the format default: not local only.
     localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
+    abortOnStop,
     runs: {
       store: runs,
       blobs: new FolderBlobStore(folders.blobsFolder()),

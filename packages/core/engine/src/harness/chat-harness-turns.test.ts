@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
-import { engineStoppedMessage } from "../run/live-harness-calls.ts";
+import { engineStoppedMessage } from "../run/live-calls.ts";
 import { ChatHarnessTurns, chatApprovalComment, chatStoppedMessage } from "./chat-harness-turns.ts";
 import {
   finished,

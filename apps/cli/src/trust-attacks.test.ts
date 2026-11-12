@@ -25,6 +25,7 @@ import { runCli } from "./run-cli.ts";
 import { readSourceListing } from "./source-listing.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { heavyTestTimeout } from "./test/golden.ts";
+import { turnOffLocalOnly } from "./test/local-only.ts";
 import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
@@ -64,6 +65,8 @@ beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-cli-trust-attacks-"));
   acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
+  // The attacker's connectors aren't local, so they're only valid outside local only.
+  await turnOffLocalOnly(acme);
   profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "profile") } };
   reached = new Reached();
   // The trust records in `folder/trust`, where `testRunSetup` keeps them too.

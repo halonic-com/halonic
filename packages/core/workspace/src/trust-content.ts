@@ -38,12 +38,13 @@ export interface TrustContent {
   /** Every connector that can be trusted, sorted by id. */
   connectors: ConnectorTrustContent[];
   /**
-   * Connectors and providers that can't be trusted at all, sorted by id.
+   * Connectors and providers that can't be trusted at all, sorted by id,
+   * then connectors before providers.
    * Only there when there are some. A workspace with any can't be
    * fingerprinted, so nothing in it can be trusted or started until the
    * file is fixed.
    */
-  refused?: RefusedConnector[];
+  refused?: RefusedItem[];
   /**
    * The agents that start a harness program, such as Claude Code, sorted by
    * id. Only there when there are some, so the content and fingerprint of a
@@ -86,8 +87,12 @@ export interface ConnectorTrustContent {
   unknown?: Record<string, unknown>;
 }
 
+/** What a refused item is: a connector and a provider may have the same id. */
+export type RefusedKind = "connector" | "provider";
+
 /** A connector or provider that can't be trusted, and why. Its settings stay out, as they may hold a password. */
-export interface RefusedConnector {
+export interface RefusedItem {
+  kind: RefusedKind;
   id: string;
   /** Why, such as "the URL has user info". */
   reason: string;
@@ -143,7 +148,7 @@ export interface TrustContentInput {
 export function trustContent(input: TrustContentInput): TrustContent {
   const commandPaths = input.commandPaths ?? new Map<string, string>();
   const connectors: ConnectorTrustContent[] = [];
-  const refused: RefusedConnector[] = [];
+  const refused: RefusedItem[] = [];
   for (const connector of input.connectors) {
     const content = connectorContent(connector, commandPaths);
     if ("reason" in content) {
@@ -155,7 +160,7 @@ export function trustContent(input: TrustContentInput): TrustContent {
   const providers = providersTrustContent(input.providers ?? []);
   refused.push(...providers.refused);
   connectors.sort((left, right) => compareText(left.id, right.id));
-  refused.sort((left, right) => compareText(left.id, right.id));
+  refused.sort(compareRefused);
   const agents = agentsTrustContent(input.agents ?? []);
   const integrations = integrationsTrustContent(input.integrations ?? []);
   return {
@@ -170,10 +175,10 @@ export function trustContent(input: TrustContentInput): TrustContent {
 function connectorContent(
   connector: Connector,
   commandPaths: ReadonlyMap<string, string>,
-): ConnectorTrustContent | RefusedConnector {
+): ConnectorTrustContent | RefusedItem {
   const transport = transportContent(connector.transport, commandPaths);
   if ("refused" in transport) {
-    return { id: connector.id, reason: transport.refused };
+    return { kind: "connector", id: connector.id, reason: transport.refused };
   }
   const unknown = unknownFields(connector, connectorFields);
   return {
@@ -284,6 +289,14 @@ function mapValues(
 
 function sorted(values: readonly string[]): string[] {
   return [...values].sort(compareText);
+}
+
+/**
+ * Orders refused items by id, as before they had a kind; a connector and a
+ * provider with the same id keep one order too, the connector first.
+ */
+function compareRefused(left: RefusedItem, right: RefusedItem): number {
+  return compareText(left.id, right.id) || compareText(left.kind, right.kind);
 }
 
 /** Compares by code unit, so the order is the same on every machine and locale. */

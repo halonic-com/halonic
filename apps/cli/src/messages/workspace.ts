@@ -1,5 +1,7 @@
+import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { phrase } from "./phrase.ts";
+import { type Phrase, phrase } from "./phrase.ts";
+import { suggestedCommand } from "./suggested-command.ts";
 
 /**
  * The sentences every command that reads a workspace shares (cli-output
@@ -16,6 +18,16 @@ export const workspaceMessages = defineMessages("workspace", {
   /** The reason when the folder reads but a file in it can't, worded as the loader words it: "the workspace file workspace.yaml can't be read." */
   fileUnreadable: (path: string) => phrase`the workspace file ${path} can't be read.`,
   fileUnreadableFix: () => phrase`Check the file's permissions, or move it out of the workspace.`,
+  /**
+   * The reason a run is refused when the workspace's files have errors, each
+   * leaving a file out (HAL-6613, built on run's Couldn't line with Sofia):
+   * "Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran."
+   * `nothingDone` is "Nothing ran." or "Nothing was sent.".
+   */
+  fileProblems: (workspace: string, count: number, nothingDone: Phrase) =>
+    phrase`${workspace} has ${counted(count, "problem", "problems")} in its files. ${nothingDone}`,
+  /** Its fix; `dir` is the user's own `--dir`. */
+  fileProblemsFix: (dir?: string) => phrase`See them with: ${suggestedCommand("validate", dir)}`,
   noWorkspaceFix: () =>
     phrase`Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.`,
   /**

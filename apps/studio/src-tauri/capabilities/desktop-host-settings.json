@@ -1,0 +1,18 @@
+{
+  "identifier": "desktop-host-settings",
+  "description": "On desktop, the app's own page may read and save the settings kept where Halonic runs (the assistant, the sandbox default) through the host_settings_* commands. The shell keeps them in the CLI's profile, settings/host.json (crates/host-settings); the page gives a key and a value, never a path. It is local only, so the Studio the computer serves gets no settings through the shell.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-host-settings-read",
+    "allow-host-settings-set",
+    "allow-host-settings-remove"
+  ]
+}

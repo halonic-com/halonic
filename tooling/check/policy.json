@@ -46,7 +46,8 @@
     ],
     "@halonicjs/format": [
       "./integration",
-      "./recording"
+      "./recording",
+      "./runtime-export"
     ],
     "@halonicjs/std": [
       "./error-kind"

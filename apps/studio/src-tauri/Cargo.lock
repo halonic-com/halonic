@@ -1585,6 +1585,7 @@ dependencies = [
  "halonic-blob-store",
  "halonic-connect",
  "halonic-git-guard",
+ "halonic-host-settings",
  "halonic-keychain",
  "halonic-login-shell",
  "halonic-process-probe",

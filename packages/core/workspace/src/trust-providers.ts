@@ -26,6 +26,7 @@ export interface ProviderTrustContent {
 
 /** A provider that can't be trusted, and why. Its address stays out, as it may hold a password. */
 export interface RefusedProvider {
+  kind: "provider";
   id: string;
   reason: string;
 }
@@ -70,7 +71,7 @@ export function providersTrustContent(providers: readonly Provider[]): Providers
 function providerContent(provider: Provider): ProviderTrustContent | RefusedProvider {
   const baseUrl = provider.baseUrl === undefined ? undefined : trustUrl(provider.baseUrl);
   if (baseUrl !== undefined && "refused" in baseUrl) {
-    return { id: provider.id, reason: baseUrl.refused };
+    return { kind: "provider", id: provider.id, reason: baseUrl.refused };
   }
   const { options } = provider;
   return {

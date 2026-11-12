@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@halonicjs/adapter-fs-tauri": "workspace:*",
+    "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",
@@ -29,7 +30,6 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-fs-node": "workspace:*",
-    "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/engine": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",

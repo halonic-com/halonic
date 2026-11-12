@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
-import { secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
+import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -9,6 +9,7 @@ import {
   keyboardPlatform,
   openFolder,
   type StartedStudio,
+  servedServices,
   startStudio,
   studioHost,
 } from "./start-studio.ts";
@@ -70,6 +71,15 @@ verifies("studio.entry", () => {
     expect(started.host).toBe("served");
     expect(element.querySelector(tabsSelector)).not.toBeNull();
     expect(element.querySelector(headingSelector)?.textContent).toBe("Home");
+  });
+
+  it("keeps the served Studio's host settings in memory, as it has no shell", async () => {
+    const services = servedServices();
+
+    const store = services.get(hostSettingsStoreKey);
+    await store.set("assistant.turn-limit", 20);
+    expect(await store.read()).toEqual({ "assistant.turn-limit": 20 });
+    await services.dispose();
   });
 
   it("runs as the desktop app in Tauri's webview", () => {
@@ -153,6 +163,19 @@ verifies("studio.open-folder", () => {
     expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
     expect(webview.calls.at(-1)?.args).toEqual({ name: "openai" });
     expect(opened.name).toBe("acme");
+    await opened.dispose();
+  });
+
+  it("gives an opened workspace the profile's host settings through the shell", async () => {
+    const webview = desktopWebview(null);
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const opened = openFolder(shell, webview.page, "/work/acme");
+
+    await opened.workspace.services.get(hostSettingsStoreKey).remove("assistant.turn-limit");
+    expect(webview.calls.at(-1)).toEqual({
+      command: "host_settings_remove",
+      args: { key: "assistant.turn-limit" },
+    });
     await opened.dispose();
   });
 });

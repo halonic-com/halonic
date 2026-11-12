@@ -18,8 +18,11 @@ export type WorkspaceTrust = TrustCheck["status"] | "not-needed";
 /** The Workspace line: shown only inside a workspace. */
 export interface WorkspaceLine extends DoctorLine {
   check: "workspace";
-  /** Never `failed`: a workspace that isn't trusted only stops its runs until it is. */
-  status: "ok" | "warning";
+  /**
+   * `failed` only when files have problems: a workspace that isn't trusted
+   * only stops its runs until it is.
+   */
+  status: "ok" | "warning" | "failed";
   /** The workspace's name, such as "acme". */
   name: string;
   /**
@@ -35,37 +38,66 @@ export interface WorkspaceLine extends DoctorLine {
    * Left out when it isn't on one.
    */
   windowsDrive?: string;
+  /**
+   * How many errors `halonic validate` finds in the workspace's files, only
+   * when there are any. Each leaves a file out of the workspace, so no run
+   * starts there until they are fixed (HAL-6613).
+   */
+  fileProblems?: number;
+}
+
+/** What else doctor found about the workspace, besides its trust. */
+export interface WorkspaceFindings {
+  /** The Windows drive it is on under WSL, such as "/mnt/c". */
+  windowsDrive?: string | undefined;
+  /** The errors in the workspace's files, as `halonic validate` counts them. */
+  fileProblems?: number | undefined;
 }
 
 /**
  * The Workspace line of `halonic doctor` (requirement `app.doctor-workspace`).
- * A trusted workspace is ✓, and so is one that needs no trust, as `run`
- * doesn't ask for it there; every other state is a warning, because
- * `halonic trust` fixes it and nothing else is stopped. A workspace on a
- * Windows drive under WSL is a warning too (requirement
+ * A workspace whose files have errors fails, because `run` refuses it until
+ * they are fixed. Otherwise a trusted workspace is ✓, and so is one that
+ * needs no trust, as `run` doesn't ask for it there; every other state is a
+ * warning, because `halonic trust` fixes it and nothing else is stopped. A
+ * workspace on a Windows drive under WSL is a warning too (requirement
  * `app.doctor-workspace-drive`): it works, only slowly.
  *
  * @param name the workspace's name
  * @param trust the status `TrustService.check` returned
- * @param windowsDrive the Windows drive it is on under WSL, such as "/mnt/c"
+ * @param findings the Windows drive it is on and the errors in its files, when there are any
  *
  * @example
  * workspaceLine("acme", "changed");
  * // { check: "workspace", status: "warning", name: "acme", trust: "changed" }
+ * workspaceLine("acme", "new", { fileProblems: 2 });
+ * // { check: "workspace", status: "failed", name: "acme", trust: "new", fileProblems: 2 }
  */
 export function workspaceLine(
   name: string,
   trust: WorkspaceTrust,
-  windowsDrive?: string,
+  { windowsDrive, fileProblems = 0 }: WorkspaceFindings = {},
 ): WorkspaceLine {
-  const trustOk = trust === "trusted" || trust === "not-needed";
   return {
     check: "workspace",
-    status: trustOk && windowsDrive === undefined ? "ok" : "warning",
+    status: workspaceStatus(trust, windowsDrive, fileProblems),
     name,
     trust,
     ...(windowsDrive === undefined ? {} : { windowsDrive }),
+    ...(fileProblems === 0 ? {} : { fileProblems }),
   };
+}
+
+function workspaceStatus(
+  trust: WorkspaceTrust,
+  windowsDrive: string | undefined,
+  fileProblems: number,
+): WorkspaceLine["status"] {
+  if (fileProblems > 0) {
+    return "failed";
+  }
+  const trustOk = trust === "trusted" || trust === "not-needed";
+  return trustOk && windowsDrive === undefined ? "ok" : "warning";
 }
 
 /** The Sandbox line. */
