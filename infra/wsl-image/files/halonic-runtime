@@ -19,7 +19,7 @@
 #
 # Exit codes: 0 done, 2 wrong use, 3 busy (a sandbox session runs), 4 checksum
 # differs, 5 archive refused, 6 nothing to roll back to, 1 anything else.
-set -eu
+set -euo pipefail
 umask 022
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 LC_ALL=C
@@ -176,6 +176,7 @@ SRC
   apt-get "$@" -q -y upgrade
   apt-get clean
   drop_setuid
+  drop_capabilities
   touch "$stamp"
   echo "security updates installed"
 }
@@ -183,12 +184,14 @@ SRC
 # The image has no setuid or setgid programs (HAL-5845), and dpkg-statoverride
 # keeps the bit off when a package is upgraded. A file an upgrade brings in
 # new has no override yet: drop its bit and add one, as the image build does.
-# Only root's files under /usr (merged /usr: /bin, /sbin and /lib point there):
-# halonic can't write there, so it can't swap a file for a link mid-loop.
+# Whoever owns it: a setuid file of any system user is a step up from halonic.
+# Only under /usr (merged /usr: /bin, /sbin and /lib point there): halonic
+# can't write there, so it can't swap a file for a link mid-loop.
 # Owner, group and mode come from the same find, NUL-separated (bash's read -d),
-# never from a later stat.
+# never from a later stat. With pipefail, a find that fails halfway fails the
+# update, so the stamp isn't touched.
 drop_setuid() {
-  find /usr -xdev -type f -uid 0 -perm /6000 -printf '%u %g %m\0%p\0' |
+  find /usr -xdev -type f -perm /6000 -printf '%u %g %m\0%p\0' |
   while IFS=' ' read -r -d '' owner group mode && IFS= read -r -d '' file; do
     mode="$(printf '%o' $(( 0$mode & 0777 )))"
     if ! dpkg-statoverride --list "$file" >/dev/null; then
@@ -196,6 +199,18 @@ drop_setuid() {
     fi
     chmod ug-s "$file"
     echo "dropped setuid/setgid from $file"
+  done
+}
+
+# No file capabilities either (HAL-6181): a package script that runs setcap
+# (iputils-ping does) would bring one back. dpkg has no override for these, so
+# they go after every upgrade. getcap prints "<path> <capabilities>"; paths
+# under /usr come from Debian packages and have no spaces.
+drop_capabilities() {
+  getcap -r /usr |
+  while read -r file _; do
+    setcap -r "$file"
+    echo "dropped file capabilities from $file"
   done
 }
 
