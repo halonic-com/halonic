@@ -71,6 +71,11 @@ libraries and of the Rust crates the app links, which the script writes to
 `src-tauri/legal/` with `pnpm check:sbom --notices --cargo`. Only the "Set up the agent sandbox" step asks Windows for
 administrator rights, once, and the uninstaller asks again to remove the sandbox.
 
+The release runs the script in two steps, `-Step build` and `-Step pack`, and
+signs the sandbox helper in between, so the helper inside the installer is
+signed too (HAL-7491). With `HALONIC_SANDBOX_SIGNER` set, `pack` refuses a
+helper that isn't validly signed by that publisher.
+
 What it shows (design: the install flow, sections 2.2 to 2.7):
 
 - One page (folder, sandbox box, desktop shortcut box), the step lines, and a
