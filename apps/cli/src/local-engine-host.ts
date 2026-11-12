@@ -5,8 +5,11 @@
 // reads the CLI's printer, argv or `process`, so it can move into a package
 // the Studio shares once the Studio starts runs.
 //
-// In 0.1 it has no Halonic tools and no harnesses (a run whose agent names a
-// harness fails at that step with the engine's own error). Each top-level
+// In 0.1 it has no Halonic tools. It has the harness host
+// (`openLocalHarnessHost`, HAL-7747): the engine can run an agent in a
+// harness, in a worktree of its own in the profile, and keeps what the run
+// changed as a proposal there. `halonic run` still refuses a harness agent
+// (`refuseHarnessAgents`) until HAL-6477 turns them on. Each top-level
 // run starts its own connectors (`runConnectors`, HAL-6277) in the folder its
 // programs start in: `programFolders`, a copy at the run's commit for a live
 // run (HAL-4975). A chat turn calls the connectors it is given, none by
@@ -22,6 +25,7 @@ import { NodeCoordination, randomLeaseToken } from "@halonicjs/adapter-coordinat
 import {
   FileRecordStore,
   FolderBlobStore,
+  FolderDefinitionStore,
   FolderRunStore,
   type HeldLock,
   holdLock,
@@ -66,6 +70,11 @@ import {
 } from "@halonicjs/workspace";
 import { abortOnStop } from "./abort-on-stop.ts";
 import {
+  type LocalHarnessHost,
+  type LocalHarnessParts,
+  openLocalHarnessHost,
+} from "./local-harness-host.ts";
+import {
   type LocalRunConnectorsInput,
   localRunConnectors,
   type TrustedVersion,
@@ -93,7 +102,8 @@ export type EngineErrorSource =
   | SchedulerErrorSource
   | "engine-lock"
   | "program-copies"
-  | "run-connectors";
+  | "run-connectors"
+  | "harness-host";
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -136,9 +146,14 @@ export interface LocalEngineInput {
    * its programs start in. Left out, a run calls no connector.
    */
   readonly runConnectors?: LocalRunConnectorsInput;
+  /**
+   * The Node parts the harness host is built from, which a test replaces:
+   * this computer's srt sandbox, launcher, harnesses and bridge by default.
+   */
+  readonly harnessParts?: LocalHarnessParts;
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
-  /** Which git makes the copies a live run's programs start in; the one on the `PATH` by default. */
+  /** Which git makes the copies a live run's programs start in, and the harness runs' worktrees; the one on the `PATH` by default. */
   readonly git?: GitRunnerOptions;
   /** The time; the computer's clock by default. */
   readonly clock?: Clock;
@@ -247,11 +262,9 @@ export interface LocalEngine {
  */
 export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEngine> {
   const location = await realpath(input.workspaceRoot);
-  const folders = await workspaceFolders(
-    profileFolder(input.environment ?? nodeProfileEnvironment()),
-    location,
-    webCryptoDigest,
-  );
+  const environment = input.environment ?? nodeProfileEnvironment();
+  const profile = profileFolder(environment);
+  const folders = await workspaceFolders(profile, location, webCryptoDigest);
   // Private like the run files in it, which hold prompts and model output (HAL-5215).
   await makePrivateFolder(folders.folder);
   let engine: LocalEngine | undefined;
@@ -263,6 +276,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     onRenewError: (error) => input.reportError(error, "engine-lock"),
   });
   let programFolders: ProgramFolders | undefined;
+  let harnessHost: LocalHarnessHost | undefined;
   try {
     // Under the lock: it removes the copies a stopped engine left behind.
     programFolders = await openProgramFolders({
@@ -271,9 +285,27 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       reportError: (error) => input.reportError(error, "program-copies"),
       ...(input.git === undefined ? {} : { git: input.git }),
     });
-    engine = engineOn(input, { location, folders }, lock, programFolders);
+    harnessHost = await openLocalHarnessHost({
+      location,
+      folders,
+      profile,
+      environment,
+      workspace: () => input.versions?.latest() ?? input.workspace,
+      store: new FolderDefinitionStore(location),
+      secrets: input.secrets,
+      digest: webCryptoDigest,
+      clock: input.clock ?? systemClock,
+      openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
+      reportError: (error) => input.reportError(error, "harness-host"),
+      ...(input.git === undefined ? {} : { git: input.git }),
+      ...(input.harnessParts === undefined ? {} : { parts: input.harnessParts }),
+    });
+    // Before the engine can start a run: the folders of runs that ended while no engine was open go.
+    await harnessHost.start();
+    engine = engineOn(input, { location, folders }, lock, programFolders, harnessHost);
     return engine;
   } catch (error) {
+    await harnessHost?.close();
     await programFolders?.close();
     await lock.release();
     throw error;
@@ -292,6 +324,7 @@ function engineOn(
   { location, folders }: EnginePlace,
   lock: HeldLock,
   programFolders: ProgramFolders,
+  harnessHost: LocalHarnessHost,
 ): LocalEngine {
   const clock = input.clock ?? systemClock;
   const runs = new FolderRunStore(folders.runsFolder());
@@ -354,6 +387,8 @@ function engineOn(
     localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
     abortOnStop,
     runs: {
+      harnesses: harnessHost.harnesses,
+      proposalFolders: harnessHost.proposalFolders,
       store: runs,
       blobs: new FolderBlobStore(folders.blobsFolder()),
       scheduler,
@@ -397,8 +432,12 @@ function engineOn(
             try {
               await connectors?.runs.runConnectors.closeAll();
             } finally {
-              // Even when a connector failed to close: the copies are released all the same.
-              await programFolders.close();
+              // Even when a connector failed to close: git and the copies are released all the same.
+              try {
+                await harnessHost.close();
+              } finally {
+                await programFolders.close();
+              }
             }
           }
         } finally {
@@ -411,6 +450,16 @@ function engineOn(
     // Safe while the close still runs: the lock's release is safe to call twice.
     abandon: () => lock.release(),
   };
+}
+
+/**
+ * The runs the engine hasn't ended, whose proposal folders stay at the
+ * host's start: those waiting for a person, and those it will end as
+ * interrupted on its first run.
+ */
+async function openRunsOf(runs: RunStore): Promise<ReadonlySet<string>> {
+  const open = await runs.list({ status: ["running", "waiting"] });
+  return new Set(open.map((run) => run.id));
 }
 
 /** The file of the agent a chat turn names, or `undefined` when the hub has none by that id. */

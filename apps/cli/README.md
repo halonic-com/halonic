@@ -32,7 +32,7 @@ lives in its own folder.
 Before it starts a run, or sends an event to one, `halonic run` and `halonic runs send` check the
 sandbox (`checkRunSandbox` in `src/sandbox-gate.ts`, called from `checkEngineRuns`, which `openWorkspaceEngine` uses, and which `run` also calls before the trust check for a workflow with an agent in a harness). A workflow
 with an agent that starts a program on this computer is refused with exit 9 when the sandbox can't
-start. No option skips it. The engine `run` opens has no harness adapter yet, so `run` also refuses, with exit 9 and before anything starts, a workflow with an agent in a harness (an agent set to "On this computer" included). The message names the harness the run would use: the workflow's own `harness` when it sets one, else the agent's.
+start. No option skips it. The engine `run` opens can run agents in harnesses (the harness host, `src/local-harness-host.ts`, built on `@halonicjs/host-harness-host`: the srt sandbox, the Node bridge, the harness profiles, and git worktrees in the workspace's folder in the profile), but the CLI has no way to show or accept what a run changed yet (HAL-6477), so `run` still refuses, with exit 9 and before anything starts, a workflow with an agent in a harness (an agent set to "On this computer" included). The message names the harness the run would use: the workflow's own `harness` when it sets one, else the agent's.
 `halonic doctor` shows the same check as its Sandbox line, ✕ with exit 1 when the sandbox can't
 start. Each of the `Sandbox` port's reason codes (`windows`, `container`, `user-namespaces-restricted`,
 `bubblewrap-missing`, `linux-tools-missing` when `socat` or ripgrep is missing, `ripgrep-missing` when
