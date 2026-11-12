@@ -16,10 +16,15 @@
 # -Config names one more Tauri config file, merged last. The update test
 # (HAL-1206) builds 0.1.0 and 0.1.1 with it, each with a test updater key and
 # a local update address; a `version` in it names the installer too.
+#
+# -AgentHost names an executable to ship in place of the agent host. The
+# update test builds a 0.1.2 whose host is a stand-in that never answers, so
+# the shell never proves it starts.
 param(
   [ValidateSet('all', 'build', 'pack')]
   [string]$Step = 'all',
-  [string]$Config
+  [string]$Config,
+  [string]$AgentHost
 )
 $ErrorActionPreference = 'Stop'
 $shell = Split-Path -Parent $PSScriptRoot
@@ -47,7 +52,8 @@ if ($Step -ne 'pack') {
     if ($LASTEXITCODE -ne 0) { throw 'build:sea failed' }
   } finally { Pop-Location }
   New-Item -ItemType Directory -Force $bin | Out-Null
-  Copy-Item (Join-Path $repo 'apps/agent-host/dist/halonic-agent-host.exe') (Join-Path $bin "halonic-agent-host-$triple.exe") -Force
+  $hostExe = if ($AgentHost) { (Resolve-Path $AgentHost).Path } else { Join-Path $repo 'apps/agent-host/dist/halonic-agent-host.exe' }
+  Copy-Item $hostExe (Join-Path $bin "halonic-agent-host-$triple.exe") -Force
 
   # The sandbox's elevated helper (HAL-1451), with the static C runtime so it
   # never loads a vcruntime140.dll from the app folder, and the srt-win.exe it

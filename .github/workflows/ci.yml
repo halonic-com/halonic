@@ -1903,12 +1903,7 @@ jobs:
             @{ version = $version; plugins = @{ updater = $updater } } | ConvertTo-Json -Depth 5 |
               Set-Content (Join-Path $keys "build-$version.json") -Encoding utf8NoBOM
           }
-          # 0.1.2 ships a stand-in under another name instead of the agent
-          # host, so Halonic.exe finds no host and never proves it starts.
-          $binaries = Join-Path $PWD 'src-tauri/binaries'
-          New-Item -ItemType Directory -Force $binaries | Out-Null
-          Copy-Item "$env:WINDIR\System32\whoami.exe" (Join-Path $binaries 'no-agent-host-x86_64-pc-windows-msvc.exe')
-          @{ version = '0.1.2'; plugins = @{ updater = $updater }; bundle = @{ externalBin = @('binaries/no-agent-host') } } |
+          @{ version = '0.1.2'; plugins = @{ updater = $updater } } |
             ConvertTo-Json -Depth 5 | Set-Content (Join-Path $keys 'build-0.1.2.json') -Encoding utf8NoBOM
       - name: Build Halonic 0.1.0
         working-directory: apps/studio/src-tauri
@@ -1918,7 +1913,10 @@ jobs:
         run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.1.json')
       - name: Build Halonic 0.1.2 without its agent host
         working-directory: apps/studio/src-tauri
-        run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.2.json')
+        # 0.1.2 ships a stand-in (whoami.exe) as its agent host: it starts
+        # and exits without answering the handshake, so 0.1.2 never proves it
+        # starts.
+        run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.2.json') -AgentHost "$env:WINDIR\System32\whoami.exe"
       - name: Update 0.1.0 to 0.1.1, refuse a bad signature and a failed download, go back from a 0.1.2 that doesn't start
         run: |
           $keys = Join-Path $env:RUNNER_TEMP 'update-keys'
