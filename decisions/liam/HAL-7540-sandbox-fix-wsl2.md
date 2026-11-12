@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on [HAL-7540](/HAL/issues/HAL-7540) (found in Kim's docs fact-check on HAL-7512), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2S5ZGU/CYJtW/mWkO6UZKkOF6m1j3YRTXePwsY4brlpRX1+qwFfgp6TNuiemwZRoZjT6NyFUYzAi/LHe9TmtBg==
 - Task: HAL-7540
 
 ## What changes
