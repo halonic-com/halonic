@@ -13,4 +13,6 @@ export {
   type ConnectorStatus,
   type ConnectorStatusHost,
   ConnectorStatusHostService,
+  type RecordedRefusal,
 } from "./connector-status-host.ts";
+export { RefusalsFeed } from "./refusals-feed.ts";
