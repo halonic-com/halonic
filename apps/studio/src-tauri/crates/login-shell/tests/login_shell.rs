@@ -14,10 +14,10 @@ const NAMES: &[&str] = &["HALONIC_HOME", "XDG_DATA_HOME", "SEEN_RESOLVING"];
 const ENOUGH: Duration = Duration::from_secs(10);
 const SHORT: Duration = Duration::from_millis(300);
 
-/// Held while a test writes a stand-in shell or starts one. Linux refuses
-/// to run a script while another thread's newly started process still
-/// holds it open for writing ("Text file busy"), which tests running side
-/// by side would otherwise hit now and then.
+/// Held while a test writes a stand-in shell or starts any process. Linux
+/// refuses to run a script while another thread's newly started process
+/// still holds it open for writing ("Text file busy"), which tests running
+/// side by side would otherwise hit now and then.
 static STARTING: Mutex<()> = Mutex::new(());
 
 /// [`login_variables`], started while no other test writes a shell.
@@ -169,7 +169,12 @@ fn login_shell_answers_when_studio_has_a_terminal() {
     // terminal's foreground (HAL-6597).
     let folder = Folder::new("terminal");
     let test = std::env::current_exe().expect("this test binary");
-    let status = std::process::Command::new("script")
+    // Started under the lock too: until `script` runs, its process holds
+    // whatever shell another test is writing at that moment.
+    let starting = STARTING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut script = std::process::Command::new("script")
         .args(["-q", "-e", "-c"])
         .arg(format!(
             "'{}' --exact login_shell_from_a_terminal_probe --ignored",
@@ -180,8 +185,10 @@ fn login_shell_answers_when_studio_has_a_terminal() {
         .env("HOME", folder.path())
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
-        .status()
+        .spawn()
         .expect("start `script`");
+    drop(starting);
+    let status = script.wait().expect("wait for `script`");
     assert!(status.success(), "bash didn't answer in a terminal");
 }
 
