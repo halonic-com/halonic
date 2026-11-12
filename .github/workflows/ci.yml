@@ -1012,6 +1012,73 @@ jobs:
       # works without unlocking (HAL-4499).
       - name: Keychain contract (Credential Manager)
         run: cargo test --locked -p halonic-keychain -- --ignored
+      # The agent sandbox's elevated helper on a real Windows (HAL-1451). The
+      # runner's user is an administrator with UAC off, so it runs elevated
+      # with no prompt. Built with the static C runtime, as the release
+      # builds it, and started from a folder with a planted vcruntime140.dll,
+      # which it must never load (HAL-1415, risk 2).
+      - name: Sandbox helper (set up, refuse a swapped srt-win, remove)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          # net.exe's exit code is read below, not thrown.
+          $PSNativeCommandUseErrorActionPreference = $false
+          $target = Join-Path $env:RUNNER_TEMP 'elevate-target'
+          cargo build --locked --release -p halonic-sandbox-elevate --target-dir $target
+          if ($LASTEXITCODE -ne 0) { throw 'the helper did not build' }
+          $app = Join-Path $env:RUNNER_TEMP 'elevate-app'
+          New-Item -ItemType Directory -Force $app | Out-Null
+          Copy-Item (Join-Path $target 'release/halonic-sandbox-elevate.exe') $app
+          $srtWin = '../../../packages/adapters/sandbox-srt/node_modules/@anthropic-ai/sandbox-runtime/vendor/srt-win/x64/srt-win.exe'
+          Copy-Item $srtWin $app
+          Set-Content (Join-Path $app 'vcruntime140.dll') 'not a library'
+          function Invoke-Helper([string]$exe, [string]$verb) {
+            (Start-Process $exe -ArgumentList $verb -Wait -PassThru).ExitCode
+          }
+          $helper = Join-Path $app 'halonic-sandbox-elevate.exe'
+          $folder = Join-Path $env:ProgramFiles 'Halonic Sandbox'
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox'
+
+          $code = Invoke-Helper $helper 'setup --allow-loopback'
+          if ($code -ne 30) { throw "an option must be refused with 30, got $code" }
+
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 0) { throw "setup exited $code" }
+          & net.exe user srt-sandbox *> $null
+          if ($LASTEXITCODE -ne 0) { throw 'setup made no srt-sandbox account' }
+          $entry = Get-ItemProperty $key
+          if ($entry.DisplayName -ne 'Halonic agent sandbox') { throw "Installed apps shows '$($entry.DisplayName)'" }
+          $acl = Get-Acl $folder
+          if (-not $acl.AreAccessRulesProtected) { throw 'the folder inherits its access list' }
+          if ($acl.Owner -ne 'BUILTIN\Administrators') { throw "the folder is owned by $($acl.Owner)" }
+          $writers = $acl.Access | Where-Object {
+            $_.IdentityReference -notmatch 'Administrators|SYSTEM' -and
+            $_.FileSystemRights.ToString() -match 'Write|Modify|FullControl|Delete|ChangePermissions|TakeOwnership'
+          }
+          if ($writers) { throw "the folder is writable by $($writers.IdentityReference -join ', ')" }
+
+          # Running it again over a set-up sandbox passes (Repair).
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 0) { throw "setup again exited $code" }
+
+          # A swapped srt-win.exe is refused, and its copy deleted.
+          Set-Content (Join-Path $app 'srt-win.exe') 'swapped'
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 33) { throw "a swapped srt-win must be refused with 33, got $code" }
+          if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'the swapped copy was kept' }
+          Copy-Item $srtWin $app -Force
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 0) { throw "setup after the swap exited $code" }
+
+          # Remove the way Installed apps does: the copy in the folder.
+          $code = Invoke-Helper (Join-Path $folder 'halonic-sandbox-elevate.exe') 'remove'
+          if ($code -ne 0) { throw "remove exited $code" }
+          if (Test-Path $key) { throw 'remove left the Installed apps entry' }
+          & net.exe user srt-sandbox *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'remove left the srt-sandbox account' }
+          if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'remove left srt-win.exe' }
+          Write-Output 'The helper set up, refused a swapped srt-win and removed the sandbox.'
+          exit 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"

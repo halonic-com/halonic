@@ -1,0 +1,288 @@
+//! The helper's [`Machine`] on Windows, through `windows-sys`.
+
+use crate::{Machine, UNINSTALL_KEY, Value};
+use std::ffi::{OsStr, OsString, c_void};
+use std::io;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
+use std::os::windows::fs::MetadataExt;
+use std::os::windows::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::ptr;
+use windows_sys::Win32::Foundation::{CloseHandle, ERROR_FILE_NOT_FOUND, HANDLE, LocalFree};
+use windows_sys::Win32::Security::Authorization::{
+    ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
+};
+use windows_sys::Win32::Security::{
+    DACL_SECURITY_INFORMATION, GetTokenInformation, OWNER_SECURITY_INFORMATION,
+    PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SetFileSecurityW, TOKEN_ELEVATION,
+    TOKEN_QUERY, TokenElevation,
+};
+use windows_sys::Win32::Storage::FileSystem::{
+    FILE_ATTRIBUTE_REPARSE_POINT, MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
+};
+use windows_sys::Win32::System::Com::CoTaskMemFree;
+use windows_sys::Win32::System::Registry::{
+    HKEY, HKEY_LOCAL_MACHINE, KEY_SET_VALUE, KEY_WOW64_64KEY, REG_DWORD, REG_OPTION_NON_VOLATILE,
+    REG_SZ, RegCloseKey, RegCreateKeyExW, RegDeleteKeyExW, RegSetValueExW,
+};
+use windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW;
+use windows_sys::Win32::System::Threading::{
+    CREATE_NO_WINDOW, GetCurrentProcess, OpenProcessToken,
+};
+use windows_sys::Win32::UI::Shell::{FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+
+/// Owner Administrators; Administrators and SYSTEM full control, Users read
+/// and run, for the folder and everything in it; nothing inherited.
+const FOLDER_ACCESS: &str = "O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)";
+
+/// srt-win runs with this `PATH`, never the user's.
+const SEARCH_PATH: &[&str] = &["", "\\Wbem", "\\WindowsPowerShell\\v1.0"];
+
+/// The real computer.
+pub struct Windows;
+
+impl Machine for Windows {
+    fn elevated(&self) -> bool {
+        let mut token: HANDLE = ptr::null_mut();
+        // SAFETY: the pseudo-handle from `GetCurrentProcess` needs no closing,
+        // and `token` outlives the call.
+        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+            return false;
+        }
+        let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
+        let mut size = 0u32;
+        // SAFETY: `token` is open; `elevation` is the struct `TokenElevation`
+        // asks for, with its size, and both outlive the call.
+        let read = unsafe {
+            GetTokenInformation(
+                token,
+                TokenElevation,
+                (&raw mut elevation).cast::<c_void>(),
+                size_of::<TOKEN_ELEVATION>() as u32,
+                &mut size,
+            )
+        };
+        // SAFETY: `token` is open, and this closes it exactly once.
+        unsafe { CloseHandle(token) };
+        read != 0 && elevation.TokenIsElevated != 0
+    }
+
+    fn program_files(&self) -> io::Result<PathBuf> {
+        let mut path = ptr::null_mut();
+        // SAFETY: the folder id is a constant, and `path` outlives the call.
+        // On success it holds a string this code frees below.
+        let result = unsafe {
+            SHGetKnownFolderPath(
+                &FOLDERID_ProgramFiles,
+                KF_FLAG_DEFAULT as u32,
+                ptr::null_mut(),
+                &mut path,
+            )
+        };
+        let folder = if result >= 0 {
+            let mut length = 0;
+            // SAFETY: on success `path` is a NUL-terminated wide string, and
+            // this stops at its NUL.
+            while unsafe { *path.add(length) } != 0 {
+                length += 1;
+            }
+            // SAFETY: `path` holds `length` units before the NUL.
+            let units = unsafe { std::slice::from_raw_parts(path, length) };
+            Ok(PathBuf::from(OsString::from_wide(units)))
+        } else {
+            Err(io::Error::from_raw_os_error(result))
+        };
+        // SAFETY: Windows asks the caller to free `path` whatever the result;
+        // null is allowed.
+        unsafe { CoTaskMemFree(path.cast::<c_void>()) };
+        folder
+    }
+
+    fn system_folder(&self) -> io::Result<PathBuf> {
+        let mut buffer = [0u16; 260];
+        // SAFETY: `buffer` and its length in units outlive the call.
+        let length =
+            unsafe { GetSystemDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+        if length == 0 || length >= buffer.len() {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(PathBuf::from(OsString::from_wide(&buffer[..length])))
+    }
+
+    fn own_path(&self) -> io::Result<PathBuf> {
+        std::env::current_exe()
+    }
+
+    fn protect_folder(&self, folder: &Path) -> io::Result<()> {
+        match std::fs::create_dir(folder) {
+            Err(error) if error.kind() != io::ErrorKind::AlreadyExists => return Err(error),
+            _ => {}
+        }
+        let metadata = std::fs::symlink_metadata(folder)?;
+        if !metadata.is_dir() || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err(io::Error::other("not a plain folder"));
+        }
+        let access = wide(OsStr::new(FOLDER_ACCESS));
+        let mut descriptor: PSECURITY_DESCRIPTOR = ptr::null_mut();
+        // SAFETY: `access` is NUL-terminated; `descriptor` outlives the call
+        // and on success holds memory this code frees below.
+        let made = unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                access.as_ptr(),
+                SDDL_REVISION_1,
+                &mut descriptor,
+                ptr::null_mut(),
+            )
+        };
+        if made == 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let path = wide(folder.as_os_str());
+        // SAFETY: `path` is NUL-terminated and `descriptor` is the one made above.
+        let set = unsafe {
+            SetFileSecurityW(
+                path.as_ptr(),
+                OWNER_SECURITY_INFORMATION
+                    | DACL_SECURITY_INFORMATION
+                    | PROTECTED_DACL_SECURITY_INFORMATION,
+                descriptor,
+            )
+        };
+        let error = io::Error::last_os_error();
+        // SAFETY: `descriptor` was allocated by the conversion, freed once.
+        unsafe { LocalFree(descriptor) };
+        if set == 0 { Err(error) } else { Ok(()) }
+    }
+
+    fn replace_file(&self, from: &Path, to: &Path) -> io::Result<()> {
+        match std::fs::remove_file(to) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
+            _ => {}
+        }
+        std::fs::copy(from, to).map(|_| ())
+    }
+
+    fn read(&self, file: &Path) -> io::Result<Vec<u8>> {
+        std::fs::read(file)
+    }
+
+    fn exists(&self, file: &Path) -> bool {
+        file.is_file()
+    }
+
+    fn run(&self, program: &Path, args: &[&str], folder: &Path) -> io::Result<i32> {
+        let search: Vec<OsString> = SEARCH_PATH
+            .iter()
+            .map(|tail| {
+                let mut entry = folder.as_os_str().to_owned();
+                entry.push(tail);
+                entry
+            })
+            .collect();
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(folder)
+            .env(
+                "PATH",
+                std::env::join_paths(search).map_err(io::Error::other)?,
+            )
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(CREATE_NO_WINDOW);
+        // Nothing of Halonic's or srt's own settings reaches the elevated copy.
+        for (name, _) in std::env::vars_os() {
+            let upper = name.to_string_lossy().to_uppercase();
+            if upper.starts_with("HALONIC_") || upper.starts_with("SRT_") {
+                command.env_remove(name);
+            }
+        }
+        Ok(command.status()?.code().unwrap_or(1))
+    }
+
+    fn write_entry(&self, values: &[(&'static str, Value)]) -> io::Result<()> {
+        let key = wide(OsStr::new(UNINSTALL_KEY));
+        let mut handle: HKEY = ptr::null_mut();
+        // SAFETY: `key` is NUL-terminated and `handle` outlives the call.
+        let made = unsafe {
+            RegCreateKeyExW(
+                HKEY_LOCAL_MACHINE,
+                key.as_ptr(),
+                0,
+                ptr::null(),
+                REG_OPTION_NON_VOLATILE,
+                KEY_SET_VALUE | KEY_WOW64_64KEY,
+                ptr::null(),
+                &mut handle,
+                ptr::null_mut(),
+            )
+        };
+        if made != 0 {
+            return Err(io::Error::from_raw_os_error(made as i32));
+        }
+        let mut result = Ok(());
+        for (name, value) in values {
+            let name = wide(OsStr::new(name));
+            let (kind, bytes) = match value {
+                Value::Text(text) => (
+                    REG_SZ,
+                    wide(OsStr::new(text))
+                        .iter()
+                        .flat_map(|unit| unit.to_le_bytes())
+                        .collect::<Vec<u8>>(),
+                ),
+                Value::Number(number) => (REG_DWORD, number.to_le_bytes().to_vec()),
+            };
+            // SAFETY: `handle` is open, `name` is NUL-terminated, and `bytes`
+            // (a string with its NUL, or a DWORD) and its length outlive the call.
+            let set = unsafe {
+                RegSetValueExW(
+                    handle,
+                    name.as_ptr(),
+                    0,
+                    kind,
+                    bytes.as_ptr(),
+                    bytes.len() as u32,
+                )
+            };
+            if set != 0 {
+                result = Err(io::Error::from_raw_os_error(set as i32));
+                break;
+            }
+        }
+        // SAFETY: `handle` is open, and this closes it exactly once.
+        unsafe { RegCloseKey(handle) };
+        result
+    }
+
+    fn delete_entry(&self) -> io::Result<()> {
+        let key = wide(OsStr::new(UNINSTALL_KEY));
+        // SAFETY: `key` is NUL-terminated.
+        let deleted =
+            unsafe { RegDeleteKeyExW(HKEY_LOCAL_MACHINE, key.as_ptr(), KEY_WOW64_64KEY, 0) };
+        match deleted {
+            0 | ERROR_FILE_NOT_FOUND => Ok(()),
+            error => Err(io::Error::from_raw_os_error(error as i32)),
+        }
+    }
+
+    fn delete(&self, path: &Path) {
+        let gone = if path.is_dir() {
+            std::fs::remove_dir(path)
+        } else {
+            std::fs::remove_file(path)
+        };
+        if matches!(&gone, Err(error) if error.kind() != io::ErrorKind::NotFound) {
+            let path = wide(path.as_os_str());
+            // SAFETY: `path` is NUL-terminated; a null new name means delete.
+            unsafe { MoveFileExW(path.as_ptr(), ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT) };
+        }
+    }
+}
+
+/// `text` as a NUL-terminated wide string.
+fn wide(text: &OsStr) -> Vec<u16> {
+    text.encode_wide().chain(Some(0)).collect()
+}
