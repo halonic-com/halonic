@@ -2,7 +2,7 @@ import type { CliCommand, CliOption, CommandPath } from "./command.ts";
 import { globalOptionFlags } from "./global-options.ts";
 import type { Message } from "./messages/define.ts";
 import { helpMessages } from "./messages/help.ts";
-import { type Phrase, phrase, plainText } from "./messages/phrase.ts";
+import { type Part, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 
 const blank: Phrase = [];
 
@@ -35,7 +35,13 @@ export function overallHelp(commands: readonly CliCommand[]): Phrase[] {
  */
 export function commandHelp(path: CommandPath): Phrase[] {
   const command = lastOf(path);
-  const lines = [usageLine(path).phrase, blank, command.summary.phrase];
+  const usageIndent =
+    plainText(helpMessages.commandUsage(commandWords(path), "").phrase).length + 1;
+  const lines = [
+    ...wrapped(usageLine(path).phrase, usageIndent, true),
+    blank,
+    ...wrapped(command.summary.phrase, 0),
+  ];
   const subcommands = command.subcommands ?? [];
   if (subcommands.length > 0) {
     lines.push(blank, ...commandList(subcommands));
@@ -48,8 +54,8 @@ export function commandHelp(path: CommandPath): Phrase[] {
     lines.push(
       blank,
       helpMessages.optionsHeading().phrase,
-      ...options.map(
-        ([label, description]) => phrase`  ${label.padEnd(width)}  ${description.phrase}`,
+      ...options.flatMap(([label, description]) =>
+        wrapped(phrase`  ${label.padEnd(width)}  ${description.phrase}`, width + 4),
       ),
     );
   }
@@ -79,8 +85,8 @@ function commandList(commands: readonly CliCommand[]): Phrase[] {
   const width = Math.max(0, ...commands.map((command) => command.name.length));
   return [
     helpMessages.commandsHeading().phrase,
-    ...commands.map(
-      (command) => phrase`  ${command.name.padEnd(width)}  ${command.summary.phrase}`,
+    ...commands.flatMap((command) =>
+      wrapped(phrase`  ${command.name.padEnd(width)}  ${command.summary.phrase}`, width + 4),
     ),
   ];
 }
@@ -107,6 +113,96 @@ function globalOptionLines(flags: readonly string[]): Phrase[] {
     }
   }
   return groups.map((group, index) => line(index, group, index < groups.length - 1));
+}
+
+/**
+ * The line on as many lines as keep each within {@link helpWidth}, each further
+ * line indented by `indent` so it starts under the column it continues (cli-output
+ * 1.4 and 1.9). It breaks only at a space past `indent`, and with `together` never
+ * inside `[…]` or `<…>`, so a usage line keeps each argument whole. A word longer
+ * than the line stays whole, past 80 columns, rather than being cut.
+ */
+function wrapped(line: Phrase, indent: number, together = false): Phrase[] {
+  const lines: Part[][] = [];
+  let width = 0;
+  for (const word of wordsOf(line, indent, together)) {
+    const wordWidth = plainText(word).length;
+    const current = lines.at(-1);
+    if (current !== undefined && width + 1 + wordWidth <= helpWidth) {
+      current.push(" ", ...word);
+      width += 1 + wordWidth;
+    } else if (current === undefined) {
+      lines.push([...word]);
+      width = wordWidth;
+    } else {
+      lines.push([" ".repeat(indent), ...word]);
+      width = indent + wordWidth;
+    }
+  }
+  return lines.length === 0 ? [blank] : lines;
+}
+
+/** The line's words for {@link wrapped}: its parts split at each space it may break at. */
+function wordsOf(line: Phrase, indent: number, together: boolean): Part[][] {
+  const split: Split = { words: [[]], column: 0, depth: 0, indent, together };
+  for (const part of line) {
+    const text = textOf(part);
+    if (text === undefined) {
+      split.words.at(-1)?.push(part);
+      split.column += plainText([part]).length;
+    } else {
+      splitText(split, part, text);
+    }
+  }
+  return split.words.filter((parts) => parts.length > 0);
+}
+
+/** Where {@link wordsOf} is in the line. */
+interface Split {
+  readonly words: Part[][];
+  column: number;
+  depth: number;
+  readonly indent: number;
+  readonly together: boolean;
+}
+
+/** The text of a plain or emphasised part; a mark or padding has none to split. */
+function textOf(part: Part): string | undefined {
+  if (typeof part === "string") return part;
+  return "text" in part ? part.text : undefined;
+}
+
+/** Splits one text part at the spaces past the indent, outside `[…]` and `<…>` with `together`. */
+function splitText(split: Split, part: Part, text: string): void {
+  let piece = "";
+  for (const char of text) {
+    split.depth += split.together ? bracketStep(char) : 0;
+    if (char === " " && split.column >= split.indent && split.depth === 0) {
+      pushPiece(split.words, part, piece);
+      piece = "";
+      split.words.push([]);
+    } else {
+      piece += char;
+    }
+    split.column += 1;
+  }
+  pushPiece(split.words, part, piece);
+}
+
+/** How a character changes the depth inside `[…]` and `<…>`. */
+function bracketStep(char: string): number {
+  if (char === "[" || char === "<") return 1;
+  if (char === "]" || char === ">") return -1;
+  return 0;
+}
+
+/** Adds a piece of a text part to the last word, keeping the part's emphasis. */
+function pushPiece(words: Part[][], part: Part, piece: string): void {
+  if (piece !== "") {
+    words
+      .at(-1)
+      ?.push(typeof part === "object" && "text" in part ? { ...part, text: piece } : piece);
+  }
 }
 
 function optionLabel(name: string, option: CliOption): string {
