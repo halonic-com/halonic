@@ -59,7 +59,7 @@ function Invoke-Driver {
   if ($LASTEXITCODE -ne 0) {
     Get-Process Halonic, halonic-agent-host, msedgewebview2 -ErrorAction SilentlyContinue | Format-Table Name, Id, StartTime | Out-Host
     Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -in '127.0.0.1','::1','0.0.0.0','::' } | Sort-Object LocalPort | Format-Table LocalAddress, LocalPort, OwningProcess | Out-Host
-    Get-CimInstance Win32_Process -Filter "Name like 'msedgewebview2%'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'remote-debugging' } | Select-Object -First 1 -ExpandProperty CommandLine | Out-Host
+    Get-CimInstance Win32_Process -Filter "Name like 'msedgewebview2%'" -ErrorAction SilentlyContinue | Select-Object -First 2 -ExpandProperty CommandLine | Out-Host
     Get-ChildItem (Join-Path $profileFolder 'updates') -ErrorAction SilentlyContinue | Out-Host
     Get-Content (Join-Path $profileFolder 'updates\updates.log') -ErrorAction SilentlyContinue | Out-Host
     throw "update-driver $args failed"
@@ -69,10 +69,13 @@ function Invoke-Driver {
 # The shell gives WebView2 its own browser arguments, which beat the
 # WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS variable. WebView2's registry policy
 # beats them, and also covers the Halonic the installer reopens after an update.
-$policyKey = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+# The runner is an administrator, so the machine-wide key is writable too.
+$policyKeys = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments', 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
 function Start-Halonic {
-  New-Item -Path $policyKey -Force | Out-Null
-  New-ItemProperty -Path $policyKey -Name 'Halonic.exe' -Value "--remote-debugging-port=$devtools" -PropertyType String -Force | Out-Null
+  foreach ($key in $policyKeys) {
+    New-Item -Path $key -Force | Out-Null
+    New-ItemProperty -Path $key -Name 'Halonic.exe' -Value "--remote-debugging-port=$devtools" -PropertyType String -Force | Out-Null
+  }
   Start-Process (Join-Path $dir 'Halonic.exe') | Out-Null
 }
 
@@ -188,7 +191,7 @@ try {
 } finally {
   Stop-Halonic
   $server | Stop-Process -Force -ErrorAction SilentlyContinue
-  Remove-Item -Path $policyKey -Recurse -ErrorAction SilentlyContinue
+  Remove-Item -Path $policyKeys -Recurse -ErrorAction SilentlyContinue
   $uninstall = Join-Path $dir 'uninstall.exe'
   if (Test-Path $uninstall) { Start-Process $uninstall -ArgumentList '/S' -Wait | Out-Null }
 }
