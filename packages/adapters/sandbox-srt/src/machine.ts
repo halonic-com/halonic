@@ -227,7 +227,7 @@ export const systemMachine: Machine = {
     }
   },
   async installWindowsSandbox() {
-    const helper = findHelper();
+    const helper = findHelper("setup");
     if (helper !== null) {
       return (await throughHelper(helper, "setup", spawnHelper)) === "done"
         ? "installed"
@@ -258,7 +258,7 @@ export const systemMachine: Machine = {
     await letSandboxReadParents(parents, sid);
   },
   async uninstallWindowsSandbox() {
-    const helper = findHelper();
+    const helper = findHelper("remove");
     if (helper !== null) {
       return (await throughHelper(helper, "remove", spawnHelper)) === "done"
         ? "removed"

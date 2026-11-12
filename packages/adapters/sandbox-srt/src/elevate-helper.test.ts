@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   findHelper,
   HELPER,
+  HELPER_MISSING,
   HelperError,
   helperFailure,
   helperScript,
@@ -32,8 +33,31 @@ verifies("sandbox-srt.setup", () => {
     it("is found next to the program that runs, and only there", () => {
       const app = join("app", "halonic-agent-host.exe");
       const there = (path: string) => path === join("app", HELPER);
-      expect(findHelper(app, there)).toBe(join("app", HELPER));
-      expect(findHelper(join("node", "node.exe"), there)).toBeNull();
+      expect(findHelper("setup", app, there, true)).toBe(join("app", HELPER));
+      expect(findHelper("setup", join("node", "node.exe"), there, false)).toBeNull();
+    });
+
+    it("lets srt ask for administrator rights itself only under Node, as for the CLI from npm", () => {
+      const nowhere = () => false;
+      expect(findHelper("setup", join("node", "node.exe"), nowhere, false)).toBeNull();
+      expect(findHelper("remove", join("node", "node.exe"), nowhere, false)).toBeNull();
+    });
+
+    it("fails in Halonic's own program when the helper is missing, rather than elevate srt-win from the app folder", () => {
+      const app = join("app", "halonic-agent-host.exe");
+      for (const verb of ["setup", "remove"] as const) {
+        let error: unknown;
+        try {
+          findHelper(verb, app, () => false, true);
+        } catch (thrown) {
+          error = thrown;
+        }
+        expect(error).toBeInstanceOf(HelperError);
+        expect(error).toMatchObject({
+          message: "Halonic's sandbox helper is missing. Reinstall Halonic",
+          code: HELPER_MISSING,
+        });
+      }
     });
 
     it("is started once with the administrator prompt, the verb and nothing else", async () => {
@@ -54,6 +78,10 @@ verifies("sandbox-srt.setup", () => {
       expect(helperScript("O'Brien\\Halonic\\x.exe", "remove")).toContain(
         "-FilePath 'O''Brien\\Halonic\\x.exe' -ArgumentList 'remove'",
       );
+      // PowerShell reads typographic quotes as ' too.
+      expect(helperScript("O\u2019Brien\u2018s\\x.exe", "setup")).toContain(
+        "-FilePath 'O\u2019\u2019Brien\u2018\u2018s\\x.exe' -ArgumentList 'setup'",
+      );
     });
 
     it("says cancelled when the administrator prompt is turned down", async () => {
@@ -73,7 +101,7 @@ verifies("sandbox-srt.setup", () => {
     });
 
     it("words every code it knows, and an unknown one by what was being done", () => {
-      for (const code of [12, 13, 14, 17, 30, 31, 32, 33, 34, 35, 36]) {
+      for (const code of [12, 13, 14, 17, 30, 31, 32, 33, 34, 35, 36, 38]) {
         expect(helperFailure("setup", code, "")).toMatch(/^[A-Za-z].*[a-z]$/);
       }
       expect(helperFailure("setup", 1, "")).toBe("the sandbox setup stopped with an error");

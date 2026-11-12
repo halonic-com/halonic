@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { isSea } from "node:sea";
 
 /**
  * The signed program that does the Windows sandbox's administrator work
@@ -17,17 +18,30 @@ export const HELPER_CANCELLED = 10;
 /** Starting the helper itself failed: Windows didn't run it. The helper's own codes stop at 36. */
 export const HELPER_DIDNT_START = 37;
 
+/** Halonic's own program runs, and the helper isn't next to it. */
+export const HELPER_MISSING = 38;
+
 /**
  * Where the helper is for a program at `execPath`: next to it, as for the
- * agent host in Halonic's app folder. Null when it isn't there, as for the
- * CLI run by Node.
+ * agent host in Halonic's app folder. Null when it isn't there and the
+ * program is Node, as for the CLI installed from npm: srt then asks for
+ * administrator rights itself, as before. Halonic's own program (`packaged`,
+ * a Node single executable) never does that, because a missing helper in
+ * a folder the user can write to means srt-win there can't be trusted
+ * either (HAL-7385, S-3).
+ *
+ * @throws {HelperError} with {@link HELPER_MISSING} when `packaged` and the helper isn't there
  */
 export function findHelper(
+  verb: HelperVerb,
   execPath: string = process.execPath,
   exists: (path: string) => boolean = existsSync,
+  packaged: boolean = isSea(),
 ): string | null {
   const helper = join(dirname(execPath), HELPER);
-  return exists(helper) ? helper : null;
+  if (exists(helper)) return helper;
+  if (packaged) throw new HelperError(helperFailure(verb, HELPER_MISSING, ""), HELPER_MISSING);
+  return null;
 }
 
 /**
@@ -36,7 +50,8 @@ export function findHelper(
  * reason on stderr when Windows can't start it.
  */
 export function helperScript(helper: string, verb: HelperVerb): string {
-  const quoted = `'${helper.replaceAll("'", "''")}'`;
+  // PowerShell reads ‘ ’ ‚ ‛ as single quotes too, so each is doubled.
+  const quoted = `'${helper.replace(/['\u2018-\u201B]/g, "$&$&")}'`;
   return [
     "$ErrorActionPreference = 'Stop'",
     "try {",
@@ -90,6 +105,7 @@ const reasons: Readonly<Record<number, string>> = {
   34: "Windows couldn't prepare the sandbox's folder in Program Files",
   35: "Windows couldn't add the sandbox to Installed apps",
   36: "the sandbox program couldn't start",
+  38: "Halonic's sandbox helper is missing. Reinstall Halonic",
 };
 
 /** The helper didn't do it: the reason sentence, and the helper's code to show after it in small text. */
