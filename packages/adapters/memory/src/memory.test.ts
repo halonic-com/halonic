@@ -324,6 +324,8 @@ function connectorContracts(): void {
     http: { kind: "http", url: "https://notes.acme.test/mcp", headers: {} },
     stdio: { kind: "stdio", command: "notes-mcp", args: [], env: {} },
     google: { kind: "google", account: "ana@acme.test", client: "google-client" },
+    integration: { kind: "integration", folder: "notes" },
+    plugin: { kind: "plugin", id: "notes" },
   };
   for (const kind of ["http", "stdio", "google"] satisfies ConnectorKind[]) {
     connectorClientContract("memory", kind, async () => {

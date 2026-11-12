@@ -140,6 +140,52 @@
             "google"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "integration": {
+              "type": "object",
+              "properties": {
+                "folder": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9][a-z0-9-_]*$"
+                }
+              },
+              "required": [
+                "folder"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "integration"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "plugin": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9][a-z0-9-_]*$"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "plugin"
+          ],
+          "additionalProperties": false
         }
       ]
     },
