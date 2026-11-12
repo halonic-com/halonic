@@ -87,6 +87,8 @@ impl Relay {
             to_host,
             resets,
             connections: Mutex::default(),
+            #[cfg(test)]
+            opens_queued: AtomicUsize::new(0),
         });
         Ok(Self {
             shared,
@@ -157,6 +159,10 @@ struct Shared {
     /// Resets for the host, sent by one thread; `None` ends it.
     resets: Sender<Option<u32>>,
     connections: Mutex<Connections>,
+    /// How many `open` frames reached the queue to the host, so a test can
+    /// wait for the one it needs ahead of the frames it counts.
+    #[cfg(test)]
+    opens_queued: AtomicUsize,
 }
 
 /// A frame from the host the stream can't go on after.
@@ -244,6 +250,8 @@ impl Shared {
         };
         // Sent before the client's bytes can be, so `open` comes first.
         self.send(id, OPEN, &[])?;
+        #[cfg(test)]
+        self.opens_queued.fetch_add(1, Ordering::SeqCst);
         let shared = Arc::clone(self);
         spawn("relay-client-in", move || {
             shared.pass_client_bytes(id, reader, &quota);
