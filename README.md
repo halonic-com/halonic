@@ -8,9 +8,24 @@ Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
-## Install from source
+## Studio on Windows
 
-For 0.1.0 the `halonic` command installs from this repository. You need
+Studio is the desktop app, and the easiest way to start. Open the
+[releases page](https://github.com/halonic-com/halonic/releases) and download
+the file ending in `-windows-x64-setup.exe`. Open it and follow the installer.
+You don't need a terminal for this.
+
+Windows may show a blue screen that says **Windows protected your PC**. That
+is expected for a new app. Choose **More info**, then **Run anyway**.
+<!-- CHECK (Liam): once a real release run signs the installer, add "Under More
+info, check that the publisher reads <publisher name>". Don't promise the
+warning goes away (HAL-1249). CHECK (HAL-1208, HAL-1209): confirm the warning
+and the steps on a clean Windows machine. -->
+
+## Command line: install from source
+
+The command line is for people who work in a terminal. For 0.1.0 the
+`halonic` command installs from this repository. You need
 [git](https://git-scm.com/), [Node.js](https://nodejs.org/) 26.12 or later and
 [pnpm](https://pnpm.io/installation) 12.18 or later. On Windows, run all of
 this inside [WSL 2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
