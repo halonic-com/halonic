@@ -134,7 +134,7 @@ verifies("harness-kit.harness-profile", () => {
 
     it("denies a folder another run makes after the profile is built", async () => {
       const { data, proposal } = computer;
-      const { profile } = await profilesWith().profileOf(agentWith(proposal), bridge);
+      const { profile } = await profilesWith().profileOf(writerAgent(proposal), bridge);
 
       const later = [
         join(data, "workspaces", "k1", "proposals", "run_3"),
@@ -153,7 +153,7 @@ verifies("harness-kit.harness-profile", () => {
       const { data, proposal } = computer;
       await symlink(join(data, "agent-host"), join(proposal, "host"), "junction");
 
-      const { profile } = await profilesWith().profileOf(agentWith(proposal), bridge);
+      const { profile } = await profilesWith().profileOf(writerAgent(proposal), bridge);
 
       expect(profile.reopenedPaths).not.toContain(join(data, "agent-host"));
       expect(profile.reopenedPaths).not.toContain(join(proposal, "host"));
@@ -165,7 +165,7 @@ verifies("harness-kit.harness-profile", () => {
       await writeFile(join(home, ".local", "bin", "claude"), "");
 
       const { profile, deniedGroups } = await profilesWith({}, { platform: "win32" }).profileOf(
-        agentWith(proposal),
+        writerAgent(proposal),
         bridge,
       );
 
@@ -185,7 +185,7 @@ verifies("harness-kit.harness-profile", () => {
       const tempFolder = async () => join(computer.data, "tmp", "run_9");
 
       await expect(
-        profilesWith({}, {}, { tempFolder }).profileOf(agentWith(null), bridge),
+        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/The temp folder .* isn't there/);
     });
 
@@ -226,7 +226,7 @@ verifies("harness-kit.harness-profile", () => {
       await symlink(workspace, join(workspace, "files"), "junction");
 
       await expect(
-        profilesWith({ workingFolder: "files/agents/writer" }).profileOf(agentWith(null), bridge),
+        profilesWith({ workingFolder: "files/agents/writer" }).profileOf(writerAgent(null), bridge),
       ).rejects.toThrow(/is really .*where it can't work/);
       expect(await readdir(workspace)).not.toContain("agents");
     });
