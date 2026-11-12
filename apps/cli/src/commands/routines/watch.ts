@@ -4,36 +4,49 @@
 // uses too: this file checks trust, opens the local engine with the
 // scheduler on its tick, and prints one line per routine run it starts.
 //
+// Each routine run reads the live version at the time it is due, as the
+// Studio's scheduler does, through `WatchedVersions`: a version made while
+// it watches counts from the next tick, once it passes the checks the
+// first one did (HAL-6084).
+//
 // Runs that wait for a time move on while it watches: the engine's
 // scheduler delivers their timers, and those missed while nothing ran as
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 
-import { placedRoutines, type RoutineScheduler, workspaceRoutineScheduler } from "@halonicjs/app";
-import type { RunVersion } from "@halonicjs/events";
+import { type RoutineScheduler, workspaceRoutineScheduler } from "@halonicjs/app";
 import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
-import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
 import { printable } from "../../output/printable.ts";
-import type { SandboxGateRun } from "../../sandbox-gate.ts";
+import type { SandboxGateRun, UnsandboxedAgent } from "../../sandbox-gate.ts";
 import { unsandboxedWarning } from "../../sandbox-gate.ts";
-import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
-import { openWorkspaceEngine } from "../../workspace-engine.ts";
+import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import {
+  checkEngineRuns,
+  openWorkspaceEngine,
+  type WorkspaceEngineTarget,
+} from "../../workspace-engine.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
 import { watchReport } from "./watch-report.ts";
 import { reportGaveUp, reportStuck } from "./watch-stuck.ts";
+import { type VersionCheck, WatchedVersions } from "./watch-versions.ts";
 
 /**
  * Watches until Ctrl C or SIGTERM, then returns that it stopped: exit 130
  * or 143. Each tick's started runs are printed as they start.
  *
  * @throws NoWorkspaceError when the folder holds no workspace
+ * @throws HistoryUnavailableError when the workspace has history but git
+ *   can't start; nothing ran (exit 9)
+ * @throws OwnLineError `conflict` when the workspace has history but nothing
+ *   is live yet; nothing ran
  * @throws NotTrustedError when the workspace isn't trusted here and its
  *   runs could reach more than the test model; nothing ran (exit 3)
  * @throws SandboxRefusedError when a routine's agent needs the sandbox and it
@@ -47,28 +60,47 @@ export async function watchRoutines(
   setup: RunSetup,
 ): Promise<StoppedResult> {
   const dir = await openWorkspaceDir(input, context);
-  const workspace = await loadWorkspace(dir.store);
-  await checkRunTrust(dir, workspace, setup.trust(), givenDir(input, dir));
-  const routines = placedRoutines(workspace);
-  const report = watchReport(context, () => setup.clock(), routines);
+  const versions = await WatchedVersions.open(dir, setup.history);
+  try {
+    return await watchVersions(input, context, setup, dir, versions);
+  } finally {
+    // After the engine has closed: no run starts from a version any more.
+    await versions.close();
+  }
+}
+
+/** The watch over the workspace's versions, from the one it starts from on. */
+async function watchVersions(
+  input: CommandInput,
+  context: CommandContext,
+  setup: RunSetup,
+  dir: OpenWorkspaceDir,
+  versions: WatchedVersions,
+): Promise<StoppedResult> {
+  const workspace = versions.latest();
+  const typedDir = givenDir(input, dir);
+  await checkRunTrust(dir, workspace, setup.trust(), typedDir);
+  // The routines as the last tick listed them, for the names the lines give.
+  let routines: readonly PlacedRoutine[] = await versions.routines.list();
+  const listed = () => routines;
+  const report = watchReport(context, () => setup.clock(), listed);
+  const warnings = unsandboxedWarnings(context);
+  // Set before the engine opens, so no tick starts a run from a version that wasn't checked.
+  versions.checkWith(laterVersionCheck(setup, dir, typedDir, warnings));
   let scheduler: RoutineScheduler | undefined;
   let runStore: RunStore | undefined;
   const engine = await openWorkspaceEngine(context, setup, {
     dir,
     workspace,
+    versions,
     runs: workflowsOf(routines),
     ending: runMessages.nothingRan(),
-    // A run that gets stuck is reported, and the other routines go on starting.
-    onStuck: (stuck) => {
-      void reportStuck(context, routines, runStore, stuck);
-    },
-    // After an hour the engine gives up on it, so each try no longer pays for a model call.
-    onGaveUp: (gaveUp) => {
-      void reportGaveUp(context, routines, runStore, gaveUp);
-    },
+    ...stuckReports(context, listed, () => runStore),
     routines: (parts) => {
       runStore = parts.runs;
-      scheduler = routineScheduler(parts, workspace, routines, dir.name, setup);
+      scheduler = routineScheduler(parts, workspace, versions, dir.name, setup, (latest) => {
+        routines = latest;
+      });
       const built = scheduler;
       return {
         onTick: async () => report.tick(await built.tick()),
@@ -77,7 +109,7 @@ export async function watchRoutines(
     },
   });
   try {
-    for (const agent of engine.unsandboxed) context.printAhead(unsandboxedWarning(agent));
+    warnings.print(engine.unsandboxed);
     // Straight away, so the times missed since the last watch start now, not a minute from now.
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
     if (scheduler !== undefined) report.tick(await scheduler.tick());
@@ -97,34 +129,93 @@ export async function watchRoutines(
   return { stopped: true, json: { started: report.started } };
 }
 
+/**
+ * The watch's reports of a stuck run: it is reported, and the other
+ * routines go on starting. After an hour the engine gives up on it, so each
+ * try no longer pays for a model call.
+ */
+function stuckReports(
+  context: CommandContext,
+  listed: () => readonly PlacedRoutine[],
+  runStore: () => RunStore | undefined,
+): Pick<WorkspaceEngineTarget, "onStuck" | "onGaveUp"> {
+  return {
+    onStuck: (stuck) => {
+      void reportStuck(context, listed(), runStore(), stuck);
+    },
+    onGaveUp: (gaveUp) => {
+      void reportGaveUp(context, listed(), runStore(), gaveUp);
+    },
+  };
+}
+
+/**
+ * The check a version made while the watch runs passes before a run starts
+ * from it: the trust and sandbox checks the watch made on its first
+ * version, for the one workflow the run starts. A version that fails starts
+ * no run, and the watch prints that run's ✕ line and goes on.
+ */
+function laterVersionCheck(
+  setup: RunSetup,
+  dir: OpenWorkspaceDir,
+  typedDir: string | undefined,
+  warnings: UnsandboxedWarnings,
+): VersionCheck {
+  return async (workspace, run) => {
+    await checkRunTrust(dir, workspace, setup.trust(), typedDir);
+    const ending = runMessages.nothingRan();
+    warnings.print(await checkEngineRuns(setup, { dir, workspace, runs: [run], ending }));
+  };
+}
+
+/** Prints the ! line of each agent set to "On this computer", once a watch. */
+interface UnsandboxedWarnings {
+  print(agents: readonly UnsandboxedAgent[]): void;
+}
+
+function unsandboxedWarnings(context: CommandContext): UnsandboxedWarnings {
+  const warned = new Set<string>();
+  return {
+    print(agents) {
+      for (const agent of agents) {
+        if (warned.has(agent.name)) continue;
+        warned.add(agent.name);
+        context.printAhead(unsandboxedWarning(agent));
+      }
+    },
+  };
+}
+
 /** The routine scheduler on the engine's parts, as `workspaceRoutineScheduler` builds it. */
 function routineScheduler(
   engine: RoutineEngine,
   workspace: LoadedWorkspace,
-  routines: readonly PlacedRoutine[],
+  versions: WatchedVersions,
   folderName: string,
   setup: RunSetup,
+  onListed: (routines: readonly PlacedRoutine[]) => void,
 ): RoutineScheduler {
   const timeZone = setup.clock().timeZone ?? computerTimeZone();
+  const live = versions.routines;
   return workspaceRoutineScheduler({
     workspaceId: workspaceIdOf(workspace, folderName),
     clock: engine.clock,
     coordination: engine.coordination,
     executor: engine.executor,
     runs: engine.runs,
-    // As the workspace was when the watch started: the engine runs those definitions too.
-    routines: async () => routines,
-    // The saved files it froze then, not the newest commit (`app.run-records-its-version`).
-    runVersion: async () => frozenVersion,
+    // Read again on every tick, as the Studio's scheduler reads them (`app.scheduler-live-routines`).
+    routines: async () => {
+      const routines = await live.list();
+      onListed(routines);
+      return routines;
+    },
+    targetUnavailable: (run) => live.targetUnavailable(run),
+    // The live version when the routine is due (`app.runs-read-latest-version`); the engine
+    // then starts the run with that version's definitions (`engine.run-records-its-version`).
+    runVersion: () => live.runVersion(),
     policy: { ...DEFAULT_TICK_POLICY, timeZone },
   });
 }
-
-/**
- * The version every routine run of a watch reads: the saved files, loaded
- * once when the watch starts.
- */
-const frozenVersion: RunVersion = { reads: "saved-files" };
 
 /**
  * The workflows the routines start, for the sandbox check: each enabled

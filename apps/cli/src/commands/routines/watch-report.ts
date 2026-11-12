@@ -28,16 +28,18 @@ export interface WatchReport {
 }
 
 /**
- * The report of a watch over `routines`. It holds every line until
- * {@link WatchReport.open}, which the watch calls once its watching line is out.
+ * The report of a watch over `routines`, the routines as the last tick
+ * listed them, so a routine renamed in a newer version shows its new name.
+ * It holds every line until {@link WatchReport.open}, which the watch calls
+ * once its watching line is out.
  */
 export function watchReport(
   context: Pick<CommandContext, "printAhead" | "debug">,
   clock: () => RunClock,
-  routines: readonly PlacedRoutine[],
+  routines: () => readonly PlacedRoutine[],
 ): WatchReport {
-  const names = new Map(routines.map((placed) => [routineKey(placed), placed.routine.name]));
-  const nameOf = (key: string) => printable(names.get(key) ?? key);
+  const nameOf = (key: string) =>
+    printable(routines().find((placed) => routineKey(placed) === key)?.routine.name ?? key);
   const started: StartedRoutineRun[] = [];
   let held: RoutineTickResult[] | undefined = [];
 

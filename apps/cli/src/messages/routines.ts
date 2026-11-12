@@ -60,6 +60,19 @@ export const routinesMessages = defineMessages("routines", {
   /** The `--debug` line under {@link notStarted}: the routine's key and the start's own error. */
   notStartedWhy: (key: string, reason: string) => phrase`Routine ${key} didn't start: ${reason}`,
   /**
+   * Why a routine run of a newer version didn't start, under {@link notStartedWhy}:
+   * the engine keeps the local only it was opened with (HAL-6084).
+   */
+  localOnlyChanged: (workspace: string) =>
+    phrase`This version of ${workspace} turns local only on or off, which a running watch can't change. Stop the watch and start it again to run it.`,
+  /**
+   * Why a routine run that reads a commit didn't start in a workspace whose
+   * history the watch didn't open: never expected, since only a watch with
+   * history hands out a commit.
+   */
+  noHistoryForVersion: (commit: string) =>
+    phrase`This workspace has no history, so version ${commit} can't be read.`,
+  /**
    * A run of a routine whose step keeps failing: "✕ Hourly follow-up got stuck · run 01jd8q · see why with --debug".
    * The watch goes on, and the engine keeps retrying the step.
    */
