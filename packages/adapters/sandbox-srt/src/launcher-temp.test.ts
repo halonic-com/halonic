@@ -1,12 +1,12 @@
 import { existsSync, statSync } from "node:fs";
 import * as fsPromises from "node:fs/promises";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeLauncherTemp } from "./launcher-temp.ts";
+import { makeLauncherTemp, removeStaleLauncherTemps } from "./launcher-temp.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { command, fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
@@ -57,6 +57,40 @@ verifies("sandbox-srt.session", () => {
       } finally {
         await rm(path, { recursive: true, force: true });
       }
+    });
+
+    it("holds the host's process id in its name", async () => {
+      if (onWindows) return expectNoneOnWindows();
+      const folder = (await makeLauncherTemp()) ?? "";
+      try {
+        expect(basename(folder)).toMatch(new RegExp(`^hsrt-${process.pid}-[^-]+$`));
+      } finally {
+        await rm(folder, { recursive: true, force: true });
+      }
+    });
+
+    // Windows has no user ids and makes no launcher temp folders, so there it removes nothing.
+    it("removes the user's launcher temp folders whose host is gone, and nothing else", async () => {
+      const root = join(base, "tmp");
+      await mkdir(root);
+      const deadHost = join(root, "hsrt-41-aaaaaa");
+      const liveHost = join(root, "hsrt-42-bbbbbb");
+      const notOurs = join(root, "hsrt-cccccc");
+      const notAFolder = join(root, "hsrt-41-dddddd");
+      await Promise.all([deadHost, liveHost, notOurs].map((folder) => mkdir(folder)));
+      await writeFile(join(deadHost, "srt-mux-1-a.sock"), "");
+      await writeFile(notAFolder, "");
+      await removeStaleLauncherTemps(root, (pid) => pid === 42);
+      expect([deadHost, liveHost, notOurs, notAFolder].map((path) => existsSync(path))).toEqual([
+        onWindows,
+        true,
+        true,
+        true,
+      ]);
+    });
+
+    it("never throws, even when the temp root can't be read", async () => {
+      await expect(removeStaleLauncherTemps(join(base, "missing"))).resolves.toBeUndefined();
     });
 
     it("is what the launcher of the probe and of every program gets, until the session closes", async () => {

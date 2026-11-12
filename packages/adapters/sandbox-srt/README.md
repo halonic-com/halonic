@@ -18,7 +18,12 @@ file the program changed in the working folder's git folders and moves aside any
 planted at a gitlink, reporting each as a refused write.
 
 On Linux and macOS the launcher gets its own temp folder, private to the user, directly under
-`/tmp` and removed when the session ends. srt puts its Unix sockets in the launcher's temp folder,
+`/tmp` and removed when the session ends. Its name holds the host's process id
+(`hsrt-<pid>-…`): it isn't in the journal, so when a session opens it first removes the user's
+launcher temp folders whose host is gone, which a crash left behind. The sweep can't see every
+leftover: a folder named the old way (`hsrt-…` without a process id) stays, a process id the system
+gave to another program keeps a folder until that one ends too, and a host in another pid namespace
+that shares `/tmp` looks gone, so another host's live folder could be removed then. srt puts its Unix sockets in the launcher's temp folder,
 and a socket path holds at most 104 bytes on macOS: under the session's temp folder, which holds the
 user's name and the run id, it would be too long. The session's temp folder goes to srt as
 `CLAUDE_CODE_TMPDIR`, and stays the program's `TMPDIR`.
@@ -39,7 +44,12 @@ script before it runs it, so it couldn't start from `%LOCALAPPDATA%\halonic\…`
 a Windows session opens, `open()` therefore gives the sandbox account read attributes (`(RA)`) on
 each folder between the user profile and the paths it grants, on that folder alone: it sees the
 folder's dates and flags, never what it holds. The entry stays when the session closes, since other
-sessions share those folders; a folder that has it already is left alone.
+sessions share those folders; a folder that has it already is left alone. The uninstaller removes
+them through the agent host's `--sandbox-cleanup` (`cleanUp()`), for the folders it can know about:
+those between the user profile and the profile folder's `tmp` (by default `AppData`,
+`AppData\Local`, `%LOCALAPPDATA%\halonic` and its `tmp`; under `HALONIC_HOME` when that is set, as
+the installer passes it with `--profile-folder`), and only the sandbox account's own entries. Those
+above a working folder elsewhere in the profile stay.
 
 `remove()` undoes it for the uninstaller (through the agent host's `--sandbox-remove`). On Windows it
 runs srt's uninstall (what `srt windows-uninstall` runs): the sandbox account and its profile, the

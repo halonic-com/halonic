@@ -32,6 +32,7 @@ function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): M
       return "removed";
     },
     letSandboxReadParents: async () => undefined,
+    forgetSandboxParents: async () => undefined,
   };
 }
 
@@ -124,6 +125,30 @@ describe("run", () => {
     expect(state.installed).toBe(true);
     expect(lines).toEqual([
       '{"ok":false,"reason":"the administrator prompt was cancelled; nothing changed"}\n',
+    ]);
+  });
+
+  it("cleans up for the uninstaller with --sandbox-cleanup, and gives the reason when it can't", async () => {
+    const { io, lines } = starter();
+    const machine = windows({ installed: true });
+    // A profile folder set with HALONIC_HOME, outside LOCALAPPDATA.
+    const chosenProfile = ["D:", "halonic-home"].join("\\");
+    const forgotten: string[] = [];
+    machine.forgetSandboxParents = async (profileFolder) => {
+      forgotten.push(profileFolder);
+    };
+    const cleanup = ["--profile-folder", chosenProfile, "--sandbox-cleanup"];
+    expect(await run(cleanup, "1.2.3", io, new SrtSandbox(machine))).toBe(0);
+    expect(forgotten).toEqual([chosenProfile]);
+    machine.forgetSandboxParents = async () => {
+      throw new Error("icacls failed");
+    };
+    expect(await run(cleanup, "1.2.3", io, new SrtSandbox(machine))).toBe(1);
+    expect(await run(["--sandbox-cleanup"], "1.2.3", io, new SrtSandbox(machine))).toBe(1);
+    expect(lines).toEqual([
+      '{"ok":true}\n',
+      '{"ok":false,"reason":"icacls failed"}\n',
+      '{"ok":false,"reason":"--sandbox-cleanup needs --profile-folder."}\n',
     ]);
   });
 

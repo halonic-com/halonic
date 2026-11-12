@@ -111,6 +111,25 @@ export class SrtSandbox implements Sandbox {
     return { ok: true };
   }
 
+  /**
+   * What the uninstaller runs, as the user: removes the entries
+   * {@link SrtSandbox.open} gave srt's sandbox account on the folders above
+   * the session folders in the user profile, so none stay in the user's
+   * access lists. srt's own install is {@link SrtSandbox.remove}'s.
+   * Other systems have nothing to remove. Never throws.
+   *
+   * @param profileFolder - Halonic's profile folder, which holds the sessions' temp folders
+   */
+  async cleanUp(profileFolder: string): Promise<SandboxSetup> {
+    if (this.#machine.platform !== "win32") return { ok: true };
+    try {
+      await this.#machine.forgetSandboxParents(profileFolder);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: errorLine(error) };
+    }
+  }
+
   /** Programs share the working folder, and the fence is the operating system's. */
   capabilities(): SandboxCapabilities {
     return { files: "shared", strength: "os" };

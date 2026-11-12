@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sandboxCheckContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { cgroupNamesContainer, type Machine } from "./machine.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 
@@ -20,6 +20,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     installWindowsSandbox: async () => "installed" as const,
     letSandboxReadParents: async () => undefined,
     uninstallWindowsSandbox: async () => "removed" as const,
+    forgetSandboxParents: async () => undefined,
     ...overrides,
   };
 }
@@ -155,6 +156,39 @@ verifies("sandbox-srt.check", () => {
 });
 
 verifies("sandbox-srt.setup", () => {
+  describe("cleanUp", () => {
+    it("removes the entries sessions added on Windows, and says why when it can't", async () => {
+      // A profile folder set with HALONIC_HOME, outside LOCALAPPDATA.
+      const chosenProfile = ["D:", "halonic-home"].join("\\");
+      const forgotten: string[] = [];
+      const windows = machine({
+        platform: "win32",
+        forgetSandboxParents: async (profileFolder) => {
+          forgotten.push(profileFolder);
+        },
+      });
+      expect(await new SrtSandbox(windows).cleanUp(chosenProfile)).toEqual({ ok: true });
+      expect(forgotten).toEqual([chosenProfile]);
+      windows.forgetSandboxParents = async () => {
+        throw new Error("icacls failed\non a folder");
+      };
+      expect(await new SrtSandbox(windows).cleanUp(chosenProfile)).toEqual({
+        ok: false,
+        reason: "icacls failed on a folder",
+      });
+    });
+
+    it("has nothing to remove on other systems", async () => {
+      const forget = vi.fn(async () => undefined);
+      expect(await new SrtSandbox(machine({ forgetSandboxParents: forget })).cleanUp("/p")).toEqual(
+        {
+          ok: true,
+        },
+      );
+      expect(forget).not.toHaveBeenCalled();
+    });
+  });
+
   describe("SrtSandbox.setUp", () => {
     /** Windows, where each install brings the sandbox in. */
     function windowsMachine(install: Machine["installWindowsSandbox"]) {

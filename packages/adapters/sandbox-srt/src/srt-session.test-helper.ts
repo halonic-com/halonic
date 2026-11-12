@@ -15,6 +15,7 @@ export const linux = {
   installWindowsSandbox: async () => "installed" as const,
   letSandboxReadParents: async () => undefined,
   uninstallWindowsSandbox: async () => "removed" as const,
+  forgetSandboxParents: async () => undefined,
 };
 
 type Exit = { code: number | null; signal: string | null };

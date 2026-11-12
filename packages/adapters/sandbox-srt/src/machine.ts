@@ -1,7 +1,12 @@
 import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { letSandboxReadParents, parentsInProfile } from "./profile-parents.ts";
+import {
+  forgetSandboxParents,
+  letSandboxReadParents,
+  parentsInProfile,
+  sessionTempParents,
+} from "./profile-parents.ts";
 
 /**
  * What the sandbox asks of the machine it runs on. A test hands the adapter a
@@ -59,6 +64,17 @@ export interface Machine {
    * @throws with srt's own words when the uninstall fails, also while a sandboxed program runs
    */
   uninstallWindowsSandbox(): Promise<"removed" | "cancelled">;
+  /**
+   * Removes the sandbox account's entries from the folders above a session's
+   * temp folder (`tmp\<run>` in `profileFolder`) inside the user profile, for
+   * the uninstaller. The parents of other folders a session was given aren't
+   * known after it closes, so their entries stay (HAL-6214). Windows only;
+   * nothing to do when srt's sandbox account is gone already.
+   *
+   * @param profileFolder - Halonic's profile folder, `HALONIC_HOME` or `%LOCALAPPDATA%\halonic`
+   * @throws when srt can't be asked for its account or an access list can't be read or changed
+   */
+  forgetSandboxParents(profileFolder: string): Promise<void>;
 }
 
 /** The sysctl that restricts user namespaces on Ubuntu 24.04 and later. */
@@ -177,5 +193,17 @@ export const systemMachine: Machine = {
       srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
     });
     return uninstall.cancelled === true ? "cancelled" : "removed";
+  },
+  async forgetSandboxParents(profileFolder) {
+    const parents = sessionTempParents(profileFolder, homedir());
+    if (parents.length === 0) return;
+    const { getWindowsSandboxUserStatusAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
+      "@anthropic-ai/sandbox-runtime"
+    );
+    const { sid } = await getWindowsSandboxUserStatusAsync({
+      srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+    });
+    if (sid === undefined) return;
+    await forgetSandboxParents(parents, sid);
   },
 };

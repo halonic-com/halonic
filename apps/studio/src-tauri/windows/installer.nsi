@@ -982,6 +982,24 @@ Section Uninstall
 
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
 
+  ; Halonic change (HAL-6214): sessions let srt's sandbox account read the
+  ; attributes of the folders above them in the user profile. Remove those
+  ; entries while the agent host is still here. Not on an update, and its
+  ; outcome never stops the uninstall. It needs srt's sandbox account, so it
+  ; must run before anything that runs --sandbox-remove.
+  !ifdef SANDBOX_STEP
+    ${If} $UpdateMode <> 1
+    ${AndIf} ${FileExists} "$INSTDIR\halonic-agent-host.exe"
+      StrCpy $1 "$LOCALAPPDATA\halonic"
+      ReadEnvStr $2 "HALONIC_HOME"
+      ${If} $2 != ""
+        StrCpy $1 $2
+      ${EndIf}
+      nsExec::Exec '"$INSTDIR\halonic-agent-host.exe" --profile-folder "$1" --sandbox-cleanup'
+      Pop $0
+    ${EndIf}
+  !endif
+
   ; Delete the app directory and its content from disk
   ; Copy main executable
   Delete "$INSTDIR\${MAINBINARYNAME}.exe"

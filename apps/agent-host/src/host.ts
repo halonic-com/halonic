@@ -3,7 +3,7 @@ import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { type SandboxSetup, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
@@ -61,10 +61,11 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * - `--sandbox-check` prints whether the sandbox works on this machine, as JSON;
  * - `--sandbox-setup` sets the sandbox up, once, for the installer (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON;
  * - `--sandbox-remove` removes what the setup left, for the uninstaller (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
+ * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
  *
- * The three sandbox commands exit with 0 when the answer is `ok`, and 1 when it
+ * The sandbox commands exit with 0 when the answer is `ok`, and 1 when it
  * isn't, so the installer needn't read the JSON.
  *
  * @param sandbox - the sandbox on this machine; tests pass one on a fake machine
@@ -89,11 +90,28 @@ export async function run(
   if (args.includes("--sandbox-remove")) {
     return answer(io, await sandbox.remove());
   }
+  if (args.includes("--sandbox-cleanup")) {
+    const profileFolder = argumentAfter(args, "--profile-folder");
+    if (profileFolder === undefined) {
+      const missing: SandboxSetup = {
+        ok: false,
+        reason: "--sandbox-cleanup needs --profile-folder.",
+      };
+      return answer(io, missing);
+    }
+    return answer(io, await sandbox.cleanUp(profileFolder));
+  }
   if (args.includes("--stdio")) {
     return serveOverFrames(args, version, io, sandbox);
   }
   await serve(version, io, sandbox);
   return 0;
+}
+
+/** The value after `name` in `args`, when there is one. */
+function argumentAfter(args: readonly string[], name: string): string | undefined {
+  const at = args.indexOf(name);
+  return at === -1 ? undefined : args[at + 1];
 }
 
 /** Prints `result` as one JSON line. @returns its exit code: 0 when it is `ok`, 1 when not */

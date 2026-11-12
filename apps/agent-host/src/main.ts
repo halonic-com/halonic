@@ -319,7 +319,7 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
     createRequire(program)(program);
     return 0;
   }
-  const { profileFolder, rest } = hostArguments(args);
+  const { profileFolder } = hostArguments(args);
   if (profileFolder === undefined || !isAbsolute(profileFolder)) {
     process.stderr.write("The agent host needs --profile-folder with an absolute folder.\n");
     return 2;
@@ -336,7 +336,9 @@ async function start(version: string, manifest: PayloadManifest): Promise<number
   });
   const entry = placeOf(folder, manifest.entry);
   const host = createRequire(entry)(entry) as HostModule;
-  return host.run(rest, version);
+  // The host gets --profile-folder too: --sandbox-cleanup reads it, and
+  // HALONIC_HOME can put the profile anywhere (HAL-6214).
+  return host.run(args, version);
 }
 
 if (isSea() && typeof HALONIC_AGENT_HOST_PAYLOAD === "object") {

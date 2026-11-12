@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
@@ -28,8 +29,23 @@ export function parentsInProfile(folders: readonly string[], home: string): stri
   return [...parents.values()];
 }
 
+/**
+ * The folders above a session's temp folder (`tmp\<run>` in the profile
+ * folder `profileFolder`) that lie inside the user profile `home`, outer
+ * first: the ones {@link letSandboxReadParents} gave entries on for every
+ * session, so the uninstaller knows them without the session (HAL-6214).
+ */
+export function sessionTempParents(profileFolder: string, home: string): string[] {
+  return parentsInProfile([win32.join(profileFolder, "tmp", "run")], home);
+}
+
 /** The SDDL rights that include reading a file's attributes (`FILE_READ_ATTRIBUTES` is `LO` on its own). */
 const readsAttributes = new Set(["FA", "FR", "GA", "GR", "LO"]);
+
+/** The two-letter codes an SDDL entry's flags or rights are written in. */
+function pairs(text: string): string[] {
+  return text.match(/../g) ?? [];
+}
 
 /**
  * Whether `sddl` has an entry that lets `sid` read the attributes of the
@@ -39,11 +55,12 @@ export function letsReadAttributes(sddl: string, sid: string): boolean {
   for (const [, flags = "", mask = "", trustee] of sddl.matchAll(
     /\(A;([^;]*);([^;]*);;;([^)]*)\)/g,
   )) {
-    if (trustee !== sid || flags.includes("IO")) continue;
+    // Flags are pairs of letters, like the rights: `IO` is inherit-only.
+    if (trustee !== sid || pairs(flags).includes("IO")) continue;
     if (/^0x[0-9a-f]+$/i.test(mask)) {
       // FILE_READ_ATTRIBUTES, GENERIC_ALL or GENERIC_READ.
       if ((Number.parseInt(mask, 16) & 0x9000_0080) !== 0) return true;
-    } else if ((mask.match(/../g) ?? []).some((right) => readsAttributes.has(right))) {
+    } else if (pairs(mask).some((right) => readsAttributes.has(right))) {
       return true;
     }
   }
@@ -82,4 +99,38 @@ export async function letSandboxReadParents(
     if (letsReadAttributes(await readSddl(parent, start), sid)) continue;
     await start("icacls.exe", [parent, "/grant", `*${sid}:(RA)`]);
   }
+}
+
+/** Whether `sddl` has an allow entry for `sid` set on the folder itself, not inherited from its parent. */
+export function hasOwnEntry(sddl: string, sid: string): boolean {
+  for (const [, flags = "", trustee] of sddl.matchAll(/\(A;([^;]*);[^;]*;;;([^)]*)\)/g)) {
+    if (trustee === sid && !pairs(flags).includes("ID")) return true;
+  }
+  return false;
+}
+
+/**
+ * Removes what {@link letSandboxReadParents} granted: the sandbox account's
+ * own allow entries on each folder in `parents`, for the uninstaller. Only
+ * `sid` loses entries, and a folder that is gone or has none is left alone.
+ * It goes on past a folder it can't change.
+ *
+ * @throws the first `icacls` failure, once every folder was tried
+ */
+export async function forgetSandboxParents(
+  parents: readonly string[],
+  sid: string,
+  start: RunProgram = runFixed,
+): Promise<void> {
+  let failure: unknown = null;
+  for (const parent of parents) {
+    if (!existsSync(parent)) continue;
+    try {
+      if (!hasOwnEntry(await readSddl(parent, start), sid)) continue;
+      await start("icacls.exe", [parent, "/remove:g", `*${sid}`]);
+    } catch (error) {
+      failure ??= error;
+    }
+  }
+  if (failure !== null) throw failure;
 }
