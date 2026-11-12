@@ -14,3 +14,7 @@ While the relay serves a host, it shall keep at most 256 connections open, as th
 - Given a client that sends far more than the queue holds while the host reads nothing,
   when a second client connects,
   then the host gets the second client's `open` after at most that client's share of frames, not after the whole queue.
+
+## What it doesn't cover
+
+The share is per connection, not per client: it keeps one client's big body from filling the queue, not a hostile client that opens eight connections. Any process of the same user can already do more harm than that.
