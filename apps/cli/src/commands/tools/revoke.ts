@@ -44,6 +44,7 @@ export async function revokeTools(
       throw new OwnLineError(
         "not_found",
         toolsMessages.notApprovedToRevoke(printable(name), source.shown),
+        names.length > 1 ? toolsMessages.nothingRemoved() : undefined,
       );
     }
   }
