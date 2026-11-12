@@ -10,6 +10,9 @@
 // connectors it is given, none by default. The folder a run's programs start
 // in is ready all the same: `programFolders`, a copy at the run's commit for a
 // live run (HAL-4975).
+//
+// Its runs read `workspace`, or, for `routines watch`, the version each run
+// records (`versions`, HAL-6084).
 
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -31,7 +34,8 @@ import {
   type SetTimer,
   systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
-import { LocalExecutor } from "@halonicjs/engine";
+import { LocalExecutor, type RunDefinitions } from "@halonicjs/engine";
+import type { RunVersion } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
@@ -61,7 +65,7 @@ import {
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
-import { workspaceModelResolver } from "./workspace-model-resolver.ts";
+import { latestModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 /** The collection of the workspace's record store that keeps the run timers. */
@@ -83,6 +87,14 @@ export type EngineErrorSource = SchedulerErrorSource | "engine-lock" | "program-
 export interface LocalEngineInput {
   /** The loaded workspace, checked for errors and trusted before a run starts. */
   readonly workspace: LoadedWorkspace;
+  /**
+   * For an engine whose runs read more than one version of the workspace,
+   * as `routines watch`'s: each run starts with the definitions of the
+   * version it records, and models, chat agents and their connectors' tools
+   * come from the version read last. Left out, everything reads `workspace`,
+   * as for `halonic run`.
+   */
+  readonly versions?: WorkspaceVersions;
   /** The workspace folder, as `openWorkspaceDir` found it. */
   readonly workspaceRoot: string;
   /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
@@ -123,6 +135,28 @@ export interface LocalEngineInput {
    * `halonic run`.
    */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
+}
+
+/** The versions of a workspace an engine's runs read, as {@link LocalEngineInput.versions} says. */
+export interface WorkspaceVersions {
+  /**
+   * The version read last, checked and trusted as `workspace` is. The
+   * executor keeps the `privacy.localOnly` of `workspace`, so a version
+   * that changes it must not be given here.
+   */
+  latest(): LoadedWorkspace;
+  /**
+   * The definitions a new run of the workflow starts with, from `version`:
+   * the start's, which the run records.
+   *
+   * @throws when the hub or the workflow isn't in that version, or that
+   *   version may not run on this computer
+   */
+  definitionsOf(
+    hubId: string,
+    workflowId: string,
+    version: RunVersion | undefined,
+  ): Promise<RunDefinitions>;
 }
 
 /** What the routine scheduler is built on: the engine's own parts. */
@@ -235,6 +269,8 @@ function engineOn(
   // need the scheduler, so the listener looks them up when it is called.
   let executor: LocalExecutor | undefined;
   let routines: RoutineTicks | undefined;
+  const { versions } = input;
+  const latest = () => versions?.latest() ?? input.workspace;
   const scheduler: NodeScheduler = nodeSchedulerFactory({
     store: new FileRecordStore(folders.recordsFolder()),
     collection: runTimerCollection,
@@ -262,16 +298,16 @@ function engineOn(
     },
   });
   executor = new LocalExecutor({
-    resolveModel: workspaceModelResolver(input),
+    resolveModel: latestModelResolver(input, latest),
     halonicTools: [],
     connectors: input.connectors ?? [],
     secrets: input.secrets,
     clock,
     // A chat turn reads the workspace's files as a run does: its agent's file,
     // and its connector files' `allow` and `approve` lists (HAL-5645).
-    chatAgentOf: async (request) => chatAgentOf(input.workspace, request),
+    chatAgentOf: async (request) => chatAgentOf(latest(), request),
     chatConnectorToolsOf: async (request) =>
-      connectorToolsOf(definitionsOf(input.workspace, request.hubId)),
+      connectorToolsOf(definitionsOf(latest(), request.hubId)),
     // Without a workspace.yaml that parsed, the format default: not local only.
     localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
     runs: {
@@ -279,8 +315,10 @@ function engineOn(
       blobs: new FolderBlobStore(folders.blobsFolder()),
       scheduler,
       ids: input.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock),
-      definitionsOf: async (hubId, workflowId) =>
-        runDefinitionsOf(input.workspace, hubId, workflowId),
+      definitionsOf: async (hubId, workflowId, version) =>
+        versions === undefined
+          ? runDefinitionsOf(input.workspace, hubId, workflowId)
+          : await versions.definitionsOf(hubId, workflowId, version),
     },
   });
   const opened = executor;

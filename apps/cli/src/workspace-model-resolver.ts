@@ -117,6 +117,30 @@ export function workspaceModelResolver(
   };
 }
 
+/**
+ * {@link workspaceModelResolver} for an engine whose workspace can move to
+ * a newer version while it is open: each call resolves on `workspace()`,
+ * and a new version gets a resolver of its own, with its own providers.
+ *
+ * @example
+ * resolveModel: latestModelResolver({ secrets, http }, () => versions.latest()),
+ */
+export function latestModelResolver(
+  input: Omit<WorkspaceModelResolverInput, "workspace">,
+  workspace: () => LoadedWorkspace,
+): (request: ChatTurnRequest) => Promise<ResolvedModel> {
+  let last:
+    | { workspace: LoadedWorkspace; resolve: ReturnType<typeof workspaceModelResolver> }
+    | undefined;
+  return async (request) => {
+    const now = workspace();
+    if (last === undefined || last.workspace !== now) {
+      last = { workspace: now, resolve: workspaceModelResolver({ ...input, workspace: now }) };
+    }
+    return await last.resolve(request);
+  };
+}
+
 /** The `model` of the agent a call is for, in its hub; `undefined` without one. */
 function agentModel(definitions: HubDefinitions, agentId: string | undefined): string | undefined {
   return agentId === undefined ? undefined : definitions.agents[agentId]?.model;
