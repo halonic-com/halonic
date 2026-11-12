@@ -17,6 +17,12 @@ export interface GuardFinding {
 export interface Checkouts {
   readonly base: CheckContext;
   readonly head: CheckContext;
+  /**
+   * The checkout whose test results are the baseline, when it isn't the
+   * merge base: CI walks back to an older main commit when the merge base's
+   * tests fail (HAL-7633). Only the test-runs check reads it.
+   */
+  readonly testBase?: CheckContext;
 }
 
 /** How a file differs between the checkouts: "added", "deleted", "changed" or not at all. */

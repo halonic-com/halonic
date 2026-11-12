@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, test } from "vitest";
-import { requirementText, runGuard } from "./guard-fixture.ts";
+import { requirementText, results, runGuard } from "./guard-fixture.ts";
 
 const workflow = readFileSync(
   join(import.meta.dirname, "../../../../.github/workflows/ci.yml"),
@@ -94,5 +94,41 @@ verifies("check.guard-base-is-built-on-commit", () => {
       head: { [name]: changedOnMain },
     });
     expect(errors.join("\n")).toMatch(/"workflow.timer-fires" was edited/);
+  });
+});
+
+verifies("check.guard-walked-back-baseline", () => {
+  const testFile = "src/timer.test.ts";
+  const testPath = `packages/core/workflow/${testFile}`;
+  const ran = (...names: string[]): Record<string, string> => ({
+    [testFile]: 'import { test } from "vitest";\n',
+    ...results(names.map((test) => ({ name: test, requirement: "workflow.timer-fires" }))),
+  });
+
+  test("CI passes the walked-back commit as --test-base and the merge base as --base", () => {
+    expect(workflow).toContain("merge-base: ${{ steps.merge-base.outputs.sha }}");
+    expect(workflow).toContain("ref: ${{ needs.base-tests.outputs.merge-base }}");
+    expect(workflow).toMatch(/--base "\$compare" --test-base "\$BASE_DIR"/);
+  });
+
+  test("a requirement main changed after the walked-back commit isn't blamed", async () => {
+    const { errors } = await runGuard({
+      testBase: { [name]: original, ...ran("fires") },
+      base: { [name]: changedOnMain },
+      head: { [name]: changedOnMain, ...ran("fires") },
+    });
+    expect(errors).toEqual([]);
+  });
+
+  test("the walked-back commit's results are still the baseline", async () => {
+    const { errors } = await runGuard({
+      testBase: { [name]: original, ...ran("fires", "fires once") },
+      // No result file on the merge base: its tests were the ones that failed.
+      base: { [name]: changedOnMain, [testFile]: 'import { test } from "vitest";\n' },
+      head: { [name]: changedOnMain, ...ran("fires") },
+    });
+    expect(errors.join("\n")).toContain(
+      `${testPath}: 1 test(s) ran in ${testPath}, 2 on the merge base.`,
+    );
   });
 });

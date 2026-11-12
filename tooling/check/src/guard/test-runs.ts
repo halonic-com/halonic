@@ -22,17 +22,19 @@ const ranStatuses = ["passed", "failed"];
  *   environments). So is a drop only `vi.waitFor`'s retries can explain
  *   (see `timingOnlyDrops`).
  * Both checkouts' tests must have run first. A missing or unreadable result
- * file is a finding too, so the guard fails closed.
+ * file is a finding too, so the guard fails closed. When CI walked back to
+ * an older main commit, that commit's results are the baseline (`testBase`);
+ * the files still come from the merge base.
  */
 export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
-  const { base, head } = checkouts;
+  const { base, head, testBase = base } = checkouts;
   const findings: GuardFinding[] = [];
   for (const file of testFilesIn(base)) {
     if (!head.files.includes(file)) {
       findings.push({ subject: file, file, message: `The test file ${file} was deleted.` });
     }
   }
-  const before = ranTests(base, "merge base", findings);
+  const before = ranTests(testBase, "merge base", findings);
   const after = ranTests(head, "pull request", findings);
   // A deleted file has its own finding above.
   const fewerInFile = compareCounts(

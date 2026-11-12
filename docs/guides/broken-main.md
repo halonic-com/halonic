@@ -14,14 +14,28 @@ Only when the install fails with a pnpm lockfile error
 (`ERR_PNPM_*LOCKFILE*` or `OUTDATED_LOCKFILE`), `Merge base's tests (no cache)` walks back
 along `main`'s first-parent history, one commit at a time, to the newest
 commit that installs. It stops after 20 commits and fails. That commit is the
-baseline: its tests run, and the guard installs and compares against exactly
-that commit. A `baseline-walked-back` warning names it.
+baseline: its tests run, and the guard installs that commit and runs its copy
+with its test results. A `baseline-walked-back` warning names it.
 
 - The baseline is always a commit on `main`. No pull-request code or lockfile
   runs in those jobs, so the trust boundary is unchanged.
 - Network and registry errors never trigger the walk-back; they still fail.
 - The guard keeps running against a real baseline, and `ci-ok` needs no
   exception.
+
+## What the guard compares after a walk-back
+
+Only the test results come from the walked-back commit. The files the guard
+compares (requirements, test files, guarded paths and the rest) still come
+from the commit the pull request's merge ref was built on, so the
+requirements and files `main` changed since the walked-back commit aren't
+blamed on the pull request (HAL-7633). The guard gets that commit as
+`--base` and the walked-back one as `--test-base`.
+
+One gap remains: if `main` itself ran fewer tests in a file or for a
+requirement between the walked-back commit and the merge base, the guard
+reports that drop on the pull request, because the merge base has no
+results it can trust. A full rerun once `main` is green clears it.
 
 ## Repairing the lockfile
 
@@ -40,8 +54,8 @@ push to `main` already fails and reports it. In a pull request,
 `Merge base's tests (no cache)` then walks back along `main`'s first-parent history to
 the newest commit whose `push` CI run passed, at most 20 commits back from the
 merge base. That commit is the baseline: it's installed and its tests run
-without a cache, and the guard installs and compares against exactly that
-commit. A `baseline-walked-back` warning names it.
+without a cache, and the guard installs that commit and runs its copy with its
+test results. A `baseline-walked-back` warning names it.
 
 - The baseline is still a commit on `main`, found with
   `git rev-list --first-parent` and checked against the `push` runs of

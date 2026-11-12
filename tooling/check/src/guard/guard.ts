@@ -30,6 +30,8 @@ export interface GuardRun {
   readonly base: CheckContext;
   /** The pull request, with its test results. */
   readonly head: CheckContext;
+  /** The older main commit whose test results replace the merge base's; the merge base when left out. */
+  readonly testBase?: CheckContext;
   /** The pull request's branch, which names its decision note. */
   readonly branch: string;
   readonly approvals: ApprovalLookup;
@@ -44,7 +46,11 @@ export interface GuardRun {
  */
 export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
   const report = new Report("requirement-guard");
-  const checkouts = { base: run.base, head: run.head };
+  const checkouts = {
+    base: run.base,
+    head: run.head,
+    ...(run.testBase === undefined ? {} : { testBase: run.testBase }),
+  };
   const findings = (run.checks ?? guardChecks).flatMap((check) => check(checkouts));
   if (findings.length === 0) {
     return report;

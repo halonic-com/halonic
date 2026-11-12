@@ -8,7 +8,7 @@ import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
 const usage =
-  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--skip-test-runs] [--repo <owner/name> --pr <number> --head-sha <sha> --base-sha <sha>]";
+  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--test-base <checkout>] [--skip-test-runs] [--repo <owner/name> --pr <number> --head-sha <sha> --base-sha <sha>]";
 
 /**
  * node <merge base>/tooling/check/src/cli/requirement-guard.ts --base <dir> --branch <name>
@@ -20,6 +20,10 @@ const usage =
  * weaken the guard that checks it. With `--skip-test-runs` it leaves out
  * the one check that reads test result files, so it runs without the tests
  * (`pnpm check:enqueue` does that; CI runs the full guard).
+ * `--test-base` names another checkout whose test results are the baseline:
+ * CI passes the older main commit it walked back to when the merge base's
+ * tests failed, and keeps the merge base as `--base`, so the guard still
+ * sees only the pull request's own changes (HAL-7633).
  *
  * `--repo`, `--pr`, `--head-sha` and `--base-sha` name the pull request a
  * note's signature must be for; both commits must be in the current
@@ -33,10 +37,12 @@ async function main(argv: readonly string[]): Promise<number> {
     return 2;
   }
   const started = performance.now();
+  const testBase = flagValue(argv, "--test-base");
   const headRoot = findRepoRoot();
   const report = await checkRequirementGuard({
     base: loadContext(resolve(base)),
     head: loadContext(headRoot),
+    ...(testBase === undefined ? {} : { testBase: loadContext(resolve(testBase)) }),
     branch,
     approvals: signedApprovals(pullRequestOf(argv), gitObjects(headRoot)),
     checks: argv.includes("--skip-test-runs")

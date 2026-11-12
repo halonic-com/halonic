@@ -16,6 +16,8 @@ export interface GuardCase {
   readonly base: Readonly<Record<string, string>>;
   /** The same in the pull request. */
   readonly head: Readonly<Record<string, string>>;
+  /** The same on an older main commit whose test results are the baseline (CI's walk-back). */
+  readonly testBase?: Readonly<Record<string, string>>;
   /** Files outside the package, in both checkouts. */
   readonly shared?: Readonly<Record<string, string>>;
   /** Files outside the package on the merge base only. */
@@ -54,6 +56,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
     ...guardCase.headOutside,
     ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
   });
+  const testBaseRoot = guardCase.testBase === undefined ? undefined : repo(guardCase.testBase, {});
   const approvals: ApprovalLookup = {
     check: () =>
       Promise.resolve(
@@ -66,6 +69,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
     const report = await checkRequirementGuard({
       base: loadContext(baseRoot),
       head: loadContext(headRoot),
+      ...(testBaseRoot === undefined ? {} : { testBase: loadContext(testBaseRoot) }),
       branch,
       approvals,
       ...(guardCase.checks === undefined ? {} : { checks: guardCase.checks }),
@@ -78,6 +82,9 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
   } finally {
     removeFixtureRepo(baseRoot);
     removeFixtureRepo(headRoot);
+    if (testBaseRoot !== undefined) {
+      removeFixtureRepo(testBaseRoot);
+    }
   }
 }
 
