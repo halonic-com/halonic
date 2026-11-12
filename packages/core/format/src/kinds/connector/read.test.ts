@@ -52,7 +52,7 @@ verifies("format.connector-read", () => {
       const problems = problemsOf("connector", text);
       expect(summary(problems), why).toEqual(["tools.read.0 read-tool-name 4"]);
       expect(problems[0]?.message, why).toBe(
-        '"read" needs exact tool names made of letters A–Z, digits, "_" and "-", up to 64 characters. This one has another character, such as a look-alike letter, a space or an invisible character.',
+        `"read" needs exact tool names: letters a–z and A–Z, digits 0–9, "_" and "-", up to 64 characters. This one doesn't match, often because of a space, a look-alike letter or an invisible character.`,
       );
     }
   });

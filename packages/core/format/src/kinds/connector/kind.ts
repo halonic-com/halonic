@@ -139,8 +139,7 @@ const patternCharacters = /[*?[\]{}]/;
  * doesn't quote the name: the character at fault may be invisible, so the
  * name would look right. Wording: Sofia, HAL-5762.
  */
-const readNameBreaksRule =
-  '"read" needs exact tool names made of letters A–Z, digits, "_" and "-", up to 64 characters. This one has another character, such as a look-alike letter, a space or an invisible character.';
+const readNameBreaksRule = `"read" needs exact tool names: letters a–z and A–Z, digits 0–9, "_" and "-", up to 64 characters. This one doesn't match, often because of a space, a look-alike letter or an invisible character.`;
 
 /**
  * `tools.read` takes exact names only, so a pattern is refused rather than
