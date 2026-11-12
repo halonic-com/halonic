@@ -1,7 +1,7 @@
 # Decision: a method prompt names its fields in name order
 
-- Approval: [HAL-4757](/HAL/issues/HAL-4757)
-- Kind: internal
+- Approval: [HAL-4757](/HAL/issues/HAL-4757) asks for this change; Liam approves it in review
+- Kind: user-visible
 
 ## What changes
 
@@ -23,6 +23,10 @@ can't read the file's order back. This is the same cause, and the same answer, a
 runs keep their definitions, for a line that only tells the model which fields to answer with; the
 answer is read as JSON by name, so no result changes.
 
+The tests of `parity.known-gaps-checked` make one `expect` call fewer: one of them checks each gap
+in `known-gaps.json`, and this change removes the gap `task-method-ignored`, as HAL-4757 asks.
+
 ## Covers
 
 - packages/testing/parity/allowed-differences.json
+- parity.known-gaps-checked
