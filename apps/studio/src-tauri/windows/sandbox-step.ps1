@@ -1,7 +1,9 @@
 # The installer's "Set up the agent sandbox" step (HAL-1202, flow 2.3 steps 3
-# and 4). It runs the agent host's one-time setup, asking Windows for
-# administrator rights unless it already has them, and then runs the same
-# sandbox check Settings uses, as the person installing.
+# and 4). It runs the agent host's `--sandbox-setup`, the same command
+# Settings › Agent sandbox and `halonic sandbox setup` run (HAL-1451): the
+# host asks Windows for administrator rights itself, once, through Halonic's
+# signed helper, and then checks the sandbox as the person installing. This
+# script elevates nothing.
 #
 # It prints one line, the reason, and exits with:
 #   0   set up, and the check passed
@@ -14,9 +16,6 @@
 param(
   [Parameter(Mandatory)][string]$HostExe,
   [Parameter(Mandatory)][string]$ProfileFolder,
-  # For an installer that is already elevated or silent: no prompt.
-  [switch]$NoElevate,
-  [int]$CheckSeconds = 60,
   # srt gives its own administrator prompt 120 seconds, so this is longer.
   [int]$SetupSeconds = 300
 )
@@ -29,51 +28,26 @@ function Read-Json([string]$path) {
   try { return $line | ConvertFrom-Json } catch { return $null }
 }
 
-$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$elevated = ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-# 1. The setup. Its output goes to a file, because an elevated program's
-#    output can't be read from here.
-$setupOut = Join-Path $env:TEMP "halonic-sandbox-setup-$PID.json"
-Remove-Item $setupOut -ErrorAction SilentlyContinue
-$line = "`"`"$HostExe`" --profile-folder `"$ProfileFolder`" --sandbox-setup > `"$setupOut`"`""
+$out = Join-Path $env:TEMP "halonic-sandbox-setup-$PID.json"
+Remove-Item $out -ErrorAction SilentlyContinue
 try {
-  if ($elevated -or $NoElevate) {
-    $p = Start-Process cmd.exe -ArgumentList '/c', $line -PassThru -WindowStyle Hidden
-  } else {
-    $p = Start-Process cmd.exe -ArgumentList '/c', $line -Verb RunAs -PassThru -WindowStyle Hidden
-  }
+  $p = Start-Process $HostExe -ArgumentList '--profile-folder', "`"$ProfileFolder`"", '--sandbox-setup' `
+    -RedirectStandardOutput $out -PassThru -WindowStyle Hidden
 } catch {
-  # 1223 is Windows' "The operation was canceled by the user".
-  if ($_.Exception.NativeErrorCode -eq 1223) { exit 10 }
-  Write-Output ("The setup couldn't start: " + $_.Exception.Message)
+  Write-Output ("the setup couldn't start: " + $_.Exception.Message)
   exit 11
 }
+# Without reading the handle first, ExitCode can be empty once it exits.
+$null = $p.Handle
 if (-not $p.WaitForExit($SetupSeconds * 1000)) {
   Write-Output "it didn't finish within $SetupSeconds seconds"
   exit 11
 }
-$setup = Read-Json $setupOut
-Remove-Item $setupOut -ErrorAction SilentlyContinue
-if (-not $setup -or $setup.ok -ne $true) {
-  if ($setup -and $setup.reason) { Write-Output ([string]$setup.reason) }
-  else { Write-Output "the setup ended with code $($p.ExitCode) and no reason" }
-  exit 11
-}
-
-# 2. The check, as the person installing, with a time limit.
-$checkOut = Join-Path $env:TEMP "halonic-sandbox-check-$PID.json"
-Remove-Item $checkOut -ErrorAction SilentlyContinue
-$c = Start-Process $HostExe -ArgumentList '--profile-folder', "`"$ProfileFolder`"", '--sandbox-check' `
-  -RedirectStandardOutput $checkOut -PassThru -WindowStyle Hidden
-if (-not $c.WaitForExit($CheckSeconds * 1000)) {
-  $c | Stop-Process -Force
-  Write-Output "it didn't answer within $CheckSeconds seconds"
-  exit 12
-}
-$check = Read-Json $checkOut
-Remove-Item $checkOut -ErrorAction SilentlyContinue
-if ($check -and $check.ok -eq $true) { exit 0 }
-if ($check -and $check.missing) { Write-Output (($check.missing | ForEach-Object { [string]$_ }) -join '; ') }
-else { Write-Output "the check ended with code $($c.ExitCode) and no answer" }
-exit 12
+$setup = Read-Json $out
+Remove-Item $out -ErrorAction SilentlyContinue
+if ($setup -and $setup.ok -eq $true) { exit 0 }
+if ($setup -and $setup.outcome -eq 'cancelled') { exit 10 }
+if ($setup -and $setup.reason) { Write-Output ([string]$setup.reason) }
+else { Write-Output "the setup ended with code $($p.ExitCode) and no reason" }
+if ($setup -and $setup.outcome -eq 'check_failed') { exit 12 }
+exit 11
