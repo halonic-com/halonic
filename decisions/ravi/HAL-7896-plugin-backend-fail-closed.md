@@ -2,6 +2,7 @@
 
 - Approval: a change to an active requirement needs Liam's review (requirement guard); Liam approves this note in review of the fail-closed pull request on HAL-7896
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vWcguV4UI4abZQmGZXejcUWz28GUarEqL7BjRR7K22y1pJgah7vlt0FR7bf28lh3M7Vw9XfPkH0rLjAwqMXSCA==
 - Task: HAL-7896
 
 ## What changes
