@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-6277 (plan approved by Liam in HAL-6487)
 
-`harnessHostOf` shall build the engine's `HarnessRunsOptions` and the proposal folders of its top-level runs from the host's ports only: it shall pass the host's sandboxes, harnesses, profile builder, home folder and start time limits to the engine as they are, answer where each agent runs from the person's choices, open each run's bridge on the host's bridge server, make the proposal folders on the run proposal service, and give a `start` that clears what ended runs left before the engine starts any run.
+The builder `harnessHostOf` shall build the engine's `HarnessRunsOptions` and the proposal folders of its top-level runs from the host's ports only: it shall pass the host's sandboxes, harnesses, profile builder, home folder and start time limits to the engine as they are, answer where each agent runs from the person's choices, open each run's bridge on the host's bridge server, make the proposal folders on the run proposal service, and give a `start` that clears what ended runs left before the engine starts any run.
 
 ## Examples
 
