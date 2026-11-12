@@ -17,9 +17,9 @@ from `@halonicjs/app`, the same function the real MCP launcher uses. So a bare p
 pinned too: `npm exec --package=mail-mcp -- mail-mcp` starts with `--package=mail-mcp@2.3.1`, and the
 same holds for `npx -p`, `uvx --from` and `pipx run --spec`, not only for a positional package
 name. A program, pinned or not, inherits only the base of the environment the factory is given
-and the variables its connector names in `inheritEnv` (`app.connector-inherited-env`). Variables
-that `app.package-runner-launch` blocks are dropped from that, and the registry is set from
-`registryUrl`.
+and the variables its connector names in `inheritEnv` (`app.connector-inherited-env`). For a
+pinned program, variables that `app.package-runner-launch` blocks are dropped from that, and the
+registry is set from `registryUrl`.
 
 ## Example
 

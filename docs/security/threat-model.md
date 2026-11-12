@@ -350,8 +350,8 @@ start, in this order, because its fix comes first.
   (`kernel.apparmor_restrict_unprivileged_userns`). `check()` asks bubblewrap
   itself, because Ubuntu's bubblewrap profile can let it through, and reports
   `user-namespaces-restricted` when it can't and that setting is `1`. When
-  bubblewrap fails with the setting off, the reason is `other`, with
-  bubblewrap's own line. There are two fixes. An
+  bubblewrap fails with the setting off, and `socat` and `ripgrep` are there,
+  the reason is `other`, with bubblewrap's own line. There are two fixes. An
   AppArmor profile for `bwrap` lets only bubblewrap through. Turning the
   setting off lets every program on the machine create user namespaces again,
   which gives local attackers more of the kernel to attack. We recommend the

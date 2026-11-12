@@ -202,8 +202,8 @@ The trust prompt shows a workspace's trust content, and `TrustService` in `@halo
 its fingerprint with the trust record before anything starts. `trustContent` reads the parsed
 connectors. It keeps every field that could change what runs (the command and its path, the
 arguments as a list, the working folder, every environment variable, the names it takes from the
-app's environment (`inheritEnv`, sorted), the sites it may reach in a sandbox (`sites`, lowercase,
-Punycode and sorted; both only when the file writes them), the full URL with its host in Punycode, every header, the tool lists and
+app's environment (`inheritEnv`, sorted, only when it names at least one), the sites it may reach in a sandbox
+(`sites`, lowercase, Punycode and sorted, only when the file writes them), the full URL with its host in Punycode, every header, the tool lists and
 `local`), and keeps any field the schema doesn't know yet
 as written, under `unknown`, so it can never take the place of a known field. Secrets appear by name
 only (`‹secret NAME›`), and `${HOME}` stays `${HOME}`. Only a connector's name and description are
