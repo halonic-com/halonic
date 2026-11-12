@@ -1,9 +1,12 @@
 import type { DecisionNote } from "./decision-notes.ts";
+import { approvedAt, type ReviewSource } from "./reviews.ts";
 import {
+  type Approvers,
   approversFile,
   coveredObjects,
   coveredPaths,
   type GitObjects,
+  hasSignatureLine,
   parseApprovers,
   signedText,
   splitSignature,
@@ -43,23 +46,38 @@ export interface PullRequest {
 const notApproved = (reason: string): ApprovalVerdict => ({ approved: false, reason });
 
 /**
- * Verifies a note's signature offline (HAL-1337) against the keys the
- * pull request's base pins in `approvers.json` for the note's kind. It
- * FAILS CLOSED: without the pull request's details, without its commits,
- * with a note the base already has, or with a missing, malformed or
- * non-matching signature, the note is not approved.
+ * Verifies a note's approval (HAL-1337). A signature is checked offline
+ * against the keys the pull request's base pins in `approvers.json` for
+ * the note's kind. A `user-visible` note with no signature line is
+ * approved instead by an approving review from a GitHub account the base
+ * pins there, made on the pull request's current head commit and read
+ * live through `reviews`. It FAILS CLOSED: without the pull request's
+ * details, without its commits, with a note the base already has, with a
+ * missing, malformed or non-matching signature, or when the reviews can't
+ * be read, the note is not approved.
  */
-export function signedApprovals(pull: PullRequest | undefined, git: GitObjects): ApprovalLookup {
+export function signedApprovals(
+  pull: PullRequest | undefined,
+  git: GitObjects,
+  reviews?: ReviewSource,
+): ApprovalLookup {
   return {
-    check: ({ note }) => Promise.resolve(verifyNote(note, pull, git)),
+    check: async ({ note }) => {
+      try {
+        return await verifyNote(note, pull, git, reviews);
+      } catch (error) {
+        return notApproved(`the approval lookup failed: ${String(error)}`);
+      }
+    },
   };
 }
 
-function verifyNote(
+async function verifyNote(
   note: DecisionNote,
   pull: PullRequest | undefined,
   git: GitObjects,
-): ApprovalVerdict {
+  reviews: ReviewSource | undefined,
+): Promise<ApprovalVerdict> {
   if (pull === undefined) {
     return notApproved(
       "the guard wasn't given the pull request's repo, number, head and base, so it can't check a signature",
@@ -81,19 +99,44 @@ function verifyNote(
   if (text === undefined) {
     return notApproved(`the pull request's head commit has no ${note.file}`);
   }
-  const split = splitSignature(text);
-  if (!split.ok) {
-    return notApproved(split.reason);
-  }
   let pinned: ReturnType<typeof parseApprovers>;
   try {
     pinned = parseApprovers(approvers);
   } catch (error) {
     return notApproved(`the base branch's ${approversFile} can't be read: ${String(error)}`);
   }
+  if (note.kind === "user-visible" && !hasSignatureLine(text)) {
+    return reviewApproval(pull, pinned.reviewers, reviews);
+  }
+  const split = splitSignature(text);
+  if (!split.ok) {
+    return notApproved(split.reason);
+  }
   const signed = noteSignedText(note, split.unsigned, pull, git);
   const verdict = verifySigned(signed, split.keyId, split.signature, note.kind, pinned);
   return verdict.ok ? { approved: true } : notApproved(verdict.reason);
+}
+
+/** A `user-visible` note is approved by a pinned account's approving review of the head commit. */
+async function reviewApproval(
+  pull: PullRequest,
+  approvers: Approvers["reviewers"],
+  reviews: ReviewSource | undefined,
+): Promise<ApprovalVerdict> {
+  if (approvers.length === 0) {
+    return notApproved(
+      `the note has no signature line, and the base branch's ${approversFile} pins no GitHub account that can approve a user-visible note`,
+    );
+  }
+  if (reviews === undefined) {
+    return notApproved("the guard has no way to read the pull request's reviews on GitHub");
+  }
+  const approver = approvedAt(await reviews(pull.repo, pull.number), approvers, pull.head);
+  return approver === undefined
+    ? notApproved(
+        `${approvers.map((each) => `@${each.login}`).join(" or ")} hasn't approved the pull request's latest commit ${pull.head.slice(0, 7)} on GitHub; an approval of an older commit doesn't count, and a push replaces it`,
+      )
+    : { approved: true };
 }
 
 /** The text a signature on `note` must sign for this pull request (see {@link signedText}). */

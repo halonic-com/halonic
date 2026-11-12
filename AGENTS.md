@@ -90,8 +90,9 @@ The maintainer approves it before you write code. When two features must talk, t
 
 ## Requirements and tests
 
-`trace` is active and blocks a pull request. The requirement guard runs on every pull request but only
-reports for now: it doesn't block until `user-visible` approvals exist (HAL-3434). See `docs/guides/checks.md`.
+`trace` is active and blocks a pull request. The requirement guard runs on every pull request and blocks it
+through `ci-ok`. A `user-visible` note needs the user's own GitHub approval of the pull request's latest commit; an
+`internal` one needs the CTO's signature. See `docs/guides/checks.md`.
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.

@@ -650,6 +650,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # Reads the reviews of a user-visible note's approval.
+      pull-requests: read
     env:
       HEAD_DIR: ${{ github.workspace }}/head
       BASE_DIR: ${{ github.workspace }}/base
@@ -742,12 +744,16 @@ jobs:
       # request's own changes. A note's signature is
       # checked offline against the keys in
       # the base branch's tooling/check/approvers.json (pull_request.base.sha,
-      # not the commit base-tests may have stepped back to). Both commits
-      # are fetched as objects only: nothing of the pull request runs.
+      # not the commit base-tests may have stepped back to). A user-visible
+      # note without a signature is approved by the pinned GitHub account's
+      # approving review of the head commit, read through the read-only
+      # token. Both commits are fetched as objects only: nothing of the
+      # pull request runs.
       - name: Requirement guard (merge base's copy)
         if: ${{ !cancelled() }}
         working-directory: head
         env:
+          GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
           REPO: ${{ github.repository }}

@@ -82,16 +82,16 @@ verifies("check.guard-notes-own-paths", () => {
     expect(await errorsOf(note("user-visible", ".github/"))).toEqual([]);
   });
 
-  test("passes .github/ with an internal note the CTO signed, until a user key is pinned", async () => {
-    expect(await errorsOf(note("internal", ".github/"), cto.privatePem)).toEqual([]);
-  });
-
-  test("passes .gitattributes and tooling/check/ the same way, but not the approvers file or turbo.json", async () => {
-    expect(
-      await errorsOf(note("internal", ".gitattributes"), cto.privatePem, ".gitattributes"),
-    ).toEqual([]);
-    for (const path of [approversFile, "turbo.json"]) {
-      const errors = await errorsOf(note("internal", path), cto.privatePem, path);
+  test("fails an internal note on any own path, even one the CTO signed", async () => {
+    for (const path of [
+      ".github/",
+      ".gitattributes",
+      "tooling/check/",
+      approversFile,
+      "turbo.json",
+    ]) {
+      const changed = path.endsWith("/") ? `${path}x.ts` : path;
+      const errors = await errorsOf(note("internal", path), cto.privatePem, changed);
       expect(errors).toContainEqual(
         expect.stringContaining("so the note's Kind must be user-visible"),
       );
@@ -161,6 +161,7 @@ verifies("check.guard-extra-exports", () => {
   test("counts any other change to policy.json as a change under tooling/check/", async () => {
     const other = policy({ "@halonicjs/std": ["./error-kind"] }, ["@halonicjs/std"]);
     expect(await policyErrorsOf(other, note("internal", policyFile), cto.privatePem)).toEqual([
+      `${noteFile}: Changes the guard's own paths (tooling/check/), so the note's Kind must be user-visible.`,
       `${noteFile}: Changes the guard's own path tooling/check/, but the note doesn't list "tooling/check/" under Covers.`,
     ]);
     expect(
@@ -172,6 +173,7 @@ verifies("check.guard-extra-exports", () => {
     const extra = { "tooling/check/src/guard/guard.ts": "export {};\n" };
     const errors = await policyErrorsOf(added, note("internal", policyFile), cto.privatePem, extra);
     expect(errors).toEqual([
+      `${noteFile}: Changes the guard's own paths (tooling/check/), so the note's Kind must be user-visible.`,
       `${noteFile}: Changes the guard's own path tooling/check/, but the note doesn't list "tooling/check/" under Covers.`,
     ]);
   });

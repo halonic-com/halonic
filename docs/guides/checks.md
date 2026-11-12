@@ -282,14 +282,27 @@ doesn't. The note fails when it has no signature or more than one, when the
 signature isn't in the header (the `- ` lines above the first paragraph),
 when it has a carriage return (save it with LF line endings), and when the
 base branch already has the note: a branch name that was used before needs
-a new name. Only `internal` keys exist so far, so `user-visible` notes fail
-until the board decides how the user approves (HAL-3434). Both guards fail
-the pull request when they find an error. A change to a requirement needs a signed
-note of either kind. Until a user key is pinned, a `user-visible` note can't
-pass, so only an `internal` note signed by the CTO key can. A change to the
-guard's own paths needs a `user-visible` note too, except `.github/`,
-`tooling/check/` and `.gitattributes`, where the CTO's `internal` note is
-accepted for now (see the note guard below).
+a new name. Both guards fail the pull request when they find an error. A
+change to a requirement needs an approved note of either kind. A change to
+the guard's own paths needs a `user-visible` note (see the note guard below).
+
+**A `user-visible` note is approved on GitHub, not by signature.** The user
+approves the pull request with an "Approve" review from their own GitHub
+account, and the note carries no `- Signature:` line. The guard accepts it
+only when the base branch's `approvers.json` pins that account under
+`github` by its numeric user ID (a rename can't hand the approval to someone
+else), and the account's latest review that isn't a plain comment is an
+approval made on the pull request's current head commit. The guard reads the
+reviews live with the run's read-only token, so a push after the approval
+needs a new approval, a dismissed approval or a later "Request changes"
+withdraws it, and a missing token or a GitHub error counts as not approved.
+GitHub doesn't run the check again when a review is submitted (the
+`pull_request_review` event would run the pull request's own copy of the
+workflow, which could report success), so after the approval re-run the
+`Decision note and the guard's own paths` job; the merge queue run reads the
+reviews again. A `user-visible` note that does carry a signature line is
+checked as a signature, against the `user-visible` keys, of which none are
+pinned.
 
 **Signing.** The approver signs only from a clean worktree of
 `origin/main`, never from the pull request's checkout: there the
@@ -322,18 +335,16 @@ under the guard's own paths (`.github/`, `.gitattributes`, `tooling/check/`
 with its `approvers.json`, `packages/testing/spec/`,
 `packages/testing/parity/allowed-differences.json`,
 `tooling/config/src/vitest-preset.ts`, `turbo.json`) unless the note lists
-that path as written here and its signature verifies. The note must be
-`user-visible`, except that until a user key is pinned an `internal` note
-signed by the CTO key covers `.github/`, `tooling/check/` and
-`.gitattributes`. A change to `approvers.json` (a new signer) always needs
-a `user-visible` note, so an agent key alone can't add a signer. One
+that path as written here and its approval is verified. The note must be
+`user-visible`, so an agent key alone can't loosen the guard or add a
+signer to `approvers.json`. One
 more exception: a change to `tooling/check/policy.json` that touches
 nothing but `extraExports` (a package's deliberate extra entry point) needs
 a note that lists `tooling/check/policy.json`, and an `internal` note the
 CTO signs is enough, also once a user key is pinned. Any other change to
 `policy.json`, even in the same pull request, counts as a change under
 `tooling/check/`. The check also
-checks any note's signature again in the merge queue, against the queue
+checks any note's approval again in the merge queue, against the queue
 base's `approvers.json`. The merge queue is different: there GitHub runs
 the file from the merge group's commit, which holds the pull request's own
 changes, so a pull request that edits the workflow runs its own copy in the

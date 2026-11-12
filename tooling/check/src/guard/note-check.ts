@@ -2,6 +2,7 @@ import { Report } from "../lib/problems.ts";
 import { type PullRequest, signedApprovals } from "./approvals.ts";
 import { decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
+import type { ReviewSource } from "./reviews.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
 /**
@@ -10,13 +11,6 @@ import { approversFile, type GitObjects } from "./signatures.ts";
  * can't loosen the guard or add a signer (HAL-1337).
  */
 export const ownPaths: readonly string[] = [...guardedPaths, approversFile];
-
-/**
- * Own paths an `internal` note signed by the CTO key may cover, until the
- * board pins a user key (HAL-3434). Everything else in `ownPaths`, with the
- * approvers file, still needs a `user-visible` note.
- */
-export const internalOwnPaths: readonly string[] = [".github/", "tooling/check/", ".gitattributes"];
 
 /** One run of the note check: the pull request, its branch and changed files. */
 export interface NoteCheckRun {
@@ -27,13 +21,15 @@ export interface NoteCheckRun {
   /** The commit `changed` is counted from, where `policy.json` is compared. */
   readonly mergeBase: string;
   readonly git: GitObjects;
+  /** Reads the pull request's reviews, for a `user-visible` note with no signature. */
+  readonly reviews?: ReviewSource | undefined;
 }
 
 /**
  * The note check that `guard-notes.yml` runs from the base branch: a
- * pull request that touches an own path needs a note listing it (`user-visible`,
- * or `internal` for the paths in `internalOwnPaths`), and any note it adds
- * must carry a valid signature. A change to `policy.json` in `extraExports`
+ * pull request that touches an own path needs a `user-visible` note listing
+ * it, and any note it adds must be approved, by a valid signature or, for
+ * a `user-visible` note, a GitHub review. A change to `policy.json` in `extraExports`
  * only needs a note that lists `policy.json`, of either kind. The
  * test-result comparison stays in the requirement guard.
  */
@@ -64,11 +60,10 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     }
     return report;
   }
-  const needUser = touched.filter((path) => !internalOwnPaths.includes(path));
-  if (parsed.note.kind !== "user-visible" && needUser.length > 0) {
+  if (parsed.note.kind !== "user-visible" && touched.length > 0) {
     report.error(
       file,
-      `Changes the guard's own paths (${needUser.join(", ")}), so the note's Kind must be user-visible.`,
+      `Changes the guard's own paths (${touched.join(", ")}), so the note's Kind must be user-visible.`,
     );
   }
   const unlisted = (path: string): boolean => !parsed.note.covers.includes(path);
@@ -84,7 +79,9 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
       `Changes extraExports in ${path}, but the note doesn't list "${path}" under Covers.`,
     );
   }
-  const verdict = await signedApprovals(run.pull, run.git).check({ note: parsed.note });
+  const verdict = await signedApprovals(run.pull, run.git, run.reviews).check({
+    note: parsed.note,
+  });
   if (!verdict.approved) {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
   }

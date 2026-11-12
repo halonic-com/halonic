@@ -1,5 +1,6 @@
 import { changedFiles, gitObjects, mergeBaseOf } from "../guard/git-objects.ts";
 import { checkNotes } from "../guard/note-check.ts";
+import { githubReviews } from "../guard/reviews.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
@@ -31,6 +32,7 @@ async function main(argv: readonly string[]): Promise<number> {
     changed: changedFiles(root, base, head),
     mergeBase: mergeBaseOf(root, base, head),
     git: gitObjects(root),
+    reviews: reviewSource(),
   });
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
   for (const problem of report.problems) {
@@ -38,6 +40,12 @@ async function main(argv: readonly string[]): Promise<number> {
   }
   console.log(`guard-notes: ${report.problems.length} error(s).`);
   return report.problems.length === 0 ? 0 : 1;
+}
+
+/** Reads reviews with the run's token; without one, a `user-visible` note can't be approved. */
+function reviewSource(): ReturnType<typeof githubReviews> | undefined {
+  const token = process.env["GH_TOKEN"];
+  return token === undefined || token === "" ? undefined : githubReviews(token);
 }
 
 process.exitCode = await main(process.argv.slice(2));

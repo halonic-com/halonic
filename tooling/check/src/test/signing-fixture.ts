@@ -37,6 +37,8 @@ export function keyPair(): { publicKey: KeyObject; privatePem: string } {
 export function approvers(entries: {
   internal?: KeyObject[];
   "user-visible"?: KeyObject[];
+  /** Numeric GitHub user IDs whose approving review approves a user-visible note. */
+  reviewers?: number[];
 }): string {
   const list = (keys: KeyObject[] = []) =>
     keys.map((key) => ({
@@ -47,5 +49,16 @@ export function approvers(entries: {
   return JSON.stringify({
     internal: list(entries.internal),
     "user-visible": list(entries["user-visible"]),
+    ...(entries.reviewers === undefined
+      ? {}
+      : {
+          github: {
+            "user-visible": entries.reviewers.map((userId) => ({
+              userId,
+              login: "the-user",
+              holder: "test",
+            })),
+          },
+        }),
   });
 }

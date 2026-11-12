@@ -209,8 +209,28 @@ export interface ApproverKey {
   readonly key: KeyObject;
 }
 
-/** The pinned keys per kind, from the merge base's `approvers.json`. */
-export type Approvers = Readonly<Record<DecisionKind, readonly ApproverKey[]>>;
+/** One GitHub account whose approving review approves a `user-visible` note. */
+export interface GithubApprover {
+  /** The account's numeric ID, which a rename can't change. */
+  readonly userId: number;
+  /** The login at the time it was pinned, for people reading the file. */
+  readonly login: string;
+  readonly holder: string;
+}
+
+/**
+ * The pinned keys per kind, and the GitHub accounts that approve
+ * `user-visible` notes by reviewing the pull request, from the merge
+ * base's `approvers.json`.
+ */
+export type Approvers = Readonly<Record<DecisionKind, readonly ApproverKey[]>> & {
+  readonly reviewers: readonly GithubApprover[];
+};
+
+/** Whether the note has a line that starts a signature, valid or not. */
+export function hasSignatureLine(text: string): boolean {
+  return text.split("\n").some((line) => /^\s*-\s*Signature\s*:/.test(line));
+}
 
 /** The key ID Paperclip gives an Ed25519 public key: `sha256:` and the base64url SPKI hash. */
 export function keyIdOf(key: KeyObject): string {
@@ -234,7 +254,32 @@ export function parseApprovers(text: string): Approvers {
       return { id: entry.id, holder: String(entry.holder), key };
     });
   };
-  return { "user-visible": read("user-visible"), internal: read("internal") };
+  return {
+    "user-visible": read("user-visible"),
+    internal: read("internal"),
+    reviewers: readReviewers(json),
+  };
+}
+
+function readReviewers(json: Record<string, unknown>): GithubApprover[] {
+  const github = json["github"];
+  if (github === undefined) {
+    return [];
+  }
+  const entries = (github as { "user-visible"?: unknown } | null)?.["user-visible"];
+  if (!Array.isArray(entries) || Object.keys(github as object).length !== 1) {
+    throw new Error(`${approversFile}: "github" must hold one "user-visible" list`);
+  }
+  return entries.map((entry: { userId?: unknown; login?: unknown; holder?: unknown }) => {
+    if (
+      typeof entry.userId !== "number" ||
+      !Number.isSafeInteger(entry.userId) ||
+      entry.userId < 1
+    ) {
+      throw new Error(`${approversFile}: a GitHub approver needs a numeric userId`);
+    }
+    return { userId: entry.userId, login: String(entry.login), holder: String(entry.holder) };
+  });
 }
 
 /** Whether a signature by the key with this ID, pinned for this kind, signs `text`. */
