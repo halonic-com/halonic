@@ -3,7 +3,7 @@
 - Requirements: `cli.local-engine` (`apps/cli/requirements/local-engine.md`)
 - Task: HAL-6277, PR B1 (conditions from Liam on HAL-6290)
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-7171](/HAL/issues/HAL-7171)
+  HAL-7171
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RjXPE1D7itTVRTQ1HOpqGsDKQ+dRoVh2l1Em1RkybXs/3hddmNiw6fbeAk4LYvZBb9R6xVgQ4pQFz1C8D9KPDw==
 

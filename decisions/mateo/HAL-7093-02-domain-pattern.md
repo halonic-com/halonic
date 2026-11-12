@@ -1,6 +1,6 @@
 # Decision: cap the deployment domain with maxLength instead of a lookahead
 
-- Approval: [HAL-7196](/HAL/issues/HAL-7196)
+- Approval: HAL-7196
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Tz4fvubuOjVTGy/658mPLqKZDnktp8Dw7MVJcIAcbsr3l6VqYx5w3b3fUnr9c02L2CXRmuZ9DQh61crBZ8hDCA==
 

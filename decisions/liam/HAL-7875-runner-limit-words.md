@@ -1,7 +1,7 @@
 # Decision: the runner memory limit and open-folder requirements say only what holds today
 
 - Task: HAL-7875
-- Approval: Elena reviews it on [HAL-7887](/HAL/issues/HAL-7887), Liam signs this note as the CTO
+- Approval: Elena reviews it on HAL-7887, Liam signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yXKfomaldpcTAEc9lNJHbC9lyi1NzWunTcL03SozDNbSK8+YmFbbq57/UJU8CxrGQvE9Qq4ltSxnRFezt/bwBQ==
 

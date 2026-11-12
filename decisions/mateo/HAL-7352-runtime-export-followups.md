@@ -1,7 +1,7 @@
 # Decision: tighten the runtime export format after its reviews
 
 - Task: HAL-7352 (follow-ups from the reviews of PR #2131: HAL-7188, HAL-7189, HAL-7190)
-- Approval: the task [HAL-7352](/HAL/issues/HAL-7352) asks for this change; the maintainer (Liam) approves this note in review
+- Approval: the task HAL-7352 asks for this change; the maintainer (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:US0iJb858ob1cCojdM5Vx0fpAtDItxCXFplmHEVAo53j3IJXvEpGwthSaoQE9tAKYoDUPvLLfCIHhx5esX/JAw==
 

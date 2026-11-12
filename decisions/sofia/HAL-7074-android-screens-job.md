@@ -1,6 +1,6 @@
 # Decision: a hand-run workflow that captures the Android app's screens
 
-- Approval: Liam approved this follow-up to [HAL-6953](/HAL/issues/HAL-6953) on [HAL-6973](/HAL/issues/HAL-6973); the CTO (Liam) approves this note in review
+- Approval: Liam approved this follow-up to HAL-6953 on HAL-6973; the CTO (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e6SV8cQbtTHU45BVdp4oGO9ZfyjEaqpJJWbjeGYZR8tpEjJazs+KpCv6nWzzLuqRu8meuMvc4XLH1qn9ku9lDQ==
 - Task: HAL-7074

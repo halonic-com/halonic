@@ -62,6 +62,10 @@ Architecture decisions live in `docs/adr/`, one file each, named
   ` ```ts `). Commands don't start with `$`, so they can be copied.
 - Use relative links between docs pages, and descriptive link text: "see the
   Routines page" as the link, not "click here".
+- Write task ids as plain text (`HAL-136`), never as links to the task
+  tracker: readers outside the team can't open them. If the reader needs the
+  substance, link the requirement or ADR that records it. The `tracker-links`
+  check enforces this.
 - Use a table when the reader compares things, and a numbered list for steps
   in order.
 - Name UI elements as they appear, in bold: "Choose **Run**".

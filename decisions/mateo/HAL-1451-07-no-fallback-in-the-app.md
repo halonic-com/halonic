@@ -1,7 +1,7 @@
 # Decision: Halonic's own program never falls back to srt's own elevation
 
 - Task: HAL-1451 (S1: set up the agent sandbox from the installed app; Julian's S-3 on HAL-7385)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-1451](/HAL/issues/HAL-1451)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-1451
 - Kind: internal
 
 ## What changes

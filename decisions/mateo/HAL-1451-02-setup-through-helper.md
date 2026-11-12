@@ -1,7 +1,7 @@
 # Decision: set up and remove the Windows sandbox through the signed helper
 
 - Task: HAL-1451 (S1: set up the agent sandbox from the installed app; Julian's design on HAL-1415)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-1451](/HAL/issues/HAL-1451)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-1451
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eLWnDCZCp+2TfXTIQdWLmkI2r0mDawUjkdA8uDrUZHU2ZosrETTLAdcc39lKGaCTWD+asaSKJYHDZ0aO1FY5DA==
 

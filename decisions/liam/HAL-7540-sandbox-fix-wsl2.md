@@ -1,6 +1,6 @@
 # Decision: the CLI's sandbox fixes no longer point to Studio
 
-- Approval: Liam decided this on [HAL-7540](/HAL/issues/HAL-7540) (found in Kim's docs fact-check on HAL-7512), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule)
+- Approval: Liam decided this on HAL-7540 (found in Kim's docs fact-check on HAL-7512), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TuSUz74LGPHubvSd9hcGLhLtQMzYNwKNYf6yaN5IWVpqnGeWNfjEe/0VfNV+e09SDxWlAB8dwHTTzmsbKW3KAQ==
 - Task: HAL-7540

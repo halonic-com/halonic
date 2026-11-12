@@ -1,6 +1,6 @@
 # Decision: the phone's Settings list gets its groups, summaries and kept scroll
 
-- Approval: Liam decided this on [HAL-7939](/HAL/issues/HAL-7939), the review of HAL-7860 (HAL-7832 part 2); the requirement now says what the board-approved flow-settings 13 already shows, a team decision with no board card (HAL-2282 rule)
+- Approval: Liam decided this on HAL-7939, the review of HAL-7860 (HAL-7832 part 2); the requirement now says what the board-approved flow-settings 13 already shows, a team decision with no board card (HAL-2282 rule)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/an01XtNGFUBNbA1agUg3OeI78NiQ4tafy/rDpjLgoX3sZ8suVvNksZeeDmSZ3aHFxEs4bvKiyAB5JMpqu1VBw==
 - Task: HAL-7860

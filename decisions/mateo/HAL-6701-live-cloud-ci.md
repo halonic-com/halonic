@@ -1,7 +1,7 @@
 # Decision: a live-cloud workflow, gated by cloud-affected, off until the CI account exists
 
-- Task: HAL-6701 (step 1c of the [HAL-198 build plan](/HAL/issues/HAL-198#document-build-plan), ADR 5.9)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-6701](/HAL/issues/HAL-6701)
+- Task: HAL-6701 (step 1c of the HAL-198 build plan, ADR 5.9)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-6701
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7FsPp0cjbaoKcLscRMKsSHTT9fwsUu7rHCPs3pMO5MpzaAoREqBp4ya9ub/SAYtOHAHEUMYbchXiUTwIA+EqCw==
 
@@ -18,9 +18,9 @@ ADR 5.9 asks for live tests against a real cloud account, run only when a change
 
 ## How the environment is protected
 
-Liam decided this on [HAL-6835](/HAL/issues/HAL-6835#document-decision) (option B). Anyone who can push a branch here can read the token, because a pull request run uses the branch's own workflow and scripts. We accept that and limit what the token can do. Every rule must be in place before `LIVE_CLOUD_ENABLED` is `true`. Julian checks the real setup against this list on [HAL-6829](/HAL/issues/HAL-6829).
+Liam decided this on HAL-6835 (option B). Anyone who can push a branch here can read the token, because a pull request run uses the branch's own workflow and scripts. We accept that and limit what the token can do. Every rule must be in place before `LIVE_CLOUD_ENABLED` is `true`. Julian checks the real setup against this list on HAL-6829.
 
-- **Names:** environment `cloudflare-live`, secrets `CLOUDFLARE_LIVE_API_TOKEN` and `CLOUDFLARE_LIVE_ACCOUNT_ID` ([HAL-6708](/HAL/issues/HAL-6708)).
+- **Names:** environment `cloudflare-live`, secrets `CLOUDFLARE_LIVE_API_TOKEN` and `CLOUDFLARE_LIVE_ACCOUNT_ID` (HAL-6708).
 - **Account:** a Cloudflare account just for CI that holds nothing else (not the halonic.dev or halonic.com account, no domains, no production data), with usage alerts for Workers requests, D1 and R2 sent to the board.
 - **Token:** an account API token for that one account only, with Workers Scripts edit, D1 edit, Workers R2 Storage edit and Account Settings read. No DNS, zone, API Tokens or user scopes. It expires at most 35 days after it is created, so a missed monthly rotation fails closed.
 - **Created by hand:** the environment is set up before the variable is turned on, never by a first run.

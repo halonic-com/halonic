@@ -2,7 +2,7 @@
 
 - Requirement: `profile.settings-folder` (`packages/core/profile/requirements/settings-folder.md`)
 - Task: HAL-6261 (PR 7d of the settings host API, design on HAL-6159)
-- Approval: Liam approved this part in his review on [HAL-6545](/HAL/issues/HAL-6545) and approves this note in review
+- Approval: Liam approved this part in his review on HAL-6545 and approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:T/WANY+AFyX7WNoXicKiBeJC/8nuDze+qq0WRGkWMCUDoSPyPc0nfEnkF6OxVsTDw2eOd9vOXQxWzfQ02wKdAA==
 

@@ -19,6 +19,7 @@ import { checkPackages } from "./packages.ts";
 import { checkProcessStarts } from "./process-starts.ts";
 import { checkReadmeExamples } from "./readme-examples.ts";
 import { checkTrace } from "./trace.ts";
+import { checkTrackerLinks } from "./tracker-links.ts";
 import { checkVersions } from "./versions.ts";
 
 /** Every rule `pnpm check` runs, by name. */
@@ -37,6 +38,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "process-starts": checkProcessStarts,
   "invisible-characters": checkInvisibleCharacters,
   "markdown-tables": checkMarkdownTables,
+  "tracker-links": checkTrackerLinks,
   "native-disabled": checkNativeDisabled,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,

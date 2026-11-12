@@ -1,7 +1,7 @@
 # Decision: the row's sentence ties the schedule's time to the schedule
 
 - Approval: small wording on approved mc 19.3, the team's call under HAL-2282; Sofia OK on
-  [HAL-7142](/HAL/issues/HAL-7142) (12 Nov) with this change. Liam approves this note in review
+  HAL-7142 (12 Nov) with this change. Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZxEXCMKFC7eiD53kgyvZfDiehDfvYqvw7o01V6mb4LBOUrFJ6pS4hMpXigKpZZqUoMxQELXhXyJ/zKwtxNDpCg==
 

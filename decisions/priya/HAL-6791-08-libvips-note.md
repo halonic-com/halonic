@@ -1,7 +1,7 @@
 # Decision: the miniflare entry records that sharp's prebuilt libvips is LGPL
 
 - Task: HAL-6791 (cloud part 1, the workerd test harness for the port contract suites)
-- Approval: Liam asked for this note in his review of #2064 on [HAL-7293](/HAL/issues/HAL-7293); he approves this note in review
+- Approval: Liam asked for this note in his review of #2064 on HAL-7293; he approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NyqODZeFvStEG8raDB/Iiuv1GVZu6glJq5/zhfjfK0VhBPU7T8QHkfNx3W4Ywxi/pzWiHJvreszllwBJpmZcDA==
 

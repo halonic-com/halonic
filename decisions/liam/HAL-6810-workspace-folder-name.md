@@ -1,6 +1,6 @@
 # Decision: a workspace without a name is called by its folder's own name
 
-- Approval: Liam decided this on [HAL-6810](/HAL/issues/HAL-6810) (follow-up from Tomas's review of #2037 on HAL-6693), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-6810 (follow-up from Tomas's review of #2037 on HAL-6693), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QaglOYcLgLEVou0075GyY4ra4eZS9ZRMPJosDPu+ESQX8Dv6t9dj8pJNNRJWUvLQYWbzfjcViKYfo2QWMnj4CA==
 - Task: HAL-6810

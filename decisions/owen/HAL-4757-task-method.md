@@ -1,6 +1,6 @@
 # Decision: a method prompt names its fields in name order, a known gap for now
 
-- Approval: [HAL-4757](/HAL/issues/HAL-4757) asks for this change; Liam approves it in review
+- Approval: HAL-4757 asks for this change; Liam approves it in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:32YKS+dtveQYIm9Fks4RYfrpSqap6uPxjznVLYoxuSf0k9TZGsMfzPi9Z50mLVBovC8AQvv+JquVUMCYHLN2Cg==
 
@@ -12,7 +12,7 @@ answer fields (new requirements `workflow.method-prompt`, `engine.task-method` a
 from 784f78d remains: the line `Answer with JSON with these fields: ...` names the fields in name
 order (amount, note, vendor), where the old runner used the agent file's order (vendor, amount,
 note). It is the new known gap `method-fields-in-file-order`, for the same four tests, with
-[HAL-7123](/HAL/issues/HAL-7123) as its task. No test, requirement or golden file is removed or
+HAL-7123 as its task. No test, requirement or golden file is removed or
 weakened.
 
 ## Why
