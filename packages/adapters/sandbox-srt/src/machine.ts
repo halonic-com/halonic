@@ -7,6 +7,8 @@ import {
   findHelper,
   HELPER_DIDNT_START,
   listsElevated,
+  type RemovalSteps,
+  removeThroughHelper,
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
@@ -88,19 +90,19 @@ export interface Machine {
   /**
    * Runs srt's Windows uninstall (`srt windows-uninstall`), through the helper
    * as {@link Machine.installWindowsSandbox} does, which also takes away its
-   * Installed apps entry, and then, in this process and only when it runs
-   * without administrator rights, takes back the grants srt kept for this
-   * user (HAL-7544): the sandbox
+   * Installed apps entry. Before that, in this process and only when it runs
+   * without administrator rights, it takes back the grants srt kept for this
+   * user (HAL-7544, HAL-7585): the sandbox
    * account and its profile, the sandbox group, the network filters, the
    * `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants this user's
    * sessions kept on their folders. It asks for an administrator once, unless
    * this process already runs as one. With nothing installed it changes
    * nothing, so running it again is safe.
    *
-   * @returns `cancelled` when the administrator prompt was turned down; nothing changed then
+   * @returns `grants_kept` when it was removed through the helper but this process, with administrator rights, left the user's grants recorded; `cancelled` when the administrator prompt was turned down; nothing machine-wide changed then
    * @throws {HelperError} or with srt's own words when the uninstall fails, also while a sandboxed program runs
    */
-  uninstallWindowsSandbox(): Promise<"removed" | "cancelled">;
+  uninstallWindowsSandbox(): Promise<"removed" | "grants_kept" | "cancelled">;
   /**
    * Removes the sandbox account's entries from the folders above a session's
    * temp folder (`tmp\<run>` in `profileFolder`) inside the user profile, for
@@ -229,24 +231,11 @@ const whoamiGroups = (): Promise<string | null> =>
     });
   });
 
-/**
- * The half of srt's uninstall that is this user's own, after the helper's
- * machine-wide half: take back the grants srt kept for them (HAL-7544). Not
- * from a process with administrator rights, as when an uninstaller runs from
- * an elevated prompt: those grants change access lists on paths from the
- * user's own session store, which their programs can change. They then stay
- * recorded, naming a group that is gone, until a removal runs without them.
- *
- * @throws when a grant stays recorded, with why
- */
-async function forgetUsersGrants(): Promise<void> {
-  if (listsElevated(await whoamiGroups())) return;
-  const failed = await new KeptGrants().forgetAll();
-  if (failed.length === 0) return;
-  throw new Error(
-    `not all the access it kept on your folders could be taken back (${failed.join("; ")}); close what runs in the sandbox and remove it again`,
-  );
-}
+/** What a removal through the helper asks of this process (HAL-7544, HAL-7585). */
+const removalSteps: RemovalSteps = {
+  elevated: async () => listsElevated(await whoamiGroups()),
+  forgetAll: () => new KeptGrants().forgetAll(),
+};
 
 /** The machine this process runs on. */
 export const systemMachine: Machine = {
@@ -312,11 +301,7 @@ export const systemMachine: Machine = {
   },
   async uninstallWindowsSandbox() {
     const helper = findHelper("remove");
-    if (helper !== null) {
-      if ((await throughHelper(helper, "remove", spawnHelper)) === "cancelled") return "cancelled";
-      await forgetUsersGrants();
-      return "removed";
-    }
+    if (helper !== null) return removeThroughHelper(helper, spawnHelper, removalSteps);
     const { uninstallWindowsSandbox, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
       "@anthropic-ai/sandbox-runtime"
     );

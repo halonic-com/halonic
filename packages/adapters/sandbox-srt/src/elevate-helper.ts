@@ -162,3 +162,43 @@ export function listsElevated(groups: string | null): boolean {
   if (groups === null || !groups.includes("S-1-16-")) return true;
   return elevatedLevels.some((level) => groups.includes(level));
 }
+
+/** What {@link removeThroughHelper} asks of this process. `machine.ts` gives the real one. */
+export interface RemovalSteps {
+  /** Whether this process runs with administrator rights. */
+  elevated(): Promise<boolean>;
+  /** Takes back the grants srt kept for this user, as `KeptGrants.forgetAll` does: why each failed one did. */
+  forgetAll(): Promise<string[]>;
+}
+
+/**
+ * Removes the sandbox through the helper at `helper`, user's half first, as
+ * srt's own uninstall does (HAL-7585): this process takes back the grants
+ * srt kept for this user, without administrator rights, and only then does
+ * the helper run the machine-wide half. A removal that can't forget them,
+ * as while a sandboxed program runs, stops before the administrator prompt,
+ * so trying again doesn't ask twice. A process with administrator rights
+ * skips the user's half (HAL-7544): those grants change access lists on
+ * paths from the user's own session store, which their programs can change.
+ *
+ * @returns `removed`; `grants_kept` when it was removed but this process skipped the user's half for its administrator rights; `cancelled` when the administrator prompt was turned down
+ * @throws when a grant stays recorded, with why; nothing machine-wide changed then
+ * @throws {HelperError} when the helper ran and failed, or couldn't start
+ */
+export async function removeThroughHelper(
+  helper: string,
+  spawn: Spawn,
+  steps: RemovalSteps,
+): Promise<"removed" | "grants_kept" | "cancelled"> {
+  const elevated = await steps.elevated();
+  if (!elevated) {
+    const failed = await steps.forgetAll();
+    if (failed.length > 0) {
+      throw new Error(
+        `not all the access it kept on your folders could be taken back (${failed.join("; ")}); close what runs in the sandbox and remove it again`,
+      );
+    }
+  }
+  if ((await throughHelper(helper, "remove", spawn)) === "cancelled") return "cancelled";
+  return elevated ? "grants_kept" : "removed";
+}

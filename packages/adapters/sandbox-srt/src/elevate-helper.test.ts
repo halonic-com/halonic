@@ -9,6 +9,8 @@ import {
   helperFailure,
   helperScript,
   listsElevated,
+  type RemovalSteps,
+  removeThroughHelper,
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
@@ -140,6 +142,84 @@ verifies("sandbox-srt.setup", () => {
       expect(listsElevated(users + level("S-1-16-16384"))).toBe(true);
       expect(listsElevated(users)).toBe(true);
       expect(listsElevated(null)).toBe(true);
+    });
+  });
+});
+
+verifies("sandbox-srt.remove", () => {
+  describe("removeThroughHelper", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    /** Removal steps that log each one into `order`, for a process `elevated` or not, whose forget fails with `failed`. */
+    function steps(order: string[], elevated: boolean, failed: string[] = []): RemovalSteps {
+      return {
+        elevated: async () => elevated,
+        forgetAll: async () => {
+          order.push("forget");
+          return failed;
+        },
+      };
+    }
+
+    /** A spawn that logs the helper into `order` and answers with `code`. */
+    function helperIn(order: string[], code: number): Spawn {
+      return async () => {
+        order.push("helper");
+        return { code, stderr: "" };
+      };
+    }
+
+    it("forgets the user's kept grants before the helper's machine-wide step", async () => {
+      vi.stubEnv("SystemRoot", "windows");
+      const order: string[] = [];
+      expect(await removeThroughHelper(HELPER, helperIn(order, 0), steps(order, false))).toBe(
+        "removed",
+      );
+      expect(order).toEqual(["forget", "helper"]);
+    });
+
+    it("stops before the administrator prompt when a grant can't be forgotten, so a retry asks once", async () => {
+      vi.stubEnv("SystemRoot", "windows");
+      const order: string[] = [];
+      const busy = steps(order, false, ["the kept write grants: exit 22: kept_grants_in_use"]);
+      await expect(removeThroughHelper(HELPER, helperIn(order, 0), busy)).rejects.toThrow(
+        "not all the access it kept on your folders could be taken back (the kept write grants: exit 22: kept_grants_in_use); close what runs in the sandbox and remove it again",
+      );
+      expect(order).toEqual(["forget"]);
+    });
+
+    it("skips the forget step with administrator rights, and says it did", async () => {
+      vi.stubEnv("SystemRoot", "windows");
+      const order: string[] = [];
+      expect(await removeThroughHelper(HELPER, helperIn(order, 0), steps(order, true))).toBe(
+        "grants_kept",
+      );
+      expect(order).toEqual(["helper"]);
+    });
+
+    it("says cancelled when the administrator prompt is turned down", async () => {
+      vi.stubEnv("SystemRoot", "windows");
+      const order: string[] = [];
+      expect(await removeThroughHelper(HELPER, helperIn(order, 10), steps(order, false))).toBe(
+        "cancelled",
+      );
+    });
+
+    it("comes through SrtSandbox.remove as done, with a log line for the skip", async () => {
+      const windows = {
+        platform: "win32",
+        uninstallWindowsSandbox: async () => "grants_kept" as const,
+      } as Partial<Machine> as Machine;
+      const warned: string[] = [];
+      const sandbox = new SrtSandbox(windows, undefined, undefined, {
+        warn: (message) => warned.push(message),
+      });
+      expect(await sandbox.remove()).toEqual({ ok: true });
+      expect(warned).toEqual([
+        "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.",
+      ]);
     });
   });
 });
