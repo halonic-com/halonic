@@ -96,6 +96,7 @@ export {
   type PasswordAndHash,
   type PasswordHashFormatCases,
   pbkdf2ChainFormat,
+  scryptFormat,
 } from "./password-hash-formats.ts";
 export { type MakePasswordHasher, passwordHasherContract } from "./password-hasher.ts";
 export {
