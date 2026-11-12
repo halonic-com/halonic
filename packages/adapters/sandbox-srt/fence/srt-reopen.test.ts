@@ -50,7 +50,7 @@ describe("SrtSandbox with Halonic's data folder denied and a run's folders reope
       inData("tmp", "run_1"),
     ],
     env: { HOME: inData("tmp", "run_1") },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 120_000,
   });
 

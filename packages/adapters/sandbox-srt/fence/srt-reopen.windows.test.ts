@@ -62,7 +62,7 @@ describe("SrtSandbox on Windows with the data folder's other entries denied by n
       ...others.flatMap((other) => [inData("runs", other), inData("tmp", other)]),
     ],
     env: {},
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 120_000,
   });
 
