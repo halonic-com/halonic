@@ -200,7 +200,11 @@ export {
   switchPhonePlace,
 } from "./phone/place-stacks.ts";
 export { type PhonePlaces, usePhonePlaces } from "./phone/use-phone-places.ts";
-export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
+export type {
+  CommandContributions,
+  CommandPoints,
+  ContextFor,
+} from "./points/command-points.ts";
 export type {
   CommandContribution,
   CommandSource,

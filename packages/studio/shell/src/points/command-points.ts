@@ -1,4 +1,5 @@
 import { ShellError } from "../shell-error.ts";
+import type { WorkspaceContext } from "../workspace-context.ts";
 import type {
   CommandContribution,
   CommandSource,
@@ -39,12 +40,19 @@ export interface CommandPoints {
   persist(contribution: PersistContribution): void;
 }
 
+/** The context of the feature with the given id, as the window builds it for its views. */
+export type ContextFor = (featureId: string) => WorkspaceContext;
+
 /** What the shell reads for the palette, the keybinding table, search and saving. */
 export interface CommandContributions {
   readonly commands: {
-    /** Every command, those of the sources as they are now included, sorted by id. */
-    list(): readonly Registered<CommandContribution>[];
-    get(id: string): Registered<CommandContribution> | undefined;
+    /**
+     * Every command, those of the sources as they are now included, sorted by id.
+     *
+     * @param contextFor - gives each source the context of the feature that added it
+     */
+    list(contextFor?: ContextFor): readonly Registered<CommandContribution>[];
+    get(id: string, contextFor?: ContextFor): Registered<CommandContribution> | undefined;
   };
   readonly keybindings: {
     list(): readonly Registered<KeybindingContribution>[];
@@ -137,12 +145,13 @@ export class CommandStores {
   contributions(): CommandContributions {
     return {
       commands: {
-        list: () =>
-          [...this.commands.all(), ...this.sourceCommands()].sort((left, right) =>
+        list: (contextFor) =>
+          [...this.commands.all(), ...this.sourceCommands(contextFor)].sort((left, right) =>
             left.id < right.id ? -1 : 1,
           ),
-        get: (id) =>
-          this.commands.get(id) ?? this.sourceCommands().find((command) => command.id === id),
+        get: (id, contextFor) =>
+          this.commands.get(id) ??
+          this.sourceCommands(contextFor).find((command) => command.id === id),
       },
       keybindings: {
         list: () => this.keybindings.list(),
@@ -157,10 +166,10 @@ export class CommandStores {
    * The commands the sources give now, leaving out those they may not give or that can't be read,
    * and every one of a source that throws or doesn't give a list.
    */
-  private sourceCommands(): Registered<CommandContribution>[] {
+  private sourceCommands(contextFor: ContextFor | undefined): Registered<CommandContribution>[] {
     return this.sources.all().flatMap((source) => {
       try {
-        const given: unknown = source.commands();
+        const given: unknown = source.commands(contextFor?.(source.featureId));
         if (!Array.isArray(given)) {
           return [];
         }

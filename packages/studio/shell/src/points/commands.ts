@@ -32,8 +32,11 @@ export interface CommandSource {
    * Its commands right now. A command whose id doesn't start with the source's id, isn't a
    * valid id or repeats one is left out, and so is every command of a source that throws, so
    * one broken source never takes the palette down.
+   *
+   * @param context - the context of the feature that added the source, when the window lists
+   *   the commands (`shell.command-source-context`); without a window there is none
    */
-  commands(): readonly CommandContribution[];
+  commands(context?: WorkspaceContext): readonly CommandContribution[];
 }
 
 /**

@@ -156,7 +156,7 @@ export function StudioWindow(props: StudioWindowProps) {
           search={{
             recent: workspace.recent,
             providers: contributions.search.providers(),
-            commands: contributions.commands.list(),
+            commands: contributions.commands.list(contextFor),
             kinds: contributions.itemKinds,
             contextFor,
             announcer,
@@ -202,7 +202,7 @@ export function StudioWindow(props: StudioWindowProps) {
           tabs={tabs}
           recent={workspace.recent}
           providers={contributions.search.providers()}
-          commands={contributions.commands.list()}
+          commands={contributions.commands.list(contextFor)}
           kinds={contributions.itemKinds}
           contextFor={contextFor}
           announcer={announcer}

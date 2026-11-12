@@ -5,6 +5,7 @@ import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import type { Studio } from "../studio.ts";
 import { MapTarget } from "../test-support/map-target.ts";
+import type { WorkspaceContext } from "../workspace-context.ts";
 
 function feature(id: string, register: (studio: Studio) => void) {
   return defineFeature({ id, title: id, register });
@@ -241,5 +242,32 @@ verifies("shell.command-sources", () => {
         ],
       });
     expect(create).toThrow('commands.addSource: "plugins.commands" is added by both');
+  });
+});
+
+verifies("shell.command-source-context", () => {
+  it("asks each source with its own feature's context, and without one when none is given", () => {
+    const asked: (string | undefined)[] = [];
+    const shell = createShell({
+      features: [
+        feature("plugins", (studio) =>
+          studio.commands.addSource({
+            id: "plugins.commands",
+            commands: (context) => {
+              asked.push(context?.services.toString());
+              return [];
+            },
+          }),
+        ),
+      ],
+    });
+    const contextFor = (featureId: string) =>
+      ({ services: { toString: () => featureId } }) as unknown as WorkspaceContext;
+
+    shell.contributions.commands.list(contextFor);
+    shell.contributions.commands.get("plugins.commands.weather.forecast", contextFor);
+    shell.contributions.commands.list();
+
+    expect(asked).toEqual(["plugins", "plugins", undefined]);
   });
 });

@@ -244,3 +244,46 @@ verifies("shell.open-item", () => {
     expect(container.querySelector("main h1.panel-view")?.textContent).toBe("Panel weather");
   });
 });
+
+verifies("shell.command-source-context", () => {
+  it("lists a source's commands from its feature's services when Ctrl K opens", () => {
+    const listing = defineFeature({
+      id: "plugins",
+      title: "Plugins",
+      provides: [PluginsName],
+      register(studio) {
+        studio.services.provide(PluginsName, () => "Show forecast");
+        studio.commands.addSource({
+          id: "plugins.commands",
+          commands: (context) =>
+            context === undefined
+              ? []
+              : [
+                  {
+                    id: "plugins.commands.weather.forecast",
+                    title: context.services.get(PluginsName),
+                    run: () => {},
+                  },
+                ],
+        });
+      },
+    });
+    const { container } = renderWindow([listing]);
+    const search = [...container.querySelectorAll("button")].find(
+      (button) => button.getAttribute("aria-keyshortcuts") === "Control+K",
+    );
+    act(() => search?.click());
+    act(() => {
+      const field = container.querySelector<HTMLInputElement>("dialog[open] input");
+      if (field === null) return;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+        field,
+        "forecast",
+      );
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const rows = [...container.querySelectorAll('dialog[open] [role="option"]')];
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toContain("Show forecast");
+  });
+});
