@@ -20,6 +20,7 @@ machine](#running-checks-on-your-machine).
 | `pnpm check:coverage-floors <base-sha> <head-sha>` | fails when the change lowers a package's coverage floor; CI runs it (see [Coverage floors](#coverage-floors)) |
 | `node tooling/check/src/cli/cloud-affected.ts --base <commit>` | whether a change touches a cloud path and so needs the live cloud suites; `--inputs-hash` prints what a live result depends on. CI runs it (`live-cloud.yml`) |
 | `node tooling/check/src/cli/live-sweep.ts [--fail-on-delete]` | deletes `hlt-` live test resources older than 2 hours on the test account; CI runs it |
+| `node tooling/check/src/cli/live-probe.ts` | checks that the CI token reaches the live test account and can list Workers scripts, D1 databases and R2 buckets; CI runs it before the live suites |
 | `pnpm discover [--fix \| --check]` | writes the generated files (`pnpm install` runs it too); `--fix` also rewrites the Studio's feature list and the folder-discovery globs in `turbo.json` |
 | `pnpm new package <layer>/<name>` | creates an empty package that passes every check (adapters: add `--runtime <r>`) |
 | `pnpm new feature <name>` | creates an empty Studio feature and adds it to the Studio's feature list |
