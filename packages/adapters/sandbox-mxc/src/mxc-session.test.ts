@@ -200,6 +200,18 @@ verifies("sandbox-mxc.session", () => {
       expect(disk.fileNames().filter((name) => name.includes("mxc-boxes"))).toEqual([]);
     });
 
+    it("starts the program on the copy, not the original", async () => {
+      const { sandbox, fake, disk } = setup();
+      disk.file(file, "settings");
+      const session = (await open(sandbox, { readOnlyPaths: [file] })) as MxcSession;
+      const [copy] = session.readOnlyCopies;
+      await session.start({ program: "node", args: [`--allow-fs-read=${file}`, file, "--go"] });
+      const [real] = fake.programs();
+      expect(real?.command).toContain(`--allow-fs-read=${copy?.copy}`);
+      expect(real?.command).not.toContain(file);
+      await session.close();
+    });
+
     it("refuses a file inside a denied path and removes the box folder", async () => {
       const { sandbox, disk, fake } = setup();
       disk.file(file);

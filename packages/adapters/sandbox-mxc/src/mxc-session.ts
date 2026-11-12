@@ -20,7 +20,12 @@ import { proveFence } from "./fence-proof.ts";
 import { grantPath } from "./grant-path.ts";
 import type { MxcMachine } from "./machine.ts";
 import { spawnOptions } from "./mxc-process.ts";
-import { copyReadOnlyFiles, type ReadOnlyCopy, readOnlyCopiesFolder } from "./read-only-copies.ts";
+import {
+  commandOnCopies,
+  copyReadOnlyFiles,
+  type ReadOnlyCopy,
+  readOnlyCopiesFolder,
+} from "./read-only-copies.ts";
 
 /** What a session needs besides its profile. */
 export interface MxcSessionDeps {
@@ -42,7 +47,8 @@ export class MxcSession implements SandboxSession {
   /**
    * The profile's read-only files, copied into the box folder because MXC
    * grants only folders. The program reads a file at its `copy`, not at its
-   * `original`, which the box doesn't grant.
+   * `original`, which the box doesn't grant. {@link start} puts the copy in
+   * place of the original in the command it is given.
    */
   readonly readOnlyCopies: readonly ReadOnlyCopy[];
   readonly #deps: MxcSessionDeps;
@@ -139,7 +145,7 @@ export class MxcSession implements SandboxSession {
       const why = this.#fence.state === "not-fenced" ? this.#fence.reason : "the session is closed";
       throw new Error(`the sandbox fence is not proven: ${why}`);
     }
-    const program = await this.#launch(command, this.#policy);
+    const program = await this.#launch(commandOnCopies(command, this.readOnlyCopies), this.#policy);
     // The program's own error output tells what was refused: one branch for the caller, one for us.
     const [forCaller, forWatching] = program.stderr.tee();
     void watchBlocks(forWatching, (block) => {
