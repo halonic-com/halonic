@@ -111,13 +111,16 @@ function PhonePageBody({
   if (sectionId !== undefined) {
     const section = contributions.settings.list().find((candidate) => candidate.id === sectionId);
     return section === undefined ? null : (
-      <SectionView
-        page
-        section={section}
-        context={page.contextFor(section.featureId)}
-        closeSettings={() => places.back()}
-        place={settingsPlace}
-      />
+      // The dialog pads a section; on the phone this wrapper does, so no section pads itself.
+      <div data-testid="settings-section-page" className="px-4 pb-6">
+        <SectionView
+          page
+          section={section}
+          context={page.contextFor(section.featureId)}
+          closeSettings={() => places.back()}
+          place={settingsPlace}
+        />
+      </div>
     );
   }
   return <StudioPage location={location} {...page} />;
