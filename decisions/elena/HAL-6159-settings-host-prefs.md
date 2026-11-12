@@ -5,9 +5,11 @@
 - Approval: Liam asked for this golden file in his design review on [HAL-6216](/HAL/issues/HAL-6216) and approves this note in review
 - Kind: internal
 
-`src/golden/host-settings-limits.json` is a new golden file. It lists what every
-`HostSettingsStore` adapter and the desktop shell's Rust side must agree on, so the two
-languages are tested against one list instead of two copies of the rules:
+`packages/testing/contracts/src/golden/host-settings-limits.json` is a new golden file. It
+lists what every `HostSettingsStore` adapter and the desktop shell's Rust side must agree on,
+so the two languages are tested against one list instead of two copies of the rules. It lives
+with the contract suite, not in the port, so the port's code never loads it and bundles of the
+port don't need to carry it:
 
 - `keys`: keys `isHostSettingKey` allows and refuses (the form, 64 characters, `__proto__`, paths).
 - `sizes`: values that bring the settings to exactly 256 KiB and one byte over, in one-, two-,
@@ -21,4 +23,4 @@ tests read it. No existing golden file or test was changed or removed.
 
 ## Covers
 
-- packages/core/ports/src/golden/host-settings-limits.json
+- packages/testing/contracts/src/golden/host-settings-limits.json

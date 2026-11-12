@@ -1,6 +1,6 @@
+import { readFileSync } from "node:fs";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import golden from "./golden/host-settings-limits.json" with { type: "json" };
 import {
   changeSavedHostSettings,
   type HostSettingsStore,
@@ -10,6 +10,22 @@ import {
   isHostSettingKey,
   readSavedHostSettings,
 } from "./index.ts";
+
+/**
+ * The golden cases, which the contract suite owns and the desktop shell's
+ * Rust side checks too. Read from disk: the port's own code never loads them,
+ * so bundles of the port don't carry them.
+ */
+const golden: {
+  keys: { key: string; allowed: boolean }[];
+  sizes: { name: string; key: string; character: string; count: number; fits: boolean }[];
+  saved: { name: string; text: string; values: HostSettingValues | null; afterSave: unknown }[];
+} = JSON.parse(
+  readFileSync(
+    new URL("../../../testing/contracts/src/golden/host-settings-limits.json", import.meta.url),
+    "utf8",
+  ),
+);
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.

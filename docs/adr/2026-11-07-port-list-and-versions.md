@@ -270,8 +270,9 @@ One new port, at version 1:
   saved, and the first save over them keeps them as `host.json.broken`. A
   save keeps keys and fields it doesn't know, and a newer `version`, as
   they are. The key form, the 256 KiB limit and the saved shape are golden
-  cases (`src/golden/host-settings-limits.json`) that the TypeScript
-  helpers and the Rust side both pass (review on HAL-6216).
+  cases in the contract suite
+  (`packages/testing/contracts/src/golden/host-settings-limits.json`) that
+  the TypeScript helpers and the Rust side both pass (review on HAL-6216).
 
 ## Additive after the freeze: optional hints
 

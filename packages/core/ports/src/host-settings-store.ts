@@ -1,5 +1,3 @@
-import golden from "./golden/host-settings-limits.json" with { type: "json" };
-
 /** Version of the {@link HostSettingsStore} port. A breaking change bumps it and comes with an ADR. */
 export const hostSettingsStoreVersion = 1;
 
@@ -54,8 +52,10 @@ export function isHostSettingKey(key: string): boolean {
  * The port only stores JSON values by key. `HostSettings` in `core/app`
  * gives each setting its schema and default, so a value that doesn't fit
  * reads as the default. The saved settings are `{ "version": 1, "values":
- * {…} }`; `src/golden/host-settings-limits.json` lists the keys, sizes and
- * saved shapes every adapter, the desktop shell's Rust side too, agrees on.
+ * {…} }`; the contract suite's golden cases
+ * (`packages/testing/contracts/src/golden/host-settings-limits.json`) list
+ * the keys, sizes and saved shapes every adapter, the desktop shell's Rust
+ * side too, agrees on.
  *
  * - Saved settings that can't be parsed read as none saved, so every
  *   setting starts from its default. The first save over them keeps them
@@ -98,14 +98,6 @@ export interface HostSettingsStore {
    */
   watch(listener: () => void): () => void;
 }
-
-/**
- * The golden cases every adapter and the desktop shell's Rust side agree
- * on: keys allowed and refused, sizes at the limit, and saved texts with
- * what they read as and hold after a save. For tests and the contract
- * suite; the Rust side reads the same file, `src/golden/host-settings-limits.json`.
- */
-export const hostSettingsGoldenCases = golden;
 
 /** Saved settings that can be parsed: their values, and every other field as it was saved. */
 interface SavedHostSettings {

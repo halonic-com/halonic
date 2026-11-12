@@ -112,7 +112,6 @@ export {
   type HostSettingsStore,
   type HostSettingValue,
   type HostSettingValues,
-  hostSettingsGoldenCases,
   hostSettingsMaxBytes,
   hostSettingsStoreVersion,
   isHostSettingKey,

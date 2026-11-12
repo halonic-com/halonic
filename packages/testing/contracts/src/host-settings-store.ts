@@ -1,10 +1,7 @@
-import {
-  hostSettingsGoldenCases as golden,
-  type HostSettingsStore,
-  type HostSettingValue,
-} from "@halonicjs/ports";
+import type { HostSettingsStore, HostSettingValue } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
+import golden from "./golden/host-settings-limits.json" with { type: "json" };
 
 /** One empty store under test, and ways to look at and change what it holds behind its back. */
 export interface HostSettingsStoreHarness {

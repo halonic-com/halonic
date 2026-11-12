@@ -95,8 +95,7 @@ verifies("ports.web-types-only", () => {
     ]);
   });
 
-  // Golden JSON is data shared with the Rust side: it can't bring in a type or a Node module.
-  const allowedImport = /^(\.\/[\w-]+\.ts|\.\/golden\/[\w-]+\.json|@halonicjs\/events)$/;
+  const allowedImport = /^(\.\/[\w-]+\.ts|@halonicjs\/events)$/;
   const sourceFiles = readdirSync(sourceFolder).filter(
     (file) => file.endsWith(".ts") && !file.endsWith(".test.ts"),
   );
