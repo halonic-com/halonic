@@ -3,7 +3,11 @@ import type { ChatTurnRefusal } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConnectorStatus, ConnectorStatusHost } from "../connector-status-host.ts";
+import type {
+  ConnectorStatus,
+  ConnectorStatusHost,
+  RecordedRefusal,
+} from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
@@ -31,7 +35,9 @@ function fakeHost(answer: { connectors: ConnectorStatus[]; refusals: ChatTurnRef
     },
     async refusals() {
       if (host.fail !== undefined) throw host.fail;
-      return answer.refusals;
+      return answer.refusals.map(
+        (refusal) => ({ refusal, at: new Date(0) }) satisfies RecordedRefusal,
+      );
     },
     subscribe(listener) {
       listeners.add(listener);
@@ -65,7 +71,7 @@ async function openSection(host: ConnectorStatusHost, announceState?: () => void
 }
 
 const lines = (root: HTMLElement) =>
-  [...root.querySelectorAll("li")].map((item) => item.textContent);
+  [...root.querySelectorAll("li span")].map((item) => item.textContent);
 
 verifies("library.status-section", () => {
   describe("with an answer", () => {
