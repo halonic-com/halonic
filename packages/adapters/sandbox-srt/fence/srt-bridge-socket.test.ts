@@ -167,9 +167,10 @@ describe("the harness bridge on a Unix socket", () => {
   );
 
   it("serves the program's request through srt's proxy, and through a tunnel to the name", async () => {
+    const before = providerCalls.length;
     expect(await status(url(), ...post(), ...withToken())).toBe("200");
     expect(await status("-p", url(), ...post(), ...withToken())).toBe("200");
-    expect(providerCalls).toHaveLength(2);
+    expect(providerCalls).toHaveLength(before + 2);
   });
 
   describe("what never reaches the bridge", () => {
@@ -218,11 +219,14 @@ describe("the harness bridge on a Unix socket", () => {
     });
   });
 
+  // Only inside a tunnel: srt passes those bytes on as they are. Outside one, its proxy
+  // writes the request again from the address, so a Host header the program sets is not
+  // the one the bridge sees.
   describe("the Host, Origin and token checks, over the socket", () => {
     it("answer 421 to another Host, in the request and inside a tunnel", async () => {
       const before = providerCalls.length;
       for (const host of ["other.example", `${socketBridgeName}.`, `${socketBridgeName}:8080`]) {
-        for (const tunnel of [[], ["-p"]]) {
+        for (const tunnel of [["-p"]]) {
           const code = await status(
             ...tunnel,
             url(),
@@ -239,7 +243,7 @@ describe("the harness bridge on a Unix socket", () => {
 
     it("answer 403 to a request with an Origin and 401 to one without the token", async () => {
       const before = providerCalls.length;
-      for (const tunnel of [[], ["-p"]]) {
+      for (const tunnel of [["-p"]]) {
         expect(
           await status(
             ...tunnel,
