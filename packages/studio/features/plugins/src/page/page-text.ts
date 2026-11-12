@@ -71,17 +71,27 @@ export function originText(origin: PluginOrigin): string {
 }
 
 /**
- * Drops the user and password at the front. The user part runs up to the last @ before the first
- * `/`, `?` or `#`: a typed password may hold an @. A password may hold a `/` too, which git can't
- * read but core may still keep as typed: a `user:` followed by something that isn't a port is
- * read as a password, and then the user part runs up to the last @ before the first `?` or `#`.
+ * Drops the user and password at the front. Without a password the user part runs up to the last
+ * @ before the first `/`, `?` or `#`: a typed password may hold an @. A password may hold a `/`,
+ * `?` or `#` too, which git can't read but core may still keep as typed: a `user:` followed by
+ * something that isn't a port is read as a password, and then the user part runs up to the last @
+ * before the first `/` after the first @, so the password's own characters can't end it early.
+ * A password of digits only (`me:2024/x@host`) looks like `host:port/path` and can't be told apart.
  */
 function withoutUser(address: string): string {
-  const query = address.search(/[?#]/);
-  const beforeQuery = query === -1 ? address : address.slice(0, query);
-  const authority = beforeQuery.split("/", 1)[0] ?? "";
-  const hasPassword = /^[^:@/]*:(?!\d+(?:$|@))/.test(authority);
-  const cut = (hasPassword ? beforeQuery : authority).lastIndexOf("@");
+  const head = address.split("/", 1)[0] ?? "";
+  const hasPassword = /^[^:@/?#]*:(?!\d+(?:$|@|[?#]))/.test(head);
+  let end: number;
+  if (hasPassword) {
+    const first = address.indexOf("@");
+    if (first === -1) return address;
+    const slash = address.indexOf("/", first);
+    end = slash === -1 ? address.length : slash;
+  } else {
+    const stop = address.search(/[/?#]/);
+    end = stop === -1 ? address.length : stop;
+  }
+  const cut = address.lastIndexOf("@", end - 1);
   return cut === -1 ? address : address.slice(cut + 1);
 }
 

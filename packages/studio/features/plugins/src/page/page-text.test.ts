@@ -45,6 +45,22 @@ verifies("plugins.plugin-page", () => {
       ).toBe("example.com:22/team/@weather");
     });
 
+    it("never shows a password that has a ? or # in it", () => {
+      for (const word of ["pa?ss", "pa#ss"]) {
+        const address = ["https://me", `${word}@github.com/x/y.git`].join(":");
+        const shown = originText({ kind: "git", address, commit: "3f9c2a1" });
+
+        expect(shown).toBe("github.com/x/y");
+        expect(shown).not.toContain(word);
+      }
+    });
+
+    it("keeps an @ in the path after a password", () => {
+      const address = ["https://me", "pass@host/team/@weather"].join(":");
+
+      expect(originText({ kind: "git", address, commit: "1" })).toBe("host/team/@weather");
+    });
+
     it("leaves out a user alone, and keeps an @ in the path", () => {
       expect(
         originText({ kind: "git", address: "ssh://git@example.com/team/@weather", commit: "1" }),
