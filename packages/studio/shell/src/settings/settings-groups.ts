@@ -23,6 +23,11 @@ export interface SettingsGroupsInput {
   /** The open workspace's name, or `undefined` when none is open: then its group isn't listed. */
   readonly workspaceName: string | undefined;
   readonly place: SettingsPlace;
+  /**
+   * The list is a phone's page: Developer and any section with `phone: false` are left out, and
+   * the headings read "On this phone" and "On your computer" (flow-settings 13).
+   */
+  readonly phone?: boolean;
 }
 
 const computerHeadings: Readonly<Record<SettingsPlace, Record<"display" | "host", string>>> = {
@@ -42,7 +47,11 @@ const computerHeadings: Readonly<Record<SettingsPlace, Record<"display" | "host"
  * // [{ key: "workspace", name: "Acme", detail: "Workspace settings", … }, { key: "computer", name: "On this computer", … }]
  */
 export function settingsGroups(input: SettingsGroupsInput): SettingsGroup[] {
-  const sorted = bySettingsGroup(input.sections);
+  const sorted = bySettingsGroup(
+    input.phone === true
+      ? input.sections.filter((section) => section.phone !== false)
+      : input.sections,
+  );
   const inScope = (...scopes: SettingsScope[]) =>
     sorted.filter((section) => scopes.includes(section.scope));
   const headings = computerHeadings[input.place];
@@ -55,7 +64,10 @@ export function settingsGroups(input: SettingsGroupsInput): SettingsGroup[] {
       sections: inScope("workspace"),
     });
   }
-  if (input.place === "app") {
+  if (input.phone === true) {
+    groups.push({ key: "phone", name: "On this phone", sections: inScope("display") });
+    groups.push({ key: "host", name: "On your computer", sections: inScope("host") });
+  } else if (input.place === "app") {
     groups.push({ key: "computer", name: headings.display, sections: inScope("display", "host") });
   } else {
     groups.push({ key: "browser", name: headings.display, sections: inScope("display") });

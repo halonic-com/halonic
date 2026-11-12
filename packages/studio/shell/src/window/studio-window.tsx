@@ -18,6 +18,7 @@ import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { SettingsDialog } from "../settings/settings-dialog.tsx";
+import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
@@ -89,22 +90,32 @@ export function StudioWindow(props: StudioWindowProps) {
   // Read when it opens, so the context stays the same as the window narrows or widens.
   const onDesktop = useRef(desktop);
   onDesktop.current = desktop;
+  const settingsScroll = useRef(0);
   const openSettings = useCallback(
     (sectionId?: string) => {
       if (onDesktop.current) {
         showSettingsDialog(sectionId);
         return;
       }
+      settingsScroll.current = 0;
       openPhone(settingsLocation, { list: true });
+      // The sections the phone's list shows, so a link can't open one the list leaves out.
       const section =
         sectionId === undefined
           ? undefined
-          : contributions.settings.list().find((candidate) => candidate.id === sectionId);
+          : listedSections(
+              settingsGroups({
+                sections: contributions.settings.list(),
+                workspaceName: workspace.name,
+                place: host === "desktop-app" ? "app" : "served",
+                phone: true,
+              }),
+            ).find((candidate) => candidate.id === sectionId);
       if (section !== undefined) {
         openPhone(sectionLocation(section));
       }
     },
-    [showSettingsDialog, openPhone, contributions],
+    [showSettingsDialog, openPhone, contributions, workspace.name, host],
   );
   const focusNewPage = usePageHeadingFocus();
   // Read when a view opens a place, so the context stays the same as the window narrows or widens.
@@ -232,6 +243,7 @@ export function StudioWindow(props: StudioWindowProps) {
           switcher={props.phoneSwitcher}
           onSettings={() => openSettings()}
           settingsPlace={host === "desktop-app" ? "app" : "served"}
+          settingsScroll={settingsScroll}
           workspaceName={workspace.name}
           shell={shell}
           tabs={tabs}
