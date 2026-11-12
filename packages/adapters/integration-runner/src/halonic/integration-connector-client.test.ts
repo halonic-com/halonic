@@ -2,7 +2,12 @@ import type {
   AddressCheckingHttpClient,
   LoadedIntegration,
 } from "@halonicjs/adapter-integration-kit";
-import type { IntegrationConnection, IntegrationHost, IntegrationTool } from "@halonicjs/ports";
+import type {
+  HttpClient,
+  IntegrationConnection,
+  IntegrationHost,
+  IntegrationTool,
+} from "@halonicjs/ports";
 import { describe, expect, it } from "vitest";
 import { integrationConnectorClient } from "./integration-connector-client.ts";
 import { loadLocalIntegration } from "./local-integration.ts";
@@ -14,6 +19,8 @@ const forecast: IntegrationTool = {
   risk: "read",
   untrusted: true,
 };
+
+const offlineTransport: HttpClient = { fetch: async () => new Response("{}") };
 
 /** A loaded integration whose connections and calls the test can count. */
 function loaded() {
@@ -132,7 +139,7 @@ describe("integrationConnectorClient", () => {
         identity: (file) => ({ id: file, names: 1 }),
       },
       choices: { secretNames: {} },
-      transport: { fetch: async () => new Response("{}") } as AddressCheckingHttpClient,
+      transport: offlineTransport as AddressCheckingHttpClient,
       secrets: { get: async () => null },
       tokens: { get: async () => null, set: async () => undefined, remove: async () => undefined },
       start: async () => ({
