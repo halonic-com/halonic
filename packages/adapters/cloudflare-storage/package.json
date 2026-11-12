@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-cloudflare-storage",
   "private": true,
   "type": "module",
-  "description": "The storage ports over Cloudflare's storage products, for the Worker: the BlobStore over R2.",
+  "description": "The storage ports over Cloudflare's storage products, for the Worker: the BlobStore and the read-only definition source over R2.",
   "exports": {
     ".": "./src/index.ts"
   },
