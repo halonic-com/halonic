@@ -1,5 +1,5 @@
 import type { CheckContext } from "../lib/context.ts";
-import type { Layer } from "../lib/layout.ts";
+import { cliPackageName, type Layer } from "../lib/layout.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
 import { apiTypesProblem, isApiTypes } from "./api-types.ts";
 
@@ -50,6 +50,7 @@ function layerRule(
   const toName = to.manifest.name ?? to.directory;
   switch (fromLayer) {
     case "apps":
+      return appRule(context, from, to);
     case "testing":
       return undefined;
     case "tooling":
@@ -71,6 +72,32 @@ function layerRule(
     case "studio":
       return studioRule(context, toLayer, from, to);
   }
+}
+
+/**
+ * The one target the `halonic` CLI ships with: the Node runtime behind
+ * `halonic serve`. Every other target is installed by the user who deploys
+ * to it, and the CLI loads it by name (board decision, HAL-7114).
+ */
+const targetShippedWithCli = { name: "node", kind: "runtime" } as const;
+
+function appRule(
+  context: CheckContext,
+  from: WorkspacePackage,
+  to: WorkspacePackage,
+): string | undefined {
+  if (from.manifest.name !== cliPackageName) {
+    return undefined;
+  }
+  const target = context.placeOf(to)?.target;
+  if (target === undefined || target.kind === "testing") {
+    return undefined;
+  }
+  const shipped =
+    target.name === targetShippedWithCli.name && target.kind === targetShippedWithCli.kind;
+  return shipped
+    ? undefined
+    : "the halonic CLI ships only the Node runtime. It loads a deploy target by name when the user deploys, so users install only the targets they use (HAL-7114).";
 }
 
 function coreRule(

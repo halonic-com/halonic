@@ -532,7 +532,7 @@ Who may use what:
 | host | core; Web-standard APIs | Node APIs, adapters, third-party code, Studio packages |
 | targets | runtime: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime never uses a deploy package or another target's runtime |
 | studio | core, other Studio packages, React, Tauri, Vite | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps | the public entry point of any package | — |
+| apps | the public entry point of any package | the CLI (`halonic`): any target package other than `target-node-runtime`, even in `devDependencies`. It loads a deploy target by name when the user deploys, so users install only the targets they use |
 | testing | anything | being a runtime dependency |
 | tooling | other tooling packages | being a runtime dependency |
 

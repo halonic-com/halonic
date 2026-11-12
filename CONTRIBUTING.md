@@ -95,7 +95,7 @@ below it:
 | host | `packages/host/*` | core, Web-standard APIs | adapters, Node APIs, third-party code, Studio packages |
 | targets | `packages/targets/*` | core, adapters, host (a runtime only) | Studio packages; a runtime using a deploy package |
 | studio | `packages/studio/*` | core, React, Tauri, Vite, approved UI libraries | adapters directly, another feature's internals |
-| apps | `apps/*` | the public interface of any package | — |
+| apps | `apps/*` | the public interface of any package | the CLI: a target other than the Node runtime |
 | testing | `packages/testing/*` | anything | being a runtime dependency |
 | tooling | `tooling/*` | other tooling packages | being a runtime dependency |
 

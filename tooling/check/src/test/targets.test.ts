@@ -1,4 +1,6 @@
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { defaultCoverageFloors } from "../lib/coverage.ts";
 import type { Layer } from "../lib/layout.ts";
 import { type FixturePackage, manifestFor, runChecks, std } from "./fixture-repo.ts";
 
@@ -123,6 +125,64 @@ describe("tooling/check: host and targets", () => {
     expect(
       messages([odd]).some((message) => message.includes("Packages live only in the folders")),
     ).toBe(true);
+  });
+});
+
+verifies("check.cli-never-uses-deploy-targets", () => {
+  const cli = (uses: string[], source = "export const x = 1;\n"): FixturePackage =>
+    pkg("apps/cli", "halonic", "apps", {
+      uses,
+      source,
+      halonic: { coverage: defaultCoverageFloors.apps },
+    });
+  const shipsOnlyNode = "the halonic CLI ships only the Node runtime";
+
+  it("passes the CLI using the Node runtime behind halonic serve", () => {
+    const source = 'import "@halonicjs/target-node-runtime";\nexport const x = 1;\n';
+    expect(messages([nodeRuntime(), cli(["@halonicjs/target-node-runtime"], source)])).toEqual([]);
+  });
+
+  it("fails the CLI depending on a deploy package or a cloud runtime, naming each", () => {
+    const found = messages([
+      cloudflareRuntime(),
+      cloudflareDeploy(),
+      cli(["@halonicjs/target-cloudflare-deploy", "@halonicjs/target-cloudflare-runtime"]),
+    ]);
+    const refused = found.filter((message) => message.includes(shipsOnlyNode));
+    expect(refused).toHaveLength(2);
+    expect(refused.some((message) => message.includes("target-cloudflare-deploy"))).toBe(true);
+    expect(refused.some((message) => message.includes("target-cloudflare-runtime"))).toBe(true);
+  });
+
+  it("fails an import of a deploy package in the CLI's source", () => {
+    const source = 'import "@halonicjs/target-cloudflare-deploy";\nexport const x = 1;\n';
+    const found = messages([
+      cloudflareDeploy(),
+      cli(["@halonicjs/target-cloudflare-deploy"], source),
+    ]);
+    expect(
+      found.some((message) => message.startsWith("imports @halonicjs/target-cloudflare-deploy")),
+    ).toBe(true);
+  });
+
+  it("fails a deploy package in the CLI's devDependencies too", () => {
+    const withDev: FixturePackage = {
+      ...cli([]),
+      manifest: manifestFor("halonic", "apps", {
+        devDependencies: { "@halonicjs/target-cloudflare-deploy": "workspace:*" },
+        halonic: { layer: "apps", owner: "mateo", coverage: defaultCoverageFloors.apps },
+      }),
+    };
+    const found = messages([cloudflareDeploy(), withDev]);
+    expect(found.some((message) => message.includes(shipsOnlyNode))).toBe(true);
+  });
+
+  it("leaves other apps free to use a target", () => {
+    const studio = pkg("apps/studio", "@halonicjs/app-studio", "apps", {
+      uses: ["@halonicjs/target-cloudflare-deploy"],
+      halonic: { coverage: defaultCoverageFloors.apps },
+    });
+    expect(messages([cloudflareDeploy(), studio])).toEqual([]);
   });
 });
 

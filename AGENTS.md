@@ -17,7 +17,7 @@ workflows. Workspaces are plain files in git. The engine records every run as an
 | host | `packages/host/*` | core, Web-standard APIs | adapters, Node APIs, third-party code, Studio packages |
 | targets | `packages/targets/*` | core, adapters, host (a runtime only) | Studio packages; a runtime using a deploy package; Node APIs in a runtime other than the Node target's |
 | studio | `packages/studio/*` | core, other Studio packages, React, Tauri, Vite | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps | `apps/*` | the public entry point of any package | — |
+| apps | `apps/*` | the public entry point of any package | the CLI: a target other than the Node runtime (it loads deploy targets by name) |
 | testing | `packages/testing/*` | anything | being a runtime dependency |
 | tooling | `tooling/*` | other tooling packages | being a runtime dependency |
 
