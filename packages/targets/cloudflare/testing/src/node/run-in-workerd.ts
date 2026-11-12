@@ -33,13 +33,19 @@ export async function runSuitesInWorkerd(suiteFiles: readonly (string | URL)[]):
   const script = await buildTestWorker(suiteFiles);
   const runner = await WorkerdRunner.start(script);
   afterAll(() => runner.stop());
-  const tree = await runner.cases();
-  if (tree.children.length === 0) {
-    throw new Error(
-      "The test Worker registered no cases. Does each suite file call a contract suite?",
-    );
+  // If collection fails, the file fails before any test runs and afterAll may never run.
+  try {
+    const tree = await runner.cases();
+    if (tree.children.length === 0) {
+      throw new Error(
+        "The test Worker registered no cases. Does each suite file call a contract suite?",
+      );
+    }
+    mirror(tree.children, runner);
+  } catch (error) {
+    await runner.stop();
+    throw error;
   }
-  mirror(tree.children, runner);
 }
 
 function mirror(nodes: readonly CaseTree[], runner: WorkerdRunner): void {

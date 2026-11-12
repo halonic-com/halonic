@@ -1,10 +1,14 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildTestWorker } from "./build-test-worker.ts";
 import { WorkerdCaseError } from "./run-in-workerd.ts";
-import { WorkerdRunner } from "./workerd-runner.ts";
+import { compatibilityDate, WorkerdRunner } from "./workerd-runner.ts";
+
+const suitesFolder = fileURLToPath(new URL("../worker/suites/", import.meta.url));
 
 describe("the test Worker", () => {
   let folder = "";
@@ -41,6 +45,21 @@ describe("the test Worker", () => {
     );
   });
 
+  it("checks a suite file inside src/worker/suites too", async () => {
+    const file = path.join(suitesFolder, `unsupported-matcher-${process.pid}.ts`);
+    await writeFile(
+      file,
+      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toMatchObject([1]));\n',
+    );
+    try {
+      await expect(buildTestWorker([file])).rejects.toThrow(
+        /lacks what a suite uses[\s\S]*unsupported-matcher-\d+\.ts uses toMatchObject/,
+      );
+    } finally {
+      await rm(file, { force: true });
+    }
+  });
+
   it("runs a failing case inside workerd and brings back its message and stack", async () => {
     const file = await suiteFile(
       [
@@ -71,5 +90,21 @@ describe("the test Worker", () => {
     } finally {
       await runner.stop();
     }
+  });
+});
+
+describe("the compatibility date", () => {
+  it("is not later than the bundled workerd's own date", async () => {
+    // workerd is miniflare's dependency, so resolve it from there.
+    const fromMiniflare = createRequire(import.meta.resolve("miniflare"));
+    const workerdVersion = (
+      JSON.parse(await readFile(fromMiniflare.resolve("workerd/package.json"), "utf8")) as {
+        version: string;
+      }
+    ).version;
+    // workerd's version is 1.YYYYMMDD.patch.
+    const [, stamp = ""] = workerdVersion.split(".");
+    const workerdDate = `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}`;
+    expect(compatibilityDate <= workerdDate).toBe(true);
   });
 });
