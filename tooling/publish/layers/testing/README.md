@@ -11,7 +11,7 @@ one:
 npm install --save-dev --save-exact @halonicjs/testing @halonicjs/adapters vitest
 ```
 
-## `@halonicjs/testing/integration`
+## The conformance suite
 
 The suite loads the integration from its permission sheet through the kit's
 real loader, as Halonic does. It runs it with fake secret values, a replay

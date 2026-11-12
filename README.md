@@ -25,7 +25,8 @@ older version, so this is worth checking.
 git clone https://github.com/halonic-com/halonic.git
 cd halonic
 pnpm install
-pnpm setup            # only if pnpm's global bin folder isn't on PATH yet; then open a new terminal and cd halonic
+# only if pnpm asks (see below)
+pnpm setup
 pnpm add -g ./apps/cli
 halonic --version
 ```
@@ -49,6 +50,8 @@ pnpm install
 
 To remove the command, run `pnpm remove -g halonic`. Then you can delete the
 clone.
+
+## Help and contributing
 
 - Questions and help: [SUPPORT.md](SUPPORT.md), or ask in
   [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a)

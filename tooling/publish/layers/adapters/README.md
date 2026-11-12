@@ -12,7 +12,9 @@ imports to its cloud bundle.
 npm install --save-exact @halonicjs/adapters
 ```
 
-## `@halonicjs/adapters/integration-kit`
+## The integration kit
+
+Import it from `@halonicjs/adapters/integration-kit`.
 
 - **The port types:** `Integration`, `IntegrationHost`, `IntegrationTool`,
   `IntegrationHttpClient`, `TokenStore`, the model provider types
