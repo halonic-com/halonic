@@ -124,7 +124,8 @@ export const doctorMessages = defineMessages("doctor", {
   /** Node.js ! on Windows, when the working folder is a WSL folder. */
   windowsNodeInWsl: () => phrase`This is Windows' Node.js, running in a WSL folder.`,
   /** Under {@link windowsNodeInWsl}. */
-  installNodeInWsl: () => phrase`Fix: install Node.js inside WSL and run halonic there.`,
+  installNodeInWsl: () =>
+    phrase`Fix: install Node.js inside WSL, then run halonic doctor again from a WSL terminal.`,
   /** Node.js ! inside WSL, with the path of Windows' pnpm, which is under /mnt. */
   windowsPnpm: (path: string) => phrase`pnpm on the PATH is Windows' one: ${path}`,
   /** Under {@link windowsPnpm}. */

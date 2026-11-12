@@ -39,7 +39,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
     "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
   [windowsNodeInWsl]:
-    "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start there. Install Node.js inside WSL and run halonic there.",
+    "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal.",
   container:
     "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
   "user-namespaces-restricted":
@@ -55,8 +55,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
 /** sandbox-screens 3.1's reason, by code: what's wrong, for `halonic doctor`'s Sandbox line. */
 const reasons: Readonly<Record<WordedReason, string>> = {
   windows: "The sandbox doesn't work on Windows in this version of Halonic.",
-  [windowsNodeInWsl]:
-    "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start there.",
+  [windowsNodeInWsl]: "Windows' Node.js can't start the sandbox in a WSL folder.",
   container: "Halonic is running inside a container, and the sandbox can't start there.",
   "user-namespaces-restricted": "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
   "bubblewrap-missing": "bubblewrap isn't installed, and the sandbox needs it.",
@@ -71,7 +70,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
  */
 const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
-  [windowsNodeInWsl]: "install Node.js inside WSL and run halonic there.",
+  [windowsNodeInWsl]: "install Node.js inside WSL and open a WSL terminal.",
   container: "run Halonic on the computer itself, not in a container.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",

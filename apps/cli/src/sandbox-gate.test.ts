@@ -327,7 +327,7 @@ verifies("cli.run-windows-node-in-wsl", () => {
     expect(exitCodeOfError(error)).toBe(9);
     expect(printed(error)).toEqual([
       "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
-      "  This is Windows' Node.js, running in a WSL folder, and the sandbox can't start there. Install Node.js inside WSL and run halonic there.",
+      "  This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal.",
       "  More: https://docs.halonic.com/sandbox (windows-node-in-wsl)",
     ]);
   });

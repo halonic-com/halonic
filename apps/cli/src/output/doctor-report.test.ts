@@ -184,10 +184,27 @@ verifies("cli.doctor-node", () => {
     expect(lines.slice(2, 6)).toEqual([
       "✓ Sandbox     ready · bubblewrap",
       "! Node.js     This is Windows' Node.js, running in a WSL folder.",
-      "              Fix: install Node.js inside WSL and run halonic there.",
+      "              Fix: install Node.js inside WSL, then run halonic doctor again from a WSL terminal.",
       "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
     ]);
     expect(lines.at(-1)).toBe("No problems. 1 warning.");
+  });
+
+  it("gives a Sandbox that can't start Windows' Node.js's code, not the sandbox's own", () => {
+    const sandbox: SandboxLine = {
+      check: "sandbox",
+      status: "failed",
+      reason: "windows",
+      missing: [],
+    };
+    const node: NodeLine = { check: "node", status: "warning", problem: "windows-node-in-wsl" };
+
+    expect(check(printed(reportOf({ sandbox, node, disk: diskFree })), "Sandbox")).toEqual([
+      "✕ Sandbox     can't start on this computer",
+      "              Windows' Node.js can't start the sandbox in a WSL folder.",
+      "              Fix: install Node.js inside WSL and open a WSL terminal. Then run halonic doctor again.",
+      "              More: https://docs.halonic.com/sandbox (windows-node-in-wsl)",
+    ]);
   });
 
   it("names Windows' pnpm by its path", () => {
