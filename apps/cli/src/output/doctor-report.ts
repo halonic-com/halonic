@@ -19,7 +19,7 @@ import type { Message } from "../messages/define.ts";
 import { type DataUse, doctorMessages } from "../messages/doctor.ts";
 import { errorMessages } from "../messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
-import { sandboxDocsLink, sandboxMessages } from "../messages/sandbox.ts";
+import { sandboxDocsLink, sandboxMessages, wsl2FolderDocs } from "../messages/sandbox.ts";
 import { shownSize } from "../messages/size.ts";
 import type { Mark } from "./paint.ts";
 import { printable } from "./printable.ts";
@@ -108,6 +108,7 @@ function workspaceCheck(line: WorkspaceLine, dir: string | undefined): CheckLine
         : [
             doctorMessages.onWindowsDrive(line.windowsDrive).phrase,
             doctorMessages.moveToLinuxHome().phrase,
+            errorMessages.more(wsl2FolderDocs).phrase,
           ]),
     ],
   };

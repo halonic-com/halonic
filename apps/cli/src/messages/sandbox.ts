@@ -135,3 +135,6 @@ export function sandboxDocsLink(code: string): string {
   const section = docsSections[known(code)];
   return section === undefined ? sandboxDocs : `${sandboxDocs}#${section}`;
 }
+
+/** The section of {@link sandboxDocs} on a workspace on a Windows drive under WSL, for `More:` under doctor's Workspace line (HAL-6552). */
+export const wsl2FolderDocs = `${sandboxDocs}#wsl2-folder`;
