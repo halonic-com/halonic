@@ -33,6 +33,10 @@ use tauri_plugin_http::reqwest;
 use crate::git::GitState;
 use crate::profile::cli_profile;
 
+#[path = "agent_host_ends.rs"]
+mod ends;
+pub use ends::{end_page_streams, stop_host};
+
 /// How long the host may take to unpack its files and serve.
 const START_WAIT: Duration = Duration::from_secs(60);
 
@@ -263,25 +267,6 @@ pub fn agent_host_stream_end<R: Runtime>(webview: Webview<R>, stream: u64) {
     webview
         .state::<AgentHostState>()
         .end_streams(|key| key.page == page && key.stream == stream);
-}
-
-/// Ends every stream of the page `page`. The shell calls this when that
-/// page starts loading another document, or its window closes.
-pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
-    if let Some(state) = app.try_state::<AgentHostState>() {
-        state.end_streams(|key| key.page == page);
-    }
-}
-
-/// Stops the host, as dropping it does, before the updater's installer
-/// replaces its file: the updater ends the shell with `exit`, which drops
-/// nothing (HAL-1206).
-pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
-    let Some(state) = app.try_state::<AgentHostState>() else {
-        return;
-    };
-    let host = state.host.lock().ok().and_then(|mut host| host.take());
-    drop(host);
 }
 
 fn named_route(name: &str, answer: Answer) -> Result<Route, HostRefusal> {
