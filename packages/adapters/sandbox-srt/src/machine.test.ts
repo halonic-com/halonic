@@ -23,11 +23,13 @@ verifies("sandbox-srt.check", () => {
         await systemMachine.insideContainer(),
         await systemMachine.isWsl1(),
         await systemMachine.hasBubblewrap(),
+        await systemMachine.hasRipgrep(),
         await systemMachine.appArmorRestrictsUserNamespaces(),
         await systemMachine.hasSeatbelt(),
         await systemMachine.hasWindowsSandbox(),
       ];
       expect(answers.map((answer) => typeof answer)).toEqual([
+        "boolean",
         "boolean",
         "boolean",
         "boolean",
@@ -84,6 +86,7 @@ verifies("sandbox-srt.check", () => {
       started.mockClear();
       await fresh.systemMachine.hasBubblewrap();
       await fresh.systemMachine.missingLinuxHelpers();
+      await fresh.systemMachine.hasRipgrep();
       await fresh.systemMachine.bubblewrapUserNamespaceError();
       // The runner is not exported: only the fixed probes above can start a program.
       // One expect for however many programs this machine started, so the test makes

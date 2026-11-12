@@ -58,6 +58,7 @@ export interface SandboxCapabilities {
  * - `user-namespaces-restricted`: the system doesn't let programs create user namespaces, as Ubuntu 24.04 does by default.
  * - `bubblewrap-missing`: bubblewrap (`bwrap`) is not installed.
  * - `linux-tools-missing`: `socat` or ripgrep (`rg`), which srt starts next to bubblewrap, is not installed.
+ * - `ripgrep-missing`: ripgrep (`rg`), which srt starts next to Seatbelt on macOS, is not installed.
  * - `sign-in-needed`: the backend needs an account sign-in.
  * - `other`: none of the above; `SandboxCheck.missing` says what.
  *
@@ -79,6 +80,7 @@ export const sandboxUnavailableReasons = [
   "user-namespaces-restricted",
   "bubblewrap-missing",
   "linux-tools-missing",
+  "ripgrep-missing",
   "sign-in-needed",
   "other",
 ] as const;

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1706; board decision on HAL-1601 (proposal 3, "No sandbox, no run" with the reason and the fix); `Sandbox` port v3; the version 6 codes from HAL-5389 (docs/adr/2026-11-11-pluggable-sandbox-layer.md)
 
-The `Sandbox` port shall say, when the sandbox can't start, why as one code from a closed list that the port names (`windows`, `container`, `not-supported`, `blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`, `distro-missing`, `setup-conflict`, `setup-needed`, `user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing`, `sign-in-needed` and `other`, in the order their fixes come), and `null` when it can, so Studio and the CLI can word the refusal and its fix without reading the adapter's sentences.
+The `Sandbox` port shall say, when the sandbox can't start, why as one code from a closed list that the port names (`windows`, `container`, `not-supported`, `blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`, `distro-missing`, `setup-conflict`, `setup-needed`, `user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing`, `ripgrep-missing`, `sign-in-needed` and `other`, in the order their fixes come), and `null` when it can, so Studio and the CLI can word the refusal and its fix without reading the adapter's sentences.
 
 ## Examples
 

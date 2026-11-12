@@ -232,9 +232,12 @@ export class SrtSandbox implements Sandbox {
           };
     }
     if (machine.platform === "darwin") {
-      return (await machine.hasSeatbelt())
+      if (!(await machine.hasSeatbelt())) {
+        return { reason: "other", missing: "sandbox-exec is not installed" };
+      }
+      return (await machine.hasRipgrep())
         ? null
-        : { reason: "other", missing: "sandbox-exec is not installed" };
+        : { reason: "ripgrep-missing", missing: "ripgrep is not installed" };
     }
     if (machine.platform !== "linux") {
       return { reason: "other", missing: `${machine.platform} has no sandbox` };

@@ -14,6 +14,7 @@ const worded = [
   "user-namespaces-restricted",
   "bubblewrap-missing",
   "linux-tools-missing",
+  "ripgrep-missing",
   "other",
 ] as const;
 
@@ -38,6 +39,7 @@ describe("the sandbox sentences", () => {
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
+      "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
   });
@@ -97,6 +99,10 @@ describe("the sandbox sentences", () => {
         "Fix: install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep. Then run halonic doctor again.",
       ],
       [
+        "ripgrep isn't installed, and the sandbox needs it.",
+        "Fix: install it, for example on macOS with brew install ripgrep. Then run halonic doctor again.",
+      ],
+      [
         "Halonic can't tell what the sandbox is missing.",
         "Fix: see what the sandbox needs on this computer. Then run halonic doctor again.",
       ],
@@ -109,6 +115,7 @@ describe("the sandbox sentences", () => {
       "https://docs.halonic.dev/sandbox#container",
       "https://docs.halonic.dev/sandbox#apparmor",
       "https://docs.halonic.dev/sandbox#bubblewrap",
+      "https://docs.halonic.dev/sandbox",
       "https://docs.halonic.dev/sandbox",
       "https://docs.halonic.dev/sandbox",
     ]);

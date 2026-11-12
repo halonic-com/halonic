@@ -19,6 +19,7 @@ function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): M
     isWsl1: async () => false,
     hasBubblewrap: async () => false,
     missingLinuxHelpers: async () => ["socat" as const, "ripgrep" as const],
+    hasRipgrep: async () => false,
     bubblewrapUserNamespaceError: async () => null,
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => false,

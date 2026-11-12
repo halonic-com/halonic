@@ -33,7 +33,8 @@ with an agent that starts a program on this computer is refused with exit 9 when
 start. No option skips it. The engine `run` opens has no harness adapter yet, so `run` also refuses, with exit 9 and before anything starts, a workflow with an agent in a harness (an agent set to "On this computer" included). The message names the harness the run would use: the workflow's own `harness` when it sets one, else the agent's.
 `halonic doctor` shows the same check as its Sandbox line, ✕ with exit 1 when the sandbox can't
 start. Each reason code (`windows`, `container`, `user-namespaces-restricted`, `bubblewrap-missing`,
-`linux-tools-missing` when `socat` or ripgrep is missing, `other`) has its own words and fix in
+`linux-tools-missing` when `socat` or ripgrep is missing, `ripgrep-missing` when ripgrep is missing
+on macOS, `other`) has its own words and fix in
 `src/messages/sandbox.ts`; the codes the `Sandbox` port added in version 6 (setup, WSL, company
 policy and sign-in) read as `other` until the sandbox design words them. The check's own sentence
 shows only with `--debug`.

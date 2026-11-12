@@ -25,6 +25,7 @@ verifies("sandbox-srt.check", () => {
       await systemMachine.isWsl1();
       await systemMachine.hasBubblewrap();
       await systemMachine.missingLinuxHelpers();
+      await systemMachine.hasRipgrep(); // asked once: the Linux helpers already started rg
       await systemMachine.bubblewrapUserNamespaceError();
       await systemMachine.appArmorRestrictsUserNamespaces();
       await systemMachine.hasSeatbelt();

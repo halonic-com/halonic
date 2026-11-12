@@ -27,6 +27,7 @@ export const runnerUnfencedReasons = [
   "user-namespaces-restricted",
   "bubblewrap-missing",
   "linux-tools-missing",
+  "ripgrep-missing",
   "sign-in-needed",
   "other",
 ] as const;

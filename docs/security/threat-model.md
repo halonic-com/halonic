@@ -349,7 +349,8 @@ start, in this order, because its fix comes first.
   which gives local attackers more of the kernel to attack. We recommend the
   profile.
 - **macOS** uses Apple's Seatbelt through `sandbox-exec`, plus `ripgrep`.
-  `check()` only looks for `/usr/bin/sandbox-exec`. Apple marks `sandbox-exec`
+  `check()` looks for `/usr/bin/sandbox-exec` and reports `ripgrep-missing`
+  without `ripgrep`. Apple marks `sandbox-exec`
   as deprecated, so a later macOS could change or remove it.
 - **WSL 2** counts as Linux and gets the full Linux sandbox.
 - **Plain Windows** uses srt's Windows mode, an early (alpha) version: a

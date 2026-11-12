@@ -31,6 +31,7 @@ verifies("app.runner-fence", () => {
     "user-namespaces-restricted",
     "bubblewrap-missing",
     "linux-tools-missing",
+    "ripgrep-missing",
     "other",
   ] as const)("is not fenced with the check's reason %s", (reason) => {
     const check: SandboxCheck = { ok: false, reason, missing: ["what is missing"] };

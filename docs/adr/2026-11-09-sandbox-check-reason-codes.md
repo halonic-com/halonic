@@ -68,3 +68,12 @@ dependency check fails without either. The check only probed `bwrap`, so
 The list gains `linux-tools-missing`, after `bubblewrap-missing` (one `apt`
 command fixes both, so the order costs nothing). One code covers both tools;
 `missing` stays one sentence for logs.
+
+## Addendum (HAL-6639): `ripgrep-missing`
+
+srt starts ripgrep (`rg`) next to Seatbelt on macOS too, but the check asked
+for it only on Linux, so `halonic doctor` said ready on a Mac without ripgrep
+and the first run failed with `spawn rg ENOENT`. The list gains
+`ripgrep-missing`, after `linux-tools-missing`: `linux-tools-missing` names
+`socat` and an `apt` fix, which are wrong on a Mac, where the fix is
+`brew install ripgrep`. It is checked after Seatbelt, which macOS always has.

@@ -17,6 +17,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     isWsl1: async () => false,
     hasBubblewrap: async () => true,
     missingLinuxHelpers: async () => [],
+    hasRipgrep: async () => true,
     bubblewrapUserNamespaceError: async () => null,
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => true,
@@ -82,6 +83,7 @@ verifies("sandbox-srt.check", () => {
       ["bubblewrap-missing", { hasBubblewrap: async () => false }],
       ["linux-tools-missing", { missingLinuxHelpers: async () => ["socat" as const] }],
       ["other", bubblewrapRefused],
+      ["ripgrep-missing", { platform: "darwin" as const, hasRipgrep: async () => false }],
       ["other", { platform: "darwin" as const, hasSeatbelt: async () => false }],
     ])("gives the reason %s", async (reason, overrides) => {
       const check = await srt(machine(overrides)).check();
@@ -199,6 +201,15 @@ verifies("sandbox-srt.check", () => {
     it("starts on macOS with Seatbelt", async () => {
       const check = await srt(machine({ platform: "darwin" })).check();
       expect(check.ok).toBe(true);
+    });
+
+    it("can't start on macOS without ripgrep, which srt starts next to Seatbelt (HAL-6639)", async () => {
+      const mac = machine({ platform: "darwin", hasRipgrep: async () => false });
+      expect(await new SrtSandbox(mac).check()).toEqual({
+        ok: false,
+        reason: "ripgrep-missing",
+        missing: ["ripgrep is not installed"],
+      });
     });
 
     it("starts on Windows only when srt's Windows install is there", async () => {

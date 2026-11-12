@@ -27,6 +27,8 @@ export interface Machine {
    * paths it fences off.
    */
   missingLinuxHelpers(): Promise<LinuxHelper[]>;
+  /** Whether `rg` (ripgrep) can be started: srt runs it on macOS too, to find the paths it fences off. */
+  hasRipgrep(): Promise<boolean>;
   /**
    * Starts bubblewrap in a new user namespace. Only asked once bubblewrap is
    * there.
@@ -159,16 +161,19 @@ function bubblewrapStarts(): Promise<boolean> {
   return bubblewrapProbe;
 }
 
+/** Asked once, like bubblewrap: ripgrep does not come and go while we run. */
+let ripgrepProbe: Promise<boolean> | undefined;
+function ripgrepStarts(): Promise<boolean> {
+  ripgrepProbe ??= succeeds("rg", ["--version"]);
+  return ripgrepProbe;
+}
+
 /** Asked once, like bubblewrap: the helpers srt starts next to it do not come and go while we run. */
 let linuxHelpersProbe: Promise<LinuxHelper[]> | undefined;
 function linuxHelpersMissing(): Promise<LinuxHelper[]> {
-  linuxHelpersProbe ??= Promise.all([
-    succeeds("socat", ["-V"]),
-    succeeds("rg", ["--version"]),
-  ]).then(([socat, rg]) => [
-    ...(socat ? [] : ["socat" as const]),
-    ...(rg ? [] : ["ripgrep" as const]),
-  ]);
+  linuxHelpersProbe ??= Promise.all([succeeds("socat", ["-V"]), ripgrepStarts()]).then(
+    ([socat, rg]) => [...(socat ? [] : ["socat" as const]), ...(rg ? [] : ["ripgrep" as const])],
+  );
   return linuxHelpersProbe;
 }
 
@@ -182,6 +187,7 @@ export const systemMachine: Machine = {
   isWsl1: async () => procVersionIsWsl1(await readOrEmpty("/proc/version")),
   hasBubblewrap: bubblewrapStarts,
   missingLinuxHelpers: linuxHelpersMissing,
+  hasRipgrep: ripgrepStarts,
   // Its new root is empty, so give it ours.
   bubblewrapUserNamespaceError: () =>
     failure("bwrap", ["--ro-bind", "/", "/", "--unshare-user", "--", "true"]),

@@ -10,6 +10,7 @@ export const linux = {
   isWsl1: async () => false,
   hasBubblewrap: async () => true,
   missingLinuxHelpers: async () => [],
+  hasRipgrep: async () => true,
   bubblewrapUserNamespaceError: async () => null,
   appArmorRestrictsUserNamespaces: async () => false,
   hasSeatbelt: async () => true,

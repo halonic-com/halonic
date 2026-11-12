@@ -35,8 +35,8 @@ If the sandbox can't start, the step doesn't run, and no option makes it
 is an agent you chose to run on this computer; see
 ["This computer" has none of it](#this-computer-has-none-of-it). The CLI ends
 with exit 9 and names one reason code: `windows`, `container`,
-`user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing` or
-`other`. When more than one applies, the first in that list wins, because its
+`user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing`,
+`ripgrep-missing` or `other`. When more than one applies, the first in that list wins, because its
 fix comes first ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)).
 
 ## The limits
