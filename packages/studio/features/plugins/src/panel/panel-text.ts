@@ -6,9 +6,6 @@
 /** The kind above the panel's title, in small caps. */
 export const PLUGIN_PANEL = "Plugin panel";
 
-/** The kind of a panel's tab, as a screen reader reads it after the tab's name. */
-export const PLUGIN_PANEL_KIND_NAME = "plugin panel";
-
 /** The panel's command in Ctrl K: "Open Weather panel". */
 export function openPanelTitle(name: string): string {
   return `Open ${name} panel`;

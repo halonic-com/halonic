@@ -13,8 +13,9 @@ import { act, type ComponentType } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PluginsHostService, PluginsService } from "./api.ts";
 import { pluginsFeature } from "./feature.ts";
+import type { InstalledPlugin } from "./page/plugin-pages.ts";
 import { fakeModal, restoreModal } from "./test-support/modal.ts";
-import { feedOf, WorkspaceServices, weather } from "./test-support/plugins.ts";
+import { feedOf, noSettings, WorkspaceServices, weather } from "./test-support/plugins.ts";
 import { render, unmountAll } from "./test-support/render.tsx";
 
 beforeEach(fakeModal);
@@ -24,12 +25,12 @@ afterEach(() => {
 });
 
 /** A Studio with the plugins feature over `plugins`, and a window's context for it. */
-function studioWith(plugins: Parameters<typeof feedOf>[0]) {
+function studioWith(plugins: readonly InstalledPlugin[]) {
   const { feed, set } = feedOf(plugins);
   const call = vi.fn(async () => "Sunny");
   const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
   const workspace = new WorkspaceServices();
-  workspace.provide(PluginsHostService, { feed, caller: { call } });
+  workspace.provide(PluginsHostService, { feed, caller: { call }, ...noSettings() });
   shell.services.instantiate(workspace);
   const opened: ItemRef[] = [];
   const context: WorkspaceContext = {

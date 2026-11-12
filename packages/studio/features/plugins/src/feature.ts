@@ -6,18 +6,20 @@ import {
   type PluginCommands,
   pluginCommandSource,
 } from "./commands/plugin-command-source.ts";
+import { pluginPageKind } from "./page/plugin-pages.ts";
 import {
   PLUGIN_PANELS_SOURCE,
   type PluginPanelFeed,
   pluginPanelCommandSource,
   pluginPanelKind,
 } from "./panel/plugin-panels.ts";
-import { panelOptions, studioPlugins } from "./plugins-service.ts";
+import { pageOptions, panelOptions, studioPlugins } from "./plugins-service.ts";
 
 /**
  * The Plugins feature (`plugins.feature`). It builds the open workspace's plugins from what the
  * app provides (`PluginsHostService`) and adds what they show, drawn by Studio: their commands
- * and "Open *name* panel" in Ctrl K, the command dialog, their cards on Home and the panel's tab.
+ * and "Open *name* panel" in Ctrl K, the command dialog, their cards on Home, the panel's tab and
+ * each plugin's own page.
  */
 export const pluginsFeature = defineFeature({
   id: "plugins",
@@ -50,6 +52,9 @@ export const pluginsFeature = defineFeature({
       view: "PluginCommandDialogs",
       load: () => import("./commands/plugin-command-dialogs.tsx"),
     });
+    studio.itemKinds.add(
+      pluginPageKind((context) => pageOptions(context.services.get(PluginsService), context)),
+    );
     studio.itemKinds.add(pluginPanelKind(optionsFor));
     studio.home.addCard(pluginHomeCards(optionsFor));
   },

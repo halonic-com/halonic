@@ -2,14 +2,13 @@ import type {
   CommandSource,
   ItemKindContribution,
   ItemRef,
-  TabLocation,
   WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import type { PluginCards } from "../cards/plugin-home-cards.ts";
 import { commandSource } from "../commands/command-text.ts";
 import type { PluginCommand, PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
 import type { PluginCommandOpener } from "../commands/plugin-command-source.ts";
-import { openPanelTitle, PLUGIN_PANEL, PLUGIN_PANEL_KIND_NAME } from "./panel-text.ts";
+import { openPanelTitle, PLUGIN_PANEL } from "./panel-text.ts";
 
 /** The item kind of a plugin's panel; its tab's place is `plugin-panel/this-computer/<plugin>`. */
 export const PLUGIN_PANEL_KIND = "plugin-panel";
@@ -56,18 +55,6 @@ export interface PluginPanelOptions {
 /** The item a plugin's panel is. */
 export function pluginPanelItem(plugin: string): ItemRef {
   return { kind: PLUGIN_PANEL_KIND, hub: PANEL_HUB, id: plugin };
-}
-
-/**
- * The place of a plugin's panel, named by the panel's title. Opening it with the tabs' `openHere`
- * goes to its tab when one shows it already, so there's one tab per plugin (D2).
- */
-export function pluginPanelLocation(plugin: string, title: string): TabLocation {
-  return {
-    key: `${PLUGIN_PANEL_KIND}/${PANEL_HUB}/${plugin}`,
-    title,
-    kind: PLUGIN_PANEL_KIND_NAME,
-  };
 }
 
 /** The plugin with a panel that the feed gives now for `item`, if any. */
