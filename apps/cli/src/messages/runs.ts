@@ -38,7 +38,7 @@ export type ShownEnd =
  * `--dir`.
  */
 export const runsMessages = defineMessages("runs", {
-  summary: () => phrase`List runs or show what one did`,
+  summary: () => phrase`List runs, show what one did, or answer one that's waiting for you`,
   /**
    * `show`'s line in `halonic runs --help`, from the words of {@link summary}
    * (team wording on HAL-2742, as HAL-2282 allows).

@@ -26,7 +26,9 @@ verifies("cli.messages", () => {
 
 describe("runs's sentences", () => {
   it("has the summary", () => {
-    expect(words(runsMessages.summary())).toBe("List runs or show what one did");
+    expect(words(runsMessages.summary())).toBe(
+      "List runs, show what one did, or answer one that's waiting for you",
+    );
   });
 
   it("has the lines for a run that isn't there", () => {

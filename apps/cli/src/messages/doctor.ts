@@ -25,8 +25,7 @@ export interface LoadedModelSize {
  * line and no Halonic sandbox setup command in 0.1.
  */
 export const doctorMessages = defineMessages("doctor", {
-  summary: () =>
-    phrase`Check that this computer can run Halonic: sandbox, disk, and a workspace's models`,
+  summary: () => phrase`Check this computer's sandbox and disk, and a workspace's models`,
   /** What `doctor` was doing, for "✕ Couldn't check ./downloads: …"; "this computer" without `--dir`. */
   action: (folder?: string) => phrase`check ${folder ?? "this computer"}`,
   /** "Halonic 0.1.0 · Linux x64". */

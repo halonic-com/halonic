@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
+import { commands as realCommands } from "./generated/commands.ts";
 import { defineMessages } from "./messages/define.ts";
 import { bold, markPart, phrase } from "./messages/phrase.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
@@ -312,6 +313,14 @@ verifies("cli.help", () => {
     await runCli(["--help"], io, commands);
     for (const line of io.stdout) {
       expect(line.length).toBeLessThanOrEqual(80);
+    }
+  });
+
+  it("keeps every line of the real command list within 80 columns", async () => {
+    const io = captureIo("/work");
+    await runCli(["--help"], io, Object.values(realCommands));
+    for (const line of io.stdout) {
+      expect(line.length, line).toBeLessThanOrEqual(80);
     }
   });
 });
