@@ -18,6 +18,14 @@ request, so `open()` refuses for now. The adapter doesn't depend on MXC's SDK
 (`@microsoft/mxc-sdk`) yet: until it does, `systemMachine()` reports the SDK as missing, so
 `check()` says `other` on Windows 11.
 
+## Loading MXC's SDK
+
+The SDK is optional and Windows only. `mxcSdkLoader` loads it the first time `offered()` or
+`check()` needs it, never at module top level, and `systemMachine()` keeps the answer for the
+rest of the process. On every other system, and whenever the SDK can't be imported, MXC
+doesn't start: `check()` says `other` on Windows 11. The adapter reads only the SDK's platform
+support and backends. It never turns on the SDK's telemetry.
+
 ## Where MXC is offered
 
 `offered()` is true only on Windows 11 client editions (Home, Pro, Enterprise, build 22000 or
