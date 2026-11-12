@@ -4,6 +4,7 @@
 - Task: HAL-6261 (PR 7d of the settings host API, design on HAL-6159)
 - Approval: Liam approved this part in his review on [HAL-6545](/HAL/issues/HAL-6545) and approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OPUGrhvZopPT1HlhZ4CU3U1KcQNpjUJ8J8/o11io8qzCs3LAY3U38Zu8RakXgwWp6Y84jIjDJ/5Cf66xAXIZAA==
 
 The desktop app now gives each opened folder the shell's host settings, the profile's
 `settings/host.json`. The served Studio has no shell, so it can't reach the profile. Rather than
