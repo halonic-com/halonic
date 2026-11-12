@@ -5,6 +5,9 @@ import { type MxcSdk, supportOf, systemMachine, windowsReleaseOf } from "./machi
 /** A fake SDK reporting `tier`, with the process container's capabilities on that tier. */
 function sdk(tier: string | undefined, capabilities: string[], isSupported = true): MxcSdk {
   return {
+    spawn: async () => {
+      throw new Error("not started in this test");
+    },
     getPlatformSupport: () => ({
       isSupported,
       ...(tier === undefined ? {} : { isolationTier: tier }),
@@ -65,6 +68,7 @@ verifies("sandbox-mxc.offered", () => {
 
     it("reports an SDK whose own calls throw", async () => {
       const throwing: MxcSdk = {
+        ...sdk("base-container", []),
         getPlatformSupport: () => {
           throw new Error("wxc-exec --probe failed");
         },

@@ -1,7 +1,6 @@
 // The Sandbox port on MXC, Windows 11's process container
-// (docs/adr/2026-11-10-mxc-sandbox-backend.md). This first part says where
-// MXC is offered and whether it can start; sessions follow in the next pull
-// request of HAL-3305, so `open` refuses for now.
+// (docs/adr/2026-11-10-mxc-sandbox-backend.md): where MXC is offered, whether
+// it can start, and the sessions it opens.
 
 import type {
   Sandbox,
@@ -10,7 +9,10 @@ import type {
   SandboxProfile,
   SandboxSession,
 } from "@halonicjs/ports";
+import type { BoxFolders } from "./box-folders.ts";
+import { fileDisk, type MxcDisk } from "./disk.ts";
 import type { MxcMachine } from "./machine.ts";
+import { MxcSession } from "./mxc-session.ts";
 
 /** Windows 11's first build. Windows 10 stops below it. */
 const firstWindows11Build = 22000;
@@ -26,14 +28,30 @@ const baseContainer = "base-container";
  * and no session.
  *
  * @example
- * const mxc = new MxcSandbox(systemMachine());
+ * const mxc = new MxcSandbox(systemMachine(), new BoxFolders(dataFolder, process.pid));
  * if (await mxc.offered()) console.log(await mxc.check());
  */
 export class MxcSandbox implements Sandbox {
   readonly #machine: MxcMachine;
+  readonly #boxes: BoxFolders;
+  readonly #disk: MxcDisk;
+  readonly #nodeProgram: string;
 
-  constructor(machine: MxcMachine) {
+  /**
+   * @param machine - what the adapter asks of this computer and MXC's SDK
+   * @param boxes - makes each session's own box folder under Halonic's data folder
+   * @param options.disk - the disk; the real one by default
+   * @param options.nodeProgram - the Node program the fence proof runs as; the one running Halonic by default
+   */
+  constructor(
+    machine: MxcMachine,
+    boxes: BoxFolders,
+    options: { disk?: MxcDisk; nodeProgram?: string } = {},
+  ) {
     this.#machine = machine;
+    this.#boxes = boxes;
+    this.#disk = options.disk ?? fileDisk;
+    this.#nodeProgram = options.nodeProgram ?? process.execPath;
   }
 
   /**
@@ -74,14 +92,29 @@ export class MxcSandbox implements Sandbox {
   }
 
   /**
-   * Opens nothing yet: sessions come in the next pull request of HAL-3305.
+   * Opens a session in a fresh box and proves its fence before anything runs.
+   * A fence that isn't proven opens a session whose `fence` is `not-fenced`
+   * and whose `start` throws.
    *
-   * @throws always: with what is missing when MXC can't start here, else because sessions aren't built yet
+   * @throws when MXC can't start here (see {@link check})
+   * @throws when the profile can't be applied: a non-empty `allowedSites`, `reopenedPaths`, a bridge that isn't a loopback bridge on `127.0.0.1`, or a path MXC can't be given
    */
-  async open(_profile: SandboxProfile): Promise<SandboxSession> {
+  async open(
+    profile: SandboxProfile,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<SandboxSession> {
     const check = await this.check();
     if (!check.ok) throw new Error(`MXC can't start here: ${check.missing.join(" ")}`);
-    throw new Error("MXC sessions aren't built yet (HAL-3305).");
+    return MxcSession.open(
+      profile,
+      {
+        machine: this.#machine,
+        boxes: this.#boxes,
+        disk: this.#disk,
+        nodeProgram: this.#nodeProgram,
+      },
+      options,
+    );
   }
 
   /** Why MXC can't start here, or `null` when it can. Edition first, so other systems never load the SDK. */

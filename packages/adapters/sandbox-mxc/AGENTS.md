@@ -27,7 +27,7 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
   path through `grantPath`; never grant the drive root; a fresh box folder for every session.
 - Never pass `captureDenials` to the SDK: it crashed the host process (HAL-3303).
 - Load MXC's SDK only through `mxcSdkLoader`: on Windows only, on first use, never at module top
-  level (`requirements/sdk-loading.md`). Never pass `telemetry` to the SDK and never call
-  `requestTelemetryConsent` (HAL-7603).
+  level (`requirements/sdk-loading.md`). Pass `telemetry: { enabled: false }` on every `spawn`
+  call and never call `requestTelemetryConsent` (HAL-7603).
 - Never shell out to `cmd /c dir` inside the box, in code or tests: Windows 11 refuses it there.
   Use Node's `readdir`.

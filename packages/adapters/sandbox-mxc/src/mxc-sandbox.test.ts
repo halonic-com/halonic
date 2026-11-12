@@ -2,8 +2,15 @@ import type { SandboxProfile } from "@halonicjs/ports";
 import { sandboxCheckContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { testBoxes } from "./fake-mxc.test-helper.ts";
 import type { MxcMachine, MxcSupport } from "./machine.ts";
+import { MemoryDisk } from "./memory-disk.test-helper.ts";
 import { MxcSandbox } from "./mxc-sandbox.ts";
+
+/** The adapter on `machine`, with box folders on a memory disk. */
+function sandboxOn(machine: MxcMachine): MxcSandbox {
+  return new MxcSandbox(machine, testBoxes(new MemoryDisk()).boxes);
+}
 
 /** What the SDK reports on a computer that offers MXC. */
 const offeringSupport: MxcSupport = { loaded: true, tier: "base-container", loopbackProxy: true };
@@ -17,6 +24,9 @@ function machine(overrides: Partial<MxcMachine> = {}): MxcMachine & { sdkAsked: 
     mxcSupport: async () => {
       asked += 1;
       return offeringSupport;
+    },
+    spawn: async () => {
+      throw new Error("not started in this test");
     },
     ...overrides,
     sdkAsked: () => asked,
@@ -40,14 +50,14 @@ const profile: SandboxProfile = {
 };
 
 sandboxCheckContract("mxc", {
-  make: async () => new MxcSandbox(machine()),
-  makeUnavailable: async () => new MxcSandbox(machine({ platform: "linux" })),
+  make: async () => sandboxOn(machine()),
+  makeUnavailable: async () => sandboxOn(machine({ platform: "linux" })),
 });
 
 verifies("sandbox-mxc.offered", () => {
   describe("MxcSandbox.offered", () => {
     it("is offered on Windows 11 Pro with the BaseContainer tier and the loopback proxy", async () => {
-      expect(await new MxcSandbox(machine()).offered()).toBe(true);
+      expect(await sandboxOn(machine()).offered()).toBe(true);
     });
 
     it.each([
@@ -64,7 +74,7 @@ verifies("sandbox-mxc.offered", () => {
         }),
       ],
     ])("isn't offered on %s, and never asks the SDK", async (_system, on) => {
-      expect(await new MxcSandbox(on).offered()).toBe(false);
+      expect(await sandboxOn(on).offered()).toBe(false);
       expect(on.sdkAsked()).toBe(0);
     });
 
@@ -79,7 +89,7 @@ verifies("sandbox-mxc.offered", () => {
         supporting({ loaded: true, tier: "base-container", loopbackProxy: false }),
       ],
     ])("isn't offered on Windows 11 with %s", async (_tier, on) => {
-      expect(await new MxcSandbox(on).offered()).toBe(false);
+      expect(await sandboxOn(on).offered()).toBe(false);
     });
 
     it("is offered when the SDK can't be loaded, so the check reports the broken install", async () => {
@@ -87,7 +97,7 @@ verifies("sandbox-mxc.offered", () => {
         loaded: false,
         problem: "MXC's SDK can't be loaded or asked: gone",
       });
-      expect(await new MxcSandbox(broken).offered()).toBe(true);
+      expect(await sandboxOn(broken).offered()).toBe(true);
     });
 
     it("isn't offered when the computer can't be examined", async () => {
@@ -96,7 +106,7 @@ verifies("sandbox-mxc.offered", () => {
           throw new Error("acme registry is locked");
         },
       });
-      expect(await new MxcSandbox(unreadable).offered()).toBe(false);
+      expect(await sandboxOn(unreadable).offered()).toBe(false);
     });
   });
 });
@@ -104,7 +114,7 @@ verifies("sandbox-mxc.offered", () => {
 verifies("sandbox-mxc.check", () => {
   describe("MxcSandbox.check", () => {
     it("can start where MXC is offered", async () => {
-      expect(await new MxcSandbox(machine()).check()).toEqual({
+      expect(await sandboxOn(machine()).check()).toEqual({
         ok: true,
         reason: null,
         missing: [],
@@ -136,14 +146,14 @@ verifies("sandbox-mxc.check", () => {
         /loopback proxy/,
       ],
     ])("says `windows` on %s, as plain Windows does", async (_where, on, sentence) => {
-      const check = await new MxcSandbox(on).check();
+      const check = await sandboxOn(on).check();
       expect(check).toMatchObject({ ok: false, reason: "windows" });
       expect(check.missing).toEqual([expect.stringMatching(sentence)]);
     });
 
     it("says `other` when the SDK can't be loaded", async () => {
       const problem = "MXC's SDK can't be loaded or asked: gone";
-      const check = await new MxcSandbox(supporting({ loaded: false, problem })).check();
+      const check = await sandboxOn(supporting({ loaded: false, problem })).check();
       expect(check).toEqual({ ok: false, reason: "other", missing: [problem] });
     });
 
@@ -153,7 +163,7 @@ verifies("sandbox-mxc.check", () => {
           throw new Error("acme probe crashed");
         },
       });
-      const check = await new MxcSandbox(unreadable).check();
+      const check = await sandboxOn(unreadable).check();
       expect(check).toEqual({
         ok: false,
         reason: "other",
@@ -163,7 +173,7 @@ verifies("sandbox-mxc.check", () => {
 
     it("opens no session where MXC can't start", async () => {
       await expect(
-        new MxcSandbox(supporting({ loaded: false, problem: "gone" })).open(profile),
+        sandboxOn(supporting({ loaded: false, problem: "gone" })).open(profile),
       ).rejects.toThrow("MXC can't start here: gone");
     });
   });
@@ -171,6 +181,6 @@ verifies("sandbox-mxc.check", () => {
 
 describe("MxcSandbox.capabilities", () => {
   it("shares files with the host, fenced by the operating system", () => {
-    expect(new MxcSandbox(machine()).capabilities()).toEqual({ files: "shared", strength: "os" });
+    expect(sandboxOn(machine()).capabilities()).toEqual({ files: "shared", strength: "os" });
   });
 });
