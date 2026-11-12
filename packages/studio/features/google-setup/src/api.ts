@@ -2,7 +2,7 @@
  * The services and types other features may use. Features import each
  * other only through this file.
  */
-import type { SetupRecord, SetupService } from "@halonicjs/google-setup";
+import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-setup";
 import type { InboxSetupSource } from "@halonicjs/studio-feature-inbox/api";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
@@ -20,12 +20,23 @@ export interface GoogleSetupAccount {
   readonly routinesOnHold: number;
   /** ISO time the setup, or the connection, last changed. */
   readonly changedAt: string;
+  /**
+   * Whether the item still has to ask "What kind of Google account is …?": true for an address
+   * Studio can't tell (not `@gmail.com`), until the user answers. The record's own type is a
+   * guess until then, so the checklist stays shut.
+   */
+  readonly askAccountType: boolean;
 }
 
 /** The Google accounts of the open workspace. The app provides it. */
 export interface GoogleSetupAccounts {
   /** Every connected account, whether its setup needs you or not. */
   list(): Promise<readonly GoogleSetupAccount[]>;
+  /**
+   * Saves one change to an account's setup record, such as a step done, and tells the listeners.
+   * It rejects when the engine can't save it; nothing changes then.
+   */
+  edit(accountRef: string, edit: SetupEdit): Promise<void>;
   /** Calls `listener` whenever an account may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

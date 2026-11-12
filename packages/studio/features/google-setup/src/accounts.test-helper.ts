@@ -1,4 +1,4 @@
-import type { SetupRecord, SetupService } from "@halonicjs/google-setup";
+import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-setup";
 import type { GoogleSetupAccount, GoogleSetupAccounts } from "./api.ts";
 
 // Invented services, so the tests prove Studio doesn't know Gmail or Drive.
@@ -51,6 +51,7 @@ export function account(
     adding: [],
     routinesOnHold: 0,
     changedAt: at,
+    askAccountType: false,
     ...extra,
   };
 }
@@ -59,8 +60,12 @@ export function account(
 export function fakeAccounts(initial: readonly GoogleSetupAccount[]) {
   let accounts = initial;
   const listeners = new Set<() => void>();
+  const edits: { accountRef: string; edit: SetupEdit }[] = [];
   const source: GoogleSetupAccounts = {
     list: async () => accounts,
+    edit: async (accountRef, edit) => {
+      edits.push({ accountRef, edit });
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -69,6 +74,8 @@ export function fakeAccounts(initial: readonly GoogleSetupAccount[]) {
   return {
     source,
     listeners,
+    /** Every edit the view asked to save, in order. */
+    edits,
     change: (next: readonly GoogleSetupAccount[]) => {
       accounts = next;
       for (const listener of [...listeners]) listener();

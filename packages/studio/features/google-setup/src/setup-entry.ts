@@ -1,5 +1,6 @@
-import { type SetupService, type SetupStep, setupSteps } from "@halonicjs/google-setup";
+import type { SetupService, SetupStep } from "@halonicjs/google-setup";
 import type { SetupEntry } from "@halonicjs/studio-feature-inbox/api";
+import { accountSteps } from "./account-steps.ts";
 import type { GoogleSetupAccount } from "./api.ts";
 import { stepNames } from "./step-names.ts";
 
@@ -15,16 +16,6 @@ function plural(count: number, one: string, many: string): string {
 
 function names(services: readonly SetupService[]): string {
   return new Intl.ListFormat("en").format(services.map((service) => service.label));
-}
-
-function steps(account: GoogleSetupAccount, services: readonly SetupService[]) {
-  return setupSteps({
-    route: account.record.route,
-    accountType: account.record.accountType,
-    account: account.email,
-    ...(account.record.projectId === null ? {} : { projectId: account.record.projectId }),
-    services,
-  }).steps;
 }
 
 function onHold(account: GoogleSetupAccount): string {
@@ -84,7 +75,7 @@ export function setupEntry(
     );
   }
 
-  const all = steps(account, account.services);
+  const all = accountSteps(account, account.services);
   const next = all.find((step) => record.stepsDone[step.id] === undefined);
   if (next !== undefined) {
     return entry(
@@ -93,7 +84,7 @@ export function setupEntry(
     );
   }
   if (account.adding.length > 0) {
-    const count = steps(account, account.adding).filter((step) =>
+    const count = accountSteps(account, account.adding).filter((step) =>
       addServiceSteps.includes(step.id),
     ).length;
     return entry(
