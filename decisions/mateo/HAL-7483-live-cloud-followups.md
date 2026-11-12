@@ -25,3 +25,4 @@ Unit tests for the probe with a fake API (`live-probe.test.ts`) and for the inpu
 
 - .github/
 - tooling/check/
+- check.cloud-affected
