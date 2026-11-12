@@ -151,7 +151,8 @@ await notes.close();
 ```
 
 `folders` makes and deletes the launch folders of pinned programs (`nodeLaunchFolders` puts them in
-the system's temporary folder). `inheritedEnv` is every variable a started program gets besides its own `env` and secrets. The
-example passes the app's whole `process.env`, which suits a program the person trusted directly.
-The connector doesn't trim it: the composition root decides what goes in. Create `runners` once
-for the app's lifetime, so the login shell is asked for its `PATH` once per start.
+the system's temporary folder). `inheritedEnv` is the app's own environment. The example passes the
+whole `process.env`, and the connector trims it: a started program gets only the base
+(`app.connector-base-env`: `PATH`, home, locale, temp, proxy and certificate variables) plus the
+names its connector lists in `inheritEnv`, then its own `env` and secrets. Create `runners` once for
+the app's lifetime, so the login shell is asked for its `PATH` once per start.

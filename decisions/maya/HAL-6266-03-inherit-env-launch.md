@@ -20,6 +20,11 @@ variables a workspace takes (Liam's review: the word test can't catch every secr
 - `cli.trust-check`: a program's row ends "· takes AWS_PROFILE from your environment" after its
   secrets. A detail of the approved trust check, decided by the team (HAL-2282). One clause and one
   example.
+- `app.package-manager-variable`: wording only. It no longer says a pinned launch keeps a preload
+  variable; the base environment (halonic#1971) leaves `LD_PRELOAD` out. The examples stay.
+- The pinned-launch contract now also checks that a key outside the base, `ANTHROPIC_API_KEY`, never
+  reaches a pinned program (Liam's second read of halonic#1971). The mcp README says the connector
+  trims the app's environment.
 
 Nothing is removed and no test is removed or weakened.
 
@@ -30,3 +35,4 @@ Nothing is removed and no test is removed or weakened.
 - memory.connector-client
 - connector-stdio-sandbox.session-start
 - cli.trust-check
+- app.package-manager-variable

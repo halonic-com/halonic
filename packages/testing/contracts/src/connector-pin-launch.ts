@@ -26,14 +26,24 @@ const machineEnv: Readonly<Record<string, string>> = {
 };
 
 /**
+ * A variable of the app's own that isn't in the base environment
+ * (`app.connector-base-env`), as a key the person exported in their shell
+ * would be. A pinned launch never passes it on.
+ */
+const outsideBaseEnv: Readonly<Record<string, string>> = {
+  ANTHROPIC_API_KEY: "contract-host-key",
+};
+
+/**
  * The environment the suite gives the adapter as its own process's: every
  * variable it may not pass on to a pinned program, each set to move the
- * registry or run code first, next to a harmless `PATH` and the machine's
- * own proxy and certificate.
+ * registry or run code first, next to a harmless `PATH`, the machine's own
+ * proxy and certificate, and a key outside the base environment.
  */
 export const contractInheritedEnv: Readonly<Record<string, string>> = {
   PATH: "/usr/bin",
   ...machineEnv,
+  ...outsideBaseEnv,
   npm_config_registry: "https://evil.acme.test/npm",
   NPM_CONFIG_USERCONFIG: "./evil.npmrc",
   NODE_OPTIONS: "--require ./evil.js",
@@ -74,8 +84,8 @@ const blockedPrefixes = [
 /**
  * Expects `launch` to run the pin's package at exactly its version, through
  * a runner of the pin's registry, pointed at `registryUrl`, with none of
- * {@link contractInheritedEnv}'s blocked variables passed on, and the
- * machine's own proxy and certificate kept.
+ * {@link contractInheritedEnv}'s blocked variables or keys outside the base
+ * environment passed on, and the machine's own proxy and certificate kept.
  */
 export function expectSpawnedPinned(launch: ConnectorLaunch, pin: ConnectorPin): void {
   expect(runners[pin.registry].has(programName(launch.command))).toBe(true);
@@ -90,6 +100,7 @@ export function expectSpawnedPinned(launch: ConnectorLaunch, pin: ConnectorPin):
   for (const [name, value] of Object.entries(contractInheritedEnv)) {
     if (isBlocked(name)) expect(launch.env[name]).not.toBe(value);
   }
+  for (const name of Object.keys(outsideBaseEnv)) expect(launch.env[name]).toBeUndefined();
   for (const [name, value] of Object.entries(machineEnv)) expect(launch.env[name]).toBe(value);
 }
 
