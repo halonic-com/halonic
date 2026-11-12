@@ -20,7 +20,11 @@ import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { shownDate } from "../../output/trust-check.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
-import { askToTrustPlugin } from "../../plugin-trust-question.ts";
+import {
+  askToTrustPlugin,
+  brokenPluginError,
+  fingerprintNotCurrent,
+} from "../../plugin-trust-question.ts";
 
 /** The options `--plugin` can't go with: they name workspaces, and a plugin id is never one. */
 const workspaceOptions = ["dir", "list"] as const;
@@ -28,12 +32,12 @@ const workspaceOptions = ["dir", "list"] as const;
 /**
  * Shows the trust check of the plugin `id` and asks whether to trust it and
  * turn it on, or with `--remove` forgets the trust, so it is off. Already on
- * says so and asks nothing.
+ * says so and asks nothing, unless the `--fingerprint` given isn't current.
  *
  * @throws UsageError for `--plugin` with `--dir` or `--list`, or `--yes` without `--fingerprint`
  * @throws KindedError when no plugin has the id, or it can't be read or checked
- * @throws NotTrustedError when it stays off because nobody could answer or the
- *   `--fingerprint` isn't the current one
+ * @throws NotTrustedError when it stays as it is because nobody could answer
+ *   or the `--fingerprint` isn't the current one, also when it is already on
  */
 export async function trustPlugin(
   id: string,
@@ -51,6 +55,12 @@ export async function trustPlugin(
       pluginMessages.trustPluginWithFix(),
     );
   }
+  const service = openPluginService(setup);
+  if (input.options["remove"] === true) {
+    // Like workspace `trust --remove`: nothing is asked, so `--yes` and
+    // `--fingerprint` have nothing to answer and are ignored.
+    return await removeTrust(service, await findPlugin(service, id));
+  }
   if (yes && fingerprint === undefined) {
     throw new UsageError(
       trustMessages.yesNeedsFingerprint(),
@@ -58,17 +68,16 @@ export async function trustPlugin(
     );
   }
 
-  const service = openPluginService(setup);
   const entry = await findPlugin(service, id);
-  if (input.options["remove"] === true) {
-    return await removeTrust(service, entry);
-  }
   if (entry.status === "broken") {
-    throw new KindedError("invalid_input", printable(entry.problems[0]?.message ?? ""), {
-      fix: plainOf(pluginMessages.unknownPluginFix()),
-    });
+    throw brokenPluginError(entry.problems);
   }
   const { plugin } = entry;
+  if (fingerprint !== undefined && fingerprint !== entry.fingerprint) {
+    // Checked before "already on", as workspace `trust` does: a fingerprint
+    // that isn't the current one is never a yes, whatever the state.
+    throw fingerprintNotCurrent(entry);
+  }
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
   if (entry.status === "trusted") {

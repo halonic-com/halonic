@@ -5,11 +5,12 @@
 // exit 3 on No, without a terminal, or for a fingerprint that isn't current.
 // Only the lines around the question differ, so each command passes its own.
 
-import type { PluginEntry, PluginService } from "@halonicjs/app";
+import type { PluginEntry, PluginProblem, PluginService } from "@halonicjs/app";
+import { KindedError } from "@halonicjs/std";
 import type { CommandContext, CommandResult } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
 import type { Message } from "./messages/define.ts";
-import { markPart, phrase } from "./messages/phrase.ts";
+import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
@@ -44,6 +45,8 @@ export interface PluginTrustWords {
  *
  * @throws NotTrustedError when nobody can answer and `--yes --fingerprint`
  *   weren't given, or when the fingerprint given or answered isn't current
+ * @throws KindedError when the files changed during the question into a
+ *   plugin that can't be read or checked
  *
  * @example
  * await askToTrustPlugin(service, entry, { context, yes: false, fingerprint: undefined }, words);
@@ -62,16 +65,8 @@ export async function askToTrustPlugin(
   const name = printable(plugin.name);
   const check = pluginTrustCheckLines(entry.content);
   const fix = pluginMessages.addNoTerminalFix(id);
-  const changed = (shownCheck: typeof check) =>
-    new NotTrustedError({
-      problem: trustMessages.fingerprintChanged(),
-      fix,
-      fingerprint,
-      check: shownCheck,
-      action: trustMessages.action(name),
-    });
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
-    throw changed(check);
+    throw fingerprintNotCurrent(entry);
   }
 
   const trusted = await answer.context.ask({
@@ -97,12 +92,55 @@ export async function askToTrustPlugin(
   }
   const granted = await service.trust(id, fingerprint, "cli");
   if (!granted.ok) {
-    // The files changed between the check and the answer.
-    throw changed([]);
+    // The files changed between the check and the answer: into another
+    // plugin, or into one that can't be read or checked any more.
+    if (granted.error.kind === "broken") {
+      throw brokenPluginError(granted.error.problems);
+    }
+    throw fingerprintNotCurrent(entry, { check: [], fingerprint: granted.error.fingerprint });
   }
   return {
     exitCode: exitCode.ok,
     lines: [phrase`${markPart("done")} ${words.on.phrase}`],
     json: { ...json, status: "on" },
   };
+}
+
+/** A plugin that was read and checked, trusted or not. */
+type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
+
+/**
+ * "✕ Couldn't trust Weather: it changed since that fingerprint was made.",
+ * leaving the plugin as it is (exit 3). The refusal ends with the fingerprint
+ * the plugin has now, as a check run now would, so a script can pass it to
+ * `--yes --fingerprint` after a review.
+ *
+ * @param now - what changed during the question: no check to show again and
+ *   the fingerprint the files have now; by default, the entry's own
+ */
+export function fingerprintNotCurrent(
+  entry: CheckedPlugin,
+  now: { readonly check: readonly Phrase[]; readonly fingerprint: string } = {
+    check: pluginTrustCheckLines(entry.content),
+    fingerprint: entry.fingerprint,
+  },
+): NotTrustedError {
+  return new NotTrustedError({
+    problem: trustMessages.fingerprintChanged(),
+    fix: pluginMessages.addNoTerminalFix(entry.folder),
+    fingerprint: now.fingerprint,
+    check: now.check,
+    // The manifest's name is outside text (cli-output 5).
+    action: trustMessages.action(printable(entry.plugin.name)),
+  });
+}
+
+/**
+ * The refusal to trust a plugin that can't be read or checked: its first
+ * problem's own words, and how to see the plugins (exit 2).
+ */
+export function brokenPluginError(problems: readonly PluginProblem[]): KindedError {
+  return new KindedError("invalid_input", printable(problems[0]?.message ?? ""), {
+    fix: plainText(pluginMessages.unknownPluginFix().phrase),
+  });
 }

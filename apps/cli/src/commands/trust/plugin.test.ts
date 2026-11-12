@@ -84,6 +84,9 @@ async function trust(args: readonly string[], terminal?: Terminal) {
   return { code, io };
 }
 
+/** Weather's folder in the profile, once it is added. */
+const weatherFolder = () => join(folder, "profile", "plugins", "weather");
+
 const plugins = async () => (await openPluginService(setup).load()).map((entry) => entry.status);
 
 verifies("cli.commands.trust.plugin", () => {
@@ -195,6 +198,113 @@ verifies("cli.commands.trust.plugin", () => {
     expect(io.stdout).toEqual([
       "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.",
     ]);
+    expect(await plugins()).toEqual(["new"]);
+  });
+
+  it("leaves it off and exits 3 on Enter, the empty answer", async () => {
+    await addWeatherOff();
+    const { terminal } = terminalTyping("");
+
+    const { code, io } = await trust(["--plugin", "weather"], terminal);
+
+    expect(code).toBe(exitCode.notTrusted);
+    expect(io.stdout).toEqual(["! Weather is still off. Nothing from it runs until you trust it."]);
+    expect(await plugins()).toEqual(["new"]);
+  });
+
+  it("asks nothing with CI set, even in a terminal, and leaves it off with the fingerprint last", async () => {
+    const added = await addWeatherOff();
+    const { terminal, written } = terminalTyping("y");
+    const inCi = { ...terminal, env: { ...terminal.env, CI: "true" } };
+
+    const { code, io } = await trust(["--plugin", "weather"], inCi);
+
+    expect(code).toBe(exitCode.notTrusted);
+    expect(written()).toBe("");
+    expect(io.stderr.join("\n")).toContain("there's no terminal to ask you to trust it.");
+    expect(io.stdout).toEqual([added]);
+    expect(await plugins()).toEqual(["new"]);
+  });
+
+  it("trusts nothing when the files change during the question, and gives their fingerprint now", async () => {
+    const shown = await addWeatherOff();
+    const terminal: Terminal = {
+      ...terminalTyping().terminal,
+      questions: {
+        write: () => undefined,
+        readLine: async () => {
+          await writeFile(join(weatherFolder(), "backend", "index.js"), "export default 1;\n");
+          return "y";
+        },
+      },
+    };
+
+    const { code, io } = await trust(["--plugin", "weather"], terminal);
+
+    const [now] = await openPluginService(setup).load();
+    const current = now?.status === "new" ? now.fingerprint : "";
+    expect(code).toBe(exitCode.notTrusted);
+    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(current).toMatch(fullFingerprint);
+    expect(current).not.toBe(shown);
+    expect(io.stdout.at(-1)).toBe(current);
+  });
+
+  it("exits 3 for a --fingerprint that isn't the current one, also when it's already on", async () => {
+    const fingerprint = await addWeatherOff();
+    await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
+
+    const { code, io } = await trust([
+      "--plugin",
+      "weather",
+      "--yes",
+      "--fingerprint",
+      `hpf1:${"0".repeat(64)}`,
+    ]);
+
+    expect(code).toBe(exitCode.notTrusted);
+    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(io.stdout.at(-1)).toBe(fingerprint);
+    expect(await plugins()).toEqual(["trusted"]);
+  });
+
+  it("refuses a plugin that can't be read or checked, and trusts nothing", async () => {
+    await addWeatherOff();
+    await writeFile(join(weatherFolder(), "plugin.yaml"), "id: [weather\n");
+
+    const { code, io } = await trust(["--plugin", "weather"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.join("\n")).toContain("See them with halonic plugin list.");
+    expect(await plugins()).toEqual(["broken"]);
+  });
+
+  it("refuses --plugin with --list as wrong usage", async () => {
+    await addWeatherOff();
+
+    const { code, io } = await trust(["--plugin", "weather", "--list"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.join("\n")).toContain("--plugin can't go with --list.");
+  });
+
+  it("ignores --yes with --remove, as workspace trust does", async () => {
+    const fingerprint = await addWeatherOff();
+    await trust(["--plugin", "weather", "--yes", "--fingerprint", fingerprint]);
+
+    const { code } = await trust(["--plugin", "weather", "--remove", "--yes"]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(await plugins()).toEqual(["new"]);
+  });
+
+  it("names no plugin for --remove on an id that isn't added", async () => {
+    await addWeatherOff();
+
+    const { code, io } = await trust(["--plugin", "nothing-here", "--remove"]);
+
+    expect(code).toBe(exitCode.notFound);
+    expect(io.stderr.join("\n")).toContain(`there's no plugin called "nothing-here".`);
     expect(await plugins()).toEqual(["new"]);
   });
 });
