@@ -252,7 +252,7 @@ function notTrustedMessage(
     case "changed":
       return `The plugin ${plugin} changed since you trusted it, so its backend doesn't start. Review what changed and trust it again with halonic trust --plugin ${plugin}.`;
     case "record-unreadable":
-      return `The plugin ${plugin} doesn't start: its trust record can't be read. Trust it again with halonic trust --plugin ${plugin}.`;
+      return `The plugin ${plugin} doesn't start: Halonic can't read its trust record. Trust it again with halonic trust --plugin ${plugin}, which writes the record again.`;
     case "not-checked":
       return `The plugin ${plugin} doesn't start: Halonic couldn't check whether you trust it. See where it stands with halonic plugin list.`;
   }

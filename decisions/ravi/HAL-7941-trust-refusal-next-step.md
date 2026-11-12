@@ -2,7 +2,7 @@
 
 - Task: HAL-7941
 - Approval: the team's call on [HAL-7941](/HAL/issues/HAL-7941), from Sofia's UX check on HAL-7925 and Mara's notes on halonic#2294
-- Kind: user-visible
+- Kind: internal
 - Signature: PENDING
 
 ## What changes
@@ -11,7 +11,7 @@
 `record-unreadable` say `halonic trust --plugin <id>` (cli-output 3.10); for `record-unreadable`
 trusting writes the record again, so it is no dead end. A trust status the code doesn't know
 refuses with the new reason `not-checked` and a neutral message, because the person may have
-trusted the plugin. The command line gets a catalogue entry for each of these, and for
+trusted the plugin. The command line gets catalogue entries for `not-trusted`, `changed`, `record-unreadable` and `not-checked`, and for
 `plugin-secret-name-missing`.
 
 ## Covers
