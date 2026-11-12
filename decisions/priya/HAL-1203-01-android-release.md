@@ -6,19 +6,25 @@
 
 ## What changes
 
-A new `play` job in `.github/workflows/android-play.yml`, after `sign`. No other workflow changes.
+Two new jobs in `.github/workflows/android-play.yml`, after `sign`: `play-upload` and `play-apk`.
+The only other change is that `build` also outputs its version code.
 
-- It runs only when `sign` ran, so only from `main` and never in a dry run or on a pull request.
-- It runs in the `release` environment, the only one Play's identity provider accepts, and is the
-  only job with `id-token: write`. It signs in with `google-github-actions/auth`, as the board
-  directed; no key file exists. It never sees the upload key.
-- It stops with a clear message when `PLAY_WIF_PROVIDER`, `PLAY_SERVICE_ACCOUNT` or
-  `PLAY_APP_SIGNING_CERT_SHA256` is empty.
-- In one Play edit it uploads the signed bundle as a draft on the internal testing track. Play
-  accepts only drafts while the app has never been published.
-- It waits up to 10 minutes for Play's signed universal APK (`generatedApks`), downloads it and
-  fails unless `apksigner` shows exactly Play's app signing certificate. It also checks the package,
-  the version code, `usesCleartextTraffic=true` (HAL-1140) and `allowBackup=false`.
+- They run only when `sign` ran, so only from `main` and never in a dry run or on a pull request.
+- They run in the `release` environment, the only one Play's identity provider accepts, and are
+  the only jobs with `id-token: write`. They sign in with `google-github-actions/auth`, as the
+  board directed; no key file exists. That environment also holds the upload key's secrets; the
+  jobs never read them, and the workflow says so, so nobody adds them later.
+- `play-upload` stops with a clear message when `PLAY_WIF_PROVIDER`, `PLAY_SERVICE_ACCOUNT` or
+  `PLAY_APP_SIGNING_CERT_SHA256` is empty. In one Play edit it uploads the signed bundle as a draft
+  on the internal testing track (Play accepts only drafts while the app has never been
+  published). It fails on any empty or `null` answer from Play and when Play's version code
+  differs from the build's.
+- `play-apk` waits up to 10 minutes for Play's signed universal APK (`generatedApks`), downloads
+  it and fails unless `apksigner` shows exactly Play's app signing certificate. It also checks the
+  package, the version code, `usesCleartextTraffic=true` (HAL-1140) and `allowBackup=false`.
+- Two jobs because Play never takes a version code twice: if Play is slow, "Re-run failed jobs"
+  repeats only the download, not the upload.
+- Both jobs use `bash` with `pipefail`, so a failed request stops the step where it failed.
 
 ## Why
 
