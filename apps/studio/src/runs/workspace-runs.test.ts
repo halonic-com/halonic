@@ -67,7 +67,7 @@ async function waitingRun() {
 }
 
 verifies("studio.workspace-runs", () => {
-  it("lists the workspace's runs with their workflow's name, steps and currency, and reads a run's log", async () => {
+  it("lists the workspace's runs with their workflow's name, steps and currency", async () => {
     const { engine, runId } = await waitingRun();
     const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
 
@@ -80,9 +80,6 @@ verifies("studio.workspace-runs", () => {
     );
     expect(runs.workflow("acme", "gone")).toBeUndefined();
     expect(runs.currency()).toBe("USD");
-    const log = await runs.log(runId);
-    expect(log[0]?.type).toBe("run.started");
-    expect(log.at(-1)?.seq).toBe(listed[0]?.summary.lastSeq);
   });
 
   it("names the routine a run's trigger names, and says when it runs", async () => {
@@ -239,5 +236,18 @@ verifies("studio.workspace-runs", () => {
     await settled();
 
     expect(heard).toHaveBeenCalledTimes(1);
+  });
+});
+
+verifies("studio.run-log", () => {
+  it("reads a run's whole log", async () => {
+    const { engine, runId } = await waitingRun();
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
+
+    const listed = await runs.list();
+    const log = await runs.log(runId);
+
+    expect(log[0]?.type).toBe("run.started");
+    expect(log.at(-1)?.seq).toBe(listed[0]?.summary.lastSeq);
   });
 });

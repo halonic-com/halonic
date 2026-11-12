@@ -180,3 +180,14 @@ verifies("app.run-steps", () => {
     });
   });
 });
+
+verifies("app.run-step-entered", () => {
+  it("says when the run entered each step", () => {
+    const steps = stepsOf([...upToReview]);
+    expect(steps.map((step) => step.startedAt)).toEqual([
+      "2026-11-10T14:00:00.000Z",
+      "2026-11-10T14:00:01.000Z",
+      "2026-11-10T14:00:10.000Z",
+    ]);
+  });
+});
