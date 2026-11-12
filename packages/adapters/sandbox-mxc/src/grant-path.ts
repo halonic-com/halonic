@@ -1,6 +1,7 @@
 // How the adapter writes the paths it hands MXC, following the grant rules
 // from HAL-3503 (docs/adr/2026-11-10-mxc-sandbox-backend.md, "How the adapter
-// runs a program"): grants name folders, never single files; every path is a
+// runs a program"): grants name folders, never single files (HAL-7841 copies a
+// read-only file into a folder the box owns); every path is a
 // plain absolute Windows path; and the drive root is never granted.
 
 import { win32 } from "node:path";
@@ -74,37 +75,39 @@ function refuseWhatWindowsRenames(normal: string, path: string): void {
   }
 }
 
+/** What a profile's `readOnlyPaths` come to: folders MXC can grant, and files it can't. */
+export interface ReadOnlyGrants {
+  /** Folders to grant read-only, in {@link grantPath} form, without duplicates. */
+  folders: string[];
+  /** Single files, in {@link grantPath} form, without duplicates. MXC grants only folders, so the session copies them into a folder it owns. */
+  files: string[];
+}
+
 /**
- * The read-only folders to grant for a profile's `readOnlyPaths` (rule 1):
- * each one in {@link grantPath} form, without duplicates, and without paths
- * that aren't there, since there is nothing to read. MXC refuses a read-only
- * grant on a single file, so a file is refused here with a sentence that
- * names it, and never widened to the folder it is in: that would let the
- * program read the file's neighbours too.
+ * Sorts a profile's `readOnlyPaths` into folders to grant (rule 1) and files
+ * to copy, each in {@link grantPath} form and without duplicates. Paths that
+ * aren't there are left out, since there is nothing to read. MXC refuses a
+ * read-only grant on a single file, and the folder around a file is never
+ * granted instead: that would let the program read the file's neighbours too.
  *
  * @example
- * await readOnlyFolders(["C:/acme/tools/", "C:\\acme\\tools"], disk); // ["C:\\acme\\tools"] (leak-guard: allow absolute-path made-up example path)
+ * await readOnlyGrants(["C:/acme/tools/", "C:\\acme\\tools\\a.json"], disk); // { folders: ["C:\\acme\\tools"], files: ["C:\\acme\\tools\\a.json"] } (leak-guard: allow absolute-path made-up example path)
  *
- * @throws when a path is a file, or isn't a path {@link grantPath} takes
+ * @throws when a path isn't one {@link grantPath} takes
  */
-export async function readOnlyFolders(
+export async function readOnlyGrants(
   paths: readonly string[],
   disk: GrantDisk,
-): Promise<string[]> {
-  const folders: string[] = [];
+): Promise<ReadOnlyGrants> {
+  const grants: ReadOnlyGrants = { folders: [], files: [] };
   for (const path of paths) {
     const grant = grantPath(path);
-    if (folders.includes(grant)) continue;
+    if (grants.folders.includes(grant) || grants.files.includes(grant)) continue;
     const kind = await disk.kind(grant);
-    if (kind === "missing") continue;
-    if (kind === "file") {
-      throw new Error(
-        `MXC grants only folders, and the read-only path "${grant}" is a file. Copy it into a folder the box owns; the adapter never grants the folder around it instead.`,
-      );
-    }
-    folders.push(grant);
+    if (kind === "folder") grants.folders.push(grant);
+    if (kind === "file") grants.files.push(grant);
   }
-  return folders;
+  return grants;
 }
 
 /**

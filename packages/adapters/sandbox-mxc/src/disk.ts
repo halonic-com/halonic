@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import type { GrantDisk } from "./grant-path.ts";
 
 /**
@@ -13,6 +13,8 @@ export interface MxcDisk extends GrantDisk {
   writeText(path: string, text: string): Promise<void>;
   /** A text file's content, or `null` when it isn't there. */
   readText(path: string): Promise<string | null>;
+  /** Copies a file to `to`, replacing one that is there. The folder of `to` must exist. */
+  copyFile(from: string, to: string): Promise<void>;
   /** Removes a file or folder; nothing happens when it isn't there. */
   remove(path: string): Promise<void>;
 }
@@ -31,6 +33,7 @@ export const fileDisk: MxcDisk = {
     await mkdir(path, { recursive: true });
   },
   writeText: (path, text) => writeFile(path, text),
+  copyFile: (from, to) => copyFile(from, to),
   readText: async (path) => {
     try {
       return await readFile(path, "utf8");

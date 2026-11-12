@@ -35,6 +35,12 @@ export class MemoryDisk implements MxcDisk {
     this.#files.set(key(path), text);
   }
 
+  async copyFile(from: string, to: string): Promise<void> {
+    const text = this.#files.get(key(from));
+    if (text === undefined) throw new Error(`no file ${from}`);
+    await this.writeText(to, text);
+  }
+
   async readText(path: string): Promise<string | null> {
     return this.#files.get(key(path)) ?? null;
   }
