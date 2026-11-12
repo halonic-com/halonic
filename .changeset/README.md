@@ -9,9 +9,10 @@ would understand. If they won't notice it, write "None (no user-visible
 change)". The sentence goes in the Changeset section of the pull request
 template.
 
-For the Studio app, also add the sentence as a changeset file with
-`pnpm changeset` and pick `@halonicjs/app-studio`. The CLI has no package
-yet; until it does, only the pull request template collects its sentences.
+Also add the sentence as a changeset file with `pnpm changeset` and pick
+`@halonicjs/app-studio`. This goes for the CLI too: it has no versioned
+package yet, so its changes go into the app's changelog, which is
+Halonic's one changelog.
 
 Good: `Routines now fire interval triggers at the right time.`
 Not good: `Fix off-by-one in tick().`
@@ -45,8 +46,8 @@ the release decision: the run finds that the merged pull request is titled
 tags the merge commit `v<version>`. Changing the version in any other pull
 request never makes a tag.
 
-The first release, 0.1.0, has no Version packages pull request: the app
-already has 0.1.0 and no changeset is waiting. It goes out as a hand-made
-pull request titled "chore(release): Halonic 0.1.0" that writes the 0.1.0
-section of `apps/studio/CHANGELOG.md`. Until it is merged, don't add a
-changeset for the app: the bot would open a pull request for 0.1.1 or 0.2.0.
+The first release, 0.1.0, had no Version packages pull request: it went
+out as the hand-made pull request "chore(release): Halonic 0.1.0", which
+wrote the 0.1.0 section of `apps/studio/CHANGELOG.md`. Every release after
+it is made from changesets. Use `patch` until the board decides otherwise
+for a release.
