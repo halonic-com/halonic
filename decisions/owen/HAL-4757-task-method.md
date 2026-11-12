@@ -1,7 +1,7 @@
 # Decision: a method prompt names its fields in name order
 
 - Approval: [HAL-4757](/HAL/issues/HAL-4757) asks for this change; Liam approves it in review
-- Kind: user-visible
+- Kind: internal
 
 ## What changes
 
