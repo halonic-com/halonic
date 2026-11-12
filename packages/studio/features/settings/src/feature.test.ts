@@ -23,14 +23,20 @@ describe("settingsFeature", () => {
 
 verifies("settings.feature", () => {
   it("adds every section in its list to Settings", () => {
-    const shell = createShell({ features: [settingsFeature], hostServices: [DisplaySettingsService] });
+    const shell = createShell({
+      features: [settingsFeature],
+      hostServices: [DisplaySettingsService],
+    });
 
     const ids = shell.contributions.settings.list().map((section) => section.id);
     expect(ids.sort()).toEqual(settingsSections.map((section) => section.id).sort());
   });
 
   it("opens Settings from the command Settings", async () => {
-    const shell = createShell({ features: [settingsFeature], hostServices: [DisplaySettingsService] });
+    const shell = createShell({
+      features: [settingsFeature],
+      hostServices: [DisplaySettingsService],
+    });
     const opened: (string | undefined)[] = [];
     const context = {
       openSettings: (sectionId?: string) => opened.push(sectionId),

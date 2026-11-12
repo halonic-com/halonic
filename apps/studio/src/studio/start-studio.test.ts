@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-settings";
+import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
 import { createShell, defineFeature } from "@halonicjs/studio-shell";
@@ -214,7 +216,7 @@ verifies("studio.open-folder", () => {
   it("gives an opened workspace the keychain as its secrets, before its features' services", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-    const opened = openFolder(shell, webview.page, "/work/acme");
+    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     await opened.workspace.services.get(secretsKey).get("openai");
     expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
@@ -226,7 +228,7 @@ verifies("studio.open-folder", () => {
   it("gives an opened workspace the profile's host settings through the shell", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-    const opened = openFolder(shell, webview.page, "/work/acme");
+    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     await opened.workspace.services.get(hostSettingsStoreKey).remove("assistant.turn-limit");
     expect(webview.calls.at(-1)).toEqual({
@@ -254,7 +256,7 @@ const sandboxFeature = defineFeature({
 });
 
 verifies("studio.settings", () => {
-  it("opens Settings on Ctrl , with a host section under On this computer", async () => {
+  it("opens Settings on Ctrl , with Appearance and a host section under On this computer", async () => {
     started = startStudio(
       {
         element,
@@ -273,13 +275,14 @@ verifies("studio.settings", () => {
     );
 
     await vi.waitFor(() => {
-      expect(document.querySelector("dialog[open] section h3")?.textContent).toBe("Agent sandbox");
+      expect(document.querySelector("dialog[open] section h3")?.textContent).toBe("Appearance");
     });
     const nav = document.querySelector("dialog[open] nav");
     expect([...(nav?.querySelectorAll("h3") ?? [])].map((h) => h.textContent)).toEqual([
       "On this computer",
     ]);
-    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe("Agent sandbox");
+    expect(nav?.textContent).toContain("Agent sandbox");
+    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe("Appearance");
   });
 
   it("registers Settings and its command in the desktop app", () => {
@@ -289,3 +292,34 @@ verifies("studio.settings", () => {
     expect(shell.contributions.commands.get("settings.open")?.title).toBe("Settings");
   });
 });
+
+verifies("studio.window-appearance", () => {
+  it("gives an opened workspace the window's display settings", async () => {
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const display = displaySettings();
+    const opened = openFolder(shell, desktopWebview(null).page, "/work/acme", display);
+
+    expect(opened.workspace.services.get(DisplaySettingsService)).toBe(display);
+    await opened.dispose();
+  });
+
+  it("shows the window's stored Appearance on the page, for every folder open in it", async () => {
+    const storage = memoryStorage();
+    storage.setItem("halonic.settings.appearance.theme", JSON.stringify("dark"));
+    started = startStudio({
+      element,
+      window: desktopWebview("/work/acme").page,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage,
+    });
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("style");
+  });
+});
+
+/** Display settings over storage of their own, as the desktop app makes one per window. */
+function displaySettings(): DisplaySettings {
+  return new DisplaySettings(new BrowserDisplayPrefs(memoryStorage(), new EventTarget()));
+}

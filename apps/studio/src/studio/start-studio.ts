@@ -9,7 +9,13 @@ import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
-import { settingsFeature } from "@halonicjs/studio-feature-settings";
+import {
+  BrowserDisplayPrefs,
+  DisplaySettings,
+  settingsFeature,
+  watchAppearance,
+} from "@halonicjs/studio-feature-settings";
+import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -133,7 +139,7 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [inboxFeature, runsFeature, settingsFeature],
-  hostServices: [InboxRunsService, RunsSourceService],
+  hostServices: [InboxRunsService, RunsSourceService, DisplaySettingsService],
 };
 
 /**
@@ -160,10 +166,12 @@ interface DesktopParts {
  * a Recent row reopens its folder in the shell first and Remove from Recent forgets it there.
  */
 function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopParts): StartedStudio {
+  const display = displaySettingsOf(page);
+  const stopAppearance = watchAppearance(display, rootOf(page.element));
   const picked = new TauriPickedFolders(ipc);
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
-    openFolder: async (location) => openFolder(shell, page.window, location),
+    openFolder: async (location) => openFolder(shell, page.window, location, display),
     reopenFolder: (location) => picked.reopen(location),
     forgetFolder: (location) => picked.forget(location),
     recent: new RecentWorkspaces(page.storage ?? noStorage),
@@ -179,6 +187,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     host: "desktop-app",
     stop: async () => {
       window.unmount();
+      stopAppearance();
       await switcher.dispose();
     },
   };
@@ -189,12 +198,19 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
  * and tokens before any feature's services are built, so no token lands in the data folder
  * (threat model 4.4, HAL-2952), and the profile's `settings/host.json` its host settings
  * (HAL-6261). In the shell, its runs are the run logs in the folder's run folder, the ones the
- * CLI writes (`studio.workspace-runs`). Its name is the folder's until the workspace's files are
- * read (HAL-3335).
+ * CLI writes (`studio.workspace-runs`). Its display settings are the window's `display`, the same
+ * for every folder open in it. Its name is the folder's until the workspace's files are read
+ * (HAL-3335).
  */
-export function openFolder(shell: Shell, window: object, location: string): OpenedWorkspace {
+export function openFolder(
+  shell: Shell,
+  window: object,
+  location: string,
+  display: DisplaySettings,
+): OpenedWorkspace {
   const name = folderName(location);
   const services = new ServiceRegistry();
+  services.provide(DisplaySettingsService, display);
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   provideWorkspaceRuns(services, window, location);
@@ -228,6 +244,21 @@ function focusOf(window: object, listener: () => void): () => void {
   if (!(window instanceof EventTarget)) return () => {};
   window.addEventListener("focus", listener);
   return () => window.removeEventListener("focus", listener);
+}
+
+/**
+ * The window's display settings, one for every workspace in it, so a change in Settings reaches
+ * the whole window at once. They are kept in the page's storage until the app profile keeps them
+ * (HAL-1294 plan); a change in another window comes in through the page's `storage` event.
+ */
+function displaySettingsOf(page: StudioPage): DisplaySettings {
+  const events = page.window instanceof EventTarget ? page.window : new EventTarget();
+  return new DisplaySettings(new BrowserDisplayPrefs(page.storage ?? noStorage, events));
+}
+
+/** The page's `<html>`, where the Appearance settings show, so the whole window follows them. */
+function rootOf(element: Element): HTMLElement {
+  return element.ownerDocument.documentElement;
 }
 
 /** The shell's folder picker: the picked folder's location, or `undefined` when cancelled. */

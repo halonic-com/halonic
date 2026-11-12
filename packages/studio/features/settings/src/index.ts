@@ -14,7 +14,7 @@ export {
   themes,
 } from "./appearance/appearance-prefs.ts";
 export { watchAppearance } from "./appearance/apply-appearance.ts";
-export { BrowserDisplayPrefs } from "./browser-display-prefs.ts";
+export { BrowserDisplayPrefs, type DisplayStorage } from "./browser-display-prefs.ts";
 export type { DisplayPref, DisplayPrefs } from "./display-prefs.ts";
 export { DisplaySettings, type SaveOutcome } from "./display-settings.ts";
 export { settingsFeature } from "./feature.ts";
