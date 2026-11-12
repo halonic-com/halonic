@@ -7,13 +7,24 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
+    "esbuild": "catalog:",
+    "miniflare": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

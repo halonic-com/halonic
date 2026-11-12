@@ -37,10 +37,44 @@ The shim has only what the bundled suites use:
   the allowed names from the shim's own exports. The Worker's build will
   fail on them.
 
+How a run goes:
+
+1. `buildTestWorker` bundles `src/worker/test-worker.ts` with the suite files
+   you name (esbuild, every `import … from "vitest"` pointed at the shim).
+   Contract suite files are marked free of side effects, so only the suites
+   the Worker runs end up in the bundle and in the matcher check.
+2. `WorkerdRunner` starts the Worker in a local workerd through Miniflare,
+   with all storage in memory. Each test file gets its own workerd, so it
+   starts with empty D1, R2, KV and Durable Object storage. Always stop it.
+3. The Worker lists its cases (`GET /cases`) and runs one per request
+   (`POST /run`).
+4. `runSuitesInWorkerd` turns every case into a Vitest test under the same
+   `describe` blocks and requirement tags, with the case's assertion count,
+   so the trace check and the requirement guard read the results as usual.
+   A failure shows workerd's message and stack.
+
+The code under `src/worker` runs in workerd and is typechecked against
+`@cloudflare/workers-types` (`tsconfig.worker.json`); `src/node` runs in Node.
+`miniflare`, `esbuild` and this package are test tooling and never ship in a
+runtime bundle.
+
 ## Example
 
-```ts
-import { missingShimApis } from "@halonicjs/target-cloudflare-testing";
+A suite file registers cases by calling a contract suite:
 
-missingShimApis("expect(list).toHaveLength(2);"); // ["toHaveLength"]
+```ts
+// src/worker/suites/clock.ts
+import { systemClock } from "@halonicjs/std";
+import { clockContract } from "@halonicjs/testing-contracts";
+
+clockContract("workerd system clock", async () => systemClock);
+```
+
+A test file runs it inside workerd:
+
+```ts
+// src/clock.test.ts
+import { runSuitesInWorkerd } from "./index.ts";
+
+await runSuitesInWorkerd([new URL("./worker/suites/clock.ts", import.meta.url)]);
 ```
