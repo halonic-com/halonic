@@ -146,6 +146,8 @@ export interface RunsSetup {
   readonly localOnly?: boolean;
   /** The model every call resolves to, with its fallbacks; the scripted model when left out. */
   readonly model?: ResolvedModel;
+  /** The alias and secret of the scripted model, whose secret is never set; neither when left out. */
+  readonly scriptedAlias?: { readonly alias: string; readonly secret: string };
   /** How a model call's stop becomes an `AbortSignal`; model calls get none when left out. */
   readonly abortOnStop?: AbortOnStop;
   /** Gets each request the executor resolves a model for, such as a method's alias. */
@@ -183,6 +185,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
         setup.model ?? {
           provider: model,
           model: "scripted-1",
+          ...setup.scriptedAlias,
           ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
           ...(setup.localOnly === true ? { local: true } : {}),
           ...(setup.price === undefined ? {} : { price: setup.price }),
