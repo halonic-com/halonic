@@ -1,8 +1,9 @@
-//! The `pick_folder` and `trust_*` commands (HAL-2612): the folder picker,
-//! and the trust records `TauriTrustStore` in `packages/adapters/fs-tauri`
-//! keeps through the shell. The records are the CLI's own: `FileTrustStore`
-//! in the profile's `trust` folder, found as `@halonicjs/profile` finds it
-//! (`profile.rs`).
+//! The `pick_folder`, `reopen_folder`, `forget_folder` and `trust_*`
+//! commands (HAL-2612, HAL-6637): the folder picker, the picked folders the
+//! shell remembers across restarts, and the trust records `TauriTrustStore`
+//! in `packages/adapters/fs-tauri` keeps through the shell. The records are
+//! the CLI's own: `FileTrustStore` in the profile's `trust` folder, found as
+//! `@halonicjs/profile` finds it (`profile.rs`).
 //! Which folder a grant may open is in the `halonic-trust-grant` crate; this
 //! file wires its rules to the profile, the opened folders and the native
 //! dialogs, and runs every call off the main thread.
@@ -12,7 +13,8 @@
 
 use std::path::PathBuf;
 
-use halonic_trust_grant::{TrustRefusal, TrustState};
+use halonic_profile::join_path;
+use halonic_trust_grant::{PickedFolders, TrustRefusal, TrustState};
 use halonic_trust_store::FileTrustStore;
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
@@ -25,6 +27,19 @@ use crate::profile::cli_profile;
 fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustStore, TrustRefusal> {
     let profile = cli_profile(app).map_err(TrustRefusal::io)?;
     Ok(FileTrustStore::new(PathBuf::from(profile.trust_folder())))
+}
+
+/// The folders the person picked, which the shell remembers in the profile
+/// so it can open them again after a restart (HAL-6637). Only the shell
+/// reads and writes this file; the CLI has no use for it.
+fn picked_folders<R: Runtime>(app: &AppHandle<R>) -> Result<PickedFolders, TrustRefusal> {
+    let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+    let file = join_path(
+        profile.platform,
+        &profile.root,
+        &["studio", "picked-folders.json"],
+    );
+    Ok(PickedFolders::new(file))
 }
 
 /// Runs one call on a worker thread: it reads and writes the profile, and a
@@ -42,12 +57,55 @@ where
 
 /// Shows the folder picker and opens the folder the person picks. Answers
 /// its location, as grants give it, or `null` when they pick nothing.
+///
+/// The pick is remembered in the profile, so `reopen_folder` can open the
+/// folder after a restart. If that fails, the folder is still open for now,
+/// so the pick isn't refused; why goes to the log.
 #[tauri::command]
 pub async fn pick_folder<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>, TrustRefusal> {
     on_worker(app, |app| {
         let folders = app.state::<GitState>().folders();
         let state = app.state::<TrustState>();
-        state.pick(&folders, || show_folder_picker(app))
+        let location = state.pick(&folders, || show_folder_picker(app))?;
+        if let Some(location) = &location {
+            let remembered =
+                picked_folders(app).and_then(|list| state.remember_pick(&list, location));
+            if let Err(refusal) = remembered {
+                eprintln!("pick_folder: {location:?} can't be remembered: {refusal:?}");
+            }
+        }
+        Ok(location)
+    })
+    .await
+}
+
+/// Opens a folder the person picked before, after a restart, without the
+/// dialog: only a location the shell remembered from a pick, and only while
+/// it is still that folder (see `TrustState::reopen`).
+#[tauri::command]
+pub async fn reopen_folder<R: Runtime>(
+    app: AppHandle<R>,
+    location: String,
+) -> Result<(), TrustRefusal> {
+    on_worker(app, move |app| {
+        let list = picked_folders(app)?;
+        let folders = app.state::<GitState>().folders();
+        app.state::<TrustState>().reopen(&folders, &list, &location)
+    })
+    .await
+}
+
+/// Forgets a folder the person picked and closes it, as removing it from
+/// Recent does. Its trust record stays. No error when there is none.
+#[tauri::command]
+pub async fn forget_folder<R: Runtime>(
+    app: AppHandle<R>,
+    location: String,
+) -> Result<(), TrustRefusal> {
+    on_worker(app, move |app| {
+        let list = picked_folders(app)?;
+        let folders = app.state::<GitState>().folders();
+        app.state::<TrustState>().forget(&folders, &list, &location)
     })
     .await
 }

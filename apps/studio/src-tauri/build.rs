@@ -17,6 +17,8 @@ fn main() {
         "trust_list",
         "trust_grant",
         "trust_revoke",
+        "reopen_folder",
+        "forget_folder",
         "run_append",
         "run_events",
         "run_snapshot",

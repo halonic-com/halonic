@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
@@ -7,6 +8,7 @@ use halonic_git_guard::{OpenedFolders, plain_path};
 use halonic_trust_store::FileTrustStore;
 use serde_json::Value;
 
+use crate::picked::{PickedFolder, PickedFolders, folder_identity};
 use crate::question::question_text;
 use crate::refusal::TrustRefusal;
 
@@ -99,6 +101,13 @@ impl TrustState {
         folders: &OpenedFolders,
         location: &str,
     ) -> Result<(), TrustRefusal> {
+        self.close(folders, location);
+        Ok(store.revoke(location)?)
+    }
+
+    /// Closes the exact entry a pick, reopen or grant opened for the
+    /// location, if any, so it no longer spares a question.
+    fn close(&self, folders: &OpenedFolders, location: &str) {
         let opened = self
             .opened
             .lock()
@@ -109,7 +118,72 @@ impl TrustState {
             let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
             picked.retain(|picked| *picked != entry);
         }
-        Ok(store.revoke(location)?)
+    }
+
+    /// Remembers a folder [`Self::pick`] answered, so [`Self::reopen`] can
+    /// open it after a restart. The location is checked again as `reopen`
+    /// checks it, and its identity is taken now: a link swapped in since the
+    /// pick is refused as `folder_changed`, never remembered.
+    pub fn remember_pick(&self, list: &PickedFolders, location: &str) -> Result<(), TrustRefusal> {
+        let canonical = folder_at(location)?;
+        list.remember(PickedFolder {
+            location: location.to_owned(),
+            identity: folder_identity(&canonical),
+        })
+    }
+
+    /// Opens a folder the person picked before, as a pick does, without the
+    /// dialog. Only a location in the list opens, and only while it is
+    /// still the folder they picked: the same canonical path and, where the
+    /// system tells, the same folder. Otherwise it is refused, and the entry
+    /// stays so they can pick the folder again:
+    ///
+    /// - `not_picked`: the location isn't in the list;
+    /// - `folder_missing`: nothing is at the path any more;
+    /// - `folder_changed`: a link was swapped in, or the folder was deleted
+    ///   and made again;
+    /// - `folder_unreadable`: something else is at the path, or it can't be
+    ///   read.
+    pub fn reopen(
+        &self,
+        folders: &OpenedFolders,
+        list: &PickedFolders,
+        location: &str,
+    ) -> Result<(), TrustRefusal> {
+        let Some(entry) = list.find(location) else {
+            return Err(TrustRefusal::new(
+                "not_picked",
+                format!("{location:?} isn't a folder the person picked"),
+            ));
+        };
+        let canonical = folder_at(location)?;
+        if entry.identity.is_some() && entry.identity != folder_identity(&canonical) {
+            return Err(TrustRefusal::new(
+                "folder_changed",
+                format!("{location:?} isn't the folder the person picked any more"),
+            ));
+        }
+        self.open(folders, location, &canonical);
+        let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
+        if !picked.contains(&canonical) {
+            picked.push(canonical);
+        }
+        Ok(())
+    }
+
+    /// Drops a picked folder from the list and closes the folder a pick,
+    /// reopen or grant opened for the location, so it no longer spares a
+    /// question. It only takes access away, so the page may call it freely;
+    /// no error when the location isn't there. Trust records stay: removing
+    /// trust is [`Self::revoke`].
+    pub fn forget(
+        &self,
+        folders: &OpenedFolders,
+        list: &PickedFolders,
+        location: &str,
+    ) -> Result<(), TrustRefusal> {
+        self.close(folders, location);
+        list.forget(location)
     }
 
     /// Opens a checked, canonical folder for git and the file commands as
@@ -184,6 +258,42 @@ fn checked_location(location: &str) -> Result<PathBuf, TrustRefusal> {
         return Err(TrustRefusal::new(
             "invalid_record",
             format!("{location:?} isn't the folder's canonical path, {plain:?}"),
+        ));
+    }
+    Ok(canonical)
+}
+
+/// The canonical folder at a picked location, if it is still the folder
+/// that was picked there: `folder_missing` when nothing is at the path any
+/// more, so Studio doesn't say "no permission" for a moved folder;
+/// `folder_changed` when the path now leads somewhere else, through a link
+/// swapped in; `folder_unreadable` for anything else.
+fn folder_at(location: &str) -> Result<PathBuf, TrustRefusal> {
+    let canonical = match std::fs::canonicalize(location) {
+        Ok(canonical) => canonical,
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Err(TrustRefusal::new(
+                "folder_missing",
+                format!("{location:?} doesn't exist any more"),
+            ));
+        }
+        Err(error) => {
+            return Err(TrustRefusal::new(
+                "folder_unreadable",
+                format!("{location:?} can't be opened: {error}"),
+            ));
+        }
+    };
+    if !canonical.is_dir() {
+        return Err(TrustRefusal::new(
+            "folder_unreadable",
+            format!("{location:?} isn't a folder"),
+        ));
+    }
+    if plain_path(&canonical).to_str() != Some(location) {
+        return Err(TrustRefusal::new(
+            "folder_changed",
+            format!("{location:?} leads to another folder now"),
         ));
     }
     Ok(canonical)

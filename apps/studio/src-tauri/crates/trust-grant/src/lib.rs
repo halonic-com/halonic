@@ -11,9 +11,11 @@
 //! that is then opened without them.
 
 mod grants;
+mod picked;
 mod question;
 mod refusal;
 
 pub use grants::TrustState;
+pub use picked::{MAX_PICKED_FOLDERS, PickedFolders};
 pub use question::{CANCEL_BUTTON, QUESTION_TITLE, TRUST_BUTTON, question_text, shown_path};
 pub use refusal::TrustRefusal;

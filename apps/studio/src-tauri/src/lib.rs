@@ -93,6 +93,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             trust::trust_list,
             trust::trust_grant,
             trust::trust_revoke,
+            trust::reopen_folder,
+            trust::forget_folder,
             runs::run_append,
             runs::run_events,
             runs::run_snapshot,
