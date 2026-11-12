@@ -12,9 +12,14 @@
 # the setup .exe around it. Without -Step, both run, as in CI.
 #
 # Run from apps/studio/src-tauri on Windows x64:  pwsh windows/build-installer.ps1
+#
+# -Config names one more Tauri config file, merged last. The update test
+# (HAL-1206) builds 0.1.0 and 0.1.1 with it, each with a test updater key and
+# a local update address; a `version` in it names the installer too.
 param(
   [ValidateSet('all', 'build', 'pack')]
-  [string]$Step = 'all'
+  [string]$Step = 'all',
+  [string]$Config
 )
 $ErrorActionPreference = 'Stop'
 $shell = Split-Path -Parent $PSScriptRoot
@@ -26,6 +31,13 @@ $bin = Join-Path $shell 'binaries'
 $packedHelper = Join-Path $bin "halonic-sandbox-elevate-$triple.exe"
 
 $version = (Get-Content (Join-Path $shell 'tauri.conf.json') -Raw | ConvertFrom-Json).version
+$configs = @('--config', 'tauri.installer.conf.json')
+if ($Config) {
+  $Config = (Resolve-Path $Config).Path
+  $extra = Get-Content $Config -Raw | ConvertFrom-Json
+  if ($extra.version) { $version = $extra.version }
+  $configs += @('--config', $Config)
+}
 
 if ($Step -ne 'pack') {
   # The agent host, as one executable (apps/agent-host README, "Build one executable").
@@ -71,7 +83,7 @@ if ($Step -ne 'pack') {
   # The app itself, not yet packed.
   Push-Location $shell
   try {
-    pnpm exec tauri build --config tauri.installer.conf.json --no-bundle --target $triple
+    pnpm exec tauri build @configs --no-bundle --target $triple
     if ($LASTEXITCODE -ne 0) { throw 'tauri build failed' }
   } finally { Pop-Location }
 }
@@ -93,7 +105,7 @@ if ($env:HALONIC_SANDBOX_SIGNER) {
 
 Push-Location $shell
 try {
-  pnpm exec tauri bundle --config tauri.installer.conf.json --bundles nsis --target $triple
+  pnpm exec tauri bundle @configs --bundles nsis --target $triple
   if ($LASTEXITCODE -ne 0) { throw 'tauri bundle failed' }
 } finally { Pop-Location }
 
