@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 import { R2BlobStore } from "./r2-blob-store.ts";
 
 /**
+ * A stand-in, not the proof. This file runs the store on a map-backed bucket in Node so the
+ * package has coverage. The real proof is the contract suite in `blob-store.workerd.test.ts`,
+ * which runs the store over a real R2 binding in workerd.
+ */
+
+/**
  * The few R2 calls the store makes, over a map, counting the writes. It is here for what the
  * contract run inside workerd can't show: that a second put writes nothing, and the coverage
  * of this file, which Node can't measure while the code runs in workerd.
