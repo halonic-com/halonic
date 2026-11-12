@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -136,6 +137,31 @@ describe("a failed save", () => {
       expect(announce).toHaveBeenCalledWith(
         "Couldn't save the panel opacity on this computer. Panel opacity is back to 80%.",
       );
+    });
+  });
+
+  describe("after the section is gone", () => {
+    verifies("settings.failed-save", () => {
+      it("says the line in a toast, not the dialog's live region", async () => {
+        const prefs = new MemoryDisplayPrefs();
+        const settings = new DisplaySettings(prefs);
+        const announce = vi.fn();
+        const toasts = createToastStore();
+        const view = render(
+          <ToastStoreProvider store={toasts}>
+            <AppearanceView settings={settings} announce={announce} />
+          </ToastStoreProvider>,
+        );
+        prefs.holdWrites();
+        prefs.failNext(new Error("read-only profile"));
+        await change(control(view, '[type="range"]'), "0.3");
+        unmountAll();
+        await act(async () => prefs.release(0));
+        expect(announce).not.toHaveBeenCalled();
+        expect(toasts.list().map((toast) => toast.title)).toEqual([
+          "Couldn't save the panel opacity on this computer. Panel opacity is back to 80%.",
+        ]);
+      });
     });
   });
 });
