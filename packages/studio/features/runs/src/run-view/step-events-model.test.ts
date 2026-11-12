@@ -2,7 +2,7 @@ import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { entered, logOf } from "./run-log.test-helper.ts";
-import { stepBlockedSites, stepEvents } from "./step-events-model.ts";
+import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
 
 const answered = (
   model: string,
@@ -100,5 +100,52 @@ verifies("runs.run-view.blocked-sites", () => {
   it("has none for a step whose sandbox refused nothing", () => {
     expect(stepBlockedSites(blocked, "step-0")).toEqual([]);
     expect(stepBlockedSites(blocked, "step-2")).toEqual([]);
+  });
+});
+
+const started = (
+  state: string,
+  workflow: string,
+  childRunId: string,
+  item?: number,
+): RunEventBody => ({
+  type: "workflow.started",
+  state,
+  workflow,
+  childRunId,
+  ...(item === undefined ? {} : { item }),
+});
+
+const withChildren = logOf("run_a_01jd8q", [
+  [0, entered("read")],
+  [1, entered("check")],
+  [1, started("check", "verify", "run_a_01jd8q.4")],
+  [2, entered("each")],
+  [2, started("each", "verify", "run_a_01jd8q.6.0", 0)],
+  [2, started("each", "verify", "run_a_01jd8q.6.1", 1)],
+]);
+
+const workflowName = (id: string) => (id === "verify" ? "Verify" : id);
+
+verifies("runs.run-view.child-runs", () => {
+  it("names the child run a step started, with its short id", () => {
+    expect(stepChildRuns(withChildren, "step-1", workflowName)).toEqual([
+      { runId: "run_a_01jd8q.4", started: "Started Verify", link: "Run jd8q.4" },
+    ]);
+  });
+
+  it("names each for-each item's child run, in the order they started", () => {
+    expect(stepChildRuns(withChildren, "step-2", workflowName).map((child) => child.runId)).toEqual(
+      ["run_a_01jd8q.6.0", "run_a_01jd8q.6.1"],
+    );
+  });
+
+  it("has none for a step that started no child run", () => {
+    expect(stepChildRuns(withChildren, "step-0", workflowName)).toEqual([]);
+  });
+
+  it("escapes hidden and direction-changing characters in the workflow's name", () => {
+    const [child] = stepChildRuns(withChildren, "step-1", () => "Ver\u202eify");
+    expect(child?.started).toBe("Started Ver\\u202eify");
   });
 });
