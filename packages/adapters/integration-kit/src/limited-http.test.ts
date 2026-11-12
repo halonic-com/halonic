@@ -464,7 +464,7 @@ function pieces(
 }
 
 verifies("integration-kit.request-log", () => {
-  it("logs method, host, path, status and time, and no query, header or secret", async () => {
+  it("logs method, host, path, status and time, and no query, header or secret (A20)", async () => {
     const { http, log } = client();
     await http.fetch("https://api.example.com/v1/forecast?city=Ghent&token=abc", {
       auth: { secret: "example-key", as: "bearer" },

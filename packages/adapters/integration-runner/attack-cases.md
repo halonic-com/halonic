@@ -3,7 +3,11 @@
 This is a map, not a requirement: it says where each attack case of the I5
 design (HAL-958, section 6) is tested, so section 6 can be traced to code.
 Each test names its case in its title, such as `(A30)`; search for the tag.
-Paths start at `packages/`. "Fence" tests run with `pnpm test:fence` in
+Paths start at `packages/`. The A-numbers here are the I5 design's; `core/app` tests use A2 to A12
+for a different list (the listed-tool approval attacks), so a tag there is not a case in this map.
+One difference from the design: A30 on plain `http` is refused as `scheme-not-allowed`, not
+`host-not-allowed` (section 6), because the scheme is checked first; the real behaviour is kept.
+"Fence" tests run with `pnpm test:fence` in
 `adapters/integration-runner` and need the OS fence; the rest run in `pnpm test`.
 
 | Case | What it tries | Tested in |
