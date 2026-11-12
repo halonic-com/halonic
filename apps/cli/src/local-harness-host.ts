@@ -111,6 +111,7 @@ export interface LocalHarnessHost extends Omit<HarnessHost, "start"> {
   /**
    * Clears what runs that ended while no engine was open left in the profile.
    * Call it once, under the engine lock, before the engine starts any run.
+   * It never throws: an error goes to `reportError`, and the next start tries again.
    */
   start(): Promise<void>;
   /** Stops git, if it started. Close it once the executor and the scheduler have closed. Safe to call twice. */
@@ -194,7 +195,12 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     // Nothing kept means nothing to clear, so git isn't started for a workspace that never ran a harness agent.
     start: async () => {
       if (await allEmpty(kept)) return;
-      await built.start(await input.openRuns());
+      try {
+        await built.start(await input.openRuns());
+      } catch (error) {
+        // Clean-up only: the engine opens all the same, and the next one tries again.
+        input.reportError(error);
+      }
     },
     close: git.close,
   };

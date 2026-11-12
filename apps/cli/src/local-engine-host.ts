@@ -305,9 +305,15 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     engine = engineOn(input, { location, folders }, lock, programFolders, harnessHost);
     return engine;
   } catch (error) {
-    await harnessHost?.close();
-    await programFolders?.close();
-    await lock.release();
+    try {
+      await harnessHost?.close();
+    } finally {
+      try {
+        await programFolders?.close();
+      } finally {
+        await lock.release();
+      }
+    }
     throw error;
   }
 }

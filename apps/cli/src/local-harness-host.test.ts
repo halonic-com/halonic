@@ -388,6 +388,27 @@ verifies("cli.local-harness-host", () => {
   );
 
   it(
+    "opens the engine when clearing what a harness run left fails, and reports it",
+    async () => {
+      const version = await commitWorkspace();
+      const fakes = fakesFor({
+        onStart: async (given) => {
+          await writeFile(join(given.workingFolder, "change.txt"), "the agent's change");
+        },
+      });
+      await runChange(await openEngine(fakes), version);
+      // The proposal is kept, so the next start asks git, which can't read the workspace any more.
+      await rm(join(acme, ".git"), { recursive: true, force: true });
+
+      const next = await openEngine(fakesFor({ onStart: async () => {} }));
+
+      expect(next.runs).toBeDefined();
+      expect(reported).toHaveLength(1);
+    },
+    gitTimeout,
+  );
+
+  it(
     "denies a harness run the profile root, and writes only the run's own folders in it",
     async () => {
       const version = await commitWorkspace();
