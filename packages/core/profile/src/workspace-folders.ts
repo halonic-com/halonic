@@ -84,6 +84,19 @@ export interface WorkspaceFolders {
    * workspace's engine lock uses it, and it removes what it finds there.
    */
   programCopiesFolder(): string;
+  /**
+   * The folder for the worktrees a harness run's agents work in, one per
+   * top-level run (HAL-3248). Only the engine holding the workspace's
+   * engine lock uses it. The agent's own folders in it are the sandbox's to
+   * open; nothing else in the profile is.
+   */
+  proposalWorktreesFolder(): string;
+  /**
+   * The folder for the proposal records, one per run: what a run changed,
+   * kept until a person accepts or drops it. They live here, never in the
+   * workspace, so a pull can't make one.
+   */
+  proposalRecordsFolder(): string;
 }
 
 /**
@@ -144,6 +157,12 @@ export async function workspaceFolders(
     },
     programCopiesFolder(): string {
       return joinPath(profile.platform, folder, "program-copies");
+    },
+    proposalWorktreesFolder(): string {
+      return joinPath(profile.platform, folder, "proposal-worktrees");
+    },
+    proposalRecordsFolder(): string {
+      return joinPath(profile.platform, folder, "proposals");
     },
   };
 }
