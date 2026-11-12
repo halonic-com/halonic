@@ -58,6 +58,8 @@ function Invoke-Driver {
   node $driver $devtools @args | Out-Host
   if ($LASTEXITCODE -ne 0) {
     Get-Process Halonic, halonic-agent-host, msedgewebview2 -ErrorAction SilentlyContinue | Format-Table Name, Id, StartTime | Out-Host
+    Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -in '127.0.0.1','::1','0.0.0.0','::' } | Sort-Object LocalPort | Format-Table LocalAddress, LocalPort, OwningProcess | Out-Host
+    Get-CimInstance Win32_Process -Filter "Name like 'msedgewebview2%'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'remote-debugging' } | Select-Object -First 1 -ExpandProperty CommandLine | Out-Host
     Get-ChildItem (Join-Path $profileFolder 'updates') -ErrorAction SilentlyContinue | Out-Host
     Get-Content (Join-Path $profileFolder 'updates\updates.log') -ErrorAction SilentlyContinue | Out-Host
     throw "update-driver $args failed"
