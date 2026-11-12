@@ -2,7 +2,6 @@
 
 - Approval: Liam decided this on [HAL-6610](/HAL/issues/HAL-6610) (from the CLI output read, HAL-5959), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); Tomas reviewed it on HAL-6693; the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tqImRMYaXLGFPcyDW+mCVJx9GbTG6AU/YRL6tu+zzAFtx5Lrm9JPT0sFp3g4ryD9mgx3w7i8lHVbW9E3zm3KDQ==
 - Task: HAL-6610
 
 ## What changes
