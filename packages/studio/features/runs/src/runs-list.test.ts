@@ -58,6 +58,7 @@ describe("RunsList", () => {
     const source: RunsSource = {
       list: () => new Promise((resolve) => answers.push(resolve)),
       workflow: () => undefined,
+      routine: () => undefined,
       currency: () => "EUR",
       subscribe: () => () => {},
     };

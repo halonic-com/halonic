@@ -127,12 +127,12 @@ verifies("runs.list", () => {
       expect(root.textContent).toContain("A run is one time a workflow or agent does its job.");
       expect(shown(root)).toEqual([
         "# Today",
-        "Run 7k2m9p, Support reply, running, in Draft. Started at 10:40.",
-        "Run 01jd8q, Support reply, needs you, waiting for your approval in the step Send. Started at 10:40.",
-        "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started at 10:40.",
-        "Run t1t1t1, Support reply, waiting, waiting until 11:40. Started at 10:40, test run.",
+        "Run 7k2m9p, Support reply, running, in Draft. Started by you, in the terminal, 10:40.",
+        "Run 01jd8q, Support reply, needs you, waiting for your approval in the step Send. Started by you, in the terminal, 10:40.",
+        "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started by you, in the terminal, 10:40.",
+        "Run t1t1t1, Support reply, waiting, waiting until 11:40. Started by a test case, 10:40, test run.",
         "# Yesterday",
-        "Run 4f2a1b, Support reply, done, sent nothing. Started at 16:00.",
+        "Run 4f2a1b, Support reply, done, sent nothing. Started by you, in the terminal, 16:00.",
       ]);
     });
 
@@ -143,7 +143,7 @@ verifies("runs.list", () => {
       await click(control(root, "Failed"));
       expect(shown(root)).toEqual([
         "# Today",
-        "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started at 10:40.",
+        "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started by you, in the terminal, 10:40.",
       ]);
       await click(control(root, "Live 2"));
       expect(shown(root)).toHaveLength(3);
@@ -153,7 +153,7 @@ verifies("runs.list", () => {
       const { root } = await openPage(fakeSource([done, finishedTest]).source);
       expect(shown(root)).toEqual([
         "# Yesterday",
-        "Run 4f2a1b, Support reply, done, sent nothing. Started at 16:00.",
+        "Run 4f2a1b, Support reply, done, sent nothing. Started by you, in the terminal, 16:00.",
       ]);
       const testRuns = control(root, "Test runs");
       expect(testRuns.getAttribute("aria-pressed")).toBe("false");
@@ -169,7 +169,7 @@ verifies("runs.list", () => {
       await settled();
       expect(shown(root)).toEqual([
         "# Today",
-        "Run 7k2m9p, Support reply, done, sent nothing. Started at 10:40.",
+        "Run 7k2m9p, Support reply, done, sent nothing. Started by you, in the terminal, 10:40.",
       ]);
     });
   });
@@ -259,8 +259,25 @@ verifies("runs.row-columns", () => {
       "Done",
       "e2e2e2",
       "Support replyTestSent nothing",
+      "A test case",
       "10:40took 2 min",
     ]);
+  });
+
+  it("says what started a routine's run, with the routine's name in a tooltip", async () => {
+    const scheduled = summaryWith({
+      id: "run_i_5c5c5c",
+      trigger: { type: "schedule", at: minutesLater(0), routineId: "acme/morning-brief" },
+    });
+    const { root } = await openPage(fakeSource([scheduled]).source);
+
+    expect(shown(root)).toEqual([
+      "# Today",
+      "Run 5c5c5c, Support reply, running, in Draft. Started by schedule · weekdays at 08:00, 10:40.",
+    ]);
+    expect(columnsOf(root, "5c5c5c")[3]).toContain("Schedule · weekdays at 08:00");
+    const tooltip = root.ownerDocument.querySelector('[role="tooltip"]');
+    expect(tooltip?.textContent).toBe("Morning brief");
   });
 
   it("gives a failed row the failed sentence in danger and the Failed chip", async () => {
@@ -269,12 +286,13 @@ verifies("runs.row-columns", () => {
 
     expect(shown(root)).toEqual([
       "# Today",
-      "Run f4f4f4, Support reply, failed in the step Draft. Started at 10:40.",
+      "Run f4f4f4, Support reply, failed in the step Draft. Started by you, in the terminal, 10:40.",
     ]);
     expect(columnsOf(root, "f4f4f4")).toEqual([
       "Failed",
       "f4f4f4",
       "Support replySupport reply failed in the step Draft.",
+      "You, in the terminal",
       "10:40",
     ]);
     const danger = [...root.querySelectorAll(".text-danger")].map((node) => node.textContent);

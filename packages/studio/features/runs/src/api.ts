@@ -16,6 +16,11 @@ export interface SourcedRun {
    * run "sent nothing" only when it made none (cli-output 3.4).
    */
   readonly madeToolCalls: boolean;
+  /**
+   * A test run's case, by its `name` in the test file; absent for a real run,
+   * and while the run log doesn't record which case started it.
+   */
+  readonly testCase?: string;
 }
 
 /** What a run's workflow says about it: its name, and the description of each step. */
@@ -25,12 +30,28 @@ export interface RunWorkflow {
   readonly stepDescription: (stateId: string) => string | undefined;
 }
 
+/** What the routine that started a run says about it: its name, and when it runs. */
+export interface RunRoutine {
+  readonly name: string;
+  /**
+   * Its schedule or interval in `halonic routines`' words, without the time
+   * zone: "Weekdays at 08:00", "Every 2 hours (UTC)". `undefined` when the
+   * routine no longer runs on a clock.
+   */
+  readonly schedule: string | undefined;
+}
+
 /** The runs of one open workspace, as the app provides them. */
 export interface RunsSource {
   /** Every run, real and test, newest start first. */
   readonly list: () => Promise<SourcedRun[]>;
   /** The run's workflow; `undefined` when it's no longer in the workspace. */
   readonly workflow: (hubId: string, workflowId: string) => RunWorkflow | undefined;
+  /**
+   * The routine with the key a run's `trigger.routineId` holds; `undefined`
+   * when it's no longer in the workspace.
+   */
+  readonly routine: (key: string) => RunRoutine | undefined;
   /** The workspace's currency (`budget.currency`, EUR when it names none). */
   readonly currency: () => string;
   /** Calls `listener` whenever a run starts, changes or ends; returns a function that stops it. */

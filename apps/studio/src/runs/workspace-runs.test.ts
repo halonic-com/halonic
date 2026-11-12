@@ -25,6 +25,12 @@ function acmeFiles(currency = "USD"): MemoryDefinitionStore {
     "workspace.yaml": `id: acme\nname: Acme\nbudget:\n  currency: ${currency}\n`,
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/acme/workflows/reply.workflow.yaml": replyFile,
+    "hubs/acme/workflows/routines/morning.routine.yaml": [
+      "id: morning",
+      "name: Morning replies",
+      'trigger: { schedule: "0 8 * * 1-5", timezone: Europe/Amsterdam }',
+      "run: { workflow: reply }",
+    ].join("\n"),
   });
 }
 
@@ -74,6 +80,19 @@ verifies("studio.workspace-runs", () => {
     );
     expect(runs.workflow("acme", "gone")).toBeUndefined();
     expect(runs.currency()).toBe("USD");
+  });
+
+  it("names the routine a run's trigger names, and says when it runs", async () => {
+    const { engine } = await waitingRun();
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
+
+    await runs.list();
+
+    expect(runs.routine("acme/morning")).toEqual({
+      name: "Morning replies",
+      schedule: "Weekdays at 08:00",
+    });
+    expect(runs.routine("acme/gone")).toBeUndefined();
   });
 
   it("reads a run's log again only when it grew", async () => {

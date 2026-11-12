@@ -39,9 +39,11 @@ emptyList(rows, filters); // { kind: "status", line: "No failed runs." }, or und
 dayGroups(filterRuns(rows, filters), new Date()); // [{ day: "Today", rows }, { day: "Yesterday", rows }]
 ```
 
-The page draws them as one kit List with `groups` and `columns`: an `h3` for each day, which ↑ ↓ pass over, and in each row the status chip, the short id, what ran with its line and Test tag, and the start time over how long the run took. Below 800px of list width the kit stacks the columns. Screen readers hear the row's `label` instead: "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started at 10:40.".
+The page draws them as one kit List with `groups` and `columns`: an `h3` for each day, which ↑ ↓ pass over, and in each row the status chip, the short id, what ran with its line and Test tag, what started the run, and the start time over how long the run took. Below 800px of list width the kit stacks the columns. Screen readers hear the row's `label` instead: "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by you, in the terminal, 10:40.".
 
-Not on the list yet: the spend line (it needs T4's spend function), opening a run in a new tab, the text and hub filters, the row's ⋮, and the Started by column, which needs the test case's name and the routine's schedule from the run source.
+The Started by column reads the run's trigger: "You, with Run", "A message arrived", "A signal arrived", "Schedule · weekdays at 08:00" with the routine's name in a tooltip (from the source's `routine`), "Caught up after sleep" for a catch-up run, and `Test “<case>”` for a test run. A run without a trigger was started in the terminal, "You, in the terminal", and a child run names its parent, "Run 7k2m9p". Until the run log records which test case started a test run, the source has no `testCase` and the column says "A test case".
+
+Not on the list yet: the spend line (it needs T4's spend function), opening a run in a new tab, the text and hub filters, and the row's ⋮.
 
 The run page says under its title what the run ran, from the version its run.started records:
 

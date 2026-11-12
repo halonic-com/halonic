@@ -301,6 +301,7 @@ export type {
   TryItSource,
 } from "./review-types.ts";
 export { ReviewingDefinitionStore } from "./reviewing-store.ts";
+export { type RoutineClock, routineClocks } from "./routine-clocks.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
 export { type ListedRoutine, RoutineList } from "./routine-list.ts";
 export type { RoutineOverlap } from "./routine-overlap.ts";

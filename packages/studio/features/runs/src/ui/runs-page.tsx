@@ -7,6 +7,7 @@ import {
   type ListColumn,
   type ListColumnsRow,
   StatusChip,
+  Tooltip,
 } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState, useSyncExternalStore } from "react";
@@ -56,12 +57,12 @@ export interface RunsViewProps {
  * The Runs list on the desktop (checklist part 1, 1.2 to 1.4): "Runs", its
  * sentence, the status chips and the Test runs chip, then the runs grouped by
  * the day they started, newest first. A row's columns are its status chip,
- * its short id, what ran with the line under it, and when it started over
- * how long it took. Refreshes update the rows in place (D1); the filters work
+ * its short id, what ran with the line under it, what started it, and when
+ * it started over how long it took. Refreshes update the rows in place (D1); the filters work
  * on the runs already loaded, so a filter change never waits (K4).
  *
  * Not here yet: the spend line (T4), opening a run in a new tab, the text
- * and hub filters, the row's ⋮, and the Started by column.
+ * and hub filters, and the row's ⋮.
  */
 export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() }: RunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -72,6 +73,7 @@ export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() 
   const rows = state.runs.map((run) =>
     runRow(run, {
       workflow: list.source.workflow(run.summary.hubId, run.summary.workflowId),
+      routine: routineOf(list, run.summary),
       currency,
       now: now(),
     }),
@@ -107,6 +109,12 @@ export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() 
       />
     </div>
   );
+}
+
+/** The routine that started the run, when its trigger names one. */
+function routineOf(list: RunsList, summary: RunSummary) {
+  const key = summary.trigger?.routineId;
+  return key === undefined ? undefined : list.source.routine(key);
 }
 
 /** What comes under the sentence: the load error, the no-runs state, or the filters and the runs. */
@@ -270,6 +278,7 @@ const runColumns: readonly ListColumn[] = [
   { kind: "status", key: "status" },
   { kind: "code", key: "run" },
   { kind: "main" },
+  { kind: "text", key: "startedBy" },
   { kind: "time", key: "when" },
 ];
 
@@ -302,8 +311,9 @@ function DayList({
 
 /**
  * A run as a List row: its chip, short id, what ran over its line with its
- * Test tag, and when it started. A failed row's line is the kit's error
- * reason, in `danger`, with the Failed chip.
+ * Test tag, what started it, with the routine's name in a tooltip, and when
+ * it started. A failed row's line is the kit's error reason, in `danger`,
+ * with the Failed chip.
  */
 function listRow(row: RunRow): ListColumnsRow {
   return {
@@ -320,6 +330,16 @@ function listRow(row: RunRow): ListColumnsRow {
         ),
       },
       run: { value: row.shortId },
+      startedBy: {
+        value:
+          row.startedByTooltip === undefined ? (
+            row.startedBy
+          ) : (
+            <Tooltip text={row.startedByTooltip}>
+              {(props) => <span {...props}>{row.startedBy}</span>}
+            </Tooltip>
+          ),
+      },
       when: { value: row.time, ...(row.took === undefined ? {} : { detail: row.took }) },
     },
     label: row.label,

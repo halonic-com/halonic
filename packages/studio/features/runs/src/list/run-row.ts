@@ -1,7 +1,7 @@
 // One run as a row of the Runs list shows it (checklist part 1, 1.2; mc 9.7
-// Row line, 15.2 Status chips, 19.3 Run row): its chip, its short id, what
-// ran, the line under it, and when it started over how long it took. The
-// line says what the What column of `halonic runs` says.
+// Row line, 15.1, 15.2 Status chips, 19.3 Run row): its chip, its short id,
+// what ran, the line under it, what started it, and when it started over how
+// long it took. The line says what the What column of `halonic runs` says.
 
 import {
   moneyAmount,
@@ -13,13 +13,14 @@ import {
 } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { StatusChipTone } from "@halonicjs/studio-kit";
-import type { RunWorkflow, SourcedRun } from "../api.ts";
+import type { RunRoutine, RunWorkflow, SourcedRun } from "../api.ts";
 import {
   chipWords,
   costWords,
   lineSeparator,
   rowLabelWords,
   rowLineWords,
+  startedByWords,
   whenWords,
 } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
@@ -45,6 +46,10 @@ export interface RunRow {
   readonly line: string;
   /** A test case's run, which carries the outline Test tag. */
   readonly test: boolean;
+  /** The Started by column: "A message arrived", "Schedule · weekdays at 08:00". */
+  readonly startedBy: string;
+  /** The Started by column's tooltip: the routine's name, for a run its schedule started. */
+  readonly startedByTooltip: string | undefined;
   /** When the run started, as the run log writes it; the list groups rows by its day. */
   readonly startedAt: string;
   /** The When column: the time the run started, "10:40"; its day is the group's heading. */
@@ -55,9 +60,14 @@ export interface RunRow {
   readonly label: string;
 }
 
-/** What a row needs besides the run: its workflow, the workspace's currency and the time now. */
+/**
+ * What a row needs besides the run: its workflow, the routine that started
+ * it, the workspace's currency and the time now.
+ */
 export interface RowContext {
   readonly workflow: RunWorkflow | undefined;
+  /** The routine in the run's `trigger.routineId`; `undefined` without one, or when it's gone. */
+  readonly routine: RunRoutine | undefined;
   /** The workspace's `budget.currency`. */
   readonly currency: string;
   readonly now: Date;
@@ -78,8 +88,8 @@ const chipLooks: Readonly<Record<RunStanding, Omit<RunChip, "word">>> = {
  * The row of one run.
  *
  * @example
- * runRow({ summary, madeToolCalls: false }, { workflow, currency: "EUR", now: new Date() });
- * // { shortId: "01jd8q", chip: { word: "Done", … }, line: "Sent nothing · estimated cost €0.004", … }
+ * runRow({ summary, madeToolCalls: false }, { workflow, routine: undefined, currency: "EUR", now: new Date() });
+ * // { shortId: "01jd8q", chip: { word: "Done", … }, line: "Sent nothing · estimated cost €0.004", startedBy: "You, with Run", … }
  */
 export function runRow(run: SourcedRun, context: RowContext): RunRow {
   const { summary } = run;
@@ -89,10 +99,11 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
   const line = rowLine(run, standing, context);
   const test = summary.kind === "test";
   const time = clockTime(new Date(summary.startedAt));
+  const started = startedBy(run, context.routine);
   const spoken =
     standing === "failed"
       ? rowLabelWords.failedIn(currentStepName(summary, context.workflow))
-      : `${rowLabelWords.standing[standing]}, ${line.charAt(0).toLowerCase()}${line.slice(1)}`;
+      : `${rowLabelWords.standing[standing]}, ${lowerFirst(line)}`;
   return {
     id: summary.id,
     shortId,
@@ -101,11 +112,59 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
     workflow,
     line,
     test,
+    startedBy: started.words,
+    startedByTooltip: started.tooltip,
     startedAt: summary.startedAt,
     time,
     took: summary.endedAt === null ? undefined : whenWords.took(took(summary)),
-    label: rowLabelWords.row(shortId, workflow, spoken, time, test),
+    label: rowLabelWords.row(shortId, workflow, spoken, lowerFirst(started.words), time, test),
   };
+}
+
+/**
+ * What started the run (mc 15.1): its test case, the run it's a child of, or
+ * its trigger. A run without a trigger was started in the terminal. A
+ * routine's run on a clock says the routine's schedule, with its name in the
+ * tooltip.
+ */
+function startedBy(
+  run: SourcedRun,
+  routine: RunRoutine | undefined,
+): { readonly words: string; readonly tooltip: string | undefined } {
+  const { summary } = run;
+  const words = (text: string) => ({ words: text, tooltip: undefined });
+  if (summary.kind === "test") {
+    return words(
+      run.testCase === undefined ? startedByWords.testCase : startedByWords.test(run.testCase),
+    );
+  }
+  if (summary.parentRunId !== null) {
+    return words(startedByWords.parent(shortRunId(summary.parentRunId)));
+  }
+  const { trigger } = summary;
+  switch (trigger?.type) {
+    case undefined:
+      return words(startedByWords.terminal);
+    case "manual":
+      return words(startedByWords.run);
+    case "mail":
+      return words(startedByWords.mail);
+    case "signal":
+      return words(startedByWords.signal);
+    case "schedule":
+    case "every":
+      return {
+        words:
+          trigger.catchUp === undefined
+            ? startedByWords.schedule(routine?.schedule)
+            : startedByWords.catchUp,
+        tooltip: routine?.name ?? trigger.routineId,
+      };
+  }
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 function rowLine(run: SourcedRun, standing: RunStanding, context: RowContext): string {

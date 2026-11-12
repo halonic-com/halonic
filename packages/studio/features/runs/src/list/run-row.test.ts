@@ -1,7 +1,7 @@
-import type { RunSummary } from "@halonicjs/events";
+import type { RunSummary, RunTrigger } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { RunWorkflow } from "../api.ts";
+import type { RunRoutine, RunWorkflow } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { type RunRow, runRow } from "./run-row.ts";
 
@@ -14,7 +14,7 @@ const supportReply: RunWorkflow = {
 function rowOf(changes: Partial<RunSummary>, madeToolCalls = true): RunRow {
   return runRow(
     { summary: summaryWith(changes), madeToolCalls },
-    { workflow: supportReply, currency: "EUR", now: mondayMorning },
+    { workflow: supportReply, routine: undefined, currency: "EUR", now: mondayMorning },
   );
 }
 
@@ -108,7 +108,7 @@ verifies("runs.row", () => {
     it("names a workflow that's gone by its id, and marks a test run", () => {
       const row = runRow(
         { summary: summaryWith({ kind: "test" }), madeToolCalls: false },
-        { workflow: undefined, currency: "EUR", now: mondayMorning },
+        { workflow: undefined, routine: undefined, currency: "EUR", now: mondayMorning },
       );
 
       expect(row.workflow).toBe("support-reply");
@@ -126,14 +126,81 @@ verifies("runs.row-columns", () => {
     expect(live.time).toBe("10:40");
     expect(live.took).toBeUndefined();
     expect(live.label).toBe(
-      "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started at 10:40.",
+      "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by you, in the terminal, 10:40.",
     );
     expect(ended.took).toBe("took 3 min");
     expect(ended.label).toBe(
-      "Run 01jd8q, Support reply, done, sent nothing. Started at 10:40, test run.",
+      "Run 01jd8q, Support reply, done, sent nothing. Started by a test case, 10:40, test run.",
     );
     expect(failed.label).toBe(
-      "Run 01jd8q, Support reply, failed in the step Draft. Started at 10:40.",
+      "Run 01jd8q, Support reply, failed in the step Draft. Started by you, in the terminal, 10:40.",
     );
+  });
+
+  describe("Started by", () => {
+    const morningBrief: RunRoutine = { name: "Morning brief", schedule: "Weekdays at 08:00" };
+    const triggered = (trigger: RunTrigger, routine?: RunRoutine) =>
+      runRow(
+        { summary: summaryWith({ trigger }), madeToolCalls: false },
+        { workflow: supportReply, routine, currency: "EUR", now: mondayMorning },
+      );
+    const at = minutesLater(0);
+    const routineId = "acme/morning-brief";
+
+    it("says what started a run, from its trigger", () => {
+      expect(triggered({ type: "manual", at }).startedBy).toBe("You, with Run");
+      expect(triggered({ type: "mail", at, messageId: "m1" }).startedBy).toBe("A message arrived");
+      expect(triggered({ type: "signal", at, signalId: "run_1:4" }).startedBy).toBe(
+        "A signal arrived",
+      );
+      expect(rowOf({ trigger: null }).startedBy).toBe("You, in the terminal");
+      expect(triggered({ type: "manual", at }).startedByTooltip).toBeUndefined();
+    });
+
+    it("says a routine's schedule, with the routine's name in the tooltip", () => {
+      const scheduled = triggered({ type: "schedule", at, routineId }, morningBrief);
+      const every = triggered(
+        { type: "every", at, routineId },
+        { name: "Inbox sweep", schedule: "Every 2 hours (UTC)" },
+      );
+      const gone = triggered({ type: "schedule", at, routineId });
+
+      expect(scheduled.startedBy).toBe("Schedule · weekdays at 08:00");
+      expect(scheduled.startedByTooltip).toBe("Morning brief");
+      expect(scheduled.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by schedule · weekdays at 08:00, 10:40.",
+      );
+      expect(every.startedBy).toBe("Schedule · every 2 hours (UTC)");
+      expect(gone.startedBy).toBe("Schedule");
+      expect(gone.startedByTooltip).toBe(routineId);
+    });
+
+    it("says a catch-up run caught up after sleep, with the routine's name in the tooltip", () => {
+      const row = triggered(
+        { type: "schedule", at, routineId, catchUp: { skipped: 61 } },
+        morningBrief,
+      );
+
+      expect(row.startedBy).toBe("Caught up after sleep");
+      expect(row.startedByTooltip).toBe("Morning brief");
+      expect(row.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by caught up after sleep, 10:40.",
+      );
+    });
+
+    it("names a test run's case, and a child run's parent by its short id", () => {
+      const named = runRow(
+        {
+          summary: summaryWith({ kind: "test" }),
+          madeToolCalls: false,
+          testCase: "Refund over €100",
+        },
+        { workflow: supportReply, routine: undefined, currency: "EUR", now: mondayMorning },
+      );
+
+      expect(named.startedBy).toBe("Test “Refund over €100”");
+      expect(rowOf({ kind: "test" }).startedBy).toBe("A test case");
+      expect(rowOf({ parentRunId: "run_mfx3k2a1_7k2m9p" }).startedBy).toBe("Run 7k2m9p");
+    });
   });
 });

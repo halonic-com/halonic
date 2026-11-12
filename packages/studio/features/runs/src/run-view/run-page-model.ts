@@ -58,7 +58,8 @@ export interface RunPageContext {
  * // { title: "Run 01JD8Q", kindLabel: "Run · Support reply", line: "today 10:40 · updates live", … }
  */
 export function runHeader(run: SourcedRun, context: RunPageContext): RunHeader {
-  const row = runRow(run, context);
+  // The header doesn't say what started the run yet, so it needs no routine.
+  const row = runRow(run, { ...context, routine: undefined });
   const { summary } = run;
   const started = startedWords(new Date(summary.startedAt), context.now);
   const end =

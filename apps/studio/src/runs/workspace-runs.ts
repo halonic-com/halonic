@@ -1,9 +1,21 @@
-import { defaultCurrency, type HubWorkflow, hubWorkflows, workflowIn } from "@halonicjs/app";
+import {
+  defaultCurrency,
+  type HubWorkflow,
+  hubWorkflows,
+  type RoutineClock,
+  routineClocks,
+  workflowIn,
+} from "@halonicjs/app";
 import { type RunSummary, sendsOf } from "@halonicjs/events";
 import type { DefinitionStore, DefinitionWatch, RunStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
-import type { RunsSource, RunWorkflow, SourcedRun } from "@halonicjs/studio-feature-runs/api";
+import type {
+  RunRoutine,
+  RunsSource,
+  RunWorkflow,
+  SourcedRun,
+} from "@halonicjs/studio-feature-runs/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 
 /** How often the runs are read again to see whether one changed: every 10 s (states K5). */
@@ -19,7 +31,7 @@ export interface PollTimer {
 export interface WorkspaceRunsOptions {
   /** The workspace's runs, the same files the CLI reads. */
   readonly runs: Pick<RunStore, "list" | "events">;
-  /** The workspace's files, for the workflows' names and the currency. */
+  /** The workspace's files, for the workflows' and routines' names and the currency. */
   readonly definitions: DefinitionStore;
   /** Defaults to `setInterval`. */
   readonly timer?: PollTimer;
@@ -33,6 +45,8 @@ export interface WorkspaceRunsOptions {
 /** What the workspace's files say about its runs. */
 interface WorkspaceFacts {
   readonly workflows: readonly HubWorkflow[];
+  /** By key, the `trigger.routineId` of the runs each starts. */
+  readonly routines: ReadonlyMap<string, RoutineClock>;
   readonly currency: string;
 }
 
@@ -99,6 +113,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     };
   }
 
+  routine(key: string): RunRoutine | undefined {
+    return this.#facts?.routines.get(key);
+  }
+
   currency(): string {
     return this.#facts?.currency ?? defaultCurrency;
   }
@@ -139,6 +157,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     const settings = filesOf(workspace, "workspace")[0]?.value;
     this.#facts = {
       workflows: hubWorkflows(workspace),
+      routines: routineClocks(workspace),
       currency: settings?.budget?.currency ?? defaultCurrency,
     };
   }

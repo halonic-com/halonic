@@ -39,9 +39,32 @@ export const whenWords = {
 };
 
 /**
- * What a screen reader hears for a row (mc 19.3 Run row, revision 68), until
- * the Started by column comes: "Run 01jd8q, Support reply, needs you,
- * waiting for 2 approvals. Started at 10:40."
+ * The Started by column (mc 15.1; checklist 1.2 and 1.5b CU4). A run started
+ * in the terminal and a child run have no words in the microcopy yet: they
+ * follow "You, with Run" and the Run column (HAL-7094).
+ */
+export const startedByWords = {
+  /** `halonic run`, or Run now on a routine. */
+  run: "You, with Run",
+  /** No trigger: `halonic run` in a terminal, the only way a run starts without one in v0.1. */
+  terminal: "You, in the terminal",
+  mail: "A message arrived",
+  signal: "A signal arrived",
+  /** The routine's schedule, in `halonic routines`' words: "Schedule · weekdays at 08:00". */
+  schedule: (when: string | undefined) =>
+    when === undefined ? "Schedule" : `Schedule · ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+  catchUp: "Caught up after sleep",
+  test: (testCase: string) => `Test “${testCase}”`,
+  /** A test run whose case the run log doesn't name. */
+  testCase: "A test case",
+  /** A child run: the run that started it, by its short id. */
+  parent: (shortId: string) => `Run ${shortId}`,
+};
+
+/**
+ * What a screen reader hears for a row (mc 19.3 Run row, revision 68):
+ * "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by
+ * a message arrived, 10:40."
  */
 export const rowLabelWords = {
   standing: {
@@ -55,8 +78,15 @@ export const rowLabelWords = {
     "cant-try": "couldn't try",
   },
   failedIn: (step: string) => `failed in the step ${step}`,
-  row: (shortId: string, workflow: string, what: string, time: string, test: boolean) =>
-    `Run ${shortId}, ${workflow}, ${what}. Started at ${time}${test ? ", test run" : ""}.`,
+  row: (
+    shortId: string,
+    workflow: string,
+    what: string,
+    startedBy: string,
+    time: string,
+    test: boolean,
+  ) =>
+    `Run ${shortId}, ${workflow}, ${what}. Started by ${startedBy}, ${time}${test ? ", test run" : ""}.`,
 };
 
 /** The cost part of a run's line (mc 15.2, W1 and revision 68). */

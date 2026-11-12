@@ -8,7 +8,7 @@ function rowOf(id: string, changes: Partial<RunSummary>) {
   const workflow = { name: "Support reply", stepDescription: () => undefined };
   return runRow(
     { summary: summaryWith({ id, ...changes }), madeToolCalls: false },
-    { workflow, currency: "EUR", now: mondayMorning },
+    { workflow, routine: undefined, currency: "EUR", now: mondayMorning },
   );
 }
 
