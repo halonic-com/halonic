@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
-import { delimiter, join } from "node:path";
+import { posix } from "node:path";
 import type { SandboxFix, SandboxPackageManager } from "@halonicjs/ports";
 import type { LinuxHelper } from "./machine.ts";
 
@@ -36,10 +36,11 @@ export async function findPackageManager(
   searchPath: string,
   isProgram: (path: string) => Promise<boolean> = isExecutable,
 ): Promise<SandboxPackageManager | null> {
-  const folders = searchPath.split(delimiter).filter((folder) => folder !== "");
+  // Only Linux and macOS are looked at, and both use POSIX paths, whichever system this runs on.
+  const folders = searchPath.split(posix.delimiter).filter((folder) => folder !== "");
   const onPath = async (program: string, extraFolders: readonly string[] = []) => {
     for (const folder of [...folders, ...extraFolders]) {
-      if (await isProgram(join(folder, program))) return true;
+      if (await isProgram(posix.join(folder, program))) return true;
     }
     return false;
   };

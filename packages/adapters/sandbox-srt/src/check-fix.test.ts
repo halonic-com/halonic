@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { delimiter } from "node:path";
 import { type SandboxPackageManager, sandboxPackageManagers } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -112,7 +111,7 @@ verifies("sandbox-srt.check-fix", () => {
   });
 
   describe("findPackageManager", () => {
-    const path = ["/usr/local/bin", "/usr/bin"].join(delimiter);
+    const path = "/usr/local/bin:/usr/bin";
 
     it.each<[string, SandboxPackageManager]>([
       ["/usr/bin/apt-get", "apt"],
