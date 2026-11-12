@@ -5,8 +5,9 @@
 // because none of those is allowed by a flag.
 //
 // The sandbox sets no memory limit, so Node's own heap limit is the one the
-// runner has: an integration that allocates without end makes the runner die
-// at it, and only the runner (A24).
+// runner has: an integration that fills its JavaScript heap makes the runner
+// die at it, and only the runner (A24). Memory behind an `ArrayBuffer` or a
+// typed array lies outside the heap, and no limit covers it yet (HAL-7565).
 
 import type { SandboxCommand } from "@halonicjs/ports";
 import { type RunnerArgs, runnerArgList } from "../runner-args.ts";
@@ -15,7 +16,7 @@ import type { RunnerFiles } from "./runner-profile.ts";
 /**
  * The runner's heap limit in MiB. An integration's work is small: requests
  * and responses of a few MiB at most, so this leaves ample room while one
- * runner can't take a machine's memory.
+ * runner's heap can't take a machine's memory.
  */
 export const runnerHeapLimitMiB = 256;
 

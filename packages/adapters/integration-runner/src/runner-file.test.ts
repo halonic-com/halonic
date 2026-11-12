@@ -211,7 +211,7 @@ verifies("integration-runner.module-fence", () => {
   });
 });
 
-// Keeps every piece it allocates, so only a heap limit ends it (A24).
+// Keeps every object it allocates, so only a heap limit ends it (A24).
 const hungrySource = `export const weather = {
   name: "weather",
   version: "1.0.0",
@@ -230,7 +230,7 @@ verifies("integration-runner.heap-limit", () => {
   // Two runner starts and a full heap: on a busy CI machine that takes longer
   // than Vitest's 5 s, though it takes half a second on its own.
   describe("the built runner's heap limit", { timeout: 20_000 }, () => {
-    it("ends a runner whose integration allocates without end, and only that runner", async () => {
+    it("ends a runner whose integration fills its heap, and only that runner", async () => {
       const hungry = bridgeOptions(fakeRunnerProcess(), {
         process: await startBuiltRunner(hungrySource, { heapLimitMiB: 32 }),
       });
