@@ -5,7 +5,6 @@ export {
   type ModelTurnResult,
   runModelTurn,
 } from "./agent/run-model-turn.ts";
-export { RunStoreTurnLog } from "./agent/run-store-turn-log.ts";
 export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
 export type {
@@ -109,6 +108,7 @@ export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs
 export type { ProposalRun, RunProposalFolders } from "./run/proposal-folders.ts";
 export type { ConnectorsRun, RunConnectors } from "./run/run-connectors.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";
+export { RunStoreTurnLog } from "./run/run-store-turn-log.ts";
 export {
   knowledgeToolNames,
   knowledgeTools,

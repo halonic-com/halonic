@@ -15,7 +15,6 @@ import {
   allowedDifferencesFile,
   type BaseCliCall,
   baseCliCalls,
-  type ComparedCall,
   judgeCliCalls,
   knownGapsFile,
   type NewCliCall,
@@ -150,40 +149,25 @@ verifies("cli.parity-cli-calls", () => {
   });
 
   it("still differs only by the known gaps, each with its task", () => {
-    // The approval runs and every error are compared strictly; the calls
-    // whose agent replies with the echo model, and the signed-out connector,
-    // stay gaps until their tasks land.
-    const gaps = new Set([
-      "run an agent with the echo model",
-      "run a foreach over a nested workflow",
-      "run with a signed-out connector",
-    ]);
+    // The approval runs, the echo model's calls and every error are compared
+    // strictly; the signed-out connector stays a gap until its task lands.
+    const gaps = new Set(["run with a signed-out connector"]);
     expect(report.results.map((result) => [result.call, result.verdict])).toEqual(
       golden.calls.map((call) => [call.name, gaps.has(call.name) ? "gap" : "allowed"]),
     );
   });
 
-  it("differs in the echo model's calls only by the llm events HAL-4754 adds back", () => {
-    // Once the old llm.request and llm.response are left out, the calls the
-    // gap names must match, so nothing else hides behind the gap.
-    const withoutModelCalls = (call: ComparedCall): ComparedCall => ({
-      ...call,
-      runs: call.runs.map((run) => ({
-        ...run,
-        events: run.events
-          .filter((event) => !String(event["type"]).startsWith("llm."))
-          .map((event, index) => ({ ...event, seq: index + 1 })),
-      })),
-    });
-    const named = report.results.filter((result) =>
-      result.gaps?.includes("workflow-model-calls-unlogged"),
+  it("matches the old CLI on the echo model's calls, instructions and model calls included", () => {
+    // HAL-4754 sends the agent's instructions and skills, and HAL-5206 logs
+    // the run's own model calls, so these calls compare strictly: every
+    // llm.request and llm.response, with its messages, usage and cost.
+    const echoCalls = ["run an agent with the echo model", "run a foreach over a nested workflow"];
+    const named = report.results.filter((result) => echoCalls.includes(result.call));
+    expect(named.map((result) => [result.call, result.verdict, result.gaps ?? []])).toEqual(
+      echoCalls.map((call) => [call, "allowed", []]),
     );
-    expect(named.map((result) => result.call)).toEqual([
-      "run an agent with the echo model",
-      "run a foreach over a nested workflow",
-    ]);
     for (const result of named) {
-      expect(withoutModelCalls(result.ruled.old), result.call).toEqual(result.ruled.new);
+      expect(result.ruled.old, result.call).toEqual(result.ruled.new);
     }
   });
 

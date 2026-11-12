@@ -102,7 +102,7 @@ verifies("engine.local-runs", () => {
     await scheduler.runDue();
 
     expect(await closed).toBeUndefined();
-    expect(seqs).toEqual([2, 3, 4, 5, 6, 7, 8]);
+    expect(seqs).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
   it("refuses a send the run doesn't take, and ignores a timer it doesn't know", async () => {

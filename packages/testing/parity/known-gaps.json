@@ -1,20 +1,16 @@
 [
   {
-    "id": "workflow-model-calls-unlogged",
+    "id": "workflow-model-call-no-instructions",
     "task": "HAL-4754",
     "area": "workflow runs: the model call",
-    "old": "784f78d sent the agent instructions and skills as a system message with the step prompt, and wrote llm.request and llm.response, with usage and cost, for each model call of a workflow step.",
-    "new": "The engine sends only the step prompt and writes neither event, so a run summary has no usage or cost.",
+    "old": "784f78d sent the agent instructions and skills as a system message with the step prompt of each model call of a workflow step.",
+    "new": "The engine sends only the step prompt, so each llm.request has one message where the old one had two, and the call uses fewer tokens and costs less. The run logs its model calls since HAL-5206.",
     "tests": [
       "billing/batch/each line runs the line-check workflow",
       "billing/invoice/an approved invoice is paid and announced",
       "billing/invoice/a rejection with a comment ends in rejected",
       "billing/invoice/an approval nobody answers expires after two days",
       "billing/invoice/without a decision the run waits"
-    ],
-    "calls": [
-      "run an agent with the echo model",
-      "run a foreach over a nested workflow"
     ]
   },
   {

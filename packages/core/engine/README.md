@@ -49,7 +49,7 @@ loop of one model turn, which the local chat turn runs.
 | `runLogTools` | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model | `engine.run-log-tools` |
 | `runModelTurn` | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return` |
 | `RunState` | what the kernel knows about a run: a fold of its events by `evolve` (or `foldRun`), stored as the run's snapshot | `engine.run-state-fold` |
-| `RunStoreTurnLog` | a `TurnLog` that appends those events to a run's log in a `RunStore` | `engine.turn-logs-events` |
+| `RunStoreTurnLog` | the `TurnLog` of a run's model call: appends its turn, and its subagents' turns, to the run's log in a `RunStore`, in the call's item or branch | `engine.turn-logs-events`, `engine.run-turn-log` |
 | `StateHandler` | one state type's `enter` and `onInput`, found by `pnpm discover` in `src/states` | `engine.state-registry` |
 | `step` | moves a run on by one input: reads it, decides and appends once with `expectedSeq`, reading again after a lost race | `engine.step-appends-once` |
 | `StepPorts` | what `step` takes besides the run and the input: the run store and the blob store (read and put) | `engine.step-appends-once` |
@@ -66,8 +66,12 @@ loop of one model turn, which the local chat turn runs.
 A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
 result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
 first 2,000 characters as `result` and the blob as `resultBlob` (requirement
-`engine.large-results-to-blobs`). The model still gets the whole result. A run's model call keeps
-no turn log yet; it is wrapped this way once it does.
+`engine.large-results-to-blobs`). The model still gets the whole result.
+
+A run's model call writes its whole turn to the run's log, and so do the subagents it hands tasks
+to, so the run's summary counts what its own model calls cost and the budget sees it (requirement
+`engine.run-turn-log`). When another writer adds to the log meanwhile, the turn writes after it as
+long as the run still waits on the call, and stops once it doesn't.
 
 An agent with `subagents` gets a `delegate_<id>` tool for each one in its hub (`subagentTools`).
 The caller's `runSubagent` runs the subagent's own turn one level deeper, and the tool logs
@@ -136,7 +140,6 @@ connectors list and checks only the risk the servers give.
 
 A chat turn belongs to no run, so `LocalExecutor.chatTurn` keeps no run log (also when the agent runs in a harness); it returns the
 turn's messages in `turn`, what it refused in `refusals` and the models it skipped in `skipped`.
-Runs of agents will log their turns through a `RunStoreTurnLog`.
 
 A turn's models are the alias its request resolved to, then that alias's own `fallback` entries,
 one level deep and each alias once. A model whose key isn't set is skipped before any call. An
@@ -342,7 +345,7 @@ fails with reason `budget` too, its error wrapped as `Workflow "reply" failed: â
 time it starts more items; a stopped run drops the calls it asked for but hadn't made, and the
 other items' child runs stop at their own next paid call, since they spend from the same run
 budget. The run's own
-model calls don't write `llm.response` to its log yet, so for now only harness calls count.
+model calls count as harness calls do, from the `llm.response` each one writes to the run's log.
 
 A harness run can last long and make many model calls in one step, so it also keeps to the budget
 call by call. Before each model call the bridge passes on, the call's `RunCallBudget` works out the

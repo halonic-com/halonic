@@ -18,6 +18,7 @@ import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
+import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
@@ -42,12 +43,13 @@ import {
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import { runsOptionsOf } from "./run/local-runs-options.ts";
-import { refusalLog } from "./run/refusal-log.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
+import { RunStoreTurnLog } from "./run/run-store-turn-log.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
+import { LargeResultsTurnLog } from "./tools/large-results.ts";
 
 /** The round limit of a chat turn when the options don't set one. */
 export const defaultMaxRounds = 20;
@@ -345,6 +347,7 @@ export class LocalExecutor implements RunExecutor {
       runs: this.options.runs.store,
       ...(this.options.memory === undefined ? {} : { records: this.options.memory }),
       clock: this.options.clock,
+      log: turn.log,
       runSubagent: (task) =>
         runLocalSubagent(
           {
@@ -373,7 +376,8 @@ export class LocalExecutor implements RunExecutor {
    * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
    * round limit: a turn that reaches it while the model still calls tools fails the call. The model
    * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
-   * turn's full run log comes in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
+   * turn, with its subagents' turns, writes its events to the run's log
+   * ({@link LocalExecutor.turnLogOf}), so the run's cost counts its calls.
    *
    * A connector tool its kept file lists under `read`, and not under `approve`, counts as reading:
    * its calls run without a person's OK, and the run log gets a `tool.unasked` before each one. A
@@ -397,6 +401,7 @@ export class LocalExecutor implements RunExecutor {
       state: call.state,
       definitions: await this.keptDefinitions(run),
       alongsideOthers: await callAlongsideOthers(this.options.runs?.store, run, call.callId),
+      log: this.turnLogOf(run, call),
     };
     const agent = agentIn(turn.definitions, call.agent);
     const messages = runTurnMessages(agent, turn.definitions, call.prompt);
@@ -434,7 +439,7 @@ export class LocalExecutor implements RunExecutor {
       clock: this.options.clock,
       checkCall: runToolCheckOf(connectorTools),
       autoKnowledge: knowledge.auto,
-      log: refusalLog(this.runs?.store, run, call, this.options.clock),
+      log: turn.log,
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
       localOnly: this.options.localOnly === true,
     });
@@ -452,6 +457,24 @@ export class LocalExecutor implements RunExecutor {
   private async connectorsOfRun(run: RunState): Promise<readonly ConnectorClient[]> {
     if (this.runConnectors === undefined) throw noRuns();
     return await this.runConnectors.of(run);
+  }
+
+  /**
+   * The log a run's model call writes its turn to: the run's own log
+   * ({@link RunStoreTurnLog}), with a tool result over 256 KB in the blob
+   * store ({@link LargeResultsTurnLog}).
+   *
+   * @throws when the executor has no runs, which only a run's call can't be
+   */
+  private turnLogOf(run: RunState, call: PendingCall): TurnLog {
+    if (this.runs === undefined || this.options.runs === undefined) {
+      throw new Error(`Run ${run.runId}'s model call has no run store to log to.`);
+    }
+    // The runs' watched store, so the run's subscribers hear of the turn's events.
+    return new LargeResultsTurnLog(
+      new RunStoreTurnLog(this.runs.store, run, call, this.options.clock),
+      this.options.runs.blobs,
+    );
   }
 
   /** The definitions the run started with. */

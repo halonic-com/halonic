@@ -5,6 +5,7 @@
 
 import type { Agent } from "@halonicjs/format";
 import type { Clock, RecordStore, RunStore } from "@halonicjs/ports";
+import type { TurnLog } from "../agent/turn-log.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { RunDefinitions } from "../kernel/decide-types.ts";
 import { recordTools } from "../tools/records/record-tools.ts";
@@ -31,6 +32,8 @@ export interface RunAgentToolsOptions {
   /** Where records live; without it, an agent with `collections` gets no records tools. */
   readonly records?: RecordStore;
   readonly clock: Clock;
+  /** The log of the run's model call, where a subagent's `agent.*` events go. */
+  readonly log: TurnLog;
   /** Runs a subagent's own turn on a task and gives its answer, or where it stopped. */
   runSubagent(task: DelegatedTask): Promise<SubagentOutcome>;
 }
@@ -65,6 +68,7 @@ export function runAgentTools(options: RunAgentToolsOptions): HalonicTool[] {
         hubAgents: options.definitions.agents ?? {},
         depth: options.depth,
         state: options.state,
+        log: options.log,
         runSubagent: options.runSubagent,
       }),
     );

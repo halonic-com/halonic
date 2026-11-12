@@ -12,6 +12,7 @@ import type {
   ChatResponse,
   Clock,
   ConnectorClient,
+  ModelPrice,
   RecordStore,
   ScheduledTimer,
 } from "@halonicjs/ports";
@@ -115,6 +116,8 @@ export interface RunsSetup {
   readonly blobs?: KernelBlobs;
   /** The workspace's budget; none when left out. */
   readonly budget?: Budget;
+  /** The scripted model's price per million tokens; unpriced when left out. */
+  readonly price?: ModelPrice;
   /** The connected servers; none when left out. */
   readonly connectors?: readonly ConnectorClient[];
   /**
@@ -170,6 +173,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       model: "scripted-1",
       ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
       ...(setup.localOnly === true ? { local: true } : {}),
+      ...(setup.price === undefined ? {} : { price: setup.price }),
     }),
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),

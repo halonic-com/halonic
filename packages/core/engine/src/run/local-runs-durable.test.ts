@@ -36,10 +36,16 @@ function failToSetOnce(scheduler: TestScheduler, ...timerIds: string[]): void {
   };
 }
 
-/** Makes the store fail its next append once, as a full disk would. */
+/**
+ * Makes the store fail its next append of a step once, as a full disk would.
+ * A step's append carries the run's snapshot; the events a model call's turn
+ * writes while it runs don't, so the call still answers and only its record fails.
+ */
 function failNextAppend(runs: KernelRuns): void {
-  runs.beforeAppend = () => {
-    runs.beforeAppend = undefined;
+  const append = runs.append.bind(runs);
+  runs.append = async (runId, expectedSeq, events, options = {}) => {
+    if (options.snapshot === undefined) return append(runId, expectedSeq, events, options);
+    runs.append = append;
     throw new Error("the log couldn't be written");
   };
 }

@@ -7,6 +7,7 @@ import type { ResolvedModel } from "./agent/model-chain.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
 import { runAgentTurn } from "./agent/run-model-turn.ts";
 import type { EffectBoundary } from "./agent/run-tool-call.ts";
+import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { RunDefinitions } from "./kernel/decide-types.ts";
 import { agentIn } from "./kernel/kept-definitions.ts";
@@ -34,6 +35,11 @@ export interface RunTurn {
    * because it can't stop the run (HAL-4630, HAL-5214).
    */
   readonly alongsideOthers: boolean;
+  /**
+   * The run log of the state's model call, which the call and every
+   * subagent turn under it write to (requirement `engine.run-turn-log`).
+   */
+  readonly log: TurnLog;
 }
 
 /** What a subagent's turn takes from the `LocalExecutor` that runs it. */
@@ -112,6 +118,7 @@ export async function runLocalSubagent(
     clock: context.clock,
     checkCall: runToolCheckOf(lists),
     autoKnowledge: knowledge.auto,
+    log: turn.log,
     ...(task.resumeFrom === undefined ? {} : { resumeFrom: task.resumeFrom }),
     localOnly: context.localOnly,
   });
