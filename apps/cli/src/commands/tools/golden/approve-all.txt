@@ -1,0 +1,42 @@
+## colour: halonic tools approve notes-mcp --all
+exit 0
+stdout:
+  \e[32m✓\e[39m Approved lookup    \e[2mhtl1:5f6944f6e1ba…\e[22m
+  \e[32m✓\e[39m Approved archive   \e[2mhtl1:90df971b9f6b…\e[22m
+  \e[33m!\e[39m Left out search: notes-mcp keeps changing it. Approve it by name: halonic tools approve notes-mcp search
+  \e[32m✓\e[39m Approved 2 tools from notes-mcp, as they are now. Tools that change later ask again.
+stderr:
+
+## NO_COLOR: halonic tools approve notes-mcp --all
+exit 0
+stdout:
+  ✓ Approved lookup    htl1:5f6944f6e1ba…
+  ✓ Approved archive   htl1:90df971b9f6b…
+  ! Left out search: notes-mcp keeps changing it. Approve it by name: halonic tools approve notes-mcp search
+  ✓ Approved 2 tools from notes-mcp, as they are now. Tools that change later ask again.
+stderr:
+
+## --json: halonic tools approve notes-mcp --all
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "approved": [
+      {
+        "name": "lookup",
+        "fingerprint": "htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04"
+      },
+      {
+        "name": "archive",
+        "fingerprint": "htl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381"
+      }
+    ],
+    "leftOut": [
+      {
+        "name": "search",
+        "why": "keeps_changing"
+      }
+    ]
+  }
+stderr:

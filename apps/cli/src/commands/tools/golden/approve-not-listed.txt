@@ -1,0 +1,27 @@
+## colour: halonic tools approve notes-mcp lokup
+exit 4
+stdout:
+stderr:
+  \e[31m✕\e[39m Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.
+    Did you mean lookup?
+
+## NO_COLOR: halonic tools approve notes-mcp lokup
+exit 4
+stdout:
+stderr:
+  ✕ Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.
+    Did you mean lookup?
+
+## --json: halonic tools approve notes-mcp lokup
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "message": "Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.",
+      "fix": "Did you mean lookup?"
+    }
+  }
+stderr:

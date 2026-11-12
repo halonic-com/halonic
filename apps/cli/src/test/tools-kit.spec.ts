@@ -1,6 +1,6 @@
 // A spec helper, not a test file of its own: it uses Vitest, so its name ends in `.spec.ts`.
 // `halonic tools` run in-process on Acme's `notes-mcp` (`acme-notes.ts`),
-// for the tests of `review`, `approve` and `revoke`.
+// for the tests of `approve` and `revoke`.
 
 import { join } from "node:path";
 import { afterEach, beforeEach, expect } from "vitest";
@@ -25,6 +25,14 @@ export interface ToolsKit {
     args: string[],
     terminal?: Terminal,
   ): Promise<{ code: number; stdout: string[]; stderr: string[] }>;
+  /** `notes-mcp`'s listed tools now: the ones on, and the ones waiting with their fingerprints. */
+  listedNow(): Promise<ListedNow>;
+}
+
+/** What {@link ToolsKit.listedNow} gives back. */
+export interface ListedNow {
+  readonly on: string[];
+  readonly waiting: { name: string; state: "changed" | "not_approved"; fingerprint: string }[];
 }
 
 const goldenFolder = join(import.meta.dirname, "..", "commands", "tools", "golden");
@@ -61,5 +69,17 @@ export function toolsKit(): ToolsKit {
       return run;
     },
     tools,
+    async listedNow() {
+      const check = await current().check();
+      if (check === "built_in") throw new Error("notes-mcp lists its tools.");
+      return {
+        on: check.tools.flatMap((tool) => (tool.kind === "listed" ? [tool.listedName] : [])),
+        waiting: check.waiting.map((waiting) => ({
+          name: waiting.listedName,
+          state: waiting.approved === null ? "not_approved" : "changed",
+          fingerprint: waiting.fingerprint,
+        })),
+      };
+    },
   };
 }
