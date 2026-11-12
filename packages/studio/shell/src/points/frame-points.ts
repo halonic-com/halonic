@@ -2,6 +2,7 @@ import { ShellError } from "../shell-error.ts";
 import type {
   BarItemContribution,
   CardContribution,
+  DialogHostContribution,
   PanelWindowContribution,
   PhoneBarContribution,
   PlaceContribution,
@@ -30,6 +31,8 @@ export interface FramePoints {
   readonly statusBar: Point<BarItemContribution>;
   readonly titleBar: Point<BarItemContribution>;
   readonly phoneBar: Point<PhoneBarContribution>;
+  /** Adds a view that draws the feature's dialogs; the window draws each once. */
+  readonly dialogs: Point<DialogHostContribution>;
   /** Adds a settings section. Throws a `ShellError` for a `scope` that isn't one of `settingsScopes`. */
   readonly settings: Point<SettingsSectionContribution>;
   /**
@@ -51,6 +54,7 @@ export interface FrameContributions {
   readonly statusBar: { list(): readonly Registered<BarItemContribution>[] };
   readonly titleBar: { list(): readonly Registered<BarItemContribution>[] };
   readonly phoneBar: { list(): readonly Registered<PhoneBarContribution>[] };
+  readonly dialogs: { list(): readonly Registered<DialogHostContribution>[] };
   readonly settings: { list(): readonly Registered<SettingsSectionContribution>[] };
   /** Home, which the shell adds, and the places features added, in the sidebar's fixed order. */
   readonly places: { list(): readonly Registered<PlaceContribution>[] };
@@ -77,6 +81,7 @@ export class FrameStores {
   private readonly statusBar = new PointStore<BarItemContribution>("statusBar.add", ["id"]);
   private readonly titleBar = new PointStore<BarItemContribution>("titleBar.add", ["id"]);
   private readonly phoneBar = new PointStore<PhoneBarContribution>("phoneBar.add", ["id"]);
+  private readonly dialogs = new PointStore<DialogHostContribution>("dialogs.add", ["id"]);
   private readonly settings = new PointStore<SettingsSectionContribution>("settings.add", ["id"]);
   private readonly places = new PointStore<PlaceContribution>("places.add", ["id"]);
   private readonly homeCards = new PointStore<HomeCardContribution>("home.addCard", ["id"]);
@@ -95,6 +100,7 @@ export class FrameStores {
       statusBar: pointOf("statusBar.add", this.statusBar),
       titleBar: pointOf("titleBar.add", this.titleBar),
       phoneBar: pointOf("phoneBar.add", this.phoneBar),
+      dialogs: pointOf("dialogs.add", this.dialogs),
       settings: {
         add: (section) => {
           guard("settings.add");
@@ -134,6 +140,7 @@ export class FrameStores {
       statusBar: { list: () => byOrder(this.statusBar.all()) },
       titleBar: { list: () => byOrder(this.titleBar.all()) },
       phoneBar: { list: () => byOrder(this.phoneBar.all()) },
+      dialogs: { list: () => byOrder(this.dialogs.all()) },
       settings: { list: () => bySettingsGroup(this.settings.all()) },
       places: {
         list: () =>

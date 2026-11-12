@@ -16,6 +16,13 @@ export interface PanelWindowContribution extends Ordered, ViewRef {
   readonly title: string;
 }
 
+/**
+ * A feature's dialogs, such as the dialog of a plugin command picked in Ctrl K. The window draws
+ * the view once, on the desktop and on a phone, and it draws nothing while none of its dialogs is
+ * open. Its dialogs are modal, so where it sits doesn't matter.
+ */
+export interface DialogHostContribution extends Ordered, ViewRef {}
+
 /** An item in the status bar or the title bar, such as the run target picker. */
 export interface BarItemContribution extends Ordered, ViewRef {}
 

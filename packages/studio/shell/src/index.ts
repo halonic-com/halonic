@@ -36,6 +36,11 @@ export {
   type EscapePress,
 } from "./close-stack/close-stack.ts";
 export {
+  type DialogHostProps,
+  FeatureDialogs,
+  type FeatureDialogsProps,
+} from "./dialogs/feature-dialogs.tsx";
+export {
   createShellEngine,
   type EngineConnectionEvent,
   type EngineConnectionListener,
@@ -208,6 +213,7 @@ export type {
 export {
   type BarItemContribution,
   type CardContribution,
+  type DialogHostContribution,
   type PanelWindowContribution,
   type PhoneBarContribution,
   type PlaceContribution,

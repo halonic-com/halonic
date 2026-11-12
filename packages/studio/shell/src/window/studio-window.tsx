@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
+import { itemLocation } from "../palette/palette-groups.ts";
 import { usePaletteOpening } from "../palette/palette-opening.ts";
 import { ShellPalette } from "../palette/shell-palette.tsx";
 import { BottomNavigation } from "../phone/bottom-navigation.tsx";
@@ -10,12 +12,14 @@ import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
+import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import type { Shell } from "../shell.ts";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
+import type { TabLocation } from "../tabs/tab-set.ts";
 import { useWindowKeys } from "../tabs/use-window-keys.ts";
 import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { Toolbar } from "../toolbar/toolbar.tsx";
@@ -76,13 +80,28 @@ export function StudioWindow(props: StudioWindowProps) {
         focusNewPage();
       }
     : phone.openPlace;
+  // Read when a view opens an item, for the same reason.
+  const openHere = useRef<(location: TabLocation) => void>(phone.open);
+  openHere.current = desktop
+    ? (location) => {
+        tabs.openHere(location);
+        focusNewPage();
+      }
+    : (location) => phone.open(location);
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
       openPlace: (place) => openPlaceHere.current(place),
+      openItem: (item) => openHere.current(locationOfItem(item)),
     }),
     [shell, workspace],
   );
+  /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
+  function locationOfItem(item: ItemRef): TabLocation {
+    const kind = contributions.itemKinds.get(item.kind);
+    const label = kind?.tab?.describe(item, contextFor(kind.featureId)).label ?? item.id;
+    return itemLocation(item, label, contributions.itemKinds);
+  }
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
@@ -193,6 +212,7 @@ export function StudioWindow(props: StudioWindowProps) {
           onClose={palette.close}
         />
       ) : null}
+      <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );
 }
