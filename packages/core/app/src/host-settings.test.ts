@@ -65,14 +65,20 @@ verifies("app.host-settings", () => {
 
     it("refuses to read before it is loaded, and passes on a store that can't be read", async () => {
       const store = new TestHostSettingsStore();
+      const elsewhere = new TestHostSettingsStore(store);
       store.readError = new Error("permission denied");
       const settings = new HostSettings(store);
       expect(() => settings.get(turnLimit)).toThrow("Load the host settings before reading one.");
       await expect(settings.load()).rejects.toThrow("permission denied");
+      // A failed load doesn't keep watching.
+      const read = vi.spyOn(store, "read");
+      await elsewhere.set("assistant.turn-limit", 20);
+      await settle();
+      expect(read).not.toHaveBeenCalled();
 
       store.readError = undefined;
       await settings.load();
-      expect(settings.get(turnLimit)).toBe(16);
+      expect(settings.get(turnLimit)).toBe(20);
     });
   });
 
@@ -92,6 +98,28 @@ verifies("app.host-settings", () => {
       store.saveError = new Error("read-only profile");
       await expect(settings.set(turnLimit, 24)).rejects.toThrow("read-only profile");
       expect(settings.get(turnLimit)).toBe(20);
+    });
+
+    it("resets a setting to its fallback by removing it, and keeps the value when that fails", async () => {
+      const { store, settings } = await loaded();
+      await settings.set(turnLimit, 20);
+      await settings.set(connectorTools, false);
+      store.saveError = new Error("read-only profile");
+      await expect(settings.reset(turnLimit)).rejects.toThrow("read-only profile");
+      expect(settings.get(turnLimit)).toBe(20);
+
+      store.saveError = undefined;
+      await settings.reset(turnLimit);
+      expect(settings.get(turnLimit)).toBe(16);
+      expect(await store.read()).toEqual({ "assistant.connector-tools": false });
+    });
+
+    it("resets and saves in the order they were asked", async () => {
+      const { settings } = await loaded();
+      void settings.set(turnLimit, 20);
+      void settings.reset(turnLimit);
+      await settings.set(connectorTools, false);
+      expect(settings.get(turnLimit)).toBe(16);
     });
 
     it("keeps what was saved, whatever the caller does with its array later", async () => {
@@ -192,6 +220,22 @@ verifies("app.host-settings", () => {
       await settle();
       expect(listener).toHaveBeenCalledOnce();
       expect(stopped).not.toHaveBeenCalled();
+    });
+
+    it("sees a change made while it loads", async () => {
+      const store = new TestHostSettingsStore();
+      const elsewhere = new TestHostSettingsStore(store);
+      const read = store.read.bind(store);
+      vi.spyOn(store, "read").mockImplementationOnce(async () => {
+        const values = await read();
+        await elsewhere.set("assistant.turn-limit", 20);
+        return values;
+      });
+      const settings = new HostSettings(store);
+      await settings.load();
+      expect(settings.get(turnLimit)).toBe(16);
+      await settle();
+      expect(settings.get(turnLimit)).toBe(20);
     });
 
     it("watches once however often it loads, and stops when closed", async () => {

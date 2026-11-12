@@ -86,16 +86,25 @@ export class HostSettings {
   }
 
   /**
-   * Reads the saved settings, and from the first load on watches them.
+   * Reads the saved settings, and from the first load on watches them. The
+   * watch starts before the read, so a change made during it isn't missed.
    *
    * @throws the store's error when they can't be read: Studio shows "Couldn't load …"
    */
   async load(): Promise<void> {
     await this.#enqueue(async () => {
-      this.#values = await this.#store.read();
+      const starts = this.#stopWatching === undefined;
+      // A change during the read only queues one re-read after it.
+      this.#stopWatching ??= this.#store.watch(() => this.#refresh());
+      try {
+        this.#values = await this.#store.read();
+      } catch (error) {
+        // Not loaded, so not watching either, as before the first load.
+        if (starts) this.close();
+        throw error;
+      }
       this.#loaded = true;
     });
-    this.#stopWatching ??= this.#store.watch(() => this.#refresh());
   }
 
   /**
@@ -129,6 +138,20 @@ export class HostSettings {
     });
   }
 
+  /**
+   * Puts the setting back to its fallback by removing its saved value, so a
+   * later fallback applies too. When the removal fails, it throws and the
+   * value from before stays.
+   */
+  async reset<T extends HostSettingValue>(setting: HostSetting<T>): Promise<void> {
+    await this.#enqueue(async () => {
+      await this.#store.remove(setting.key);
+      const values = { ...this.#values };
+      delete values[setting.key];
+      this.#values = values;
+    });
+  }
+
   /** Calls `listener` with the keys that changed elsewhere. Returns the stop function. */
   onChange(listener: HostSettingsListener): () => void {
     const call: HostSettingsListener = (keys) => listener(keys);
@@ -150,6 +173,8 @@ export class HostSettings {
     this.#refreshQueued = true;
     void this.#enqueue(async () => {
       this.#refreshQueued = false;
+      // A load that failed after the watch started has nothing to compare with.
+      if (!this.#loaded) return;
       const before = this.#values;
       const after = await this.#store.read();
       this.#values = after;

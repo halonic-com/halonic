@@ -85,7 +85,9 @@ export interface HostSettingsStore {
   set(key: string, value: HostSettingValue): Promise<void>;
   /**
    * Removes one key and leaves every other key as it is. Removing a key
-   * that isn't saved is not an error.
+   * that isn't saved is not an error, and a removal is never refused for
+   * size, even when the saved settings are already over
+   * {@link hostSettingsMaxBytes}.
    *
    * @throws RangeError when the key isn't one {@link isHostSettingKey} allows; nothing is saved then
    */
@@ -137,7 +139,8 @@ export interface SavedHostSettingsChange {
  *
  * @param text - the saved settings' text, `undefined` when none is saved
  * @throws RangeError when the key isn't one {@link isHostSettingKey} allows, a
- *   number isn't finite, or the values would be over {@link hostSettingsMaxBytes}
+ *   number isn't finite, or a saved value would bring the values over
+ *   {@link hostSettingsMaxBytes}; a removal is never refused for size
  */
 export function changeSavedHostSettings(
   text: string | undefined,
@@ -154,7 +157,9 @@ export function changeSavedHostSettings(
   const values: Record<string, unknown> = { ...saved?.values };
   if (value === undefined) delete values[key];
   else values[key] = value;
-  if (utf8Length(JSON.stringify(values)) > hostSettingsMaxBytes) {
+  // A removal is never refused for size, so settings already over it (saved
+  // by a newer Halonic, or edited by hand) can still be brought back under it.
+  if (value !== undefined && utf8Length(JSON.stringify(values)) > hostSettingsMaxBytes) {
     throw new RangeError(`The settings would be over ${hostSettingsMaxBytes} bytes with ${key}.`);
   }
   return {

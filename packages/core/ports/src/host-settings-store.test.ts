@@ -98,6 +98,20 @@ verifies("ports.host-settings-store", () => {
     expect(JSON.parse(removed.text)).toEqual({ version: 1, values: {} });
   });
 
+  it("never refuses a removal for size, but still a save over the limit", () => {
+    const over = changeSavedHostSettings(undefined, "assistant.turn-limit", 20).text.replace(
+      '"values": {',
+      `"values": {\n    "assistant.instructions": "${"x".repeat(hostSettingsMaxBytes)}",`,
+    );
+    expect(() => changeSavedHostSettings(over, "assistant.turn-limit", 24)).toThrow(RangeError);
+    const removed = changeSavedHostSettings(over, "assistant.turn-limit", undefined);
+    expect(JSON.parse(removed.text).values).toEqual({
+      "assistant.instructions": "x".repeat(hostSettingsMaxBytes),
+    });
+    const under = changeSavedHostSettings(removed.text, "assistant.instructions", undefined);
+    expect(JSON.parse(under.text)).toEqual({ version: 1, values: {} });
+  });
+
   it("refuses a key or a number JSON can't hold before it changes anything", () => {
     expect(() => changeSavedHostSettings(undefined, "turn-limit", 1)).toThrow(RangeError);
     expect(() => changeSavedHostSettings(undefined, "turn-limit", undefined)).toThrow(RangeError);

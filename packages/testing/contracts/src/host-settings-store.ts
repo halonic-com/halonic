@@ -1,4 +1,8 @@
-import type { HostSettingsStore, HostSettingValue } from "@halonicjs/ports";
+import {
+  type HostSettingsStore,
+  type HostSettingValue,
+  hostSettingsMaxBytes,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import golden from "./golden/host-settings-limits.json" with { type: "json" };
@@ -128,6 +132,22 @@ function refusalCases(make: MakeHostSettingsStore): void {
       await expect(store.set("assistant.turn-limit", value)).rejects.toThrow(RangeError);
     }
     expect(await store.read()).toEqual({ "assistant.turn-limit": 20 });
+  });
+
+  it("removes a key from settings already over the size limit, but still refuses a save", async () => {
+    const { store, writeSaved } = await make();
+    const instructions = "x".repeat(hostSettingsMaxBytes);
+    await writeSaved(
+      JSON.stringify({
+        version: 1,
+        values: { "assistant.instructions": instructions, "assistant.turn-limit": 20 },
+      }),
+    );
+    await expect(store.set("assistant.turn-limit", 24)).rejects.toThrow(RangeError);
+    await store.remove("assistant.turn-limit");
+    expect(await store.read()).toEqual({ "assistant.instructions": instructions });
+    await store.remove("assistant.instructions");
+    expect(await store.read()).toEqual({});
   });
 
   for (const { name, key, character, count, fits } of golden.sizes) {
