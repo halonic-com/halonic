@@ -5,6 +5,7 @@ use std::ffi::{OsStr, OsString, c_void};
 use std::io;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::os::windows::fs::MetadataExt;
+use std::os::windows::io::AsRawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -13,13 +14,23 @@ use windows_sys::Win32::Foundation::{CloseHandle, ERROR_FILE_NOT_FOUND, HANDLE, 
 use windows_sys::Win32::Security::Authorization::{
     ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
 };
+use windows_sys::Win32::Security::Cryptography::{
+    CERT_NAME_SIMPLE_DISPLAY_TYPE, CertGetNameStringW,
+};
+use windows_sys::Win32::Security::WinTrust::{
+    WINTRUST_ACTION_GENERIC_VERIFY_V2, WINTRUST_DATA, WINTRUST_FILE_INFO,
+    WTD_CACHE_ONLY_URL_RETRIEVAL, WTD_CHOICE_FILE, WTD_REVOKE_NONE, WTD_STATEACTION_CLOSE,
+    WTD_STATEACTION_VERIFY, WTD_UI_NONE, WTHelperGetProvSignerFromChain,
+    WTHelperProvDataFromStateData, WinVerifyTrust,
+};
 use windows_sys::Win32::Security::{
     DACL_SECURITY_INFORMATION, GetTokenInformation, OWNER_SECURITY_INFORMATION,
     PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SetFileSecurityW, TOKEN_ELEVATION,
     TOKEN_QUERY, TokenElevation,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    FILE_ATTRIBUTE_REPARSE_POINT, MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
+    BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, GetFileInformationByHandle,
+    MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
 };
 use windows_sys::Win32::System::Com::CoTaskMemFree;
 use windows_sys::Win32::System::LibraryLoader::{
@@ -170,6 +181,64 @@ impl Machine for Windows {
         std::fs::copy(from, to).map(|_| ())
     }
 
+    fn same_file(&self, one: &Path, other: &Path) -> bool {
+        match (file_id(one), file_id(other)) {
+            (Ok(one), Ok(other)) => one == other,
+            _ => false,
+        }
+    }
+
+    fn signer(&self, file: &Path) -> Option<String> {
+        let path = wide(file.as_os_str());
+        let mut file_info = WINTRUST_FILE_INFO {
+            cbStruct: size_of::<WINTRUST_FILE_INFO>() as u32,
+            pcwszFilePath: path.as_ptr(),
+            hFile: ptr::null_mut(),
+            pgKnownSubject: ptr::null_mut(),
+        };
+        // No revocation check: it would go online from an elevated process,
+        // and can hang without a network. The chain must still lead to a
+        // root Windows trusts, for code signing.
+        let mut data = WINTRUST_DATA {
+            cbStruct: size_of::<WINTRUST_DATA>() as u32,
+            dwUIChoice: WTD_UI_NONE,
+            fdwRevocationChecks: WTD_REVOKE_NONE,
+            dwUnionChoice: WTD_CHOICE_FILE,
+            dwStateAction: WTD_STATEACTION_VERIFY,
+            dwProvFlags: WTD_CACHE_ONLY_URL_RETRIEVAL,
+            ..WINTRUST_DATA::default()
+        };
+        data.Anonymous.pFile = &raw mut file_info;
+        let mut action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
+        // SAFETY: `data`, `file_info`, `path` and `action` outlive the call;
+        // `data` points at `file_info`, which points at the NUL-terminated
+        // `path`. A null window means no UI.
+        let trusted = unsafe {
+            WinVerifyTrust(
+                ptr::null_mut(),
+                &mut action,
+                (&raw mut data).cast::<c_void>(),
+            )
+        } == 0;
+        let signer = if trusted {
+            // SAFETY: after a verify, `hWVTStateData` holds the state the
+            // calls below read; it stays valid until the close below.
+            unsafe { publisher(data.hWVTStateData) }
+        } else {
+            None
+        };
+        data.dwStateAction = WTD_STATEACTION_CLOSE;
+        // SAFETY: as above; closing frees the state the verify left, once.
+        unsafe {
+            WinVerifyTrust(
+                ptr::null_mut(),
+                &mut action,
+                (&raw mut data).cast::<c_void>(),
+            )
+        };
+        signer
+    }
+
     fn read(&self, file: &Path) -> io::Result<Vec<u8>> {
         std::fs::read(file)
     }
@@ -276,6 +345,71 @@ impl Machine for Windows {
             unsafe { MoveFileExW(path.as_ptr(), ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT) };
         }
     }
+}
+
+/// The name the signing certificate behind `state` shows, as the UAC prompt
+/// shows the publisher.
+///
+/// # Safety
+///
+/// `state` is the `hWVTStateData` of a `WinVerifyTrust` verify that passed,
+/// and not yet closed.
+unsafe fn publisher(state: HANDLE) -> Option<String> {
+    // SAFETY: `state` is open, as the caller promises.
+    let data = unsafe { WTHelperProvDataFromStateData(state) };
+    if data.is_null() {
+        return None;
+    }
+    // SAFETY: `data` is the provider data `state` holds; signer 0 is the
+    // primary signer, and no countersigner is asked for.
+    let signer = unsafe { WTHelperGetProvSignerFromChain(data, 0, 0, 0) };
+    // SAFETY: a non-null `signer` lives as long as `state`; its chain has
+    // `csCertChain` entries, the first of which is the signing certificate.
+    let certificate = unsafe {
+        if signer.is_null() || (*signer).csCertChain == 0 || (*signer).pasCertChain.is_null() {
+            return None;
+        }
+        (*(*signer).pasCertChain).pCert
+    };
+    if certificate.is_null() {
+        return None;
+    }
+    let mut name = [0u16; 256];
+    // SAFETY: `certificate` lives as long as `state`; `name` and its length
+    // in units outlive the call, which writes at most that many, NUL included.
+    let length = unsafe {
+        CertGetNameStringW(
+            certificate,
+            CERT_NAME_SIMPLE_DISPLAY_TYPE,
+            0,
+            ptr::null(),
+            name.as_mut_ptr(),
+            name.len() as u32,
+        )
+    } as usize;
+    // The length counts the NUL; 1 is an empty name.
+    if length <= 1 || length > name.len() {
+        return None;
+    }
+    String::from_utf16(&name[..length - 1]).ok()
+}
+
+/// The volume and file index that name `path`'s file or folder on this
+/// computer, whatever name reached it.
+fn file_id(path: &Path) -> io::Result<(u32, u32, u32)> {
+    // The standard library opens folders too (backup semantics) and follows
+    // links, so a link to the folder is the folder.
+    let file = std::fs::File::open(path)?;
+    let mut info = BY_HANDLE_FILE_INFORMATION::default();
+    // SAFETY: `file` is open for the call, and `info` outlives it.
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok((
+        info.dwVolumeSerialNumber,
+        info.nFileIndexHigh,
+        info.nFileIndexLow,
+    ))
 }
 
 /// A folder Windows knows by `id`, from Windows rather than the environment.
