@@ -14,7 +14,7 @@ describe("settingsFeature", () => {
       features: [settingsFeature],
       hostServices: [DisplaySettingsService],
     });
-    const [appearance] = shell.contributions.settings.list();
+    const appearance = shell.contributions.settings.list().find(({ id }) => id === "appearance");
     expect(appearance).toMatchObject({ id: "appearance", title: "Appearance", scope: "display" });
     const module = await appearance?.load();
     expect(module).toHaveProperty(appearance?.view ?? "");

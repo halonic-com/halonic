@@ -7,6 +7,22 @@ import { DisplaySettingsService } from "./api.ts";
  */
 export const settingsSections: readonly SettingsSectionContribution[] = [
   {
+    id: "models",
+    title: "Models",
+    scope: "workspace",
+    order: 10,
+    view: "ModelsLinkSection",
+    load: () => import("./links/workspace-links.tsx"),
+  },
+  {
+    id: "trust",
+    title: "Trust",
+    scope: "workspace",
+    order: 20,
+    view: "TrustLinkSection",
+    load: () => import("./links/workspace-links.tsx"),
+  },
+  {
     id: "appearance",
     title: "Appearance",
     scope: "display",

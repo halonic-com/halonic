@@ -130,8 +130,16 @@ export function StudioWindow(props: StudioWindowProps) {
       openItem: (item) => openHere.current(locationOfItem(item)),
       openSettings,
       settingsSections,
+      runCommand: (commandId) => {
+        const command = contributions.commands.get(commandId, contextFor);
+        if (command === undefined) {
+          return false;
+        }
+        void Promise.resolve(command.run(contextFor(command.featureId)));
+        return true;
+      },
     }),
-    [shell, workspace, openSettings, settingsSections],
+    [shell, workspace, openSettings, settingsSections, contributions],
   );
   /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
   function locationOfItem(item: ItemRef): TabLocation {

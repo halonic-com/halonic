@@ -50,6 +50,10 @@ function section(id: string, title: string, scope: SettingsScope, order: number)
 /** The sections the card's context listed when it last drew. */
 let cardSections: unknown;
 
+/** What the card's `runCommand` answered, and the commands that ran. */
+let ranCommand: boolean | undefined;
+const commandsRun: string[] = [];
+
 /** Home's card asks for a section, as the Harness page's **Open Settings ›** does. */
 function OpenSettingsCard({ context }: HomeCardProps) {
   cardSections = context.settingsSections;
@@ -65,6 +69,24 @@ function OpenSettingsCard({ context }: HomeCardProps) {
       >
         Assistant
       </button>
+      <button
+        type="button"
+        className="run-known"
+        onClick={() => {
+          ranCommand = context.runCommand?.("sections.ping");
+        }}
+      >
+        Ping
+      </button>
+      <button
+        type="button"
+        className="run-unknown"
+        onClick={() => {
+          ranCommand = context.runCommand?.("nobody.adds-this");
+        }}
+      >
+        Unknown
+      </button>
     </>
   );
 }
@@ -76,6 +98,13 @@ const sectionsFeature = defineFeature({
     studio.settings.add(section("appearance", "Appearance", "display", 10));
     studio.settings.add(section("formats", "Formats", "display", 20));
     studio.settings.add(section("assistant", "Assistant", "host", 30));
+    studio.commands.add({
+      id: "sections.ping",
+      title: "Ping",
+      run: () => {
+        commandsRun.push("sections.ping");
+      },
+    });
     studio.home.addCard({
       id: "needs-you",
       view: "OpenSettingsCard",
@@ -252,6 +281,19 @@ verifies("shell.settings-window", () => {
       { id: "formats", title: "Formats" },
       { id: "assistant", title: "Assistant" },
     ]);
+  });
+
+  it("runs a command by its id and says whether a feature added it", async () => {
+    commandsRun.length = 0;
+    const container = await renderWindow();
+
+    await click(container.querySelector(".run-known"));
+    expect(commandsRun).toEqual(["sections.ping"]);
+    expect(ranCommand).toBe(true);
+
+    await click(container.querySelector(".run-unknown"));
+    expect(commandsRun).toEqual(["sections.ping"]);
+    expect(ranCommand).toBe(false);
   });
 });
 
