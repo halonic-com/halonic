@@ -10,6 +10,7 @@ import type {
 import type {
   ChatParams,
   ChatResponse,
+  ChatTurnRequest,
   Clock,
   ConnectorClient,
   ModelPrice,
@@ -147,6 +148,8 @@ export interface RunsSetup {
   readonly model?: ResolvedModel;
   /** How a model call's stop becomes an `AbortSignal`; model calls get none when left out. */
   readonly abortOnStop?: AbortOnStop;
+  /** Gets each request the executor resolves a model for, such as a method's alias. */
+  readonly onResolveModel?: (request: ChatTurnRequest) => void;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -174,14 +177,18 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const definitionsAsked: string[] = [];
   const versionsAsked: (RunVersion | undefined)[] = [];
   const executor = new LocalExecutor({
-    resolveModel: async () =>
-      setup.model ?? {
-        provider: model,
-        model: "scripted-1",
-        ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
-        ...(setup.localOnly === true ? { local: true } : {}),
-        ...(setup.price === undefined ? {} : { price: setup.price }),
-      },
+    resolveModel: async (request) => {
+      setup.onResolveModel?.(request);
+      return (
+        setup.model ?? {
+          provider: model,
+          model: "scripted-1",
+          ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
+          ...(setup.localOnly === true ? { local: true } : {}),
+          ...(setup.price === undefined ? {} : { price: setup.price }),
+        }
+      );
+    },
     ...(setup.abortOnStop === undefined ? {} : { abortOnStop: setup.abortOnStop }),
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
