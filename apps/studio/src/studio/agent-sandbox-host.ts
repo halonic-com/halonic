@@ -75,14 +75,18 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
 
   async setUp(): Promise<SandboxOutcome | null> {
     const started = await this.#setup.startSetUp();
-    if (started.running === null) return outcomeOf("setup", started.last?.result);
+    if (started.running === null) {
+      return started.last?.verb === "setup" ? outcomeOf("setup", started.last.result) : null;
+    }
     return outcomeOf("setup", (await this.#setup.ended("setup"))?.result);
   }
 
   async remove(): Promise<SandboxOutcome | null> {
     const started = await this.#setup.startRemove();
     if ("inUse" in started) return { kind: "remove", how: "in-use", runs: started.inUse };
-    if (started.running === null) return outcomeOf("remove", started.last?.result);
+    if (started.running === null) {
+      return started.last?.verb === "remove" ? outcomeOf("remove", started.last.result) : null;
+    }
     return outcomeOf("remove", (await this.#setup.ended("remove"))?.result);
   }
 }

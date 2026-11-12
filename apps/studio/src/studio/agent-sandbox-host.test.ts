@@ -110,6 +110,26 @@ verifies("studio.agent-sandbox-host", () => {
     });
   });
 
+  it("ignores an older result of the other verb when nothing was started", async () => {
+    const old = {
+      running: null,
+      last: {
+        verb: "remove",
+        result: { ok: false, outcome: "failed", reason: "Old." },
+        finishedAt: "t",
+      },
+    };
+    const setup = host({ "POST /v1/sandbox/setup": { status: 200, body: old } });
+    expect(await new AgentHostSandboxFacts(setup.transport).setUp()).toBeNull();
+    const remove = host({
+      "POST /v1/sandbox/remove": {
+        status: 200,
+        body: { ...old, last: { ...old.last, verb: "setup" } },
+      },
+    });
+    expect(await new AgentHostSandboxFacts(remove.transport).remove()).toBeNull();
+  });
+
   it("answers how many runs use the sandbox when the host refuses the removal", async () => {
     const { transport, asked } = host({
       "POST /v1/sandbox/remove": { status: 409, body: { runs: 2 } },
