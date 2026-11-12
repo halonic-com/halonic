@@ -7,6 +7,7 @@ import { boxClasses, type ListLook } from "./list-lines.ts";
 import type { ListGroup, ListProps, ListRow } from "./list-props.ts";
 import { firstFocusColumn, ListColumns, Row, type RowShared } from "./list-row.tsx";
 import { ListSkeleton, useFocusAfterLoading } from "./list-skeleton.tsx";
+import { checkColumns } from "./row-columns.tsx";
 
 /**
  * A bordered group of rows: agents, routines, runs. It's one Tab stop: ↑ ↓ move between rows,
@@ -51,6 +52,9 @@ export function List<Id extends string>({
   loadingLabel,
   onRetry,
 }: ListProps<Id>) {
+  if (columns !== undefined) {
+    checkColumns(columns);
+  }
   const phone = usePresentation() === "phone";
   const look: ListLook = (flushProp ?? phone) ? "flush" : "bordered";
   const headingId = useId();

@@ -79,6 +79,8 @@ verifies("kit.list-columns", () => {
     expect(widths[1]).toContain("w-16");
     expect(widths[1]).toContain("font-mono text-code tabular-nums");
     expect(widths[2]).toContain("min-w-50 flex-1");
+    // One minimum width, so it doesn't depend on the order of the generated CSS.
+    expect(widths[2]).not.toContain("min-w-0");
     expect(widths[3]).toContain("w-48");
     expect(widths[3]).toContain("line-clamp-2");
     expect(widths[4]).toContain("w-24 shrink-0 text-right");
@@ -174,6 +176,17 @@ verifies("kit.list-columns", () => {
     const lines = Array.from(stacked?.querySelector(".flex-col")?.children ?? []);
     expect(lines[0]?.textContent).toBe("Support reply");
     expect(lines[1]?.textContent).toBe("Needs youWaiting for you: Approve this reply?");
+  });
+
+  it("refuses columns without exactly one main column, or with a key used twice", () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const withColumns = (these: readonly ListColumn[]) => () =>
+      render(<List label="Runs" rows={[needsYou]} columns={these} />);
+    const noMain = columns.filter((column) => column.kind !== "main");
+    expect(withColumns(noMain)).toThrow("exactly one main column, not 0");
+    expect(withColumns([...columns, { kind: "main" }])).toThrow("exactly one main column, not 2");
+    expect(withColumns([...columns, { kind: "code", key: "run" }])).toThrow('"run" is used twice');
+    quiet.mockRestore();
   });
 
   it("gives the skeleton rows a bar in each column while it loads", () => {

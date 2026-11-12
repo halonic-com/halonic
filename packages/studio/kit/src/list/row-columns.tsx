@@ -22,6 +22,22 @@ export const columnWidthClasses: Record<ListColumnKind, string> = {
   time: "w-24 shrink-0 text-right",
 };
 
+/**
+ * Exactly one `main` column, which holds the title, and every other column's key used once, since
+ * the cells are found and drawn by it: a mistake here is the screen's, not the user's.
+ */
+export function checkColumns(columns: readonly ListColumn[]): void {
+  const mains = columns.filter((column) => column.kind === "main").length;
+  if (mains !== 1) {
+    throw new Error(`A List's columns have exactly one main column, not ${mains}.`);
+  }
+  const keys = columns.flatMap((column) => (column.kind === "main" ? [] : [column.key]));
+  const repeated = keys.find((key, index) => keys.indexOf(key) !== index);
+  if (repeated !== undefined) {
+    throw new Error(`A List's columns each have their own key: "${repeated}" is used twice.`);
+  }
+}
+
 /** Text in an unavailable row is dimmed; its chips and tags keep their colour: they carry state. */
 function textColour(row: ListRow, normal: string): string {
   return row.unavailable === undefined ? normal : "text-fg-disabled text-forced-disabled";
@@ -76,7 +92,7 @@ function WideCell({
   if (column.kind === "main") {
     const meta = metaOf(row);
     return (
-      <div className={`flex min-w-0 items-center gap-3 ${width}`}>
+      <div className={`flex items-center gap-3 ${width}`}>
         <Leading row={row} small={false} />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="flex min-w-0 items-center gap-2">
