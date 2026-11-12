@@ -118,6 +118,9 @@ jobs:
       - name: 7. Diagnosis script, as this (elevated) runner user
         working-directory: spikes/mxc/realpc
         run: cmd /c "mxc-diag.cmd < NUL"
+        env:
+          # v4 (HAL-3503): also put the real PC's AppData capability-SID ACE on fresh folders.
+          MXC_ACE_REPRO: "1"
         continue-on-error: true
         timeout-minutes: 20
       - name: 7b. Diagnosis script, as the plain local user (no admin)
@@ -130,7 +133,7 @@ jobs:
           $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
           # v2 (HAL-3503): Start-Process keeps the runner's profile variables, so v1 tried the runner admin's AppData and stopped.
           $userHome = "$env:SystemDrive\Users\mxcuser"
-          $userEnv = @{ USERPROFILE = $userHome; LOCALAPPDATA = "$userHome\AppData\Local"; APPDATA = "$userHome\AppData\Roaming"; TEMP = "$userHome\AppData\Local\Temp"; TMP = "$userHome\AppData\Local\Temp"; USERNAME = "mxcuser" }
+          $userEnv = @{ USERPROFILE = $userHome; LOCALAPPDATA = "$userHome\AppData\Local"; APPDATA = "$userHome\AppData\Roaming"; TEMP = "$userHome\AppData\Local\Temp"; TMP = "$userHome\AppData\Local\Temp"; USERNAME = "mxcuser"; MXC_ACE_REPRO = "1" }
           $out = "$env:SystemDrive\mxc-spike\out-diag.txt"; $err = "$env:SystemDrive\mxc-spike\err-diag.txt"
           $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'mxc-diag.cmd < NUL' -WorkingDirectory $env:SystemDrive\mxc-spike `
             -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `

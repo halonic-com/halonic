@@ -74,14 +74,38 @@ if (existsSync(checkFolder)) {
   }
 }
 
+// v4: on the real PC only the places under AppData failed, and AppData carries an inherited ACE for a capability SID that the
+// passing places don't have. With MXC_ACE_REPRO=1 (the Windows Sandbox run) the same ACE is put on fresh folders, next to a
+// folder without it and one with another capability SID, so a clean Windows shows whether that ACE alone breaks the box.
+const icFull = (p) => { const r = spawnSync("icacls.exe", [p], { encoding: "utf8" }); return (r.stdout || r.stderr || "").trim().split(/\r?\n/).filter((l) => l && !/Successfully/.test(l)).map((l) => l.trim()).join(" | "); };
+for (const p of [process.env.USERPROFILE, join(process.env.USERPROFILE, "AppData")]) if (existsSync(p)) say(`FULL ACL ${p}: ${icFull(p)}`);
+const PC_SID = "S-1-15-3-3557520199-3666692283-3112367039-3524159787-2791857073-3163583606-3692855932";
+const OTHER_SID = "S-1-15-3-1111111111-2222222222-3333333333-1111111111-2222222222-3333333333-1111111111";
+const aceRoot = join(drive + "\\", "halonic-ace-repro");
+if (process.env.MXC_ACE_REPRO === "1") {
+  places.push(
+    ["repro: no ACE", join(aceRoot, "none", "place"), { aceOn: join(aceRoot, "none") }],
+    ["repro: PC's capability SID ACE", join(aceRoot, "pc-sid", "place"), { aceOn: join(aceRoot, "pc-sid"), sid: PC_SID }],
+    ["repro: other capability SID ACE", join(aceRoot, "other-sid", "place"), { aceOn: join(aceRoot, "other-sid"), sid: OTHER_SID }],
+    ["repro: PC's ACE on AppData, AppData\\Local", join(process.env.LOCALAPPDATA, "halonic-mxc-diag-place-ace"), { aceOn: join(process.env.USERPROFILE, "AppData"), sid: PC_SID }],
+  );
+}
+const setAce = (repro, grant) => {
+  if (!repro?.sid) return;
+  const args = grant ? ["/grant", `*${repro.sid}:(OI)(CI)F`] : ["/remove:g", `*${repro.sid}`];
+  const r = spawnSync("icacls.exe", [repro.aceOn, ...args], { encoding: "utf8" });
+  say(`  icacls ${grant ? "grant" : "remove"} on ${repro.aceOn}: exit ${r.status}`);
+};
+
 const rows = []; // place, test, status, note
 const rec = (place, test, status, note = "") => { rows.push({ place, test, status, note }); say(`  ${status.padEnd(4)} [${place}] ${test}${note ? "  -> " + note : ""}`); };
 
-for (const [place, base] of places) {
+for (const [place, base, repro] of places) {
   say("");
   say(`=== ${place}: ${base}`);
   try {
     rmSync(base, { recursive: true, force: true });
+    if (repro) { mkdirSync(repro.aceOn, { recursive: true }); setAce(repro, true); }
     mkdirSync(base, { recursive: true });
   } catch (e) { rec(place, "create folder", "SKIP", String(e.message).slice(0, 100)); continue; }
   const work = mkdtempSync(join(base, "work-"));
@@ -145,10 +169,15 @@ process.exit(Object.values(r).every((v) => typeof v === "number" || v === "ok") 
   // 4. what does the box see?
   const who = await box("cmd.exe /c whoami /all", { work });
   say(`  whoami inside: ${(who.out || who.err || who.error || "").split(/\r?\n/).filter((l) => /S-1-|User Name|AppContainer|Mandatory/i.test(l)).map((l) => l.trim().slice(0, 110)).slice(0, 6).join(" | ")}`);
+  // v4: the box's own AppContainer and capability SIDs, to compare with the capability SID on the PC's AppData.
+  const boxSids = [...new Set((who.out || "").match(/S-1-15-[23]-[\d-]+/g) ?? [])];
+  say(`  box SIDs (S-1-15-2/3): ${boxSids.join(" | ") || "none seen"}${boxSids.includes(PC_SID) ? "  <- the PC's AppData SID" : ""}`);
   const dirp = await box(`cmd.exe /c dir ${q(dirname(base))}`, { work });
   say(`  dir of parent inside: ${ok(dirp) ? "listed" : why(dirp)}`);
   rmSync(base, { recursive: true, force: true });
+  setAce(repro, false);
 }
+if (existsSync(aceRoot)) rmSync(aceRoot, { recursive: true, force: true });
 // v3: show the old check folder's ACL once more, after the boxes ran, to see whether a run changes it.
 if (existsSync(checkFolder)) {
   const r = spawnSync("icacls.exe", [checkFolder], { encoding: "utf8" });
@@ -252,5 +281,7 @@ $report = Join-Path $work 'report.txt'
 if (Test-Path $report) {
   $desk = [Environment]::GetFolderPath('Desktop')
   if ($desk -and (Test-Path $desk)) { Copy-Item $report (Join-Path $desk 'halonic-mxc-diag-report.txt') -Force; Write-Host "A copy of this report is on your Desktop: halonic-mxc-diag-report.txt" }
+  # v4: the Windows Sandbox run writes its report to the mapped output folder, which outlives the sandbox.
+  if ($env:MXC_OUT -and (Test-Path $env:MXC_OUT)) { Copy-Item $report (Join-Path $env:MXC_OUT 'halonic-mxc-diag-sandbox-report.txt') -Force; Write-Host "The report is in the output folder: halonic-mxc-diag-sandbox-report.txt" }
 }
 Write-Host "To remove everything this check downloaded, delete the folder: $work"
