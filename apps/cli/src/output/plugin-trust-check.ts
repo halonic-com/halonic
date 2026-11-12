@@ -33,7 +33,7 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  */
 export function pluginTrustCheckLines(content: PluginTrustContent): Phrase[] {
   return [
-    pluginMessages.trustQuestion(content.plugin.name).phrase,
+    pluginMessages.trustQuestion(printable(content.plugin.name)).phrase,
     ...toolsSection(content),
     ...programsSection(content),
     ...secretsSection(content),

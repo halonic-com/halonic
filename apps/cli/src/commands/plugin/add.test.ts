@@ -31,10 +31,10 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-const manifest = (id: string) => `id: ${id}
+const manifest = (id: string, name: string) => `id: ${id}
 version: 1.2.0
 sdk: 1
-name: Weather
+name: ${name}
 backend:
   hosts: [api.weather.example]
   secrets:
@@ -51,11 +51,14 @@ ui:
     - { id: forecast, title: Show the forecast, tool: get_forecast }
 `;
 
-/** Writes a valid plugin with the id `id` to `sources/<folderName>` and returns that folder. */
-async function writeSource(id: string, folderName = id): Promise<string> {
+/**
+ * Writes a valid plugin with the id `id` to `sources/<folderName>` and
+ * returns that folder. `name` is the manifest's YAML for it.
+ */
+async function writeSource(id: string, folderName = id, name = "Weather"): Promise<string> {
   const source = join(folder, "sources", folderName);
   await mkdir(join(source, "backend"), { recursive: true });
-  await writeFile(join(source, "plugin.yaml"), manifest(id));
+  await writeFile(join(source, "plugin.yaml"), manifest(id, name));
   await writeFile(join(source, "backend", "index.js"), "export default {};\n");
   return source;
 }
@@ -174,6 +177,37 @@ verifies("cli.commands.plugin.add", () => {
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
     expect(await plugins()).toEqual(["new"]);
+  });
+
+  it("escapes a control character in the plugin's name on every line", async () => {
+    // YAML's "\e" is the escape character, which would start a terminal sequence.
+    const source = await writeSource("weather", "weather", String.raw`"Wea\e[31mther"`);
+    const shown = String.raw`Wea\u001b[31mther`;
+    const again = async (args: readonly string[], terminal?: Terminal) => {
+      await rm(pluginsFolder(), { recursive: true, force: true });
+      return await add([source, ...args], terminal);
+    };
+
+    const asked = terminalTyping("n");
+    const no = await again([], asked.terminal);
+    const noTerminal = await again([]);
+    const changed = await again(["--yes", "--fingerprint", `hpf1:${"0".repeat(64)}`]);
+    const yes = await again([], terminalTyping("y").terminal);
+
+    expect(asked.written()).toContain(`Trust ${shown} and turn it on? [y/N] `);
+    expect(no.io.stdout).toEqual([
+      `! ${shown} is added but off. Nothing from it runs until you trust it: halonic trust --plugin weather`,
+    ]);
+    expect(noTerminal.io.stderr.at(-2)).toBe(
+      `! ${shown} is added but off, because there's no terminal to ask you to trust it.`,
+    );
+    expect(changed.io.stderr.join("\n")).toContain(`trust ${shown}`);
+    expect(yes.io.stdout).toEqual([`✓ Added ${shown} 1.2.0. It's on.`]);
+    const everything = [
+      asked.written(),
+      ...[no, noTerminal, changed, yes].flatMap(({ io }) => [...io.stdout, ...io.stderr]),
+    ];
+    expect(everything.join("\n")).not.toContain("\u001b");
   });
 
   it("refuses --yes without --fingerprint before copying anything", async () => {

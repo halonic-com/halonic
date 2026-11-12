@@ -14,6 +14,7 @@ import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import { pluginTrustCheckLines } from "./output/plugin-trust-check.ts";
+import { printable } from "./output/printable.ts";
 
 /** A plugin that was read and checked, and isn't trusted as it is now. */
 export type PluginToTrust = Exclude<PluginEntry, { status: "broken" | "trusted" }>;
@@ -57,6 +58,8 @@ export async function askToTrustPlugin(
   const { plugin, fingerprint } = entry;
   const id = entry.folder;
   const json = { id, name: plugin.name, version: plugin.version, fingerprint };
+  // The manifest's name is outside text (cli-output 5).
+  const name = printable(plugin.name);
   const check = pluginTrustCheckLines(entry.content);
   const fix = pluginMessages.addNoTerminalFix(id);
   const changed = (shownCheck: typeof check) =>
@@ -65,14 +68,14 @@ export async function askToTrustPlugin(
       fix,
       fingerprint,
       check: shownCheck,
-      action: trustMessages.action(plugin.name),
+      action: trustMessages.action(name),
     });
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
     throw changed(check);
   }
 
   const trusted = await answer.context.ask({
-    question: pluginMessages.trustQuestion(plugin.name),
+    question: pluginMessages.trustQuestion(name),
     shownFirst: [...check, phrase``],
     yes: answer.yes,
     refusal: () =>

@@ -69,11 +69,13 @@ export async function trustPlugin(
     });
   }
   const { plugin } = entry;
+  // The manifest's name is outside text (cli-output 5).
+  const name = printable(plugin.name);
   if (entry.status === "trusted") {
     return {
       exitCode: exitCode.ok,
       lines: [
-        phrase`${markPart("done")} ${pluginMessages.alreadyOn(plugin.name, shownDate(entry.trustedAt)).phrase}`,
+        phrase`${markPart("done")} ${pluginMessages.alreadyOn(name, shownDate(entry.trustedAt)).phrase}`,
       ],
       json: {
         id: entry.folder,
@@ -89,9 +91,9 @@ export async function trustPlugin(
     entry,
     { context, yes, fingerprint },
     {
-      on: pluginMessages.trustedOn(plugin.name),
-      off: pluginMessages.stillOff(plugin.name),
-      noTerminal: pluginMessages.offNoTerminal(plugin.name),
+      on: pluginMessages.trustedOn(name),
+      off: pluginMessages.stillOff(name),
+      noTerminal: pluginMessages.offNoTerminal(name),
     },
   );
 }

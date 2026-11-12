@@ -186,23 +186,22 @@ async function trustAdded(
   answer: PluginTrustAnswer,
 ): Promise<CommandResult> {
   const { plugin } = entry;
+  // The manifest's name and version are outside text (cli-output 5).
+  const name = printable(plugin.name);
+  const added = pluginMessages.added(name, printable(plugin.version));
   if (entry.status === "trusted") {
     const json = { id: entry.folder, name: plugin.name, version: plugin.version };
     return {
       exitCode: exitCode.ok,
-      lines: [addedLine(plugin)],
+      lines: [phrase`${markPart("done")} ${added.phrase}`],
       json: { ...json, fingerprint: entry.fingerprint, status: "on" },
     };
   }
   return await askToTrustPlugin(service, entry, answer, {
-    on: pluginMessages.added(plugin.name, plugin.version),
-    off: pluginMessages.addedButOff(plugin.name, entry.folder),
-    noTerminal: pluginMessages.addNoTerminal(plugin.name),
+    on: added,
+    off: pluginMessages.addedButOff(name, entry.folder),
+    noTerminal: pluginMessages.addNoTerminal(name),
   });
-}
-
-function addedLine(plugin: AddedPlugin["plugin"]) {
-  return phrase`${markPart("done")} ${pluginMessages.added(plugin.name, plugin.version).phrase}`;
 }
 
 /** The refusal for a plugin that wasn't added, with its reason and "Check the folder or git address.". */
