@@ -2,6 +2,7 @@
 
 - Approval: Liam decided the split and the scope on HAL-7860 and HAL-7919 (HAL-7832 part 3); the requirements now say what the board-approved flow-settings 13 and mc 13.2 already show, a team decision with no board card (HAL-2282 rule)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p7lbb93TP2OnP1b5sc/CGAaxGqX75iUPfBKiTHMCVmKUetWEUhRE+2Jq+OgrQ6w+PrY3h9WKwOjVNRU1yml9CQ==
 - Task: HAL-7919
 
 ## What changes
