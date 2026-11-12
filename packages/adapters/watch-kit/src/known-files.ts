@@ -81,10 +81,11 @@ export class KnownFiles {
    * left out.
    */
   async changesAt(names: readonly string[]): Promise<WorkspaceFileChange[]> {
+    const reads = new BatchReads(this.#options.files);
     const changes = new Map<string, WorkspaceFileChange["kind"]>();
     for (const name of names) {
-      for (const path of await this.#affectedPaths(name)) {
-        const kind = await this.#compare(path);
+      for (const path of await this.#affectedPaths(name, reads)) {
+        const kind = await this.#compare(path, reads);
         if (kind !== null) {
           changes.set(path, kind);
         }
@@ -100,7 +101,11 @@ export class KnownFiles {
    * `undefined` when there is no file, or only one behind a link.
    */
   async remember(path: string): Promise<string | undefined> {
-    const content = await this.#readUnlessRefused(path);
+    return await this.#rememberContent(path, await readUnlessRefused(this.#options.files, path));
+  }
+
+  /** Takes `content` as what `path` now holds, and gives its digest; `null` is no file. */
+  async #rememberContent(path: string, content: string | null): Promise<string | undefined> {
     if (content === null) {
       this.#digests.delete(path);
       return undefined;
@@ -115,7 +120,7 @@ export class KnownFiles {
    * itself, everything under it when it is (or was) a folder, nothing for a
    * private entry, a link or a scratch file.
    */
-  async #affectedPaths(name: string): Promise<string[]> {
+  async #affectedPaths(name: string, reads: BatchReads): Promise<string[]> {
     const paths = new Set<string>();
     const prefix = name === "" ? "" : `${name}/`;
     for (const known of this.#digests.keys()) {
@@ -123,14 +128,18 @@ export class KnownFiles {
         paths.add(known);
       }
     }
-    for (const path of await this.#listUnder(name)) {
+    for (const path of await this.#listUnder(name, reads)) {
       paths.add(path);
     }
     return [...paths];
   }
 
-  /** What the store lists at or under `name` now; nothing for a path it refuses. */
-  async #listUnder(name: string): Promise<string[]> {
+  /**
+   * What the store holds at or under `name` now; nothing for a path it
+   * refuses. `name` is read first: only when it holds no file is it listed
+   * as a folder, so a changed file costs the store one call.
+   */
+  async #listUnder(name: string, reads: BatchReads): Promise<string[]> {
     const { files, isScratch } = this.#options;
     if (name === "") {
       return await files.list();
@@ -139,8 +148,10 @@ export class KnownFiles {
       return [];
     }
     try {
-      const under = await files.list(name);
-      return (await files.read(name)) === null ? under : [name];
+      if ((await reads.read(name)) !== null) {
+        return [name];
+      }
+      return await files.list(name);
     } catch (error) {
       // A private entry, a link or a name a workspace path can't hold: not workspace content.
       if (error instanceof RangeError) {
@@ -151,25 +162,58 @@ export class KnownFiles {
   }
 
   /** Whether `path` changed since it was last seen, and remembers how it is now. */
-  async #compare(path: string): Promise<WorkspaceFileChange["kind"] | null> {
+  async #compare(path: string, reads: BatchReads): Promise<WorkspaceFileChange["kind"] | null> {
     const before = this.#digests.get(path);
-    const after = await this.remember(path);
+    const after = await this.#rememberContent(path, await reads.readUnlessRefused(path));
     if (after === before || this.#own.get(path) === (after ?? "absent")) {
       return null;
     }
     return after === undefined ? "removed" : "changed";
   }
+}
 
-  /** The store's read of `path`, with `null` when the store refuses it, as it does a linked path. */
-  async #readUnlessRefused(path: string): Promise<string | null> {
-    try {
-      return await this.#options.files.read(path);
-    } catch (error) {
-      // The store refuses a linked path: for the workspace, the file is gone.
-      if (error instanceof RangeError) {
-        return null;
-      }
-      throw error;
+/**
+ * The store's reads while one batch is looked at, each path read once: the
+ * text read to find out whether a name is a file is the text compared.
+ */
+class BatchReads {
+  readonly #files: DefinitionSource;
+  /** What each path read held, by path; a refused read is kept as its error. */
+  readonly #reads = new Map<string, Promise<string | null>>();
+
+  constructor(files: DefinitionSource) {
+    this.#files = files;
+  }
+
+  /** The store's read of `path`, made once in this batch. */
+  read(path: string): Promise<string | null> {
+    let read = this.#reads.get(path);
+    if (read === undefined) {
+      read = this.#files.read(path);
+      this.#reads.set(path, read);
     }
+    return read;
+  }
+
+  /** {@link read}, with `null` when the store refuses the path, as it does a linked one. */
+  readUnlessRefused(path: string): Promise<string | null> {
+    return nullWhenRefused(this.read(path));
+  }
+}
+
+/** The store's read of `path`, with `null` when the store refuses it, as it does a linked path. */
+function readUnlessRefused(files: DefinitionSource, path: string): Promise<string | null> {
+  return nullWhenRefused(files.read(path));
+}
+
+async function nullWhenRefused(read: Promise<string | null>): Promise<string | null> {
+  try {
+    return await read;
+  } catch (error) {
+    // The store refuses a linked path: for the workspace, the file is gone.
+    if (error instanceof RangeError) {
+      return null;
+    }
+    throw error;
   }
 }

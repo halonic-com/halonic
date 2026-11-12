@@ -114,6 +114,80 @@ verifies("watch-kit.digest-watch", () => {
       ]);
     });
 
+    describe("asks the store once per path, as each call can be a round trip to the shell", () => {
+      /** The store calls a batch for `names` makes, after the watch opened. */
+      async function callsFor(
+        files: Record<string, string>,
+        change: (store: MemoryDefinitionStore) => Promise<unknown>,
+        ...names: string[]
+      ) {
+        const { store, hand, batches, settle } = await watched(files);
+        await change(store);
+        const read = vi.spyOn(store, "read");
+        const list = vi.spyOn(store, "list");
+        hand.notice(...names);
+        await settle();
+        return {
+          batches,
+          reads: read.mock.calls.map(([path]) => path).sort(),
+          lists: list.mock.calls.map(([dir]) => dir),
+        };
+      }
+
+      it("reads a changed file once, without listing it", async () => {
+        const calls = await callsFor(
+          { "a.yaml": "1" },
+          (store) => store.write("a.yaml", "2"),
+          "a.yaml",
+        );
+        expect(calls).toEqual({
+          batches: [[{ path: "a.yaml", kind: "changed" }]],
+          reads: ["a.yaml"],
+          lists: [],
+        });
+      });
+
+      it("reads a removed file once, and lists it once in case it became a folder", async () => {
+        const calls = await callsFor(
+          { "a.yaml": "1" },
+          (store) => store.remove("a.yaml"),
+          "a.yaml",
+        );
+        expect(calls).toEqual({
+          batches: [[{ path: "a.yaml", kind: "removed" }]],
+          reads: ["a.yaml"],
+          lists: ["a.yaml"],
+        });
+      });
+
+      it("reads a changed folder's name and each file under it once, and lists it once", async () => {
+        const calls = await callsFor(
+          { "hubs/a/hub.yaml": "1", "hubs/a/x.yaml": "1" },
+          (store) => store.write("hubs/a/hub.yaml", "2"),
+          "hubs/a",
+        );
+        expect(calls).toEqual({
+          batches: [[{ path: "hubs/a/hub.yaml", kind: "changed" }]],
+          reads: ["hubs/a", "hubs/a/hub.yaml", "hubs/a/x.yaml"],
+          lists: ["hubs/a"],
+        });
+      });
+
+      it("reads a path named twice in one batch once", async () => {
+        const calls = await callsFor(
+          { "hubs/a/hub.yaml": "1" },
+          (store) => store.write("hubs/a/hub.yaml", "2"),
+          "hubs/a",
+          "hubs/a/hub.yaml",
+        );
+        expect(calls).toEqual({
+          batches: [[{ path: "hubs/a/hub.yaml", kind: "changed" }]],
+          reads: ["hubs/a", "hubs/a/hub.yaml"],
+          lists: ["hubs/a"],
+        });
+      });
+    });
+
     it("leaves out the store's own change, but not another one next to it", async () => {
       const { store, hand, watch, batches, settle } = await watched({
         "a.yaml": "1",
