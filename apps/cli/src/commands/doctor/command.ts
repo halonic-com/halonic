@@ -90,7 +90,7 @@ async function readWorkspace(
     workspace: loaded,
     integrations: await workspaceIntegrations(dir.root, dir.shown),
     location: await realpath(dir.root),
-    fallbackName: dir.shown,
+    fallbackName: dir.name,
     commandPaths: await commandPaths(connectors, nodeCommandSearch()),
   });
   const providerFiles = new Map(

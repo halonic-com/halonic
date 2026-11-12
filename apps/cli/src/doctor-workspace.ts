@@ -31,7 +31,7 @@ export interface DoctorWorkspaceInput {
   readonly integrations: readonly LocalIntegrationInput[];
   /** The workspace's resolved real path: the trust record's key. */
   readonly location: string;
-  /** The name to show when `workspace.yaml` didn't parse, such as the folder as typed. */
+  /** The name to show when `workspace.yaml` has none or didn't parse: the folder's own name. */
   readonly fallbackName: string;
   /** The absolute path each connector's command resolves to on this computer. */
   readonly commandPaths: ReadonlyMap<string, string>;
@@ -50,7 +50,7 @@ export interface DoctorWorkspaceInput {
  *   aliases: `halonic validate` reports it.
  *
  * @example
- * doctorWorkspace({ workspace, integrations: [], location: "/work/acme", fallbackName: "./acme", commandPaths });
+ * doctorWorkspace({ workspace, integrations: [], location: "/work/acme", fallbackName: "acme", commandPaths });
  * // { name: "Acme", trust: { … }, aliases: [{ alias: "smart", provider: "anthropic" }], providers: [ … ] }
  */
 export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {

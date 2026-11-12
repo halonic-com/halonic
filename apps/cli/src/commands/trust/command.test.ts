@@ -91,6 +91,17 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(await store.list()).toHaveLength(1);
   });
 
+  it("names a workspace without a name by its folder, not '.', run from inside it", async () => {
+    writeAcme({ "workspace.yaml": "id: acme\n" });
+    const io = captureIo(join(folder, "acme"));
+    const { terminal, written } = terminalTyping("n");
+
+    await runCli(["trust"], io, commands(), { terminal });
+
+    expect(written()).toContain("Trust check for acme (.)");
+    expect(written()).toContain("Trust acme on this computer? [y/N]");
+  });
+
   it("saves nothing when either answer is no", async () => {
     writeAcme();
     for (const answers of [["n"], ["y", ""]]) {

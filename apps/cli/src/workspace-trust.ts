@@ -83,20 +83,22 @@ export async function workspaceIntegrations(
 
 /**
  * The workspace's name as a sentence names it: from `workspace.yaml`, or
- * the folder as typed when it has none. Every sentence that names a loaded
+ * the folder's own name when it has none, so a workspace run from inside
+ * its folder is "acme", not "." (HAL-6810). Every sentence that names a loaded
  * workspace says it (the trust line, `run`, `runs`, `routines`), so one
  * workspace reads one way (HAL-4533, HAL-6610).
  *
  * @example
  * workspaceNameOf(loaded, { shown: "./acme", … }); // "Acme"
+ * workspaceNameOf(unnamed, { shown: ".", name: "acme", … }); // "acme"
  */
 export function workspaceNameOf(workspace: LoadedWorkspace, dir: WorkspaceDir): string {
-  return filesOf(workspace, "workspace")[0]?.value.name ?? dir.shown;
+  return filesOf(workspace, "workspace")[0]?.value.name ?? dir.name;
 }
 
 /** A workspace as a trust check is about it. */
 export interface WorkspaceTrust {
-  /** The workspace's name from `workspace.yaml`, or the folder as typed when it has none. */
+  /** The workspace's name from `workspace.yaml`, or the folder's own name when it has none. */
   readonly name: string;
   readonly subject: TrustSubject;
 }

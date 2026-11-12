@@ -22,4 +22,4 @@ The `halonic doctor` command shall read from the workspace's files the workspace
   then it is on the test model only; with an Anthropic provider too, it isn't.
 - Given a `workspace.yaml` that doesn't parse,
   when the workspace is read,
-  then its name is the folder as typed.
+  then its name is the folder's own name, such as `acme` when run inside it.

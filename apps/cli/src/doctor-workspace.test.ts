@@ -57,7 +57,7 @@ verifies("cli.doctor-workspace", () => {
       workspace,
       integrations,
       location: "/work/acme",
-      fallbackName: "./acme",
+      fallbackName: "acme",
       commandPaths,
     });
 
@@ -82,7 +82,7 @@ verifies("cli.doctor-workspace", () => {
         workspace,
         integrations: [],
         location: root,
-        fallbackName: "./acme",
+        fallbackName: "acme",
         commandPaths: new Map(),
       });
 
@@ -91,16 +91,16 @@ verifies("cli.doctor-workspace", () => {
     expect(doctorOf(withAnthropic).testModelOnly).toBe(false);
   });
 
-  it("shows the folder as typed when workspace.yaml didn't parse", async () => {
+  it("shows the folder's own name when workspace.yaml didn't parse", async () => {
     const workspace = await workspaceOf({ "workspace.yaml": "name: [\n" });
     const doctor = doctorWorkspace({
       workspace,
       integrations: [],
       location: root,
-      fallbackName: "./acme",
+      fallbackName: "acme",
       commandPaths: new Map(),
     });
-    expect(doctor.name).toBe("./acme");
+    expect(doctor.name).toBe("acme");
   });
 
   it("lists the aliases of models.yaml in order, then a hub's that point somewhere new", async () => {
@@ -126,7 +126,7 @@ verifies("cli.doctor-workspace", () => {
       workspace,
       integrations: [],
       location: root,
-      fallbackName: "./acme",
+      fallbackName: "acme",
       commandPaths: new Map(),
     });
 
@@ -157,7 +157,7 @@ verifies("cli.doctor-workspace", () => {
       workspace,
       integrations: [],
       location: root,
-      fallbackName: "./acme",
+      fallbackName: "acme",
       commandPaths: new Map(),
     });
 
