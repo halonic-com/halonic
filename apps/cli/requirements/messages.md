@@ -41,9 +41,9 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given the `halonic runs` list with `--status failed`, where `--limit` shows 20 of 47 failed runs,
   when the line after the last row is made,
   then it is dimmed and reads "Showing the 20 newest of 47 failed runs. See them all with halonic runs --status failed --limit 47." (cli-output 3.4).
-- Given `halonic runs --status failed --workflow support-reply` in acme, which matches no run,
+- Given `halonic runs --status failed --workflow support-reply` in Acme, which matches no run,
   when its two lines are made,
-  then line 1 reads "No failed runs of support-reply in acme." and line 2, dimmed, "See every run with halonic runs." (cli-output 3.4).
+  then line 1 reads "No failed runs of support-reply in Acme." and line 2, dimmed, "See every run with halonic runs." (cli-output 3.4).
 - Given a run of Support reply that reached its own budget of €5.00 in the step Draft a reply, with an estimated €5.08 spent,
   when its two lines are made,
   then they read "Support reply stopped in the step Draft a reply: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Raise the budget in workspace.yaml.", because a run's budget doesn't reset (cli-output 3.4 revision 23).

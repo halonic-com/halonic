@@ -149,7 +149,7 @@ describe("halonic run's refusals", () => {
 
     expect(code).toBe(exitCode.notFound);
     expect(io.stderr).toEqual([
-      '✕ There\'s no workflow called "suport-reply" in acme.',
+      '✕ There\'s no workflow called "suport-reply" in Acme.',
       "  Did you mean support-reply?",
     ]);
   });
@@ -159,8 +159,8 @@ describe("halonic run's refusals", () => {
 
     expect(code).toBe(exitCode.notFound);
     expect(io.stderr).toEqual([
-      '✕ There\'s no workflow called "billing" in acme.',
-      "  Workflows in acme: weekly-report, support-reply.",
+      '✕ There\'s no workflow called "billing" in Acme.',
+      "  Workflows in Acme: weekly-report, support-reply.",
     ]);
   });
 

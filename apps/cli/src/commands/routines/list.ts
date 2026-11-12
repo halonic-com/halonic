@@ -14,6 +14,7 @@ import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "../runs/list.ts";
 import { listedStatus } from "../runs/listed-run.ts";
 
@@ -31,17 +32,14 @@ export async function listRoutines(
   const workspace = await openWorkspaceDir(input, context);
   const clock = setup.clock();
   const list = new RoutineList(await openWorkspaceRuns(workspace.root, setup.profile));
-  const routines = await list.listRoutines(
-    await loadWorkspace(workspace.store),
-    clock.now,
-    clock.timeZone ?? computerTimeZone(),
-  );
+  const loaded = await loadWorkspace(workspace.store);
+  const routines = await list.listRoutines(loaded, clock.now, clock.timeZone ?? computerTimeZone());
   const json = { routines: routines.map(routineJson) };
   if (routines.length === 0) {
-    // The folder's name is outside text (cli-output section 5).
+    // The workspace's name is outside text (cli-output section 5).
     return {
       exitCode: exitCode.ok,
-      lines: [routinesMessages.noRoutines(printable(workspace.name)).phrase],
+      lines: [routinesMessages.noRoutines(printable(workspaceNameOf(loaded, workspace))).phrase],
       json,
     };
   }

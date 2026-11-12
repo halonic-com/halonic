@@ -41,6 +41,7 @@ import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import { listedRun } from "./listed-run.ts";
 
 /** What the list reads besides the command line, passed in so tests can fix both. */
@@ -72,9 +73,10 @@ export async function listRuns(
 ): Promise<CommandResult> {
   const options = listOptions(input);
   const workspace = await openWorkspaceDir(input, context);
-  // The folder's name is outside text (cli-output section 5).
-  const workspaceName = printable(workspace.name);
-  const workflows = hubWorkflows(await loadWorkspace(workspace.store));
+  const loaded = await loadWorkspace(workspace.store);
+  // The workspace's name is outside text (cli-output section 5).
+  const workspaceName = printable(workspaceNameOf(loaded, workspace));
+  const workflows = hubWorkflows(loaded);
   const history = new RunHistory(await openWorkspaceRuns(workspace.root, setup.profile));
   const filter = await runFilter(options.filters, workflows, history, workspaceName);
   const list = await history.listRuns(filter, options.limit);

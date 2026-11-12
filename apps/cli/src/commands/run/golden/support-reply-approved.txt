@@ -1,7 +1,7 @@
 ## colour: halonic run support-reply --input examples/refund-question.json --event approve
 exit 0
 stdout:
-  Running Support reply in acme \e[2m·\e[22m run 01jd8q
+  Running Support reply in Acme \e[2m·\e[22m run 01jd8q
   
   \e[32m✓\e[39m Read the email        Writer \e[2m·\e[22m default   1 s
   \e[32m✓\e[39m Classify it           Sorter \e[2m·\e[22m default   1 s
@@ -16,7 +16,7 @@ stderr:
 ## NO_COLOR: halonic run support-reply --input examples/refund-question.json --event approve
 exit 0
 stdout:
-  Running Support reply in acme · run 01jd8q
+  Running Support reply in Acme · run 01jd8q
   
   ✓ Read the email        Writer · default   1 s
   ✓ Classify it           Sorter · default   1 s

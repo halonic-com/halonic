@@ -22,6 +22,7 @@ import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import { unsandboxedWarning } from "../../sandbox-gate.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine } from "../../workspace-engine.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
 import { checkRunTrust } from "../run/trust.ts";
 import { computerTimeZone } from "./list.ts";
@@ -81,7 +82,9 @@ export async function watchRoutines(
     // Before the watching line, so that line means the scheduler has caught up; its runs print after.
     if (scheduler !== undefined) report.tick(await scheduler.tick());
     const onAClock = routines.filter(({ routine }) => routine.enabled && isOnAClock(routine));
-    context.printAhead(routinesMessages.watching(onAClock.length, printable(dir.name)).phrase);
+    context.printAhead(
+      routinesMessages.watching(onAClock.length, printable(workspaceNameOf(workspace, dir))).phrase,
+    );
     // The runs held so far: the catch-up tick's, and any a scheduled tick started while it ran.
     report.open();
     await stopped(engine.signal);

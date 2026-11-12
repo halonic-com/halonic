@@ -217,7 +217,7 @@ verifies("cli.commands.routines.list", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
-      "No routines in acme yet. Add one as workflows/routines/<id>.routine.yaml in a hub.",
+      "No routines in Acme yet. Add one as workflows/routines/<id>.routine.yaml in a hub.",
     ]);
   });
 

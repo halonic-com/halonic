@@ -42,6 +42,7 @@ import {
   openWorkspaceEngine,
   type WorkspaceEngineSetup,
 } from "../../workspace-engine.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import { runHarnessOf } from "./harness.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
@@ -95,9 +96,9 @@ export async function runWorkflow(
 ): Promise<CommandResult | StoppedResult> {
   const typed = oneWorkflow(input);
   const dir = await openWorkspaceDir(input, context);
-  const workspaceName = printable(dir.name);
   const typedDir = givenDir(input, dir);
   const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup.history);
+  const workspaceName = printable(workspaceNameOf(workspace, dir));
   const harness = await runHarnessOf(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),

@@ -155,7 +155,7 @@ verifies("cli.commands.routines.watch", () => {
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time);
     await waitUntil(() => io.stdout.length === 1, slowWatch);
-    expect(io.stdout).toEqual(["Watching 1 routine in acme. Stop with Ctrl C."]);
+    expect(io.stdout).toEqual(["Watching 1 routine in Acme. Stop with Ctrl C."]);
 
     // The next tick after 15:00 starts the run due at 15:00.
     time.set("2026-11-10T15:00:10.000Z");

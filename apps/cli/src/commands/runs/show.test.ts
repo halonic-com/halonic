@@ -62,13 +62,13 @@ verifies("cli.commands.runs.show", () => {
       const finished = await showIn(acme, "a1b2c3");
       expect(finished.code).toBe(exitCode.ok);
       expect(finished.io.stdout[0]).toBe(
-        "Support reply in acme · run a1b2c3 · started 10:31, finished 10:31",
+        "Support reply in Acme · run a1b2c3 · started 10:31, finished 10:31",
       );
 
       const failed = await showIn(acme, "01jd6m");
       expect(failed.code).toBe(exitCode.ok);
       expect(failed.io.stdout[0]).toBe(
-        "Support reply in acme · run 01jd6m · started yesterday 16:40, failed yesterday 16:41",
+        "Support reply in Acme · run 01jd6m · started yesterday 16:40, failed yesterday 16:41",
       );
       expect(failed.io.stderr).toEqual([]);
     });
@@ -78,12 +78,12 @@ verifies("cli.commands.runs.show", () => {
 
       const { io } = await showIn(acme, "09d9a0");
       expect(io.stdout[0]).toBe(
-        "Support reply in acme · run 09d9a0 · started 10:40, waiting for you since 10:41",
+        "Support reply in Acme · run 09d9a0 · started 10:40, waiting for you since 10:41",
       );
 
       const still = await showIn(acme, "09d9c0");
       expect(still.io.stdout[0]).toBe(
-        "Support reply in acme · run 09d9c0 · started 10:53, still running",
+        "Support reply in Acme · run 09d9c0 · started 10:53, still running",
       );
     });
 
@@ -93,7 +93,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "a1b2c3");
 
       expect(io.stdout[0]).toBe(
-        "Support reply in acme · test run a1b2c3 · started 10:31, finished 10:31",
+        "Support reply in Acme · test run a1b2c3 · started 10:31, finished 10:31",
       );
     });
   });
@@ -146,7 +146,7 @@ verifies("cli.commands.runs.show", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        "Mail triage in acme · run 0a0b0c · started 10:20, finished 10:20",
+        "Mail triage in Acme · run 0a0b0c · started 10:20, finished 10:20",
         "",
         "✓ Read the email   Writer · default   1 s",
         "",
@@ -174,7 +174,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "0a0b0c");
 
       expect(io.stdout).toEqual([
-        "\\u001b[31mMail\\u202e triage in acme · run 0a0b0c · started 10:20, finished 10:20",
+        "\\u001b[31mMail\\u202e triage in Acme · run 0a0b0c · started 10:20, finished 10:20",
         "",
         "✓ Read the email   \\u001b[2JWriter · default   1 s",
         "",
@@ -189,7 +189,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "09d9a0");
 
       expect(io.stdout).toEqual([
-        "Support reply in acme · run 09d9a0 · started 10:40, waiting for you since 10:41",
+        "Support reply in Acme · run 09d9a0 · started 10:40, waiting for you since 10:41",
         "",
         "! Approve this reply?   waiting for you since 10:41",
         "",
@@ -270,7 +270,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "0a0b0d");
 
       expect(io.stdout).toEqual([
-        "Mail triage in acme · run 0a0b0d · started 10:20, still running",
+        "Mail triage in Acme · run 0a0b0d · started 10:20, still running",
         "",
         "◌ Read the email   Writer · default · running since 10:20",
       ]);

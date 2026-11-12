@@ -107,7 +107,7 @@ export async function sendToRun(
   // One clock for the lines printed while the run goes and the result that repeats them.
   const facts = {
     workspace: loaded,
-    workspaceName: printable(workspace.name),
+    workspaceName: named.name,
     dir,
     clock: setup.clock(),
   };

@@ -26,6 +26,7 @@ import { type RunClock, startedAt } from "../../run-times.ts";
 import { runViewDefinitions, stepLines } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
 import { showEnding } from "./show-ending.ts";
@@ -50,8 +51,9 @@ export async function showRun(
   const history = new RunHistory(await openWorkspaceRuns(workspace.root, setup.profile));
   const lookup = await history.showRun(typed);
   const dir = givenDir(input, workspace);
-  // The folder's name and the id as typed are outside text (cli-output section 5).
-  const workspaceName = printable(workspace.name);
+  const loaded = await loadWorkspace(workspace.store);
+  // The workspace's name and the id as typed are outside text (cli-output section 5).
+  const workspaceName = printable(workspaceNameOf(loaded, workspace));
   switch (lookup.found) {
     case "none":
       throw new OwnLineError(
@@ -67,7 +69,6 @@ export async function showRun(
       );
     case "one": {
       const { run } = lookup;
-      const loaded = await loadWorkspace(workspace.store);
       const definitions = runViewDefinitions(loaded, run.summary);
       const title = workflowTitle(definitions.workflow, run.summary);
       const clock = setup.clock();

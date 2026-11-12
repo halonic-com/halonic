@@ -63,7 +63,7 @@ verifies("cli.commands.runs.show", () => {
       expect(code).toBe(exitCode.notFound);
       expect(io.stdout).toEqual([]);
       expect(io.stderr).toEqual([
-        "✕ There's no run 01jd8x in acme.",
+        "✕ There's no run 01jd8x in Acme.",
         `  See recent runs with halonic runs --dir .${sep}acme.`,
       ]);
     });
@@ -75,7 +75,7 @@ verifies("cli.commands.runs.show", () => {
 
       expect(code).toBe(exitCode.usage);
       expect(io.stderr).toEqual([
-        "✕ Two runs in acme end in a1b2c3.",
+        "✕ Two runs in Acme end in a1b2c3.",
         "  Use the full id, as halonic runs --json shows it.",
       ]);
     });
@@ -94,17 +94,17 @@ verifies("cli.commands.runs.show", () => {
       );
     });
 
-    it("shows an escape code in the id the user typed, or a bidi control in the folder name, as its code", async () => {
-      const shared = join(folder, "ac\u202eme");
-      await writeFiles(shared, { "workspace.yaml": "id: acme\nname: Acme\n" });
+    it("shows an escape code in the id the user typed, or a bidi control in the workspace's name, as its code", async () => {
+      const shared = join(folder, "shared");
+      await writeFiles(shared, { "workspace.yaml": "id: acme\nname: Ac\u202eme\n" });
       await storeAcmeRuns({ ...acmeRuns, acme: shared }, done);
 
       const heading = await showIn(shared, "a1b2c3");
       expect(heading.io.stdout[0]).toBe(
-        "support-reply in ac\\u202eme · run a1b2c3 · started 10:31, finished 10:31",
+        "support-reply in Ac\\u202eme · run a1b2c3 · started 10:31, finished 10:31",
       );
       const missing = await showIn(shared, "01jd8x");
-      expect(missing.io.stderr[0]).toBe("✕ There's no run 01jd8x in ac\\u202eme.");
+      expect(missing.io.stderr[0]).toBe("✕ There's no run 01jd8x in Ac\\u202eme.");
       const two = await showIn(acme, "\u001b[31ma1b2c3", "09d9a0");
       expect(two.io.stderr[0]).toBe(
         "✕ halonic runs show takes one run id, and you gave two: \\u001b[31ma1b2c3, 09d9a0.",

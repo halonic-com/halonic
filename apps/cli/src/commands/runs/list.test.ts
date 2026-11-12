@@ -140,7 +140,7 @@ verifies("cli.commands.runs.list", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        `No runs in acme yet. Start one with halonic run --dir .${sep}acme <workflow>.`,
+        `No runs in Acme yet. Start one with halonic run --dir .${sep}acme <workflow>.`,
       ]);
     });
 
@@ -150,18 +150,18 @@ verifies("cli.commands.runs.list", () => {
       const { io } = await runsIn(acme, "--status", "failed");
 
       expect(io.stdout).toEqual([
-        "No runs in acme yet, only test runs. Start one with halonic run <workflow>.",
+        "No runs in Acme yet, only test runs. Start one with halonic run <workflow>.",
       ]);
     });
 
-    it("shows a bidi control in the workspace's folder name as its code", async () => {
-      const shared = join(folder, "ac\u202eme");
-      await writeFiles(shared, { "workspace.yaml": "id: acme\nname: Acme\n" });
+    it("shows a bidi control in the workspace's name as its code", async () => {
+      const shared = join(folder, "shared");
+      await writeFiles(shared, { "workspace.yaml": "id: acme\nname: Ac\u202eme\n" });
 
       const { io } = await runsIn(shared);
 
       expect(io.stdout).toEqual([
-        "No runs in ac\\u202eme yet. Start one with halonic run <workflow>.",
+        "No runs in Ac\\u202eme yet. Start one with halonic run <workflow>.",
       ]);
     });
 
@@ -172,7 +172,7 @@ verifies("cli.commands.runs.list", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        "No failed runs of support-reply in acme.",
+        "No failed runs of support-reply in Acme.",
         "  See every run with halonic runs.",
       ]);
     });
@@ -211,7 +211,7 @@ verifies("cli.commands.runs.list", () => {
 
       expect(code).toBe(exitCode.notFound);
       expect(io.stderr).toEqual([
-        '✕ There\'s no workflow called "suport-reply" in acme.',
+        '✕ There\'s no workflow called "suport-reply" in Acme.',
         "  Did you mean support-reply?",
       ]);
     });
@@ -219,7 +219,7 @@ verifies("cli.commands.runs.list", () => {
     it("lists the workflows when no workflow is close", async () => {
       const { io } = await runsIn(acme, "--workflow", "billing");
 
-      expect(io.stderr[1]).toBe("  Workflows in acme: support-reply.");
+      expect(io.stderr[1]).toBe("  Workflows in Acme: support-reply.");
     });
 
     it("asks for the hub when two hubs have the workflow", async () => {
@@ -249,10 +249,10 @@ verifies("cli.commands.runs.list", () => {
         "✓ Done   a1b2c3   \\u001b[31mgone   Sent nothing   10:31 · took 18 s",
       ]);
       const noMatch = await runsIn(acme, "--workflow", "\u001b[31mgone", "--status", "failed");
-      expect(noMatch.io.stdout[0]).toBe("No failed runs of \\u001b[31mgone in acme.");
+      expect(noMatch.io.stdout[0]).toBe("No failed runs of \\u001b[31mgone in Acme.");
       const workflow = await runsIn(acme, "--workflow", "\u001b[31mbilling");
       expect(workflow.io.stderr[0]).toBe(
-        '✕ There\'s no workflow called "\\u001b[31mbilling" in acme.',
+        '✕ There\'s no workflow called "\\u001b[31mbilling" in Acme.',
       );
       const status = await runsIn(acme, "--status", "\u001b[31mfailed");
       expect(status.io.stderr[0]).toBe(

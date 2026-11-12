@@ -122,7 +122,7 @@ verifies("cli.run-live-version", () => {
       const { code, stdout } = await run();
 
       expect(code).toBe(exitCode.ok);
-      expect(stdout.join("\n")).toContain("Running Support reply in acme");
+      expect(stdout.join("\n")).toContain("Running Support reply in Acme");
       expect(stdout.join("\n")).not.toContain("Saved reply");
       expect(await storedRuns()).toBe(1);
     },
@@ -139,7 +139,7 @@ verifies("cli.run-live-version", () => {
 
       expect(stdout.slice(0, 2)).toEqual([
         "Your uncommitted changes aren't used. Commit them to run them.",
-        expect.stringContaining("Running Support reply in acme"),
+        expect.stringContaining("Running Support reply in Acme"),
       ]);
     },
     gitTimeout,
@@ -211,7 +211,7 @@ verifies("cli.run-live-version", () => {
       const { code, stdout } = await run();
 
       expect(code).toBe(exitCode.ok);
-      expect(stdout.join("\n")).toContain("Running Saved reply in acme");
+      expect(stdout.join("\n")).toContain("Running Saved reply in Acme");
     },
     gitTimeout,
   );

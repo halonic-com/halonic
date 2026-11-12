@@ -59,7 +59,7 @@ interface KnownRun {
  * already printed again: they are counted, and printed only once.
  *
  * @example
- * const live = liveLines(context, { workspace, workspaceName: "acme", clock });
+ * const live = liveLines(context, { workspace, workspaceName: "Acme", clock });
  * try {
  *   await workflowRuns.startRun(workspace, "support-reply", input, { onEvent: live.onEvent });
  * } finally {

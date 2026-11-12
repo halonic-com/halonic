@@ -83,8 +83,9 @@ export async function workspaceIntegrations(
 
 /**
  * The workspace's name as a sentence names it: from `workspace.yaml`, or
- * the folder as typed when it has none. The trust line and `runs send`'s
- * id errors both say it, so one workspace reads one way (HAL-4533).
+ * the folder as typed when it has none. Every sentence that names a loaded
+ * workspace says it (the trust line, `run`, `runs`, `routines`), so one
+ * workspace reads one way (HAL-4533, HAL-6610).
  *
  * @example
  * workspaceNameOf(loaded, { shown: "./acme", … }); // "Acme"
