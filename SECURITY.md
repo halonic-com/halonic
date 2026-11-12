@@ -5,12 +5,9 @@ problems privately, never in a public issue, discussion or pull request.
 
 ## How to report
 
-Use either of these:
-
-- **GitHub private vulnerability reporting.** Open the **Security** tab of this
-  repository and choose **Report a vulnerability**. This is the preferred way:
-  the report, our questions and the fix stay together in one private advisory.
-- **Email** [security@halonic.com](mailto:security@halonic.com).
+Use GitHub private vulnerability reporting: open the **Security** tab of this
+repository and choose **Report a vulnerability**. The report, our questions
+and the fix then stay together in one private advisory.
 
 Please include:
 
