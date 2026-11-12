@@ -94,6 +94,7 @@ next to the ports:
 | --- | --- | --- |
 | `isSecretName`, `secretKey`, `isQuotableSecretName`, `describeSecretName` | the `Secrets` name rule: a letter, then letters, digits, `-` or `_`, at most 128 characters; `secretKey` gives the matching form (upper case, `-` as `_`) and throws a `RangeError` for a bad name | `secret-name-rule` |
 | `workspaceSecrets`, `halonicSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets, token names and plugin secrets | `workspace-secrets` |
+| `pluginSecrets`, `pluginSecretSeparator` | a view of `Secrets` for one plugin's backend; it reads only the names stored for that plugin and refuses every other | `plugin-secrets` |
 | `checkWorkspacePath`, `checkPublicWorkspacePath`, `isPrivateWorkspacePath` | the path rules of `DefinitionSource`: refuse unsafe paths, and private ones for the public check | `workspace-path-checks` |
 | `segmentAsOpened` | a path segment as the private-entry rule compares names: without the code points HFS+ ignores, case folded, without trailing dots and spaces | `segment-as-opened` |
 | `checkRunAppend`, `matchesRunFilter`, `startedAtOrAfter`, `compareRunSummaries`, `runLockFormat`, `runLockStaleAfterMs` | the append checks, list filter (`startedAtOrAfter` compares two ISO times as times), order and lock rules of `RunStore` | `run-store-checks` |

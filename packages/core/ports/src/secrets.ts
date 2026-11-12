@@ -140,6 +140,15 @@ export function isHalonicSecretName(name: string): boolean {
  */
 export const pluginSecretNamePrefix = "plugin__";
 
+/**
+ * Comes between the plugin's id and the secret's name in a plugin's secret
+ * name, and ends {@link pluginSecretNamePrefix}'s share of it. `Secrets`
+ * takes `-` and `_` as the same character, so a single one can't tell
+ * `a-b` + `c` from `a` + `b-c`. Ids and secret names never hold two `-` in a
+ * row, so a doubled `_` can't come from either of them.
+ */
+export const pluginSecretSeparator = "__";
+
 const pluginKeyPrefix = secretKey(pluginSecretNamePrefix);
 
 /**
@@ -180,6 +189,34 @@ export function workspaceSecrets(secrets: Secrets): Secrets {
       }
       if (isPluginSecretName(name)) {
         throw new RangeError("A workspace can't pick a secret that belongs to a plugin.");
+      }
+      return await secrets.get(name);
+    },
+  };
+}
+
+/**
+ * The secrets as one plugin's backend may read them: only the names stored
+ * for that plugin, `plugin__<id>__<secret>` in `secretKey` form, and nothing
+ * else, so a plugin can't read a workspace's secret, Halonic's own or
+ * another plugin's. The app picks each name from the plugin's own manifest;
+ * this is the second check, at the place that reads.
+ *
+ * @throws RangeError from `get`, for a name that isn't one of the plugin's;
+ *   the message never repeats the name
+ *
+ * @example
+ * const own = pluginSecrets(secrets, "weather");
+ * await own.get("plugin__weather__acme-key"); // the stored key, or null
+ * await own.get("openai-key"); // throws a RangeError
+ * await own.get("plugin__rain__acme-key"); // throws a RangeError
+ */
+export function pluginSecrets(secrets: Secrets, pluginId: string): Secrets {
+  const own = secretKey(`${pluginSecretNamePrefix}${pluginId}${pluginSecretSeparator}`);
+  return {
+    get: async (name) => {
+      if (!secretKey(name).startsWith(own)) {
+        throw new RangeError("A plugin can read only the secrets stored for it.");
       }
       return await secrets.get(name);
     },

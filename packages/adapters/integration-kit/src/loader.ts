@@ -9,6 +9,7 @@ import {
   type Integration,
   type IntegrationHost,
   type ProviderConfig,
+  pluginSecrets,
   type SecretPlacement,
   type Secrets,
   type TokenStore,
@@ -39,6 +40,13 @@ export interface IntegrationSource {
    * step. The loader refuses it when the sheet has changed since.
    */
   readonly approvedSheet?: unknown;
+  /**
+   * `true` for a plugin's backend, whose sheet's id is the plugin's. The
+   * secrets it picks are then read as that plugin's own, `plugin__<id>__<name>`,
+   * and only those, never as a workspace's picks, which can't name a plugin's.
+   * The names come from the plugin's manifest, never from a workspace.
+   */
+  readonly plugin?: boolean;
 }
 
 /** What the workspace chose for one integration. */
@@ -164,7 +172,7 @@ function prepare(
   if (problems.length > 0 || !resolved.ok) {
     return err(problems);
   }
-  const secrets = chosenSecrets(options.secrets, secretNames);
+  const secrets = chosenSecrets(options.secrets, secretNames, source.plugin ? sheet.id : undefined);
   const { host, log } = createIntegrationHost({
     policy: resolved.value.policy,
     transport: options.transport,
@@ -311,16 +319,22 @@ function requestLimits(limits: Readonly<Record<string, number | undefined>>): Re
 
 /**
  * The raw secrets seen through the user's picks: the kit asks by the sheet's
- * name and reads the workspace secret picked for it, or nothing. The workspace
- * chose those names, so they can't reach Halonic's own secrets or tokens.
+ * name and reads the secret picked for it, or nothing. A workspace chose
+ * those names, so they can't reach Halonic's own secrets, tokens or a
+ * plugin's. A plugin's backend's names come from its manifest and can reach
+ * only that plugin's own secrets (`plugin`).
  */
-function chosenSecrets(raw: Secrets, secretNames: Readonly<Record<string, string>>): Secrets {
+function chosenSecrets(
+  raw: Secrets,
+  secretNames: Readonly<Record<string, string>>,
+  plugin: string | undefined,
+): Secrets {
   const picks = new Map(Object.entries(secretNames));
-  const workspace = workspaceSecrets(raw);
+  const readable = plugin === undefined ? workspaceSecrets(raw) : pluginSecrets(raw, plugin);
   return {
     get: async (name) => {
       const picked = picks.get(name);
-      return picked === undefined ? null : await workspace.get(picked);
+      return picked === undefined ? null : await readable.get(picked);
     },
   };
 }

@@ -1000,6 +1000,9 @@ importers:
       '@halonicjs/adapter-integration-kit':
         specifier: workspace:*
         version: link:../integration-kit
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

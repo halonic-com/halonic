@@ -273,6 +273,8 @@ export {
   isSecretName,
   maxSecretNameLength,
   pluginSecretNamePrefix,
+  pluginSecretSeparator,
+  pluginSecrets,
   type Secrets,
   secretKey,
   secretsVersion,
