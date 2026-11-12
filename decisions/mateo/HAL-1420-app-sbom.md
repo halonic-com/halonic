@@ -3,6 +3,7 @@
 - Task: HAL-1420 (follow-up of HAL-1200)
 - Approval: the task [HAL-1420](/HAL/issues/HAL-1420) asks for this change; the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OxrnAdJt3Mf/mN9gc40l8Poa61mzhAFcMq1nWBX6jUq1lYp8/ozh4kByQnZ6xWiDrxSQrjyYLKSqZkNj0H7JDQ==
 
 ## What changes
 
