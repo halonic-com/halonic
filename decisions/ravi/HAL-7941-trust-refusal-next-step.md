@@ -1,7 +1,7 @@
 # Decision: a plugin trust refusal says what to do next
 
 - Task: HAL-7941
-- Approval: the team's call on [HAL-7941](/HAL/issues/HAL-7941), from Sofia's UX check on HAL-7925 and Mara's notes on halonic#2294
+- Approval: the team's call on HAL-7941, from Sofia's UX check on HAL-7925 and Mara's notes on halonic#2294
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/7uCN4TTzYCdsi5LmHCiLuA4UGHvNFTzMwqNxGoL2AIw1+k8x1QiTv4ywmu06tM4LDwzhF2l1Q5fODV1GQxxAg==
 
