@@ -3,6 +3,7 @@
 - Task: HAL-7491 (sign the sandbox helper inside the Studio installer before it is packed)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-7491](/HAL/issues/HAL-7491)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/cj8sQhhh2ZGatHg3v0inOI+1RwduutdwBPthnRda5fPWSrdyXGalSFRPelrXUaPlL9BISkQm3DdYY3Q/IDQCQ==
 
 ## What changes
 
