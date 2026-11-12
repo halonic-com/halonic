@@ -2,6 +2,7 @@
 
 - Approval: Elena asked for this on [HAL-6219](/HAL/issues/HAL-6219), after Julian's decision on [HAL-6208](/HAL/issues/HAL-6208); the CTO (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kjlXC9LIrfFVNgfdZmSzrq8s05t5jWCTFTUevfnzGPV9PeS/OZ2XHhaLHa4g8Q1h4lpX8NlT4vXN02fnQ7unDA==
 - Task: HAL-6219
 
 ## What changes
