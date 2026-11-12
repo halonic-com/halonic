@@ -1,5 +1,5 @@
 import type { Secrets } from "@halonicjs/ports";
-import type { Server, ServerConfig, ServerPorts } from "./api.ts";
+import type { ErrorLog, Server, ServerConfig, ServerPorts } from "./api.ts";
 import { createServer } from "./create-server.ts";
 
 /** A port the test doesn't expect the server to touch: any call fails the test loudly. */
@@ -19,6 +19,7 @@ export function testServer(options: {
   passwordHash: string | null;
   config?: Partial<ServerConfig>;
   secrets?: Secrets;
+  errorLog?: ErrorLog;
 }): Server {
   const ports: ServerPorts = {
     runs: unusedPort("runs"),
@@ -28,6 +29,7 @@ export function testServer(options: {
     passwordHasher: unusedPort("passwordHasher"),
     coordination: unusedPort("coordination"),
     requestCounts: unusedPort("requestCounts"),
+    errorLog: options.errorLog ?? { record: () => {} },
     clock: { now: () => new Date("2026-11-12T10:00:00Z") },
     ids: { next: (prefix) => `${prefix}_1` },
   };

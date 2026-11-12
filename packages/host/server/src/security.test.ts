@@ -20,6 +20,17 @@ describe("host check", () => {
       }
     });
 
+    it("matches an allowedHosts entry whatever its letter case", async () => {
+      const server = testServer({
+        passwordHash: "hash",
+        config: { allowedHosts: ["Halonic.Acme.Example"] },
+      });
+      const response = await server.handle(
+        request("https://halonic.acme.example/x", { host: "halonic.acme.example" }),
+      );
+      expect(response.status).toBe(404);
+    });
+
     it("refuses a rebinding name when no password is set, even one the host lists", async () => {
       const server = testServer({ passwordHash: null, config: { allowedHosts: ["evil.example"] } });
       const response = await server.handle(
@@ -214,6 +225,22 @@ describe("error body", () => {
         code: "internal_error",
         message: "The server couldn't answer this request.",
       });
+    });
+
+    it("hands the cause of an unexpected failure to the error log", async () => {
+      const recorded: unknown[] = [];
+      const cause = new Error("disk /srv/secret-path failed");
+      const broken = testServer({
+        passwordHash: null,
+        errorLog: { record: (error) => recorded.push(error) },
+        secrets: {
+          get: async () => {
+            throw cause;
+          },
+        },
+      });
+      await broken.handle(request("http://x/x", { host: "localhost" }));
+      expect(recorded).toEqual([cause]);
     });
 
     it("throws a RangeError for an unusable config", () => {

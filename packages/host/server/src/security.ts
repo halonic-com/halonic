@@ -22,7 +22,7 @@ const securityHeaders: Readonly<Record<string, string>> = {
  *
  * A server with no password answers only loopback names, whatever
  * `allowedHosts` holds. A loopback name matches on any port. Any other name
- * must be in `allowedHosts` exactly as written, including its port.
+ * must be in `allowedHosts` lowercased, including its port.
  *
  * @returns `null` when the request may go on, otherwise the error to send
  */

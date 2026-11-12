@@ -28,12 +28,11 @@ function isWholeNumberAboveZero(value: number): boolean {
  */
 export const createServer: CreateServer = ({ config, ports }) => {
   checkConfig(config);
+  const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
 
   async function answer(request: Request): Promise<Response> {
     const hasPassword = (await ports.secrets.get(passwordSecretName)) !== null;
-    const refusal =
-      checkHost(request, { allowedHosts: config.allowedHosts, hasPassword }) ??
-      checkOrigin(request);
+    const refusal = checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request);
     if (refusal !== null) {
       return errorResponse(refusal);
     }
@@ -48,8 +47,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
     async handle(request) {
       try {
         return withSecurityHeaders(await answer(request), request);
-      } catch {
+      } catch (cause) {
         // The cause stays out of the reply: a stack or path would tell a caller about the host.
+        ports.errorLog.record(cause);
         return withSecurityHeaders(errorResponse(serverErrors.internal), request);
       }
     },
