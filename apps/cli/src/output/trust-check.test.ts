@@ -150,7 +150,7 @@ verifies("cli.trust-check", () => {
         sites: ["*.example.com", "pypi.org"],
       },
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "new",
       content: { connectors: [files], agents: [coder] },
       fingerprint,
