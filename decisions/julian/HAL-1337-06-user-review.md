@@ -2,6 +2,7 @@
 
 - Approval: the board checked and approved this design on [HAL-1337](/HAL/issues/HAL-1337) on 12 Nov, replacing the HAL-3434 answer that the user approves on GitHub; Liam signs this pull request as the one guardian the base branch pins
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:q8JY2+4yDzhpCmxrYK6eHuPOfI+17GxMQKv0r1jSCdSPSe//u8+purZg4uTSerwkhK6Go2Q4/IIh4ojjBvKOCQ==
 
 The board decided that no person depends on the user for guard changes ("I don't want to approve these things"). So a change to the guard's trust roots (`tooling/check/approvers.json`, `.gitattributes`, `tooling/check/policy.json` outside `extraExports`, the guard workflow, `tooling/check/src/guard/`, the two guard commands and the `lib/` helpers they import) needs a `user-visible` note with two `- Signature:` lines from two different keys under `guardians` in `approvers.json`: the CTO's and the security reviewer's. The same key twice counts once, and neither signs alone. The list is read from the base branch, so nobody can add themselves, and a guardian can't be removed or added without two signatures under the list as it is. `user-visible` and `internal` notes need the CTO's key alone, and no GitHub review. The reason is agent-only approval with two keys, so that one agent that is wrong or compromised can't change the guard.
 
