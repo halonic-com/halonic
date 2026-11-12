@@ -33,15 +33,12 @@ export function trustNotSavedLine(reason: string): string {
 }
 
 /**
- * A host's message after a colon: no closing full stop, and a capital that only starts the
- * sentence lower-cased ("The disk is full." is "the disk is full"), so a name such as "Windows"
- * keeps its capital.
+ * A host's message after a colon: no closing full stop, and its first letter as the host sent
+ * it ("Windows denied access." is "Windows denied access"), because a capital can't be told
+ * from a name's.
  */
 function afterColon(reason: string): string {
-  const trimmed = reason.trim().replace(/\.$/, "");
-  return /^\p{Lu}\p{Ll}/u.test(trimmed) && !/^\S+\p{Lu}/u.test(trimmed)
-    ? trimmed.charAt(0).toLowerCase() + trimmed.slice(1)
-    : trimmed;
+  return reason.trim().replace(/\.$/, "");
 }
 
 /** The focused button that leaves the plugin off (T10). */

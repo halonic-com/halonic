@@ -14,7 +14,7 @@ import type { PluginOrigin } from "../page/page-text.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { PluginTrustDialog } from "./plugin-trust-dialog.tsx";
-import type { TrustCheckReason } from "./trust-text.ts";
+import { TRUST_CHECK_LAST_LINE, type TrustCheckReason } from "./trust-text.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -249,12 +249,36 @@ verifies("plugins.plugin-trust-check", () => {
     expect(pressed).toEqual(["trust", "not now"]);
   });
 
+  it("keeps the first letter of the reason as the host sent it", async () => {
+    open(weather, { failure: "Windows denied access." });
+    await settle();
+
+    expect(dialog().querySelector('[role="alert"]')?.textContent).toContain(
+      "Couldn't save trust: Windows denied access. Nothing was started.",
+    );
+  });
+
+  it("puts the last line in the footnote, outside the body, and describes the dialog with it", async () => {
+    open(weather);
+    await settle();
+
+    const line = [...dialog().querySelectorAll("p")].find(
+      (paragraph) => paragraph.textContent === TRUST_CHECK_LAST_LINE,
+    );
+    expect(line).toBeDefined();
+    expect(line?.previousElementSibling?.tagName).not.toBe("P");
+    expect(line?.parentElement?.nextElementSibling?.tagName).toBe("FOOTER");
+    expect(dialog().querySelector("div.flex.flex-col.gap-3")?.contains(line ?? null)).toBe(false);
+    const described = (dialog().getAttribute("aria-describedby") ?? "").split(" ");
+    expect(described).toContain(line?.id);
+  });
+
   it("says why trust wasn't saved, and that nothing was started", async () => {
     open(weather, { failure: "The disk is full." });
     await settle();
 
     expect(dialog().querySelector('[role="alert"]')?.textContent).toContain(
-      "Couldn't save trust: the disk is full. Nothing was started.",
+      "Couldn't save trust: The disk is full. Nothing was started.",
     );
   });
 });
