@@ -26,8 +26,8 @@ draws it as text.
 A plugin backend runs in a separate process, the worker, that holds one
 integration. Its only way out is the `IntegrationHost`:
 
-- It can call **declared hosts** over `https`, and nothing else. A redirect to
-  another host is refused. No global `fetch`, file system, `process` or timers.
+- It can call **declared hosts** over `https`, and nothing else. A redirect is
+  followed (up to five hops) and each hop is checked against the declared hosts again. No global `fetch`, file system, `process` or timers.
 - The backend **never sees a secret.** It names the secret and where it goes,
   and Halonic puts the value into the request, only for the hosts that secret is
   declared for. Results, errors and logs pass through a filter for secret
@@ -43,9 +43,9 @@ integration. Its only way out is the `IntegrationHost`:
 
 A local tool starts only inside a sandbox session, after the session has proven
 its fence. Halonic builds the sandbox's rules, never the plugin: a fresh working
-folder, an environment with only the variables the manifest names, and a
+folder, an environment with only the variables the manifest names (plus `PATH`, `HOME` and the temporary-folder variables Halonic sets itself), and a
 network limited to Halonic's own bridge (how the program's tools are offered
-to agents) and the hosts the manifest declares. A tool the
+to agents) and the hosts the manifest declares (and the registry host of a pinned package). A tool the
 server offers that the manifest doesn't declare is refused. No proven fence
 means no start, and a yes to run without the sandbox (not offered yet) doesn't cover plugin
 programs. Where no sandbox works (Android, the browser) local tools don't run.

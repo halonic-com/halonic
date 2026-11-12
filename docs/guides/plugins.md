@@ -141,7 +141,13 @@ localTools:
     args: ["--read-only"]
     env:
       ACME_ROOT: { setting: root }
+      ACME_TOKEN: { secret: files-token }
+    secrets:
+      files-token:
+        purpose: Lets the files program read your Acme account.
+        hosts: [api.acme.example]
     network: [api.acme.example]
+    callTimeoutMs: 30000
     tools:
       - name: list-files
         description: Lists the files in a folder.
@@ -153,9 +159,16 @@ localTools:
   `runner` (`npx` or `uvx`), a `name` and an exact `version`: no range and no
   tag. A script is a file in the plugin folder, run by a program the person
   already has (`{ program: node, path: tools/server.js }`).
-- **`env`** maps a variable to a setting or a declared secret. A literal value
-  is not allowed. A secret named here is given to that program, so it does
-  get the value; the trust check lists it.
+- **`env`** maps a variable to a setting or to a secret this local tool
+  declares in its own `secrets`. A literal value is not allowed, and a secret
+  declared on another local tool or on the backend doesn't count. A secret
+  named here is given to that program, so it does get the value; the trust
+  check lists it.
+- **`secrets`** declares the secrets this local tool may use, each with a
+  `purpose` (what it is for, shown in the trust check) and its `hosts`. Every
+  host of a secret must also be in the tool's `network`.
+- **`callTimeoutMs`** is how long one tool call may take. It is optional, 60000
+  (a minute) by default.
 - **`network`** lists the hosts the program may reach, besides Halonic's own
   bridge (the route the program's tools are offered through).
 - **`tools`** lists every tool the program offers. Halonic offers only declared
@@ -176,8 +189,8 @@ security docs](../security/plugins.md).
 
 | Entry | Where it shows |
 | --- | --- |
-| `settings` | A section for the plugin in Settings. A `secret` field is stored in Secrets, never handed to the plugin. |
-| `commands` | The command palette. A command opens its form if it has one, calls its tool and shows the result. |
+| `settings` | A section for the plugin in Settings. A `secret` field is stored in Secrets and never handed to the backend; only a local tool that names it in `env` receives it. |
+| `commands` | The command palette. A command opens its form if it has one, calls its tool (a tool that reads) and shows the result. |
 | `cards` | Home, in a Cards section marked "From the *name* plugin", and in the plugin's panel. A card calls a `read` tool with fixed arguments when it is shown. |
 | `panel` | A tab that lists the plugin's commands, then its cards. Optional. |
 
@@ -189,8 +202,9 @@ Everything a plugin shows is untrusted text. Studio draws it as text or
 sanitised Markdown, never as HTML or script, and links go through the same
 external-link handling as the rest of Studio.
 
-Checks inside the manifest: every command and card names a declared tool, a
-card's tool is `read`, a `secret` field and an `env` secret name a declared
+Checks inside the manifest: every command and card names a declared tool, and
+that tool is `read` (a command or card can't call a tool that changes or
+sends), a `secret` field and an `env` secret name a declared
 secret, and tool names and local tool ids are unique across the plugin.
 
 ## The SDK
@@ -224,18 +238,21 @@ The check lists what the plugin can do and reach:
 
 - **Tools for agents:** every tool, as **Reads**, **Changes things** or
   **Sends**. A tool that changes or sends asks a person first.
-- **Programs on this computer:** local tools, with their pins and network.
-- **Secrets:** each by name and the one address it goes to, never its value.
+- **Programs on this computer:** local tools, each with its command and
+  arguments.
+- **Secrets:** each by name and the addresses it goes to, never its value.
   This is the backend's route; a secret named in a local tool's `env` goes to
   that program.
-- **Addresses:** the hosts the backend may call.
+- **Addresses:** the hosts the backend may call, and the hosts the local tools
+  may reach.
 
 Your yes trusts one fingerprint. It covers the normalised manifest and every
 file in the folder. So:
 
 - **Any change to the manifest, to any file or to a pin changes the
   fingerprint.** The plugin is then off until you trust it again, and the check
-  shows what changed.
+  is shown again in full (it doesn't mark what changed, so compare it with the
+  one you saw).
 - Editing `ui` text counts too, because the fingerprint covers the whole
   manifest.
 - Trust is a record in your profile, per computer. A plugin's own files, or a
@@ -246,9 +263,11 @@ Other commands: `halonic plugin list` shows each plugin and whether it is on.
 `halonic trust --plugin <id> --remove` removes the trust, so the plugin is off
 (its settings and secrets stay). `halonic plugin remove <id>` asks first (or
 needs `--yes`), then removes the plugin with its trust, settings and the API
-key you entered. In a script, pass
+key you entered.
+
+In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check
-shows now.
+shows now. `plugin remove` takes only `--yes`.
 
 Trust is a list, not a sandbox. Read what the check says before you answer. See
 [workspace trust](../security/trust.md) for the limits.
@@ -310,7 +329,7 @@ for everyone who has it. There is no registry yet.
 ## The whole manifest
 
 `core/format/spec/plugin.schema.json` is the schema editors use. The sample's
-`plugin.yaml` shows every field in use. To report a vulnerability in the plugin
+`plugin.yaml` shows a working plugin; the schema lists every field. To report a vulnerability in the plugin
 system, see [SECURITY.md](../../SECURITY.md). Report a bad plugin the same way.
 
 <!-- Keeping this page true: a pull request that changes the manifest, the SDK,

@@ -99,5 +99,5 @@ the same pull request.
 | **approval** | a step where a run waits until a person agrees | confirmation |
 | **event** | what you send to a waiting run to answer it, such as `approve` or `reject` | answer (as a noun), command |
 | **feature** | one part of the Studio, such as Agents or Routines, built as its own package (code term; users see the screens) | module, plugin |
-| **plugin** | a folder with a `plugin.yaml` that you add to Halonic: it can bring tools from an outside service (a backend), programs that run in the sandbox (local tools) and settings, commands and cards that Studio draws (`ui`). An integration is a plugin with only a backend; Gmail and Google Drive are built-in plugins. A person adds a plugin and trusts it (the trust check). Never use it for a Studio *feature* | extension, add-on, module |
+| **plugin** | a folder with a `plugin.yaml` that you add to Halonic: it can bring tools from an outside service (a backend), programs that run in the sandbox (local tools) and settings, commands and cards that Studio draws (`ui`). An integration is a plugin with only a backend; Gmail and Google Drive are built-in integrations. A person adds a plugin and trusts it (the trust check). Never use it for a Studio *feature* | extension, add-on, module |
 | **requirement** | one recorded rule of behaviour with a stable ID, proven by tests | spec, story |
