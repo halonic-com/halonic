@@ -241,7 +241,10 @@ fn served_page_test_sees_the_connect_page_allowed_the_blob_and_record_commands_o
         ("blob_put", json!({"workspace": ".", "data": "aGVsbG8"})),
         ("blob_get", json!({"workspace": ".", "hash": hash})),
         ("record_append", json!({"workspace": ".", "appends": []})),
-        ("record_read", json!({"workspace": ".", "collection": "leads"})),
+        (
+            "record_read",
+            json!({"workspace": ".", "collection": "leads"}),
+        ),
         (
             "record_replace",
             json!({"workspace": ".", "collection": "leads", "version": "", "lines": ""}),

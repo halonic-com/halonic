@@ -13,10 +13,8 @@ struct Workspace(PathBuf);
 
 impl Workspace {
     fn new(name: &str) -> Self {
-        let folder = std::env::temp_dir().join(format!(
-            "workspace-data-{name}-{}",
-            std::process::id()
-        ));
+        let folder =
+            std::env::temp_dir().join(format!("workspace-data-{name}-{}", std::process::id()));
         // A crashed earlier run may have left it; it is ours to clear.
         let _ = std::fs::remove_dir_all(&folder);
         std::fs::create_dir_all(&folder).expect("the workspace can be created");

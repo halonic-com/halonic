@@ -55,7 +55,9 @@ pub(crate) fn opened_workspace_folders(
     let real_path = real_path
         .to_str()
         .ok_or_else(|| DataRefusal::io("the workspace's path isn't valid Unicode"))?;
-    profile.workspace_folders(real_path).map_err(DataRefusal::io)
+    profile
+        .workspace_folders(real_path)
+        .map_err(DataRefusal::io)
 }
 
 /// Runs `call` with the folders of the workspace the page named, on a

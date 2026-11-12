@@ -1571,12 +1571,14 @@ name = "halonic-studio"
 version = "0.1.0"
 dependencies = [
  "halonic-agent-host",
+ "halonic-blob-store",
  "halonic-connect",
  "halonic-git-guard",
  "halonic-keychain",
  "halonic-login-shell",
  "halonic-process-probe",
  "halonic-profile",
+ "halonic-record-store",
  "halonic-run-store",
  "halonic-secrets",
  "halonic-trust-grant",

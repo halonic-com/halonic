@@ -22,10 +22,7 @@ fn workspace_data_commands_refuse_with_the_record_store_s_kind_and_words() {
     let refusal = serde_json::to_value(refusal).unwrap();
     assert_eq!(refusal["kind"], "invalid_lines");
     assert!(
-        refusal["message"]
-            .as_str()
-            .unwrap()
-            .contains("\"leads\""),
+        refusal["message"].as_str().unwrap().contains("\"leads\""),
         "{refusal}"
     );
 }

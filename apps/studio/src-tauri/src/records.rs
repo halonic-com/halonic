@@ -116,7 +116,11 @@ pub async fn record_replace<R: Runtime>(
 }
 
 /// Runs `call` on the record folder of the workspace the page named.
-async fn in_records<R, T, F>(app: AppHandle<R>, workspace: PathBuf, call: F) -> Result<T, DataRefusal>
+async fn in_records<R, T, F>(
+    app: AppHandle<R>,
+    workspace: PathBuf,
+    call: F,
+) -> Result<T, DataRefusal>
 where
     R: Runtime,
     T: Send + 'static,
