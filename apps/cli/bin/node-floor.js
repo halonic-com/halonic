@@ -17,7 +17,6 @@ export function nodeTooOldLines(version) {
   }
   const floor = `${nodeFloor.major}.${nodeFloor.minor}`;
   return [
-    `✕ halonic needs Node.js ${floor} or newer. You have ${version}.`,
-    `  Install Node.js ${floor} or newer from https://nodejs.org, then run halonic again.`,
+    `✕ Halonic needs Node.js ${floor} or later, but this is Node.js ${version}. Install a newer one, for example with nvm install ${nodeFloor.major}.`,
   ];
 }
