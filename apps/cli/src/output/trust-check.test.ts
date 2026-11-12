@@ -131,7 +131,7 @@ verifies("cli.trust-check", () => {
       id: "aws-mcp",
       settings: { ...mail.settings, inheritEnv: ["AWS_PROFILE", "AWS_REGION"] },
     };
-    const check: TrustCheck = {
+    const check: FingerprintedCheck = {
       status: "new",
       content: { connectors: [aws], agents: [] },
       fingerprint,
