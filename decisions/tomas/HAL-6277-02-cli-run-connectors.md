@@ -17,7 +17,10 @@ see, through the engine's `RunConnectors` port (#1969, `engine.run-connectors`):
   saved but isn't live never runs in a live run (`app.runs-read-latest-version`).
 - They start with the grant from the command's trust check, which `checkRunTrust` now returns.
   A run that can only reach the test model has no grant, so no program starts.
+- Each start is refused the harness agents' working folders, both in its copy and in the real
+  workspace, where the agents write (`format.working-folder-start`).
 - They are closed, and the copy released after them, when the run ends or the engine closes.
+  Once the engine has closed, no run starts a connector.
 - Sending is off for every connector: the CLI keeps no connector settings yet. Only tools
   labelled `send` are affected; other calls work as before, with a person's OK where the
   connector file asks for one.
@@ -34,11 +37,14 @@ Harness agents stay refused in `halonic run` (HAL-6476). Wiring them comes in B2
 No test was weakened. `live-version-programs.test.ts` now goes through the CLI's engine: a run of
 the live version calls a real MCP program, and the committed script answers, never the saved
 change; afterwards no copy is left. Run on the saved files, the same test gets the saved script,
-so it can fail. `run-connectors.test.ts` has 8 unit tests: one start per run, a copy per run, the
+so it can fail. `run-connectors.test.ts` has 11 unit tests: one start per run, a local connector is
+marked local, a connector that isn't local doesn't start in a local-only run, a copy per run, the
 workspace folder for the saved files, close before release, a failed close is reported, no version
-starts nothing, a connector that can't be created releases the copy and is tried again, and the
-engine's close ends every run. `local-run-connectors.test.ts` has 2: sending is off with its reason,
-and an engine over several versions starts no run's connectors.
+starts nothing, a connector that can't be created releases the copy and is tried again, the
+engine's close ends every run, and nothing starts after it. `local-run-connectors.test.ts` has 2:
+sending is off with its reason, and an engine over several versions starts no run's connectors.
+`working-folders.test.ts` has 2: a program in a live run's copy is refused the real workspace's
+working folders too, and a run in the workspace itself names each folder once.
 
 ## Covers
 
