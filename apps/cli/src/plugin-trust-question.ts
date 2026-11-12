@@ -14,7 +14,7 @@ import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
-import { pluginTrustCheckLines } from "./output/plugin-trust-check.ts";
+import { pluginFingerprintLines, pluginTrustCheckLines } from "./output/plugin-trust-check.ts";
 import { printable } from "./output/printable.ts";
 
 /** A plugin that was read and checked, and isn't trusted as it is now. */
@@ -71,7 +71,7 @@ export async function askToTrustPlugin(
 
   const trusted = await answer.context.ask({
     question: pluginMessages.trustQuestion(name),
-    shownFirst: [...check, phrase``],
+    shownFirst: [...check, ...pluginFingerprintLines(fingerprint), phrase``],
     yes: answer.yes,
     refusal: () =>
       new NotTrustedError({
@@ -95,7 +95,7 @@ export async function askToTrustPlugin(
     // The files changed between the check and the answer: into another
     // plugin, or into one that can't be read or checked any more.
     if (granted.error.kind === "broken") {
-      throw brokenPluginError(granted.error.problems);
+      throw brokenPluginError(id, granted.error.problems);
     }
     throw fingerprintNotCurrent(entry, { check: [], fingerprint: granted.error.fingerprint });
   }
@@ -137,10 +137,11 @@ export function fingerprintNotCurrent(
 
 /**
  * The refusal to trust a plugin that can't be read or checked: its first
- * problem's own words, and how to see the plugins (exit 2).
+ * problem's own words, and how to replace it with a version that works
+ * (exit 2). Listing the plugins would only show it again as broken.
  */
-export function brokenPluginError(problems: readonly PluginProblem[]): KindedError {
+export function brokenPluginError(id: string, problems: readonly PluginProblem[]): KindedError {
   return new KindedError("invalid_input", printable(problems[0]?.message ?? ""), {
-    fix: plainText(pluginMessages.unknownPluginFix().phrase),
+    fix: plainText(pluginMessages.brokenPluginFix(printable(id)).phrase),
   });
 }

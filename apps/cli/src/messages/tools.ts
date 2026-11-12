@@ -10,7 +10,7 @@ import { phrase } from "./phrase.ts";
  * Halonic suggests arrive whole, with the user's own `--dir`.
  */
 export const toolsMessages = defineMessages("tools", {
-  summary: () => phrase`Review and approve the tools your connectors list`,
+  summary: () => phrase`Remove your approval of listed tools`,
   revokeSummary: () => phrase`Remove your approval of listed tools`,
   /** What the three were doing, for "✕ Couldn't list the tools from notes-mcp: …". */
   action: (source?: string) =>
@@ -34,6 +34,8 @@ export const toolsMessages = defineMessages("tools", {
     phrase`Removed your approval for ${tool} from ${source}. It's off until you approve it again.`,
   notApprovedToRevoke: (tool: string, source: string) =>
     phrase`Couldn't remove the approval for ${tool}: it isn't approved in ${source}.`,
+  /** Line 2 under {@link notApprovedToRevoke} when several tools were named. */
+  nothingRemoved: () => phrase`Nothing was removed.`,
 
   // Errors shared by the three.
   unknownSource: (typed: string, workspace: string) =>

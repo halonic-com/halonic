@@ -96,16 +96,14 @@ const plugins = async () => (await openPluginService(setup).load()).map((entry) 
 const pluginsFolder = () => join(folder, "profile", "plugins");
 
 verifies("cli.commands.plugin.remove", () => {
-  it("asks first, naming the API key, and on yes removes the plugin and its trust", async () => {
+  it("asks first and on yes removes the plugin and its trust", async () => {
     await addTrusted("weather");
     const { terminal, written } = terminalTyping("y");
 
     const { code, io } = await plugin(["remove", "weather"], terminal);
 
     expect(code).toBe(exitCode.ok);
-    expect(written()).toBe(
-      "Remove Weather? Its settings and the API key you entered are removed from this computer. [y/N] ",
-    );
+    expect(written()).toBe("Remove Weather? Its settings are removed from this computer. [y/N] ");
     expect(io.stdout).toEqual(["✓ Removed Weather 1.2.0 and its trust."]);
     expect(await readdir(pluginsFolder())).toEqual([]);
   });
@@ -119,13 +117,15 @@ verifies("cli.commands.plugin.remove", () => {
     expect(await plugins()).toEqual(["new"]);
   });
 
-  it("asks the shorter question for a plugin without secrets", async () => {
-    await addTrusted("weather", false);
-    const { terminal, written } = terminalTyping("y");
+  it("never names an API key, because the command line reads keys from the environment and stores none", async () => {
+    for (const secrets of [true, false]) {
+      await addTrusted("weather", secrets);
+      const { terminal, written } = terminalTyping("y");
 
-    await plugin(["remove", "weather"], terminal);
+      await plugin(["remove", "weather"], terminal);
 
-    expect(written()).toBe("Remove Weather? Its settings are removed from this computer. [y/N] ");
+      expect(written()).toBe("Remove Weather? Its settings are removed from this computer. [y/N] ");
+    }
   });
 
   it("removes nothing and exits 1 on no or Enter", async () => {
@@ -146,7 +146,7 @@ verifies("cli.commands.plugin.remove", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr).toEqual([
-      "✕ Removing Weather deletes its settings and secrets, and there's no terminal to ask you.",
+      "✕ Removing Weather deletes its settings, and there's no terminal to ask you.",
       "  To remove it anyway, pass --yes.",
     ]);
     expect(await plugins()).toEqual(["trusted"]);
@@ -218,15 +218,18 @@ verifies("cli.commands.plugin.remove", () => {
     expect(asked.written()).toContain(`Remove ${shown}?`);
     expect(no.io.stdout).toEqual([`Not removed. ${shown} is still added.`]);
     expect(noTerminal.io.stderr[0]).toBe(
-      `✕ Removing ${shown} deletes its settings and secrets, and there's no terminal to ask you.`,
+      `✕ Removing ${shown} deletes its settings, and there's no terminal to ask you.`,
     );
     expect(yes.io.stdout).toEqual([`✓ Removed ${shown} 1.2.0 and its trust.`]);
   });
 
-  it("says which plugin to remove when no id is given", async () => {
+  it("says the id is missing, with the usage line under it, when no id is given", async () => {
     const { code, io } = await plugin(["remove"]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toBe("✕ Say which plugin to remove, by its id.");
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ halonic plugin remove needs the plugin's id.",
+      "  halonic plugin remove <id> [--yes]",
+    ]);
   });
 });

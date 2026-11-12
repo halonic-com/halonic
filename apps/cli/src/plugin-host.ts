@@ -62,3 +62,12 @@ export function openPluginService(setup: PluginSetup): PluginService {
  * Halonic never writes, so it never stores a plugin's secret either.
  */
 export const deletePluginSecret: DeletePluginSecret = async () => {};
+
+/**
+ * Whether a key for the plugin is stored on this computer, so `plugin remove`
+ * can say it removes it. Never, for the same reason as
+ * {@link deletePluginSecret}; the plugin's declared secrets don't count.
+ */
+export function storesPluginSecret(_id: string): boolean {
+  return false;
+}

@@ -16,8 +16,9 @@ import {
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
+import { trustMessages } from "../messages/trust.ts";
 import { printable } from "./printable.ts";
-import { row } from "./trust-check-rows.ts";
+import { row, rowIndent } from "./trust-check-rows.ts";
 
 /** The tool risks in the order the check lists them, each with its group's heading. */
 const riskGroups: readonly { readonly risk: string; readonly heading: () => Message }[] = [
@@ -43,6 +44,19 @@ export function pluginTrustCheckLines(content: PluginTrustContent): Phrase[] {
     phrase``,
     pluginMessages.notChecked().phrase,
   ];
+}
+
+/**
+ * The full fingerprint under the check in a terminal, as a workspace's check
+ * ends (cli-output 3.5), so `--yes --fingerprint` can be given after a review.
+ * Without a terminal it isn't added: the bare fingerprint is the last stdout line.
+ *
+ * @example
+ * pluginFingerprintLines("hpf1:c9b6…");
+ * // ["", "Fingerprint", "  hpf1:c9b6…"] (as phrases)
+ */
+export function pluginFingerprintLines(fingerprint: string): Phrase[] {
+  return [phrase``, trustMessages.fingerprintHeading().phrase, phrase`${rowIndent}${fingerprint}`];
 }
 
 /** Each section the CLI shows, with its heading from the catalogue and its rows. */

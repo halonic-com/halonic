@@ -100,6 +100,9 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual(["✓ Added Weather 1.2.0. It's on."]);
+    const [entry] = await openPluginService(setup).load();
+    const fingerprint = entry?.status === "trusted" ? entry.fingerprint : "";
+    expect(fingerprint).toMatch(fullFingerprint);
     expect(written()).toBe(
       [
         "Trust Weather and turn it on?",
@@ -115,6 +118,9 @@ verifies("cli.commands.plugin.add", () => {
         "  api.weather.example",
         "",
         "Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.",
+        "",
+        "Fingerprint",
+        `  ${fingerprint}`,
         "",
         "Trust Weather and turn it on? [y/N] ",
       ].join("\n"),

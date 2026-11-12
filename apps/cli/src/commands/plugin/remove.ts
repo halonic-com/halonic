@@ -1,10 +1,10 @@
 // `halonic plugin remove <id>`: removes a plugin from the profile's plugins
-// folder with its trust, settings and secrets, after asking (cli-output
+// folder with its trust, settings and any secret stored for it, after asking (cli-output
 // 3.6). A thin command over `PluginService.remove`: the service removes
 // everything in the order that lets a second run finish the job, this file
 // finds the plugin and asks.
 
-import type { PluginEntry, PluginRemoveRefusal, PluginService } from "@halonicjs/app";
+import type { PluginEntry, PluginRemoveRefusal } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import {
   type CommandContext,
@@ -18,7 +18,12 @@ import { markPart, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
-import { deletePluginSecret, openPluginService, type PluginSetup } from "../../plugin-host.ts";
+import {
+  deletePluginSecret,
+  openPluginService,
+  type PluginSetup,
+  storesPluginSecret,
+} from "../../plugin-host.ts";
 
 /**
  * What the question and the ✓ line say about the plugin being removed. Its
@@ -31,8 +36,8 @@ interface RemovedPlugin {
   readonly name: string;
   /** Its manifest's version made printable, or `undefined` when it can't be read. */
   readonly version: string | undefined;
-  /** Whether any secret is kept for it, so the question names the API key. */
-  readonly hasSecrets: boolean;
+  /** Whether a key for it is stored on this computer, so the question names the API key. */
+  readonly hasStoredSecret: boolean;
 }
 
 /**
@@ -57,10 +62,10 @@ export async function removePlugin(
   const entries = await service.load();
   const entry = entries.find((each) => each.folder === id);
   if (entry === undefined) throw unknownPlugin(id, entries);
-  const plugin = await removedPlugin(service, entry);
+  const plugin = removedPlugin(entry);
 
   const sure = await context.ask({
-    question: pluginMessages.removeQuestion(plugin.name, plugin.hasSecrets),
+    question: pluginMessages.removeQuestion(plugin.name, plugin.hasStoredSecret),
     yes: input.options["yes"] === true,
     refusal: () =>
       new UsageError(
@@ -77,7 +82,7 @@ export async function removePlugin(
   }
 
   const removed = await service.remove(id, deletePluginSecret);
-  if (!removed.ok) throw secretNotDeleted(removed.error);
+  if (!removed.ok) throw secretNotDeleted(id, removed.error);
   return {
     exitCode: exitCode.ok,
     lines: [phrase`${markPart("done")} ${removedLine(plugin)}`],
@@ -85,17 +90,14 @@ export async function removePlugin(
   };
 }
 
-async function removedPlugin(service: PluginService, entry: PluginEntry): Promise<RemovedPlugin> {
+function removedPlugin(entry: PluginEntry): RemovedPlugin {
   const id = entry.folder;
-  if (entry.status !== "broken") {
-    const { plugin } = entry;
-    const hasSecrets = Object.keys(service.secretNames(plugin)).length > 0;
-    return { id, name: printable(plugin.name), version: printable(plugin.version), hasSecrets };
+  const hasStoredSecret = storesPluginSecret(id);
+  if (entry.status === "broken") {
+    return { id, name: printable(id), version: undefined, hasStoredSecret };
   }
-  // A plugin that can't be read still has the secret names it was added with.
-  const install = await service.install(id);
-  const hasSecrets = Object.keys(install?.secretNames ?? {}).length > 0;
-  return { id, name: printable(id), version: undefined, hasSecrets };
+  const { plugin } = entry;
+  return { id, name: printable(plugin.name), version: printable(plugin.version), hasStoredSecret };
 }
 
 function removedLine(plugin: RemovedPlugin) {
@@ -121,12 +123,12 @@ function unknownPlugin(id: string, entries: readonly PluginEntry[]): OwnLineErro
 }
 
 /** The secret by its declared name, never its value, and how to finish the job. */
-function secretNotDeleted(refusal: PluginRemoveRefusal): KindedError {
+function secretNotDeleted(id: string, refusal: PluginRemoveRefusal): KindedError {
   return new KindedError(
     "unavailable",
     plainText(
       pluginMessages.secretNotDeleted(printable(refusal.secret), printable(refusal.reason)).phrase,
     ),
-    { fix: plainText(pluginMessages.secretNotDeletedFix().phrase) },
+    { fix: plainText(pluginMessages.secretNotDeletedFix(printable(id)).phrase) },
   );
 }
