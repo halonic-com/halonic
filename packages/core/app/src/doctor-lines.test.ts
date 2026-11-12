@@ -42,22 +42,34 @@ verifies("app.doctor-workspace", () => {
   it("warns when a file names something that can't be trusted", () => {
     expect(workspaceLine("acme", "refused")).toMatchObject({ status: "warning", trust: "refused" });
   });
+
+  it("fails with the count when the workspace's files have errors, trusted or not", () => {
+    expect(workspaceLine("acme", "not-needed", { fileProblems: 2 })).toEqual({
+      check: "workspace",
+      status: "failed",
+      name: "acme",
+      trust: "not-needed",
+      fileProblems: 2,
+    });
+    expect(workspaceLine("acme", "trusted", { fileProblems: 1 }).status).toBe("failed");
+    expect(doctorSummary([workspaceLine("acme", "trusted", { fileProblems: 1 })]).needsFixing).toBe(true);
+  });
 });
 
 verifies("app.doctor-workspace-drive", () => {
   it("warns about a workspace on a Windows drive, also when it is trusted", () => {
-    expect(workspaceLine("acme", "trusted", "/mnt/c")).toEqual({
+    expect(workspaceLine("acme", "trusted", { windowsDrive: "/mnt/c" })).toEqual({
       check: "workspace",
       status: "warning",
       name: "acme",
       trust: "trusted",
       windowsDrive: "/mnt/c",
     });
-    expect(workspaceLine("acme", "not-needed", "/mnt/d").status).toBe("warning");
+    expect(workspaceLine("acme", "not-needed", { windowsDrive: "/mnt/d" }).status).toBe("warning");
   });
 
   it("is never failed, as the workspace still runs there", () => {
-    expect(workspaceLine("acme", "new", "/mnt/c").status).toBe("warning");
+    expect(workspaceLine("acme", "new", { windowsDrive: "/mnt/c" }).status).toBe("warning");
   });
 });
 

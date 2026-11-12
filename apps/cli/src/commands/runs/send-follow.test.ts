@@ -15,6 +15,7 @@ import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { heavyTestTimeout } from "../../test/golden.ts";
+import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import {
@@ -264,6 +265,26 @@ verifies("cli.run-harness", () => {
     expect(io.stderr[0]).toBe(
       "✕ Couldn't send approve to run 01jd8q: Writer names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. Nothing was sent.",
     );
+    expect(await eventsOfTheRun()).toEqual(before);
+  });
+});
+
+verifies("cli.workspace-file-problems", () => {
+  it("refuses to send when a provider file has a pasted key, and sends nothing", {
+    timeout: heavyTestTimeout,
+  }, async () => {
+    await startWaitingRun();
+    const before = await eventsOfTheRun();
+    await pasteKeyIntoProvider(acme);
+
+    const { code, io } = await halonic(["runs", "send", "01jd8q", "approve"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Couldn't send approve to run 01jd8q: Acme has 2 problems in its files. Nothing was sent.",
+      "  See them with: halonic validate",
+    ]);
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
     expect(await eventsOfTheRun()).toEqual(before);
   });
 });
