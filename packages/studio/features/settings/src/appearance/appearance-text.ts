@@ -60,7 +60,10 @@ export const SECOND_COLOUR = "Second colour";
 export const YOUR_OWN = "Your own";
 /** A typed colour that isn't six hex digits (microcopy 13.1); the colour popover's hex field too. */
 export const COLOUR_ERROR = "Enter a colour like #3B8BFF.";
-export const FRAME_COLOURS_NOT_SAVED = saveFailed("the frame colours", FRAME_COLOURS, "are");
+export const FRAME_COLOURS_NOT_SAVED = saveFailed(
+  "the frame colours",
+  (to) => `${FRAME_COLOURS} are back to ${to}.`,
+);
 
 /** The Frame colours select's presets, in the order it lists them, then "Your own". */
 export const framePresetNames: Readonly<Record<FramePreset, string>> = {

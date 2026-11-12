@@ -2,7 +2,6 @@
 
 - Approval: these follow-ups are part of HAL-7789, the T11 plan HAL-1294; the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zI6GeqPzGvh8kMTbUA9kYD09YtKelfcL0al89GYbJ7D/BXvelxKkGoKstZaFx712Kd7c9MXR+Az6AUjyHeHfDA==
 - Task: HAL-7789
 
 ## What changes
