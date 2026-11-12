@@ -306,6 +306,17 @@ export type {
   ServiceTarget,
 } from "./service-catalog.ts";
 export { type ServiceKey, serviceKey } from "./service-key.ts";
+export {
+  SettingsDialog,
+  type SettingsDialogProps,
+  type SettingsSectionProps,
+} from "./settings/settings-dialog.tsx";
+export {
+  type SettingsGroup,
+  type SettingsGroupsInput,
+  type SettingsPlace,
+  settingsGroups,
+} from "./settings/settings-groups.ts";
 export { createShell, type Shell, type ShellOptions } from "./shell.ts";
 export { ShellError } from "./shell-error.ts";
 export { PlacesList, type PlacesListProps } from "./sidebar/places-list.tsx";
