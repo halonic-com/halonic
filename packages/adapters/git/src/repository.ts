@@ -51,12 +51,20 @@ export interface WorktreeLocation {
   folder: string;
 }
 
+/** What a caller needs to run git in a repository: {@link Repository} and {@link RepositoryReader} both give it. */
+export interface GitCalls {
+  /** Runs git and gives its result, whatever the exit code. */
+  run(call: RepositoryCall): Promise<GitResult>;
+  /** Runs git and gives its output; throws with git's message on a failure. */
+  output(call: RepositoryCall): Promise<Buffer>;
+}
+
 /**
  * The repository at one workspace folder, checked before every call: the
  * folder is its root, all of its files are inside the folder, and the
  * programs its own config names are neutralised.
  */
-export class Repository {
+export class Repository implements GitCalls {
   readonly #runner: GitRunner;
   readonly #top: string;
   readonly #gitDir: string;
@@ -76,6 +84,14 @@ export class Repository {
   static async open(runner: GitRunner, folder: string): Promise<Repository | null> {
     const repository = new Repository(runner, await realpath(folder));
     return (await repository.#check()) === null ? null : repository;
+  }
+
+  /**
+   * Like {@link Repository.open}, for reads: the repository is checked once,
+   * and `null` is no repository.
+   */
+  static async openReader(runner: GitRunner, folder: string): Promise<RepositoryReader | null> {
+    return new Repository(runner, await realpath(folder)).reader();
   }
 
   /** The repository's root folder, as a real path. */
@@ -103,6 +119,25 @@ export class Repository {
     if (neutralising === null) {
       throw new Error(`The folder ${this.#top} is no longer a git repository.`);
     }
+    return this.#runChecked(call, neutralising);
+  }
+
+  /**
+   * Checks the repository once, for a series of reads that change nothing.
+   * It gives `null` when the folder is no repository.
+   *
+   * @throws Error as {@link Repository.open} does
+   */
+  async reader(): Promise<RepositoryReader | null> {
+    const neutralising = await this.#check();
+    if (neutralising === null) return null;
+    return new RepositoryReader((call) => this.#runChecked(call, neutralising));
+  }
+
+  async #runChecked(
+    call: RepositoryCall,
+    neutralising: readonly ConfigEntry[],
+  ): Promise<GitResult> {
     const gitDir = call.worktree?.gitDir ?? this.#gitDir;
     const workTree = call.worktree?.folder ?? this.#top;
     return this.#runner.run({
@@ -157,6 +192,58 @@ export class Repository {
     ]);
     await checkAlternates(this.#top, join(this.#gitDir, "objects"), 0);
     return neutralisingConfig(this.#runner, this.#top, this.#gitDir);
+  }
+}
+
+/**
+ * The subcommands a {@link RepositoryReader} runs: the ones that only read.
+ * `status` is one of them because the reader gives it `--no-optional-locks`,
+ * which keeps it from refreshing `.git/index`.
+ */
+const readSubcommands = new Set([
+  "cat-file",
+  "for-each-ref",
+  "log",
+  "ls-tree",
+  "rev-parse",
+  "show-ref",
+  "status",
+]);
+
+/**
+ * A repository checked once, for reads. Where {@link Repository.run} checks
+ * before every call because a call such as `checkout` can change what the
+ * next one reads, nothing a reader runs changes the folder or the git files,
+ * so the check at its start holds for all of its calls. It refuses any
+ * subcommand that isn't in {@link readSubcommands}, and every call keeps the
+ * config that neutralises the repository's programs and the explicit git dir
+ * and work tree. Make a new one for each read.
+ */
+export class RepositoryReader implements GitCalls {
+  readonly #runChecked: (call: RepositoryCall) => Promise<GitResult>;
+
+  constructor(runChecked: (call: RepositoryCall) => Promise<GitResult>) {
+    this.#runChecked = runChecked;
+  }
+
+  /**
+   * @throws Error when the subcommand isn't a read, or an option names a file
+   */
+  async run(call: RepositoryCall): Promise<GitResult> {
+    checkSubcommand(call.args);
+    checkOptions(call.args);
+    const [subcommand = ""] = call.args;
+    if (!readSubcommands.has(subcommand)) {
+      throw new Error(`A read in the git adapter doesn't run git ${subcommand}.`);
+    }
+    // A global option, so it comes before the subcommand and no path can follow it.
+    return this.#runChecked({ ...call, args: ["--no-optional-locks", ...call.args] });
+  }
+
+  async output(call: RepositoryCall): Promise<Buffer> {
+    const result = await this.run(call);
+    if (result.code !== 0) throw gitError(call.args, result);
+    return result.stdout;
   }
 }
 

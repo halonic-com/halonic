@@ -1,4 +1,4 @@
-import { mkdir, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
@@ -13,6 +13,11 @@ import {
 import type { GitRunner } from "./git-runner.ts";
 import { type Plant, plantIn } from "./plant.test-helper.ts";
 import { Repository } from "./repository.ts";
+
+async function statSignature(path: string): Promise<string> {
+  const stats = await stat(path);
+  return `${stats.mtimeMs}:${stats.size}`;
+}
 
 const scratch = new Scratch();
 afterAll(() => scratch.remove());
@@ -326,6 +331,36 @@ verifies("git.repo-leaks", () => {
       await plainGit(folder, ["config", "hook.planted.command", "planted"]);
       await plainGit(folder, ["config", "hook.planted.event", "pre-commit"]);
       await expect(Repository.open(await runner(), folder)).rejects.toThrow("hook.planted");
+    });
+  });
+
+  describe("a reader, checked once for reads", () => {
+    it("is null for a folder that is no repository", async () => {
+      expect(await Repository.openReader(await runner(), await scratch.folder())).toBeNull();
+    });
+
+    it("runs the read subcommands", async () => {
+      const reader = await Repository.openReader(await runner(), await repositoryWith(scratch));
+      expect((await reader?.output({ args: ["rev-parse", "--git-dir"] }))?.length).toBeGreaterThan(
+        0,
+      );
+    });
+
+    it.each(["checkout", "commit", "add", "reset", "update-ref", "clean", "config"])(
+      "refuses git %s, which can change the folder or the git files",
+      async (subcommand) => {
+        const reader = await Repository.openReader(await runner(), await repositoryWith(scratch));
+        await expect(reader?.run({ args: [subcommand] })).rejects.toThrow("doesn't run git");
+      },
+    );
+
+    it("runs status without taking optional locks, so the index stays as it was", async () => {
+      const folder = await repositoryWith(scratch);
+      await writeFiles(folder, { "a.yaml": "1\n" });
+      const before = await statSignature(join(folder, ".git", "index"));
+      const reader = await Repository.openReader(await runner(), folder);
+      await reader?.output({ args: ["status", "--porcelain"] });
+      expect(await statSignature(join(folder, ".git", "index"))).toBe(before);
     });
   });
 });
