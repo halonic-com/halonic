@@ -6,9 +6,11 @@ auth, no database. Objects expire after 30 days (lifecycle rule on the bucket).
 
 - **Fails closed.** If a secret binding is missing or `get()` fails, the
   request gets 401.
-- **Read token.** `TURBO_TOKEN_READ` can read and query, never upload. It is a
-  repository secret in GitHub (pull requests use it). `TURBO_REMOTE_CACHE_SIGNATURE_KEY`
-  is a repository secret; `TURBO_API` and `TURBO_TEAM` are repository variables.
+- **Read token.** `TURBO_TOKEN_READ` can read and query, never upload. It
+  lives only in the Cloudflare Secrets Store: CI doesn't use it, because pull
+  requests build with the local cache. `TURBO_REMOTE_CACHE_SIGNATURE_KEY` is a
+  secret of the GitHub environment `turbo-cache-write`, which only `main` and
+  the merge queue can use; `TURBO_API` and `TURBO_TEAM` are repository variables.
 - **Write token, only by OIDC.** There is no static write token in GitHub. A
   job on `main` or in the merge queue sends its GitHub OIDC token (audience
   `halonic-turbo-cache`) to `POST /auth/github`. The Worker
