@@ -1035,6 +1035,207 @@ jobs:
       # works without unlocking (HAL-4499).
       - name: Keychain contract (Credential Manager)
         run: cargo test --locked -p halonic-keychain -- --ignored
+      # The helper reads a publisher as Windows shows it, here PowerShell's
+      # own signed program, and refuses a changed copy (HAL-7385, S-4).
+      - name: Sandbox helper's signature check
+        run: |
+          $signed = (Get-Command pwsh).Source
+          $signature = Get-AuthenticodeSignature $signed
+          if ($signature.Status -ne 'Valid') { throw "$signed isn't validly signed: $($signature.Status)" }
+          $env:HALONIC_SIGNED_FILE = $signed
+          $env:HALONIC_SIGNED_PUBLISHER = $signature.SignerCertificate.GetNameInfo('SimpleName', $false)
+          cargo test --locked -p halonic-sandbox-elevate --test windows -- --ignored
+      # The agent sandbox's elevated helper on a real Windows (HAL-1451). The
+      # runner's user is an administrator with UAC off, so it runs elevated
+      # with no prompt. Built with the static C runtime, as the release
+      # builds it. It runs elevated from the user's app folder, so it must
+      # load no library from there (HAL-1415, risk 2; HAL-7385, S-2): every
+      # library it imports that isn't one of Windows' KnownDLLs, and the ones
+      # Windows itself is known to look for, is planted there as a real
+      # library that leaves a mark when loaded.
+      - name: Sandbox helper (set up, refuse a swapped srt-win, remove, leave a linked session folder)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          # net.exe's exit code is read below, not thrown.
+          $PSNativeCommandUseErrorActionPreference = $false
+          $target = Join-Path $env:RUNNER_TEMP 'elevate-target'
+          cargo build --locked --release -p halonic-sandbox-elevate --target-dir $target
+          if ($LASTEXITCODE -ne 0) { throw 'the helper did not build' }
+          $app = Join-Path $env:RUNNER_TEMP 'elevate-app'
+          New-Item -ItemType Directory -Force $app | Out-Null
+          Copy-Item (Join-Path $target 'release/halonic-sandbox-elevate.exe') $app
+          $srtWin = '../../../packages/adapters/sandbox-srt/node_modules/@anthropic-ai/sandbox-runtime/vendor/srt-win/x64/srt-win.exe'
+          Copy-Item $srtWin $app
+          $helper = Join-Path $app 'halonic-sandbox-elevate.exe'
+
+          # The helper's imports, against this Windows' KnownDLLs. Windows
+          # loads a KnownDLL, an api set or ntdll only from System32.
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $dumpbin = & $vswhere -latest -products * -find 'VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1
+          if (-not $dumpbin) { throw 'dumpbin.exe was not found' }
+          $imports = & $dumpbin /nologo /imports $helper |
+            Select-String '^\s{4}(\S+\.dll)\s*$' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value.ToLowerInvariant() } |
+            Sort-Object -Unique
+          if (-not $imports) { throw 'dumpbin listed no imports' }
+          $knownKey = Get-Item 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs'
+          $known = @('ntdll.dll') + ($knownKey.Property | ForEach-Object { "$($knownKey.GetValue($_))".ToLowerInvariant() })
+          $unknown = @($imports | Where-Object { $_ -notin $known -and $_ -notlike 'api-ms-win-*' })
+          Write-Output "The helper imports: $($imports -join ', ')"
+          Write-Output "Not KnownDLLs, so planted below: $(if ($unknown) { $unknown -join ', ' } else { 'none' })"
+
+          # A real library that writes its own path to a marker file when
+          # anything loads it.
+          $canarySource = Join-Path $env:RUNNER_TEMP 'canary.rs'
+          Set-Content $canarySource @'
+          #[link(name = "kernel32")]
+          unsafe extern "system" {
+              fn GetModuleFileNameW(module: *mut u8, name: *mut u16, size: u32) -> u32;
+          }
+          #[unsafe(no_mangle)]
+          pub extern "system" fn DllMain(module: *mut u8, reason: u32, _: *mut u8) -> i32 {
+              if reason == 1 {
+                  let mut name = [0u16; 260];
+                  // SAFETY: `name` and its length outlive the call.
+                  let length = unsafe { GetModuleFileNameW(module, name.as_mut_ptr(), 260) } as usize;
+                  if let Some(marker) = std::env::var_os("HALONIC_CANARY_MARKER") {
+                      use std::io::Write;
+                      if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(marker) {
+                          let _ = writeln!(file, "{}", String::from_utf16_lossy(&name[..length]));
+                      }
+                  }
+              }
+              1
+          }
+          '@
+          $canary = Join-Path $env:RUNNER_TEMP 'canary.dll'
+          rustc --edition 2024 -O --crate-type cdylib -C target-feature=+crt-static $canarySource -o $canary
+          if ($LASTEXITCODE -ne 0) { throw 'the canary library did not build' }
+          $planted = @($unknown) + @('vcruntime140.dll', 'version.dll', 'profapi.dll', 'cryptbase.dll', 'wldp.dll') | Sort-Object -Unique
+          foreach ($name in $planted) { Copy-Item $canary (Join-Path $app $name) }
+          $env:HALONIC_CANARY_MARKER = Join-Path $env:RUNNER_TEMP 'canary-loaded.txt'
+          function Assert-NoCanary([string]$when) {
+            if (Test-Path $env:HALONIC_CANARY_MARKER) {
+              throw "$when loaded a planted library: $((Get-Content $env:HALONIC_CANARY_MARKER) -join ', ')"
+            }
+          }
+
+          # A library the loader can't use stops the helper before it
+          # starts, which can show a dialog, so every run has a time limit.
+          function Invoke-Helper([string]$exe, [string]$verb) {
+            $process = Start-Process $exe -ArgumentList $verb -PassThru
+            $null = $process.Handle
+            if (-not $process.WaitForExit(180000)) {
+              $process.Kill()
+              throw "$verb did not finish in 3 minutes"
+            }
+            $process.ExitCode
+          }
+          $folder = Join-Path $env:ProgramFiles 'Halonic Sandbox'
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox'
+
+          $code = Invoke-Helper $helper 'setup --allow-loopback'
+          if ($code -ne 30) { throw "an option must be refused with 30, got $code" }
+          Assert-NoCanary 'the helper refusing an option'
+
+          $code = Invoke-Helper $helper 'setup'
+          Assert-NoCanary 'setup'
+          if ($code -ne 0) { throw "setup exited $code" }
+          # srt-win's temporary files go to an admin-only folder (S-1).
+          $tempAcl = Get-Acl (Join-Path $folder 'tmp')
+          if (-not $tempAcl.AreAccessRulesProtected) { throw 'the tmp folder inherits its access list' }
+          & net.exe user srt-sandbox *> $null
+          if ($LASTEXITCODE -ne 0) { throw 'setup made no srt-sandbox account' }
+          $entry = Get-ItemProperty $key
+          if ($entry.DisplayName -ne 'Halonic agent sandbox') { throw "Installed apps shows '$($entry.DisplayName)'" }
+          $acl = Get-Acl $folder
+          if (-not $acl.AreAccessRulesProtected) { throw 'the folder inherits its access list' }
+          if ($acl.Owner -ne 'BUILTIN\Administrators') { throw "the folder is owned by $($acl.Owner)" }
+          $writers = $acl.Access | Where-Object {
+            $_.IdentityReference -notmatch 'Administrators|SYSTEM' -and
+            $_.FileSystemRights.ToString() -match 'Write|Modify|FullControl|Delete|ChangePermissions|TakeOwnership'
+          }
+          if ($writers) { throw "the folder is writable by $($writers.IdentityReference -join ', ')" }
+
+          # Running it again over a set-up sandbox passes (Repair).
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 0) { throw "setup again exited $code" }
+
+          # A swapped srt-win.exe is refused, and its copy deleted.
+          Set-Content (Join-Path $app 'srt-win.exe') 'swapped'
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 33) { throw "a swapped srt-win must be refused with 33, got $code" }
+          if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'the swapped copy was kept' }
+          Copy-Item $srtWin $app -Force
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 0) { throw "setup after the swap exited $code" }
+
+          # Remove the way Installed apps does: the copy in the folder.
+          $code = Invoke-Helper (Join-Path $folder 'halonic-sandbox-elevate.exe') 'remove'
+          if ($code -ne 0) { throw "remove exited $code" }
+          if (Test-Path $key) { throw 'remove left the Installed apps entry' }
+          & net.exe user srt-sandbox *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'remove left the srt-sandbox account' }
+          if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'remove left srt-win.exe' }
+
+          # The user's own session folder is one any of their programs can
+          # change, so the elevated steps leave it alone: made a link to
+          # another folder, nothing in that folder changes, neither its
+          # files nor any access list.
+          $session = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'sandbox-runtime'
+          $kept = "$session-kept"
+          if (Test-Path $session) { Move-Item $session $kept }
+          $elsewhere = Join-Path $env:RUNNER_TEMP 'elsewhere'
+          New-Item -ItemType Directory -Force (Join-Path $elsewhere 'inside') | Out-Null
+          Set-Content (Join-Path $elsewhere 'inside\kept.txt') 'kept'
+          # Windows updates a folder's write time a moment after a file in
+          # it is created, so the snapshot could catch the old one. Pinned
+          # to a fixed date, any write by the elevated steps still shows.
+          $pinned = [datetime]::new(2000, 1, 1, 0, 0, 0, [DateTimeKind]::Utc)
+          @(Get-ChildItem -Force -Recurse $elsewhere) + @(Get-Item -Force $elsewhere) | ForEach-Object {
+            $_.LastWriteTimeUtc = $pinned
+          }
+          function Get-Folder([string]$path) {
+            @(Get-Item -Force $path) + @(Get-ChildItem -Force -Recurse $path) | ForEach-Object {
+              "$($_.FullName) $($_.Length) $($_.LastWriteTimeUtc.Ticks) $((Get-Acl -LiteralPath $_.FullName).Sddl)"
+            }
+          }
+          $before = Get-Folder $elsewhere
+          New-Item -ItemType Junction -Path $session -Target $elsewhere | Out-Null
+          try {
+            $code = Invoke-Helper $helper 'setup'
+            if ($code -ne 0) { throw "setup with a linked session folder exited $code" }
+            $code = Invoke-Helper $helper 'remove'
+            if ($code -ne 0) { throw "remove with a linked session folder exited $code" }
+          } finally {
+            # Deletes the link only, not the folder it points to.
+            [IO.Directory]::Delete($session)
+            if (Test-Path $kept) { Move-Item $kept $session }
+          }
+          $changed = Compare-Object $before (Get-Folder $elsewhere)
+          if ($changed) { throw "the elevated steps changed the linked folder: $($changed.InputObject -join '; ')" }
+
+          # A release build checks the copy of itself it leaves for Installed
+          # apps (HAL-7385, S-4). This build expects a publisher but isn't
+          # signed, as a swapped helper wouldn't be: its copy is refused.
+          $env:HALONIC_SANDBOX_SIGNER = 'Halonic'
+          cargo build --locked --release -p halonic-sandbox-elevate --target-dir $target
+          if ($LASTEXITCODE -ne 0) { throw 'the helper expecting a publisher did not build' }
+          Remove-Item Env:HALONIC_SANDBOX_SIGNER
+          Copy-Item (Join-Path $target 'release/halonic-sandbox-elevate.exe') $app -Force
+          $code = Invoke-Helper $helper 'setup'
+          if ($code -ne 35) { throw "an unsigned copy must be refused with 35, got $code" }
+          if (Test-Path $key) { throw 'an unsigned copy got an Installed apps entry' }
+          if (Test-Path (Join-Path $folder 'halonic-sandbox-elevate.exe')) { throw 'the unsigned copy was kept' }
+          & net.exe user srt-sandbox *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'srt-win ran after the copy was refused' }
+          Assert-NoCanary 'the helper'
+          Write-Output "The helper loaded none of $($planted -join ', ') from its folder."
+          Write-Output 'The helper refused a copy of itself without the publisher it expects.'
+          Write-Output 'The helper set up, refused a swapped srt-win and removed the sandbox.'
+          Write-Output 'The helper left a linked session folder unchanged.'
+          exit 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
