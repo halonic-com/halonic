@@ -34,5 +34,6 @@ watch and opens a new one has two watches open in the shell for a moment.
 
 ## Covers
 
+- watch-kit.digest-watch
 - packages/adapters/fs-tauri/src/shell-watch.test.ts
 - packages/adapters/watch-kit/requirements/digest-watch.md
