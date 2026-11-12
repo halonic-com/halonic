@@ -1,5 +1,11 @@
 import type { DisplayPrefs } from "./display-prefs.ts";
 
+/** The part of browser storage the display settings use: `window.localStorage` has it. */
+export interface DisplayStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
 /** Every display setting's storage key starts with this, so they don't mix with anything else. */
 const keyPrefix = "halonic.settings.";
 
@@ -13,14 +19,14 @@ const keyPrefix = "halonic.settings.";
  * const settings = new DisplaySettings(prefs);
  */
 export class BrowserDisplayPrefs implements DisplayPrefs {
-  private readonly storage: Storage;
+  private readonly storage: DisplayStorage;
   private readonly events: EventTarget;
 
   /**
    * @param storage where the values are kept, normally `window.localStorage`
    * @param events where the browser fires `storage` events for `storage`, normally `window`
    */
-  constructor(storage: Storage, events: EventTarget) {
+  constructor(storage: DisplayStorage, events: EventTarget) {
     this.storage = storage;
     this.events = events;
   }

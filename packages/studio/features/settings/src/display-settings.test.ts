@@ -70,6 +70,16 @@ verifies("settings.display-prefs", () => {
     settings.subscribe(() => undefined);
     expect(settings.get(theme)).toBe("dark");
   });
+
+  it("shows a preview without storing it, until another window stores a value", () => {
+    const { prefs, settings, changed } = setup();
+    settings.preview(theme, "dark");
+    expect(settings.get(theme)).toBe("dark");
+    expect(prefs.stored.has(theme.key)).toBe(false);
+    expect(changed).toHaveBeenCalledOnce();
+    prefs.changeElsewhere(theme.key, "light");
+    expect(settings.get(theme)).toBe("light");
+  });
 });
 
 verifies("settings.failed-save", () => {

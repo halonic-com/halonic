@@ -27,6 +27,10 @@ storing fails, the stored value comes back and the failure stays on that setting
 next saves (`settings.failed-save`), so Settings can show it under the control and say it in the
 dialog, never in a toast. A stored value the setting doesn't accept starts from the default.
 
+The app makes one `DisplaySettings` per window and provides it to every workspace as
+`DisplaySettingsService`, which the feature needs. The same one goes to `watchAppearance`, so a
+change in Settings reaches the whole window at once.
+
 ## Formats
 
 `formatPref` is Formats → Format, one setting for numbers, dates and money
@@ -44,6 +48,11 @@ formatExample(formatLocale(settings.get(formatPref), "en-GB")); // "45.00 · Mon
 `followTag` is the system's region format in the desktop app and the browser's language when
 served ("Follow this browser: …"). The options after Follow are the tags this window can format,
 named in English and sorted by name.
+
+## Sections
+
+- **Appearance** (`settings.appearance-section`): Theme, Panel opacity and Agent characters. Frame
+  colours follow in their own pull request.
 
 ## Example
 
