@@ -1,4 +1,4 @@
-# plugins.trust-check
+# plugins.plugin-trust-check
 
 - Status: draft
 - Since: 0.1.0
