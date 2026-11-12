@@ -20,12 +20,13 @@ export type SaveSetting = <Value>(
  */
 export function saveSetting(
   settings: DisplaySettings,
-  announce: (text: string) => void,
+  announce: (text: string, parts: { readonly line: string; readonly back: string }) => void,
 ): SaveSetting {
   return async (pref, value, text, name) => {
     const outcome = await settings.set(pref, value);
     if (!outcome.saved && !outcome.superseded) {
-      announce(text.announce(name(outcome.back)));
+      const back = text.backTo(name(outcome.back));
+      announce(text.announce(name(outcome.back)), { line: text.line, back });
     }
   };
 }

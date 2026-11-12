@@ -32,11 +32,13 @@ export interface SaveFailedText {
   readonly line: string;
   /** The line, then what the setting is back to: "… Theme is back to System.", or "… Agent characters are back on." */
   readonly announce: (back: string) => string;
+  /** What the setting is back to, on its own: "Theme is back to System." */
+  readonly backTo: (back: string) => string;
 }
 
 function saveFailed(what: string, back: (to: string) => string): SaveFailedText {
   const line = `Couldn't save ${what} on this computer.`;
-  return { line, announce: (to) => `${line} ${back(to)}` };
+  return { line, announce: (to) => `${line} ${back(to)}`, backTo: back };
 }
 
 export const THEME_NOT_SAVED = saveFailed("the theme", (to) => `${THEME} is back to ${to}.`);

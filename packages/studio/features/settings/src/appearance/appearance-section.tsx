@@ -80,8 +80,8 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
       present.current = false;
     };
   }, []);
-  const save = saveSetting(settings, (text) =>
-    present.current ? announce(text) : toasts?.show({ tone: "danger", title: text }),
+  const save = saveSetting(settings, (text, { line, back }) =>
+    present.current ? announce(text) : toasts?.show({ tone: "danger", title: line, text: back }),
   );
 
   return (
