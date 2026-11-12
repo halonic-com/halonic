@@ -7,7 +7,7 @@ import type { InboxItem } from "../inbox-items.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, itemTitle, rowFor } from "./inbox-row.tsx";
-import { SetupCard } from "./setup-card.tsx";
+import { SetupPane } from "./setup-pane.tsx";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
@@ -35,8 +35,11 @@ export interface InboxViewProps {
  * for an item (`Inbox.requestOpen`). Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
- * Not here yet: notices, the request form, a setup source's own view (HAL-711), the narrow and
- * phone layouts (HAL-1305), and **Open run**, which comes with the run page.
+ * A setup item opens its source's view (`SetupPane`); **Not now** and Escape close it and put
+ * focus back on its row.
+ *
+ * Not here yet: notices, the request form, the narrow and phone layouts (HAL-1305), and
+ * **Open run**, which comes with the run page.
  */
 export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
@@ -51,6 +54,12 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
   useEffect(() => {
     if (openIndex !== -1) openAt.current = openIndex;
   }, [openIndex]);
+  // An open setup item follows its source's latest step, and keeps the last one once it's done.
+  useEffect(() => {
+    if (open?.kind !== "setup") return;
+    const latest = state.items.find((item) => item.key === open.key);
+    if (latest !== undefined && latest !== open) setOpen(latest);
+  }, [state.items, open]);
   // Home's Needs you asks for an item before it opens the Inbox; take it now and on each change.
   useEffect(() => {
     const take = () => {
@@ -61,6 +70,15 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
     return inbox.subscribe(take);
   }, [inbox]);
   const retry = () => void inbox.refresh();
+  const list = useRef<HTMLDivElement>(null);
+  // Not now: the pane empties and focus goes back to the row the item was open from.
+  const close = () => {
+    const row = list.current?.querySelector<HTMLElement>(
+      'tr[aria-current="true"] [role="gridcell"]',
+    );
+    setOpen(null);
+    row?.focus();
+  };
   const failedFirst = !state.loaded && state.error !== undefined;
 
   return (
@@ -72,7 +90,7 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
         {state.loaded && state.error !== undefined ? (
           <p className="px-4 pb-2 text-small text-fg-muted">{showingLast}</p>
         ) : null}
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+        <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
             <EmptyState
               tone="error"
@@ -106,6 +124,8 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
               inbox={inbox}
               next={nextItem(state.items, open, openAt.current, setOpen)}
               now={now}
+              answering={state.error === undefined}
+              close={close}
             />
           )}
         </div>
@@ -141,13 +161,26 @@ function OpenCard({
   inbox,
   next,
   now,
+  answering,
+  close,
 }: {
   readonly item: InboxItem;
   readonly inbox: Inbox;
   readonly next: NextItem | null;
   readonly now: () => Date;
+  readonly answering: boolean;
+  readonly close: () => void;
 }) {
-  if (item.kind === "setup") return <SetupCard item={item} />;
+  if (item.kind === "setup") {
+    return (
+      <SetupPane
+        item={item}
+        source={inbox.setupSource(item.provider)}
+        answering={answering}
+        close={close}
+      />
+    );
+  }
   if (item.kind === "approval") {
     return (
       <ApprovalCard

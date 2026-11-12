@@ -1,13 +1,15 @@
+import { Button } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
-import type { SetupItem } from "../inbox-items.ts";
+import type { SetupViewProps } from "../inbox.ts";
 import { markedName } from "../plain/hidden-characters.ts";
 import { CardHeader } from "./card-parts.tsx";
 
 /**
- * A setup item while the Inbox has no view of its source's: its title, which takes focus, and its
- * progress line. The source's own view, at the current step, replaces it (HAL-711 PR 2).
+ * A setup item whose source has no view of its own: its title, which takes focus, its progress
+ * line and **Not now**. A source's view, at the current step, takes its place
+ * (`InboxSetupSource.view`).
  */
-export function SetupCard({ item }: { readonly item: SetupItem }) {
+export function SetupCard({ item, close }: SetupViewProps) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
@@ -20,6 +22,11 @@ export function SetupCard({ item }: { readonly item: SetupItem }) {
         heading={heading}
         since={markedName(item.progress)}
       />
+      <div>
+        <Button variant="secondary" onClick={close}>
+          Not now
+        </Button>
+      </div>
     </section>
   );
 }

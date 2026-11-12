@@ -1,12 +1,18 @@
 import type { InboxSetupSource, SetupEntry } from "./inbox.ts";
 
 /** A setup source whose accounts and failures a test sets, telling the Inbox as a provider does. */
-export function fakeSetups(provider: string, initial: readonly SetupEntry[]) {
+export function fakeSetups(
+  provider: string,
+  initial: readonly SetupEntry[],
+  extra: Pick<InboxSetupSource, "view"> = {},
+) {
   let entries = initial;
   let failure: unknown;
   const listeners = new Set<() => void>();
   const source: InboxSetupSource = {
     provider,
+    name: "Google",
+    ...extra,
     list: async () => {
       if (failure !== undefined) throw failure;
       return entries;
