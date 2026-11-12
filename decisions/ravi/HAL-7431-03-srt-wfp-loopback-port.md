@@ -2,6 +2,7 @@
 
 - Approval: HAL-7431. Liam approves this note in review of this PR.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:marI/PrwrLG1fWX/Q/Z48VXa9O0Uk8nTmVlQqoqkoiTkm3IEQ4sMdhNkK36wdMHZwB9OXFAXcuGP41d6+ex0Dw==
 
 ## What changes
 
