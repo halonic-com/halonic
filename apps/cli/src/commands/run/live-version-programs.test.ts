@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,14 +7,16 @@ import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { connectorConfigOf, liveVersionOf } from "@halonicjs/app";
+import { liveVersionOf, WorkflowRuns } from "@halonicjs/app";
+import type { RunEvent } from "@halonicjs/events";
+import { profileFolder } from "@halonicjs/profile";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { filesOf } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliConnectorFactories } from "../../connector-machine.ts";
-import { openProgramFolders } from "../../program-folders.ts";
+import { openLocalEngine } from "../../local-engine-host.ts";
 import { loadRunWorkspace, openGitHistory } from "../../run-workspace.ts";
+import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 
 /** The Acme example, which the notes connector is added to. */
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
@@ -57,6 +59,8 @@ lines.on("line", (line) => {
   } else if (method === "tools/list") {
     reply(id, { tools: [{ name: "which", description: "Says which script answers.", inputSchema: { type: "object" } }] });
   } else if (method === "tools/call") {
+    // Outside the workspace, so the test can read which script answered.
+    if (process.env.NOTES_LOG) require("node:fs").appendFileSync(process.env.NOTES_LOG, ${JSON.stringify(answer)} + "\\n");
     reply(id, { content: [{ type: "text", text: ${JSON.stringify(answer)} }] });
   }
 });
@@ -92,53 +96,90 @@ async function makeLive(): Promise<void> {
   await vcs.commit("First version");
 }
 
+/** Where the notes server writes what each call answered, outside the workspace. */
+function notesLog(): string {
+  return join(folder, "notes.log");
+}
+
 /**
- * Loads the workspace as `halonic run` does, then calls `which` on its notes
- * connector, started in the folder the engine gives a live run's programs.
+ * Lists the notes connector under the Reporter's connectors, and has the
+ * test model call its `which` tool once. `which` is listed under `read`, so
+ * the call needs no person's OK.
  */
-async function askNotesFromALiveRun(): Promise<string> {
+async function reporterCallsNotes(): Promise<void> {
+  const log = `    env: { NOTES_LOG: ${JSON.stringify(notesLog())} }\n`;
+  await save(connectorFile, `${notesConnector}${log}tools:\n  allow: [which]\n  read: [which]\n`);
+  await save(
+    "hubs/reports/agents/reporter.agent.yaml",
+    "id: reporter\nname: Reporter\nconnectors: [notes]\ninstructions: Ask the notes.\n",
+  );
+  await save(
+    "providers/mock.yaml",
+    'id: mock\nname: Test model\ntype: mock\nlocal: true\noptions:\n  script:\n    reporter: ["tool:which {}", "Done"]\n',
+  );
+}
+
+/**
+ * Loads the workspace as `halonic run` does, runs Weekly report in the CLI's
+ * engine on the live version, and gives what the notes connector's `which`
+ * answered in the run, and what is left in the copies folder once it ended.
+ */
+async function askNotesFromALiveRun(): Promise<{ answer: string; copiesLeft: string[] }> {
   const history = async (root: string) => openGitHistory(root, { git: await testGit() });
   const dir = { root: acme, shown: ".", name: "acme", store: new FolderDefinitionStore(acme, ".") };
   const loaded = await loadRunWorkspace(dir, history);
   if (loaded.found !== "loaded") throw new Error(`The live version didn't load: ${loaded.found}.`);
-  const notes = filesOf(loaded.workspace, "connector").find((file) => file.value.id === "notes");
-  if (notes === undefined) throw new Error("The live version has no notes connector.");
-
   const live = await liveVersionOf(vcs);
   if (live.kind !== "commit") throw new Error("Nothing is live.");
-  const programs = await openProgramFolders({
+  const version = {
+    reads: "live-version",
+    commit: live.commit.hash,
+    versionDate: live.commit.date,
+  } as const;
+
+  const profile = {
+    ...nodeProfileEnvironment(),
+    variables: { HALONIC_HOME: join(folder, "profile") },
+  };
+  const engine = await openLocalEngine({
+    workspace: loaded.workspace,
     workspaceRoot: acme,
-    copiesFolder: join(folder, "program-copies"),
+    secrets: new MemorySecrets({}),
+    http: { fetch: async () => new Response("unused") },
+    environment: profile,
     git: { git: await testGit() },
-    // A new copies folder has nothing to sweep, so nothing to report.
+    runConnectors: {
+      factories: cliConnectorFactories(nodeProgramStarter, process.env),
+      context: {
+        http: { fetch: async () => new Response("unused") },
+        tokens: new MemoryTokenStore(),
+      },
+      trust: contractGrant,
+    },
     reportError: (error) => {
       throw error;
     },
   });
+  let events: readonly RunEvent[];
   try {
-    const version = {
-      reads: "live-version",
-      commit: live.commit.hash,
-      versionDate: live.commit.date,
-    } as const;
-    const programFolder = await programs.folderFor(version);
-    const factories = cliConnectorFactories(nodeProgramStarter, process.env);
-    const client = factories.create(connectorConfigOf(notes.value), {
-      secrets: new MemorySecrets({}),
-      tokens: new MemoryTokenStore(),
-      http: { fetch: async () => new Response("unused") },
-      workspaceRoot: programFolder.path,
-      trust: contractGrant,
-    });
-    try {
-      return await client.callTool("which", {});
-    } finally {
-      await client.close();
-      await programFolder.release();
-    }
+    const started = await new WorkflowRuns(engine.executor).startRun(
+      loaded.workspace,
+      "reports/weekly-report",
+      {},
+      { version },
+    );
+    if (started.found !== "one") throw new Error("Weekly report didn't start.");
+    events = started.run.events;
   } finally {
-    await programs.close();
+    await engine.close();
   }
+  const answered = await readFile(notesLog(), "utf8").catch(() => "");
+  const copies = join(profileFolder(profile).root, "workspaces");
+  const [workspaceKey = ""] = await readdir(copies);
+  return {
+    answer: answered === "" ? `no call in ${JSON.stringify(events)}` : answered.trim(),
+    copiesLeft: await readdir(join(copies, workspaceKey, "program-copies")).catch(() => []),
+  };
 }
 
 verifies("app.runs-read-latest-version", () => {
@@ -146,12 +187,15 @@ verifies("app.runs-read-latest-version", () => {
   it(
     "starts a connector's live script in a live run, not a saved change that isn't live yet",
     async () => {
-      await save(connectorFile, notesConnector);
+      await reporterCallsNotes();
       await save(scriptFile, notesServer("the live script"));
       await makeLive();
       await save(scriptFile, notesServer("the saved script"));
 
-      expect(await askNotesFromALiveRun()).toBe("the live script");
+      const { answer, copiesLeft } = await askNotesFromALiveRun();
+
+      expect(answer).toBe("the live script");
+      expect(copiesLeft).toEqual([]);
     },
     gitTimeout,
   );

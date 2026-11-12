@@ -7,12 +7,15 @@
 // commands get it from one place, and neither can open the engine without
 // it (Liam, HAL-4349).
 
-import type { HttpClient } from "@halonicjs/ports";
+import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
+import { MemoryTokenStore } from "@halonicjs/adapter-memory";
+import type { HttpClient, TrustGrant } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
+import { cliConnectorFactories, connectorHttpClient } from "./connector-machine.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type LocalEngine,
@@ -22,6 +25,7 @@ import {
   type RoutineTicks,
   type WorkspaceVersions,
 } from "./local-engine-host.ts";
+import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
 import { runMessages } from "./messages/run.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
@@ -55,6 +59,11 @@ export interface WorkspaceEngineSetup {
   readonly sandboxGate?: () => SandboxGateHost;
   /** How long a stopped command waits for the engine to close; {@link stoppedCloseLimitMs} by default. */
   readonly stoppedCloseLimitMs?: number;
+  /**
+   * What runs start their connectors with, but the trust grant: this
+   * computer's programs, `PATH` and network by default.
+   */
+  readonly runConnectors?: () => Omit<LocalRunConnectorsInput, "trust">;
 }
 
 /** The workspace the engine is opened for, and the runs it starts or moves on. */
@@ -64,6 +73,12 @@ export interface WorkspaceEngineTarget {
   readonly workspace: LoadedWorkspace;
   /** For `routines watch`, whose runs read the live version at each start; see `LocalEngineInput.versions`. */
   readonly versions?: WorkspaceVersions;
+  /**
+   * The grant from the command's trust check (`checkRunTrust`), which the
+   * runs' connectors start with: `null` when the runs reach only the test
+   * model, so no connector program starts.
+   */
+  readonly trust: TrustGrant | null;
   /**
    * The runs the sandbox is checked for first: the one run of `run` and
    * `runs send`, or each workflow the routines of `routines watch` start.
@@ -150,10 +165,12 @@ export async function openWorkspaceEngine(
           onGaveUp,
         },
   );
+  const connectors = (setup.runConnectors ?? computerRunConnectors)();
   const engine = await openLocalEngine({
     workspace: target.workspace,
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
+    runConnectors: { ...connectors, trust: target.trust },
     secrets: context.secrets,
     http: setup.http,
     // The scheduler retries a failed step; one that keeps failing stops the command with its
@@ -216,6 +233,15 @@ export async function checkEngineRuns(
     }
   }
   return [...unsandboxed.values()];
+}
+
+/** This computer's connector programs, `PATH` and network, for {@link WorkspaceEngineSetup.runConnectors}. */
+function computerRunConnectors(): Omit<LocalRunConnectorsInput, "trust"> {
+  return {
+    factories: cliConnectorFactories(nodeProgramStarter, process.env),
+    // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
+    context: { http: connectorHttpClient(), tokens: new MemoryTokenStore() },
+  };
 }
 
 /**

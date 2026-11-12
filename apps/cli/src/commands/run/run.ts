@@ -107,9 +107,16 @@ export async function runWorkflow(
   const target = { dir, workspace, runs: [workflow], ending: runMessages.nothingRan() };
   // Before trust: a run this engine can't start has nothing to trust (HAL-6580).
   await refuseHarnessAgents(setup, target, workflow);
-  await checkRunTrust(dir, workspace, setup.trust(), typedDir, runMessages.nothingRan(), harness);
+  const trust = await checkRunTrust(
+    dir,
+    workspace,
+    setup.trust(),
+    typedDir,
+    runMessages.nothingRan(),
+    harness,
+  );
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
-  const engine = await openWorkspaceEngine(context, setup, target);
+  const engine = await openWorkspaceEngine(context, setup, { ...target, trust });
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = [
     ...(changesNotLive ? [runMessages.changesNotLive().phrase] : []),

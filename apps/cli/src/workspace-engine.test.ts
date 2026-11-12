@@ -63,6 +63,7 @@ async function open(signal: AbortSignal) {
   return openWorkspaceEngine(context(signal), setup(), {
     dir,
     workspace,
+    trust: null,
     runs: [{ hubId: "support", workflowId: "support-reply" }],
     ending: runMessages.nothingRan(),
   });
@@ -155,6 +156,7 @@ async function openWithTicks(
     {
       dir,
       workspace,
+      trust: null,
       runs: [],
       ending: runMessages.nothingRan(),
       routines: () => routines,
