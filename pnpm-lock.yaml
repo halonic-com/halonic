@@ -438,6 +438,9 @@ importers:
 
   apps/studio:
     dependencies:
+      '@halonicjs/adapter-agent-host-client':
+        specifier: workspace:*
+        version: link:../../packages/adapters/agent-host-client
       '@halonicjs/adapter-fs-tauri':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-tauri

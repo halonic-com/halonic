@@ -61,3 +61,6 @@ export const announceStep = (step: string) => step;
 export const TOAST_SET_UP = "The agent sandbox is set up";
 export const toastNotSetUp = (cause: string) => `The agent sandbox isn't set up: ${cause}`;
 export const toastNotRemoved = (cause: string) => `The agent sandbox wasn't removed: ${cause}`;
+
+/** When the check after a setup still doesn't pass and the host gave no reason. */
+export const STILL_NEEDS_SETUP = "the check still says the sandbox needs setting up.";

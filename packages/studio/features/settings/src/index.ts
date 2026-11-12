@@ -1,4 +1,10 @@
-export { DisplaySettingsService } from "./api.ts";
+export {
+  type AgentSandboxHost,
+  AgentSandboxService,
+  DisplaySettingsService,
+  type SandboxCheckFacts,
+  type SandboxOutcome,
+} from "./api.ts";
 export {
   agentCharactersPref,
   type FrameColourPair,
