@@ -1,6 +1,6 @@
 # Decision: the listed-tool API is its own entry point of @halonicjs/app
 
-- Approval: Liam asked for this split in his review of halonic#2181 on [HAL-7396](/HAL/issues/HAL-7396), a team decision with no board card; the package owner (Liam) approves this note in that review
+- Approval: Liam asked for this split in his review of halonic#2181 on HAL-7396, a team decision with no board card; the package owner (Liam) approves this note in that review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mUYVPfRV9GJc3JfSEnsCS2GhS/8yLR9LDT+XWGKG+BDIzSw4VFtDgrAy60Vk5f/nRAWLLeIIxaw0xzM8+8FVDw==
 

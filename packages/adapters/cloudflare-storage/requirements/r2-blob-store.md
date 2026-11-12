@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6792; `BlobStore` port v1; [build plan](/HAL/issues/HAL-197#document-build-plan) part 2
+- Source: HAL-6792; `BlobStore` port v1; build plan (HAL-197) part 2
 
 The R2 blob store shall keep each blob as one R2 object under `<prefix><hash>`, holding only the bytes, with the media type of the put that wrote it as the object's `Content-Type`. Storing bytes that are already stored shall write nothing. A hash that isn't 64 lowercase hex characters shall never become a key: `get` answers `null` without calling R2. The store shall keep the bytes as they were when `put` was called, even when the caller changes them while the put waits.
 

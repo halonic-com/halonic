@@ -1,6 +1,6 @@
 # Decision: sandbox-mxc copies read-only files into the box folder
 
-- Approval: [HAL-7826](/HAL/issues/HAL-7826) (CTO review of PR 2262 accepted the refusal as a stop-gap and asked for the copy as a follow-up); Liam approves this note in review on [HAL-7850](/HAL/issues/HAL-7850)
+- Approval: HAL-7826 (CTO review of PR 2262 accepted the refusal as a stop-gap and asked for the copy as a follow-up); Liam approves this note in review on HAL-7850
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/l1pSEP+xcIdGKSuZGSHkMdEtyas1CIzzWaLDeT3nb/cUaJjjAV5+DBLo2sngm5YYMtp2vGvlM6tLLOHiyjaAw==
 - Task: HAL-7841

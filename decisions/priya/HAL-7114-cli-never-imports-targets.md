@@ -1,6 +1,6 @@
 # Decision: the `halonic` CLI never uses a deploy target; it loads one by name
 
-- Approval: [HAL-7114](/HAL/issues/HAL-7114) (the board's answer of 12 Nov on where deploy targets live). Liam approves this note in review of this PR.
+- Approval: HAL-7114 (the board's answer of 12 Nov on where deploy targets live). Liam approves this note in review of this PR.
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DVr3W5J+wbbVJH55WAtWWcvnEQp5wWfwqw1b938DJW7riIzz1Nu2o1mos/77luCeCp2YplsDJcKYT80oNi3NDQ==
 - Task: HAL-7114

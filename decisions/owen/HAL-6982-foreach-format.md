@@ -1,6 +1,6 @@
 # Decision: a foreach item with gets and no input gets the picked data
 
-- Approval: [HAL-6982](/HAL/issues/HAL-6982) asks for this change; Liam approves it in review
+- Approval: HAL-6982 asks for this change; Liam approves it in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zmtBsKopcHp7kxg0ouXaOyensFS+l8hzIrQRHml3hOX9ryACv84GsbSerfNGU/OiFb921jLa1rZeKCevn0CoBg==
 

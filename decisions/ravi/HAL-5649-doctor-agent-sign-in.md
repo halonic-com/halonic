@@ -1,6 +1,6 @@
 # Decision: `halonic doctor` shows each agent's own sign-in, and Claude Code's sign-in error points there
 
-- Approval: the error wording was decided on [HAL-5231](/HAL/issues/HAL-5231), and the agent's settings folder on [HAL-6169](/HAL/issues/HAL-6169); Liam approves this note in review
+- Approval: the error wording was decided on HAL-5231, and the agent's settings folder on HAL-6169; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jXVLljiOF+j8QDxyjbVnFItvWM47X8y5JzSLY1Hn1GpLx90ofHa2+n1JyRI5b8QgZrVzkwkoC39ISWt8wFQgCg==
 - Task: HAL-5649

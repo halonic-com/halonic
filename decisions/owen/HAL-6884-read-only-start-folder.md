@@ -1,7 +1,7 @@
 # Decision: a sandboxed program may start in a read-only folder
 
 - Task: HAL-6884 (workspace `stdio` connectors start in the sandbox, HAL-2310 part 3, D45)
-- Approval: option A, agreed with Mateo (`sandbox-srt` owner) on [HAL-6884](/HAL/issues/HAL-6884) with his four conditions; Liam approves this note in review
+- Approval: option A, agreed with Mateo (`sandbox-srt` owner) on HAL-6884 with his four conditions; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QYp/DjymvUmmmkxuhaO4FQR+V/uFfFLC2FdfVJNd/Z+AkAGkaEAclWgN6gXY0POUJetH3Fm6IgmSdCt0UnarBQ==
 

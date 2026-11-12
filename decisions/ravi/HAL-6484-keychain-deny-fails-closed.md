@@ -1,6 +1,6 @@
 # Decision: a session that denies the key store doesn't open when srt drops the deny
 
-- Approval: [HAL-6484](/HAL/issues/HAL-6484) (Liam's review follow-up on HAL-6346). Liam approves this note in review of this PR.
+- Approval: HAL-6484 (Liam's review follow-up on HAL-6346). Liam approves this note in review of this PR.
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ep62PaUo98Cga8o99v+s+B2/D372xqbuTTSf0HvHP62q/dhvxa03B7CJ855TtmfgBKYer+Bfx5oTlaf6wDatDw==
 - Task: HAL-6484

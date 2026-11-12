@@ -1,6 +1,6 @@
 # Decision: `halonic tools revoke` says nothing was removed when it stops at a tool that isn't approved
 
-- Approval: Liam asked for this on [HAL-7847](/HAL/issues/HAL-7847) (N1 of the words check on
+- Approval: Liam asked for this on HAL-7847 (N1 of the words check on
   HAL-7823), small wording on approved CLI output, a team decision with no board card (HAL-2282
   rule); Liam approves this note in his review of this pull request
 - Kind: internal

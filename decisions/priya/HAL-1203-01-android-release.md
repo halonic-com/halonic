@@ -1,6 +1,6 @@
 # Decision: the Android Play build uploads to Play and keeps the APK Play signed
 
-- Approval: option A on [HAL-6852](/HAL/issues/HAL-6852) (the GitHub release ships the APK Play signed); the board set up Play access with Workload Identity Federation and approved the draft upload on [HAL-6855](/HAL/issues/HAL-6855) (12 Nov); the CTO (Liam) approves this note in review
+- Approval: option A on HAL-6852 (the GitHub release ships the APK Play signed); the board set up Play access with Workload Identity Federation and approved the draft upload on HAL-6855 (12 Nov); the CTO (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:op5qAmCiYo2YTZBl2fsaNo9LLq0IvHYZDgAG7kDKN/RpG8HT/UR9fWXI4qUyX7XMUTdxIeNE/fh6mri2naKpDQ==
 - Task: HAL-1203

@@ -1,6 +1,6 @@
 # Decision: changes to the guard's trust roots need two different guardians' signatures
 
-- Approval: the board checked and approved this design on [HAL-1337](/HAL/issues/HAL-1337) on 12 Nov, replacing the HAL-3434 answer that the user approves on GitHub; Liam signs this pull request as the one guardian the base branch pins
+- Approval: the board checked and approved this design on HAL-1337 on 12 Nov, replacing the HAL-3434 answer that the user approves on GitHub; Liam signs this pull request as the one guardian the base branch pins
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:q8JY2+4yDzhpCmxrYK6eHuPOfI+17GxMQKv0r1jSCdSPSe//u8+purZg4uTSerwkhK6Go2Q4/IIh4ojjBvKOCQ==
 
