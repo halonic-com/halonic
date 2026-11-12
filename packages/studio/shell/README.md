@@ -787,7 +787,19 @@ so the page's `h1` is for screen readers only.
 />;
 ```
 
-Not yet: Settings joins the list when T11 adds it with its icon.
+Pass `onSettings` (the window's `openSettings`) and **Settings** ends the list, with its icon and a
+chevron; without it there is no row, as the sidebar has none. Its tap opens the Settings list page.
+
+### The Settings list page
+
+On a phone Settings is a page, not a dialog (`shell.settings-list-page`, flow-settings 13). The
+More page's Settings row, and `openSettings` from a view, push `settingsLocation` on the More
+stack. `SettingsListPage` lists the sections the window has, in the desktop's order
+(`settingsGroups`), as a flush List with a chevron on each row; a tap opens the section as the next
+page (`sectionLocation`, key `settings/<id>`), drawn by `SectionView` with the section's name as
+the page's `h1` for screen readers, as the top bar shows it. Back returns one page at a time: to
+the list, then to More. `openSettings("assistant")` opens the list and that section above it.
+Groups and summaries on the list come later (HAL-7832 part 2).
 
 ### Joined, and Android's back
 

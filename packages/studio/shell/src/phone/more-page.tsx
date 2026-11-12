@@ -4,6 +4,7 @@ import {
   List,
   type ListRow,
   PlaceIcon,
+  SettingsIcon,
   StatusChip,
 } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
@@ -26,6 +27,11 @@ export interface MorePageProps {
   /** A row's tap. The caller opens the list above the More page (`openPhonePage`). */
   readonly onOpen: (place: SidebarPlace) => void;
   /**
+   * A tap on the Settings row, last in the list: the window's `openSettings`. Without it, the page
+   * has no Settings row, as the sidebar has none.
+   */
+  readonly onSettings?: (() => void) | undefined;
+  /**
    * A header badge (component specs 20.1), such as the sample workspace's, shown on its own line
    * under the switcher row. Left out when there is none, and then it takes no room.
    */
@@ -42,7 +48,8 @@ export interface MorePageProps {
  *   targets and never one inside the other.
  * - **The lists**: a flush List of Agents, Workflows, Routines, Library and Changes, in that order
  *   and only where a feature added them, each with its icon and a chevron. Changes shows its count
- *   in place of the chevron. Settings joins the end when its feature (T11) gives it an icon.
+ *   in place of the chevron. **Settings** ends the list, with its icon and a chevron, once the
+ *   window has `openSettings` (it opens the Settings list page).
  * - **The footer line**: "Editing workflows is easier on a computer."
  *
  * The top bar already shows "More", so the page's `h1` is for screen readers only; the shell moves
@@ -55,8 +62,8 @@ export interface MorePageProps {
  *   onOpen={(place) => setStacks(openPhonePage(stacks, { key: place, title: placeNames[place].label }, { list: true }))}
  * />
  */
-export function MorePage({ switcher, places, onOpen, badge }: MorePageProps) {
-  const rows = moreRows(places);
+export function MorePage({ switcher, places, onOpen, onSettings, badge }: MorePageProps) {
+  const rows = onSettings === undefined ? moreRows(places) : [...moreRows(places), settingsRow];
   return (
     <div className="flex flex-col">
       <h1 tabIndex={-1} className="sr-only">
@@ -68,7 +75,12 @@ export function MorePage({ switcher, places, onOpen, badge }: MorePageProps) {
       )}
       {rows.length === 0 ? null : (
         <div className="mt-2">
-          <List label="More" rows={rows} flush onOpen={(id) => onOpen(id)} />
+          <List
+            label="More"
+            rows={rows}
+            flush
+            onOpen={(id) => (id === settingsRowId ? onSettings?.() : onOpen(id))}
+          />
         </div>
       )}
       <p className="px-4 py-3 text-small text-fg-subtle">
@@ -78,8 +90,24 @@ export function MorePage({ switcher, places, onOpen, badge }: MorePageProps) {
   );
 }
 
+const settingsRowId = "settings";
+
+/** The Settings row (56px like the others): its icon and a chevron. */
+const settingsRow: ListRow<SidebarPlace | typeof settingsRowId> = {
+  id: settingsRowId,
+  title: "Settings",
+  icon: <SettingsIcon />,
+  trailing: (
+    <span aria-hidden="true" className="size-icon-md text-fg-subtle *:size-full">
+      <ChevronRightIcon />
+    </span>
+  ),
+};
+
 /** The places under More as List rows, in the sidebar's order, which is the More page's too. */
-export function moreRows(places: readonly ShownPlace[]): readonly ListRow<SidebarPlace>[] {
+export function moreRows(
+  places: readonly ShownPlace[],
+): readonly ListRow<SidebarPlace | typeof settingsRowId>[] {
   return places
     .filter((place) => phonePlaceOf(place.id) === "more")
     .map((place) => ({
