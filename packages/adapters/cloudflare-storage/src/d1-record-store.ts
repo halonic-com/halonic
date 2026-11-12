@@ -16,7 +16,6 @@ interface ChangeRow {
 const insertChange = `INSERT INTO record_changes (collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?)`;
 const insertSeed = `INSERT INTO record_changes (seq, collection, id, at, op, "values", by) VALUES (?, ?, ?, ?, ?, ?, NULL)`;
 const claimCompaction = "INSERT INTO record_compactions (collection, version) VALUES (?, ?)";
-const releaseCompactions = "DELETE FROM record_compactions WHERE collection = ? AND version <= ?";
 
 /**
  * A {@link RecordStore} over a D1 database: every collection's log is rows of one table,
@@ -34,6 +33,8 @@ const releaseCompactions = "DELETE FROM record_compactions WHERE collection = ? 
  * seeds and write seeds that miss what the first folded in. So each claims the collection's next
  * compaction version in its transaction, and the one that read an out-of-date log fails to claim it
  * and rolls back. That call rejects; the log is untouched, and calling `compact` again is safe.
+ * Claims are never deleted, so a version number is never claimed twice, however many compactions
+ * finish while a slow one waits.
  *
  * @example
  * const records = new D1RecordStore(env.DB);
@@ -84,7 +85,6 @@ export class D1RecordStore implements RecordStore {
     const seeds = compactedChanges(collection, rows.map(toChange));
     await this.#db.batch([
       this.#db.prepare(claimCompaction).bind(collection, version + 1),
-      this.#db.prepare(releaseCompactions).bind(collection, version),
       this.#db
         .prepare("DELETE FROM record_changes WHERE collection = ? AND seq <= ?")
         .bind(collection, last.seq),

@@ -200,7 +200,28 @@ verifies("cloudflare-storage.d1-record-store", () => {
 
       expect(foldRecords(await store.changes("leads")).get("1")?.values).toEqual({ name: "Cy" });
       const claims = await db.prepare("SELECT version FROM record_compactions").all();
-      expect(claims.results.length).toBe(1);
+      expect(claims.results.length).toBe(2);
+    });
+
+    it("fails a compact that read the log before two others finished", async () => {
+      const db = sqliteDatabase();
+      const store = new D1RecordStore(db);
+      await store.append([
+        change("1", "add", { name: "Ada" }, 1),
+        change("1", "update", { name: "Bo" }, 2),
+      ]);
+      // Compact A has read the log. Compacts B and C then both run to the end.
+      db.beforeNextBatch(async () => {
+        await store.compact("leads");
+        await store.append([change("1", "update", { name: "Cy" }, 3)]);
+        await store.compact("leads");
+      });
+
+      await expect(store.compact("leads")).rejects.toThrow();
+
+      const log = await store.changes("leads");
+      expect(foldRecords(log).get("1")?.values).toEqual({ name: "Cy" });
+      expect(log.length).toBe(1);
     });
 
     it("compacts an empty collection to nothing", async () => {
