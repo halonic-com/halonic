@@ -1,0 +1,27 @@
+{
+  "name": "@halonicjs/target-cloudflare-testing",
+  "private": true,
+  "type": "module",
+  "description": "Runs the port contract suites inside workerd through Miniflare: a test Worker bundles a suite with a small vitest shim and reports each case back into Vitest. The same Worker is the live test runner.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "priya",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
