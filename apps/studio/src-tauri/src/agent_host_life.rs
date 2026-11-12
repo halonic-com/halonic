@@ -1,6 +1,6 @@
-//! What the shell ends in the agent host when something goes away: a
-//! page's streams when the page reloads or closes, and the host itself
-//! before the updater's installer replaces it.
+//! The agent host's life outside a single call: ending a page's streams
+//! when the page reloads or closes, and stopping the host itself before
+//! the updater's installer replaces it.
 
 use tauri::{AppHandle, Manager, Runtime};
 
