@@ -3,6 +3,7 @@
 - Task: HAL-1206
 - Approval: Liam approves this note in review on the review task of HAL-1206
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DDvG5br+s4G2lbGg9IFWrhb7Xw01LbkWjiOeA5zhq78nuC3LPEUNKFR7Tu8m579RM1n4P/z6q1YYZJES1wQLBA==
 
 ## What changes
 
