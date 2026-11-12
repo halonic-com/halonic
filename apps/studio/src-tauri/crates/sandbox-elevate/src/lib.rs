@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::Windows;
+pub use windows::{Windows, system32_only_libraries};
 
 /// The helper's own file name, in the app folder and in [`FOLDER`].
 pub const PROGRAM: &str = "halonic-sandbox-elevate.exe";
@@ -61,7 +61,8 @@ pub mod code {
     pub const FOLDER: i32 = 34;
     /// The Installed apps entry couldn't be written or deleted.
     pub const ENTRY: i32 = 35;
-    /// srt-win couldn't be started.
+    /// srt-win couldn't be started, or the helper couldn't limit the
+    /// libraries it loads to System32, so it didn't start srt-win.
     pub const SRT_WIN_DIDNT_START: i32 = 36;
 }
 

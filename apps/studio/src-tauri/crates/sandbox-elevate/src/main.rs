@@ -8,6 +8,11 @@ use halonic_sandbox_elevate::{code, verb};
 use std::ffi::OsString;
 
 fn main() {
+    // Before anything else loads a library, so no planted one is used.
+    #[cfg(windows)]
+    if halonic_sandbox_elevate::system32_only_libraries().is_err() {
+        std::process::exit(code::SRT_WIN_DIDNT_START);
+    }
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let Some(verb) = verb(&args) else {
         std::process::exit(code::USAGE);

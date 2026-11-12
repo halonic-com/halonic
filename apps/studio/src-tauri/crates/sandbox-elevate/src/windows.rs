@@ -22,6 +22,9 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_ATTRIBUTE_REPARSE_POINT, MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
 };
 use windows_sys::Win32::System::Com::CoTaskMemFree;
+use windows_sys::Win32::System::LibraryLoader::{
+    LOAD_LIBRARY_SEARCH_SYSTEM32, SetDefaultDllDirectories,
+};
 use windows_sys::Win32::System::Registry::{
     HKEY, HKEY_LOCAL_MACHINE, KEY_SET_VALUE, KEY_WOW64_64KEY, REG_DWORD, REG_OPTION_NON_VOLATILE,
     REG_SZ, RegCloseKey, RegCreateKeyExW, RegDeleteKeyExW, RegSetValueExW,
@@ -40,6 +43,20 @@ use windows_sys::core::GUID;
 /// Owner Administrators; Administrators and SYSTEM full control, Users read
 /// and run, for the folder and everything in it; nothing inherited.
 const FOLDER_ACCESS: &str = "O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)";
+
+/// Makes every library this process loads from now on come from System32
+/// only. The link flag in `build.rs` covers the libraries in the import
+/// table; this covers the ones Windows loads later on the helper's behalf,
+/// such as profapi.dll behind `SHGetKnownFolderPath`, which would otherwise
+/// be looked for in the app folder first (HAL-1415, risk 2). Call it before
+/// anything else.
+pub fn system32_only_libraries() -> io::Result<()> {
+    // SAFETY: takes only a flag value and touches no memory of ours.
+    if unsafe { SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32) } == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
 
 /// The real computer.
 pub struct Windows;
