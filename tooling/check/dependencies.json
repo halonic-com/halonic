@@ -32,6 +32,19 @@
       ],
       "reason": "Versions and changelogs for what we ship, the CLI and the Studio app (D9)."
     },
+    "@cloudflare/workers-types": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/target-cloudflare-*",
+        "@halonicjs/adapter-cloudflare-*"
+      ],
+      "layers": [
+        "targets",
+        "adapters",
+        "testing"
+      ],
+      "reason": "TypeScript types for the Workers runtime and its bindings (D1, R2, Durable Objects, scheduled events), so the Cloudflare adapters and the Worker typecheck against what workerd really offers (plan section 7). Types only, no code, no dependencies."
+    },
     "@noble/hashes": {
       "category": "outside-world",
       "allowedIn": [
@@ -172,13 +185,15 @@
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/adapter-integration-runner",
-        "@halonicjs/tooling-publish"
+        "@halonicjs/tooling-publish",
+        "@halonicjs/target-cloudflare-testing"
       ],
       "layers": [
         "adapters",
-        "tooling"
+        "tooling",
+        "testing"
       ],
-      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only."
+      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only. In target-cloudflare-testing it bundles a port contract suite into the test Worker that runs it inside workerd, with vitest swapped for our own small shim (HAL-197 part 1)."
     },
     "fast-check": {
       "category": "dev-tooling",
@@ -208,6 +223,16 @@
         "apps"
       ],
       "reason": "A DOM for Vitest, so the kit's component tests check rendered markup, ARIA and clicks without a browser (HAL-175 section 13), and so the Android connect page's tests check its screens, focus and field errors (HAL-1140, approved by Liam on HAL-1253). Tests only."
+    },
+    "miniflare": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/target-cloudflare-testing"
+      ],
+      "layers": [
+        "testing"
+      ],
+      "reason": "Starts Cloudflare's own Workers runtime (workerd) on this machine with local D1, R2 and Durable Objects, so the port contract suites run against the Cloudflare adapters inside workerd itself, not in Node against a proxy. Called from our own small runner, not @cloudflare/vitest-pool-workers, which brings Wrangler and Zod (plan section 7, HAL-197 build plan). Brings workerd, undici, ws, youch, sharp and source-map-support, which our code never imports. Tests only; never in a runtime bundle."
     },
     "react": {
       "category": "studio-framework",

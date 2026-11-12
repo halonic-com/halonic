@@ -69,6 +69,21 @@ describe("checkCloudBundle", () => {
     ]);
   });
 
+  it("fails on the workerd test harness's tools: miniflare, workerd and esbuild (HAL-6789)", () => {
+    const meta = metafile([
+      "node_modules/.pnpm/miniflare@4.20260730.0/node_modules/miniflare/dist/src/index.js",
+      "node_modules/.pnpm/workerd@1.20260730.1/node_modules/workerd/lib/main.js",
+      "node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/lib/main.js",
+    ]);
+    const found = messages(meta);
+    expect(found).toHaveLength(3);
+    expect(found.map((message) => message.match(/contains "([^"]+)"/)?.[1])).toEqual([
+      "miniflare",
+      "workerd",
+      "esbuild",
+    ]);
+  });
+
   it("catches what an approved library brings in with it", () => {
     const meta = metafile([
       "node_modules/.pnpm/zod@4.1.12/node_modules/zod/index.js",
