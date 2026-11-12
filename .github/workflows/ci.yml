@@ -1720,7 +1720,7 @@ jobs:
           if (-not (Test-Path (Join-Path $dir 'Halonic.exe'))) { throw "Halonic isn't in the default folder $dir" }
           if (Test-Path (Join-Path $env:LOCALAPPDATA 'halonic\Halonic.exe')) { throw 'The installer wrote into the profile folder' }
           Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 -ExpandProperty FullName | Out-Host
-          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
+          foreach ($f in 'Halonic.exe', 'halonic-agent-host.exe', 'halonic-sandbox-elevate.exe', 'srt-win.exe', 'uninstall.exe', 'sandbox-step.ps1', 'sandbox-remove.ps1', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is missing from the install folder" }
           }
           # Per user: the uninstall entry is in HKCU, none in HKLM.
