@@ -1,6 +1,6 @@
 # @halonicjs/testing-harness-checks
 
-Manual checks of how the coding-agent harnesses sign in when they run behind Halonic's bridge and sandbox. A person runs them by hand on their own computer, with their own subscription; CI runs only the package's tests, with made-up tokens. There is one for Claude Code and one for Codex. They answer checks 1 and 2 of HAL-1710 ([harness checks](/HAL/issues/HAL-194#document-harness-checks)).
+Manual checks of how the coding-agent harnesses sign in when they run behind Halonic's bridge and sandbox. A person runs them by hand on their own computer, with their own subscription; CI runs only the package's tests, with made-up tokens. There is one for Claude Code and one for Codex. They answer checks 1 and 2 of HAL-1710 (the harness checks document on HAL-194).
 
 - **Layer:** testing
 - **Owner:** owen

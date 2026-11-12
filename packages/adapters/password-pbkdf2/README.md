@@ -2,7 +2,8 @@
 
 The `PasswordHasher` port for cloud targets: chained PBKDF2-SHA256 from Web Crypto, six runs of
 100,000 rounds, each run's output being the next run's input
-([HAL-136](/HAL/issues/HAL-136#document-decision)). A Worker can't run scrypt at safe settings, so
+(Julian's HAL-136 decision, written down as
+[`ports.password-hash-format-pbkdf2-chain`](../../core/ports/requirements/password-hash-format-pbkdf2-chain.md)). A Worker can't run scrypt at safe settings, so
 cloud targets use this format and `serve` keeps scrypt. `halonic deploy` makes the hash on your
 machine with this package, and the Worker checks it with the same code.
 
