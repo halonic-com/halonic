@@ -60,6 +60,10 @@ export type SandboxRemoval =
 /** Why a setup or a removal didn't happen when the administrator prompt was turned down. */
 const promptCancelled = "the administrator prompt was cancelled; nothing changed";
 
+/** The log line for a removal that ran with administrator rights, so it left the user's kept grants recorded (HAL-7585). */
+const grantsKeptElevated =
+  "Removed the Windows sandbox, but skipped forgetting its kept access grants: this removal ran with administrator rights. Remove it again without them to forget the grants.";
+
 /**
  * The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on
  * macOS, a sandbox user account and network filters on Windows. Windows is
@@ -159,15 +163,18 @@ export class SrtSandbox implements Sandbox {
    * sandbox account, its group, the network filters, srt's machine key, and
    * the write grants kept by this user's sessions. It is `ok` when nothing
    * was set up, and when run again. srt refuses, and nothing is removed,
-   * while a sandboxed program runs. Other systems have nothing to remove.
-   * Never throws.
+   * while a sandboxed program runs. When it runs with administrator rights it
+   * leaves the user's kept grants recorded and logs that it did (HAL-7585).
+   * Other systems have nothing to remove. Never throws.
    */
   async remove(): Promise<SandboxRemoval> {
     if (this.#machine.platform !== "win32") return { ok: true };
     try {
-      if ((await this.#machine.uninstallWindowsSandbox()) === "cancelled") {
+      const removed = await this.#machine.uninstallWindowsSandbox();
+      if (removed === "cancelled") {
         return { ok: false, outcome: "cancelled", reason: promptCancelled };
       }
+      if (removed === "grants_kept") this.#warn(grantsKeptElevated);
     } catch (error) {
       return { ok: false, outcome: "failed", ...failure(error) };
     }
