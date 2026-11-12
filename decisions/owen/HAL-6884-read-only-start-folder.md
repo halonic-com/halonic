@@ -22,7 +22,7 @@ A workspace connector must start where its script and `node_modules` are, while 
 ## Tests
 
 - `packages/adapters/system-node/src/start-folder.test.ts`: allowed and refused folders, links into a denied folder or out of every allowed path, folders that don't exist yet, reopened paths.
-- `packages/adapters/sandbox-srt/src/srt-session.test.ts`: start in a read-only path; refusal of a denied folder (also through a link) and of the session's private folder.
+- `packages/adapters/sandbox-srt/src/srt-session-start-folder.test.ts`: start in a read-only path; refusal of a denied folder (also through a link), of the session's private folder and of the journal folder.
 - `packages/adapters/sandbox-srt/fence/srt-fence.test.ts` and `srt-fence.windows.test.ts`: in the real fence, a program started in a read-only folder reads there and is refused a write there.
 - `packages/adapters/sandbox-host/src/host-sandbox.test.ts`: start in a read-only path, refusal of a denied one.
 
@@ -32,3 +32,4 @@ No example or test was removed or weakened.
 
 - sandbox-host.start
 - sandbox-srt.session
+- .github/
