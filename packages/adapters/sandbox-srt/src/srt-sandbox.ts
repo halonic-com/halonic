@@ -293,15 +293,15 @@ export class SrtSandbox implements Sandbox {
       return { reason: "other", missing: `bubblewrap can't start: ${bubblewrapError}` };
     }
     // Bubblewrap starting proves the user namespace, not srt's network
-    // namespace and bridge: start what a session starts, once.
+    // namespace and bridge: start what a session starts. A pass is kept;
+    // a failure is asked again on the next check.
     const runner = this.#runner;
     let ready = readyChecks.get(runner);
     if (ready === undefined) {
-      const asked = startSmallestSandbox(runner);
-      ready = asked;
-      readyChecks.set(runner, asked);
-      void asked.then((error) => {
-        if (error !== null && readyChecks.get(runner) === asked) readyChecks.delete(runner);
+      ready = startSmallestSandbox(runner);
+      readyChecks.set(runner, ready);
+      void ready.then((error) => {
+        if (error !== null && readyChecks.get(runner) === ready) readyChecks.delete(runner);
       });
     }
     const srtError = await ready;
