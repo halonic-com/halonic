@@ -34,10 +34,13 @@ If the sandbox can't start, the step doesn't run, and no option makes it
 (requirements `cli.sandbox-gate` and `cli.run-sandbox-gate`). The one exception
 is an agent you chose to run on this computer; see
 ["This computer" has none of it](#this-computer-has-none-of-it). The CLI ends
-with exit 9 and names one reason code: `windows`, `container`,
-`user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing`,
-`ripgrep-missing` or `other`. When more than one applies, the first in that list wins, because its
-fix comes first ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)).
+with exit 9 and names one reason code: `windows`, `container`, `not-supported`,
+`blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`,
+`distro-missing`, `setup-conflict`, `setup-needed`, `user-namespaces-restricted`,
+`bubblewrap-missing`, `linux-tools-missing`, `ripgrep-missing`, `sign-in-needed`
+or `other`. When more than one applies, the first in that list wins, because its
+fix comes first: what Halonic can't fix, then what an administrator can, then
+what you can do in one step ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)).
 
 ## The limits
 
