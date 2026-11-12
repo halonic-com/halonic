@@ -42,8 +42,8 @@ export interface StartRunRequest {
    * Which version of the workspace the run reads, as the caller loaded it:
    * the live version, with its commit and date, or the saved files. It goes
    * on `run.started`, and the run's child runs record it too. Not recorded
-   * when absent. The executor doesn't check it against `definitionsOf`, so
-   * the caller passes the version of the files it gives the run.
+   * when absent. The local executor passes it to `definitionsOf`, so the
+   * host gives the run that version's files; it doesn't check them against it.
    */
   version?: RunVersion;
   /**

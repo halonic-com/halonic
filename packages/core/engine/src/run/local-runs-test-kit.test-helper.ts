@@ -1,4 +1,4 @@
-import type { RunEvent } from "@halonicjs/events";
+import type { RunEvent, RunVersion } from "@halonicjs/events";
 import type {
   Agent,
   Collection,
@@ -158,6 +158,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
   const definitionsAsked: string[] = [];
+  const versionsAsked: (RunVersion | undefined)[] = [];
   const executor = new LocalExecutor({
     resolveModel: async () => ({
       provider: model,
@@ -183,8 +184,9 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
       ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
       ...(setup.proposalFolders === undefined ? {} : { proposalFolders: setup.proposalFolders }),
-      definitionsOf: async (hubId, workflowId) => {
+      definitionsOf: async (hubId, workflowId, version) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
+        versionsAsked.push(version);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);
         return {
           workflow,
@@ -199,7 +201,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     },
   });
   scheduler.onTimer = (timer) => executor.onTimer(timer);
-  return { executor, model, runs, blobs, scheduler, definitionsAsked };
+  return { executor, model, runs, blobs, scheduler, definitionsAsked, versionsAsked };
 }
 
 /**

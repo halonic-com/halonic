@@ -1,6 +1,7 @@
 // What the local executor's runs are given, and what they make of it: the
 // effects they can carry out, and the budget check they keep to.
 
+import type { RunVersion } from "@halonicjs/events";
 import type { BlobStore, IdGenerator, RunStore, Scheduler } from "@halonicjs/ports";
 import type { Budget } from "../budget/budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
@@ -23,12 +24,19 @@ export interface LocalRunsOptions {
   /** Gives a run its id when the start request names none. */
   readonly ids: IdGenerator;
   /**
-   * The definitions a new run of a workflow starts with, as the workspace has
-   * them now. The run keeps them, and never reads the workspace again.
+   * The definitions a new run of a workflow starts with. The run keeps them,
+   * and never reads the workspace again. `version` is the start request's
+   * `version`, the one the run records: a host that can read more than one
+   * version gives the run that version's definitions, so the version a run
+   * records is the one it runs. Without it, the workspace as it is now.
    *
    * @throws when the hub or the workflow doesn't exist
    */
-  definitionsOf(hubId: string, workflowId: string): Promise<RunDefinitions>;
+  definitionsOf(
+    hubId: string,
+    workflowId: string,
+    version: RunVersion | undefined,
+  ): Promise<RunDefinitions>;
   /**
    * What runs whose agents name a harness need. Without it, such a run fails
    * at its harness step with an error that names the `run-harness` effect.

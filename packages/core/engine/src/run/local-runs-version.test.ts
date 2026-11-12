@@ -38,6 +38,22 @@ verifies("engine.run-records-its-version", () => {
     expect(foldRun(log)).toMatchObject({ version: liveVersion });
   });
 
+  it("asks for the definitions of the version the run records", async () => {
+    const { executor, versionsAsked } = runsOn([textAnswer("Dear support")], new KernelRuns());
+
+    await executor.start({ ...replyStart, version: liveVersion });
+
+    expect(versionsAsked).toEqual([liveVersion]);
+  });
+
+  it("asks for the workspace as it is now when a start names no version", async () => {
+    const { executor, versionsAsked } = runsOn([textAnswer("Dear support")], new KernelRuns());
+
+    await executor.start(replyStart);
+
+    expect(versionsAsked).toEqual([undefined]);
+  });
+
   it("gives a child run the parent's version, and records it on the child's run.started", async () => {
     const { executor, runs, scheduler } = runsOn([textAnswer("Dear support")], new KernelRuns(), {
       workflow: onboard,
