@@ -1,3 +1,4 @@
+import { type DigestWatch, runOwnChange } from "@halonicjs/adapter-watch-kit";
 import {
   checkPublicWorkspacePath,
   type DefinitionStore,
@@ -8,14 +9,14 @@ import {
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { bytesToHex, contentDigest, type ErrorKind, KeyedQueue, KindedError } from "@halonicjs/std";
+import { bytesToHex, type ErrorKind, KeyedQueue, KindedError } from "@halonicjs/std";
 import {
   type FileRefusalKind,
   fileCommands,
   isFileRefusal,
   type TauriFileShell,
 } from "./file-commands.ts";
-import { type OwnChange, ShellWatch, type WatchId } from "./shell-watch.ts";
+import { ShellWatch, type WatchId } from "./shell-watch.ts";
 
 /** The Web Crypto API the page has, as the {@link Digest} port. */
 const webCryptoDigest: Digest = {
@@ -45,7 +46,7 @@ export class TauriDefinitionStore implements DefinitionStore {
   readonly location: string;
   readonly #shell: TauriFileShell;
   readonly #writes = new KeyedQueue();
-  readonly #watches = new Set<ShellWatch>();
+  readonly #watches = new Set<DigestWatch>();
 
   /**
    * @param shell - the shell's IPC with a way to open channels, built from `window.__TAURI_INTERNALS__`
@@ -82,7 +83,8 @@ export class TauriDefinitionStore implements DefinitionStore {
     // One write to a path at a time, so the watches know which of their own changes is on disk.
     return await this.#writes.run(path, async () => {
       let result: WriteResult = { status: "written" };
-      await this.#ownChange(path, content, async () => {
+      // A write the shell refused as changed on disk left the file alone: the watches still report that change.
+      await runOwnChange(this.#watches, path, content, webCryptoDigest, async () => {
         const answer = await this.#call(fileCommands.write, {
           path,
           text: content,
@@ -98,7 +100,7 @@ export class TauriDefinitionStore implements DefinitionStore {
   async remove(path: string): Promise<void> {
     checkPublicWorkspacePath(path);
     await this.#writes.run(path, async () => {
-      await this.#ownChange(path, null, async () => {
+      await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
         await this.#call(fileCommands.remove, { path });
         return true;
       });
@@ -144,37 +146,6 @@ export class TauriDefinitionStore implements DefinitionStore {
       },
       listener,
     );
-  }
-
-  /**
-   * Runs one of the store's own changes to `path`, which leaves `content`
-   * there (`null` for a remove), so no open watch reports it. `apply` says
-   * whether it changed the file: a write the shell refused as changed on
-   * disk didn't, and what is there is someone else's change, which the
-   * watches must still report, so they don't read it back.
-   */
-  async #ownChange(
-    path: string,
-    content: string | null,
-    apply: () => Promise<boolean>,
-  ): Promise<void> {
-    const watches = [...this.#watches];
-    if (watches.length > 0) {
-      const change: OwnChange =
-        content === null ? "absent" : await contentDigest(content, webCryptoDigest);
-      for (const watch of watches) {
-        watch.beginOwnChange(path, change);
-      }
-    }
-    // A change that failed may have reached the disk or not, so the watches read it back.
-    let changed = true;
-    try {
-      changed = await apply();
-    } finally {
-      for (const watch of watches) {
-        await (changed ? watch.endOwnChange(path) : watch.dropOwnChange(path));
-      }
-    }
   }
 
   /** Runs one command on this store's workspace, turning a refusal into the error the port asks for. */

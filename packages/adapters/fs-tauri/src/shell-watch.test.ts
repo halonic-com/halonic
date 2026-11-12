@@ -186,13 +186,36 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       expect(heard.failures).toHaveLength(1);
     });
 
-    it("fails, not the write, when its own change can't be read back", async () => {
+    it("doesn't read a finished write back, so a change from outside right after it isn't missed", async () => {
       const { shell, store, heard } = await watched({ "a.yaml": "1" });
-      shell.refuseNext("io", "fs_read");
       await expect(store.write("a.yaml", "2")).resolves.toEqual({ status: "written" });
+      expect(shell.calls.at(-1)?.command).toBe("fs_write");
+      shell.changeOutside({ "a.yaml": "3" });
       await heard.until(1);
+      expect(heard.batches).toEqual([[{ path: "a.yaml", kind: "changed" }]]);
+    });
+
+    it("fails a write with its own error when reading it back fails too; the watch is told", async () => {
+      const { shell, store, heard } = await watched({ "a.yaml": "1" });
+      shell.refuseNext("io", "fs_write");
+      const invoke = shell.invoke.bind(shell);
+      shell.invoke = async (command, args) => {
+        try {
+          return await invoke(command, args);
+        } finally {
+          // The read back of the failed write fails as well.
+          if (command === "fs_write") {
+            shell.refuseNext("io", "fs_read");
+          }
+        }
+      };
+      const writeFailure = await store.write("a.yaml", "2").catch((error: unknown) => error);
+      expect(errorKindOf(writeFailure)).toBe("unavailable");
+      expect(String(writeFailure)).toContain("refused by the test");
+      await heard.until(1);
+      expect(heard.failures).toHaveLength(1);
       expect(errorKindOf(heard.failures[0])).toBe("unavailable");
-      expect(shell.files.get("a.yaml")).toBe("2");
+      expect(shell.files.get("a.yaml")).toBe("1");
     });
 
     it("doesn't open when the shell refuses to watch, and stops listening", async () => {
@@ -210,6 +233,26 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       expect(errorKindOf(await store.watch(new Heard()).catch((error) => error))).toBe(
         "unavailable",
       );
+      expect(shell.openWatches).toBe(0);
+    });
+
+    it("hears a message the shell sends before fs_watch answers", async () => {
+      const shell = new FakeFileShell({ opened: [acme], files: { "a.yaml": "1" } });
+      const invoke = shell.invoke.bind(shell);
+      shell.invoke = async (command, args) => {
+        const answer = await invoke(command, args);
+        if (command === "fs_watch") {
+          shell.send({ type: "failed", message: "the folder went away" });
+        }
+        return answer;
+      };
+      const store = new TauriDefinitionStore(shell, acme);
+      const heard = new Heard();
+      await store.watch(heard);
+      await heard.until(1);
+      expect(heard.failures.map((error) => error.message)).toEqual([
+        "The workspace watch stopped: the folder went away",
+      ]);
       expect(shell.openWatches).toBe(0);
     });
 

@@ -174,8 +174,11 @@ each file, so nothing can come between the check and the write. `version()` is w
 `fs_list` and `fs_read`, as `fs-node` does.
 
 `fs_watch` only says which files may have changed. The store reads each one and reports it only
-when its digest differs from the one it last saw, as `FolderWatch` in `fs-node` does, so its own
-writes and removes, and a file saved again with the same text, are never reported.
+when its digest differs from the one it last saw, so its own writes and removes, and a file saved
+again with the same text, are never reported. That digest-compare watch is `DigestWatch` from
+`@halonicjs/adapter-watch-kit`, the one `fs-node` and `fs-web` use too; this package only turns the
+shell's channel into its events. A finished write is taken as seen without reading it back, so a
+change from outside right after it is still reported.
 
 | The shell says | The adapter rejects with |
 | --- | --- |
