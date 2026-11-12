@@ -198,6 +198,39 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("ends a run waiting for a tool approval with who wants which tool, and how to answer (HAL-7937)", async () => {
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "draft" }],
+          [
+            today("10:41:00"),
+            {
+              type: "approval.requested",
+              state: "draft",
+              agent: "writer",
+              tool: "gmail__send",
+              args: { to: "ada@acme.example" },
+              callId: "call-1",
+              resume: { messages: [], calls: [], step: 0 },
+            },
+          ],
+          [
+            today("10:41:00"),
+            { type: "run.waiting", state: "draft", events: ["approve", "reject"] },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(-3)).toEqual([
+        "",
+        "! Waiting for your approval: Writer wants to use gmail__send",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+      ]);
+    });
+
     it("ends with the wait step's title as the engine filled it in (HAL-7012)", async () => {
       await storeRuns({
         ...waiting,
