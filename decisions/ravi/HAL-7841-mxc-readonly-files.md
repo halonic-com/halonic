@@ -1,9 +1,8 @@
 # Decision: sandbox-mxc copies read-only files into the box folder
 
-- Approval: HAL-7826 (CTO review of PR 2262 accepted the refusal as a stop-gap and asked for the copy as a follow-up); Liam approves this note in review of the PR on HAL-7841
+- Approval: [HAL-7826](/HAL/issues/HAL-7826) (CTO review of PR 2262 accepted the refusal as a stop-gap and asked for the copy as a follow-up); Liam approves this note in review on [HAL-7850](/HAL/issues/HAL-7850)
 - Kind: internal
 - Task: HAL-7841
-- Covers: sandbox-mxc.grant-paths, sandbox-mxc.box-request
 
 ## What changes
 
@@ -22,3 +21,8 @@ denied path are refused, so a copy never hands over what the profile hides.
 
 Limit: the program reads the copy, not the original, so the host must pass the copy's path
 (`MxcSession.readOnlyCopies`) to the program. That wiring is a host change, not this one.
+
+## Covers
+
+- sandbox-mxc.box-request
+- sandbox-mxc.grant-paths
