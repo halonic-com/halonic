@@ -3,6 +3,7 @@
 - Task: HAL-6518
 - Approval: decided on [HAL-6513](/HAL/issues/HAL-6513); Liam approves this note in review on [HAL-6518](/HAL/issues/HAL-6518)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SvNv9Ewzs+E3Xo5XOYnhA4xbvl3b0/IKMpIKCmeqa6QntbMPslfMf5aAsd0nzttfV/u8cnpGHCi6DUZ+kLPHAw==
 
 ## What changes
 
