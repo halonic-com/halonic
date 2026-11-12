@@ -3,7 +3,13 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { plainText } from "./phrase.ts";
-import { sandboxDocsLink, sandboxMessages } from "./sandbox.ts";
+import {
+  distroArgument,
+  missingLinuxTools,
+  readsAsOther,
+  sandboxDocsLink,
+  sandboxMessages,
+} from "./sandbox.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -27,7 +33,7 @@ describe("the sandbox sentences", () => {
     ).toEqual([
       "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
-      "This version or edition of the operating system can't run the sandbox. Update it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+      "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version <distro> 2 in PowerShell on Windows, then run it again.",
       "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
       "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. Then run it again.",
       "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
@@ -69,8 +75,8 @@ describe("the sandbox sentences", () => {
         "Fix: run Halonic on the computer itself, not in a container. Then run halonic doctor again. halonic validate and halonic test work in a container.",
       ],
       [
-        "This version or edition of the operating system can't run the sandbox.",
-        "Fix: update the operating system, or pick another sandbox in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
+        "This distro runs on WSL 1, and the sandbox needs WSL 2.",
+        "Fix: switch it to WSL 2 with wsl --set-version <distro> 2 in PowerShell on Windows. Then run halonic doctor again.",
       ],
       [
         "A company policy on this computer blocks the sandbox.",
@@ -127,25 +133,109 @@ describe("the sandbox sentences", () => {
     ]);
   });
 
-  it("links each reason to its section of the sandbox guide, or to the guide itself", () => {
-    expect(sandboxUnavailableReasons.map((code) => sandboxDocsLink(code))).toEqual([
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox#container",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox#apparmor",
-      "https://docs.halonic.dev/sandbox#bubblewrap",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
+  it("names the WSL distro in WSL 1's fix, for run and for doctor", () => {
+    expect(words(sandboxMessages.refusedFix("not-supported", { distro: "Ubuntu" }))).toBe(
+      "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version Ubuntu 2 in PowerShell on Windows, then run it again.",
+    );
+    expect(words(sandboxMessages.doctorFix("not-supported", { distro: "Ubuntu" }))).toBe(
+      "Fix: switch it to WSL 2 with wsl --set-version Ubuntu 2 in PowerShell on Windows. Then run halonic doctor again.",
+    );
+    expect(words(sandboxMessages.refusedFix("bubblewrap-missing", { distro: "Ubuntu" }))).toBe(
+      words(sandboxMessages.refusedFix("bubblewrap-missing")),
+    );
+  });
+
+  it("names only the Linux tools the check found missing (HAL-6538 item 12)", () => {
+    const lines = (missing: string[]) => [
+      words(sandboxMessages.reason("linux-tools-missing", { missing })),
+      words(sandboxMessages.doctorFix("linux-tools-missing", { missing })),
+      words(sandboxMessages.refusedFix("linux-tools-missing", { missing })),
+    ];
+    expect(lines(["socat is not installed"])).toEqual([
+      "socat isn't installed, and the sandbox needs it.",
+      "Fix: install it, for example on Ubuntu or Debian with sudo apt install socat. Then run halonic doctor again.",
+      "socat isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install socat, then run it again.",
     ]);
+    expect(lines(["ripgrep is not installed"])).toEqual([
+      "ripgrep isn't installed, and the sandbox needs it.",
+      "Fix: install it, for example on Ubuntu or Debian with sudo apt install ripgrep. Then run halonic doctor again.",
+      "ripgrep isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install ripgrep, then run it again.",
+    ]);
+    expect(lines(["socat and ripgrep are not installed"])).toEqual([
+      "socat and ripgrep aren't installed, and the sandbox needs both.",
+      "Fix: install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep. Then run halonic doctor again.",
+      "socat and ripgrep aren't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
+    ]);
+    const unsaid = [
+      words(sandboxMessages.reason("linux-tools-missing")),
+      words(sandboxMessages.doctorFix("linux-tools-missing")),
+      words(sandboxMessages.refusedFix("linux-tools-missing")),
+    ];
+    expect(lines(["socat or ripgrep is not installed"])).toEqual(unsaid);
+    expect(lines(["something else"])).toEqual(unsaid);
+    expect(words(sandboxMessages.reason("bubblewrap-missing", { missing: ["socat"] }))).toBe(
+      "bubblewrap isn't installed, and the sandbox needs it.",
+    );
+  });
+
+  it("reads which Linux tools are missing from the check's sentences", () => {
+    expect(missingLinuxTools(["Socat is not installed"])).toBe("socat");
+    expect(missingLinuxTools(["ripgrep is not installed"])).toBe("ripgrep");
+    expect(missingLinuxTools(["socat is not installed", "ripgrep is not installed"])).toBe("both");
+    expect(missingLinuxTools(["socat or ripgrep is not installed"])).toBeUndefined();
+    expect(missingLinuxTools(["socatx and rgrep"])).toBeUndefined();
+    expect(missingLinuxTools([])).toBeUndefined();
+  });
+
+  it("links each reason's section of the sandbox page, as agreed on HAL-6524", () => {
+    const section = (anchor: string) => `https://docs.halonic.dev/sandbox${anchor}`;
+    expect(
+      Object.fromEntries(sandboxUnavailableReasons.map((code) => [code, sandboxDocsLink(code)])),
+    ).toEqual({
+      windows: section("#windows-preview"),
+      container: section("#container"),
+      "not-supported": section("#wsl1"),
+      "blocked-by-policy": section(""),
+      "virtualisation-off": section(""),
+      "wsl-missing": section(""),
+      "restart-needed": section(""),
+      "distro-missing": section(""),
+      "setup-conflict": section(""),
+      "setup-needed": section(""),
+      "user-namespaces-restricted": section("#user-namespaces"),
+      "bubblewrap-missing": section("#bubblewrap"),
+      "linux-tools-missing": section("#linux-tools"),
+      "ripgrep-missing": section(""),
+      "sign-in-needed": section(""),
+      other: section("#other"),
+    });
+    expect(sandboxDocsLink("seccomp-missing")).toBe(section("#other"));
+  });
+
+  it("gives the distro's name so it pastes into PowerShell, or <distro>", () => {
+    expect(distroArgument("Ubuntu-24.04")).toBe("Ubuntu-24.04");
+    expect(distroArgument("my_distro.1")).toBe("my_distro.1");
+    expect(distroArgument("My Ubuntu")).toBe('"My Ubuntu"');
+    expect(distroArgument("Débian")).toBe('"Débian"');
+    expect(distroArgument(undefined)).toBe("<distro>");
+    expect(distroArgument("")).toBe("<distro>");
+    expect(distroArgument('a"b')).toBe("<distro>");
+    expect(distroArgument("$env:x")).toBe("<distro>");
+    expect(distroArgument("a`b")).toBe("<distro>");
+    expect(distroArgument("a\u001b[31mb")).toBe("<distro>");
+    expect(distroArgument("a\u202eb")).toBe("<distro>");
+  });
+
+  it("labels the check's own sentence, without a full stop of its own", () => {
+    expect(words(sandboxMessages.whatFailed("bwrap: setting up uid map: Permission denied"))).toBe(
+      "What failed: bwrap: setting up uid map: Permission denied",
+    );
+  });
+
+  it("reads other and a code it doesn't know as other", () => {
+    expect(readsAsOther("other")).toBe(true);
+    expect(readsAsOther("seccomp-missing")).toBe(true);
+    expect(readsAsOther("not-supported")).toBe(false);
   });
 
   it("has runs send's ending and the pointer to doctor", () => {

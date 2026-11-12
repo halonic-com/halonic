@@ -22,3 +22,14 @@ export function printable(text: string): string {
     return `\\u${code.toString(16).padStart(4, "0")}`;
   });
 }
+
+/**
+ * Text Halonic didn't write with its control and bidi characters taken out,
+ * for a line that shows a tool's own sentence rather than quoting it.
+ *
+ * @example
+ * withoutUnsafe("\u001b[31mbwrap\u001b[0m failed"); // "[31mbwrap[0m failed"
+ */
+export function withoutUnsafe(text: string): string {
+  return text.replace(unsafe, "");
+}

@@ -1,4 +1,5 @@
 import type { SandboxUnavailableReason } from "@halonicjs/ports";
+import { withoutUnsafe } from "../output/printable.ts";
 import { defineMessages } from "./define.ts";
 import { docsBase } from "./docs.ts";
 import { type Phrase, phrase } from "./phrase.ts";
@@ -23,7 +24,12 @@ export const windowsNodeInWsl = "windows-node-in-wsl";
  * sentence is for logs and shows only with `--debug`. The codes port
  * version 6 added take the onboarding wording's reasons where it has them
  * (HAL-3778 section 4) and the team's words where it doesn't (HAL-5900).
+ * The CLI's sandbox gives `not-supported` only on WSL 1, so its words are
+ * WSL 1's, with the distro's name in the command (Sofia, HAL-6526).
  */
+/** Where a fix's command takes the WSL distro's name, filled in by {@link distroArgument}. */
+const distroSlot = "<distro>";
+
 const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
     "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
@@ -31,8 +37,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
     "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal.",
   container:
     "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
-  "not-supported":
-    "This version or edition of the operating system can't run the sandbox. Update it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+  "not-supported": `This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version ${distroSlot} 2 in PowerShell on Windows, then run it again.`,
   "blocked-by-policy":
     "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "virtualisation-off":
@@ -66,7 +71,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   windows: "The sandbox doesn't work on Windows in this version of Halonic.",
   [windowsNodeInWsl]: "Windows' Node.js can't start the sandbox in a WSL folder.",
   container: "Halonic is running inside a container, and the sandbox can't start there.",
-  "not-supported": "This version or edition of the operating system can't run the sandbox.",
+  "not-supported": "This distro runs on WSL 1, and the sandbox needs WSL 2.",
   "blocked-by-policy": "A company policy on this computer blocks the sandbox.",
   "virtualisation-off": "Hardware virtualisation is turned off on this computer.",
   "wsl-missing": "WSL isn't installed, and the sandbox needs it.",
@@ -92,8 +97,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   windows: "use Halonic inside WSL 2 on this computer.",
   [windowsNodeInWsl]: "install Node.js inside WSL and open a WSL terminal.",
   container: "run Halonic on the computer itself, not in a container.",
-  "not-supported":
-    "update the operating system, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+  "not-supported": `switch it to WSL 2 with wsl --set-version ${distroSlot} 2 in PowerShell on Windows.`,
   "blocked-by-policy":
     "ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
   "virtualisation-off":
@@ -127,16 +131,135 @@ export const sandboxMessages = defineMessages("sandbox", {
   cantStart: () => phrase`the sandbox can't start on this computer.`,
   /** The end of `runs send`'s line 1: the answer wasn't sent, so the run is still waiting. */
   nothingSent: () => phrase`Nothing was sent.`,
-  /** Line 2 of a refused `run` or `runs send`. */
-  refusedFix: (code: string) => phrase`${refusedFixes[known(code)]}`,
+  /**
+   * Line 2 of a refused `run` or `runs send`, with the WSL distro's name
+   * when it is known and only the Linux tools the check found missing.
+   */
+  refusedFix: (code: string, details: SandboxDetails = {}) =>
+    phrase`${withDistro(wordsFor(code, details.missing).refusedFix, details.distro)}`,
   /** Line 2 of a sandbox error with more than one problem, so no single fix. */
   seeDoctor: () => phrase`Run halonic doctor to see what's missing.`,
 
   /** `halonic doctor`'s line under "can't start on this computer": what's wrong. */
-  reason: (code: string) => phrase`${reasons[known(code)]}`,
+  reason: (code: string, details: SandboxDetails = {}) =>
+    phrase`${wordsFor(code, details.missing).reason}`,
+  /**
+   * `halonic doctor`'s line in place of `other`'s reason when the check
+   * said what failed: its sentence as the tool wrote it, after a label, so
+   * it reads as the tool's words, not Halonic's (Sofia, HAL-6526).
+   */
+  whatFailed: (sentence: string) => phrase`What failed: ${sentence}`,
   /** `halonic doctor`'s fix under the reason, with "Then run halonic doctor again." after it. */
-  doctorFix: (code: string) => doctorFix(fixes[known(code)], afterDoctorAgain[known(code)]),
+  doctorFix: (code: string, details: SandboxDetails = {}) =>
+    doctorFix(
+      withDistro(wordsFor(code, details.missing).fix, details.distro),
+      afterDoctorAgain[known(code)],
+    ),
 });
+
+/** What the CLI knows about a sandbox that can't start, besides its code. */
+export interface SandboxDetails {
+  /** The WSL distro the CLI runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
+  readonly distro?: string | undefined;
+  /** The check's own sentences, which name the Linux tools it found missing. */
+  readonly missing?: readonly string[] | undefined;
+}
+
+/** A reason's three sentences: `doctor`'s reason and fix, and a refused run's line 2. */
+interface ReasonWords {
+  readonly reason: string;
+  readonly fix: string;
+  readonly refusedFix: string;
+}
+
+/**
+ * The words for `code`, naming only the Linux tools that are missing when
+ * the check's sentences name them (Sofia, HAL-6538 item 12).
+ */
+function wordsFor(code: string, missing: readonly string[] = []): ReasonWords {
+  const reason = known(code);
+  const tools = reason === "linux-tools-missing" ? missingLinuxTools(missing) : undefined;
+  if (tools !== undefined) return linuxToolsWords[tools];
+  return { reason: reasons[reason], fix: fixes[reason], refusedFix: refusedFixes[reason] };
+}
+
+/** Which of srt's Linux tools are missing: one of them, or both. */
+type MissingLinuxTools = "socat" | "ripgrep" | "both";
+
+/**
+ * Which of socat and ripgrep the check's sentences say are missing, or
+ * `undefined` when they don't say: they name neither, or say "socat or
+ * ripgrep", as srt's check did before it looked at each one (HAL-6518).
+ *
+ * @example
+ * missingLinuxTools(["ripgrep is not installed"]); // "ripgrep"
+ * missingLinuxTools(["socat and ripgrep are not installed"]); // "both"
+ * missingLinuxTools(["socat or ripgrep is not installed"]); // undefined
+ */
+export function missingLinuxTools(missing: readonly string[]): MissingLinuxTools | undefined {
+  const said = missing.join("\n");
+  if (/\bsocat or ripgrep\b/iu.test(said)) return undefined;
+  const socat = /\bsocat\b/iu.test(said);
+  const ripgrep = /\bripgrep\b/iu.test(said);
+  if (socat && ripgrep) return "both";
+  if (socat) return "socat";
+  if (ripgrep) return "ripgrep";
+  return undefined;
+}
+
+/** `linux-tools-missing`'s words when the check said which tools are missing. */
+const linuxToolsWords: Readonly<Record<MissingLinuxTools, ReasonWords>> = {
+  socat: {
+    reason: "socat isn't installed, and the sandbox needs it.",
+    fix: "install it, for example on Ubuntu or Debian with sudo apt install socat.",
+    refusedFix:
+      "socat isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install socat, then run it again.",
+  },
+  ripgrep: {
+    reason: "ripgrep isn't installed, and the sandbox needs it.",
+    fix: "install it, for example on Ubuntu or Debian with sudo apt install ripgrep.",
+    refusedFix:
+      "ripgrep isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install ripgrep, then run it again.",
+  },
+  both: {
+    reason: "socat and ripgrep aren't installed, and the sandbox needs both.",
+    fix: "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
+    refusedFix:
+      "socat and ripgrep aren't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
+  },
+};
+
+/**
+ * `text` with the WSL distro's name in its command, or `<distro>` there when
+ * the name isn't known or can't be pasted into PowerShell as it is.
+ */
+function withDistro(text: string, distro: string | undefined): string {
+  return text.replace(distroSlot, () => distroArgument(distro));
+}
+
+/**
+ * The distro's name as `wsl --set-version` takes it in PowerShell: as it is
+ * when it has only letters, digits, `.`, `-` and `_`, in double quotes when
+ * it has other characters, and `<distro>` when it is empty or has a
+ * character double quotes don't keep as it is (`"`, `$`, a backtick or a
+ * control or bidi character).
+ *
+ * @example
+ * distroArgument("Ubuntu-24.04"); // "Ubuntu-24.04"
+ * distroArgument("My Ubuntu"); // '"My Ubuntu"'
+ * distroArgument(undefined); // "<distro>"
+ */
+export function distroArgument(distro: string | undefined): string {
+  if (distro === undefined || distro === "") return distroSlot;
+  if (/^[A-Za-z0-9._-]+$/u.test(distro)) return distro;
+  if (/["$`]/u.test(distro) || withoutUnsafe(distro) !== distro) return distroSlot;
+  return `"${distro}"`;
+}
+
+/** Whether the CLI words `code` as `other`: it is `other`, or a code this version doesn't know. */
+export function readsAsOther(code: string): boolean {
+  return known(code) === "other";
+}
 
 /** A code the CLI has words for, or `other` for one it doesn't. */
 function known(code: string): WordedReason {
@@ -162,14 +285,20 @@ function doctorFix(fix: string, note?: string): Phrase {
 const sandboxDocs = `${docsBase}/sandbox`;
 
 /**
- * The section of {@link sandboxDocs} for each reason that cli-output names
- * one for. The other reasons link the page itself, rather than a section
- * that may not exist.
+ * The section of {@link sandboxDocs} for each reason that has one, as agreed
+ * on HAL-6524: `not-supported` takes WSL 1's, since the CLI's sandbox gives
+ * it only on WSL 1 (HAL-6538 item 13), and `windows` the Windows preview's.
+ * The other reasons link the page itself, rather than a section that may not
+ * exist. `user-namespaces` is the section the old `#apparmor` link now opens.
  */
 const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
-  "bubblewrap-missing": "bubblewrap",
+  windows: "windows-preview",
   container: "container",
-  "user-namespaces-restricted": "apparmor",
+  "not-supported": "wsl1",
+  "user-namespaces-restricted": "user-namespaces",
+  "bubblewrap-missing": "bubblewrap",
+  "linux-tools-missing": "linux-tools",
+  other: "other",
 };
 
 /**
@@ -177,7 +306,8 @@ const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
  *
  * @example
  * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.dev/sandbox#bubblewrap"
- * sandboxDocsLink("windows"); // "https://docs.halonic.dev/sandbox"
+ * sandboxDocsLink("not-supported"); // "https://docs.halonic.dev/sandbox#wsl1"
+ * sandboxDocsLink("setup-needed"); // "https://docs.halonic.dev/sandbox"
  */
 export function sandboxDocsLink(code: string): string {
   const section = docsSections[known(code)];
