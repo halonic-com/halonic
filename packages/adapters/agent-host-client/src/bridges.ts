@@ -57,6 +57,8 @@ const firstLineSchema = s.discriminatedUnion("type", [
       bridge: s.string().min(1),
       url: s.string().min(1),
       token: s.string().min(1),
+      // Only for a bridge on a Unix socket, which the sandbox's profile then names.
+      socketPath: s.string().min(1).optional(),
     })
     .strict(),
   s.object({ type: s.literal("failed"), message: s.string() }).strict(),
@@ -136,9 +138,11 @@ export class AgentHostBridges {
     this.#ids.set(opened.token, opened.bridge);
     const secrets = providerKeys(services.providers, services.secrets);
     const serving = this.#serve(opened.bridge, lines, { ...services, secrets, recorder });
+    const { url, token, socketPath } = opened;
     return {
-      url: opened.url,
-      token: opened.token,
+      url,
+      token,
+      ...(socketPath === undefined ? {} : { socketPath }),
       close: () => this.#close(opened.bridge, opened.token, serving, hangUp),
     };
   }

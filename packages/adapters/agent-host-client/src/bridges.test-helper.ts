@@ -43,17 +43,18 @@ export function hostAnswering(): FakeHost {
     .answer("POST /v1/bridge/close", ok({ closed: true }));
 }
 
-/** Opens a bridge on `host`, whose stream sends `opened` first. */
+/** Opens a bridge on `host`, whose stream sends `first` (`opened` unless given) first. */
 export async function openOn(
   host: FakeHost,
   served: BridgeServices = services(),
   events: BridgeRecorder = recorder,
+  first: object = opened,
 ): Promise<{ bridges: AgentHostBridges; bridge: OpenHarnessBridge; stream: FakeStream }> {
   const bridges = new AgentHostBridges(host, { servicesFor: () => served });
   const streamOpened = host.nextStream("POST /v1/bridge/open");
   const opening = bridges.open(agent, events);
   const stream = await streamOpened;
-  stream.send(opened);
+  stream.send(first);
   return { bridges, bridge: await opening, stream };
 }
 

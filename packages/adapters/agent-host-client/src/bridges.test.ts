@@ -345,3 +345,20 @@ verifies("agent-host-client.bridges", () => {
     });
   });
 });
+
+verifies("agent-host-client.bridge-socket", () => {
+  it("gives the engine the socket path of a bridge on a Unix socket", async () => {
+    const socketPath = "/srv/acme/halonic/bridges/r1/bridge.sock";
+    const onSocket = { ...opened, url: "http://bridge.halonic.invalid", socketPath };
+
+    const { bridge } = await openOn(hostAnswering(), services(), recorder, onSocket);
+
+    expect(bridge).toMatchObject({ url: onSocket.url, token: opened.token, socketPath });
+  });
+
+  it("gives no socket path for a bridge on a loopback port", async () => {
+    const { bridge } = await openOn(hostAnswering());
+
+    expect(bridge).not.toHaveProperty("socketPath");
+  });
+});
