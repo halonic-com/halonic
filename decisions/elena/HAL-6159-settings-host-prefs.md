@@ -4,6 +4,7 @@
 - Task: HAL-6159 (PR 7a of the settings host API), with the review changes from HAL-6216
 - Approval: Liam asked for this golden file in his design review on [HAL-6216](/HAL/issues/HAL-6216) and approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+QMMpYHd64urZpdhMDn581+0G9s0QcGCmSy2397Po2mlhxq/drngDNd/XJobqqqHx+SdHSDYC8QorF7Oz13dBw==
 
 `packages/testing/contracts/src/golden/host-settings-limits.json` is a new golden file. It
 lists what every `HostSettingsStore` adapter and the desktop shell's Rust side must agree on,
