@@ -285,16 +285,20 @@ function doctorFix(fix: string, note?: string): Phrase {
 const sandboxDocs = `${docsBase}/sandbox`;
 
 /**
- * The section of {@link sandboxDocs} for each reason that cli-output names
- * one for, and `not-supported`, which the CLI's sandbox gives only on WSL 1
- * (HAL-6524, HAL-6538 item 13). The other reasons link the page itself,
- * rather than a section that may not exist.
+ * The section of {@link sandboxDocs} for each reason that has one, as agreed
+ * on HAL-6524: `not-supported` takes WSL 1's, since the CLI's sandbox gives
+ * it only on WSL 1 (HAL-6538 item 13), and `windows` the Windows preview's.
+ * The other reasons link the page itself, rather than a section that may not
+ * exist. `user-namespaces` is the section the old `#apparmor` link now opens.
  */
 const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
-  "bubblewrap-missing": "bubblewrap",
+  windows: "windows-preview",
   container: "container",
   "not-supported": "wsl1",
-  "user-namespaces-restricted": "apparmor",
+  "user-namespaces-restricted": "user-namespaces",
+  "bubblewrap-missing": "bubblewrap",
+  "linux-tools-missing": "linux-tools",
+  other: "other",
 };
 
 /**
@@ -303,7 +307,7 @@ const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
  * @example
  * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.dev/sandbox#bubblewrap"
  * sandboxDocsLink("not-supported"); // "https://docs.halonic.dev/sandbox#wsl1"
- * sandboxDocsLink("windows"); // "https://docs.halonic.dev/sandbox"
+ * sandboxDocsLink("setup-needed"); // "https://docs.halonic.dev/sandbox"
  */
 export function sandboxDocsLink(code: string): string {
   const section = docsSections[known(code)];

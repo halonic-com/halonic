@@ -133,27 +133,6 @@ describe("the sandbox sentences", () => {
     ]);
   });
 
-  it("links each reason to its section of the sandbox guide, or to the guide itself", () => {
-    expect(sandboxUnavailableReasons.map((code) => sandboxDocsLink(code))).toEqual([
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox#container",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox#apparmor",
-      "https://docs.halonic.dev/sandbox#bubblewrap",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-      "https://docs.halonic.dev/sandbox",
-    ]);
-  });
-
   it("names the WSL distro in WSL 1's fix, for run and for doctor", () => {
     expect(words(sandboxMessages.refusedFix("not-supported", { distro: "Ubuntu" }))).toBe(
       "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version Ubuntu 2 in PowerShell on Windows, then run it again.",
@@ -208,13 +187,29 @@ describe("the sandbox sentences", () => {
     expect(missingLinuxTools([])).toBeUndefined();
   });
 
-  it("links WSL 1's section for not-supported, and the page for a reason without one", () => {
-    expect(sandboxDocsLink("not-supported")).toBe("https://docs.halonic.dev/sandbox#wsl1");
-    expect(sandboxDocsLink("bubblewrap-missing")).toBe(
-      "https://docs.halonic.dev/sandbox#bubblewrap",
-    );
-    expect(sandboxDocsLink("windows")).toBe("https://docs.halonic.dev/sandbox");
-    expect(sandboxDocsLink("seccomp-missing")).toBe("https://docs.halonic.dev/sandbox");
+  it("links each reason's section of the sandbox page, as agreed on HAL-6524", () => {
+    const section = (anchor: string) => `https://docs.halonic.dev/sandbox${anchor}`;
+    expect(
+      Object.fromEntries(sandboxUnavailableReasons.map((code) => [code, sandboxDocsLink(code)])),
+    ).toEqual({
+      windows: section("#windows-preview"),
+      container: section("#container"),
+      "not-supported": section("#wsl1"),
+      "blocked-by-policy": section(""),
+      "virtualisation-off": section(""),
+      "wsl-missing": section(""),
+      "restart-needed": section(""),
+      "distro-missing": section(""),
+      "setup-conflict": section(""),
+      "setup-needed": section(""),
+      "user-namespaces-restricted": section("#user-namespaces"),
+      "bubblewrap-missing": section("#bubblewrap"),
+      "linux-tools-missing": section("#linux-tools"),
+      "ripgrep-missing": section(""),
+      "sign-in-needed": section(""),
+      other: section("#other"),
+    });
+    expect(sandboxDocsLink("seccomp-missing")).toBe(section("#other"));
   });
 
   it("gives the distro's name so it pastes into PowerShell, or <distro>", () => {

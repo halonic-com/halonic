@@ -192,7 +192,11 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
  * `windows-node-in-wsl` whatever the sandbox's own reason, as for a refused
  * `run`, because the fix is Node.js inside WSL (HAL-6552).
  */
-function sandboxCheck(line: SandboxLine, facts: DoctorFacts, node: NodeLine | undefined): CheckLines {
+function sandboxCheck(
+  line: SandboxLine,
+  facts: DoctorFacts,
+  node: NodeLine | undefined,
+): CheckLines {
   const label = doctorMessages.sandboxLabel();
   if (line.status === "ok") {
     return {

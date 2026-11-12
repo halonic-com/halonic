@@ -170,7 +170,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              What failed: bubblewrap can't start: bwrap: setting up uid map: Permission denied",
       "              Fix: see what the sandbox needs on this computer. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox (other)",
+      "              More: https://docs.halonic.dev/sandbox#other (other)",
     ]);
   });
 
@@ -184,7 +184,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              socat isn't installed, and the sandbox needs it.",
       "              Fix: install it, for example on Ubuntu or Debian with sudo apt install socat. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox (linux-tools-missing)",
+      "              More: https://docs.halonic.dev/sandbox#linux-tools (linux-tools-missing)",
     ]);
   });
 
@@ -381,7 +381,9 @@ describe("doctorReportLines", () => {
   it("links the sandbox page for a reason without its own section", () => {
     const windows: SandboxLine = { ...bubblewrapMissing, reason: "windows" };
     const lines = check(printed(reportOf({ sandbox: windows, disk: diskFree })), "Sandbox");
-    expect(lines.at(-1)).toBe("              More: https://docs.halonic.dev/sandbox (windows)");
+    expect(lines.at(-1)).toBe(
+      "              More: https://docs.halonic.dev/sandbox#windows-preview (windows)",
+    );
   });
 
   it("words the other harness problems and the low disk", () => {

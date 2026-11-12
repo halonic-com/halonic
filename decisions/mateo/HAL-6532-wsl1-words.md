@@ -25,9 +25,13 @@
   `Sandbox` port for this. A sentence that names neither, or says "socat or ripgrep" (an older
   check, or a run log), keeps the old "socat or ripgrep" words. A refused run's line 2 takes the
   same words, with Sofia's run sentences changed only in the tool names.
-- `not-supported`'s `More:` link is the sandbox page's `#wsl1` section (agreed on HAL-6524;
-  website #191 added it). The CLI words `not-supported` as WSL 1 everywhere, so the link follows
-  the code. The docs domain itself is HAL-6561's change, for every link at once.
+- `More:` links each code's section of the sandbox page, the anchors agreed on HAL-6524 and
+  added by website #191: `windows` to `#windows-preview`, `not-supported` to `#wsl1` (HAL-6538
+  item 13), `user-namespaces-restricted` to `#user-namespaces` (in place of `#apparmor`, which the
+  page keeps as an alias), `linux-tools-missing` to `#linux-tools` and `other` to `#other`, next to
+  `#bubblewrap` and `#container`. The CLI words `not-supported` as WSL 1 everywhere, so its link
+  follows the code. Codes without a section (and the CLI's own `windows-node-in-wsl`) still link
+  the page, on docs.halonic.dev as HAL-6561 set.
 
 ## Tests and requirements this edits
 
@@ -37,10 +41,12 @@
   quoting, the "What failed:" label, each missing-tools case and the `#wsl1` link. The
   `linux-tools-missing` row of the lists is unchanged: it is the words when the check doesn't
   say which tool.
-- `apps/cli/src/output/doctor-report.test.ts`: WSL 1's `More:` line now ends in `#wsl1`.
+- `apps/cli/src/output/doctor-report.test.ts`: the `More:` lines for WSL 1, `other`, `windows`
+  and `linux-tools-missing` gain their sections. The links test now maps every code to its link, in place of #1948's list, whose
+  `user-namespaces-restricted` entry moves from `#apparmor` to `#user-namespaces`.
 - `cli.sandbox-gate`: "the words shall come from the code alone" gains the exception that the
   WSL 1 fix names the distro and the missing-tools rule, with two new examples; the WSL 1
-  example's link gains `#wsl1`.
+  example's link gains `#wsl1`, and the rule lists the sections.
 - `cli.doctor-report`: gains the "What failed:" rule for `other`, the WSL 1 fix and link and
   the missing-tools rule, with two new examples. The example from cli-output 3.7 is unchanged.
 
