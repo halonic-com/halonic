@@ -1,4 +1,4 @@
-import type { ApprovalLookup } from "../guard/approvals.ts";
+import type { ApprovalLookup, ApprovalRequest } from "../guard/approvals.ts";
 import type { GuardCheck } from "../guard/finding.ts";
 import { checkRequirementGuard } from "../guard/guard.ts";
 import { loadContext } from "../lib/context.ts";
@@ -39,6 +39,8 @@ export interface GuardCase {
 export interface GuardOutcome {
   readonly errors: string[];
   readonly warnings: string[];
+  /** The approval requests the guard made. */
+  readonly requests: ApprovalRequest[];
 }
 
 /** Builds both checkouts, runs the guard and removes them again. */
@@ -60,13 +62,16 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
     ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
   });
   const testedRoot = guardCase.tested === undefined ? undefined : repo(guardCase.tested, {});
+  const requests: ApprovalRequest[] = [];
   const approvals: ApprovalLookup = {
-    check: () =>
-      Promise.resolve(
+    check: (request) => {
+      requests.push(request);
+      return Promise.resolve(
         guardCase.approved === false
           ? { approved: false, reason: "the approval is for another branch" }
           : { approved: true },
-      ),
+      );
+    },
   };
   try {
     const report = await checkRequirementGuard({
@@ -81,7 +86,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
       report.problems
         .filter((problem) => problem.severity === severity)
         .map((problem) => `${problem.file}: ${problem.message}`);
-    return { errors: lines("error"), warnings: lines("warning") };
+    return { errors: lines("error"), warnings: lines("warning"), requests };
   } finally {
     removeFixtureRepo(baseRoot);
     removeFixtureRepo(headRoot);

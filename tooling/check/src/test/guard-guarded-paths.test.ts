@@ -127,3 +127,39 @@ verifies("check.guard-extra-exports", () => {
     expect(onlyExtraExportsChanged(before, moved)).toBe(false);
   });
 });
+
+verifies("check.guard-two-guardians", () => {
+  const guardiansAsked = async (guardCase: Omit<GuardCase, "base" | "head" | "checks">) =>
+    (await runGuard({ base: {}, head: {}, checks, ...guardCase })).requests.map(
+      (request) => request.guardians,
+    );
+
+  test("asks for the guardians' signatures when a trust root changes, as the note check does", async () => {
+    const file = "tooling/check/approvers.json";
+    expect(
+      await guardiansAsked({
+        baseOutside: { [file]: "{}\n" },
+        headOutside: { [file]: '{ "guardians": [] }\n' },
+        note: noteCovering("tooling/check/"),
+      }),
+    ).toEqual([true]);
+  });
+
+  test("asks for one approver's signature for any other own path, and for extraExports", async () => {
+    const file = "tooling/check/src/cli/decision.ts";
+    expect(
+      await guardiansAsked({
+        baseOutside: { [file]: "export {};\n" },
+        headOutside: { [file]: "export const x = 1;\n" },
+        note: noteCovering("tooling/check/"),
+      }),
+    ).toEqual([false]);
+    expect(
+      await guardiansAsked({
+        baseOutside: { [policyFile]: policyWith() },
+        headOutside: { [policyFile]: policyWith(withExport) },
+        note: noteCovering(policyFile),
+      }),
+    ).toEqual([false]);
+  });
+});

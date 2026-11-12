@@ -60,7 +60,7 @@ verifies("check.guard-needs-approved-note", () => {
   test("passes without a note when nothing needs one", async () => {
     const findsNothing: GuardCheck = () => [];
     const outcome = await runGuard({ base: {}, head: {}, checks: [findsNothing] });
-    expect(outcome).toEqual({ errors: [], warnings: [] });
+    expect(outcome).toMatchObject({ errors: [], warnings: [] });
   });
 });
 

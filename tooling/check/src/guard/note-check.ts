@@ -96,7 +96,7 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     }
     return report;
   }
-  const reachesRoot = changed.some((each) => matches(trustRoots, each));
+  const reachesRoot = changed.some(isTrustRoot);
   const needUser = touched.filter((path) => !internalOwnPaths.includes(path) || reachesRoot);
   if (parsed.note.kind !== "user-visible" && needUser.length > 0) {
     report.error(
@@ -146,6 +146,11 @@ function touchedPaths(run: NoteCheckRun): {
   const changed = exportsOnly ? run.changed.filter((path) => path !== policyFile) : run.changed;
   const touched = ownPaths.filter((path) => changed.some((each) => matches([path], each)));
   return { touched, exports: exportsOnly ? [policyFile] : [], changed };
+}
+
+/** Whether `file` is one of the guard's trust roots, or under one. */
+export function isTrustRoot(file: string): boolean {
+  return matches(trustRoots, file);
 }
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */
