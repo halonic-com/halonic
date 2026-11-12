@@ -460,7 +460,7 @@ fn agent_host_commands_take_the_end_of_a_stream_that_isnt_open() {
 fn agent_host_commands_sweep_the_profile_and_the_opened_folders() {
     let profile = std::env::temp_dir().join("profile");
     let acme = std::env::temp_dir().join("acme");
-    assert_eq!(sweep_roots(&profile, &[]), [profile.clone()]);
+    assert_eq!(sweep_roots(&profile, &[]), std::slice::from_ref(&profile));
     assert_eq!(
         sweep_roots(&profile, std::slice::from_ref(&acme)),
         [profile, acme]
