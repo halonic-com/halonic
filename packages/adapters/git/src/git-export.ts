@@ -1,7 +1,7 @@
 import { lstat, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { GitRunner } from "./git-runner.ts";
+import type { GitResult, GitRunner } from "./git-runner.ts";
 
 // A clean export of one commit of a remote repository: its files and
 // nothing else. No `.git` folder is made in the destination, so nothing
@@ -11,6 +11,11 @@ import type { GitRunner } from "./git-runner.ts";
 export interface GitExport {
   /** The full id of the commit whose files are in the folder. */
   commit: string;
+  /**
+   * The remote's default branch, which was exported, when no ref was named
+   * and the remote says which branch its `HEAD` is; `undefined` otherwise.
+   */
+  branch: string | undefined;
 }
 
 /** The refs a caller may name: no option, no revision syntax, nothing git would read as a range or a path. */
@@ -65,8 +70,9 @@ function refused(reason: string): Error {
 /**
  * Puts the files of one commit of the repository at `address` into the
  * empty folder `destination`. `ref` is a branch, a tag or a full commit
- * id, and the remote's `HEAD` by default; either way, the commit is
- * resolved to its full id before anything is written. Only that commit is
+ * id, and the remote's `HEAD` by default, whose branch is then looked up
+ * first and fetched by name; either way, the commit is resolved to its
+ * full id before anything is written. Only that commit is
  * fetched (depth 1), submodules are not, and links stay links for the
  * reader that checks the files to refuse.
  *
@@ -99,6 +105,7 @@ export async function exportCommit(
       }),
       "set up",
     );
+    const branch = ref === "HEAD" ? await remoteHeadBranch(git, address) : undefined;
     await mustSucceed(
       await git(
         [
@@ -110,7 +117,7 @@ export async function exportCommit(
           "--upload-pack=git-upload-pack",
           "--",
           address,
-          ref,
+          branch ?? ref,
         ],
         true,
       ),
@@ -127,10 +134,25 @@ export async function exportCommit(
       "write the files",
     );
     await checkNoGitFolder(destination);
-    return { commit };
+    return { commit, branch };
   } finally {
     await rm(work, { recursive: true, force: true });
   }
+}
+
+/** A git call in the export's own folder, as `exportCommit` makes it. */
+type ExportGit = (args: readonly string[], network?: boolean) => Promise<GitResult>;
+
+/**
+ * The branch the remote's `HEAD` points at, such as `main`, or `undefined`
+ * when the remote doesn't say or names one a caller couldn't name itself.
+ */
+async function remoteHeadBranch(git: ExportGit, address: string): Promise<string | undefined> {
+  const listed = await git(["ls-remote", "--symref", "--", address, "HEAD"], true);
+  await mustSucceed(listed, "reach the repository");
+  const head = /^ref: refs\/heads\/(\S+)\tHEAD$/mu.exec(listed.stdout.toString("utf8"));
+  const branch = head?.[1];
+  return branch !== undefined && isPlainRef(branch) ? branch : undefined;
 }
 
 async function mustSucceed(

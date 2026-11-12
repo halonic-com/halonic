@@ -49,12 +49,13 @@ verifies("git.export", () => {
         "a/b.txt": "b\n",
       });
       const destination = join(await scratch.folder(), "out");
-      const { commit } = await exportCommit(
+      const { commit, branch } = await exportCommit(
         await remoteRunner(scratch),
         sshRemote(remote),
         destination,
       );
       expect(commit).toBe((await plainGit(remote, ["rev-parse", "HEAD"])).trim());
+      expect(branch).toBe((await plainGit(remote, ["branch", "--show-current"])).trim());
       expect(await readFile(join(destination, "a", "b.txt"), "utf8")).toBe("b\n");
       await expect(lstat(join(destination, ".git"))).rejects.toThrow();
     });
@@ -64,13 +65,14 @@ verifies("git.export", () => {
       const first = (await plainGit(remote, ["rev-parse", "HEAD"])).trim();
       await plainGit(remote, ["commit", "--quiet", "--allow-empty", "--message=Second"]);
       const destination = join(await scratch.folder(), "out");
-      const { commit } = await exportCommit(
+      const { commit, branch } = await exportCommit(
         await remoteRunner(scratch),
         sshRemote(remote),
         destination,
         first,
       );
       expect(commit).toBe(first);
+      expect(branch).toBeUndefined();
     });
 
     it.each(["--upload-pack=x", "-x", "main..other", "a b", "HEAD~1", ":/x"])(
