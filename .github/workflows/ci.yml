@@ -1166,6 +1166,13 @@ jobs:
           $elsewhere = Join-Path $env:RUNNER_TEMP 'elsewhere'
           New-Item -ItemType Directory -Force (Join-Path $elsewhere 'inside') | Out-Null
           Set-Content (Join-Path $elsewhere 'inside\kept.txt') 'kept'
+          # Windows updates a folder's write time a moment after a file in
+          # it is created, so the snapshot could catch the old one. Pinned
+          # to a fixed date, any write by the elevated steps still shows.
+          $pinned = [datetime]::new(2000, 1, 1, 0, 0, 0, 'Utc')
+          @(Get-ChildItem -Force -Recurse $elsewhere) + @(Get-Item -Force $elsewhere) | ForEach-Object {
+            $_.LastWriteTimeUtc = $pinned
+          }
           function Get-Folder([string]$path) {
             @(Get-Item -Force $path) + @(Get-ChildItem -Force -Recurse $path) | ForEach-Object {
               "$($_.FullName) $($_.Length) $($_.LastWriteTimeUtc.Ticks) $((Get-Acl -LiteralPath $_.FullName).Sddl)"
