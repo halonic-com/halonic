@@ -15,7 +15,7 @@ export type HelperVerb = "setup" | "remove";
 /** Windows' code for "the user said no to the administrator prompt", from the helper or from starting it. */
 export const HELPER_CANCELLED = 10;
 
-/** Starting the helper itself failed: Windows didn't run it. The helper's own codes stop at 36. */
+/** Starting the helper itself failed: Windows didn't run it. The helper's own codes are 30 to 36, 39 and 40. */
 export const HELPER_DIDNT_START = 37;
 
 /** Halonic's own program runs, and the helper isn't next to it. */
@@ -106,6 +106,8 @@ const reasons: Readonly<Record<number, string>> = {
   35: "Windows couldn't add the sandbox to Installed apps",
   36: "the sandbox program couldn't start",
   38: "Halonic's sandbox helper is missing. Reinstall Halonic",
+  39: "Halonic's copy of the Visual C++ runtime for the sandbox is missing. Reinstall Halonic",
+  40: "Halonic's copy of the Visual C++ runtime for the sandbox has been changed, so it wasn't used. Reinstall Halonic",
 };
 
 /** The helper didn't do it: the reason sentence, and the helper's code to show after it in small text. */

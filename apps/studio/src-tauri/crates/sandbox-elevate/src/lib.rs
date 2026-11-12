@@ -104,10 +104,10 @@ pub mod code {
     /// libraries it loads to System32, so it didn't start srt-win.
     pub const SRT_WIN_DIDNT_START: i32 = 36;
     /// No `vcruntime140.dll.pinned` next to the helper.
-    pub const NO_RUNTIME: i32 = 37;
+    pub const NO_RUNTIME: i32 = 39;
     /// The shipped [`RUNTIME`]'s SHA-256 isn't the one built in. The copy is
     /// deleted.
-    pub const WRONG_RUNTIME: i32 = 38;
+    pub const WRONG_RUNTIME: i32 = 40;
 }
 
 /// What the helper was asked to do.
