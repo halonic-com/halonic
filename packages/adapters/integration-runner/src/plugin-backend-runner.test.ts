@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -113,6 +114,10 @@ afterAll(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
+function sha256(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
 function pluginFrom(text: string): Plugin {
   const parsed = parseFile("plugin", text);
   if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
@@ -126,7 +131,8 @@ async function loadHostile() {
   await mkdir(join(pluginFolder, "backend"), { recursive: true });
   await mkdir(tempFolder);
   await writeFile(join(pluginFolder, "plugin.yaml"), manifest);
-  await writeFile(join(pluginFolder, "backend", "index.mjs"), backendSource(localUrl));
+  const backend = backendSource(localUrl);
+  await writeFile(join(pluginFolder, "backend", "index.mjs"), backend);
   const sent: Request[] = [];
   const transport: HttpClient = {
     fetch: async (input, init) => {
@@ -137,6 +143,10 @@ async function loadHostile() {
   };
   const loaded = await loadPluginBackend({
     plugin: pluginFrom(manifest),
+    files: [
+      { path: "plugin.yaml", sha256: sha256(manifest) },
+      { path: "backend/index.mjs", sha256: sha256(backend) },
+    ],
     folder: pluginFolder,
     choices: { settings: {}, secretNames: { "shop-key": "plugin__hostile__shop-key" } },
     transport: transport as AddressCheckingHttpClient,
