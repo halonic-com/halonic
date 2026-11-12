@@ -6,6 +6,7 @@ import {
   decisionNoteFile,
   parseDecisionNote,
 } from "./decision-notes.ts";
+import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependencies.ts";
 import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
@@ -87,6 +88,7 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     );
   }
   const { touched, exports, changed } = touchedPaths(run);
+  const dependencies = guardDependencyFilesChanged(run);
   const text = run.git.readFile(run.pull.head, file);
   const rewritten = rewrittenNotes(run);
   if (text === undefined) {
@@ -103,6 +105,12 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
       report.error(
         path,
         `Changes extraExports in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
+      );
+    }
+    for (const path of dependencies) {
+      report.error(
+        path,
+        `Changes the entries for the npm package the guard runs in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
       );
     }
     return report;
@@ -134,6 +142,12 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     report.error(
       file,
       `Changes extraExports in ${path}, but the note doesn't list "${path}" under Covers.`,
+    );
+  }
+  for (const path of dependencies.filter(unlisted)) {
+    report.error(
+      file,
+      `Changes the entries for the npm package the guard runs in ${path}, but the note doesn't list "${path}" under Covers.`,
     );
   }
   const verdict = await signedApprovals(run.pull, run.git).check({
@@ -265,6 +279,22 @@ export function reachesTrustRoot(
 /** Whether `file` is a trust root, or under one that ends in `/`. */
 export function isTrustRoot(file: string): boolean {
   return matches(trustRoots, file);
+}
+
+/**
+ * The files whose lines for the npm package the guard runs changed, which
+ * need a note of either kind (HAL-7719), compared at the merge base.
+ */
+function guardDependencyFilesChanged(run: NoteCheckRun): string[] {
+  return guardDependencyFiles.filter(
+    (file) =>
+      run.changed.includes(file) &&
+      guardDependencyChanged(
+        file,
+        run.git.readFile(run.mergeBase, file),
+        run.git.readFile(run.pull.head, file),
+      ),
+  );
 }
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */
