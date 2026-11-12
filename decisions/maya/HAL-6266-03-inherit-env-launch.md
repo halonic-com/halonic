@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-6266 (Liam's review of halonic#1971 and halonic#1976; design on HAL-6266)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CaQTakbROee1m7o9/Jzier9HDgnpPRuh1+IQo5m4iG7L8rEutuROlxh3qloW1doCtyxgaLSPtH2P3j+l2OSADQ==
 
 halonic#1971 gave a local connector program only a base of the app's environment, and halonic#1976
 let a connector name more variables in `inheritEnv`. This makes the launchers read that list, and
