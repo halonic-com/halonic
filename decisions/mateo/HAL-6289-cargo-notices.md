@@ -1,7 +1,7 @@
 # Decision: CI builds the Rust crates' licence notices in the Tauri job
 
 - Task: HAL-6289 (follow-up of HAL-6225)
-- Approval: Liam asked for this check when he approved the plan in [HAL-6293](/HAL/issues/HAL-6293); the maintainer (Liam) approves this note in review
+- Approval: Liam asked for this check when he approved the plan in HAL-6293; the maintainer (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VjX13o4On8iei8h78gXML/2ExE8JJ1lCt00iqgIg+SdDYCLaZ7abgU2ezUkdduLCbot8qMcc5RRSOenjwvvyDw==
 

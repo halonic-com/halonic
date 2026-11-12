@@ -1,6 +1,6 @@
 # Decision: the Inbox page opens the item Home's Needs you asked for
 
-- Approval: Home's Needs you is part of [HAL-1218](/HAL/issues/HAL-1218); the package owner (Liam) approves this note in review
+- Approval: Home's Needs you is part of HAL-1218; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sb0oyiPLREUQMhbsevCfPAk2UGMVSzxqOqE97XCLJSfIqskmYHNFoV5F19L1UMi1W7tA9b0Zcks9hw2MjBsFCQ==
 - Task: HAL-1218

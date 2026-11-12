@@ -1,6 +1,6 @@
 # Decision: a footerless Dialog closes on the overlay after typing, and settings sections have a scope
 
-- Approval: [HAL-6148](/HAL/issues/HAL-6148), Liam's review of halonic#1914 as package owner; the plan was approved in [HAL-5899](/HAL/issues/HAL-5899)
+- Approval: HAL-6148, Liam's review of halonic#1914 as package owner; the plan was approved in HAL-5899
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BP8FHxcq8/qvuaOupLFVpMcFkx7GXki4RCHUwmY7brWR5YhJRIGHQKCaeW8cfCflUK62BKnZPN3y5cMsSRFlBg==
 - Task: HAL-1294

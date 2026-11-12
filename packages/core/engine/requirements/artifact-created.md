@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-4247](/HAL/issues/HAL-4247), from the HAL-4215 plan review (HAL-4224, point 3); the old engine's run log in `packages/testing/parity/fixtures/base/run-logs.json`
+- Source: HAL-4247, from the HAL-4215 plan review (HAL-4224, point 3); the old engine's run log in `packages/testing/parity/fixtures/base/run-logs.json`
 
 When the agent of a plain `task` state with `artifact` finishes, the engine shall save the answer as a file: the text of a string answer as it is, and any other answer as JSON indented by two spaces. It shall keep the file's UTF-8 bytes in the blob store before it appends any of the step's events, and shall then log `artifact.created` with the state, the artifact's `name`, and the blob's `hash`, `mediaType` and `size`, right after the answer's `agent.finished` and `context.updated` and before the state's transition. When the blob can't be stored, the engine shall append none of the step's events. When the artifact's `mediaType` isn't `type/subtype` made of HTTP token characters, the engine shall fail the run with an error that names the state, the file and the media type, and save nothing. A state without `artifact` shall save nothing.
 

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: plan v1.17 (`halonic run --harness`); 6b of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), amended by Liam on HAL-3789; the order of items 3 and 6 from HAL-6580
+- Source: plan v1.17 (`halonic run --harness`); 6b of the HAL-189 implementation plan, amended by Liam on HAL-3789; the order of items 3 and 6 from HAL-6580
 
 When `halonic run <workflow>` is given `--harness <harness>`, the command shall run every agent of the run, and of the runs it starts, in that harness instead of the one its file names, and the run's `run.started` shall record it. Before the run starts, it shall refuse, with nothing run and nothing written to the run log:
 

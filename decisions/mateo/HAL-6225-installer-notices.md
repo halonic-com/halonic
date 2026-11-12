@@ -1,7 +1,7 @@
 # Decision: the Windows installer CI job checks the licence files it installs, and check:sbom runs on Windows
 
 - Task: HAL-6225 (part 2 of HAL-6177)
-- Approval: Elena asked for this check on [HAL-6225](/HAL/issues/HAL-6225); the maintainer (Liam) approves this note in review
+- Approval: Elena asked for this check on HAL-6225; the maintainer (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DTYqVxXTd5kIeJZTX6TVocfRolgWKYZcPxARscQt/2icuOccndGZAOMRtCQmentiuglC06PrUVmlRoZdEmdMDA==
 

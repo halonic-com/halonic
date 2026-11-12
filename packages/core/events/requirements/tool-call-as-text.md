@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [plan-providers](/HAL/issues/HAL-1061#document-plan-providers) for the chat turn's model fallback, approved with changes on HAL-1880; task HAL-1880
+- Source: plan-providers (HAL-1061) for the chat turn's model fallback, approved with changes on HAL-1880; task HAL-1880
 
 The events package shall let an `llm.response` event mark, in an optional `toolCallAsText: true`, an answer that made no tool call but whose text is a call to a tool the step offered, written out as JSON. The mark only records it; that call never runs. The field is absent on every other answer, never `false`. Logs written before the field existed read as before; a missing mark means the answer wasn't marked.
 

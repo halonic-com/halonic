@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1532, step 4(c) of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan), "Idempotency keys and unknown outcome"
+- Source: HAL-1532, step 4(c) of the HAL-186 implementation plan, "Idempotency keys and unknown outcome"
 
 When a connector call that can change things breaks off without an answer, the engine shall record `tool.result` with `outcome: "unknown"` and `run.waiting` for `retry` and `skip`, and shall not make the call again on its own. When a person sends `retry`, the engine shall record `event.received`, then `effect.requested`, `connector.started` and `tool.called` again under the **same** call id and idempotency key, and shall ask for the call again with that key. When a person sends `skip`, the engine shall record `event.received` and shall ask for a new model call that goes on from where the agent stopped, with a result that says the call's outcome is unknown.
 

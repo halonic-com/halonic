@@ -1,7 +1,7 @@
 # Decision: the doctor Windows drive example links to docs.halonic.dev
 
 - Task: HAL-6870
-- Approval: Liam approves this note in review on [HAL-6870](/HAL/issues/HAL-6870)
+- Approval: Liam approves this note in review on HAL-6870
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PGfop5V8buwupL2RdC47CWlFB9bG+44hZKTkdsqUup92oXUXH3MGXQuAU+LkCsEBH78v0NUdbDcsWyV1flHkCA==
 

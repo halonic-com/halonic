@@ -1,6 +1,6 @@
 # Decision: the kit's List can show a current row
 
-- Approval: Liam asked for the Inbox page on [HAL-1218](/HAL/issues/HAL-1218); the package owner (Liam) approves this note in review
+- Approval: Liam asked for the Inbox page on HAL-1218; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Mxy3VAeSvAk6bjNnvY+L24kxKI/9W30JM/KR2Gb17JUmQlAwAn2HcE1Ehlq0pk6SpbEfLH6gX3rl/QXFx2JsCw==
 - Task: HAL-1218

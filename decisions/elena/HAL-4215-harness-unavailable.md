@@ -1,6 +1,6 @@
 # Decision: a run whose harness step can't start fails with `harness-unavailable`
 
-- Approval: Liam's review of the test runner plan on [HAL-4224](/HAL/issues/HAL-4224) ("If the
+- Approval: Liam's review of the test runner plan on HAL-4224 ("If the
   engine has no typed signal for it, add one"); the maintainer approves this note in review
 - Kind: internal
 - Task: HAL-4215

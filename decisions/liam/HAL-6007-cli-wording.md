@@ -1,6 +1,6 @@
 # Decision: CLI wording from the 0.1.0 output read
 
-- Approval: Liam decided this on [HAL-6007](/HAL/issues/HAL-6007) (Sofia's CLI output read, HAL-5959), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); Priya reviewed it on HAL-6047; the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-6007 (Sofia's CLI output read, HAL-5959), small wording on approved CLI output, a team decision with no board card (HAL-2282 rule); Priya reviewed it on HAL-6047; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yT6iZiJdb12kridBcbRSRKlYWYPzudu+V6915MPnYlBopAt3Vq9f7S9qQDY99QW/nYaEMoCaUwXviEK89BJ2CQ==
 - Task: HAL-6007

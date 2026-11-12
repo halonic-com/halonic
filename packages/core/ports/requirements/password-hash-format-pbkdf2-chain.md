@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-136](/HAL/issues/HAL-136#document-decision) (Julian, 8 Nov): cloud targets hash the sign-in password with chained PBKDF2-SHA256 from WebCrypto, because a Worker can't run scrypt at safe settings; added to the port on [HAL-6789](/HAL/issues/HAL-6789) (Liam, 12 Nov)
+- Source: HAL-136 (Julian, 8 Nov): cloud targets hash the sign-in password with chained PBKDF2-SHA256 from WebCrypto, because a Worker can't run scrypt at safe settings; added to the port on HAL-6789 (Liam, 12 Nov)
 
 The chained PBKDF2 `PasswordHasher` adapters shall all produce and accept hashes in the form `$pbkdf2-sha256-chain$i=<rounds>,n=<runs>$<salt>$<hash>`, with exactly a 16-byte salt and a 32-byte hash in standard base64 without padding. The hash shall be computed as K0 = the NFC-normalised password as UTF-8, then Kj = PBKDF2-HMAC-SHA256(password Kj−1, the salt, i rounds, 32 bytes) for j = 1 to n, and the stored hash is Kn. New hashes shall use i=100000, n=6, and `needsRehash` shall return `true` for any other n. If a hash is malformed (another salt or hash length, `=` padding, the settings in another order or with leading zeros), in another format, or uses settings other than i exactly 100000 and n 6 to 20, then `verify` and `needsRehash` shall throw a `RangeError`, before any PBKDF2 work starts. `verify` shall compare the hash in constant time.
 

@@ -1,6 +1,6 @@
 # Decision: a new workspace starts local only
 
-- Approval: the accepted ADR `docs/adr/2026-11-08-local-first.md` ("A new workspace starts with `privacy.localOnly: true`") and Liam's decision on [HAL-5921](/HAL/issues/HAL-5921) that the code follows it; Liam approves this note in review on [HAL-5922](/HAL/issues/HAL-5922)
+- Approval: the accepted ADR `docs/adr/2026-11-08-local-first.md` ("A new workspace starts with `privacy.localOnly: true`") and Liam's decision on HAL-5921 that the code follows it; Liam approves this note in review on HAL-5922
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s3EIPrDGOJWmihoQXJ8Pa9Ikbj7W/ZNPNE9DbPwwwZ9etdhHlBtBEHq2n+Sp/7lDUwxEh366bftF0H5Yh+PzBA==
 - Task: HAL-5922

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-3375](/HAL/issues/HAL-3375) (Elena's decision); task HAL-3379
+- Source: HAL-3375 (Elena's decision); task HAL-3379
 
 The events package shall let a `run.failed` event give the reason `answer-not-an-option` when the agent's output is a `choice` and its answer was not one of the options.
 

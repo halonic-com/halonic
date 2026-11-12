@@ -1,6 +1,6 @@
 # Decision: a `sandbox.blocked` run log event
 
-- Approval: stack 1b of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved by Liam on [HAL-1967](/HAL/issues/HAL-1967); the package owner (Liam) approves this note in review
+- Approval: stack 1b of the HAL-189 implementation plan, approved by Liam on HAL-1967; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-189
 

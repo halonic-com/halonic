@@ -1,6 +1,6 @@
 # Decision: a run fails when a choice answer isn't one of the options
 
-- Approval: Elena's decision on [HAL-3375](/HAL/issues/HAL-3375), a team decision with no board
+- Approval: Elena's decision on HAL-3375, a team decision with no board
   approval needed; the maintainer approves this note in review
 - Kind: user-visible
 - Task: HAL-3379

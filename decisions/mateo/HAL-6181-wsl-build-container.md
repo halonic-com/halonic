@@ -1,7 +1,7 @@
 # Decision: build the WSL image in a Dockerfile that Dependabot keeps fresh
 
 - Task: HAL-6181 (follow-up from Julian's security review of #1894, HAL-5845 and HAL-6098)
-- Approval: the task asks for this change; Liam approves this note in review on [HAL-6181](/HAL/issues/HAL-6181)
+- Approval: the task asks for this change; Liam approves this note in review on HAL-6181
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HnXZiudItBybR1pJheHxsDTxZhS9k1tX7UoyZ0pAyxSIKn2UhRxd9uoo1JSICckmfvMO2PDdnBamJ96sM/r7BA==
 

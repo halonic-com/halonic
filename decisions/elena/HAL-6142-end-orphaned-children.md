@@ -1,6 +1,6 @@
 # Decision: on start, the engine cancels a waiting child run whose parent has ended
 
-- Approval: Liam (CTO, core owner) signs off in review on [HAL-6142](/HAL/issues/HAL-6142), the follow-up he asked for in his review of #1908 ([HAL-6133](/HAL/issues/HAL-6133))
+- Approval: Liam (CTO, core owner) signs off in review on HAL-6142, the follow-up he asked for in his review of #1908 (HAL-6133)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TzCySc/LF+Co+pWVuPFL27fcZzykL9W4TjMf531gpFNNElnFGBCs+KVK2y79dJdXwjru3Ji+3aCUdxBnF+G6AA==
 

@@ -1,7 +1,7 @@
 # Decision: CI installs its apt packages through one retrying, cached action
 
 - Task: HAL-5765 (CI on `main` went red twice on 11 Nov because the runner couldn't resolve the Ubuntu mirror)
-- Approval: the task asks for this change; Mateo reviewed it on [HAL-5984](/HAL/issues/HAL-5984), Liam signs this note as the CTO
+- Approval: the task asks for this change; Mateo reviewed it on HAL-5984, Liam signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oaB/CVv7imy2SIkZ3JbVAOz5tTR2r3ZWkPZrHrtAJG/fKfEXV5rOxl9eAdI2F/kjXSsIR6+zY/QUMK1+jHr8Cw==
 

@@ -2,7 +2,7 @@
 
 - Requirements: `system-node.resource-probe`, `contracts.resource-probe`
 - Task: HAL-3230, follows HAL-3084 (`HAL-3084-probe-test-timeout.md`)
-- Approval: the maintainer asked for this change on [HAL-3230](/HAL/issues/HAL-3230); Julian reviews it as the owner of the contract suite
+- Approval: the maintainer asked for this change on HAL-3230; Julian reviews it as the owner of the contract suite
 - Kind: internal
 
 ## What changes
