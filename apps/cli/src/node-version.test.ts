@@ -26,7 +26,7 @@ verifies("cli.node-version", () => {
 
     expect(run.stderr).toBe(
       "✕ Halonic needs Node.js 26.12 or later, but this is Node.js 18.19.1. " +
-        "Install a newer one with nvm or fnm, for example: nvm install 26\n",
+        "Install a newer one, for example with nvm install 26.\n",
     );
     expect(run.stdout).toBe("");
     expect(run.status).toBe(1);

@@ -17,7 +17,7 @@ const minor = parts[1];
 if (major < needed[0] || (major === needed[0] && minor < needed[1])) {
   process.stderr.write(
     `✕ Halonic needs Node.js 26.12 or later, but this is Node.js ${found}. ` +
-      "Install a newer one with nvm or fnm, for example: nvm install 26\n",
+      "Install a newer one, for example with nvm install 26.\n",
   );
   process.exitCode = 1;
 } else {
