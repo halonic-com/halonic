@@ -241,4 +241,19 @@ verifies("app.plugin-add", () => {
     );
     expect(await service.install("weather")).toBeNull();
   });
+
+  it("takes a new copy out again when it can't be read back, and refuses it", async () => {
+    const { folder, service } = setup();
+    const place = folder.place.bind(folder);
+    folder.place = async (id, files, options) => {
+      const placed = await place(id, files, options);
+      // Something else writes in the plugins folder before it is read back.
+      folder.reader.putFiles({ [`${id}/plugin.yaml`]: "id: [" });
+      return placed;
+    };
+    const result = await service.add(weatherSource(), { from, replace: false });
+    expect(brokenCodes(result)).not.toEqual([]);
+    expect(await pathsIn(folder)).toEqual([]);
+    expect(await service.install("weather")).toBeNull();
+  });
 });

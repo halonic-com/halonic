@@ -171,7 +171,8 @@ export class PluginService {
    * read once and checked as `load` checks a plugin folder, and exactly the
    * bytes that were hashed are placed, so a source that changes meanwhile
    * can't slip in a file that wasn't checked. A plugin that can't be read
-   * or checked is refused before anything is written.
+   * or checked is refused before anything is written. A new copy that
+   * can't be read back is taken out again and refused the same way.
    *
    * It doesn't trust the plugin: the entry it gives is new, or changed when
    * it replaced one, until a person trusts it with {@link trust}.
@@ -210,7 +211,17 @@ export class PluginService {
       files,
       secretNames: { ...replacedSecretNames, ...pluginSecretNames(plugin) },
     });
-    return ok(await this.#loadOne({ path: plugin.id, kind: "folder" }));
+    const entry = await this.#loadOne({ path: plugin.id, kind: "folder" });
+    if (entry.status === "broken" && !options.replace) {
+      // The copy read back isn't what was checked, such as when something
+      // else wrote in the plugins folder meanwhile. Take it out again, so a
+      // refused add leaves nothing behind, as one refused before writing.
+      // A replaced version is gone already, so that copy is kept and shown.
+      await this.#installs.forget(plugin.id);
+      await this.#options.writer.remove(plugin.id);
+      return err({ kind: "broken", problems: entry.problems });
+    }
+    return ok(entry);
   }
 
   /**

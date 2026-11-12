@@ -83,6 +83,7 @@ export async function addPlugin(
   }
   if (!added.ok) throw refused(added.error);
   const entry = added.value;
+  // Only a replace keeps a copy that can't be read back; `add` never replaces.
   if (entry.status === "broken") {
     throw refusal("invalid_input", firstProblem(entry.problems));
   }
