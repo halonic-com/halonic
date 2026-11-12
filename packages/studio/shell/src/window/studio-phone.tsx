@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { ShellPhoneSearchProps } from "../palette/shell-phone-search.tsx";
 import { MorePage, type MorePageSwitcher } from "../phone/more-page.tsx";
@@ -12,7 +13,7 @@ import {
 import type { PhonePlaces } from "../phone/use-phone-places.ts";
 import type { ShownPlace } from "../points/frame.ts";
 import { SectionView } from "../settings/settings-dialog.tsx";
-import type { SettingsPlace } from "../settings/settings-groups.ts";
+import { listedSections, type SettingsPlace, settingsGroups } from "../settings/settings-groups.ts";
 import { StudioPage, type StudioPageProps } from "./studio-page.tsx";
 
 /** Props for {@link StudioPhoneTopBar}. */
@@ -52,6 +53,8 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly onSettings?: (() => void) | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
   readonly settingsPlace: SettingsPlace;
+  /** Where the Settings list's scroll position is kept while a section's page is open. */
+  readonly settingsScroll: RefObject<number>;
   /** The open workspace's name, which heads its group in Settings' list. */
   readonly workspaceName: string | undefined;
 }
@@ -82,6 +85,7 @@ function PhonePageBody({
   switcher,
   onSettings,
   settingsPlace,
+  settingsScroll,
   workspaceName,
   ...page
 }: StudioPhonePageProps) {
@@ -103,13 +107,23 @@ function PhonePageBody({
         sections={contributions.settings.list()}
         workspaceName={workspaceName}
         place={settingsPlace}
+        contextFor={page.contextFor}
+        scroll={settingsScroll}
         onOpen={(opened) => places.open(sectionLocation(opened))}
       />
     );
   }
   const sectionId = sectionIdOfLocationKey(location.key);
   if (sectionId !== undefined) {
-    const section = contributions.settings.list().find((candidate) => candidate.id === sectionId);
+    // The same sections the list shows, so a link to one it leaves out opens nothing.
+    const section = listedSections(
+      settingsGroups({
+        sections: contributions.settings.list(),
+        workspaceName,
+        place: settingsPlace,
+        phone: true,
+      }),
+    ).find((candidate) => candidate.id === sectionId);
     return section === undefined ? null : (
       // The dialog pads a section; on the phone this wrapper does, so no section pads itself.
       <div data-testid="settings-section-page" className="px-4 pb-6">
