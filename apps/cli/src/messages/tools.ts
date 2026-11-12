@@ -1,6 +1,6 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { phrase } from "./phrase.ts";
+import { bold, dim, phrase } from "./phrase.ts";
 
 /**
  * The sentences of `halonic tools review | approve | revoke` (cli-output
@@ -42,6 +42,37 @@ export const toolsMessages = defineMessages("tools", {
   fingerprintWithAll: () => phrase`--fingerprint goes with one tool, not with --all.`,
   oneAtATime: () =>
     phrase`Approve them one at a time: halonic tools approve <source> <tool> --fingerprint <fingerprint>`,
+
+  // A tool's block, as `review` shows it.
+  changed: () => phrase`Changed`,
+  notApproved: () => phrase`Not approved`,
+  keepsChanging: () => phrase`Keeps changing`,
+  arguments: () => phrase`Arguments`,
+  asksBeforeEachUse: () => phrase`Asks you before each use.`,
+  /** Instead of {@link asksBeforeEachUse}, when the connector doesn't ask before calling the tool. */
+  doesntAsk: (workspace: string) =>
+    phrase`Doesn't ask before each use: ${workspace} lowered its risk.`,
+  leftOutArguments: (reason: string) => phrase`Halonic left out part of its arguments: ${reason}.`,
+  /** A Changed tool whose text is the same (N1). */
+  connectsDifferently: (source: string) =>
+    phrase`Its text hasn't changed, but ${source} connects differently than when you approved it: another address, version or settings.`,
+
+  // What changed, in Studio's plain labels.
+  changedName: () => phrase`Name`,
+  changedDescription: () => phrase`Description`,
+  changedArgument: (argument: string, what: string) => phrase`Argument ${bold(argument)}: ${what}`,
+  changedRequired: () => phrase`Required arguments`,
+  changedOther: (path: string) => phrase`Arguments: ${dim(path)}`,
+  before: () => phrase`before`,
+  now: () => phrase`now`,
+  /** A text that wasn't there before. */
+  none: () => phrase`(none)`,
+  /** A text that's gone now. */
+  removed: () => phrase`(removed)`,
+  hiddenLookalike: () =>
+    phrase`Looks the same, but a letter was swapped for one from another alphabet.`,
+  hiddenNormalization: () => phrase`Looks the same, but its characters are written another way.`,
+  hiddenWhitespace: () => phrase`Only spaces or line breaks changed.`,
 
   // `approve`.
   approvedOne: (tool: string, source: string) =>
