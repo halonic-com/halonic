@@ -3,6 +3,7 @@
 - Task: HAL-6316, step 5: the agent host serves each run's bridge on a Unix socket on Linux and macOS
 - Approval: the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0i1Re1lO1Tl8UIf2zsdzgbjgLKys7N94hKFx5Nd8dUUoKAs/vC2Yv2eQACPYfgnzx9TlAhjpyXZ/Ob3DuNwYDQ==
 
 ## What changes
 
