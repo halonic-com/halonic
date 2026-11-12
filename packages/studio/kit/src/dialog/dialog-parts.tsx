@@ -98,6 +98,19 @@ export function DialogFooter({
       {props.cancelLabel ?? "Cancel"}
     </Button>
   );
+  const { alternative } = props;
+  const alternativeButton =
+    alternative === undefined ? null : (
+      <Button
+        variant="ghost"
+        size={size}
+        block={phone}
+        unavailable={busy ? { reason: confirmId } : undefined}
+        onClick={alternative.onClick}
+      >
+        {alternative.label}
+      </Button>
+    );
   return (
     <footer
       className={
@@ -105,6 +118,7 @@ export function DialogFooter({
       }
     >
       {phone ? confirmButton : cancelButtonElement}
+      {alternativeButton}
       {phone ? cancelButtonElement : confirmButton}
     </footer>
   );

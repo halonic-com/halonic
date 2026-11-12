@@ -19,6 +19,14 @@ export interface DialogConfirm {
   readonly unavailable?: ButtonUnavailable;
 }
 
+/** A second way to go on besides the confirming button, such as "Close anyway". */
+export interface DialogAlternative {
+  /** Names the action: "Close anyway". */
+  readonly label: string;
+  /** Runs on the button. Unavailable while the Dialog is `busy`, as Cancel is. */
+  readonly onClick: () => void;
+}
+
 /** What every Dialog takes, with a footer or without one. */
 interface DialogCommonProps {
   /** "Delete agent?", "New agent". The dialog's name. */
@@ -54,6 +62,11 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
    */
   readonly form?: boolean;
   readonly confirm: DialogConfirm;
+  /**
+   * A ghost button between Cancel and the confirming button, for a decision with three ways out:
+   * "Cancel" · "Close anyway" · "Try again". On a phone it sits between them too.
+   */
+  readonly alternative?: DialogAlternative;
   /** Runs on the confirming button or a submit. The screen checks its fields first (23 A1). */
   readonly onConfirm: () => void;
   /** "Cancel", or what cancelling does: "Not now". */
