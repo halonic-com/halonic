@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6180, HAL-1202
+- Source: HAL-6180, HAL-1202, HAL-1451, HAL-7385, HAL-7544
 
-The sandbox-srt adapter shall remove what its setup left on the machine, for the uninstaller: on Windows, run srt's uninstall, and say it is done, or else why not in one line (the administrator prompt cancelled, or the uninstall's own words). It shall be done when nothing was set up, and when run again. On other systems it shall remove nothing and say it is done, since there is nothing to remove.
+The sandbox-srt adapter shall remove what its setup left on the machine, for the uninstaller and Studio: on Windows, run srt's uninstall (through Halonic's signed helper when it is next to the program that runs; in Halonic's own program without the helper, fail with a reason and code 38 rather than let srt ask for administrator rights itself; after the helper's machine-wide step, take back the grants srt kept for this user, in its own process and only when that process doesn't run with administrator rights), and say it is done, or else how it ended (`cancelled` or `failed`) and why in one line (the administrator prompt cancelled, the helper's reason sentence with its code, or the uninstall's own words). It shall be done when nothing was set up, and when run again. On other systems it shall remove nothing and say it is done, since there is nothing to remove.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The sandbox-srt adapter shall remove what its setup left on the machine, for the
 - Given Linux,
   when the sandbox is removed,
   then nothing is uninstalled and it is done.
+- Given Windows with the sandbox set up through the helper,
+  when the sandbox is removed by a program without administrator rights,
+  then the helper runs only srt's machine-wide step, and the program itself takes back the profile read grant and the kept write grants.

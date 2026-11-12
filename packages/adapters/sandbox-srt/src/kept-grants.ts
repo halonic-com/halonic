@@ -151,6 +151,39 @@ export class KeptGrants {
   }
 
   /**
+   * Takes back every grant srt kept for this user, for a removal of the
+   * sandbox: the profile read grant (`srt-win profile forget`) and the kept
+   * write grants (`srt-win acl forget --all`). This is the half of srt's
+   * uninstall that is the user's own, so it runs in this process, never with
+   * the helper's administrator rights. Both refuse while a sandboxed program
+   * runs. Never rejects.
+   *
+   * @returns why each one that failed did, empty when everything is forgotten
+   */
+  async forgetAll(): Promise<string[]> {
+    try {
+      this.assertSupported();
+    } catch (error) {
+      return [oneLine(error instanceof Error ? error.message : String(error))];
+    }
+    const failed: string[] = [];
+    for (const [what, args] of [
+      ["the profile read grant", ["profile", "forget"]],
+      ["the kept write grants", ["acl", "forget", "--all"]],
+    ] as const) {
+      try {
+        const run = await this.#run([...args]);
+        if (run.status === 0) continue;
+        const why = oneLine(run.stderr || run.stdout);
+        failed.push(`${what}: exit ${run.status}${why === "" ? "" : `: ${why}`}`);
+      } catch (error) {
+        failed.push(`${what}: ${oneLine(error instanceof Error ? error.message : String(error))}`);
+      }
+    }
+    return failed;
+  }
+
+  /**
    * Forgets the kept grants of this user inside any of `roots` that no live
    * session of this host holds: those of sessions that crashed before they
    * closed. A live session of another host process inside a root would lose
