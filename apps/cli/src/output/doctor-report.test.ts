@@ -170,7 +170,21 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              What failed: bubblewrap can't start: bwrap: setting up uid map: Permission denied",
       "              Fix: see what the sandbox needs on this computer. Then run halonic doctor again.",
-      "              More: https://docs.halonic.com/sandbox (other)",
+      "              More: https://docs.halonic.dev/sandbox (other)",
+    ]);
+  });
+
+  it("names only the Linux tool the check found missing", () => {
+    const socat: SandboxLine = {
+      ...bubblewrapMissing,
+      reason: "linux-tools-missing",
+      missing: ["socat is not installed"],
+    };
+    expect(check(printed(reportOf({ sandbox: socat, disk: diskFree })), "Sandbox")).toEqual([
+      "✕ Sandbox     can't start on this computer",
+      "              socat isn't installed, and the sandbox needs it.",
+      "              Fix: install it, for example on Ubuntu or Debian with sudo apt install socat. Then run halonic doctor again.",
+      "              More: https://docs.halonic.dev/sandbox (linux-tools-missing)",
     ]);
   });
 
@@ -184,7 +198,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              This distro runs on WSL 1, and the sandbox needs WSL 2.",
       "              Fix: switch it to WSL 2 with wsl --set-version Ubuntu 2 in PowerShell on Windows. Then run halonic doctor again.",
-      "              More: https://docs.halonic.com/sandbox (not-supported)",
+      "              More: https://docs.halonic.dev/sandbox#wsl1 (not-supported)",
     ]);
   });
 });

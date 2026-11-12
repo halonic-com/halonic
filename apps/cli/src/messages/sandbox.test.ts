@@ -3,7 +3,13 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { plainText } from "./phrase.ts";
-import { distroArgument, readsAsOther, sandboxDocsLink, sandboxMessages } from "./sandbox.ts";
+import {
+  distroArgument,
+  missingLinuxTools,
+  readsAsOther,
+  sandboxDocsLink,
+  sandboxMessages,
+} from "./sandbox.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -149,15 +155,66 @@ describe("the sandbox sentences", () => {
   });
 
   it("names the WSL distro in WSL 1's fix, for run and for doctor", () => {
-    expect(words(sandboxMessages.refusedFix("not-supported", "Ubuntu"))).toBe(
+    expect(words(sandboxMessages.refusedFix("not-supported", { distro: "Ubuntu" }))).toBe(
       "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version Ubuntu 2 in PowerShell on Windows, then run it again.",
     );
-    expect(words(sandboxMessages.doctorFix("not-supported", "Ubuntu"))).toBe(
+    expect(words(sandboxMessages.doctorFix("not-supported", { distro: "Ubuntu" }))).toBe(
       "Fix: switch it to WSL 2 with wsl --set-version Ubuntu 2 in PowerShell on Windows. Then run halonic doctor again.",
     );
-    expect(words(sandboxMessages.refusedFix("bubblewrap-missing", "Ubuntu"))).toBe(
+    expect(words(sandboxMessages.refusedFix("bubblewrap-missing", { distro: "Ubuntu" }))).toBe(
       words(sandboxMessages.refusedFix("bubblewrap-missing")),
     );
+  });
+
+  it("names only the Linux tools the check found missing (HAL-6538 item 12)", () => {
+    const lines = (missing: string[]) => [
+      words(sandboxMessages.reason("linux-tools-missing", { missing })),
+      words(sandboxMessages.doctorFix("linux-tools-missing", { missing })),
+      words(sandboxMessages.refusedFix("linux-tools-missing", { missing })),
+    ];
+    expect(lines(["socat is not installed"])).toEqual([
+      "socat isn't installed, and the sandbox needs it.",
+      "Fix: install it, for example on Ubuntu or Debian with sudo apt install socat. Then run halonic doctor again.",
+      "socat isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install socat, then run it again.",
+    ]);
+    expect(lines(["ripgrep is not installed"])).toEqual([
+      "ripgrep isn't installed, and the sandbox needs it.",
+      "Fix: install it, for example on Ubuntu or Debian with sudo apt install ripgrep. Then run halonic doctor again.",
+      "ripgrep isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install ripgrep, then run it again.",
+    ]);
+    expect(lines(["socat and ripgrep are not installed"])).toEqual([
+      "socat and ripgrep aren't installed, and the sandbox needs both.",
+      "Fix: install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep. Then run halonic doctor again.",
+      "socat and ripgrep aren't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
+    ]);
+    const unsaid = [
+      words(sandboxMessages.reason("linux-tools-missing")),
+      words(sandboxMessages.doctorFix("linux-tools-missing")),
+      words(sandboxMessages.refusedFix("linux-tools-missing")),
+    ];
+    expect(lines(["socat or ripgrep is not installed"])).toEqual(unsaid);
+    expect(lines(["something else"])).toEqual(unsaid);
+    expect(words(sandboxMessages.reason("bubblewrap-missing", { missing: ["socat"] }))).toBe(
+      "bubblewrap isn't installed, and the sandbox needs it.",
+    );
+  });
+
+  it("reads which Linux tools are missing from the check's sentences", () => {
+    expect(missingLinuxTools(["Socat is not installed"])).toBe("socat");
+    expect(missingLinuxTools(["ripgrep is not installed"])).toBe("ripgrep");
+    expect(missingLinuxTools(["socat is not installed", "ripgrep is not installed"])).toBe("both");
+    expect(missingLinuxTools(["socat or ripgrep is not installed"])).toBeUndefined();
+    expect(missingLinuxTools(["socatx and rgrep"])).toBeUndefined();
+    expect(missingLinuxTools([])).toBeUndefined();
+  });
+
+  it("links WSL 1's section for not-supported, and the page for a reason without one", () => {
+    expect(sandboxDocsLink("not-supported")).toBe("https://docs.halonic.dev/sandbox#wsl1");
+    expect(sandboxDocsLink("bubblewrap-missing")).toBe(
+      "https://docs.halonic.dev/sandbox#bubblewrap",
+    );
+    expect(sandboxDocsLink("windows")).toBe("https://docs.halonic.dev/sandbox");
+    expect(sandboxDocsLink("seccomp-missing")).toBe("https://docs.halonic.dev/sandbox");
   });
 
   it("gives the distro's name so it pastes into PowerShell, or <distro>", () => {

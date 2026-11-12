@@ -290,6 +290,21 @@ verifies("cli.sandbox-gate", () => {
       );
     });
 
+    it("names only the Linux tool the check found missing (Sofia, HAL-6538)", async () => {
+      const workspace = await workspaceOf();
+      const { machine } = machineWith({
+        ok: false,
+        reason: "linux-tools-missing",
+        missing: ["ripgrep is not installed"],
+      });
+
+      const error = await refusal(checkRunSandbox(workspace, supportReply, machine));
+
+      expect(error.fix).toBe(
+        "ripgrep isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install ripgrep, then run it again.",
+      );
+    });
+
     it.each([...sandboxUnavailableReasons, "a-code-from-a-later-port"])(
       "words %s from the code alone, never the check's own sentence",
       async (code) => {

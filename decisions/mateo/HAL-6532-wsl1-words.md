@@ -1,7 +1,7 @@
-# Decision: the CLI words `not-supported` as WSL 1, and `doctor` shows what failed for `other`
+# Decision: the CLI words `not-supported` as WSL 1, names the missing Linux tools, and `doctor` shows what failed for `other`
 
 - Task: HAL-6532 (part 3 of HAL-6518)
-- Approval: the words are the team's call on an approved screen (board, HAL-2282), decided by Sofia on [HAL-6526](/HAL/issues/HAL-6526); Liam approves this note in review
+- Approval: the words are the team's call on an approved screen (board, HAL-2282), decided by Sofia on [HAL-6526](/HAL/issues/HAL-6526) and in her first-run walk, [HAL-6538](/HAL/issues/HAL-6538) items 12 and 13; Liam approves this note in review
 - Kind: internal
 
 ## What changes
@@ -17,17 +17,32 @@
   missing.". The line has no colour codes or control characters, is cut at 200 characters with
   "…", and gets no full stop of its own. Without a sentence, the old reason stays. `run` and
   `runs send` are unchanged: the sentence shows there only with `--debug`.
+- `linux-tools-missing` names only what's missing, in `doctor`'s reason and fix and in a refused
+  run's line 2: "socat isn't installed, and the sandbox needs it.", the same for ripgrep, and
+  "socat and ripgrep aren't installed, and the sandbox needs both.", with `apt install` listing
+  only those. Since HAL-6518 the srt check says which ones are missing in its sentence ("ripgrep
+  is not installed"), so the CLI reads the tool names from it, rather than adding a field to the
+  `Sandbox` port for this. A sentence that names neither, or says "socat or ripgrep" (an older
+  check, or a run log), keeps the old "socat or ripgrep" words. A refused run's line 2 takes the
+  same words, with Sofia's run sentences changed only in the tool names.
+- `not-supported`'s `More:` link is the sandbox page's `#wsl1` section (agreed on HAL-6524;
+  website #191 added it). The CLI words `not-supported` as WSL 1 everywhere, so the link follows
+  the code. The docs domain itself is HAL-6561's change, for every link at once.
 
 ## Tests and requirements this edits
 
 - `apps/cli/src/messages/sandbox.test.ts`: the word-for-word lists for every code change
   `not-supported`'s line 2, reason and fix to the WSL 1 words. The lists still cover every code
   in the port's order; nothing is removed or skipped. New tests cover the distro's name, its
-  quoting and the "What failed:" label.
+  quoting, the "What failed:" label, each missing-tools case and the `#wsl1` link. The
+  `linux-tools-missing` row of the lists is unchanged: it is the words when the check doesn't
+  say which tool.
+- `apps/cli/src/output/doctor-report.test.ts`: WSL 1's `More:` line now ends in `#wsl1`.
 - `cli.sandbox-gate`: "the words shall come from the code alone" gains the exception that the
-  WSL 1 fix names the distro, with a new example.
-- `cli.doctor-report`: gains the "What failed:" rule for `other` and the WSL 1 fix, with a new
-  example. The example from cli-output 3.7 is unchanged.
+  WSL 1 fix names the distro and the missing-tools rule, with two new examples; the WSL 1
+  example's link gains `#wsl1`.
+- `cli.doctor-report`: gains the "What failed:" rule for `other`, the WSL 1 fix and link and
+  the missing-tools rule, with two new examples. The example from cli-output 3.7 is unchanged.
 
 ## Covers
 

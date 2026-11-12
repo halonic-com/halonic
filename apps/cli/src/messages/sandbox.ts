@@ -131,14 +131,18 @@ export const sandboxMessages = defineMessages("sandbox", {
   cantStart: () => phrase`the sandbox can't start on this computer.`,
   /** The end of `runs send`'s line 1: the answer wasn't sent, so the run is still waiting. */
   nothingSent: () => phrase`Nothing was sent.`,
-  /** Line 2 of a refused `run` or `runs send`, with the WSL distro's name when it is known. */
-  refusedFix: (code: string, distro?: string) =>
-    phrase`${withDistro(refusedFixes[known(code)], distro)}`,
+  /**
+   * Line 2 of a refused `run` or `runs send`, with the WSL distro's name
+   * when it is known and only the Linux tools the check found missing.
+   */
+  refusedFix: (code: string, details: SandboxDetails = {}) =>
+    phrase`${withDistro(wordsFor(code, details.missing).refusedFix, details.distro)}`,
   /** Line 2 of a sandbox error with more than one problem, so no single fix. */
   seeDoctor: () => phrase`Run halonic doctor to see what's missing.`,
 
   /** `halonic doctor`'s line under "can't start on this computer": what's wrong. */
-  reason: (code: string) => phrase`${reasons[known(code)]}`,
+  reason: (code: string, details: SandboxDetails = {}) =>
+    phrase`${wordsFor(code, details.missing).reason}`,
   /**
    * `halonic doctor`'s line in place of `other`'s reason when the check
    * said what failed: its sentence as the tool wrote it, after a label, so
@@ -146,9 +150,84 @@ export const sandboxMessages = defineMessages("sandbox", {
    */
   whatFailed: (sentence: string) => phrase`What failed: ${sentence}`,
   /** `halonic doctor`'s fix under the reason, with "Then run halonic doctor again." after it. */
-  doctorFix: (code: string, distro?: string) =>
-    doctorFix(withDistro(fixes[known(code)], distro), afterDoctorAgain[known(code)]),
+  doctorFix: (code: string, details: SandboxDetails = {}) =>
+    doctorFix(
+      withDistro(wordsFor(code, details.missing).fix, details.distro),
+      afterDoctorAgain[known(code)],
+    ),
 });
+
+/** What the CLI knows about a sandbox that can't start, besides its code. */
+export interface SandboxDetails {
+  /** The WSL distro the CLI runs in, from `WSL_DISTRO_NAME`, for the WSL 1 fix's command. */
+  readonly distro?: string | undefined;
+  /** The check's own sentences, which name the Linux tools it found missing. */
+  readonly missing?: readonly string[] | undefined;
+}
+
+/** A reason's three sentences: `doctor`'s reason and fix, and a refused run's line 2. */
+interface ReasonWords {
+  readonly reason: string;
+  readonly fix: string;
+  readonly refusedFix: string;
+}
+
+/**
+ * The words for `code`, naming only the Linux tools that are missing when
+ * the check's sentences name them (Sofia, HAL-6538 item 12).
+ */
+function wordsFor(code: string, missing: readonly string[] = []): ReasonWords {
+  const reason = known(code);
+  const tools = reason === "linux-tools-missing" ? missingLinuxTools(missing) : undefined;
+  if (tools !== undefined) return linuxToolsWords[tools];
+  return { reason: reasons[reason], fix: fixes[reason], refusedFix: refusedFixes[reason] };
+}
+
+/** Which of srt's Linux tools are missing: one of them, or both. */
+type MissingLinuxTools = "socat" | "ripgrep" | "both";
+
+/**
+ * Which of socat and ripgrep the check's sentences say are missing, or
+ * `undefined` when they don't say: they name neither, or say "socat or
+ * ripgrep", as srt's check did before it looked at each one (HAL-6518).
+ *
+ * @example
+ * missingLinuxTools(["ripgrep is not installed"]); // "ripgrep"
+ * missingLinuxTools(["socat and ripgrep are not installed"]); // "both"
+ * missingLinuxTools(["socat or ripgrep is not installed"]); // undefined
+ */
+export function missingLinuxTools(missing: readonly string[]): MissingLinuxTools | undefined {
+  const said = missing.join("\n");
+  if (/\bsocat or ripgrep\b/iu.test(said)) return undefined;
+  const socat = /\bsocat\b/iu.test(said);
+  const ripgrep = /\bripgrep\b/iu.test(said);
+  if (socat && ripgrep) return "both";
+  if (socat) return "socat";
+  if (ripgrep) return "ripgrep";
+  return undefined;
+}
+
+/** `linux-tools-missing`'s words when the check said which tools are missing. */
+const linuxToolsWords: Readonly<Record<MissingLinuxTools, ReasonWords>> = {
+  socat: {
+    reason: "socat isn't installed, and the sandbox needs it.",
+    fix: "install it, for example on Ubuntu or Debian with sudo apt install socat.",
+    refusedFix:
+      "socat isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install socat, then run it again.",
+  },
+  ripgrep: {
+    reason: "ripgrep isn't installed, and the sandbox needs it.",
+    fix: "install it, for example on Ubuntu or Debian with sudo apt install ripgrep.",
+    refusedFix:
+      "ripgrep isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install ripgrep, then run it again.",
+  },
+  both: {
+    reason: "socat and ripgrep aren't installed, and the sandbox needs both.",
+    fix: "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
+    refusedFix:
+      "socat and ripgrep aren't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
+  },
+};
 
 /**
  * `text` with the WSL distro's name in its command, or `<distro>` there when
@@ -207,12 +286,14 @@ const sandboxDocs = `${docsBase}/sandbox`;
 
 /**
  * The section of {@link sandboxDocs} for each reason that cli-output names
- * one for. The other reasons link the page itself, rather than a section
- * that may not exist.
+ * one for, and `not-supported`, which the CLI's sandbox gives only on WSL 1
+ * (HAL-6524, HAL-6538 item 13). The other reasons link the page itself,
+ * rather than a section that may not exist.
  */
 const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
   "bubblewrap-missing": "bubblewrap",
   container: "container",
+  "not-supported": "wsl1",
   "user-namespaces-restricted": "apparmor",
 };
 
@@ -221,6 +302,7 @@ const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
  *
  * @example
  * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.dev/sandbox#bubblewrap"
+ * sandboxDocsLink("not-supported"); // "https://docs.halonic.dev/sandbox#wsl1"
  * sandboxDocsLink("windows"); // "https://docs.halonic.dev/sandbox"
  */
 export function sandboxDocsLink(code: string): string {

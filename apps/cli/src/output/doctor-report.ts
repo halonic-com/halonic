@@ -208,7 +208,7 @@ function sandboxCheck(line: SandboxLine, facts: DoctorFacts, node: NodeLine | un
     lines: [
       doctorMessages.sandboxCantStart().phrase,
       sandboxReason(code, line.missing).phrase,
-      sandboxMessages.doctorFix(code, facts.wslDistro).phrase,
+      sandboxMessages.doctorFix(code, { distro: facts.wslDistro, missing: line.missing }).phrase,
       errorMessages.more(sandboxDocsLink(code), code).phrase,
     ],
   };
@@ -220,7 +220,9 @@ function sandboxCheck(line: SandboxLine, facts: DoctorFacts, node: NodeLine | un
  */
 function sandboxReason(code: string, missing: readonly string[]): Message {
   const said = readsAsOther(code) ? toolSentence(missing) : undefined;
-  return said === undefined ? sandboxMessages.reason(code) : sandboxMessages.whatFailed(said);
+  return said === undefined
+    ? sandboxMessages.reason(code, { missing })
+    : sandboxMessages.whatFailed(said);
 }
 
 /** A colour or cursor code, taken out whole so none of it is left on the line. */

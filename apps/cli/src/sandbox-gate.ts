@@ -62,7 +62,7 @@ export class SandboxRefusedError extends KindedError {
       "unavailable",
       `${plainText(sandboxMessages.cantStart().phrase)} ${plainText(ending.phrase)}`,
       {
-        fix: plainText(sandboxMessages.refusedFix(code, wslDistro).phrase),
+        fix: plainText(sandboxMessages.refusedFix(code, { distro: wslDistro, missing }).phrase),
         ...(missing.length === 0 ? {} : { cause: new Error(missing.join(" ")) }),
       },
     );
