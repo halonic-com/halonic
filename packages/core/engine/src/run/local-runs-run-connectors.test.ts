@@ -51,6 +51,13 @@ class NotingConnectors implements RunConnectors {
   }
 }
 
+/** Blobs that can't keep a run's definitions, so its start fails after they were read. */
+class FullBlobs extends KernelBlobs {
+  override async put(): Promise<never> {
+    throw new Error("The blob store is full.");
+  }
+}
+
 const sendMailTool: ConnectorTool = {
   name: "send_mail",
   description: "Sends a mail",
@@ -143,6 +150,21 @@ verifies("engine.run-connectors", () => {
     ]);
     expect(model.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["send_mail"]);
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+    expect(connectors.ended).toEqual(["run_1"]);
+  });
+
+  it("tells the host a run that failed to start is gone, as no end will", async () => {
+    const connectors = new NotingConnectors();
+    const { executor, runs } = runsOn([textAnswer("Hi")], new KernelRuns(), {
+      agents: agentsUsing(["mail"], "writer"),
+      connectorCalls,
+      runConnectors: connectors,
+      blobs: new FullBlobs(),
+    });
+
+    await expect(executor.start(replyStart)).rejects.toThrow("The blob store is full.");
+
+    expect(await runs.get("run_1")).toBeNull();
     expect(connectors.ended).toEqual(["run_1"]);
   });
 

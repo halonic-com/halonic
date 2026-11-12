@@ -19,6 +19,7 @@ import type {
   AnswerHarnessEffect,
   DecideInput,
   Effect,
+  RunDefinitions,
   StartChildEffect,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
@@ -78,7 +79,7 @@ export class LocalRuns {
   readonly #harnessCalls: LocalHarnessCalls;
   readonly #modelCalls: LocalModelCalls;
   readonly #folders: RunsProposalFolders;
-  readonly #connectors: Pick<RunsConnectors, "ended"> | undefined;
+  readonly #connectors: Pick<RunsConnectors, "ended" | "notStarted"> | undefined;
   #started: Promise<void> | undefined;
   /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
   #closed = false;
@@ -92,7 +93,7 @@ export class LocalRuns {
     clock: Clock,
     callModel: CallModel,
     callTool: CallTool = noConnectorCalls,
-    connectors?: Pick<RunsConnectors, "ended">,
+    connectors?: Pick<RunsConnectors, "ended" | "notStarted">,
   ) {
     checkStartTimeouts(options.harnesses?.startTimeoutsMs);
     this.#options = options;
@@ -146,8 +147,24 @@ export class LocalRuns {
     const runId = request.runId ?? this.#options.ids.next("run");
     const existing = await this.store.get(runId);
     if (existing !== null) return existing;
-    const { hubId, workflowId, harness, version } = request;
+    const { hubId, workflowId, version } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId, version, runId);
+    try {
+      return await this.#startWith(request, runId, definitions);
+    } catch (error) {
+      // The host kept something for the run when it read its definitions: with no start recorded, nothing ends it.
+      if ((await this.store.get(runId)) === null) await this.#connectors?.notStarted(runId);
+      throw error;
+    }
+  }
+
+  /** The start of a run whose definitions are read: keeps them, opens its proposal folder and records the start. */
+  async #startWith(
+    request: StartRunRequest,
+    runId: string,
+    definitions: RunDefinitions,
+  ): Promise<RunSummary> {
+    const { hubId, workflowId, harness, version } = request;
     const definitionsVersion = await keepDefinitions(this.#options.blobs, definitions);
     const folderRun = { runId, hubId, workflowId, version: version ?? null };
     const opened = await this.#folders.open(folderRun, definitions, harness);
