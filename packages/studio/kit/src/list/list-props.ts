@@ -92,7 +92,10 @@ export interface ListSelection<Id extends string = string> {
  * and the whole list stays one grid with one Tab stop.
  */
 export interface ListGroup<Id extends string = string> {
-  /** Stable, never the index: "2026-11-12". */
+  /**
+   * Stable, never the index: "2026-11-12". The heading's row takes the id `group-heading:<id>`,
+   * next to the rows' ids, so no row's id may start with `group-heading:`.
+   */
   readonly id: string;
   /** Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. */
   readonly heading: { readonly name: string; readonly detail?: string };
@@ -101,8 +104,6 @@ export interface ListGroup<Id extends string = string> {
 }
 
 interface ListBase<Id extends string> {
-  /** The heading's level. Default 2. */
-  readonly headingLevel?: 2 | 3 | 4;
   /**
    * Enter or a click on a row. Without it, a click toggles the selection. With a `selection` too,
    * each row starts with a checkbox cell, so a mouse or a finger can select without opening.
@@ -144,6 +145,8 @@ interface ListBase<Id extends string> {
 /** A list of rows, in one box. */
 interface ListOfRows<Id extends string> extends ListBase<Id> {
   readonly rows: readonly ListRow<Id>[];
+  /** The heading's level. Default 2. */
+  readonly headingLevel?: 2 | 3 | 4;
   readonly groups?: never;
   readonly groupHeadingLevel?: never;
 }
@@ -171,6 +174,8 @@ interface ListWithGroups<Id extends string> extends ListBase<Id> {
   readonly label: string;
   readonly rows?: never;
   readonly heading?: never;
+  /** The List has no heading of its own: `groupHeadingLevel` sets the groups'. */
+  readonly headingLevel?: never;
 }
 
 /**

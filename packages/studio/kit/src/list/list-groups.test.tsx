@@ -53,10 +53,24 @@ verifies("kit.list-groups", () => {
     expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
     const headings = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
     expect(headings).toEqual(["Today", "Yesterday"]);
-    // The heading spans every column and holds nothing that takes focus.
+  });
+
+  it("spans the heading across every column, with nothing in it that takes focus", () => {
+    const more = { label: "More actions", onClick: () => undefined };
+    const withMore: ListGroup = { ...today, rows: [{ ...sorter, more }, writer] };
+    const { container } = render(
+      <List
+        label="Runs"
+        groups={[withMore]}
+        onOpen={() => undefined}
+        selection={{ selected: new Set<string>(), onToggle: () => undefined }}
+      />,
+    );
+    // The checkbox, the row and the More button.
     const headingCell = container.querySelector("h3")?.closest("td");
-    expect(headingCell?.getAttribute("colspan")).toBe("1");
+    expect(headingCell?.getAttribute("colspan")).toBe("3");
     expect(headingCell?.hasAttribute("tabindex")).toBe(false);
+    expect(headingCell?.querySelector("[tabindex]")).toBeNull();
   });
 
   it("names each group's rows by its heading", () => {
@@ -84,6 +98,9 @@ verifies("kit.list-groups", () => {
   it("takes a heading level", () => {
     const { container } = render(<List label="Runs" groups={[today]} groupHeadingLevel={4} />);
     expect(container.querySelector("h4")?.textContent).toBe("Today");
+    // @ts-expect-error: a grouped List has no heading of its own, so no `headingLevel`.
+    const misnamed = <List label="Runs" groups={[today]} headingLevel={4} />;
+    expect(misnamed).toBeDefined();
   });
 
   it("draws no group without rows, heading and all", () => {
