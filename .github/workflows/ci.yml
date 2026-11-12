@@ -1725,12 +1725,6 @@ jobs:
     steps:
       - run: echo "::notice title=docs::Not set up yet; arrives with apps/docs."
 
-  # Merge queue only: a queue entry that has already failed keeps its place,
-  # and everything behind it waits, until the slowest job ends (HAL-4253). This
-  # job watches the run's other jobs and cancels the run as soon as one fails,
-  # so ci-ok fails within a minute. Pull requests don't use it: the author
-  # should see every failure at once. It runs no repository code (no
-  # checkout), so the write permission below is only used by the `gh` calls here.
   live-cloud:
     # ADR 5.9: a change to a cloud path merges only after the live suites
     # passed on it. They run in live-cloud.yml once the pull request is ready
@@ -1782,15 +1776,18 @@ jobs:
           [ -n "$pr" ] || { echo "::error::Can't read the pull request number from $MERGE_REF."; exit 1; }
           sha=$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)
           # A live job still running is waited for, up to 45 minutes: the merge
-          # queue drops an entry after 60.
+          # queue drops an entry after 60. A run that hasn't finished counts as
+          # running even before its live-cloud job is listed.
           for _ in $(seq 45); do
             runs=$(gh api "repos/$REPO/actions/workflows/live-cloud.yml/runs?head_sha=$sha&event=pull_request&per_page=20" \
-              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$REPO\") | .id")
+              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$REPO\") | \"\(.id) \(.status)\"")
             results=""
-            for run in $runs; do
+            while read -r run status; do
+              [ -n "$run" ] || continue
+              [ "$status" = completed ] || results+=$'running\n'
               results+=$(gh api "repos/$REPO/actions/runs/$run/jobs" \
                 --jq '.jobs[] | select(.name == "live-cloud") | (.conclusion // "running")')$'\n'
-            done
+            done <<< "$runs"
             if grep -qx success <<< "$results"; then
               echo "The live suites passed on $sha."
               exit 0
@@ -1801,6 +1798,12 @@ jobs:
           echo "::error::Pull request #$pr changes a cloud path, but the live-cloud job has not passed on its head $sha. Mark it ready for review, or re-run the Live cloud workflow, then queue it again."
           exit 1
 
+  # Merge queue only: a queue entry that has already failed keeps its place,
+  # and everything behind it waits, until the slowest job ends (HAL-4253). This
+  # job watches the run's other jobs and cancels the run as soon as one fails,
+  # so ci-ok fails within a minute. Pull requests don't use it: the author
+  # should see every failure at once. It runs no repository code (no
+  # checkout), so the write permission below is only used by the `gh` calls here.
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'

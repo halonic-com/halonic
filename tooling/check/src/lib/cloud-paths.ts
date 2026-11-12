@@ -29,10 +29,19 @@ export function cloudAffectedFiles(changed: readonly string[]): string[] {
   return changed.filter(isCloudPath).sort();
 }
 
+/** What every live run installs and builds with, whatever package it tests. */
+const workspaceSetupPaths: readonly string[] = [
+  ".github/actions/setup",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+];
+
 /**
  * The folders and files a live result depends on: every package that holds a
  * cloud path, the workspace packages they depend on (transitively), the
- * lockfile and the cloud paths outside packages. When none of these changed,
+ * workspace setup (root manifest, lockfile, workspace file, the CI setup
+ * action) and the cloud paths outside packages. When none of these changed,
  * an earlier passing live run still holds.
  */
 export function liveInputPaths(
@@ -40,7 +49,7 @@ export function liveInputPaths(
   packages: readonly WorkspacePackage[],
 ): string[] {
   const byName = new Map(packages.map((entry) => [entry.manifest.name, entry]));
-  const inputs = new Set<string>(["pnpm-lock.yaml"]);
+  const inputs = new Set<string>(workspaceSetupPaths);
   const pending: WorkspacePackage[] = [];
   for (const file of files.filter(isCloudPath)) {
     const owner = owningPackage(file, packages);

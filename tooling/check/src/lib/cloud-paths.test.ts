@@ -52,24 +52,30 @@ verifies("check.cloud-affected", () => {
       workspacePackage("packages/core/format", "@halonicjs/format"),
     ];
 
-    test("takes the cloud packages, their workspace dependencies and the lockfile", () => {
+    test("takes the cloud packages, their workspace dependencies and the workspace setup", () => {
       const files = [
         "packages/adapters/cloudflare-r2/src/store.ts",
         "packages/core/format/src/deployments.ts",
         ".github/workflows/live-cloud.yml",
       ];
       expect(liveInputPaths(files, packages)).toEqual([
+        ".github/actions/setup",
         ".github/workflows/live-cloud.yml",
+        "package.json",
         "packages/adapters/cloudflare-r2",
         "packages/core/events",
         "packages/core/ports",
         "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
       ]);
     });
 
-    test("is only the lockfile while there are no cloud paths", () => {
+    test("is only the workspace setup while there are no cloud paths", () => {
       expect(liveInputPaths(["packages/core/format/src/a.ts"], packages)).toEqual([
+        ".github/actions/setup",
+        "package.json",
         "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
       ]);
     });
   });
