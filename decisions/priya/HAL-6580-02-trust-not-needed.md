@@ -2,6 +2,7 @@
 
 - Approval: decided by the team on [HAL-6631](/HAL/issues/HAL-6631) (item A of refusal-words, a wording decision on an approved screen, HAL-2282) and asked for by Liam on [HAL-6580](/HAL/issues/HAL-6580); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hXNqSYccn+ok4Gzf4Bliv1DQHIvbv6aeOKWd85uxuu5ayUFTYiIU/Y2JYGE08YTQKPYZmCvw2o5ERrX9ElEPAg==
 - Task: HAL-6580, from Sofia's first-run walk (HAL-6538, HAL-6673 item 2)
 
 ## What changes
