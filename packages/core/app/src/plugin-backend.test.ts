@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   PluginBackendNotTrustedError,
   PluginBackendStart,
-  pluginBackendChoices,
   PluginSecretNameMissingError,
+  pluginBackendChoices,
   type TrustedPluginBackend,
 } from "./plugin-backend.ts";
 import { readPluginFolder } from "./plugin-folder.ts";

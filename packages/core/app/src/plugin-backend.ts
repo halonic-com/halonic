@@ -186,7 +186,10 @@ export function pluginBackendChoices(
 ): PluginBackendChoices {
   const stored = pluginSecretNames(plugin);
   const secretNames = Object.fromEntries(
-    Object.keys(plugin.backend?.secrets ?? {}).map((name) => [name, storedName(plugin, stored, name)]),
+    Object.keys(plugin.backend?.secrets ?? {}).map((name) => [
+      name,
+      storedName(plugin, stored, name),
+    ]),
   );
   return { settings, secretNames };
 }
