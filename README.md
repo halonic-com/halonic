@@ -1,19 +1,31 @@
 # Halonic
 
-> **0.1.0 is the command line, from source. No packaged release yet.** Nothing
-> here is a stable interface yet.
+<!-- The platform line is the board's A10 launch line (HAL-7283), word for word.
+     "Approve from your Android phone." goes between its two sentences once
+     approving from the phone works on the release candidate (HAL-195, HAL-7650). -->
+
+> **Studio runs on Windows. The command line runs on Windows, macOS and
+> Linux.** 0.1.0 isn't released yet, and nothing here is a stable interface
+> yet.
 
 Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
-## Install from source
+## Studio
 
-For 0.1.0 the `halonic` command installs from this repository. You need
+Studio is the desktop app, for Windows. Its installer comes with the 0.1.0
+release. To build it yourself, see [apps/studio](apps/studio/README.md).
+
+## Install the command line from source
+
+The `halonic` command installs from this repository. You need
 [git](https://git-scm.com/), [Node.js](https://nodejs.org/) 26.12 or later and
 [pnpm](https://pnpm.io/installation) 12.18 or later. On Windows, run all of
 this inside [WSL 2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
 not in PowerShell or Command Prompt.
+<!-- CHECK (HAL-7650): whether the command line on Windows is still WSL 2 only
+     on the release candidate, or also runs natively or comes with Studio (HAL-7651). -->
 
 Check your Node.js first with `node --version`: it must say v26.12 or later.
 With an older Node.js, `halonic` stops and says which version it needs. Many
