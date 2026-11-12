@@ -26,13 +26,16 @@ import type { TrustService } from "./trust-service.ts";
  * - `not-trusted`: a person never trusted the plugin, or took their trust back.
  * - `changed`: the manifest or a file changed since the person trusted it.
  * - `record-unreadable`: the plugin's trust record can't be read.
+ * - `not-checked`: the trust check gave a status this code doesn't know, so it
+ *   can't say whether the person trusted the plugin.
  */
 export type PluginBackendTrustReason =
   | "unreadable"
   | "no-backend"
   | "not-trusted"
   | "changed"
-  | "record-unreadable";
+  | "record-unreadable"
+  | "not-checked";
 
 /** A plugin's backend didn't start, because the trust a person gave doesn't cover what is in its folder now. */
 export class PluginBackendNotTrustedError extends Error {
@@ -154,8 +157,9 @@ function untrustedReason(
     case "unreadable":
       return "record-unreadable";
     default:
-      // A status added later still refuses; it needs a reason of its own.
-      return "not-trusted";
+      // A status added later still refuses, but the person may have trusted
+      // the plugin, so it isn't told to trust it: it needs a reason of its own.
+      return "not-checked";
   }
 }
 
@@ -244,10 +248,12 @@ function notTrustedMessage(
     case "no-backend":
       return `The plugin ${plugin} has no backend to start.`;
     case "not-trusted":
-      return `The plugin ${plugin} runs code, so its backend starts only once you trust it.`;
+      return `The plugin ${plugin} runs code, so its backend starts only once you trust it. Review and trust it with halonic trust --plugin ${plugin}.`;
     case "changed":
-      return `The plugin ${plugin} changed since you trusted it, so its backend doesn't start. Trust it again to run it.`;
+      return `The plugin ${plugin} changed since you trusted it, so its backend doesn't start. Review what changed and trust it again with halonic trust --plugin ${plugin}.`;
     case "record-unreadable":
-      return `The plugin ${plugin} doesn't start: its trust record can't be read.`;
+      return `The plugin ${plugin} doesn't start: its trust record can't be read. Trust it again with halonic trust --plugin ${plugin}.`;
+    case "not-checked":
+      return `The plugin ${plugin} doesn't start: Halonic couldn't check whether you trust it. See where it stands with halonic plugin list.`;
   }
 }
