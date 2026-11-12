@@ -36,11 +36,11 @@ const expectPropertyNames: ReadonlySet<string> = new Set(["getState", "setState"
 
 /**
  * Vitest's modifiers between `expect(…)` and the matcher that the shim
- * doesn't have yet. `.not` is the only one it has. Without this list,
- * `expect(promise).rejects.toBe(x)` would pass the build and only fail
+ * doesn't have yet; it has `.not` and `.rejects`. Without this list,
+ * `expect(promise).resolves.toBe(x)` would pass the build and only fail
  * inside workerd.
  */
-const missingModifierNames: readonly string[] = ["rejects", "resolves"];
+const missingModifierNames: readonly string[] = ["resolves"];
 
 const matcherCall = /\.\s*(to[A-Z]\w*)\s*\(/g;
 const expectProperty = /\bexpect\.(\w+)/g;
@@ -52,10 +52,10 @@ const shimProperty = new RegExp(
 );
 
 /**
- * Finds the matchers, `expect.X` helpers, modifiers (`.rejects`,
- * `.resolves`) and `it.X`, `test.X`, `describe.X` and `vi.X` properties a
- * test file uses that the vitest shim doesn't have. esbuild already checks
- * the named imports; these are property reads, so this reads the source.
+ * Finds the matchers, `expect.X` helpers, modifiers (`.resolves`) and
+ * `it.X`, `test.X`, `describe.X` and `vi.X` properties a test file uses
+ * that the vitest shim doesn't have. esbuild already checks the named
+ * imports; these are property reads, so this reads the source.
  *
  * @param source - the text of a test file that imports from `vitest`
  * @returns the missing names, sorted, without repeats
