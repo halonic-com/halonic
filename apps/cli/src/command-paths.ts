@@ -53,9 +53,10 @@ export async function commandPaths(
 export async function findCommand(command: string, search: CommandSearch): Promise<string | null> {
   if (command === "" || /[\\/]/.test(command)) return null;
   const names = candidateNames(command, search.endings);
-  for (const folder of splitPath(search.path ?? "")) {
+  const windows = delimiter === ";";
+  for (const folder of splitPath(search.path ?? "", windows)) {
     // An empty or relative entry would mean the current folder; skip it.
-    if (!isAbsoluteFolder(folder)) continue;
+    if (!isAbsoluteFolder(folder, windows)) continue;
     for (const name of names) {
       const candidate = joinPlain(folder, name);
       if (await isProgram(candidate)) return candidate;
@@ -65,11 +66,11 @@ export async function findCommand(command: string, search: CommandSearch): Promi
 }
 
 /**
- * The entries of `PATH`. Where the delimiter is `;` (Windows), double quotes
- * group an entry and are dropped, as the shell's `split_paths` does.
+ * The entries of `PATH`. On Windows (`;`), double quotes group an entry and
+ * are dropped, as the shell's `split_paths` does.
  */
-function splitPath(path: string): string[] {
-  if (delimiter !== ";") return path.split(delimiter);
+export function splitPath(path: string, windows: boolean): string[] {
+  if (!windows) return path.split(":");
   const entries: string[] = [];
   let entry = "";
   let quoted = false;
@@ -84,10 +85,13 @@ function splitPath(path: string): string[] {
   return entries;
 }
 
-/** Absolute as the shell sees it: on Windows a drive or UNC prefix, not just `\tools`. */
-function isAbsoluteFolder(folder: string): boolean {
-  if (!isAbsolute(folder)) return false;
-  return delimiter !== ";" || /^(?:[A-Za-z]:[\\/]|[\\/]{2})/.test(folder);
+/**
+ * Absolute as the shell sees it. On Windows that is a drive (`C:\`, `C:/`) or
+ * a UNC server and share (`\\server\share`, or with `/`), not just `\tools`.
+ */
+export function isAbsoluteFolder(folder: string, windows: boolean): boolean {
+  if (!windows) return isAbsolute(folder);
+  return /^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/][^\\/]+)/.test(folder);
 }
 
 /**

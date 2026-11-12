@@ -4,7 +4,7 @@ import { delimiter, join, sep } from "node:path";
 import type { Connector } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { commandPaths } from "./command-paths.ts";
+import { commandPaths, isAbsoluteFolder, splitPath } from "./command-paths.ts";
 
 let folder: string;
 
@@ -116,6 +116,25 @@ verifies("cli.command-paths", () => {
         const paths = await commandPaths([startsCommand("mail")], { path: other, endings: [] });
         expect(paths).toEqual(new Map([["mail", join(other, "mail")]]));
       }
+    });
+  });
+
+  describe("Windows PATH rules, on any host", () => {
+    // Sample Windows folders, not real paths.
+    const tools = "C:\\tools"; // leak-guard: allow absolute-path sample Windows folder
+    const bin = "C:\\bin"; // leak-guard: allow absolute-path sample Windows folder
+    const semi = "D:\\a;b"; // leak-guard: allow absolute-path sample Windows folder
+
+    it("drops double quotes around an entry and keeps a quoted ; inside it", () => {
+      expect(splitPath(`"${tools}";${bin};"${semi}"`, true)).toEqual([tools, bin, semi]);
+      expect(splitPath("/usr/bin:/bin", false)).toEqual(["/usr/bin", "/bin"]);
+    });
+
+    it("counts only a drive or a UNC server and share as absolute", () => {
+      const absolute = [tools, "C:/tools", "\\\\server\\share", "//server/share\\bin"];
+      for (const folder of absolute) expect(isAbsoluteFolder(folder, true), folder).toBe(true);
+      const relative = ["\\tools", "/tools", "C:tools", "tools", "", "\\\\server", "//server"];
+      for (const folder of relative) expect(isAbsoluteFolder(folder, true), folder).toBe(false);
     });
   });
 });
