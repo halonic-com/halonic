@@ -6,7 +6,7 @@ import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
 import { itemLocation } from "../palette/palette-groups.ts";
 import { usePaletteOpening } from "../palette/palette-opening.ts";
-import { ShellPalette } from "../palette/shell-palette.tsx";
+import { runWithToast, ShellPalette } from "../palette/shell-palette.tsx";
 import { BottomNavigation } from "../phone/bottom-navigation.tsx";
 import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
@@ -135,7 +135,7 @@ export function StudioWindow(props: StudioWindowProps) {
         if (command === undefined) {
           return false;
         }
-        void Promise.resolve(command.run(contextFor(command.featureId)));
+        runWithToast(command, contextFor, shell.toasts);
         return true;
       },
     }),

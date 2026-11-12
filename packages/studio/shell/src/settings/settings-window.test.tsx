@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -54,6 +55,9 @@ let cardSections: unknown;
 let ranCommand: boolean | undefined;
 const commandsRun: string[] = [];
 
+/** The toasts of the window drawn last. */
+let windowToasts: ToastStore | undefined;
+
 /** Home's card asks for a section, as the Harness page's **Open Settings ›** does. */
 function OpenSettingsCard({ context }: HomeCardProps) {
   cardSections = context.settingsSections;
@@ -77,6 +81,15 @@ function OpenSettingsCard({ context }: HomeCardProps) {
         }}
       >
         Ping
+      </button>
+      <button
+        type="button"
+        className="run-broken"
+        onClick={() => {
+          ranCommand = context.runCommand?.("sections.broken");
+        }}
+      >
+        Broken
       </button>
       <button
         type="button"
@@ -105,6 +118,13 @@ const sectionsFeature = defineFeature({
         commandsRun.push("sections.ping");
       },
     });
+    studio.commands.add({
+      id: "sections.broken",
+      title: "Broken",
+      run: () => {
+        throw new Error("page failed to load");
+      },
+    });
     studio.home.addCard({
       id: "needs-you",
       view: "OpenSettingsCard",
@@ -117,6 +137,7 @@ async function renderWindow(host: StudioHost = "desktop-app") {
   const shell = createShell({ features: [sectionsFeature], timers: new FakeTimers() });
   const services = new MapTarget();
   shell.services.instantiate(services);
+  windowToasts = shell.toasts;
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name: "Acme" });
   const container = render(
     <StudioWindow
@@ -294,6 +315,17 @@ verifies("shell.settings-window", () => {
     await click(container.querySelector(".run-unknown"));
     expect(commandsRun).toEqual(["sections.ping"]);
     expect(ranCommand).toBe(false);
+  });
+
+  it("shows a danger toast when the command throws, as Ctrl K does", async () => {
+    const container = await renderWindow();
+
+    await click(container.querySelector(".run-broken"));
+    await settle();
+    expect(ranCommand).toBe(true);
+    expect(windowToasts?.list().map((toast) => [toast.tone, toast.title])).toEqual([
+      ["danger", "Couldn't run Broken."],
+    ]);
   });
 });
 
