@@ -1,6 +1,6 @@
 import type { RunEvent } from "@halonicjs/events";
 import { Button, List, type ListColumn } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { RunsSource } from "../api.ts";
 import { everyStepWords, runLogWords } from "../run-words.ts";
 import type { StepEntry, StepMark } from "./every-step-model.ts";
@@ -65,7 +65,7 @@ function Timeline({ entries }: { readonly entries: readonly StepEntry[] }) {
 
 /** The ring or fill and the colour of each mark (component specs 23.5). */
 const dotLooks: Record<StepMark, string> = {
-  done: "bg-success text-on-primary",
+  done: "bg-success text-on-success",
   failed: "bg-danger text-on-danger",
   "needs-you": "border-[1.5px] border-warning bg-warning-soft text-warning",
   running: "border-[1.5px] border-running bg-running-soft text-running",
@@ -103,21 +103,38 @@ export function StepDot({ mark }: { readonly mark: StepMark }) {
 }
 
 /**
- * One run's log, read again whenever the run moves on (`lastSeq` grows).
- * When a later read fails, the page keeps the log it showed (states R18);
+ * One run's log, read again whenever the run moves on (`lastSeq` grows), and
+ * on every list refresh until a first read has worked, so Try again reaches
+ * it. When a later read fails, the page keeps the log it showed (states R18);
  * `undefined` until the first read.
+ *
+ * `listState` is the runs list's state: it changes on every refresh.
  */
 export function useRunLog(
   source: RunsSource,
   runId: string,
   lastSeq: number,
+  listState: unknown,
 ): readonly RunEvent[] | undefined {
   const [log, setLog] = useState<{ readonly runId: string; readonly events: RunEvent[] }>();
+  const read = useRef<
+    { source: RunsSource; runId: string; lastSeq: number; done: boolean } | undefined
+  >(undefined);
   useEffect(() => {
+    const last = read.current;
+    const sameRead = last?.source === source && last.runId === runId && last.lastSeq === lastSeq;
+    if (sameRead && last.done) {
+      return;
+    }
+    const mine = { source, runId, lastSeq, done: false };
+    read.current = mine;
     let current = true;
     source.log(runId).then(
       (events) => {
-        if (current) setLog({ runId, events });
+        if (current) {
+          mine.done = true;
+          setLog({ runId, events });
+        }
       },
       () => {
         // The list's own load says the engine isn't answering; the steps stay as they were.
@@ -126,6 +143,6 @@ export function useRunLog(
     return () => {
       current = false;
     };
-  }, [source, runId, lastSeq]);
+  }, [source, runId, lastSeq, listState]);
   return log?.runId === runId ? log.events : undefined;
 }

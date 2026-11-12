@@ -17,6 +17,7 @@ export function fakeSource(
   let summaries = initial;
   let logs = initialLogs;
   let failure: unknown;
+  let logFailure: unknown;
   const listeners = new Set<() => void>();
   const source: RunsSource = {
     list: async () => {
@@ -25,6 +26,7 @@ export function fakeSource(
     },
     log: async (runId) => {
       if (failure !== undefined) throw failure;
+      if (logFailure !== undefined) throw logFailure;
       return [...(logs[runId] ?? [])];
     },
     workflow: () => supportReply,
@@ -40,8 +42,13 @@ export function fakeSource(
     fail: (error: unknown) => {
       failure = error;
     },
+    /** Fails only `log`, while `list` keeps answering. */
+    failLog: (error: unknown) => {
+      logFailure = error;
+    },
     answer: () => {
       failure = undefined;
+      logFailure = undefined;
     },
     change: (
       next: readonly RunSummary[],

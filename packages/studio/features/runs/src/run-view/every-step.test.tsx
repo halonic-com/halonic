@@ -78,4 +78,25 @@ verifies("runs.every-step", () => {
     await act(async () => list.refresh());
     expect(entries(root)).toHaveLength(3);
   });
+
+  it("reads the log again on Retry after the first read failed, and keeps the steps when a later read fails", async () => {
+    const fake = fakeSource([running], { [runId]: drafting });
+    fake.failLog(new Error("no answer"));
+    const { root, list } = await openRun(fake);
+    expect(root.textContent).not.toContain("Every step");
+
+    fake.answer();
+    await act(async () => list.refresh());
+    await settled();
+    expect(entries(root)).toHaveLength(2);
+
+    fake.failLog(new Error("no answer"));
+    fake.change([{ ...running, lastSeq: reviewing.length, updatedAt: minutesLater(2) }], {
+      [runId]: reviewing,
+    });
+    await settled();
+    await act(async () => list.refresh());
+    await settled();
+    expect(entries(root)).toHaveLength(2);
+  });
 });
