@@ -49,7 +49,15 @@ async function press(element: HTMLElement): Promise<void> {
   await settled();
 }
 
-const twoDone = record(["project", "apis"], { projectId: "halonic-x" });
+const twoDone = record(["project", "apis"], {
+  projectId: "halonic-x",
+  inProductionTickedAt: "2026-11-12T02:10:00.000Z",
+});
+
+/** The checklist's own items, not the lists of actions inside a step. */
+function steps(container: HTMLElement): HTMLElement[] {
+  return [...(container.querySelector("section > ol") as HTMLElement).children] as HTMLElement[];
+}
 
 verifies("google-setup.account-header", () => {
   it("heads the item with the address, the step and the two lines", async () => {
@@ -173,7 +181,7 @@ verifies("google-setup.checklist", () => {
 
   it("folds the finished steps and opens the first one not done, with focus on its title", async () => {
     const { container } = await open([account(twoDone)]);
-    const items = [...container.querySelectorAll("ol > li")];
+    const items = steps(container);
     expect(items).toHaveLength(7);
     expect(items[0]?.textContent).toContain("Edit");
     expect(items[1]?.textContent).toContain("Edit");
@@ -200,14 +208,14 @@ verifies("google-setup.checklist", () => {
     const { fake, container } = await open([account(twoDone)]);
     await act(async () => fake.change([account(record(["project", "apis", "consent"]))]));
     await settled();
-    const items = [...container.querySelectorAll("ol > li")];
+    const items = steps(container);
     expect(items[3]?.getAttribute("aria-current")).toBe("step");
     expect(document.activeElement).toBe(items[3]?.querySelector("h3"));
   });
 
   it("opens a finished step with Edit and moves focus to its title", async () => {
     const { container } = await open([account(twoDone)]);
-    const first = container.querySelector("ol > li") as HTMLElement;
+    const first = steps(container)[0] as HTMLElement;
     await press(first.querySelector("button") as HTMLElement);
     expect(document.activeElement).toBe(first.querySelector("h3"));
     expect(first.textContent).toContain("Done, next");
