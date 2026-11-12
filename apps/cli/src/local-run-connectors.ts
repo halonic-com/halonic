@@ -10,7 +10,7 @@ import type { ConnectorFactoryContext, Secrets, TrustGrant } from "@halonicjs/po
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { ProgramFolders } from "./program-folders.ts";
 import { FolderRunConnectors } from "./run-connectors.ts";
-import { realWorkingFolders } from "./working-folders.ts";
+import { programWorkingFolders } from "./working-folders.ts";
 
 /** What the engine's runs start their connectors with, as the command gives it. */
 export interface LocalRunConnectorsInput {
@@ -81,7 +81,7 @@ export function localRunConnectors(
     programFolders: engine.programFolders,
     context: { ...given.context, secrets: engine.secrets, trust: given.trust },
     connectorsOf: async (run) => connectorFilesOf(engine, run),
-    workingFoldersOf: (folder) => realWorkingFolders(folder, engine.workspace),
+    workingFoldersOf: (folder) => programWorkingFolders(folder, engine.location, engine.workspace),
     reportError: engine.reportError,
   });
   return {

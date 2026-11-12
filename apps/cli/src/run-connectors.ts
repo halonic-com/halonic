@@ -60,6 +60,8 @@ interface OpenConnectors {
 export class FolderRunConnectors implements RunConnectors {
   readonly #input: FolderRunConnectorsInput;
   readonly #open = new Map<string, Promise<OpenConnectors>>();
+  /** Set by `closeAll`: a program started after it would never be closed. */
+  #closed = false;
 
   constructor(input: FolderRunConnectorsInput) {
     this.#input = input;
@@ -68,8 +70,12 @@ export class FolderRunConnectors implements RunConnectors {
   /**
    * @throws when the run names no version, its folder can't be made, or a
    *   connector of its hub can't be created; what did start is closed
+   * @throws when the engine has closed
    */
   async open(run: ConnectorsRun): Promise<readonly ConnectorClient[]> {
+    if (this.#closed) {
+      throw new Error(`Run "${run.runId}" can't start its connectors: the engine has closed.`);
+    }
     let opening = this.#open.get(run.runId);
     if (opening === undefined) {
       opening = this.#start(run);
@@ -100,6 +106,7 @@ export class FolderRunConnectors implements RunConnectors {
 
   /** Ends the connectors of every run still open, as the engine closes. Never throws. */
   async closeAll(): Promise<void> {
+    this.#closed = true;
     await Promise.all([...this.#open.keys()].map((runId) => this.end(runId)));
   }
 

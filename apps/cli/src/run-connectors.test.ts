@@ -201,4 +201,14 @@ verifies("cli.local-engine", () => {
       "release /copies/2",
     ]);
   });
+
+  it("starts no program once the engine has closed, so none is left running", async () => {
+    const { connectors, log } = fixture();
+    await connectors.closeAll();
+
+    await expect(connectors.open(runOf("run_1"))).rejects.toThrow(
+      `Run "run_1" can't start its connectors: the engine has closed.`,
+    );
+    expect(log).toEqual([]);
+  });
 });
