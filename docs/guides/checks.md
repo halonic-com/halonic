@@ -284,7 +284,9 @@ when it has a carriage return (save it with LF line endings), and when the
 base branch already has the note: a branch name that was used before needs
 a new name. Both guards fail the pull request when they find an error. A
 change to a requirement needs an approved note of either kind. A change to
-the guard's own paths needs a `user-visible` note (see the note guard below).
+the guard's own paths needs a `user-visible` note, except routine changes
+under `.github/`, `tooling/check/` and `.gitattributes`, where the CTO's
+signed `internal` note is enough (see the note guard below).
 
 **A `user-visible` note is approved on GitHub, not by signature.** The user
 approves the pull request with an "Approve" review from their own GitHub
@@ -299,7 +301,8 @@ withdraws it, and a missing token or a GitHub error counts as not approved.
 GitHub doesn't run the check again when a review is submitted (the
 `pull_request_review` event would run the pull request's own copy of the
 workflow, which could report success), so after the approval re-run the
-`Decision note and the guard's own paths` job; the merge queue run reads the
+`Decision note and the guard's own paths` job and the requirement guard
+job in `ci.yml`, which reads the reviews too; the merge queue run reads the
 reviews again. A `user-visible` note that does carry a signature line is
 checked as a signature, against the `user-visible` keys, of which none are
 pinned.
@@ -336,8 +339,16 @@ with its `approvers.json`, `packages/testing/spec/`,
 `packages/testing/parity/allowed-differences.json`,
 `tooling/config/src/vitest-preset.ts`, `turbo.json`) unless the note lists
 that path as written here and its approval is verified. The note must be
-`user-visible`, so an agent key alone can't loosen the guard or add a
-signer to `approvers.json`. One
+`user-visible`, except for `.github/`, `tooling/check/` and `.gitattributes`,
+where the CTO's signed `internal` note is enough. That cover ends where the
+change reaches one of the guard's trust roots: `tooling/check/approvers.json`,
+`.github/workflows/guard-notes.yml`, `tooling/check/src/guard/` and the two
+guard commands `tooling/check/src/cli/guard-notes.ts` and
+`tooling/check/src/cli/requirement-guard.ts`. A change to one of those, or to
+any other own path, needs the user's approval, so an agent key alone can't
+loosen the guard or add a signer. These folders change about 45 times a day
+and the board approved the user's review for rare changes (HAL-3434),
+so the routine ones stay with the CTO (decided on HAL-7701). One
 more exception: a change to `tooling/check/policy.json` that touches
 nothing but `extraExports` (a package's deliberate extra entry point) needs
 a note that lists `tooling/check/policy.json`, and an `internal` note the

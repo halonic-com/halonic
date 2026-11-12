@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { type PullRequest, signedApprovals } from "../guard/approvals.ts";
 import { gitObjects } from "../guard/git-objects.ts";
 import { checkRequirementGuard, guardChecks } from "../guard/guard.ts";
-import { githubReviews } from "../guard/reviews.ts";
+import { reviewSourceFromEnv } from "../guard/reviews.ts";
 import { checkTestRuns } from "../guard/test-runs.ts";
 import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
@@ -39,7 +39,7 @@ async function main(argv: readonly string[]): Promise<number> {
     base: loadContext(resolve(base)),
     head: loadContext(headRoot),
     branch,
-    approvals: signedApprovals(pullRequestOf(argv), gitObjects(headRoot), reviewSource()),
+    approvals: signedApprovals(pullRequestOf(argv), gitObjects(headRoot), reviewSourceFromEnv()),
     checks: argv.includes("--skip-test-runs")
       ? guardChecks.filter((check) => check !== checkTestRuns)
       : guardChecks,
@@ -72,12 +72,6 @@ function flagValue(argv: readonly string[], flag: string): string | undefined {
   const at = argv.indexOf(flag);
   const value = at === -1 ? undefined : argv[at + 1];
   return value === undefined || value.startsWith("--") ? undefined : value;
-}
-
-/** Reads reviews with the run's token; without one, a `user-visible` note can't be approved. */
-function reviewSource(): ReturnType<typeof githubReviews> | undefined {
-  const token = process.env["GH_TOKEN"];
-  return token === undefined || token === "" ? undefined : githubReviews(token);
 }
 
 process.exitCode = await main(process.argv.slice(2));

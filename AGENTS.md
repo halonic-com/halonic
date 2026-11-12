@@ -92,7 +92,7 @@ The maintainer approves it before you write code. When two features must talk, t
 
 `trace` is active and blocks a pull request. The requirement guard runs on every pull request and blocks it
 through `ci-ok`. A `user-visible` note needs the user's own GitHub approval of the pull request's latest commit; an
-`internal` one needs the CTO's signature. See `docs/guides/checks.md`.
+`internal` one needs the CTO's signature, which also covers routine changes to `.github/` and `tooling/check/`. See `docs/guides/checks.md`.
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.

@@ -69,3 +69,9 @@ export function approvedAt(
     return standing?.state === "APPROVED" && standing.commitId === head;
   });
 }
+
+/** Reads reviews with the run's `GH_TOKEN`; without one, a `user-visible` note can't be approved. */
+export function reviewSourceFromEnv(): ReviewSource | undefined {
+  const token = process.env["GH_TOKEN"];
+  return token === undefined || token === "" ? undefined : githubReviews(token);
+}

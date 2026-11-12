@@ -63,7 +63,13 @@ async function errorsOf(
 
 function sign(text: string, git: ReturnType<typeof fakeGit>, privatePem: string): string {
   const kind = text.includes("Kind: internal") ? "internal" : "user-visible";
-  const covered = [".github", ".gitattributes", "turbo.json", approversFile].filter((path) =>
+  const covered = [
+    ".github",
+    ".gitattributes",
+    "tooling/check",
+    "turbo.json",
+    approversFile,
+  ].filter((path) =>
     text.split("\n").some((line) => line === `- ${path}` || line === `- ${path}/`),
   );
   const objects = new Map(covered.map((path) => [path, git.objectId(head, path) ?? "missing"]));
@@ -82,17 +88,28 @@ verifies("check.guard-notes-own-paths", () => {
     expect(await errorsOf(note("user-visible", ".github/"))).toEqual([]);
   });
 
-  test("fails an internal note on any own path, even one the CTO signed", async () => {
-    for (const path of [
-      ".github/",
-      ".gitattributes",
-      "tooling/check/",
-      approversFile,
-      "turbo.json",
-    ]) {
-      const changed = path.endsWith("/") ? `${path}x.ts` : path;
+  test("passes .github/, .gitattributes and tooling/check/ with an internal note the CTO signed", async () => {
+    expect(await errorsOf(note("internal", ".github/"), cto.privatePem)).toEqual([]);
+    expect(
+      await errorsOf(note("internal", ".gitattributes"), cto.privatePem, ".gitattributes"),
+    ).toEqual([]);
+    expect(
+      await errorsOf(note("internal", "tooling/check/"), cto.privatePem, "tooling/check/src/x.ts"),
+    ).toEqual([]);
+  });
+
+  test("fails an internal note once the change reaches a trust root, or any other own path", async () => {
+    const cases: [string, string][] = [
+      [".github/", ".github/workflows/guard-notes.yml"],
+      ["tooling/check/", "tooling/check/src/guard/approvals.ts"],
+      ["tooling/check/", "tooling/check/src/cli/guard-notes.ts"],
+      ["tooling/check/", "tooling/check/src/cli/requirement-guard.ts"],
+      [approversFile, approversFile],
+      ["turbo.json", "turbo.json"],
+    ];
+    for (const [path, changed] of cases) {
       const errors = await errorsOf(note("internal", path), cto.privatePem, changed);
-      expect(errors).toContainEqual(
+      expect(errors, changed).toContainEqual(
         expect.stringContaining("so the note's Kind must be user-visible"),
       );
     }
@@ -161,7 +178,6 @@ verifies("check.guard-extra-exports", () => {
   test("counts any other change to policy.json as a change under tooling/check/", async () => {
     const other = policy({ "@halonicjs/std": ["./error-kind"] }, ["@halonicjs/std"]);
     expect(await policyErrorsOf(other, note("internal", policyFile), cto.privatePem)).toEqual([
-      `${noteFile}: Changes the guard's own paths (tooling/check/), so the note's Kind must be user-visible.`,
       `${noteFile}: Changes the guard's own path tooling/check/, but the note doesn't list "tooling/check/" under Covers.`,
     ]);
     expect(
