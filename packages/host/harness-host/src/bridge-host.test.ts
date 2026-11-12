@@ -1,16 +1,10 @@
-import type { HarnessAgent } from "@halonicjs/engine";
 import type { BridgeRecorder, ModelPrice } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type BridgeAgent, type BridgeServices, LocalBridgeHost } from "./bridge-host.ts";
-import { approveAll, noTools, RecordingBridgeServer } from "./fakes.test-helper.ts";
+import { approveAll, harnessAgentOf, noTools, RecordingBridgeServer } from "./fakes.test-helper.ts";
 
-const writer: HarnessAgent = {
-  runId: "01JD8Q",
-  hubId: "support",
-  agentId: "writer",
-  filesFolder: "/data/proposals/01JD8Q",
-};
+const writer = harnessAgentOf("writer", "/data/proposals/01JD8Q");
 const recorder: BridgeRecorder = { record: async () => {} };
 const sonnetPrice: ModelPrice = { input: 3, output: 15 };
 

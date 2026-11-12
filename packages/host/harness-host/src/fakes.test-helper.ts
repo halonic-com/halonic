@@ -1,6 +1,7 @@
 // Small fakes of the ports the builder takes. Deliberate fakes: a host
 // package may not use adapters, not even in tests.
 
+import type { HarnessAgent } from "@halonicjs/engine";
 import type {
   AgentPlacementKey,
   AgentPlacementRecord,
@@ -96,3 +97,28 @@ export const noTools: BridgeTools = {
 export const approveAll: BridgeApprovals = {
   request: async () => ({ approved: true }),
 };
+
+/**
+ * The agent `agentId` of run `01JD8Q` in the `support` hub, running in Claude
+ * Code, with the format's defaults as its file.
+ */
+export function harnessAgentOf(agentId: string, filesFolder: string | null): HarnessAgent {
+  const file: HarnessAgent["file"] = {
+    version: 1,
+    id: agentId,
+    name: agentId,
+    params: {},
+    instructions: "",
+    skills: [],
+    knowledge: [],
+    connectors: [],
+    runLogs: false,
+    collections: [],
+    subagents: [],
+    methods: {},
+    output: { type: "text" },
+    maxSteps: 6,
+    harness: "claude-code",
+  };
+  return { runId: "01JD8Q", hubId: "support", agentId, harness: "claude-code", file, filesFolder };
+}

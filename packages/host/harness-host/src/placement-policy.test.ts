@@ -1,18 +1,12 @@
 import { AgentPlacement } from "@halonicjs/app";
-import type { HarnessAgent } from "@halonicjs/engine";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { clock, digest, MemoryPlacementStore } from "./fakes.test-helper.ts";
+import { clock, digest, harnessAgentOf, MemoryPlacementStore } from "./fakes.test-helper.ts";
 import { type AgentFiles, FilePlacementPolicy } from "./placement-policy.ts";
 
 const location = "/workspaces/acme";
-const coder: HarnessAgent = {
-  runId: "01JD8Q",
-  hubId: "support",
-  agentId: "coder",
-  filesFolder: null,
-};
+const coder = harnessAgentOf("coder", null);
 
 /** The agents' files by hub and id, which a test can change. */
 function filesOf(texts: Record<string, string>): AgentFiles & { read: string[] } {

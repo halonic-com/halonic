@@ -1,4 +1,4 @@
-import type { HarnessAgent, HarnessProfileBuilder, ProposalRun } from "@halonicjs/engine";
+import type { HarnessProfileBuilder, ProposalRun } from "@halonicjs/engine";
 import type { Harness, Sandbox } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -7,6 +7,7 @@ import {
   approveAll,
   clock,
   digest,
+  harnessAgentOf,
   MemoryDefinitionStore,
   MemoryPlacementStore,
   noTools,
@@ -22,12 +23,7 @@ const unfenced = { name: "unfenced" } as unknown as Sandbox;
 const claudeCode = { id: "claude-code" } as unknown as Harness;
 const profiles = { profileOf: async () => ({}) } as unknown as HarnessProfileBuilder;
 
-const writer: HarnessAgent = {
-  runId: "01JD8Q",
-  hubId: "support",
-  agentId: "writer",
-  filesFolder: null,
-};
+const writer = harnessAgentOf("writer", null);
 const savedFilesRun: ProposalRun = {
   runId: "01JD8Q",
   hubId: "support",
