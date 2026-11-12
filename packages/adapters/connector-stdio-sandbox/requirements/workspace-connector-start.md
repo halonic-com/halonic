@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2310 (D45, board yes on HAL-2257 Q3; decided by Liam on HAL-2303); Mateo's answer on HAL-6884
 
-A workspace's `stdio` connector that the host set up (`workspaceConnectors`) shall start its program in the context's sandbox session, in the place `workspaceConnectorPlace` builds, and offer every tool its server lists, as the trust grant covers them all. Before it reads a secret or looks up a pin, it shall run `refuseAgentFolderStart`. A script shall start in the workspace, or in the connector file's `cwd` there, and a pinned package in its own working folder. `WorkspaceStdioConnectorFactory` shall give a connector to the sandboxed factory when the context has a session, and to the unfenced factory only when it has none and the connector is not a plugin's local tool.
+The workspace's `stdio` connector that the host set up (`workspaceConnectors`) shall start its program in the context's sandbox session, in the place `workspaceConnectorPlace` builds, and offer every tool its server lists, as the trust grant covers them all. Before it reads a secret or looks up a pin, it shall run `refuseAgentFolderStart`. A script shall start in the workspace, or in the connector file's `cwd` there, and a pinned package in its own working folder. `WorkspaceStdioConnectorFactory` shall give a connector to the sandboxed factory when the context has a session, and to the unfenced factory only when it has none and the connector is not a plugin's local tool.
 
 ## Examples
 

@@ -134,11 +134,8 @@ verifies("connector-stdio-sandbox.workspace-connector-start", () => {
         unfenced: fake("unfenced"),
         isLocalTool: () => isLocalTool,
       });
-      const { sandbox: session, ...withoutSession } = context;
-      factory.create(
-        mailConfig(),
-        sandbox ? { ...withoutSession, sandbox: session } : withoutSession,
-      );
+      const { sandbox: _session, ...withoutSession } = context;
+      factory.create(mailConfig(), sandbox ? context : withoutSession);
       return created.splice(0);
     }
 

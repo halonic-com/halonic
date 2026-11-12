@@ -60,10 +60,10 @@ verifies("connector-stdio-sandbox.workspace-connector-profile", () => {
       for (const stdio of [noSites, { ...script, sites: [] }]) {
         const place = workspaceConnectorPlace(stdio, {
           ...setting,
-          bridge: { host: "127.0.0.1", port: 7 },
+          bridge: { kind: "loopback", host: "127.0.0.1", port: 7 },
         });
         expect(place.sites).toEqual([]);
-        expect(place.bridge).toEqual({ host: "127.0.0.1", port: 7 });
+        expect(place.bridge).toEqual({ kind: "loopback", host: "127.0.0.1", port: 7 });
       }
     });
 
