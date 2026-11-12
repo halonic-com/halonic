@@ -1,11 +1,14 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Known issues in 0.1.0
+    url: https://github.com/halonic-com/halonic/issues?q=is%3Aissue+label%3Aknown-issues
+    about: Read this first. What isn't in 0.1.0 yet, and problems we know about.
   - name: Ask a question
     url: https://github.com/halonic-com/halonic/discussions/new?category=q-a
-    about: How do I…? Why does…? Ask in Q&A, our community channel.
+    about: How do I…? Why does…? Ask in Q&A. The answer helps the next person too.
   - name: Share a loose idea
     url: https://github.com/halonic-com/halonic/discussions/categories/ideas
     about: Not sure it's a feature request yet? Start a discussion in Ideas.
   - name: Report a security problem
     url: https://github.com/halonic-com/halonic/security/advisories/new
-    about: Report security problems privately, never in a public issue or discussion. See SECURITY.md.
+    about: Privately, never in a public issue or discussion. See SECURITY.md.

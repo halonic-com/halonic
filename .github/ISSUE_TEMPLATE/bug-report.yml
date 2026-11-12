@@ -5,48 +5,94 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug.
+        Thanks for reporting a bug. A few things first:
 
-        - Security problem? Don't use this form. Follow [SECURITY.md](https://github.com/halonic-com/halonic/blob/main/SECURITY.md).
-        - A question rather than a bug? Ask in [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a).
-        - Never paste API keys, passwords or personal data, including in logs and screenshots.
+        - **Security problem?** Don't use this form. Report it privately, as [SECURITY.md](https://github.com/halonic-com/halonic/blob/main/SECURITY.md) explains.
+        - **Install or first run didn't work?** Use the [Install problem](https://github.com/halonic-com/halonic/issues/new?template=install-problem.yml) form.
+        - **A question?** Ask in [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a).
+        - Never paste API keys, tokens or passwords. Remove folder names, host names or your user name if they're private.
   - type: checkboxes
     id: searched
     attributes:
       label: Before you report
       options:
-        - label: I searched the open issues and the pinned "Known issues" discussion, and this isn't there yet.
+        - label: I read the pinned Known issues in 0.1.0 issue and searched the open issues, and this isn't there yet.
           required: true
   - type: textarea
-    id: what-happened
+    id: ran
     attributes:
-      label: What happened?
-      description: What did you do, what did you expect, and what happened instead?
+      label: What you ran
+      description: The command, and the workflow or step if it happened during a run. Run it again with `--debug` if you can.
+      placeholder: halonic run support-reply --debug
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What you saw, including the error message.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
-      description: The smallest steps that show the problem. A small workspace with made-up content helps most.
+      description: Only if it takes more than the command above. A small workspace with made-up content helps most.
       placeholder: |
-        1. Open a workspace with ...
-        2. Click ...
-        3. See ...
+        1. halonic init demo
+        2. Change ...
+        3. halonic run ...
+  - type: input
+    id: version
+    attributes:
+      label: Halonic version and commit
+      description: |
+        Run `halonic --version`. If your version doesn't know that option, use the first line of `halonic doctor`.
+        You installed from source, so also run `git rev-parse --short HEAD` in your clone.
+      placeholder: 0.1.0, commit 699c83b
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of halonic doctor
+      description: Run `halonic doctor` and paste everything it prints, even if it looks fine.
+      render: text
     validations:
       required: true
   - type: dropdown
-    id: part
+    id: system
     attributes:
-      label: Which part of Halonic?
+      label: Your system
       options:
-        - Studio (desktop app)
-        - Studio (Android)
-        - Studio (browser, served mode)
-        - halonic command-line tool
-        - Engine (runs, workflows, routines)
-        - Docs
-        - Not sure
+        - macOS
+        - Linux
+        - Windows, inside WSL2
+        - Windows, not in WSL2
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: system-version
+    attributes:
+      label: System version
+      description: On Windows, the Windows version and the WSL2 distro. In PowerShell, `wsl -l -v` lists the distro.
+      placeholder: e.g. macOS 15.4 · Ubuntu 24.04 · Windows 11 24H2 with Ubuntu 24.04 in WSL2
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Run `node -v` in the terminal where the problem happened.
+      placeholder: v26.12.0
     validations:
       required: true
   - type: dropdown
@@ -56,29 +102,15 @@ body:
       description: Only if the problem happened during a run.
       options:
         - Not during a run
-        - The built-in test model (scripted replies)
-        - A local model (Ollama, LM Studio, llama.cpp, vLLM …)
+        - The built-in test model
+        - A model on this computer (Ollama, LM Studio …)
         - A cloud model
         - Not sure
-  - type: input
-    id: version
-    attributes:
-      label: Halonic version
-      placeholder: e.g. 0.1.0
-    validations:
-      required: true
-  - type: input
-    id: os
-    attributes:
-      label: Operating system
-      placeholder: e.g. Windows 11, Android 15
-    validations:
-      required: true
   - type: textarea
     id: logs
     attributes:
-      label: Logs or error messages
-      description: Paste the relevant output. Remove keys, tokens and personal data first.
+      label: Logs or other output
+      description: Anything else that helps. `--debug` output can include your home folder and user name, so check it first.
       render: text
   - type: textarea
     id: ai

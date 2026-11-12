@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Halonic connects to other apps through MCP servers, plus built-in Gmail and Google Drive. Many services already have an MCP server that works with Halonic today, so please check that first.
+        Halonic is built to connect to other apps through MCP servers. In 0.1.0, agents can't use connectors yet. They're in progress. Tell us which service you need, so we know what to test first.
 
         Never paste API keys, passwords or personal data.
   - type: checkboxes
@@ -36,7 +36,7 @@ body:
       options:
         - I don't know
         - "No, I looked"
-        - Yes, and it works with Halonic, but something is missing
+        - Yes, there is one
         - Yes, but it doesn't work with Halonic
     validations:
       required: true

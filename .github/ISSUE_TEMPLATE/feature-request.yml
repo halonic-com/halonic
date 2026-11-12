@@ -1,53 +1,36 @@
-name: Feature request
-description: Suggest something Halonic should do.
+name: Idea or feature request
+description: Something Halonic should do, or do better.
 labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the suggestion. If it's still a loose idea, start a discussion in [Ideas](https://github.com/halonic-com/halonic/discussions/categories/ideas) instead; we can turn it into an issue later.
+        Thanks for the idea. Still a loose thought? Start a discussion in [Ideas](https://github.com/halonic-com/halonic/discussions/categories/ideas) instead.
 
-        Halonic 0.1.0 is our first release, so a good idea may still have to wait. If it does, we'll say why. We don't give dates.
-  - type: checkboxes
-    id: searched
-    attributes:
-      label: Before you suggest
-      options:
-        - label: I searched the open issues and the Ideas discussions, and this isn't there yet.
-          required: true
+        0.1.0 is our first release, so a good idea may have to wait. If it does, we'll say why. We don't give dates.
   - type: textarea
     id: problem
     attributes:
-      label: What problem would this solve?
-      description: Describe what you're trying to do and what gets in the way today.
+      label: What are you trying to do?
+      description: And what gets in the way today?
     validations:
       required: true
   - type: textarea
-    id: proposal
+    id: idea
     attributes:
-      label: What would you like to happen?
-      description: How should it work, from the user's side? If you can, say it as "When ..., Halonic shall ...".
+      label: What would help?
+      description: How it should work, from your side. A workaround you use now helps too.
     validations:
       required: true
   - type: textarea
-    id: alternatives
+    id: more
     attributes:
-      label: Alternatives you considered
-      description: Other ways to solve it, including workarounds you use now.
-  - type: dropdown
-    id: contribute
-    attributes:
-      label: Would you like to work on this?
-      options:
-        - "No"
-        - Yes, with some guidance
-        - Yes, I have a plan
-    validations:
-      required: true
+      label: Anything else
+      description: Links, examples, or whether you'd like to work on it yourself.
   - type: textarea
     id: ai
     attributes:
       label: AI assistance used
-      description: If an AI tool helped write this request, name it (tool / model). Otherwise write "None".
+      description: If an AI tool helped write this, name it (tool / model). Otherwise write "None".
     validations:
       required: true

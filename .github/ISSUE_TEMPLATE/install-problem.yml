@@ -1,0 +1,96 @@
+name: Install problem
+description: Installing Halonic 0.1.0 or the first run didn't work.
+labels: ["install", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sorry it didn't work. These answers help us find the cause fast.
+
+        - Check the pinned [Known issues in 0.1.0](https://github.com/halonic-com/halonic/issues?q=is%3Aissue+label%3Aknown-issues) first.
+        - Never paste API keys, tokens or passwords. Remove folder names, host names or your user name if they're private.
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Before you report
+      options:
+        - label: I read the pinned Known issues and searched the open issues, and this isn't there yet.
+          required: true
+  - type: dropdown
+    id: step
+    attributes:
+      label: Which step failed?
+      options:
+        - git clone
+        - pnpm install
+        - pnpm add -g, or halonic: command not found
+        - halonic doctor
+        - The first run (init, validate or test)
+        - Something else
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Your system
+      options:
+        - macOS
+        - Linux
+        - Windows, inside WSL2
+        - Windows, not in WSL2
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: System version
+      placeholder: e.g. macOS 15.4, Ubuntu 24.04, Windows 11 24H2 with Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: wsl
+    attributes:
+      label: WSL (Windows only)
+      description: In PowerShell, run `wsl -l -v` and `wsl --version` and paste both outputs.
+      render: text
+  - type: textarea
+    id: node
+    attributes:
+      label: Node.js, pnpm and your folder
+      description: |
+        In the terminal where the command failed, run these and paste the output:
+        `node -v`, `pnpm -v`, `which node pnpm` and `pwd`.
+        If your user name shows up and it's private, replace it with "me".
+      placeholder: |
+        v26.12.0
+        12.18.0
+        ~/.local/share/fnm/.../bin/node
+        ~/.local/share/pnpm/pnpm
+        ~/halonic
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of halonic doctor
+      description: Run `halonic doctor` and paste everything it prints. If `halonic` isn't a command yet, write "no command".
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: The command you ran and the error
+      description: Paste the command and its full output. If you can, run it again with `--debug` and paste that too.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance used
+      description: If an AI tool helped you find or write up this problem, name it (tool / model). Otherwise write "None".
+    validations:
+      required: true
