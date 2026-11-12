@@ -11,7 +11,7 @@ describe("settingsFeature", () => {
       features: [settingsFeature],
       hostServices: [DisplaySettingsService],
     });
-    const [appearance] = shell.contributions.settings.list();
+    const appearance = shell.contributions.settings.list().find(({ id }) => id === "appearance");
     const context = (theme: unknown, characters: unknown) =>
       ({
         services: {
