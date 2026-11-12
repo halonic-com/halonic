@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { SandboxPackageManager } from "@halonicjs/ports";
 import {
   findHelper,
   HELPER_DIDNT_START,
@@ -10,6 +11,7 @@ import {
   throughHelper,
 } from "./elevate-helper.ts";
 import { KeptGrants } from "./kept-grants.ts";
+import { findPackageManager } from "./package-manager.ts";
 import {
   forgetSandboxParents,
   letSandboxReadParents,
@@ -53,6 +55,12 @@ export interface Machine {
   appArmorRestrictsUserNamespaces(): Promise<boolean>;
   /** Whether Apple's `sandbox-exec` is there. */
   hasSeatbelt(): Promise<boolean>;
+  /**
+   * The package manager that installs bubblewrap, `socat` and ripgrep here:
+   * `apt`, `dnf`, `pacman` or `zypper` on Linux, `brew` on macOS, `null` when
+   * there is none Halonic knows. Only for the fix a refused check names.
+   */
+  packageManager(): Promise<SandboxPackageManager | null>;
   /** Whether srt's Windows install is there and usable: the sandbox account, its network filters and a matching setup version. */
   hasWindowsSandbox(): Promise<boolean>;
   /**
@@ -256,6 +264,7 @@ export const systemMachine: Machine = {
     failure("bwrap", ["--ro-bind", "/", "/", "--unshare-user", "--", "true"]),
   appArmorRestrictsUserNamespaces: async () => (await readOrEmpty(restrictSetting)).trim() === "1",
   hasSeatbelt: () => exists("/usr/bin/sandbox-exec"),
+  packageManager: () => findPackageManager(process.platform, process.env["PATH"] ?? ""),
   async hasWindowsSandbox() {
     if (process.platform !== "win32") return false;
     try {
