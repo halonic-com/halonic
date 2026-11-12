@@ -25,6 +25,7 @@ import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { Toolbar } from "../toolbar/toolbar.tsx";
 import { ToolbarSaveNote } from "../toolbar/toolbar-save-note.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { shownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
@@ -104,6 +105,8 @@ export function StudioWindow(props: StudioWindowProps) {
   }
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
+  const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
+  useClosingGoneItemTabs(tabs, kinds, contextFor);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
   // Read again on every phone move, so the bottom navigation's signals follow.
   const shown = shownPlaces(contributions.places.list(), contextFor);

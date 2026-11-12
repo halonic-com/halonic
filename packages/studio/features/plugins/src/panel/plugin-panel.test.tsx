@@ -162,4 +162,17 @@ verifies("plugins.plugin-panel", () => {
     expect(view.querySelector("h1")).toBeNull();
     expect(kind.tab?.exists(item, context)).toBe(false);
   });
+
+  it("tells the window each time the plugins change, until it stops listening", async () => {
+    const { feed, set } = feedOf([weather()]);
+    const { kind } = await showPanel(feed);
+    const listener = vi.fn();
+    const stop = kind.tab?.subscribe?.(listener, context);
+
+    set([]);
+    stop?.();
+    set([weather()]);
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });

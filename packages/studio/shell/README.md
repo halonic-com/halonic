@@ -905,7 +905,9 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
 
 - **Layout** (`shell.layout-points`): `itemKinds.add`, `explorer.addGroup`, `explorer.addSection`
   and `itemPage.addSection`. An item page section names a kind some feature adds, and the section's
-  feature uses the page's feature only through its `api.ts` (`shell.feature-isolation`).
+  feature uses the page's feature only through its `api.ts` (`shell.feature-isolation`). When a
+  kind's `tab.subscribe` says its items changed, the window asks `tab.exists` for each tab on one
+  of them and closes the tab of a gone item the way Mod W does (`shell.gone-item-tabs`).
 - **Frame** (`shell.frame-points`): `cards.add`, `panelWindows.add`, `statusBar.add`,
   `titleBar.add`, `phoneBar.add` and `settings.add`, with `places.add` and `home.addCard` above.
   A settings section names its `scope` (`workspace`, `display` or `host`: where its values are

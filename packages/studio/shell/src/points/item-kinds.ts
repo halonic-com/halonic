@@ -25,8 +25,16 @@ export interface TabDescription {
 /** How the tabs of one item kind behave. */
 export interface TabBehaviour {
   describe(item: ItemRef, context: WorkspaceContext): TabDescription;
-  /** Whether the item still exists; its tab closes when this turns false. */
+  /**
+   * Whether the item still exists. The window asks again each time `subscribe` says the items
+   * changed, and closes the tab of an item that's gone (`shell.gone-item-tabs`).
+   */
   exists(item: ItemRef, context: WorkspaceContext): boolean;
+  /**
+   * Calls `listener` each time items of this kind may have come or gone; returns the way to stop.
+   * Without it the window never asks `exists`, so a gone item's tab stays open.
+   */
+  subscribe?(listener: () => void, context: WorkspaceContext): () => void;
 }
 
 /**

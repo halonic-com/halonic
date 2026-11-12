@@ -109,6 +109,8 @@ export function pluginPanelKind(
         label: panelPlugin(optionsFor(context).feed, item)?.panel.title ?? item.id,
       }),
       exists: (item, context) => panelPlugin(optionsFor(context).feed, item) !== undefined,
+      // The window asks `exists` again as the plugins change, so a removed panel's tab closes (G7).
+      subscribe: (listener, context) => optionsFor(context).feed.subscribe(listener),
     },
   };
 }
