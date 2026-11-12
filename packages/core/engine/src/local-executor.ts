@@ -46,7 +46,7 @@ import {
   runConnectorsOf,
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
-import { type LocalRunsOptions, runsOptionsOf } from "./run/local-runs-options.ts";
+import { type LocalRunsOptions, noRuns, runsOptionsOf } from "./run/local-runs-options.ts";
 import { methodConnectors, methodHalonicTools } from "./run/method-tools.ts";
 import { refusalLog } from "./run/refusal-log.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
@@ -421,9 +421,7 @@ export class LocalExecutor implements RunExecutor {
    * round limit: a turn that reaches it while the model still calls tools fails the call. The model
    * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
    * turn's full run log comes in step 4; until then it logs only `tool.refused` ({@link refusalLog}).
-   *
-   * A call for a step with `method` uses the method's `model` as the alias, its `maxSteps` as the
-   * round limit, and only the tools its `tools` names ({@link methodHalonicTools}).
+   * A step's `method` brings its own `model`, `maxSteps` and `tools` ({@link methodHalonicTools}).
    *
    * A `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item
    * started or below it ({@link callAlongsideOthers}), is offered only the connector tools whose
@@ -498,8 +496,4 @@ export class LocalExecutor implements RunExecutor {
     if (this.options.runs === undefined) throw noRuns();
     return await definitionsOf(this.options.runs.blobs, run.definitionsVersion);
   }
-}
-
-function noRuns(): Error {
-  return new Error("This local executor runs chat turns only: it was created without `runs`.");
 }

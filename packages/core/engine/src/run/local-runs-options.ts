@@ -98,3 +98,8 @@ export function runsOptionsOf(
   if (!localOnly || runs?.harnesses === undefined) return runs;
   return { ...runs, harnesses: { ...runs.harnesses, localOnly } };
 }
+
+/** Why a local executor created without `runs` refuses a workflow run. */
+export function noRuns(): Error {
+  return new Error("This local executor runs chat turns only: it was created without `runs`.");
+}
