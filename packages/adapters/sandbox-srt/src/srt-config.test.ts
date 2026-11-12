@@ -147,6 +147,34 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     expect(config.network?.allowedDomains).toEqual(["[::1]:4100"]);
   });
 
+  it("routes a socket bridge's name on port 80 to the socket, next to the allowed sites", () => {
+    const network = buildSrtConfig(
+      profile({
+        network: {
+          bridge: {
+            kind: "socket",
+            name: "bridge.halonic.invalid",
+            socketPath: "/run/acme/bridge.sock",
+          },
+          allowedSites: ["*.npmjs.org"],
+        },
+      }),
+    ).network;
+    expect(network?.allowedDomains).toEqual(["bridge.halonic.invalid:80", "*.npmjs.org"]);
+    expect(network?.mitmProxy).toEqual({
+      socketPath: "/run/acme/bridge.sock",
+      domains: ["bridge.halonic.invalid"],
+    });
+    expect(network?.strictAllowlist).toBe(true);
+  });
+
+  it("routes nothing to a socket for a loopback bridge or none", () => {
+    expect(buildSrtConfig(profile()).network).not.toHaveProperty("mitmProxy");
+    expect(
+      buildSrtConfig(profile({ network: { bridge: null, allowedSites: [] } })).network,
+    ).not.toHaveProperty("mitmProxy");
+  });
+
   it("allows only the sites, and no loopback address, without a bridge", () => {
     const noBridge = (allowedSites: string[]) =>
       buildSrtConfig(profile({ network: { bridge: null, allowedSites } })).network;
@@ -226,6 +254,16 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       profile({
         network: {
           bridge: { kind: "loopback", host: "::1", port: 4100 },
+          allowedSites: ["*.npmjs.org"],
+        },
+      }),
+      profile({
+        network: {
+          bridge: {
+            kind: "socket",
+            name: "bridge.halonic.invalid",
+            socketPath: "/run/acme/bridge.sock",
+          },
           allowedSites: ["*.npmjs.org"],
         },
       }),

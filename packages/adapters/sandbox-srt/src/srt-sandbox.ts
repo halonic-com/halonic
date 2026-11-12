@@ -1,9 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { isIP } from "node:net";
+import { isAbsolute } from "node:path";
+import { NetworkConfigSchema } from "@anthropic-ai/sandbox-runtime";
 import type {
   Sandbox,
   SandboxCapabilities,
   SandboxCheck,
+  SandboxNetwork,
   SandboxProfile,
   SandboxSession,
   SandboxUnavailableReason,
@@ -11,7 +14,7 @@ import type {
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
-import { assertSrtDeniesKeychain } from "./srt-config.ts";
+import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
 
@@ -175,20 +178,14 @@ export class SrtSandbox implements Sandbox {
   /**
    * Opens a session whose fence is proven before it returns.
    *
-   * @throws when {@link SrtSandbox.check} isn't `ok`, the profile has a bridge that isn't a loopback address
-   *   or one on a Unix socket, or it denies the key store and srt would drop that deny
+   * @throws when {@link SrtSandbox.check} isn't `ok`, the profile's bridge is neither a loopback address nor a
+   *   host name on an absolute socket path no longer than {@link MAX_SOCKET_PATH_BYTES} allows here, or it
+   *   denies the key store and srt would drop that deny
    */
   async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
     const check = await this.check();
     if (!check.ok) throw new Error(`the sandbox can't start: ${check.missing.join("; ")}`);
-    const { bridge } = profile.network;
-    if (bridge?.kind === "socket") {
-      // srt's proxy can send a name to the socket; the rule for it comes with HAL-6348.
-      throw new Error("this sandbox can't serve a bridge on a Unix socket yet");
-    }
-    if (bridge !== null && !isLoopback(bridge.host)) {
-      throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
-    }
+    checkBridge(profile.network.bridge, this.#machine.platform);
     await assertSrtDeniesKeychain(profile);
     const windows = this.#machine.platform === "win32";
     if (windows) {
@@ -334,6 +331,52 @@ function oneLine(text: string): string {
     .map((line) => line.trim())
     .filter((line) => line !== "")
     .join(" ");
+}
+
+/**
+ * The longest Unix socket path each system takes, without the closing zero:
+ * `sun_path` holds 108 bytes on Linux and 104 on macOS. A longer path fails
+ * `listen` (EINVAL on Linux).
+ */
+export const MAX_SOCKET_PATH_BYTES: Readonly<Partial<Record<NodeJS.Platform, number>>> = {
+  linux: 107,
+  darwin: 103,
+};
+
+/**
+ * Refuses a bridge srt can't serve as the only way to Halonic: a loopback
+ * address, or a host name on a socket. The name must be one srt accepts in
+ * both its allowed list and its `mitmProxy` list, and not one the program
+ * dials directly (`localhost` or an address, which srt puts in NO_PROXY).
+ */
+function checkBridge(bridge: SandboxNetwork["bridge"], platform: NodeJS.Platform): void {
+  if (bridge === null) return;
+  if (bridge.kind !== "socket") {
+    if (!isLoopback(bridge.host)) {
+      throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
+    }
+    return;
+  }
+  const { name, socketPath } = bridge;
+  if (!isAbsolute(socketPath)) {
+    throw new Error(`the bridge's socket path must be absolute, not ${socketPath}`);
+  }
+  const bytes = Buffer.byteLength(socketPath);
+  const limit = MAX_SOCKET_PATH_BYTES[platform] ?? MAX_SOCKET_PATH_BYTES.darwin ?? 0;
+  if (bytes > limit) {
+    throw new Error(
+      `the bridge's socket path is ${bytes} bytes, more than the ${limit} a Unix socket allows on ${platform}: ${socketPath}`,
+    );
+  }
+  const parsed = NetworkConfigSchema.safeParse({ ...bridgeNetwork(bridge), deniedDomains: [] });
+  if (
+    name.includes("*") ||
+    isLoopback(name) ||
+    isIP(name.replace(/^\[|\]$/g, "")) !== 0 ||
+    !parsed.success
+  ) {
+    throw new Error(`the bridge's name must be a plain host name, not ${name}`);
+  }
 }
 
 /** Whether `host` is `localhost` or a loopback address (`127.0.0.0/8`, `::1`). */

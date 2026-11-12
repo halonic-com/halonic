@@ -23,6 +23,9 @@ The sandbox-srt adapter shall open a session that proves its fence before anythi
 - Given a bridge on `10.0.0.5`,
   when a session is opened,
   then opening fails and nothing runs.
+- Given a socket bridge with a relative socket path, a socket path longer than the system allows (107 bytes on Linux, 103 on macOS), or a name that is a pattern, `localhost`, an address, carries a port or is refused by srt,
+  when a session is opened,
+  then opening fails and nothing runs; a socket path of exactly 107 bytes opens on Linux.
 - Given a time limit of five seconds and a program that never ends,
   when the limit runs out,
   then the program is killed with the reason `timeout` and the session is stopped.

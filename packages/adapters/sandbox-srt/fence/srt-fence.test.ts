@@ -316,6 +316,61 @@ describe("SrtSandbox with the real fence", () => {
     }
   });
 
+  it("reaches a socket bridge by its name, and no other name or port reaches the socket", async () => {
+    const name = "bridge.halonic.invalid";
+    const socketPath = join(base, "bridge.sock");
+    const seen: string[] = [];
+    let connections = 0;
+    const server = createServer((request, response) => {
+      seen.push(`${request.method} ${request.url} ${request.headers.host}`);
+      response.end("bridge");
+    });
+    server.on("connection", () => {
+      connections += 1;
+    });
+    // A CONNECT is answered, then the tunnel is served by the same server.
+    server.on("connect", (request, socket, head) => {
+      seen.push(`CONNECT ${request.url}`);
+      socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+      if (head.length > 0) socket.unshift(head);
+      server.emit("connection", socket);
+    });
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    const bridged = await sandbox.open({
+      ...profile(),
+      network: { bridge: { kind: "socket", name, socketPath }, allowedSites: [] },
+    });
+    const ask = async (options: string, url: string): Promise<string> => {
+      const started = await bridged.start({
+        program: "sh",
+        args: ["-c", `curl -s --max-time 10 ${options} ${url}`],
+      });
+      const body = await read(started.stdout);
+      await started.exited;
+      return body.trim();
+    };
+    try {
+      // srt refuses these itself: another name, another port, by request or tunnel.
+      expect(await ask("", "http://other.halonic.invalid/v1/messages")).not.toBe("bridge");
+      expect(await ask("", `http://x.${name}/v1/messages`)).not.toBe("bridge");
+      expect(await ask("", `http://${name}:443/v1/messages`)).not.toBe("bridge");
+      expect(await ask("-p", `http://${name}:443/v1/messages`)).not.toBe("bridge");
+      expect(connections).toBe(0);
+      // The program's own request, through srt's proxy, in absolute form.
+      expect(await ask("", `http://${name}/v1/messages`)).toBe("bridge");
+      // The same through a CONNECT tunnel to the name on port 80.
+      expect(await ask("-p", `http://${name}/v1/messages`)).toBe("bridge");
+      expect(seen).toEqual([
+        `GET http://${name}/v1/messages ${name}`,
+        `CONNECT ${name}:80`,
+        `GET /v1/messages ${name}`,
+      ]);
+    } finally {
+      await bridged.close();
+      server.close();
+    }
+  });
+
   it("without a bridge, reaches no loopback port and gets no proxy variable", async () => {
     let connections = 0;
     const server = await new Promise<Server>((resolve) => {
