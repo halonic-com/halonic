@@ -50,9 +50,9 @@ export interface AppearanceViewProps {
 
 /**
  * Settings → Appearance (flow-settings 5, UX checklist 3.7): Theme, Frame colours, Panel opacity
- * and Agent characters, each applied to the whole window at once and saved by itself. A failed save puts the
- * value from before back, says so under the control until it next saves, and says it in the
- * dialog, never in a toast (`settings.failed-save`).
+ * and Agent characters, each applied to the whole window at once and saved by itself. A failed
+ * save puts the value from before back, says so under the control until it next saves, and says
+ * it in the dialog, never in a toast (`settings.failed-save`).
  *
  * @example
  * <AppearanceView settings={displaySettings} announce={(text) => announcer.announce(text)} />

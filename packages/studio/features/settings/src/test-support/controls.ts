@@ -40,3 +40,13 @@ export async function typeAndLeave(input: HTMLInputElement, text: string) {
     input.blur();
   });
 }
+
+/** Types `text` into an input, then presses Enter in it. */
+export async function typeAndPressEnter(input: HTMLInputElement, text: string) {
+  await act(async () => {
+    input.focus();
+    setNativeValue(input, text);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+}

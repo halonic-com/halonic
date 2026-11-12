@@ -69,6 +69,11 @@ export function chooseColour(which: "first" | "second", colour: string): string 
   return `Choose the ${which} colour, now ${colour}`;
 }
 
+/** The colour popover a colour field's swatch button opens: "Choose the first colour". */
+export function colourPopoverLabel(which: "first" | "second"): string {
+  return `Choose the ${which} colour`;
+}
+
 /**
  * The swatches the colour popover offers: each colour the presets use, once, named for a screen
  * reader (team decision, HAL-1294).

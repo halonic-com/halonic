@@ -11,6 +11,7 @@ import {
 import {
   COLOUR_ERROR,
   chooseColour,
+  colourPopoverLabel,
   colourSwatches,
   FIRST_COLOUR,
   FRAME_COLOURS,
@@ -159,12 +160,18 @@ function ColourField({ label, which, colour, onColour }: ColourFieldProps) {
         open={open}
         opener={swatch}
         onClose={() => setOpen(false)}
-        label={`Choose the ${which} colour`}
+        label={colourPopoverLabel(which)}
         presets={colourSwatches}
         value={colour}
         onChange={(picked) => {
           const pickedColour = parseHex(picked);
-          if (pickedColour !== null && pickedColour !== colour) {
+          if (pickedColour === null) {
+            return;
+          }
+          // Even the colour it has: a pick replaces what's typed, and its error, at once.
+          setText(pickedColour);
+          setError(null);
+          if (pickedColour !== colour) {
             onColour(pickedColour);
           }
         }}

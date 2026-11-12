@@ -2,7 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DisplaySettings } from "../display-settings.ts";
-import { change, control, typeAndLeave } from "../test-support/controls.ts";
+import { change, control, typeAndLeave, typeAndPressEnter } from "../test-support/controls.ts";
 import { MemoryDisplayPrefs } from "../test-support/memory-display-prefs.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { frameColoursPref } from "./appearance-prefs.ts";
@@ -70,6 +70,18 @@ verifies("settings.appearance-own-colours", () => {
     expect(second?.value).toBe("#22D3EE");
   });
 
+  it("takes a typed colour when you press Enter", async () => {
+    const { settings, view } = setup();
+    await change(control(view, "select"), "own");
+    const [first] = colourInputs(view);
+    await typeAndPressEnter(first as HTMLInputElement, "#ec4899");
+    expect(settings.get(frameColoursPref)).toEqual({
+      preset: "own",
+      colours: ["#EC4899", "#B05ED9"],
+    });
+    expect(first?.value).toBe("#EC4899");
+  });
+
   it("says how to write a colour and keeps the last good one", async () => {
     const { settings, view } = setup();
     await change(control(view, "select"), "own");
@@ -84,6 +96,23 @@ verifies("settings.appearance-own-colours", () => {
     expect(
       view.querySelector('[aria-label="Choose the first colour, now #3B8BFF"]'),
     ).not.toBeNull();
+  });
+
+  it("clears the error when the popover picks the colour the field already has", async () => {
+    const { settings, view } = setup();
+    await change(control(view, "select"), "own");
+    const [first] = colourInputs(view);
+    await typeAndLeave(first as HTMLInputElement, "blue");
+    // Typed in the popover's hex field, which is there closed too: jsdom can't open a popover.
+    const popover = control(view, '[aria-label="Choose the first colour"]');
+    await change(control<HTMLInputElement>(popover, "input:not([type=radio])"), "#3b8bff");
+    expect(first?.value).toBe("#3B8BFF");
+    expect(first?.getAttribute("aria-invalid")).not.toBe("true");
+    expect(view.textContent).not.toContain("Enter a colour like #3B8BFF.");
+    expect(settings.get(frameColoursPref)).toEqual({
+      preset: "own",
+      colours: ["#3B8BFF", "#B05ED9"],
+    });
   });
 });
 
