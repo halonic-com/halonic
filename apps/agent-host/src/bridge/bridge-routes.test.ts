@@ -179,9 +179,9 @@ describe("bridgeRoutes", () => {
     expect(studio.calls[0]).toMatchObject({ method: "tools.list" });
   });
 
-  // The host serves sockets only on Linux and macOS, and the bridge checks the folder's POSIX mode.
+  // The bridge also checks the socket folder's POSIX mode, which Windows lacks.
   it.skipIf(process.platform === "win32")(
-    "gives the socket path of a bridge on a Unix socket, and none on a port",
+    "[platform:win32] the host serves sockets only on Linux and macOS: gives the socket path of a bridge on a Unix socket, and none on a port",
     async () => {
       const folder = await mkdtemp(join(tmpdir(), "agent-host-bridges-"));
       try {
