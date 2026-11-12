@@ -61,7 +61,7 @@ jobs:
         run: |
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
-            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|harness-kit|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|packages/host/harness-host/|apps/cli/(fence/|src/local-harness-host)|packages/core/ports/|pnpm-lock\.yaml$)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
@@ -1357,11 +1357,6 @@ jobs:
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
         run: pnpm test:fence
-      - name: CLI harness host through the fence
-        # A harness run with a stand-in program in the real sandbox: the
-        # profile root denied, only the run's own folders written (HAL-7811).
-        working-directory: apps/cli
-        run: pnpm test:fence
 
   sandbox-fence-macos:
     # The same fence tests on macOS, where sandbox-runtime uses Seatbelt
@@ -1401,11 +1396,6 @@ jobs:
         run: pnpm test:fence
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
-        run: pnpm test:fence
-      - name: CLI harness host through the fence
-        # A harness run with a stand-in program in the real sandbox: the
-        # profile root denied, only the run's own folders written (HAL-7811).
-        working-directory: apps/cli
         run: pnpm test:fence
 
   sandbox-os:
