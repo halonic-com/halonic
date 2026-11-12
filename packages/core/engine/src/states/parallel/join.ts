@@ -1,7 +1,9 @@
 import type { WorkflowState } from "@halonicjs/format";
+import type { Scope } from "@halonicjs/workflow";
 import type { DecidedEvent } from "../../kernel/decide-types.ts";
 import type { StateStep } from "../../kernel/registry.ts";
 import { type BranchEnd, branchesOf, type ParallelBranches } from "../../kernel/run-branches.ts";
+import { signalSent } from "../../kernel/step-signal.ts";
 
 /** A branch's name and how it ended. */
 interface EndedBranch {
@@ -24,12 +26,14 @@ interface EndedBranch {
  *
  * Results go to the context under each branch's name, in name order: the
  * answer, or `{ error }` for a failed branch. With `output`, they also go
- * there as one map.
+ * there as one map. A state with `signal` then sends it, its data rendered
+ * from the context with the results in it (`kernel/step-signal.ts`).
  */
 export function joinBranches(
   stateId: string,
   state: WorkflowState,
   parallel: ParallelBranches | null,
+  scope: Scope,
 ): StateStep {
   const ended = endedInOrder(state, parallel);
   if (ended === null) {
@@ -46,8 +50,9 @@ export function joinBranches(
     // Each branch's step is already on its agent.finished.
     return { events: [], effects: [], outcome: { type: "cant-try", found: [] } };
   }
+  const results = resultEvents(state, ended);
   return {
-    events: resultEvents(state, ended),
+    events: [...results, ...signalSent(stateId, state, scope, results)],
     effects: [],
     outcome: { type: "finish", event: "done" },
   };

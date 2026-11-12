@@ -9,8 +9,10 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
+import { signalSent } from "../../kernel/step-signal.ts";
 import { answerApproval, askForApproval, askForHarnessApproval } from "./approval.ts";
 import { artifactOf } from "./artifact.ts";
+import { conversationTurns } from "./conversation.ts";
 import {
   answersUnknownEffect,
   answerUnknownEffect,
@@ -31,8 +33,11 @@ import {
  * asked, which kept running while the run waited. When it stops before a
  * connector call that can change things, the engine records the call and
  * makes it, and the agent goes on with the result; see `effect.ts`. A state
- * with `artifact` saves the answer as a file; see `artifact.ts`. Methods,
- * conversations and signals join with the agent loop (step 4).
+ * with `artifact` saves the answer as a file; see `artifact.ts`. A state
+ * with `signal` then sends it (`kernel/step-signal.ts`), and one with
+ * `conversation` adds the prompt and the answer to the turns it keeps in the
+ * context under that key (`conversation.ts`). Methods join with the agent
+ * loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
@@ -91,7 +96,7 @@ function takeCallResult(context: StateContext, input: DecideInput): StateStep {
 }
 
 function finishAgent(
-  { stateId, state, agents }: StateContext,
+  { stateId, state, agents, scope }: StateContext,
   pending: PendingCall,
   answer: unknown,
 ): StateStep {
@@ -113,5 +118,7 @@ function finishAgent(
   if (artifact !== null) {
     events.push(artifact);
   }
+  events.push(...signalSent(stateId, state, scope, events));
+  events.push(...conversationTurns(state, scope, pending.prompt, output));
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
 }

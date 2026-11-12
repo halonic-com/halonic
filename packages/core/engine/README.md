@@ -23,6 +23,8 @@ loop of one model turn, which the local chat turn runs.
 |  | with `LargeResultsTurnLog` round it, keeps a tool result over 256 KB in the blob store and its start in the log | `engine.large-results-to-blobs` |
 |  | starts a run with one `context.updated` per key of the workflow's initial context, before its first state | `engine.initial-context-logged` |
 |  | with `artifact`, keeps the answer in the blob store first, then logs `artifact.created` before the transition | `engine.artifact-created` |
+|  | with `signal`, a task, parallel, foreach or workflow state logs `signal.sent` after its output, its data rendered from the context with the output in it | `engine.step-signal` |
+|  | with `conversation`, a task state adds its prompt and answer to the turns it keeps under that context key, as its last event; the next call doesn't get them yet | `engine.task-conversation` |
 | `agentKnowledge` | builds the providers of an agent's `knowledge` sources through the factory of each one's `provider` type; a run's agent and a chat turn's agent get them as `knowledge_search` and `knowledge_read` | `engine.agent-knowledge` |
 | `AgentMemory` | (internal) an agent's notes, by title, in the `RecordStore` collection `agent-memory/<agentId>` | `engine.agent-memory-records` |
 | `decide` | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take | `engine.decide-refusals` |

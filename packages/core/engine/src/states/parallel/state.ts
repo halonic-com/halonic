@@ -96,10 +96,10 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
 
 /** Records how the branch ended, then joins the branches if it was the last one running. */
 function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): StateStep {
-  const { run, stateId, state } = context;
+  const { run, stateId, state, scope } = context;
   const agent = branch.call?.agent ?? "";
   const finished = branchFinished(stateId, agent, branch.name, end);
-  const join = joinBranches(stateId, state, endBranch(run.parallel, branch.name, end));
+  const join = joinBranches(stateId, state, endBranch(run.parallel, branch.name, end), scope);
   return { ...join, events: [finished, ...join.events] };
 }
 

@@ -13,6 +13,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import type { RunningItem } from "../../kernel/run-items.ts";
+import { signalSent } from "../../kernel/step-signal.ts";
 import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
 
 /**
@@ -185,7 +186,7 @@ function startMore(
 
 /** Every item has ended: the results go to `output`, in item order, and the state is done. */
 function finishState(
-  { run, state }: StateContext,
+  { run, stateId, state, scope }: StateContext,
   count: number,
   last: RunningItem | null,
   output: unknown,
@@ -200,7 +201,7 @@ function finishState(
       ? []
       : [{ type: "context.updated", key: state.output, value: results }];
   return {
-    events: [...events, ...written],
+    events: [...events, ...written, ...signalSent(stateId, state, scope, written)],
     effects: [],
     outcome: { type: "finish", event: "done" },
   };

@@ -8,6 +8,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import type { ChildRun } from "../../kernel/run-state.ts";
+import { signalSent } from "../../kernel/step-signal.ts";
 
 /** How deep child runs may nest: a child of a top-level run is 1 deep. */
 export const maxChildDepth = 5;
@@ -66,7 +67,7 @@ function startChild({ run, stateId, state, workflows, scope }: StateContext): St
 }
 
 /** Only the child the state waits on counts; news of any other run changes nothing. */
-function childMoved({ run, stateId, state }: StateContext, input: ChildInput): StateStep {
+function childMoved({ run, stateId, state, scope }: StateContext, input: ChildInput): StateStep {
   const child = run.child;
   if (child === null || child.state !== stateId || child.runId !== input.childRunId) {
     return nothing;
@@ -92,6 +93,7 @@ function childMoved({ run, stateId, state }: StateContext, input: ChildInput): S
   if (state.output !== undefined) {
     events.push({ type: "context.updated", key: state.output, value: input.context });
   }
+  events.push(...signalSent(stateId, state, scope, events));
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
 }
 

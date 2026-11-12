@@ -31,16 +31,6 @@
     ]
   },
   {
-    "id": "step-signal-and-conversation-ignored",
-    "task": "HAL-4758",
-    "area": "workflow runs: a step signal and conversation",
-    "old": "784f78d wrote signal.sent for the notify step signal and kept the turn in the context under its conversation name (chat).",
-    "new": "The engine writes neither.",
-    "tests": [
-      "billing/invoice/an approved invoice is paid and announced"
-    ]
-  },
-  {
     "id": "run-starts-with-signed-out-connector",
     "task": "HAL-5291",
     "area": "CLI runs: a connector that isn't signed in",
