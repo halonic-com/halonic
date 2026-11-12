@@ -197,8 +197,7 @@ fn now() -> u64 {
 }
 
 /// The automatic checks: the first one 10 s after the window is ready,
-/// then whenever `check_due` says so, and a download after each check that
-/// found an update.
+/// then whenever `check_due` says so.
 fn background<R: Runtime>(app: &AppHandle<R>, ready: Instant) {
     std::thread::sleep(FIRST_CHECK_AFTER);
     loop {
@@ -214,15 +213,13 @@ fn background<R: Runtime>(app: &AppHandle<R>, ready: Instant) {
         };
         if due {
             tauri::async_runtime::block_on(check(app));
-            if lock(app).record.automatic {
-                start_download(app);
-            }
         }
         std::thread::sleep(TICK);
     }
 }
 
-/// One check, with its 15-second limit and no retry.
+/// One check, with its 15-second limit and no retry. With automatic updates
+/// on, an update it finds downloads at once, also after Check now (flow 4.3).
 async fn check<R: Runtime>(app: &AppHandle<R>) {
     {
         let mut inner = lock(app);
@@ -272,6 +269,11 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
     }
     inner.save();
     inner.notify();
+    let automatic = inner.record.automatic;
+    drop(inner);
+    if automatic {
+        start_download(app);
+    }
 }
 
 /// The state for a version the check found: available, unless its
