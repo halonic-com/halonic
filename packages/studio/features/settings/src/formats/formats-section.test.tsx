@@ -1,14 +1,20 @@
 // @vitest-environment jsdom
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DisplaySettings } from "../display-settings.ts";
-import { change, control } from "../test-support/controls.ts";
+import { change, click, control } from "../test-support/controls.ts";
 import { MemoryDisplayPrefs } from "../test-support/memory-display-prefs.ts";
+import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { formatPref } from "./format-pref.ts";
 import { FormatsView } from "./formats-section.tsx";
 
-afterEach(unmountAll);
+beforeEach(fakeModal);
+afterEach(() => {
+  unmountAll();
+  restoreModal();
+});
 
 function setup(place: "app" | "served" = "served") {
   const prefs = new MemoryDisplayPrefs();
@@ -65,6 +71,62 @@ verifies("settings.formats-section", () => {
       await change(control(view, "select"), "nl-NL");
       await change(control(view, "select"), "de-DE");
       expect(view.textContent).not.toContain("Couldn't save the format");
+    });
+  });
+});
+
+describe("on the phone's Settings page", () => {
+  function setupPhone() {
+    const prefs = new MemoryDisplayPrefs();
+    const settings = new DisplaySettings(prefs);
+    const announce = vi.fn();
+    const toasts = createToastStore();
+    const view = render(
+      <PresentationProvider presentation="phone">
+        <ToastStoreProvider store={toasts}>
+          <FormatsView
+            settings={settings}
+            announce={announce}
+            place="served"
+            surface="phone"
+            followTag="en-GB"
+          />
+        </ToastStoreProvider>
+      </PresentationProvider>,
+    );
+    return { prefs, announce, toasts, view };
+  }
+
+  const openSheet = async (view: HTMLElement) => click(control(view, "button"));
+
+  verifies("settings.formats-section", () => {
+    it("opens a picker sheet with a search, whose first option follows this phone", async () => {
+      const { view } = setupPhone();
+      await openSheet(view);
+      const sheet = document.body;
+      expect(sheet.querySelector('input[type="search"]')).not.toBeNull();
+      const first = sheet.querySelector('[role="radiogroup"] input[type="radio"]');
+      expect(first?.nextElementSibling?.textContent).toBe(
+        "Follow this phone: English (United Kingdom)",
+      );
+    });
+
+    it("says a failed save in a toast on this phone, not under the choice", async () => {
+      const { prefs, announce, toasts, view } = setupPhone();
+      prefs.failNext(new Error("read-only profile"));
+      await openSheet(view);
+      const dutch = [
+        ...document.body.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+      ].find((radio) => radio.value === "nl-NL");
+      await click(dutch as HTMLElement);
+      expect(view.textContent).not.toContain("Couldn't save");
+      expect(announce).not.toHaveBeenCalled();
+      expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
+        [
+          "Couldn't save the format on this phone.",
+          "Format is back to Follow this phone: English (United Kingdom).",
+        ],
+      ]);
     });
   });
 });

@@ -32,10 +32,12 @@ afterEach(() => {
   restoreMedia();
 });
 
-function SectionView({ context }: SettingsSectionProps) {
+function SectionView({ context, surface }: SettingsSectionProps) {
   return (
     <>
-      <p className="section-view">{context.services === undefined ? "" : "drawn"}</p>
+      <p className="section-view" data-surface={surface}>
+        {context.services === undefined ? "" : "drawn"}
+      </p>
       {/* A confirmation on top of Settings, as Remove trust opens one. */}
       <dialog className="on-top">
         <button type="button">Cancel</button>
@@ -205,6 +207,9 @@ verifies("shell.settings-window", () => {
     expect(headings).toEqual(["On this computer"]);
     expect(shownSection()).toBe("Appearance");
     expect(settingsDialog()?.querySelector(".section-view")?.textContent).toBe("drawn");
+    expect(settingsDialog()?.querySelector(".section-view")?.getAttribute("data-surface")).toBe(
+      "window",
+    );
   });
 
   it("opens on the section asked for, then returns to the one shown last", async () => {

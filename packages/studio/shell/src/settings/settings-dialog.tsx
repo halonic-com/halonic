@@ -17,7 +17,12 @@ import { settingsSectionToOpen } from "../points/settings-sections.ts";
 import { loadView } from "../view.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { listedSections, type SettingsPlace, settingsGroups } from "./settings-groups.ts";
+import {
+  listedSections,
+  type SettingsPlace,
+  type SettingsSurface,
+  settingsGroups,
+} from "./settings-groups.ts";
 import { SettingsNav } from "./settings-nav.tsx";
 import { isSettingsKey } from "./settings-opening.ts";
 
@@ -32,6 +37,8 @@ export interface SettingsSectionProps {
   readonly closeSettings: () => void;
   /** In the desktop app, or in a browser: "Follow this computer" or "Follow this browser". */
   readonly place: SettingsPlace;
+  /** `window` in the Settings dialog, `phone` on the phone's Settings page. */
+  readonly surface: SettingsSurface;
 }
 
 /**
@@ -151,6 +158,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               context={props.contextFor(section.featureId)}
               closeSettings={props.onClose}
               place={place}
+              surface="window"
             />
           )}
         </div>
@@ -201,7 +209,14 @@ export interface SectionViewProps extends SettingsSectionProps {
 }
 
 /** A section's name, its saved line where it has one, and its view, as the dialog and the phone show it. */
-export function SectionView({ section, context, closeSettings, place, page }: SectionViewProps) {
+export function SectionView({
+  section,
+  context,
+  closeSettings,
+  place,
+  surface,
+  page,
+}: SectionViewProps) {
   const View = useSectionView(section);
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
@@ -220,7 +235,7 @@ export function SectionView({ section, context, closeSettings, place, page }: Se
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
       <ViewErrorBoundary>
         <Suspense fallback={null}>
-          <View context={context} closeSettings={closeSettings} place={place} />
+          <View context={context} closeSettings={closeSettings} place={place} surface={surface} />
         </Suspense>
       </ViewErrorBoundary>
     </section>

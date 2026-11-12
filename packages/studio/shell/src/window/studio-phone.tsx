@@ -133,6 +133,7 @@ function PhonePageBody({
           context={page.contextFor(section.featureId)}
           closeSettings={() => places.back()}
           place={settingsPlace}
+          surface="phone"
         />
       </div>
     );

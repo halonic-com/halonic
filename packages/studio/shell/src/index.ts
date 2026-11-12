@@ -325,6 +325,7 @@ export {
   type SettingsGroup,
   type SettingsGroupsInput,
   type SettingsPlace,
+  type SettingsSurface,
   settingsGroups,
 } from "./settings/settings-groups.ts";
 export { createShell, type Shell, type ShellOptions } from "./shell.ts";

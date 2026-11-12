@@ -14,6 +14,7 @@ import { MapTarget } from "../test-support/map-target.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { StudioWindow } from "../window/studio-window.tsx";
 import { StudioWorkspace } from "../window/studio-workspace.ts";
+import type { SettingsSectionProps } from "./settings-dialog.tsx";
 
 let restoreMedia: () => void;
 let restoreModal: () => void;
@@ -29,8 +30,12 @@ afterEach(() => {
   restoreMedia();
 });
 
-function SectionView() {
-  return <p className="section-view">drawn</p>;
+function SectionView({ surface }: SettingsSectionProps) {
+  return (
+    <p className="section-view" data-surface={surface}>
+      drawn
+    </p>
+  );
 }
 
 function section(
@@ -187,6 +192,16 @@ verifies("shell.settings-list-page", () => {
     expect(title()).toBe("Settings");
     back();
     expect(title()).toBe("More");
+  });
+
+  it("tells a section it is on the phone's page, not in a window's dialog", async () => {
+    const { container, tapRow, tapMore } = await renderPhone();
+    tapMore();
+    await tapRow("Settings");
+
+    await tapRow("Formats");
+
+    expect(container.querySelector(".section-view")?.getAttribute("data-surface")).toBe("phone");
   });
 
   it("opens the section a view asks for above the list", async () => {

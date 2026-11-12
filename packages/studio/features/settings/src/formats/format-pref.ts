@@ -1,4 +1,5 @@
 import type { DisplayPref } from "../display-prefs.ts";
+import { settingsWhere } from "../where.ts";
 
 /**
  * The formats Settings offers besides following the computer: a short fixed list of language and
@@ -68,6 +69,8 @@ export interface FormatPlace {
   readonly followTag: string;
   /** Whether the window is the desktop app or a browser the computer running Halonic serves. */
   readonly place: "app" | "served";
+  /** The phone's Settings page names the served window "this phone", not "this browser". */
+  readonly surface?: "window" | "phone";
 }
 
 /** The language the Studio's words are in, and so the names of the formats: English for now. */
@@ -93,7 +96,7 @@ export function usableTag(tag: string): string {
 
 /**
  * The Format select's options: first "Follow this computer: English (United Kingdom)" ("Follow
- * this browser: …" when served), then each tag this window can format, by name, sorted by name.
+ * this browser: …" when served, "Follow this phone: …" on the phone's page), then each tag this window can format, by name, sorted by name.
  *
  * @example
  * formatOptions({ followTag: "en-GB", place: "app" })[0];
@@ -111,7 +114,7 @@ export function formatOptions(where: FormatPlace): FormatOption[] {
     .filter((tag) => formattable.has(tag))
     .map((tag) => ({ value: tag, label: nameOf(tag) }))
     .sort((left, right) => collator.compare(left.label, right.label));
-  const follows = where.place === "app" ? "this computer" : "this browser";
+  const follows = `this ${settingsWhere(where.place, where.surface ?? "window")}`;
   const followed = nameOf(usableTag(where.followTag));
   return [{ value: "follow", label: `Follow ${follows}: ${followed}` }, ...tags];
 }

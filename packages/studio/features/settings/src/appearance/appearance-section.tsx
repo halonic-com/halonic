@@ -1,10 +1,12 @@
 import { Field, Select, Slider, Switch, useToastStore } from "@halonicjs/studio-kit";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import type { SettingsPlace, SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { useEffect, useRef } from "react";
 import { DisplaySettingsService } from "../api.ts";
 import type { DisplaySettings } from "../display-settings.ts";
+import type { SaveFailedText } from "../save-failed.ts";
 import { saveSetting } from "../save-setting.ts";
 import { useDisplaySetting } from "../use-display-setting.ts";
+import { settingsWhere } from "../where.ts";
 import {
   agentCharactersPref,
   panelOpacityPref,
@@ -33,11 +35,13 @@ const themeOptions = themes.map((theme) => ({ value: theme, label: themeNames[th
 const nameOf = (theme: Theme) => themeNames[theme];
 
 /** Settings → Appearance as the settings container shows it. */
-export function AppearanceSection({ context }: SettingsSectionProps) {
+export function AppearanceSection({ context, place, surface }: SettingsSectionProps) {
   return (
     <AppearanceView
       settings={context.services.get(DisplaySettingsService)}
       announce={(text) => context.announcer.announce(text)}
+      place={place}
+      surface={surface}
     />
   );
 }
@@ -50,6 +54,13 @@ export interface AppearanceViewProps {
    * gone, the window's toast says it instead (a save that ends after Settings closed).
    */
   readonly announce: (text: string) => void;
+  /**
+   * `phone` on the phone's Settings page (mc 13.2): no Frame colours, no Panel opacity, and a
+   * failed save is a toast, "Couldn't save the … on this phone.", not a line under the control.
+   */
+  readonly surface?: SettingsSurface;
+  /** Where the values are kept, for the toast's words; served unless said. */
+  readonly place?: SettingsPlace;
 }
 
 /**
@@ -62,7 +73,13 @@ export interface AppearanceViewProps {
  * @example
  * <AppearanceView settings={displaySettings} announce={(text) => announcer.announce(text)} />
  */
-export function AppearanceView({ settings, announce }: AppearanceViewProps) {
+export function AppearanceView({
+  settings,
+  announce,
+  place = "served",
+  surface = "window",
+}: AppearanceViewProps) {
+  const phone = surface === "phone";
   const theme = useDisplaySetting(settings, themePref);
   const opacity = useDisplaySetting(settings, panelOpacityPref);
   const characters = useDisplaySetting(settings, agentCharactersPref);
@@ -80,13 +97,21 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
       present.current = false;
     };
   }, []);
-  const save = saveSetting(settings, (text, { line, back }) =>
-    present.current ? announce(text) : toasts?.show({ tone: "danger", title: line, text: back }),
+  const save = saveSetting(
+    settings,
+    (text, { line, back }) =>
+      present.current && !phone
+        ? announce(text)
+        : toasts?.show({ tone: "danger", title: line, text: back }),
+    phone ? settingsWhere(place, surface) : undefined,
   );
+  // The phone shows a failure as a toast, so no line sits under a control.
+  const failed = (value: { readonly failed: boolean }, text: SaveFailedText) =>
+    value.failed && !phone ? text.line : null;
 
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <Field label={THEME} error={theme.failed ? THEME_NOT_SAVED.line : null}>
+      <Field label={THEME} error={failed(theme, THEME_NOT_SAVED)}>
         <Select
           options={themeOptions}
           value={theme.value}
@@ -95,25 +120,24 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
           }
         />
       </Field>
-      <FrameColoursField settings={settings} save={save} />
-      <Field
-        label={PANEL_OPACITY}
-        hint={PANEL_OPACITY_HINT}
-        error={opacity.failed ? PANEL_OPACITY_NOT_SAVED.line : null}
-      >
-        <Slider
-          {...panelOpacityRange}
-          value={opacity.value}
-          format={percent}
-          onChange={(moved) => settings.preview(panelOpacityPref, moved)}
-          onCommit={(picked) => save(panelOpacityPref, picked, PANEL_OPACITY_NOT_SAVED, percent)}
-          onEnd={() => settings.endPreview(panelOpacityPref)}
-        />
-      </Field>
-      <Field
-        label={AGENT_CHARACTERS}
-        error={characters.failed ? AGENT_CHARACTERS_NOT_SAVED.line : null}
-      >
+      {phone ? null : <FrameColoursField settings={settings} save={save} />}
+      {phone ? null : (
+        <Field
+          label={PANEL_OPACITY}
+          hint={PANEL_OPACITY_HINT}
+          error={failed(opacity, PANEL_OPACITY_NOT_SAVED)}
+        >
+          <Slider
+            {...panelOpacityRange}
+            value={opacity.value}
+            format={percent}
+            onChange={(moved) => settings.preview(panelOpacityPref, moved)}
+            onCommit={(picked) => save(panelOpacityPref, picked, PANEL_OPACITY_NOT_SAVED, percent)}
+            onEnd={() => settings.endPreview(panelOpacityPref)}
+          />
+        </Field>
+      )}
+      <Field label={AGENT_CHARACTERS} error={failed(characters, AGENT_CHARACTERS_NOT_SAVED)}>
         <Switch
           checked={characters.value}
           onChange={(on) => save(agentCharactersPref, on, AGENT_CHARACTERS_NOT_SAVED, onOrOff)}

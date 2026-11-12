@@ -22,7 +22,9 @@ function setup(View: (props: SettingsSectionProps) => React.ReactNode, withComma
   });
   const closeSettings = vi.fn(() => calls.push("close"));
   const context = (withCommands ? { runCommand } : {}) as unknown as WorkspaceContext;
-  const view = render(<View context={context} closeSettings={closeSettings} place="app" />);
+  const view = render(
+    <View context={context} closeSettings={closeSettings} place="app" surface="window" />,
+  );
   return { calls, runCommand, view };
 }
 

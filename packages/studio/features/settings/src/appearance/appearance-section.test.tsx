@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -163,6 +163,54 @@ describe("a failed save", () => {
           ["Couldn't save the panel opacity on this computer.", "Panel opacity is back to 60%."],
         ]);
       });
+    });
+  });
+});
+
+describe("on the phone's Settings page", () => {
+  function setupPhone(place: "app" | "served" = "served") {
+    const prefs = new MemoryDisplayPrefs();
+    const settings = new DisplaySettings(prefs);
+    const announce = vi.fn();
+    const toasts = createToastStore();
+    const view = render(
+      <PresentationProvider presentation="phone">
+        <ToastStoreProvider store={toasts}>
+          <AppearanceView settings={settings} announce={announce} place={place} surface="phone" />
+        </ToastStoreProvider>
+      </PresentationProvider>,
+    );
+    return { prefs, announce, toasts, view };
+  }
+
+  verifies("settings.appearance-section", () => {
+    it("has Theme and Agent characters, with no Frame colours and no Panel opacity", () => {
+      const { view } = setupPhone();
+      expect(view.textContent).toContain("Theme");
+      expect(view.textContent).toContain("Agent characters");
+      expect(view.textContent).not.toContain("Frame colours");
+      expect(view.textContent).not.toContain("Panel opacity");
+      expect(view.querySelector('[type="range"]')).toBeNull();
+    });
+
+    it("says a failed save in a toast on this phone, not under the control", async () => {
+      const { prefs, announce, toasts, view } = setupPhone();
+      prefs.failNext(new Error("read-only profile"));
+      await click(control(view, '[role="switch"]'));
+      expect(view.textContent).not.toContain("Couldn't save");
+      expect(announce).not.toHaveBeenCalled();
+      expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
+        ["Couldn't save agent characters on this phone.", "Agent characters are back on."],
+      ]);
+    });
+
+    it("keeps the computer's words in the desktop app's narrow window", async () => {
+      const { prefs, toasts, view } = setupPhone("app");
+      prefs.failNext(new Error("read-only profile"));
+      await click(control(view, '[role="switch"]'));
+      expect(toasts.list().map((toast) => toast.title)).toEqual([
+        "Couldn't save agent characters on this computer.",
+      ]);
     });
   });
 });

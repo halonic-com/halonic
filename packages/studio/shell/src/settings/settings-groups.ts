@@ -5,6 +5,12 @@ import { bySettingsGroup } from "../points/settings-sections.ts";
 /** Where Settings shows: in the desktop app, or in a browser that the computer running Halonic serves. */
 export type SettingsPlace = "app" | "served";
 
+/**
+ * What a section's view is drawn on: the Settings dialog of a window, or the phone's own Settings
+ * page (flow-settings 13, mc 13.2). The shell says which, so a section never guesses from the width.
+ */
+export type SettingsSurface = "window" | "phone";
+
 /** A group in the settings list: its heading and its sections, in the order they show. */
 export interface SettingsGroup {
   /** Tells the groups apart: `workspace`, `computer`, or, when served, `browser` and `host`. */
