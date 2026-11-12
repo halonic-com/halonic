@@ -87,6 +87,8 @@ export async function buildTestWorker(suiteFiles: readonly (string | URL)[]): Pr
     platform: "neutral",
     mainFields: ["module", "main"],
     target: "es2024",
+    // workerd provides `cloudflare:workers` (the bindings in `env`) when the Worker loads.
+    external: ["cloudflare:*"],
     write: false,
     metafile: true,
     logLevel: "silent",

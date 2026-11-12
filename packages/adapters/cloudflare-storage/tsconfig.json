@@ -1,0 +1,17 @@
+{
+  "//": "The code that runs in the Worker, checked against workerd's own types: no Node types. The *.workerd.test.ts files are suites that run inside workerd, so they are checked here too.",
+  "extends": "@halonicjs/tooling-config/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": [
+      "es2024"
+    ],
+    "types": [
+      "@cloudflare/workers-types"
+    ]
+  },
+  "include": [
+    "src/index.ts",
+    "src/r2-blob-store.ts",
+    "src/**/*.workerd.test.ts"
+  ]
+}
