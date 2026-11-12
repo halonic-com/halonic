@@ -79,7 +79,7 @@ export const rowLabelWords = {
     schedule: (when: string | undefined) =>
       when === undefined
         ? "the schedule"
-        : `the schedule, ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+        : `the schedule for ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
     catchUp: "a catch-up after sleep",
     test: (testCase: string) => `the test case “${testCase}”`,
     testCase: "a test case",
