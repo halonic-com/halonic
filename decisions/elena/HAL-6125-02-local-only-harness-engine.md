@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in review on [HAL-6125](/HAL/issues/HAL-6125) (his ask on HAL-6125, from his review of #1875 on HAL-6065)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kU8PQF5GDAvd0BROPOAfLRGbdzK9bXQAqfVHp42j6klSbidfmHAR6lfVDg5tp8QX9hfAmXJdh8I0XmdQTqg3Cw==
 - Task: HAL-6125
 
 ## What changes
