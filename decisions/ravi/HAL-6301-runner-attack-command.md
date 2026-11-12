@@ -2,6 +2,7 @@
 
 - Approval: a change under `.github/` needs Liam's review (docs/guides/checks.md, note guard); Liam approves this note in review of the runner attack follow-ups on [HAL-6301](/HAL/issues/HAL-6301)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qo0IePZrfl+tnZkUMOSdpYv9zA68J+Ve96wOsAj4FymBKKZV+9AdJMkvDsbU405ZetG8Fz1dM6D75YbwtFFFCQ==
 - Task: HAL-6301
 
 ## What changes
