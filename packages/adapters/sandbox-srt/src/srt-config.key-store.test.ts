@@ -4,8 +4,16 @@ import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
 import { wrapCommandWithSandboxMacOS } from "@anthropic-ai/sandbox-runtime/dist/sandbox/macos-sandbox-utils.js";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildSrtConfig, keychainMachServices } from "./srt-config.ts";
+
+// srt finds the shell for the command by running `which bash` with a 1 s
+// timeout and fails when that times out, as it can on a busy CI runner. These
+// tests read the profile, not the host's PATH, so the shell is fixed here.
+// vitest.config.ts loads macos-sandbox-utils.js through Vitest for this.
+vi.mock("@anthropic-ai/sandbox-runtime/dist/utils/which.js", () => ({
+  whichSync: (bin: string) => `/bin/${bin}`,
+}));
 
 function profile(keyStore?: SandboxProfile["keyStore"]): SandboxProfile {
   return {
