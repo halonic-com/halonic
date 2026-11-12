@@ -1,6 +1,6 @@
 # Decision: the sandbox fence jobs also run the harness smoke test
 
-- Approval: Liam asked for this wiring on [HAL-7811](/HAL/issues/HAL-7811); the CTO (Liam) and a second guardian approve this note in review
+- Approval: Liam asked for this wiring on [HAL-7811](/HAL/issues/HAL-7811) and approves this note as the CTO; `ci.yml` is not a guard trust root, so no second guardian is needed
 - Kind: internal
 - Task: HAL-7811
 
