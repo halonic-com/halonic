@@ -19,16 +19,17 @@ export const id = s
  */
 const FOLDER_ID_MAX_LENGTH = 64;
 
-/** Names Windows keeps for devices, as pattern alternatives; no file or folder can have them. */
-const WINDOWS_DEVICE_NAMES = "con|prn|aux|nul|com[0-9]|lpt[0-9]";
+/** Names Windows keeps for devices; no file or folder can have them. */
+const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])$/;
 
 /**
  * An {@link id} that names a folder in the profile: at most 64 characters
  * and not a Windows device name. `owner` says whose folder it is in the
- * message. The device names are refused through a pattern, not a
- * refinement, so the JSON Schema carries the rule too. `@halonicjs/profile`
- * keeps the same rule, and a test in each kind that uses it holds the two
- * together.
+ * message. The device names are refused by a separate rule that the JSON
+ * Schema carries as `not: { pattern }`, not by a lookahead, so the pattern
+ * also works in Go and Rust regex libraries, which have no lookaround.
+ * `@halonicjs/profile` keeps the same rule, and a test in each kind that
+ * uses it holds the two together.
  */
 function folderId(owner: string) {
   return id
@@ -36,10 +37,18 @@ function folderId(owner: string) {
       FOLDER_ID_MAX_LENGTH,
       `use at most ${FOLDER_ID_MAX_LENGTH} characters, so the ${owner}'s folder fits in a Windows path`,
     )
-    .regex(
-      new RegExp(`^(?!(?:${WINDOWS_DEVICE_NAMES})$)`),
-      "use a name Windows doesn't keep for a device (con, prn, aux, nul, com0-com9, lpt0-lpt9)",
-    );
+    .superRefine((name, context) => {
+      if (WINDOWS_DEVICE_NAME.test(name)) {
+        context.addIssue({
+          code: "invalid_format",
+          format: "regex",
+          pattern: WINDOWS_DEVICE_NAME.source,
+          message:
+            "use a name Windows doesn't keep for a device (con, prn, aux, nul, com0-com9, lpt0-lpt9)",
+        });
+      }
+    })
+    .meta({ not: { pattern: WINDOWS_DEVICE_NAME.source } });
 }
 
 /** A deployment's id, which names the deployment's runs folder. */
