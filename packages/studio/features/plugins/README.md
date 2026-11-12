@@ -1,6 +1,6 @@
 # @halonicjs/studio-feature-plugins
 
-The Studio side of plugins. Studio draws everything a plugin shows: the plugin only describes it in its manifest's `ui` (ADR `docs/adr/2026-11-09-plugins.md`, section 5; design on [HAL-1739](/HAL/issues/HAL-1739#document-design)).
+The Studio side of plugins. Studio draws everything a plugin shows: the plugin only describes it in its manifest's `ui` (ADR `docs/adr/2026-11-09-plugins.md`, section 5; design on HAL-1739).
 
 - **Layer:** studio
 - **Owner:** elena
