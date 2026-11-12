@@ -45,6 +45,8 @@ const messages = JSON.stringify({
 describe("the harness bridge on a Unix socket", () => {
   let base: string;
   let providerCalls: string[];
+  /** While set, the fake provider waits for it before it answers. */
+  let hold: Promise<void> | undefined;
   let bridge: OpenHarnessBridge;
   let session: SandboxSession;
   let closed = false;
@@ -72,6 +74,14 @@ describe("the harness bridge on a Unix socket", () => {
     },
     timeLimitMs: 120_000,
   });
+
+  /** Waits until `done` holds, and fails after five seconds. */
+  async function waitFor(done: () => boolean): Promise<void> {
+    for (let waited = 0; !done(); waited += 20) {
+      if (waited >= 5_000) throw new Error("the request never reached the bridge");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
 
   /** Runs `curl` in the fence with `args` and gives the status it got: `000` when it got none. */
   async function status(...args: string[]): Promise<string> {
@@ -105,6 +115,7 @@ describe("the harness bridge on a Unix socket", () => {
       socketFolder: join(base, "bridges"),
       fetch: async (input) => {
         providerCalls.push(String(input));
+        await hold;
         return new Response('{"type":"message"}', {
           headers: { "content-type": "application/json" },
         });
@@ -133,14 +144,23 @@ describe("the harness bridge on a Unix socket", () => {
   it.skipIf(!onLinux)(
     "leaves no TCP or UDP listener and no abstract socket in our processes, while the fence serves a request",
     async () => {
-      const slow = await session.start({
-        program: "sh",
-        args: [
-          "-c",
-          `curl -s -o /dev/null --max-time 10 ${url()} -X POST ${withToken().join(" ")}`,
-        ],
+      // The fake provider answers at once, so hold it open until the check has run.
+      let release = (): void => {};
+      hold = new Promise<void>((resolve) => {
+        release = resolve;
       });
-      expect(await w9Violations(process.pid)).toEqual([]);
+      const before = providerCalls.length;
+      const slow = await session.start({
+        program: "curl",
+        args: ["-s", "-o", "/dev/null", "--max-time", "10", url(), ...post(), ...withToken()],
+      });
+      try {
+        await waitFor(() => providerCalls.length > before);
+        expect(await w9Violations(process.pid)).toEqual([]);
+      } finally {
+        release();
+        hold = undefined;
+      }
       await slow.exited;
       expect(await w9Violations(process.pid)).toEqual([]);
     },

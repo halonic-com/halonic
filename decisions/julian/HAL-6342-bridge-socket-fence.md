@@ -6,7 +6,7 @@
 
 ## What changes
 
-In `.github/workflows/ci.yml`, a change under `packages/harness-bridge/` now triggers the
+In `.github/workflows/ci.yml`, a change under `packages/adapters/harness-bridge/` now triggers the
 `sandbox-fence` job, as a change in `sandbox-srt` already does. The fence tests now start the real
 bridge server, so a bridge change can break them.
 

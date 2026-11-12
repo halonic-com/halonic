@@ -131,6 +131,8 @@ function violationsOf(who: string, isSrt: boolean, inodes: Set<string>, tables: 
  * A process holds a listener when its `/proc/<pid>/fd` links the socket's
  * inode, so a listener of a program that isn't ours never counts, and a
  * socket of ours is never missed because of the address it hides behind.
+ * The tables are the host's: a socket inside the fence's own network
+ * namespace is not in them, so it is not checked here.
  */
 export async function w9Violations(rootPid: number): Promise<string[]> {
   const tables = await readTables();
