@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews and approves this note in the review task of [HAL-6613](/HAL/issues/HAL-6613); the words are the team's call on that task, built on doctor's Workspace line and run's Couldn't line, so no board card
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3wa5wTFUYW/as6b3NH7pol7EQ8TNlvwobyzR+Stu0LChnqQOrxaUDNqooci/avbF9xGfSToA0hPaQeH469VRDQ==
 
 `app.doctor-workspace` said the Workspace line is never marked as failed, and
 `cli.doctor-workspace` read whether a run is on the test model only from the
