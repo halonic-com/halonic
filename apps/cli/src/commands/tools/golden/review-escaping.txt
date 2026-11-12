@@ -1,0 +1,51 @@
+## colour: halonic tools review notes-mcp
+exit 1
+stdout:
+  Review the tools from notes-mcp
+  A server you connected wrote these descriptions. Halonic hasn't checked them.
+  Approve only the tools you expect this server to have.
+  
+  \e[1mNot approved\e[22m  \e[1mevil\e[22m
+    ok[2J\u000d evil
+    \e[2mAsks you before each use.\e[22m
+    \e[2mhtl1:e1e143157854819876357d68cb1ae5a58adda5318d4c03034b224af953c908bf\e[22m
+stderr:
+  \e[33m!\e[39m 1 tool from notes-mcp stays off: there's no terminal to ask you.
+    Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>
+
+## NO_COLOR: halonic tools review notes-mcp
+exit 1
+stdout:
+  Review the tools from notes-mcp
+  A server you connected wrote these descriptions. Halonic hasn't checked them.
+  Approve only the tools you expect this server to have.
+  
+  Not approved  evil
+    ok[2J\u000d evil
+    Asks you before each use.
+    htl1:e1e143157854819876357d68cb1ae5a58adda5318d4c03034b224af953c908bf
+stderr:
+  ! 1 tool from notes-mcp stays off: there's no terminal to ask you.
+    Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>
+
+## --json: halonic tools review notes-mcp
+exit 1
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "source": "notes-mcp",
+    "on": [],
+    "waiting": [
+      {
+        "name": "evil",
+        "state": "not_approved",
+        "fingerprint": "htl1:e1e143157854819876357d68cb1ae5a58adda5318d4c03034b224af953c908bf",
+        "keepsChanging": false,
+        "serverChanged": false,
+        "changes": []
+      }
+    ],
+    "refused": []
+  }
+stderr:

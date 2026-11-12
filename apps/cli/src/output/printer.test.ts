@@ -14,6 +14,7 @@ const findMessages = defineMessages("find", {
   action: (what: string) => phrase`find ${what}`,
   whatToFind: () => phrase`Say what to find.`,
   found: (what: string) => phrase`Found ${what}.`,
+  partly: (what: string) => phrase`Found only part of ${what}.`,
 });
 
 /** A command that finds things, and fails in each way a command can. */
@@ -53,6 +54,14 @@ const findCommand: CliCommand = {
         json: { found: { key: await context.secrets.get("key") } },
       };
     }
+    if (what === "the map") {
+      return {
+        exitCode: exitCode.ok,
+        lines: [phrase`${markPart("done")} ${findMessages.found(what).phrase}`],
+        json: { found: what },
+        warnings: [phrase`${markPart("needsYou")} ${findMessages.partly(what).phrase}`],
+      };
+    }
     if (what === "a bug") {
       throw new Error("undefined is not a function");
     }
@@ -86,6 +95,16 @@ verifies("cli.json", () => {
     const ascii = captureIo("/work");
     await runCli(["find", "keys", "--no-color"], ascii, [findCommand], { terminal: notUtf8 });
     expect(ascii.stdout).toEqual(["ok Found keys."]);
+  });
+
+  it("prints a result's warnings on stderr after its lines, and leaves them out of --json", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["find", "the map"], io, [findCommand])).toBe(exitCode.ok);
+    expect(io.stdout).toEqual(["✓ Found the map."]);
+    expect(io.stderr).toEqual(["! Found only part of the map."]);
+    const { document, stderr } = await runJson(["find", "the map", "--json"]);
+    expect(document).toEqual({ outputVersion: 1, ok: true, found: "the map" });
+    expect(stderr).toEqual([]);
   });
 
   it("gives the result as one document, with outputVersion and ok first", async () => {

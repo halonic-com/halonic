@@ -34,9 +34,9 @@ export interface Printer {
    */
   ahead(line: Phrase): void;
   /**
-   * What a command did: its lines after those printed ahead, or with `--json`
-   * its document. When the lines printed ahead don't start the result, a bug,
-   * every line is printed.
+   * What a command did: its lines after those printed ahead, then its
+   * warnings on stderr, or with `--json` its document. When the lines printed
+   * ahead don't start the result, a bug, every line is printed.
    */
   result(result: CommandResult): void;
   /**
@@ -150,6 +150,7 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
         writeDocument(result);
       } else {
         printLines(out, rest);
+        printLines(err, result.warnings ?? []);
       }
     },
     stopped(result = notSaid) {

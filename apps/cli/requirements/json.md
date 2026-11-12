@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2184; the CLI output design on HAL-1981 (cli-output sections 1.3, 1.8 and 2, and the checklist items "Exit code", "Streams" and "`--json`" in section 5), approved by the board on HAL-2123; the `--json` section of the CLI reference on HAL-1986
 
-The `halonic` command shall print what each command returns: its lines on stdout, each mark as the stream shows it, or with `--json` anywhere before a `--`, exactly one JSON document on stdout instead. The document shall start with `"outputVersion": 1` and `ok`, which is true when the command exits with 0, followed by the command's own fields. A failed command, including a wrong command line or one with no command to run, shall give `"ok": false` and an `error` with its `kind` (`usage` for a wrong command line), its `code` when it has one, its `message` and its `fix` when it has one, in the same words as the error's lines without `--json`, and with stderr empty. A bug's own text shall stay out of the document, and every loaded secret shall be removed from it. The exit code shall be the same with and without `--json`. With `--json` and `--debug`, the error's own text shall go to stderr. Help that was asked for, with `help` or `--help`, shall stay text, also with `--json`.
+The `halonic` command shall print what each command returns: its lines on stdout, each mark as the stream shows it, then its warnings on stderr, or with `--json` anywhere before a `--`, exactly one JSON document on stdout instead. The document shall start with `"outputVersion": 1` and `ok`, which is true when the command exits with 0, followed by the command's own fields. A failed command, including a wrong command line or one with no command to run, shall give `"ok": false` and an `error` with its `kind` (`usage` for a wrong command line), its `code` when it has one, its `message` and its `fix` when it has one, in the same words as the error's lines without `--json`, and with stderr empty. A bug's own text shall stay out of the document, and every loaded secret shall be removed from it. The exit code shall be the same with and without `--json`. With `--json` and `--debug`, the error's own text shall go to stderr. Help that was asked for, with `help` or `--help`, shall stay text, also with `--json`.
 
 ## Examples
 
@@ -35,3 +35,6 @@ The `halonic` command shall print what each command returns: its lines on stdout
 - Given a failure without a kind and `--json --debug`,
   when the command fails,
   then the `error` has kind `internal` and the sentence for a bug, none of the error's own text, and the error's stack goes to stderr.
+- Given a command whose result has the warning "! Found only part of the map.",
+  when it ends without `--json`,
+  then its lines are on stdout and the warning on stderr after them; with `--json`, the document holds no warning and stderr is empty.

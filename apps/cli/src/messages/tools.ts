@@ -1,4 +1,4 @@
-import { counted } from "./counts.ts";
+import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { bold, dim, phrase } from "./phrase.ts";
 
@@ -12,6 +12,7 @@ import { bold, dim, phrase } from "./phrase.ts";
  */
 export const toolsMessages = defineMessages("tools", {
   summary: () => phrase`Review and approve the tools your connectors list`,
+  reviewSummary: () => phrase`Review a connector's listed tools and approve them one by one`,
   approveSummary: () => phrase`Approve listed tools by name, or every waiting one with --all`,
   revokeSummary: () => phrase`Remove your approval of listed tools`,
   /** What the three were doing, for "✕ Couldn't list the tools from notes-mcp: …". */
@@ -42,6 +43,34 @@ export const toolsMessages = defineMessages("tools", {
   fingerprintWithAll: () => phrase`--fingerprint goes with one tool, not with --all.`,
   oneAtATime: () =>
     phrase`Approve them one at a time: halonic tools approve <source> <tool> --fingerprint <fingerprint>`,
+
+  // `review`: the title, the top line, the refused tools and the questions.
+  title: (source: string) => phrase`Review the tools from ${source}`,
+  topLine: () =>
+    phrase`A server you connected wrote these descriptions. Halonic hasn't checked them.`,
+  topLineAdvice: () => phrase`Approve only the tools you expect this server to have.`,
+  refusedHeading: () => phrase`Refused, can't be approved`,
+  askNotApproved: (tool: string) => phrase`Approve ${tool}?`,
+  askChanged: (tool: string) => phrase`Approve this version of ${tool}?`,
+  keepsChangingLine: (source: string, tool: string) =>
+    phrase`${source} keeps changing ${tool}, so it stays off and isn't asked about.`,
+  approveOnPurpose: (command: string) => phrase`To approve this version on purpose: ${command}`,
+
+  // `review`: the last line.
+  approvedAllAsked: (count: number, source: string) =>
+    phrase`Approved ${counted(count, "tool", "tools")} from ${source}.`,
+  approvedSomeOff: (count: number, source: string, off: readonly string[]) =>
+    phrase`Approved ${counted(count, "tool", "tools")} from ${source}. ${off.length} ${off.length === 1 ? "stays" : "stay"} off: ${off.join(", ")}.`,
+  approvedNothing: (source: string, off: readonly string[]) =>
+    phrase`Approved nothing. ${counted(off.length, "tool", "tools")} from ${source} ${off.length === 1 ? "stays" : "stay"} off: ${off.join(", ")}.`,
+  toolsOn: (count: number) =>
+    phrase`${counted(count, "tool", "tools")} ${count === 1 ? "is" : "are"} on.`,
+  /** N8: what Ctrl C during a question meant, after "Stopped.". */
+  stoppedAfter: (source: string, approved: readonly string[]) =>
+    phrase`Approved ${counted(approved.length, "tool", "tools")} from ${source} before that: ${listInWords(approved)}.`,
+  noTerminal: (count: number, source: string) =>
+    phrase`${counted(count, "tool", "tools")} from ${source} ${count === 1 ? "stays" : "stay"} off: there's no terminal to ask you.`,
+  noTerminalFix: (command: string) => phrase`Approve the ones you've read: ${command}`,
 
   // A tool's block, as `review` shows it.
   changed: () => phrase`Changed`,
