@@ -32,8 +32,8 @@ function heldSetter() {
   return {
     setter,
     calls,
-    endSetUp: (r: SandboxSetup) => endSetUp(r),
-    endRemove: (r: SandboxRemoval) => endRemove(r),
+    endSetUp: (result: SandboxSetup) => endSetUp(result),
+    endRemove: (result: SandboxRemoval) => endRemove(result),
   };
 }
 
@@ -61,68 +61,43 @@ async function status(url: string): Promise<unknown> {
   return (await fetch(`${url}/v1/sandbox/setup`, { headers: authorization })).json();
 }
 
-/** Lets the server take the requests sent so far. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+/** Lets the job's end settle. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
 
 describe("setupRoutes", () => {
-  it("sets the sandbox up and answers how it ended, once it ends", async () => {
+  it("starts the setup, answers at once, and keeps how it ended", async () => {
     const held = heldSetter();
     const url = await started(held.setter);
-    const answer = post(url, "/v1/sandbox/setup");
-    await settle();
-    expect(await status(url)).toEqual({ running: "setup", last: null });
+    const response = await post(url, "/v1/sandbox/setup");
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ running: "setup", last: null });
     held.endSetUp({ ok: true });
-    const response = await answer;
-    expect(response.status).toBe(200);
+    await settle();
     const finished = { verb: "setup", result: { ok: true }, finishedAt: at.toISOString() };
-    expect(await response.json()).toEqual(finished);
     expect(await status(url)).toEqual({ running: null, last: finished });
   });
 
   it("joins a setup that runs rather than ask Windows again", async () => {
     const held = heldSetter();
     const url = await started(held.setter);
-    const first = post(url, "/v1/sandbox/setup");
-    await settle();
-    const second = post(url, "/v1/sandbox/setup");
-    await settle();
-    const failed = {
+    await post(url, "/v1/sandbox/setup");
+    const second = await post(url, "/v1/sandbox/setup");
+    expect(await second.json()).toEqual({ running: "setup", last: null });
+    const cancelled = {
       ok: false,
       outcome: "cancelled",
       reason: "the administrator prompt was cancelled; nothing changed",
     } as const;
-    held.endSetUp(failed);
-    expect(await (await first).json()).toMatchObject({ result: failed });
-    expect(await (await second).json()).toMatchObject({ result: failed });
+    held.endSetUp(cancelled);
+    await settle();
+    expect(await status(url)).toMatchObject({ running: null, last: { result: cancelled } });
     expect(held.calls.setUp).toBe(1);
-  });
-
-  it("keeps the result when the caller has gone, for the next look", async () => {
-    const held = heldSetter();
-    const url = await started(held.setter);
-    const gone = new AbortController();
-    const answer = fetch(`${url}/v1/sandbox/setup`, {
-      method: "POST",
-      headers: { ...authorization, "content-type": "application/json" },
-      body: "{}",
-      signal: gone.signal,
-    }).catch(() => undefined);
-    await settle();
-    gone.abort();
-    await answer;
-    held.endSetUp({ ok: true });
-    await settle();
-    expect(await status(url)).toMatchObject({
-      running: null,
-      last: { verb: "setup", result: { ok: true } },
-    });
   });
 
   it("refuses a removal while the setup runs", async () => {
     const held = heldSetter();
     const url = await started(held.setter);
-    void post(url, "/v1/sandbox/setup");
-    await settle();
+    await post(url, "/v1/sandbox/setup");
     const response = await post(url, "/v1/sandbox/remove");
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { kind: "sandbox_busy" } });
@@ -133,10 +108,13 @@ describe("setupRoutes", () => {
   it("removes the sandbox when nothing sandboxed runs", async () => {
     const held = heldSetter();
     const url = await started(held.setter);
-    const answer = post(url, "/v1/sandbox/remove");
-    await settle();
+    expect((await post(url, "/v1/sandbox/remove")).status).toBe(202);
     held.endRemove({ ok: true });
-    expect(await (await answer).json()).toMatchObject({ verb: "remove", result: { ok: true } });
+    await settle();
+    expect(await status(url)).toMatchObject({
+      running: null,
+      last: { verb: "remove", result: { ok: true } },
+    });
   });
 
   it("refuses a removal before any prompt while a sandboxed run goes on, and says how many", async () => {
@@ -176,10 +154,11 @@ describe("setupRoutes", () => {
       remove: async () => ({ ok: true }),
     };
     const url = await started(setter);
-    const response = await post(url, "/v1/sandbox/setup");
-    expect(await response.json()).toMatchObject({
-      result: { ok: false, outcome: "failed", reason: "broken" },
+    await post(url, "/v1/sandbox/setup");
+    await settle();
+    expect(await status(url)).toMatchObject({
+      running: null,
+      last: { result: { ok: false, outcome: "failed", reason: "broken" } },
     });
-    expect(await status(url)).toMatchObject({ running: null });
   });
 });

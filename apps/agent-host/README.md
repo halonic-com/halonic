@@ -81,8 +81,8 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/sandbox/sessions/blocked` with `{"session"}` | a stream, one `SandboxBlock` per line (NDJSON), until the session closes |
 | `POST /v1/sandbox/sessions/close` with `{"session"}` | `{"closed":true}` |
 | `GET /v1/sandbox/setup` | `{"running","last"}`: the setup or removal running now, if any, and the last one that ended |
-| `POST /v1/sandbox/setup` with `{}` | once the one-time setup ends, however long the administrator prompt takes: `{"verb","result","finishedAt"}`, `result` as `--sandbox-setup` prints it. A second call while one runs joins it; `409 sandbox_busy` while a removal runs |
-| `POST /v1/sandbox/remove` with `{}` | the same for the removal, or `409 sandbox_in_use` with `"runs"` before any prompt while sandboxed programs run here |
+| `POST /v1/sandbox/setup` with `{}` | `202` with `{"running","last"}` at once: it starts the one-time setup, or joins the one that runs. Follow it with the GET until `running` is null, however long the administrator prompt takes (Studio stops any call at 120 s). `409 sandbox_busy` while a removal runs |
+| `POST /v1/sandbox/remove` with `{}` | the same for the removal, or `409 sandbox_in_use` with `"runs"`, before any prompt, while sandboxed programs run here |
 | `POST /v1/bridge/open` | an NDJSON stream: the bridge, then its calls to Studio (below) |
 | `POST /v1/bridge/answer` | `{"answered":true}`, or `404` for a call the bridge isn't waiting for |
 | `POST /v1/bridge/close` | `{"closed":true}`, or `404` for an unknown bridge |

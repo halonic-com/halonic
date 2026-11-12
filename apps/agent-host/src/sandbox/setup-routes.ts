@@ -75,8 +75,13 @@ function thrown(error: unknown): SandboxRemoval {
   return { ok: false, outcome: "failed", reason };
 }
 
-/** Answers with the job's end, or 409 `sandbox_busy` while the other verb runs. */
-async function answerJob(jobs: SetupJobs, verb: Verb, response: ServerResponse): Promise<void> {
+/**
+ * Starts the job, or joins it, and answers 202 with the status at once: the
+ * job can outlast Studio's 120-second limit on a call while Windows' prompt
+ * waits, so the caller follows it with `GET /v1/sandbox/setup`. Answers 409
+ * `sandbox_busy` while the other verb runs.
+ */
+function answerJob(jobs: SetupJobs, verb: Verb, response: ServerResponse): void {
   const job = jobs.run(verb);
   if ("busy" in job) {
     const doing = job.busy === "setup" ? "being set up" : "being removed";
@@ -85,9 +90,8 @@ async function answerJob(jobs: SetupJobs, verb: Verb, response: ServerResponse):
     });
     return;
   }
-  const finished = await job;
-  // The caller may have gone (Studio closed): the result stays in `status`.
-  if (!response.destroyed) sendJson(response, 200, finished);
+  // Nobody waits on the job here: its end is kept in `status`.
+  sendJson(response, 202, jobs.status());
 }
 
 /**
@@ -99,9 +103,10 @@ async function answerJob(jobs: SetupJobs, verb: Verb, response: ServerResponse):
  * - `GET /v1/sandbox/setup` answers `{ running, last }`: the verb that runs
  *   now, if any, and the last {@link FinishedSetup}, so a Settings opened
  *   during a setup shows it;
- * - `POST /v1/sandbox/setup` sets the sandbox up with one administrator
- *   prompt and answers the {@link FinishedSetup} once it ends, however long
- *   that takes;
+ * - `POST /v1/sandbox/setup` starts the setup, with one administrator
+ *   prompt, or joins the one that runs, and answers 202 with `{ running,
+ *   last }` at once; the caller follows it with the GET until `running` is
+ *   null, however long Windows' prompt takes;
  * - `POST /v1/sandbox/remove` does the same for the removal, but refuses
  *   with 409 `sandbox_in_use` and `runs`, before any prompt, while a
  *   sandboxed program runs here. It doesn't stop them (checklist 1.6, D5).
@@ -118,7 +123,7 @@ export function setupRoutes(jobs: SetupJobs, sessions: SessionTable): HostRoute[
       path: "/v1/sandbox/setup",
       handle: async (request, response) => {
         if ((await readCheckedBody(request, response, emptyBody)) === undefined) return;
-        await answerJob(jobs, "setup", response);
+        answerJob(jobs, "setup", response);
       },
     },
     {
@@ -135,7 +140,7 @@ export function setupRoutes(jobs: SetupJobs, sessions: SessionTable): HostRoute[
           });
           return;
         }
-        await answerJob(jobs, "remove", response);
+        answerJob(jobs, "remove", response);
       },
     },
   ];

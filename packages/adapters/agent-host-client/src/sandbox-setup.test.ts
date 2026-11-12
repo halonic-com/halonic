@@ -13,17 +13,36 @@ const finished = {
   finishedAt: "2026-11-09T09:12:00.000Z",
 };
 
+const running = { running: "setup", last: null };
+
+/** No real waiting between looks. */
+const noPause = { pause: async () => {} };
+
 describe("AgentHostSandboxSetup", () => {
-  it("sets the sandbox up through the host, sending nothing about it", async () => {
-    const host = new FakeHost().answer("POST /v1/sandbox/setup", ok(finished));
-    expect(await new AgentHostSandboxSetup(host).setUp()).toEqual(finished);
+  it("starts the setup through the host, sending nothing about it", async () => {
+    const host = new FakeHost().answer("POST /v1/sandbox/setup", { status: 202, body: running });
+    expect(await new AgentHostSandboxSetup(host).startSetUp()).toEqual(running);
     expect(host.calls).toContainEqual({ route: "POST /v1/sandbox/setup", body: {} });
   });
 
-  it("answers what runs and what ended last", async () => {
-    const status = { running: "setup", last: finished };
-    const host = new FakeHost().answer("GET /v1/sandbox/setup", ok(status));
-    expect(await new AgentHostSandboxSetup(host).status()).toEqual(status);
+  it("follows the setup until it ends, however many looks that takes", async () => {
+    const answers = [running, running, { running: null, last: finished }];
+    const host = new FakeHost().answer("GET /v1/sandbox/setup", () => ok(answers.shift()));
+    expect(await new AgentHostSandboxSetup(host, noPause).ended("setup")).toEqual(finished);
+    expect(host.calls).toHaveLength(3);
+  });
+
+  it("answers nothing once the caller stops following, or when the host forgot", async () => {
+    const host = new FakeHost().answer("GET /v1/sandbox/setup", ok(running));
+    const stop = new AbortController();
+    stop.abort();
+    const setup = new AgentHostSandboxSetup(host, noPause);
+    expect(await setup.ended("setup", { signal: stop.signal })).toBeUndefined();
+    const restarted = new FakeHost().answer(
+      "GET /v1/sandbox/setup",
+      ok({ running: null, last: null }),
+    );
+    expect(await new AgentHostSandboxSetup(restarted, noPause).ended("setup")).toBeUndefined();
   });
 
   it("answers how many runs use the sandbox when the host refuses to remove it", async () => {
@@ -31,17 +50,7 @@ describe("AgentHostSandboxSetup", () => {
       status: 409,
       body: { error: { kind: "sandbox_in_use", message: "1 run is using the sandbox." }, runs: 1 },
     });
-    expect(await new AgentHostSandboxSetup(host).remove()).toEqual({ inUse: 1 });
-  });
-
-  it("answers a removal that ended", async () => {
-    const removed = {
-      verb: "remove",
-      result: { ok: true },
-      finishedAt: "2026-11-09T09:12:00.000Z",
-    };
-    const host = new FakeHost().answer("POST /v1/sandbox/remove", ok(removed));
-    expect(await new AgentHostSandboxSetup(host).remove()).toEqual(removed);
+    expect(await new AgentHostSandboxSetup(host).startRemove()).toEqual({ inUse: 1 });
   });
 
   it("throws the host's refusal while the other one runs", async () => {
@@ -49,17 +58,14 @@ describe("AgentHostSandboxSetup", () => {
       "POST /v1/sandbox/remove",
       refused(409, "sandbox_busy", "The sandbox is being set up. Wait until that ends."),
     );
-    await expect(new AgentHostSandboxSetup(host).remove()).rejects.toMatchObject({
+    await expect(new AgentHostSandboxSetup(host).startRemove()).rejects.toMatchObject({
       kind: "sandbox_busy",
     });
   });
 
   it("refuses an answer of the wrong shape", async () => {
-    const host = new FakeHost().answer(
-      "POST /v1/sandbox/setup",
-      ok({ verb: "setup", result: { ok: "yes" } }),
-    );
-    await expect(new AgentHostSandboxSetup(host).setUp()).rejects.toMatchObject({
+    const host = new FakeHost().answer("GET /v1/sandbox/setup", ok({ running: "always" }));
+    await expect(new AgentHostSandboxSetup(host).status()).rejects.toMatchObject({
       kind: "answer_invalid",
     });
   });
