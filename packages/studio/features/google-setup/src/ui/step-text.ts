@@ -6,15 +6,15 @@ import { plural } from "../step-names.ts";
 export function stepWhy(step: SetupStep): string {
   switch (step.id) {
     case "project":
-      return "Google keeps your app in a project of its own.";
+      return "Google keeps everything your app needs in one project.";
     case "apis":
       return "Google keeps each API switched off until you switch it on.";
     case "consent":
       return "Tell Google what your app is called and who may use it.";
     case "scopes":
-      return "Tell Google what your app may ask for.";
+      return "Tell Google which parts of your account your app may use.";
     case "client":
-      return "The client is how Halonic signs in to Google.";
+      return "The client is what lets Halonic ask Google to sign you in.";
     case "credentials":
       return "Give Halonic the client's ID and secret.";
     case "sign-in":

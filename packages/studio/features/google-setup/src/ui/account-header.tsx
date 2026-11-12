@@ -88,7 +88,10 @@ export function AccountHeader(props: AccountHeaderProps) {
       ) : (
         <div className="flex flex-wrap items-center gap-x-2">
           <p id={typeLine} className="text-body">
-            For {listNames(serviceNames)} · {accountTypeNames[accountType]}
+            For {listNames(serviceNames)}
+            <span aria-hidden="true"> · </span>
+            <span className="sr-only">, </span>
+            {accountTypeNames[accountType]}
           </p>
           <Button
             ref={changeButton}
@@ -103,12 +106,12 @@ export function AccountHeader(props: AccountHeaderProps) {
       )}
       {failed ? (
         <p role="alert" className="text-body text-danger">
-          Couldn't save that. Try again.
+          Couldn't save the account type. Try again.
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-x-2">
         <p className="text-body">Uses your own Google app, on this computer.</p>
-        <OtherWays services={listNames(serviceNames)} />
+        <OtherWays services={listNames(serviceNames, "or")} />
       </div>
     </header>
   );

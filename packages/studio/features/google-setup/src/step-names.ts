@@ -2,7 +2,9 @@ import type { SetupStep, StepId } from "@halonicjs/google-setup";
 
 /**
  * How a step is named in the progress line, such as "Step 4 of 7 · Scopes". The checklist names
- * the same step with {@link stepTitle}, so a step is renamed in both places or in neither.
+ * the same step with {@link stepTitle}, so a step is renamed in both places or in neither. The
+ * short name is the key word of the title, and uses only words the user sees elsewhere: step 6 is
+ * "Client ID", because "Credentials" appears nowhere else.
  */
 export const stepNames: Readonly<Record<StepId, string>> = {
   project: "Project",
@@ -10,7 +12,7 @@ export const stepNames: Readonly<Record<StepId, string>> = {
   consent: "Consent screen",
   scopes: "Scopes",
   client: "Client",
-  credentials: "Credentials",
+  credentials: "Client ID",
   "sign-in": "Sign in",
 };
 

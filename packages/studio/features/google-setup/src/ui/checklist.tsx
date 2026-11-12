@@ -182,7 +182,7 @@ function OpenStep({ step, answering, busy, failed, onDone, close }: OpenStepProp
           </Button>
         ) : null}
       </div>
-      {answering ? null : (
+      {answering || !hasDoneButton(step) ? null : (
         <p id={reason} className="text-small text-fg-muted">
           The engine isn't answering.
         </p>

@@ -57,7 +57,8 @@ verifies("google-setup.account-header", () => {
     const text = container.textContent ?? "";
     expect(container.querySelector("h2")?.textContent).toBe("Google for x@example.com");
     expect(text).toContain("Step 3 of 7");
-    expect(text).toContain("For Ledger and Atlas · Personal Google account");
+    expect(text).toContain("For Ledger and Atlas");
+    expect(text).toContain("Personal Google account");
     expect(text).toContain("Uses your own Google app, on this computer.");
   });
 
@@ -119,6 +120,15 @@ verifies("google-setup.account-header", () => {
     expect(fake.edits).toEqual([]);
   });
 
+  it("reads the services and the account type as one line, with a comma for a screen reader", async () => {
+    const { container } = await open([account(twoDone, { services: [ledger, atlas] })]);
+    const line = [...container.querySelectorAll("p")].find((p) =>
+      p.textContent?.startsWith("For "),
+    );
+    expect(line?.querySelector('[aria-hidden="true"]')?.textContent).toBe(" · ");
+    expect(line?.querySelector(".sr-only")?.textContent).toBe(", ");
+  });
+
   it("opens a panel with no button when you choose Other ways (later)", async () => {
     const { container } = await open([account(twoDone)]);
     const toggle = button(container, "Other ways (later)");
@@ -133,6 +143,34 @@ verifies("google-setup.account-header", () => {
 });
 
 verifies("google-setup.checklist", () => {
+  it("says it couldn't load the setup, with Try again, when the accounts can't be read", async () => {
+    const fake = fakeAccounts([account(twoDone)]);
+    let reads = 0;
+    const accounts = {
+      ...fake.source,
+      list: async () => {
+        reads += 1;
+        if (reads === 1) throw new Error("down");
+        return [account(twoDone)];
+      },
+    };
+    const container = render(
+      <GoogleSetupView item={item} answering close={vi.fn()} accounts={accounts} />,
+    );
+    await settled();
+    expect(container.textContent).toContain("Couldn't load the Google setup");
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    await press(button(container, "Try again"));
+    expect(container.querySelector("ol")).not.toBeNull();
+  });
+
+  it("says the account isn't set up here any more when the host doesn't list it", async () => {
+    const { container } = await open([]);
+    expect(container.textContent).toContain("Couldn't load the Google setup");
+    expect(container.textContent).toContain("This Google account isn't set up here any more.");
+    expect(container.querySelector('[role="status"]')).toBeNull();
+  });
+
   it("folds the finished steps and opens the first one not done, with focus on its title", async () => {
     const { container } = await open([account(twoDone)]);
     const items = [...container.querySelectorAll("ol > li")];
@@ -190,6 +228,12 @@ verifies("google-setup.checklist", () => {
     expect(document.getElementById(reason)?.textContent).toBe("The engine isn't answering.");
     await press(done);
     expect(fake.edits).toEqual([]);
+  });
+
+  it("shows no reason in a step that has no Done, next, while the engine isn't answering", async () => {
+    const four = record(["project", "apis", "consent", "scopes"]);
+    const { container } = await open([account(four)], false);
+    expect(container.textContent).not.toContain("The engine isn't answering.");
   });
 
   it("closes the item with Not now", async () => {
