@@ -12,6 +12,7 @@
     "studio": "vite --mode studio"
   },
   "dependencies": {
+    "@halonicjs/adapter-agent-host-client": "workspace:*",
     "@halonicjs/adapter-fs-tauri": "workspace:*",
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/app": "workspace:*",

@@ -9,7 +9,7 @@ import {
 import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
-import { createShell, defineFeature } from "@halonicjs/studio-shell";
+import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
@@ -260,22 +260,6 @@ verifies("studio.open-folder", () => {
   });
 });
 
-/** A host section, as the Agent sandbox is: saved on this computer, not in the workspace. */
-const sandboxFeature = defineFeature({
-  id: "sandbox",
-  title: "Agent sandbox",
-  register(studio) {
-    studio.settings.add({
-      id: "agent-sandbox",
-      title: "Agent sandbox",
-      scope: "host",
-      order: 40,
-      view: "SandboxSection",
-      load: async () => ({ SandboxSection: () => "Ready" }),
-    });
-  },
-});
-
 verifies("studio.settings", () => {
   it("opens Settings on Ctrl , with Appearance and a host section under On this computer", async () => {
     started = startStudio(
@@ -285,7 +269,7 @@ verifies("studio.settings", () => {
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         storage: memoryStorage(),
       },
-      { ...desktopFeatures, features: [...desktopFeatures.features, sandboxFeature] },
+      desktopFeatures,
     );
     await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull());
     element.querySelector("button")?.click();

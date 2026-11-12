@@ -18,7 +18,10 @@ import {
   settingsFeature,
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
-import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
+import {
+  AgentSandboxService,
+  DisplaySettingsService,
+} from "@halonicjs/studio-feature-settings/api";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -34,6 +37,7 @@ import {
   type TauriCallbacks,
   TauriChannel,
   type TauriIpc,
+  tauriAgentHostTransport,
   tauriChannelIpc,
   tauriIpc,
 } from "@halonicjs/studio-services";
@@ -47,6 +51,7 @@ import {
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
+import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 
 /**
  * The language of the Studio's words. Every text is English in v0.1, so the window's
@@ -223,6 +228,7 @@ export function openFolder(
   services.provide(DisplaySettingsService, display);
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
+  provideAgentSandbox(services, window);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
   }
@@ -233,6 +239,24 @@ export function openFolder(
     workspace,
     dispose: () => (scope === undefined ? services.dispose() : scope.close()),
   };
+}
+
+/**
+ * Whether this build offers Settings › Agent sandbox's setup, repair and removal. D44 is still with
+ * the board and the answer for 0.1 is (c): no, so the section reads Not available (HAL-1444,
+ * 1.1). Set it to `true` when the board says (a); nothing else changes.
+ */
+export const agentSandboxOffered = false;
+
+/**
+ * Gives the section the agent host's sandbox through the shell, when the build offers it and the
+ * shell has an agent host. Without it the section reads Not available.
+ */
+function provideAgentSandbox(services: ServiceRegistry, window: object): void {
+  if (!agentSandboxOffered) return;
+  const transport = tauriAgentHostTransport(window);
+  if (transport !== undefined)
+    services.provide(AgentSandboxService, new AgentHostSandboxFacts(transport));
 }
 
 /** The shell's file commands and channels, as the desktop stores take them. */

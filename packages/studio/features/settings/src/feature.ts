@@ -28,6 +28,14 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     view: "FormatsSection",
     load: () => import("./formats/formats-section.tsx"),
   },
+  {
+    id: "agent-sandbox",
+    title: "Agent sandbox",
+    scope: "host",
+    order: 30,
+    view: "AgentSandboxSection",
+    load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),
+  },
 ];
 
 /**
