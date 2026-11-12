@@ -55,14 +55,16 @@ verifies("connector-stdio-sandbox.workspace-connector-profile", () => {
       expect(profile.env).toMatchObject({ MAIL_MODE: "quiet", MAIL_TOKEN: "token-value" });
     });
 
-    it("gives a connector without sites no network but the bridge", () => {
+    it("gives a connector without sites, or with an empty list, no network but the bridge", () => {
       const { sites: _sites, ...noSites } = script;
-      const place = workspaceConnectorPlace(noSites, {
-        ...setting,
-        bridge: { host: "127.0.0.1", port: 7 },
-      });
-      expect(place.sites).toEqual([]);
-      expect(place.bridge).toEqual({ host: "127.0.0.1", port: 7 });
+      for (const stdio of [noSites, { ...script, sites: [] }]) {
+        const place = workspaceConnectorPlace(stdio, {
+          ...setting,
+          bridge: { host: "127.0.0.1", port: 7 },
+        });
+        expect(place.sites).toEqual([]);
+        expect(place.bridge).toEqual({ host: "127.0.0.1", port: 7 });
+      }
     });
 
     it("doesn't let a pinned package read the workspace, and starts it in its own folder", () => {

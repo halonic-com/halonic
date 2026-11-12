@@ -14,3 +14,6 @@ The `workspaceConnectorPlace` function shall build the place a workspace's `stdi
 - Given a pinned package,
   when its place is built,
   then it has no read-only paths and starts in its own working folder.
+- Given a connector file without `sites`, or with `sites: []`,
+  when its place is built,
+  then it has no allowed sites, so it reaches only the bridge; no sites never means an open network.
