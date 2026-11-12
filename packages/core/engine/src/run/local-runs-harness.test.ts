@@ -434,6 +434,24 @@ verifies("engine.harness-approvals", () => {
     expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
   });
 
+  it("stops the harness and ends the run as cancelled when the run is cancelled while it waits", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_7"), finished("Dear support")];
+    const { executor, runs, harnessCall } = await waitingRun(ports);
+
+    await executor.cancel("run_1");
+    await harnessCall;
+
+    expect(stillOpen(ports.steps)).toBe(0);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(ports.harness.sent).toEqual([]);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      reason: "cancelled",
+      approvals: [],
+    });
+  });
+
   it("ends the run as interrupted when the answer comes after a restart, and starts nothing", async () => {
     const ports = harnessPorts();
     ports.harness.events = [asks("toolu_7"), finished("Dear support")];
