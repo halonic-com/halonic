@@ -1,9 +1,12 @@
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { FileAgentPlacementStore, FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
-import { RunHistory } from "@halonicjs/app";
+import { AgentPlacement, RunHistory } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
+import type { SandboxCheck } from "@halonicjs/ports";
+import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -21,7 +24,9 @@ import { fakeSignals } from "../../test/fake-signals.ts";
 import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
 import { waitUntil } from "../../test/wait-until.test-helper.ts";
-import { openWorkspaceRuns } from "../../workspace-runs.ts";
+import { openWorkspaceDir } from "../../workspace-dir.ts";
+import { openWorkspaceRuns, webCryptoDigest } from "../../workspace-runs.ts";
+import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { routinesCommandWith } from "./command.ts";
 
 /** Follow up, which moves on by itself `after` its wait starts. */
@@ -45,6 +50,32 @@ function followUp(after: string): string {
 }
 
 const workflowFile = "hubs/support/workflows/follow-up.workflow.yaml";
+
+/** Follow up with a first step by Writer, who runs in Claude Code and so needs the sandbox. */
+const followUpByWriter = [
+  "id: follow-up",
+  "name: Follow up",
+  "initial: draft",
+  "states:",
+  "  draft:",
+  "    description: Draft a reminder",
+  "    agent: writer",
+  "    on:",
+  "      - to: done",
+  "  done:",
+  "    type: final",
+  "",
+].join("\n");
+
+const writerInClaudeCode = "id: writer\nname: Writer\nharness: claude-code\n";
+
+const sandboxStarts: SandboxCheck = { ok: true, reason: null, missing: [] };
+
+const bubblewrapMissing: SandboxCheck = {
+  ok: false,
+  reason: "bubblewrap-missing",
+  missing: ["bwrap was not found on PATH"],
+};
 
 /** Starts Follow up at the top of every hour. */
 const hourly = [
@@ -105,21 +136,33 @@ async function makeLive(message: string): Promise<string> {
   return await vcs.commit(message);
 }
 
-function watchCommand(time: FakeTime, opener: OpenWorkspaceHistory) {
+/** The watch on `time`, whose sandbox check answers `sandbox`. */
+function watchCommand(time: FakeTime, opener: OpenWorkspaceHistory, sandbox = sandboxStarts) {
   const setup = acmeRunsSetup(acmeRuns);
+  const placement = new AgentPlacement({
+    store: new FileAgentPlacementStore(join(acmeRuns.folder, "placements")),
+    digest: webCryptoDigest,
+    clock: fixedClock(engineStart),
+  });
   return routinesCommandWith({
     ...setup,
     history: opener,
     engine: { ...setup.engine, clock: time.clock, setTimer: time.setTimer },
+    sandboxGate: () => ({ sandbox: { check: async () => sandbox }, placement }),
   });
 }
 
-function startWatch(time: FakeTime, ...args: string[]) {
+function startWatch(time: FakeTime, args: readonly string[] = [], sandbox = sandboxStarts) {
   const io = captureIo(acmeRuns.acme);
   const signals = fakeSignals();
-  const watching = runCli(["routines", "watch", ...args], io, [watchCommand(time, history)], {
-    stop: { signals, exitNow: () => undefined },
-  });
+  const watching = runCli(
+    ["routines", "watch", ...args],
+    io,
+    [watchCommand(time, history, sandbox)],
+    {
+      stop: { signals, exitNow: () => undefined },
+    },
+  );
   running = { signals, watching };
   return { io, signals, watching };
 }
@@ -137,6 +180,16 @@ async function storedRuns() {
     await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile),
   ).listRuns();
   return runs.runs;
+}
+
+/** Trusts Acme as it is now, in the trust store the watch reads. */
+async function trustAcme(): Promise<void> {
+  const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acmeRuns.acme });
+  const { subject } = await readWorkspaceTrust(dir, { path: undefined, endings: [] });
+  const store = new FileTrustStore(join(acmeRuns.folder, "trust"));
+  const trust = cliTrustService(store, fixedClock(engineStart));
+  const check = await trust.check(subject);
+  expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
 }
 
 /** The `run.started` of the stored run due at `at`. */
@@ -206,7 +259,7 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     await makeLive("First version");
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time, "--debug");
+    const { io, signals, watching } = startWatch(time, ["--debug"]);
     await waitUntil(() => io.stdout.length === 1, slowWatch);
 
     await writeFiles(acmeRuns.acme, {
@@ -222,12 +275,36 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(130);
   });
 
+  it("starts no run from a newer version whose agent needs a sandbox that can't start", {
+    timeout: gitWatchTimeout,
+  }, async () => {
+    await makeLive("First version");
+    const time = fakeTime(engineStart);
+    const { io, signals, watching } = startWatch(time, ["--debug"], bubblewrapMissing);
+    await waitUntil(() => io.stdout.length === 1, slowWatch);
+
+    await writeFiles(acmeRuns.acme, {
+      [workflowFile]: followUpByWriter,
+      "hubs/support/agents/writer.agent.yaml": writerInClaudeCode,
+    });
+    await makeLive("Writer drafts in Claude Code");
+    // Trusted as it is now, so only the sandbox check can stop the run.
+    await trustAcme();
+    const line = await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
+
+    expect(line).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
+    expect(io.stderr.join("\n")).toContain("the sandbox can't start on this computer");
+    expect(await storedRuns()).toEqual([]);
+    signals.send("SIGINT");
+    expect(await watching).toBe(130);
+  });
+
   it("starts no run from a newer version that turns local only on", {
     timeout: gitWatchTimeout,
   }, async () => {
     await makeLive("First version");
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time, "--debug");
+    const { io, signals, watching } = startWatch(time, ["--debug"]);
     await waitUntil(() => io.stdout.length === 1, slowWatch);
 
     await writeFiles(acmeRuns.acme, {
