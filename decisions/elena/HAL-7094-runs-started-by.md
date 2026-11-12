@@ -4,6 +4,7 @@
   (15.1, 19.3); the words for a run started in the terminal and a child run are the team's call on
   [HAL-7094](/HAL/issues/HAL-7094). Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JqH1Vu9ootQJXGuX1RGej50nCTvCvqwE2YYF+cX5Lq9U6xPglc3XggWsMzc/WYZzCJ2Yk2IhO5D13atOfpooBw==
 - Task: HAL-7094
 
 ## What changes
