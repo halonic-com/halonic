@@ -2,6 +2,7 @@
 
 - Approval: a change under `.github/` needs Liam's review (docs/guides/checks.md, note guard); Liam approves this note in review of the Windows attack run on HAL-7555
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Iz8bDds21YVOf/F+3XU2XK194YVef13bi1xk2jrXwLkLK9gSTWYlvNTRKFk3swf1OWQQcHLUGmPcDCHKuPtsDA==
 - Task: HAL-7555
 
 ## What changes
