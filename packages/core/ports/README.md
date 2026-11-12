@@ -31,7 +31,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `HostSettingsStore` | `host-settings-store.ts` | 1 | the settings kept where Halonic runs (assistant, sandbox default) in the user's profile, by key; `HostSettings` decides | `host-settings-store` |
 | `HttpClient` | `http-client.ts` | 1 | outbound HTTP, replaces `FetchLike` | `http-client` (with first adapter) |
 | `IdGenerator` | `id-generator.ts` | 1 | unique ids | `id-generator` |
-| `Integration` | `integration.ts` | 1 | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens | `integration` (own package) |
+| `Integration` | `integration.ts` | 2 | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens, sign-in placements and `SignInTokens` | `integration` (own package) |
 | `KnowledgeProvider` | `knowledge-provider.ts` | 1 | knowledge sources agents search and read, and their factory | `knowledge-provider` |
 | `LlmCache` | `llm-cache.ts` | 1 | model answers reused by simulation re-runs | `llm-cache` (with first adapter) |
 | `LlmProvider` | `llm-provider.ts` | 1 | model providers, and their factory | `llm-provider`, `llm-stream` |

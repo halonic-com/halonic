@@ -87,6 +87,7 @@ verifies("format.integration-file", () => {
       provides: ["connector"],
       hosts: ["api.example.com"],
       secrets: {},
+      signIns: {},
       tokens: [],
       tools: [],
       needs: [],

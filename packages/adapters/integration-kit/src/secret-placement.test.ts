@@ -1,4 +1,4 @@
-import type { SecretPlacement } from "@halonicjs/ports";
+import type { AuthPlacement, SecretPlacement } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -247,7 +247,10 @@ verifies("integration-kit.placement-from-sheet", () => {
           as: "header",
           header: "x-api-key",
         };
-        const request = http.fetch("https://api.example.com/v1/notes", { auth });
+        // The cast is only for the type: the test changes `as` to a value the type forbids.
+        const request = http.fetch("https://api.example.com/v1/notes", {
+          auth: auth as unknown as AuthPlacement,
+        });
         auth.as = "bearer";
         await request;
         expect(sentHeaders(sent)).toEqual([{ "x-api-key": canary["example-key"] }]);

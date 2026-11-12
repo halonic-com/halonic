@@ -1,5 +1,5 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
-import { expect, expectTypeOf, it } from "vitest";
+import { assertType, expect, expectTypeOf, it } from "vitest";
 import type {
   ConnectorTool,
   HttpClient,
@@ -7,9 +7,11 @@ import type {
   IntegrationHost,
   IntegrationTool,
   SecretPlacement,
+  SignInPlacement,
+  SignInTokens,
   ToolRisk,
 } from "./index.ts";
-import { maxIntegrationWaitMs } from "./index.ts";
+import { integrationVersion, maxIntegrationWaitMs } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -94,5 +96,37 @@ verifies("ports.integration-host", () => {
     expect(await connection.callTool("echo", { text: "hi" })).toBe("ok");
     expect(connection.listTools).toBeUndefined();
     await connection.close();
+  });
+});
+
+verifies("ports.integration-sign-in-placement", () => {
+  typeTest("names a sign-in's access token as a bearer or a header, never a form field", () => {
+    expectTypeOf(host.http.fetch).toBeCallableWith("https://api.example.com/v1", {
+      auth: { signIn: "example-account", as: "bearer" },
+    });
+    expectTypeOf(host.http.fetch).toBeCallableWith("https://api.example.com/v1", {
+      auth: { signIn: "example-account", as: "header", header: "x-token", prefix: "Token " },
+    });
+    // @ts-expect-error: only the access token of a sign-in can be placed, and not in a form
+    assertType<SignInPlacement>({ signIn: "example-account", as: "form", field: "token" });
+  });
+
+  typeTest("takes a secret and a sign-in placement in one list", () => {
+    expectTypeOf(host.http.fetch).toBeCallableWith("https://api.example.com/v1", {
+      auth: [
+        { secret: "example-key", as: "header", header: "x-api-key" },
+        { signIn: "example-account", as: "bearer" },
+      ],
+    });
+  });
+
+  typeTest("keeps tokens out of the host: SignInTokens is the kit's, not the integration's", () => {
+    expectTypeOf<keyof IntegrationHost>().not.toExtend<keyof SignInTokens>();
+    expectTypeOf<SignInTokens["access"]>().returns.toEqualTypeOf<Promise<string>>();
+    expectTypeOf<SignInTokens["filterValues"]>().returns.toEqualTypeOf<readonly string[]>();
+  });
+
+  it("is the second version of the port", () => {
+    expect(integrationVersion).toBe(2);
   });
 });

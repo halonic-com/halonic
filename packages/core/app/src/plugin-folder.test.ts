@@ -101,9 +101,9 @@ verifies("app.plugin-folder", () => {
     ]);
   });
 
-  it("refuses another SDK version and a backend with tokens, with the ADR's sentence", async () => {
+  it("refuses a newer SDK version and a backend with tokens, with the ADR's sentence", async () => {
     const manifest = weatherManifest
-      .replace("sdk: 1", "sdk: 2")
+      .replace("sdk: 1", "sdk: 3")
       .replace("backend:\n", "backend:\n  tokens: [{ name: refresh, purpose: Stays signed in }]\n");
     const problems = await problemsOf(
       weatherFolder().putFiles({ "weather/plugin.yaml": manifest }),
@@ -119,7 +119,7 @@ verifies("app.plugin-folder", () => {
 
   it("points a check's problem at the integration.yaml's own keys", async () => {
     const sheet = integrationSheet
-      .replace("kit: 1", "kit: 2")
+      .replace("kit: 1", "kit: 3")
       .replace("tools:", "tokens: [{ name: refresh, purpose: Stays signed in }]\ntools:");
     const reader = new TestFolderReader().putFiles({ "radar/integration.yaml": sheet });
     const problems = await problemsOf(reader, "radar");

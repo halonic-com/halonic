@@ -228,12 +228,12 @@ function pluginProblems(
       ),
     );
   }
-  if (plugin.sdk !== integrationVersion) {
+  if (plugin.sdk > integrationVersion) {
     problems.push(
       manifestValueProblem(
         "sdk-version",
         ["sdk"],
-        `The plugin is built for plugin SDK ${plugin.sdk}, and this Halonic runs SDK ${integrationVersion}. Get a version of the plugin built for SDK ${integrationVersion}.`,
+        `This plugin needs a newer version of Halonic: it is built for plugin SDK ${plugin.sdk}, and this Halonic runs SDK ${integrationVersion}. Update Halonic, or get a version of the plugin built for SDK ${integrationVersion} or older.`,
       ),
     );
   }

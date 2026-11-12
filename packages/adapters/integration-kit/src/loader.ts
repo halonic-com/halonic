@@ -3,6 +3,7 @@ import {
   type IntegrationSecret,
   type IntegrationSheet,
   integrationPolicy,
+  isPlacedSecret,
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
 import {
@@ -349,7 +350,8 @@ async function secretsOnWire(sheet: IntegrationSheet, secrets: Secrets): Promise
     const value = await secrets.get(name);
     if (value === null) return [];
     checkSecretLength(sheet.id, name, value);
-    return [{ value, placements: [placementOf(name, declared)] }];
+    // A client secret is never placed by the integration, but a server could still echo it.
+    return [{ value, placements: isPlacedSecret(declared) ? [placementOf(name, declared)] : [] }];
   });
   return (await Promise.all(read)).flat();
 }

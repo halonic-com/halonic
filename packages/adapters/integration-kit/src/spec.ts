@@ -47,7 +47,7 @@ export const specNames = Object.keys(documents) as SpecName[];
 /**
  * The `$id` of a spec: its name and the integration interface version
  * (`integrationVersion`), for example
- * `https://halonic.com/spec/integration-kit/integration/v1.schema.json`.
+ * `https://halonic.com/spec/integration-kit/integration/v2.schema.json`.
  */
 export function specId(spec: SpecName): string {
   return `${SPEC_ID_BASE}/${spec}/v${integrationVersion}.schema.json`;
@@ -60,7 +60,7 @@ export function specId(spec: SpecName): string {
  *
  * @example
  * jsonSchemaOf("secret-placement")["$id"];
- * // "https://halonic.com/spec/integration-kit/secret-placement/v1.schema.json"
+ * // "https://halonic.com/spec/integration-kit/secret-placement/v2.schema.json"
  */
 export function jsonSchemaOf(spec: SpecName): JsonSchema {
   return { $schema: JSON_SCHEMA_DRAFT, $id: specId(spec), ...toJsonSchema(documents[spec]) };

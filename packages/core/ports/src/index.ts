@@ -123,6 +123,7 @@ export {
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
 export {
+  type AuthPlacement,
   type Integration,
   type IntegrationConnection,
   type IntegrationHost,
@@ -132,6 +133,8 @@ export {
   integrationVersion,
   maxIntegrationWaitMs,
   type SecretPlacement,
+  type SignInPlacement,
+  type SignInTokens,
 } from "./integration.ts";
 export {
   type KnowledgeCapabilities,

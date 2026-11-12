@@ -64,9 +64,9 @@ verifies("integration.plugin-conformance", () => {
       expect(() => checkPluginManifest(subject)).toThrow(/plugin\.yaml:\d+:\d+: .*radar/);
     });
 
-    it("is built for another SDK", () => {
-      const subject = brokenWeather((manifest) => manifest.replace("sdk: 1", "sdk: 2"));
-      expect(() => checkPluginManifest(subject)).toThrow(/SDK 2.* \(at sdk\)/);
+    it("is built for a newer SDK", () => {
+      const subject = brokenWeather((manifest) => manifest.replace("sdk: 1", "sdk: 3"));
+      expect(() => checkPluginManifest(subject)).toThrow(/SDK 3.* \(at sdk\)/);
     });
 
     it("names a backend entry that isn't there", () => {

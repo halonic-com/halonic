@@ -11,4 +11,4 @@ The kit shall publish the data shapes of the integration interface as JSON Schem
 - Given the `integration` spec, when it is made, then it requires `name`, `version` and `tools`, and each tool requires `risk`.
 - Given the `secret-placement` spec, when it is made, then it offers the `bearer`, `header` and `form` placements.
 - Given a spec file that differs from the code, when the test runs, then it fails.
-- Given `integrationVersion` is `1`, when a spec file's `$id` is read, then it ends in `v1.schema.json`.
+- Given `integrationVersion` is `2`, when a spec file's `$id` is read, then it ends in `v2.schema.json`.

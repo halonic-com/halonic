@@ -79,6 +79,7 @@ describe("format.integration-policy", () => {
             placement: { as: "header", header: "x-goog-api-key" },
           },
         },
+        signIns: {},
         tokens: [],
       },
       limits: { headersTimeoutMs: 600000 },
@@ -143,6 +144,7 @@ describe("format.integration-policy", () => {
             placement: { as: "bearer" },
           },
         },
+        signIns: {},
         tokens: [],
       },
     });

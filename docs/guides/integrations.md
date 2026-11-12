@@ -81,7 +81,7 @@ in `@halonicjs/format`, so `halonic validate` checks it:
 ```yaml
 id: weather # the integration's name, lower-case words joined by -
 version: 1.0.0
-kit: 1 # the Integration port version it was built against
+kit: 2 # the Integration port version it was built against; signIns need 2
 provides: [connector] # connector, llm and/or knowledge
 hosts:
   - api.example.com
@@ -117,6 +117,15 @@ Google sign-in lists its `googleScopes` (each with a `reason`),
 `googleApis` and `googleCheck` for Studio's Google setup, and `recording`
 tells the recorder what to scrub.
 Unknown keys are refused, so a typo fails.
+
+A service with an OAuth sign-in declares it in `signIns` (needs `kit: 2`):
+the `authorizeUrl`, `tokenUrl`, `clientId`, `scopes` (each with a `reason`)
+and `access`, the hosts the access token may go to and how it is put in
+(`as: bearer`, or `header` with `header` and `prefix`). Halonic's own code runs
+the sign-in, so the integration can use the token, with
+`auth: { signIn: "example-account", as: "bearer" }`, but never read it. A
+client secret is a `secrets` entry with only a `purpose`, named in the
+sign-in's `clientSecret`; it goes only to the sign-in's token and revoke hosts.
 
 ## The code
 

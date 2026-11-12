@@ -75,15 +75,17 @@ verifies("integration-kit.plugin-load", () => {
     expect(pluginLoadProblems(plugin(), code())).toEqual([]);
   });
 
-  it("reports another SDK once, at sdk, with or without a backend", () => {
-    expect(pluginLoadProblems(plugin({ sdk: 2 }), code())).toEqual([
+  it("reports a newer SDK once, at sdk, with or without a backend", () => {
+    expect(pluginLoadProblems(plugin({ sdk: 3 }), code())).toEqual([
       {
         code: "sdk-version",
         path: ["sdk"],
-        message: "weather: built against SDK 2, but this Halonic offers SDK 1",
+        message:
+          "weather: this plugin needs a newer version of Halonic (it is built against SDK 3, and this Halonic offers SDK 2)",
       },
     ]);
-    expect(found(localOnly(2))).toEqual([{ code: "sdk-version", path: ["sdk"] }]);
+    expect(found(localOnly(3))).toEqual([{ code: "sdk-version", path: ["sdk"] }]);
+    expect(found(localOnly(2))).toEqual([]);
     expect(found(localOnly(1))).toEqual([]);
   });
 

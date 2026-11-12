@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://halonic.com/spec/integration-kit/integration/v1.schema.json",
+  "$id": "https://halonic.com/spec/integration-kit/integration/v2.schema.json",
   "type": "object",
   "properties": {
     "name": {

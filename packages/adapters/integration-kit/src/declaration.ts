@@ -3,7 +3,8 @@ import { type Integration, type IntegrationTool, integrationVersion } from "@hal
 import type { LoadProblem } from "./load-problem.ts";
 
 /**
- * Where the integration's code differs from its permission sheet: the kit
+ * Where the integration's code differs from its permission sheet, or the sheet
+ * needs a newer kit than this Halonic offers: the kit
  * version, the name, the version, and each tool's text, `risk` and
  * `untrusted`. The user approves the sheet, so the code must be exactly what
  * it says. Empty when they match. Only what the code declares is read, so a
@@ -20,11 +21,11 @@ export function declarationProblems(
   const add = (code: string, path: LoadProblem["path"], message: string) =>
     problems.push({ code, path, message: `${sheet.id}: ${message}` });
 
-  if (sheet.kit !== integrationVersion) {
+  if (sheet.kit > integrationVersion) {
     add(
       "kit-version",
       ["kit"],
-      `built against kit ${sheet.kit}, but this Halonic offers kit ${integrationVersion}`,
+      `this integration needs a newer version of Halonic (it is built against kit ${sheet.kit}, and this Halonic offers kit ${integrationVersion})`,
     );
   }
   if (integration.name !== sheet.id) {

@@ -8,9 +8,9 @@ import { declarationProblems } from "./declaration.ts";
 import type { LoadProblem } from "./load-problem.ts";
 
 /**
- * Why a plugin that passed its own checks can't load: an `sdk` other than
- * this Halonic's `integrationVersion`, and, when the backend's code is
- * given, every way it differs from the backend, with the same rules as for
+ * Why a plugin that passed its own checks can't load: an `sdk` newer than
+ * this Halonic's `integrationVersion`, and, when the backend's code is given,
+ * every way it differs from the backend, with the same rules as for
  * an integration and its sheet (`declarationProblems`) and each path
  * pointing into `plugin.yaml`. Empty when the plugin can load.
  *
@@ -19,11 +19,11 @@ import type { LoadProblem } from "./load-problem.ts";
  */
 export function pluginLoadProblems(plugin: Plugin, backendCode?: Integration): LoadProblem[] {
   const problems: LoadProblem[] = [];
-  if (plugin.sdk !== integrationVersion) {
+  if (plugin.sdk > integrationVersion) {
     problems.push({
       code: "sdk-version",
       path: ["sdk"],
-      message: `${plugin.id}: built against SDK ${plugin.sdk}, but this Halonic offers SDK ${integrationVersion}`,
+      message: `${plugin.id}: this plugin needs a newer version of Halonic (it is built against SDK ${plugin.sdk}, and this Halonic offers SDK ${integrationVersion})`,
     });
   }
   if (backendCode !== undefined) {
