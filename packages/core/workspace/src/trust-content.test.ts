@@ -86,6 +86,25 @@ verifies("workspace.trust-content", () => {
       );
     });
 
+    it("holds the sites in their stored form, sorted, only when written", () => {
+      const settingsOf = (connector: ReturnType<typeof stdio>) =>
+        trustContent({ connectors: [connector], commandPaths: new Map() }).connectors[0]?.settings;
+      expect(
+        settingsOf(stdio({ sites: ["bücher.example.com", "API.example.com", "api.example.com"] })),
+      ).toMatchObject({ sites: ["api.example.com", "xn--bcher-kva.example.com"] });
+      expect(settingsOf(stdio())).not.toHaveProperty("sites");
+      expect(same([stdio()], [stdio({ sites: [] })])).toBe(false);
+      expect(
+        same([stdio({ sites: ["a.example.com"] })], [stdio({ sites: ["b.example.com"] })]),
+      ).toBe(false);
+      expect(
+        same(
+          [stdio({ sites: ["a.example.com", "B.example.com"] })],
+          [stdio({ sites: ["b.example.com", "a.example.com"] })],
+        ),
+      ).toBe(true);
+    });
+
     it("changes when the folder, the command or an argument changes", () => {
       expect(same([stdio()], [stdio({ cwd: "./tools/../scripts" })])).toBe(false);
       expect(same([stdio()], [stdio({ command: "bash" })])).toBe(false);

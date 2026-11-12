@@ -95,6 +95,12 @@
                 },
                 "cwd": {
                   "type": "string"
+                },
+                "sites": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "required": [

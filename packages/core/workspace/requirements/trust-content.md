@@ -2,14 +2,15 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6266 (`inheritEnv`); HAL-188 (HAL-65 section 4, and the "Fingerprint coverage" rules from HAL-675); HAL-1954
+- Source: HAL-2310 (`sites`); HAL-6266 (`inheritEnv`); HAL-188 (HAL-65 section 4, and the "Fingerprint coverage" rules from HAL-675); HAL-1954
 
-The workspace package shall build a workspace's trust content from its connectors, holding everything that decides which programs run and where they talk to: the transport kind; for a program, the command and the absolute path it resolves to, the arguments as a list, the working folder relative to the workspace, every environment variable with its value as written, and the names it takes from the app's environment (`inheritEnv`), sorted, only when the file writes them; for a remote server, the full URL with its host in ASCII and every header; the secret names, never their values; the tool lists and `local`; and every other field of the connector file as written, apart from the known fields. Only a connector's name and description stay out. A connector whose URL has user info, a backslash before its query, or no `//` after `http:` or `https:` shall be refused instead, with the reason and without its URL, and content with a refused connector shall have no fingerprint.
+The workspace package shall build a workspace's trust content from its connectors, holding everything that decides which programs run and where they talk to: the transport kind; for a program, the command and the absolute path it resolves to, the arguments as a list, the working folder relative to the workspace, every environment variable with its value as written, the names it takes from the app's environment (`inheritEnv`), sorted, only when the file writes them, and the sites it may reach in a sandbox (`sites`), lowercase, in ASCII and sorted, only when the file writes them; for a remote server, the full URL with its host in ASCII and every header; the secret names, never their values; the tool lists and `local`; and every other field of the connector file as written, apart from the known fields. Only a connector's name and description stay out. A connector whose URL has user info, a backslash before its query, or no `//` after `http:` or `https:` shall be refused instead, with the reason and without its URL, and content with a refused connector shall have no fingerprint.
 
 ## Examples
 
 - Given a trusted program connector, when `NODE_OPTIONS`, `PYTHONSTARTUP` or `LD_PRELOAD` is added to its variables, or set from a secret, then the content changes.
 - Given a program connector, when `AWS_PROFILE` is added to `inheritEnv`, then the content changes; `[A, B]` and `[B, A]` are the same content, and a connector without `inheritEnv` has none in its content.
+- Given a program connector, when a site is added to or changed in `sites`, or an empty `sites` is written, then the content changes; `[A.example.com, b.example.com]` and `[b.example.com, a.example.com]` are the same content, and a connector without `sites` has none in its content.
 - Given a program connector, when its working folder, command or an argument changes, then the content changes; the arguments `["a b"]` and `["a", "b"]` differ.
 - Given a remote connector, when the URL's path, scheme, port or query changes on the same host, or the host becomes a look-alike, then the content changes.
 - Given a connector, when it switches from `http` to `stdio`, then the content changes.

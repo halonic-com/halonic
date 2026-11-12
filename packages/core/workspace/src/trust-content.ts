@@ -1,4 +1,4 @@
-import type { Agent, Connector, Provider } from "@halonicjs/format";
+import { type Agent, asciiAllowedSites, type Connector, type Provider } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
 import { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 import {
@@ -117,7 +117,9 @@ export interface TrustContentInput {
  * - **stdio:** the command (and the absolute path it resolves to), the
  *   arguments as a list, the working folder relative to the workspace,
  *   and every environment variable with its value as written: `${HOME}`
- *   stays `${HOME}`. Secret variables show only the secret's name.
+ *   stays `${HOME}`. Secret variables show only the secret's name. The
+ *   sites it may reach in a sandbox, lowercase, in Punycode and sorted,
+ *   only when the file names them.
  * - **http:** the full URL, normalised (see {@link trustUrl}), and every
  *   header. A connector whose URL `trustUrl` refuses goes in `refused`.
  * - **all:** the secret's name, the tool lists and `local`, plus any other
@@ -203,6 +205,8 @@ function transportContent(
       secretEnv: mapValues(stdio.secretEnv ?? {}, secretReference),
       // Only when written, so a connector without it keeps the content it was trusted with.
       ...(stdio.inheritEnv === undefined ? {} : { inheritEnv: sorted(stdio.inheritEnv) }),
+      // In the form the sandbox uses, so `API.example.com` and `api.example.com` are one site.
+      ...(stdio.sites === undefined ? {} : { sites: sorted(asciiAllowedSites(stdio.sites)) }),
       ...(path === undefined ? {} : { path }),
     };
     return { kind: "stdio", settings: withUnknown(settings, stdio, stdioFields) };
@@ -240,7 +244,7 @@ function toolsContent(tools: Connector["tools"]): Record<string, unknown> {
   return withUnknown({ approve, ...allow }, tools, toolsFields);
 }
 
-const stdioFields = new Set(["command", "args", "env", "secretEnv", "inheritEnv", "cwd"]);
+const stdioFields = new Set(["command", "args", "env", "secretEnv", "inheritEnv", "cwd", "sites"]);
 const httpFields = new Set(["url", "headers"]);
 const googleFields = new Set(["account", "client"]);
 const toolsFields = new Set(["allow", "approve"]);

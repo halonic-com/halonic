@@ -1,5 +1,6 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { id, version } from "../../shared/fields.ts";
+import { AllowedSitesInUnion } from "../agent/sandbox-fields.ts";
 
 /** A remote MCP server over HTTP. */
 const HttpTransport = s
@@ -29,6 +30,12 @@ const StdioTransport = s
         inheritEnv: s.array(s.string()).optional(),
         /** Working directory, relative to the workspace root. */
         cwd: s.string().optional(),
+        /**
+         * The sites the program may reach when it runs in a sandbox: host
+         * names or `*.` and a domain, with the agent file's `allowedSites`
+         * rules. Without a sandbox the program runs as before, unfenced.
+         */
+        sites: AllowedSitesInUnion.optional(),
       })
       .strict(),
   })

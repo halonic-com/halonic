@@ -206,3 +206,15 @@ export const AllowedSite = s.string().superRefine((site, context) => {
   const problem = allowedSiteProblem(site);
   if (problem !== null) context.addIssue({ code: "custom", message: problem });
 });
+
+/**
+ * A list of {@link AllowedSite}s, at most {@link MAX_ALLOWED_SITES}, for a
+ * field inside a union, such as a connector's `transport`. The cap is a
+ * refinement rather than `max`, because a union reports a list that's too
+ * long only as its whole input being wrong, not at the list.
+ */
+export const AllowedSitesInUnion = s.array(AllowedSite).superRefine((sites, context) => {
+  if (sites.length > MAX_ALLOWED_SITES) {
+    context.addIssue({ code: "custom", message: `Name at most ${MAX_ALLOWED_SITES} sites` });
+  }
+});
