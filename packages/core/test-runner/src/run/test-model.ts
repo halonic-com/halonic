@@ -2,19 +2,22 @@
 // workspace, as a real run picks it, but answered by the case's script.
 
 import { layeredParams, type ResolvedModel } from "@halonicjs/engine";
-import type { ChatTurnRequest, LlmProvider, ModelPrice } from "@halonicjs/ports";
+import type { ChatTurnRequest, LlmProvider } from "@halonicjs/ports";
 import {
+  callModelName,
   definitionsOf,
   type LoadedWorkspace,
   type ModelTarget,
+  modelPrice,
   resolveModel,
 } from "@halonicjs/workspace";
 
 /**
- * The engine's `resolveModel` for a test case. It names the model as the
- * CLI's `workspaceModelResolver` does: the request's `alias`, else the
- * agent's `model`, else the hub's default, else the workspace's; so the run
- * logs that model, and prices the call from the alias's `price`.
+ * The engine's `resolveModel` for a test case. It names the model with
+ * `callModelName`, as the CLI's `workspaceModelResolver` does: the request's
+ * `alias`, else the agent's `model`, else the hub's default, else the
+ * workspace's; so the run logs that model, and prices the call from the
+ * alias's `price`.
  * Every call goes to `provider`, the case's scripted model, and runs on this
  * computer. The alias's fallbacks are left out: the script answers each call.
  * A name the hub has no alias for gives the model `test`, unpriced.
@@ -29,11 +32,7 @@ export function testModelResolver(
   provider: LlmProvider,
 ): (request: ChatTurnRequest) => Promise<ResolvedModel> {
   return async (request) => {
-    const definitions = definitionsOf(workspace, request.hubId);
-    const agentModel =
-      request.agentId === undefined ? undefined : definitions.agents[request.agentId]?.model;
-    // `default` is the format's own default, for a workspace.yaml that didn't parse.
-    const name = request.alias ?? agentModel ?? definitions.defaultModel ?? "default";
+    const name = callModelName(definitionsOf(workspace, request.hubId), request);
     const target = resolveModel(workspace, request.hubId, name);
     return target === undefined
       ? { provider, model: "test", local: true }
@@ -51,20 +50,5 @@ function scriptedModel(provider: LlmProvider, target: ModelTarget): ResolvedMode
     ...(target.alias === undefined ? {} : { alias: target.alias }),
     ...(target.price === undefined ? {} : { price: modelPrice(target.price) }),
     ...(params === undefined ? {} : { params }),
-  };
-}
-
-/**
- * An alias's price as the engine takes it: the file format reads a cache
- * price it doesn't have as `undefined`, the engine wants it left out.
- */
-function modelPrice(price: NonNullable<ModelTarget["price"]>): ModelPrice {
-  const { input, output, cacheRead, cacheWrite, cacheWrite1h } = price;
-  return {
-    input,
-    output,
-    ...(cacheRead === undefined ? {} : { cacheRead }),
-    ...(cacheWrite === undefined ? {} : { cacheWrite }),
-    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }),
   };
 }

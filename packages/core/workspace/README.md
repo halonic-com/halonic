@@ -120,6 +120,12 @@ targets of its `fallback` entries, one level deep, as the engine tries them. An 
 doesn't have gives `undefined`. `modelAliases(workspace, hubId)` gives the aliases a hub can use, by
 name, which is what `resolveModel` looks them up in.
 
+`callModelName(definitions, call)` gives the name a run's model call resolves: the call's alias,
+else its agent's `model`, else the hub's default, else the workspace's, else `default`.
+`modelPrice(price)` gives an alias's price as the engine takes it, without the cache prices it
+doesn't have. The CLI's model resolver and the test runner both use them, so a test case's call
+logs the model and cost a real run's does (`workspace.call-model`).
+
 `definitionsOf(workspace, hubId)` gives everything a run in that hub reads, as plain data: the
 workspace settings, `hub.yaml`, the default model, the hub's own workflows and agents, every alias
 it can use resolved, the providers and runtimes, and the library items it may use.
