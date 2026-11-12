@@ -11,10 +11,12 @@
 # one issue per target for a failed night comes with the first live suite.
 #
 # Everything here is off until the repository variable LIVE_CLOUD_ENABLED is
-# "true". Set it once the protected `live-cloud` environment holds the test
-# account's token (HALONIC_CLOUDFLARE_API_TOKEN); until then each job skips
-# with a notice. Forks never get the token. Changes to this file, the live
-# test code and the sweeper need Julian's review.
+# "true". Set it once the protected `cloudflare-live` environment holds the
+# test account's token and ID (CLOUDFLARE_LIVE_API_TOKEN,
+# CLOUDFLARE_LIVE_ACCOUNT_ID; HAL-6708); until then each job skips with a
+# notice. Its protection rules are in decisions/mateo/HAL-6701-live-cloud-ci.md.
+# Forks never get the token. Changes to this file, the live test code and the
+# sweeper need Julian's review.
 
 name: Live cloud
 
@@ -42,6 +44,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read # to check that the cloudflare-live environment exists
     outputs:
       live: ${{ steps.plan.outputs.live }}
       sweep: ${{ steps.plan.outputs.sweep }}
@@ -60,6 +63,7 @@ jobs:
         name: Decide
         env:
           ENABLED: ${{ vars.LIVE_CLOUD_ENABLED }}
+          GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           SCHEDULE: ${{ github.event.schedule }}
           DRAFT: ${{ github.event.pull_request.draft }}
@@ -74,6 +78,15 @@ jobs:
           }
           if [ "$ENABLED" != "true" ]; then
             skip "There is no CI Cloudflare token yet (LIVE_CLOUD_ENABLED is not true; HAL-198). Nothing ran against a real account."
+          fi
+          # A job that names a missing environment makes GitHub create it
+          # without protection rules, so stop before any job names it. This
+          # catches a mistake, not an attacker: a branch can edit this file.
+          protected=$(gh api "repos/$REPO/environments/cloudflare-live" \
+            --jq '.deployment_branch_policy != null and .can_admins_bypass == false' || true)
+          if [ "$protected" != "true" ]; then
+            echo "::error::LIVE_CLOUD_ENABLED is true, but the cloudflare-live environment is missing or lacks its branch rules or has admin bypass on. Set it up as decisions/mateo/HAL-6701-live-cloud-ci.md says (HAL-6708)."
+            exit 1
           fi
           if [ "$EVENT" = "schedule" ] && [ "$SCHEDULE" = "$SWEEP_CRON" ]; then
             printf 'live=false\nsweep=true\nnightly=false\n' >> "$GITHUB_OUTPUT"
@@ -100,7 +113,7 @@ jobs:
     if: needs.plan.outputs.sweep == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    environment: live-cloud
+    environment: cloudflare-live
     permissions:
       contents: read
     steps:
@@ -110,7 +123,8 @@ jobs:
       - uses: $/.github/actions/setup
       - name: Sweep
         env:
-          HALONIC_CLOUDFLARE_API_TOKEN: ${{ secrets.HALONIC_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_LIVE_API_TOKEN: ${{ secrets.CLOUDFLARE_LIVE_API_TOKEN }}
+          CLOUDFLARE_LIVE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
           NIGHTLY: ${{ needs.plan.outputs.nightly }}
         run: |
           if [ "$NIGHTLY" = "true" ]; then
@@ -127,7 +141,7 @@ jobs:
     if: ${{ !cancelled() && needs.plan.outputs.live == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    environment: live-cloud
+    environment: cloudflare-live
     permissions:
       contents: read
       actions: read # to find an earlier pass with the same inputs
@@ -162,10 +176,11 @@ jobs:
       - name: Run the live suites
         if: steps.reuse.outputs.reused != 'true'
         env:
-          HALONIC_CLOUDFLARE_API_TOKEN: ${{ secrets.HALONIC_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_LIVE_API_TOKEN: ${{ secrets.CLOUDFLARE_LIVE_API_TOKEN }}
+          CLOUDFLARE_LIVE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
         run: |
-          if [ -z "$HALONIC_CLOUDFLARE_API_TOKEN" ]; then
-            echo "::error::LIVE_CLOUD_ENABLED is true, but the live-cloud environment has no HALONIC_CLOUDFLARE_API_TOKEN."
+          if [ -z "$CLOUDFLARE_LIVE_API_TOKEN" ] || [ -z "$CLOUDFLARE_LIVE_ACCOUNT_ID" ]; then
+            echo "::error::LIVE_CLOUD_ENABLED is true, but the cloudflare-live environment lacks CLOUDFLARE_LIVE_API_TOKEN or CLOUDFLARE_LIVE_ACCOUNT_ID."
             exit 1
           fi
           if ! git grep -q '"test:live"' -- 'packages/**/package.json' 'apps/**/package.json'; then
@@ -180,7 +195,8 @@ jobs:
       - name: Sweep
         if: always() && steps.reuse.outputs.reused != 'true'
         env:
-          HALONIC_CLOUDFLARE_API_TOKEN: ${{ secrets.HALONIC_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_LIVE_API_TOKEN: ${{ secrets.CLOUDFLARE_LIVE_API_TOKEN }}
+          CLOUDFLARE_LIVE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
         run: node tooling/check/src/cli/live-sweep.ts
       - name: Record the pass
         if: github.event_name == 'pull_request' && steps.reuse.outputs.reused != 'true'
