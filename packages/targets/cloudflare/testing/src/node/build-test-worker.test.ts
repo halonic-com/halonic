@@ -49,11 +49,11 @@ describe("the test Worker", () => {
     const file = path.join(suitesFolder, `unsupported-matcher-${process.pid}.ts`);
     await writeFile(
       file,
-      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toMatchObject([1]));\n',
+      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toMatchSnapshot());\n',
     );
     try {
       await expect(buildTestWorker([file])).rejects.toThrow(
-        /lacks what a suite uses[\s\S]*unsupported-matcher-\d+\.ts uses toMatchObject/,
+        /lacks what a suite uses[\s\S]*unsupported-matcher-\d+\.ts uses toMatchSnapshot/,
       );
     } finally {
       await rm(file, { force: true });
