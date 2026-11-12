@@ -17,7 +17,6 @@ import {
   type NoticeSection,
   renderNotices,
   type Sbom,
-  type VendoredNotice,
   withProduct,
 } from "../lib/sbom.ts";
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
@@ -117,14 +116,14 @@ function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
 }
 
 /** The vendored files of `licences.json`, each with its licence text. */
-function vendoredNotices(root: string): VendoredNotice[] {
+function vendoredNotices(root: string): NoticeEntry[] {
   const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
   return (policy.vendored ?? []).map((entry) => ({
-    name: entry.name,
-    path: entry.path,
+    name: `${entry.name} (${entry.path})`,
+    versions: [],
     licence: entry.licence,
     source: entry.source,
-    text: readFileSync(join(root, licenceTextPath(entry.licence)), "utf8"),
+    texts: [readFileSync(join(root, licenceTextPath(entry.licence)), "utf8")],
   }));
 }
 
@@ -231,12 +230,12 @@ function main(argv: readonly string[]): number {
       crateProblems = crates.problems.length;
     }
     const vendored = vendoredNotices(root);
-    writeFileSync(
-      join(out, "THIRD-PARTY-NOTICES.txt"),
-      renderNotices("Halonic", sections, vendored),
-    );
+    if (vendored.length > 0) {
+      sections.push({ title: "Vendored files", entries: vendored });
+    }
+    writeFileSync(join(out, "THIRD-PARTY-NOTICES.txt"), renderNotices("Halonic", sections));
     console.log(
-      `check:sbom: notices for ${sections.map((section) => `${section.entries.length} ${section.title}`).join(" and ")} and ${vendored.length} vendored file(s), ${crateProblems} problem(s).`,
+      `check:sbom: notices for ${sections.map((section) => `${section.entries.length} ${section.title}`).join(" and ")}, ${crateProblems} problem(s).`,
     );
   }
   return problems.length === 0 && crateProblems === 0 ? 0 : 1;

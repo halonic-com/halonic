@@ -111,22 +111,30 @@ verifies("check.licences-vendored", () => {
     ).toEqual([expect.stringContaining("apps/studio/src/main.ts")]);
   });
 
-  test("the notices end with one block per vendored file, with its source and text", () => {
-    const text = renderNotices(
-      "Halonic",
-      [
-        {
-          title: "npm packages",
-          entries: [{ name: "zod", versions: ["4.0.0"], licence: "MIT", texts: ["MIT text"] }],
-        },
-      ],
-      [{ ...entry, text: "Mozilla Public License Version 2.0\n" }],
-    );
-    const block = text.slice(text.indexOf("Public Suffix List ("));
+  test("a vendored file's block names its path and source, and its text is printed once", () => {
+    const mpl = "Mozilla Public License Version 2.0\n";
+    const text = renderNotices("Halonic", [
+      {
+        title: "npm packages",
+        entries: [{ name: "zod", versions: ["4.0.0"], licence: "MPL-2.0", texts: [mpl] }],
+      },
+      {
+        title: "Vendored files",
+        entries: [
+          {
+            name: `${entry.name} (${entry.path})`,
+            versions: [],
+            licence: entry.licence,
+            source: entry.source,
+            texts: [mpl],
+          },
+        ],
+      },
+    ]);
+    const block = text.slice(text.indexOf(`Public Suffix List (${psl})`));
     expect(text.indexOf("zod 4.0.0")).toBeLessThan(text.indexOf("Public Suffix List ("));
-    expect(block).toContain(`Public Suffix List (${psl})`);
-    expect(block).toContain("Licence: MPL-2.0");
+    expect(block).toContain(`Public Suffix List (${psl})\nLicence: MPL-2.0`);
     expect(block).toContain(`Source: ${entry.source}`);
-    expect(block).toContain("Mozilla Public License Version 2.0");
+    expect(block).toContain("Same licence text as zod 4.0.0 above.");
   });
 });

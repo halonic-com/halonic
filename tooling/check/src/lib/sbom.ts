@@ -27,24 +27,18 @@ export interface SbomDependency {
   readonly dependsOn?: readonly string[];
 }
 
-/** One installed package with its licence, as `pnpm licenses list --long --json` reports it. */
+/** One package or vendored file with its licence, for THIRD-PARTY-NOTICES.txt. */
 export interface NoticeEntry {
   readonly name: string;
+  /** Empty for a vendored file. */
   readonly versions: readonly string[];
   readonly licence: string;
   readonly author?: string;
   readonly homepage?: string;
+  /** Where a vendored file was copied from. */
+  readonly source?: string;
   /** The text of each licence file the package ships, in file name order; empty when it ships none. */
   readonly texts: readonly string[];
-}
-
-/** One vendored file for the notices: its `vendored` entry and its licence text. */
-export interface VendoredNotice {
-  readonly name: string;
-  readonly path: string;
-  readonly licence: string;
-  readonly source: string;
-  readonly text: string;
 }
 
 /** The full package name of a component: `@scope/name` or `name`. */
@@ -137,7 +131,7 @@ export function withProduct(sbom: Sbom, name: string, version: string): Sbom {
 
 const rule = "=".repeat(72);
 
-/** One part of THIRD-PARTY-NOTICES.txt: the npm packages, or the Rust crates. */
+/** One part of THIRD-PARTY-NOTICES.txt: the npm packages, the Rust crates or the vendored files. */
 export interface NoticeSection {
   readonly title: string;
   readonly entries: readonly NoticeEntry[];
@@ -153,13 +147,19 @@ export function byCodePoint(a: string, b: string): number {
 
 /** One package's block: its name, licence and details, then each licence text or a pointer to it. */
 function noticeBlock(entry: NoticeEntry, printed: Map<string, string>): string {
-  const label = `${entry.name} ${entry.versions.join(", ")}`;
+  const label = [
+    entry.name,
+    ...(entry.versions.length > 0 ? [entry.versions.join(", ")] : []),
+  ].join(" ");
   const lines = [label, `Licence: ${entry.licence}`];
   if (entry.author !== undefined) {
     lines.push(`Author: ${entry.author}`);
   }
   if (entry.homepage !== undefined) {
     lines.push(`Homepage: ${entry.homepage}`);
+  }
+  if (entry.source !== undefined) {
+    lines.push(`Source: ${entry.source}`);
   }
   if (entry.texts.length === 0) {
     lines.push("", "(This package ships no licence file. See its homepage.)");
@@ -182,13 +182,9 @@ function noticeBlock(entry: NoticeEntry, printed: Map<string, string>): string {
  * repeated: the block names the package it is printed under. Most crates ship
  * the same Apache-2.0 file next to their own MIT one, so each file is compared
  * on its own. The fixed order keeps the pointers, and the whole file, the
- * same on every build. One block per vendored file comes last.
+ * same on every build.
  */
-export function renderNotices(
-  product: string,
-  sections: readonly NoticeSection[],
-  vendored: readonly VendoredNotice[] = [],
-): string {
+export function renderNotices(product: string, sections: readonly NoticeSection[]): string {
   const printed = new Map<string, string>();
   const parts = sections.flatMap((section) => {
     const sorted = [...section.entries].sort((a, b) =>
@@ -197,21 +193,6 @@ export function renderNotices(
     const blocks = sorted.map((entry) => noticeBlock(entry, printed));
     return [`${section.title}\n${"-".repeat(section.title.length)}`, ...blocks];
   });
-  const files = [...vendored]
-    .sort((a, b) => byCodePoint(a.path, b.path))
-    .map((file) =>
-      [
-        `${file.name} (${file.path})`,
-        `Licence: ${file.licence}`,
-        `Source: ${file.source}`,
-        "",
-        file.text.trim(),
-      ].join("\n"),
-    );
   const header = `${product} includes the third-party software listed below.\n`;
-  return `${[header, ...parts, ...files].join(`
-${rule}
-
-`)}
-`;
+  return `${[header, ...parts].join(`\n${rule}\n\n`)}\n`;
 }
