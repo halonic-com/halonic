@@ -1,7 +1,7 @@
 # Decision: long help lines wrap at 80 columns
 
 - Task: HAL-6938
-- Approval: Sofia approved the layout on [HAL-6955](/HAL/issues/HAL-6955) and wrote it into cli-output 1.9, revision 51 ("How a long help line wraps"), a detail of an approved screen, so it's a team decision with no board card (HAL-2282 rule); Julian reviewed it on [HAL-6996](/HAL/issues/HAL-6996), Liam signs this note as the CTO
+- Approval: Sofia approved the layout on HAL-6955 and wrote it into cli-output 1.9, revision 51 ("How a long help line wraps"), a detail of an approved screen, so it's a team decision with no board card (HAL-2282 rule); Julian reviewed it on HAL-6996, Liam signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wT4uGNU8C58gHOEDb79yoqI3NmTquzrzQQAsuFrCUUOtgWLKARxgLTCE2m+m80Pt3Ay4eRmlypicEfFP69NGAg==
 

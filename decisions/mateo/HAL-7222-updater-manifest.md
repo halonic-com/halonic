@@ -1,7 +1,7 @@
 # Decision: the release writes latest.json with the updater signature inside
 
 - Task: HAL-7222 (workflow side of HAL-1206, file names settled on HAL-1119)
-- Approval: the task [HAL-7222](/HAL/issues/HAL-7222) asks for this change; the maintainer (Liam) approves this note in review
+- Approval: the task HAL-7222 asks for this change; the maintainer (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LYnBmNteitPkaH8Fui2ySq9REfmXI9QhwM+bTSt7mxKwzeMWGkMF/JN9/7brj9YNaB19t/+oReu3rwIz0fNRCg==
 

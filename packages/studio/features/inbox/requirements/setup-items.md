@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-711; [google-setup-flow](/HAL/issues/HAL-621#document-google-setup-flow) sections 1 and 6 item 1; [ux-checklists](/HAL/issues/HAL-1019#document-ux-checklists) sections 1 and 8 point 1; Liam's plan review (HAL-6621)
+- Source: HAL-711; google-setup-flow (HAL-621) sections 1 and 6 item 1; ux-checklists (HAL-1019) sections 1 and 8 point 1; Liam's plan review (HAL-6621)
 
 The Inbox shall list one setup item for each account a setup source gives it, such as a Google account whose setup isn't done. A setup item isn't tied to a run: its key is `setup:<provider>:<account>`, where the account is the source's own ref and never an e-mail address. Setup items shall come first in Needs you, the most recently changed first, before the items runs wait on. They shall count in the Inbox's count and show in Home's Needs you, and they shall stay out of the items made from runs alone (`inboxItems`), so a list of runs that need you doesn't count them. A setup item's row shall show the source's title, its progress line and a **Setup** chip, and no Approve, Reject or Delete. The Inbox shall load a source again whenever it says it changed, and stop watching it when it's taken out or the workspace closes.
 

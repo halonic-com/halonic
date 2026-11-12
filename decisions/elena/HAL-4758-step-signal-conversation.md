@@ -2,7 +2,7 @@
 
 - Requirements: `engine.step-signal` (new), `engine.task-conversation` (new)
 - Task: HAL-4758
-- Approval: [HAL-4758](/HAL/issues/HAL-4758), the CTO's review of this pull request
+- Approval: HAL-4758, the CTO's review of this pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XqI2rBARJz6KjPXCJLYSACKz3Fbn/OmPq2aFTFpk1zwIBQWw7qYO9srMkavIjywI8E1JAho8RC8pJj6pKsiFDg==
 

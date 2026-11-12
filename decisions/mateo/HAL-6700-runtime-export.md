@@ -1,6 +1,6 @@
 # Decision: add the runtime export folder format
 
-- Approval: [HAL-6707](/HAL/issues/HAL-6707)
+- Approval: HAL-6707
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UdNtH+N5Ug+hOauodf+VAu0Xw3xXM5eExuB38N98Q5bGGAwnMywez/+Pi3Uq406LajimUFEojl/cJU9PZ0TVDA==
 

@@ -1,8 +1,8 @@
 # Decision: the shell remembers the folders the person picked, across restarts
 
-- Approval: [HAL-6637](/HAL/issues/HAL-6637), option A, decided by Liam with seven conditions;
-  the profile fence and the Unix identity decided by Liam on [HAL-7039](/HAL/issues/HAL-7039),
-  after Priya's security check ([HAL-7040](/HAL/issues/HAL-7040))
+- Approval: HAL-6637, option A, decided by Liam with seven conditions;
+  the profile fence and the Unix identity decided by Liam on HAL-7039,
+  after Priya's security check (HAL-7040)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KB+Y3gSYJATLiFHVV7HuXF7nygz188512S/0yal8IEk287gUy054hvrELJ25MNF2Uyn1/7/ZmkZBg3WvnahBCQ==
 

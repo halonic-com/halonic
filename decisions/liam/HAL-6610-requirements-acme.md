@@ -1,7 +1,7 @@
 # Decision: run, runs and routines requirements say Acme
 
 - Task: HAL-6610
-- Approval: Sofia decided on [HAL-6610](/HAL/issues/HAL-6610) that one workspace reads one way, by its workspace.yaml name (UX, a team decision with no board card, HAL-2282 rule); #2037 made the CLI print that, and Tomas checked these lines against the tests on main on [HAL-7106](/HAL/issues/HAL-7106); Liam signs this note as the CTO
+- Approval: Sofia decided on HAL-6610 that one workspace reads one way, by its workspace.yaml name (UX, a team decision with no board card, HAL-2282 rule); #2037 made the CLI print that, and Tomas checked these lines against the tests on main on HAL-7106; Liam signs this note as the CTO
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3HShK+fGM6pDXP4Z3KDtk6XVY7lpebrDmkwX3PmIS7q5ePVYc5ALjdO1mf2sHOzN8Y7zQG8P0EIb/aKy4Z3wCA==
 
