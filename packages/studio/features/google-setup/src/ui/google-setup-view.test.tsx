@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { loadView } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, type ComponentType } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { account, atlas, fakeAccounts, ledger, record } from "../accounts.test-helper.ts";
 import type { GoogleSetupAccount } from "../api.ts";
@@ -84,6 +85,38 @@ verifies("google-setup.account-header", () => {
     await press(button(container, "Change"));
     const picked = container.querySelector<HTMLInputElement>('[role="radiogroup"] input:checked');
     expect(picked?.parentElement?.textContent).toContain("Personal Google account");
+  });
+
+  it("closes the question with Cancel, saves nothing and returns focus to Change", async () => {
+    const { fake, container } = await open([account(twoDone)]);
+    await press(button(container, "Change"));
+    await press(button(container, "Cancel"));
+    expect(container.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(fake.edits).toEqual([]);
+    expect(document.activeElement).toBe(button(container, "Change"));
+  });
+
+  it("closes the question and returns focus to Change once an answer is saved", async () => {
+    const { fake, container } = await open([account(twoDone)]);
+    await press(button(container, "Change"));
+    const work = [...container.querySelectorAll("input")].find((input) =>
+      input.parentElement?.textContent?.includes("Work or school account"),
+    );
+    await press(work as HTMLElement);
+    expect(fake.edits).toHaveLength(1);
+    expect(container.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(document.activeElement).toBe(button(container, "Change"));
+  });
+
+  it("lists the answers as unavailable, with the reason, while the engine isn't answering", async () => {
+    const { fake, container } = await open([account(record([]), { askAccountType: true })], false);
+    const inputs = [...container.querySelectorAll<HTMLInputElement>('[role="radiogroup"] input')];
+    expect(inputs).toHaveLength(2);
+    for (const input of inputs)
+      expect(input.getAttribute("aria-disabled") ?? String(input.disabled)).toBe("true");
+    expect(container.textContent).toContain("The engine isn't answering.");
+    await press(inputs[0] as HTMLElement);
+    expect(fake.edits).toEqual([]);
   });
 
   it("opens a panel with no button when you choose Other ways (later)", async () => {
@@ -170,9 +203,9 @@ verifies("google-setup.setup-source", () => {
   it("gives the Inbox a view that reads and saves its own accounts", async () => {
     const fake = fakeAccounts([account(twoDone)]);
     const { view } = googleSetupSource(fake.source);
-    const Loaded = await loadView<typeof GoogleSetupView>(view as NonNullable<typeof view>);
+    const Loaded = await loadView<ComponentType<SetupViewProps>>(view as NonNullable<typeof view>);
     const close = vi.fn();
-    const container = render(<Loaded item={item} answering close={close} accounts={fake.source} />);
+    const container = render(<Loaded item={item} answering close={close} />);
     await settled();
     await press(button(container, "Done, next"));
     expect(fake.edits).toHaveLength(1);

@@ -1,32 +1,6 @@
 import type { SetupStep } from "@halonicjs/google-setup";
 import type { GoogleSetupAccount } from "../api.ts";
-
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
-/**
- * A step's title in the checklist. Only the step's own data is read, so a service is never
- * named here: its name comes from the account's services.
- */
-export function stepTitle(step: SetupStep): string {
-  switch (step.id) {
-    case "project":
-      return "Google Cloud project";
-    case "apis":
-      return `Switch on ${plural(step.apis.length, "API", "APIs")}`;
-    case "consent":
-      return "Consent screen";
-    case "scopes":
-      return "Scopes";
-    case "client":
-      return "Create the client";
-    case "credentials":
-      return "Client ID and secret";
-    case "sign-in":
-      return "Sign in with Google";
-  }
-}
+import { plural } from "../step-names.ts";
 
 /** The one sentence on why a step is there, under its title while it is open. */
 export function stepWhy(step: SetupStep): string {

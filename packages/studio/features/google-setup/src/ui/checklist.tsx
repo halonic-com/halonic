@@ -2,8 +2,9 @@ import type { SetupEdit, SetupStep, StepId } from "@halonicjs/google-setup";
 import { Button } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type { GoogleSetupAccount } from "../api.ts";
+import { stepTitle } from "../step-names.ts";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
-import { foldedValue, stepTitle, stepWhy } from "./step-text.ts";
+import { foldedValue, stepWhy } from "./step-text.ts";
 
 /** Props for {@link Checklist}. */
 export interface ChecklistProps {
@@ -17,10 +18,13 @@ export interface ChecklistProps {
   readonly close: () => void;
 }
 
-/** The first step not marked done, or the last when every step is. */
-export function currentStep(account: GoogleSetupAccount, steps: readonly SetupStep[]): SetupStep {
+/** The first step not marked done, or the last when every step is. None when there are no steps. */
+export function currentStep(
+  account: GoogleSetupAccount,
+  steps: readonly SetupStep[],
+): SetupStep | undefined {
   const next = steps.find((step) => account.record.stepsDone[step.id] === undefined);
-  return next ?? (steps[steps.length - 1] as SetupStep);
+  return next ?? steps[steps.length - 1];
 }
 
 function stateOf(step: SetupStep, current: SetupStep, done: boolean): StepState {
@@ -45,13 +49,20 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const open = steps.find((step) => step.id === editing) ?? current;
+  const openId = open?.id;
   const titles = useRef(new Map<StepId, HTMLHeadingElement>());
 
-  // Focus goes to the title of the step that opens, also when the item first opens.
-  useEffect(() => titles.current.get(open.id)?.focus({ preventScroll: true }), [open.id]);
+  // Focus goes to the title of the step that opens, also when the item first opens. An error
+  // belongs to the step it was shown in, so it goes when another step opens.
+  useEffect(() => {
+    setFailed(false);
+    if (openId !== undefined) titles.current.get(openId)?.focus({ preventScroll: true });
+  }, [openId]);
+
+  if (current === undefined || open === undefined) return null;
 
   async function doneNext() {
-    if (!answering || busy) return;
+    if (!answering || busy || open === undefined) return;
     setBusy(true);
     setFailed(false);
     try {

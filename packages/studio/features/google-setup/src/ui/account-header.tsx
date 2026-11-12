@@ -1,6 +1,6 @@
 import type { AccountType } from "@halonicjs/google-setup";
 import { Button, StatusChip } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { AccountTypeQuestion } from "./account-type-question.tsx";
 import { OtherWays } from "./other-ways.tsx";
@@ -30,13 +30,29 @@ export function AccountHeader(props: AccountHeaderProps) {
   const [changing, setChanging] = useState(false);
   const [failed, setFailed] = useState(false);
   const typeLine = useId();
+  const changeButton = useRef<HTMLButtonElement>(null);
+  // Set when the question closes after **Change**, so focus goes back to it once it is drawn.
+  const returnFocus = useRef(false);
+
+  useEffect(() => {
+    if (!changing && returnFocus.current) {
+      returnFocus.current = false;
+      changeButton.current?.focus();
+    }
+  }, [changing]);
+
+  function closeQuestion() {
+    returnFocus.current = true;
+    setFailed(false);
+    setChanging(false);
+  }
 
   async function pick(next: AccountType) {
     if (!answering) return;
     setFailed(false);
     try {
       await onAccountType(next);
-      setChanging(false);
+      if (changing) closeQuestion();
     } catch {
       setFailed(true);
     }
@@ -54,17 +70,28 @@ export function AccountHeader(props: AccountHeaderProps) {
         )}
       </div>
       {asking || changing ? (
-        <AccountTypeQuestion
-          email={email}
-          value={asking ? null : accountType}
-          onChange={(next) => void pick(next)}
-        />
+        <>
+          <AccountTypeQuestion
+            email={email}
+            value={asking ? null : accountType}
+            answering={answering}
+            onChange={(next) => void pick(next)}
+          />
+          {asking ? null : (
+            <div>
+              <Button variant="secondary" size="sm" onClick={closeQuestion}>
+                Cancel
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-wrap items-center gap-x-2">
           <p id={typeLine} className="text-body">
             For {listNames(serviceNames)} · {accountTypeNames[accountType]}
           </p>
           <Button
+            ref={changeButton}
             variant="ghost"
             size="sm"
             aria-describedby={typeLine}

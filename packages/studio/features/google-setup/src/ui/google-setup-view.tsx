@@ -21,15 +21,20 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): GoogleSetupAcco
   const [account, setAccount] = useState<GoogleSetupAccount>();
   useEffect(() => {
     let current = true;
-    const read = () =>
-      accounts.list().then(
+    // Only the newest read counts: an older one that answers late must not undo a newer one.
+    let latest = 0;
+    const read = () => {
+      latest += 1;
+      const mine = latest;
+      return accounts.list().then(
         (all) => {
           const found = all.find((candidate) => candidate.record.accountRef === ref);
-          if (current && found !== undefined) setAccount(found);
+          if (current && mine === latest && found !== undefined) setAccount(found);
         },
         // The Inbox already says when the engine isn't answering; the view keeps what it has.
         () => undefined,
       );
+    };
     void read();
     const stop = accounts.subscribe(() => void read());
     window.addEventListener("focus", read);
@@ -64,6 +69,7 @@ export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetu
 
   const edit = (change: SetupEdit) => accounts.edit(account.record.accountRef, change);
   const asking = account.askAccountType;
+  const current = currentStep(account, steps);
   return (
     <section aria-label={item.title} className="flex flex-col gap-4 p-4">
       <AccountHeader
@@ -72,7 +78,7 @@ export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetu
         accountType={account.record.accountType}
         asking={asking}
         progress={
-          asking ? undefined : `Step ${currentStep(account, steps).number} of ${steps.length}`
+          asking || current === undefined ? undefined : `Step ${current.number} of ${steps.length}`
         }
         answering={answering}
         onAccountType={(accountType: AccountType) => edit({ kind: "account-type", accountType })}
