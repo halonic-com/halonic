@@ -31,3 +31,4 @@ about that folder and prints the sign-in for it, so the error can point there.
 
 - harness-claude-code.sign-in-expired
 - cli.doctor-report
+- apps/agent-host/src/harness/sign-in-route.test.ts
