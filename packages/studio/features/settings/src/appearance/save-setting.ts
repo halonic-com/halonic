@@ -15,7 +15,8 @@ export type SaveSetting = <Value>(
 
 /**
  * The {@link SaveSetting} of a section: it saves to `settings`, and says a failure through
- * `announce`, the settings container's live region, never a toast (`settings.failed-save`).
+ * `announce`: the settings container's live region while the dialog is open, never a toast then;
+ * the view passes one that toasts once its section is gone (`settings.failed-save`).
  */
 export function saveSetting(
   settings: DisplaySettings,
