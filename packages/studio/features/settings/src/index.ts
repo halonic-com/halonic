@@ -2,6 +2,7 @@ export {
   type AgentSandboxHost,
   AgentSandboxService,
   DisplaySettingsService,
+  HostSettingsService,
   type SandboxCheckFacts,
   type SandboxOutcome,
 } from "./api.ts";

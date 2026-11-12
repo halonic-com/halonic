@@ -2,9 +2,18 @@
  * The services and types other features may use. Features import each
  * other only through this file.
  */
+import type { HostSettings } from "@halonicjs/app";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
 import type { DisplaySettings } from "./display-settings.ts";
+
+/**
+ * The settings kept where Halonic runs, for every workspace on that computer: the Assistant's and
+ * the sandbox default. The app makes one `HostSettings` over the profile's store, loads it, and
+ * gives it to every workspace (`settings.ai-agent-prefs`).
+ */
+export const HostSettingsService: ServiceKey<HostSettings> =
+  serviceKey<HostSettings>("settings.host");
 
 export type { DisplayPref } from "./display-prefs.ts";
 export type { DisplaySettings, SaveOutcome } from "./display-settings.ts";

@@ -2322,6 +2322,12 @@ importers:
 
   packages/studio/features/settings:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
