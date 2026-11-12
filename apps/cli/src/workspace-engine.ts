@@ -80,6 +80,9 @@ export interface WorkspaceEngineTarget {
   readonly onGaveUp?: (gaveUp: GaveUpRun) => void;
 }
 
+/** What {@link checkEngineRuns} checks: the workspace and its runs, without the engine's own options. */
+export type EngineRunsTarget = Pick<WorkspaceEngineTarget, "dir" | "workspace" | "runs" | "ending">;
+
 /** A workspace's engine, open until {@link LocalEngine.close}, with the signal to follow its runs with. */
 export interface WorkspaceEngine extends LocalEngine {
   /**
@@ -122,15 +125,7 @@ export async function openWorkspaceEngine(
   setup: WorkspaceEngineSetup,
   target: WorkspaceEngineTarget,
 ): Promise<WorkspaceEngine> {
-  const host = setup.sandboxGate?.() ?? nodeSandboxGateHost(setup.profile);
-  const machine = await sandboxGateMachine(host, target.dir.root);
-  const unsandboxed = new Map<string, UnsandboxedAgent>();
-  for (const run of target.runs) {
-    checkHarnessOverride(target.workspace, run, target.ending);
-    for (const agent of await checkRunSandbox(target.workspace, run, machine, target.ending)) {
-      unsandboxed.set(agent.name, agent);
-    }
-  }
+  const unsandboxed = await checkEngineRuns(setup, target);
   let opened: LocalEngine | undefined;
   const { onStuck, onGaveUp = () => {} } = target;
   const stuck = stuckTimerWatch(
@@ -176,8 +171,36 @@ export async function openWorkspaceEngine(
     close: () => engine.close(),
     signal: AbortSignal.any([context.signal, stuck.signal]),
     stuck: stuck.signal,
-    unsandboxed: [...unsandboxed.values()],
+    unsandboxed,
   };
+}
+
+/**
+ * The checks {@link openWorkspaceEngine} makes before it opens the engine:
+ * each run's harness override, then the sandbox. `run` calls it on its own
+ * for a run it refuses anyway, so the refusal comes after the same checks
+ * without opening the engine.
+ *
+ * @returns the runs' agents set to "On this computer", each once
+ * @throws KindedError `invalid_input` when a run's harness would move an
+ *   agent whose allowed sites or working folder no check read into a program (exit 2)
+ * @throws SandboxRefusedError when an agent of a run needs the sandbox and
+ *   it can't start here (exit 9)
+ */
+export async function checkEngineRuns(
+  setup: WorkspaceEngineSetup,
+  target: EngineRunsTarget,
+): Promise<UnsandboxedAgent[]> {
+  const host = setup.sandboxGate?.() ?? nodeSandboxGateHost(setup.profile);
+  const machine = await sandboxGateMachine(host, target.dir.root);
+  const unsandboxed = new Map<string, UnsandboxedAgent>();
+  for (const run of target.runs) {
+    checkHarnessOverride(target.workspace, run, target.ending);
+    for (const agent of await checkRunSandbox(target.workspace, run, machine, target.ending)) {
+      unsandboxed.set(agent.name, agent);
+    }
+  }
+  return [...unsandboxed.values()];
 }
 
 /**

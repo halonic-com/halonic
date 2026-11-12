@@ -107,12 +107,17 @@ async function run(
   harnesses: readonly HarnessProgram[],
   check: SandboxCheck,
   ...args: string[]
-): Promise<{ code: number; stderr: string[] }> {
+): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
   const io = captureIo(acme);
   const code = await runCli(["run", "support-reply", ...samsEmail, ...args], io, [
     runCommand(harnesses, check),
   ]);
-  return { code, stderr: io.stderr };
+  return { code, stdout: io.stdout, stderr: io.stderr };
+}
+
+/** How many times a workspace fingerprint shows in `lines`. */
+function fingerprintsIn(lines: readonly string[]): number {
+  return lines.join("\n").match(/hfp1:[0-9a-f]{64}/g)?.length ?? 0;
 }
 
 /** The runs Acme has, each with the harness its `run.started` names. */
@@ -156,10 +161,37 @@ verifies("cli.run-harness", () => {
       expect(await startedRuns()).toEqual([]);
     });
 
-    it("needs trust for a harness program, even when the workspace only reaches the test model", async () => {
-      const { code } = await run(claudeCodeReady, sandboxReady, "--harness", "claude-code");
+    // HAL-6580: an untrusted Acme showed its trust check and fingerprint, then
+    // exited 3, for a run this computer's engine could never start.
+    it("refuses a harness program with exit 9 before the trust check, on a workspace that isn't trusted", async () => {
+      const { code, stdout, stderr } = await run(
+        claudeCodeReady,
+        sandboxReady,
+        "--harness",
+        "claude-code",
+      );
 
-      expect(code).toBe(exitCode.notTrusted);
+      expect(code).toBe(exitCode.unavailable);
+      expect(stderr).toEqual([
+        "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
+        "  Run it with --harness halonic.",
+      ]);
+      expect(fingerprintsIn([...stdout, ...stderr])).toBe(0);
+      expect(checks).toBe(1);
+      expect(await startedRuns()).toEqual([]);
+    });
+
+    it("says first that the sandbox can't start, still before the trust check", async () => {
+      const codexReady = programs({ status: "missing" }, { status: "ready", version: "0.50.0" });
+      const container: SandboxCheck = { ok: false, reason: "container", missing: [] };
+
+      const { code, stdout, stderr } = await run(codexReady, container, "--harness", "codex");
+
+      expect(code).toBe(exitCode.unavailable);
+      expect(stderr[0]).toBe(
+        "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
+      );
+      expect(fingerprintsIn([...stdout, ...stderr])).toBe(0);
       expect(await startedRuns()).toEqual([]);
     });
 

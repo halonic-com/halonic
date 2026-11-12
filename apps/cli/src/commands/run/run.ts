@@ -35,7 +35,12 @@ import type { RunClock } from "../../run-times.ts";
 import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
 import { programAgentsOf, type SandboxGateRun, unsandboxedWarning } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
-import { openWorkspaceEngine, type WorkspaceEngineSetup } from "../../workspace-engine.ts";
+import {
+  checkEngineRuns,
+  type EngineRunsTarget,
+  openWorkspaceEngine,
+  type WorkspaceEngineSetup,
+} from "../../workspace-engine.ts";
 import { runHarnessOf } from "./harness.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
@@ -96,22 +101,13 @@ export async function runWorkflow(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),
   );
+  const workflow = workflowToRun(workspace, typed, workspaceName, harness);
+  const target = { dir, workspace, runs: [workflow], ending: runMessages.nothingRan() };
+  // Before trust: a run this engine can't start has nothing to trust (HAL-6580).
+  await refuseHarnessAgents(setup, target, workflow);
   await checkRunTrust(dir, workspace, setup.trust(), typedDir, runMessages.nothingRan(), harness);
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
-  const workflow = workflowToRun(workspace, typed, workspaceName, harness);
-  const engine = await openWorkspaceEngine(context, setup, {
-    dir,
-    workspace,
-    runs: [workflow],
-    ending: runMessages.nothingRan(),
-  });
-  try {
-    // After the sandbox check, so a computer that can't start the sandbox says so first.
-    refuseHarnessAgents(workspace, workflow);
-  } catch (error) {
-    await engine.close();
-    throw error;
-  }
+  const engine = await openWorkspaceEngine(context, setup, target);
   // Before the run's heading, and again first in the result, as print-ahead lines are.
   const warnings: Phrase[] = [
     ...(changesNotLive ? [runMessages.changesNotLive().phrase] : []),
@@ -225,14 +221,27 @@ function workflowToRun(
 /**
  * Refuses a workflow with an agent in a harness before anything starts: the
  * engine `run` opens has no harness adapter, so the run would fail at that
- * agent's step.
+ * agent's step. It comes before the trust check, which would only ask to
+ * trust what this run can't start, and its fingerprint (HAL-6580). The
+ * harness override and the sandbox are still checked first, so a computer
+ * that can't start the sandbox says so first (HAL-5219); the engine isn't
+ * opened.
  *
+ * @throws KindedError `invalid_input` when the run's harness would move an
+ *   agent no check read into a program (exit 2)
+ * @throws SandboxRefusedError when such an agent needs the sandbox and it
+ *   can't start here (exit 9)
  * @throws KindedError `unavailable` when an agent of the workflow, or of a
  *   workflow it starts, is in a harness; nothing ran
  */
-function refuseHarnessAgents(workspace: LoadedWorkspace, workflow: SandboxGateRun): void {
-  const [agent] = programAgentsOf(workspace, workflow);
+async function refuseHarnessAgents(
+  setup: RunSetup,
+  target: EngineRunsTarget,
+  workflow: SandboxGateRun,
+): Promise<void> {
+  const [agent] = programAgentsOf(target.workspace, workflow);
   if (agent === undefined) return;
+  await checkEngineRuns(setup, target);
   const reason = runMessages.harnessNotAvailable(
     printable(agent.value.name),
     // The run's harness when `--harness` names one, as the run would use it.
