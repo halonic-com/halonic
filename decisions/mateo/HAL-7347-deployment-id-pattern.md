@@ -27,5 +27,6 @@ lookaround.
 
 - packages/core/format/spec/agent.schema.json
 - packages/core/format/spec/deployments.schema.json
+- packages/core/format/spec/runtime-export.schema.json
 - packages/core/format/src/kinds/agent/harness-settings-folder.test.ts
 - packages/core/format/src/kinds/deployments/runs-folder.test.ts
