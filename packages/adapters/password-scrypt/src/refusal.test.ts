@@ -37,9 +37,11 @@ verifies("password-scrypt.no-work-before-refusal", () => {
 });
 
 verifies("password-scrypt.matches-openssl", () => {
-  it("makes the key Node's scrypt (OpenSSL) makes, for the vectors the contract uses", async () => {
-    const hasher = createScryptHasher();
-    for (const { password, hash } of [...scryptFormat.matching, scryptFormat.olderSettings]) {
+  // One test per vector, so each gets its own time budget on a loaded runner.
+  const vectors = [...scryptFormat.matching, scryptFormat.olderSettings];
+  it.each(vectors.map((vector, index) => [index, vector] as const))(
+    "makes the key Node's scrypt (OpenSSL) makes, for vector %i of the contract",
+    async (_index, { password, hash }) => {
       const [, , settings, salt, key] = hash.split("$");
       const [ln, r, p] = (settings ?? "").split(",").map((part) => Number(part.split("=")[1]));
       const expected = scryptSync(
@@ -49,7 +51,7 @@ verifies("password-scrypt.matches-openssl", () => {
         { N: 2 ** (ln ?? 0), r, p, maxmem: 64 * 1024 * 1024 },
       );
       expect(expected.toString("base64").replace(/=+$/, "")).toBe(key);
-      expect(await hasher.verify(password, hash)).toBe(true);
-    }
-  });
+      expect(await createScryptHasher().verify(password, hash)).toBe(true);
+    },
+  );
 });
