@@ -176,7 +176,7 @@ export {
   PluginBackendStart,
   type PluginBackendStartOptions,
   type PluginBackendTrustReason,
-  type PluginBackendTrustReason,
+  pluginBackendChoices,
   type StartTrustedBackend,
   type TrustedPluginBackend,
 } from "./plugin-backend.ts";
