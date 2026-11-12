@@ -6,20 +6,26 @@
 //!
 //! Each command takes `workspace`, the absolute path of an opened folder or
 //! a folder inside one, as the `run_*` commands do. Its real path is the
-//! root every workspace path is under.
+//! root every workspace path is under. `fs_list`, `fs_read`, `fs_write` and
+//! `fs_remove` also take an optional `folder`: `"review"` works in the
+//! workspace's review folder in the profile instead (HAL-1291), which the
+//! shell works out itself, as `reviewFolder` in `@halonicjs/profile` does,
+//! so the page never names a path outside an opened folder.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use halonic_git_guard::OpenedFolders;
+use halonic_profile::ProfileFolder;
 use halonic_workspace_files::{
     FileError, FolderSnapshot, WatchMessage, Watches, WorkspaceFolder, WriteLocks, WriteOutcome,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 
 use crate::git::GitState;
+use crate::profile::cli_profile;
 
 /// How often a watch looks at the files.
 const WATCH_INTERVAL: Duration = Duration::from_secs(1);
@@ -106,6 +112,18 @@ impl From<WatchMessage> for WatchEvent {
     }
 }
 
+/// Which folder of a workspace a file command works in.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FileFolder {
+    /// The workspace's own files, when the page names no folder.
+    #[default]
+    Workspace,
+    /// The assistant's changes to review: one record per file, kept in the
+    /// workspace's folder in the profile, never in the workspace (HAL-3417).
+    Review,
+}
+
 /// The real path of `workspace`, which must be a folder the person opened
 /// in the shell, or inside one.
 pub(crate) fn workspace_root(
@@ -119,11 +137,40 @@ pub(crate) fn workspace_root(
     })
 }
 
-/// Runs `call` on the workspace the page named, on a worker thread: it
-/// reads and writes files, and may wait for another write's turn.
+/// The review folder of `workspace` in `profile`, as `reviewFolder` names
+/// it. `workspace` must be a folder the person opened in the shell, or
+/// inside one; its real path names the folder, as the CLI's `realpath` does.
+pub(crate) fn review_root(
+    opened: &OpenedFolders,
+    profile: &ProfileFolder,
+    workspace: &Path,
+) -> Result<PathBuf, FileRefusal> {
+    let real_path = workspace_root(opened, workspace)?;
+    let real_path = real_path
+        .to_str()
+        .ok_or_else(|| FileRefusal::io("the workspace's path isn't valid Unicode"))?;
+    let folders = profile
+        .workspace_folders(real_path)
+        .map_err(FileRefusal::io)?;
+    Ok(PathBuf::from(folders.review_folder()))
+}
+
+/// Whether a call may make the folder it works in when it isn't there yet:
+/// only a write does, so reading the review folder of a workspace that has
+/// none leaves the profile as it was.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Making {
+    Folder,
+    Nothing,
+}
+
+/// Runs `call` on the folder of the workspace the page named, on a worker
+/// thread: it reads and writes files, and may wait for another write's turn.
 async fn in_workspace<R, T, F>(
     app: AppHandle<R>,
     workspace: PathBuf,
+    folder: Option<FileFolder>,
+    making: Making,
     call: F,
 ) -> Result<T, FileRefusal>
 where
@@ -132,7 +179,18 @@ where
     F: FnOnce(WorkspaceFolder<'_>) -> Result<T, FileError> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
-        let root = workspace_root(&app.state::<GitState>().folders(), &workspace)?;
+        let opened = app.state::<GitState>().folders();
+        let root = match folder.unwrap_or_default() {
+            FileFolder::Workspace => workspace_root(&opened, &workspace)?,
+            FileFolder::Review => {
+                let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+                let root = review_root(&opened, &profile, &workspace)?;
+                if making == Making::Folder {
+                    std::fs::create_dir_all(&root).map_err(FileRefusal::io)?;
+                }
+                root
+            }
+        };
         let state = app.state::<FileState>();
         Ok(call(WorkspaceFolder::new(root, &state.locks))?)
     })
@@ -145,9 +203,13 @@ where
 pub async fn fs_list<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
+    folder: Option<FileFolder>,
     dir: Option<String>,
 ) -> Result<Vec<String>, FileRefusal> {
-    in_workspace(app, workspace, move |folder| folder.list(dir.as_deref())).await
+    in_workspace(app, workspace, folder, Making::Nothing, move |files| {
+        files.list(dir.as_deref())
+    })
+    .await
 }
 
 /// The file's text, or `null` when there is no file.
@@ -155,9 +217,13 @@ pub async fn fs_list<R: Runtime>(
 pub async fn fs_read<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
+    folder: Option<FileFolder>,
     path: String,
 ) -> Result<Option<String>, FileRefusal> {
-    in_workspace(app, workspace, move |folder| folder.read(&path)).await
+    in_workspace(app, workspace, folder, Making::Nothing, move |files| {
+        files.read(&path)
+    })
+    .await
 }
 
 /// Writes `text` to the file, when it still holds `expected` (`null` to
@@ -166,12 +232,13 @@ pub async fn fs_read<R: Runtime>(
 pub async fn fs_write<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
+    folder: Option<FileFolder>,
     path: String,
     text: String,
     expected: Option<String>,
 ) -> Result<WriteAnswer, FileRefusal> {
-    in_workspace(app, workspace, move |folder| {
-        folder
+    in_workspace(app, workspace, folder, Making::Folder, move |files| {
+        files
             .write(&path, &text, expected.as_deref())
             .map(WriteAnswer::from)
     })
@@ -183,9 +250,13 @@ pub async fn fs_write<R: Runtime>(
 pub async fn fs_remove<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
+    folder: Option<FileFolder>,
     path: String,
 ) -> Result<(), FileRefusal> {
-    in_workspace(app, workspace, move |folder| folder.remove(&path)).await
+    in_workspace(app, workspace, folder, Making::Nothing, move |files| {
+        files.remove(&path)
+    })
+    .await
 }
 
 /// Watches the workspace's files, sending batches of paths to `channel`

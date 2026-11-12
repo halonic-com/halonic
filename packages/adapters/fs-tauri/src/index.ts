@@ -14,6 +14,7 @@ export {
   fileRefusalKinds,
   isFileRefusal,
   type TauriChannelHandle,
+  type TauriFileFolder,
   type TauriFileShell,
 } from "./file-commands.ts";
 export {

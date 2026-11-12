@@ -14,6 +14,7 @@ import {
   type FileRefusalKind,
   fileCommands,
   isFileRefusal,
+  type TauriFileFolder,
   type TauriFileShell,
 } from "./file-commands.ts";
 import { ShellWatch, type WatchId } from "./shell-watch.ts";
@@ -40,21 +41,37 @@ const webCryptoDigest: Digest = {
  * `watch()` hears the shell's `fs_watch`, which says which files may have
  * changed; the store reads them and reports only those whose text differs,
  * leaving out its own writes and removes.
+ *
+ * With `folder: "review"` the store keeps the workspace's review records
+ * instead, in its folder in the profile, as `openWorkspace` asks for
+ * `reviewRecords`. Nothing outside Halonic edits them, so that store's watch
+ * reports nothing, as the port says of a store that sees no outside change.
+ *
+ * @example
+ * const store = new TauriDefinitionStore(shell, workspace);
+ * const reviewRecords = new TauriDefinitionStore(shell, workspace, { folder: "review" });
  */
 export class TauriDefinitionStore implements DefinitionStore {
   /** The workspace folder, as the person opened it in the shell. */
   readonly location: string;
   readonly #shell: TauriFileShell;
+  readonly #folder: TauriFileFolder;
   readonly #writes = new KeyedQueue();
   readonly #watches = new Set<DigestWatch>();
 
   /**
    * @param shell - the shell's IPC with a way to open channels, built from `window.__TAURI_INTERNALS__`
    * @param workspace - the workspace folder, as the person opened it in the shell
+   * @param options.folder - which of the workspace's folders the store keeps: `"workspace"` (the default) or `"review"`
    */
-  constructor(shell: TauriFileShell, workspace: string) {
+  constructor(
+    shell: TauriFileShell,
+    workspace: string,
+    options: { readonly folder?: TauriFileFolder } = {},
+  ) {
     this.#shell = shell;
     this.location = workspace;
+    this.#folder = options.folder ?? "workspace";
   }
 
   /** @throws UnreadableWorkspaceFolderError naming a folder under the workspace the shell can't read */
@@ -127,8 +144,14 @@ export class TauriDefinitionStore implements DefinitionStore {
     return `sha256:${bytesToHex(new Uint8Array(digest)).slice(0, 16)}`;
   }
 
-  /** Reports changes from outside Halonic, as the port says, from the shell's `fs_watch`. */
+  /**
+   * Reports changes from outside Halonic, as the port says, from the shell's `fs_watch`. The
+   * review records' watch reports nothing: only Halonic edits them.
+   */
   async watch(listener: DefinitionWatchListener): Promise<DefinitionWatch> {
+    if (this.#folder !== "workspace") {
+      return { close: async () => {} };
+    }
     // The watch is in `#watches` from before it first reads the workspace until it closes or fails.
     return await ShellWatch.open(
       {
@@ -148,10 +171,12 @@ export class TauriDefinitionStore implements DefinitionStore {
     );
   }
 
-  /** Runs one command on this store's workspace, turning a refusal into the error the port asks for. */
+  /** Runs one command on this store's folder, turning a refusal into the error the port asks for. */
   async #call(command: string, args: Record<string, unknown>): Promise<unknown> {
+    // The workspace's own files name no folder, as the shell's commands did before `folder` came.
+    const folder = this.#folder === "workspace" ? {} : { folder: this.#folder };
     try {
-      return await this.#shell.invoke(command, { workspace: this.location, ...args });
+      return await this.#shell.invoke(command, { workspace: this.location, ...folder, ...args });
     } catch (reason) {
       throw fileFailure(reason);
     }

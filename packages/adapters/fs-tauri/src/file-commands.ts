@@ -6,6 +6,11 @@ import type { TauriShell } from "./shell.ts";
  * arguments below; the shell refuses any other folder. `path` and `dir` are
  * workspace paths: relative and `/`-separated.
  *
+ * `list`, `read`, `write` and `remove` also take an optional `folder`, one of
+ * {@link TauriFileFolder}s: `"review"` works in the workspace's review
+ * folder in the profile instead of the workspace. The shell works that
+ * folder out itself, so the page never names a path outside an opened folder.
+ *
  * The page isn't trusted, so the shell checks every path itself with the
  * rules of `checkPublicWorkspacePath` in `@halonicjs/ports`, and never reads,
  * writes or removes through a symbolic link, junction or reparse point.
@@ -39,6 +44,14 @@ export const fileCommands = {
   /** `{ watchId }` → nothing. No message comes after it returns. */
   unwatch: "fs_unwatch",
 } as const;
+
+/**
+ * Which folder of a workspace a file command works in: `"workspace"`, the
+ * workspace's own files, or `"review"`, the assistant's changes to review,
+ * which are kept in the profile and never in the workspace (HAL-3417), at
+ * `reviewFolder()` of `workspaceFolders` in `@halonicjs/profile`.
+ */
+export type TauriFileFolder = "workspace" | "review";
 
 /** Why the shell refused a file call: the `kind` of its error, which names no secret. */
 export const fileRefusalKinds = [

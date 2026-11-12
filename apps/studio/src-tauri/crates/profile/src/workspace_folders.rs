@@ -127,6 +127,13 @@ impl WorkspaceFolders {
     pub fn records_folder(&self) -> String {
         join_path(self.platform, &self.folder, &["records"])
     }
+
+    /// The folder for the assistant's changes to review, one record per
+    /// file, as `reviewFolder` names it. They are kept here, never in the
+    /// workspace (HAL-3417).
+    pub fn review_folder(&self) -> String {
+        join_path(self.platform, &self.folder, &["review"])
+    }
 }
 
 /// The first 32 hex characters of the SHA-256 of the path's one spelling.

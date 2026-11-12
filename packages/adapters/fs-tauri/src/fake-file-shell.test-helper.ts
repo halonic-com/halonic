@@ -26,7 +26,8 @@ export const notText = Symbol("not text");
  * link, and `expected` compared with the file before a write.
  *
  * A watch gets the paths `changeOutside` touches, as the shell's polling
- * would see them. Every call is kept in `calls`.
+ * would see them. A call with `folder: "review"` goes to {@link review}, the
+ * workspace's review folder in the profile. Every call is kept in `calls`.
  */
 export class FakeFileShell implements TauriFileShell {
   readonly calls: ShellCall[] = [];
@@ -43,6 +44,7 @@ export class FakeFileShell implements TauriFileShell {
   #nextChannel = 0;
   #nextWatch = 0;
   #nextRefusal: { kind: FileRefusalKind; command: string | undefined } | undefined;
+  #review: FakeFileShell | undefined;
 
   /**
    * @param options.opened - the folders the person opened in the shell
@@ -59,6 +61,12 @@ export class FakeFileShell implements TauriFileShell {
     for (const [path, text] of Object.entries(options.files ?? {})) {
       this.files.set(path, text);
     }
+  }
+
+  /** The workspace's review folder in the profile, which calls with `folder: "review"` reach. */
+  get review(): FakeFileShell {
+    this.#review ??= new FakeFileShell({ opened: this.#opened, granted: this.#granted });
+    return this.#review;
   }
 
   /** How many watches are open in the shell. */
@@ -118,6 +126,14 @@ export class FakeFileShell implements TauriFileShell {
     }
     if (!this.#opened.includes(String(args["workspace"]))) {
       throw refusal("folder_not_open", "the folder isn't open");
+    }
+    const { folder, ...rest } = args;
+    if (folder === "review" && command !== "fs_watch") {
+      return await this.review.invoke(command, rest);
+    }
+    if (folder !== undefined && folder !== "workspace") {
+      // What Tauri rejects with for an argument the command can't take: text, not a refusal.
+      throw `invalid args \`folder\` for command ${command}`;
     }
     switch (command) {
       case "fs_list":

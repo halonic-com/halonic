@@ -193,3 +193,46 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
     });
   });
 });
+
+verifies("fs-tauri.review-records-on-disk", () => {
+  describe("TauriDefinitionStore for the review records", () => {
+    it("keeps the review records in the profile's review folder with folder: review", async () => {
+      const shell = new FakeFileShell({ opened: [acme], files: { "a.yaml": "workspace" } });
+      const records = new TauriDefinitionStore(shell, acme, { folder: "review" });
+      await records.write("a.yaml", "record", { expected: "absent" });
+      expect(await records.read("a.yaml")).toBe("record");
+      expect(await records.list()).toEqual(["a.yaml"]);
+      await records.remove("a.yaml");
+      expect(await records.list()).toEqual([]);
+      expect(shell.files.get("a.yaml")).toBe("workspace");
+      expect(records.location).toBe(acme);
+      expect(shell.calls.map(({ command, args }) => [command, args?.["folder"]])).toEqual([
+        ["fs_write", "review"],
+        ["fs_read", "review"],
+        ["fs_list", "review"],
+        ["fs_remove", "review"],
+        ["fs_list", "review"],
+      ]);
+    });
+
+    it("gives the review records a watch that reports nothing and asks the shell nothing", async () => {
+      const shell = new FakeFileShell({ opened: [acme] });
+      const records = new TauriDefinitionStore(shell, acme, { folder: "review" });
+      const changes: unknown[] = [];
+      const watch = await records.watch({
+        changed: (batch) => changes.push(batch),
+        failed: () => {},
+      });
+      shell.review.changeOutside({ "a.yaml": "1" });
+      await watch.close();
+      expect(changes).toEqual([]);
+      expect(shell.calls).toEqual([]);
+    });
+
+    it("has a fake shell that refuses a folder the shell doesn't know", async () => {
+      const shell = new FakeFileShell({ opened: [acme] });
+      const failure = await rejection(shell.invoke("fs_list", { workspace: acme, folder: "runs" }));
+      expect(isFileRefusal(failure)).toBe(false);
+    });
+  });
+});
