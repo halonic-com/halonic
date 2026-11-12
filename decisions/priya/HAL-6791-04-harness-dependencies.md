@@ -3,6 +3,7 @@
 - Task: HAL-6791 (cloud part 1, the workerd test harness for the port contract suites)
 - Approval: Liam approved the harness design and these dependencies on [HAL-6789](/HAL/issues/HAL-6789) (plan section 7); he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nvNv7mhB3+AMW9tBmhdIo0QLqxno4wRF3lOdg0q6jYOsQUMQwgWvX8qyhSuafDhT9iifBeXoYmxvKQPUkze/Dg==
 
 ## What changes
 
