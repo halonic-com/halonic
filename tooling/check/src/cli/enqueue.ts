@@ -16,8 +16,10 @@ import { badSubjects, commitSubjectsIn } from "./pr-title.ts";
  * commit's subject, as the queue's squash commit subject check does.
  * Steps: frozen lockfile, typecheck of every package (tests included), the
  * `@halonicjs/format` spec tests, the process-starts guard and the requirement
- * guard. No other tests, no mutation tests, no builds. It prints only the
- * lines that say what failed (`##[error]`, `Failed:`, `error TS`, `FAIL`),
+ * guard. The guard gets the branch's pull request from `gh`, as CI passes it,
+ * so a signed decision note verifies; without a pull request no note does.
+ * No other tests, no mutation tests, no builds. It prints only the lines that
+ * say what failed (`##[error]`, `Failed:`, `error TS`, `FAIL`),
  * never search a log for words like "verified" or "approval".
  */
 interface Step {
@@ -47,16 +49,72 @@ function printFailure(output: string): void {
   }
 }
 
-/** The open pull request's title for this branch, if `gh` can tell. */
-function pullRequestTitle(cwd: string): string | undefined {
-  const result = run("gh", ["pr", "view", "--json", "title", "--jq", ".title"], cwd);
-  return result.status === 0 && result.stdout.trim() !== "" ? result.stdout.trim() : undefined;
+/** The branch's open pull request, as `gh` sees it on GitHub. */
+interface PullRequest {
+  readonly title: string;
+  readonly repo: string;
+  readonly number: number;
+  readonly head: string;
+  readonly base: string;
+}
+
+/** The open pull request into main for this branch, if `gh` can tell. */
+function pullRequestOf(cwd: string): PullRequest | undefined {
+  const result = run(
+    "gh",
+    ["pr", "view", "--json", "title,number,url,headRefOid,baseRefOid,baseRefName"],
+    cwd,
+  );
+  if (result.status !== 0) {
+    return undefined;
+  }
+  try {
+    const pr = JSON.parse(result.stdout) as {
+      title: string;
+      number: number;
+      url: string;
+      headRefOid: string;
+      baseRefOid: string;
+      baseRefName: string;
+    };
+    const repo = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/.exec(pr.url)?.[1];
+    if (repo === undefined || pr.baseRefName !== "main") {
+      return undefined;
+    }
+    return { title: pr.title, repo, number: pr.number, head: pr.headRefOid, base: pr.baseRefOid };
+  } catch {
+    return undefined;
+  }
+}
+
+/** The guard's flags naming the pull request, so a signed decision note can verify. */
+function pullRequestArgs(pull: PullRequest | undefined, root: string): readonly string[] {
+  if (pull === undefined) {
+    console.log(
+      "requirement guard: no pull request from gh, so no decision note's signature verifies.",
+    );
+    return [];
+  }
+  if (git(root, "rev-parse", "HEAD") !== pull.head) {
+    console.log(
+      `requirement guard: your branch isn't what #${pull.number} has on GitHub; push it, or notes are checked against the pushed head.`,
+    );
+  }
+  return [
+    "--repo",
+    pull.repo,
+    "--pr",
+    String(pull.number),
+    "--head-sha",
+    pull.head,
+    "--base-sha",
+    pull.base,
+  ];
 }
 
 /** Prints the subjects that would fail the queue's squash subject check; true if any. */
-function badLandingSubjects(root: string): boolean {
+function badLandingSubjects(root: string, title: string | undefined): boolean {
   const commits = commitSubjectsIn("origin/main..HEAD", root);
-  const title = pullRequestTitle(root);
   if (title === undefined) {
     console.log(
       "squash subject: no pull request title from gh, so only a single commit's subject is checked.",
@@ -76,7 +134,7 @@ function badLandingSubjects(root: string): boolean {
   return bad.length > 0;
 }
 
-function steps(base: string, branch: string): readonly Step[] {
+function steps(base: string, branch: string, pullArgs: readonly string[]): readonly Step[] {
   return [
     {
       label: "frozen lockfile",
@@ -108,13 +166,13 @@ function steps(base: string, branch: string): readonly Step[] {
         "--branch",
         branch,
         "--skip-test-runs",
+        ...pullArgs,
       ],
     },
   ];
 }
 
-function runChecks(): number {
-  const root = findRepoRoot();
+function runChecks(root: string, pull: PullRequest | undefined): number {
   const branch = git(root, "branch", "--show-current");
   if (branch === undefined || branch === "") {
     console.error("check:enqueue: check out your branch first (it is on a detached HEAD).");
@@ -153,8 +211,9 @@ function runChecks(): number {
       }
       testRoot = mergeDir;
     }
+    const pullArgs = pullRequestArgs(pull, root);
     const started = performance.now();
-    for (const step of steps(baseDir, branch)) {
+    for (const step of steps(baseDir, branch, pullArgs)) {
       const stepStarted = performance.now();
       const result = run(step.command, step.args, testRoot);
       const seconds = ((performance.now() - stepStarted) / 1000).toFixed(1);
@@ -178,7 +237,9 @@ function runChecks(): number {
 }
 
 function main(): number {
-  return badLandingSubjects(findRepoRoot()) ? 1 : runChecks();
+  const root = findRepoRoot();
+  const pull = pullRequestOf(root);
+  return badLandingSubjects(root, pull?.title) ? 1 : runChecks(root, pull);
 }
 
 process.exitCode = main();
