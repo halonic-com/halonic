@@ -2,6 +2,7 @@
 
 - Approval: [HAL-6484](/HAL/issues/HAL-6484) (Liam's review follow-up on HAL-6346). Liam approves this note in review of this PR.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+f+7vP6Fv+tGOnR2DxHY42XzHuuwOB87vAnnv9FD0SA1nx8EpEpgZju1XCU8rkMb2fawK9Po8dAq1KKmWeN0BQ==
 - Task: HAL-6484
 
 ## What changes
