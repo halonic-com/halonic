@@ -1,0 +1,49 @@
+name: Sign an Android App Bundle
+description: Signs an .aab with a key from a keystore file, checks the signature and prints the signing certificate's SHA-256 fingerprint (public, to compare with the upload certificate in the Play Console).
+inputs:
+  aab:
+    description: Path of the unsigned .aab. It is signed in place.
+    required: true
+  keystore:
+    description: Path of the keystore file (PKCS12) that holds the key.
+    required: true
+  alias:
+    description: The key's alias in the keystore.
+    required: true
+  password:
+    description: The keystore's password. With PKCS12 the key has the same password.
+    required: true
+runs:
+  using: composite
+  steps:
+    # jarsigner is how Google's own docs sign a bundle from the command line;
+    # it comes with the runner's Java 17. The password is read from the
+    # environment, never from the command line, so it isn't in the process list.
+    - name: Sign
+      shell: bash
+      env:
+        AAB: ${{ inputs.aab }}
+        KEYSTORE: ${{ inputs.keystore }}
+        KEY_ALIAS: ${{ inputs.alias }}
+        STORE_PASSWORD: ${{ inputs.password }}
+      run: |
+        "$JAVA_HOME_17_X64/bin/jarsigner" \
+          -keystore "$KEYSTORE" -storepass:env STORE_PASSWORD \
+          -sigalg SHA256withRSA -digestalg SHA-256 \
+          "$AAB" "$KEY_ALIAS"
+    # An upload key is self-signed, so `-strict` would always fail on the
+    # certificate chain. The plain check still fails on a missing or broken
+    # signature.
+    - name: Check the signature
+      shell: bash
+      env:
+        AAB: ${{ inputs.aab }}
+        KEYSTORE: ${{ inputs.keystore }}
+        KEY_ALIAS: ${{ inputs.alias }}
+        STORE_PASSWORD: ${{ inputs.password }}
+      run: |
+        "$JAVA_HOME_17_X64/bin/jarsigner" -verify "$AAB" | tee "$RUNNER_TEMP/verify.txt"
+        grep -q '^jar verified\.' "$RUNNER_TEMP/verify.txt"
+        fingerprint=$("$JAVA_HOME_17_X64/bin/keytool" -list -keystore "$KEYSTORE" \
+          -storepass:env STORE_PASSWORD -alias "$KEY_ALIAS" | sed -n 's/.*(SHA-256): //p')
+        echo "::notice title=Signed with::Certificate SHA-256 $fingerprint"
