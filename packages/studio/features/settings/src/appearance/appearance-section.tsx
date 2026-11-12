@@ -3,6 +3,7 @@ import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef } from "react";
 import { DisplaySettingsService } from "../api.ts";
 import type { DisplaySettings } from "../display-settings.ts";
+import { saveSetting } from "../save-setting.ts";
 import { useDisplaySetting } from "../use-display-setting.ts";
 import {
   agentCharactersPref,
@@ -26,7 +27,6 @@ import {
   themeNames,
 } from "./appearance-text.ts";
 import { FrameColoursField } from "./frame-colours-field.tsx";
-import { saveSetting } from "./save-setting.ts";
 
 const themeOptions = themes.map((theme) => ({ value: theme, label: themeNames[theme] }));
 
