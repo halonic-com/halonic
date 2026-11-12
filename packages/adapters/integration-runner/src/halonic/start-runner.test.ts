@@ -47,7 +47,10 @@ class FakeSandbox implements Sandbox {
       profile,
       fence: this.fence,
       async start(command) {
-        if (sandbox.fence.state !== "fenced") throw new Error("the fence proof failed");
+        // As in the real sandboxes: `off` (the launcher) starts, a failed proof doesn't.
+        if (sandbox.fence.state === "not-fenced" || sandbox.fence.state === "stopped") {
+          throw new Error("the fence proof failed");
+        }
         sandbox.commands.push(command);
         const runner = fakeRunnerProcess();
         sandbox.runners.push(runner);
@@ -172,6 +175,28 @@ verifies("integration-runner.start", () => {
       await runner.send({ type: "ready", nonce: "an-old-nonce" });
       await expect(starting).rejects.toBeInstanceOf(RunnerStoppedError);
       expect(sandbox.closedSessions).toBe(1);
+    });
+
+    it("reports the session's fence proof, never what the runner says about itself (A22)", async () => {
+      // The launcher's session, whose proof is `off`: a runner that claims a
+      // fence in its ready is stopped, and one that doesn't stays `off`.
+      const sandbox = new FakeSandbox({ state: "off" });
+      const starting = startRunner(startOptions(sandbox));
+      await until(() => sandbox.runners.length === 1);
+      await new HandDrivenRunner(sandbox.runners[0] as FakeRunnerProcess).send({
+        type: "ready",
+        nonce: sandbox.lastNonce(),
+        fence: { state: "fenced" },
+      });
+      await expect(starting).rejects.toMatchObject({
+        stop: { reason: "protocol", detail: "a frame outside the protocol" },
+      });
+      expect(sandbox.closedSessions).toBe(1);
+
+      sandbox.runners.length = 0;
+      const { connection } = await started(sandbox);
+      expect(connection.fence).toEqual({ state: "off" });
+      await connection.close();
     });
 
     it("closes the session and connects nothing when the fence proof failed", async () => {

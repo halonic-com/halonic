@@ -5,6 +5,7 @@
     "fence",
     "esbuild.config.ts",
     "vitest.config.ts",
-    "vitest.fence.config.ts"
+    "vitest.fence.config.ts",
+    "vitest.fence-windows.config.ts"
   ]
 }

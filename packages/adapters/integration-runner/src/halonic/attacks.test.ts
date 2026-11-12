@@ -1,6 +1,6 @@
 // A hostile runner against Halonic's side of the bridge: malformed, oversize
-// and out-of-order frames (design HAL-958, attack cases A21, A26, A33, A37,
-// A38; proposal on HAL-4338). Each case must stop the runner with exactly one
+// and out-of-order frames (design HAL-958, attack cases A21, A22, A26, A33,
+// A37, A38; proposal on HAL-4338). Each case must stop the runner with exactly one
 // block, or be answered without stopping it, and never throw inside Halonic.
 
 import { verifies } from "@halonicjs/testing-spec";
@@ -267,6 +267,14 @@ verifies("integration-runner.strict-protocol", () => {
         ]);
       });
     }
+
+    it("refuses a ready that claims the runner is fenced (A22)", async () => {
+      // Only the session's fence proof says whether the runner is fenced; a
+      // runner has no way to say it, so a ready that tries is outside the protocol.
+      expect(
+        await stopBeforeStart({ type: "ready", nonce: testNonce, fence: { state: "fenced" } }),
+      ).toEqual([{ kind: "protocol", detail: "a frame outside the protocol" }]);
+    });
 
     it("refuses a ready whose nonce is a number", async () => {
       expect(await stopBeforeStart({ type: "ready", nonce: 1 })).toEqual([
