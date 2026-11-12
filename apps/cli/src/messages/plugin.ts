@@ -63,12 +63,16 @@ export const pluginMessages = defineMessages("plugin", {
   alreadyAdded: (id: string) => phrase`${id} is already added.`,
   alreadyAddedFix: (id: string) =>
     phrase`To add another version, remove it first: halonic plugin remove ${id}`,
-  /** `plugin add` without a folder or git address. */
-  addNeedsSource: () => phrase`Say which plugin to add: a folder or a git address.`,
+  /** `plugin add` without a folder or git address; line 1 says what's missing (cli-output 1.3). */
+  addNeedsSource: () => phrase`halonic plugin add needs a folder or a git address.`,
   addUsage: () => phrase`halonic plugin add <folder or git address>[@commit]`,
-  /** `--yes` alone: the fingerprint comes from the check, which only an earlier add without it printed. */
+  /**
+   * `--yes` alone: the fingerprint comes from the check, which only an earlier
+   * add without it printed: above the question in a terminal, and as the last
+   * stdout line without one.
+   */
   yesNeedsFingerprintFix: () =>
-    phrase`Add it without --yes to see the check; the fingerprint is on its last stdout line.`,
+    phrase`Add it without --yes to see the check; the fingerprint is in it, above the question.`,
   /** Line 1 of a source that isn't a folder this command can read. */
   notAFolder: (path: string) => phrase`${path} isn't a folder.`,
 
@@ -98,35 +102,44 @@ export const pluginMessages = defineMessages("plugin", {
   broken: () => phrase`can't be read or checked`,
   noPlugins: () => phrase`No plugins yet. Add one with halonic plugin add <folder or git address>.`,
 
-  /** `remove`'s question, framed with [y/N]; a plugin without secrets has the shorter one. */
-  removeQuestion: (name: string, hasSecrets: boolean) =>
-    hasSecrets
+  /**
+   * `remove`'s question, framed with [y/N]. The API key is named only when one
+   * is stored on this computer; on 0.1's command line none is, because it
+   * reads keys from HALONIC_SECRET_…, so it gets the shorter one.
+   */
+  removeQuestion: (name: string, hasStoredSecret: boolean) =>
+    hasStoredSecret
       ? phrase`Remove ${name}? Its settings and the API key you entered are removed from this computer.`
       : phrase`Remove ${name}? Its settings are removed from this computer.`,
   removed: (name: string, version: string) => phrase`Removed ${name} ${version} and its trust.`,
   /** The same for a plugin that can't be read, so it has no version: named by its id. */
   removedUnread: (id: string) => phrase`Removed ${id} and its trust.`,
-  /** `plugin remove` without an id. */
-  removeNeedsId: () => phrase`Say which plugin to remove, by its id.`,
+  /** `plugin remove` without an id; line 1 says what's missing (cli-output 1.3). */
+  removeNeedsId: () => phrase`halonic plugin remove needs the plugin's id.`,
   removeUsage: () => phrase`halonic plugin remove <id> [--yes]`,
   removeYesOption: () => phrase`Remove it without asking.`,
   /** A secret the host couldn't delete, by its declared name; its folder and settings are kept. */
   secretNotDeleted: (secret: string, reason: string) =>
     phrase`its secret ${secret} couldn't be deleted: ${reason}`,
-  secretNotDeletedFix: () => phrase`Run halonic plugin remove again to finish removing it.`,
+  /** Names the id, so the fix can be run as it is. */
+  secretNotDeletedFix: (id: string) =>
+    phrase`Run halonic plugin remove ${id} again to finish removing it.`,
   /** Answer No, or Enter: exit 1. */
   notRemoved: (name: string) => phrase`Not removed. ${name} is still added.`,
-  /** No terminal, or `CI` set, without `--yes`: exit 2 (F6). */
+  /** No terminal, or `CI` set, without `--yes`: exit 2 (F6). No secrets: the CLI stores none. */
   removeNoTerminal: (name: string) =>
-    phrase`Removing ${name} deletes its settings and secrets, and there's no terminal to ask you.`,
+    phrase`Removing ${name} deletes its settings, and there's no terminal to ask you.`,
   removeNoTerminalFix: () => phrase`To remove it anyway, pass --yes.`,
-  /** `halonic plugin remove --help` (W11). */
+  /** `halonic plugin remove --help` (W11). No secrets: the CLI stores none. */
   removeHelp: () =>
-    phrase`Removes the plugin and its settings and secrets. To only turn it off: halonic trust --plugin <id> --remove`,
+    phrase`Removes the plugin and its settings. To only turn it off: halonic trust --plugin <id> --remove`,
   unknownPlugin: (name: string) => phrase`There's no plugin called "${name}".`,
   unknownPluginNear: (name: string, near: string) =>
     phrase`There's no plugin called "${name}". Did you mean ${near}?`,
   unknownPluginFix: () => phrase`See them with halonic plugin list.`,
+  /** `trust --plugin` on a plugin that can't be read or checked; `plugin list` would only show it as broken. */
+  brokenPluginFix: (id: string) =>
+    phrase`Remove it with halonic plugin remove ${id}, then add a version that works.`,
 
   /** `halonic trust --plugin <id>`'s option. */
   trustPluginOption: () =>
