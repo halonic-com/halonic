@@ -12,6 +12,7 @@ import {
   type ToolApprovalStore,
   type ToolServer,
   type WaitingVersion,
+  waitingVersionKeptMs,
 } from "@halonicjs/ports";
 import {
   listedToolFingerprint,
@@ -89,8 +90,13 @@ export interface UnreadableApproval {
 /** How many different versions a server may show of one tool within {@link changeWindowMs} before the host stops asking. */
 export const changesBeforeQuiet = 3;
 
-/** The window {@link changesBeforeQuiet} counts in: 24 hours. */
-export const changeWindowMs = 24 * 60 * 60 * 1000;
+/**
+ * The window {@link changesBeforeQuiet} counts in: as long as the store
+ * keeps a waiting version, 24 hours. A longer window would count versions
+ * the store has already dropped, so it would see fewer changes than the
+ * server made and keep asking about a tool that keeps changing.
+ */
+export const changeWindowMs = waitingVersionKeptMs;
 
 /**
  * Checks one source's listing against its approvals. A listed tool is

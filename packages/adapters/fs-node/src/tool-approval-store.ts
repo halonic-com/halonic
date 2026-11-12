@@ -29,6 +29,14 @@ const waitingFile = "waiting.json";
 /** The lock file in a source's folder, taken for every write. */
 const lockFile = "lock";
 
+/**
+ * A temporary file `writePrivate` writes before its rename: an approval or
+ * waiting file's name, a random UUID and `.tmp`. Only these are swept, so
+ * other files in the folder are left alone.
+ */
+const temporaryFile =
+  /^(?:[0-9a-f]{64}\.json|waiting\.json)\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/u;
+
 type SourceKey = Omit<ToolApprovalKey, "name">;
 
 /**
@@ -50,7 +58,8 @@ type SourceKey = Omit<ToolApprovalKey, "name">;
  * - It never overwrites an approval or waiting file a newer Halonic wrote.
  * - Every write goes through a temporary file and a rename, under the
  *   source's lock, with folders private to the user (`700`) and files too
- *   (`600`).
+ *   (`600`). The next write to a source removes the temporary files a
+ *   crashed write left in its folder.
  *
  * A waiting file that can't be read is started again: waiting versions only
  * stop the host asking, so losing them only makes it ask again.
@@ -95,9 +104,8 @@ export class FileToolApprovalStore implements ToolApprovalStore {
 
   async revoke(key: ToolApprovalKey): Promise<void> {
     // Deletes the file without reading it, so a damaged or newer approval goes too.
-    const folder = this.#sourceFolder(key);
     try {
-      await withRunLock(join(folder, lockFile), async () => {
+      await this.#underSourceLock(key, async () => {
         await rm(this.#approvalPath(key), { force: true });
         await this.#forgetWaiting(key);
       });
@@ -168,10 +176,24 @@ export class FileToolApprovalStore implements ToolApprovalStore {
     }
   }
 
+  /** Runs `work` under the source's lock, creating its folder first. */
   async #withSourceLock<T>(key: SourceKey, work: () => Promise<T>): Promise<T> {
+    await mkdir(this.#sourceFolder(key), { recursive: true, mode: 0o700 });
+    return this.#underSourceLock(key, work);
+  }
+
+  /**
+   * Runs `work` under the source's lock, in a folder that must exist, after
+   * removing the temporary files a crashed write left there. Every write
+   * holds this lock, so no temporary file in the folder belongs to a write
+   * still going on.
+   */
+  async #underSourceLock<T>(key: SourceKey, work: () => Promise<T>): Promise<T> {
     const folder = this.#sourceFolder(key);
-    await mkdir(folder, { recursive: true, mode: 0o700 });
-    return withRunLock(join(folder, lockFile), work);
+    return withRunLock(join(folder, lockFile), async () => {
+      await removeLeftoverWrites(folder);
+      return work();
+    });
   }
 
   /** The source's waiting versions; a file that isn't there reads as none. */
@@ -253,6 +275,17 @@ async function writePrivate(file: string, text: string): Promise<void> {
   } catch (error) {
     await rm(temporary, { force: true });
     throw error;
+  }
+}
+
+/**
+ * Removes the temporary files a write left in `folder` when its process
+ * ended between writing and renaming. Call it only under the source's lock.
+ */
+async function removeLeftoverWrites(folder: string): Promise<void> {
+  const leftover = (await readdir(folder)).filter((name) => temporaryFile.test(name));
+  for (const name of leftover) {
+    await rm(join(folder, name), { force: true });
   }
 }
 

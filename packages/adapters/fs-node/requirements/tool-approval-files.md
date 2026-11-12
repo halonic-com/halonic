@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2210 step 3; `ToolApprovalStore` port v1; store rows I2, I5–I10, I12 and I13 of the HAL-2579 test cases. It becomes active with `ports.listed-tool-approval`.
 
-The file tool approval store shall keep each source of each workspace in a folder of its own, named by the lower-case hex SHA-256 of `[location, source]` as JSON, as UTF-16 code units (little-endian). In it, each approval shall be one JSON file named by the SHA-256 of the tool's name and `.json`, starting with `"format": 1` and the key, and `waiting.json` shall hold the source's waiting versions. It shall create its folders with mode `700` and its files with mode `600`, and write every file through a temporary file and a rename while holding the source's lock, so waiting versions noted at once are all kept.
+The file tool approval store shall keep each source of each workspace in a folder of its own, named by the lower-case hex SHA-256 of `[location, source]` as JSON, as UTF-16 code units (little-endian). In it, each approval shall be one JSON file named by the SHA-256 of the tool's name and `.json`, starting with `"format": 1` and the key, and `waiting.json` shall hold the source's waiting versions. It shall create its folders with mode `700` and its files with mode `600`, and write every file through a temporary file and a rename while holding the source's lock, so waiting versions noted at once are all kept. Holding that lock, it shall first remove the temporary files an earlier write left in the source's folder when its process ended before the rename, and no other file.
 
 It shall fail closed:
 
@@ -29,6 +29,9 @@ A waiting file that can't be read shall be started again, as waiting versions on
 - Given an approval file with `"format": 2` or an `htl2:` fingerprint,
   when it is read or `lookup` is approved again,
   then both throw saying a newer Halonic wrote it, the file is unchanged, and `revoke` deletes it.
+- Given a temporary approval file and a temporary waiting file a crashed write left, and a file `notes.txt`,
+  when a version of `lookup` is noted, or `lookup` is revoked,
+  then both temporary files are gone and `notes.txt` is not.
 - Given 12 tools noted as waiting at the same time,
   when `waiting.json` is read,
   then it holds all 12.

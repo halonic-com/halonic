@@ -1,4 +1,11 @@
-import type { Clock, ConnectorTool, Digest, IntegrationTool, ToolServer } from "@halonicjs/ports";
+import {
+  type Clock,
+  type ConnectorTool,
+  type Digest,
+  type IntegrationTool,
+  type ToolServer,
+  waitingVersionKeptMs,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -282,6 +289,10 @@ verifies("ports.listed-tool-approval", () => {
     clock.set(new Date(Date.parse("2026-11-10T10:00:00.000Z") + changeWindowMs + 1).toISOString());
     const later = await check([tool("lookup", "Version 5.")]);
     expect(waitingTool(later, "lookup").keepsChanging).toBe(false);
+  });
+
+  it("counts changes in no longer a window than the store keeps waiting versions", () => {
+    expect(changeWindowMs).toBeLessThanOrEqual(waitingVersionKeptMs);
   });
 
   it("refuses a tool whose text can't be fingerprinted rather than letting it wait", async () => {
