@@ -16,6 +16,7 @@ export {
   SandboxStdioConnectorFactory,
   type SandboxStdioOptions,
   type UndeclaredTool,
+  type WorkspaceConnectorSetup,
 } from "./sandbox-connector.ts";
 export { sandboxProgram } from "./sandbox-program.ts";
 export {
@@ -24,3 +25,4 @@ export {
   workspaceConnectorPlace,
   workspaceStartFolder,
 } from "./workspace-connector-place.ts";
+export { WorkspaceStdioConnectorFactory } from "./workspace-stdio-factory.ts";
