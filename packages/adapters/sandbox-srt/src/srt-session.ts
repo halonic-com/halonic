@@ -66,7 +66,8 @@ export class SrtSession implements SandboxSession {
   readonly #detach: () => void;
   readonly #gitFolder: GitFolderSnapshot | null;
   readonly #nestedGit: NestedGitSnapshot | null;
-  readonly #journal: string | null;
+  /** The folder that holds the sessions' `commondir` journals, and this session's journal in it. */
+  readonly #journal: { folder: string | null; file: string | null };
   readonly #grants: KeptGrants | null;
   #fence: SandboxFence;
   #closing: Promise<void> | null = null;
@@ -82,7 +83,7 @@ export class SrtSession implements SandboxSession {
     fence: SandboxFence,
     signal: AbortSignal | undefined,
     git: { folder: GitFolderSnapshot | null; nested: NestedGitSnapshot | null },
-    journal: string | null,
+    journal: { folder: string | null; file: string | null },
     grants: KeptGrants | null,
   ) {
     this.profile = profile;
@@ -182,7 +183,7 @@ export class SrtSession implements SandboxSession {
         fence,
         options.signal,
         git,
-        journal,
+        { folder: journalFolder, file: journal },
         grants,
       );
       return session;
@@ -209,9 +210,11 @@ export class SrtSession implements SandboxSession {
       const why = this.#fence.state === "not-fenced" ? this.#fence.reason : "the session is closed";
       throw new Error(`the sandbox fence is not proven: ${why}`);
     }
-    // The session's private folder (its settings and the canary) and the launcher's temp folder stay hidden.
-    const hidden =
-      this.#launcherTemp === null ? [this.#folder] : [this.#folder, this.#launcherTemp];
+    // The session's private folder (its settings and the canary), the launcher's temp folder and
+    // the journal folder stay hidden, as srt hides them.
+    const hidden = [this.#folder, this.#launcherTemp, this.#journal.folder].filter(
+      (path): path is string => path !== null,
+    );
     const cwd = await startFolder(this.profile, command.cwd, hidden);
     // The profile's variables, which Halonic sets, are read too; the safe host `PATH` isn't (HAL-4903).
     const start = { cwd, program: command.program, args: command.args, env: this.profile.env };
@@ -276,7 +279,9 @@ export class SrtSession implements SandboxSession {
     await rm(this.#folder, { recursive: true, force: true });
     if (this.#launcherTemp !== null) await rm(this.#launcherTemp, { recursive: true, force: true });
     // A journal whose undo failed stays, so a later `recoverGitFolders` tries again.
-    if (this.#journal !== null && failed.length === 0) await rm(this.#journal, { force: true });
+    if (this.#journal.file !== null && failed.length === 0) {
+      await rm(this.#journal.file, { force: true });
+    }
     const problems: string[] = [];
     if (failed.length > 0) {
       problems.push(`Could not undo a change to the git folder: ${failed.join(", ")}`);
