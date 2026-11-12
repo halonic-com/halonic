@@ -15,6 +15,13 @@
 #   environment, whose secrets and variables hold the Azure details. No
 #   credential is written in this file.
 #
+# Both then sign the final installer for the Tauri updater and write
+# latest.json (signature inside, no .sig file) and SHA256SUMS, with the
+# updater-manifest action (HAL-7222). Dry runs use a throwaway key made in
+# the job; real runs use the updater key, a secret of the `release`
+# environment. It is the same job as the Authenticode signing, so a release
+# needs one approval, not two.
+#
 # Run it without a tag from the Actions tab (dry_run on), or push a tag
 # that starts with `v`. A tag that contains `-test` is always a dry run.
 
@@ -150,11 +157,11 @@ jobs:
           retention-days: 7
 
   sign-test:
-    name: Sign a test file (dry run)
+    name: Sign test files (dry run)
     needs: build
     if: needs.build.outputs.dry_run == 'true'
     runs-on: windows-2025
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -188,6 +195,28 @@ jobs:
           if (-not $sig.TimeStamperCertificate) { throw "No timestamp on the test file" }
           "Signed by: $($sig.SignerCertificate.Subject)"
           "Timestamped by: $($sig.TimeStamperCertificate.Subject)"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      - uses: $/.github/actions/updater-manifest
+        with:
+          tag: ${{ needs.build.outputs.tag }}
+          version: ${{ needs.build.outputs.version }}
+          installer: ${{ needs.build.outputs.installer }}
+          dry-run: "true"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files-signed
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
 
   sign-windows:
     name: Sign the Windows installer
@@ -202,6 +231,14 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # For the Tauri CLI. No dependency runs an install script
+      # (allowBuilds in pnpm-workspace.yaml).
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-files
@@ -224,7 +261,7 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
-      - name: Check the signature and rewrite the checksums
+      - name: Check the signature
         shell: pwsh
         env:
           INSTALLER: ${{ needs.build.outputs.installer }}
@@ -232,16 +269,16 @@ jobs:
           $sig = Get-AuthenticodeSignature "dist/$env:INSTALLER"
           if ($sig.Status -ne "Valid") { throw "Installer signature is $($sig.Status)" }
           if (-not $sig.TimeStamperCertificate) { throw "Installer has no timestamp" }
-          # Signing changes the installer's bytes, so the checksums from the
-          # build job no longer match. Write them again.
-          # Join with LF and write bytes: Set-Content would add CRLF, which
-          # breaks `sha256sum -c` on Linux and macOS.
-          $lines = Get-ChildItem dist -File | Where-Object Name -ne SHA256SUMS | Sort-Object Name | ForEach-Object {
-            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
-          }
-          $text = ($lines -join "`n") + "`n"
-          [System.IO.File]::WriteAllBytes("$PWD/dist/SHA256SUMS", [System.Text.Encoding]::ASCII.GetBytes($text))
-          Get-Content dist/SHA256SUMS
+      # Signing changed the installer's bytes, so the updater signature is
+      # made here, over the signed file, and the checksums are written again.
+      - uses: $/.github/actions/updater-manifest
+        with:
+          tag: ${{ needs.build.outputs.tag }}
+          version: ${{ needs.build.outputs.version }}
+          installer: ${{ needs.build.outputs.installer }}
+          dry-run: "false"
+          private-key: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-files-signed
@@ -261,9 +298,18 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          # Real runs ship the signed files. Dry runs ship the placeholders.
-          name: ${{ needs.build.outputs.dry_run == 'true' && 'release-files' || 'release-files-signed' }}
+          # Both signing jobs upload this. Dry runs ship the placeholders.
+          name: release-files-signed
           path: dist
+      - name: Check the files
+        env:
+          INSTALLER: ${{ needs.build.outputs.installer }}
+        run: |
+          cd dist
+          test -f latest.json || { echo "::error::No latest.json"; exit 1; }
+          if ls -- *.sig >/dev/null 2>&1; then echo "::error::A .sig file would be published (HAL-1119)"; exit 1; fi
+          jq -e --arg f "$INSTALLER" '.platforms["windows-x86_64"].url | endswith("/" + $f)' latest.json
+          sha256sum -c SHA256SUMS
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
