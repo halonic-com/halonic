@@ -60,7 +60,7 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           areas=(
-            "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
+            "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|integration-runner|integration-kit|connector-stdio-sandbox)/|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
@@ -896,6 +896,16 @@ jobs:
           echo "${CARGO_DENY_SHA256}  $RUNNER_TEMP/cargo-deny.tar.gz" | sha256sum --check
           tar --extract --gzip --file "$RUNNER_TEMP/cargo-deny.tar.gz" --directory "$RUNNER_TEMP"
           "$RUNNER_TEMP/${name}/cargo-deny" --locked --log-level warn check
+      # The Rust crates' part of the Windows installer's THIRD-PARTY-NOTICES.txt
+      # (HAL-6289), made as the release makes it. A new crate with no licence
+      # text, a stored text for an older version, or a licence deny.toml
+      # doesn't allow fails here, in the pull request, not first at release.
+      - name: Licence notices (Rust crates)
+        working-directory: .
+        run: >-
+          pnpm check:sbom --name halonic-studio --version 0.0.0-ci
+          --out "$RUNNER_TEMP/notices" --notices
+          --cargo apps/studio/src-tauri --cargo-target x86_64-pc-windows-msvc
       - name: Save the Rust cache
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

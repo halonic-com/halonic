@@ -1,6 +1,7 @@
 /**
- * Reads the two lists in `apps/studio/src-tauri/deny.toml` that the guard
- * checks: `[licenses] allow` and `[advisories] ignore`. A small reader for
+ * Reads the lists in `apps/studio/src-tauri/deny.toml` that the guard and the
+ * release notices check: `[licenses] allow` and `exceptions`, and
+ * `[advisories] ignore`. A small reader for
  * exactly those shapes, not a TOML parser: the file is ours and the guard
  * fails on anything it can't read, so a change of shape can't slip past.
  */
@@ -13,9 +14,16 @@ export interface DenyIgnore {
   readonly plain?: true;
 }
 
+/** One `exceptions` entry of `[licenses]`: licences allowed for one crate only. */
+export interface DenyException {
+  readonly crate: string;
+  readonly allow: readonly string[];
+}
+
 /** The lists, or `undefined` for one that is missing or not in the expected shape. */
 export interface DenyReading {
   readonly allow: readonly string[] | undefined;
+  readonly exceptions: readonly DenyException[] | undefined;
   readonly ignore: readonly DenyIgnore[] | undefined;
 }
 
@@ -127,12 +135,39 @@ function field(table: string, key: string): string {
   return match?.[1] === undefined ? "" : (JSON.parse(`"${match[1]}"`) as string);
 }
 
-/** Reads `[licenses] allow` and `[advisories] ignore` from the file text. */
+/** The strings of `key = [ ... ]` inside one table, or `undefined` when it has none. */
+function arrayField(table: string, key: string): string[] | undefined {
+  const start = new RegExp(`(?:^|[,\\s])${key}\\s*=\\s*\\[`).exec(table);
+  if (start === null) {
+    return undefined;
+  }
+  const from = start.index + start[0].length;
+  const end = closingBracket(table, from);
+  return end === undefined ? undefined : strings(table.slice(from, end));
+}
+
+/** The exception tables, or `undefined` when one of them lacks its crate or its list. */
+function readExceptions(body: string): DenyException[] | undefined {
+  const found: DenyException[] = [];
+  for (const table of tables(body)) {
+    const crate = field(table, "crate");
+    const allow = arrayField(table, "allow");
+    if (crate === "" || allow === undefined) {
+      return undefined;
+    }
+    found.push({ crate, allow });
+  }
+  return found;
+}
+
+/** Reads `[licenses] allow` and `exceptions` and `[advisories] ignore` from the file text. */
 export function readDeny(text: string): DenyReading {
   const allow = arrayOf(text, "licenses", "allow");
+  const exceptions = arrayOf(text, "licenses", "exceptions");
   const ignore = arrayOf(text, "advisories", "ignore");
   return {
     allow: allow === undefined ? undefined : strings(allow),
+    exceptions: exceptions === undefined ? undefined : readExceptions(exceptions),
     ignore:
       ignore === undefined
         ? undefined

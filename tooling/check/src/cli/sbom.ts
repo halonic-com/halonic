@@ -1,11 +1,20 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import {
+  type CargoMetadata,
+  type CargoPackage,
+  type LicencePolicy as CrateLicencePolicy,
+  cargoNoticeEntries,
+  linkedCrates,
+} from "../lib/cargo-notices.ts";
 import type { DependencyList } from "../lib/config-files.ts";
+import { readDeny } from "../lib/deny.ts";
 import { type LicencePolicy, licenceTextPath } from "../lib/licences.ts";
 import {
   findSbomProblems,
   type NoticeEntry,
+  type NoticeSection,
   renderNotices,
   type Sbom,
   type VendoredNotice,
@@ -14,7 +23,8 @@ import {
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
 
 /**
- * pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]
+ * pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>]
+ *   [--notices [--cargo <dir> --cargo-target <triple>]...]
  *
  * Release step. Writes `<product>-<v>.cdx.json` (CycloneDX, made by
  * `pnpm sbom`, so no extra tool) for the production dependencies of one
@@ -24,6 +34,11 @@ import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.
  * `--notices` it also writes `THIRD-PARTY-NOTICES.txt` for the same set,
  * plus the vendored files in `tooling/check/licences.json`.
  * Needs `pnpm install` first: licence texts are read from the install.
+ *
+ * With `--cargo` the notices also list the Rust crates the Cargo workspace in
+ * `<dir>` links for each `--cargo-target` (HAL-6289), read with `cargo
+ * metadata`, which fetches them on a clean machine. It fails when a crate's
+ * licence is not allowed by `<dir>/deny.toml` or a crate has no licence text.
  */
 
 interface LicenceListEntry {
@@ -52,6 +67,10 @@ function pnpmCommand(): [string, string[]] {
   return /\.[cm]?js$/i.test(execPath) ? [process.execPath, [execPath]] : [execPath, []];
 }
 
+function options(argv: readonly string[], flag: string): string[] {
+  return argv.flatMap((value, at) => (argv[at - 1] === flag ? [value] : []));
+}
+
 function pnpm(root: string, args: readonly string[]): string {
   const [file, prefix] = pnpmCommand();
   return execFileSync(file, [...prefix, ...args], {
@@ -61,7 +80,7 @@ function pnpm(root: string, args: readonly string[]): string {
   });
 }
 
-function licenceText(paths: readonly string[] | undefined): string | undefined {
+function licenceTexts(paths: readonly string[] | undefined): string[] {
   for (const directory of paths ?? []) {
     if (!existsSync(directory)) {
       continue;
@@ -70,10 +89,10 @@ function licenceText(paths: readonly string[] | undefined): string | undefined {
       .filter((file) => licenceFile.test(file))
       .sort();
     if (files.length > 0) {
-      return files.map((file) => readFileSync(join(directory, file), "utf8")).join("\n\n");
+      return files.map((file) => readFileSync(join(directory, file), "utf8"));
     }
   }
-  return undefined;
+  return [];
 }
 
 function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
@@ -84,14 +103,14 @@ function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
   >;
   return Object.entries(byLicence).flatMap(([licence, entries]) =>
     entries.map((entry) => {
-      const text = licenceText(entry.paths);
+      const texts = licenceTexts(entry.paths);
       return {
         name: entry.name,
         versions: entry.versions,
         licence,
         ...(entry.author === undefined ? {} : { author: entry.author }),
         ...(entry.homepage === undefined ? {} : { homepage: entry.homepage }),
-        ...(text === undefined ? {} : { text }),
+        texts,
       };
     }),
   );
@@ -109,14 +128,72 @@ function vendoredNotices(root: string): VendoredNotice[] {
   }));
 }
 
+const storedTexts = "tooling/check/licence-texts/crates";
+
+function readPolicy(path: string): CrateLicencePolicy {
+  const { allow, exceptions } = readDeny(readFileSync(path, "utf8"));
+  // An empty list would let nothing through or everything past: neither is safe.
+  if (allow === undefined || exceptions === undefined) {
+    throw new Error(`${path}: can't read [licenses] allow and exceptions`);
+  }
+  return { allow, exceptions };
+}
+
+/** The crates of every Cargo workspace and target, once each, and what is wrong with them. */
+function crateEntries(
+  root: string,
+  workspaces: readonly string[],
+  targets: readonly string[],
+): { entries: NoticeEntry[]; problems: string[] } {
+  const entries: NoticeEntry[] = [];
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  for (const workspace of workspaces) {
+    const directory = resolve(root, workspace);
+    const crates: CargoPackage[] = [];
+    for (const target of targets) {
+      const output = execFileSync(
+        "cargo",
+        ["metadata", "--locked", "--format-version", "1", "--filter-platform", target],
+        { cwd: directory, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
+      );
+      for (const pkg of linkedCrates(JSON.parse(output) as CargoMetadata)) {
+        if (!seen.has(pkg.id)) {
+          seen.add(pkg.id);
+          crates.push(pkg);
+        }
+      }
+    }
+    const found = cargoNoticeEntries(crates, readPolicy(join(directory, "deny.toml")), {
+      list: (folder) => readdirSync(folder),
+      read: (path) => readFileSync(path, "utf8"),
+      stored: (crate) => {
+        const path = join(root, storedTexts, `${crate}.txt`);
+        return existsSync(path) ? readFileSync(path, "utf8") : undefined;
+      },
+    });
+    entries.push(...found.entries);
+    problems.push(...found.problems);
+  }
+  return { entries, problems };
+}
+
 function main(argv: readonly string[]): number {
   const version = option(argv, "--version");
   const out = option(argv, "--out");
   const name = option(argv, "--name");
   const product = option(argv, "--package");
-  if (name === undefined || version === undefined || out === undefined) {
+  const cargo = options(argv, "--cargo");
+  const targets = options(argv, "--cargo-target");
+  const notices = argv.includes("--notices");
+  if (
+    name === undefined ||
+    version === undefined ||
+    out === undefined ||
+    (cargo.length > 0 && (!notices || targets.length === 0))
+  ) {
     console.error(
-      "Usage: pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]",
+      "Usage: pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices [--cargo <dir> --cargo-target <triple>]...]",
     );
     return 2;
   }
@@ -133,24 +210,36 @@ function main(argv: readonly string[]): number {
     new Set(listWorkspacePackages(root).flatMap((pkg) => pkg.manifest.name ?? [])),
   );
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
-  for (const problem of problems) {
-    console.log(annotate ? `::error title=sbom::${problem}` : `error [sbom] ${problem}`);
-  }
+  const report = (title: string, found: readonly string[]): void => {
+    for (const problem of found) {
+      console.log(annotate ? `::error title=${title}::${problem}` : `error [${title}] ${problem}`);
+    }
+  };
+  report("sbom", problems);
   console.log(
     `check:sbom: ${problems.length} problem(s) in ${sbom.components?.length ?? 0} component(s), written to ${sbomPath}.`,
   );
-  if (argv.includes("--notices")) {
-    const entries = noticeEntries(root, scope);
+  let crateProblems = 0;
+  if (notices) {
+    const sections: NoticeSection[] = [
+      { title: "npm packages", entries: noticeEntries(root, scope) },
+    ];
+    if (cargo.length > 0) {
+      const crates = crateEntries(root, cargo, targets);
+      sections.push({ title: "Rust crates", entries: crates.entries });
+      report("notices", crates.problems);
+      crateProblems = crates.problems.length;
+    }
     const vendored = vendoredNotices(root);
     writeFileSync(
       join(out, "THIRD-PARTY-NOTICES.txt"),
-      renderNotices("Halonic", entries, vendored),
+      renderNotices("Halonic", sections, vendored),
     );
     console.log(
-      `check:sbom: notices for ${entries.length} package(s) and ${vendored.length} vendored file(s).`,
+      `check:sbom: notices for ${sections.map((section) => `${section.entries.length} ${section.title}`).join(" and ")} and ${vendored.length} vendored file(s), ${crateProblems} problem(s).`,
     );
   }
-  return problems.length === 0 ? 0 : 1;
+  return problems.length === 0 && crateProblems === 0 ? 0 : 1;
 }
 
 process.exitCode = main(process.argv.slice(2));

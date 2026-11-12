@@ -114,7 +114,12 @@ verifies("check.licences-vendored", () => {
   test("the notices end with one block per vendored file, with its source and text", () => {
     const text = renderNotices(
       "Halonic",
-      [{ name: "zod", versions: ["4.0.0"], licence: "MIT", text: "MIT text" }],
+      [
+        {
+          title: "npm packages",
+          entries: [{ name: "zod", versions: ["4.0.0"], licence: "MIT", texts: ["MIT text"] }],
+        },
+      ],
       [{ ...entry, text: "Mozilla Public License Version 2.0\n" }],
     );
     const block = text.slice(text.indexOf("Public Suffix List ("));

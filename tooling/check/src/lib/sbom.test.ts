@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vitest";
 import type { DependencyList } from "./config-files.ts";
-import { componentName, findSbomProblems, renderNotices, withProduct } from "./sbom.ts";
+import {
+  componentName,
+  findSbomProblems,
+  type NoticeEntry,
+  type NoticeSection,
+  renderNotices,
+  withProduct,
+} from "./sbom.ts";
 
 const list = {
   dependencies: { yaml: { category: "core-exception" } },
@@ -79,15 +86,104 @@ describe("componentName", () => {
 });
 
 describe("renderNotices", () => {
+  const npm = (entries: NoticeEntry[]): NoticeSection[] => [{ title: "npm packages", entries }];
+
   test("sorts packages and says when a licence file is missing", () => {
-    const text = renderNotices("Halonic", [
-      { name: "zod", versions: ["4.0.0"], licence: "MIT", text: "MIT text\n" },
-      { name: "yaml", versions: ["2.9.1"], licence: "ISC", author: "Eemeli Aro" },
-    ]);
+    const text = renderNotices(
+      "Halonic",
+      npm([
+        { name: "zod", versions: ["4.0.0"], licence: "MIT", texts: ["MIT text\n"] },
+        { name: "yaml", versions: ["2.9.1"], licence: "ISC", author: "Eemeli Aro", texts: [] },
+      ]),
+    );
     expect(text.indexOf("yaml 2.9.1")).toBeLessThan(text.indexOf("zod 4.0.0"));
     expect(text).toContain("Author: Eemeli Aro");
     expect(text).toContain("ships no licence file");
     expect(text).toContain("MIT text");
+  });
+
+  test("prints the sections in order, each sorted by name and version", () => {
+    const text = renderNotices("Halonic", [
+      {
+        title: "npm packages",
+        entries: [{ name: "zod", versions: ["4.0.0"], licence: "MIT", texts: [] }],
+      },
+      {
+        title: "Rust crates",
+        entries: [
+          { name: "serde", versions: ["2.0.0"], licence: "MIT", texts: [] },
+          { name: "Zeta", versions: ["1.0.0"], licence: "MIT", texts: [] },
+          { name: "serde", versions: ["1.0.0"], licence: "MIT", texts: [] },
+        ],
+      },
+    ]);
+    const order = [
+      "npm packages",
+      "zod 4.0.0",
+      "Rust crates",
+      "Zeta 1.0.0",
+      "serde 1.0.0",
+      "serde 2.0.0",
+    ];
+    const at = order.map((label) => text.indexOf(`\n${label}\n`));
+    expect(at.every((index) => index > 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  test("prints a licence text once and points back to it, line endings and surrounding blank space aside", () => {
+    const text = renderNotices("Halonic", [
+      {
+        title: "npm packages",
+        entries: [
+          { name: "zod", versions: ["4.0.0"], licence: "MIT", texts: ["MIT text\r\nline 2\n"] },
+        ],
+      },
+      {
+        title: "Rust crates",
+        entries: [
+          { name: "serde", versions: ["1.0.0"], licence: "MIT", texts: ["MIT text\nline 2\n"] },
+          { name: "itoa", versions: ["1.0.0"], licence: "MIT", texts: ["MIT text\nline 2"] },
+        ],
+      },
+    ]);
+    expect(text.match(/MIT text/g)).toHaveLength(1);
+    expect(text).toContain("serde 1.0.0\nLicence: MIT\n\nSame licence text as zod 4.0.0 above.");
+    expect(text).toContain("itoa 1.0.0\nLicence: MIT\n\nSame licence text as zod 4.0.0 above.");
+  });
+
+  test("compares each licence file on its own", () => {
+    const text = renderNotices(
+      "Halonic",
+      npm([
+        {
+          name: "a",
+          versions: ["1.0.0"],
+          licence: "MIT OR Apache-2.0",
+          texts: ["Apache", "MIT by A"],
+        },
+        {
+          name: "b",
+          versions: ["1.0.0"],
+          licence: "MIT OR Apache-2.0",
+          texts: ["Apache", "MIT by B"],
+        },
+      ]),
+    );
+    expect(text).toContain(
+      "Licence: MIT OR Apache-2.0\n\nSame licence text as a 1.0.0 above.\n\nMIT by B",
+    );
+    expect(text.match(/Apache\n/g)).toHaveLength(1);
+  });
+
+  test("comes out the same for the same entries in any order", () => {
+    const entries: NoticeEntry[] = [
+      { name: "b", versions: ["1.0.0"], licence: "MIT", texts: ["same"] },
+      { name: "a", versions: ["1.0.0"], licence: "MIT", texts: ["same"] },
+    ];
+    expect(renderNotices("Halonic", npm(entries))).toBe(
+      renderNotices("Halonic", npm([...entries].reverse())),
+    );
+    expect(renderNotices("Halonic", npm(entries))).toContain("Same licence text as a 1.0.0 above.");
   });
 });
 

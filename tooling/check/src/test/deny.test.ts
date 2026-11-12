@@ -38,6 +38,7 @@ describe("tooling/check: deny.toml reader", () => {
     });
     expect(readDeny(text)).toEqual({
       allow: ["MIT", "Apache-2.0"],
+      exceptions: [{ crate: "selectors", allow: ["MPL-2.0"] }],
       ignore: [{ id: "RUSTSEC-2026-0001", reason: "Only {build} time [x]. Expires 2027-01-01." }],
     });
   });
@@ -59,12 +60,30 @@ describe("tooling/check: deny.toml reader", () => {
   });
 
   it("reports a missing list as undefined", () => {
-    expect(readDeny("[bans]\n")).toEqual({ allow: undefined, ignore: undefined });
+    expect(readDeny("[bans]\n")).toEqual({
+      allow: undefined,
+      exceptions: undefined,
+      ignore: undefined,
+    });
+  });
+
+  it("reads an exception with a WITH licence and the crate first, and refuses one it can't read", () => {
+    const exceptions = (body: string) =>
+      readDeny(`[licenses]\nallow = ["MIT"]\nexceptions = [\n${body}\n]\n`).exceptions;
+    expect(
+      exceptions(
+        '  # a comment { allow = ["x"] }\n  { crate = "target-lexicon", allow = ["Apache-2.0 WITH LLVM-exception", "MIT"] },',
+      ),
+    ).toEqual([{ crate: "target-lexicon", allow: ["Apache-2.0 WITH LLVM-exception", "MIT"] }]);
+    expect(exceptions('  { allow = ["MPL-2.0"] },')).toBeUndefined();
+    expect(exceptions('  { crate = "selectors" },')).toBeUndefined();
+    expect(exceptions("")).toEqual([]);
   });
 
   it("reads the real file", () => {
     const real = readDeny(readFileSync(join(realRoot, denyPath), "utf8"));
     expect(real.allow?.length).toBeGreaterThan(5);
+    expect(real.exceptions).toContainEqual({ crate: "selectors", allow: ["MPL-2.0"] });
     expect(real.ignore?.every((entry) => entry.id.startsWith("RUSTSEC-"))).toBe(true);
   });
 });
