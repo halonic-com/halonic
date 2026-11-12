@@ -9,7 +9,7 @@ import type { StopSignal } from "@halonicjs/std";
  * when `stop` is told to stop, and stops listening to `stop` once `work`
  * has settled, so a long run doesn't collect one listener per call
  * (requirement `engine.model-call-stop`). A host that passes none leaves a
- * stopped call running to its end, and `cancel()` and `close()` wait for it.
+ * stopped call running to its end, and `close()` waits for it.
  *
  * @throws what `work` throws
  *

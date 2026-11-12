@@ -395,10 +395,8 @@ export class LocalRuns {
     const end = (childRunId: string) => this.#cancelOne(childRunId, childError);
     await endChildrenOf(this.store, runId, end);
     await this.#folders.ended(runId, async (topLevelRunId) => {
-      await Promise.all([
-        this.#harnessCalls.stopUnder(topLevelRunId),
-        this.#modelCalls.stopUnder(topLevelRunId),
-      ]);
+      this.#modelCalls.stopUnder(topLevelRunId);
+      await this.#harnessCalls.stopUnder(topLevelRunId);
     });
     await this.#connectors?.ended(runId);
   }
@@ -477,7 +475,8 @@ export class LocalRuns {
   /** Ends a run as cancelled, with `error`, and stops its harness and model calls. */
   async #cancelOne(runId: string, error: string): Promise<void> {
     await this.#fail(runId, error, "cancelled");
-    await Promise.all([this.#harnessCalls.stop(runId), this.#modelCalls.stop(runId)]);
+    this.#modelCalls.stop(runId);
+    await this.#harnessCalls.stop(runId);
   }
 
   /** Ends a run that hasn't ended with `run.failed`, and tells its parent. */

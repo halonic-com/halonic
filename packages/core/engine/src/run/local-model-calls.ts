@@ -57,17 +57,21 @@ export class LocalModelCalls {
     }
   }
 
-  /** Stops the run's model calls going on, and resolves once each has ended. */
-  stop(runId: string): Promise<void> {
-    return this.#live.stop(runId);
+  /**
+   * Tells the run's model calls going on to stop, without waiting for them to end: a stopped
+   * call records nothing, and a provider that ignores the abort mustn't hold up the cancel, or
+   * a stopped command could never end (HAL-6677). {@link LocalModelCalls.stopAll} waits.
+   */
+  stop(runId: string): void {
+    void this.#live.stop(runId);
   }
 
-  /** Stops the model calls going on in a top-level run and its child runs. */
-  stopUnder(topLevelRunId: string): Promise<void> {
-    return this.#live.stopUnder(topLevelRunId);
+  /** Tells the model calls going on in a top-level run and its child runs to stop, as {@link LocalModelCalls.stop} does. */
+  stopUnder(topLevelRunId: string): void {
+    void this.#live.stopUnder(topLevelRunId);
   }
 
-  /** Stops every model call going on; later calls are refused. */
+  /** Stops every model call going on, and resolves once each has ended; later calls are refused. */
   stopAll(): Promise<void> {
     return this.#live.stopAll();
   }

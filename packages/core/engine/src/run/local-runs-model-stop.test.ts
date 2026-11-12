@@ -65,6 +65,27 @@ class WaitingModel implements LlmProvider {
   }
 }
 
+/** A provider that ignores the abort: its call answers only when the test says so. */
+class DeafModel implements LlmProvider {
+  readonly id = "deaf";
+  readonly type = "test";
+  readonly capabilities = { tools: true, jsonOutput: false, vision: false, streaming: false };
+  #called = Promise.withResolvers<void>();
+  #answer = Promise.withResolvers<ChatResponse>();
+  /** Resolves once the call has been made. */
+  readonly called = this.#called.promise;
+
+  chat(): Promise<ChatResponse> {
+    this.#called.resolve();
+    return this.#answer.promise;
+  }
+
+  /** Lets the call answer at last. */
+  answer(response: ChatResponse): void {
+    this.#answer.resolve(response);
+  }
+}
+
 /** A provider that counts its calls and answers each one. */
 class CountingModel implements LlmProvider {
   readonly id = "fallback";
@@ -143,6 +164,27 @@ verifies("engine.model-call-stop", () => {
       expect(typesOf(runs.logs.get("run_1"))).not.toContain("llm.fallback");
       expect(await runs.get("run_1")).toMatchObject({ reason: "cancelled" });
       expect(host.listening()).toBe(0);
+    });
+
+    it("doesn't hold up the cancel when the provider ignores the abort, and the run records nothing it gives (HAL-6677)", async () => {
+      const deaf = new DeafModel();
+      const { executor, runs, scheduler } = runsOn([], undefined, {
+        model: { provider: deaf, model: "deaf-1" },
+        abortOnStop: hostAbortOnStop().abortOnStop,
+      });
+      await executor.start(replyStart);
+      const due = scheduler.runDue();
+      await deaf.called;
+
+      // The provider hasn't answered: a cancel that waited for it would never end.
+      await executor.cancel("run_1");
+      const cancelled = typesOf(runs.logs.get("run_1"));
+      deaf.answer(textAnswer("Too late."));
+      await due;
+
+      expect(await runs.get("run_1")).toMatchObject({ reason: "cancelled" });
+      expect(cancelled.at(-1)).toBe("run.failed");
+      expect(typesOf(runs.logs.get("run_1"))).toEqual(cancelled);
     });
 
     it("is aborted when the engine stops, and the run records nothing", async () => {
