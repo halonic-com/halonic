@@ -1,4 +1,4 @@
-import { parseHex } from "@halonicjs/studio-kit";
+import { type HaloPreset, haloPresets, parseHex } from "@halonicjs/studio-kit";
 import type { DisplayPref } from "../display-prefs.ts";
 
 /** The themes, in the order the Theme select lists them. */
@@ -18,15 +18,13 @@ export const themePref: DisplayPref<Theme> = {
 export type FrameColourPair = readonly [first: string, second: string];
 
 /**
- * The frame colour presets and their two colours (req-settings `settings.appearance.frame-colours`).
- * Green and blue, Yellow and orange and Pink and violet join when their colours are set (HAL-6655).
+ * The frame colour presets and their two colours (req-settings `settings.appearance.frame-colours`),
+ * the kit's list, so the halo's contrast test checks the very colours Settings offers.
  */
-export const framePresets = {
-  "blue-and-purple": ["#3B8BFF", "#8B5CF6"],
-} as const satisfies Readonly<Record<string, FrameColourPair>>;
+export const framePresets: Readonly<Record<HaloPreset, FrameColourPair>> = haloPresets;
 
 /** One of the frame colour presets. */
-export type FramePreset = keyof typeof framePresets;
+export type FramePreset = HaloPreset;
 
 /** The frame colours: a preset, or the person's own two colours. */
 export type FrameColours =
@@ -48,7 +46,12 @@ function readFrameColours(stored: unknown): FrameColours | undefined {
   if (isFramePreset(preset)) {
     return { preset };
   }
-  if (preset !== "own" || !("colours" in stored) || !Array.isArray(stored.colours)) {
+  if (
+    preset !== "own" ||
+    !("colours" in stored) ||
+    !Array.isArray(stored.colours) ||
+    stored.colours.length !== 2
+  ) {
     return undefined;
   }
   const [first, second] = stored.colours.map((colour) =>

@@ -118,6 +118,7 @@ export {
   type GridRow,
   useGridNavigation,
 } from "./grid-navigation/use-grid-navigation.ts";
+export { type HaloPreset, haloPresets } from "./halo-presets.ts";
 export {
   HeaderBadge,
   type HeaderBadgeButton,

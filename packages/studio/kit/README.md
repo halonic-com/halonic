@@ -90,6 +90,8 @@ the composer, never on the box itself, whose focus look is a box shadow too. It'
 `--shadow-*` token, so it can't turn up elsewhere. A frame colour preset (Settings) sets only
 `--halo-blue` and `--halo-violet`; the tints are `color-mix()` of those two, so all six halo
 utilities follow. The four presets keep every text colour at 4.5:1 on the spot and the frame.
+`haloPresets` lists them, each as its `--halo-blue` and `--halo-violet` hex, and Settings offers that
+same list, so a preset can't change without the contrast test seeing it.
 
 ## Agent pages: the orb, stacked cards and the canvas
 

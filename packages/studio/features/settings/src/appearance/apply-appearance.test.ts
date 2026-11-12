@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { haloPresets } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { DisplaySettings } from "../display-settings.ts";
@@ -7,6 +8,7 @@ import { MemoryDisplayPrefs } from "../test-support/memory-display-prefs.ts";
 import {
   agentCharactersPref,
   frameColoursPref,
+  framePresets,
   panelOpacityPref,
   themePref,
 } from "./appearance-prefs.ts";
@@ -62,7 +64,7 @@ verifies("settings.appearance-theme", () => {
 verifies("settings.appearance-frame-colours", () => {
   it("shows Blue and purple by default, and only in the two halo colours", () => {
     const { root } = watch();
-    expect(halo(root)).toEqual(["#3B8BFF", "#8B5CF6"]);
+    expect(halo(root)).toEqual(["#3B8BFF", "#B05ED9"]);
     expect(root.style.getPropertyValue("--color-accent")).toBe("");
     expect(root.style.getPropertyValue("--color-primary")).toBe("");
   });
@@ -73,13 +75,29 @@ verifies("settings.appearance-frame-colours", () => {
     });
     expect(halo(root)).toEqual(["#3B8BFF", "#22D3EE"]);
     await settings.set(frameColoursPref, { preset: "blue-and-purple" });
-    expect(halo(root)).toEqual(["#3B8BFF", "#8B5CF6"]);
+    expect(halo(root)).toEqual(["#3B8BFF", "#B05ED9"]);
+  });
+
+  it.each([
+    ["green-and-blue", ["#10B981", "#3B8BFF"]],
+    ["yellow-and-orange", ["#FBBF24", "#F97316"]],
+    ["pink-and-violet", ["#EC4899", "#8B5CF6"]],
+  ] as const)("shows the %s preset in the two halo colours", async (preset, colours) => {
+    const { settings, root } = watch({ [frameColoursPref.key]: { preset } });
+    expect(halo(root)).toEqual(colours);
+    await settings.set(frameColoursPref, { preset: "blue-and-purple" });
+    expect(halo(root)).toEqual(["#3B8BFF", "#B05ED9"]);
+  });
+
+  it("offers the kit's four presets, the ones the halo's contrast is checked with", () => {
+    expect(framePresets).toBe(haloPresets);
   });
 
   describe("falls back to Blue and purple", () => {
     it.each([
       ["an own colour that isn't hex", { preset: "own", colours: ["blue", "#22D3EE"] }],
       ["one own colour", { preset: "own", colours: ["#22D3EE"] }],
+      ["three own colours", { preset: "own", colours: ["#3B8BFF", "#22D3EE", "#10B981"] }],
       ["an unknown preset", { preset: "sepia" }],
       ["a preset name from an object's prototype", { preset: "toString" }],
       ["text", "blue-and-purple"],

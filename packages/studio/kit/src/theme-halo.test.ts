@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { haloPresets } from "./halo-presets.ts";
 import { blend, contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
 import {
   colourToken,
@@ -13,15 +14,14 @@ import {
 import { blockBody, topLevelBlocks } from "./test/theme-file.spec.ts";
 
 /**
- * The four frame colour presets (Settings), as the visual language's table gives them. A preset
- * sets only --halo-blue and --halo-violet; every halo utility follows.
+ * The four frame colour presets, the same list Settings shows. A preset sets only --halo-blue and
+ * --halo-violet; every halo utility follows.
  */
-const presets = [
-  { name: "halo", blue: "#3B8BFF", violet: "#B05ED9" },
-  { name: "green", blue: "#10B981", violet: "#3B8BFF" },
-  { name: "amber", blue: "#FBBF24", violet: "#F97316" },
-  { name: "pink", blue: "#EC4899", violet: "#8B5CF6" },
-] as const;
+const presets = Object.entries(haloPresets).map(([name, [blue, violet]]) => ({
+  name,
+  blue,
+  violet,
+}));
 
 type Preset = (typeof presets)[number];
 type End = "blue" | "violet";
@@ -108,6 +108,16 @@ verifies("kit.halo-start-screen", () => {
       expect(plainVariables.get("--halo-tint-violet")).toBe(
         "light-dark( color-mix(in srgb, var(--halo-violet) 12%, transparent), color-mix(in srgb, var(--halo-violet) 20%, transparent) )",
       );
+    });
+
+    it("starts from the default preset, Blue and purple", () => {
+      const [blue, violet] = haloPresets["blue-and-purple"];
+      for (const [variable, hex] of [
+        ["--halo-blue", blue],
+        ["--halo-violet", violet],
+      ] as const) {
+        expect(parseColour(plainVariables.get(variable) ?? ""), variable).toEqual(parseColour(hex));
+      }
     });
 
     it("has no halo shadow token, so the glow can't become a fourth shadow", () => {
