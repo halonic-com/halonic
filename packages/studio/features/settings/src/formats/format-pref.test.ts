@@ -8,6 +8,7 @@ import {
   formatOptions,
   formatPref,
   formatTags,
+  usableTag,
 } from "./format-pref.ts";
 
 afterEach(() => {
@@ -63,6 +64,30 @@ verifies("settings.formats-format", () => {
   it("formats with the followed tag, or the chosen one", () => {
     expect(formatLocale("follow", "en-GB")).toBe("en-GB");
     expect(formatLocale("nl-NL", "en-GB")).toBe("nl-NL");
+  });
+
+  it("reads a system LANG or a tag with extensions as a plain tag", () => {
+    expect(usableTag("en_GB.UTF-8")).toBe("en-GB");
+    expect(usableTag("en_GB")).toBe("en-GB");
+    expect(usableTag("en-GB-u-ca-buddhist")).toBe("en-GB");
+    expect(formatOptions({ followTag: "en_GB", place: "app" })[0]?.label).toBe(
+      "Follow this computer: English (United Kingdom)",
+    );
+    expect(formatExample("en-GB-u-ca-buddhist")).toBe("45.00 · Mon 9 Nov, 08:00");
+    expect(formatLocale("follow", "nl_NL.UTF-8")).toBe("nl-NL");
+  });
+
+  it("follows this window's own format when the followed tag can't be read", () => {
+    vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
+      ...new Intl.DateTimeFormat("en-GB").resolvedOptions(),
+      locale: "en-GB",
+    });
+    expect(usableTag("")).toBe("en-GB");
+    expect(usableTag("C")).toBe("en-GB");
+    expect(formatOptions({ followTag: "", place: "app" })[0]?.label).toBe(
+      "Follow this computer: English (United Kingdom)",
+    );
+    expect(formatExample("")).toBe("45.00 · Mon 9 Nov, 08:00");
   });
 
   it("stores the tag, and follows the computer for anything else", () => {

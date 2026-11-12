@@ -74,6 +74,24 @@ export interface FormatPlace {
 const studioLanguage = "en";
 
 /**
+ * The followed tag as a plain language and region tag Intl can name and format with. It comes
+ * from outside: a system `LANG` like `en_GB.UTF-8`, or a tag with extensions like
+ * `en-GB-u-ca-buddhist`. One Intl can't read follows this window's own format instead of throwing.
+ *
+ * @example
+ * usableTag("en_GB.UTF-8"); // "en-GB"
+ * usableTag("en-GB-u-ca-buddhist"); // "en-GB"
+ */
+export function usableTag(tag: string): string {
+  const posix = tag.split(/[.@]/u)[0]?.replaceAll("_", "-") ?? "";
+  try {
+    return new Intl.Locale(posix).baseName;
+  } catch {
+    return new Intl.Locale(new Intl.DateTimeFormat().resolvedOptions().locale).baseName;
+  }
+}
+
+/**
  * The Format select's options: first "Follow this computer: English (United Kingdom)" ("Follow
  * this browser: …" when served), then each tag this window can format, by name, sorted by name.
  *
@@ -94,12 +112,13 @@ export function formatOptions(where: FormatPlace): FormatOption[] {
     .map((tag) => ({ value: tag, label: nameOf(tag) }))
     .sort((left, right) => collator.compare(left.label, right.label));
   const follows = where.place === "app" ? "this computer" : "this browser";
-  return [{ value: "follow", label: `Follow ${follows}: ${nameOf(where.followTag)}` }, ...tags];
+  const followed = nameOf(usableTag(where.followTag));
+  return [{ value: "follow", label: `Follow ${follows}: ${followed}` }, ...tags];
 }
 
 /** The tag a choice formats with: the one followed, or the one chosen. */
 export function formatLocale(choice: FormatChoice, followTag: string): string {
-  return choice === "follow" ? followTag : choice;
+  return choice === "follow" ? usableTag(followTag) : choice;
 }
 
 /** The example under the Format select: 9 Nov 2026 at 08:00, a Monday, in local time. */
@@ -110,11 +129,12 @@ const exampleDate = new Date(2026, 10, 9, 8, 0);
  * "45.00 · Mon 9 Nov, 08:00" for `en-GB`, "45,00 · ma 9 nov, 08:00" for `nl-NL`.
  */
 export function formatExample(locale: string): string {
-  const number = new Intl.NumberFormat(locale, {
+  const tag = usableTag(locale);
+  const number = new Intl.NumberFormat(tag, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(45);
-  const date = new Intl.DateTimeFormat(locale, {
+  const date = new Intl.DateTimeFormat(tag, {
     weekday: "short",
     day: "numeric",
     month: "short",
