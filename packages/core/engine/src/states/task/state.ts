@@ -9,7 +9,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
-import { methodOf, noMethodError } from "../../kernel/step-method.ts";
+import { methodOf, noMethodError, stepOutputOf } from "../../kernel/step-method.ts";
 import { answerApproval, askForApproval, askForHarnessApproval } from "./approval.ts";
 import { artifactOf } from "./artifact.ts";
 import {
@@ -35,7 +35,8 @@ import {
  * with `artifact` saves the answer as a file; see `artifact.ts`. A state
  * with `method` sends the method's prompt with its `with` values, and its
  * answer is checked against the method's `output`; the executor uses the
- * method's model, steps and tools. Conversations and signals join with the
+ * method's model, steps and tools. A state's `format` comes before both
+ * the method's and the agent's output in that check. Conversations and signals join with the
  * agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
@@ -124,7 +125,7 @@ function finishAgent(
 ): StateStep {
   const method =
     state.method === undefined ? undefined : methodOf(agents, pending.agent, state.method);
-  const checked = checkAnswer(agents, pending.agent, answer, method);
+  const checked = checkAnswer(agents, pending.agent, answer, stepOutputOf(state.format, method));
   if ("error" in checked) {
     return { ...nothing, outcome: { type: "fail", ...checked } };
   }

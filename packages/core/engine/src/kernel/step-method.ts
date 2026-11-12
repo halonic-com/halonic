@@ -3,7 +3,7 @@
 // and the agent's file, so neither the run log nor the call effects carry it:
 // a resumed call finds the same method the first call used.
 
-import type { Agent, AgentMethod, AgentOutput } from "@halonicjs/format";
+import type { Agent, AgentMethod, AgentOutput, WorkflowState } from "@halonicjs/format";
 import type { RunDefinitions } from "./decide-types.ts";
 
 /**
@@ -41,6 +41,20 @@ export function callMethodOf(
 /** A method's answer as an agent's `output` says it: text, or JSON for a method that answers with fields. */
 export function methodOutputOf(method: AgentMethod): AgentOutput {
   return method.output === "text" ? { type: "text" } : { type: "json" };
+}
+
+/**
+ * The output a step's answer is checked against in place of its agent's
+ * (HAL-7037): the step's own `format` first, then the `output` of the
+ * method it calls. `undefined` when the step has neither, so the agent's
+ * own output counts.
+ */
+export function stepOutputOf(
+  format: WorkflowState["format"],
+  method: AgentMethod | undefined,
+): AgentOutput | undefined {
+  if (format !== undefined) return { type: format };
+  return method === undefined ? undefined : methodOutputOf(method);
 }
 
 /** Why a step can't call `name`: its agent has no such method. */

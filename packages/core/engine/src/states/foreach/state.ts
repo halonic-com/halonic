@@ -13,7 +13,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import type { RunningItem } from "../../kernel/run-items.ts";
-import { methodOf } from "../../kernel/step-method.ts";
+import { methodOf, stepOutputOf } from "../../kernel/step-method.ts";
 import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
 
 /**
@@ -25,7 +25,9 @@ import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
  * the results go to `output` as a list in item order and the state finishes
  * with `done`. With `method`, each item's agent gets the method's prompt,
  * with `with` rendered for the item, and its answer is checked against the
- * method's `output`. The first item that fails fails the run, as does an item
+ * method's `output`; a state's `format` comes first in that check, as for a
+ * plain `task` state. An item with no `input` gets the item itself, with the
+ * picked data (`gets`) after it. The first item that fails fails the run, as does an item
  * whose agent answers none of its `choice` options; an item's child run
  * its budget stopped stops this run for its budget too. An item's agent
  * can't pause for an approval, and an item's child run can't wait: when one
@@ -87,7 +89,8 @@ function takeCallResult(context: StateContext, input: EffectDoneInput): StateSte
   }
   const { method } = context.state;
   const called = method === undefined ? undefined : methodOf(context.agents, agent, method);
-  const checked = checkAnswer(context.agents, agent, result.output, called);
+  const stepOutput = stepOutputOf(context.state.format, called);
+  const checked = checkAnswer(context.agents, agent, result.output, stepOutput);
   if ("error" in checked) {
     const error = `Item ${running.item} of for-each state "${context.stateId}" failed: ${checked.error}`;
     return { ...nothing, outcome: { type: "fail", error, reason: checked.reason } };
