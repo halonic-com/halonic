@@ -1,59 +1,77 @@
-# HAL-7431 experiment, never merged: how long `icacls AppData /grant` takes on
-# a runner, and when the folder's own list gets the entry (before or after the
-# walk under it), with and without a busy temp folder.
+# HAL-7431 experiment, never merged: how long `icacls <folder> /grant` takes,
+# and whether the folder's own list has the entry before the walk under it
+# ends (so a stopped icacls has granted it or not).
 $ErrorActionPreference = "Continue"
-$appData = Split-Path $env:APPDATA -Parent
 $icacls = "$env:SystemRoot\System32\icacls.exe"
 $saved = Join-Path $env:RUNNER_TEMP "acl.txt"
 
-function Has-Entry([string]$sid) {
-  & $icacls $appData /save $saved | Out-Null
+# Local accounts, so each trial has a SID that SDDL writes in full.
+$sids = 1..8 | ForEach-Object {
+  $name = "halexp$_"
+  New-LocalUser -Name $name -NoPassword | Out-Null
+  (Get-LocalUser -Name $name).SID.Value
+}
+
+function Has-Entry([string]$folder, [string]$sid) {
+  & $icacls $folder /save $saved | Out-Null
   $text = [System.IO.File]::ReadAllText($saved, [System.Text.Encoding]::Unicode)
   return $text.Contains(";;;$sid)")
 }
 
-function Trial([string]$name, [string]$sid, [int]$killAfterMs) {
+function Trial([string]$name, [string]$folder, [string]$sid, [int]$killAfterMs) {
   $clock = [System.Diagnostics.Stopwatch]::StartNew()
-  $p = Start-Process -FilePath $icacls -ArgumentList @($appData, "/grant", "*${sid}:(RA)") -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP "$name.out")
-  $seen = $null
+  $p = Start-Process -FilePath $icacls -ArgumentList @($folder, "/grant", "*${sid}:(RA)") -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP "$name.out")
+  $seen = "never"
   $killed = $false
   while (-not $p.HasExited) {
-    if ($null -eq $seen -and (Has-Entry $sid)) { $seen = $clock.ElapsedMilliseconds }
-    if ($killAfterMs -gt 0 -and $clock.ElapsedMilliseconds -ge $killAfterMs) {
+    if ($seen -eq "never" -and (Has-Entry $folder $sid)) { $seen = "$($clock.ElapsedMilliseconds) ms" }
+    if ($killAfterMs -gt 0 -and $clock.ElapsedMilliseconds -ge $killAfterMs -and -not $p.HasExited) {
       Stop-Process -Id $p.Id -Force
       $killed = $true
       break
     }
-    Start-Sleep -Milliseconds 200
+    Start-Sleep -Milliseconds 100
   }
   $p.WaitForExit()
   $ended = $clock.ElapsedMilliseconds
-  $after = Has-Entry $sid
-  Write-Output ("{0}: ended {1} ms, killed {2}, exit {3}, entry first seen {4} ms, entry after {5}" -f $name, $ended, $killed, $p.ExitCode, $seen, $after)
+  $after = Has-Entry $folder $sid
+  Write-Output ("{0}: ended {1} ms, killed {2}, exit {3}, entry seen while running {4}, entry after {5}" -f $name, $ended, $killed, $p.ExitCode, $seen, $after)
 }
 
+$appData = Split-Path $env:APPDATA -Parent
 $count = (Get-ChildItem $appData -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count
 Write-Output "AppData holds $count items"
+Trial "appdata-full" $appData $sids[0] 0
+Trial "appdata-full-again" $appData $sids[1] 0
 
-Trial "quiet-full" "S-1-5-4" 0
-Trial "quiet-kill-1s" "S-1-5-6" 1000
-Trial "quiet-kill-3s" "S-1-5-14" 3000
+# A folder with a long walk: 200 folders of 200 files.
+$big = Join-Path $env:RUNNER_TEMP "big"
+1..200 | ForEach-Object {
+  $dir = New-Item -ItemType Directory -Force (Join-Path $big "d$_")
+  1..200 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $dir "f$_.txt"), "x") }
+}
+Write-Output "big holds $((Get-ChildItem $big -Recurse -Force | Measure-Object).Count) items"
+Trial "big-full" $big $sids[2] 0
+Trial "big-kill-1s" $big $sids[3] 1000
+Trial "big-kill-3s" $big $sids[4] 3000
 
-# A busy temp folder, as when the other fence tests run beside this one.
-$busy = 1..4 | ForEach-Object {
+# A busy machine: writers in the temp folder and CPU load, as when the other
+# fence tests run beside this one.
+$busy = 1..6 | ForEach-Object {
   Start-Job -ArgumentList $env:TEMP, $_ -ScriptBlock {
     param($temp, $n)
     $dir = Join-Path $temp "busy-$n"
     $stop = (Get-Date).AddMinutes(4)
     while ((Get-Date) -lt $stop) {
       New-Item -ItemType Directory -Force $dir | Out-Null
-      1..200 | ForEach-Object { Set-Content -Path (Join-Path $dir "f$_.txt") -Value $_ }
+      1..200 | ForEach-Object { [System.IO.File]::WriteAllText((Join-Path $dir "f$_.txt"), "x") }
       Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
     }
   }
 }
-Start-Sleep -Seconds 3
-Trial "busy-full" "S-1-5-13" 0
-Trial "busy-kill-1s" "S-1-5-2" 1000
+Start-Sleep -Seconds 5
+Trial "busy-appdata-full" $appData $sids[5] 0
+Trial "busy-big-full" $big $sids[6] 0
+Trial "busy-big-kill-2s" $big $sids[7] 2000
 $busy | Stop-Job
 $busy | Remove-Job -Force
