@@ -1,8 +1,8 @@
 # Decision: the refused example in `halonic trust` names the folder as typed
 
 - Approval: Liam approves this note when he signs it, after his review of this pull request on
-  [HAL-5692](/HAL/issues/HAL-5692), a follow-up of Julian's security review on
-  [HAL-5436](/HAL/issues/HAL-5436)
+  HAL-5692, a follow-up of Julian's security review on
+  HAL-5436
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6kWXvOhs23rGNJkvQHzkvIHdbeLsbh0Ni23ck4SD7+P3Z6zsyK2f8/6BQ1KTyX6R9HVGhe7XOxqTtZBPJ+t9Cg==
 

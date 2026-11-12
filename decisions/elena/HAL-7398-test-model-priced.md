@@ -1,7 +1,7 @@
 # Decision: remove the closed known gap test-model-unnamed-unpriced
 
 - Task: HAL-7398
-- Approval: [HAL-7398](/HAL/issues/HAL-7398) asks for this gap to be removed once it is fixed; Liam reviewed the change on [HAL-7433](/HAL/issues/HAL-7433) and approves this note in review on [HAL-7582](/HAL/issues/HAL-7582)
+- Approval: HAL-7398 asks for this gap to be removed once it is fixed; Liam reviewed the change on HAL-7433 and approves this note in review on HAL-7582
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/0Sa6CnOE7vVWEM6Lrk5HJar+Sn1lTqnurcopRLbOi0moNeQikk+tSnMZeGr+BJ/RQVCoK1LPtoyXO+w4jfsAQ==
 
