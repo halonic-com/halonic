@@ -12,6 +12,9 @@
   "include": [
     "src/index.ts",
     "src/r2-blob-store.ts",
+    "src/r2-definition-source.ts",
+    "src/definition-snapshot.ts",
+    "src/definition-snapshot-writer.ts",
     "src/**/*.workerd.test.ts"
   ]
 }

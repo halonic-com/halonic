@@ -4,7 +4,7 @@ Owner: priya · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The storage ports over Cloudflare's storage products, for the Worker. R2 holds the blobs now; D1 and the definition store follow.
+The storage ports over Cloudflare's storage products, for the Worker. R2 holds the blobs and the deployed workspace snapshot (read only); D1 follows.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
