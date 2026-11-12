@@ -87,30 +87,14 @@ section[hidden] {
 }
 
 /*
- * The logo: the ring from halonic.dev and the film's end card, blue to teal
- * across the ring at 135deg, its stroke 12% of the diameter. A mask, not a
- * border, so the stroke keeps its fraction (as on the site's header).
+ * The logo: the ring from halonic.dev and the film's end card, an inline SVG
+ * whose stroke is 16% of the diameter (0.16 x 100 in the viewBox), so it
+ * scales with the mark. Blue to teal at 135deg.
  */
 .logo {
-  --ring: 6.72px;
-  --ring-a: 38 104 237;
-  --ring-b: 20 184 162;
   align-self: center;
   width: 56px;
   height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgb(var(--ring-a)), rgb(var(--ring-b)));
-  mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - var(--ring)),
-    #000 calc(100% - var(--ring) + 0.6px)
-  );
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo {
-    --ring-a: 71 127 240;
-  }
 }
 
 h1 {
