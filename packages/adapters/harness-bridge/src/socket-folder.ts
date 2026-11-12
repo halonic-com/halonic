@@ -4,17 +4,41 @@ import { isAbsolute, join } from "node:path";
 import { KindedError } from "@halonicjs/std";
 
 /**
- * The longest Unix socket path Linux takes, in bytes: `sun_path` holds 108,
- * one of them the closing zero. A longer path makes `listen` fail with a bare
+ * The longest Unix socket path each system takes, in bytes, and its name for
+ * the message. `sun_path` holds 108 bytes on Linux and 104 on macOS, one of
+ * them the closing zero. A longer path makes `listen` fail with a bare
  * `EINVAL`, so the bridge checks it first and says what is wrong.
  */
-export const maxSocketPathBytes = 107;
+const socketPathLimits: Readonly<Record<string, { system: string; bytes: number }>> = {
+  linux: { system: "Linux", bytes: 107 },
+  darwin: { system: "macOS", bytes: 103 },
+};
+
+/** The limit of a system not listed above: Linux's, which Windows shares. */
+const otherSystemLimit = { system: "this system", bytes: 107 };
+
+/** The longest Unix socket path `platform` takes, in bytes. */
+export function maxSocketPathBytes(platform: NodeJS.Platform = process.platform): number {
+  return socketPathLimitOf(platform).bytes;
+}
+
+function socketPathLimitOf(platform: NodeJS.Platform): { system: string; bytes: number } {
+  return socketPathLimits[platform] ?? otherSystemLimit;
+}
 
 /** The socket's file name in its run folder. */
 const socketFileName = "bridge.sock";
 
 /** Only the user the bridge runs as may open the run folder, and so the socket in it. */
 const privateMode = 0o700;
+
+/** How to make a run's socket folder; tests choose what is otherwise random or this computer's. */
+export interface RunSocketFolderOptions {
+  /** The folder's name; short and random unless given. */
+  name?: string;
+  /** The system whose socket path limit applies; this computer's unless given. */
+  platform?: NodeJS.Platform;
+}
 
 /** One run's own folder and the socket path in it. */
 export interface RunSocketFolder {
@@ -24,7 +48,7 @@ export interface RunSocketFolder {
 
 /**
  * Creates a new folder for one run's socket in `parent`, which only this user
- * can open, and returns it with the socket's path. The folder's `name` is
+ * can open, and returns it with the socket's path. The folder's name is
  * short and random unless a test gives one, so the path stays short and no
  * two runs share a folder.
  *
@@ -39,18 +63,20 @@ export interface RunSocketFolder {
  */
 export async function makeRunSocketFolder(
   parent: string,
-  name: string = randomBytes(6).toString("base64url"),
+  options: RunSocketFolderOptions = {},
 ): Promise<RunSocketFolder> {
+  const { name = randomBytes(6).toString("base64url"), platform = process.platform } = options;
   if (!isAbsolute(parent)) {
     throw new KindedError("invalid_input", `The bridge's socket folder ${parent} isn't absolute.`);
   }
   const folder = join(parent, name);
   const socketPath = join(folder, socketFileName);
   const length = Buffer.byteLength(socketPath);
-  if (length > maxSocketPathBytes) {
+  const limit = socketPathLimitOf(platform);
+  if (length > limit.bytes) {
     throw new KindedError(
       "invalid_input",
-      `The bridge's socket path would be ${length} bytes, and Linux takes at most ${maxSocketPathBytes}. Move Halonic's data to a shorter path.`,
+      `The bridge's socket path would be ${length} bytes, and ${limit.system} takes at most ${limit.bytes}. Move Halonic's data to a shorter path.`,
     );
   }
   try {

@@ -6,10 +6,12 @@
 // the Studio shares once the Studio starts runs.
 //
 // In 0.1 it has no Halonic tools and no harnesses (a run whose agent names a
-// harness fails at that step with the engine's own error), and it has the
-// connectors it is given, none by default. The folder a run's programs start
-// in is ready all the same: `programFolders`, a copy at the run's commit for a
-// live run (HAL-4975).
+// harness fails at that step with the engine's own error). Each top-level
+// run starts its own connectors (`runConnectors`, HAL-6277) in the folder its
+// programs start in: `programFolders`, a copy at the run's commit for a live
+// run (HAL-4975). A chat turn calls the connectors it is given, none by
+// default. Sending is off for every connector: the CLI keeps no connector
+// settings yet.
 //
 // Its runs read `workspace`, or, for `routines watch`, the version each run
 // records (`versions`, HAL-6084).
@@ -63,6 +65,7 @@ import {
   runDefinitionsOf,
 } from "@halonicjs/workspace";
 import { abortOnStop } from "./abort-on-stop.ts";
+import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-connectors.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
@@ -82,7 +85,11 @@ export const engineLockFile = "engine.lock";
  * What an error the engine handles itself came from: the scheduler, the
  * engine's lock, or a leftover program copy it couldn't sweep.
  */
-export type EngineErrorSource = SchedulerErrorSource | "engine-lock" | "program-copies";
+export type EngineErrorSource =
+  | SchedulerErrorSource
+  | "engine-lock"
+  | "program-copies"
+  | "run-connectors";
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -118,8 +125,13 @@ export interface LocalEngineInput {
    * `routines watch` gave up on and couldn't cancel (HAL-5294).
    */
   holdsTimer?(timer: ScheduledTimer): boolean;
-  /** The connected servers of the workspace's connector files; none by default. */
+  /** The connected servers a chat turn calls; none by default. */
   readonly connectors?: readonly ConnectorClient[];
+  /**
+   * What each top-level run starts its hub's connectors with, in the folder
+   * its programs start in. Left out, a run calls no connector.
+   */
+  readonly runConnectors?: LocalRunConnectorsInput;
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
   /** Which git makes the copies a live run's programs start in; the one on the `PATH` by default. */
@@ -223,9 +235,10 @@ export interface LocalEngine {
  * await engine.close();
  */
 export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEngine> {
+  const location = await realpath(input.workspaceRoot);
   const folders = await workspaceFolders(
     profileFolder(input.environment ?? nodeProfileEnvironment()),
-    await realpath(input.workspaceRoot),
+    location,
     webCryptoDigest,
   );
   // Private like the run files in it, which hold prompts and model output (HAL-5215).
@@ -247,7 +260,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       reportError: (error) => input.reportError(error, "program-copies"),
       ...(input.git === undefined ? {} : { git: input.git }),
     });
-    engine = engineOn(input, folders, lock, programFolders);
+    engine = engineOn(input, { location, folders }, lock, programFolders);
     return engine;
   } catch (error) {
     await programFolders?.close();
@@ -256,10 +269,16 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
   }
 }
 
+/** Where the engine's workspace is: its real path, and its folders in the profile. */
+interface EnginePlace {
+  readonly location: string;
+  readonly folders: WorkspaceFolders;
+}
+
 /** The engine on the workspace's folders in the profile, which holds `lock` until it is closed. */
 function engineOn(
   input: LocalEngineInput,
-  folders: WorkspaceFolders,
+  { location, folders }: EnginePlace,
   lock: HeldLock,
   programFolders: ProgramFolders,
 ): LocalEngine {
@@ -298,6 +317,17 @@ function engineOn(
       await routines?.onTick(at);
     },
   });
+  const connectors =
+    input.runConnectors === undefined
+      ? undefined
+      : localRunConnectors(input.runConnectors, {
+          workspace: input.workspace,
+          readsOneVersion: versions === undefined,
+          location,
+          secrets: input.secrets,
+          programFolders,
+          reportError: (error) => input.reportError(error, "run-connectors"),
+        });
   executor = new LocalExecutor({
     resolveModel: latestModelResolver(input, latest),
     halonicTools: [],
@@ -321,6 +351,7 @@ function engineOn(
         versions === undefined
           ? runDefinitionsOf(input.workspace, hubId, workflowId)
           : await versions.definitionsOf(hubId, workflowId, version),
+      ...connectors?.runs,
     },
   });
   const opened = executor;
@@ -352,7 +383,12 @@ function engineOn(
             await scheduler.close();
           } finally {
             // After the scheduler, so no step still has a program running in a copy.
-            await programFolders.close();
+            try {
+              await connectors?.runs.runConnectors.closeAll();
+            } finally {
+              // Even when a connector failed to close: the copies are released all the same.
+              await programFolders.close();
+            }
           }
         } finally {
           // Last, so no other engine starts while this one still delivers a timer.

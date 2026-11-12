@@ -27,6 +27,8 @@ export type StepEnd =
 /** One step the run reached, in the order it reached them. */
 export interface RunStep {
   readonly stateId: string;
+  /** When the run entered the step, as the run log writes it. */
+  readonly startedAt: string;
   /** The agent the step ran, not one it handed a task to; `undefined` for a step without one. */
   readonly agentId: string | undefined;
   readonly end: StepEnd;
@@ -85,7 +87,12 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
     }
   }
   if (open !== undefined) {
-    steps.push({ stateId: open.stateId, agentId: open.agentId, end: stillOpen(open, summary) });
+    steps.push({
+      stateId: open.stateId,
+      startedAt: open.enteredAt,
+      agentId: open.agentId,
+      end: stillOpen(open, summary),
+    });
   }
   return steps;
 }
@@ -148,7 +155,7 @@ function closed(step: OpenStep, at: string, how: "done" | "failed"): RunStep {
     step.answer !== undefined && how === "done"
       ? { kind: "answered", ...step.answer }
       : { kind: how, tookMs: Date.parse(at) - Date.parse(step.enteredAt) };
-  return { stateId: step.stateId, agentId: step.agentId, end };
+  return { stateId: step.stateId, startedAt: step.enteredAt, agentId: step.agentId, end };
 }
 
 /**

@@ -15,11 +15,13 @@ import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { ModelCallResult } from "../kernel/decide-types.ts";
 import { agentIn } from "../kernel/kept-definitions.ts";
 import type { PendingCall } from "../kernel/run-state.ts";
+import { callMethodOf } from "../kernel/step-method.ts";
 import type { AgentKnowledge } from "../knowledge/agent-knowledge.ts";
 import { defaultRunMaxRounds, type RunTurn } from "../local-subagent.ts";
 import type { AbortOnStop } from "./abort-on-stop.ts";
 import { runTurnMessages } from "./agent-system-prompt.ts";
 import { openRunConnectorsOf } from "./connector-calls.ts";
+import { methodConnectors, methodHalonicTools } from "./method-tools.ts";
 
 /** What {@link runModelCall} needs for one model call of a run. */
 export interface RunModelCall {
@@ -61,6 +63,9 @@ export interface RunModelCall {
  * limit. The model gets the agent's instructions and skills as a system message
  * ({@link runTurnMessages}).
  *
+ * A call for a step with `method` uses the method's `model` as the alias, its `maxSteps` as the
+ * round limit, and only the tools its `tools` names ({@link methodHalonicTools}).
+ *
  * A connector tool its kept file lists under `read`, and not under `approve`, counts as reading:
  * its calls run without a person's OK, and the run log gets a `tool.unasked` before each one. A
  * `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item started
@@ -84,10 +89,12 @@ export interface RunModelCall {
 export async function runModelCall(input: RunModelCall): Promise<ModelCallResult> {
   const { turn, call, stop } = input;
   const agent = agentIn(turn.definitions, call.agent);
+  const method = callMethodOf(turn.definitions, call.state, call.agent);
   const messages = runTurnMessages(agent, turn.definitions, call.prompt);
   const model = await input.resolveModel({
     hubId: turn.run.hubId,
     agentId: call.agent,
+    ...(method?.model === undefined ? {} : { alias: method.model }),
     messages,
     tools: [],
   });
@@ -95,19 +102,22 @@ export async function runModelCall(input: RunModelCall): Promise<ModelCallResult
   const connectors =
     input.connectorsOfRun === undefined
       ? []
-      : await openRunConnectorsOf(
-          input.connectorsOfRun,
-          agent,
-          connectorTools,
-          turn.alongsideOthers,
+      : methodConnectors(
+          await openRunConnectorsOf(
+            input.connectorsOfRun,
+            agent,
+            connectorTools,
+            turn.alongsideOthers,
+          ),
+          method,
         );
-  const maxRounds = agent?.maxSteps ?? defaultRunMaxRounds;
+  const maxRounds = method?.maxSteps ?? agent?.maxSteps ?? defaultRunMaxRounds;
   const agentTurn = (signal?: AbortSignal) =>
     runAgentTurn({
       model,
       secrets: input.secrets,
       messages,
-      halonicTools: input.toolsOf(signal),
+      halonicTools: methodHalonicTools(input.toolsOf(signal), method),
       connectors,
       connectorTools,
       ...(input.effects === undefined ? {} : { effects: input.effects }),

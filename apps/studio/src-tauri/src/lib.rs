@@ -11,7 +11,8 @@
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
 //! (capabilities/desktop-files.json) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
-//! (capabilities/desktop-records.json); the Studio it then opens is
+//! (capabilities/desktop-records.json) and the `update_*` commands
+//! (capabilities/desktop-updates.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -28,25 +29,36 @@ mod records;
 mod runs;
 mod secrets;
 mod trust;
+#[cfg(desktop)]
+mod updates;
 mod window;
 mod workspace_data;
 
 use tauri::webview::PageLoadEvent;
-use tauri::{Builder, Manager, Runtime, WindowEvent};
+use tauri::{Builder, Manager, RunEvent, Runtime, WindowEvent};
 
 /// Starts the shell. Android calls this through the generated entry point;
-/// on desktop, `main` calls it.
+/// on desktop, `main` calls it. When Halonic quits with an update ready,
+/// the update installs (flow 4.5).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     shell(Builder::default())
-        .run(tauri::generate_context!())
-        .expect("the Studio shell could not start");
+        .build(tauri::generate_context!())
+        .expect("the Studio shell could not start")
+        .run(|app, event| {
+            if matches!(event, RunEvent::Exit) {
+                #[cfg(desktop)]
+                updates::install_at_quit(app);
+                #[cfg(mobile)]
+                let _ = app;
+            }
+        });
 }
 
 /// The shell's state, plugins and commands, on any runtime, so the tests
 /// check the same app that ships.
 fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
-    builder
+    let builder = builder
         .manage(navigation::ConfirmedAddress::default())
         .manage(git::GitState::default())
         .manage(secrets::SecretsState::default())
@@ -55,7 +67,14 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(runs::RunState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
-        .manage(files::FileState::default())
+        .manage(files::FileState::default());
+    #[cfg(desktop)]
+    let builder = builder
+        .manage(updates::Updates::default())
+        // Registered only so the shell can use it from Rust: no capability
+        // grants its commands, so no page can call them.
+        .plugin(tauri_plugin_updater::Builder::new().build());
+    builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
         // every page, the served Studio too, and make the page call
@@ -69,6 +88,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .plugin(navigation::guard())
         .setup(|app| {
             window::open(app.handle())?;
+            #[cfg(desktop)]
+            updates::start(app.handle());
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
@@ -77,12 +98,16 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             if payload.event() == PageLoadEvent::Started {
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
+                #[cfg(desktop)]
+                updates::end_page_watches(webview.app_handle(), webview.label());
             }
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {
                 agent_host::end_page_streams(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
+                #[cfg(desktop)]
+                updates::end_page_watches(window.app_handle(), window.label());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -119,6 +144,20 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             records::record_append,
             records::record_read,
             records::record_replace,
+            #[cfg(desktop)]
+            updates::update_status,
+            #[cfg(desktop)]
+            updates::update_watch,
+            #[cfg(desktop)]
+            updates::update_check,
+            #[cfg(desktop)]
+            updates::update_download,
+            #[cfg(desktop)]
+            updates::update_cancel,
+            #[cfg(desktop)]
+            updates::update_restart,
+            #[cfg(desktop)]
+            updates::update_set_automatic,
         ])
 }
 

@@ -79,7 +79,7 @@ async function watchVersions(
 ): Promise<StoppedResult> {
   const workspace = versions.latest();
   const typedDir = givenDir(input, dir);
-  await checkRunTrust(dir, workspace, setup.trust(), typedDir);
+  const trust = await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   // The routines as the last tick listed them, for the names the lines give.
   let routines: readonly PlacedRoutine[] = await versions.routines.list();
   const listed = () => routines;
@@ -93,6 +93,7 @@ async function watchVersions(
     dir,
     workspace,
     versions,
+    trust,
     runs: workflowsOf(routines),
     ending: runMessages.nothingRan(),
     ...stuckReports(context, listed, () => runStore),

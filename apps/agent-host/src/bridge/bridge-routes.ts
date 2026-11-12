@@ -35,7 +35,7 @@ interface OpenBridge {
  * the stream Studio opened it with: closing it ends the stream, and the
  * stream ending (Studio went away) closes it.
  *
- * Each bridge listens on a port of its own, so the table keeps at most
+ * Each bridge listens on a port or socket of its own, so the table keeps at most
  * `maxBridges`, counting those still opening and those still closing
  * (see {@link BridgeTable.reserve}).
  */
@@ -115,7 +115,8 @@ export class BridgeTable {
  *
  * - `POST /v1/bridge/open` with `{ runId, agentId, providers, prices }`
  *   answers with an NDJSON stream. Its first line is
- *   `{ type: "opened", bridge, url, token }` (or `{ type: "failed", message }`),
+ *   `{ type: "opened", bridge, url, token }`, with `socketPath` for a bridge on
+ *   a Unix socket (or `{ type: "failed", message }`),
  *   then come the channel's `call` and `cancel` lines, until the bridge closes.
  *   It answers 429 `too_many_bridges` instead when the bridge table is full.
  * - `POST /v1/bridge/answer` with `{ bridge, call, result }` or
@@ -214,6 +215,13 @@ async function openBridge(
     return undefined;
   }
   const id = bridges.add({ bridge, channel, stream });
-  stream.send({ type: "opened", bridge: id, url: bridge.url, token: bridge.token });
+  const { url, token, socketPath } = bridge;
+  stream.send({
+    type: "opened",
+    bridge: id,
+    url,
+    token,
+    ...(socketPath === undefined ? {} : { socketPath }),
+  });
   return { id, channel };
 }

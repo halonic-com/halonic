@@ -20,7 +20,7 @@ The Runs list shall lay its rows out in columns, in `halonic runs`' order: the s
 - Given a run the routine Morning brief started on its schedule of weekdays at 08:00,
   when its row is shown,
   then its Started by column reads "Schedule · weekdays at 08:00", with "Morning brief" in its tooltip,
-  and a screen reader hears "Started by the schedule, weekdays at 08:00, 10:40." at the end of its sentence.
+  and a screen reader hears "Started by the schedule for weekdays at 08:00, 10:40." at the end of its sentence.
 - Given a run of that routine that caught up after the computer slept,
   when its row is shown,
   then its Started by column reads "Caught up after sleep".

@@ -33,6 +33,10 @@ use tauri_plugin_http::reqwest;
 use crate::git::GitState;
 use crate::profile::cli_profile;
 
+#[path = "agent_host_life.rs"]
+mod life;
+pub use life::{end_page_streams, stop_host};
+
 /// How long the host may take to unpack its files and serve.
 const START_WAIT: Duration = Duration::from_secs(60);
 
@@ -263,14 +267,6 @@ pub fn agent_host_stream_end<R: Runtime>(webview: Webview<R>, stream: u64) {
     webview
         .state::<AgentHostState>()
         .end_streams(|key| key.page == page && key.stream == stream);
-}
-
-/// Ends every stream of the page `page`. The shell calls this when that
-/// page starts loading another document, or its window closes.
-pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
-    if let Some(state) = app.try_state::<AgentHostState>() {
-        state.end_streams(|key| key.page == page);
-    }
 }
 
 fn named_route(name: &str, answer: Answer) -> Result<Route, HostRefusal> {

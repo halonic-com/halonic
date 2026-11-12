@@ -90,4 +90,13 @@ runHeader(run, context); // { title: "Run 01jd8q", kindLabel: "Run · Support re
 runBanner(run, context); // { kind: "callout", tone: "warning", name: "Waiting for you", action: { kind: "review-in-inbox" }, … }
 ```
 
-Not there yet: the receipt, Every step and Details; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).
+Every step reads the run's whole log from the source (`RunsSource.log`) and lists the steps `runSteps` in `@halonicjs/app` finds, the same steps `halonic runs show` prints (requirement `runs.every-step`). Each entry is worked out in `run-view/every-step-model.ts`:
+
+```ts
+import { everyStep } from "./run-view/every-step-model.ts";
+
+everyStep(events, summary, workflow, new Date());
+// [{ id: "step-0", name: "Read", mark: "done", line: "Took 1 min", time: "10:40", label: "Read, done, 10:40, Took 1 min" }, …]
+```
+
+Not there yet: the receipt and Details; an entry's events in the side panel and Show the run log; Started by; the header's ⋮; Run again (T7); the failed banners by cause (HAL-1845).

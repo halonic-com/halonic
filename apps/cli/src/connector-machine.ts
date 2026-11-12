@@ -45,13 +45,18 @@ export interface ConnectorMachine extends WorkspaceTrustMachine {
 export function nodeConnectorMachine(): ConnectorMachine {
   return {
     factories: cliConnectorFactories(nodeProgramStarter, process.env),
-    http: createNodeHttpClient({ hostClass: connectorHostClass }),
+    http: connectorHttpClient(),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     tokens: new MemoryTokenStore(),
     trustStore: new FileTrustStore(trustFolder(profileFolder(nodeProfileEnvironment()))),
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
   };
+}
+
+/** What an `http` connector reaches its server with: Node's, with the CLI's address rules. */
+export function connectorHttpClient(): HttpClient {
+  return createNodeHttpClient({ hostClass: connectorHostClass });
 }
 
 /**

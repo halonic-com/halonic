@@ -34,10 +34,13 @@ If the sandbox can't start, the step doesn't run, and no option makes it
 (requirements `cli.sandbox-gate` and `cli.run-sandbox-gate`). The one exception
 is an agent you chose to run on this computer; see
 ["This computer" has none of it](#this-computer-has-none-of-it). The CLI ends
-with exit 9 and names one reason code: `windows`, `container`,
-`user-namespaces-restricted`, `bubblewrap-missing`, `linux-tools-missing`,
-`ripgrep-missing` or `other`. When more than one applies, the first in that list wins, because its
-fix comes first ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)).
+with exit 9 and names one reason code: `windows`, `container`, `not-supported`,
+`blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`,
+`distro-missing`, `setup-conflict`, `setup-needed`, `user-namespaces-restricted`,
+`bubblewrap-missing`, `linux-tools-missing`, `ripgrep-missing`, `sign-in-needed`
+or `other`. When more than one applies, the first in that list wins, because its
+fix comes first: what Halonic can't fix, then what an administrator can, then
+what you can do in one step ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)).
 
 ## The limits
 
@@ -70,8 +73,9 @@ On Windows the fence uses srt's alpha Windows mode (decision D44). It works
 only after srt's one-time install, run once as an administrator, and it has no
 `env`, `sh` or process group, so the launcher builds one `cmd.exe` command line
 and stops a program with `taskkill`. A program, argument or variable with a
-double quote, a percent sign, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `windows`, and the CLI says to
-use Halonic inside WSL 2.
+double quote, a percent sign, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `setup-needed`, and the CLI says to
+set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or to
+finish this sandbox's setup there.
 
 ## "This computer" has none of it
 

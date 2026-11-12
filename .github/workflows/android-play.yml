@@ -3,17 +3,25 @@
 # Play App Signing is on, so Google re-signs it with the app-signing key it
 # holds; the upload key only proves the upload came from us (HAL-1375).
 #
-# Two jobs, so the upload key is never on the machine that runs the build:
+# Separate jobs, so the upload key is never on the machine that runs the build
+# or talks to Google:
 # - build: an unsigned release bundle. It holds no secret. In a dry run it
 #   also signs a copy with a throwaway key, to test the signing steps.
 # - sign: signs the bundle with the upload key. It runs only in the
 #   `release` environment, whose secrets hold the key, and only from main.
+# - play-upload: uploads the signed bundle to Play's internal testing track.
+# - play-apk: downloads the universal APK Play signed with its app signing
+#   key and checks that key's fingerprint. That APK is the one GitHub
+#   releases ship, so GitHub and Play installs can update each other
+#   (HAL-6852, HAL-1203).
+# Both Play jobs run in the `release` environment, which also holds the
+# upload key; they don't see it only because they never read its secrets.
 #
 # Run it from the Actions tab. A pull request that changes this workflow,
 # the signing action or what decides the bundle's cleartext setting (the
 # manifest, the app's Gradle file, its res/xml files, the Android Tauri
-# config, the check itself) runs it too, always as a dry run. Uploading to
-# Play is by hand for now; CI uploads through Google's API later.
+# config, the check itself) runs it too, always as a dry run. A dry run
+# never reaches Play: Play never takes a version code twice.
 
 name: Android Play build
 
@@ -50,6 +58,7 @@ jobs:
       contents: read
     outputs:
       bundle: ${{ steps.plan.outputs.bundle }}
+      version_code: ${{ steps.plan.outputs.version_code }}
       dry_run: ${{ steps.plan.outputs.dry_run }}
     env:
       CARGO_TERM_COLOR: always
@@ -198,5 +207,215 @@ jobs:
         with:
           name: android-aab-signed
           path: bundle/${{ needs.build.outputs.bundle }}
+          if-no-files-found: error
+          retention-days: 14
+
+  # Two jobs talk to Play, so a slow Play can be waited out: the upload runs
+  # once, and "Re-run failed jobs" repeats only the APK download, because
+  # Play never takes a version code twice. Both jobs run in the `release`
+  # environment, the only one Play's sign-in accepts. That environment also
+  # holds the upload key's secrets, and the only thing keeping the key away
+  # from these jobs is that they don't read them: never add `secrets.*` here.
+  play-upload:
+    name: Upload the signed bundle to Play
+    needs: [build, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      id-token: write
+    # Unlike the default `bash -e`, this also fails a pipe when an earlier
+    # command in it fails.
+    defaults:
+      run:
+        shell: bash
+    env:
+      PLAY_API: https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.halonic.studio
+      PLAY_UPLOAD_API: https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/com.halonic.studio
+    outputs:
+      version_code: ${{ steps.upload.outputs.version_code }}
+    steps:
+      # Checked before signing in, so a missing value gives a clear message
+      # instead of an error from Google. None of the three is a secret: the
+      # first two are variables of the `release` environment, the
+      # fingerprint is a repo variable. The fingerprint is only used by
+      # play-apk, but a release without it must not reach Play at all.
+      - name: Check the Play settings
+        env:
+          PLAY_WIF_PROVIDER: ${{ vars.PLAY_WIF_PROVIDER }}
+          PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          PLAY_APP_SIGNING_CERT_SHA256: ${{ vars.PLAY_APP_SIGNING_CERT_SHA256 }}
+        run: |
+          missing=0
+          for name in PLAY_WIF_PROVIDER PLAY_SERVICE_ACCOUNT PLAY_APP_SIGNING_CERT_SHA256; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The $name variable is empty (HAL-1203)."
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android-aab-signed
+          path: bundle
+      # Workload Identity Federation: GitHub's sign-in token is swapped for a
+      # short-lived Google token for the Play service account. No key file
+      # exists (HAL-6855).
+      - id: google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WIF_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      # One edit: upload the bundle, put it on the internal testing track and
+      # commit. The release is a draft: Play accepts nothing else while the
+      # app has never been published, and a draft is enough for Play to
+      # build the signed APK play-apk downloads.
+      - id: upload
+        name: Upload the bundle to the internal testing track
+        env:
+          TOKEN: ${{ steps.google.outputs.access_token }}
+          BUNDLE: bundle/${{ needs.build.outputs.bundle }}
+          EXPECTED_VERSION_CODE: ${{ needs.build.outputs.version_code }}
+        run: |
+          play() { curl --fail-with-body -sS -H "Authorization: Bearer $TOKEN" "$@"; }
+          # jq prints "null" for a missing field, so check every value Play
+          # sends back before the next request uses it.
+          require() {
+            if [ -z "$2" ] || [ "$2" = "null" ]; then
+              echo "::error::Play's answer had no $1."
+              exit 1
+            fi
+          }
+          edit=$(play -X POST "$PLAY_API/edits" | jq -r .id)
+          require "edit id" "$edit"
+          version_code=$(play -X POST -H "Content-Type: application/octet-stream" \
+            --data-binary "@$BUNDLE" "$PLAY_UPLOAD_API/edits/$edit/bundles?uploadType=media" \
+            | jq -r .versionCode)
+          require "version code for the uploaded bundle" "$version_code"
+          if [ "$version_code" != "$EXPECTED_VERSION_CODE" ]; then
+            echo "::error::Play read version code $version_code from the bundle; the build set $EXPECTED_VERSION_CODE."
+            exit 1
+          fi
+          jq -n --arg code "$version_code" \
+            '{track: "internal", releases: [{versionCodes: [$code], status: "draft"}]}' \
+            | play -X PUT -H "Content-Type: application/json" --data-binary @- \
+              "$PLAY_API/edits/$edit/tracks/internal" > /dev/null
+          play -X POST "$PLAY_API/edits/$edit:commit" > /dev/null
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Play::Version code $version_code is a draft on the internal testing track."
+
+  play-apk:
+    name: Fetch and check the APK Play signed
+    needs: [build, play-upload]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      PACKAGE: com.halonic.studio
+      PLAY_API: https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.halonic.studio
+      VERSION_CODE: ${{ needs.play-upload.outputs.version_code }}
+    outputs:
+      apk: ${{ steps.names.outputs.apk }}
+    steps:
+      # play-upload already checked that this is the code the build set; a
+      # re-run of this job alone must still fetch that same version.
+      - id: names
+        name: Check the version code and work out the APK's file name
+        env:
+          BUNDLE: ${{ needs.build.outputs.bundle }}
+          EXPECTED_VERSION_CODE: ${{ needs.build.outputs.version_code }}
+        run: |
+          if [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" != "$EXPECTED_VERSION_CODE" ]; then
+            echo "::error::play-upload reported version code '$VERSION_CODE'; the build set $EXPECTED_VERSION_CODE."
+            exit 1
+          fi
+          echo "apk=${BUNDLE%.aab}-play.apk" >> "$GITHUB_OUTPUT"
+      - id: google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WIF_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      # Play builds the signed APKs from the bundle a few minutes after the
+      # upload. Until then the list is empty or not found. When the wait runs
+      # out the release fails: there is no fallback to an APK we sign
+      # ourselves, so GitHub and Play installs always share one signature.
+      - name: Download the universal APK Play signed
+        env:
+          TOKEN: ${{ steps.google.outputs.access_token }}
+          APK: ${{ steps.names.outputs.apk }}
+        run: |
+          play() { curl --fail-with-body -sS -H "Authorization: Bearer $TOKEN" "$@"; }
+          download_id=""
+          for attempt in $(seq 1 40); do
+            status=$(curl -sS -o "$RUNNER_TEMP/generated.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $TOKEN" "$PLAY_API/generatedApks/$VERSION_CODE")
+            case "$status" in
+              200) download_id=$(jq -r '[.generatedApks[]?.generatedUniversalApk.downloadId // empty][0] // empty' \
+                     "$RUNNER_TEMP/generated.json") ;;
+              404) ;;
+              *) cat "$RUNNER_TEMP/generated.json"
+                 echo "::error::Play answered HTTP $status when asked for the signed APKs."
+                 exit 1 ;;
+            esac
+            if [ -n "$download_id" ]; then break; fi
+            echo "Play has not built the APK yet (check $attempt of 40)"
+            sleep 15
+          done
+          if [ -z "$download_id" ]; then
+            echo "::error::Play had no signed universal APK for version code $VERSION_CODE after 10 minutes. Re-run the failed jobs later: only the download runs again; never ship an APK signed with the upload key."
+            exit 1
+          fi
+          mkdir -p apk
+          play -L -o "apk/$APK" \
+            "$PLAY_API/generatedApks/$VERSION_CODE/downloads/$download_id:download?alt=media"
+      # The APK must carry Play's app signing certificate, copied from the
+      # Play Console into PLAY_APP_SIGNING_CERT_SHA256. apksigner prints the
+      # digest in lowercase without colons, so the variable is compared in
+      # that form. Any mismatch fails the release.
+      - name: Check the APK's signature
+        env:
+          APK: apk/${{ steps.names.outputs.apk }}
+          EXPECTED: ${{ vars.PLAY_APP_SIGNING_CERT_SHA256 }}
+        run: |
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$build_tools/apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/certs.txt"
+          expected=$(tr -d ':' <<< "$EXPECTED" | tr '[:upper:]' '[:lower:]')
+          signers=$(sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt")
+          if [ "$signers" != "$expected" ]; then
+            echo "::error::The APK is not signed only with Play's app signing key. Expected $expected, got: $signers"
+            exit 1
+          fi
+          echo "::notice title=Play signature::Signed with Play's app signing key $expected"
+      # The release manifest keeps the settings HAL-1140 decided: plain
+      # http:// to the user's own computer, and no backup of app data.
+      - name: Check the APK's manifest
+        env:
+          APK: apk/${{ steps.names.outputs.apk }}
+        run: |
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$build_tools/aapt2" dump badging "$APK" > "$RUNNER_TEMP/badging.txt"
+          "$build_tools/aapt2" dump xmltree --file AndroidManifest.xml "$APK" > "$RUNNER_TEMP/manifest.txt"
+          fail() { echo "::error::$1"; exit 1; }
+          grep -q "^package: name='$PACKAGE' versionCode='$VERSION_CODE'" "$RUNNER_TEMP/badging.txt" \
+            || fail "The APK is not $PACKAGE with version code $VERSION_CODE."
+          grep -Eq 'usesCleartextTraffic\(0x[0-9a-f]+\)=(true|\(type 0x12\)0xffffffff)$' "$RUNNER_TEMP/manifest.txt" \
+            || fail "The APK does not allow cleartext traffic, which the connect shell needs (HAL-1140)."
+          grep -Eq 'allowBackup\(0x[0-9a-f]+\)=(false|\(type 0x12\)0x0)$' "$RUNNER_TEMP/manifest.txt" \
+            || fail "The APK allows backups of app data; the release manifest must keep allowBackup off."
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-apk-play-signed
+          path: apk/${{ steps.names.outputs.apk }}
           if-no-files-found: error
           retention-days: 14

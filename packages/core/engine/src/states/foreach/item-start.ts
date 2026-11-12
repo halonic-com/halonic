@@ -1,7 +1,8 @@
-import { childInput, promptFor, withGets } from "@halonicjs/workflow";
+import { childInput, methodPrompt, promptFor, withGets } from "@halonicjs/workflow";
 import { agentCallEffect } from "../../kernel/agent-call.ts";
 import type { DecidedEvent, Effect } from "../../kernel/decide-types.ts";
 import type { StateContext } from "../../kernel/registry.ts";
+import { methodOf, noMethodError } from "../../kernel/step-method.ts";
 import { maxChildDepth } from "../workflow/state.ts";
 
 /** The name an item has in templates when the state gives no `as`. */
@@ -17,16 +18,18 @@ export interface ItemStart {
 }
 
 /**
- * What the state runs for each item, or why it can't run it: a workflow
- * must be among the definitions the run started with, and its child runs
- * nest at most {@link maxChildDepth} deep, as a `workflow` state's do.
+ * What the state runs for each item, or why it can't run it: an agent must
+ * have the `method` the state calls, a workflow must be among the
+ * definitions the run started with, and its child runs nest at most
+ * {@link maxChildDepth} deep, as a `workflow` state's do.
  */
-export function itemWorkOf({ run, stateId, state, workflows }: StateContext): ItemWork | string {
+export function itemWorkOf(context: StateContext): ItemWork | string {
+  const { run, stateId, state, workflows } = context;
   const workflow = state.workflow;
   if (workflow === undefined) {
     return state.agent === undefined
       ? `For-each state "${stateId}" names no agent or workflow.`
-      : { agent: state.agent };
+      : agentWorkOf(context, state.agent);
   }
   if (!Object.hasOwn(workflows, workflow)) {
     return `Workflow "${workflow}" isn't among the definitions this run started with, so for-each state "${stateId}" can't start it.`;
@@ -36,6 +39,13 @@ export function itemWorkOf({ run, stateId, state, workflows }: StateContext): It
     return `For-each state "${stateId}" would start child runs ${depth} deep; child runs nest at most ${maxChildDepth} deep.`;
   }
   return { workflow };
+}
+
+function agentWorkOf({ stateId, state, agents }: StateContext, agent: string): ItemWork | string {
+  if (state.method !== undefined && methodOf(agents, agent, state.method) === undefined) {
+    return noMethodError(stateId, agent, state.method);
+  }
+  return { agent };
 }
 
 /**
@@ -56,17 +66,37 @@ export function startItem(
   if ("workflow" in work) {
     return startChild(context, work.workflow, { [name]: item }, itemScope, index);
   }
-  const { run, stateId, state, agents } = context;
+  const { run, stateId, agents } = context;
   const agent = work.agent;
   const callId = `call-${run.calls + startedBefore + 1}`;
-  const prompt =
-    state.input === undefined
-      ? asText(item)
-      : withGets(promptFor(state.input, itemScope, run.input), state.gets, itemScope);
+  const prompt = itemPrompt(context, agent, item, itemScope);
   return {
     event: { type: "agent.started", state: stateId, agent, prompt, item: index },
     effect: agentCallEffect(run, agents, { callId, state: stateId, agent, prompt }),
   };
+}
+
+/**
+ * What an item's agent is asked: the method's prompt when the state calls
+ * one, else its `input`, each with the picked data after it, else the item.
+ */
+function itemPrompt(
+  { run, state, agents }: StateContext,
+  agent: string,
+  item: unknown,
+  itemScope: Record<string, unknown>,
+): string {
+  const method = state.method === undefined ? undefined : methodOf(agents, agent, state.method);
+  if (state.method !== undefined && method !== undefined) {
+    return withGets(
+      methodPrompt(state.method, method, state.with, itemScope),
+      state.gets,
+      itemScope,
+    );
+  }
+  return state.input === undefined
+    ? asText(item)
+    : withGets(promptFor(state.input, itemScope, run.input), state.gets, itemScope);
 }
 
 /** With no `input`, the child gets `{ <as>: item }`. */

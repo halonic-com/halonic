@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
-import type { PlaceSignal } from "@halonicjs/studio-shell";
+import type { PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
 import { type InboxDecisions, inboxDecisions } from "./decide.ts";
 import { inboxSignal } from "./inbox-count.ts";
 import {
@@ -49,10 +49,31 @@ export interface SetupEntry {
 export interface InboxSetupSource {
   /** The provider's id, such as `google`. Item keys start with it. */
   readonly provider: string;
+  /** The provider's name as you read it, such as "Google": "Loading the Google setup". */
+  readonly name: string;
+  /**
+   * The view of one item at its current step, loaded only when an item opens. Its module exports
+   * a component that takes {@link SetupViewProps} and moves focus to the current step's title as
+   * it mounts. Without it, the Inbox shows the item's title and progress line.
+   */
+  readonly view?: ViewRef;
   /** Every account that needs you now, one entry each. */
   list(): Promise<readonly SetupEntry[]>;
   /** Calls `listener` whenever an entry may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
+}
+
+/** What a setup source's view gets from the Inbox's pane. */
+export interface SetupViewProps {
+  /** The open item, the latest the source listed. It stays once the setup is done. */
+  readonly item: SetupItem;
+  /**
+   * Whether the engine answers. While it doesn't, the view shows what it has, keeps its copy
+   * buttons and links working, and marks the buttons that act with `aria-disabled`.
+   */
+  readonly answering: boolean;
+  /** **Not now**: closes the item and puts focus back on its row. */
+  readonly close: () => void;
 }
 
 /** What the Inbox holds now. */
@@ -197,6 +218,25 @@ export class Inbox {
     for (const listener of [...this.#listeners]) listener();
   }
 
+  /**
+   * Asks the Inbox page to open an account's setup item, at its current step. The connector page,
+   * the library's connector chip, the run banner and the routine chip call it, then open the Inbox
+   * place, as Home's Needs you does with {@link requestOpen}.
+   *
+   * @example
+   * inbox.openSetup("google", accountRef);
+   * openPlace("inbox");
+   */
+  openSetup(provider: string, account: string): void {
+    this.requestOpen(setupKey(provider, account));
+  }
+
+  /** The setup source of a provider, for its name and its item's view. */
+  setupSource(provider: string): InboxSetupSource | undefined {
+    for (const source of this.#setupSources.keys()) if (source.provider === provider) return source;
+    return undefined;
+  }
+
   /** The item the page was asked to open, once: the request is cleared as it's taken. */
   takeOpenRequest(): InboxItem | undefined {
     const key = this.#toOpen;
@@ -224,8 +264,7 @@ export class Inbox {
   }
 
   #hasProvider(provider: string): boolean {
-    for (const source of this.#setupSources.keys()) if (source.provider === provider) return true;
-    return false;
+    return this.setupSource(provider) !== undefined;
   }
 
   #set(state: InboxState): void {

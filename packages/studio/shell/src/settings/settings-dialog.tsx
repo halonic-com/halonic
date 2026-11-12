@@ -19,7 +19,18 @@ export interface SettingsSectionProps {
    * to the page's heading (flow-settings 3).
    */
   readonly closeSettings: () => void;
+  /** In the desktop app, or in a browser: "Follow this computer" or "Follow this browser". */
+  readonly place: SettingsPlace;
 }
+
+/**
+ * The line under a `display` section's name: where its values are saved (flow-settings 5 and 6).
+ * The same for Appearance, Formats and Developer, so the container writes it, not each section.
+ */
+export const displaySavedLines: Readonly<Record<SettingsPlace, string>> = {
+  app: "Saved on this computer, for every workspace.",
+  served: "Saved in this browser. The computer running Halonic keeps its own.",
+};
 
 /** Props for {@link SettingsDialog}. */
 export interface SettingsDialogProps {
@@ -115,6 +126,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               section={section}
               context={props.contextFor(section.featureId)}
               closeSettings={props.onClose}
+              place={place}
             />
           )}
         </div>
@@ -132,21 +144,21 @@ function SectionView({
   section,
   context,
   closeSettings,
-}: {
-  readonly section: Registered<SettingsSectionContribution>;
-  readonly context: WorkspaceContext;
-  readonly closeSettings: () => void;
-}) {
+  place,
+}: SettingsSectionProps & { readonly section: Registered<SettingsSectionContribution> }) {
   const View = useSectionView(section);
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
       <h3 id={`settings-section-${section.id}`} className="text-section text-fg">
         {section.title}
       </h3>
+      {section.scope === "display" ? (
+        <p className="mt-1 text-small text-fg-muted">{displaySavedLines[place]}</p>
+      ) : null}
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
       <ViewErrorBoundary>
         <Suspense fallback={null}>
-          <View context={context} closeSettings={closeSettings} />
+          <View context={context} closeSettings={closeSettings} place={place} />
         </Suspense>
       </ViewErrorBoundary>
     </section>

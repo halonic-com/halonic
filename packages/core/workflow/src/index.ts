@@ -25,6 +25,7 @@ export {
   stateTimers,
   type TimerTransition,
 } from "./machine.ts";
+export { methodPrompt } from "./method-prompt.ts";
 export { parseDuration } from "./parse-duration.ts";
 export {
   getPath,

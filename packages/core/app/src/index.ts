@@ -267,6 +267,12 @@ export {
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
 export {
+  type PluginTrustSection,
+  pluginTrustSectionHeadings,
+  pluginTrustSectionOrder,
+  pluginTrustSections,
+} from "./plugin-trust-sections.ts";
+export {
   ProgramCopies,
   type ProgramCopyLease,
   ProgramCopyUnavailableError,

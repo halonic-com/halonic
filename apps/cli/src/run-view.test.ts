@@ -295,7 +295,8 @@ verifies("cli.run-view", () => {
     expect(linesOf(events)).toEqual(["! Run the checks waiting for you since 14:02"]);
   });
 
-  it("names a step's agent by the model alias of the method it calls", () => {
+  // The engine doesn't call methods yet: a step with one runs its agent as if it had none.
+  it("names a step's agent by its own model alias, not that of the method it names", () => {
     const withMethod = {
       ...supportReply,
       states: { ...supportReply.states, read: { type: "task", agent: "writer", method: "read" } },
@@ -312,7 +313,7 @@ verifies("cli.run-view", () => {
     const summary = summarizeOrThrow(events);
     const lines = stepLines(events, summary, { workflow: withMethod, agent: () => writer }, clock);
     expect(lines.map((line) => plainText(line).replace(/ {2,}/g, " "))).toEqual([
-      "✓ Read Writer · fast 1 s",
+      "✓ Read Writer · smart 1 s",
     ]);
   });
 

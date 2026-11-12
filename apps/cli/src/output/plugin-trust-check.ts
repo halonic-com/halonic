@@ -1,13 +1,18 @@
 // Turns a plugin's trust content into the lines `halonic plugin add` shows
 // before it asks (cli-output 3.6): the same sections, headings and order as
-// Studio's trust check (microcopy 24 T6-T9, CHECK P8): Tools for agents,
+// Studio's trust check (microcopy 24 T6-T9, CHECK P8), taken from the shared
+// `pluginTrustSections` (app.plugin-trust-sections): Tools for agents,
 // Programs on this computer, Secrets, Addresses, then the last line. Studio's
 // "In Studio" section is left out: 0.1 has no Studio to draw the plugin's
 // settings, commands, cards or panel, and that part carries no code
-// (HAL-6417). A section shows only when it has something in it. Every word
-// comes from the catalogue; this file only decides which sentence goes where.
+// (HAL-6417). Every word comes from the catalogue; this file only decides
+// which sentence goes where.
 
-import type { PluginTrustContent } from "@halonicjs/app";
+import {
+  type PluginTrustContent,
+  type PluginTrustSection,
+  pluginTrustSections,
+} from "@halonicjs/app";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
@@ -34,23 +39,47 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
 export function pluginTrustCheckLines(content: PluginTrustContent): Phrase[] {
   return [
     pluginMessages.trustQuestion(printable(content.plugin.name)).phrase,
-    ...toolsSection(content),
-    ...programsSection(content),
-    ...secretsSection(content),
-    ...addressesSection(content),
+    ...pluginTrustSections(content).flatMap((name) => sectionLines(content, name)),
     phrase``,
     pluginMessages.notChecked().phrase,
   ];
 }
 
-/** A section with its heading after an empty line, or nothing when it has no rows. */
-function section(heading: Message, rows: readonly Phrase[]): Phrase[] {
-  return rows.length === 0 ? [] : [phrase``, heading.phrase, ...rows];
+/** Each section the CLI shows, with its heading from the catalogue and its rows. */
+const cliSections: Readonly<
+  Record<
+    Exclude<PluginTrustSection, "in-studio">,
+    {
+      readonly heading: () => Message;
+      readonly rows: (content: PluginTrustContent) => Phrase[];
+    }
+  >
+> = {
+  tools: { heading: pluginMessages.toolsHeading, rows: toolRows },
+  programs: { heading: pluginMessages.programsHeading, rows: programRows },
+  secrets: { heading: pluginMessages.secretsHeading, rows: secretRows },
+  addresses: { heading: pluginMessages.addressesHeading, rows: addressRows },
+};
+
+/**
+ * The CLI's heading for each section it shows, for the parity check with
+ * Studio's (app.plugin-trust-sections).
+ */
+export const pluginTrustCheckHeadings = (): Partial<Record<PluginTrustSection, string>> =>
+  Object.fromEntries(
+    Object.entries(cliSections).map(([name, { heading }]) => [name, plainText(heading().phrase)]),
+  );
+
+/** A section with its heading after an empty line; "In Studio" has nothing to show here. */
+function sectionLines(content: PluginTrustContent, name: PluginTrustSection): Phrase[] {
+  if (name === "in-studio") return [];
+  const { heading, rows } = cliSections[name];
+  return [phrase``, heading().phrase, ...rows(content)];
 }
 
 /** Tools grouped by what they do; a tool that changes or sends something asks a person first. */
-function toolsSection(content: PluginTrustContent): Phrase[] {
-  const rows = riskGroups.flatMap(({ risk, heading }) => {
+function toolRows(content: PluginTrustContent): Phrase[] {
+  return riskGroups.flatMap(({ risk, heading }) => {
     const names = content.tools
       .filter((tool) => tool.risk === risk)
       .map((tool) =>
@@ -60,15 +89,13 @@ function toolsSection(content: PluginTrustContent): Phrase[] {
       );
     return names.map((name, index) => row(index === 0 ? plainHeading(heading()) : "", name));
   });
-  return section(pluginMessages.toolsHeading(), rows);
 }
 
-function programsSection(content: PluginTrustContent): Phrase[] {
-  const rows = content.localTools.map((tool) => {
+function programRows(content: PluginTrustContent): Phrase[] {
+  return content.localTools.map((tool) => {
     const command = [...startWords(tool.start), ...tool.args].join(" ");
     return row(printable(tool.id), phrase`${printable(command)}`);
   });
-  return section(pluginMessages.programsHeading(), rows);
 }
 
 /** What starts the program: `npx @acme/tool 1.2.0` for a package, `node tools/run.js` for a script. */
@@ -79,21 +106,19 @@ function startWords(start: Record<string, unknown>): string[] {
 }
 
 /** Each secret with the one address it goes to. */
-function secretsSection(content: PluginTrustContent): Phrase[] {
-  const rows = content.secrets.map((secret) =>
+function secretRows(content: PluginTrustContent): Phrase[] {
+  return content.secrets.map((secret) =>
     row(
       printable(secret.name),
       pluginMessages.secretGoesTo(secret.hosts.map(shownHost).join(", ")).phrase,
     ),
   );
-  return section(pluginMessages.secretsHeading(), rows);
 }
 
 /** Every address the plugin may reach, once each, in the order the content lists them. */
-function addressesSection(content: PluginTrustContent): Phrase[] {
+function addressRows(content: PluginTrustContent): Phrase[] {
   const hosts = new Set(content.hosts.map((entry) => shownHost(entry.host)));
-  const rows = [...hosts].map((host) => phrase`  ${host}`);
-  return section(pluginMessages.addressesHeading(), rows);
+  return [...hosts].map((host) => phrase`  ${host}`);
 }
 
 /** A host as written, or the setting that holds it. */

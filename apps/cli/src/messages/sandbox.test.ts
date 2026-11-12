@@ -34,13 +34,13 @@ describe("the sandbox sentences", () => {
       "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
       "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version <distro> 2 in PowerShell on Windows, then run it again.",
-      "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox.",
+      "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
       "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. Then run it again.",
       "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
       "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
-      "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, then run it again.",
-      "Another program set up the sandbox on this computer, in a way Halonic can't use. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, then run it again.",
-      "The sandbox's one-time setup isn't done for this version of Halonic. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there, then run it again.",
+      "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
+      "Another program set up the sandbox on this computer, in a way Halonic can't use. Use Halonic inside WSL 2 on this computer, then run it again.",
+      "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again.",
       "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
@@ -80,7 +80,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "A company policy on this computer blocks the sandbox.",
-        "Fix: ask whoever manages this computer to allow it, or pick another sandbox in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
+        "Fix: ask whoever manages this computer to allow it. Then run halonic doctor again.",
       ],
       [
         "Hardware virtualisation is turned off on this computer.",
@@ -96,15 +96,15 @@ describe("the sandbox sentences", () => {
       ],
       [
         "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
-        "Fix: set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
+        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
         "Another program set up the sandbox on this computer, in a way Halonic can't use.",
-        "Fix: set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox. Then run halonic doctor again.",
+        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
         "The sandbox's one-time setup isn't done for this version of Halonic.",
-        "Fix: set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there. Then run halonic doctor again.",
+        "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
         "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",

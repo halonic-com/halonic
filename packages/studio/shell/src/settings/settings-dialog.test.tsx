@@ -167,3 +167,20 @@ verifies("shell.settings-keyboard", () => {
     expect(row(container, "Assistant").tabIndex).toBe(-1);
   });
 });
+
+verifies("shell.settings-saved-line", () => {
+  it("says where a display section is saved, under its name", async () => {
+    const lineUnder = (container: HTMLElement) =>
+      container.querySelector("section h3 + p")?.textContent;
+    const { container } = await open();
+    expect(lineUnder(container)).toBe("Saved on this computer, for every workspace.");
+    unmountAll();
+    const served = await open({ place: "served" });
+    expect(lineUnder(served.container)).toBe(
+      "Saved in this browser. The computer running Halonic keeps its own.",
+    );
+    unmountAll();
+    const host = await open({ requested: "assistant" });
+    expect(host.container.querySelector("section")?.textContent).not.toContain("Saved");
+  });
+});

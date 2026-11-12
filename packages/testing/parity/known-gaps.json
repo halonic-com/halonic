@@ -14,11 +14,11 @@
     ]
   },
   {
-    "id": "task-method-ignored",
-    "task": "HAL-4757",
-    "area": "workflow runs: a task step method and with",
-    "old": "784f78d built the prompt of the extract step from the clerk extract method and its with values, and used the method model, steps, tools and output fields.",
-    "new": "The engine ignores method and with: the clerk gets the run input as JSON.",
+    "id": "method-fields-in-file-order",
+    "task": "HAL-7123",
+    "area": "workflow runs: the fields line of a method prompt",
+    "old": "784f78d's prompt for a step that calls a method named the fields of the method's JSON answer in the order the agent file lists them (the extract method: vendor, amount, note).",
+    "new": "The engine names them in name order (amount, note, vendor), because runs keep their definitions as canonical JSON. The rest of the prompt and the answer are the same; HAL-7123 makes this an allowed difference once a user key can sign its note (HAL-3434).",
     "tests": [
       "billing/invoice/an approved invoice is paid and announced",
       "billing/invoice/a rejection with a comment ends in rejected",

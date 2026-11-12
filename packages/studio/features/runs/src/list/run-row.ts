@@ -272,7 +272,7 @@ export function currentStepName(summary: RunSummary, workflow: RunWorkflow | und
  * How a step is named (cli-output 3.4): the first line of its description,
  * trimmed, else its id with only the first letter made a capital.
  */
-function stepName(stateId: string, description: string | undefined): string {
+export function stepName(stateId: string, description: string | undefined): string {
   const firstLine = description?.split("\n")[0]?.trim() ?? "";
   if (firstLine !== "") {
     return firstLine;

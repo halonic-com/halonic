@@ -6,6 +6,7 @@ import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { type SandboxSetup, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
+import { bridgeSocketFolder } from "./bridge/socket-folder.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
@@ -123,9 +124,10 @@ export async function run(
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
   if (lock !== null) void sandbox.sweepOnce();
+  const host = hostServices(version, sandbox, bridgeSocketFolder(profileFolder));
   try {
-    if (args.includes("--stdio")) return await serveOverFrames(args, version, io, sandbox);
-    await serve(version, io, sandbox);
+    if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
+    await serve(io, host);
     return 0;
   } finally {
     // After serving: its sessions are closed by then.
@@ -154,9 +156,8 @@ function answer(io: HostIo, result: { ok: boolean }): number {
  * or a file, where other programs could read it. The host stops when its
  * standard input closes, so it never outlives that program.
  */
-async function serve(version: string, io: HostIo, sandbox: SrtSandbox): Promise<void> {
+async function serve(io: HostIo, host: HostServices): Promise<void> {
   const token = randomLaunchToken();
-  const host = hostServices(version, sandbox);
   const server = await startHostServer(token, host.routes);
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
@@ -182,9 +183,8 @@ async function serve(version: string, io: HostIo, sandbox: SrtSandbox): Promise<
  */
 async function serveOverFrames(
   args: readonly string[],
-  version: string,
   io: HostIo,
-  sandbox: SrtSandbox,
+  host: HostServices,
 ): Promise<number> {
   const relayHost = args[args.indexOf("--relay-host") + 1] ?? "";
   const relayPort = Number(relayHostPattern.exec(relayHost)?.[1] ?? 0);
@@ -194,7 +194,6 @@ async function serveOverFrames(
   }
   const output = io.takeOutput();
   const token = randomLaunchToken();
-  const host = hostServices(version, sandbox);
   const handshake: FramedHandshake = { token };
   output.write(`${JSON.stringify(handshake)}\n`);
   const server = serveHostOverFrames(token, host.routes, { input: io.input, output }, relayPort);
@@ -207,10 +206,20 @@ async function serveOverFrames(
 }
 
 /** The routes the host serves, and how to stop all they started. */
+interface HostServices {
+  routes: HostRoute[];
+  stop(): Promise<void>;
+}
+
+/**
+ * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});
+ *   `undefined` for bridges on loopback ports
+ */
 function hostServices(
   version: string,
   sandbox: SrtSandbox,
-): { routes: HostRoute[]; stop(): Promise<void> } {
+  socketFolder: string | undefined,
+): HostServices {
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
   const runs = new RunTable();
@@ -218,7 +227,14 @@ function hostServices(
   const routes = [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
-    ...bridgeRoutes((secrets) => new NodeHarnessBridgeServer({ secrets }), bridges),
+    ...bridgeRoutes(
+      (secrets) =>
+        new NodeHarnessBridgeServer({
+          secrets,
+          ...(socketFolder === undefined ? {} : { socketFolder }),
+        }),
+      bridges,
+    ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];

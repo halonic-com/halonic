@@ -7,6 +7,7 @@
 // `init --example acme` runs straight away. The service that starts the run
 // doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
 
+import type { TrustGrant } from "@halonicjs/ports";
 import { type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -37,6 +38,8 @@ export type RunTrustMachine = WorkspaceTrustMachine;
  * @param nothingDone - the end of line 1 saying nothing happened:
  *   `runMessages.nothingRan()`, the default, or `sandboxMessages.nothingSent()`
  * @param harness - the harness the run names for all its agents, if any
+ * @returns the trust grant the run's connectors start with, or `null` for a
+ *   run that can only reach the test model, which starts no program
  * @throws WorkspaceFileProblemsError when `halonic validate` would find an
  *   error in the workspace's files; nothing ran (exit 2)
  * @throws NotTrustedError when the workspace was never trusted here, or
@@ -49,14 +52,14 @@ export async function checkRunTrust(
   typedDir: string | undefined,
   nothingDone: Message = runMessages.nothingRan(),
   harness?: string,
-): Promise<void> {
+): Promise<TrustGrant | null> {
   refuseFileProblems(dir, workspace, nothingDone, typedDir);
   const integrations = await workspaceIntegrations(dir.root, dir.shown);
   if (
     !startsAProgram(harness) &&
     reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations))
   ) {
-    return;
+    return null;
   }
-  await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
+  return await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
 }
