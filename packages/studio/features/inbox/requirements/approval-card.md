@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1218; [card requirements](/HAL/issues/HAL-64#document-requirements) INBOX-CARD-01, 05, 13, 15 to 18, 31; [flow-inbox](/HAL/issues/HAL-877#document-flow-inbox) 5.3; [ux-checklists-approvals](/HAL/issues/HAL-1250#document-ux-checklists-approvals) 2.1 to 2.4 and 2.6; [ux-checklists](/HAL/issues/HAL-1069#document-ux-checklists) 2.5 to 2.7; [microcopy](/HAL/issues/HAL-751#document-microcopy) 10.2 and 19; the way back on the decided card (HAL-4008)
+- Source: HAL-1218; card requirements (HAL-64) INBOX-CARD-01, 05, 13, 15 to 18, 31; flow-inbox (HAL-877) 5.3; ux-checklists-approvals (HAL-1250) 2.1 to 2.4 and 2.6; ux-checklists (HAL-1069) 2.5 to 2.7; microcopy (HAL-751) 10.2 and 19; the way back on the decided card (HAL-4008)
 
 The approval card shall be a region named by its title, "_Agent_ wants to use _tool_ (_connector_)", and opening it shall focus the title, never Approve. The header says since when it waits, counting on every minute while the card is open, and has **Open run**. The action shows the summary as its heading, the neutral tag "External connector (MCP)" for a tool from a connector, the raw name, and every argument with **Show raw JSON**. A tool approval shows no timer.
 

@@ -1,6 +1,6 @@
 # Decision: the engine's `parallel` state
 
-- Approval: step 5(b) of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan), approved by Liam on [HAL-1515](/HAL/issues/HAL-1515); the package owner (Liam, core) approves this note in review
+- Approval: step 5(b) of the HAL-186 implementation plan, approved by Liam on HAL-1515; the package owner (Liam, core) approves this note in review
 - Kind: internal
 - Task: HAL-1536
 

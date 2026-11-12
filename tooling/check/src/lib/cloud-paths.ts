@@ -16,7 +16,7 @@ export const cloudPathPatterns: readonly RegExp[] = [
   /^packages\/testing\/contracts\/(src\/)?target\//,
   /^apps\/cli\/src\/commands\/deploy\//,
   /^\.github\/workflows\/live-cloud\.yml$/,
-  /^tooling\/check\/src\/(cli|lib)\/(cloud-affected|cloud-paths|live-sweep|live-resources)\.ts$/,
+  /^tooling\/check\/src\/(cli|lib)\/(cloud-affected|cloud-paths|live-sweep|live-resources|live-probe)\.ts$/,
 ];
 
 /** True when a repo-relative path is a cloud path. */
@@ -32,6 +32,7 @@ export function cloudAffectedFiles(changed: readonly string[]): string[] {
 /** What every live run installs and builds with, whatever package it tests. */
 const workspaceSetupPaths: readonly string[] = [
   ".github/actions/setup",
+  ".npmrc",
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
@@ -40,8 +41,8 @@ const workspaceSetupPaths: readonly string[] = [
 /**
  * The folders and files a live result depends on: every package that holds a
  * cloud path, the workspace packages they depend on (transitively), the
- * workspace setup (root manifest, lockfile, workspace file, the CI setup
- * action) and the cloud paths outside packages. When none of these changed,
+ * workspace setup (root manifest, lockfile, workspace file, `.npmrc`, the
+ * CI setup action) and the cloud paths outside packages. When none of these changed,
  * an earlier passing live run still holds.
  */
 export function liveInputPaths(

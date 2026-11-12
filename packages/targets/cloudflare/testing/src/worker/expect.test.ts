@@ -51,6 +51,32 @@ describe("the shim's expect", () => {
     expect(counted.getState().assertionCalls).toBe(7);
   });
 
+  it("puts the caller's message first in a failure, as Vitest does", () => {
+    expect(() => shimExpect(1, "media type").toBeNull()).toThrow(
+      "media type: expected 1 to be null",
+    );
+    expect(() => shimExpect(() => {}).toThrow(RangeError)).toThrow(
+      "expected a function to throw RangeError",
+    );
+  });
+
+  it("checks what a promise rejected with under rejects, and fails when it resolves", async () => {
+    await shimExpect(Promise.reject(new RangeError("bad"))).rejects.toThrow(RangeError);
+    await shimExpect(() => Promise.reject(new RangeError("bad"))).rejects.not.toThrow(TypeError);
+    await expect(shimExpect(Promise.resolve(3), "put").rejects.toThrow()).rejects.toThrow(
+      "put: promise resolved 3 instead of rejecting",
+    );
+    expect(() => shimExpect(3).rejects).toThrow(
+      "You must provide a Promise to expect() when using .rejects, not 'number'.",
+    );
+  });
+
+  it("counts one assertion for a check under rejects", async () => {
+    const counted = createExpect();
+    await counted(Promise.reject(new Error("x"))).rejects.toThrow("x");
+    expect(counted.getState().assertionCalls).toBe(1);
+  });
+
   it("lists its matchers for the build's check", () => {
     expect(matcherNames).toEqual([
       "toBe",
@@ -58,6 +84,7 @@ describe("the shim's expect", () => {
       "toBeGreaterThanOrEqual",
       "toBeNull",
       "toBeUndefined",
+      "toThrow",
     ]);
   });
 });

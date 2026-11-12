@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-1668 failure-path decisions](/HAL/issues/HAL-1668#document-decisions); task HAL-1728, reviewed on HAL-2085
+- Source: HAL-1668 failure-path decisions; task HAL-1728, reviewed on HAL-2085
 
 The ports package shall give adapters that aren't model providers one error, `RunFailureError`, to say why a run can't go on, with a `failure` that is exactly one of `disk-full`, `sandbox-start-failed` and `harness-start-failed`, and an `isRunFailureError(value)` check that tells it apart by its `name` and `failure`, without `instanceof`, so it works when an adapter has its own copy of the package. A model provider says why a call failed with `ModelCallError` instead, so the model fallback can read it. The engine decides `budget`, `cancelled`, `interrupted` and `error` itself, so an adapter can't name them.
 

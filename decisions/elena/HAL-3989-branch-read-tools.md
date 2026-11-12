@@ -1,6 +1,6 @@
 # Decision: a parallel branch is offered only connector tools that read
 
-- Approval: [HAL-3989](/HAL/issues/HAL-3989), the follow-up to HAL-1532 that asks for this; the package owner approves this note in review
+- Approval: HAL-3989, the follow-up to HAL-1532 that asks for this; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-3989
 

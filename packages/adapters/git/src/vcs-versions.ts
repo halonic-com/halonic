@@ -5,7 +5,7 @@ import { checkCommitId, checkPublicWorkspacePath, isPrivateWorkspacePath } from 
 import type { ConfigEntry } from "./hardening.ts";
 import { fitsOnBatchLine, isRegularFileMode, readObjects, treeEntries } from "./object-batch.ts";
 import { inPathBatches } from "./path-batches.ts";
-import type { Repository } from "./repository.ts";
+import type { GitCalls, Repository } from "./repository.ts";
 
 /**
  * Commits every public file on disk, new ones included and ignored ones
@@ -50,7 +50,7 @@ export async function snapshotCommit(
  * @throws Error `Unknown version <id>` when the repository has no such commit
  */
 export async function readAtCommit(
-  open: () => Promise<Repository>,
+  open: () => Promise<GitCalls>,
   version: string,
   path: string,
 ): Promise<string | null> {
@@ -82,7 +82,7 @@ export async function readAtCommit(
  * `cat-file --batch`'s input, with one call for each step.
  */
 async function readAtCommitCallByCall(
-  repository: Repository,
+  repository: GitCalls,
   version: string,
   path: string,
 ): Promise<string | null> {
@@ -101,7 +101,7 @@ async function readAtCommitCallByCall(
  * @throws as {@link readAtCommit}
  */
 export async function listAtCommit(
-  open: () => Promise<Repository>,
+  open: () => Promise<GitCalls>,
   version: string,
   dir?: string,
 ): Promise<string[] | null> {
@@ -128,11 +128,7 @@ interface TreeFile {
 const fileModes = new Set(["100644", "100755"]);
 
 /** The regular files of the commit's tree, under `path` when given. */
-async function filesAt(
-  repository: Repository,
-  version: string,
-  path?: string,
-): Promise<TreeFile[]> {
+async function filesAt(repository: GitCalls, version: string, path?: string): Promise<TreeFile[]> {
   const args = ["ls-tree", "-r", "-z", version, ...(path === undefined ? [] : ["--", path])];
   const files: TreeFile[] = [];
   for (const line of nulSeparated(await repository.output({ args }))) {
@@ -152,7 +148,7 @@ async function filesAt(
  *
  * @throws as {@link readAtCommit}
  */
-export async function checkKnownVersion(repository: Repository, version: string): Promise<void> {
+export async function checkKnownVersion(repository: GitCalls, version: string): Promise<void> {
   const found = await repository.run({ args: ["cat-file", "-t", version] });
   checkIsCommit(version, found.code === 0 ? text(found.stdout) : null);
 }

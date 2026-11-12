@@ -1,6 +1,6 @@
 # Decision: connectors reach runs through the side-effect boundary
 
-- Approval: step 4(c) of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan), and [HAL-3325](/HAL/issues/HAL-3325), which kept connectors out of runs until 4c; the package owner approves this note in review
+- Approval: step 4(c) of the HAL-186 implementation plan, and HAL-3325, which kept connectors out of runs until 4c; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-1532
 

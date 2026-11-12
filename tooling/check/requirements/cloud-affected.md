@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-6701
 
-If a change touches a cloud path (a `cloudflare-*` or `store-s3` adapter, `packages/targets`, `packages/host`, `core/ports`, the target contract tests, the deploy command, the `live-cloud` workflow or the code that decides and sweeps for it), then `cloud-affected` shall answer yes and list those files; for any other change it shall answer no. Its inputs hash shall cover every package that holds a cloud path, the workspace packages they depend on and the lockfile, so a live result is reused only when none of these changed (ADR 5.9).
+If a change touches a cloud path (a `cloudflare-*` or `store-s3` adapter, `packages/targets`, `packages/host`, `core/ports`, the target contract tests, the deploy command, the `live-cloud` workflow or the code that decides, probes and sweeps for it), then `cloud-affected` shall answer yes and list those files; for any other change it shall answer no. Its inputs hash shall cover every package that holds a cloud path, the workspace packages they depend on and the workspace setup (lockfile, root `package.json`, `pnpm-workspace.yaml`, `.npmrc` and the CI setup action), so a live result is reused only when none of these changed (ADR 5.9).
 
 ## Examples
 

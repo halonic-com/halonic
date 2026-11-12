@@ -2,7 +2,7 @@
 
 - Requirements: `events.effect-requested` (`packages/core/events/requirements/effect-requested.md`),
   `events.run-log-contract` (`packages/core/events/requirements/run-log-contract.md`)
-- Task: HAL-1532, step 4(c) of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan)
+- Task: HAL-1532, step 4(c) of the HAL-186 implementation plan
 - Approval: the plan and the port ADR (`docs/adr/2026-11-07-port-list-and-versions.md`, "Run log additions") ask for this record; the maintainer approves this note in review
 - Kind: internal
 

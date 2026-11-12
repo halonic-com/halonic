@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1218; E5 in the [HAL-186 plan](/HAL/issues/HAL-186#document-implementation-plan) (approvals routed by `callId`); [ux-checklists-approvals](/HAL/issues/HAL-1250#document-ux-checklists-approvals) 2.2 and 2.3
+- Source: HAL-1218; E5 in the HAL-186 plan (approvals routed by `callId`); ux-checklists-approvals (HAL-1250) 2.2 and 2.3
 
 The Inbox shall send your answer to the run that waits for it: Approve as `approve`, Reject as `reject`, Ask for changes as `reject` with the note as `{ comment }`, and any other answer a `wait` step takes by its event name. An answer to a tool call shall name its call id, so the engine refuses an answer that no longer matches the call the run waits on. An answer to a `wait` step names no call.
 

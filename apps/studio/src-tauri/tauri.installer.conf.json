@@ -7,9 +7,11 @@
       "nsis"
     ],
     "externalBin": [
-      "binaries/halonic-agent-host"
+      "binaries/halonic-agent-host",
+      "binaries/halonic-sandbox-elevate"
     ],
     "resources": {
+      "binaries/srt-win.exe": "srt-win.exe",
       "windows/sandbox-step.ps1": "sandbox-step.ps1",
       "windows/sandbox-remove.ps1": "sandbox-remove.ps1",
       "../../../LICENSE": "LICENSE",

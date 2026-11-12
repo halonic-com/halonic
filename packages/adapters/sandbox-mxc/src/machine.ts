@@ -19,6 +19,9 @@ export interface MxcSdk {
 /** Loads MXC's SDK. */
 export type LoadMxcSdk = () => Promise<MxcSdk>;
 
+/** Imports the module `@microsoft/mxc-sdk/v1`, untouched. */
+export type ImportMxcSdk = () => Promise<unknown>;
+
 /** Which Windows this is, as Node reads it. */
 export interface WindowsRelease {
   /** The build number, such as 26200. Windows 11 starts at 22000. */
@@ -77,9 +80,9 @@ export function supportOf(sdk: MxcSdk): MxcSupport {
  * The real machine. The SDK is loaded the first time it is needed, and
  * what it says is kept for the rest of the process, as the SDK keeps it too.
  *
- * @param loadSdk - loads MXC's SDK; until the adapter depends on it, the default says it isn't installed
+ * @param loadSdk - loads MXC's SDK; the default loads it only on Windows, see {@link mxcSdkLoader}
  */
-export function systemMachine(loadSdk: LoadMxcSdk = sdkNotInstalled): MxcMachine {
+export function systemMachine(loadSdk: LoadMxcSdk = mxcSdkLoader(process.platform)): MxcMachine {
   let support: Promise<MxcSupport> | null = null;
   return {
     platform: process.platform,
@@ -106,6 +109,46 @@ export function windowsReleaseOf(osRelease: string, osVersion: string): WindowsR
   return { build: Number.isInteger(build) ? build : 0, productName: osVersion };
 }
 
-async function sdkNotInstalled(): Promise<MxcSdk> {
+/**
+ * Loads MXC's SDK on Windows only, and only when it is called: never at
+ * module top level, so other systems never touch the SDK or its native
+ * modules. Keeps only the two calls in {@link MxcSdk}, so the adapter can't
+ * reach the SDK's telemetry (`requestTelemetryConsent`) or anything else.
+ * Every failure rejects, and {@link systemMachine} turns that into
+ * `loaded: false`, which `check()` reports as `other`.
+ *
+ * @param platform - the operating system, as Node names it
+ * @param importSdk - imports `@microsoft/mxc-sdk/v1`; until the adapter declares the SDK (HAL-7606), the default says it isn't installed
+ */
+export function mxcSdkLoader(
+  platform: NodeJS.Platform,
+  importSdk: ImportMxcSdk = sdkNotInstalled,
+): LoadMxcSdk {
+  return async () => {
+    if (platform !== "win32") {
+      throw new Error(`it runs only on Windows, and this is ${platform}`);
+    }
+    return mxcSdkOf(await importSdk());
+  };
+}
+
+/**
+ * The two calls the adapter reads from the SDK's module, and nothing else.
+ *
+ * @throws when the module lacks either call
+ */
+function mxcSdkOf(module: unknown): MxcSdk {
+  const { getPlatformSupport, getAvailableBackends } =
+    typeof module === "object" && module !== null ? (module as Partial<MxcSdk>) : {};
+  if (typeof getPlatformSupport !== "function" || typeof getAvailableBackends !== "function") {
+    throw new Error("its module has no getPlatformSupport() and getAvailableBackends()");
+  }
+  return {
+    getPlatformSupport: () => getPlatformSupport(),
+    getAvailableBackends: () => getAvailableBackends(),
+  };
+}
+
+async function sdkNotInstalled(): Promise<unknown> {
   throw new Error("this build of Halonic doesn't include it yet");
 }

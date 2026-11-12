@@ -23,6 +23,7 @@ verifies("check.cloud-affected", () => {
       "apps/cli/src/commands/deploy/plan.ts",
       ".github/workflows/live-cloud.yml",
       "tooling/check/src/cli/live-sweep.ts",
+      "tooling/check/src/lib/live-probe.ts",
     ])("answers yes for %s", (file) => {
       expect(cloudAffectedFiles(["README.md", file])).toEqual([file]);
     });
@@ -61,6 +62,7 @@ verifies("check.cloud-affected", () => {
       expect(liveInputPaths(files, packages)).toEqual([
         ".github/actions/setup",
         ".github/workflows/live-cloud.yml",
+        ".npmrc",
         "package.json",
         "packages/adapters/cloudflare-r2",
         "packages/core/events",
@@ -73,6 +75,7 @@ verifies("check.cloud-affected", () => {
     test("is only the workspace setup while there are no cloud paths", () => {
       expect(liveInputPaths(["packages/core/format/src/a.ts"], packages)).toEqual([
         ".github/actions/setup",
+        ".npmrc",
         "package.json",
         "pnpm-lock.yaml",
         "pnpm-workspace.yaml",

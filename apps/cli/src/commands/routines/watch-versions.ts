@@ -3,11 +3,13 @@
 // is due, as `LiveRoutines` reads it for the Studio's scheduler, or the
 // saved files with history off. A version made while the watch runs is
 // checked as the first one was, for trust, the sandbox and local only,
-// before any run starts from it.
+// before any run starts from it. A run's connectors start from the version
+// it read, with the grant of that version's trust check (HAL-7500).
 
 import { LiveRoutines, liveVersionOf, runSourceFor } from "@halonicjs/app";
 import type { RunDefinitions } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
+import type { TrustGrant } from "@halonicjs/ports";
 import {
   filesOf,
   type LoadedWorkspace,
@@ -17,6 +19,7 @@ import {
 } from "@halonicjs/workspace";
 import { OwnLineError } from "../../command.ts";
 import type { WorkspaceVersions } from "../../local-engine-host.ts";
+import type { TrustedVersion } from "../../local-run-connectors.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -29,15 +32,34 @@ import {
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 
 /**
- * Checks a version before a run starts from it: trust, and the sandbox for
- * the workflow it starts, as the watch checked its first version.
- *
- * @throws why no run may start from it
+ * The checks a version passes before anything starts from it, as the watch
+ * checked its first version.
  */
-export type VersionCheck = (
-  workspace: LoadedWorkspace,
-  run: { readonly hubId: string; readonly workflowId: string },
-) => Promise<void>;
+export interface VersionChecks {
+  /**
+   * Checks that the version may run here.
+   *
+   * @returns the grant its connectors start with, or `null` for a version
+   *   that can only reach the test model, which starts no program
+   * @throws why nothing may start from it
+   */
+  trust(workspace: LoadedWorkspace): Promise<TrustGrant | null>;
+  /**
+   * Checks the sandbox for the workflow a run starts.
+   *
+   * @throws why the run may not start
+   */
+  sandbox(
+    workspace: LoadedWorkspace,
+    run: { readonly hubId: string; readonly workflowId: string },
+  ): Promise<void>;
+}
+
+/** Until the watch sets its own: every version passes, and starts no program. */
+const noChecks: VersionChecks = {
+  trust: async () => null,
+  sandbox: async () => {},
+};
 
 /**
  * The versions of one watch, open until {@link WatchedVersions.close}:
@@ -48,7 +70,7 @@ export type VersionCheck = (
  * const versions = await WatchedVersions.open(dir, setup.history);
  * try {
  *   const first = versions.latest(); // check trust and the sandbox on it
- *   versions.checkWith(check);
+ *   versions.checkWith(checks);
  *   // the engine: { workspace: first, versions }, its scheduler on versions.routines
  * } finally {
  *   await versions.close();
@@ -64,7 +86,7 @@ export class WatchedVersions implements WorkspaceVersions {
   #latest: LoadedWorkspace;
   /** The last version loaded at a commit, so the routines due at one time load it once. */
   #atCommit: { readonly commit: string; readonly workspace: LoadedWorkspace } | undefined;
-  #check: VersionCheck = async () => {};
+  #checks: VersionChecks = noChecks;
 
   private constructor(
     dir: OpenWorkspaceDir,
@@ -120,9 +142,9 @@ export class WatchedVersions implements WorkspaceVersions {
     return this.#latest;
   }
 
-  /** Sets the check each later run's version passes first; until then, none. */
-  checkWith(check: VersionCheck): void {
-    this.#check = check;
+  /** Sets the checks each later run's version passes first; until then, none, and no grant. */
+  checkWith(checks: VersionChecks): void {
+    this.#checks = checks;
   }
 
   /**
@@ -137,18 +159,35 @@ export class WatchedVersions implements WorkspaceVersions {
     workflowId: string,
     version: RunVersion | undefined,
   ): Promise<RunDefinitions> {
-    const workspace = await this.#workspaceAt(version);
-    if (isLocalOnly(workspace) !== this.#localOnly) {
-      throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
-    }
-    await this.#check(workspace, { hubId, workflowId });
+    const { workspace } = await this.#trustedAt(version);
+    await this.#checks.sandbox(workspace, { hubId, workflowId });
     this.#latest = workspace;
     return runDefinitionsOf(workspace, hubId, workflowId);
+  }
+
+  /**
+   * The version a run read, as its connectors start from it: checked for
+   * trust again, as a run that started in an earlier watch was checked
+   * there, with the grant of that check. It doesn't change {@link latest}.
+   *
+   * @throws when the version changes local only, can't be read, or fails its trust check
+   */
+  async trustedVersionOf(version: RunVersion): Promise<TrustedVersion> {
+    return await this.#trustedAt(version);
   }
 
   /** Closes the history. */
   async close(): Promise<void> {
     await this.#history?.close();
+  }
+
+  /** The workspace a run of `version` reads, if it keeps local only and passes its trust check. */
+  async #trustedAt(version: RunVersion | undefined): Promise<TrustedVersion> {
+    const workspace = await this.#workspaceAt(version);
+    if (isLocalOnly(workspace) !== this.#localOnly) {
+      throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
+    }
+    return { workspace, trust: await this.#checks.trust(workspace) };
   }
 
   /** The workspace a run of `version` reads; the one read last for a start that names none. */

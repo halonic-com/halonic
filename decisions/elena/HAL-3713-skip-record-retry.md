@@ -1,6 +1,6 @@
 # Decision: removed routines' values are deleted with retries, and queued times start without `catchUp`
 
-- Approval: asked for by the package owner (Liam) in his review of #1102, points 3 and 4 of [HAL-3713](/HAL/issues/HAL-3713); he approves this note in review
+- Approval: asked for by the package owner (Liam) in his review of #1102, points 3 and 4 of HAL-3713; he approves this note in review
 - Kind: internal
 - Task: HAL-3713
 

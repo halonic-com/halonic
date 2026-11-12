@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { NodeProblem } from "./doctor-lines.ts";
 import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
+import type { DoctorHarness } from "./doctor-sign-ins.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
 import type { SandboxChoice } from "./sandbox-choice.ts";
 import type { TrustCheck } from "./trust-service.ts";
@@ -70,6 +71,8 @@ interface Machine {
   freeBytes?: number;
   models?: ProviderModels[];
   codex?: HarnessDetection;
+  /** Codex as a whole, in place of one that only answers `codex`. */
+  codexHarness?: DoctorHarness;
   /** The sandbox choice; the host has none when left out. */
   choice?: SandboxChoice | null;
   secrets?: Record<string, string>;
@@ -105,7 +108,11 @@ function doctor(machine: Machine = {}) {
     },
     resources: { read: async () => resources },
     harnesses: [
-      { id: "codex", name: "Codex", detect: async () => machine.codex ?? { status: "missing" } },
+      machine.codexHarness ?? {
+        id: "codex",
+        name: "Codex",
+        detect: async () => machine.codex ?? { status: "missing" },
+      },
     ],
     secrets,
     ...(machine.choice === undefined
@@ -240,6 +247,40 @@ verifies("app.doctor-service", () => {
       problems: [{ problem: "missing", agent: "Writer", harness: "codex", name: "Codex" }],
     });
     expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+
+  it("names an agent that isn't signed in in the settings folder the host gives it", async () => {
+    const { service } = doctor({
+      codexHarness: {
+        id: "codex",
+        name: "Codex",
+        signIn: { program: "codex", args: ["login"], folderVariable: "CODEX_HOME" },
+        // The person is signed in in their own folder, and only Reviewer in its own.
+        detect: async (options) =>
+          [undefined, "/data/reviewer/codex"].includes(options?.settingsFolder)
+            ? { status: "ready", version: "0.9.2" }
+            : { status: "signed-out", version: "0.9.2" },
+      },
+    });
+    const folders = (agentId: string, harnessId: string) =>
+      agentId === "odd" ? undefined : `/data/${agentId}/${harnessId}`;
+    const agents = [agent("Writer", "codex"), agent("Reviewer", "codex"), agent("Odd", "codex")];
+
+    const report = await service.check({
+      ...workspace({ agents }),
+      harnessSettingsFolder: folders,
+    });
+    const without = await service.check(workspace({ agents }));
+
+    expect(report.harnesses?.status).toBe("warning");
+    expect(report.harnesses?.problems).toEqual([
+      expect.objectContaining({
+        problem: "signed-out",
+        agent: "Writer",
+        settingsFolder: "/data/writer/codex",
+      }),
+    ]);
+    expect(without.harnesses?.problems).toEqual([]);
   });
 
   it("lists a ready harness outside a workspace, and has no Harnesses line when none is ready or used", async () => {

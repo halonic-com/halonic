@@ -1,4 +1,4 @@
-import type { AgentMethod, Workflow } from "@halonicjs/format";
+import type { AgentMethod, AgentOutput, Workflow } from "@halonicjs/format";
 import type { ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -40,12 +40,16 @@ const tools = [
 ];
 
 /** Runs the method workflow to its end on the given answers, noting the models asked for. */
-async function runMethod(answers: Parameters<typeof runsOn>[0], method: AgentMethod = draft) {
+async function runMethod(
+  answers: Parameters<typeof runsOn>[0],
+  method: AgentMethod = draft,
+  agentOutput: AgentOutput = { type: "text" },
+) {
   const asked: ChatTurnRequest[] = [];
   const runs = new KernelRuns();
   const setup = runsOn(answers, runs, {
     workflow: methodWorkflow,
-    agents: { writer: { ...writerAgent(), methods: { draft: method } } },
+    agents: { writer: { ...writerAgent(), output: agentOutput, methods: { draft: method } } },
     halonicTools: tools,
     onResolveModel: (request) => asked.push(request),
   });
@@ -80,6 +84,20 @@ verifies("engine.task-method", () => {
       output: "text",
     });
     expect(offered(all.model.requests[0])).toEqual(["lookup", "publish"]);
+  });
+
+  it("tells the model to reply by the method's output, not the agent's", async () => {
+    const fields = await runMethod([textAnswer('{"subject": "Hi"}')], {
+      ...draft,
+      output: { subject: "string" },
+    });
+    expect(fields.model.requests[0]?.messages[0]).toEqual({
+      role: "system",
+      content: "Reply with JSON only.",
+    });
+    const choice: AgentOutput = { type: "choice", options: ["yes", "no"] };
+    const text = await runMethod([textAnswer("Dear support")], draft, choice);
+    expect(text.model.requests[0]?.messages.map((message) => message.role)).toEqual(["user"]);
   });
 
   it("stops the call at the method's maxSteps, not the agent's", async () => {

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: [HAL-1668 failure-path decisions](/HAL/issues/HAL-1668#document-decisions); task HAL-1728
+- Source: HAL-1668 failure-path decisions; task HAL-1728
 
 The events package shall let a `run.failed` event give the reason `model-out-of-memory` when the machine running the model had too little memory to load it or to answer, so a person learns to pick a smaller model or free memory, not to retry. The `error` text stays the message to show; the provider's own text goes to the log, not into the event.
 

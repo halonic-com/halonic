@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: stack 1b of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved by Liam on HAL-1967; the "named once with a count" log line of HAL-1708; task HAL-189
+- Source: stack 1b of the HAL-189 implementation plan, approved by Liam on HAL-1967; the "named once with a count" log line of HAL-1708; task HAL-189
 
 The run log shall have a `sandbox.blocked` event, with the step's `state`, its `agent`, the access the sandbox refused in `block`, and `count`, the running total of refused accesses to that target (or to `others`) in the step so far. A later event for the same target replaces an earlier count; it doesn't add to it. A `block` is a file (`path`, and `access`: `read` or `write`), a site (`host`, and `port` or `null`), or `others`: the blocked accesses to targets past the first 100 (`maxBlockedTargetsPerStep`) a step's log names. The events package shall make the logged copy of a file or site block with `sandboxBlockedView(block, home)`, which writes a path in the person's home folder with `~`, the way `sandbox.opened` does. Each event opens a timeline entry of its own. Older logs have no such event and read as before.
 

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: plan v1.17 (the per-machine "this computer" choice); stack 3a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), approved with changes by Liam on HAL-1967; Julian's condition on HAL-1709 (a changed agent file cancels the choice)
+- Source: plan v1.17 (the per-machine "this computer" choice); stack 3a of the HAL-189 implementation plan, approved with changes by Liam on HAL-1967; Julian's condition on HAL-1709 (a changed agent file cancels the choice)
 
 The ports package shall have an `AgentPlacementStore` port (version 1) that gets, saves and removes an agent's placement by workspace location and agent id. A placement shall hold the key, `runsOn: "this-computer"`, the fingerprint of the agent's file when the person chose, and the time they chose. No record means the agent runs in a sandbox. The port shall only store placements: it shall have no method that decides where an agent runs. Every adapter shall pass the `contracts.agent-placement-store` suite.
 

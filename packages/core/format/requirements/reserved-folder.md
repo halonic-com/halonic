@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-113, proposal 12 V1 ([HAL-69](/HAL/issues/HAL-69#document-source-record)), plan 15.1
+- Source: HAL-113, proposal 12 V1 (HAL-69), plan 15.1
 
 The format shall reserve a `.halonic/` folder at the workspace root and inside each `hubs/<hub>/` for Halonic's own data, and the loader shall skip every file in it without a warning (phase 2 loader: this requirement is its input).
 

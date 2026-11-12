@@ -2,7 +2,7 @@
 # Halonic-<version>-windows-x64-setup.exe, in dist/ at the repo root.
 #
 # It is a separate config (tauri.installer.conf.json) on purpose: it names
-# the agent host as an external binary, and tauri-build refuses to build
+# the agent host and the sandbox helper as external binaries, and tauri-build refuses to build
 # when that file is missing, which would break every plain `cargo` build.
 #
 # Run from apps/studio/src-tauri on Windows x64:  pwsh windows/build-installer.ps1
@@ -22,6 +22,35 @@ try {
 $bin = Join-Path $shell 'binaries'
 New-Item -ItemType Directory -Force $bin | Out-Null
 Copy-Item (Join-Path $repo 'apps/agent-host/dist/halonic-agent-host.exe') (Join-Path $bin "halonic-agent-host-$triple.exe") -Force
+
+# The sandbox's elevated helper (HAL-1451), with the static C runtime so it
+# never loads a vcruntime140.dll from the app folder, and the srt-win.exe it
+# copies into Program Files and checks against the hash built into it. Both
+# go next to Halonic.exe, as in the files Scoop unpacks. Its own target
+# folder, because RUSTFLAGS would rebuild the shell's crates otherwise.
+$callerFlags = $env:RUSTFLAGS
+$env:RUSTFLAGS = '-C target-feature=+crt-static'
+try {
+  cargo build --locked --release -p halonic-sandbox-elevate --target $triple --target-dir (Join-Path $shell 'target/elevate')
+  if ($LASTEXITCODE -ne 0) { throw 'the sandbox helper did not build' }
+} finally {
+  if ($null -eq $callerFlags) { Remove-Item Env:RUSTFLAGS } else { $env:RUSTFLAGS = $callerFlags }
+}
+$helper = Join-Path $shell "target/elevate/$triple/release/halonic-sandbox-elevate.exe"
+# A release build has its publisher built in (HALONIC_SANDBOX_SIGNER) and
+# must ship the helper signed by it: its UAC prompt shows that publisher, and
+# the copy it leaves for Installed apps is checked against it. Signing it
+# here, before Tauri packs it, is HAL-7491; until then a release build stops
+# rather than ship it unsigned. Dev and CI builds set no publisher.
+if ($env:HALONIC_SANDBOX_SIGNER) {
+  $signature = Get-AuthenticodeSignature $helper
+  if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.GetNameInfo('SimpleName', $false) -ne $env:HALONIC_SANDBOX_SIGNER) {
+    throw "the sandbox helper isn't signed by $env:HALONIC_SANDBOX_SIGNER ($($signature.Status)); sign it before it is packed (HAL-7491)"
+  }
+}
+Copy-Item $helper (Join-Path $bin "halonic-sandbox-elevate-$triple.exe") -Force
+$srtWin = Join-Path $repo 'packages/adapters/sandbox-srt/node_modules/@anthropic-ai/sandbox-runtime/vendor/srt-win/x64/srt-win.exe'
+Copy-Item $srtWin (Join-Path $bin 'srt-win.exe') -Force
 
 # The licences of the npm libraries the app and the agent host bundle
 # (HAL-6225) and of the Rust crates the app links for $triple (HAL-6962).

@@ -1,6 +1,6 @@
 # Decision: `sandbox.opened` drops two folders, gains a reader and the group list; a `sandbox.off` event
 
-- Approval: board approval of proposal 1 ("What this run can do") in the `proposals` document on [HAL-1601](/HAL/issues/HAL-1601); the facts for the sandbox screens on [HAL-1782](/HAL/issues/HAL-1782) and the UX checklist on [HAL-1833](/HAL/issues/HAL-1833); the package owner (Liam) approves this note in review
+- Approval: board approval of proposal 1 ("What this run can do") in the `proposals` document on HAL-1601; the facts for the sandbox screens on HAL-1782 and the UX checklist on HAL-1833; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1707
 

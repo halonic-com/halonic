@@ -1,6 +1,6 @@
 # Decision: on a phone the Input's leading button is 48 by 48 and the text starts at 56px
 
-- Approval: Noah's visual check of #1061 asked for it; Liam (package reviewer) said a follow-up is fine on [HAL-3670](/HAL/issues/HAL-3670) and approves this note in review
+- Approval: Noah's visual check of #1061 asked for it; Liam (package reviewer) said a follow-up is fine on HAL-3670 and approves this note in review
 - Kind: internal
 - Task: HAL-3520
 

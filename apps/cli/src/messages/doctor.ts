@@ -128,6 +128,16 @@ export const doctorMessages = defineMessages("doctor", {
   /** Harnesses !, with no fix line: the reason is the harness's own. */
   harnessVersionFailed: (harness: string, reason: string) =>
     phrase`Halonic found ${harness} but couldn't ask its version: ${reason}`,
+  /**
+   * Harnesses !: "Claude Code isn't signed in for Writer." The agent's runs
+   * use its own sign-in, never the person's (HAL-5231), so this is the line
+   * the harness's sign-in error points to.
+   */
+  agentSignedOut: (harness: string, agent: string) =>
+    phrase`${harness} isn't signed in for ${agent}.`,
+  /** Under {@link agentSignedOut}: the sign-in for that agent's folder, to type into the person's own terminal. */
+  signInForAgent: (agent: string, command: string) =>
+    phrase`Fix: sign in for ${agent} with ${command}`,
 
   // The Node.js line (HAL-6517): shown only with one of these problems.
   /** Node.js ! on Windows, when the working folder is a WSL folder. */

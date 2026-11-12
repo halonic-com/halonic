@@ -2,7 +2,6 @@ import { Field, Select, Slider, Switch } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useEffect } from "react";
 import { DisplaySettingsService } from "../api.ts";
-import type { DisplayPref } from "../display-prefs.ts";
 import type { DisplaySettings } from "../display-settings.ts";
 import { useDisplaySetting } from "../use-display-setting.ts";
 import {
@@ -22,11 +21,12 @@ import {
   PANEL_OPACITY_HINT,
   PANEL_OPACITY_NOT_SAVED,
   percent,
-  type SaveFailedText,
   THEME,
   THEME_NOT_SAVED,
   themeNames,
 } from "./appearance-text.ts";
+import { FrameColoursField } from "./frame-colours-field.tsx";
+import { saveSetting } from "./save-setting.ts";
 
 const themeOptions = themes.map((theme) => ({ value: theme, label: themeNames[theme] }));
 
@@ -50,10 +50,10 @@ export interface AppearanceViewProps {
 }
 
 /**
- * Settings → Appearance (flow-settings 5, UX checklist 3.7): Theme, Panel opacity and Agent
- * characters, each applied to the whole window at once and saved by itself. A failed save puts the
- * value from before back, says so under the control until it next saves, and says it in the
- * dialog, never in a toast (`settings.failed-save`).
+ * Settings → Appearance (flow-settings 5, UX checklist 3.7): Theme, Frame colours, Panel opacity
+ * and Agent characters, each applied to the whole window at once and saved by itself. A failed
+ * save puts the value from before back, says so under the control until it next saves, and says
+ * it in the dialog, never in a toast (`settings.failed-save`).
  *
  * @example
  * <AppearanceView settings={displaySettings} announce={(text) => announcer.announce(text)} />
@@ -66,17 +66,7 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
   // The dialog closing mid-drag leaves nothing to save: the stored opacity comes back.
   useEffect(() => () => settings.endPreview(panelOpacityPref), [settings]);
 
-  async function save<Value>(
-    pref: DisplayPref<Value>,
-    value: Value,
-    text: SaveFailedText,
-    name: (value: Value) => string,
-  ) {
-    const outcome = await settings.set(pref, value);
-    if (!outcome.saved && !outcome.superseded) {
-      announce(text.announce(name(outcome.back)));
-    }
-  }
+  const save = saveSetting(settings, announce);
 
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
@@ -89,6 +79,7 @@ export function AppearanceView({ settings, announce }: AppearanceViewProps) {
           }
         />
       </Field>
+      <FrameColoursField settings={settings} save={save} />
       <Field
         label={PANEL_OPACITY}
         hint={PANEL_OPACITY_HINT}

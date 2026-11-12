@@ -71,6 +71,7 @@ export {
   type HarnessProblem,
   harnessesLine,
   type InstalledHarness,
+  type SignedOutAgent,
 } from "./doctor-checks.ts";
 export {
   type DataSpace,
@@ -101,6 +102,11 @@ export {
   type DoctorServiceOptions,
   type DoctorWorkspace,
 } from "./doctor-service.ts";
+export {
+  type AgentSettingsFolder,
+  type DoctorHarness,
+  signedOutAgents,
+} from "./doctor-sign-ins.ts";
 export {
   EventBus,
   type EventListener,

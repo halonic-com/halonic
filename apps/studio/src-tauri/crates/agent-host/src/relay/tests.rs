@@ -291,14 +291,23 @@ fn relay_limits_leave_room_in_the_queue_while_one_client_sends_a_big_body() {
     let _small = connect(&relay);
 
     assert_eq!(read_frame(&mut input), Some((1, OPEN, Vec::new())));
-    let mut before = 0;
-    while read_frame(&mut input).expect("a frame").1 != OPEN {
-        before += 1;
+    // Frames can be any size up to the limit, as the socket delivered them, so
+    // count the bytes ahead of the small one, not the frames. Ahead of it
+    // wait at most the big one's share, the frame being written, and what the
+    // pipe holds, which is one frame's worth: never the whole queue.
+    let mut bytes_before = 0;
+    loop {
+        let (id, kind, payload) = read_frame(&mut input).expect("a frame");
+        if kind == OPEN {
+            break;
+        }
+        assert_eq!(id, 1, "only the big one sent so far");
+        bytes_before += payload.len();
     }
-    // Its share, one being written, and what the pipe holds: not the whole queue.
+    let most = (QUEUED_FRAMES_PER_CONNECTION + 2) * FRAME_LIMIT;
     assert!(
-        before <= QUEUED_FRAMES_PER_CONNECTION + 2,
-        "{before} frames first"
+        bytes_before <= most,
+        "{bytes_before} bytes first, at most {most}"
     );
 }
 

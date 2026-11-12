@@ -42,11 +42,18 @@ function problems(manifest: unknown): string[] {
   return parsed.ok ? [] : parsed.error.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
 }
 
-/** The example manifest with its first file changed. */
-function withFirstFile(change: Record<string, unknown>): unknown {
+/** The example manifest with its last file, the run log, changed, so a changed path stays in order. */
+function withRunLog(change: Record<string, unknown>): unknown {
   const manifest = exampleManifest();
-  return { ...manifest, files: [{ ...manifest.files[0], ...change }, ...manifest.files.slice(1)] };
+  const last = manifest.files.length - 1;
+  return {
+    ...manifest,
+    files: [...manifest.files.slice(0, last), { ...manifest.files[last], ...change }],
+  };
 }
+
+/** What a file imports: `from "…"`, `import "…"`, `import("…")` and `require("…")`, in either quotes. */
+const importSpecifier = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*["']([^"']+)["']/g;
 
 /** The relative files `entry` imports, followed transitively, and every package it imports. */
 function importsOf(entry: string): { files: string[]; packages: string[] } {
@@ -57,7 +64,7 @@ function importsOf(entry: string): { files: string[]; packages: string[] } {
       return;
     }
     files.add(file);
-    for (const [, specifier] of readFileSync(file, "utf8").matchAll(/from\s*"([^"]+)"/g)) {
+    for (const [, specifier] of readFileSync(file, "utf8").matchAll(importSpecifier)) {
       if (specifier?.startsWith(".")) {
         visit(resolve(dirname(file), specifier));
       } else if (specifier !== undefined) {
@@ -90,7 +97,7 @@ verifies("format.runtime-export", () => {
   it("keeps the example's files in the layout halonic serve uses", () => {
     const runLog = readFileSync(join(example, "runs", "r-invoice.jsonl"), "utf8");
     expect(parseLogLines(runLog, "r-invoice", "r-invoice.jsonl")).toHaveLength(3);
-    // A collection's log is named by the SHA-256 of its name in UTF-16, as `FileRecordStore` names it.
+    // A collection's log is named by the SHA-256 of its name in UTF-16LE, as `FileRecordStore` names it.
     expect(filesIn(join(example, "records"))).toEqual([`${hash("leads", "utf16le")}.jsonl`]);
   });
 
@@ -108,40 +115,35 @@ verifies("format.runtime-export", () => {
     ],
     [
       "a key on a file it doesn't list",
-      withFirstFile({ secret: "x" }),
-      'files.0: Unrecognized key: "secret"',
+      withRunLog({ secret: "x" }),
+      'files.2: Unrecognized key: "secret"',
     ],
     [
       "a harness sign-in",
-      withFirstFile({ path: "harness-settings/clerk/claude-code/auth.json" }),
-      "files.0.path",
+      withRunLog({ path: "harness-settings/clerk/claude-code/auth.json" }),
+      "files.2.path",
     ],
-    ["a token store", withFirstFile({ path: "tokens/google.json" }), "files.0.path"],
-    ["a run snapshot", withFirstFile({ path: "runs/r-invoice.snapshot.json" }), "files.0.path"],
-    ["a run lock", withFirstFile({ path: "runs/r-invoice.lock" }), "files.0.path"],
-    [
-      "a path that leaves the folder",
-      withFirstFile({ path: "runs/../../x.jsonl" }),
-      "files.0.path",
-    ],
-    [
-      "a run named after a Windows device",
-      withFirstFile({ path: "runs/NUL.jsonl" }),
-      "files.0.path",
-    ],
+    ["a token store", withRunLog({ path: "tokens/google.json" }), "files.2.path"],
+    ["a run snapshot", withRunLog({ path: "runs/r-invoice.snapshot.json" }), "files.2.path"],
+    ["a run lock", withRunLog({ path: "runs/r-invoice.lock" }), "files.2.path"],
+    ["a path that leaves the folder", withRunLog({ path: "runs/../../x.jsonl" }), "files.2.path"],
+    ["a run named after a Windows device", withRunLog({ path: "runs/NUL.jsonl" }), "files.2.path"],
     [
       "a records log named by its collection",
-      withFirstFile({ path: "records/leads.jsonl" }),
-      "files.0.path",
+      withRunLog({ path: "records/leads.jsonl" }),
+      "files.2.path",
     ],
-    ["a hash in capitals", withFirstFile({ sha256: "A".repeat(64) }), "files.0.sha256"],
-    ["a negative size", withFirstFile({ bytes: -1 }), "files.0.bytes"],
+    ["a hash in capitals", withRunLog({ sha256: "A".repeat(64) }), "files.2.sha256"],
+    ["a negative size", withRunLog({ bytes: -1 }), "files.2.bytes"],
     [
       "a deployment id with capitals",
       { ...exampleManifest(), deployment: "Staging" },
       "deployment",
     ],
     ["a local time", { ...exampleManifest(), exportedAt: "2026-11-05 08:00" }, "exportedAt"],
+    ["month 13", { ...exampleManifest(), exportedAt: "2026-13-05T08:00:00.000Z" }, "exportedAt"],
+    ["30 February", { ...exampleManifest(), exportedAt: "2026-02-30T08:00:00Z" }, "exportedAt"],
+    ["hour 24", { ...exampleManifest(), exportedAt: "2026-11-05T24:00:00.000Z" }, "exportedAt"],
     ["a format version as text", { ...exampleManifest(), formatVersion: "1" }, "formatVersion"],
   ])("refuses %s", (_name, manifest, expected) => {
     const found = problems(manifest);
@@ -149,22 +151,40 @@ verifies("format.runtime-export", () => {
     expect(found[0]?.startsWith(expected)).toBe(true);
   });
 
+  it("accepts a leap day and a time without milliseconds", () => {
+    expect(problems({ ...exampleManifest(), exportedAt: "2028-02-29T23:59:59Z" })).toEqual([]);
+  });
+
   it("refuses a blob whose path isn't made of its hash", () => {
     const manifest = exampleManifest();
-    const blob = manifest.files[2];
+    const blob = manifest.files[0];
     const moved = { ...blob, path: `blobs/00/${blob?.sha256}` };
-    expect(problems({ ...manifest, files: [...manifest.files.slice(0, 2), moved] })).toEqual([
-      "files.2.sha256: A blob's path must be blobs/<first two characters>/<SHA-256 of its bytes>",
+    expect(problems({ ...manifest, files: [moved, ...manifest.files.slice(1)] })).toEqual([
+      "files.0.sha256: A blob's path must be blobs/<first two characters>/<SHA-256 of its bytes>",
     ]);
   });
 
   it("refuses two files whose paths open the same file", () => {
     const manifest = exampleManifest();
-    const run = manifest.files[0];
+    const [blob, records, run] = manifest.files;
+    // Capitals sort first, so the twin comes before the run log and the run log is the second.
     const twin = { ...run, path: "runs/R-Invoice.jsonl" };
-    expect(problems({ ...manifest, files: [...manifest.files, twin] })).toEqual([
+    expect(problems({ ...manifest, files: [blob, records, twin, run] })).toEqual([
       "files.3.path: Another file has this path",
     ]);
+  });
+
+  it("refuses files that aren't in order of their path", () => {
+    const manifest = exampleManifest();
+    const [blob, records, run] = manifest.files;
+    expect(problems({ ...manifest, files: [records, blob, run] })).toEqual([
+      "files.1.path: List the files in order of their path",
+    ]);
+  });
+
+  it("lists the example's files in order of their path", () => {
+    const paths = exampleManifest().files.map((file) => file.path);
+    expect(paths).toEqual([...paths].sort());
   });
 
   it("refuses a newer format and says to update Halonic", () => {
@@ -184,6 +204,17 @@ verifies("format.runtime-export", () => {
       schema,
     );
     expect(schema["additionalProperties"]).toBe(false);
+  });
+
+  it("sees every way a file can import a package", () => {
+    const text = `import { a } from "a";\nimport "b";\nawait import( 'c' );\nrequire("d");\nimport type { E } from "e";`;
+    expect([...text.matchAll(importSpecifier)].map(([, specifier]) => specifier)).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+    ]);
   });
 
   it("imports no YAML parser and isn't re-exported from the package root", () => {
