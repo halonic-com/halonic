@@ -36,7 +36,7 @@ export interface RunResultFacts {
  *
  * @example
  * runResult(run, { workspace, workspaceName: "Acme", dir: undefined, clock });
- * // { exitCode: 0, lines: ["Running Support reply in acme · run 01jd8q", "", "✓ Read the email …", …], json: { run, events } }
+ * // { exitCode: 0, lines: ["Running Support reply in Acme · run 01jd8q", "", "✓ Read the email …", …], json: { run, events } }
  */
 export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult {
   const definitions = runViewDefinitions(facts.workspace, run.summary);
@@ -68,7 +68,7 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
   };
 }
 
-/** "Running Support reply in acme · run 01jd8q": the first line, printed as soon as the run starts. */
+/** "Running Support reply in Acme · run 01jd8q": the first line, printed as soon as the run starts. */
 export function runHeading(
   summary: RunSummary,
   definitions: RunDefinitions,
