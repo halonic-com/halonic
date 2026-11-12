@@ -4,7 +4,7 @@ use crate::{Machine, UNINSTALL_KEY, Value};
 use std::ffi::{OsStr, OsString, c_void};
 use std::io;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
-use std::os::windows::fs::MetadataExt;
+use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
 use std::os::windows::io::AsRawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
@@ -29,8 +29,8 @@ use windows_sys::Win32::Security::{
     TOKEN_QUERY, TokenElevation,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, GetFileInformationByHandle,
-    MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
+    BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS,
+    GetFileInformationByHandle, MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
 };
 use windows_sys::Win32::System::Com::CoTaskMemFree;
 use windows_sys::Win32::System::LibraryLoader::{
@@ -406,9 +406,12 @@ unsafe fn publisher(state: HANDLE) -> Option<String> {
 /// The volume and file index that name `path`'s file or folder on this
 /// computer, whatever name reached it.
 fn file_id(path: &Path) -> io::Result<(u32, u32, u32)> {
-    // The standard library opens folders too (backup semantics) and follows
-    // links, so a link to the folder is the folder.
-    let file = std::fs::File::open(path)?;
+    // No access asked for, only the name's identity. Backup semantics opens
+    // a folder too; links are followed, so a link to the folder is the folder.
+    let file = std::fs::OpenOptions::new()
+        .access_mode(0)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(path)?;
     let mut info = BY_HANDLE_FILE_INFORMATION::default();
     // SAFETY: `file` is open for the call, and `info` outlives it.
     if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
