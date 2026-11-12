@@ -56,7 +56,12 @@ function Set-Manifest([string]$Version, [string]$FileName, [string]$Signature) {
 
 function Invoke-Driver {
   node $driver $devtools @args | Out-Host
-  if ($LASTEXITCODE -ne 0) { throw "update-driver $args failed" }
+  if ($LASTEXITCODE -ne 0) {
+    Get-Process Halonic, halonic-agent-host, msedgewebview2 -ErrorAction SilentlyContinue | Format-Table Name, Id, StartTime | Out-Host
+    Get-ChildItem (Join-Path $profileFolder 'updates') -ErrorAction SilentlyContinue | Out-Host
+    Get-Content (Join-Path $profileFolder 'updates\updates.log') -ErrorAction SilentlyContinue | Out-Host
+    throw "update-driver $args failed"
+  }
 }
 
 # Started from this shell, so WebView2 opens its DevTools port for the driver.

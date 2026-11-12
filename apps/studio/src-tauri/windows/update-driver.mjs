@@ -29,22 +29,25 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 /** The DevTools address of the Studio page, once WebView2 lists it. */
 async function studioPage() {
   const deadline = Date.now() + 60_000;
+  let seen = "nothing listened";
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`http://127.0.0.1:${port}/json/list`);
       const pages = await response.json();
+      seen = JSON.stringify(pages.map((entry) => [entry.type, entry.url]));
       const page = pages.find(
         (entry) => entry.type === "page" && entry.url.includes("studio.html"),
       );
       if (page) {
         return page.webSocketDebuggerUrl;
       }
-    } catch {
+    } catch (error) {
       // Not listening yet: Halonic is still starting.
+      seen = String(error);
     }
     await sleep(1000);
   }
-  throw new Error(`no Studio page on DevTools port ${port}`);
+  throw new Error(`no Studio page on DevTools port ${port} (last seen: ${seen})`);
 }
 
 /** Calls `command` in the page; `closed` when the page went away first. */
