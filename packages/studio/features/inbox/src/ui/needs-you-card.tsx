@@ -3,7 +3,7 @@ import type { HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
-import { rowFor } from "./inbox-row.ts";
+import { rowFor } from "./inbox-row.tsx";
 
 /** How many rows Needs you shows on a phone before "See all N in Inbox" (PH 2.3). */
 export const PHONE_ROWS = 3;

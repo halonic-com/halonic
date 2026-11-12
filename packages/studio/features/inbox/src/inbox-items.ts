@@ -53,7 +53,35 @@ export interface WaitItem {
   readonly movesOnAt: string | null;
 }
 
-export type InboxItem = ApprovalItem | WaitItem;
+/** An item a run waits on: it holds the run and the answer goes to the run. */
+export type RunItem = ApprovalItem | WaitItem;
+
+/**
+ * An account to set up or fix, such as a Google account to sign in again (setup flow 1). Not tied
+ * to a run: a setup source gives it, one per account, and it takes no Approve or Reject.
+ */
+export interface SetupItem {
+  readonly kind: "setup";
+  /** `setup:<provider>:<account>`. Never holds an e-mail address. */
+  readonly key: string;
+  /** The source's provider, such as `google`. */
+  readonly provider: string;
+  /** The source's own ref for the account; never an e-mail address. */
+  readonly account: string;
+  /** The row title and the item's title: "Set up Google for x@example.com". */
+  readonly title: string;
+  /** The line under the title: "Step 4 of 7 · Scopes". */
+  readonly progress: string;
+  /** ISO time the setup last changed; the most recent comes first. */
+  readonly changedAt: string;
+}
+
+export type InboxItem = SetupItem | RunItem;
+
+/** Whether a run waits on the item, so it takes an answer; a setup item doesn't. */
+export function isRunItem(item: InboxItem): item is RunItem {
+  return item.kind !== "setup";
+}
 
 /** The separator between a connector's name and its tool's name in the name an agent calls. */
 const connectorSeparator = "__";
@@ -68,8 +96,8 @@ const connectorSeparator = "__";
  * @example
  * inboxItems(await store.list({ status: ["waiting"] }));
  */
-export function inboxItems(runs: readonly RunSummary[]): InboxItem[] {
-  const items: InboxItem[] = [];
+export function inboxItems(runs: readonly RunSummary[]): RunItem[] {
+  const items: RunItem[] = [];
   for (const run of runs) {
     if (run.status !== "waiting" || run.kind === "test") continue;
     if (run.approvals.length > 0) {
@@ -120,8 +148,33 @@ function waitItem(run: RunSummary, state: string): WaitItem {
   };
 }
 
-function newestFirst(a: InboxItem, b: InboxItem): number {
-  if (a.since !== b.since) return a.since < b.since ? 1 : -1;
+/**
+ * The key of an account's setup item. The account is the source's own ref, so no e-mail address
+ * ends up in a key, a URL or a log.
+ *
+ * @example
+ * setupKey("google", "acct-7f3a"); // "setup:google:acct-7f3a"
+ */
+export function setupKey(provider: string, account: string): string {
+  return `setup:${provider}:${account}`;
+}
+
+/**
+ * Needs you's order: setup items first, the most recently changed first, then the run items as
+ * they come (setup flow 1, UX checklist section 8 point 1).
+ */
+export function needsYouOrder(setups: readonly SetupItem[], runs: readonly RunItem[]): InboxItem[] {
+  const recentFirst = [...setups].sort((a, b) => byTimeThenKey(a.changedAt, b.changedAt, a, b));
+  return [...recentFirst, ...runs];
+}
+
+function newestFirst(a: RunItem, b: RunItem): number {
+  return byTimeThenKey(a.since, b.since, a, b);
+}
+
+/** Later times first; on the same time, by key. */
+function byTimeThenKey(aTime: string, bTime: string, a: InboxItem, b: InboxItem): number {
+  if (aTime !== bTime) return aTime < bTime ? 1 : -1;
   // A plain comparison, so the order doesn't depend on the locale.
   if (a.key === b.key) return 0;
   return a.key < b.key ? -1 : 1;

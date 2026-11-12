@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { InboxRunsService, InboxService } from "./api.ts";
 import { inboxFeature } from "./feature.ts";
 import { Inbox, type InboxRuns } from "./inbox.ts";
+import { isRunItem } from "./inbox-items.ts";
 import { pendingApproval, waitingRun } from "./test-runs.test-helper.ts";
 
 /** Runs whose waiting list a test sets, with each load answered when the test says. */
@@ -83,7 +84,7 @@ verifies("inbox.live", () => {
     const inbox = new Inbox(fake.runs);
     await settled();
     const [item] = inbox.state.items;
-    if (item === undefined) throw new Error("expected an item");
+    if (item === undefined || !isRunItem(item)) throw new Error("expected a run's item");
     fake.holdLoads();
 
     await inbox.decisions.approve(item);
@@ -102,7 +103,7 @@ verifies("inbox.live", () => {
     const inbox = new Inbox(fake.runs);
     await settled();
     const [item] = inbox.state.items;
-    if (item === undefined) throw new Error("expected an item");
+    if (item === undefined || !isRunItem(item)) throw new Error("expected a run's item");
 
     fake.change([]);
     await inbox.decisions.reject(item);
@@ -120,7 +121,7 @@ verifies("inbox.live", () => {
     const inbox = new Inbox(fake.runs);
     await settled();
     const [item] = inbox.state.items;
-    if (item === undefined) throw new Error("expected an item");
+    if (item === undefined || !isRunItem(item)) throw new Error("expected a run's item");
 
     await expect(inbox.decisions.approve(item)).rejects.toThrow("The engine isn't answering.");
     expect(inbox.state.items).toHaveLength(1);

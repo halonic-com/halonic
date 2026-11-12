@@ -6,7 +6,8 @@ import type { Inbox } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
-import { countDetail, itemTitle, rowFor } from "./inbox-row.ts";
+import { countDetail, itemTitle, rowFor } from "./inbox-row.tsx";
+import { SetupCard } from "./setup-card.tsx";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
@@ -29,13 +30,13 @@ export interface InboxViewProps {
 
 /**
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
- * grid of what waits for you, newest first, with its count in the heading ("Needs you, 2
- * waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
+ * grid of what waits for you, setup items first, then newest first, with its count in the heading
+ * ("Needs you, 2 waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
  * for an item (`Inbox.requestOpen`). Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
- * Not here yet: notices, the request form, setup items and the narrow and phone layouts
- * (HAL-1305), and **Open run**, which comes with the run page.
+ * Not here yet: notices, the request form, a setup source's own view (HAL-711), the narrow and
+ * phone layouts (HAL-1305), and **Open run**, which comes with the run page.
  */
 export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
@@ -146,6 +147,7 @@ function OpenCard({
   readonly next: NextItem | null;
   readonly now: () => Date;
 }) {
+  if (item.kind === "setup") return <SetupCard item={item} />;
   if (item.kind === "approval") {
     return (
       <ApprovalCard

@@ -21,7 +21,18 @@ Inside the Studio, read the Inbox through `InboxService`: one `Inbox` per open w
 ```ts
 const inbox = context.services.get(InboxService);
 inbox.subscribe(() => show(inbox.state.items, inbox.signal()));
-await inbox.decisions.approve(inbox.state.items[0]);
+const [first] = inbox.state.items;
+if (first !== undefined && isRunItem(first)) await inbox.decisions.approve(first);
+```
+
+Setup items aren't tied to a run: an account to set up or fix, such as a Google account to sign in again. A provider's feature adds a setup source to the workspace's Inbox, and each account it lists becomes an item keyed `setup:<provider>:<account>`, first in Needs you, with a **Setup** chip and no Approve or Reject (requirement `inbox.setup-items`). The Inbox knows nothing about the provider. The account is the source's own ref, never an e-mail address.
+
+```ts
+const remove = inbox.addSetupSource({
+  provider: "google",
+  list: async () => [{ account: "acct-1", title: "Set up Google for x@example.com", progress: "Step 4 of 7 · Scopes", changedAt }],
+  subscribe: (listener) => watchSetups(listener),
+});
 ```
 
 The item's `body` and a tool call's `args` can hold model output. Show them as plain text, never as Markdown or HTML.
