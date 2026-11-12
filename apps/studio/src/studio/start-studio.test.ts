@@ -2,10 +2,11 @@
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
-import { createShell } from "@halonicjs/studio-shell";
+import { createShell, defineFeature } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
+  desktopFeatures,
   keyboardPlatform,
   openFolder,
   type StartedStudio,
@@ -48,10 +49,41 @@ async function drawn(root: HTMLElement): Promise<void> {
   );
 }
 
+/**
+ * jsdom has `<dialog>` but no `showModal()` or `close()`; Settings needs them to open and close.
+ * Returns a function that puts the originals back.
+ */
+function fakeModalDialogs(): () => void {
+  const prototype = HTMLDialogElement.prototype;
+  const original = {
+    showModal: Object.getOwnPropertyDescriptor(prototype, "showModal"),
+    close: Object.getOwnPropertyDescriptor(prototype, "close"),
+  };
+  const fakes = {
+    showModal(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  };
+  for (const [name, value] of Object.entries(fakes)) {
+    Object.defineProperty(prototype, name, { configurable: true, value });
+  }
+  return () => {
+    for (const [name, descriptor] of Object.entries(original)) {
+      if (descriptor === undefined) Reflect.deleteProperty(prototype, name);
+      else Object.defineProperty(prototype, name, descriptor);
+    }
+  };
+}
+
 let element: HTMLDivElement;
 let started: StartedStudio | undefined;
+let restoreDialogs: () => void;
 
 beforeEach(() => {
+  restoreDialogs = fakeModalDialogs();
   window.matchMedia = desktopMediaQueries;
   element = document.createElement("div");
   document.body.append(element);
@@ -61,6 +93,7 @@ afterEach(async () => {
   await started?.stop();
   started = undefined;
   element.remove();
+  restoreDialogs();
 });
 
 verifies("studio.entry", () => {
@@ -177,5 +210,58 @@ verifies("studio.open-folder", () => {
       args: { key: "assistant.turn-limit" },
     });
     await opened.dispose();
+  });
+});
+
+/** A host section, as the Agent sandbox is: saved on this computer, not in the workspace. */
+const sandboxFeature = defineFeature({
+  id: "sandbox",
+  title: "Agent sandbox",
+  register(studio) {
+    studio.settings.add({
+      id: "agent-sandbox",
+      title: "Agent sandbox",
+      scope: "host",
+      order: 40,
+      view: "SandboxSection",
+      load: async () => ({ SandboxSection: () => "Ready" }),
+    });
+  },
+});
+
+verifies("studio.settings", () => {
+  it("opens Settings on Ctrl , with a host section under On this computer", async () => {
+    started = startStudio(
+      {
+        element,
+        window: desktopWebview("/work/acme").page,
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        storage: memoryStorage(),
+      },
+      { ...desktopFeatures, features: [...desktopFeatures.features, sandboxFeature] },
+    );
+    await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull());
+    element.querySelector("button")?.click();
+    await drawn(element);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: ",", code: "Comma", ctrlKey: true, bubbles: true }),
+    );
+
+    await vi.waitFor(() => {
+      expect(document.querySelector("dialog[open] section h3")?.textContent).toBe("Agent sandbox");
+    });
+    const nav = document.querySelector("dialog[open] nav");
+    expect([...(nav?.querySelectorAll("h3") ?? [])].map((h) => h.textContent)).toEqual([
+      "On this computer",
+    ]);
+    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe("Agent sandbox");
+  });
+
+  it("registers Settings and its command in the desktop app", () => {
+    const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
+
+    expect(shell.features.map((feature) => feature.id)).toContain("settings");
+    expect(shell.contributions.commands.get("settings.open")?.title).toBe("Settings");
   });
 });

@@ -960,7 +960,13 @@ the kit's `lg` dialog with no footer, the sections listed by `settingsGroups` on
 current one under its name on the right. Its list is one Tab stop: ↑, ↓, Home and End move, and
 Enter or a click switches and says the section's name. A section's view gets
 `SettingsSectionProps`: `context` and `closeSettings`, which a link to a page calls first. A view
-that fails to load leaves its heading and the list working. The window doesn't open it yet.
+that fails to load leaves its heading and the list working.
+
+Settings opens over the window (`shell.settings-window`): the context the window gives views and
+commands has `openSettings(sectionId?)`, the `settings.open` of flow-settings, and the desktop app
+opens it on Mod , as well. The window draws `SettingsDialog` with `contributions.settings.list()`,
+places it as the app's or the served Studio's, and remembers the section shown last for the next
+opening (`useSettingsOpening`). Closing it gives the focus back to the opener.
 
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search

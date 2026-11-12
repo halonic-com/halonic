@@ -5,6 +5,7 @@ import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { settingsFeature } from "@halonicjs/studio-feature-settings";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -27,6 +28,7 @@ import {
   type KeyboardPlatform,
   mountStudioWindow,
   type Shell,
+  type ShellOptions,
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
@@ -83,19 +85,21 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * (`studio.open-folder`). The served Studio opens the one workspace it serves. The window is the
  * shell's or the workspace feature's; the app only starts it, as AGENTS.md asks of screens.
  *
- * The desktop app registers the Inbox and Runs, over the runs in each open folder. The served
- * Studio registers no feature yet: nothing serves it runs until `halonic serve` is built, so it
- * shows Home and the Search box.
+ * The desktop app registers the Inbox and Runs, over the runs in each open folder, and Settings
+ * (`studio.settings`). The served Studio registers no feature yet: nothing serves it runs until
+ * `halonic serve` is built, so it shows Home and the Search box.
+ *
+ * @param desktop the desktop app's features and the services it gives them, `desktopFeatures`
  *
  * @example
  * startStudio({ element: root, window, userAgent: navigator.userAgent, storage: localStorage });
  */
-export function startStudio(page: StudioPage): StartedStudio {
+export function startStudio(page: StudioPage, desktop = desktopFeatures): StartedStudio {
   const host = studioHost(page.window);
   const platform = keyboardPlatform(page.userAgent);
   const ipc = tauriIpc(page.window);
   if (ipc !== undefined) {
-    const shell = createShell({ ...desktopFeatures, host, platform });
+    const shell = createShell({ ...desktop, host, platform });
     return startDesktopApp(page, { shell, ipc, platform });
   }
   const shell = createShell({ features: [], host, platform });
@@ -123,8 +127,8 @@ export function startStudio(page: StudioPage): StartedStudio {
  * The features of the desktop app, and the services the app gives them for each open folder
  * ({@link openFolder}).
  */
-export const desktopFeatures = {
-  features: [inboxFeature, runsFeature],
+export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
+  features: [inboxFeature, runsFeature, settingsFeature],
   hostServices: [InboxRunsService, RunsSourceService],
 };
 
