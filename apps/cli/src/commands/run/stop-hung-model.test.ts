@@ -21,7 +21,7 @@ import { fakeSignals } from "../../test/fake-signals.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { runCommandWith } from "./command.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
@@ -59,9 +59,11 @@ async function sorterOnHungServer(): Promise<void> {
   await appendFile(join(acme, "models.yaml"), "  slow:\n    provider: hang\n    model: slow\n");
   await appendFile(join(acme, "hubs/support/agents/sorter.agent.yaml"), "model: slow\n");
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const { subject } = await readWorkspaceTrust(dir, noCommands);
+  const read = await readWorkspaceTrust(dir, noCommands);
+  const { subject } = read;
   const trust = cliTrustService(new FileTrustStore(join(folder, "trust")), fixedClock(engineStart));
   const check = await trust.check(subject);
+  assertTrustable(check, read);
   expect((await trust.grant(subject, check.fingerprint, "cli")).ok).toBe(true);
 }
 
