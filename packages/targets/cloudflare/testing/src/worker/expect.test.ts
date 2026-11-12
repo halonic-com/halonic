@@ -81,6 +81,8 @@ describe("the shim's expect", () => {
     expect(matcherNames).toEqual([
       "toBe",
       "toEqual",
+      "toMatchObject",
+      "toHaveLength",
       "toBeGreaterThanOrEqual",
       "toBeNull",
       "toBeUndefined",
