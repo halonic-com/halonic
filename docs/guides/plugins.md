@@ -113,7 +113,7 @@ the schema.
 `kit`. Halonic fills those from the plugin's `id`, `version` and `sdk`, so each
 number is written once.
 
-- **`entry`:** the built JavaScript module that exports the `Integration`.
+- **`entry`:** the built JavaScript module that exports the `Integration`. A local runner uses the module's `default` export, because a folder has no other way to say which export is the integration.
   Default `backend/index.js`.
 - **`hosts`:** every host the code may call, by exact name. `https` only.
 - **`secrets`:** each secret by name, with its `purpose`, the `hosts` it may go
