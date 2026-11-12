@@ -280,3 +280,43 @@ verifies("cli.workspace-file-problems", () => {
     expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
   });
 });
+
+verifies("cli.run-failure-debug", () => {
+  /**
+   * Breaks Writer's script in the test model's file, so the test model can't
+   * answer Writer and the run fails in its first step with the general lines.
+   */
+  async function breakWritersScript(): Promise<void> {
+    const mock = join(acme, "providers/mock.yaml");
+    const script = await readFile(mock, "utf8");
+    const firstReply = "- Sam wants a refund for order 1042, which arrived damaged.";
+    await writeFile(mock, script.replace(firstReply, "- refuse: not a text reply"));
+  }
+
+  it("doesn't ask for --debug again with it, and prints the run log's details under the lines", async () => {
+    await breakWritersScript();
+
+    const { code, io } = await run("support-reply", ...samsEmail, "--debug");
+
+    expect(code).toBe(exitCode.failed);
+    const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+    expect(io.stdout[failed]).toMatch(/Halonic can't tell the cause yet: /);
+    expect(io.stdout[failed + 1]).toBe(
+      "  Report it with the details below: https://github.com/halonic-com/halonic/issues",
+    );
+    expect(io.stdout.join("\n")).not.toContain("--debug");
+    expect(io.stderr[0]).toMatch(/^The engine said: Provider "mock": options\.script\.writer /);
+    // Whether the step's model calls are listed depends on the engine logging them (HAL-6585).
+    expect(io.stderr.at(-1)).toMatch(/^(No model calls in this step\.| {2}writer .*)$/);
+  });
+
+  it("prints no details without --debug", async () => {
+    await breakWritersScript();
+
+    const { io } = await run("support-reply", ...samsEmail);
+
+    const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+    expect(io.stdout[failed + 1]).toMatch(/^ {2}Run it again with --debug/);
+    expect(io.stderr).toEqual([]);
+  });
+});

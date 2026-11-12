@@ -29,7 +29,7 @@ import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
-import { showEnding } from "./show-ending.ts";
+import { failedRunDebugText, showEnding } from "./show-ending.ts";
 
 /**
  * Shows one run, real or test: its heading, then its steps. Exits 0 for any
@@ -73,6 +73,7 @@ export async function showRun(
       const title = workflowTitle(definitions.workflow, run.summary);
       const clock = setup.clock();
       const steps = stepLines(run.events, run.summary, definitions, clock);
+      const debugText = failedRunDebugText(run);
       return {
         exitCode: exitCode.ok,
         lines: [
@@ -84,9 +85,11 @@ export async function showRun(
             definitions,
             () => workspaceModelsOf(loaded, run.summary.hubId),
             dir,
+            context.debugging,
           ),
         ],
         json: { events: run.events },
+        ...(debugText === undefined ? {} : { debugText }),
       };
     }
   }

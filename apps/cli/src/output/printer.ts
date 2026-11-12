@@ -36,7 +36,8 @@ export interface Printer {
   /**
    * What a command did: its lines after those printed ahead, or with `--json`
    * its document. When the lines printed ahead don't start the result, a bug,
-   * every line is printed.
+   * every line is printed. With `--debug`, its `debugText` follows on
+   * stderr, scrubbed.
    */
   result(result: CommandResult): void;
   /**
@@ -150,6 +151,12 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
         writeDocument(result);
       } else {
         printLines(out, rest);
+      }
+      if (options.debug && result.debugText !== undefined) {
+        // Scrubbed as a whole before it is split, so a secret over two lines is still found.
+        for (const line of options.scrubber.scrub(result.debugText).split(/\r?\n/)) {
+          err(phrase`${line}`);
+        }
       }
     },
     stopped(result = notSaid) {

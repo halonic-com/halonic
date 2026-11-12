@@ -426,6 +426,46 @@ verifies("cli.commands.runs.show", () => {
       );
     });
 
+    it("with --debug, doesn't ask for it again and prints the run log's details on stderr", async () => {
+      await storeRuns(
+        triage("run_mfx3k2a1_0f0f03", [
+          ...enteredRead,
+          [
+            today("10:20:01"),
+            {
+              type: "llm.request",
+              agent: "writer",
+              provider: "ollama",
+              model: "llama3.2",
+              messages: 1,
+            },
+          ],
+          [
+            today("10:20:02"),
+            {
+              type: "run.failed",
+              state: "read",
+              error: "the bank is offline",
+              reason: "error",
+              providerText: { status: 503, text: "upstream down" },
+            },
+          ],
+        ]),
+      );
+
+      const { io } = await showIn(acme, "0f0f03", "--debug");
+
+      expect(io.stdout.at(-2)).toBe(
+        "  Report it with the details below: https://github.com/halonic-com/halonic/issues",
+      );
+      expect(io.stderr).toEqual([
+        "The engine said: the bank is offline",
+        "The provider said (HTTP 503): upstream down",
+        "Model calls in this step:",
+        "  writer called llama3.2 at ollama",
+      ]);
+    });
+
     it("says where a cancel landed: in a step, between steps, or before any", async () => {
       const cancelled = (state: string | null) =>
         ({ type: "run.failed", state, error: "cancelled", reason: "cancelled" }) as const;
