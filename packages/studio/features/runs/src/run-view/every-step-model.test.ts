@@ -64,7 +64,7 @@ verifies("runs.every-step", () => {
     expect(cancelled).toMatchObject({
       mark: "stopped",
       line: "Cancelled in this step",
-      label: "Classify, cancelled, 10:40, Cancelled in this step",
+      label: "Classify, cancelled, 10:40",
     });
     const budget = stepsOf([
       [0, entered("draft")],

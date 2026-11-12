@@ -53,7 +53,11 @@ export function everyStep(
       mark,
       line,
       time,
-      label: [name, state, time, line].join(", "),
+      // The cancelled state word already says it, so its line stays out of the label (mc 19.3).
+      label: (mark === "stopped" && line === everyStepWords.cancelled
+        ? [name, state, time]
+        : [name, state, time, line]
+      ).join(", "),
     };
   });
 }
