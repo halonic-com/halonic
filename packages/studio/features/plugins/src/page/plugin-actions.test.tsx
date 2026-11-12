@@ -40,6 +40,7 @@ function recordingActions(
     if (options.fail === name) throw new Error("The store is locked.");
   };
   const actions: PluginActions = {
+    trust: async (plugin) => step("trust", `trust ${plugin}`),
     revoke: async (plugin) => step("revoke", `revoke ${plugin}`),
     remove: async (plugin) => {
       step("remove", `remove ${plugin}`);

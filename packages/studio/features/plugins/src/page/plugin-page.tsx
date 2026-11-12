@@ -20,6 +20,7 @@ import {
 } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 import { messageOf, RemovePluginDialog } from "./remove-plugin-dialog.tsx";
+import { ReviewPluginDialog } from "./review-plugin-dialog.tsx";
 import { StatusBox } from "./status-box.tsx";
 import { WhatItAdds } from "./what-it-adds.tsx";
 
@@ -65,6 +66,7 @@ export function PluginPage({
   const statusId = useId();
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
   const [removing, setRemoving] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const { run, toastRemoved } = usePageActions();
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
@@ -106,6 +108,14 @@ export function PluginPage({
           )}
         />
       </header>
+      {reviewing && manifest !== undefined ? (
+        <ReviewPluginDialog
+          plugin={plugin}
+          manifest={manifest}
+          trust={actions.trust}
+          onClose={() => setReviewing(false)}
+        />
+      ) : null}
       {removing ? (
         <RemovePluginDialog
           plugin={plugin}
@@ -128,6 +138,7 @@ export function PluginPage({
           now={now}
           onCheckAgain={() => run("reload", actions.reload)}
           onOpenFolder={() => run("openFolder", () => actions.openFolder(plugin.plugin))}
+          onReview={() => setReviewing(true)}
         />
         {manifest === undefined ? null : (
           <>
