@@ -102,7 +102,7 @@ async function startBuiltRunner(
   const command = runnerCommand(
     { node: process.execPath, nodeFolder: "", runnerFile: runner.path, integrationFolder },
     { nonce: testNonce, folder: integrationFolder, entryFile, exportName: "weather" },
-    heapLimitMiB,
+    heapLimitMiB === undefined ? {} : { heapLimitMiB },
   );
   const args = nodeLayer ? command.args : command.args.filter((arg) => !arg.startsWith("--"));
   const child = spawn(command.program, args, { stdio: ["pipe", "pipe", "pipe"], env: {} });
@@ -226,6 +226,25 @@ const hungrySource = `export const weather = {
 };
 `;
 
+const bufferHungrySource = `export const weather = {
+  name: "weather",
+  version: "1.0.0",
+  tools: [],
+  connect: () => ({
+    callTool: async () => {
+      const kept = [];
+      try {
+        for (let i = 0; i < 100; i++) kept.push(new Uint8Array(50 * 1024 * 1024).fill(1));
+      } catch (error) {
+        return error.name + " after " + kept.length * 50 + " MiB";
+      }
+      return "no error after " + kept.length * 50 + " MiB";
+    },
+    close: async () => undefined,
+  }),
+};
+`;
+
 verifies("integration-runner.heap-limit", () => {
   // Two runner starts and a full heap: on a busy CI machine that takes longer
   // than Vitest's 5 s, though it takes half a second on its own.
@@ -248,5 +267,23 @@ verifies("integration-runner.heap-limit", () => {
       // Halonic goes on, and the next runner serves its integration.
       expect(await answerTo(integrationSource, {})).toBe("forecast in https://api.example.com");
     });
+
+    // Linux only: `prlimit` is how the runner gets the limit, and macOS and
+    // Windows have none (HAL-7565).
+    it.skipIf(process.platform !== "linux")(
+      "stops an integration that keeps typed arrays at the data limit with a RangeError",
+      async () => {
+        const hungry = bridgeOptions(fakeRunnerProcess(), {
+          process: await startBuiltRunner(bufferHungrySource),
+        });
+        const connection = await connectRunner(hungry);
+        const result = String(await connection.callTool("forecast", {}));
+        const kept = /^RangeError after (\d+) MiB$/.exec(result)?.[1];
+        expect(kept, result).toBeDefined();
+        // 256 MiB of buffers are allowed on top of Node's start and the heap.
+        expect(Number(kept)).toBeLessThan(1152);
+        await connection.close();
+      },
+    );
   });
 });
