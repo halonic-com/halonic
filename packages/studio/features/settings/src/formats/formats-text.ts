@@ -1,4 +1,4 @@
-import { saveFailed } from "../appearance/appearance-text.ts";
+import { saveFailed } from "../save-failed.ts";
 
 /**
  * The words of Settings → Formats: flow-settings 5 for the control, the pattern of the

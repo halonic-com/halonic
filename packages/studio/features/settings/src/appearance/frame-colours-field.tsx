@@ -1,6 +1,7 @@
 import { ColourPopover, Field, Input, parseHex, Select } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import type { DisplaySettings } from "../display-settings.ts";
+import type { SaveSetting } from "../save-setting.ts";
 import { useDisplaySetting } from "../use-display-setting.ts";
 import {
   type FrameColourPair,
@@ -22,7 +23,6 @@ import {
   SECOND_COLOUR,
   YOUR_OWN,
 } from "./appearance-text.ts";
-import type { SaveSetting } from "./save-setting.ts";
 
 const frameOptions = [
   ...Object.entries(framePresetNames).map(([value, label]) => ({ value, label })),
