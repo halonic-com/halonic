@@ -11,7 +11,7 @@ import {
   onLine,
   trustedDay,
 } from "./page-text.ts";
-import { CHECK_AGAIN, CHECKING, OPEN_FOLDER } from "./plugin-actions.ts";
+import { CHECK_AGAIN, CHECKING, OPEN_FOLDER, REVIEW, REVIEW_CHANGES } from "./plugin-actions.ts";
 import type { InstalledPlugin, PluginLoadProblem } from "./plugin-pages.ts";
 
 /** The one status box (T12): on, not trusted yet, changed, or the can't-load Callout. */
@@ -21,12 +21,15 @@ export function StatusBox({
   now,
   onCheckAgain,
   onOpenFolder,
+  onReview,
 }: {
   readonly id: string;
   readonly plugin: InstalledPlugin;
   readonly now: () => Date;
   readonly onCheckAgain: () => Promise<void>;
   readonly onOpenFolder: () => void;
+  /** Opens the trust check, for a plugin that isn't trusted or has changed. */
+  readonly onReview: () => void;
 }) {
   const [checking, setChecking] = useState(false);
   if (plugin.status === "cant-load") {
@@ -72,6 +75,13 @@ export function StatusBox({
         <p className="text-body-strong">{box.title}</p>
         {box.line === "" ? null : (
           <p className="text-small text-fg-muted wrap-anywhere">{box.line}</p>
+        )}
+        {plugin.status === "on" || plugin.manifest === undefined ? null : (
+          <div className="mt-2">
+            <Button variant="secondary" size="sm" onClick={onReview}>
+              {plugin.status === "changed" ? REVIEW_CHANGES : REVIEW}
+            </Button>
+          </div>
         )}
       </div>
     </div>

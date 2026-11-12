@@ -101,6 +101,7 @@ export function noSettings(): { settings: PluginSettingsReader; secrets: PluginS
 export function noActions(): { actions: PluginActions } {
   return {
     actions: {
+      trust: async () => {},
       revoke: async () => {},
       remove: async () => ({ kind: "removed" }),
       reload: async () => {},

@@ -16,6 +16,8 @@ export type PluginRemoveOutcome =
  * person; the page says it in a toast.
  */
 export interface PluginActions {
+  /** **Trust** in the trust check from Review: core's `PluginService.trust`. The feed then says it's on. */
+  readonly trust: (plugin: string) => Promise<void>;
   /** **Remove trust**: core's `PluginService.revoke`. The feed then says it isn't trusted. */
   readonly revoke: (plugin: string) => Promise<void>;
   /** **Remove plugin**: core's `PluginService.remove`, with the keychain deleting its secrets. */
@@ -35,6 +37,10 @@ export function moreActionsFor(name: string): string {
 export const OPEN_FOLDER = "Open folder";
 export const REMOVE_TRUST = "Remove trust";
 export const REMOVE_PLUGIN_ELLIPSIS = "Remove plugin…";
+
+/** The status box's button: the trust check from **Review**, or **Review changes** for a changed plugin. */
+export const REVIEW = "Review";
+export const REVIEW_CHANGES = "Review changes";
 
 /** The can't-load Callout's first action (T12), and its busy words. */
 export const CHECK_AGAIN = "Check again";
