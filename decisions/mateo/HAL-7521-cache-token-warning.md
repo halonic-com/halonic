@@ -3,6 +3,7 @@
 - Task: HAL-7521 (checking the remote cache on `main` after a routine key rotation)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WvJ0ZFQ69WTR/CKP2L7lL0q3LDgd76XWAiiYZe9vHkkj1Vf2Bi7dvkrrILHOg3JK0WOgzJ9ISzQbQrvYAQLRAA==
 
 ## What changes
 
