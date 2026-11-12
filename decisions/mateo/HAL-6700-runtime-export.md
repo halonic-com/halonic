@@ -2,6 +2,7 @@
 
 - Approval: [HAL-6707](/HAL/issues/HAL-6707)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8b+/oy1s5XAyjFyDatSMCR7P8uIEeFRnr1pNA5R+ECPMvMxyUzLRI5wNpSRZ75lkV6najzTUT4OQk+oF93AdAA==
 
 Step 1b of the cloud track (HAL-198 build plan, multi-cloud ADR on HAL-35,
 rule 3 and 5.6) adds the folder format of `halonic deploy export` and
