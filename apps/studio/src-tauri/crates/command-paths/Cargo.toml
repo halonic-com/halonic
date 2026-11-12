@@ -1,0 +1,13 @@
+[package]
+name = "halonic-command-paths"
+description = "Finds where a connector's program is on this computer, by the rules the CLI uses, so the Studio and the CLI fingerprint one workspace alike."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# No dependencies: everything here is the standard library.

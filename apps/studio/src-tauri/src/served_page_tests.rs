@@ -107,6 +107,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "trust_revoke",
         "reopen_folder",
         "forget_folder",
+        "command_paths",
         "host_settings_read",
         "host_settings_set",
         "host_settings_remove",
@@ -447,7 +448,8 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
             "allow-trust-grant",
             "allow-trust-revoke",
             "allow-reopen-folder",
-            "allow-forget-folder"
+            "allow-forget-folder",
+            "allow-command-paths"
         ])
     );
 }

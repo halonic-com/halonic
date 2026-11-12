@@ -6,6 +6,7 @@ export {
   isBlobRefusal,
 } from "./blob-commands.ts";
 export { TauriBlobStore } from "./blob-store.ts";
+export { commandPathCommands, TauriCommandPaths } from "./command-paths.ts";
 export { TauriDefinitionStore, webCryptoDigest } from "./definition-store.ts";
 export {
   type FileRefusal,

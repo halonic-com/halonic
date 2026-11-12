@@ -31,6 +31,7 @@ tauri-build = { version = "=2.7.4", features = [] }
 [dependencies]
 halonic-agent-host = { path = "crates/agent-host" }
 halonic-blob-store = { path = "crates/blob-store" }
+halonic-command-paths = { path = "crates/command-paths" }
 halonic-connect = { path = "crates/connect" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-host-settings = { path = "crates/host-settings" }
