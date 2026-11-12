@@ -9,7 +9,10 @@
 In `.github/workflows/ci.yml`, the Windows installer job's silent install no longer passes
 `/D=<runner temp>\Halonic`. It installs into the installer's default per-user folder, which this
 pull request moves to `%LOCALAPPDATA%\Programs\Halonic`, and checks that Halonic is there and not
-in the profile folder `%LOCALAPPDATA%\halonic`. The later steps use `HALONIC_TEST_DIR` as before,
+in the profile folder `%LOCALAPPDATA%\halonic`. Before that install it deletes the current user's
+`Software\<publisher>\Halonic` key when it holds the page walk's folder: the page walk's silent
+uninstall keeps that remembered install location, and the next install would go back there
+instead of to the default. The later steps use `HALONIC_TEST_DIR` as before,
 so they test the same files in the new place.
 
 Triggers, rights, runners and secrets don't change.
