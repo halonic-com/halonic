@@ -182,12 +182,13 @@ verifies("app.runs-read-latest-version", () => {
   );
 
   it(
-    "refuses a live run's folder asked for while it is closing",
+    "refuses a live run's folder that was still waiting on git when it started closing",
     async () => {
+      // Not awaited: git is still starting when close begins, so only the check after git refuses it.
       const programs = await open();
-      await programs.folderFor(live);
+      const asked = programs.folderFor(live);
       const closing = programs.close();
-      await expect(programs.folderFor(live)).rejects.toBeInstanceOf(ProgramCopyUnavailableError);
+      await expect(asked).rejects.toBeInstanceOf(ProgramCopyUnavailableError);
       await closing;
       expect(await readdir(copiesFolder)).toEqual([]);
     },
