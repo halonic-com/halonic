@@ -3,6 +3,7 @@
 - Task: HAL-6225 (part 2 of HAL-6177)
 - Approval: Elena asked for this check on [HAL-6225](/HAL/issues/HAL-6225); the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DTYqVxXTd5kIeJZTX6TVocfRolgWKYZcPxARscQt/2icuOccndGZAOMRtCQmentiuglC06PrUVmlRoZdEmdMDA==
 
 ## What changes
 
