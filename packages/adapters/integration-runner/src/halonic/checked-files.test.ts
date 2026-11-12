@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -43,6 +43,19 @@ verifies("integration-runner.plugin-backend", () => {
         "backend/index.js changed",
         "extra.js was added",
         "plugin.yaml is missing",
+      ]);
+    });
+
+    it("refuses a link added after the check, and a link in place of a checked file", () => {
+      const { folder, checked } = folderOf({ "plugin.yaml": "id: a", "backend/index.js": "run()" });
+      symlinkSync(join(folder, "plugin.yaml"), join(folder, "alias.js"));
+      symlinkSync(tmpdir(), join(folder, "dir-link"));
+      rmSync(join(folder, "backend/index.js"));
+      symlinkSync(join(folder, "plugin.yaml"), join(folder, "backend/index.js"));
+      expect(checkedFilesProblems(folder, checked).sort()).toEqual([
+        "alias.js was added",
+        "backend/index.js can't be read",
+        "dir-link was added",
       ]);
     });
 
