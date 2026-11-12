@@ -101,6 +101,28 @@ export function findSbomProblems(
 }
 
 /**
+ * Lists every ref in the CycloneDX dependency graph that names neither a
+ * component nor the product in `metadata.component`. A dangling ref means the
+ * graph and the component list disagree, so a reader of the SBOM can't tell
+ * what pulls in what.
+ */
+export function findDanglingRefs(sbom: Sbom): string[] {
+  const known = new Set(
+    [sbom.metadata?.component, ...(sbom.components ?? [])].flatMap(
+      (component) => component?.["bom-ref"] ?? [],
+    ),
+  );
+  const dangling = new Set(
+    (sbom.dependencies ?? [])
+      .flatMap((entry) => [entry.ref, ...(entry.dependsOn ?? [])])
+      .filter((ref) => !known.has(ref)),
+  );
+  return [...dangling]
+    .sort(byCodePoint)
+    .map((ref) => `${ref} is in the dependency graph but names no component of the SBOM`);
+}
+
+/**
  * Names the product the SBOM describes. `pnpm sbom` takes the name and version
  * from the root package (`@halonicjs/root@0.0.0`), which is wrong for a
  * release file, so `metadata.component` is replaced with an application and the

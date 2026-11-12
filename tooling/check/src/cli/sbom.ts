@@ -12,6 +12,7 @@ import type { DependencyList } from "../lib/config-files.ts";
 import { readDeny } from "../lib/deny.ts";
 import { type LicencePolicy, licenceTextPath } from "../lib/licences.ts";
 import {
+  findDanglingRefs,
   findSbomProblems,
   type NoticeEntry,
   type NoticeSection,
@@ -29,7 +30,8 @@ import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.
  * `pnpm sbom`, so no extra tool) for the production dependencies of one
  * package, or of the whole workspace when `--package` is left out. The SBOM
  * names `<product>` at `<v>` as the product it describes. Fails when
- * a library in it is not on `tooling/check/dependencies.json`. With
+ * a library in it is not on `tooling/check/dependencies.json`, or when its
+ * dependency graph names a ref that is not one of its components. With
  * `--notices` it also writes `THIRD-PARTY-NOTICES.txt` for the same set,
  * plus the vendored files in `tooling/check/licences.json`.
  * Needs `pnpm install` first: licence texts are read from the install.
@@ -203,11 +205,14 @@ function main(argv: readonly string[]): number {
   pnpm(root, ["sbom", ...scope, "--sbom-format", "cyclonedx", "--prod", "--out", sbomPath]);
   const sbom = withProduct(readJson<Sbom>(sbomPath), name, version);
   writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);
-  const problems = findSbomProblems(
-    sbom,
-    readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),
-    new Set(listWorkspacePackages(root).flatMap((pkg) => pkg.manifest.name ?? [])),
-  );
+  const problems = [
+    ...findSbomProblems(
+      sbom,
+      readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),
+      new Set(listWorkspacePackages(root).flatMap((pkg) => pkg.manifest.name ?? [])),
+    ),
+    ...findDanglingRefs(sbom),
+  ];
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
   const report = (title: string, found: readonly string[]): void => {
     for (const problem of found) {

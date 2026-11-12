@@ -4,7 +4,7 @@
 # Today it is a dry-run skeleton. The CLI is packed from a stub and the
 # installer is a placeholder text file, so the whole path (tag, build,
 # checksums, draft release) is tested before the real app exists. The
-# updater files, the APK and the app SBOM are added by their own tasks.
+# updater files and the APK are added by their own tasks.
 #
 # Windows signing has two jobs:
 # - sign-test (dry runs): signs a tiny test program with a throwaway
@@ -118,17 +118,29 @@ jobs:
           printf 'Placeholder installer for release dry run %s. Not an installer.\n' "$VERSION" \
             > "dist/$INSTALLER"
       - uses: $/.github/actions/setup
+      # The Rust crates' licences are read with `cargo metadata`, on the
+      # toolchain pinned in rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        working-directory: apps/studio/src-tauri
+        run: rustup toolchain install
       # The SBOM tool is `pnpm sbom` (pinned by packageManager), so no new
-      # tool is added. Until the CLI package exists, both files cover every
-      # production dependency of the workspace. The check fails the run when
-      # a library is not on tooling/check/dependencies.json. The app SBOM
-      # is added with the real Studio build.
-      - name: Write the CLI SBOM and the third-party notices
+      # tool is added. Until the CLI package exists, both SBOMs cover every
+      # production dependency of the workspace, as the installer's notices
+      # do (build-installer.ps1). The check fails the run when a library is
+      # not on tooling/check/dependencies.json or a ref in the dependency
+      # graph names no component. THIRD-PARTY-NOTICES.txt is written once,
+      # with the app: it also lists the Rust crates the app links, so it
+      # covers the CLI too.
+      - name: Write the CLI SBOM
         env:
           VERSION: ${{ steps.plan.outputs.version }}
-        run: |
-          mkdir -p dist
-          pnpm check:sbom --name halonic-cli --version "$VERSION" --out dist --notices
+        run: pnpm check:sbom --name halonic-cli --version "$VERSION" --out dist
+      - name: Write the app SBOM and the third-party notices
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: >-
+          pnpm check:sbom --name halonic-studio --version "$VERSION" --out dist --notices
+          --cargo apps/studio/src-tauri --cargo-target x86_64-pc-windows-msvc
       - name: Write the checksums
         run: |
           cd dist

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { DependencyList } from "./config-files.ts";
 import {
   componentName,
+  findDanglingRefs,
   findSbomProblems,
   type NoticeEntry,
   type NoticeSection,
@@ -75,6 +76,39 @@ describe("findSbomProblems", () => {
 
   test("an empty SBOM has no problems", () => {
     expect(findSbomProblems({}, list, own)).toEqual([]);
+  });
+});
+
+describe("findDanglingRefs", () => {
+  test("accepts a graph whose refs are all components or the product", () => {
+    const sbom = {
+      metadata: { component: { name: "halonic-studio", "bom-ref": "halonic-studio@1.0.0" } },
+      components: [{ name: "yaml", "bom-ref": "yaml@2.9.1" }],
+      dependencies: [
+        { ref: "halonic-studio@1.0.0", dependsOn: ["yaml@2.9.1"] },
+        { ref: "yaml@2.9.1" },
+      ],
+    };
+    expect(findDanglingRefs(sbom)).toEqual([]);
+  });
+
+  test("names each ref that is no component, once, in order", () => {
+    const sbom = {
+      metadata: { component: { name: "halonic-studio", "bom-ref": "halonic-studio@1.0.0" } },
+      components: [{ name: "yaml", "bom-ref": "yaml@2.9.1" }],
+      dependencies: [
+        { ref: "@halonicjs/root@0.0.0", dependsOn: ["yaml@2.9.1", "gone@1.0.0"] },
+        { ref: "yaml@2.9.1", dependsOn: ["gone@1.0.0"] },
+      ],
+    };
+    expect(findDanglingRefs(sbom)).toEqual([
+      "@halonicjs/root@0.0.0 is in the dependency graph but names no component of the SBOM",
+      "gone@1.0.0 is in the dependency graph but names no component of the SBOM",
+    ]);
+  });
+
+  test("an SBOM without a graph has none", () => {
+    expect(findDanglingRefs({ components: [{ name: "yaml" }] })).toEqual([]);
   });
 });
 
