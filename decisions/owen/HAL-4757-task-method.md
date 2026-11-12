@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4757](/HAL/issues/HAL-4757) asks for this change; Liam approves it in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:32YKS+dtveQYIm9Fks4RYfrpSqap6uPxjznVLYoxuSf0k9TZGsMfzPi9Z50mLVBovC8AQvv+JquVUMCYHLN2Cg==
 
 ## What changes
 
