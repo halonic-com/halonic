@@ -15,6 +15,11 @@ interface ParityRow {
 }
 
 const sharedObject = { name: "acme" };
+const symbolKey = Symbol("key");
+
+class StoreError extends Error {
+  override readonly name = "StoreError";
+}
 
 /** Add rows here with every new matcher: at least one that passes and one that fails. */
 const rows: readonly ParityRow[] = [
@@ -26,6 +31,34 @@ const rows: readonly ParityRow[] = [
   { matcher: "toBe", actual: { name: "acme" }, expected: { name: "acme" } },
   { matcher: "toBe", actual: { name: "acme" }, expected: { name: "acme" }, negated: true },
   { matcher: "toBe", actual: null, expected: undefined },
+  { matcher: "toEqual", actual: { a: 1, b: [1, 2] }, expected: { b: [1, 2], a: 1 } },
+  { matcher: "toEqual", actual: { a: 1 }, expected: { a: 2 } },
+  { matcher: "toEqual", actual: { a: 1, b: undefined }, expected: { a: 1 } },
+  { matcher: "toEqual", actual: { a: 1 }, expected: { a: 1, b: 2 } },
+  { matcher: "toEqual", actual: [1, 2], expected: [1, 2, 3] },
+  { matcher: "toEqual", actual: [1], expected: { 0: 1 } },
+  { matcher: "toEqual", actual: Number.NaN, expected: Number.NaN },
+  { matcher: "toEqual", actual: 0, expected: -0 },
+  { matcher: "toEqual", actual: null, expected: undefined },
+  { matcher: "toEqual", actual: new StoreError("gone"), expected: { name: "acme" }, negated: true },
+  { matcher: "toEqual", actual: new Uint8Array([1, 2]), expected: new Uint8Array([1, 2]) },
+  { matcher: "toEqual", actual: new Uint8Array([1, 2]), expected: new Uint8Array([1, 3]) },
+  { matcher: "toEqual", actual: new Uint8Array(0), expected: new Uint16Array(0) },
+  { matcher: "toEqual", actual: new Uint8Array([1]), expected: [1] },
+  { matcher: "toEqual", actual: new Date(5), expected: new Date(5) },
+  { matcher: "toEqual", actual: new Date(5), expected: new Date(6) },
+  { matcher: "toEqual", actual: new Date(Number.NaN), expected: new Date(Number.NaN) },
+  { matcher: "toEqual", actual: /a/g, expected: /a/g },
+  { matcher: "toEqual", actual: /a/g, expected: /a/i },
+  { matcher: "toEqual", actual: new Map([["k", { v: 1 }]]), expected: new Map([["k", { v: 1 }]]) },
+  { matcher: "toEqual", actual: new Map([["k", 1]]), expected: new Map([["k", 2]]) },
+  { matcher: "toEqual", actual: new Set([{ v: 1 }]), expected: new Set([{ v: 1 }]) },
+  { matcher: "toEqual", actual: new Set([1]), expected: new Set([2]) },
+  { matcher: "toEqual", actual: new StoreError("gone"), expected: new StoreError("gone") },
+  { matcher: "toEqual", actual: new StoreError("gone"), expected: new StoreError("lost") },
+  { matcher: "toEqual", actual: new StoreError("gone"), expected: new Error("gone") },
+  { matcher: "toEqual", actual: { [symbolKey]: 1 }, expected: { [symbolKey]: 2 } },
+  { matcher: "toEqual", actual: { at: new Date(1) }, expected: { at: new Date(1) }, negated: true },
   { matcher: "toBeGreaterThanOrEqual", actual: 2, expected: 1 },
   { matcher: "toBeGreaterThanOrEqual", actual: 1, expected: 1 },
   { matcher: "toBeGreaterThanOrEqual", actual: 0, expected: 1 },

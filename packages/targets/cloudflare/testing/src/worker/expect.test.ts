@@ -52,6 +52,12 @@ describe("the shim's expect", () => {
   });
 
   it("lists its matchers for the build's check", () => {
-    expect(matcherNames).toEqual(["toBe", "toBeGreaterThanOrEqual", "toBeNull", "toBeUndefined"]);
+    expect(matcherNames).toEqual([
+      "toBe",
+      "toEqual",
+      "toBeGreaterThanOrEqual",
+      "toBeNull",
+      "toBeUndefined",
+    ]);
   });
 });
