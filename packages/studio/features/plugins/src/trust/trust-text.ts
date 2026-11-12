@@ -77,7 +77,7 @@ export function sectionRow(title: string, count: number): string {
 
 /** The first line in Tools for agents (T8). */
 export const TOOLS_INTRO =
-  "Agents can use these through a connector. Each one asks a person first unless you change that.";
+  "Agents can use these through a connector. Each one asks a person first.";
 
 /** After a tool whose answers the plugin marks as untrusted (T8). */
 export const OUTSIDE_TEXT = "its answers are treated as outside text";

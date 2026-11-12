@@ -199,7 +199,7 @@ verifies("plugins.plugin-trust-check", () => {
     const text = dialog().textContent ?? "";
 
     expect(text).toContain(
-      "Agents can use these through a connector. Each one asks a person first unless you change that.",
+      "Agents can use these through a connector. Each one asks a person first.",
     );
     expect(text).toContain("its answers are treated as outside text");
     expect(text).toContain("npx weather-mcp@1.2.3");
