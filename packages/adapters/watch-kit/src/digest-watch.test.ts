@@ -260,6 +260,45 @@ verifies("watch-kit.digest-watch", () => {
       expect(failures).toEqual([readFailure]);
     });
 
+    it("closes once a source that stops later has stopped, and stops it only once", async () => {
+      const store = new MemoryDefinitionStore({ "a.yaml": "1" });
+      let stops = 0;
+      let stopped = (): void => {};
+      const events: WatchEvents = () => () => {
+        stops += 1;
+        return new Promise<void>((resolve) => {
+          stopped = resolve;
+        });
+      };
+      const watch = await DigestWatch.open(
+        { files: store, digest: webCryptoDigest, events, quietMs, openWatches: new Set() },
+        { changed: () => {}, failed: () => {} },
+      );
+      let closed = false;
+      const closing = watch.close().then(() => {
+        closed = true;
+      });
+      const closingAgain = watch.close();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(closed).toBe(false);
+      stopped();
+      await Promise.all([closing, closingAgain]);
+      expect(closed).toBe(true);
+      expect(stops).toBe(1);
+    });
+
+    it("closes even when the source fails to stop", async () => {
+      const store = new MemoryDefinitionStore();
+      const events: WatchEvents = () => async () => {
+        throw new Error("the shell didn't answer");
+      };
+      const watch = await DigestWatch.open(
+        { files: store, digest: webCryptoDigest, events, quietMs, openWatches: new Set() },
+        { changed: () => {}, failed: () => {} },
+      );
+      await expect(watch.close()).resolves.toBeUndefined();
+    });
+
     it("stops listening when the workspace can't be read on opening", async () => {
       const store = new MemoryDefinitionStore();
       const hand = handEvents();

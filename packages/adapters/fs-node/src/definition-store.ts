@@ -1,7 +1,7 @@
 import type { Dirent } from "node:fs";
 import { chmod, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { DigestWatch, type OwnChange } from "@halonicjs/adapter-watch-kit";
+import { DigestWatch, runOwnChange } from "@halonicjs/adapter-watch-kit";
 import {
   checkPublicWorkspacePath,
   type DefinitionStore,
@@ -13,7 +13,7 @@ import {
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { bytesToHex, contentDigest, KeyedQueue, matchesExpected } from "@halonicjs/std";
+import { bytesToHex, KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
 import { type FolderEvents, folderWatchEvents, nodeFolderEvents } from "./folder-watch.ts";
 import { entryAt, isMissing } from "./links.ts";
@@ -119,7 +119,10 @@ export class FolderDefinitionStore implements DefinitionStore {
           return { status: "changed-on-disk", current };
         }
       }
-      await this.#ownChange(path, content, () => this.#replace(path, content));
+      await runOwnChange(this.#watches, path, content, webCryptoDigest, async () => {
+        await this.#replace(path, content);
+        return true;
+      });
       return { status: "written" };
     });
   }
@@ -156,7 +159,10 @@ export class FolderDefinitionStore implements DefinitionStore {
         return;
       }
       // `force`: a file another program removed in the meantime is not an error.
-      await this.#ownChange(path, null, () => rm(join(this.#root, path), { force: true }));
+      await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
+        await rm(join(this.#root, path), { force: true });
+        return true;
+      });
     });
   }
 
@@ -178,34 +184,6 @@ export class FolderDefinitionStore implements DefinitionStore {
       },
       listener,
     );
-  }
-
-  /**
-   * Runs one of the store's own changes to `path`, which leaves `content`
-   * there (`null` for a remove), so no open watch reports it.
-   */
-  async #ownChange(
-    path: string,
-    content: string | null,
-    apply: () => Promise<void>,
-  ): Promise<void> {
-    const watches = [...this.#watches];
-    if (watches.length > 0) {
-      const change: OwnChange =
-        content === null ? "absent" : await contentDigest(content, webCryptoDigest);
-      for (const watch of watches) {
-        watch.beginOwnChange(path, change);
-      }
-    }
-    let applied = false;
-    try {
-      await apply();
-      applied = true;
-    } finally {
-      for (const watch of watches) {
-        await watch.endOwnChange(path, applied);
-      }
-    }
   }
 
   /**

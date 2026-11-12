@@ -68,7 +68,6 @@ class ShellChannel {
   #watchId: WatchId | undefined;
   /** Where messages go: kept until the kit listens, then the kit's handlers. */
   #deliver: (message: unknown) => void;
-  #stopped = false;
 
   private constructor(events: ShellWatchEvents) {
     this.#events = events;
@@ -93,22 +92,27 @@ class ShellChannel {
     try {
       shellChannel.#watchId = await events.start(shellChannel.#channel);
     } catch (error) {
-      shellChannel.#stop();
+      await shellChannel.#stop();
       throw error;
     }
     return shellChannel;
   }
 
-  #stop(): void {
-    if (this.#stopped) {
-      return;
-    }
-    this.#stopped = true;
+  /**
+   * Closes the channel, then resolves once the shell's `fs_unwatch` has
+   * answered. Called once: by the kit, which stops its events only once, or
+   * when the shell refuses to watch, before the kit has them.
+   */
+  async #stop(): Promise<void> {
     this.#deliver = () => {};
     this.#channel.close();
-    if (this.#watchId !== undefined) {
+    if (this.#watchId === undefined) {
+      return;
+    }
+    try {
+      await this.#events.stop(this.#watchId);
+    } catch {
       // The channel is closed, so nothing more is heard from the shell either way.
-      this.#events.stop(this.#watchId).catch(() => {});
     }
   }
 }

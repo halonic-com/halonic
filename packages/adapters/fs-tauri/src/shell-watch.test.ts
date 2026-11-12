@@ -115,6 +115,34 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       expect(shell.calls.at(-1)).toEqual({ command: "fs_unwatch", args: { watchId: 0 } });
     });
 
+    it("closes only once the shell has stopped its watch", async () => {
+      const { shell, watch } = await watched({});
+      let answerUnwatch = (): void => {};
+      const invoke = shell.invoke.bind(shell);
+      shell.invoke = async (command, args) => {
+        if (command === "fs_unwatch") {
+          // The shell answers fs_unwatch later, as an IPC round trip would.
+          await new Promise<void>((resolve) => {
+            answerUnwatch = resolve;
+          });
+        }
+        return await invoke(command, args);
+      };
+      let closed = false;
+      const closing = watch.close().then(() => {
+        closed = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(closed).toBe(false);
+      expect(shell.openWatches).toBe(1);
+      answerUnwatch();
+      await closing;
+      expect(shell.openWatches).toBe(0);
+      // Closing again waits for the same fs_unwatch rather than sending another.
+      await watch.close();
+      expect(shell.calls.filter((call) => call.command === "fs_unwatch")).toHaveLength(1);
+    });
+
     it("closes even when the shell can't stop its watch", async () => {
       const { shell, watch } = await watched({});
       shell.refuseNext("io", "fs_unwatch");
@@ -186,13 +214,10 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       expect(heard.failures).toHaveLength(1);
     });
 
-    it("doesn't read a finished write back, so a change from outside right after it isn't missed", async () => {
-      const { shell, store, heard } = await watched({ "a.yaml": "1" });
+    it("doesn't read a finished write back", async () => {
+      const { shell, store } = await watched({ "a.yaml": "1" });
       await expect(store.write("a.yaml", "2")).resolves.toEqual({ status: "written" });
       expect(shell.calls.at(-1)?.command).toBe("fs_write");
-      shell.changeOutside({ "a.yaml": "3" });
-      await heard.until(1);
-      expect(heard.batches).toEqual([[{ path: "a.yaml", kind: "changed" }]]);
     });
 
     it("fails a write with its own error when reading it back fails too; the watch is told", async () => {

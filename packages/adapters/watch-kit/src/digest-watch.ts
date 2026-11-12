@@ -14,7 +14,15 @@ import { KnownFiles, type KnownFilesOptions, type OwnChange } from "./known-file
 export type WatchEvents = (
   noticed: (name: string) => void,
   failed: (error: Error) => void,
-) => () => void;
+) => StopEvents;
+
+/**
+ * Stops the events at once. A source that takes a while to stop (the
+ * desktop shell's `fs_unwatch`) gives a promise for when it has, which
+ * `close()` waits for. The promise should not reject: the watch hears
+ * nothing more either way, so a failure to stop is ignored.
+ */
+export type StopEvents = () => void | Promise<void>;
 
 /** How a {@link DigestWatch} reads the workspace and is told about events. */
 export interface DigestWatchOptions extends KnownFilesOptions {
@@ -44,7 +52,9 @@ export class DigestWatch implements DefinitionWatch {
   readonly #known: KnownFiles;
   readonly #noticed = new Set<string>();
   #timer: ReturnType<typeof setTimeout> | undefined;
-  #stopEvents: (() => void) | undefined;
+  #stopEvents: StopEvents | undefined;
+  /** Settles once the event source has stopped; set by the first `close()`. */
+  #eventsStopped: Promise<void> | undefined;
   /** Set by `close()`: events are no longer heard. */
   #stopping = false;
   /** Set once `close()` is done: nothing more is reported. */
@@ -115,14 +125,27 @@ export class DigestWatch implements DefinitionWatch {
     await this.#inTurn(async () => this.#known.dropOwnChange(path));
   }
 
-  /** Stops hearing events, lets a batch already being read finish, then reports nothing more. */
+  /**
+   * Stops hearing events, lets a batch already being read finish, then
+   * reports nothing more. Resolves once the event source has stopped too,
+   * so a watch opened right after this has the workspace to itself.
+   */
   async close(): Promise<void> {
     this.#stopping = true;
     this.#options.openWatches.delete(this);
     clearTimeout(this.#timer);
-    this.#stopEvents?.();
+    const eventsStopped = this.#stopHearing();
     await this.#queued;
     this.#closed = true;
+    await eventsStopped;
+  }
+
+  /** Stops the event source once, however often the watch is closed. */
+  #stopHearing(): Promise<void> {
+    if (this.#eventsStopped === undefined && this.#stopEvents !== undefined) {
+      this.#eventsStopped = Promise.resolve(this.#stopEvents()).catch(() => undefined);
+    }
+    return this.#eventsStopped ?? Promise.resolve();
   }
 
   #notice(path: string): void {
