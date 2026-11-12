@@ -371,7 +371,15 @@ on (its first parent) before anything runs and reads no
 cache (neither Turbo's nor the pnpm store, which a pull request's runs can
 write). A third job, which also runs no pull-request code, installs only
 the merge base's dependencies, takes both sides' result files and runs
-both checks with the merge base's code and Node. To run the guard locally:
+both checks with the merge base's code and Node.
+
+If the main commit the merge ref was built on has a failing test, the merge
+base's tests job walks back to the newest green main commit and uses that
+commit for the guard's code and test results only. The guard still compares
+files (requirements and tests) with the commit the merge ref was built on
+(`--built-on`), so other commits' edits on main aren't blamed on the pull
+request. Tests in files main changed between the two commits are left out
+on both sides. To run the guard locally:
 
 ```sh
 git worktree add --detach ../merge-base "$(git merge-base origin/main HEAD)"
