@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the plan on HAL-8089 (option a: new connector transports, `local` defaulting to false); the package owner (Liam) signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ce1bZU9UxMn6Bite9zkiZnsplu3E7r2Lq9BxUBcHs9DeSoHVrVXRd/pLcI6qYKWzpeJMh8uEPxnRVGwO6XwwCg==
 - Task: HAL-8089
 
 ## What changes
