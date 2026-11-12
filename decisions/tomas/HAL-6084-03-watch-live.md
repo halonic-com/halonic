@@ -5,6 +5,7 @@
 - Approval: Liam approves this note in his review of this pull request on
   [HAL-6084](/HAL/issues/HAL-6084)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kzohnU7zUFPKYJwAl/wR1RkVDAAaPZYikGJNmK3e3wlv9+jhLkFROWjqQ8HzsATIaRCbvacYS+GpA5x8WCSqCQ==
 
 ## What changes
 
