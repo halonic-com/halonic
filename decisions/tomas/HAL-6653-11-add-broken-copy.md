@@ -1,6 +1,6 @@
 # Decision: a plugin add that can't read its copy back leaves nothing behind
 
-- Approval: Liam asked for this as follow-up 3 of his review of halonic#1744 (HAL-5575), a team decision with no board card; the package owner (Liam) approves this note in review on [HAL-7181](/HAL/issues/HAL-7181)
+- Approval: Liam asked for this as follow-up 3 of his review of halonic#1744 (HAL-5575), a team decision with no board card; the package owner (Liam) approves this note in review on [HAL-7192](/HAL/issues/HAL-7192)
 - Kind: internal
 
 ## What changes
