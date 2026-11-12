@@ -28,40 +28,51 @@ export interface DurableCoordinationOptions<Id> {
  * `CoordinationObject`, which does it atomically and reads its own
  * clock, so Workers instances with different clocks still agree on when a
  * lease or window ends.
+ *
+ * It is safe to keep across requests: it holds the object's id, not a stub,
+ * and gets a fresh stub for every call. A stub breaks after the object
+ * resets (a deploy, an overload), and a fresh one works again.
  */
 export class DurableCoordination<Id = unknown> implements Coordination {
-  readonly #object: Coordination;
+  readonly #namespace: CoordinationNamespace<Id>;
+  readonly #id: Id;
 
   constructor(options: DurableCoordinationOptions<Id>) {
     const { namespace, objectName = defaultCoordinationObjectName } = options;
-    this.#object = namespace.get(namespace.idFromName(objectName));
+    this.#namespace = namespace;
+    this.#id = namespace.idFromName(objectName);
+  }
+
+  /** Local and cheap (no network round trip); a new one per call avoids a broken stub. */
+  #object(): Coordination {
+    return this.#namespace.get(this.#id);
   }
 
   tryAcquire(key: string, ttlMs: number): Promise<Lease | null> {
-    return this.#object.tryAcquire(key, ttlMs);
+    return this.#object().tryAcquire(key, ttlMs);
   }
 
   renew(lease: Lease, ttlMs: number): Promise<Lease | null> {
-    return this.#object.renew(lease, ttlMs);
+    return this.#object().renew(lease, ttlMs);
   }
 
   release(lease: Lease): Promise<void> {
-    return this.#object.release(lease);
+    return this.#object().release(lease);
   }
 
   read(key: string): Promise<string | null> {
-    return this.#object.read(key);
+    return this.#object().read(key);
   }
 
   compareAndSet(key: string, expected: string | null, next: string | null): Promise<boolean> {
-    return this.#object.compareAndSet(key, expected, next);
+    return this.#object().compareAndSet(key, expected, next);
   }
 
   increment(key: string, by: number, limit?: number): Promise<CounterResult> {
-    return this.#object.increment(key, by, limit);
+    return this.#object().increment(key, by, limit);
   }
 
   countInWindow(key: string, windowMs: number, limit: number): Promise<WindowCount> {
-    return this.#object.countInWindow(key, windowMs, limit);
+    return this.#object().countInWindow(key, windowMs, limit);
   }
 }

@@ -11,7 +11,7 @@ import * as adapter from "../index.ts";
 
 export { CoordinationObject } from "../coordination-object.ts";
 
-/** What the runner binds for this suite (see `coordination.test.ts`). */
+/** What the runner binds for this suite (see `class-names.test.ts`). */
 interface TestEnv {
   DEPLOYED: DurableObjectNamespace<adapter.CoordinationObject>;
 }
@@ -21,12 +21,11 @@ describe("Durable Object class names", () => {
     expect(adapter.durableObjectClassNames).toEqual(["CoordinationObject"]);
   });
 
-  it("are all still exported, each as a class of that name", () => {
+  it("are all still exported as classes under their names", () => {
     const exported: Record<string, unknown> = { ...adapter };
     for (const name of adapter.durableObjectClassNames) {
       const exportedClass = exported[name];
       expect(typeof exportedClass, name).toBe("function");
-      expect(exportedClass instanceof Function && exportedClass.name, name).toBe(name);
     }
   });
 

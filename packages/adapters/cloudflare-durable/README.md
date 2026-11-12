@@ -23,7 +23,7 @@ from the first deploy and must not change:
 | `CoordinationObject` | leases, values, counters and windows of one deployment |
 
 `durableObjectClassNames` lists them, and `src/test/class-names.spec.ts` (run
-inside workerd by `coordination.test.ts`) fails when the list changes or a
+inside workerd by `class-names.test.ts`) fails when the list changes or a
 class is no longer exported under its name. A new class gets a name here, a
 line in this table and a migration entry in the Worker's configuration. The
 Worker (HAL-197 part 9) re-exports each class under its name.
