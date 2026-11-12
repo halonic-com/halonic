@@ -1,6 +1,6 @@
 # contracts.password-hasher
 
-- Status: draft
+- Status: active
 - Since: 0.1.0
 - Source: HAL-6799 (Cloud track part 8); `PasswordHasher` port v1, two formats decided on HAL-6789
 
