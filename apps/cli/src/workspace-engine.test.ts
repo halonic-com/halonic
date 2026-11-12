@@ -89,8 +89,9 @@ verifies("cli.run", () => {
 
 /**
  * How long a wait for the engine may take before the test fails. A stuck run's step
- * reads and appends files, which took over a second on a Windows runner (HAL-6235),
- * so the wait ends on the event and only this ceiling, far above it, ends on time.
+ * reads and appends files, and so does the scheduler reading its timers; each took over
+ * a second on a Windows runner (HAL-6235, HAL-6897), so the wait ends on the event and
+ * only this ceiling, far above it, ends on time.
  */
 const settleCeilingMs = 10_000;
 
@@ -184,7 +185,8 @@ async function openWithTicks(
     if (onStuck !== undefined) expect(wakeUpsSettled).toBe(wakeUpsCalled);
   };
   // The scheduler sets its first wake-up once it has read its timers; only later ones may fail.
-  await waitUntil(() => wakeUps.size === 1);
+  // That read goes to the disk, which took over a second on a Windows runner (HAL-6897).
+  await waitUntil(() => wakeUps.size === 1, { timeout: settleCeilingMs });
   expect(wakeUps.size).toBe(1);
   const failNextWakeUp = () => {
     failingWakeUps += 1;
