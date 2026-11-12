@@ -35,7 +35,7 @@ verifies("cli.messages", () => {
 describe("doctor's sentences", () => {
   it("has the summary and the labels", () => {
     expect(words(doctorMessages.summary())).toBe(
-      "Check that this computer can run Halonic: models, sandbox, disk",
+      "Check that this computer can run Halonic: sandbox, disk, and a workspace's models",
     );
     expect([
       words(doctorMessages.workspaceLabel()),

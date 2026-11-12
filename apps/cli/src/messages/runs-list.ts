@@ -184,7 +184,7 @@ export const runsListMessages = defineMessages("runsList", {
 
   /** The help line of `--status <status>`. */
   statusOption: () =>
-    phrase`Only the runs with this status: running, waiting, completed or failed.`,
+    phrase`Only the runs with this status: running, waiting (shown as Needs you or Waiting), completed (Done) or failed.`,
   /** The help line of `--workflow <id>`. */
   workflowOption: () => phrase`Only the runs of this workflow, by its id.`,
   /** The help line of `--limit <n>`. */

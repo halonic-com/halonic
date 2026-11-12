@@ -86,8 +86,8 @@ export const runMessages = defineMessages("run", {
   eventOption: () =>
     phrase`What to answer when the run waits for you, such as approve. One per wait, in order.`,
   /** `--harness`'s line in the help. */
-  harnessOption: (harnesses: readonly string[]) =>
-    phrase`The harness every agent of the run runs in, in place of its own: ${listInWords(harnesses, "or")}.`,
+  harnessOption: () =>
+    phrase`The harness every agent of the run runs in, in place of its own. For now only halonic works.`,
   /**
    * The reason after "Couldn't run support-reply:" when `--harness` names
    * no harness (exit 2). Words for HAL-189 6b, placeholders like doctor's

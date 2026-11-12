@@ -1,5 +1,4 @@
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
-import { AGENT_HARNESSES } from "@halonicjs/format";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { CliCommand } from "../../command.ts";
@@ -48,7 +47,7 @@ export function runCommandWith(setup: RunSetup): CliCommand {
       harness: {
         type: "string",
         valueName: "harness",
-        description: runMessages.harnessOption(AGENT_HARNESSES),
+        description: runMessages.harnessOption(),
       },
     },
     run: (input, context) => runWorkflow(input, context, setup),
