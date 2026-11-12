@@ -1,3 +1,4 @@
+import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -232,8 +233,7 @@ verifies("cli.commands.runs.show", () => {
     });
 
     it("says one answer settles only the first of several tool approvals (HAL-7937)", async () => {
-      const ask = (time: string, callId: string, tool: string) =>
-        [
+      const ask = (time: string, callId: string, tool: string): readonly [string, RunEventBody] => [
           today(time),
           {
             type: "approval.requested",
@@ -244,7 +244,7 @@ verifies("cli.commands.runs.show", () => {
             callId,
             resume: { messages: [], calls: [], step: 0 },
           },
-        ] as const;
+        ];
       await storeRuns({
         ...waiting,
         after: [
