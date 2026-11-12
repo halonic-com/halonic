@@ -22,7 +22,7 @@ import {
 import type { GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
 import { inPathBatches } from "./path-batches.ts";
-import { gitError, Repository } from "./repository.ts";
+import { type GitCalls, gitError, Repository, type RepositoryReader } from "./repository.ts";
 import {
   checkProposal,
   commitVersionOf,
@@ -78,7 +78,7 @@ export class GitVcs implements Vcs {
   }
 
   async status(): Promise<VcsStatus> {
-    const repository = await Repository.open(this.#runner, this.#folder);
+    const repository = await this.#openReader();
     if (repository === null) return { ...noRepositoryStatus, changes: [] };
     const status = parseStatus(await repository.output({ args: statusArgs }));
     // A second guard behind `init`'s exclude: Halonic's runtime data in
@@ -155,13 +155,13 @@ export class GitVcs implements Vcs {
     if (!Number.isInteger(limit) || limit < 1) {
       throw new RangeError(`The log limit must be a whole number of at least 1, not ${limit}.`);
     }
-    const repository = await this.#repository();
+    const repository = await this.#reader();
     if (!(await hasCommit(repository))) return [];
     return parseLog(await repository.output({ args: logArgs(limit) }));
   }
 
   async branches(): Promise<string[]> {
-    const repository = await this.#repository();
+    const repository = await this.#reader();
     const args = ["for-each-ref", "--format=%(refname:strip=2)", "refs/heads/"];
     return outputLines(await repository.output({ args }));
   }
@@ -187,11 +187,11 @@ export class GitVcs implements Vcs {
   }
 
   async readAt(version: string, path: string): Promise<string | null> {
-    return readAtCommit(() => this.#repository(), version, path);
+    return readAtCommit(() => this.#reader(), version, path);
   }
 
   async listAt(version: string, dir?: string): Promise<string[] | null> {
-    return listAtCommit(() => this.#repository(), version, dir);
+    return listAtCommit(() => this.#reader(), version, dir);
   }
 
   async rename(from: string, to: string): Promise<void> {
@@ -292,6 +292,18 @@ export class GitVcs implements Vcs {
     return this.#repository();
   }
 
+  /** The repository checked once for reads, or `null` when the folder is no repository. */
+  async #openReader(): Promise<RepositoryReader | null> {
+    return Repository.openReader(this.#runner, this.#folder);
+  }
+
+  async #reader(): Promise<RepositoryReader> {
+    const reader = await this.#openReader();
+    if (reader === null)
+      throw new Error(`${this.#folder} isn't a git repository. Initialize it first.`);
+    return reader;
+  }
+
   async #repository(): Promise<Repository> {
     const repository = await Repository.open(this.#runner, this.#folder);
     if (repository === null) {
@@ -328,7 +340,7 @@ async function exists(path: string): Promise<boolean> {
 }
 
 /** Whether the current branch has a commit yet. */
-async function hasCommit(repository: Repository): Promise<boolean> {
+async function hasCommit(repository: GitCalls): Promise<boolean> {
   const result = await repository.run({ args: ["rev-parse", "--verify", "--quiet", "HEAD"] });
   return result.code === 0;
 }
