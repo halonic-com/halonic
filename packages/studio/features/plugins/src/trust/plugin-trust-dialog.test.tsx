@@ -268,7 +268,11 @@ verifies("plugins.plugin-trust-check", () => {
     expect(line).toBeDefined();
     expect(line?.previousElementSibling?.tagName).not.toBe("P");
     expect(line?.parentElement?.nextElementSibling?.tagName).toBe("FOOTER");
-    expect(dialog().querySelector("div.flex.flex-col.gap-3")?.contains(line ?? null)).toBe(false);
+    expect(
+      dialog()
+        .querySelector("div.flex.flex-col.gap-3")
+        ?.contains(line ?? null),
+    ).toBe(false);
     const described = (dialog().getAttribute("aria-describedby") ?? "").split(" ");
     expect(described).toContain(line?.id);
   });

@@ -31,4 +31,4 @@ The Studio shall show a plugin's trust check as a dialog without ✕, with **Not
   then it is the same as **Not now**.
 - Given saving trust fails because the disk is full,
   when the person pressed **Trust and turn on**,
-  then the dialog stays open and says "Couldn't save trust: the disk is full. Nothing was started."
+  then the dialog stays open and says "Couldn't save trust: The disk is full. Nothing was started."
