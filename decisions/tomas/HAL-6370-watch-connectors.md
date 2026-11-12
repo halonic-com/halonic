@@ -3,10 +3,9 @@
 - Requirements: `cli.local-engine` (`apps/cli/requirements/local-engine.md`)
 - Task: HAL-6370, re-ported onto `main` as HAL-7978, after HAL-7500
   (`decisions/tomas/HAL-7500-watch-version-connectors.md`)
-- Approval: Liam chose this scope (option 1) on [HAL-7835](/HAL/issues/HAL-7835), a team decision
+- Approval: Liam chose this scope (option 1) on HAL-7835, a team decision
   with no board card; he approves this note and signs it in his review of this pull request
 - Kind: internal
-- Signature: pending, Liam signs it in his review
 
 ## What changes
 
