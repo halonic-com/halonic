@@ -8,13 +8,13 @@
 export { durableObjectClassNames } from "./class-names.ts";
 export { CoordinationObject } from "./coordination-object.ts";
 export {
+  CoordinationState,
+  type StateStorage,
+  type StateTransaction,
+} from "./coordination-state.ts";
+export {
   type CoordinationNamespace,
   DurableCoordination,
   type DurableCoordinationOptions,
   defaultCoordinationObjectName,
 } from "./durable-coordination.ts";
-export {
-  CoordinationState,
-  type StateStorage,
-  type StateTransaction,
-} from "./coordination-state.ts";
