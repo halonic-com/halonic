@@ -3,6 +3,7 @@
 - Task: HAL-7175
 - Approval: Liam approves this note in review on [HAL-7175](/HAL/issues/HAL-7175), following the cleartext decision on [HAL-1140](/HAL/issues/HAL-1140) and [HAL-1375](/HAL/issues/HAL-1375)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:flGiX8r5iFWiEP5YJL/sS3JvdZcxB5wKxptABT3o3W/T/qEmVdv9en+Q8hlRuCbduRnqp3OpR2TeOE4ceEeTCQ==
 
 ## What changes
 
