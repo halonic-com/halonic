@@ -6,6 +6,7 @@
 import { constants } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { delimiter, isAbsolute, join } from "node:path";
+import { commandPaths as sharedCommandPaths } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
 
 /** What {@link commandPaths} reads from the system. */
@@ -31,12 +32,8 @@ export function nodeCommandSearch(): CommandSearch {
 
 /**
  * The absolute path of each stdio connector's command, by the command as
- * written, as the trust check takes it (`commandPaths`).
- *
- * The command is looked for in each absolute folder of `PATH`, in order,
- * as the system would start it. A command that holds a folder, such as
- * `./bin/mail`, is kept as written only, and so is one that isn't found:
- * the trust check then fingerprints the command alone.
+ * written, found in `PATH` as the system would start it (see
+ * {@link findCommand}).
  *
  * @example
  * await commandPaths([mailConnector], nodeCommandSearch());
@@ -46,17 +43,7 @@ export async function commandPaths(
   connectors: readonly Connector[],
   search: CommandSearch,
 ): Promise<Map<string, string>> {
-  const commands = new Set(
-    connectors.flatMap((connector) =>
-      "stdio" in connector.transport ? [connector.transport.stdio.command] : [],
-    ),
-  );
-  const paths = new Map<string, string>();
-  for (const command of commands) {
-    const path = await findCommand(command, search);
-    if (path !== null) paths.set(command, path);
-  }
-  return paths;
+  return await sharedCommandPaths(connectors, (command) => findCommand(command, search));
 }
 
 /**

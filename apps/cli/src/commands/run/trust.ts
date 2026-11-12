@@ -7,6 +7,7 @@
 // `init --example acme` runs straight away. The service that starts the run
 // doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
 
+import { trustContentInputOf } from "@halonicjs/app";
 import type { TrustGrant } from "@halonicjs/ports";
 import { type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
@@ -15,7 +16,6 @@ import { startsAProgram } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems } from "../../workspace-problems.ts";
 import {
-  trustContentInputOf,
   trustedGrant,
   type WorkspaceTrustMachine,
   workspaceIntegrations,

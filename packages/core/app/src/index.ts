@@ -42,6 +42,7 @@ export {
   type CommandMap,
   type CommandSpec,
 } from "./command-bus.ts";
+export { type CommandFinder, commandPaths } from "./command-paths.ts";
 export {
   ConnectionSettings,
   type ConnectionSettingsOptions,
@@ -147,6 +148,7 @@ export {
   type LiveVersionReader,
   liveVersionOf,
 } from "./live-version.ts";
+export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
 export { defaultCurrency, moneyAmount } from "./money-amount.ts";
 export {
   type OpenWorkspaceOptions,
@@ -446,6 +448,11 @@ export {
   type TrustShrink,
   type TrustSubject,
 } from "./trust-service.ts";
+export {
+  type TrustSubjectInput,
+  trustContentInputOf,
+  trustSubjectOf,
+} from "./trust-subject.ts";
 export {
   IntegrationNotTrustedError,
   type IntegrationTrustReason,
