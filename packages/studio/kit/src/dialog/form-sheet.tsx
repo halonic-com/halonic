@@ -11,7 +11,8 @@ import type { ConfirmingDialogProps } from "./dialog-props.ts";
  * button full width at the bottom, in its own `primary` or `danger`, in an ActionBar that rides on
  * the keyboard. Still a `<dialog>`
  * with `showModal()`, so focus, inertness and the toast rule don't change. Close cancels and asks
- * nothing; a failed submit's Callout is the last thing in the body, above the bar.
+ * nothing; a failed submit's Callout is the last thing in the body, above the bar. A `footnote` is
+ * the bar's note, right above the button.
  */
 export function FormSheet(props: ConfirmingDialogProps) {
   const { busy = false } = props;
@@ -56,6 +57,7 @@ export function FormSheet(props: ConfirmingDialogProps) {
               },
             ],
           ]}
+          {...(props.footnote === undefined ? {} : { note: { text: props.footnote } })}
         />
       }
       {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}

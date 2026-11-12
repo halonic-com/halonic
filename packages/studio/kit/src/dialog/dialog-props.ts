@@ -62,6 +62,12 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
   readonly closeButton?: boolean;
   /** While the request runs: the confirming button is busy, Escape and the overlay do nothing. */
   readonly busy?: boolean;
+  /**
+   * One short line right above the buttons, outside the body's scroll area, in small muted text:
+   * the trust check's last line. It's part of the decision, so it stays in sight while the body
+   * scrolls, and it describes the Dialog with the body. Plain text, not a Callout.
+   */
+  readonly footnote?: string;
   readonly initialFocus?: undefined;
 }
 
@@ -77,6 +83,7 @@ export interface FooterlessDialogProps extends DialogCommonProps {
   readonly cancelLabel?: undefined;
   readonly closeButton?: undefined;
   readonly busy?: undefined;
+  readonly footnote?: undefined;
   /** Where focus starts: Settings' current section row. Default the first field, else the ✕. */
   readonly initialFocus?: () => HTMLElement | null;
 }

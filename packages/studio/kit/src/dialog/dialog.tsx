@@ -28,10 +28,12 @@ const frame = [
 
 /**
  * The header and the body scroll together when the window is short, so only the footer stays
- * put (component specs 8, "Short of room").
+ * put (component specs 8, "Short of room"). The footnote sits under the body's scroll area, and
+ * scrolls along as the last thing above the footer when the window is short.
  */
 const scroller = "flex min-h-0 flex-1 flex-col short:overflow-y-auto";
 const bodyScroll = "min-h-0 flex-1 overflow-y-auto short:flex-none short:overflow-visible";
+const footnoteClasses = "px-6 pt-3 text-small text-fg-muted wrap-break-word";
 
 /**
  * A decision or a short form that must be finished or cancelled: the kit's `<dialog>` with
@@ -65,7 +67,7 @@ export function Dialog(props: DialogProps) {
 function DialogBox(props: DialogProps) {
   const { size = "sm", flush = false, form = false, busy = false } = props;
   const phone = usePresentation() === "phone";
-  const ids = { title: useId(), body: useId(), confirm: useId() };
+  const ids = { title: useId(), body: useId(), footnote: useId(), confirm: useId() };
   const dialog = useRef<HTMLDialogElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
@@ -122,6 +124,11 @@ function DialogBox(props: DialogProps) {
           {props.children}
           <AlertSlot error={props.error} attempt={attempt} waiting={busy} />
         </div>
+        {props.footnote === undefined ? null : (
+          <p id={ids.footnote} className={footnoteClasses}>
+            {props.footnote}
+          </p>
+        )}
       </div>
       {footer}
     </>
@@ -131,7 +138,7 @@ function DialogBox(props: DialogProps) {
     <dialog
       ref={dialog}
       aria-labelledby={ids.title}
-      aria-describedby={form || flush ? undefined : ids.body}
+      aria-describedby={describedBy(props, ids)}
       className={`${frame} ${sizeClasses[size]}${props.height === undefined || phone ? "" : " dialog-height"}`}
       style={heightStyle(props.height, phone)}
       {...events}
@@ -147,6 +154,24 @@ function DialogBox(props: DialogProps) {
       </ModalRegions>
     </dialog>
   );
+}
+
+/**
+ * The body describes a confirmation, but not a form or a `flush` body, whose fields would all be
+ * read out. The footnote is one short line, so it describes every Dialog that has one.
+ */
+function describedBy(
+  props: DialogProps,
+  ids: { readonly body: string; readonly footnote: string },
+): string | undefined {
+  const parts: string[] = [];
+  if (props.form !== true && props.flush !== true) {
+    parts.push(ids.body);
+  }
+  if (props.footnote !== undefined) {
+    parts.push(ids.footnote);
+  }
+  return parts.length === 0 ? undefined : parts.join(" ");
 }
 
 /** Confirmation text is `fg-muted`; a form's fields bring their own colours. */
