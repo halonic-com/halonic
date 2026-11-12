@@ -289,9 +289,9 @@ fn sandbox_elevate_builds_the_environment_from_windows_paths() {
             .map(|(_, value)| value.to_string_lossy().into_owned())
     };
     assert_eq!(value("SystemDrive").as_deref(), Some("C:"));
-    assert_eq!(value("TEMP"), Some(temp));
+    assert_eq!(value("TEMP").as_deref(), Some(temp.as_str()));
     // Not the user's own: their programs can change that folder.
-    assert_eq!(value("LOCALAPPDATA"), Some(temp.clone()));
+    assert_eq!(value("LOCALAPPDATA").as_deref(), Some(temp.as_str()));
     assert!(
         value("PATH")
             .is_some_and(|path| path.starts_with(&on_c(r"Windows\System32")) && path.contains(';'))
