@@ -272,4 +272,9 @@ function checkPatches(
   for (const message of found.unused) {
     report.warning(patchesAllowedPath, `${message} ${guide}`);
   }
+  // A warning too: the pull request that changes a patch is checked against
+  // the base commit's list, where its hash is still the next one.
+  for (const message of found.landed) {
+    report.warning(patchesAllowedPath, `${message} ${guide}`);
+  }
 }
