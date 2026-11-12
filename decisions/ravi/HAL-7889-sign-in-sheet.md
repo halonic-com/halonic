@@ -14,6 +14,8 @@
 - `app.plugin-folder`: the `sdk` rule and the `kit: 3` example.
 - `integration.plugin-conformance`: the `sdk` rule and the `sdk: 3` example.
 
+The four spec files are goldens of the same change: the format's `integration` and `plugin` schemas gain `signIns` and the client secret form, and the kit's two spec files name `v2` in their `$id`. They are regenerated with `SPEC_WRITE=1`, not edited by hand.
+
 Their tests change the same way: the numbers that stood for "another version" become 3, and one test is added for each older kit that must still load. No test is removed or weakened.
 
 ## Why
@@ -27,3 +29,7 @@ The sheet's `signIns` needs a `kit` that says which Halonic can read it. Keeping
 - integration-kit.spec-files
 - app.plugin-folder
 - integration.plugin-conformance
+- packages/adapters/integration-kit/spec/integration.schema.json
+- packages/adapters/integration-kit/spec/secret-placement.schema.json
+- packages/core/format/spec/integration.schema.json
+- packages/core/format/spec/plugin.schema.json
