@@ -3,6 +3,7 @@
 - Task: HAL-7585 (Liam's follow-ups from his review of HAL-7558 on #2138)
 - Approval: the task asks for this change; Liam approves this note in review on HAL-7585
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:I7oOUK49BLD9CJmSkKf59yU9R4fkYfNdk3OHiSdJGjYopm85MI/P2KdLi0CuIAfln4GB3yRO1qBr+aMwV9kdAw==
 
 ## What changes
 
