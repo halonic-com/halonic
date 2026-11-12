@@ -32,11 +32,14 @@ function Read-Json([string]$path) {
 }
 
 # net.exe, not Get-LocalUser: the uninstaller is 32-bit, and the 32-bit
-# PowerShell has no LocalAccounts module.
-& net.exe user $AccountName *> $null
-$account = $LASTEXITCODE -eq 0
-& net.exe localgroup $GroupName *> $null
-$group = $LASTEXITCODE -eq 0
+# PowerShell has no LocalAccounts module. cmd.exe drops net.exe's output,
+# because with 'Stop' Windows PowerShell 5.1 ends the script on its stderr.
+function Test-Net([string]$arguments) {
+  & cmd.exe /c "net.exe $arguments >nul 2>&1"
+  return $LASTEXITCODE -eq 0
+}
+$account = Test-Net "user `"$AccountName`""
+$group = Test-Net "localgroup `"$GroupName`""
 if (-not $account -and -not $group) { exit 20 }
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
