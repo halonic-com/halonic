@@ -354,6 +354,22 @@ verifies("git.repo-leaks", () => {
       },
     );
 
+    it("keeps --no-ext-diff and --no-textconv on log, so a planted diff program doesn't run", async () => {
+      const { folder, plant } = await planted();
+      await plant.config("diff.external");
+      await plant.config("diff.planted.textconv");
+      await plant.attributes("* diff=planted");
+      await writeFile(join(folder, "a.yaml"), "2\n");
+      const repository = await open(folder);
+      await repository.output({
+        args: ["commit", "--all", "--quiet", "--message=Acme"],
+        config: identity,
+      });
+      const reader = await Repository.openReader(await runner(), folder);
+      await reader?.output({ args: ["log", "-p"] });
+      expect(await plant.ran()).toBe(false);
+    });
+
     it("runs status without taking optional locks, so the index stays as it was", async () => {
       const folder = await repositoryWith(scratch);
       await writeFiles(folder, { "a.yaml": "1\n" });

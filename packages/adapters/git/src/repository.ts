@@ -131,19 +131,28 @@ export class Repository implements GitCalls {
   async reader(): Promise<RepositoryReader | null> {
     const neutralising = await this.#check();
     if (neutralising === null) return null;
-    return new RepositoryReader((call) => this.#runChecked(call, neutralising));
+    return new RepositoryReader((call) => this.#runChecked(call, neutralising, true));
   }
 
   async #runChecked(
     call: RepositoryCall,
     neutralising: readonly ConfigEntry[],
+    noOptionalLocks = false,
   ): Promise<GitResult> {
     const gitDir = call.worktree?.gitDir ?? this.#gitDir;
     const workTree = call.worktree?.folder ?? this.#top;
     return this.#runner.run({
       cwd: workTree,
       // Given explicitly, so a link swapped in after the checks can't move the call.
-      args: [`--git-dir=${gitDir}`, `--work-tree=${workTree}`, ...withoutDiffPrograms(call.args)],
+      args: [
+        // Global options, so they come before the subcommand and no path can follow them.
+        // `--no-optional-locks` stays out of `call.args`, where it would hide the
+        // subcommand from `withoutDiffPrograms`.
+        ...(noOptionalLocks ? ["--no-optional-locks"] : []),
+        `--git-dir=${gitDir}`,
+        `--work-tree=${workTree}`,
+        ...withoutDiffPrograms(call.args),
+      ],
       config: [...neutralising, ...(call.config ?? [])],
       network: call.network === true,
       ...(call.indexFile === undefined ? {} : { indexFile: call.indexFile }),
@@ -236,8 +245,8 @@ export class RepositoryReader implements GitCalls {
     if (!readSubcommands.has(subcommand)) {
       throw new Error(`A read in the git adapter doesn't run git ${subcommand}.`);
     }
-    // A global option, so it comes before the subcommand and no path can follow it.
-    return this.#runChecked({ ...call, args: ["--no-optional-locks", ...call.args] });
+    // The runner adds `--no-optional-locks` to every read.
+    return this.#runChecked(call);
   }
 
   async output(call: RepositoryCall): Promise<Buffer> {
