@@ -70,6 +70,10 @@ export class AnswerInProgress {
   /** Adds the assistant message of a model turn. */
   addTurn(response: ChatTurnResponse): void {
     this.add(assistantMessage(response));
+    const refusals = response.refusals ?? [];
+    if (refusals.length > 0) {
+      this.tell((listener) => listener.onRefusals?.(refusals));
+    }
   }
 
   /**

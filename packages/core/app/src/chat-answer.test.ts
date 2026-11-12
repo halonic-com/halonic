@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolCall } from "@halonicjs/ports";
+import type { ChatMessage, ChatTurnRefusal, ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { notRunAfterStop } from "./chat-answer.ts";
@@ -312,5 +312,37 @@ verifies("app.chat-progress", () => {
       "turn 2",
       "message assistant",
     ]);
+  });
+});
+
+verifies("app.chat-refusals", () => {
+  const refusal: ChatTurnRefusal = { source: "notes", refused: "listing", reason: "too long" };
+
+  it("tells the listener a turn's refusals once and keeps them out of the messages", async () => {
+    const heard: (readonly ChatTurnRefusal[])[] = [];
+    const model = new ScriptedChat([{ ...textTurn("Done."), refusals: [refusal] }]);
+
+    const answer = await new ChatService(model).answer({
+      settings,
+      messages: question,
+      tools: [],
+      listener: { onRefusals: (refusals) => heard.push(refusals) },
+    });
+
+    expect(heard).toEqual([[refusal]]);
+    expect(answer.messages).toEqual([{ role: "assistant", content: "Done." }]);
+  });
+
+  it("does not call onRefusals for a turn that refused nothing", async () => {
+    const heard: unknown[] = [];
+
+    await new ChatService(new ScriptedChat([textTurn("Done.")])).answer({
+      settings,
+      messages: question,
+      tools: [],
+      listener: { onRefusals: (refusals) => heard.push(refusals) },
+    });
+
+    expect(heard).toEqual([]);
   });
 });
