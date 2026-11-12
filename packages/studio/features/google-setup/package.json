@@ -1,0 +1,38 @@
+{
+  "name": "@halonicjs/studio-feature-google-setup",
+  "private": true,
+  "type": "module",
+  "description": "The Google Setup feature of the Studio.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "elena",
+    "coverage": {
+      "lines": 85
+    }
+  },
+  "dependencies": {
+    "@halonicjs/google-setup": "workspace:*",
+    "@halonicjs/studio-feature-inbox": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
+    "react": "catalog:"
+  }
+}

@@ -444,6 +444,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/studio-feature-google-setup':
+        specifier: workspace:*
+        version: link:../../packages/studio/features/google-setup
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../../packages/studio/features/inbox
@@ -1913,6 +1916,46 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/studio/features/google-setup:
+    dependencies:
+      '@halonicjs/google-setup':
+        specifier: workspace:*
+        version: link:../../../core/google-setup
+      '@halonicjs/studio-feature-inbox':
+        specifier: workspace:*
+        version: link:../inbox
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../kit
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+    devDependencies:
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
