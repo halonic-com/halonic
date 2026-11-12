@@ -11,6 +11,14 @@ const testWorkerFile = path.join(workerFolder, "test-worker.ts");
 const contractsFolder = path.dirname(
   fileURLToPath(import.meta.resolve("@halonicjs/testing-contracts")),
 );
+// With a trailing separator, so a sibling folder like `contracts-extra` doesn't match.
+const contractsPrefix = contractsFolder + path.sep;
+/** The Worker's own files. The matcher check skips them; suites in `src/worker/suites` it reads. */
+const shimFiles = new Set(
+  ["vitest-shim.ts", "expect.ts", "protocol.ts", "test-worker.ts"].map((name) =>
+    path.join(workerFolder, name),
+  ),
+);
 
 /** Points every `import … from "vitest"` in the bundle at the shim. */
 const vitestShim: Plugin = {
@@ -31,7 +39,7 @@ const contractsWithoutSideEffects: Plugin = {
   setup(pluginBuild) {
     pluginBuild.onResolve({ filter: /.*/ }, async (args) => {
       const fromContracts =
-        args.importer.startsWith(contractsFolder) || args.path === "@halonicjs/testing-contracts";
+        args.importer.startsWith(contractsPrefix) || args.path === "@halonicjs/testing-contracts";
       if (!fromContracts || args.pluginData === contractsFolder) {
         return undefined;
       }
@@ -42,7 +50,7 @@ const contractsWithoutSideEffects: Plugin = {
         resolveDir,
         pluginData: contractsFolder,
       });
-      if (resolved.errors.length > 0 || !resolved.path.startsWith(contractsFolder)) {
+      if (resolved.errors.length > 0 || !resolved.path.startsWith(contractsPrefix)) {
         return { errors: resolved.errors };
       }
       return { ...resolved, sideEffects: false };
@@ -122,12 +130,12 @@ async function checkShimApis(metafile: Metafile): Promise<void> {
   }
 }
 
-/** The source files that contributed code to the bundle, skipping the generated entry and the shim. */
+/** The source files that contributed code to the bundle, skipping the generated entry and the Worker's own shim files. */
 function filesInBundle(metafile: Metafile): string[] {
   return Object.values(metafile.outputs).flatMap((output) =>
     Object.entries(output.inputs)
       .filter(([file, input]) => input.bytesInOutput > 0 && !file.startsWith("<stdin>"))
-      .filter(([file]) => !path.resolve(packageRoot, file).startsWith(workerFolder))
+      .filter(([file]) => !shimFiles.has(path.resolve(packageRoot, file)))
       .map(([file]) => file),
   );
 }

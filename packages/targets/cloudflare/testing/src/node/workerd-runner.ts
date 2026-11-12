@@ -21,7 +21,11 @@ const inMemoryStorage = {
   cachePersist: false,
 } as const;
 
-/** The Worker's address inside Miniflare; nothing listens on a real port. */
+/**
+ * The Worker's address for `dispatchFetch`. Miniflare still opens a loopback
+ * port for the Worker; `dispatchFetch` just bypasses it, so the host name
+ * here is never resolved.
+ */
 const workerOrigin = "http://test-worker.invalid";
 
 /**

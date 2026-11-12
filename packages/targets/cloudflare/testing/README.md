@@ -17,6 +17,10 @@ suites (HAL-198). The Worker and its build land in later pull requests; this
 package so far has the shim's `expect`, `describe`, `it` and hooks, the
 registry that runs the cases, and the check its build will use.
 
+The real Worker build (HAL-197/198) should use the deploy tool's export
+conditions (`workerd`, `worker`, `browser`) when it resolves packages; the
+test build here uses `module` and `main`.
+
 The shim has only what the bundled suites use:
 
 - `src/worker/expect.ts` is the shim's `expect`. `expect-parity.test.ts`
