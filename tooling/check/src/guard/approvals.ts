@@ -1,7 +1,6 @@
 import type { DecisionNote } from "./decision-notes.ts";
-import { approvedAt, type ReviewSource } from "./reviews.ts";
+import { approvedAt, type GithubApprover, type ReviewSource, userReviewers } from "./reviews.ts";
 import {
-  type Approvers,
   approversFile,
   coveredObjects,
   coveredPaths,
@@ -49,9 +48,9 @@ const notApproved = (reason: string): ApprovalVerdict => ({ approved: false, rea
  * Verifies a note's approval (HAL-1337). A signature is checked offline
  * against the keys the pull request's base pins in `approvers.json` for
  * the note's kind. A `user-visible` note with no signature line is
- * approved instead by an approving review from a GitHub account the base
- * pins there, made on the pull request's current head commit and read
- * live through `reviews`. It FAILS CLOSED: without the pull request's
+ * approved instead by an approving review from a GitHub account pinned in
+ * this guard's code (`userReviewers`, run from the base branch), made on
+ * the pull request's current head commit and read live through `reviews`. It FAILS CLOSED: without the pull request's
  * details, without its commits, with a note the base already has, with a
  * missing, malformed or non-matching signature, or when the reviews can't
  * be read, the note is not approved.
@@ -60,11 +59,12 @@ export function signedApprovals(
   pull: PullRequest | undefined,
   git: GitObjects,
   reviews?: ReviewSource,
+  reviewers: readonly GithubApprover[] = userReviewers,
 ): ApprovalLookup {
   return {
     check: async ({ note }) => {
       try {
-        return await verifyNote(note, pull, git, reviews);
+        return await verifyNote(note, pull, git, reviews, reviewers);
       } catch (error) {
         return notApproved(`the approval lookup failed: ${String(error)}`);
       }
@@ -77,6 +77,7 @@ async function verifyNote(
   pull: PullRequest | undefined,
   git: GitObjects,
   reviews: ReviewSource | undefined,
+  reviewers: readonly GithubApprover[],
 ): Promise<ApprovalVerdict> {
   if (pull === undefined) {
     return notApproved(
@@ -106,7 +107,7 @@ async function verifyNote(
     return notApproved(`the base branch's ${approversFile} can't be read: ${String(error)}`);
   }
   if (note.kind === "user-visible" && !hasSignatureLine(text)) {
-    return reviewApproval(pull, pinned.reviewers, reviews);
+    return reviewApproval(pull, reviewers, reviews);
   }
   const split = splitSignature(text);
   if (!split.ok) {
@@ -120,12 +121,12 @@ async function verifyNote(
 /** A `user-visible` note is approved by a pinned account's approving review of the head commit. */
 async function reviewApproval(
   pull: PullRequest,
-  approvers: Approvers["reviewers"],
+  approvers: readonly GithubApprover[],
   reviews: ReviewSource | undefined,
 ): Promise<ApprovalVerdict> {
   if (approvers.length === 0) {
     return notApproved(
-      `the note has no signature line, and the base branch's ${approversFile} pins no GitHub account that can approve a user-visible note`,
+      `the note has no signature line, and the guard pins no GitHub account that can approve a user-visible note`,
     );
   }
   if (reviews === undefined) {

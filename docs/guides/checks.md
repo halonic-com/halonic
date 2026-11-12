@@ -291,9 +291,10 @@ signed `internal` note is enough (see the note guard below).
 **A `user-visible` note is approved on GitHub, not by signature.** The user
 approves the pull request with an "Approve" review from their own GitHub
 account, and the note carries no `- Signature:` line. The guard accepts it
-only when the base branch's `approvers.json` pins that account under
-`github` by its numeric user ID (a rename can't hand the approval to someone
-else), and the account's latest review that isn't a plain comment is an
+only when the guard's own code pins that account by its numeric user ID
+(`userReviewers` in `src/guard/reviews.ts`; a rename can't hand the approval
+to someone else, and the pin changes only with the user's own review of that
+folder), and the account's latest review that isn't a plain comment is an
 approval made on the pull request's current head commit. The guard reads the
 reviews live with the run's read-only token, so a push after the approval
 needs a new approval, a dismissed approval or a later "Request changes"
@@ -342,9 +343,10 @@ that path as written here and its approval is verified. The note must be
 `user-visible`, except for `.github/`, `tooling/check/` and `.gitattributes`,
 where the CTO's signed `internal` note is enough. That cover ends where the
 change reaches one of the guard's trust roots: `tooling/check/approvers.json`,
-`.github/workflows/guard-notes.yml`, `tooling/check/src/guard/` and the two
+`.github/workflows/guard-notes.yml`, `tooling/check/src/guard/`, the two
 guard commands `tooling/check/src/cli/guard-notes.ts` and
-`tooling/check/src/cli/requirement-guard.ts`. A change to one of those, or to
+`tooling/check/src/cli/requirement-guard.ts`, and the `tooling/check/src/lib/`
+helpers they import (a test walks the imports to keep the list whole). A change to one of those, or to
 any other own path, needs the user's approval, so an agent key alone can't
 loosen the guard or add a signer. These folders change about 45 times a day
 and the board approved the user's review for rare changes (HAL-3434),

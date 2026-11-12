@@ -1,4 +1,22 @@
-import type { GithubApprover } from "./signatures.ts";
+/** One GitHub account whose approving review approves a `user-visible` note. */
+export interface GithubApprover {
+  /** The account's numeric ID, which a rename can't change. */
+  readonly userId: number;
+  /** The login at the time it was pinned, for people reading the code. */
+  readonly login: string;
+  readonly holder: string;
+}
+
+/**
+ * The accounts that approve `user-visible` notes by reviewing the pull
+ * request (HAL-3434, HAL-1337). Pinned here, not in `approvers.json`: this
+ * folder needs the user's own review to change, and the pull request that
+ * adds the check must pass the guard on the base branch. Pinned by numeric
+ * ID, so a rename or a new account with the same login can't take it over.
+ */
+export const userReviewers: readonly GithubApprover[] = [
+  { userId: 348154030, login: "timothykorse", holder: "the user (board)" },
+];
 
 /** One review of a pull request, as GitHub's API lists them, oldest first. */
 export interface Review {

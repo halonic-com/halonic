@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import { dirname, join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { approvers, type Files, fakeGit, keyPair } from "../test/signing-fixture.ts";
 import type { PullRequest } from "./approvals.ts";
 import { policyFile } from "./guarded-paths.ts";
-import { checkNotes } from "./note-check.ts";
+import { checkNotes, userPaths } from "./note-check.ts";
 import {
   approversFile,
   coveredObjects,
@@ -77,6 +80,25 @@ function sign(text: string, git: ReturnType<typeof fakeGit>, privatePem: string)
   return signatureLine(signed, privatePem);
 }
 
+const checkRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+/** Every file the two guard commands import, directly or not, relative to the repo root. */
+function guardImports(): string[] {
+  const seen = new Set<string>();
+  const stack = ["src/cli/guard-notes.ts", "src/cli/requirement-guard.ts"];
+  for (let file = stack.pop(); file !== undefined; file = stack.pop()) {
+    if (seen.has(file)) {
+      continue;
+    }
+    seen.add(file);
+    const source = readFileSync(join(checkRoot, file), "utf8");
+    for (const match of source.matchAll(/(?:from|import)\s+"(\.[^"]+)"/g)) {
+      stack.push(normalize(join(dirname(file), match[1] ?? "")));
+    }
+  }
+  return [...seen].map((file) => `tooling/check/${file}`);
+}
+
 verifies("check.guard-notes-own-paths", () => {
   test("fails a change to .github/ without a note, and names the note", async () => {
     expect(await errorsOf(undefined)).toEqual([
@@ -122,6 +144,11 @@ verifies("check.guard-notes-own-paths", () => {
     expect(wrongKey).toEqual([
       expect.stringMatching(/approval isn't verified: the key .* may only sign internal notes/),
     ]);
+  });
+  test("lists every file the guard commands import as a path that needs the user", () => {
+    const covered = (file: string) =>
+      userPaths.some((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
+    expect(guardImports().filter((file) => !covered(file))).toEqual([]);
   });
 });
 

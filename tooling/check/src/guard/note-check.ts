@@ -22,8 +22,8 @@ export const internalOwnPaths: readonly string[] = [".github/", "tooling/check/"
 
 /**
  * The files and folders inside `internalOwnPaths` that are the guard's real
- * trust roots: its note check, its code, the two guard commands and its
- * approvers. A change to one needs a `user-visible` note. A folder ends in `/`.
+ * trust roots: its note check, its code, the two guard commands, the `lib/` helpers
+ * they import and its approvers. A change to one needs a `user-visible` note. A folder ends in `/`.
  */
 export const userPaths: readonly string[] = [
   approversFile,
@@ -31,6 +31,20 @@ export const userPaths: readonly string[] = [
   "tooling/check/src/guard/",
   "tooling/check/src/cli/guard-notes.ts",
   "tooling/check/src/cli/requirement-guard.ts",
+  // The helpers the two guard commands import from `lib/`: a change to one of
+  // them could switch the guard off. A test walks the imports to keep this
+  // list whole.
+  "tooling/check/src/lib/bundle.ts",
+  "tooling/check/src/lib/config-files.ts",
+  "tooling/check/src/lib/context.ts",
+  "tooling/check/src/lib/layout.ts",
+  "tooling/check/src/lib/problems.ts",
+  "tooling/check/src/lib/requirements.ts",
+  "tooling/check/src/lib/source-files.ts",
+  "tooling/check/src/lib/source-paths.ts",
+  "tooling/check/src/lib/test-results.ts",
+  "tooling/check/src/lib/verifies-calls.ts",
+  "tooling/check/src/lib/workspace.ts",
 ];
 
 /** One run of the note check: the pull request, its branch and changed files. */

@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { approvers, type Files, fakeGit } from "../test/signing-fixture.ts";
 import { type ApprovalVerdict, type PullRequest, signedApprovals } from "./approvals.ts";
 import { parseDecisionNote } from "./decision-notes.ts";
-import { githubReviews, type Review, type ReviewSource } from "./reviews.ts";
+import { githubReviews, type Review, type ReviewSource, userReviewers } from "./reviews.ts";
 import { approversFile } from "./signatures.ts";
 
 const userId = 4242;
@@ -24,7 +24,8 @@ The build needs a new step.
 
 - .github/
 `;
-const pinned = approvers({ reviewers: [userId] });
+const pinned = approvers({});
+const reviewers = [{ userId, login: "the-user", holder: "test" }];
 
 const review = (state: string, commitId = head, id = userId): Review => ({
   userId: id,
@@ -34,7 +35,12 @@ const review = (state: string, commitId = head, id = userId): Review => ({
 
 async function verdictOf(
   reviews: ReviewSource | undefined,
-  options: { text?: string; baseFiles?: Files; headFiles?: Files } = {},
+  options: {
+    text?: string;
+    baseFiles?: Files;
+    headFiles?: Files;
+    reviewers?: typeof reviewers;
+  } = {},
 ): Promise<ApprovalVerdict> {
   const text = options.text ?? note();
   const git = fakeGit({
@@ -45,7 +51,9 @@ async function verdictOf(
   if (!parsed.ok) {
     throw new Error("the test note must parse");
   }
-  return signedApprovals(pull, git, reviews).check({ note: parsed.note });
+  return signedApprovals(pull, git, reviews, options.reviewers ?? reviewers).check({
+    note: parsed.note,
+  });
 }
 
 const listing =
@@ -80,9 +88,13 @@ verifies("check.guard-user-review", () => {
     expect((await verdictOf(listing(review("APPROVED", head, userId + 1)))).approved).toBe(false);
   });
 
-  test("ignores an account that only the pull request's own approvers.json pins", async () => {
-    const own = approvers({ reviewers: [userId + 1] });
-    const verdict = await verdictOf(listing(review("APPROVED", head, userId + 1)), {
+  test("takes the approving account from the guard's code, not from approvers.json", async () => {
+    expect(userReviewers).toEqual([
+      { userId: 348154030, login: "timothykorse", holder: "the user (board)" },
+    ]);
+    const own = approvers({});
+    const verdict = await verdictOf(listing(review("APPROVED", head, userId)), {
+      reviewers: userReviewers as unknown as typeof reviewers,
       headFiles: { [approversFile]: own, [noteFile]: note() },
     });
     expect(verdict.approved).toBe(false);
@@ -95,8 +107,7 @@ verifies("check.guard-user-review", () => {
       approved: false,
       reason: expect.stringContaining("GitHub answered 502"),
     });
-    const none = { baseFiles: { [approversFile]: approvers({}) } };
-    expect((await verdictOf(listing(review("APPROVED")), none)).approved).toBe(false);
+    expect((await verdictOf(listing(review("APPROVED")), { reviewers: [] })).approved).toBe(false);
   });
 
   test("doesn't approve an internal note, or a note the base already has, by a review", async () => {

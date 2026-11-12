@@ -6,14 +6,5 @@
       "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHAKPlrCmldmS/Jcp4T5PN2ocup5KekoWTw8E0NnMfpQ=\n-----END PUBLIC KEY-----\n"
     }
   ],
-  "user-visible": [],
-  "github": {
-    "user-visible": [
-      {
-        "userId": 348154030,
-        "login": "timothykorse",
-        "holder": "the user (board)"
-      }
-    ]
-  }
+  "user-visible": []
 }
