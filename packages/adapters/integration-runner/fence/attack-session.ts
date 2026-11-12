@@ -13,6 +13,7 @@
 
 import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import type { Sandbox, SandboxCommand } from "@halonicjs/ports";
 import { runnerCommand } from "../src/halonic/runner-command.ts";
 import {
@@ -21,6 +22,7 @@ import {
   type RunnerMachine,
   realRunnerPaths,
   runnerProfile,
+  systemFiles,
 } from "../src/halonic/runner-profile.ts";
 
 /** Whether Node's permission model runs as the second layer, as in production. */
@@ -129,7 +131,13 @@ export async function runAttack(options: RunAttackOptions): Promise<AttackResult
       runnerFile: scriptFile,
       integrationFolder: options.folders.integrationFolder,
     },
-    { ...options.hidden, tempFolder: options.folders.tempFolder, timeLimitMs: 30_000 },
+    {
+      ...options.hidden,
+      systemFiles: systemFiles(process.platform),
+      sandboxFolders: [sandboxRuntimeFolder()],
+      tempFolder: options.folders.tempFolder,
+      timeLimitMs: 30_000,
+    },
   );
   const session = await options.sandbox.open(runnerProfile(files, machine, diskOnThisMachine));
   try {

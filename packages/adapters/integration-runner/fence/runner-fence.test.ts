@@ -1,11 +1,12 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { SrtSandbox, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
 import type { ConnectRunnerOptions } from "../src/halonic/connect-runner.ts";
 import { type RunnerBlock, RunnerStoppedError } from "../src/halonic/limits.ts";
-import { socketFolders } from "../src/halonic/runner-profile.ts";
+import { socketFolders, systemFiles } from "../src/halonic/runner-profile.ts";
 import { type StartedRunner, startRunner } from "../src/halonic/start-runner.ts";
 import { bridgeOptions, fakeRunnerProcess } from "../src/pipes.test-helper.ts";
 import { fenceTestBase } from "./attack-session.ts";
@@ -30,7 +31,6 @@ let runner: RunnerFile;
 
 beforeAll(async () => {
   folder = await fenceTestBase("rf-");
-  await mkdir(join(folder, "home"));
   runner = await buildRunnerFile(join(folder, "dist", "runner.mjs"));
 });
 
@@ -104,10 +104,12 @@ async function startRunnerFor(
     },
     entry: { file: join(integrationFolder, "index.mjs"), exportName: "weather" },
     machine: {
-      // A home folder of its own: in CI the checkout, and with it srt's own
-      // seccomp helper, is inside the real one, and hiding it stops srt.
-      homeFolder: join(folder, "home"),
+      // The real home folder: in CI it holds the checkout, and with it srt's
+      // own seccomp helper, which the profile keeps readable.
+      homeFolder: homedir(),
       socketFolders: socketFolders(process.env),
+      systemFiles: systemFiles(process.platform),
+      sandboxFolders: [sandboxRuntimeFolder()],
       tempFolder,
       timeLimitMs: 60_000,
     },

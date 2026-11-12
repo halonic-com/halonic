@@ -113,6 +113,8 @@ function startOptions(sandbox: FakeSandbox): StartRunnerOptions & { blocks: unkn
     machine: {
       homeFolder: "/fake-home",
       socketFolders: ["/run"],
+      systemFiles: null,
+      sandboxFolders: [],
       tempFolder: "/fake-temp/halonic-run",
       timeLimitMs: 60_000,
     },
