@@ -19,7 +19,6 @@ import type {
   AnswerHarnessEffect,
   DecideInput,
   Effect,
-  ModelCallResult,
   StartChildEffect,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
@@ -31,6 +30,7 @@ import { childNow, childStart, endChildrenOf, parentEndedError, receiverOf } fro
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
+import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
 import { RunsProposalFolders } from "./proposal-folders.ts";
 import {
@@ -43,15 +43,9 @@ import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest, startInputOf } from "./start-request.ts";
-import { resumeTimer, UnfinishedEffects } from "./unfinished-effects.ts";
+import { UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
 import { WatchedRuns } from "./watched-runs.ts";
-
-/**
- * Carries out a model call a run waits on, and gives the model's answer, or
- * the tool call the agent stopped at because it needs a person's OK.
- */
-export type CallModel = (run: RunState, call: PendingCall) => Promise<ModelCallResult>;
 
 /**
  * The `error` of a run whose harness call was gone when a person answered
@@ -72,7 +66,6 @@ export class LocalRuns {
   readonly store: RunStore;
   readonly #options: LocalRunsOptions;
   readonly #clock: Clock;
-  readonly #callModel: CallModel;
   readonly #connectorCalls: RunConnectorCallRunner;
   readonly #feed: RunFeed;
   readonly #startDeadlines: StartDeadlines;
@@ -83,6 +76,7 @@ export class LocalRuns {
   readonly #unrecorded = new UnrecordedResults();
   readonly #effects: UnfinishedEffects;
   readonly #harnessCalls: LocalHarnessCalls;
+  readonly #modelCalls: LocalModelCalls;
   readonly #folders: RunsProposalFolders;
   readonly #connectors: Pick<RunsConnectors, "ended"> | undefined;
   #started: Promise<void> | undefined;
@@ -103,7 +97,7 @@ export class LocalRuns {
     checkStartTimeouts(options.harnesses?.startTimeoutsMs);
     this.#options = options;
     this.#clock = clock;
-    this.#callModel = callModel;
+    this.#modelCalls = new LocalModelCalls(options.store, callModel);
     this.#feed = new RunFeed(options.store);
     this.store = new WatchedRuns(options.store, (runId) => this.#feed.notify(runId));
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
@@ -197,11 +191,11 @@ export class LocalRuns {
   }
 
   /**
-   * Cancels a run that hasn't ended, and its child runs, all the way down:
-   * each ends with `run.failed` and `reason: "cancelled"`, the run first, so
-   * it doesn't take its child's end for its own failure. Their harness calls
-   * are stopped; a model or connector call going on finishes, and the run
-   * takes its result no more. A run that has ended stays as it is.
+   * Cancels a run that hasn't ended, and its child runs, all the
+   * way down: each ends with `run.failed` and `reason: "cancelled"`, the run
+   * first, so it doesn't take its child's end for its own failure. Their
+   * harness and model calls are stopped; a connector call going on finishes,
+   * and the run takes its result no more. A run that has ended stays as it is.
    *
    * @throws InputRefused when the run doesn't exist
    */
@@ -258,7 +252,7 @@ export class LocalRuns {
    */
   async close(): Promise<void> {
     this.#closed = true;
-    await this.#harnessCalls.stopAll();
+    await Promise.all([this.#harnessCalls.stopAll(), this.#modelCalls.stopAll()]);
   }
 
   /**
@@ -303,7 +297,8 @@ export class LocalRuns {
       const call = run == null ? null : callOf(run, callId);
       if (run == null || call === null) return;
       const result = await this.#callResult(run, call, kind);
-      if (this.#closed) return;
+      // A stopped call isn't the run's failure: whoever stopped it has ended the run.
+      if (this.#closed || result === null) return;
       await this.#unrecorded.record(slot, result, record);
     } finally {
       this.#calling.delete(slot);
@@ -313,14 +308,16 @@ export class LocalRuns {
   /**
    * The input a call gives: its answer, or why it failed. A harness call
    * that a person answered gives it under the call id the run then waits on.
+   * A model call that was stopped gives `null`: there is nothing to record.
    */
-  async #callResult(run: RunState, call: PendingCall, kind: CallKind): Promise<DecideInput> {
+  async #callResult(run: RunState, call: PendingCall, kind: CallKind): Promise<DecideInput | null> {
     const waitedOn: WaitedOnCall = { callId: call.callId };
     try {
       const result =
         kind === "model"
-          ? await this.#callModel(run, call)
+          ? await this.#modelCalls.run(run, call)
           : { type: "harness" as const, output: await this.#harnessCalls.run(run, call, waitedOn) };
+      if (result === null) return null;
       return { type: "effect-done", at: this.#now(), callId: waitedOn.callId, result };
     } catch (error) {
       return failedCallInput(error, { callId: waitedOn.callId, at: this.#now(), step: call.state });
@@ -397,9 +394,10 @@ export class LocalRuns {
   async #ended(runId: string, childError = parentEndedError): Promise<void> {
     const end = (childRunId: string) => this.#cancelOne(childRunId, childError);
     await endChildrenOf(this.store, runId, end);
-    await this.#folders.ended(runId, (topLevelRunId) =>
-      this.#harnessCalls.stopUnder(topLevelRunId),
-    );
+    await this.#folders.ended(runId, async (topLevelRunId) => {
+      this.#modelCalls.stopUnder(topLevelRunId);
+      await this.#harnessCalls.stopUnder(topLevelRunId);
+    });
     await this.#connectors?.ended(runId);
   }
 
@@ -474,9 +472,10 @@ export class LocalRuns {
     if (parent != null) await this.#hearFromChild(parent.runId, runId);
   }
 
-  /** Ends a run as cancelled, with `error`, and stops its harness calls. */
+  /** Ends a run as cancelled, with `error`, and stops its harness and model calls. */
   async #cancelOne(runId: string, error: string): Promise<void> {
     await this.#fail(runId, error, "cancelled");
+    this.#modelCalls.stop(runId);
     await this.#harnessCalls.stop(runId);
   }
 

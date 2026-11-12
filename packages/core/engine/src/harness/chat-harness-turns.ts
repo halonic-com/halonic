@@ -19,7 +19,7 @@ import type {
 import { chatApprovalReason } from "../agent/check-chat-tool-call.ts";
 import { isProgramHarness } from "../kernel/agent-call.ts";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
-import { LiveHarnessCalls } from "../run/live-harness-calls.ts";
+import { LiveCalls } from "../run/live-calls.ts";
 import { StartDeadlines } from "../run/start-deadlines.ts";
 import { chatPrompt } from "./chat-prompt.ts";
 import type { HarnessRunsOptions } from "./harness-host.ts";
@@ -80,7 +80,7 @@ const chatState = "chat";
 export class ChatHarnessTurns {
   readonly #options: ChatHarnessOptions;
   readonly #deadlines: StartDeadlines;
-  readonly #live = new LiveHarnessCalls();
+  readonly #live = new LiveCalls();
 
   constructor(options: ChatHarnessOptions) {
     this.#options = options;

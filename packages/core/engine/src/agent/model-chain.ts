@@ -169,6 +169,7 @@ export class ModelChain {
    * Makes one model call, moving on to the next model when one has no key,
    * is offline or its provider is busy. It writes an `llm.fallback` for each move.
    * Each model gets its own alias's params under the call's, never the first model's.
+   * Once `request.signal` has aborted, it throws its reason instead of moving on.
    *
    * @throws {ModelCallError} with the last cause when no model is left
    * @throws whatever the model threw for any other failure; the turn stops there
@@ -180,6 +181,8 @@ export class ModelChain {
         const response = await model.provider.chat(requestFor(model, request));
         return { response, answeredBy: model };
       } catch (error) {
+        // A stopped call isn't the model's failure: no other model is tried.
+        request.signal?.throwIfAborted();
         if (!movesOn(error)) {
           throw error;
         }

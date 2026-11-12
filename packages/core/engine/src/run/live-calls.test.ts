@@ -1,14 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
   engineStoppedMessage,
-  LiveHarnessCalls,
+  LiveCalls,
+  modelEngineStoppedMessage,
+  modelRunCancelledMessage,
+  modelStopMessages,
   runCancelledMessage,
   runEndedMessage,
-} from "./live-harness-calls.ts";
+} from "./live-calls.ts";
 
-describe("LiveHarnessCalls", () => {
+describe("LiveCalls", () => {
+  it("stops each kind of call with its own messages", async () => {
+    const calls = new LiveCalls(modelStopMessages);
+    const waitForStop = () =>
+      calls.run("run_1", async (stop) => {
+        await new Promise<void>((resolve) => stop.onStop(resolve));
+        throw stop.reason;
+      });
+    const cancelled = waitForStop();
+    await calls.stop("run_1");
+    await expect(cancelled).rejects.toThrow(modelRunCancelledMessage);
+    const stopped = waitForStop();
+    await calls.stopAll();
+    await expect(stopped).rejects.toThrow(modelEngineStoppedMessage);
+  });
+
   it("tells every call going on to stop, and resolves once each has finished", async () => {
-    const calls = new LiveHarnessCalls();
+    const calls = new LiveCalls();
     const finished: string[] = [];
     const call = calls.run("run_1", async (stop) => {
       await new Promise<void>((resolve) => stop.onStop(resolve));
@@ -24,7 +42,7 @@ describe("LiveHarnessCalls", () => {
   });
 
   it("refuses a call after it stopped them all, before the call starts anything", async () => {
-    const calls = new LiveHarnessCalls();
+    const calls = new LiveCalls();
     await calls.stopAll();
     let started = false;
 
@@ -37,7 +55,7 @@ describe("LiveHarnessCalls", () => {
   });
 
   it("stops only the calls of the run it names", async () => {
-    const calls = new LiveHarnessCalls();
+    const calls = new LiveCalls();
     const stopped: string[] = [];
     const callOf = (runId: string) =>
       calls.run(runId, async (stop) => {
@@ -57,7 +75,7 @@ describe("LiveHarnessCalls", () => {
   });
 
   it("stops the calls of a top-level run and its child runs, and no other run's", async () => {
-    const calls = new LiveHarnessCalls();
+    const calls = new LiveCalls();
     const stopped: string[] = [];
     const callOf = (runId: string, topLevelRunId: string) =>
       calls.run(
@@ -83,7 +101,7 @@ describe("LiveHarnessCalls", () => {
   });
 
   it("still runs a call of a run whose calls it stopped", async () => {
-    const calls = new LiveHarnessCalls();
+    const calls = new LiveCalls();
     await calls.stop("run_1");
 
     await expect(calls.run("run_1", async () => "ran")).resolves.toBe("ran");

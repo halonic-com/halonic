@@ -14,10 +14,10 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
+import type { StopSignal } from "@halonicjs/std";
 import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
-import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
-import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
+import { runModelTurn } from "./agent/run-model-turn.ts";
 import type { TurnLog } from "./agent/turn-log.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
@@ -31,20 +31,19 @@ import {
   openSources,
 } from "./knowledge/agent-knowledge.ts";
 import type { LocalExecutorOptions } from "./local-executor-options.ts";
-import { defaultRunMaxRounds, type RunTurn, runLocalSubagent } from "./local-subagent.ts";
-import { runTurnMessages } from "./run/agent-system-prompt.ts";
+import { type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import { callAlongsideOthers } from "./run/alongside-others.ts";
 import {
   allowedToolsOf,
   connectorsOf,
   effectBoundary,
   makeRunConnectorCall,
-  openRunConnectorsOf,
 } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import { runsOptionsOf } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
+import { runModelCall } from "./run/run-model-call.ts";
 import { RunStoreTurnLog } from "./run/run-store-turn-log.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
@@ -106,7 +105,7 @@ export class LocalExecutor implements RunExecutor {
         : new LocalRuns(
             runs,
             options.clock,
-            (run, call) => this.callModel(run, call),
+            (run, call, stop) => this.callModel(run, call, stop),
             connectorCalls === undefined
               ? undefined
               : (effect, run) =>
@@ -320,13 +319,15 @@ export class LocalExecutor implements RunExecutor {
    * The tools of an agent in a run: Halonic's tools, its memory tools and
    * its knowledge tools, then the run-log, records and subagent tools its
    * kept file grants. An agent the definitions have no file for gets the
-   * first two only, because its knowledge comes from that file too.
+   * first two only, because its knowledge comes from that file too. A
+   * subagent's turn stops with `signal`, the stop of the turn that delegated.
    */
   private runToolsOf(
     turn: RunTurn,
     agentId: string,
     depth: number,
     knowledge: AgentKnowledge,
+    signal?: AbortSignal,
   ): readonly HalonicTool[] {
     const own = [
       ...this.halonicToolsOf(agentId, turn.run.runId),
@@ -359,7 +360,8 @@ export class LocalExecutor implements RunExecutor {
             ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
             localOnly: this.options.localOnly === true,
             knowledgeOf: (id) => this.runKnowledgeOf(turn, id),
-            toolsOf: (id, depth, knowledge) => this.runToolsOf(turn, id, depth, knowledge),
+            toolsOf: (id, depth, knowledge) => this.runToolsOf(turn, id, depth, knowledge, signal),
+            ...(signal === undefined ? {} : { signal }),
           },
           task,
         ),
@@ -368,34 +370,21 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * A run's model call: the state's prompt to its agent's model, with Halonic's tools, the
-   * agent's memory and knowledge tools, the tools its file grants ({@link LocalExecutor.runToolsOf})
-   * and, with `runs.connectorCalls`, the tools of the connected servers its kept file lists that
-   * their kept files allow ({@link openRunConnectorsOf}), through the same turn loop a chat turn uses.
-   * Every call is checked with `checkToolCall` first, and a connector call its kept file puts
-   * under `approve` asks a person ({@link runToolCheckOf}), and the agent's `maxSteps` is the
-   * round limit: a turn that reaches it while the model still calls tools fails the call. The model
-   * gets the agent's instructions and skills as a system message ({@link runTurnMessages}). The
-   * turn, with its subagents' turns, writes its events to the run's log
-   * ({@link LocalExecutor.turnLogOf}), so the run's cost counts its calls.
-   *
-   * A connector tool its kept file lists under `read`, and not under `approve`, counts as reading:
-   * its calls run without a person's OK, and the run log gets a `tool.unasked` before each one. A
-   * `parallel` branch's or a `foreach` item's call, and any call in a run a `foreach` item started
-   * or below it ({@link callAlongsideOthers}), is offered only those tools ({@link openRunConnectorsOf}):
-   * none can make a call that changes things, because a run records one effect at a time, and a
-   * call that waits for a person would only end the branch or fail the run.
-   *
-   * A call that needs a person's OK ends the call with `{ type: "approval",
-   * tool, args, resume }`, and the run waits. A connector call that can
-   * change things passes the "allow sending" check, then ends the call with
-   * `{ type: "effect", connector, tool, args, resume }`: the engine records
-   * it before it makes it. Either way, the next call carries `resume` with
-   * the answer or the result, and the turn goes on from there.
+   * A run's model call ({@link runModelCall}), with Halonic's tools, the agent's memory and
+   * knowledge tools and the tools its file grants ({@link LocalExecutor.runToolsOf}), and, with
+   * `runs.connectorCalls`, the connected servers. When `stop` is told to stop, the model call
+   * going on is aborted (with {@link LocalExecutorOptions.abortOnStop}). The turn, with its
+   * subagents' turns, writes its events to the run's log ({@link LocalExecutor.turnLogOf}), so the
+   * run's cost counts its calls.
    *
    * @throws UnreadableDefinitions when the run's definitions are gone or can't be read, with why
+   * @throws the stop's reason, once `stop` was told to stop
    */
-  private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
+  private async callModel(
+    run: RunState,
+    call: PendingCall,
+    stop: StopSignal,
+  ): Promise<ModelCallResult> {
     const turn: RunTurn = {
       run,
       state: call.state,
@@ -403,54 +392,28 @@ export class LocalExecutor implements RunExecutor {
       alongsideOthers: await callAlongsideOthers(this.options.runs?.store, run, call.callId),
       log: this.turnLogOf(run, call),
     };
-    const agent = agentIn(turn.definitions, call.agent);
-    const messages = runTurnMessages(agent, turn.definitions, call.prompt);
-    const model = await this.options.resolveModel({
-      hubId: run.hubId,
-      agentId: call.agent,
-      messages,
-      tools: [],
-    });
     const connectorCalls = this.options.runs?.connectorCalls;
-    const connectorTools = turn.definitions.connectorTools ?? {};
-    const connectors =
-      connectorCalls === undefined
-        ? []
-        : await openRunConnectorsOf(
-            () => this.connectorsOfRun(run),
-            agent,
-            connectorTools,
-            turn.alongsideOthers,
-          );
-    // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
-    const maxRounds = agent?.maxSteps ?? defaultRunMaxRounds;
-    const outcome = await runAgentTurn({
-      model,
+    const { abortOnStop } = this.options;
+    return runModelCall({
+      turn,
+      call,
+      resolveModel: (request) => this.options.resolveModel(request),
       secrets: this.options.secrets,
-      messages,
-      halonicTools: this.runToolsOf(turn, call.agent, 0, knowledge),
-      connectors,
-      connectorTools,
-      ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
-      ...agentParamsOf(agent),
-      maxRounds,
-      agent: call.agent,
       clock: this.options.clock,
-      checkCall: runToolCheckOf(connectorTools),
-      autoKnowledge: knowledge.auto,
-      log: turn.log,
-      ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
+      ...(connectorCalls === undefined
+        ? {}
+        : {
+            connectorsOfRun: () => this.connectorsOfRun(run),
+            effects: effectBoundary(connectorCalls),
+          }),
       localOnly: this.options.localOnly === true,
+      knowledge,
+      log: turn.log,
+      toolsOf: (signal) => this.runToolsOf(turn, call.agent, 0, knowledge, signal),
+      stop,
+      ...(abortOnStop === undefined ? {} : { abortOnStop }),
     });
-    if (outcome.kind === "stopped") return outcome.stop;
-    // An answer cut off at the limit isn't the agent's answer: the state mustn't go on with it.
-    if (outcome.result.atRoundLimit === true) {
-      throw new Error(
-        `Agent "${call.agent}" used all ${maxRounds} of its steps (maxSteps) and was still calling tools, so it gave no answer.`,
-      );
-    }
-    return { type: "model", output: outcome.result.content };
   }
 
   /** The connectors a run calls: its top-level run's ({@link RunsConnectors.of}). */
