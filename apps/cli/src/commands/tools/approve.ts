@@ -118,15 +118,26 @@ async function approveAll(
     const command = toolsCommand("approve", source, shellWord(waiting.listedName));
     return phrase`${markPart("needsYou")} ${toolsMessages.leftOutKeepsChanging(name, source.shown, command).phrase}`;
   });
-  const last =
-    approved.length === 0
-      ? toolsMessages.nothingWaiting(source.shown)
-      : toolsMessages.approvedAsTheyAre(approved.length, source.shown);
   return {
     exitCode: exitCode.ok,
-    lines: [...rows, ...leftOutLines, phrase`${markPart("done")} ${last.phrase}`],
+    lines: [...rows, ...leftOutLines, allSummary(approved.length, check.waiting.length, source)],
     json: { approved: approved.map(approvedEntry), leftOut: leftOut.map(leftOutEntry) },
   };
+}
+
+/**
+ * `--all`'s last line. Nothing waiting is good news; tools that wait but all
+ * keep changing is not, so it says none were approved.
+ */
+function allSummary(approvedCount: number, waitingCount: number, source: ToolSource): Phrase {
+  if (approvedCount > 0) {
+    const said = toolsMessages.approvedAsTheyAre(approvedCount, source.shown);
+    return phrase`${markPart("done")} ${said.phrase}`;
+  }
+  if (waitingCount === 0) {
+    return phrase`${markPart("done")} ${toolsMessages.nothingWaiting(source.shown).phrase}`;
+  }
+  return phrase`${markPart("needsYou")} ${toolsMessages.approvedNoneKeepChanging(source.shown).phrase}`;
 }
 
 /**

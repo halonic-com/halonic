@@ -17,6 +17,11 @@ verifies("cli.commands.tools.approve", () => {
     await kit.expectGolden("approve-all", ["tools", "approve", "notes-mcp", "--all"]);
   });
 
+  it("says it approved nothing when every waiting tool keeps changing", async () => {
+    await kit.tools(["approve", "notes-mcp", "--all"]);
+    await kit.expectGolden("approve-all-keep-changing", ["tools", "approve", "notes-mcp", "--all"]);
+  });
+
   it("approves with --all only the version it printed, so a later change asks again", async () => {
     await kit.tools(["approve", "notes-mcp", "--all"]);
     kit.notes().servers.tools = [

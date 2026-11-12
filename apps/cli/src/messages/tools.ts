@@ -69,6 +69,8 @@ export const toolsMessages = defineMessages("tools", {
   approvedRow: (tool: string) => phrase`Approved ${tool}`,
   leftOutKeepsChanging: (tool: string, source: string, command: string) =>
     phrase`Left out ${tool}: ${source} keeps changing it. Approve it by name: ${command}`,
+  approvedNoneKeepChanging: (source: string) =>
+    phrase`Approved no tools from ${source}: the ones waiting keep changing.`,
   /** The C2 sentence; its second sentence is Studio's line under Approve all. */
   approvedAsTheyAre: (count: number, source: string) =>
     phrase`Approved ${counted(count, "tool", "tools")} from ${source}, as ${count === 1 ? "it is" : "they are"} now. Tools that change later ask again.`,
