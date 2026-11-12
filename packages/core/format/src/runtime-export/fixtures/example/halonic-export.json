@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "deployment": "staging",
+  "exportedAt": "2026-11-05T08:00:00.000Z",
+  "files": [
+    {
+      "path": "runs/r-invoice.jsonl",
+      "bytes": 418,
+      "sha256": "c432249615fde213f48fda6251077d7e448e819f619bbe0e23b5c981b1b56276"
+    },
+    {
+      "path": "records/fe430a69f415084324c1098aa04ef602dce153539e6fb04888e9b6f75c1b1003.jsonl",
+      "bytes": 172,
+      "sha256": "ab5fa7adddec2aac798ab50706b62a1f69d38f278208e31197ec8fc96cf1d619"
+    },
+    {
+      "path": "blobs/b1/b1027f93c543f79ffc49454f811620fb0132dd90f5d087bce157022f72151a39",
+      "bytes": 22,
+      "sha256": "b1027f93c543f79ffc49454f811620fb0132dd90f5d087bce157022f72151a39"
+    }
+  ]
+}
