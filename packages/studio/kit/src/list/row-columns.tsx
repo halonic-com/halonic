@@ -245,9 +245,20 @@ export interface RowColumnsProps {
   readonly afterCheck: boolean;
 }
 
+/**
+ * The cell's horizontal padding. A checkbox cell holds the left gap, so there's none after it. A
+ * child row starts 24px further in.
+ */
+function columnsPadding(afterCheck: boolean, child: boolean): string {
+  if (child) {
+    return afterCheck ? "pl-6 pr-4" : "pl-10 pr-4";
+  }
+  return afterCheck ? "pr-4" : "px-4";
+}
+
 /** A columned row's main cell: the sentence screen readers hear, then the two layouts. */
 export function RowColumns({ row, columns, phone, reasonId, afterCheck }: RowColumnsProps) {
-  const padding = afterCheck ? "pr-4" : "px-4";
+  const padding = columnsPadding(afterCheck, row.child === true);
   const label = row.label ?? [row.title, metaOf(row).text].filter(Boolean).join(", ");
   return (
     <>
