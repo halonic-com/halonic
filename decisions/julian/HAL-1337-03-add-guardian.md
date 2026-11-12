@@ -2,6 +2,7 @@
 
 - Approval: the board approved the two-guardian design on HAL-1337 on 12 Nov, including this bootstrap step; Liam signs as the one guardian the base branch pins
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:v3za3ctIxRreGsAT+NQPRzrxslVsD8KaNsn+niAaQ3lwQnFgJAMXxU4Fyd3v1AJmjseOEo1Cx28eKfFGHEFBCQ==
 
 `tooling/check/approvers.json` gets an explicit `guardians` list: the CTO's key (unchanged) and the security reviewer's Paperclip agent key. Nothing else changes: the `internal` list is the same and `user-visible` stays empty.
 
