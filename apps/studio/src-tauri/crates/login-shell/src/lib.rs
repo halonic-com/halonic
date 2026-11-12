@@ -75,7 +75,7 @@ pub fn login_variables(
     // that gives `NoEnvironment`, and the app keeps its own variables.
     let script = format!("echo {MARKER}; /usr/bin/env; echo {MARKER}");
     let mut command = Command::new(shell);
-    own_process_group(&mut command);
+    own_session(&mut command);
     if is_csh(shell) {
         command.arg("-i");
     } else {
@@ -152,21 +152,36 @@ fn stop(child: &mut Child) {
     let _ = child.wait();
 }
 
-/// On Unix, the shell leads a process group of its own, with the same id as
-/// its process, so a shell that hangs can be stopped with everything its rc
-/// files started.
+/// On Unix, the shell leads a session of its own, and so a process group
+/// with the same id as its process, so a shell that hangs can be stopped
+/// with everything its rc files started.
+///
+/// A session, not just a group (HAL-6597): when Studio has a terminal
+/// (`pnpm tauri dev`, or started from a shell), an interactive bash or zsh
+/// in a group of its own sees it isn't the terminal's foreground and stops
+/// itself (`SIGTTIN`), so it never answers. A new session has no terminal.
 #[cfg(unix)]
-fn own_process_group(command: &mut Command) {
+fn own_session(command: &mut Command) {
     use std::os::unix::process::CommandExt;
-    command.process_group(0);
+    // SAFETY: the closure runs in the child between `fork` and `exec`, where
+    // only async-signal-safe calls are allowed. It makes one, `setsid`, and
+    // reads `errno`; it allocates nothing and takes no lock.
+    unsafe {
+        command.pre_exec(|| {
+            if libc::setsid() == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
 }
 
 /// Stops the shell's whole process group, for a shell that didn't answer in
 /// time; otherwise a program its rc files started (`sleep`, a prompt that
 /// waits) would keep running and hold the reader thread. The shell hasn't
 /// been reaped yet, so the id is still its group's. As in `git-guard`, the
-/// group is signalled through `/bin/sh`'s own `kill`: the crate has no
-/// dependencies and no unsafe code.
+/// group is signalled through `/bin/sh`'s own `kill`, which keeps the
+/// crate's unsafe code to the one `setsid` call.
 #[cfg(unix)]
 fn stop_group(child: &Child) {
     let _ = Command::new("/bin/sh")
@@ -182,9 +197,10 @@ fn stop_group(child: &Child) {
         .status();
 }
 
-/// Elsewhere the shell is only asked on macOS and Linux, so there is no group.
+/// Elsewhere the shell is only asked on macOS and Linux, so there is no
+/// session.
 #[cfg(not(unix))]
-fn own_process_group(_command: &mut Command) {}
+fn own_session(_command: &mut Command) {}
 
 #[cfg(not(unix))]
 fn stop_group(_child: &Child) {}

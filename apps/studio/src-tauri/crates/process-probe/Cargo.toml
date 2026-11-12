@@ -8,9 +8,10 @@ license.workspace = true
 publish.workspace = true
 
 # The standard library can't ask either question, so this crate calls the
-# operating system directly. It is the only crate allowed `unsafe` code
-# (approved by Liam on HAL-2719): every other crate keeps the workspace's
-# `unsafe_code = "forbid"`, and nothing unsafe leaves this crate's API.
+# operating system directly. It is allowed `unsafe` code (approved by Liam
+# on HAL-2719), as is `login-shell` for one `setsid` call (HAL-6597): every
+# other crate keeps the workspace's `unsafe_code = "forbid"`, and nothing
+# unsafe leaves this crate's API.
 # These are the workspace lints with that one change.
 [lints.rust]
 unsafe_code = "allow"

@@ -1519,6 +1519,9 @@ dependencies = [
 [[package]]
 name = "halonic-login-shell"
 version = "0.1.0"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "halonic-process-probe"

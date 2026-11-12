@@ -7,5 +7,18 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-[lints]
-workspace = true
+# The shell starts in a session of its own, which the standard library can't
+# do, so this crate calls `setsid` directly: one `unsafe` block (approved by
+# Liam on HAL-6597). These are the workspace lints with that one change, as
+# in `process-probe`.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+# Pinned to the version already in Cargo.lock, so this crate adds no new code
+# to the build.
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.191", default-features = false }

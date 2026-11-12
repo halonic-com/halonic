@@ -155,6 +155,50 @@ fn login_shell_that_doesnt_exist_doesnt_start() {
     assert!(matches!(error, LoginShellError::Start(_)), "{error}");
 }
 
+/// Set for [`login_shell_from_a_terminal_probe`] when it runs under
+/// `script`; without it the probe does nothing.
+#[cfg(target_os = "linux")]
+const IN_A_TERMINAL: &str = "HALONIC_LOGIN_SHELL_TEST_IN_A_TERMINAL";
+
+#[cfg(target_os = "linux")]
+#[test]
+fn login_shell_answers_when_studio_has_a_terminal() {
+    // `pnpm tauri dev`, or a Studio started from a shell, has a controlling
+    // terminal. `script` gives this test binary one and runs the probe below
+    // in it, with the real bash, which stops itself when it isn't in the
+    // terminal's foreground (HAL-6597).
+    let folder = Folder::new("terminal");
+    let test = std::env::current_exe().expect("this test binary");
+    let status = std::process::Command::new("script")
+        .args(["-q", "-e", "-c"])
+        .arg(format!(
+            "'{}' --exact login_shell_from_a_terminal_probe --ignored",
+            test.display()
+        ))
+        .arg("/dev/null")
+        .env(IN_A_TERMINAL, "1")
+        .env("HOME", folder.path())
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .status()
+        .expect("start `script`");
+    assert!(status.success(), "bash didn't answer in a terminal");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+#[ignore = "run in a terminal by login_shell_answers_when_studio_has_a_terminal"]
+fn login_shell_from_a_terminal_probe() {
+    if std::env::var_os(IN_A_TERMINAL).is_none() {
+        return;
+    }
+    let started = Instant::now();
+    let found = login_variables(Path::new("/bin/bash"), &["HOME"], Duration::from_secs(3))
+        .expect("bash answered");
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert_eq!(found.get("HOME"), std::env::var_os("HOME").as_ref());
+}
+
 #[test]
 fn login_shell_reads_the_real_sh() {
     // `/bin/sh` itself, with the flags a login shell gets; the variable
