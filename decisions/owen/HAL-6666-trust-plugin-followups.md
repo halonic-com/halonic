@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for these follow-ups in his review of #1992 on [HAL-6647](/HAL/issues/HAL-6647) and made them task [HAL-6666](/HAL/issues/HAL-6666); the package owner (Liam) approves this note in review on [HAL-6676](/HAL/issues/HAL-6676)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:04l5B/Pt5VSAIaJ8UKxH+KJS2wRwn1HVnHpjqHYBf1QYn0dl+FnAC3xRAlEAXP8UpH2cZ1xJvnmh2MiYi9HmAg==
 - Task: HAL-6666
 
 ## What changes
