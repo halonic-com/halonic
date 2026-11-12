@@ -39,6 +39,6 @@ The caller turns these into the outcome and the reason sentence; the helper writ
 
 ## Why this crate allows `unsafe`
 
-The standard library can't ask whether the process is elevated, find Program Files without the environment, set a folder's owner and access list, or write `HKLM`. As in `process-probe` (HAL-2719), this crate turns the workspace's `unsafe_code = "forbid"` off in its own `Cargo.toml`; every block has a `// SAFETY:` comment, and nothing unsafe leaves `src/windows.rs`. The steps themselves are in `src/lib.rs`, written against a `Machine` trait, and `tests/steps.rs` runs them anywhere against a pretend Windows. The `tauri-windows` CI job runs the real thing on the runner.
+The standard library can't ask whether the process is elevated, find Program Files without the environment, set a folder's owner and access list, or write `HKLM`. As in `process-probe` (HAL-2719), this crate turns the workspace's `unsafe_code = "forbid"` off in its own `Cargo.toml`; every block has a `// SAFETY:` comment, and nothing unsafe leaves the `windows` module (`src/windows.rs` and `src/windows/`). The steps themselves are in `src/lib.rs`, written against a `Machine` trait, and `tests/steps.rs` runs them anywhere against a pretend Windows. The `tauri-windows` CI job runs the real thing on the runner.
 
 The requirements in `requirements/` are drafts until the trace check reads `cargo test` results. Until then, each test's name starts with `sandbox_elevate_`.
