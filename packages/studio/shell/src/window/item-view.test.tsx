@@ -65,8 +65,9 @@ const pluginsFeature = defineFeature({
   },
 });
 
-function renderWindow() {
-  const shell = createShell({ features: [pluginsFeature], timers: new FakeTimers() });
+function renderWindow(
+  shell = createShell({ features: [pluginsFeature], timers: new FakeTimers() }),
+) {
   const services = new MapTarget();
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
@@ -79,7 +80,7 @@ function renderWindow() {
       language="en"
     />,
   );
-  return { container, workspace };
+  return { container, workspace, shell };
 }
 
 /** Lets the lazily imported views resolve and React draw them. */
@@ -103,18 +104,26 @@ verifies("shell.item-tabs", () => {
     );
   });
 
-  it("imports a kind's view once, however many of its items are open", async () => {
+  it("imports a kind's view once, however often its items are opened and mounted", async () => {
     imports = 0;
-    const { container, workspace } = renderWindow();
-
+    const { workspace, shell } = renderWindow();
     act(() => {
       workspace.tabs.openInNewTab({ key: "plugin-panel/this-computer/weather", title: "Weather" });
       workspace.tabs.openHere({ key: "plugin-panel/this-computer/translate", title: "Translate" });
     });
     await settle();
+    unmountAll();
 
-    expect(container.querySelector("main h1.panel-view")?.textContent).toBe(
-      "Panel of this-computer translate",
+    const again = renderWindow(shell);
+    act(() =>
+      again.workspace.tabs.openHere({
+        key: "plugin-panel/this-computer/weather",
+        title: "Weather",
+      }),
+    );
+
+    expect(again.container.querySelector("main h1.panel-view")?.textContent).toBe(
+      "Panel of this-computer weather",
     );
     expect(imports).toBe(1);
   });
@@ -143,6 +152,7 @@ verifies("shell.item-tabs", () => {
       expect(itemOfLocationKey("inbox")).toBeUndefined();
       expect(itemOfLocationKey("agent/acme")).toBeUndefined();
       expect(itemOfLocationKey("/acme/sorter")).toBeUndefined();
+      expect(itemOfLocationKey("agent//sorter")).toBeUndefined();
     });
   });
 });

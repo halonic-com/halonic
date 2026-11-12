@@ -1,13 +1,13 @@
-import { type ComponentType, lazy, Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
+import { lazyView } from "../lazy-view.ts";
 import type { PlaceContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import { SearchPage } from "../search/search-page.tsx";
 import { searchPageWords } from "../search/search-page-names.ts";
 import type { Shell } from "../shell.ts";
 import { homeLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
-import { loadView } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { ItemView, itemOfLocationKey } from "./item-view.tsx";
 
@@ -75,21 +75,10 @@ function PlaceView({
   readonly place: Registered<PlaceContribution>;
   readonly context: WorkspaceContext;
 }) {
-  const View = usePlaceView(place);
+  const View = lazyView<PlaceViewProps>(place);
   return (
     <Suspense fallback={null}>
       <View context={context} />
     </Suspense>
-  );
-}
-
-/** The place's view, imported the first time a tab shows it; one import per place. */
-function usePlaceView(place: PlaceContribution): ComponentType<PlaceViewProps> {
-  return useMemo(
-    () =>
-      lazy(async () => ({
-        default: await loadView<ComponentType<PlaceViewProps>>(place),
-      })),
-    [place],
   );
 }

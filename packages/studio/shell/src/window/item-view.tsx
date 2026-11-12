@@ -1,6 +1,6 @@
-import { type ComponentType, lazy, Suspense, useMemo } from "react";
+import { Suspense } from "react";
+import { lazyView } from "../lazy-view.ts";
 import type { ItemKindContribution, ItemRef } from "../points/item-kinds.ts";
-import { loadView } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 
 /**
@@ -19,7 +19,7 @@ export interface ItemViewProps {
 export function itemOfLocationKey(key: string): ItemRef | undefined {
   const [kind, hub, ...rest] = key.split("/");
   const id = rest.join("/");
-  if (kind === undefined || hub === undefined || kind === "" || id === "") {
+  if (kind === undefined || hub === undefined || kind === "" || hub === "" || id === "") {
     return undefined;
   }
   return { kind, hub, id };
@@ -35,21 +35,10 @@ export function ItemView({
   readonly item: ItemRef;
   readonly context: WorkspaceContext;
 }) {
-  const View = useItemView(kind);
+  const View = lazyView<ItemViewProps>(kind.open);
   return (
     <Suspense fallback={null}>
       <View item={item} context={context} />
     </Suspense>
-  );
-}
-
-/** The kind's view; one import per kind. */
-function useItemView(kind: ItemKindContribution): ComponentType<ItemViewProps> {
-  return useMemo(
-    () =>
-      lazy(async () => ({
-        default: await loadView<ComponentType<ItemViewProps>>(kind.open),
-      })),
-    [kind],
   );
 }
