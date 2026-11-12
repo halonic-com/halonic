@@ -93,11 +93,13 @@ verifies("harness-bridge.socket", () => {
       await expect(lstat(socketPath)).rejects.toThrow();
     });
 
-    it("refuses a socket path over Linux's limit up front, and creates nothing", async () => {
-      const deep = join(parent, "d".repeat(maxSocketPathBytes));
+    it("refuses a socket path over this system's limit up front, and creates nothing", async () => {
+      const deep = join(parent, "d".repeat(maxSocketPathBytes()));
 
       await expect(openBridge(fakeRun(), settingsIn(deep))).rejects.toThrow(
-        /socket path would be \d+ bytes, and Linux takes at most 107/,
+        new RegExp(
+          `socket path would be \\d+ bytes, and .+ takes at most ${maxSocketPathBytes()}\\.`,
+        ),
       );
       expect(await readdir(parent)).toEqual([]);
     });
@@ -107,10 +109,10 @@ verifies("harness-bridge.socket", () => {
       await mkdir(taken);
       await symlink(taken, join(parent, "link"));
 
-      await expect(makeRunSocketFolder(parent, "taken")).rejects.toThrow(
+      await expect(makeRunSocketFolder(parent, { name: "taken" })).rejects.toThrow(
         "couldn't create the bridge's socket folder",
       );
-      await expect(makeRunSocketFolder(parent, "link")).rejects.toThrow(
+      await expect(makeRunSocketFolder(parent, { name: "link" })).rejects.toThrow(
         "couldn't create the bridge's socket folder",
       );
       expect((await lstat(taken)).isDirectory()).toBe(true);
@@ -126,7 +128,7 @@ verifies("harness-bridge.socket", () => {
       await symlink(elsewhere, join(parent, "linked"));
 
       for (const folder of [shared, join(parent, "linked")]) {
-        await expect(makeRunSocketFolder(folder, "run")).rejects.toThrow(
+        await expect(makeRunSocketFolder(folder, { name: "run" })).rejects.toThrow(
           "isn't private to this user",
         );
       }
@@ -255,5 +257,20 @@ verifies("harness-bridge.socket", () => {
 
       expect(statuses(inner)).toEqual([421]);
     });
+  });
+});
+
+verifies("harness-bridge.socket-path-limit", () => {
+  it("takes 107 bytes on Linux but only 103 on macOS", async () => {
+    // `<folder>/run/bridge.sock` is 105 bytes: within Linux's limit, over macOS's.
+    const runAndSocket = Buffer.byteLength("/run/bridge.sock");
+    const folder = join(parent, "f".repeat(105 - runAndSocket - Buffer.byteLength(parent) - 1));
+
+    await expect(makeRunSocketFolder(folder, { name: "run", platform: "darwin" })).rejects.toThrow(
+      "socket path would be 105 bytes, and macOS takes at most 103.",
+    );
+    await expect(readdir(parent)).resolves.toEqual([]);
+    const made = await makeRunSocketFolder(folder, { name: "run", platform: "linux" });
+    expect(Buffer.byteLength(made.socketPath)).toBe(105);
   });
 });

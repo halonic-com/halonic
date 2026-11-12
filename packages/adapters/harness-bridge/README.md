@@ -51,8 +51,8 @@ try {
   bridge answers `Host: bridge.halonic.invalid` (with or without `:80`), a
   target in absolute form that names it, and `CONNECT
   bridge.halonic.invalid:80`, whose tunnel gets the same checks on every
-  request; any other `CONNECT` gets a 421. A socket path over Linux's 107
-  bytes fails before anything is created. Closing removes the socket and its
+  request; any other `CONNECT` gets a 421. A socket path over the system's
+  limit (107 bytes on Linux, 103 on macOS) fails before anything is created. Closing removes the socket and its
   folder.
 - **Pass-through.** The bridge sends the request's bytes to the provider,
   without following a redirect, so the key only goes to the route's address, and
@@ -123,7 +123,7 @@ The rules are in `requirements/`: `server.md`, `socket.md`, `pass-through.md`,
 | `defaultUpstreamLimits` | 10 minutes to start a reply, 2 minutes of silence. |
 | `defaultCloseTimeoutMs` | 5 seconds. |
 | `socketBridgeName` | `bridge.halonic.invalid`, the name a program calls a socket bridge by. |
-| `maxSocketPathBytes` | 107, the longest socket path Linux takes. |
+| `maxSocketPathBytes(platform?)` | The longest socket path a system takes: 107 bytes on Linux, 103 on macOS. |
 
 Each limit you leave out keeps its default. `closeTimeoutMs` must be a whole
 number of milliseconds, 0 or more.
