@@ -3,11 +3,15 @@ import type { Plugin } from "@halonicjs/format";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { originText, type PluginOrigin, quoted, RISK_WORDS } from "../page/page-text.ts";
+import type { ChangeRow, PluginChangeSummary } from "./change-rows.ts";
 import { type TrustCheckContent, type TrustSecret, trustCheckContent } from "./trust-check.ts";
 import {
   ADDRESSES_SECTION,
+  ARROW,
   AT,
   CAN_REACH,
+  CHANGED_INTRO,
+  CHANGED_UNREADABLE,
   FROM,
   GOES_ONLY_TO,
   HOW,
@@ -34,6 +38,7 @@ import {
   trustNotSavedLine,
   trustSummary,
   trustTitle,
+  unchangedRow,
   VERSION,
 } from "./trust-text.ts";
 
@@ -43,6 +48,9 @@ export interface PluginTrustDialogProps {
   /** Where it was added from; a plugin put in the folder by hand has none. */
   readonly origin: PluginOrigin | undefined;
   readonly reason: TrustCheckReason;
+  /** For `reason="changed"`: what changed, and the day the person trusted the plugin before. */
+  readonly changes?: PluginChangeSummary | undefined;
+  readonly trustedOn?: string | undefined;
   /** While trust is being saved: the primary is busy and keeps focus. */
   readonly busy?: boolean;
   /** Why trust wasn't saved, from the host; the dialog stays open. */
@@ -71,7 +79,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
   const summary = trustSummary(content.counts);
   return (
     <Dialog
-      title={trustTitle(reason, manifest.name)}
+      title={trustTitle(reason, manifest.name, props.trustedOn)}
       size="md"
       closeButton={false}
       cancelLabel={NOT_NOW}
@@ -84,8 +92,14 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
     >
       <div className="flex flex-col gap-3">
         <SourceLine version={manifest.version} origin={props.origin} />
-        {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
-        <Sections content={content} shown={shownSections(manifest)} name={manifest.name} />
+        {reason === "changed" ? (
+          <Changes summary={props.changes} />
+        ) : (
+          <>
+            {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
+            <Sections content={content} shown={shownSections(manifest)} name={manifest.name} />
+          </>
+        )}
       </div>
     </Dialog>
   );
@@ -256,6 +270,51 @@ function Section({
         </Disclosure>
       );
   }
+}
+
+/** What changed (design section 6): the rows, then what stayed as it was, closed. */
+function Changes({ summary }: { readonly summary: PluginChangeSummary | undefined }) {
+  if (summary === undefined || !summary.readable) {
+    return <p className="text-body text-fg">{CHANGED_UNREADABLE}</p>;
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-body text-fg">{CHANGED_INTRO}</p>
+      <ul className="flex list-none flex-col gap-2">
+        {summary.rows.map((row, index) => (
+          <ChangeLine key={index} row={row} />
+        ))}
+      </ul>
+      {summary.unchanged.length === 0 ? null : (
+        <Disclosure summary={unchangedRow(summary.unchanged.length)}>
+          <Items>
+            {summary.unchanged.map((line, index) => (
+              <li key={index} className="text-small text-fg-muted wrap-anywhere">
+                {line}
+              </li>
+            ))}
+          </Items>
+        </Disclosure>
+      )}
+    </div>
+  );
+}
+
+/** A tag, what it is, and for a change the old value muted, an arrow, the new value in weight 500. */
+function ChangeLine({ row }: { readonly row: ChangeRow }) {
+  return (
+    <li className="flex flex-wrap items-baseline gap-2 text-small wrap-anywhere">
+      <StatusChip tone="neutral">{row.tag}</StatusChip>
+      <span>{row.what}</span>
+      {row.from === undefined && row.to === undefined ? null : (
+        <span>
+          {row.from === undefined ? null : <span className="text-fg-muted">{row.from}</span>}
+          {row.from !== undefined && row.to !== undefined ? ARROW : null}
+          {row.to === undefined ? null : <span className="font-medium">{row.to}</span>}
+        </span>
+      )}
+    </li>
+  );
 }
 
 function Items({ children }: { readonly children: ReactNode }) {
