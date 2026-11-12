@@ -1,6 +1,10 @@
-import type { InboxSetupSource, SetupEntry } from "@halonicjs/studio-feature-inbox/api";
+import {
+  clockTime,
+  type InboxSetupSource,
+  type SetupEntry,
+} from "@halonicjs/studio-feature-inbox/api";
 import type { GoogleSetupAccounts } from "./api.ts";
-import { localTime, setupEntry, type TimeFormat } from "./setup-entry.ts";
+import { setupEntry, type TimeFormat } from "./setup-entry.ts";
 
 /**
  * The Inbox's setup source for Google: one entry for each connected account that needs setup,
@@ -12,7 +16,8 @@ import { localTime, setupEntry, type TimeFormat } from "./setup-entry.ts";
  */
 export function googleSetupSource(
   accounts: GoogleSetupAccounts,
-  time: TimeFormat = localTime,
+  time: TimeFormat = clockTime,
+  now: () => Date = () => new Date(),
 ): InboxSetupSource {
   return {
     provider: "google",
@@ -20,7 +25,7 @@ export function googleSetupSource(
     async list() {
       const entries: SetupEntry[] = [];
       for (const account of await accounts.list()) {
-        const entry = setupEntry(account, time);
+        const entry = setupEntry(account, time, now());
         if (entry !== undefined) entries.push(entry);
       }
       return entries;

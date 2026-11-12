@@ -26,6 +26,7 @@ export {
   setupKey,
   type WaitItem,
 } from "./inbox-items.ts";
+export { clockTime } from "./plain/waiting-time.ts";
 
 /** The runs the Inbox reads and answers. The app provides it for each open workspace. */
 export const InboxRunsService: ServiceKey<InboxRuns> = serviceKey<InboxRuns>("inbox.runs");

@@ -72,7 +72,7 @@ function elapsed(since: Date, now: Date, form: "short" | "long"): string {
 }
 
 /** "10:42" today, "Sat 10:42" within the last week, else "Sat 31 Oct, 10:42". */
-function clockTime(at: Date, now: Date): string {
+export function clockTime(at: Date, now: Date): string {
   if (sameDay(at, now)) return hoursAndMinutes(at);
   if (now.getTime() - at.getTime() < 6 * dayInMs) {
     return `${weekdays[at.getDay()]} ${hoursAndMinutes(at)}`;

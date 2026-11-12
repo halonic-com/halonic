@@ -6,20 +6,8 @@ import { stepNames } from "./step-names.ts";
 /** The steps a service added later needs: its APIs, its scopes and a new sign-in. */
 const addServiceSteps: readonly SetupStep["id"][] = ["apis", "scopes", "sign-in"];
 
-/** Shows an ISO time as you read it, such as "02:10". */
-export type TimeFormat = (iso: string) => string;
-
-/** UTC as `HH:MM`, so tests read the same in every time zone. */
-export const utcTime: TimeFormat = (iso) => iso.slice(11, 16);
-
-const localClock = new Intl.DateTimeFormat(undefined, {
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-/** The user's local time as `HH:MM`. It is what the app shows. */
-export const localTime: TimeFormat = (iso) => localClock.format(new Date(iso));
+/** Shows a time as the Inbox does, such as "02:10", "Sat 02:10" or "Sat 31 Oct, 02:10". */
+export type TimeFormat = (at: Date, now: Date) => string;
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
@@ -61,13 +49,19 @@ function failing(account: GoogleSetupAccount): number {
 /**
  * What an account needs from you, as the Inbox's entry: the title and progress line of the UX
  * checklist (section 1). It is `undefined` when nothing is left to do, and for an account with no
- * service, which has nothing to set up. Studio never names Gmail or Drive: the steps and the
+ * service, which has nothing to set up. A refused sign-in says when it was refused the way the
+ * Inbox says times, because Google refuses a token after 7 days in testing mode and "since 02:10"
+ * would read as today. Studio never names Gmail or Drive: the steps and the
  * service names come from the account.
  *
  * @example
- * setupEntry(account, utcTime)?.progress; // "Step 4 of 7 · Scopes"
+ * setupEntry(account, clockTime, new Date())?.progress; // "Step 4 of 7 · Scopes"
  */
-export function setupEntry(account: GoogleSetupAccount, time: TimeFormat): SetupEntry | undefined {
+export function setupEntry(
+  account: GoogleSetupAccount,
+  time: TimeFormat,
+  now: Date,
+): SetupEntry | undefined {
   if (account.services.length === 0) return undefined;
   const { record, email } = account;
   const entry = (title: string, progress: string): SetupEntry => ({
@@ -86,7 +80,7 @@ export function setupEntry(account: GoogleSetupAccount, time: TimeFormat): Setup
   if (record.refreshRefused !== null) {
     return entry(
       `Sign in to Google again for ${email}`,
-      `Needs sign-in since ${time(record.refreshRefused.at)}${onHold(account)}`,
+      `Needs sign-in since ${time(new Date(record.refreshRefused.at), now)}${onHold(account)}`,
     );
   }
 

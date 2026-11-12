@@ -1,3 +1,4 @@
+import { clockTime } from "@halonicjs/studio-feature-inbox/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { account, fakeAccounts, record } from "./accounts.test-helper.ts";
@@ -10,6 +11,17 @@ verifies("google-setup.setup-source", () => {
     const fake = fakeAccounts([account(record(["project"])), account(record(done))]);
     const entries = await googleSetupSource(fake.source).list();
     expect(entries.map((entry) => entry.account)).toEqual(["gaccount_1"]);
+  });
+
+  it("tells the refused time from the clock it is given", async () => {
+    const at = new Date(2026, 10, 3, 2, 10).toISOString();
+    const refused = record(done, { refreshRefused: { reason: "sign-in", at } });
+    const source = googleSetupSource(
+      fakeAccounts([account(refused)]).source,
+      clockTime,
+      () => new Date(2026, 10, 12, 15, 30),
+    );
+    expect((await source.list())[0]?.progress).toBe("Needs sign-in since Tue 3 Nov, 02:10");
   });
 
   it("is the Google provider", () => {
