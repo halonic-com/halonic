@@ -49,10 +49,18 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-async function openEngine(versions: WorkspaceVersions): Promise<LocalEngine> {
+/** The engine over `versions`. It starts no run's connectors, so it reads no version for them. */
+async function openEngine(
+  versions: Omit<WorkspaceVersions, "trustedVersionOf">,
+): Promise<LocalEngine> {
   const engine = await openLocalEngine({
     workspace,
-    versions,
+    versions: {
+      ...versions,
+      trustedVersionOf: async () => {
+        throw new Error("This engine starts no connectors.");
+      },
+    },
     workspaceRoot: acme,
     secrets,
     http,
