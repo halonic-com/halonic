@@ -95,7 +95,7 @@ fn wsl_launch_refuses_a_system_root_that_isnt_a_full_drive_path() {
 #[test]
 fn wsl_launch_starts_the_agent_host_in_halonics_distro_with_fixed_arguments() {
     pinned(
-        &distro_host_command(Path::new(WSL)),
+        &distro_host_command(Path::new(WSL), 49152),
         &[
             "-d",
             "halonic",
@@ -107,6 +107,9 @@ fn wsl_launch_starts_the_agent_host_in_halonics_distro_with_fixed_arguments() {
             "/opt/halonic/current/bin/halonic-agent-host",
             "--profile-folder",
             concat!("/home", "/halonic/.local/share/halonic"),
+            "--stdio",
+            "--relay-host",
+            "127.0.0.1:49152",
         ],
     );
 }

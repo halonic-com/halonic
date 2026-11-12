@@ -7,7 +7,8 @@
 //! - always as `-d halonic --exec <program>`, so the person's default distro
 //!   is never used and no shell reads the arguments;
 //! - with fixed arguments only. Project names and paths go over standard
-//!   input, never on the command line (security review W7, HAL-5407);
+//!   input, never on the command line (security review W7, HAL-5407); the
+//!   relay's port is the one number that varies;
 //! - always with an explicit user, so the agent host never runs as root when
 //!   the distro's default user is lost (W2a), and without `WSLENV`, so none
 //!   of the person's Windows variables cross into the distro.
@@ -130,10 +131,16 @@ pub fn wsl_exe(system_root: Option<&str>) -> Result<PathBuf, WslError> {
 }
 
 /// The command that starts the agent host in the distro, as the `halonic`
-/// user, with Halonic's data there as its profile folder.
-pub fn distro_host_command(wsl: &Path) -> Command {
+/// user, with Halonic's data there as its profile folder. It serves over its
+/// standard input and output, never on a port in the distro (review W9),
+/// and names the relay on `relay_port` for its `Host` check. Start it with
+/// [`crate::AgentHost::start_relayed`].
+pub fn distro_host_command(wsl: &Path, relay_port: u16) -> Command {
     let mut command = distro_command(wsl, DISTRO_USER, DISTRO_HOST);
-    command.args(["--profile-folder", DISTRO_PROFILE_FOLDER]);
+    command.args(["--profile-folder", DISTRO_PROFILE_FOLDER, "--stdio"]);
+    command
+        .arg("--relay-host")
+        .arg(format!("127.0.0.1:{relay_port}"));
     command
 }
 

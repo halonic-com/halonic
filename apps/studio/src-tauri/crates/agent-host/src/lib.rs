@@ -3,19 +3,24 @@
 //! serves them on loopback. The shell starts it with the profile folder,
 //! reads the one handshake line it prints (`{"url","token"}`) and keeps its
 //! standard input open: the host stops when that closes, so it never outlives
-//! the shell. Nothing here knows Tauri, so it builds and tests anywhere.
+//! the shell. In Halonic's WSL distro the host listens on no port; a relay
+//! on loopback passes the shell's connections to it over its standard input
+//! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
+//! and tests anywhere.
 
 mod handshake;
+mod relay;
 mod routes;
 mod wsl;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 pub use handshake::{Handshake, read_handshake};
+use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
@@ -29,6 +34,10 @@ pub const EXECUTABLE_NAME: &str = "halonic-agent-host";
 /// The longest handshake line read. A real one is under 100 bytes; a host
 /// that prints more without a newline is refused, not read without end.
 const HANDSHAKE_LINE_LIMIT: u64 = 4096;
+
+/// The most a host serving over standard input and output may print before
+/// its handshake line: `wsl.exe`'s own messages, such as an update notice.
+const BEFORE_HANDSHAKE_LIMIT: u64 = 64 * 1024;
 
 /// How often [`AgentHost::stop`] checks whether the host has exited.
 const EXIT_POLL: Duration = Duration::from_millis(25);
@@ -110,6 +119,9 @@ pub fn host_command(executable: &Path, profile_folder: &Path, sweep_roots: &[Pat
 pub struct AgentHost {
     child: Child,
     stdin: Option<ChildStdin>,
+    /// The relay a host serving over its standard input and output has;
+    /// the relay holds that input then.
+    relay: Option<Relay>,
     handshake: Handshake,
 }
 
@@ -150,8 +162,62 @@ impl AgentHost {
             Ok(handshake) => Ok(Self {
                 child,
                 stdin,
+                relay: None,
                 handshake,
             }),
+            Err(error) => {
+                kill(&mut child);
+                Err(error)
+            }
+        }
+    }
+
+    /// Starts a host that serves over its standard input and output
+    /// (`--stdio`), as in Halonic's WSL distro, and a relay on `127.0.0.1`
+    /// that passes the shell's connections to it. The relay listens first;
+    /// `command` gets its port and makes the command, such as
+    /// [`distro_host_command`]. Lines before the handshake that aren't JSON,
+    /// such as `wsl.exe`'s own messages, are skipped. The handshake's `url`
+    /// is the relay's, so the shell calls the host as it would on loopback.
+    ///
+    /// # Errors
+    ///
+    /// As [`AgentHost::start`], and when the relay can't listen or the host
+    /// prints more than 64 KiB before its handshake.
+    pub fn start_relayed(
+        command: impl FnOnce(u16) -> Command,
+        wait: Duration,
+    ) -> Result<Self, AgentHostError> {
+        let mut relay = Relay::bind().map_err(|error| {
+            AgentHostError::Start(format!("The agent host's relay could not listen: {error}."))
+        })?;
+        let mut command = command(relay.port());
+        command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit());
+        without_console_window(&mut command);
+        let mut child = command.spawn().map_err(|error| {
+            AgentHostError::Start(format!("The agent host could not start: {error}."))
+        })?;
+        let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+            kill(&mut child);
+            return Err(AgentHostError::Exited);
+        };
+        let answer = match read_relayed_handshake_line(stdout, relay.port()).recv_timeout(wait) {
+            Ok(answer) => answer,
+            Err(_) => Err(AgentHostError::TimedOut(wait)),
+        };
+        match answer {
+            Ok((handshake, output)) => {
+                relay.serve(stdin, output);
+                Ok(Self {
+                    child,
+                    stdin: None,
+                    relay: Some(relay),
+                    handshake,
+                })
+            }
             Err(error) => {
                 kill(&mut child);
                 Err(error)
@@ -177,6 +243,9 @@ impl AgentHost {
 
     fn stop_within(&mut self, grace: Duration) -> Stopped {
         drop(self.stdin.take());
+        if let Some(relay) = self.relay.take() {
+            relay.stop();
+        }
         let deadline = Instant::now() + grace;
         while Instant::now() < deadline {
             if self.has_exited() {
@@ -242,6 +311,50 @@ fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<FirstLi
     receiver
 }
 
+/// The handshake of a host serving over its standard input and output, and
+/// the rest of its output, which carries frames from there on.
+type RelayedHandshake = Result<(Handshake, BufReader<ChildStdout>), AgentHostError>;
+
+/// Reads lines of `output` on a thread of its own until one is the
+/// handshake, skipping lines that aren't JSON.
+fn read_relayed_handshake_line(
+    output: ChildStdout,
+    relay_port: u16,
+) -> mpsc::Receiver<RelayedHandshake> {
+    let (sender, receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut reader = BufReader::new(output);
+        let mut left = BEFORE_HANDSHAKE_LIMIT;
+        let answer = loop {
+            if left == 0 {
+                break Err(handshake::refused(
+                    "the host printed more than 64 KiB before it",
+                ));
+            }
+            let mut line = Vec::new();
+            let read = reader.by_ref().take(left).read_until(b'\n', &mut line);
+            let length = match read {
+                Ok(0) | Err(_) => break Err(AgentHostError::Exited),
+                Ok(length) => length,
+            };
+            left -= length as u64;
+            if !line.ends_with(b"\n") {
+                break Err(handshake::refused(
+                    "the host printed more than 64 KiB before it",
+                ));
+            }
+            match handshake::read_relayed_handshake(&line, relay_port) {
+                Ok(Some(handshake)) => break Ok(handshake),
+                Ok(None) => {}
+                Err(error) => break Err(error),
+            }
+        };
+        // The shell may have stopped waiting; then the host is killed.
+        let _ = sender.send(answer.map(|handshake| (handshake, reader)));
+    });
+    receiver
+}
+
 /// On Windows, starts `command` without a console window of its own.
 fn without_console_window(command: &mut Command) {
     #[cfg(windows)]
@@ -264,7 +377,10 @@ fn kill(child: &mut Child) {
 mod tests {
     use std::io::Cursor;
 
+    use super::handshake::read_relayed_handshake;
     use super::{FirstLine, read_first_line};
+
+    const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
 
     fn first_line_of(output: &[u8]) -> FirstLine {
         read_first_line(Cursor::new(output.to_vec()))
@@ -284,5 +400,38 @@ mod tests {
     fn handshake_first_line_that_isnt_utf8_is_told_apart_from_an_ended_output() {
         assert_eq!(first_line_of(b"\xff\xfe\n"), FirstLine::NotText);
         assert_eq!(first_line_of(b""), FirstLine::Ended);
+    }
+
+    #[test]
+    fn relay_handshake_is_the_token_with_the_relays_address() {
+        let line = format!("{{\"token\":\"{TOKEN}\"}}\r\n");
+        let handshake = read_relayed_handshake(line.as_bytes(), 49152)
+            .expect("a handshake")
+            .expect("not skipped");
+        assert_eq!(handshake.url(), "http://127.0.0.1:49152");
+        assert_eq!(handshake.token(), TOKEN);
+    }
+
+    #[test]
+    fn relay_handshake_skips_wsl_messages_but_not_after_a_utf16_newline() {
+        // "Hi" and a newline in UTF-16, as wsl.exe prints them.
+        assert_eq!(read_relayed_handshake(b"H\0i\0\r\0\n", 1), Ok(None));
+        assert_eq!(read_relayed_handshake(b"\xff\xfe\n", 1), Ok(None));
+        assert_eq!(read_relayed_handshake(b"[1,2]\n", 1), Ok(None));
+        // The NUL a UTF-16 newline leaves before the host's own line.
+        let line = format!("\0{{\"token\":\"{TOKEN}\"}}\n");
+        assert!(matches!(
+            read_relayed_handshake(line.as_bytes(), 1),
+            Ok(Some(_))
+        ));
+    }
+
+    #[test]
+    fn relay_handshake_refuses_an_object_that_isnt_a_token_without_repeating_it() {
+        let with_url = format!("{{\"url\":\"http://127.0.0.1:1\",\"token\":\"{TOKEN}\"}}\n");
+        for line in [with_url.as_str(), "{\"token\":\"short\"}\n", "{}\n"] {
+            let error = read_relayed_handshake(line.as_bytes(), 1).expect_err(line);
+            assert!(!error.to_string().contains(TOKEN), "{error}");
+        }
     }
 }

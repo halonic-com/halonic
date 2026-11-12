@@ -1,6 +1,8 @@
 //! The one line the agent host prints when it serves:
 //! `{"url":"http://127.0.0.1:<port>","token":"<43 characters>"}`
-//! (apps/agent-host/README.md, "Serving on loopback").
+//! (apps/agent-host/README.md, "Serving on loopback"). Serving over its
+//! standard input and output, it prints `{"token":"<43 characters>"}`, and
+//! its address is the relay's.
 
 use serde::Deserialize;
 
@@ -43,6 +45,12 @@ struct HandshakeLine {
     token: String,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RelayedHandshakeLine {
+    token: String,
+}
+
 /// The token is 32 random bytes in base64url without padding.
 const TOKEN_LENGTH: usize = 43;
 
@@ -66,6 +74,41 @@ pub fn read_handshake(line: &str) -> Result<Handshake, AgentHostError> {
         url: parsed.url,
         token: parsed.token,
     })
+}
+
+/// Reads a line a host serving over standard input and output printed,
+/// whose address is the relay's on `relay_port`. `wsl.exe` can print its
+/// own messages first, often in UTF-16, so a line that isn't a JSON object
+/// is skipped (`None`), after the NUL bytes UTF-16 leaves around a newline
+/// are dropped. A JSON object that isn't `{"token"}` with a well-formed
+/// token is refused; the error never repeats the line.
+///
+/// # Errors
+///
+/// [`AgentHostError::Handshake`] naming what is wrong with the line.
+pub(crate) fn read_relayed_handshake(
+    line: &[u8],
+    relay_port: u16,
+) -> Result<Option<Handshake>, AgentHostError> {
+    let Ok(line) = std::str::from_utf8(line) else {
+        return Ok(None);
+    };
+    let line = line.trim_matches(|character: char| character == '\0' || character.is_whitespace());
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+        return Ok(None);
+    };
+    if !value.is_object() {
+        return Ok(None);
+    }
+    let parsed: RelayedHandshakeLine =
+        serde_json::from_value(value).map_err(|_| refused("it isn't {\"token\"} as JSON"))?;
+    if !is_token(&parsed.token) {
+        return Err(refused("its token isn't 43 base64url characters"));
+    }
+    Ok(Some(Handshake {
+        url: format!("http://127.0.0.1:{relay_port}"),
+        token: parsed.token,
+    }))
 }
 
 /// The line as a JSON object with exactly `url` and `token`. Read as a value
