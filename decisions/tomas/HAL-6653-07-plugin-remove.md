@@ -15,15 +15,13 @@ is unchanged. No example was removed or weakened.
 
 `halonic plugin --help` says "Add, list or remove plugins" again instead of "Add or list plugins".
 
-`cli.commands.plugin.list` doesn't change: its empty line names only a folder, which stays true
-until git sources are built.
+`cli.commands.plugin.list` doesn't change.
 
 ## Why
 
 HAL-6426 took `plugin remove` out of the lines users see because the command wasn't built yet.
-This pull request builds it, so the lines that point to it are true again. The folder-only lines
-("Add one from a folder with halonic plugin add <folder>", "Say which folder to add the plugin
-from.", "Check the folder.") stay until git sources are built (HAL-1736).
+This pull request builds it, so the lines that point to it are true again. The lines about where a
+plugin comes from keep main's wording for a folder or a git address (HAL-1736).
 
 ## Covers
 
