@@ -3,6 +3,7 @@
 - Task: HAL-6701 (step 1c of the [HAL-198 build plan](/HAL/issues/HAL-198#document-build-plan), ADR 5.9)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-6701](/HAL/issues/HAL-6701)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7FsPp0cjbaoKcLscRMKsSHTT9fwsUu7rHCPs3pMO5MpzaAoREqBp4ya9ub/SAYtOHAHEUMYbchXiUTwIA+EqCw==
 
 ## What changes
 
