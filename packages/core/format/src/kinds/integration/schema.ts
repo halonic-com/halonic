@@ -121,6 +121,18 @@ export function isPlacedSecret(entry: IntegrationSecretEntry): entry is Integrat
   return entry.as !== undefined;
 }
 
+/**
+ * The secrets of a sheet the integration places, by name: `secrets` without
+ * the client secrets, which have no hosts or placement to show.
+ */
+export function placedSecrets(
+  secrets: Readonly<Record<string, IntegrationSecretEntry>>,
+): [string, IntegrationSecret][] {
+  return Object.entries(secrets).flatMap(([name, entry]): [string, IntegrationSecret][] =>
+    isPlacedSecret(entry) ? [[name, entry]] : [],
+  );
+}
+
 /** One OAuth scope: a token of visible ASCII without a space, `"` or `\\` (RFC 6749, section 3.3). */
 const SCOPE_PATTERN = /^[\x21\x23-\x5b\x5d-\x7e]+$/;
 

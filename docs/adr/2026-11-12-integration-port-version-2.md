@@ -33,6 +33,10 @@ version 1 loads and runs unchanged; the loader no longer insists on equality.
 - An older Halonic reading a version 2 sheet already refuses it: the schema is
   strict, so `signIns` is "unknown key". The new message only explains it.
 - The `$id` of the kit's spec files names `v2`.
+- A plugin's backend, and an `integration.yaml` read as a plugin, can't declare
+  `signIns` yet (`backend-sign-in`): the trust check and the trust content
+  don't show a sign-in, so the user couldn't approve one. The Studio pull request
+  of HAL-984 lifts it.
 - The kit places sign-in tokens, `oauth-sign-in` runs the flow and Studio asks
   for sign-in in later pull requests of HAL-984; until they land, a sheet may
   declare `signIns` but the kit places no token.

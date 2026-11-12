@@ -3,7 +3,7 @@
 // is what the prompt shows, plus the whole manifest and the hash of every
 // file, so any change to the plugin changes its fingerprint.
 
-import type { Plugin, PluginLocalTool } from "@halonicjs/format";
+import { type Plugin, type PluginLocalTool, placedSecrets } from "@halonicjs/format";
 import type { Digest } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 
@@ -144,7 +144,7 @@ function localToolHosts(tool: PluginLocalTool): PluginHostContent[] {
 }
 
 function backendSecrets(plugin: Plugin): PluginSecretContent[] {
-  return Object.entries(plugin.backend?.secrets ?? {}).map(([name, secret]) => {
+  return placedSecrets(plugin.backend?.secrets ?? {}).map(([name, secret]) => {
     const { purpose, hosts, optional, ...placement } = secret;
     return { part: "backend", name, purpose, hosts, optional, placement };
   });

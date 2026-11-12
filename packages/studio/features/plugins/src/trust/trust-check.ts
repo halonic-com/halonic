@@ -1,4 +1,4 @@
-import type { Plugin } from "@halonicjs/format";
+import { type Plugin, placedSecrets } from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
 import { hostWords, type SecretKind, secretHow, type TrustCounts } from "./trust-text.ts";
 
@@ -75,7 +75,7 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
   ].map(({ name, description, risk, untrusted }) => ({ name, description, risk, untrusted }));
   const programs = localTools.map(programOf);
   const secrets: TrustSecret[] = [
-    ...Object.entries(plugin.backend?.secrets ?? {}).map(([name, secret]) => ({
+    ...placedSecrets(plugin.backend?.secrets ?? {}).map(([name, secret]) => ({
       name,
       goesTo: unique(secret.hosts.map((host) => hostWords(host, labelOf))),
       how: secretHow(secret),

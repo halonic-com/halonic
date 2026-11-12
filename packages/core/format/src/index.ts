@@ -62,6 +62,7 @@ export {
   isPlacedSecret,
   MAX_RESPONSE_BYTES,
   MAX_TIMEOUT_MS,
+  placedSecrets,
 } from "./kinds/integration/schema.ts";
 export type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 export type { ModelAlias, Models } from "./kinds/models/schema.ts";

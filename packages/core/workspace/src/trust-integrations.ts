@@ -28,11 +28,12 @@
 // `tokens` are values the code keeps for itself, `limits` can only make a
 // request stop sooner, and `recording` only affects the recorder in tests.
 
-import type {
-  AddressClass,
-  IntegrationSecret,
-  IntegrationSecretHost,
-  IntegrationSheet,
+import {
+  type AddressClass,
+  type IntegrationSecret,
+  type IntegrationSecretHost,
+  type IntegrationSheet,
+  placedSecrets,
 } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
 import { isCleanRelativePath } from "./trust-integration-code.ts";
@@ -131,7 +132,7 @@ function integrationContent(integration: LocalIntegrationInput): IntegrationTrus
     folder: folderContent(integration.folder),
     provides: [...sheet.provides].sort(compareText),
     hosts: hostsContent(sheet),
-    secrets: Object.entries(sheet.secrets)
+    secrets: placedSecrets(sheet.secrets)
       .map(([name, secret]) => secretContent(name, secret))
       .sort((left, right) => compareText(left.secret, right.secret)),
     googleScopes: (sheet.googleScopes ?? []).map((scope) => scope.scope).sort(compareText),

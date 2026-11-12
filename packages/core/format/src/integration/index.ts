@@ -31,6 +31,7 @@ export {
   isPlacedSecret,
   MAX_RESPONSE_BYTES,
   MAX_TIMEOUT_MS,
+  placedSecrets,
 } from "../kinds/integration/schema.ts";
 export { backendSheet, pluginFromIntegrationSheet } from "../kinds/plugin/backend.ts";
 export { Plugin } from "../kinds/plugin/schema.ts";
