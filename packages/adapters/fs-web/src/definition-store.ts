@@ -18,7 +18,7 @@ import {
 import { browserPageReturns, FileStamps, focusEvents, type PageReturns } from "./focus-events.ts";
 import { accessFailure, checkAccess, isDomError, readWrite } from "./folder-access.ts";
 import { fileAt, filesUnder, folderAt, isScratch, splitPath } from "./folder-tree.ts";
-import type { FolderHandle } from "./handles.ts";
+import type { FileHandle, FolderHandle } from "./handles.ts";
 
 /** The browser's Web Crypto API, as the digest the port's `expected` uses. */
 const webCryptoDigest: Sha256 = {
@@ -214,13 +214,37 @@ export class BrowserFolderDefinitionStore implements DefinitionStore {
    * check is not written over: it then drops the pending copy and gives
    * `false`. Only a change in the moment between that check and the close
    * is still lost.
+   *
+   * The browser makes a new file, empty, as soon as it is opened. When the
+   * write then fails, that empty file is removed again, so a later scan
+   * doesn't take it for a real file. It runs inside the store's own change,
+   * so no watch reports the removal. A file that was there before is left as
+   * it was.
    */
   async #replace(path: string, content: string, expected?: ExpectedContent): Promise<boolean> {
     const { folder, name } = splitPath(path);
     // With `create`, the folders are made on the way, or a file in the way throws.
     const parent = assertDefined(await folderAt(this.#root, folder, true), "the file's folder");
+    const existed = (await fileAt(this.#root, path)) !== null;
     // A folder at `path` throws the browser's `TypeMismatchError`.
     const file = await parent.getFileHandle(name, { create: true });
+    try {
+      return await this.#writeThrough(file, path, content, expected);
+    } catch (error) {
+      if (!existed) {
+        await this.#delete(path);
+      }
+      throw error;
+    }
+  }
+
+  /** Writes `content` to a pending copy of `file` and closes it, unless the file no longer holds what is `expected`. */
+  async #writeThrough(
+    file: FileHandle,
+    path: string,
+    content: string,
+    expected: ExpectedContent | undefined,
+  ): Promise<boolean> {
     const pending = await file.createWritable();
     try {
       await pending.write(content);

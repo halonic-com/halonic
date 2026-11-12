@@ -101,6 +101,25 @@ verifies("fs-web.open-local-folder", () => {
       expect(await store.list()).toEqual(["a.yaml"]);
     });
 
+    it("leaves no empty file behind when a write to a new file fails", async () => {
+      const { disk, store } = opened({ "a.yaml": "1" });
+      disk.failOnce("write", "b.yaml", "QuotaExceededError");
+      await expect(store.write("b.yaml", "2")).rejects.toMatchObject({
+        name: "QuotaExceededError",
+      });
+      expect(await store.read("b.yaml")).toBeNull();
+      expect(await store.list()).toEqual(["a.yaml"]);
+    });
+
+    it("leaves no empty file behind when the browser refuses to open a new file for writing", async () => {
+      const { disk, store } = opened({});
+      disk.failOnce("createWritable", "b.yaml", "NoModificationAllowedError");
+      await expect(store.write("b.yaml", "2")).rejects.toMatchObject({
+        name: "NoModificationAllowedError",
+      });
+      expect(await store.list()).toEqual([]);
+    });
+
     it("removes a file another program removed in the meantime without an error", async () => {
       const { disk, store } = opened({ "a.yaml": "1" });
       disk.failOnce("removeEntry", "a.yaml", "NotFoundError");

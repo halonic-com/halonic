@@ -78,7 +78,7 @@ export class FakeDisk {
 
   /** Makes the next `call` on the entry named `name` throw a `DOMException` named `error`. */
   failOnce(
-    call: "getFile" | "write" | "removeEntry" | "values",
+    call: "getFile" | "createWritable" | "write" | "removeEntry" | "values",
     name: string,
     error: string,
   ): void {
@@ -136,7 +136,7 @@ class FakeFile implements FileHandle {
   }
 
   async createWritable(): Promise<PendingWrite> {
-    this.#disk.guard();
+    this.#disk.guard("createWritable", this.name);
     // Chromium writes to `<name>.crswap` next to the file until the close.
     const swap = `${this.name}.crswap`;
     this.#folder.entries.set(swap, new FakeFile(this.#disk, this.#folder, swap, ""));

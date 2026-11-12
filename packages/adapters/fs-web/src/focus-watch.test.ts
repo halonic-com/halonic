@@ -114,6 +114,17 @@ verifies("fs-web.focus-watch", () => {
       expect(batches).toEqual([]);
     });
 
+    it("never reports the empty file a failed write to a new file made and removed", async () => {
+      const { disk, store, batches, comeBack, watch } = await watched({ "a.yaml": "1" });
+      disk.failOnce("write", "b.yaml", "QuotaExceededError");
+      await expect(store.write("b.yaml", "2")).rejects.toMatchObject({
+        name: "QuotaExceededError",
+      });
+      await comeBack();
+      await watch.close();
+      expect(batches).toEqual([]);
+    });
+
     it("reports a change from outside that a write found while it was pending", async () => {
       const { disk, store, batches, comeBack, watch } = await watched({ "a.yaml": "1" });
       disk.onWriteOpened = async () => {
