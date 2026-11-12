@@ -54,8 +54,8 @@ named in English and sorted by name.
 
 ## Sections
 
-- **Appearance** (`settings.appearance-section`): Theme, Panel opacity and Agent characters. Frame
-  colours follow in their own pull request.
+- **Appearance** (`settings.appearance-section`): Theme, Frame colours (with Your own,
+  `settings.appearance-own-colours`), Panel opacity and Agent characters.
 
 ## Example
 
