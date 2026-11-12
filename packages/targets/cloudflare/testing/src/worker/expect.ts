@@ -1,3 +1,5 @@
+import { deepEqual } from "./equality.ts";
+
 /**
  * The `expect` of the vitest shim. It has only the matchers the contract
  * suites bundled into the test Worker use; `matcherNames` lists them, and the
@@ -15,6 +17,8 @@ export interface ExpectState {
 export interface Matchers {
   /** Same value, compared with `Object.is`. */
   toBe(expected: unknown): void;
+  /** Deeply equal, ignoring properties that are `undefined`. */
+  toEqual(expected: unknown): void;
   /** A number at or above `expected`. */
   toBeGreaterThanOrEqual(expected: number | bigint): void;
   /** Exactly `null`. */
@@ -48,6 +52,10 @@ const matchers: Record<keyof Matchers, MatcherImplementation> = {
   toBe: (actual, expected) => ({
     pass: Object.is(actual, expected),
     expectation: `to be ${describeValue(expected)}`,
+  }),
+  toEqual: (actual, expected) => ({
+    pass: deepEqual(actual, expected),
+    expectation: `to equal ${describeValue(expected)}`,
   }),
   toBeGreaterThanOrEqual: (actual, expected) => ({
     pass: requireComparable(actual, "actual") >= requireComparable(expected, "expected"),

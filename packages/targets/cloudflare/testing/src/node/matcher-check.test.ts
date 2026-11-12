@@ -19,13 +19,7 @@ describe("missingShimApis", () => {
       "expect(other).toEqual([]);",
       "await expect(promise).rejects.toThrow();",
     ].join("\n");
-    expect(missingShimApis(source)).toEqual([
-      ".rejects",
-      "expect.any",
-      "toEqual",
-      "toHaveLength",
-      "toThrow",
-    ]);
+    expect(missingShimApis(source)).toEqual([".rejects", "expect.any", "toHaveLength", "toThrow"]);
   });
 
   it("names .rejects and .resolves even before a matcher the shim has", () => {
