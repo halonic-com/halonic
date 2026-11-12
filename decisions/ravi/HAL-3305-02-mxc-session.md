@@ -2,6 +2,7 @@
 
 - Approval: HAL-7826 (Liam, CTO, decided it in review of the session pull request)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yQFhl3TuZx0ItJiTjkixPCCfEfTWWsuibrmVcvcBJBTcKbQKPP72Q0x3qKkz+SlYhfzYw1lr6PKGJhL5sKdUBA==
 - Task: HAL-3305
 
 ## What changes
