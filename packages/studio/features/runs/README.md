@@ -39,7 +39,7 @@ emptyList(rows, filters); // { kind: "status", line: "No failed runs." }, or und
 dayGroups(filterRuns(rows, filters), new Date()); // [{ day: "Today", rows }, { day: "Yesterday", rows }]
 ```
 
-The page draws them as one kit List with `groups` and `columns`: an `h3` for each day, which ↑ ↓ pass over, and in each row the status chip, the short id, what ran with its line and Test tag, what started the run, and the start time over how long the run took. Below 800px of list width the kit stacks the columns. Screen readers hear the row's `label` instead: "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by you, in the terminal, 10:40.".
+The page draws them as one kit List with `groups` and `columns`: an `h3` for each day, which ↑ ↓ pass over, and in each row the status chip, the short id, what ran with its line and Test tag, what started the run, and the start time over how long the run took. When a row's main cell is under 800px wide, the kit stacks the columns. Screen readers hear the row's `label` instead: "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by you, in the terminal, 10:40.".
 
 The Started by column reads the run's trigger: "You, with Run", "A message arrived", "A signal arrived", "Schedule · weekdays at 08:00" with the routine's name in a tooltip (from the source's `routine`), "Caught up after sleep" for a catch-up run, and `Test “<case>”` for a test run. A run without a trigger was started in the terminal, "You, in the terminal", and a child run names its parent, "Run 7k2m9p". Until the run log records which test case started a test run, the source has no `testCase` and the column says "A test case". The row's sentence has its own words after "Started by", which read on from it: "a message", "the schedule, weekdays at 08:00", "a catch-up after sleep" (`rowLabelWords.startedBy`).
 
@@ -77,7 +77,7 @@ const [install] = blockedSites(events, { limit: entrySiteLimit });
 - Site names are plain text, never links, with the registrable domain in bold (`SiteNameText`, from `siteName` in `@halonicjs/std`).
 - Studio never adds a site: the action opens the agent's allowed sites, and the person adds it.
 - Pass `noConnectionProven={false}` for a run on Windows until the blocked-site suite runs green there (HAL-6219): on Windows a blocked name may still be looked up outside the sandbox, so the hint leaves out "No connection was made."
-- Only traffic through the sandbox's proxy has a site name. A block without one gets no row in 0.1.
+- Only traffic through the sandbox's proxy has a site name. A block without one gets no row yet.
 
 ## The run page
 

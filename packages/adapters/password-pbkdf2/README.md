@@ -4,8 +4,10 @@ The `PasswordHasher` port for cloud targets: chained PBKDF2-SHA256 from Web Cryp
 100,000 rounds, each run's output being the next run's input
 (Julian's HAL-136 decision, written down as
 [`ports.password-hash-format-pbkdf2-chain`](../../core/ports/requirements/password-hash-format-pbkdf2-chain.md)). A Worker can't run scrypt at safe settings, so
-cloud targets use this format and `serve` keeps scrypt. `halonic deploy` makes the hash on your
-machine with this package, and the Worker checks it with the same code.
+cloud targets will use this format and `serve` will keep scrypt. `halonic deploy` will make the
+hash on your machine with this package, and the Worker will check it with the same code. Cloud
+targets, `serve` and `deploy` are planned: they aren't in 0.1.0, and nothing uses this package
+yet.
 
 - **Layer:** adapters
 - **Owner:** priya
@@ -28,5 +30,5 @@ await hasher.verify("a long made-up password", stored); // true
   other than `i=100000` and `n` 6 to 20. It compares in constant time.
 - Each check costs about 65 ms of CPU (Julian budgets up to 200 ms on Cloudflare). The caller
   checks the request size and the login limit first, so wrong guesses can't burn that CPU.
-- `needsRehash` is `true` for any `n` but 6; the hash is a configured secret, so it is replaced by
-  setting the password again with `halonic deploy`.
+- `needsRehash` is `true` for any `n` but 6; the hash is a configured secret, so it will be replaced by
+  setting the password again with `halonic deploy` (planned).
