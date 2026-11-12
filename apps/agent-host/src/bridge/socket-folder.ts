@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { sweepRunSocketFolders } from "@halonicjs/adapter-harness-bridge";
 
 /**
  * Where the host's bridges serve their Unix sockets, each run in a folder of
@@ -22,4 +23,23 @@ export function bridgeSocketFolder(
   if (profileFolder === undefined) return undefined;
   if (platform !== "linux" && platform !== "darwin") return undefined;
   return join(profileFolder, "bridges");
+}
+
+/**
+ * Removes the run folders in `folder` that bridges left when their host
+ * crashed or was killed, so they don't pile up (HAL-7302). Only the host that
+ * holds the profile's lock sweeps, once, before it serves; the sweep leaves
+ * the folders of another host's live bridges (see {@link sweepRunSocketFolders}).
+ * Never throws: a sweep that fails says why with `warn`, and the host serves.
+ */
+export async function sweepLeftOverBridges(
+  folder: string,
+  warn: (message: string) => void,
+): Promise<void> {
+  try {
+    await sweepRunSocketFolders(folder);
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    warn(`Left-over bridge folders weren't removed: ${why}\n`);
+  }
 }
