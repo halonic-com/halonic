@@ -4,6 +4,7 @@
 - Task: HAL-7302, a follow-up from Liam's review of HAL-6316 on HAL-7227
 - Approval: the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GR2+pNw1qYg+TAXeFMK4XDz2EmWmiSJNoFdAj5eYAeYFlsrlSKqGEi1BGSVB4tXfyz211TCg33FMiU93MjJ7Cw==
 
 ## What changes
 
