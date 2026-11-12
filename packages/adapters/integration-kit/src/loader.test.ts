@@ -330,3 +330,40 @@ verifies("ports.workspace-secrets", () => {
     },
   );
 });
+
+verifies("integration-kit.loader", () => {
+  describe("a plugin's backend", () => {
+    const ownValue = canary["example-key"];
+
+    /** The weather sheet loaded as a plugin's backend; a plugin's id is the sheet's. */
+    function loadPlugin(secretName: string, stored: Record<string, string>) {
+      const fake = fakeTransport();
+      const loaded = prepareIntegration({
+        source: { origin: "local", sheet: sheet(), approvedSheet: sheet(), plugin: true },
+        choices: { secretNames: { "weather-key": secretName } },
+        transport: fake.transport,
+        secrets: { get: async (name) => stored[name] ?? null },
+        tokens: memoryTokens(),
+      });
+      if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+      return { loaded: loaded.value, sent: fake.sent };
+    }
+
+    it("reads the secret stored for the plugin, which a workspace's picks can't name", async () => {
+      const { loaded } = loadPlugin("plugin__weather__weather-key", {
+        "plugin__weather__weather-key": ownValue,
+      });
+      expect((await loaded.readSecrets()).map((secret) => secret.value)).toEqual([ownValue]);
+    });
+
+    it.each(["openai-key", "token-key", "plugin__rain__weather-key"])(
+      "refuses the pick %s, which isn't one of the plugin's, and reads nothing",
+      async (picked) => {
+        const { loaded } = loadPlugin(picked, { [picked]: ownValue });
+        await expect(loaded.readSecrets()).rejects.toThrow(
+          new RangeError("A plugin can read only the secrets stored for it."),
+        );
+      },
+    );
+  });
+});

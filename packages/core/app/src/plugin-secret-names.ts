@@ -5,16 +5,7 @@
 // knows what to delete.
 
 import type { Plugin } from "@halonicjs/format";
-import { pluginSecretNamePrefix } from "@halonicjs/ports";
-
-/**
- * Comes between the id and the secret's name, and ends
- * `pluginSecretNamePrefix`, the prefix no workspace may pick. `Secrets` takes
- * `-` and `_` as the same character, so a single one can't tell `a-b` + `c`
- * from `a` + `b-c`. Ids and secret names never hold two `-` in a row, so a
- * doubled `_` can't come from either of them.
- */
-const separator = "__";
+import { pluginSecretNamePrefix, pluginSecretSeparator } from "@halonicjs/ports";
 
 /**
  * The name the secret `secret` of the plugin `id` is kept under.
@@ -23,7 +14,7 @@ const separator = "__";
  * pluginSecretName("weather", "weather-key"); // "plugin__weather__weather-key"
  */
 export function pluginSecretName(id: string, secret: string): string {
-  return `${pluginSecretNamePrefix}${id}${separator}${secret}`;
+  return `${pluginSecretNamePrefix}${id}${pluginSecretSeparator}${secret}`;
 }
 
 /**
