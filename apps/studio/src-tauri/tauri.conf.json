@@ -29,5 +29,17 @@
       "icons/icon.png",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM4QTc3MTE2QzI5NUU0NzMKUldSejVKWENGbkduT0pPSXNCMTB6UDZnSmpRZFJNRHo5a1FVWEJwLzFFd0lpbjhqWEM3VlA2ckYK",
+      "endpoints": [
+        "https://github.com/halonic-com/halonic/releases/latest/download/latest.json"
+      ],
+      "requireSignedVersion": true,
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

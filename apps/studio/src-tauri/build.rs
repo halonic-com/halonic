@@ -40,6 +40,13 @@ fn main() {
         "record_append",
         "record_read",
         "record_replace",
+        "update_status",
+        "update_watch",
+        "update_check",
+        "update_download",
+        "update_cancel",
+        "update_restart",
+        "update_set_automatic",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)
