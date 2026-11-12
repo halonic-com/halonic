@@ -331,7 +331,7 @@ verifies("ports.workspace-secrets", () => {
   );
 });
 
-verifies("integration-kit.loader", () => {
+verifies("integration-kit.plugin-secrets", () => {
   describe("a plugin's backend", () => {
     const ownValue = canary["example-key"];
 

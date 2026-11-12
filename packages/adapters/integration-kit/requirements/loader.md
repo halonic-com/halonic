@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (the loader for built-in and local integrations; provider mapping decided with Ravi on 8 Nov), plan 15.2 I5 (a local integration runs only after you approve its permission sheet), HAL-958 §3.5 / A32 (a local integration declares no `tokens`)
 
-The kit's loader shall build an integration's host only when its permission sheet passes the sheet's schema and checks, the code declares exactly the sheet's kit version, name, version and tools (text, arguments, `risk` and `untrusted`), every need is available, the workspace's secret picks name only declared secrets, every `{ fromSetting }` host resolves, and, for a local integration, the sheet is the one the user approved and declares no `tokens`. It shall give the kit the sheet's limits, and read each secret only through the secret the user picked for it: a workspace's picks through `workspaceSecrets`, and, for a plugin's backend, the secrets stored for that plugin through `pluginSecrets`, which a workspace's picks can't name. A provider's `baseUrl` and secret shall map onto the sheet's one `{ fromSetting }` host and one secret.
+The kit's loader shall build an integration's host only when its permission sheet passes the sheet's schema and checks, the code declares exactly the sheet's kit version, name, version and tools (text, arguments, `risk` and `untrusted`), every need is available, the workspace's secret picks name only declared secrets, every `{ fromSetting }` host resolves, and, for a local integration, the sheet is the one the user approved and declares no `tokens`. It shall give the kit the sheet's limits, and read each secret only through the workspace secret the user picked for it. A provider's `baseUrl` and secret shall map onto the sheet's one `{ fromSetting }` host and one secret.
 
 ## Examples
 
@@ -41,6 +41,3 @@ The kit's loader shall build an integration's host only when its permission shee
 - Given the kit's source files,
   when their imports of `@halonicjs/format` are listed,
   then the only one is `@halonicjs/format/integration`.
-- Given a plugin's backend with `plugin__weather__weather-key` picked for `weather-key`,
-  when its secrets are read,
-  then it gives the plugin's own value; a pick of `openai-key`, `token-key` or another plugin's secret throws `RangeError("A plugin can read only the secrets stored for it.")`.
