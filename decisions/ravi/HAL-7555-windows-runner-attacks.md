@@ -25,18 +25,29 @@ goes before srt's install, so the machine is as a user's is without it.
 
 ## Known gaps
 
-Each case below expects `allowed`, so it fails if the gap closes as well as if another case
-starts getting through.
+Each case below expects what gets through, so it fails if the gap closes as well as if another
+case starts getting through. The first Windows run corrected the design's list (HAL-958,
+section 6): Node 26's network permission refuses DNS and named pipes, and Windows adds
+variables to the environment that the design hadn't counted.
 
-- **A4, A6 DNS:** a name lookup through `node:dns` and a query to a DNS server the integration
-  names itself both leave the machine. A name can carry data out.
 - **A16, A39 signals:** `process.kill` ends another process, and a stand-in for Halonic's own
   process. Node's layer doesn't cover signals.
-- **A35 sockets:** the runner connects to a named pipe on this computer and reads what it
-  answers. ssh-agent and Docker listen on named pipes on Windows.
+- **A17 the environment:** the launcher passes only `TMPDIR`, but libuv adds the variables a
+  Windows program needs when they are missing, with the user's own values: `HOMEDRIVE`,
+  `HOMEPATH`, `LOGONSERVER`, `PATH`, `SYSTEMDRIVE`, `SYSTEMROOT`, `TEMP`, `USERDOMAIN`,
+  `USERNAME`, `USERPROFILE`, `WINDIR`. So the integration learns the account name and profile
+  folder. No key or Halonic variable gets in. The launcher could close it by passing its own
+  values for these; that is a follow-up.
 - **A36 the Credential Manager:** with Node's layer on, the runner can't start `cmdkey`, so the
   attempt is refused. With the layer off, `cmdkey` lists the test's generic credential. Nothing
   but Node's layer stands in front of it.
+
+No longer gaps, now expected `refused`:
+
+- **A4, A6 DNS:** a name lookup through `node:dns` is refused, and a query to a DNS server the
+  integration names itself never reaches it.
+- **A35 named pipes:** connecting to a named pipe on this computer is refused with
+  `ERR_ACCESS_DENIED`, and the pipe sees no connection.
 
 ## Covers
 

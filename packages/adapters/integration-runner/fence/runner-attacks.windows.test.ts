@@ -20,10 +20,13 @@ import {
 // the only layer. Run by the `sandbox-windows` CI job
 // (`vitest.fence-windows.config.ts`), with Node's layer on as in production.
 //
-// The cases Node's layer doesn't stop are the known gaps: A4 and A6 DNS, A16
-// and A39 signals, A35 sockets, A36 the Credential Manager. They expect
-// `allowed`, so a gap that closes fails too and the list stays true. Every
-// other case expects `refused`, so a gap that opens fails.
+// The cases Node's layer doesn't stop are the known gaps: A16 and A39 signals,
+// A17 the variables Windows adds to every environment, A36 the Credential
+// Manager once past Node's layer. They expect what gets through, so a gap that
+// closes fails too and the list stays true. Every other case expects
+// `refused`, so a gap that opens fails. Node 26's network permission also
+// covers DNS (A4, A6) and named pipes (A35), which the design had counted as
+// gaps: the first Windows run showed them refused.
 
 const sandbox = createHostSandbox();
 /** The Windows folder, where `cmd.exe` and `cmdkey.exe` are. Windows always sets it. */
@@ -134,7 +137,7 @@ async function hasEnded(pid: number): Promise<boolean> {
 }
 
 describe("an integration in the runner on native Windows, Node's layer only", () => {
-  it("A4: reaches no address around the kit, but resolves a name (known gap)", async () => {
+  it("A4: reaches no address and resolves no name around the kit", async () => {
     const { attempts } = await attack(`
       const net = await import("node:net");
       const dns = await import("node:dns");
@@ -149,11 +152,11 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     `);
     expect(attempts["raw connection"]?.outcome).toBe("refused");
     expect(attempts["global fetch"]?.outcome).toBe("refused");
-    // Known gap: nothing below Node stops a lookup, so a name can carry data out.
-    expect(attempts["name lookup"]?.outcome).toBe("allowed");
+    // Node's network permission refuses the lookup too, so no name carries data out.
+    expect(attempts["name lookup"]?.outcome).toBe("refused");
   });
 
-  it("A6: sends a DNS query to a server it names itself (known gap)", async () => {
+  it("A6: sends no DNS query to a server it names itself", async () => {
     const queriesBefore = resolverQueries;
     const { attempts } = await attack(`
       const { Resolver } = await import("node:dns/promises");
@@ -161,9 +164,9 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
       resolver.setServers(["127.0.0.1:${resolverPort}"]);
       await attempt("query", async () => JSON.stringify(await resolver.resolve4("probe.example.com")));
     `);
-    // The test's server never answers, so the query times out inside the runner.
-    expect(attempts["query"]?.outcome).not.toBe("allowed");
-    expect(resolverQueries).toBeGreaterThan(queriesBefore);
+    // Refused before it leaves: the test's server, which counts every query, sees none.
+    expect(attempts["query"]?.outcome).toBe("refused");
+    expect(resolverQueries).toBe(queriesBefore);
   });
 
   it("A12: reads nothing in the home folder or outside the integration's folder", async () => {
@@ -257,16 +260,33 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     expect(await hasEnded(pid)).toBe(true);
   });
 
-  it("A17: sees only TMPDIR in its environment", async () => {
-    // The launcher passes the profile's variables and nothing else, so no
-    // Halonic variable, no user profile folder and no key gets in.
+  it("A17: sees TMPDIR and the variables Windows adds to every program (known gap)", async () => {
+    // The launcher passes only the profile's TMPDIR, so no Halonic variable and
+    // no key gets in. But libuv, under Node, adds the variables a Windows
+    // program needs when the environment it is given lacks them, with the
+    // user's own values: their account name, profile folder and domain among
+    // them. Overriding them in the launcher would close this gap.
     const { attempts } = await attack(
       `await attempt("environment", () => Object.keys(process.env).sort().join(","));`,
     );
-    expect(attempts["environment"]).toEqual({ outcome: "allowed", detail: "TMPDIR" });
+    const names = [
+      "HOMEDRIVE",
+      "HOMEPATH",
+      "LOGONSERVER",
+      "PATH",
+      "SYSTEMDRIVE",
+      "SYSTEMROOT",
+      "TEMP",
+      "TMPDIR",
+      "USERDOMAIN",
+      "USERNAME",
+      "USERPROFILE",
+      "WINDIR",
+    ];
+    expect(attempts["environment"]).toEqual({ outcome: "allowed", detail: names.join(",") });
   });
 
-  it("A35: connects to a named pipe on this computer (known gap)", async () => {
+  it("A35: connects to no named pipe on this computer", async () => {
     const connectionsBefore = agentConnections;
     const { attempts } = await attack(`
       const net = await import("node:net");
@@ -278,8 +298,8 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
         socket.on("error", reject);
       }));
     `);
-    expect(attempts["agent pipe"]).toEqual({ outcome: "allowed", detail: canary });
-    expect(agentConnections).toBe(connectionsBefore + 1);
+    expect(attempts["agent pipe"]).toEqual({ outcome: "refused", detail: "ERR_ACCESS_DENIED" });
+    expect(agentConnections).toBe(connectionsBefore);
   });
 
   it("A36: reaches the Credential Manager once past Node's layer (known gap)", async () => {
