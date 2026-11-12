@@ -45,6 +45,12 @@ pub(super) fn prove_started<R: Runtime>(app: &AppHandle<R>) {
         eprintln!("updates: {} can't be written: {error}", marker.display());
         return;
     }
+    {
+        let mut inner = lock(app);
+        if inner.record.install.take().is_some() {
+            inner.save();
+        }
+    }
     let keep = installer_name(&version);
     let Ok(entries) = std::fs::read_dir(folder.join("installers")) else {
         return;
