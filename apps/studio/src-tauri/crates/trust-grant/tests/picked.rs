@@ -242,6 +242,11 @@ fn trust_grants_remember_the_most_recent_picks_only() {
     expected.truncate(MAX_PICKED_FOLDERS);
     assert_eq!(scratch.list().locations(), expected);
     assert!(!expected.contains(&picked[0]), "the oldest pick is dropped");
+    // Reopening a folder moves it first too, as Recent moves its row.
+    let reopened = picked[3].clone();
+    assert_eq!(Shell::start().reopen(&scratch, &reopened), Ok(()));
+    assert_eq!(scratch.list().locations()[0], reopened);
+    assert_eq!(scratch.list().locations().len(), MAX_PICKED_FOLDERS);
     // No temporary file stays behind next to the list.
     let names: Vec<_> = fs::read_dir(scratch.path("profile/studio"))
         .expect("the folder exists")

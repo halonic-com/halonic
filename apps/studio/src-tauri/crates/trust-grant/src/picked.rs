@@ -23,7 +23,7 @@ static WRITING: Mutex<()> = Mutex::new(());
 /// The folders the person picked in the folder dialog, kept in the profile
 /// so the shell can open them again after a restart (HAL-6637). Only the
 /// shell adds to it, after a pick; the page can only reopen or forget an
-/// entry. Most recently picked first.
+/// entry. Most recently picked or reopened first.
 ///
 /// The list fails closed: a file that is missing, can't be read or isn't
 /// the format below is an empty list, so nothing opens that the person
@@ -66,7 +66,7 @@ impl PickedFolders {
         Self { file: file.into() }
     }
 
-    /// The remembered locations, most recently picked first.
+    /// The remembered locations, most recently picked or reopened first.
     pub fn locations(&self) -> Vec<String> {
         self.read()
             .into_iter()

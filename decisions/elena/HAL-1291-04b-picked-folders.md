@@ -13,8 +13,9 @@ local main window only (`desktop-trust`):
 
 - `reopen_folder(location)` opens a remembered folder again, as a picked folder, only when the
   location is exactly an entry and is still the same canonical path and the same device and
-  inode. Otherwise it is refused and the entry stays: `not_picked`, `folder_missing`,
-  `folder_changed` or `folder_unreadable`, so Studio can tell a moved folder from a refused one.
+  inode, and moves it first in the list, as Recent moves its row. Otherwise it is refused and
+  the entry stays: `not_picked`, `folder_missing`, `folder_changed` or `folder_unreadable`, so
+  Studio can tell a moved folder from a refused one.
 - `forget_folder(location)` drops the entry and closes the folder opened for it. It only takes
   access away, so the page may call it freely. Trust records stay; removing trust stays
   `trust_revoke`.

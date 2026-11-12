@@ -164,9 +164,17 @@ impl TrustState {
             ));
         }
         self.open(folders, location, &canonical);
-        let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
-        if !picked.contains(&canonical) {
-            picked.push(canonical);
+        {
+            let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
+            if !picked.contains(&canonical) {
+                picked.push(canonical);
+            }
+        }
+        // Reopening is the person using the folder again, as Recent moves
+        // its row up, so the entry moves first and isn't the next dropped.
+        // The folder is already open; if moving fails, it stays where it is.
+        if let Err(refusal) = list.remember(entry) {
+            eprintln!("reopen_folder: {location:?} can't be moved first: {refusal:?}");
         }
         Ok(())
     }
