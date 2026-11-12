@@ -4,7 +4,6 @@
   [HAL-5692](/HAL/issues/HAL-5692), a follow-up of Julian's security review on
   [HAL-5436](/HAL/issues/HAL-5436)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EyPC1vrQ7Po8iNLr13J+o2fW788U8QS6oWvQGk4LUvwbbyE4WTQu3sHnhbDCb9RP4iUSvO+J400jQvjmMfpKBA==
 
 ## What changes
 
