@@ -17,13 +17,13 @@ verifies("library.refusal-line", () => {
   it("leaves the quotes out when a whole tool list is refused", () => {
     expect(
       refusalLine({ source: "notes", refused: "listing", reason: "it isn't a list of tools" }),
-    ).toBe("notes: left out its tool list: it isn't a list of tools");
+    ).toBe("notes: left out the listing: it isn't a list of tools");
   });
 
   it("says what each other kind of refusal did", () => {
     const line = (refused: "keyword" | "call") =>
       refusalLine({ source: "notes", name: "find", refused, reason: "why" });
-    expect(line("keyword")).toBe('notes: left out a keyword of "find": why');
+    expect(line("keyword")).toBe('notes: changed "find": why');
     expect(line("call")).toBe('notes: refused a call to "find": why');
   });
 });

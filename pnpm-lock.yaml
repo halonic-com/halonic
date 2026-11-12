@@ -2184,6 +2184,9 @@ importers:
 
   packages/studio/features/library:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
