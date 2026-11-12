@@ -3,6 +3,7 @@
 - Task: HAL-1451 (S1: set up the agent sandbox from the installed app)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-1451](/HAL/issues/HAL-1451)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ueS+5LMPCAySWyYhLWZCk2kaVZQDzpMojLZaJuOYhxyoHaGz+0EOlsS8QUeflNvx45mnJyIM6QztAqFMwfJyBg==
 
 ## What changes
 
