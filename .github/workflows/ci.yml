@@ -1135,6 +1135,16 @@ jobs:
         with:
           persist-credentials: false
       - uses: $/.github/actions/setup
+      - name: Install ripgrep
+        # srt starts rg next to Seatbelt, and the sandbox check refuses to
+        # start without it (HAL-6639). The macOS runner image doesn't ship it.
+        timeout-minutes: 8
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          brew install ripgrep
+          rg --version
       - name: Fence tests
         working-directory: packages/adapters/sandbox-srt
         run: pnpm test:fence
