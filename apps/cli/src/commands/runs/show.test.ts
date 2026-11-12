@@ -234,17 +234,17 @@ verifies("cli.commands.runs.show", () => {
 
     it("says one answer settles only the first of several tool approvals (HAL-7937)", async () => {
       const ask = (time: string, callId: string, tool: string): readonly [string, RunEventBody] => [
-          today(time),
-          {
-            type: "approval.requested",
-            state: "draft",
-            agent: "writer",
-            tool,
-            args: {},
-            callId,
-            resume: { messages: [], calls: [], step: 0 },
-          },
-        ];
+        today(time),
+        {
+          type: "approval.requested",
+          state: "draft",
+          agent: "writer",
+          tool,
+          args: {},
+          callId,
+          resume: { messages: [], calls: [], step: 0 },
+        },
+      ];
       await storeRuns({
         ...waiting,
         after: [
