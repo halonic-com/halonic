@@ -18,6 +18,7 @@ import {
   integrationChanges,
   integrationRows,
   programRow,
+  programSites,
   providerRow,
   providerSecretNames,
   row,
@@ -188,7 +189,10 @@ function counts(content: TrustCheck["content"]) {
         0,
       ) +
       providers.length,
-    sites: new Set(agents.flatMap((agent) => agent.allowedSites)).size,
+    sites: new Set([
+      ...agents.flatMap((agent) => agent.allowedSites),
+      ...programs(content.connectors).flatMap(programSites),
+    ]).size,
   };
 }
 

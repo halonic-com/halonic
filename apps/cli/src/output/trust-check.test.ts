@@ -143,6 +143,40 @@ verifies("cli.trust-check", () => {
     );
   });
 
+  it("lists every site a program may reach under it, and counts them with the agents' sites", () => {
+    const files: ConnectorTrustContent = {
+      ...program("files-mcp", "node", ["tools/files.js"]),
+      settings: {
+        ...program("files-mcp", "node", ["tools/files.js"]).settings,
+        sites: ["*.example.com", "pypi.org"],
+      },
+    };
+    const check: TrustCheck = {
+      status: "new",
+      content: { connectors: [files], agents: [coder] },
+      fingerprint,
+      unpinned: [],
+    };
+    expect(lines(check).slice(2)).toEqual([
+      "Will start 1 program and 1 agent and allow 3 sites.",
+      "",
+      "Programs",
+      "  files-mcp     node tools/files.js",
+      "                Allowed sites   *.example.com · every site under example.com",
+      "                                pypi.org",
+      "",
+      "Agents",
+      "  Agents in this workspace that run in Claude Code or Codex.",
+      "  coder         Claude Code",
+      "                Allowed sites    pypi.org",
+      "                                 registry.npmjs.org",
+      "                Working folder   src/app",
+      "",
+      "Fingerprint",
+      `  ${fingerprint}`,
+    ]);
+  });
+
   it("starts with the ! line when the list of trusted workspaces can't be read", () => {
     const check: TrustCheck = {
       status: "unreadable",

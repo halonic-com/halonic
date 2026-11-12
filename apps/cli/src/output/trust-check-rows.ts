@@ -1,6 +1,6 @@
 // The rows of the trust check (cli-output 3.5, revision 40): a program with
-// its command, secrets and ! line, an address, a model provider's address,
-// a local integration with the address each of its settings holds, an agent
+// its command, secrets, ! line and sites, an address, a model provider's
+// address, a local integration with the address each of its settings holds, an agent
 // with its sites and folder, and a changed agent's or local integration's
 // rows for what changed. `trust-check.ts` puts them in sections.
 
@@ -33,7 +33,8 @@ const underRow = " ".repeat(rowIndent.length + firstColumn);
 
 /**
  * "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN ·
- * takes AWS_PROFILE from your environment", then its ! line.
+ * takes AWS_PROFILE from your environment", then its ! line, then every site
+ * it may reach in a sandbox, as an agent's.
  */
 export function programRow(
   connector: ConnectorTrustContent,
@@ -51,7 +52,12 @@ export function programRow(
     );
     lines.push(phrase`${underRow}${markPart("needsYou")} ${warning.phrase}`);
   }
-  return lines;
+  return [...lines, ...labelledLines(siteLines(programSites(connector)))];
+}
+
+/** The sites a program connector may reach in a sandbox, in their stored form, or none. */
+export function programSites(connector: ConnectorTrustContent): string[] {
+  return strings(connector.settings["sites"]);
 }
 
 /** "  inbox         https://mail.example.com/mcp · gets the secret INBOX_KEY". */
@@ -134,28 +140,33 @@ function withInherited(detail: Phrase, names: readonly string[]): Phrase {
 
 /** The agent's id and program, then its sites, every one, and its folder when it isn't the default. */
 export function agentRow(agent: AgentTrustContent): Phrase[] {
-  const lines: [Phrase, Phrase][] = [
-    ...agent.allowedSites.map((site, index): [Phrase, Phrase] => [
-      index === 0 ? trustMessages.allowedSites().phrase : phrase``,
-      shownSite(site),
-    ]),
+  const lines: LabelledLine[] = [
+    ...siteLines(agent.allowedSites),
     ...(agent.workingFolder === undefined
       ? []
-      : [
-          [trustMessages.workingFolder().phrase, phrase`${dim(agent.workingFolder)}`] as [
-            Phrase,
-            Phrase,
-          ],
-        ]),
+      : [[trustMessages.workingFolder().phrase, phrase`${dim(agent.workingFolder)}`] as const]),
   ];
+  return [row(agent.id, trustMessages.harnessName(agent.harness).phrase), ...labelledLines(lines)];
+}
+
+/** A line under a row: its label, empty to continue the one above, and its value. */
+type LabelledLine = readonly [label: Phrase, value: Phrase];
+
+/** "Allowed sites" and the first site, then every other site under it. */
+function siteLines(sites: readonly string[]): LabelledLine[] {
+  return sites.map((site, index) => [
+    index === 0 ? trustMessages.allowedSites().phrase : phrase``,
+    shownSite(site),
+  ]);
+}
+
+/** The lines under a row, their values lined up past the longest label. */
+function labelledLines(lines: readonly LabelledLine[]): Phrase[] {
   const width = Math.max(0, ...lines.map(([label]) => visibleLength(label, true)));
-  return [
-    row(agent.id, trustMessages.harnessName(agent.harness).phrase),
-    ...lines.map(([label, value]) => {
-      const padding = " ".repeat(width - visibleLength(label, true) + columnGap);
-      return phrase`${underRow}${label}${padding}${value}`;
-    }),
-  ];
+  return lines.map(([label, value]) => {
+    const padding = " ".repeat(width - visibleLength(label, true) + columnGap);
+    return phrase`${underRow}${label}${padding}${value}`;
+  });
 }
 
 /** One Changed row per field that changed, harness first, then sites, then the folder. */
