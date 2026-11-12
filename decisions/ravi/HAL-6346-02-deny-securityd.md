@@ -1,6 +1,6 @@
 # Decision: the untrusted profile denies the OS key store, and srt's macOS fence enforces it
 
-- Approval: [HAL-6346](/HAL/issues/HAL-6346) (design HAL-958, section 6, attack case A36). Liam approves this note in review of this PR.
+- Approval: HAL-6346 (design HAL-958, section 6, attack case A36). Liam approves this note in review of this PR.
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/9UvQ2zt/IQMAUCcfVqWpnE233ZK4DccAu9aMu333gpEWPSEsTuGNgxu5GmhIQYPuo5KAgbSE8rJ9yzZ9IzABw==
 - Task: HAL-6346

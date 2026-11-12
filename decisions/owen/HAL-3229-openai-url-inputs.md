@@ -1,6 +1,6 @@
 # Decision: the OpenAI route refuses an image or file that OpenAI would fetch from a URL
 
-- Approval: [HAL-3229](/HAL/issues/HAL-3229), asked for by Liam as a follow-up to [HAL-3218](/HAL/issues/HAL-3218); the package owner (Liam) approves this note in review
+- Approval: HAL-3229, asked for by Liam as a follow-up to HAL-3218; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-3229
 

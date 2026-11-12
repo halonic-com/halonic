@@ -1,6 +1,6 @@
 # Decision: a run's tool call that needs an OK stops the run instead of being refused
 
-- Approval: [HAL-3325](/HAL/issues/HAL-3325) sets the three parts of HAL-3331, and this is part 3; the package owner approves this note in review
+- Approval: HAL-3325 sets the three parts of HAL-3331, and this is part 3; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-3331
 

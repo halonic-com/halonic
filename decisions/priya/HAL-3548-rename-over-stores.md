@@ -1,6 +1,6 @@
 # Decision: the trust, placement and run stores retry a held rename on Windows too
 
-- Approval: Liam asked for this in his review of #1028 ([HAL-3545](/HAL/issues/HAL-3545)), follow-up [HAL-3548](/HAL/issues/HAL-3548); the package owner approves this note in review
+- Approval: Liam asked for this in his review of #1028 (HAL-3545), follow-up HAL-3548; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-3548
 

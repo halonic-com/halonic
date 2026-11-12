@@ -1,8 +1,8 @@
 # Decision: a tool result says what its tool can do and what one call sends
 
-- Approval: [HAL-2831](/HAL/issues/HAL-2831), Liam's decision of 10 Nov; the package owner (Liam) approves this note in review
+- Approval: HAL-2831, Liam's decision of 10 Nov; the package owner (Liam) approves this note in review
 - Kind: internal
-- Task: HAL-2831, asked for by the runs list ([HAL-2829](/HAL/issues/HAL-2829))
+- Task: HAL-2831, asked for by the runs list (HAL-2829)
 
 ## What changes
 
@@ -28,7 +28,7 @@ integration kit checks that the declared tools match the sheet. Until HAL-998 pl
 listing rules into the engine, an `http` or `stdio` server's own `risk` is copied as it listed it.
 That is safe for readers: nothing reads "sent" from `risk` without a `noun`, and `noun` only
 comes from a sheet. The engine writes `noun` once the integration format has it
-([HAL-2836](/HAL/issues/HAL-2836)).
+(HAL-2836).
 
 ## Why
 

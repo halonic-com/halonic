@@ -1,6 +1,6 @@
 # Decision: the Anthropic stream reader takes blocks only in order, and the bridge doesn't follow redirects
 
-- Approval: the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216) asked for both; the package owners decide them there, and Liam approves this note in review
+- Approval: the review follow-ups on HAL-5216 asked for both; the package owners decide them there, and Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:STOoO6vLDJ8k6Gs9LjMK+NKi2F4KAQHD3TViy8MUCDKvFVLnLNoDx8TFcfT3aa3hFzk++uvq0/meoXMBIbJDDQ==
 - Task: HAL-5216

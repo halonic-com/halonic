@@ -1,6 +1,6 @@
 # Decision: a run that ends lists no waiting approvals
 
-- Approval: Liam decided this on [HAL-1529](/HAL/issues/HAL-1529) (scope note from HAL-186, after PR #490 merged); the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-1529 (scope note from HAL-186, after PR #490 merged); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1529
 

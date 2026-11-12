@@ -1,6 +1,6 @@
 # Decision: the Anthropic provider counts 1-hour cache writes apart from 5-minute ones
 
-- Approval: the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216) asked for it; Liam approves this note in review
+- Approval: the review follow-ups on HAL-5216 asked for it; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SuOZmNQn+X8Q7Z136QxeeatRWjRgH0B7P+M80PXgIkkHlle/wFDnG7vo8R5MOl8MTZNQpLP6+i1phCKQ2fAeDw==
 - Task: HAL-5216

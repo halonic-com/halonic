@@ -2,7 +2,7 @@
 
 - Requirement: `ports.untrusted-tool-listings` (`packages/core/ports/requirements/untrusted-tool-listings.md`)
 - Task: HAL-2210, building the listed-tool approvals the board signed off on HAL-850 (2026-11-09)
-- Approval: the board's sign-off on [HAL-850](/HAL/issues/HAL-850); the package owner (Liam) approved the change in the review of #929 on [HAL-3222](/HAL/issues/HAL-3222)
+- Approval: the board's sign-off on HAL-850; the package owner (Liam) approved the change in the review of #929 on HAL-3222
 - Kind: internal
 
 ## What changes

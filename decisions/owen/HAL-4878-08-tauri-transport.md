@@ -1,6 +1,6 @@
 # Decision: Tauri's internals are read in one file, by two lookups
 
-- Approval: [HAL-4878](/HAL/issues/HAL-4878)
+- Approval: HAL-4878
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6rmGgZGIlXuFt0sQDmqWOd7so82fn0HQLfWyAnFALOPSZwOE60KZ5pvJX5jHc/CKBB/DTIyHXwfYrd2tNaHbBw==
 

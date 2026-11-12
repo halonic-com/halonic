@@ -1,6 +1,6 @@
 # Decision: Claude Code gets the run token in `HALONIC_RUN_TOKEN` too
 
-- Approval: [HAL-3586](/HAL/issues/HAL-3586)
+- Approval: HAL-3586
 - Kind: internal
 
 C3 writes Claude Code's settings folder, which names the bridge's MCP

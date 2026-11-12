@@ -2,7 +2,7 @@
 
 - Requirement: `profile.workspace-folders` (`packages/core/profile/requirements/workspace-folders.md`)
 - Task: HAL-2498, part 2; part 1 is #740 and `decisions/priya/HAL-2498-01-deployment-id-rule.md`
-- Approval: [HAL-2498](/HAL/issues/HAL-2498) asks for this change; Liam approves it in review
+- Approval: HAL-2498 asks for this change; Liam approves it in review
 - Kind: internal
 
 ## What changes

@@ -1,6 +1,6 @@
 # Decision: Claude Code's and Codex's own sandboxes on this computer
 
-- Approval: the approach was agreed with the harness owner (Owen) on [HAL-5231](/HAL/issues/HAL-5231), and the per-system split on [HAL-5354](/HAL/issues/HAL-5354), for the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216); Liam approves this note in review
+- Approval: the approach was agreed with the harness owner (Owen) on HAL-5231, and the per-system split on HAL-5354, for the review follow-ups on HAL-5216; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FFzU80q62OzTK0ThYDysoz6CIvAO3NrhAtIcS90MK+lPxL+gxIy98LxNXGE91JqmR52M3TKsgakvv+RftgT0Bw==
 - Task: HAL-5216

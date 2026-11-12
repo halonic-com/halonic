@@ -2,7 +2,7 @@
 
 - Requirements: `format.json-schema-goldens` (`packages/core/format/requirements/json-schema-goldens.md`), `check.guard-golden-files` (`tooling/check/requirements/guard-golden-files.md`)
 - Task: HAL-1664, pull request 1 of 3 (Docker point 5: one spec file per public API)
-- Approval: [HAL-1664](/HAL/issues/HAL-1664#comment-56dbba43-8494-46f4-839a-864c291026e3), the CTO's approval of the build plan
+- Approval: HAL-1664, the CTO's approval of the build plan
 - Kind: internal
 
 ## What changes

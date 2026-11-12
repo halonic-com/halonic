@@ -2,7 +2,7 @@
 
 - Requirement: `format.connector-approve-all` (`packages/core/format/requirements/connector-approve-all.md`)
 - Task: HAL-1219 (launch claim C89)
-- Approval: [HAL-1257](/HAL/issues/HAL-1257#comment-b7f3187e-6b32-40db-a671-0d06c3ac492d), the format owner's answer that HAL-1219 adds `approve: all` with a new spec file and requirement; Liam reviews
+- Approval: HAL-1257, the format owner's answer that HAL-1219 adds `approve: all` with a new spec file and requirement; Liam reviews
 - Kind: user-visible
 
 ## What changes

@@ -1,6 +1,6 @@
 # Decision: a connector file's `read` list lets a tool run without asking
 
-- Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approves this note in review
+- Approval: HAL-5522, the board's choice of option A; wording by Sofia on HAL-5582; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wPABHo9t1jzg+kLK2/+rjtNRwuhIndTTfHZfO9K1oNwnc02PGDUIVUpCf9hMMc06heqb21PmHobcHjf+nq6zBQ==
 

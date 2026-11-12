@@ -2,7 +2,7 @@
 
 - Requirements: `git.runner-close` (`packages/adapters/git/requirements/runner-close.md`)
 - Task: HAL-4428 (found in the review of #1395, HAL-4420)
-- Approval: [HAL-4428](/HAL/issues/HAL-4428), the CTO's review of this pull request
+- Approval: HAL-4428, the CTO's review of this pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2I2uaXWLVGpRJ+0disC1RR4wvTiG1z1Hd9CblbOYE9LXu+r7ll4/4ds+BwjKkTCjOyI8nXgLTE0XIA0QRUFuAw==
 

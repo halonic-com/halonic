@@ -1,6 +1,6 @@
 # Decision: subagents still working finish when the task agent's turn fails
 
-- Approval: [HAL-4213](/HAL/issues/HAL-4213)
+- Approval: HAL-4213
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AyULoa2YHxVm65EgDrKE1k7LvOrro7IHQ3qda/2OrSIxpV6DftKAUKF5ctt+tQc0kL9+5vDymDtMBGR6hReQCQ==
 

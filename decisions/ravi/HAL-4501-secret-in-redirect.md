@@ -1,6 +1,6 @@
 # Decision: a redirect holding a secret is refused as `secret-in-redirect`, not a leak attempt
 
-- Approval: the attack tests on [HAL-4338](/HAL/issues/HAL-4338) asked for this on [HAL-4501](/HAL/issues/HAL-4501), and the kit's owner (Ravi) decided it there; the package owner (Liam) approves this note in review
+- Approval: the attack tests on HAL-4338 asked for this on HAL-4501, and the kit's owner (Ravi) decided it there; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3wv13Qy3nqYWsID3pL/wXVbjQjHskjV54j8TWlLF+cRE7M0QRKrnRDvVgaCEi1ahK4TASlE2wyyRNWySnd3+CQ==
 - Task: HAL-4501

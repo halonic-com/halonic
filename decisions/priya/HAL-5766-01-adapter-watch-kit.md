@@ -1,6 +1,6 @@
 # Decision: a finished write is no longer read back by the folder watch
 
-- Approval: Liam asked for this fix in the review of #1840 on [HAL-5804](/HAL/issues/HAL-5804), carried to [HAL-5766](/HAL/issues/HAL-5766); the package owner (Liam) approves this note in review
+- Approval: Liam asked for this fix in the review of #1840 on HAL-5804, carried to HAL-5766; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:idE/i19xGnFNExVVvKNJGUAiyuA8pH91htLvhCfpRENgnJ59rZSXkhBJg927dMDotrB14cHY3N/Ttz/Fm5oyAw==
 - Task: HAL-5766

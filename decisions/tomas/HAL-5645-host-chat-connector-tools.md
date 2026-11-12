@@ -2,7 +2,7 @@
 
 - Task: HAL-5645 (follow-up to HAL-5503)
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-5645](/HAL/issues/HAL-5645)
+  HAL-5645
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Bon2bLD5UHo2N3rFpwPIOTxKRaBFCxE/mFyHCTdRvrU87hRE1b7DjabTVYJ04V2deNG1FkoeIlAQZb/H94iMCA==
 

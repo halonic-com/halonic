@@ -2,7 +2,7 @@
 
 - Requirement: `fs-node.record-store-files` (`packages/adapters/fs-node/requirements/record-store-files.md`)
 - Task: HAL-3499, a follow-up from Liam's review of #997 (HAL-3495)
-- Approval: [HAL-3499](/HAL/issues/HAL-3499) asks for this change; Liam approves it in review
+- Approval: HAL-3499 asks for this change; Liam approves it in review
 - Kind: internal
 
 ## What changes

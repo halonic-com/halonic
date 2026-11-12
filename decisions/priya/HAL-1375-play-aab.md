@@ -1,6 +1,6 @@
 # Decision: a workflow that builds the signed Android App Bundle for Play
 
-- Approval: the board asked for a Play-format build in CI on [HAL-1375](/HAL/issues/HAL-1375) (12 Nov), with the upload key only in the `release` environment; the CTO (Liam) approves this note in review
+- Approval: the board asked for a Play-format build in CI on HAL-1375 (12 Nov), with the upload key only in the `release` environment; the CTO (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lBgrglREC/KYA8C1KUOrLlALBkYBMdg1YDuccdC1e/g5bQyld0JYc64jd8h7PBjQHD9T1NADm6NwrJJOSNTpAQ==
 - Task: HAL-1375

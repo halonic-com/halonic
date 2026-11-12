@@ -3,7 +3,7 @@
 - Requirements: `engine.run-records-its-version` (`packages/core/engine/requirements/run-records-its-version.md`)
 - Task: HAL-6084, step 1 of the plan there (routines watch reads the live version)
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-6084](/HAL/issues/HAL-6084)
+  HAL-6084
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:860MLaDzBpJgP/XjmJV0Qg8mWkcOhNnJXEIR8xkfZpz9IUDlwy3EXTTeCyVU4GgDcy405flpiOFgbXCefi9WDQ==
 

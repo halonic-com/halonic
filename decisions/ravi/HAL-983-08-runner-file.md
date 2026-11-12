@@ -1,6 +1,6 @@
 # Decision: the integration runner may build with esbuild
 
-- Approval: widening a library's `allowedIn` in `tooling/check/dependencies.json` needs Liam's review (AGENTS.md, docs/guides/dependencies.md); Liam approves this note in review of the runner file PR on [HAL-983](/HAL/issues/HAL-983)
+- Approval: widening a library's `allowedIn` in `tooling/check/dependencies.json` needs Liam's review (AGENTS.md, docs/guides/dependencies.md); Liam approves this note in review of the runner file PR on HAL-983
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jOlh4C60Qyz43x5UbOSpMeaJzD5P8Au+5W5W3gY5z10L7HNcFvEyCOJw7f3HZbzjUAhnL6jh5ek/71eyFvhjAQ==
 - Task: HAL-983

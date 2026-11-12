@@ -1,6 +1,6 @@
 # Decision: the runner's process entry may load the integration with `import()`
 
-- Approval: an entry in `tooling/check/process-starters.json` needs Liam's review (docs/guides/checks.md, process-starts); Liam approves this note in review of the runner start PR on [HAL-983](/HAL/issues/HAL-983)
+- Approval: an entry in `tooling/check/process-starters.json` needs Liam's review (docs/guides/checks.md, process-starts); Liam approves this note in review of the runner start PR on HAL-983
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:95qFc+1iKK3UUES6dAisZqsA/eFwu1SELSNQtguj6uHbxJEGiKP8fapAGRZaeiPf2WqNbDLIC50kK00ygMFVCw==
 - Task: HAL-983

@@ -2,7 +2,7 @@
 
 - Requirement: `profile.workspace-folders` (`packages/core/profile/requirements/workspace-folders.md`)
 - Task: HAL-3298, part 1; the decision is C254 on HAL-3295
-- Approval: [HAL-3295](/HAL/issues/HAL-3295) decided it and [HAL-3298](/HAL/issues/HAL-3298) asks for this change; Liam approves it in review
+- Approval: HAL-3295 decided it and HAL-3298 asks for this change; Liam approves it in review
 - Kind: internal
 
 ## What changes

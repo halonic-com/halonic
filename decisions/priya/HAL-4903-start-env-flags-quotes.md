@@ -1,6 +1,6 @@
 # Decision: read the sandbox profile's environment, `-m` among short flags and quoted paths
 
-- Approval: follow-up from Julian's security check of halonic#1587 on [HAL-4884](/HAL/issues/HAL-4884) (points 3 and 4); planned on [HAL-4903](/HAL/issues/HAL-4903), with Julian's security check and Liam's review of the pull request
+- Approval: follow-up from Julian's security check of halonic#1587 on HAL-4884 (points 3 and 4); planned on HAL-4903, with Julian's security check and Liam's review of the pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+mETP1LG11EfaCxhhDYq4lo6hV1G+h14D31EfQgf/OBlJpIykTDGrbsfE9EpOhOOhd5woM7COg0Ye+6EfD9rDw==
 - Task: HAL-4903
@@ -24,7 +24,7 @@ start (`format.program-start-paths`) and so `format.skill-scripts-folder` strict
    flags, the text after the first `m` is the module, and when the `m` ends the group, the next
    argument is. Both readings are kept: in `python -Wm -mskills.mail.scripts.send`, the second
    argument is read as the module after `-Wm` and also as `-m` with its own module, which is what
-   Python runs (Julian's check on [HAL-4917](/HAL/issues/HAL-4917)). A flag that takes a value, as
+   Python runs (Julian's check on HAL-4917). A flag that takes a value, as
    in `-Xdev` or `-Wm`, may read a stray module; that only adds a path to check.
 3. **Quotes.** Each piece is also read without its `"` and `'`, and the whole text inside each pair
    of quotes is read too. Pairs of `"` and pairs of `'` are found in separate passes, so a stray

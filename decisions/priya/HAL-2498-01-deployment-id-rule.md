@@ -2,7 +2,7 @@
 
 - Requirement: `format.deployments-file` (`packages/core/format/requirements/deployments-file.md`)
 - Task: HAL-2498, from the review of #685 on HAL-2370
-- Approval: [HAL-2498](/HAL/issues/HAL-2498) asks for this change; the package owner (Elena) and Liam approve it in review
+- Approval: HAL-2498 asks for this change; the package owner (Elena) and Liam approve it in review
 - Kind: user-visible
 
 ## What changes

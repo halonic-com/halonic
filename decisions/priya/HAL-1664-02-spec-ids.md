@@ -2,7 +2,7 @@
 
 - Requirements: `format.spec-id-version` (`packages/core/format/requirements/spec-id-version.md`), `check.spec-snapshot` (`tooling/check/requirements/spec-snapshot.md`)
 - Task: HAL-1664, pull request 2 of 3 (Docker point 5: one spec file per public API)
-- Approval: [HAL-1664](/HAL/issues/HAL-1664#comment-56dbba43-8494-46f4-839a-864c291026e3), the CTO's approval of the build plan (points 2 and 4), and [the `skill` fallback](/HAL/issues/HAL-1664#comment-24a1fd3a-94d4-44b3-b884-62ede081f055)
+- Approval: HAL-1664, the CTO's approval of the build plan (points 2 and 4), and the `skill` fallback (HAL-1664)
 - Kind: internal
 
 ## What changes

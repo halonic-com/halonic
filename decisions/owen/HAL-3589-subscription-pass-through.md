@@ -1,6 +1,6 @@
 # Decision: the bridge passes a subscription sign-in on instead of refusing it
 
-- Approval: [HAL-3589](/HAL/issues/HAL-3589) (build plan step B5 on [HAL-194](/HAL/issues/HAL-194), approved by Liam on HAL-1961)
+- Approval: HAL-3589 (build plan step B5 on HAL-194, approved by Liam on HAL-1961)
 - Kind: internal
 
 Until now, the bridge refused every request from an agent that signs in with

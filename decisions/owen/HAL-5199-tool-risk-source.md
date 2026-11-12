@@ -1,6 +1,6 @@
 # Decision: the engine counts a connector tool's risk itself
 
-- Approval: [HAL-5518](/HAL/issues/HAL-5518)
+- Approval: HAL-5518
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tAVeVdkKalzBxLPHnNAJbwc0XxdSojYsu/CU+MWqROrCGy834Q8qgfyHE88Hz6mjQNCh6fMSw1Od+uPdiEU5BQ==
 

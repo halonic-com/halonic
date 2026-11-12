@@ -1,6 +1,6 @@
 # Decision: the runner bridge answers every request and caps a request's head at 32 KiB
 
-- Approval: the attack tests on [HAL-4338](/HAL/issues/HAL-4338) (section F1) asked for this on [HAL-4354](/HAL/issues/HAL-4354); the package owner (Liam) approves this note in review
+- Approval: the attack tests on HAL-4338 (section F1) asked for this on HAL-4354; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IJt7bSgIrpir220zyejCwOvOQnDak7HCIrbX6yHLKdvSWVEd2W3yxymyKCO6EcX5abL/JDP8d9vEy4hf3W6WDA==
 - Task: HAL-4354

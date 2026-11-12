@@ -1,6 +1,6 @@
 # Decision: the run cancel texts speak in one voice and don't say "harness"
 
-- Approval: the words check on [HAL-4240](/HAL/issues/HAL-4240) (#1317) asked for this on [HAL-4249](/HAL/issues/HAL-4249); the package owner (Liam) approves this note in review
+- Approval: the words check on HAL-4240 (#1317) asked for this on HAL-4249; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-4249
 

@@ -1,6 +1,6 @@
 # Decision: the phone frame shows the phone's own bars
 
-- Approval: [HAL-4671](/HAL/issues/HAL-4671) (Liam's review of #1483); the bars themselves are component specs 15.1 and 15.2 ([HAL-175](/HAL/issues/HAL-175#document-component-specs)) in the T2 plan ([HAL-1290](/HAL/issues/HAL-1290))
+- Approval: HAL-4671 (Liam's review of #1483); the bars themselves are component specs 15.1 and 15.2 (HAL-175) in the T2 plan (HAL-1290)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vZpLyMDlh9s4w8YMlBZes1ucnrlUOvtqM/KQZgMOWzLStrKD087LpK6q2auDl3knApRJc+RjErEnawYfaDeTBw==
 - Task: HAL-1290

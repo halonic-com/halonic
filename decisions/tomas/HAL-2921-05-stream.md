@@ -2,7 +2,7 @@
 
 - Requirements: `model-anthropic.stream-errors` (`packages/adapters/model-anthropic/requirements/stream-errors.md`), `model-anthropic.reply-size` (`packages/adapters/model-anthropic/requirements/reply-size.md`)
 - Task: HAL-3561, from Liam's review of #984 (HAL-2921 part 5)
-- Approval: Liam asked for both changes on [HAL-3561](/HAL/issues/HAL-3561); Liam approves this note in review
+- Approval: Liam asked for both changes on HAL-3561; Liam approves this note in review
 - Kind: internal
 
 ## What changes

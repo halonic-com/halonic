@@ -2,7 +2,7 @@
 
 - Requirements: `shell.window-keys` (`packages/studio/shell/requirements/window-keys.md`)
 - Task: HAL-4251 (found by the words check on HAL-4240, PR #1329)
-- Approval: [HAL-4254](/HAL/issues/HAL-4254), the CTO's review of PR #1343
+- Approval: HAL-4254, the CTO's review of PR #1343
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eX0epjjs044HH4hv4Rv+nTcsloQjTFO+PHPhasFTA0n5CWzoyV+Fe+HICSIGxV0ey0v3rW5eGLrSP969KlzXCw==
 

@@ -1,6 +1,6 @@
 # Decision: model adapter errors use Studio's and the CLI's words, and keep the vendor's text off the message
 
-- Approval: wording on board-approved texts, decided by the team under the board's HAL-2282 rule (Sofia's words check on [HAL-2994](/HAL/issues/HAL-2994#document-words-check-model-errors)); the package owner (Liam) approves this note in review
+- Approval: wording on board-approved texts, decided by the team under the board's HAL-2282 rule (Sofia's words check on HAL-2994); the package owner (Liam) approves this note in review
 - Kind: user-visible
 - Task: HAL-2972, HAL-3008
 

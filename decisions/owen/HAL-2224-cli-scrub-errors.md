@@ -1,6 +1,6 @@
 # Decision: the CLI scrubs loaded secrets from every error it prints
 
-- Approval: [HAL-2308](/HAL/issues/HAL-2308)
+- Approval: HAL-2308
 - Kind: internal
 
 `cli.print-error` gains one sentence and one example: every line `printError`

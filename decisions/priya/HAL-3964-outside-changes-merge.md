@@ -3,7 +3,7 @@
 - Requirements: `app.review-outside-changes-merge` (new,
   `packages/core/app/requirements/review-outside-changes-merge.md`), `app.review-other-writes-merge`,
   `app.review-on-open`, `app.review-assistant-writes`, `app.review-record`
-- Task: HAL-3964; the decision is on [HAL-4030](/HAL/issues/HAL-4030)
+- Task: HAL-3964; the decision is on HAL-4030
 - Approval: Liam decided on HAL-4030, "option 1 as written" with three additions (technical
   choice, within the team; no board card, because Compare and the held state are already
   approved); Liam approves this note in review

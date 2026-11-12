@@ -1,6 +1,6 @@
 # Decision: closing the terminal stops a command as Ctrl C does, with 129
 
-- Approval: Liam asked for this fix on [HAL-6558](/HAL/issues/HAL-6558), found while checking the launch FAQ on [HAL-6548](/HAL/issues/HAL-6548); the package owner (Liam) approves this note in review
+- Approval: Liam asked for this fix on HAL-6558, found while checking the launch FAQ on HAL-6548; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:THal5coAuGd+RcwgxatHC+1/pppqEHwE6GgGx0FAZwoMosne0a/rwltxGqfFTbUuDyeMR5WR2Nog2BhKPFFyCw==
 - Task: HAL-6558

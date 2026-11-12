@@ -1,6 +1,6 @@
 # Decision: every store that renames over a file retries a held rename on Windows
 
-- Approval: Liam asked for this in his review of #1259 ([HAL-4068](/HAL/issues/HAL-4068)), follow-up [HAL-4075](/HAL/issues/HAL-4075); the package owner approves this note in review
+- Approval: Liam asked for this in his review of #1259 (HAL-4068), follow-up HAL-4075; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-4075
 

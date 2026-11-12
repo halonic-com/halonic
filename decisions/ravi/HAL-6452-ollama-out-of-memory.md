@@ -1,6 +1,6 @@
 # Decision: a model server's 5xx that says out of memory is `out-of-memory`
 
-- Approval: Liam asked for this fix on [HAL-6444](/HAL/issues/HAL-6444) (findings part 2, point 2), task [HAL-6452](/HAL/issues/HAL-6452); the package owner (Liam) approves this note in review
+- Approval: Liam asked for this fix on HAL-6444 (findings part 2, point 2), task HAL-6452; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mSDc5hp1arOBUA21jph9h2eTnjdG4bLTHhUPmwAxEXyFuwRla9S/jA+IIjWdsYL0BAw2psskMzQhLPY/TnpPDg==
 - Task: HAL-6452

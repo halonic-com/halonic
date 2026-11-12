@@ -1,6 +1,6 @@
 # Decision: Claude Code reads the agent's instructions from a file
 
-- Approval: [HAL-3586](/HAL/issues/HAL-3586), review follow-up on [HAL-3623](/HAL/issues/HAL-3623)
+- Approval: HAL-3586, review follow-up on HAL-3623
 - Kind: internal
 
 C3 passed the agent's instructions to Claude Code with

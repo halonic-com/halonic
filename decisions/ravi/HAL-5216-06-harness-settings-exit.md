@@ -1,6 +1,6 @@
 # Decision: Claude Code reads only the agent's own settings
 
-- Approval: the approach was agreed with the harness owner (Owen) on [HAL-5231](/HAL/issues/HAL-5231) for the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216); Liam approves this note in review
+- Approval: the approach was agreed with the harness owner (Owen) on HAL-5231 for the review follow-ups on HAL-5216; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SgbfzPnl8gQ90dDslLSogJuYDdirRs2YyMEX0pKZ/RZWIZelsI9kX/8PDO/CviY5DeUbS2k1+ATL+x3/oSirAQ==
 - Task: HAL-5216

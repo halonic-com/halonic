@@ -3,7 +3,7 @@
 - Requirements: `engine.budget-composite-stops` (`packages/core/engine/requirements/budget-composite-stops.md`)
 - Task: HAL-5214, findings of the 11 Nov code review
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-5214](/HAL/issues/HAL-5214)
+  HAL-5214
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aUpYggRllL38n8D9FtqUfMS2Phz9gyJfGq6wqqnJ56QVbcxKEBulM1wYdxdGdfJ5OKUqqEoS8+r1WvkYNgk+Bg==
 

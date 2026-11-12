@@ -1,6 +1,6 @@
 # Decision: the kit's text filter looks at each part of a text once
 
-- Approval: the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216) asked for it; the kit's owner (Liam) approves this note in review
+- Approval: the review follow-ups on HAL-5216 asked for it; the kit's owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WJ1+18/VN5javMQQTg26MYGljEJm1q/jiOUdgPfv3U9FuJS12Xio6d95zsPuazwp5Fnhn52B4h277RGdaaTwCQ==
 - Task: HAL-5216

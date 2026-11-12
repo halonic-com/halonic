@@ -1,6 +1,6 @@
 # Decision: the unknown-model-alias message names the assistant model
 
-- Approval: wording decided by Liam on [HAL-5724](/HAL/issues/HAL-5724) (team decision, no card); the allowed difference is signed off in review (HAL-5754)
+- Approval: wording decided by Liam on HAL-5724 (team decision, no card); the allowed difference is signed off in review (HAL-5754)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:C2SdYEB80o3BcDSjZQAjVauhzxU8fsCsDPz4hFbQ0YI4to+PiAch2m6CvkVmMpwdglzlh1mXmB5rUUSiymD0BA==
 - Task: HAL-5724, from Sofia's words check on HAL-5713

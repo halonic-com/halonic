@@ -1,6 +1,6 @@
 # Decision: git.path-batches names the calls part 2 split
 
-- Approval: [HAL-4785](/HAL/issues/HAL-4785), where the maintainer asked for this list to be extended in review of halonic#1538
+- Approval: HAL-4785, where the maintainer asked for this list to be extended in review of halonic#1538
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:T13jJkqR2290q7qexh5hTH6jdOrOFUHbYV9dnHrOZYUJc0toTMo1YWEwjsFlmeKjMMr6l9KUMgcT3qtVG0aEAw==
 

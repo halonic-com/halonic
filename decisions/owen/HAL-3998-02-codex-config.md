@@ -1,6 +1,6 @@
 # Decision: what the Codex harness puts in `config.toml`, and what on the command line
 
-- Approval: [HAL-3998](/HAL/issues/HAL-3998)
+- Approval: HAL-3998
 - Kind: internal
 
 Build plan D3 says `config.toml` in `CODEX_HOME` points Codex at the bridge.

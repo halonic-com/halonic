@@ -1,6 +1,6 @@
 # Decision: a subagent's end when the task agent finishes first, and a task sent while it works
 
-- Approval: [HAL-4131](/HAL/issues/HAL-4131)
+- Approval: HAL-4131
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Y0TwzOEFGqsnBDBwpld9U505Soo1EY+XvEsV7IBM+ySRfo0MqeM4auDvc1pYwhlIgCedSlNkZzUi9G2Yatk3BQ==
 

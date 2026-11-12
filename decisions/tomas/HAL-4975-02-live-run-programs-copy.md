@@ -3,7 +3,7 @@
 - Requirements: `app.runs-read-latest-version` (`packages/core/app/requirements/runs-read-latest-version.md`)
 - Task: HAL-4975, step 2, follow-up from Julian's security review on HAL-4966 (option 3)
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-4975](/HAL/issues/HAL-4975); Julian reviews it for security
+  HAL-4975; Julian reviews it for security
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mlVLfW3sDzXthJ2D3G2XY079Jhj7yX2PYrhHYSZrB95kNUn7maXAelB1ofg1EGluVQKhTWnFxIMxwCmrsm2YAg==
 

@@ -1,6 +1,6 @@
 # Decision: detect() asks about the agent's own sign-in
 
-- Approval: the approach was agreed with the harness owner (Owen) on [HAL-5231](/HAL/issues/HAL-5231) for the review follow-ups on [HAL-5216](/HAL/issues/HAL-5216); Liam approves this note in review
+- Approval: the approach was agreed with the harness owner (Owen) on HAL-5231 for the review follow-ups on HAL-5216; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:acUarDBzsUaCguuLocdJYMPtcwDa1no2hcVdGA3lh3YGY2b6EmR7lt1sHeirkfEybEfVOYnCv67UAggioZSQAw==
 - Task: HAL-5216

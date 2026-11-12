@@ -1,6 +1,6 @@
 # Decision: land the Windows fence case for a running session's folder as a known failure
 
-- Approval: [HAL-5882](/HAL/issues/HAL-5882)
+- Approval: HAL-5882
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U8iH22UnW8khSf1Y3+NTTfJKPPGL26AVBTN8dXiiV0Iqz9L7l+iA5o3eZPk5VLmDmYXwD3aocO3gkoY7lq8HBw==
 

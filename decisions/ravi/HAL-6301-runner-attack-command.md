@@ -1,6 +1,6 @@
 # Decision: the fence jobs also run when the integration kit or the ports change
 
-- Approval: a change under `.github/` needs Liam's review (docs/guides/checks.md, note guard); Liam approves this note in review of the runner attack follow-ups on [HAL-6301](/HAL/issues/HAL-6301)
+- Approval: a change under `.github/` needs Liam's review (docs/guides/checks.md, note guard); Liam approves this note in review of the runner attack follow-ups on HAL-6301
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qo0IePZrfl+tnZkUMOSdpYv9zA68J+Ve96wOsAj4FymBKKZV+9AdJMkvDsbU405ZetG8Fz1dM6D75YbwtFFFCQ==
 - Task: HAL-6301
@@ -12,7 +12,7 @@
   workflow changes. `docs/guides/checks.md` says the same.
 - `packages/adapters/integration-runner/fence/runner-attacks.test.ts`: A36 asks securityd for
   the keychain item by name and expects a refusal, now that
-  [HAL-6346](/HAL/issues/HAL-6346) denies the Keychain's Mach services. The Docker socket in
+  HAL-6346 denies the Keychain's Mach services. The Docker socket in
   A35 counts only where the socket is there. Attempts that time out are recorded as `timed out`, never as `refused`.
 - `decisions/ravi/HAL-983-fenced-attacks.md` no longer says the A36 skip leaves no platform
   untested, says how HAL-6346 closed A36, and lists the known gaps and the `sandbox-srt`

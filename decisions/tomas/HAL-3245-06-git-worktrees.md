@@ -1,6 +1,6 @@
 # Decision: retire git.vcs-worktrees, now that the git Vcs has worktrees and patches
 
-- Approval: [HAL-4114](/HAL/issues/HAL-4114) sets this as the condition for git part 4 of HAL-3245; the maintainer approves this note in review
+- Approval: HAL-4114 sets this as the condition for git part 4 of HAL-3245; the maintainer approves this note in review
 - Kind: internal
 
 ## What changes

@@ -1,6 +1,6 @@
 # Decision: a digest watch closes only once its event source has stopped
 
-- Approval: Liam asked for this in his review of #2019 on [HAL-6670](/HAL/issues/HAL-6670); the package reviewer (Liam) approves this note in review
+- Approval: Liam asked for this in his review of #2019 on HAL-6670; the package reviewer (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LfZiwrzKbd/pu1cL55BIc/EMOte5ao0+sAa5ulbTBi2Gl3YH38BFuAjTpafxmUnRE9PvK+hJCw1JGexMdcaoDg==
 - Task: HAL-6670

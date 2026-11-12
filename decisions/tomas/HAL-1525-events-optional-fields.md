@@ -1,6 +1,6 @@
 # Decision: three optional event fields, a list of waiting approvals and the last waiting time
 
-- Approval: [HAL-1515](/HAL/issues/HAL-1515) approves the HAL-186 implementation plan, which lists these changes (step 2); the package owner (Liam) approves this note in review
+- Approval: HAL-1515 approves the HAL-186 implementation plan, which lists these changes (step 2); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1525
 

@@ -1,6 +1,6 @@
 # Decision: a stopped command doesn't wait forever for its engine to close
 
-- Approval: Liam asked for this backstop on [HAL-6677](/HAL/issues/HAL-6677), from Sofia's walk on [HAL-6673](/HAL/issues/HAL-6673); the package owner (Liam) approves this note in review
+- Approval: Liam asked for this backstop on HAL-6677, from Sofia's walk on HAL-6673; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Wrsz1zrddiWsSx8WEYzTut5K4qjTVPDlDGSZMxm3LKwp8Tg6QCD8cRK2t23eAVEqCCOHbzz5pPG0rw2GuEfhBA==
 - Task: HAL-6677

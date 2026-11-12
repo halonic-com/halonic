@@ -1,6 +1,6 @@
 # Decision: the harness environments are their own browser-safe entry points
 
-- Approval: [HAL-4878](/HAL/issues/HAL-4878)
+- Approval: HAL-4878
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6sg1BaNfvdBd/6k62/03sfQBWKxRKYMCSHDhgT+utNriEAfvCU5Njk9amzb0ghhxyn70NPuDdJge3Vc6QhVKDA==
 

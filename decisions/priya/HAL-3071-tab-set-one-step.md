@@ -1,8 +1,8 @@
 # Decision: tab Back and Forward go one step, and opening an open place says so
 
-- Approval: Sofia's UX decisions D1 to D3 in her comment on [HAL-3033](/HAL/issues/HAL-3033),
+- Approval: Sofia's UX decisions D1 to D3 in her comment on HAL-3033,
   team decisions with no board approval needed; Liam asked for them in
-  [HAL-3071](/HAL/issues/HAL-3071) and approves this note in review
+  HAL-3071 and approves this note in review
 - Kind: internal
 - Task: HAL-3071
 

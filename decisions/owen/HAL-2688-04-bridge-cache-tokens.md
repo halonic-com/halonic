@@ -1,6 +1,6 @@
 # Decision: the bridge counts Anthropic's prompt cache tokens apart from input
 
-- Approval: [HAL-2688](/HAL/issues/HAL-2688)
+- Approval: HAL-2688
 - Kind: internal
 
 `harness-bridge.spend` said that the tokens an Anthropic call reads from or

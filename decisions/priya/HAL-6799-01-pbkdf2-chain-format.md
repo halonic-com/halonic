@@ -1,6 +1,6 @@
 # Decision: the scrypt hash format is for scrypt adapters, not every adapter
 
-- Approval: [HAL-6789](/HAL/issues/HAL-6789) (Liam's decision 3 on the password port, 12 Nov), following Julian's [HAL-136](/HAL/issues/HAL-136#document-decision)
+- Approval: HAL-6789 (Liam's decision 3 on the password port, 12 Nov), following Julian's HAL-136
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:50Lb5llcMhzmwN25iBj67KEUkDS7J8HS7zuonR7W/rF8h1IydZENZb7a83fxXZSW7BR2+93xmNb7G/H16WlaCQ==
 - Task: HAL-6799

@@ -4,7 +4,7 @@
   `events.run-started-version`, `engine.run-records-its-version`, `app.run-records-its-version`
 - Task: HAL-5173, step 6a of HAL-3246 (the engine side of `runs.run-view.live-or-saved`)
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-5173](/HAL/issues/HAL-5173)
+  HAL-5173
 - Kind: internal
 
 ## What changes

@@ -1,6 +1,6 @@
 # Decision: a local integration's folder, sheet and code are in the workspace trust content
 
-- Approval: trust build plan item 3a on [HAL-188](/HAL/issues/HAL-188#document-build) (added on HAL-2191); the 8a lock-in for local integrations lands with the runner on [HAL-983](/HAL/issues/HAL-983). Liam approves this note in review of this PR.
+- Approval: trust build plan item 3a on HAL-188 (added on HAL-2191); the 8a lock-in for local integrations lands with the runner on HAL-983. Liam approves this note in review of this PR.
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BX10+cJBiPlocBOew1Tc1oDubUtmchYExm2+XQlepMYSW1hzVY1QLWMTIPHR+WAtaKGoneiXnyYmt0t53yVrAA==
 - Task: HAL-983

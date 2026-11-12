@@ -1,6 +1,6 @@
 # Decision: a session without network gets none of srt's variables
 
-- Approval: the I5 design approved on [HAL-958](/HAL/issues/HAL-958#document-design) (section 9: with network set to none, `sandbox-srt` drops srt's proxy variables, so the runner's environment holds only its own); the package owner (Liam) approves this note in review
+- Approval: the I5 design approved on HAL-958 (section 9: with network set to none, `sandbox-srt` drops srt's proxy variables, so the runner's environment holds only its own); the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4mmfCixCplFR2fj3TF4WlANC5js9+2j0GSLtFyRoaUu9IMr7Cc/AOZBnbc4SO1bzjJ7WIZvz6shdpIrPaDcTBw==
 - Task: HAL-983

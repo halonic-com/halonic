@@ -1,6 +1,6 @@
 # Decision: compare a path with a working folder in one place
 
-- Approval: Julian's security review on [HAL-4728](/HAL/issues/HAL-4728) asked for this follow-up; the choice (refuse, not record) is on [HAL-4732](/HAL/issues/HAL-4732), with Julian's security check and Liam's review of the pull request
+- Approval: Julian's security review on HAL-4728 asked for this follow-up; the choice (refuse, not record) is on HAL-4732, with Julian's security check and Liam's review of the pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:f095ks0RwS9EjSM6c3UMKctFFEVYeUa9JGEWzVjr7U4iwMbncfuf2owKsHCRF/2n+1X9U8/3a9A+y2ar+TPhDg==
 - Task: HAL-4732

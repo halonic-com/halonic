@@ -1,7 +1,7 @@
 # Decision: the Windows sandbox CI job removes the sandbox as its last step
 
 - Task: HAL-6180 (`--sandbox-remove` for the uninstaller, HAL-1202 flow 2.7, CHECK I9)
-- Approval: the task asks for this change with tests; Liam approves this note in review on [HAL-6180](/HAL/issues/HAL-6180)
+- Approval: the task asks for this change with tests; Liam approves this note in review on HAL-6180
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cyM41nO85btM9ICzyXQPrt8jCIY95P/LzG2Gy/GUbyhy2OyEp4j/BLOxWmiQ/CGODTfO/EILxkcihhhUwNL4AQ==
 

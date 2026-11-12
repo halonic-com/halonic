@@ -2,7 +2,7 @@
 
 - Requirements: `ports.workspace-secrets` (`packages/core/ports/requirements/workspace-secrets.md`)
 - Task: HAL-4587, the follow-up of HAL-4583
-- Approval: [HAL-4583](/HAL/issues/HAL-4583#comment-66ae8c83-fc09-4602-94ff-72bed5ca7f2c), the CTO's decision that `workspaceSecrets` refuses `plugin__` names
+- Approval: HAL-4583, the CTO's decision that `workspaceSecrets` refuses `plugin__` names
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0sed0lnAJWBNNgum1iFrY0hz6wXjZ2vNxWpUZG3yjpcDzY2I/pbFtYlglem9syX1g8xx8AeAVFdddqNl3p2eBg==
 

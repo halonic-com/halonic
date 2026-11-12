@@ -1,6 +1,6 @@
 # Decision: the bridge counts OpenAI's cached tokens as cache reads
 
-- Approval: [HAL-3229](/HAL/issues/HAL-3229)
+- Approval: HAL-3229
 - Kind: internal
 
 Since HAL-2688, the bridge counts the tokens an Anthropic call reads from the

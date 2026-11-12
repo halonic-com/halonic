@@ -1,7 +1,7 @@
 # Decision: the sandbox fence jobs also run the local tool attack tests
 
 - Task: HAL-1738, pull request 6 of the plan
-- Approval: the task asks for attack tests on the Linux sandbox in CI; Liam approves this note in review on [HAL-6162](/HAL/issues/HAL-6162)
+- Approval: the task asks for attack tests on the Linux sandbox in CI; Liam approves this note in review on HAL-6162
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fSLOJjLRNBdsJzbuXNtFLA222Sj9vwfePzpnhtYlN968H1wrcBAABhzPHnN4z7JWkM88z5ScFeu8jLDPOtV2CQ==
 

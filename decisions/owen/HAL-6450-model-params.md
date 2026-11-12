@@ -1,6 +1,6 @@
 # Decision: a resolved model carries its alias's params
 
-- Approval: Liam decided this on [HAL-6444](/HAL/issues/HAL-6444) (fix task [HAL-6450](/HAL/issues/HAL-6450), after the findings of HAL-6432, part 1); the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-6444 (fix task HAL-6450, after the findings of HAL-6432, part 1); the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wI/d2lRl0Tci7tU9YO1mjKy8kkc07jJuGfba93vZzCuN2jOkcB4bmwQqE2qh56ZgS2cSrqXxsOxfu8Z8e953Bg==
 - Task: HAL-6450

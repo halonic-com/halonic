@@ -1,6 +1,6 @@
 # Decision: a runner's requests end with their call, and Halonic caps what it queues for the runner
 
-- Approval: Liam set both gates for the runner start on [HAL-983](/HAL/issues/HAL-983) (decided on [HAL-4353](/HAL/issues/HAL-4353)), with the head-cap entry count from the security read on [HAL-4375](/HAL/issues/HAL-4375); the package owner (Liam) approves this note in review
+- Approval: Liam set both gates for the runner start on HAL-983 (decided on HAL-4353), with the head-cap entry count from the security read on HAL-4375; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5gMIUGzQqekglfMiIjduLNYkFJvfZFCK0Xfzsvq6xU7+7NPvuugcjCFsRn1z4/wqnU9QoAMJe+sW0GvQPXWEAg==
 - Task: HAL-983

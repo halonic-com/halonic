@@ -1,6 +1,6 @@
 # Decision: a connector file's `read` list, and a run log event for tools that ran without asking
 
-- Approval: [HAL-5522](/HAL/issues/HAL-5522), the board's choice of option A; wording by Sofia on [HAL-5582](/HAL/issues/HAL-5582); Liam approved this note in review on [HAL-5616](/HAL/issues/HAL-5616)
+- Approval: HAL-5522, the board's choice of option A; wording by Sofia on HAL-5582; Liam approved this note in review on HAL-5616
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FEnwoCx1R/6X5VZqWCFboS7v3gzfRIyoQdobNIYA4wnrTvAVkOvvel5G84Y2JfAs/G0e8vWJwabopm71SN01CQ==
 

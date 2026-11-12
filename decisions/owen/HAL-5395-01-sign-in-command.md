@@ -1,6 +1,6 @@
 # Decision: a harness names its own sign-in, and the contract checks it points at the agent's folder
 
-- Approval: [HAL-5395](/HAL/issues/HAL-5395)
+- Approval: HAL-5395
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/hXILaM9vzClDvvTjbR7SG9Xh7dQY/d2YbvWRnByFGyMVlKs1YJD4cf0S38qivED2euMM133mYnFkugVR4vIBQ==
 

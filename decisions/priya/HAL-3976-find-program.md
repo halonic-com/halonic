@@ -1,7 +1,7 @@
 # Decision: two starters' reasons in process-starters.json name the shared program lookup
 
 - Task: HAL-3976 (plan phase 3 on HAL-191: "the Windows start path resolves commands to absolute paths, with no shell")
-- Approval: the task asks for this reason update; Liam approves this note in review on [HAL-3976](/HAL/issues/HAL-3976)
+- Approval: the task asks for this reason update; Liam approves this note in review on HAL-3976
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DKvachlMcj3/FYQ2Ty+v1bGamXUHhXdul3dNMTEt3QQ25FJQGZwqnY8AFEsAgHkbvPMg9oewwbwuhMjatv50Cw==
 

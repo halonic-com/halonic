@@ -2,7 +2,7 @@
 
 - Requirement: `kit.menu` (`packages/studio/kit/requirements/menu.md`)
 - Task: HAL-3063 (item 7), from Sofia's UX check on HAL-3032
-- Approval: Sofia asked for it on [HAL-3063](/HAL/issues/HAL-3063); Liam approves this note in review
+- Approval: Sofia asked for it on HAL-3063; Liam approves this note in review
 - Kind: internal
 
 ## What changes

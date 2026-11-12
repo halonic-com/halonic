@@ -2,7 +2,7 @@
 
 - Requirement: `shell.status-bar` (`packages/studio/shell/requirements/status-bar.md`), `shell.home-states` (`packages/studio/shell/requirements/home-states.md`)
 - Task: HAL-3926, from Liam's review of #1191 on HAL-3923
-- Approval: Liam asked for the change on [HAL-3926](/HAL/issues/HAL-3926); he approves this note in review
+- Approval: Liam asked for the change on HAL-3926; he approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G7TGevWs16lKwcy/A7Y7igM7gROyYhCYg0pxqoesDWmW0uFt3DW7+GMKFRCm4o4+7MwxjoSDInFefQ96k6jKBg==
 

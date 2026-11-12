@@ -1,6 +1,6 @@
 # Decision: say why a model call failed, and log a skipped model
 
-- Approval: Liam approved [plan-providers](/HAL/issues/HAL-1061#document-plan-providers) with changes on [HAL-1880](/HAL/issues/HAL-1880); the package owner (Liam) approves this note in review
+- Approval: Liam approved plan-providers (HAL-1061) with changes on HAL-1880; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-1880
 

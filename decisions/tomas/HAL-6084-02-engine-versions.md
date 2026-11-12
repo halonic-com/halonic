@@ -3,7 +3,7 @@
 - Requirements: `cli.local-engine` (`apps/cli/requirements/local-engine.md`)
 - Task: HAL-6084, step 2a of the plan there (routines watch reads the live version)
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-6084](/HAL/issues/HAL-6084)
+  HAL-6084
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dtNzQneUe89QXfG5Xz4ojcUpspQT2Cbpx6q4wuybhvCyKgrggXR5j6GjOv2SJAMAD9ZTYBEy9wQleRG+81GLCw==
 

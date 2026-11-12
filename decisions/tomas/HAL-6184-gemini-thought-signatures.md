@@ -2,7 +2,7 @@
 
 - Requirements: `model-openai.replies`, `model-openai.request`
 - Task: HAL-6184, from Liam's review on HAL-6102
-- Approval: Liam asked for this on [HAL-6184](/HAL/issues/HAL-6184) and approves this note in his
+- Approval: Liam asked for this on HAL-6184 and approves this note in his
   review of this pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:w1G4z6n3t1DubMf64rfkGs5xvUWcsbBSToDANjSCW0FIVkIZdbUDacTwqnZcrPbdb73wUZ0B++ph2CTytzdIAQ==

@@ -1,7 +1,7 @@
 # Decision: workspace trust covers model providers
 
 - Approval: Liam approves this note in his review of this pull request on
-  [HAL-5200](/HAL/issues/HAL-5200), a follow-up of the code review on [HAL-5196](/HAL/issues/HAL-5196)
+  HAL-5200, a follow-up of the code review on HAL-5196
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xsJhBuBm8TcbuBChx8wHP2kS3MHg6vc7Cb+hgHehMEug69qiyFi/3FMZHWY8K6uy3XI6PoedddB5gs8HKXSQCw==
 - Task: HAL-5200

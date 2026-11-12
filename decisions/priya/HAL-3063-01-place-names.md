@@ -2,7 +2,7 @@
 
 - Requirement: `shell.sidebar-places` (`packages/studio/shell/requirements/sidebar-places.md`)
 - Task: HAL-3063 (item 5), from Sofia's UX check of #866 on HAL-3034
-- Approval: Liam decided the change on [HAL-3034](/HAL/issues/HAL-3034) and confirmed it as the API decision on [HAL-3063](/HAL/issues/HAL-3063); he approves this note in review
+- Approval: Liam decided the change on HAL-3034 and confirmed it as the API decision on HAL-3063; he approves this note in review
 - Kind: internal
 
 ## What changes

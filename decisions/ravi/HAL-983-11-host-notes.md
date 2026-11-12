@@ -1,6 +1,6 @@
 # Decision: the test for ending a program's group on exit doesn't run on Windows
 
-- Approval: a new skip in a test needs Liam's review (plan 9.3); Liam approves this note in review of the follow-up to the launcher start PR on [HAL-983](/HAL/issues/HAL-983)
+- Approval: a new skip in a test needs Liam's review (plan 9.3); Liam approves this note in review of the follow-up to the launcher start PR on HAL-983
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ifpymu/AXsDqZVoqFm/NXZ/RklZXd2RdkAllBnw6KbHpMl/Qo7eXlNTKopM8IiORkIqvO3/p5/9Pr32spNK0AQ==
 - Task: HAL-983

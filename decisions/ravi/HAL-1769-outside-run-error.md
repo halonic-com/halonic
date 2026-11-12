@@ -2,7 +2,7 @@
 
 - Requirement: `app.outside-run-connector-gate` (`packages/core/app/requirements/outside-run-connector-gate.md`)
 - Task: HAL-1769, from the review of the HAL-1531 stack (HAL-1764)
-- Approval: [HAL-1769](/HAL/issues/HAL-1769) asks for this change; the maintainer approves it in review
+- Approval: HAL-1769 asks for this change; the maintainer approves it in review
 - Kind: internal
 
 ## What changes

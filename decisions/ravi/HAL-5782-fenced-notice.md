@@ -1,6 +1,6 @@
 # Decision: the fence line in the system prompt names tool results, and follows fenced text in the request
 
-- Approval: the code review of #1776 on [HAL-5541](/HAL/issues/HAL-5541) asked for both changes, and [HAL-5698](/HAL/issues/HAL-5698) put them in this follow-up; the package owner (Liam) approves this note in review
+- Approval: the code review of #1776 on HAL-5541 asked for both changes, and HAL-5698 put them in this follow-up; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J7W7tqAmatn2cbPWNl77zQCLsfjopy98txo6CrztaLFhM6fMayF68zuKztWAJHrjPyo1dfZ5QsGXK5fnbztFAw==
 - Task: HAL-5782

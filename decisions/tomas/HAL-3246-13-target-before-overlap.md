@@ -1,8 +1,8 @@
 # Decision: check a routine's target before the overlap rule
 
-- Approval: Liam's note in his review of halonic#1580 ([HAL-4876](/HAL/issues/HAL-4876)) asked
+- Approval: Liam's note in his review of halonic#1580 (HAL-4876) asked
   for this; Liam approves this note in his review of this pull request on
-  [HAL-3246](/HAL/issues/HAL-3246)
+  HAL-3246
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0+TbpGhWYggFRzfWN8yP/lDxRKiis3KRmVQOOO/DkpOEY2+1pUZmHOkRxGMiYd1GcsARI4OBuoFCVKfyMo0RCQ==
 - Task: HAL-3246

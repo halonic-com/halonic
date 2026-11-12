@@ -3,7 +3,7 @@
 - Requirements: `app.review-record` (`packages/core/app/requirements/review-record.md`),
   `app.review-hidden` (removed), `profile.workspace-folders`
   (`packages/core/profile/requirements/workspace-folders.md`)
-- Task: HAL-3277; the decision is on [HAL-3417](/HAL/issues/HAL-3417)
+- Task: HAL-3277; the decision is on HAL-3417
 - Approval: decided on HAL-3417 (technical choice, within the team); Liam approves it in review
 - Kind: internal
 

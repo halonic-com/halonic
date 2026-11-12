@@ -1,7 +1,7 @@
 # Decision: a tool_choice that forces some tool becomes auto when the bridge removed every tool
 
-- Approval: [HAL-3791](/HAL/issues/HAL-3791), asked for by Liam in the review of HAL-3229
-  ([HAL-3657](/HAL/issues/HAL-3657)); the package owner (Liam) approves this note in review
+- Approval: HAL-3791, asked for by Liam in the review of HAL-3229
+  (HAL-3657); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-3791
 

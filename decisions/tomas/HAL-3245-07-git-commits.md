@@ -1,6 +1,6 @@
 # Decision: retire git.vcs-commits, now that the git Vcs has Create version and proposal refs
 
-- Approval: [HAL-4114](/HAL/issues/HAL-4114) sets the git placeholders' removal as the condition for HAL-3245's git parts; the maintainer approves this note in review
+- Approval: HAL-4114 sets the git placeholders' removal as the condition for HAL-3245's git parts; the maintainer approves this note in review
 - Kind: internal
 
 ## What changes

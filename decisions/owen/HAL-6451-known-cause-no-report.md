@@ -1,6 +1,6 @@
 # Decision: a run failure with a known cause has no "report it" line
 
-- Approval: Liam decided this on [HAL-6451](/HAL/issues/HAL-6451) (a team wording call on the approved HAL-2264 words, from the findings on HAL-6444); the package owner (Liam) approves this note in review
+- Approval: Liam decided this on HAL-6451 (a team wording call on the approved HAL-2264 words, from the findings on HAL-6444); the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tK5qe9IBICwBJR1sV3OYrhCJU4OYoO+s0s2FVKoHFqp50iV7YrHE8iNAxNymEuum3qsEJm7eNGp6BforblwNBA==
 - Task: HAL-6451

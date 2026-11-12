@@ -1,6 +1,6 @@
 # Decision: a parent records `workflow.resumed` when its waiting child runs again
 
-- Approval: [HAL-6144](/HAL/issues/HAL-6144), option A, decided by the CTO; he approves this note in his review of this pull request on [HAL-6173](/HAL/issues/HAL-6173)
+- Approval: HAL-6144, option A, decided by the CTO; he approves this note in his review of this pull request on HAL-6173
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hsLWMi81RAGetbKFBRfAgGk2vI+U8D1IvDoR0CuA1JZcf/yLWBJum2K+vZcgZYMfgxppx92CG6lfkEkqO7LuAw==
 - Task: HAL-6173

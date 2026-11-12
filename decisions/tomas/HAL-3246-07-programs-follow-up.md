@@ -1,6 +1,6 @@
 # Decision: close the Low findings on Try it programs
 
-- Approval: Julian's security review of halonic#1556 on [HAL-4825](/HAL/issues/HAL-4825) asked for these follow-ups; Liam routed them to [HAL-3246](/HAL/issues/HAL-3246), with Liam's review of the pull request
+- Approval: Julian's security review of halonic#1556 on HAL-4825 asked for these follow-ups; Liam routed them to HAL-3246, with Liam's review of the pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:owWxLp8hnRxuEeb6IY+GilLIdi/Jxikgb0Y45Z3an4pOFThVKo1p7wW1pRpdgfAtWJ63Ul+iU3Wk2sfeztuOAA==
 - Task: HAL-3246

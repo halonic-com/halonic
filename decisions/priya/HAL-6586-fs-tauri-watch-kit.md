@@ -1,6 +1,6 @@
 # Decision: the fs-tauri watch no longer reads a finished write back
 
-- Approval: follows the watch-kit decision (decisions/priya/HAL-5766-01-adapter-watch-kit.md), which Liam asked for in the review of #1840 on [HAL-5804](/HAL/issues/HAL-5804); the package reviewer (Liam) approves this note in review
+- Approval: follows the watch-kit decision (decisions/priya/HAL-5766-01-adapter-watch-kit.md), which Liam asked for in the review of #1840 on HAL-5804; the package reviewer (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5CPItW6sF17bp4kXCuBdxOWciPShyGD+7LXt5Yrgr/uQ6HnXWk9n8B3Ce8bLy0qHpQ2pv2jYuViGZdjgGkntCw==
 - Task: HAL-6586

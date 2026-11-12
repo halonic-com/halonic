@@ -1,6 +1,6 @@
 # Decision: the nothing-live fix line asks for a first commit
 
-- Approval: wording decided by Sofia (designer) on [HAL-6041](/HAL/issues/HAL-6041) (team decision under HAL-2282, no card); Liam approves this note in review
+- Approval: wording decided by Sofia (designer) on HAL-6041 (team decision under HAL-2282, no card); Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ez47qZglmU+BQlgErauJ1VH+fWn8mmSse55BtSUxXp+v42m8P1+9Zhpx4lZqO0C59RWvd+c8i+yr1hf+EbjMCw==
 - Task: HAL-6041, found on HAL-6038 while reading website #153

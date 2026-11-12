@@ -1,6 +1,6 @@
 # Decision: the agent host may open a terminal the person can see
 
-- Approval: [HAL-5395](/HAL/issues/HAL-5395)
+- Approval: HAL-5395
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MYrD/V+8RVP+YOgpj+gNQtt4JHHXzCorNFHZKpdnOvuJEvYjpuCNrAyaBN1kPE3UDiD429xhG/mCijdDODGvBw==
 

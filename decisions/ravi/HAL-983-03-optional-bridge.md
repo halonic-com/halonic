@@ -1,6 +1,6 @@
 # Decision: a sandbox profile can say it has no bridge
 
-- Approval: Liam approved the optional loopback bridge on [HAL-983](/HAL/issues/HAL-983) (review of HAL-4280): default unchanged, no-bridge fence tests on bubblewrap, Seatbelt and Windows; the package owner (Liam) approves this note in review
+- Approval: Liam approved the optional loopback bridge on HAL-983 (review of HAL-4280): default unchanged, no-bridge fence tests on bubblewrap, Seatbelt and Windows; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:I7vl6V1AASe7wGYs0TEVRKywymZJLGtlehlfaaRzUsvrUVbWISbAC82tLjIvrwvki0eHWobDJjemJqd8K3G1BA==
 - Task: HAL-983

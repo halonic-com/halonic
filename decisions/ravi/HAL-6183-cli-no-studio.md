@@ -1,6 +1,6 @@
 # Decision: a failed run's fix sends no one to Studio
 
-- Approval: Liam decided it in his review on [HAL-6102](/HAL/issues/HAL-6102) (HAL-6088 row 37), set out as a team decision on [HAL-6183](/HAL/issues/HAL-6183), with the wording checked by Sofia on [HAL-6260](/HAL/issues/HAL-6260); Liam approves this note in review
+- Approval: Liam decided it in his review on HAL-6102 (HAL-6088 row 37), set out as a team decision on HAL-6183, with the wording checked by Sofia on HAL-6260; Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oVMETWbwiLHiV98ZQcq3SH1PNxrhTKScEKYTv7ZA3kkHA2K4tTvi0ecM2uRijWD78HPmVbSE4m5M67za6+d3BA==
 - Task: HAL-6183

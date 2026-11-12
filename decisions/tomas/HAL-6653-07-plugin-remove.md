@@ -1,6 +1,6 @@
 # Decision: plugin lines name plugin remove again
 
-- Approval: Liam asked for this on [HAL-6888](/HAL/issues/HAL-6888), from his review of this pull
+- Approval: Liam asked for this on HAL-6888, from his review of this pull
   request on HAL-6837; it puts back cli-output 3.6's wording for `plugin remove`, approved on
   HAL-2123, and the package owner (Liam) approves this note in review
 - Kind: internal

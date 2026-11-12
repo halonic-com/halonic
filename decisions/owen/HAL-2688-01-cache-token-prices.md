@@ -1,6 +1,6 @@
 # Decision: prompt cache tokens are counted apart and priced at their own rates
 
-- Approval: [HAL-2688](/HAL/issues/HAL-2688)
+- Approval: HAL-2688
 - Kind: public interface (`core/ports`, `core/events`, `core/format`)
 
 Anthropic reports the input tokens it read from and wrote to the prompt cache

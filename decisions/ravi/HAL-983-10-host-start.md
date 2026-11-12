@@ -1,6 +1,6 @@
 # Decision: the launcher starts programs without a fence through the `Sandbox` port
 
-- Approval: an entry in `tooling/check/process-starters.json` and a port change need Liam's review (docs/guides/checks.md, process-starts; ADR 2026-11-11-sandbox-without-fence); Liam approves this note in review of the launcher start PR on [HAL-983](/HAL/issues/HAL-983)
+- Approval: an entry in `tooling/check/process-starters.json` and a port change need Liam's review (docs/guides/checks.md, process-starts; ADR 2026-11-11-sandbox-without-fence); Liam approves this note in review of the launcher start PR on HAL-983
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:x+wOTTZmDj29rxL3pXcceNxlmV6KeGes9zv8O486M5IrQ5ig5vUcg0tGNKzrGlO2j0eMx7jAtKZ158KqfjwrBg==
 - Task: HAL-983

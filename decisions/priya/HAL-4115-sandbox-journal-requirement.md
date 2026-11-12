@@ -2,7 +2,7 @@
 
 - Requirements: `profile.profile-folder` (`packages/core/profile/requirements/profile-folder.md`)
 - Task: HAL-4115 (found by the README check in HAL-4061)
-- Approval: [HAL-4115](/HAL/issues/HAL-4115), the CTO's request to add the export to the requirement
+- Approval: HAL-4115, the CTO's request to add the export to the requirement
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NvkOZKgKAagaTynfYENH65L7ds20xvrlD5Uf6ngcGms0gUcdu3UtE8rGdPkv5lHi8Z2DBlin4Sd0Q/yEUqiKCA==
 

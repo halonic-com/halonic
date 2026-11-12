@@ -1,6 +1,6 @@
 # Decision: the fence CI jobs also run the integration runner's fence tests
 
-- Approval: a change under `.github/` and a new skip need Liam's review (docs/guides/checks.md, requirement guard); Liam approves this note in review of the fenced attack PR on [HAL-983](/HAL/issues/HAL-983)
+- Approval: a change under `.github/` and a new skip need Liam's review (docs/guides/checks.md, requirement guard); Liam approves this note in review of the fenced attack PR on HAL-983
 - Kind: internal
 - Task: HAL-983
 
@@ -29,7 +29,7 @@ environment) cover in the same file.
 
 ## Known gaps
 
-Corrected in [HAL-6301](/HAL/issues/HAL-6301). This note first said the A36 skip "leaves no
+Corrected in HAL-6301. This note first said the A36 skip "leaves no
 platform untested". That was wrong: the first A36 named the keychain by its path in the hidden
 home folder, so the file fence refused it and securityd was never asked, and any error counted
 as a refusal. The cases below pass because they expect what happens today, so a fix in either
@@ -39,7 +39,7 @@ direction fails them and the gap stays written down.
   the keychain item out inside the fence, because srt 0.0.81 always allows
   `com.apple.SecurityServer` and `com.apple.securityd.xpc`. `sandbox-srt` now denies those
   services to a profile that denies the key store, as the runner's does
-  ([HAL-6346](/HAL/issues/HAL-6346)), so the case expects `refused`.
+  (HAL-6346), so the case expects `refused`.
 - **A12, Node's layer off:** srt leaves reads open apart from the hidden folders, so a file
   outside the home and socket folders is readable, although the design says it must be refused.
   The case expects `allowed` with the layer off.

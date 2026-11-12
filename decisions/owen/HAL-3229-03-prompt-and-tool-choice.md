@@ -1,6 +1,6 @@
 # Decision: a stored OpenAI prompt is refused, and a tool_choice of a removed tool becomes auto
 
-- Approval: [HAL-3229](/HAL/issues/HAL-3229), asked for by Liam in the B4 review ([HAL-3234](/HAL/issues/HAL-3234)); the package owner (Liam) approves this note in review
+- Approval: HAL-3229, asked for by Liam in the B4 review (HAL-3234); the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-3229
 

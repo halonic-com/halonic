@@ -1,6 +1,6 @@
 # Decision: compact an agent's memory after every forget and replace
 
-- Approval: decision C258 on [HAL-3295](/HAL/issues/HAL-3295), carried into [HAL-3299](/HAL/issues/HAL-3299); the package owner's reviewer (Liam) approves this note in review
+- Approval: decision C258 on HAL-3295, carried into HAL-3299; the package owner's reviewer (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-3299
 

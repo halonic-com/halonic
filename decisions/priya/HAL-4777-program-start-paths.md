@@ -1,6 +1,6 @@
 # Decision: read a program start for paths in one place
 
-- Approval: Liam asked for this in his review of halonic#1527 on [HAL-4748](/HAL/issues/HAL-4748); planned on [HAL-4777](/HAL/issues/HAL-4777), with Julian's security check and Liam's review of the pull request
+- Approval: Liam asked for this in his review of halonic#1527 on HAL-4748; planned on HAL-4777, with Julian's security check and Liam's review of the pull request
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+hzci1bKBv3SWXkhb8AaKZwBJNaGF0F6ht9fGzDaHVEIsC4lcfGP5vmpk12LSStlhVvzLsyE89cwHzz3mAxRAw==
 - Task: HAL-4777

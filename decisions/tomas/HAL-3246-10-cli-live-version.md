@@ -1,6 +1,6 @@
 # Decision: the git adapter's testGit as a test-only entry point
 
-- Approval: a new entry in `extraExports` of `tooling/check/policy.json` needs the maintainer's review; Liam approves this note in his review of the CLI live-version pull request on [HAL-3246](/HAL/issues/HAL-3246)
+- Approval: a new entry in `extraExports` of `tooling/check/policy.json` needs the maintainer's review; Liam approves this note in his review of the CLI live-version pull request on HAL-3246
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XrcYtOSlzAeRi+HPmsXqKb/7Pj7BiTlhwZPs+aneKx0LwDz7bdCTv27CmAmkIf6/78b6prWQiICKUswI28SiAA==
 - Task: HAL-3246

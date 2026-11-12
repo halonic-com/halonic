@@ -1,6 +1,6 @@
 # Decision: a remove waits in the same per-path queue as a conditional write
 
-- Approval: Liam asked for this in his review of #942 ([HAL-3311](/HAL/issues/HAL-3311)), follow-up point 1 in [HAL-3383](/HAL/issues/HAL-3383); the package owner approves this note in review
+- Approval: Liam asked for this in his review of #942 (HAL-3311), follow-up point 1 in HAL-3383; the package owner approves this note in review
 - Kind: internal
 - Task: HAL-3383
 

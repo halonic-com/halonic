@@ -1,6 +1,6 @@
 # Decision: a step line names the model alias the agent runs on, the default one too
 
-- Approval: the words check on [HAL-4355](/HAL/issues/HAL-4355) (#1370) asked for this on [HAL-4391](/HAL/issues/HAL-4391); the package owner (Liam) approves this note in review
+- Approval: the words check on HAL-4355 (#1370) asked for this on HAL-4391; the package owner (Liam) approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Jbnkoako7P8T8U8CXG8WZldCUCs88LOyreDIl9WNvp0OQcw6CsxUHTvhSkntKRbGOA3+x+fzPex2j37nBleLCQ==
 - Task: HAL-4391

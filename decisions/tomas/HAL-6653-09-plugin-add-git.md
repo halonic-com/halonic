@@ -1,6 +1,6 @@
 # Decision: plugin lines name the git address again
 
-- Approval: Liam decided this on [HAL-6426](/HAL/issues/HAL-6426): its note says HAL-1736 puts cli-output 3.6's wording back when git sources are built, a team decision with no board card; the package owner (Liam) approves this note in review on [HAL-6841](/HAL/issues/HAL-6841)
+- Approval: Liam decided this on HAL-6426: its note says HAL-1736 puts cli-output 3.6's wording back when git sources are built, a team decision with no board card; the package owner (Liam) approves this note in review on HAL-6841
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gLu0hHs+uWpfF8kWfstteq1cNmZumPb1rVVL013ZL3jFbT4tX1mNTrz4338lCcvWDeMruh3teAKraHzAj7ckDA==
 - Task: HAL-6841

@@ -1,6 +1,6 @@
 # Decision: the stdio connector checks the harness agents' working folders before it starts
 
-- Approval: the plan on [HAL-4759](/HAL/issues/HAL-4759#document-plan), from Julian's conditions on [HAL-4739](/HAL/issues/HAL-4739); Liam approves this note in review of the pull request, after Julian's security check
+- Approval: the plan on HAL-4759, from Julian's conditions on HAL-4739; Liam approves this note in review of the pull request, after Julian's security check
 - Kind: internal
 - Task: HAL-4759
 

@@ -1,6 +1,6 @@
 # Decision: `halonic run` refuses an agent in a harness before the trust check
 
-- Approval: asked for by Liam on [HAL-6580](/HAL/issues/HAL-6580) ("refuse before the run starts, exit 9"); Liam approves this note in review
+- Approval: asked for by Liam on HAL-6580 ("refuse before the run starts, exit 9"); Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DhOsS09KcOP45JiFqdoyZCrOK7hdC6F2UeHEcDlq1q8vvtr/j9WWVZVFmnxOyUwlCse/ye+WhPg7NGFjd+O0BA==
 - Task: HAL-6580, from Sofia's first-run walk (HAL-6538, HAL-6673 item 2)

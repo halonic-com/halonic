@@ -2,7 +2,7 @@
 
 - Requirements: `events.run-log-contract`, `engine.decide-refusals` and `test-runner.expectations`
 - Task: HAL-4285 (PR 5b-1a of HAL-3277), with the test-runner part from HAL-4477
-- Approval: [HAL-4285](/HAL/issues/HAL-4285), the CTO's choice of option A (the status lives in the run log)
+- Approval: HAL-4285, the CTO's choice of option A (the status lives in the run log)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3+0OOy3qPMLbhmGQcQV8o/tFaxWvx2h1E/slcrL00TbG5gsIVGj5GpafgTSMQjE7C/po+dukhHJcKGXza0y5Bg==
 

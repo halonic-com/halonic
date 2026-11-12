@@ -1,6 +1,6 @@
 # Decision: 1-hour prompt cache writes get their own count and price
 
-- Approval: [HAL-2688](/HAL/issues/HAL-2688)
+- Approval: HAL-2688
 - Kind: public interface (`core/ports`, `core/events`, `core/format`)
 
 Anthropic keeps a prompt cache entry for 5 minutes or for 1 hour. A 5-minute
