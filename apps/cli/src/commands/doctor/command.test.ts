@@ -53,6 +53,7 @@ function machine(sandbox: SandboxCheck = { ok: true, reason: null, missing: [] }
         new Response(JSON.stringify({ models: [{ name: "llama3.2:latest", size: 2 * gb }] })),
     },
     system: "Linux x64",
+    signInShell: "sh",
   };
 }
 

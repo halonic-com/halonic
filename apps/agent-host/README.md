@@ -158,7 +158,7 @@ The port's `environment` has no route: the engine asks for it without waiting, a
 An agent that uses a Claude Code or Codex subscription signs in once, in its own settings folder (HAL-5395). `POST /v1/harnesses/sign-in` with `{ harness, settingsFolder }` opens a terminal the person can see (below), running the harness's own `signIn`: `claude auth login` with `CLAUDE_CONFIG_DIR`, or `codex login` with `CODEX_HOME`, set to that folder. The person signs in there as usual. The host only opens the window: it never reads, copies or waits for the sign-in, so Studio runs `detect` again when the person chooses Check again.
 
 - `settingsFolder` must be an absolute path (`400 body_invalid` otherwise).
-- The program is found on the host's `PATH`, as `detect` finds it. When it isn't there, or no window could open, the answer is `{ opened: false, reason, command }`: `command` is the sign-in to type by hand, in PowerShell on Windows (`$env:CLAUDE_CONFIG_DIR = '<folder>'; claude auth login`) and in `sh` elsewhere (`CLAUDE_CONFIG_DIR='<folder>' claude auth login`).
+- The program is found on the host's `PATH`, as `detect` finds it. When it isn't there, or no window could open, the answer is `{ opened: false, reason, command }`: `command` is the sign-in to type by hand, in PowerShell on Windows (`$env:CLAUDE_CONFIG_DIR = '<folder>'; claude auth login`) and in `sh` elsewhere (`CLAUDE_CONFIG_DIR='<folder>' claude auth login`), from `signInCommandText` in `@halonicjs/ports`, so `halonic doctor` shows the same command.
 - A harness without a sign-in of its own gets `422 no_sign_in`, and a command the terminal refuses (a folder under a skill's `scripts/`) `422 sign_in_refused`.
 
 ## Opening a terminal the person can see

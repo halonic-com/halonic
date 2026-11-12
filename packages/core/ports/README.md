@@ -103,6 +103,7 @@ next to the ports:
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
 | `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |
+| `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
