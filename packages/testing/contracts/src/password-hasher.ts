@@ -15,6 +15,16 @@ export function passwordHasherContract(
   make: MakePasswordHasher,
   format: PasswordHashFormatCases,
 ): void {
+  behaviourCases(name, make, format);
+  formatCases(name, make, format);
+}
+
+/** What every adapter does, whatever its format. */
+function behaviourCases(
+  name: string,
+  make: MakePasswordHasher,
+  format: PasswordHashFormatCases,
+): void {
   verifies("contracts.password-hasher", () => {
     describe(`PasswordHasher contract: ${name}`, () => {
       it("verifies a new hash with the password, and only with it", async () => {
@@ -42,7 +52,14 @@ export function passwordHasherContract(
       });
     });
   });
+}
 
+/** The vectors, ranges and malformed hashes of the adapter's one format. */
+function formatCases(
+  name: string,
+  make: MakePasswordHasher,
+  format: PasswordHashFormatCases,
+): void {
   verifies(format.requirement, () => {
     describe(`PasswordHasher format vectors: ${name}`, () => {
       for (const { password, hash } of format.matching) {
