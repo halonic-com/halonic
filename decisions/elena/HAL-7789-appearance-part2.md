@@ -1,6 +1,6 @@
 # Decision: the Appearance follow-ups from the first pull request
 
-- Approval: these follow-ups are part of [HAL-7789](/HAL/issues/HAL-7789), the T11 plan [HAL-1294](/HAL/issues/HAL-1294); the package owner (Liam) approves this note in review
+- Approval: these follow-ups are part of HAL-7789, the T11 plan HAL-1294; the package owner (Liam) approves this note in review
 - Kind: internal
 - Task: HAL-7789
 
