@@ -1,7 +1,7 @@
 # Halonic
 
-> **Status: pre-1.0, not yet usable.** This repository is being built. There
-> are no releases yet, and nothing here is a stable interface. The full README
+> **Status: pre-1.0, not yet usable.** This repository is being built. Version
+> 0.1.0 is tagged, but nothing here is a stable interface yet. The full README
 > follows before the first public release.
 
 Halonic is a local-first Studio, engine and command-line tool for designing,
