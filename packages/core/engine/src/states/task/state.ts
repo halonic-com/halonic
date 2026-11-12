@@ -1,4 +1,4 @@
-import { stepPrompt } from "@halonicjs/workflow";
+import { methodPrompt, stepPrompt, withGets } from "@halonicjs/workflow";
 import { checkAnswer } from "../../kernel/agent-answer.ts";
 import { agentCallEffect } from "../../kernel/agent-call.ts";
 import type { DecidedEvent, DecideInput } from "../../kernel/decide-types.ts";
@@ -9,6 +9,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
+import { methodOf, noMethodError } from "../../kernel/step-method.ts";
 import { answerApproval, askForApproval, askForHarnessApproval } from "./approval.ts";
 import { artifactOf } from "./artifact.ts";
 import {
@@ -31,8 +32,11 @@ import {
  * asked, which kept running while the run waited. When it stops before a
  * connector call that can change things, the engine records the call and
  * makes it, and the agent goes on with the result; see `effect.ts`. A state
- * with `artifact` saves the answer as a file; see `artifact.ts`. Methods,
- * conversations and signals join with the agent loop (step 4).
+ * with `artifact` saves the answer as a file; see `artifact.ts`. A state
+ * with `method` sends the method's prompt with its `with` values, and its
+ * answer is checked against the method's `output`; the executor uses the
+ * method's model, steps and tools. Conversations and signals join with the
+ * agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
@@ -48,20 +52,43 @@ export const taskState: StateHandler<"task"> = {
   },
 };
 
-function startAgent({ run, stateId, state, scope, agents }: StateContext): StateStep {
+function startAgent(context: StateContext): StateStep {
+  const { run, stateId, state, agents } = context;
   const agent = state.agent;
   if (agent === undefined) {
-    return {
-      ...nothing,
-      outcome: { type: "fail", error: `Task state "${stateId}" names no agent.` },
-    };
+    return failWith(`Task state "${stateId}" names no agent.`);
   }
-  const prompt = stepPrompt(state.input, state.gets, scope, run.input);
+  const prompt = promptOf(context, agent);
+  if (typeof prompt !== "string") {
+    return failWith(prompt.error);
+  }
   const call = { callId: nextCallId(run), state: stateId, agent, prompt };
   return {
     events: [{ type: "agent.started", state: stateId, agent, prompt }],
     effects: [agentCallEffect(run, agents, call)],
   };
+}
+
+/**
+ * The state's prompt: its method's prompt with the picked data after it, or
+ * its `input`, or the error when its agent has no such method.
+ */
+function promptOf(
+  { run, stateId, state, scope, agents }: StateContext,
+  agent: string,
+): string | { readonly error: string } {
+  if (state.method === undefined) {
+    return stepPrompt(state.input, state.gets, scope, run.input);
+  }
+  const method = methodOf(agents, agent, state.method);
+  if (method === undefined) {
+    return { error: noMethodError(stateId, agent, state.method) };
+  }
+  return withGets(methodPrompt(state.method, method, state.with, scope), state.gets, scope);
+}
+
+function failWith(error: string): StateStep {
+  return { ...nothing, outcome: { type: "fail", error } };
 }
 
 /**
@@ -95,7 +122,9 @@ function finishAgent(
   pending: PendingCall,
   answer: unknown,
 ): StateStep {
-  const checked = checkAnswer(agents, pending.agent, answer);
+  const method =
+    state.method === undefined ? undefined : methodOf(agents, pending.agent, state.method);
+  const checked = checkAnswer(agents, pending.agent, answer, method);
   if ("error" in checked) {
     return { ...nothing, outcome: { type: "fail", ...checked } };
   }

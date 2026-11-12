@@ -10,6 +10,7 @@ import type {
 import type {
   ChatParams,
   ChatResponse,
+  ChatTurnRequest,
   Clock,
   ConnectorClient,
   RecordStore,
@@ -135,6 +136,8 @@ export interface RunsSetup {
   readonly aliasParams?: ChatParams;
   /** Whether the workspace is local only; it isn't when left out. */
   readonly localOnly?: boolean;
+  /** Gets each request the executor resolves a model for, such as a method's alias. */
+  readonly onResolveModel?: (request: ChatTurnRequest) => void;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -162,11 +165,14 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const definitionsAsked: string[] = [];
   const versionsAsked: (RunVersion | undefined)[] = [];
   const executor = new LocalExecutor({
-    resolveModel: async () => ({
-      provider: model,
-      model: "scripted-1",
-      ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
-    }),
+    resolveModel: async (request) => {
+      setup.onResolveModel?.(request);
+      return {
+        provider: model,
+        model: "scripted-1",
+        ...(setup.aliasParams === undefined ? {} : { params: setup.aliasParams }),
+      };
+    },
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: setup.connectors ?? [],
