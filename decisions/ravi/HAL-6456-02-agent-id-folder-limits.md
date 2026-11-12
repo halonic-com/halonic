@@ -2,8 +2,8 @@
 
 - Requirement: `format.agent-file` (`packages/core/format/requirements/agent-file.md`)
 - Task: HAL-6456, from Liam's review of #1957 on HAL-6441
-- Approval: Liam decided on [HAL-6456](/HAL/issues/HAL-6456) to fix this in the format, not in each caller; the package owner (Elena) and Liam approve it in review
-- Kind: user-visible
+- Approval: Liam decided on [HAL-6456](/HAL/issues/HAL-6456) to fix this in the format, not in each caller, and approved the change there in review as package owner
+- Kind: internal
 
 ## What changes
 
