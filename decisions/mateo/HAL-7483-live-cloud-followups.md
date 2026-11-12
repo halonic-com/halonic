@@ -3,6 +3,7 @@
 - Task: HAL-7483 (follow-ups to [HAL-6701](/HAL/issues/HAL-6701), Julian's review on [HAL-6824](/HAL/issues/HAL-6824), the [HAL-6804](/HAL/issues/HAL-6804) scope note)
 - Approval: the task asks for this change; Liam approves this note in review on [HAL-7483](/HAL/issues/HAL-7483)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o1klDvUUFEQMcl7zbMwhJyw9F21GA0Xs5YMGZdk/ec86aIf0xbNhei/gbGDLmc9sW3KFfkzzFyAl+veGhk6nBw==
 
 ## What changes
 
