@@ -155,6 +155,8 @@ function desktopWebview(picked: string | null) {
   const invoke = async (command: string, args?: Record<string, unknown>) => {
     calls.push({ command, args });
     if (command === "pick_folder") return picked;
+    if (command === "fs_write") return { status: "written" };
+    if (command === "fs_list") return [];
     return command === "run_logs" ? [] : null;
   };
   const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
@@ -243,6 +245,22 @@ verifies("studio.open-folder", () => {
       workspace: "/work/acme",
       path: "workspace.yaml",
     });
+    await opened.dispose();
+  });
+
+  it("saves an opened workspace's changes through the shell and reports them in its save note", async () => {
+    const webview = desktopWebview(null);
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
+
+    opened.workspace.services.get(workspaceFilesKey).change("Added a note", { "note.txt": "hi" });
+    expect(await opened.saving?.saveNow()).toBe(true);
+
+    expect(webview.calls.find((call) => call.command === "fs_write")?.args).toMatchObject({
+      workspace: "/work/acme",
+      path: "note.txt",
+    });
+    expect(opened.workspace.saving.note).toEqual({ kind: "saved" });
     await opened.dispose();
   });
 

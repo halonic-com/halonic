@@ -6,7 +6,12 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
-import { openWorkspace, ServiceRegistry, type WorkspaceScope } from "@halonicjs/app";
+import {
+  openWorkspace,
+  ServiceRegistry,
+  type WorkspaceScope,
+  workspaceFilesKey,
+} from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
@@ -28,6 +33,7 @@ import {
   type OpenedWorkspace,
   type RecentStorage,
   RecentWorkspaces,
+  WorkspaceSaving,
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
 import {
@@ -237,6 +243,7 @@ export function openFolder(
   return {
     name,
     workspace,
+    saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
     dispose: () => (scope === undefined ? services.dispose() : scope.close()),
   };
 }
@@ -257,6 +264,20 @@ function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   const transport = tauriAgentHostTransport(window);
   if (transport !== undefined)
     services.provide(AgentSandboxService, new AgentHostSandboxFacts(transport));
+}
+
+/** Saves the scope's files by themselves, through the workspace's save state (`workspace.saves-itself`). */
+function savingOf(
+  scope: WorkspaceScope,
+  workspace: StudioWorkspace,
+  name: string,
+): WorkspaceSaving {
+  return new WorkspaceSaving({
+    files: scope.services.get(workspaceFilesKey),
+    onChange: (listener) => scope.events.on("files.changed", listener),
+    saving: workspace.saving,
+    name,
+  });
 }
 
 /** The shell's file commands and channels, as the desktop stores take them. */

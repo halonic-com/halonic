@@ -4,6 +4,7 @@ import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
+import type { WorkspaceSaving } from "./workspace-saving.ts";
 import {
   folderName,
   MENU_BUSY_AFTER_MS,
@@ -302,6 +303,121 @@ verifies("workspace.busy-switcher", () => {
     await first;
     expect(options.openFolder).toHaveBeenCalledOnce();
     expect(options.pickFolder).not.toHaveBeenCalled();
+  });
+});
+
+/** A workspace's saving whose `saveNow` gives each answer in turn; its problem is a full disk. */
+function savingThatAnswers(...answers: boolean[]) {
+  const saveNow = vi.fn(async () => answers.shift() ?? true);
+  const dispose = vi.fn();
+  const saving = {
+    saveNow,
+    dispose,
+    problem: { reason: "disk-full" },
+  } as unknown as WorkspaceSaving;
+  return { saving, saveNow, dispose };
+}
+
+verifies("workspace.saves-itself", () => {
+  async function openWithSaving(...answers: boolean[]) {
+    const { saving, saveNow, dispose } = savingThatAnswers(...answers);
+    const acme = { ...opened("Acme"), saving };
+    const { switcher } = setup({ openFolder: async () => acme });
+    await switcher.openLocation("/work/acme");
+    return { switcher, acme, saveNow, dispose };
+  }
+
+  it("saves first and closes without asking when that works", async () => {
+    const { switcher, acme, saveNow, dispose } = await openWithSaving(true);
+
+    await switcher.closeShown();
+
+    expect(saveNow).toHaveBeenCalledOnce();
+    expect(switcher.closeRequest).toBeUndefined();
+    expect(switcher.open.shown).toBeUndefined();
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(acme.disposed()).toBe(true);
+  });
+
+  it("keeps the workspace open and asks when saving fails", async () => {
+    const { switcher, acme } = await openWithSaving(false);
+
+    await switcher.closeShown();
+
+    expect(switcher.closeRequest).toEqual({
+      location: "/work/acme",
+      name: "Acme",
+      reason: "disk-full",
+    });
+    expect(switcher.open.shown?.location).toBe("/work/acme");
+    expect(acme.disposed()).toBe(false);
+  });
+
+  it("keeps it open when the user cancels", async () => {
+    const { switcher } = await openWithSaving(false);
+    await switcher.closeShown();
+
+    switcher.cancelClose();
+
+    expect(switcher.closeRequest).toBeUndefined();
+    expect(switcher.open.shown?.location).toBe("/work/acme");
+  });
+
+  it("closes without its changes on Close anyway", async () => {
+    const { switcher, acme } = await openWithSaving(false);
+    await switcher.closeShown();
+
+    await switcher.closeAnyway();
+
+    expect(switcher.closeRequest).toBeUndefined();
+    expect(switcher.open.shown).toBeUndefined();
+    expect(acme.disposed()).toBe(true);
+  });
+
+  it("saves again and closes on Try again, or asks again when it still fails", async () => {
+    const { switcher, acme } = await openWithSaving(false, false, true);
+    await switcher.closeShown();
+
+    await switcher.tryCloseAgain();
+    expect(switcher.closeRequest?.reason).toBe("disk-full");
+    expect(acme.disposed()).toBe(false);
+
+    await switcher.tryCloseAgain();
+    expect(switcher.closeRequest).toBeUndefined();
+    expect(acme.disposed()).toBe(true);
+  });
+
+  it("waits mid-retry: Close anyway and a second Try again do nothing until the save ends", async () => {
+    const { switcher, acme, saveNow } = await openWithSaving(false);
+    await switcher.closeShown();
+    let finish: (saved: boolean) => void = () => undefined;
+    saveNow.mockImplementationOnce(() => new Promise<boolean>((resolve) => (finish = resolve)));
+    const notified = vi.fn();
+    switcher.subscribe(notified);
+
+    const retry = switcher.tryCloseAgain();
+    expect(switcher.retrying).toBe(true);
+    expect(notified).toHaveBeenCalled();
+    await switcher.closeAnyway();
+    await switcher.tryCloseAgain();
+    expect(saveNow).toHaveBeenCalledTimes(2);
+    expect(acme.disposed()).toBe(false);
+    expect(switcher.closeRequest).toBeDefined();
+
+    finish(false);
+    await retry;
+    expect(switcher.retrying).toBe(false);
+    expect(switcher.closeRequest?.reason).toBe("disk-full");
+    expect(acme.disposed()).toBe(false);
+  });
+
+  it("does nothing on an answer when no close is waiting", async () => {
+    const { switcher } = await openWithSaving();
+
+    await switcher.closeAnyway();
+    await switcher.tryCloseAgain();
+
+    expect(switcher.open.shown?.location).toBe("/work/acme");
   });
 });
 

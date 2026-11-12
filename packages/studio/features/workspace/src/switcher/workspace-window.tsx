@@ -5,7 +5,9 @@ import {
   WelcomeWindow,
 } from "@halonicjs/studio-shell";
 import { useEffect, useSyncExternalStore } from "react";
+import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
+import { historyKey } from "./workspace-saving.ts";
 import type { WorkspaceSwitcher } from "./workspace-switcher.ts";
 
 /** Props for {@link WorkspaceWindow}. */
@@ -44,12 +46,29 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     (onChange) => switcher.subscribe(onChange),
     () => switcher.busy,
   );
+  const closeRequest = useSyncExternalStore(
+    (onChange) => switcher.subscribe(onChange),
+    () => switcher.closeRequest,
+  );
+  const retrying = useSyncExternalStore(
+    (onChange) => switcher.subscribe(onChange),
+    () => switcher.retrying,
+  );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const position = workspaceKeyPosition(event, platform);
       if (position !== undefined) {
         event.preventDefault();
         switcher.showAt(position);
+        return;
+      }
+      const history = historyKey(event, platform);
+      const saving = switcher.open.shown?.value.saving;
+      // In a text field Ctrl Z is the field's own undo.
+      if (history !== undefined && saving !== undefined && !isEditing(event.target)) {
+        event.preventDefault();
+        if (history === "undo") saving.undo();
+        else saving.redo();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -80,16 +99,35 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     onClose: () => void switcher.closeShown(),
   });
   return (
-    // Each workspace keeps its own tabs in its StudioWorkspace; the key starts its window afresh.
-    <StudioWindow
-      key={shown.location}
-      shell={shell}
-      workspace={shown.value.workspace}
-      host="desktop-app"
-      platform={platform}
-      language={language}
-      switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
-    />
+    <>
+      {/* Each workspace keeps its own tabs in its StudioWorkspace; the key starts its window afresh. */}
+      <StudioWindow
+        key={shown.location}
+        shell={shell}
+        workspace={shown.value.workspace}
+        host="desktop-app"
+        platform={platform}
+        language={language}
+        switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
+      />
+      {closeRequest === undefined ? null : (
+        <CloseWorkspaceDialog
+          request={closeRequest}
+          onCancel={() => switcher.cancelClose()}
+          onCloseAnyway={() => void switcher.closeAnyway()}
+          onTryAgain={() => void switcher.tryCloseAgain()}
+          busy={retrying}
+        />
+      )}
+    </>
+  );
+}
+
+/** Whether a key press happened in a field that has its own undo. */
+function isEditing(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
   );
 }
 

@@ -8,6 +8,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type MountedWorkspaceWindow, mountWorkspaceWindow } from "./mount-workspace-window.tsx";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
+import type { WorkspaceSaving } from "./workspace-saving.ts";
 import { folderName, MENU_BUSY_AFTER_MS, WorkspaceSwitcher } from "./workspace-switcher.ts";
 import { workspaceKeyPosition } from "./workspace-window.tsx";
 
@@ -59,6 +60,7 @@ function noServices() {
 function start(
   picks: string[],
   gone: string[] = [],
+  saving?: WorkspaceSaving,
 ): { shell: Shell; switcher: WorkspaceSwitcher } {
   const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
   const storage = new Map<string, string>();
@@ -74,7 +76,7 @@ function start(
         services: noServices(),
         name,
       });
-      return { name, workspace, dispose: async () => {} };
+      return { name, workspace, saving, dispose: async () => {} };
     },
     recent: new RecentWorkspaces({
       getItem: (key) => storage.get(key) ?? null,
@@ -221,5 +223,87 @@ describe("workspaceKeyPosition (workspace.switcher.ctrl-number-keys)", () => {
     expect(workspaceKeyPosition(key({ key: "0", ctrlKey: true }), "windows")).toBeUndefined();
     expect(workspaceKeyPosition(key({ ctrlKey: true }), "macos")).toBeUndefined();
     expect(workspaceKeyPosition(key({ metaKey: true }), "windows")).toBeUndefined();
+  });
+});
+
+verifies("workspace.saves-itself", () => {
+  // jsdom has `<dialog>` but no `showModal()`; opening it is all these tests need.
+  beforeEach(() => {
+    Object.assign(HTMLDialogElement.prototype, {
+      showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      },
+      close(this: HTMLDialogElement) {
+        this.removeAttribute("open");
+      },
+    });
+  });
+
+  /** A saving that can't save: its close asks. */
+  function failingSaving() {
+    return {
+      saveNow: vi.fn(async () => false),
+      problem: { reason: "disk-full" },
+      undo: vi.fn(),
+      redo: vi.fn(),
+      dispose: vi.fn(),
+    };
+  }
+
+  function buttonNamed(name: string): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll("button")].find((button) => button.textContent === name);
+  }
+
+  it('asks "Close acme?" when saving fails, and Close anyway closes', async () => {
+    const saving = failingSaving();
+    const { switcher } = start([], [], saving as unknown as WorkspaceSaving);
+    await act(() => switcher.openLocation("/work/acme"));
+
+    await act(() => switcher.closeShown());
+    expect(document.querySelector("dialog h2")?.textContent).toBe("Close acme?");
+    expect(document.querySelector("dialog p")?.textContent).toBe(
+      "Couldn't save acme: the disk is full. Close anyway throws away the changes.",
+    );
+    expect(switcherButton()).not.toBeNull();
+
+    await act(async () => buttonNamed("Close anyway")?.click());
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
+  });
+
+  it("names the dialog's close button after what it does", async () => {
+    const { switcher } = start([], [], failingSaving() as unknown as WorkspaceSaving);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.closeShown());
+
+    expect(document.querySelector('dialog [aria-label="Keep acme open"]')).not.toBeNull();
+  });
+
+  it("keeps the workspace on Keep open", async () => {
+    const { switcher } = start([], [], failingSaving() as unknown as WorkspaceSaving);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.closeShown());
+
+    await act(async () => buttonNamed("Keep open")?.click());
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
+  });
+
+  it("undoes on Ctrl Z and redoes on Ctrl Shift Z, but not inside a text field", async () => {
+    const saving = failingSaving();
+    const { switcher } = start([], [], saving as unknown as WorkspaceSaving);
+    await act(() => switcher.openLocation("/work/acme"));
+
+    await press({ key: "z", ctrlKey: true });
+    await press({ key: "Z", ctrlKey: true, shiftKey: true });
+    expect([saving.undo.mock.calls.length, saving.redo.mock.calls.length]).toEqual([1, 1]);
+
+    const field = document.createElement("input");
+    document.body.append(field);
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
+    });
+    field.remove();
+    expect(saving.undo.mock.calls.length).toBe(1);
   });
 });
