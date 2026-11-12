@@ -101,8 +101,12 @@ What it shows (design: the install flow, sections 2.2 to 2.7):
   an elevated prompt.
 
 Silent (`/S`) and passive installs show none of this and skip the sandbox step;
-`/S /SANDBOX=1` from an elevated prompt runs it. `/RELAUNCH` reopens Halonic
-after a silent install.
+`/S /SANDBOX=1` from an elevated prompt runs it. Without administrator rights
+a silent install can't let anyone answer Windows' prompt, so it skips the step
+even with `/SANDBOX=1`. From an elevated prompt the installer runs
+`halonic-agent-host.exe --sandbox-setup` elevated from the install folder it
+has just written: whoever started it as an administrator chose that.
+`/RELAUNCH` reopens Halonic after a silent install.
 
 The `installer-windows` CI job builds it, walks the pages and the messages
 (the pictures are in the job's artifacts), installs it silently into a
