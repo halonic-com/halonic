@@ -20,6 +20,7 @@ import {
   openLocalEngine,
   type RoutineEngine,
   type RoutineTicks,
+  type WorkspaceVersions,
 } from "./local-engine-host.ts";
 import type { Message } from "./messages/define.ts";
 import { runMessages } from "./messages/run.ts";
@@ -61,6 +62,8 @@ export interface WorkspaceEngineTarget {
   readonly dir: OpenWorkspaceDir;
   /** The loaded workspace, checked and trusted by the command. */
   readonly workspace: LoadedWorkspace;
+  /** For `routines watch`, whose runs read the live version at each start; see `LocalEngineInput.versions`. */
+  readonly versions?: WorkspaceVersions;
   /**
    * The runs the sandbox is checked for first: the one run of `run` and
    * `runs send`, or each workflow the routines of `routines watch` start.
@@ -149,6 +152,7 @@ export async function openWorkspaceEngine(
   );
   const engine = await openLocalEngine({
     workspace: target.workspace,
+    ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
     secrets: context.secrets,
     http: setup.http,

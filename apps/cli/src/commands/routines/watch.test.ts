@@ -1,5 +1,4 @@
 import { RunHistory } from "@halonicjs/app";
-import type { Clock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -13,6 +12,7 @@ import {
 } from "../../test/acme-runs.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
+import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
 import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
@@ -81,47 +81,6 @@ afterEach(async () => {
   await removeAcmeRuns(acmeRuns);
 });
 
-/**
- * The engine's time, moved by hand, and its wake-ups, which only go off
- * when the test calls {@link FakeTime.wake}: no real timer runs.
- */
-interface FakeTime {
-  readonly clock: Clock;
-  set(iso: string): void;
-  /** Calls every wake-up the scheduler has set, as if its delay had passed. */
-  wake(): void;
-  setTimer(callback: () => void, delayMs: number): () => void;
-}
-
-function fakeTime(start: number): FakeTime {
-  let now = start;
-  let wakeUps = new Set<() => void>();
-  return {
-    clock: { now: () => new Date(now) },
-    set: (iso) => {
-      now = Date.parse(iso);
-    },
-    wake: () => {
-      const due = wakeUps;
-      wakeUps = new Set();
-      for (const callback of due) callback();
-    },
-    setTimer: (callback) => {
-      wakeUps.add(callback);
-      return () => wakeUps.delete(callback);
-    },
-  };
-}
-
-/**
- * Calls the scheduler's wake-ups, for a `waitUntil` check: the scheduler
- * sets its first one once it has read its timers, so each try wakes it again.
- */
-function wokenUp(time: FakeTime): true {
-  time.wake();
-  return true;
-}
-
 function watchCommand(time: FakeTime) {
   const setup = acmeRunsSetup(acmeRuns);
   return routinesCommandWith({
@@ -178,7 +137,7 @@ verifies("cli.commands.routines.watch", () => {
       started?.id ?? "",
     );
     expect(events.map((event) => event.type)).toContain("timer.fired");
-    // The watch froze the saved files when it started, and the run records that it read them.
+    // With history off, the run reads the saved files, and records that it did.
     expect(events.find((event) => event.type === "run.started")).toMatchObject({
       version: { reads: "saved-files" },
     });

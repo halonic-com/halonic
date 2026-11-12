@@ -22,7 +22,7 @@ function reportOnLines() {
   const report = watchReport(
     { printAhead: (line) => lines.push(plainText(line)), debug: () => {} },
     () => ({ now: new Date("2026-11-10T15:00:10.000Z"), timeZone: "UTC" }),
-    [],
+    () => [],
   );
   return { lines, report };
 }
