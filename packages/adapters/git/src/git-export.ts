@@ -48,6 +48,21 @@ export function checkGitAddress(address: string): void {
   if (url.hostname === "" || url.hostname.startsWith("-")) throw refused("its host is not valid");
 }
 
+/**
+ * Refuses what {@link exportCommit} would refuse before it starts git: an
+ * address {@link checkGitAddress} refuses, or a `ref` that isn't a plain
+ * branch, tag or commit id, such as an option or a range. A caller can run
+ * it before it even looks for git.
+ *
+ * @throws Error saying what was refused
+ */
+export function checkGitExport(address: string, ref = "HEAD"): void {
+  checkGitAddress(address);
+  if (ref !== "HEAD" && !isPlainRef(ref)) {
+    throw new Error(`Can't use "${ref}" as a commit: use a branch, a tag or a full commit id.`);
+  }
+}
+
 function hasSpaceOrControl(text: string): boolean {
   return [...text].some((character) => {
     const code = character.codePointAt(0) ?? 0;
@@ -84,10 +99,7 @@ export async function exportCommit(
   destination: string,
   ref = "HEAD",
 ): Promise<GitExport> {
-  checkGitAddress(address);
-  if (ref !== "HEAD" && !isPlainRef(ref)) {
-    throw new Error(`Can't use "${ref}" as a commit: use a branch, a tag or a full commit id.`);
-  }
+  checkGitExport(address, ref);
   const work = await mkdtemp(join(tmpdir(), "halonic-git-export-"));
   try {
     const gitDir = join(work, "repository");

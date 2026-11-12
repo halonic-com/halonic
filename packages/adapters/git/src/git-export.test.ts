@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import { plainGit, repositoryWith, Scratch } from "./fixtures.test-helper.ts";
-import { checkGitAddress, exportCommit } from "./git-export.ts";
+import { checkGitAddress, checkGitExport, exportCommit } from "./git-export.ts";
 import { remoteRunner, sshRemote } from "./harness.test-helper.ts";
 
 const scratch = new Scratch();
@@ -39,6 +39,19 @@ verifies("git.export", () => {
 
     it.each(["https://example.com/a.git", "ssh://git@example.com/a.git"])("accepts %s", (a) => {
       expect(() => checkGitAddress(a)).not.toThrow();
+    });
+  });
+
+  describe("checkGitExport", () => {
+    it("refuses an unsafe commit with a safe address, without git", () => {
+      expect(() => checkGitExport("https://example.com/a.git", "--upload-pack=x")).toThrow(
+        "Can't use",
+      );
+    });
+
+    it("accepts a safe address with no commit or a tag", () => {
+      expect(() => checkGitExport("https://example.com/a.git")).not.toThrow();
+      expect(() => checkGitExport("https://example.com/a.git", "v1.2.0")).not.toThrow();
     });
   });
 
