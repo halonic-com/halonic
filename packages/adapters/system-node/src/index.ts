@@ -8,3 +8,4 @@ export {
   type NodeResourceProbeOptions,
   systemProcessTable,
 } from "./resource-probe.ts";
+export { type StartFolderProfile, startFolder } from "./start-folder.ts";

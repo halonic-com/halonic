@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, join } from "node:path";
+import { startFolder } from "@halonicjs/adapter-system-node";
 import { skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import type {
   SandboxBlockListener,
@@ -29,7 +30,6 @@ import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
 import {
   assertVariableNames,
   baseEnv,
-  isInside,
   launcherEnv,
   programEnv,
   reachesNoNetwork,
@@ -209,10 +209,10 @@ export class SrtSession implements SandboxSession {
       const why = this.#fence.state === "not-fenced" ? this.#fence.reason : "the session is closed";
       throw new Error(`the sandbox fence is not proven: ${why}`);
     }
-    const cwd = resolve(this.profile.workingFolder, command.cwd ?? ".");
-    if (!isInside(resolve(this.profile.workingFolder), cwd)) {
-      throw new Error(`the program must start inside the working folder, not in ${cwd}`);
-    }
+    // The session's private folder (its settings and the canary) and the launcher's temp folder stay hidden.
+    const hidden =
+      this.#launcherTemp === null ? [this.#folder] : [this.#folder, this.#launcherTemp];
+    const cwd = await startFolder(this.profile, command.cwd, hidden);
     // The profile's variables, which Halonic sets, are read too; the safe host `PATH` isn't (HAL-4903).
     const start = { cwd, program: command.program, args: command.args, env: this.profile.env };
     if (await touchesSkillScripts(start, nodePaths)) {

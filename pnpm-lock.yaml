@@ -1300,6 +1300,9 @@ importers:
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
         version: 0.0.81(patch_hash=aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c)
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../system-node
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
