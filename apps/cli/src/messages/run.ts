@@ -184,6 +184,14 @@ export const runMessages = defineMessages("run", {
     phrase`${subagent}, for ${joinedFacts(facts)}`,
   /** With a !: the wait step's description, its first line, as written. */
   waitingForYou: (description: string) => phrase`Waiting for you: ${description}`,
+  /**
+   * With a !, for a tool call that waits for the user's OK: who asked and which tool. Both come
+   * from workspace files and a connector, so they are made printable (cli-output section 5).
+   */
+  waitingForApproval: (agent: string, tool: string) =>
+    phrase`Waiting for your approval: ${printable(agent)} wants to use ${printable(tool)}`,
+  /** Under the answer line, when several tool calls wait: one answer settles only the first listed. */
+  oneAnswerTakesTheFirst: () => phrase`Each answer settles the first one listed.`,
   /** With a !, for a wait step without a description. */
   waitingInStep: (step: string) => phrase`Waiting for you in the step ${step}.`,
   /**

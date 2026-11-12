@@ -174,33 +174,60 @@ function cancelledAt(
 /**
  * A run waiting at a wait step ends with `run`'s two waiting lines, word for
  * word (cli-output 3.4): "! Waiting for you: Approve this reply?" and how to
- * answer. A run waiting for a tool approval, its child run or a time has no
- * such lines in 3.4; its step line already says what it waits for.
+ * answer. A run waiting for tool approvals has one "! Waiting for your
+ * approval: Writer wants to use send_email" line for each, oldest first, and
+ * the same answer line: one answer takes the oldest, and a line under the answer says so. A run waiting for its
+ * child run or a time has no such lines; its step line already says what it
+ * waits for.
  */
 function waitingEnding(
   summary: RunSummary,
   definitions: RunDefinitions,
   dir: string | undefined,
 ): Phrase[] {
-  const waitsAtAWaitStep =
-    summary.approvals.length === 0 && summary.waitingOn === null && summary.accepts.length > 0;
-  if (!waitsAtAWaitStep || summary.state === null) {
+  if (summary.waitingOn !== null || summary.accepts.length === 0) {
     return [];
   }
-  const description = waitDescription(summary, definitions.workflow);
-  const waiting =
-    description === undefined
-      ? runMessages.waitingInStep(
-          stepName(summary.state, definitions.workflow?.states[summary.state]?.description),
-        )
-      : runMessages.waitingForYou(description);
+  const waiting = waitingLines(summary, definitions);
+  if (waiting.length === 0) {
+    return [];
+  }
   const answer = runMessages.answerHere(
     shortRunId(summary.id),
     summary.accepts,
     dir,
     summary.answerLabels,
   );
-  return [[], phrase`${markPart("needsYou")} ${waiting.phrase}`, phrase`  ${answer.phrase}`];
+  return [
+    [],
+    ...waiting.map((line) => phrase`${markPart("needsYou")} ${line}`),
+    phrase`  ${answer.phrase}`,
+    ...(waiting.length > 1 ? [phrase`  ${runMessages.oneAnswerTakesTheFirst().phrase}`] : []),
+  ];
+}
+
+/** What the run waits for, one phrase per thing, without the mark. */
+function waitingLines(summary: RunSummary, definitions: RunDefinitions): Phrase[] {
+  if (summary.approvals.length > 0) {
+    return summary.approvals.map(
+      ({ agent, subagent, tool }) =>
+        runMessages.waitingForApproval(
+          definitions.agent(subagent ?? agent)?.name ?? subagent ?? agent,
+          tool,
+        ).phrase,
+    );
+  }
+  if (summary.state === null) {
+    return [];
+  }
+  const description = waitDescription(summary, definitions.workflow);
+  return [
+    description === undefined
+      ? runMessages.waitingInStep(
+          stepName(summary.state, definitions.workflow?.states[summary.state]?.description),
+        ).phrase
+      : runMessages.waitingForYou(description).phrase,
+  ];
 }
 
 /** "✓ Support reply finished in 18 s." and the receipt under it. */
