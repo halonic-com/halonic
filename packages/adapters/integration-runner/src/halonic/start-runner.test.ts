@@ -7,7 +7,7 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   bridgeOptions,
   type FakeRunnerProcess,
@@ -16,7 +16,7 @@ import {
 } from "../pipes.test-helper.ts";
 import { readRunnerArgs } from "../runner-args.ts";
 import { RunnerStoppedError } from "./limits.ts";
-import { type StartRunnerOptions, startRunner } from "./start-runner.ts";
+import { forgetPrlimitNotice, type StartRunnerOptions, startRunner } from "./start-runner.ts";
 
 /** A sandbox whose sessions start fake runners, and that records what it was asked. */
 class FakeSandbox implements Sandbox {
@@ -131,6 +131,26 @@ function nodeArgs(command: SandboxCommand | undefined): string[] {
   return command?.program === "/usr/bin/prlimit" ? args.slice(2) : args;
 }
 
+/** Options for a Linux machine where `/usr/bin/prlimit` doesn't exist. */
+function linuxWithoutPrlimit(
+  sandbox: FakeSandbox,
+  onNotice?: (message: string) => void,
+): ReturnType<typeof startOptions> {
+  const options = startOptions(sandbox);
+  return {
+    ...options,
+    machine: { ...options.machine, platform: "linux" },
+    disk: {
+      ...fakeDisk,
+      realPath: (path) => {
+        if (path === "/usr/bin/prlimit") throw new Error("no such file");
+        return realPath(path);
+      },
+    },
+    ...(onNotice === undefined ? {} : { onNotice }),
+  };
+}
+
 /** Starts a runner and plays its side until `start`. */
 async function started(sandbox: FakeSandbox, options = startOptions(sandbox)) {
   const starting = startRunner(options);
@@ -146,6 +166,8 @@ async function until(done: () => boolean): Promise<void> {
 
 verifies("integration-runner.start", () => {
   describe("startRunner", () => {
+    beforeEach(forgetPrlimitNotice);
+
     it("starts the runner in a session of its own with the untrusted profile", async () => {
       const sandbox = new FakeSandbox();
       const { connection } = await started(sandbox);
@@ -166,20 +188,9 @@ verifies("integration-runner.start", () => {
 
     it("starts plain Node on Linux when prlimit is missing, and says so once (HAL-7794)", async () => {
       const sandbox = new FakeSandbox();
-      const options = startOptions(sandbox);
       const notices: string[] = [];
-      const withoutPrlimit: ReturnType<typeof startOptions> = {
-        ...options,
-        machine: { ...options.machine, platform: "linux" },
-        disk: {
-          ...fakeDisk,
-          realPath: (path) => {
-            if (path === "/usr/bin/prlimit") throw new Error("no such file");
-            return realPath(path);
-          },
-        },
-        onNotice: (message) => notices.push(message),
-      };
+      const withoutPrlimit = linuxWithoutPrlimit(sandbox, (message) => notices.push(message));
+
       const first = await started(sandbox, withoutPrlimit);
       expect(sandbox.commands[0]?.program).toBe("/usr/bin/node");
       await first.connection.close();
@@ -189,6 +200,20 @@ verifies("integration-runner.start", () => {
       await second.connection.close();
       expect(notices).toHaveLength(1);
       expect(notices[0]).toContain("/usr/bin/prlimit is missing");
+    });
+
+    it("keeps the sentence for a start that hears it when an earlier start had no onNotice (HAL-7794)", async () => {
+      const sandbox = new FakeSandbox();
+      const notices: string[] = [];
+      const silent = await started(sandbox, linuxWithoutPrlimit(sandbox));
+      await silent.connection.close();
+      sandbox.runners.length = 0;
+      const listening = await started(
+        sandbox,
+        linuxWithoutPrlimit(sandbox, (message) => notices.push(message)),
+      );
+      await listening.connection.close();
+      expect(notices).toHaveLength(1);
     });
 
     it("gives every start a fresh nonce", async () => {

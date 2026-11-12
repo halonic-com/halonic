@@ -137,13 +137,21 @@ function prlimitIsThere(disk: RunnerDisk): boolean {
 
 let saidPrlimitIsMissing = false;
 
-/** Tells once per process that the runner starts without the data limit. */
+/**
+ * Tells once per process that the runner starts without the data limit. A
+ * start without `onNotice` says nothing and leaves the sentence for the next.
+ */
 function noticeMissingPrlimit(onNotice: ((message: string) => void) | undefined): void {
-  if (saidPrlimitIsMissing) return;
+  if (saidPrlimitIsMissing || onNotice === undefined) return;
   saidPrlimitIsMissing = true;
-  onNotice?.(
+  onNotice(
     `${prlimitProgram} is missing, so the integration runner starts without its limit on memory outside the JavaScript heap`,
   );
+}
+
+/** Lets the next start say again that `prlimit` is missing; for tests only. */
+export function forgetPrlimitNotice(): void {
+  saidPrlimitIsMissing = false;
 }
 
 /** The options without the paths as given, so only the real ones are used. */
