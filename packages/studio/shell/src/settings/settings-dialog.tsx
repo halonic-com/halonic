@@ -67,6 +67,11 @@ export interface SettingsDialogProps {
   readonly announcer: Announcer;
   /** The ✕, Escape, a click outside, and a section's link to a page. */
   readonly onClose: () => void;
+  /**
+   * Where the focus goes on close when the opener is gone or hidden, such as the Settings row of
+   * the narrow window's closed Places drawer: the toolbar's Places button.
+   */
+  readonly returnFocus?: (() => HTMLElement | null) | undefined;
 }
 
 /** Settings' height on a desktop window taller than 704px; a shorter one gets the window less 64px. */
@@ -133,6 +138,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       height={settingsHeight}
       flush
       onCancel={props.onClose}
+      {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}
       initialFocus={() => currentRow(nav.current)}
     >
       <div className="flex h-full min-h-0">

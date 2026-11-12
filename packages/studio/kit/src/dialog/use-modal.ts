@@ -11,7 +11,7 @@ export interface ModalFocus {
 /**
  * Opens `dialog` as a modal while the component is mounted, and closes it when it unmounts.
  * The element that had focus before is the opener: focus goes back to it on close, or, when it
- * has left the document, sits under `inert` or was only `body`, to `fallback()`, else to the
+ * has left the document, sits under `inert` or `hidden` or was only `body`, to `fallback()`, else to the
  * page's `h1`, which needs `tabIndex={-1}` to take focus. Older WebKitGTK doesn't move focus
  * back by itself, so the kit always does (component specs 8).
  */
@@ -57,7 +57,7 @@ function focusTarget(
   opener: HTMLElement | null,
   fallback: (() => HTMLElement | null) | undefined,
 ): HTMLElement | null {
-  if (opener?.isConnected === true && opener.closest("[inert]") === null) {
+  if (opener?.isConnected === true && opener.closest("[inert], [hidden]") === null) {
     return opener;
   }
   return fallback?.() ?? document.querySelector<HTMLElement>("h1");
