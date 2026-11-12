@@ -186,11 +186,14 @@ Halonic has one firm rule: **nothing that works may break.**
 - **Your targeted checks pass locally** before you ask for review. All checks
   (`ci-ok`) must pass in CI before anything is merged.
 - **Changes to cloud code run against a real cloud account.** A pull request
-  that changes a cloud path (the Cloudflare adapters, `packages/targets`,
-  `packages/host`, `core/ports` or the deploy command) must pass the live
-  suites before it merges. A fork never gets the test account's token, so a
-  maintainer reviews the change and pushes your branch into this repository to
-  run them.
+  that changes a cloud path (today `packages/targets`, `packages/host` and
+  `core/ports`; the Cloudflare adapters and the deploy command once they
+  exist; the full list is in
+  [`tooling/check/src/lib/cloud-paths.ts`](tooling/check/src/lib/cloud-paths.ts))
+  must pass the live suites before it merges, once they are switched on.
+  Until CI has a Cloudflare test token (HAL-198), they don't run and nothing
+  is required. A fork never gets the test account's token, so a maintainer
+  reviews the change and pushes your branch into this repository to run them.
 - **Rebase on `main`** rather than merging `main` into your branch.
 - **Two pull requests adding features at once?** After rebasing, run
   `pnpm discover --fix`.

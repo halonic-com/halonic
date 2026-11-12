@@ -3,7 +3,8 @@
 Builds what the engine needs to run agents in harnesses: its
 `HarnessRunsOptions`, and the proposal folders its top-level runs write
 files in. It takes ports only, so the Node parts stay with the caller and
-the CLI and the Studio's host build the same thing from their own parts.
+the CLI and the Studio's host can build the same thing from their own parts.
+Neither calls it yet: in 0.1.0 the CLI's local engine has no harnesses.
 
 - **Layer:** host
 - **Owner:** tomas
@@ -28,9 +29,11 @@ prices' own entries, so a model named `toString` has none.
 
 ## Where it is wired
 
-- **CLI:** `apps/cli` passes its Node parts: the srt sandbox, the host
-  sandbox, the Node bridge server, the harness profiles, git with worktrees
-  in the profile and the folder's files.
+- **CLI:** not wired yet. In 0.1.0 the CLI's local engine has no harnesses
+  (`apps/cli/src/local-engine-host.ts`), so a run whose agent names one fails
+  at that step. When it is wired, `apps/cli` passes its Node parts: the srt
+  sandbox, the host sandbox, the Node bridge server, the harness profiles,
+  git with worktrees in the profile and the folder's files.
 - **Studio:** `packages/studio/*` may not import host packages. When the
   Studio runs harness agents, `apps/studio` or `apps/agent-host` wires this
   with the agent host's stand-ins.
