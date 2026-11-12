@@ -1499,58 +1499,60 @@ jobs:
       - name: The sandbox step maps each outcome to its exit code and its reason
         run: |
           $step = Join-Path $env:HALONIC_TEST_DIR 'sandbox-step.ps1'
-          # A stand-in for the agent host: its answers come from environment variables.
           $fake = Join-Path $env:RUNNER_TEMP 'fake-host.cmd'
+          # The agent host's --sandbox-setup and --sandbox-remove print one
+          # JSON line with the outcome (HAL-1451); the scripts elevate nothing.
           @'
           @echo off
           echo %* | findstr /C:"--sandbox-setup" >nul && goto setup
-          echo %* | findstr /C:"--sandbox-check" >nul && goto check
           echo %* | findstr /C:"--sandbox-remove" >nul && goto remove
           exit /b 2
           :remove
-          if "%FAKE_REMOVE%"=="ok" goto setupok
-          echo {"ok":false,"reason":"srt-win uninstall failed (exit 22): kept_grants_in_use"}
+          if "%FAKE_REMOVE%"=="ok" goto done
+          if "%FAKE_REMOVE%"=="cancelled" goto cancelled
+          echo {"ok":false,"outcome":"failed","reason":"srt-win uninstall failed (exit 22): kept_grants_in_use"}
           exit /b 1
           :setup
-          if "%FAKE_SETUP%"=="ok" goto setupok
-          echo {"ok":false,"reason":"the firewall filter isn't active"}
+          if "%FAKE_SETUP%"=="ok" goto done
+          if "%FAKE_SETUP%"=="cancelled" goto cancelled
+          if "%FAKE_SETUP%"=="hang" ping -n 30 127.0.0.1 >nul
+          if "%FAKE_SETUP%"=="check" goto checkfailed
+          echo {"ok":false,"outcome":"failed","reason":"Windows didn't accept the sandbox's network rules","code":12}
           exit /b 1
-          :setupok
+          :checkfailed
+          echo {"ok":false,"outcome":"check_failed","reason":"srt's Windows install is missing"}
+          exit /b 1
+          :cancelled
+          echo {"ok":false,"outcome":"cancelled","reason":"the administrator prompt was cancelled; nothing changed"}
+          exit /b 1
+          :done
           echo {"ok":true}
-          exit /b 0
-          :check
-          if "%FAKE_CHECK%"=="ok" goto checkok
-          if "%FAKE_CHECK%"=="hang" ping -n 30 127.0.0.1 >nul
-          echo {"ok":false,"reason":"windows","missing":["srt's Windows install is missing"]}
-          exit /b 0
-          :checkok
-          echo {"ok":true,"reason":null,"missing":[]}
           exit /b 0
           '@ | Set-Content $fake -Encoding ASCII
           $cases = @(
-            @{ setup = 'ok'; check = 'ok'; code = 0; reason = '' },
-            @{ setup = 'fail'; check = 'ok'; code = 11; reason = "the firewall filter isn't active" },
-            @{ setup = 'ok'; check = 'fail'; code = 12; reason = "srt's Windows install is missing" },
-            @{ setup = 'ok'; check = 'hang'; code = 12; reason = "it didn't answer within 3 seconds" }
+            @{ setup = 'ok'; code = 0; reason = '' },
+            @{ setup = 'cancelled'; code = 10; reason = '' },
+            @{ setup = 'fail'; code = 11; reason = "Windows didn't accept the sandbox's network rules" },
+            @{ setup = 'check'; code = 12; reason = "srt's Windows install is missing" },
+            @{ setup = 'hang'; code = 11; reason = "it didn't finish within 3 seconds" }
           )
           foreach ($c in $cases) {
-            $env:FAKE_SETUP = $c.setup; $env:FAKE_CHECK = $c.check
-            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $step -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -NoElevate -CheckSeconds 3 | Out-String).Trim()
-            Write-Output "setup=$($c.setup) check=$($c.check): exit $LASTEXITCODE, '$out'"
+            $env:FAKE_SETUP = $c.setup
+            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $step -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -SetupSeconds 3 | Out-String).Trim()
+            Write-Output "setup=$($c.setup): exit $LASTEXITCODE, '$out'"
             if ($LASTEXITCODE -ne $c.code) { throw "Expected exit $($c.code)" }
             if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
           }
-          # The uninstaller's removal (flow 2.7): nothing set up asks nothing.
-          # The group stands in for the sandbox's: Administrators is always there.
           $remove = Join-Path $env:HALONIC_TEST_DIR 'sandbox-remove.ps1'
           $cases = @(
             @{ group = 'halonic-no-such-group'; remove = 'ok'; code = 20; reason = '' },
             @{ group = 'Administrators'; remove = 'ok'; code = 0; reason = '' },
+            @{ group = 'Administrators'; remove = 'cancelled'; code = 10; reason = '' },
             @{ group = 'Administrators'; remove = 'fail'; code = 11; reason = 'srt-win uninstall failed (exit 22): kept_grants_in_use' }
           )
           foreach ($c in $cases) {
             $env:FAKE_REMOVE = $c.remove
-            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $remove -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -NoElevate -AccountName 'halonic-no-such-account' -GroupName $c.group | Out-String).Trim()
+            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $remove -HostExe $fake -ProfileFolder (Join-Path $env:RUNNER_TEMP 'p') -AccountName 'halonic-no-such-account' -GroupName $c.group | Out-String).Trim()
             Write-Output "group=$($c.group) remove=$($c.remove): exit $LASTEXITCODE, '$out'"
             if ($LASTEXITCODE -ne $c.code) { throw "Expected exit $($c.code)" }
             if ($out -ne $c.reason) { throw "Expected the reason '$($c.reason)'" }
