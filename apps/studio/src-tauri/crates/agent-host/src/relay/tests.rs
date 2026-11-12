@@ -457,8 +457,16 @@ fn relay_limits_stop_the_relay_when_the_host_reads_nothing_for_too_long() {
     let mut idle = connect(&relay);
     let mut big = connect(&relay);
     // Far more than the pipe and the queue hold, and the host reads nothing.
-    let body = vec![7_u8; 2 * QUEUED_FRAMES * FRAME_LIMIT];
-    let writer = std::thread::spawn(move || big.write_all(&body));
+    // Keep sending until the relay closes the connection: how much the socket
+    // buffers take before that differs by platform (Windows takes a lot).
+    let chunk = vec![7_u8; FRAME_LIMIT];
+    let writer = std::thread::spawn(move || {
+        let give_up = Instant::now() + Duration::from_secs(20);
+        while Instant::now() < give_up {
+            big.write_all(&chunk)?;
+        }
+        Ok::<(), io::Error>(())
+    });
 
     assert!(closed(&mut idle), "the relay stopped");
     assert!(writer.join().expect("the writer ends").is_err());
