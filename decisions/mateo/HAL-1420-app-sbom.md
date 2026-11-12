@@ -15,11 +15,11 @@ Nothing else in the workflow changes. It still makes dry runs only.
 
 In `tooling/check/` (the guard's own code): `check:sbom` also fails when a ref in the SBOM's dependency graph names neither a component nor the product (`findDanglingRefs`). No guard rule changes.
 
-Outside the guard's paths, `build-installer.ps1` passes the same `--cargo` arguments, so the notices shipped in the installer list the Rust crates too, as HAL-6289 intended.
+The installer's own notices get the same `--cargo` arguments in #2110 (HAL-6962), not here.
 
 ## Why
 
-The app is released next to the CLI and needs its own SBOM. Before this change, the shipped notices listed the npm packages but not the 282 Rust crates in `Halonic.exe`. The dangling-ref check makes the "no dangling refs" condition of HAL-1420 checked on every release instead of by hand.
+The app is released next to the CLI and needs its own SBOM. Before this change, the release's notices listed the npm packages but not the 282 Rust crates in `Halonic.exe`. The dangling-ref check makes the "no dangling refs" condition of HAL-1420 checked on every release instead of by hand.
 
 ## Covers
 
