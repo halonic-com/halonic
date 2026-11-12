@@ -9,12 +9,18 @@ export interface WelcomeOpenProblem {
   readonly kind: ErrorKind;
   /** What **Copy details** copies, only when the error has no kind (microcopy 22 F13). */
   readonly details?: string;
+  /**
+   * True when the app won't reopen a Recent row's folder until the user picks it again, which
+   * **Open folder** does (HAL-7058).
+   */
+  readonly pickAgain?: true;
 }
 
 /** The reasons microcopy 3.2 and 22 F13 fix after "Can't open *folder*: ". */
 export const cantOpenWords = {
   gone: "the folder is gone.",
   denied: "you don't have permission to read it.",
+  pickAgain: "pick the folder again.",
   unexplained: "Halonic ran into a problem it can't explain yet.",
 } as const;
 
@@ -47,4 +53,21 @@ export function cantOpenProblem(folder: string, error: unknown): WelcomeOpenProb
       return { folder, kind, reason: message.endsWith(".") ? message : `${message}.` };
     }
   }
+}
+
+/**
+ * The problem to show when the app can't reopen a Recent row's folder (HAL-7058): one the user has
+ * to pick again first, a `conflict`, says "pick the folder again."; anything else reads as for
+ * {@link cantOpenProblem}.
+ *
+ * @example
+ * cantReopenProblem("/work/acme", new KindedError("conflict", "The shell refused: not picked"));
+ * // { folder: "/work/acme", reason: "pick the folder again.", kind: "conflict", pickAgain: true }
+ */
+export function cantReopenProblem(folder: string, error: unknown): WelcomeOpenProblem {
+  const kind = errorKindOf(error);
+  if (kind === "conflict") {
+    return { folder, kind, reason: cantOpenWords.pickAgain, pickAgain: true };
+  }
+  return cantOpenProblem(folder, error);
 }

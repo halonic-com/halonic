@@ -99,6 +99,42 @@ verifies("workspace.recent-reopens-picked-folder", () => {
     expect(steps.at(-1)).toBe("forget /work/old");
   });
 
+  it("asks the user to pick a folder again when the app won't reopen it", async () => {
+    const { switcher, steps } = setup({
+      reopenFolder: async () => {
+        throw new KindedError("conflict", "The shell refused: not picked");
+      },
+    });
+    switcher.recent.remember({ location: "/work/acme", name: "acme" });
+
+    expect(await switcher.openLocation("/work/acme")).toEqual({
+      folder: "/work/acme",
+      kind: "conflict",
+      reason: "pick the folder again.",
+      pickAgain: true,
+    });
+    expect(steps).toEqual([]);
+  });
+
+  it("offers Open folder from the menu, which shows the folder picker, and keeps the row", async () => {
+    const pickFolder = vi.fn(async () => undefined);
+    const { switcher, toasts } = setup({
+      pickFolder,
+      reopenFolder: async () => {
+        throw new KindedError("conflict", "The shell refused: folder changed");
+      },
+    });
+    switcher.recent.remember({ location: "/work/acme", name: "acme" });
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/acme"), true);
+    const toast = toasts.list().at(-1);
+    expect(toast?.title).toBe("Can't open /work/acme: pick the folder again.");
+    expect(toast?.action?.label).toBe("Open folder");
+    toast?.action?.onClick();
+    await vi.waitFor(() => expect(pickFolder).toHaveBeenCalledOnce());
+    expect(switcher.recent.list().map((each) => each.location)).toEqual(["/work/acme"]);
+  });
+
   it("forgets a removed row's folder, unless it is open in the window", async () => {
     const { switcher, steps } = setup();
     await switcher.pickAndOpen();

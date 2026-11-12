@@ -372,6 +372,7 @@ export { loadView, type ViewRef } from "./view.ts";
 export {
   cantOpenProblem,
   cantOpenWords,
+  cantReopenProblem,
   type WelcomeOpenProblem,
 } from "./welcome/cant-open.ts";
 export {

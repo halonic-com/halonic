@@ -1,6 +1,7 @@
 import type { ToastAction, ToastStore } from "@halonicjs/studio-kit";
 import {
   cantOpenProblem,
+  cantReopenProblem,
   copyDetails,
   copyDetailsWords,
   removeFromRecentLabel,
@@ -34,8 +35,9 @@ export interface WorkspaceSwitcherOptions {
   readonly toasts: ToastStore;
   /**
    * Lets the app reach a folder the user picked before, after a restart, before a Recent row
-   * opens it; rejects as {@link openFolder} does. The desktop shell gives a page only the folders
-   * the user chose in it. Without it, a Recent row opens its folder straight away.
+   * opens it; rejects as {@link openFolder} does, or with a `conflict` kind when the user has to
+   * pick the folder again first. The desktop shell gives a page only the folders the user chose
+   * in it. Without it, a Recent row opens its folder straight away.
    */
   readonly reopenFolder?: ((location: string) => Promise<void>) | undefined;
   /** Takes the app's access to a folder away when its row leaves Recent. */
@@ -113,7 +115,11 @@ export class WorkspaceSwitcher {
     try {
       const { reopenFolder } = this.#options;
       if (reopenFolder !== undefined && this.open.find(location) === undefined) {
-        await reopenFolder(location);
+        try {
+          await reopenFolder(location);
+        } catch (error) {
+          return cantReopenProblem(location, error);
+        }
       }
       return await this.#open(location);
     } catch (error) {
@@ -141,7 +147,8 @@ export class WorkspaceSwitcher {
    * As {@link pickAndOpen} or {@link openLocation} from the workspace menu: a folder that fails
    * to open says why in a danger toast over the workspace still shown, which stays until closed
    * (states-flow-map E1 to E4). A Recent row whose folder is gone offers **Remove from Recent**
-   * (E2); a reason Halonic can't explain offers **Copy details** (E4). After
+   * (E2), one whose folder has to be picked again offers **Open folder** (HAL-7058), and a reason
+   * Halonic can't explain offers **Copy details** (E4). After
    * {@link MENU_BUSY_AFTER_MS} the switcher button is {@link busy} until then (D9). Does nothing
    * while another folder is opening.
    */
@@ -216,7 +223,7 @@ export class WorkspaceSwitcher {
     return undefined;
   }
 
-  /** The failed open's toast action: Copy details, Remove from Recent, or none. */
+  /** The failed open's toast action: Copy details, Remove from Recent, Open folder, or none. */
   #cantOpenAction(problem: WelcomeOpenProblem, fromRecent: boolean): ToastAction | undefined {
     const { details } = problem;
     if (details !== undefined) {
@@ -225,6 +232,12 @@ export class WorkspaceSwitcher {
     }
     if (fromRecent && problem.kind === "not_found") {
       return { label: removeFromRecentLabel, onClick: () => this.removeFromRecent(problem.folder) };
+    }
+    if (problem.pickAgain === true) {
+      return {
+        label: openFolderLabel,
+        onClick: () => void this.fromMenu(() => this.pickAndOpen()),
+      };
     }
     return undefined;
   }
@@ -246,6 +259,9 @@ export class WorkspaceSwitcher {
     }
   }
 }
+
+/** The toast action that shows the folder picker, as the menu's "Open a folder…" does. */
+export const openFolderLabel = "Open folder";
 
 /** How long an open from the menu runs before the switcher button shows busy (kit busy rule). */
 export const MENU_BUSY_AFTER_MS = 300;

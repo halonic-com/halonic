@@ -27,7 +27,7 @@ export const pickedFolderCommands = {
  *
  * @example
  * const picked = new TauriPickedFolders(ipc);
- * await picked.reopen("/work/acme"); // opened, or a `not_found` or `denied` KindedError
+ * await picked.reopen("/work/acme"); // opened, or a `not_found`, `conflict` or `denied` KindedError
  * await picked.forget("/work/acme"); // as Remove from Recent
  */
 export class TauriPickedFolders {
@@ -39,8 +39,9 @@ export class TauriPickedFolders {
 
   /**
    * Opens the folder at `location` again. Rejects with a `not_found` error when the folder is gone,
-   * so a Recent row can say so and offer to remove it, and with a `denied` error when the shell
-   * won't open it: never picked, forgotten, or no longer the folder that was picked.
+   * so a Recent row can say so and offer to remove it; with a `conflict` error when the person has
+   * to pick it again first: never picked, forgotten, or no longer the folder that was picked; and
+   * with a `denied` error when it can't be read.
    */
   async reopen(location: string): Promise<void> {
     await this.#call(pickedFolderCommands.reopen, location);
@@ -62,9 +63,10 @@ export class TauriPickedFolders {
 
 /** How a surface should respond to each refusal of a picked-folder command. */
 const errorKinds: Readonly<Record<TrustRefusalKind, ErrorKind>> = {
-  not_picked: "denied",
+  // The person has to pick the folder again in the folder dialog first.
+  not_picked: "conflict",
   folder_missing: "not_found",
-  folder_changed: "denied",
+  folder_changed: "conflict",
   // Something else is at the path, or it can't be read.
   folder_unreadable: "denied",
   io: "unavailable",

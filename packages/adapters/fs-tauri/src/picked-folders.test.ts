@@ -41,8 +41,8 @@ verifies("fs-tauri.picked-folders", () => {
 
     it.each<[TrustRefusalKind, string]>([
       ["folder_missing", "not_found"],
-      ["not_picked", "denied"],
-      ["folder_changed", "denied"],
+      ["not_picked", "conflict"],
+      ["folder_changed", "conflict"],
       ["folder_unreadable", "denied"],
       ["io", "unavailable"],
     ])("rejects a %s refusal as %s, keeping the shell's message", async (kind, expected) => {

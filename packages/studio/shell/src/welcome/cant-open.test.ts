@@ -1,7 +1,7 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
-import { cantOpenProblem } from "./cant-open.ts";
+import { describe, expect, it } from "vitest";
+import { cantOpenProblem, cantReopenProblem } from "./cant-open.ts";
 
 verifies("shell.welcome-cant-open", () => {
   it("says the folder is gone when it isn't there", () => {
@@ -31,5 +31,22 @@ verifies("shell.welcome-cant-open", () => {
       reason: "Halonic ran into a problem it can't explain yet.",
     });
     expect(problem.details).toMatch(/^Can't open \/work\/acme\nTypeError: scope is undefined/);
+  });
+});
+
+describe("cantReopenProblem", () => {
+  it("asks for the folder to be picked again when the app won't reopen it", () => {
+    expect(cantReopenProblem("/work/acme", new KindedError("conflict", "not picked"))).toEqual({
+      folder: "/work/acme",
+      kind: "conflict",
+      reason: "pick the folder again.",
+      pickAgain: true,
+    });
+  });
+
+  it("reads any other reason as a folder that fails to open", () => {
+    expect(cantReopenProblem("/work/old", new KindedError("not_found", "gone"))).toEqual(
+      cantOpenProblem("/work/old", new KindedError("not_found", "gone")),
+    );
   });
 });
