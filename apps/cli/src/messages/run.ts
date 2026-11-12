@@ -212,12 +212,17 @@ export const runMessages = defineMessages("run", {
     phrase`the scheduler's ${what} failed, try ${failures} of ${most}, retrying: ${reason}`,
   /**
    * A `--debug` line when a run's connectors failed to close after it ended,
-   * or a leftover program copy couldn't be swept. Nothing tries it again.
+   * a leftover program copy couldn't be swept, or a harness run left something that couldn't be cleaned up. Nothing tries it again.
    */
-  cleanUpFailed: (what: "run-connectors" | "program-copies", reason: string) =>
-    what === "run-connectors"
-      ? phrase`the engine couldn't close a run's connectors: ${reason}`
-      : phrase`the engine couldn't sweep a leftover program copy: ${reason}`,
+  cleanUpFailed: (what: "run-connectors" | "program-copies" | "harness-host", reason: string) => {
+    if (what === "run-connectors") {
+      return phrase`the engine couldn't close a run's connectors: ${reason}`;
+    }
+    if (what === "harness-host") {
+      return phrase`the engine couldn't clean up after a harness run: ${reason}`;
+    }
+    return phrase`the engine couldn't sweep a leftover program copy: ${reason}`;
+  },
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,

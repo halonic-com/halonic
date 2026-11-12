@@ -58,6 +58,17 @@ what you can do in one step ([the reason codes](../adr/2026-11-09-sandbox-check-
   connects without the fence's proxy is still refused, but the log has no site
   name for it, so in 0.1 the run page shows no row for it. A blocked site gets
   no connection on any system; on Windows, the name may still be looked up.
+- **A live run's program copy controls which code runs, not what it can
+  reach.** A run that reads the live version starts a connector's program in a
+  copy of the workspace at that version, so a change that isn't live, such as a
+  script an agent wrote, never runs before someone made it live. The copy is
+  no fence: don't assume it confines anything. An agent in a harness writes its
+  files in a proposal folder of its own, a different folder from any copy a
+  connector starts in, and what it changed comes back as a proposal to review.
+  Two limits follow from it being a copy of what is committed: an unpinned
+  connector that needs `node_modules` or `.venv` fails in a live run, which is
+  safe but must be fixed by pinning or committing what it needs, and on Windows
+  a deep profile path can make the copy fail.
 - **It doesn't stop the steering.** A model tricked by a mail or a web page is
   still tricked. The sandbox limits what the steered agent can reach.
 - **Linux in a container can't use it.** Bubblewrap can't nest in Docker or

@@ -335,12 +335,18 @@ importers:
       '@halonicjs/adapter-git':
         specifier: workspace:*
         version: link:../../packages/adapters/git
+      '@halonicjs/adapter-harness-bridge':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-bridge
       '@halonicjs/adapter-harness-claude-code':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-claude-code
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-harness-kit':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-kit
       '@halonicjs/adapter-http-kit':
         specifier: workspace:*
         version: link:../../packages/adapters/http-kit
@@ -386,6 +392,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
+      '@halonicjs/host-harness-host':
+        specifier: workspace:*
+        version: link:../../packages/host/harness-host
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
