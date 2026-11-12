@@ -6,6 +6,7 @@
 - Approval: Liam approves this note in his review of this pull request on
   [HAL-6021](/HAL/issues/HAL-6021)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4Zpjf3vyzqpL8oQPx7qfomfN/m+rO0TppCeeys5ezUw8tzBEsoC8WoggylUcir94YSEC5nNIFgy+2L2sWxvHAQ==
 
 ## What changes
 
