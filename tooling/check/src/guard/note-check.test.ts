@@ -92,22 +92,40 @@ function sign(text: string, git: ReturnType<typeof fakeGit>, privatePem: string)
 
 const checkRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-/** Every file the two guard commands import, directly or not, relative to the repo root. */
-function guardImports(): string[] {
+/**
+ * What a guard command reaches: the local files it imports (relative to the repo
+ * root) and the packages, with `node:` built-ins left out. With `runtime`,
+ * `import type` and `export type` lines are skipped, because Node erases them
+ * and loads nothing for them.
+ */
+function guardImports(entry: string, runtime = false): { files: string[]; packages: string[] } {
   const seen = new Set<string>();
-  const stack = ["src/cli/guard-notes.ts", "src/cli/requirement-guard.ts"];
+  const packages = new Set<string>();
+  const stack = [entry];
   for (let file = stack.pop(); file !== undefined; file = stack.pop()) {
     if (seen.has(file)) {
       continue;
     }
     seen.add(file);
     const source = readFileSync(join(checkRoot, file), "utf8");
-    for (const match of source.matchAll(/(?:from|import)\s+"(\.[^"]+)"/g)) {
-      stack.push(normalize(join(dirname(file), match[1] ?? "")));
+    for (const match of source.matchAll(
+      /^(?:import|export)\s+(type\s+)?(?:[^;"]*?\sfrom\s+)?"([^"]+)";/gm,
+    )) {
+      const [, typeOnly, specifier = ""] = match;
+      if (typeOnly && runtime) {
+        continue;
+      }
+      if (specifier.startsWith(".")) {
+        stack.push(normalize(join(dirname(file), specifier)));
+      } else if (!specifier.startsWith("node:")) {
+        packages.add(specifier);
+      }
     }
   }
-  return [...seen].map((file) => `tooling/check/${file}`);
+  return { files: [...seen].map((file) => `tooling/check/${file}`), packages: [...packages] };
 }
+
+const guardCommands = ["src/cli/guard-notes.ts", "src/cli/requirement-guard.ts"] as const;
 
 verifies("check.guard-notes-own-paths", () => {
   test("fails a change to .github/ without a note, and names the note", async () => {
@@ -134,6 +152,7 @@ verifies("check.guard-notes-own-paths", () => {
       ["tooling/check/", "tooling/check/src/cli/guard-notes.ts"],
       ["tooling/check/", "tooling/check/src/cli/requirement-guard.ts"],
       [approversFile, approversFile],
+      ["tooling/check/", "tooling/check/package.json"],
       [".gitattributes", ".gitattributes"],
       ["turbo.json", "turbo.json"],
     ];
@@ -152,11 +171,6 @@ verifies("check.guard-notes-own-paths", () => {
     expect(wrongKey).toEqual([
       expect.stringMatching(/approval isn't verified: the key .* isn't in the merge base's/),
     ]);
-  });
-  test("lists every file the guard commands import as a trust root", () => {
-    const covered = (file: string) =>
-      trustRoots.some((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
-    expect(guardImports().filter((file) => !covered(file))).toEqual([]);
   });
 });
 
@@ -243,7 +257,72 @@ verifies("check.guard-extra-exports", () => {
   });
 });
 
+/** Runs the check on a pull request that changes `pnpm-workspace.yaml` to `after`, with `text` as its note. */
+async function dependencyErrorsOf(
+  after: string,
+  text: string | undefined,
+  signer: string,
+): Promise<string[]> {
+  const workspace = (typescript: string, vitest: string): string =>
+    `catalog:\n  "@typescript/typescript6": ${typescript}\n  vitest: ${vitest}\n`;
+  const before = { ...baseFiles, "pnpm-workspace.yaml": workspace("^6.0.2", "^5.1.0") };
+  const headFiles = { ...before, "pnpm-workspace.yaml": after };
+  const files =
+    text === undefined ? headFiles : { ...headFiles, [noteFile]: signed(text, headFiles, signer) };
+  const report = await checkNotes({
+    pull,
+    branch,
+    changed: ["pnpm-workspace.yaml"],
+    mergeBase: base,
+    git: fakeGit({ [base]: before, [head]: files }),
+  });
+  return report.problems.map((problem) => `${problem.file}: ${problem.message}`);
+}
+
+verifies("check.guard-dependency", () => {
+  const bumped = 'catalog:\n  "@typescript/typescript6": ^6.1.0\n  vitest: ^5.1.0\n';
+  const other = 'catalog:\n  "@typescript/typescript6": ^6.0.2\n  vitest: ^5.2.0\n';
+
+  test("passes a change to the guard's package with an internal note the CTO signed", async () => {
+    const covering = note("internal", "pnpm-workspace.yaml");
+    expect(await dependencyErrorsOf(bumped, covering, cto.privatePem)).toEqual([]);
+  });
+
+  test("fails it without a note, or with a note that doesn't list the file", async () => {
+    expect(await dependencyErrorsOf(bumped, undefined, cto.privatePem)).toEqual([
+      `pnpm-workspace.yaml: Changes the entries for the npm package the guard runs in pnpm-workspace.yaml. That needs a signed note (internal is enough): add ${noteFile} and list "pnpm-workspace.yaml" under Covers.`,
+    ]);
+    expect(
+      await dependencyErrorsOf(bumped, note("internal", "turbo.json"), cto.privatePem),
+    ).toEqual([expect.stringContaining(`doesn't list "pnpm-workspace.yaml" under Covers`)]);
+  });
+
+  test("needs nothing for another change to the same file", async () => {
+    expect(await dependencyErrorsOf(other, undefined, cto.privatePem)).toEqual([]);
+  });
+});
+
 verifies("check.guard-two-guardians", () => {
+  test("lists every file the guard commands import as a trust root", () => {
+    const covered = (file: string) =>
+      trustRoots.some((path) => (path.endsWith("/") ? file.startsWith(path) : file === path));
+    for (const command of guardCommands) {
+      expect(guardImports(command).files.filter((file) => !covered(file))).toEqual([]);
+    }
+  });
+  test("lets guard-notes load no package, and requirement-guard only the TypeScript parser", () => {
+    // guard-notes runs with no install, so any package would fail there.
+    expect(guardImports("src/cli/guard-notes.ts", true).packages).toEqual([]);
+    expect(guardImports("src/cli/requirement-guard.ts", true).packages).toEqual([
+      "@typescript/typescript6",
+    ]);
+  });
+
+  test("lists the package.json that pins the parser as a trust root", () => {
+    expect(trustRoots).toContain("tooling/check/package.json");
+    const manifest = JSON.parse(readFileSync(join(checkRoot, "package.json"), "utf8"));
+    expect(Object.keys(manifest.devDependencies)).toContain("@typescript/typescript6");
+  });
   const guardianKeys = [cto.privatePem, julian.privatePem];
   const roots = note("user-visible", "tooling/check/");
   const changed = "tooling/check/src/guard/approvals.ts";

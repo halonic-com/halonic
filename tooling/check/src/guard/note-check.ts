@@ -1,6 +1,7 @@
 import { Report } from "../lib/problems.ts";
 import { type PullRequest, signedApprovals } from "./approvals.ts";
 import { decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
+import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependencies.ts";
 import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
@@ -21,7 +22,8 @@ export const internalOwnPaths: readonly string[] = [".github/", "tooling/check/"
 /**
  * The files and folders inside `internalOwnPaths` that are the guard's
  * trust roots: its note check, its code, the two guard commands, the `lib/`
- * helpers they import, its approvers, `.gitattributes` and `policy.json`
+ * helpers they import, the `package.json` that pins the one package they
+ * load (the TypeScript parser), its approvers, `.gitattributes` and `policy.json`
  * (outside `extraExports`). A change to one needs a `user-visible` note
  * with the signatures of two different guardians (HAL-1337, HAL-7740). A
  * folder ends in `/`.
@@ -31,6 +33,7 @@ export const trustRoots: readonly string[] = [
   ".gitattributes",
   policyFile,
   ".github/workflows/guard-notes.yml",
+  "tooling/check/package.json",
   "tooling/check/src/guard/",
   "tooling/check/src/cli/guard-notes.ts",
   "tooling/check/src/cli/requirement-guard.ts",
@@ -73,20 +76,10 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   const report = new Report("guard-notes");
   const file = decisionNoteFile(run.branch);
   const { touched, exports, changed } = touchedPaths(run);
+  const dependencies = guardDependencyFilesChanged(run);
   const text = run.git.readFile(run.pull.head, file);
   if (text === undefined) {
-    for (const path of touched) {
-      report.error(
-        path,
-        `Changes the guard's own path ${path}. That needs a signed decision note: add ${file} and list "${path}" under Covers.`,
-      );
-    }
-    for (const path of exports) {
-      report.error(
-        path,
-        `Changes extraExports in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
-      );
-    }
+    reportMissingNote(report, file, { touched, exports, dependencies });
     return report;
   }
   const parsed = parseDecisionNote(file, text);
@@ -117,6 +110,12 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
       `Changes extraExports in ${path}, but the note doesn't list "${path}" under Covers.`,
     );
   }
+  for (const path of dependencies.filter(unlisted)) {
+    report.error(
+      file,
+      `Changes the entries for the npm package the guard runs in ${path}, but the note doesn't list "${path}" under Covers.`,
+    );
+  }
   const verdict = await signedApprovals(run.pull, run.git).check({
     note: parsed.note,
     guardians: reachesRoot,
@@ -125,6 +124,32 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
   }
   return report;
+}
+
+/** The errors for a pull request that needs a note and has none. */
+function reportMissingNote(
+  report: Report,
+  file: string,
+  paths: { touched: string[]; exports: string[]; dependencies: string[] },
+): void {
+  for (const path of paths.touched) {
+    report.error(
+      path,
+      `Changes the guard's own path ${path}. That needs a signed decision note: add ${file} and list "${path}" under Covers.`,
+    );
+  }
+  for (const path of paths.exports) {
+    report.error(
+      path,
+      `Changes extraExports in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
+    );
+  }
+  for (const path of paths.dependencies) {
+    report.error(
+      path,
+      `Changes the entries for the npm package the guard runs in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
+    );
+  }
 }
 
 /**
@@ -146,6 +171,22 @@ function touchedPaths(run: NoteCheckRun): {
   const changed = exportsOnly ? run.changed.filter((path) => path !== policyFile) : run.changed;
   const touched = ownPaths.filter((path) => changed.some((each) => matches([path], each)));
   return { touched, exports: exportsOnly ? [policyFile] : [], changed };
+}
+
+/**
+ * The files whose lines for the npm package the guard runs changed, which
+ * need a note of either kind (HAL-7719), compared at the merge base.
+ */
+function guardDependencyFilesChanged(run: NoteCheckRun): string[] {
+  return guardDependencyFiles.filter(
+    (file) =>
+      run.changed.includes(file) &&
+      guardDependencyChanged(
+        file,
+        run.git.readFile(run.mergeBase, file),
+        run.git.readFile(run.pull.head, file),
+      ),
+  );
 }
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */
