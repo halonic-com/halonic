@@ -145,7 +145,7 @@ export function stepChildRuns(
  * `state.entered` of the workflow itself, so a parallel branch's or a
  * for-each item's events belong to their step.
  */
-function eventsOfStep(events: readonly RunEvent[], entryId: string): RunEvent[] {
+export function eventsOfStep(events: readonly RunEvent[], entryId: string): RunEvent[] {
   const index = Number(entryId.slice("step-".length));
   let step = -1;
   return events.filter((event) => {

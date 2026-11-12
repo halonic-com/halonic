@@ -234,6 +234,21 @@ export const everyStepWords = {
   running: "Running",
 };
 
+/**
+ * The parts of a step that ran branches or for-each items, under its entry (checklist part 1,
+ * 1.10: "grouped under their step by branch name", "Item 2 of 5"). A team decision under
+ * HAL-2282 (HAL-1301): microcopy has no words for them, so they use the entry's lines.
+ */
+export const stepGroupWords = {
+  /** The row's title for one for-each item; the total is known only once the step has finished. */
+  item: (number: number, total: number | undefined) =>
+    total === undefined ? `Item ${number}` : `Item ${number} of ${total}`,
+  /** What a screen reader hears before a branch's name. */
+  branch: (name: string) => `Branch ${name}`,
+  /** A part the step ended without, because the step failed or was stopped first. */
+  unfinished: "Didn't finish",
+};
+
 /** Show the run log (checklist part 1, 1.10; mc 1.2 and 3.D W-D3). */
 export const runLogWords = {
   show: "Show the run log",
