@@ -1,0 +1,1 @@
+{"at":"2026-11-05T07:00:04.000Z","collection":"leads","id":"lead-1","op":"add","values":{"company":"Example Ltd","stage":"new"},"by":{"runId":"r-invoice","agent":"payer"}}

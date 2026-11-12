@@ -1,0 +1,3 @@
+{"runId":"r-invoice","seq":1,"at":"2026-11-05T07:00:00.000Z","type":"run.started","hubId":"acme","workflowId":"pay-invoice","input":{"invoice":"INV-7"},"kind":"run","definitionsVersion":"v1"}
+{"runId":"r-invoice","seq":2,"at":"2026-11-05T07:00:01.000Z","type":"state.entered","state":"pay"}
+{"runId":"r-invoice","seq":3,"at":"2026-11-05T07:00:05.000Z","type":"run.waiting","state":"pay","events":["approve","reject"]}

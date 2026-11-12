@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./integration": "./src/integration/index.ts",
-    "./recording": "./src/recording/index.ts"
+    "./recording": "./src/recording/index.ts",
+    "./runtime-export": "./src/runtime-export/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
