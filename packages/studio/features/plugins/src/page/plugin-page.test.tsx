@@ -13,7 +13,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
 import { afterEach, expect, it } from "vitest";
 import type { PluginCardStatus } from "../cards/plugin-card.tsx";
-import { feedOf, noSettings, weather } from "../test-support/plugins.ts";
+import { feedOf, noActions, noSettings, weather } from "../test-support/plugins.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { PluginPage } from "./plugin-page.tsx";
 import {
@@ -70,7 +70,13 @@ const broken: InstalledPlugin = {
 
 async function showPage(plugin: InstalledPlugin, onOpenPanel = () => {}) {
   const view = render(
-    <PluginPage plugin={plugin} {...noSettings()} onOpenPanel={onOpenPanel} now={now} />,
+    <PluginPage
+      plugin={plugin}
+      {...noSettings()}
+      {...noActions()}
+      onOpenPanel={onOpenPanel}
+      now={now}
+    />,
   );
   await act(async () => {});
   return view;
@@ -79,7 +85,12 @@ async function showPage(plugin: InstalledPlugin, onOpenPanel = () => {}) {
 /** Draws the page of `plugin/this-computer/weather` the way the shell draws an item's tab. */
 async function showItem(feed: InstalledPluginFeed) {
   const opened: string[] = [];
-  const options = { feed, ...noSettings(), openPanel: (plugin: string) => opened.push(plugin) };
+  const options = {
+    feed,
+    ...noSettings(),
+    ...noActions(),
+    openPanel: (plugin: string) => opened.push(plugin),
+  };
   const shell = createShell({
     features: [
       defineFeature({

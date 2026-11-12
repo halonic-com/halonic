@@ -2,6 +2,7 @@ import { parseFile } from "@halonicjs/format";
 import type { ServiceKey, ServiceTarget } from "@halonicjs/studio-shell";
 import { act } from "react";
 import type { PluginCardStatus } from "../cards/plugin-card.tsx";
+import type { PluginActions } from "../page/plugin-actions.ts";
 import type { InstalledPlugin } from "../page/plugin-pages.ts";
 import type { PluginPanelFeed, PluginPanelUi } from "../panel/plugin-panels.ts";
 import type {
@@ -93,5 +94,17 @@ export function noSettings(): { settings: PluginSettingsReader; secrets: PluginS
       forget: async () => {},
     },
     secrets: { get: async () => null, set: async () => {}, remove: async () => {} },
+  };
+}
+
+/** Page actions that do nothing, and remove at once: for tests that don't look at them. */
+export function noActions(): { actions: PluginActions } {
+  return {
+    actions: {
+      revoke: async () => {},
+      remove: async () => ({ kind: "removed" }),
+      reload: async () => {},
+      openFolder: async () => {},
+    },
   };
 }

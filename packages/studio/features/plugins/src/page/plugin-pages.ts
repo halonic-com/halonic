@@ -6,6 +6,7 @@ import type {
   PluginSettingsReader,
 } from "../settings/plugin-settings-section.tsx";
 import { PLUGIN, type PluginOrigin } from "./page-text.ts";
+import type { PluginActions } from "./plugin-actions.ts";
 
 /** The item kind of a plugin's own page; its tab's place is `plugin/this-computer/<plugin>`. */
 export const PLUGIN_KIND = "plugin";
@@ -60,6 +61,8 @@ export interface PluginPageOptions {
   readonly secrets: PluginSecretStore;
   /** Opens the plugin's panel in its tab, the same as "Open *name* panel" in Ctrl K. */
   readonly openPanel: (plugin: string) => void;
+  /** Remove trust, Remove plugin…, Check again and Open folder. */
+  readonly actions: PluginActions;
 }
 
 /** The item a plugin's page is. */
