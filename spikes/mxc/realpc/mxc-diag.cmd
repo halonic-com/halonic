@@ -62,6 +62,17 @@ const places = [
   ["Temp", join(process.env.TEMP ?? process.env.LOCALAPPDATA, "halonic-mxc-diag")],
   ["Documents", join(process.env.USERPROFILE, "Documents", "halonic-mxc-diag")],
 ];
+// v3: the check reuses its folder from earlier runs, the runners always start fresh. Test inside that old folder too, and log its full ACLs.
+const checkFolder = join(process.env.LOCALAPPDATA, "halonic-mxc-check");
+if (existsSync(checkFolder)) {
+  places.unshift(["old check folder", join(checkFolder, "diag-place")]);
+  say("");
+  for (const p of [process.env.LOCALAPPDATA, checkFolder, join(checkFolder, "data")]) {
+    if (!existsSync(p)) continue;
+    const r = spawnSync("icacls.exe", [p], { encoding: "utf8" });
+    say(`FULL ACL ${p}: ${(r.stdout || r.stderr || "").trim().split(/\r?\n/).filter((l) => l && !/Successfully/.test(l)).map((l) => l.trim()).join(" | ")}`);
+  }
+}
 
 const rows = []; // place, test, status, note
 const rec = (place, test, status, note = "") => { rows.push({ place, test, status, note }); say(`  ${status.padEnd(4)} [${place}] ${test}${note ? "  -> " + note : ""}`); };
@@ -137,6 +148,12 @@ process.exit(Object.values(r).every((v) => typeof v === "number" || v === "ok") 
   const dirp = await box(`cmd.exe /c dir ${q(dirname(base))}`, { work });
   say(`  dir of parent inside: ${ok(dirp) ? "listed" : why(dirp)}`);
   rmSync(base, { recursive: true, force: true });
+}
+// v3: show the old check folder's ACL once more, after the boxes ran, to see whether a run changes it.
+if (existsSync(checkFolder)) {
+  const r = spawnSync("icacls.exe", [checkFolder], { encoding: "utf8" });
+  say("");
+  say(`FULL ACL after the runs ${checkFolder}: ${(r.stdout || r.stderr || "").trim().split(/\r?\n/).filter((l) => l && !/Successfully/.test(l)).map((l) => l.trim()).join(" | ")}`);
 }
 
 say("");
