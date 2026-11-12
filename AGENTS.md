@@ -198,6 +198,8 @@ Stacks stay short, so a closed pull request never strands work above it:
   needs the fingerprint from the report. Every entry needs a reason. A change to that file is a
   change to the guard, so the maintainer reviews it, in its own pull request or called out in the
   description. A personal term can never be allowed: reword the text.
+- Before every release tag, public launch or anything new going public, run the full release
+  review: see [docs/guides/release-review.md](docs/guides/release-review.md).
 - **Never add a git remote to the old local copy of Halonic.** Its private history must never reach
   this repo. Copy files from it one by one, never by folder, and only when a task says so.
 
