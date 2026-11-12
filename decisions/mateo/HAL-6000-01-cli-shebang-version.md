@@ -7,9 +7,9 @@
 
 ## What changes
 
-`apps/cli/src/main.ts` starts with `#!/usr/bin/env node`. `pnpm add -g ./apps/cli` makes a shim
-that runs the `bin` file with the program its first line names; without the line the shim runs the
-`.ts` file as a shell script, and on Windows the `.cmd` hands it to whatever program owns `.ts`.
+`pnpm add -g ./apps/cli` makes a shim that runs the `bin` file, `bin/halonic.js`, with the `node`
+on the PATH. That launcher (HAL-6414) already starts with `#!/usr/bin/env node`, so `main.ts` needs
+no line of its own.
 
 `--version` is a new global option. It prints "Halonic 0.1.0" from `src/version.ts`, the name as `doctor`'s
 first line gives it (HAL-6538), and exits with 0, wherever it stands before a `--`. With `--json` the document follows `cli.json`:
@@ -21,7 +21,8 @@ line but the last ending with a comma: "Options for every command: --json, --no-
 
 The CI job "Fast gates" gets a step "CLI installs from source": it links the CLI with
 `pnpm add -g ./apps/cli` into a `PNPM_HOME` under the runner's temp folder and runs `halonic --help`
-and `halonic --version`, the steps the README gives.
+and `halonic --version`, the steps the README gives. It puts the devEngines Node 26 that
+`pnpm exec` runs ahead of the runner's Node 22 on the PATH, because the launcher refuses Node 22.
 
 ## Why
 
