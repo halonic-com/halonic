@@ -6,7 +6,7 @@
 
 ## What changes
 
-`pnpm check:enqueue` (`tooling/check/src/cli/enqueue.ts`) now looks up the branch's open pull request into `main` with one `gh pr view` call and passes its repo, number, head and base to the requirement guard (`--repo`, `--pr`, `--head-sha`, `--base-sha`), as CI does. The same call gives the title for the squash subject check, which used its own `gh` call before. Without a pull request, or without `gh`, the guard runs as before and says so. When the local branch isn't what GitHub has, it says the pushed head is checked.
+`pnpm check:enqueue` (`tooling/check/src/cli/enqueue.ts`) now looks up the branch's open pull request into `main` with one `gh pr view` call and passes its repo, number and head, with the fetched `origin/main` as the base, to the requirement guard (`--repo`, `--pr`, `--head-sha`, `--base-sha`), as CI does. The same call gives the title for the squash subject check, which used its own `gh` call before. Without a pull request, or without `gh`, the guard runs as before and says so. When the local branch isn't what GitHub has, it says the pushed head is checked.
 
 ## Why
 

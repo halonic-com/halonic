@@ -379,8 +379,8 @@ pnpm exec node ../merge-base/tooling/check/src/cli/requirement-guard.ts --base .
 
 `pnpm check:enqueue` runs the guard without the tests: `requirement-guard.ts --skip-test-runs` leaves
 out the one check that compares test results (CI runs it in full).
-It passes the guard the branch's pull request (repo, number, head and base,
-from `gh pr view`), as CI does, so a signed decision note verifies locally
+It passes the guard the branch's pull request (repo, number and head from
+`gh pr view`, and the fetched `origin/main` as the base), as CI does, so a signed decision note verifies locally
 too. Without a pull request, or without `gh`, no note's signature verifies.
 It checks the head that GitHub has, so push before you run it.
 

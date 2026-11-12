@@ -55,14 +55,13 @@ interface PullRequest {
   readonly repo: string;
   readonly number: number;
   readonly head: string;
-  readonly base: string;
 }
 
 /** The open pull request into main for this branch, if `gh` can tell. */
 function pullRequestOf(cwd: string): PullRequest | undefined {
   const result = run(
     "gh",
-    ["pr", "view", "--json", "title,number,url,headRefOid,baseRefOid,baseRefName"],
+    ["pr", "view", "--json", "title,number,url,headRefOid,baseRefName"],
     cwd,
   );
   if (result.status !== 0) {
@@ -74,20 +73,23 @@ function pullRequestOf(cwd: string): PullRequest | undefined {
       number: number;
       url: string;
       headRefOid: string;
-      baseRefOid: string;
       baseRefName: string;
     };
     const repo = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/.exec(pr.url)?.[1];
     if (repo === undefined || pr.baseRefName !== "main") {
       return undefined;
     }
-    return { title: pr.title, repo, number: pr.number, head: pr.headRefOid, base: pr.baseRefOid };
+    return { title: pr.title, repo, number: pr.number, head: pr.headRefOid };
   } catch {
     return undefined;
   }
 }
 
-/** The guard's flags naming the pull request, so a signed decision note can verify. */
+/**
+ * The guard's flags naming the pull request, so a signed decision note can
+ * verify. The base is the fetched `origin/main`, which `pnpm decision sign`
+ * signs against and the queue merges onto (`gh` doesn't give the base commit).
+ */
 function pullRequestArgs(pull: PullRequest | undefined, root: string): readonly string[] {
   if (pull === undefined) {
     console.log(
@@ -108,7 +110,7 @@ function pullRequestArgs(pull: PullRequest | undefined, root: string): readonly 
     "--head-sha",
     pull.head,
     "--base-sha",
-    pull.base,
+    git(root, "rev-parse", "origin/main") ?? "origin/main",
   ];
 }
 
