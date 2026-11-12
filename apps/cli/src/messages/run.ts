@@ -210,6 +210,14 @@ export const runMessages = defineMessages("run", {
   /** The same for the scheduler's own wake-up or tick, which belongs to no run. */
   schedulerRetried: (what: "wake-up" | "tick", failures: number, most: number, reason: string) =>
     phrase`the scheduler's ${what} failed, try ${failures} of ${most}, retrying: ${reason}`,
+  /**
+   * A `--debug` line when a run's connectors failed to close after it ended,
+   * or a leftover program copy couldn't be swept. Nothing tries it again.
+   */
+  cleanUpFailed: (what: "run-connectors" | "program-copies", reason: string) =>
+    what === "run-connectors"
+      ? phrase`the engine couldn't close a run's connectors: ${reason}`
+      : phrase`the engine couldn't sweep a leftover program copy: ${reason}`,
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,

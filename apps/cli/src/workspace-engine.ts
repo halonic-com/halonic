@@ -7,14 +7,18 @@
 // commands get it from one place, and neither can open the engine without
 // it (Liam, HAL-4349).
 
-import type { HttpClient } from "@halonicjs/ports";
+import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
+import { MemoryTokenStore } from "@halonicjs/adapter-memory";
+import type { HttpClient, TrustGrant } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
+import { cliConnectorFactories, connectorHttpClient } from "./connector-machine.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
+  type EngineErrorSource,
   type LocalEngine,
   type LocalEngineInput,
   openLocalEngine,
@@ -22,8 +26,11 @@ import {
   type RoutineTicks,
   type WorkspaceVersions,
 } from "./local-engine-host.ts";
+import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
+import type { Phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
+import { printable } from "./output/printable.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
   nodeSandboxGateHost,
@@ -55,6 +62,12 @@ export interface WorkspaceEngineSetup {
   readonly sandboxGate?: () => SandboxGateHost;
   /** How long a stopped command waits for the engine to close; {@link stoppedCloseLimitMs} by default. */
   readonly stoppedCloseLimitMs?: number;
+  /**
+   * What runs start their connectors with, given the grant from the
+   * command's trust check: this computer's programs, `PATH` and network by
+   * default.
+   */
+  readonly runConnectors?: (trust: TrustGrant | null) => LocalRunConnectorsInput;
 }
 
 /** The workspace the engine is opened for, and the runs it starts or moves on. */
@@ -64,6 +77,12 @@ export interface WorkspaceEngineTarget {
   readonly workspace: LoadedWorkspace;
   /** For `routines watch`, whose runs read the live version at each start; see `LocalEngineInput.versions`. */
   readonly versions?: WorkspaceVersions;
+  /**
+   * The grant from the command's trust check (`checkRunTrust`), which the
+   * runs' connectors start with: `null` when the runs reach only the test
+   * model, so no connector program starts.
+   */
+  readonly trust: TrustGrant | null;
   /**
    * The runs the sandbox is checked for first: the one run of `run` and
    * `runs send`, or each workflow the routines of `routines watch` start.
@@ -154,11 +173,13 @@ export async function openWorkspaceEngine(
     workspace: target.workspace,
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
+    runConnectors: (setup.runConnectors ?? computerRunConnectors)(target.trust),
     secrets: context.secrets,
     http: setup.http,
     // The scheduler retries a failed step; one that keeps failing stops the command with its
-    // error, or goes to `onStuck`, and after an hour to `onGaveUp`.
-    reportError: stuck.report,
+    // error, or goes to `onStuck`, and after an hour to `onGaveUp`. A failed clean-up is only
+    // a `--debug` line (HAL-7171).
+    reportError: engineErrorReporter(stuck, (line) => context.debug(line)),
     // A timer that worked starts over: only an hour of failures in a row gives up on its run.
     onTimerDone: (timer) => stuck.succeeded(timer),
     holdsTimer: (timer) => stuck.holds(timer),
@@ -216,6 +237,42 @@ export async function checkEngineRuns(
     }
   }
   return [...unsandboxed.values()];
+}
+
+/** This computer's connector programs, `PATH` and network, for {@link WorkspaceEngineSetup.runConnectors}. */
+function computerRunConnectors(trust: TrustGrant | null): LocalRunConnectorsInput {
+  return {
+    trust,
+    factories: cliConnectorFactories(nodeProgramStarter, process.env),
+    // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
+    context: { http: connectorHttpClient(), tokens: new MemoryTokenStore() },
+  };
+}
+
+/**
+ * The engine's `reportError`: a failed step, wake-up, tick or lock renewal
+ * goes to `stuck`, which counts it. A run's connectors that failed to close,
+ * or a leftover program copy that couldn't be swept, goes to `debug`
+ * instead: it is clean-up, nothing tries it again, and it must never stop the command,
+ * however often it happens in a `routines watch` (Liam, HAL-7171).
+ *
+ * @example
+ * const reportError = engineErrorReporter(stuck, (line) => context.debug(line));
+ */
+export function engineErrorReporter(
+  // The engine's lock reports to the watch as the scheduler does, so a lock lost three times
+  // in a row stops the command.
+  stuck: { report(error: unknown, source: EngineErrorSource): void },
+  debug: (line: Phrase) => void,
+): (error: unknown, source: EngineErrorSource) => void {
+  return (error, source) => {
+    if (source === "run-connectors" || source === "program-copies") {
+      const reason = printable(error instanceof Error ? error.message : String(error));
+      debug(runMessages.cleanUpFailed(source, reason).phrase);
+      return;
+    }
+    stuck.report(error, source);
+  };
 }
 
 /**

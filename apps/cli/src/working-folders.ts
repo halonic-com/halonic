@@ -32,3 +32,31 @@ export async function realWorkingFolders(
     }),
   );
 }
+
+/**
+ * The working folders a program that starts in `folder` must not start
+ * from: the harness agents' folders under `folder`, and under the real
+ * workspace too. A live run's programs start in a copy, but an agent writes
+ * in the real workspace, so a start that names a file there is refused as it
+ * is from the saved files (security review on HAL-7172).
+ *
+ * @param folder - where the program starts: the workspace, or a copy of it
+ * @param root - the workspace folder
+ * @throws when either folder doesn't exist
+ *
+ * @example
+ * await programWorkingFolders(copy, dir.root, workspace);
+ * // ["<real copy>/files/agents/coder", "<real root>/files/agents/coder"]
+ */
+export async function programWorkingFolders(
+  folder: string,
+  root: string,
+  workspace: LoadedWorkspace,
+): Promise<string[]> {
+  const [inFolder, inWorkspace] = await Promise.all([
+    realWorkingFolders(folder, workspace),
+    realWorkingFolders(root, workspace),
+  ]);
+  // A saved-files run starts in the workspace itself: name each folder once.
+  return [...new Set([...inFolder, ...inWorkspace])];
+}
