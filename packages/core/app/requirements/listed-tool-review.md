@@ -8,9 +8,9 @@ The app shall give one review of a source's listed tools, which Studio and the C
 
 The app shall let a person approve one waiting listed tool by the name its server lists it under, and, when the person gives the fingerprint they were shown, only at exactly that fingerprint: if the tool is waiting at another fingerprint, nothing is approved and the person is told the current one. Approving by name also works for a tool its server keeps changing, as `ports.listed-tool-approval` asks.
 
-The app shall list what changed in a waiting tool since it was approved, one entry per text that differs, with the approved and the current text. It shall mark a change a person can't see on screen: the same text in another Unicode normal form, a difference only in white space such as a trailing space, and a difference only where one side has a character outside ASCII, such as a Cyrillic look-alike. A change in a value that isn't text, such as `required`, `enum` or a limit, is listed too.
+The app shall list what changed in a waiting tool since it was approved, one entry per text that differs, with the approved and the current text. It shall mark a change a person can't see on screen: the same text in another Unicode normal form, a difference only in invisible format characters such as a zero-width space, a difference only in white space such as a trailing space, and a difference only where one side has a character outside ASCII, such as a Cyrillic look-alike. A change in a value that isn't text, such as `required`, `enum` or a limit, is listed too, and so is an argument added as an empty schema (`{}`), which takes anything. Each change names where it is as a path no other place in the tool shares, even when a property's name holds a `.` or a `/`.
 
-The app shall check one connector's listed tools against its approvals outside a run, as a run would, at the server address the connector is written with: its URL and headers, or its command, arguments, working folder, environment and secret variables. A connector whose tools are built into Halonic has no listed tools to check. The app shall remove one listed tool's approval by name, an approval that can't be read included, and say when the tool had no approval, with nothing changed.
+The app shall check one connector's listed tools against its approvals outside a run, as a run would, at the server address a run uses: its URL and headers, or its command, arguments, working folder, environment, secret variables, the variables it takes from the person's environment, and the pin from the trust record when its command is a package runner. A run and the check take the address from one place. A connector whose tools are built into Halonic has no listed tools to check. The app shall remove one listed tool's approval by name, an approval that can't be read included, and say when the tool had no approval, with nothing changed.
 
 ## Examples
 
@@ -44,12 +44,21 @@ The app shall check one connector's listed tools against its approvals outside a
 - Given an approved description and a new one with only a trailing space added,
   when the changes are listed,
   then it is marked as white space.
+- Given an approved description and a new one with a zero-width space added,
+  when the changes are listed,
+  then it is marked as a format character.
+- Given an approved tool, and the same tool with an argument `x` added as `{}`,
+  when the changes are listed,
+  then `x` is listed as new.
 - Given an approved tool and a new one whose description says more, and whose parameters gained an `enum` and lost a `required`,
   when the changes are listed,
   then each of the three is listed, unmarked, with its text before and after.
 - Given a stdio connector `notes-mcp` that lists `lookup`, approved at its command, and `archive`, never approved,
   when its listing is checked outside a run,
   then `lookup` is on and `archive` waits.
+- Given a connector `notes-mcp` run through `npx` with a pin in the trust record, or a wrapper that takes `HOME` and `PATH` from the person's environment,
+  when its listing is checked outside a run,
+  then it is checked at the same address a run starts it at, pin and variables included.
 - Given `lookup` approved, and an approval of `send` that can't be read,
   when the person removes the approval of `lookup`, then of `send`, then of `archive`,
   then `lookup` and `send` are no longer approved, and `archive` is reported as not approved.

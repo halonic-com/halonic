@@ -5,6 +5,7 @@
 import type { Connector } from "@halonicjs/format";
 import {
   type Clock,
+  type ConnectorPin,
   type ConnectorTool,
   type Digest,
   isUnreadableToolApprovalError,
@@ -28,6 +29,13 @@ export interface ConnectorToolCheckInput {
   readonly listed: readonly ConnectorTool[];
   /** The grant the connector was started with. */
   readonly trust: TrustGrant;
+  /**
+   * The connector's pin from the trust record (`TrustRecord.pins`), when its
+   * command is a package runner. It must be the same pin a run starts the
+   * connector with, or the tools are approved at another address than the
+   * run asks for.
+   */
+  readonly pin?: ConnectorPin;
   readonly store: ToolApprovalStore;
   readonly digest: Digest;
   readonly clock: Clock;
@@ -42,13 +50,13 @@ export interface ConnectorToolCheckInput {
  *   could be approved at, such as an `http` URL with user info in it
  *
  * @example
- * const check = await checkConnectorTools({ location, connector, listed, trust, store, digest, clock });
+ * const check = await checkConnectorTools({ location, connector, listed, trust, pin, store, digest, clock });
  * if (check.ok) review(reviewListedTools(check.value));
  */
 export async function checkConnectorTools(
   input: ConnectorToolCheckInput,
 ): Promise<Result<ListedToolApprovalCheck, string>> {
-  const server = await connectorToolServer(input.connector, input.digest);
+  const server = await connectorToolServer(input.connector, input.pin, input.digest);
   if (!server.ok) {
     return server;
   }
@@ -72,9 +80,24 @@ export async function checkConnectorTools(
   );
 }
 
-/** The address a connector's tools are approved at, or why it has none. */
-async function connectorToolServer(
+/**
+ * The address a connector's listed tools are approved at, or why it has
+ * none. A run and {@link checkConnectorTools} both take the address from
+ * here, so an approval given outside a run matches the run: for `stdio`
+ * that is the whole transport (command, arguments, folder, environment,
+ * secret and inherited variables) and the pin the connector starts with.
+ *
+ * @param pin the connector's pin from the trust record, when it has one
+ * @returns the address, or why the connector has none, such as an `http`
+ *   URL with user info in it or tools built into Halonic
+ *
+ * @example
+ * await connectorToolServer(notes, trustRecord.pins["notes-mcp"], digest);
+ * // => { ok: true, value: { kind: "stdio", command: "npx", ..., pin: { registry: "npm", ... } } }
+ */
+export async function connectorToolServer(
   connector: Connector,
+  pin: ConnectorPin | undefined,
   digest: Digest,
 ): Promise<Result<ToolServer, string>> {
   const { transport } = connector;
@@ -82,7 +105,7 @@ async function connectorToolServer(
     return await httpToolServer(transport.http.url, transport.http.headers ?? {}, digest);
   }
   if ("stdio" in transport) {
-    const { command, args, env, cwd, secretEnv } = transport.stdio;
+    const { command, args, env, cwd, secretEnv, inheritEnv } = transport.stdio;
     return ok(
       await stdioToolServer(
         {
@@ -91,6 +114,8 @@ async function connectorToolServer(
           env: env ?? {},
           ...(cwd === undefined ? {} : { cwd }),
           ...(secretEnv === undefined ? {} : { secretEnv }),
+          ...(inheritEnv === undefined ? {} : { inheritEnv }),
+          ...(pin === undefined ? {} : { pin }),
         },
         digest,
       ),

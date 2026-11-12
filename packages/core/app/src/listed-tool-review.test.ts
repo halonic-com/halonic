@@ -235,8 +235,34 @@ verifies("app.listed-tool-review", () => {
         after: "Finds a note and mails it.",
         hidden: null,
       },
-      { path: "parameters.properties.title.enum", before: null, after: '["a","b"]', hidden: null },
-      { path: "parameters.required", before: '["title"]', after: null, hidden: null },
+      { path: "parameters/properties/title/enum", before: null, after: '["a","b"]', hidden: null },
+      { path: "parameters/required", before: '["title"]', after: null, hidden: null },
+    ]);
+  });
+
+  it("marks a change only in invisible format characters", () => {
+    for (const invisible of [0x200b, 0x2060, 0xfeff]) {
+      const after = `Finds a${String.fromCodePoint(invisible)} note.`;
+      const changes = listedToolChanges(text("Finds a note."), text(after));
+      expect(changes.map((change) => change.hidden)).toEqual(["format"]);
+    }
+  });
+
+  it("lists an argument added as an empty schema, which takes anything", () => {
+    const before = text("Finds a note.", { properties: { title: { type: "string" } } });
+    const after = text("Finds a note.", { properties: { title: { type: "string" }, x: {} } });
+    expect(listedToolChanges(before, after)).toEqual([
+      { path: "parameters/properties/x", before: null, after: "{}", hidden: null },
+    ]);
+  });
+
+  it("keeps a property with a slash or a dot in its name apart from a nested one", () => {
+    const flat = text("Finds a note.", { properties: { "a/b": { type: "string" }, "a.b": {} } });
+    const nested = text("Finds a note.", { properties: { a: { b: { type: "string" } } } });
+    expect(listedToolChanges(flat, nested).map((change) => change.path)).toEqual([
+      "parameters/properties/a.b",
+      "parameters/properties/a/b/type",
+      "parameters/properties/a~1b/type",
     ]);
   });
 

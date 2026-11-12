@@ -178,16 +178,18 @@ function notWaiting(check: ListedToolApprovalCheck, name: string): NamedToolAppr
  *
  * - `normalization`: the same characters, written in another Unicode form
  *   (NFC and NFD of `é`).
+ * - `format`: they differ only in invisible format characters, such as a
+ *   zero-width space (U+200B), a word joiner (U+2060) or U+FEFF.
  * - `whitespace`: they differ only in spaces, tabs or line breaks, such as
  *   a trailing space.
  * - `lookalike`: they differ only where one of them has a character outside
  *   ASCII, such as a Cyrillic `а` for a Latin `a`.
  */
-export type HiddenChange = "normalization" | "whitespace" | "lookalike";
+export type HiddenChange = "normalization" | "format" | "whitespace" | "lookalike";
 
 /** One text of a listed tool that changed since it was approved. */
 export interface ListedToolChange {
-  /** Where the text is, such as `description` or `parameters.properties.title.description`. */
+  /** Where the text is, such as `description` or `parameters/properties/title/description`. */
   readonly path: string;
   /** The text as approved, or `null` when it is new. */
   readonly before: string | null;
@@ -225,17 +227,28 @@ export function listedToolChanges(
   return changes;
 }
 
-/** Every leaf of a tool as text, keyed by its dotted path. */
+/**
+ * Every leaf of a tool as text, keyed by its path. The keys in its
+ * parameters are joined JSON-pointer style, `~` and `/` escaped as `~0` and
+ * `~1`, so a property called `a/b` and a property `b` inside `a` never share
+ * a path. An empty object or array is a leaf too, so an argument added as
+ * `{}` is listed.
+ */
 function textsByPath(tool: ListedToolText): Map<string, string> {
   const texts = new Map<string, string>();
   const walk = (value: unknown, path: string): void => {
     if (typeof value === "string") {
       texts.set(path, value);
-    } else if (Array.isArray(value) || value === null || typeof value !== "object") {
+    } else if (
+      Array.isArray(value) ||
+      value === null ||
+      typeof value !== "object" ||
+      Object.keys(value).length === 0
+    ) {
       texts.set(path, JSON.stringify(value));
     } else {
       for (const [key, inner] of Object.entries(value)) {
-        walk(inner, `${path}.${key}`);
+        walk(inner, `${path}/${pointerToken(key)}`);
       }
     }
   };
@@ -245,6 +258,11 @@ function textsByPath(tool: ListedToolText): Map<string, string> {
   return texts;
 }
 
+/** A key as one JSON-pointer token (RFC 6901). */
+function pointerToken(key: string): string {
+  return key.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+
 function hiddenChange(before: string | null, after: string | null): HiddenChange | null {
   if (before === null || after === null) {
     return null;
@@ -252,10 +270,18 @@ function hiddenChange(before: string | null, after: string | null): HiddenChange
   if (before.normalize("NFC") === after.normalize("NFC")) {
     return "normalization";
   }
+  if (withoutFormatCharacters(before) === withoutFormatCharacters(after)) {
+    return "format";
+  }
   if (withoutWhitespace(before) === withoutWhitespace(after)) {
     return "whitespace";
   }
   return differsOnlyOutsideAscii(before, after) ? "lookalike" : null;
+}
+
+/** The text without invisible format characters, such as U+200B, U+2060 or U+FEFF. */
+function withoutFormatCharacters(text: string): string {
+  return text.replace(/\p{Cf}+/gu, "");
 }
 
 function withoutWhitespace(text: string): string {

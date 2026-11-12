@@ -1,10 +1,14 @@
 import type { Connector } from "@halonicjs/format";
-import type { Clock, ConnectorTool, Digest } from "@halonicjs/ports";
+import type { Clock, ConnectorPin, ConnectorTool, Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { approveWaitingTool } from "./approve-listed-tools.ts";
-import { checkConnectorTools, revokeNamedTool } from "./connector-tool-check.ts";
-import { writtenDigest } from "./listed-tool-fingerprint.ts";
+import {
+  checkConnectorTools,
+  connectorToolServer,
+  revokeNamedTool,
+} from "./connector-tool-check.ts";
+import { stdioToolServer, writtenDigest } from "./listed-tool-fingerprint.ts";
 import { TestToolApprovalStore } from "./testing/test-tool-approval-store.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
@@ -55,6 +59,58 @@ verifies("app.listed-tool-review", () => {
       cwd: "tools/notes",
       env: null,
       secretEnv: await writtenDigest({ NOTES_TOKEN: "notes-token" }, digest),
+    });
+  });
+
+  it("checks a wrapper at the variables it takes from the person's environment", async () => {
+    const wrapper = connector({
+      stdio: { command: "notes-wrapper", args: [], inheritEnv: ["PATH", "HOME"] },
+    });
+    const check = await checkConnectorTools({
+      location,
+      connector: wrapper,
+      listed: [tool("lookup")],
+      trust,
+      store: new TestToolApprovalStore(),
+      digest,
+      clock,
+    });
+    expect(check.ok && check.value.server).toEqual(
+      await stdioToolServer(
+        { command: "notes-wrapper", args: [], env: {}, inheritEnv: ["PATH", "HOME"] },
+        digest,
+      ),
+    );
+    expect(check.ok && check.value.server).toMatchObject({ inheritEnv: ["HOME", "PATH"] });
+  });
+
+  it("checks a package runner at the pin from the trust record", async () => {
+    const pin: ConnectorPin = {
+      registry: "npm",
+      registryUrl: "https://registry.npmjs.org",
+      package: "@acme/notes-mcp",
+      version: "2.3.1",
+    };
+    const runner = connector({ stdio: { command: "npx", args: ["@acme/notes-mcp"] } });
+    const check = await checkConnectorTools({
+      location,
+      connector: runner,
+      listed: [tool("lookup")],
+      trust,
+      pin,
+      store: new TestToolApprovalStore(),
+      digest,
+      clock,
+    });
+    const atPin = await stdioToolServer(
+      { command: "npx", args: ["@acme/notes-mcp"], env: {}, pin },
+      digest,
+    );
+    expect(check.ok && check.value.server).toEqual(atPin);
+    expect(await connectorToolServer(runner, pin, digest)).toEqual({ ok: true, value: atPin });
+    expect(await connectorToolServer(runner, undefined, digest)).not.toEqual({
+      ok: true,
+      value: atPin,
     });
   });
 
