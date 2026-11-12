@@ -121,11 +121,22 @@ sessions are open at once, srt still lets one read the other (known limit, `it.f
 | `recoverGitFolders` | After a host crash, undoes the `commondir` files of sessions whose host has died. |
 | `Machine`, `systemMachine` | What the sandbox asks of the machine; a test passes a fake `Machine`. |
 | `Runner`, `srtRunner` | Starts a program inside the fence; a test passes a fake `Runner`. |
+| `WSL_SHARED_FOLDERS` | The folders `srt-wsl` hides in Halonic's WSL distro: the `halonic` home, `/mnt/halonic` and `/mnt/wsl`. |
 
 `new SrtSandbox(machine?, runner?, journalFolder?)` takes the real machine and runner by default.
 Give `journalFolder` (a folder only this user can write) to keep the snapshot `recoverGitFolders`
 needs; without it, nothing is kept and a crash is not recovered. On Windows the folder gets an
 access list for this user alone (`icacls`, no inheritance) each time it is prepared or recovered.
+
+`sharedFolders` (fourth argument) are folders other sessions work in too. In Halonic's WSL distro
+(`srt-wsl`) they are `WSL_SHARED_FOLDERS`: srt on Linux leaves reads open, so without them a session
+on one project reads every other project, Halonic's data and each harness's sign-ins (security
+review W1 on HAL-5407). Each session denies every shared folder for reading as a whole and re-allows
+only its own working, temp and settings folders and read-only paths inside (srt's `allowRead`; on
+Linux an empty folder over the shared one, with those bound back). A project or mount made while the
+session runs lands under the deny, so the session can't see it. A shared folder that is missing
+stops the session from opening, because srt would leave its deny out. The residual: the names of
+mount points stay visible in `/proc/self/mountinfo`, their contents don't.
 
 ## Example
 

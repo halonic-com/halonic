@@ -337,3 +337,86 @@ describe("a program trying to get out of the fence", () => {
     }
   });
 });
+
+describe("a session on one project reading another (srt-wsl, W1 on HAL-5407)", () => {
+  let base: string;
+  let home: string;
+  let mounts: string;
+  let session: SandboxSession;
+
+  /** Runs a shell script in the session and gives its output. */
+  async function sh(script: string): Promise<string> {
+    const started = await session.start({ program: "sh", args: ["-c", script] });
+    const [out] = await Promise.all([read(started.stdout), started.exited]);
+    return out;
+  }
+
+  beforeAll(async () => {
+    // Stand-ins for the distro's home (one project per folder) and its Windows-drive mounts.
+    base = await mkdtemp(join(tmpdir(), "srt-shared-"));
+    home = join(base, "home");
+    mounts = join(base, "mnt");
+    await mkdir(join(home, "projects", "a"), { recursive: true });
+    await mkdir(join(home, "projects", "b", "src"), { recursive: true });
+    await mkdir(join(home, "temp-a"), { recursive: true });
+    await mkdir(mounts, { recursive: true });
+    await writeFile(join(home, "projects", "a", "own.txt"), "own-project");
+    await writeFile(join(home, "projects", "b", "src", "canary.txt"), "canary-of-b");
+    const shared = new SrtSandbox(undefined, undefined, null, { sharedFolders: [home, mounts] });
+    session = await shared.open({
+      workingFolder: join(home, "projects", "a"),
+      tempFolder: join(home, "temp-a"),
+      settingsFolder: null,
+      readOnlyPaths: [],
+      deniedPaths: [],
+      env: { HOME: join(home, "temp-a") },
+      network: { bridge: null, allowedSites: [] },
+      timeLimitMs: 120_000,
+    });
+    // Made after the session opened: a new project, and an import's mount of a Windows folder.
+    await mkdir(join(home, "projects", "c"), { recursive: true });
+    await writeFile(join(home, "projects", "c", "canary.txt"), "canary-of-c");
+    await mkdir(join(mounts, "import-1"), { recursive: true });
+    await writeFile(join(mounts, "import-1", "canary.txt"), "canary-of-import");
+  });
+
+  afterAll(async () => {
+    await session?.close();
+    await rm(base, { recursive: true, force: true });
+  });
+
+  it("reads and writes its own project", async () => {
+    expect(await sh("cat own.txt; echo written > new.txt && cat new.txt")).toContain(
+      "own-project\nwritten",
+    );
+    expect(await readFile(join(home, "projects", "a", "new.txt"), "utf8")).toBe("written\n");
+  });
+
+  it.each([
+    ["another project", ["projects", "b", "src", "canary.txt"], "canary-of-b"],
+    ["a project made after it opened", ["projects", "c", "canary.txt"], "canary-of-c"],
+  ])(
+    "can't read a canary in %s, directly, through a link, /proc or a copy",
+    async (_, parts, text) => {
+      const canary = join(home, ...parts);
+      const out = await sh(
+        `cat ${canary}; ln -s ${canary} link-${text} && cat link-${text}; cat /proc/self/root${canary}; cp ${canary} ${text}.txt && cat ${text}.txt`,
+      );
+      expect(out).not.toContain(text);
+    },
+  );
+
+  it("can't read or list a mount made after it opened", async () => {
+    const out = await sh(`cat ${join(mounts, "import-1", "canary.txt")}; ls -R ${mounts}`);
+    expect(out).not.toContain("canary-of-import");
+    expect(out).not.toContain("import-1");
+  });
+
+  it("can't list the other projects, old or new", async () => {
+    const out = await sh(`ls -R ${join(home, "projects")}`);
+    expect(out).not.toContain("canary.txt");
+    const lines = out.split("\n");
+    expect(lines).not.toContain("b");
+    expect(lines).not.toContain("c");
+  });
+});

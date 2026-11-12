@@ -42,6 +42,7 @@ export class SrtSandbox implements Sandbox {
   readonly #runsFolder: string | null;
   readonly #warn: (message: string) => void;
   #swept: Promise<void> | null = null;
+  readonly #sharedFolders: readonly string[];
 
   /**
    * @param journalFolder where each session keeps its `commondir` snapshot so
@@ -52,6 +53,10 @@ export class SrtSandbox implements Sandbox {
    *   no live session holds (sessions that crashed before they closed).
    * @param options.grants takes back srt's kept Windows grants; a test passes a fake
    * @param options.warn where a failure that no caller can get is logged; stderr by default
+   * @param options.sharedFolders folders other sessions work in too, such as
+   *   `WSL_SHARED_FOLDERS` in Halonic's WSL distro (`srt-wsl`). Each session
+   *   denies them for reading as a whole, except its own folders inside, and
+   *   doesn't open when one is missing.
    */
   constructor(
     machine: Machine = systemMachine,
@@ -61,6 +66,7 @@ export class SrtSandbox implements Sandbox {
       runsFolder?: string | null;
       grants?: KeptGrants;
       warn?: (message: string) => void;
+      sharedFolders?: readonly string[];
     } = {},
   ) {
     this.#machine = machine;
@@ -69,6 +75,7 @@ export class SrtSandbox implements Sandbox {
     this.#grants = options.grants ?? new KeptGrants();
     this.#runsFolder = options.runsFolder ?? null;
     this.#warn = options.warn ?? ((message) => void process.stderr.write(`${message}\n`));
+    this.#sharedFolders = options.sharedFolders ?? [];
   }
 
   /** Whether the sandbox can start here; when it can't, the first reason and one sentence on what is missing. Never throws. */
@@ -178,6 +185,7 @@ export class SrtSandbox implements Sandbox {
       journalFolder: this.#journalFolder,
       grants: windows ? this.#grants : null,
       warn: this.#warn,
+      sharedFolders: this.#sharedFolders,
     });
   }
 

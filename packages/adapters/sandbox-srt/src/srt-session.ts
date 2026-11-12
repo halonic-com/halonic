@@ -23,6 +23,7 @@ import {
 import { describeForgetFailures, type ForgetFailure, type KeptGrants } from "./kept-grants.ts";
 import { makeLauncherTemp } from "./launcher-temp.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
+import { assertSharedFolders } from "./shared-folders.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
 import {
@@ -108,7 +109,10 @@ export class SrtSession implements SandboxSession {
   /**
    * Opens a session: writes its settings, proves the fence and returns. The
    * proof is settled before any program the caller starts. The time limit
-   * counts from `startedAt`.
+   * counts from `startedAt`. Each of the `sharedFolders` is denied for
+   * reading as a whole, except the profile's own folders inside it.
+   *
+   * @throws when a shared folder is missing or isn't a folder
    */
   static async open(
     profile: SandboxProfile,
@@ -120,12 +124,15 @@ export class SrtSession implements SandboxSession {
       grants?: KeptGrants | null;
       /** Where a failure to forget is logged when no caller can get it. */
       warn?: (message: string) => void;
+      sharedFolders?: readonly string[];
     } = {},
   ): Promise<SrtSession> {
     const startedAt = Date.now();
     const grants = options.grants ?? null;
     grants?.assertSupported();
     assertVariableNames(profile);
+    const { journalFolder = null, sharedFolders = [] } = options;
+    await assertSharedFolders(sharedFolders);
     await mkdir(profile.tempFolder, { recursive: true });
     await checkCommondirs(profile.workingFolder);
     const git = {
@@ -133,7 +140,6 @@ export class SrtSession implements SandboxSession {
       nested: await snapshotNestedGit(profile.workingFolder),
     };
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
-    const { journalFolder = null } = options;
     let journal: string | null = null;
     let launcherTemp: string | null = null;
     // Held from here, before srt runs anything: the forget in the `catch` below or `close()` gives the hold up.
@@ -148,6 +154,8 @@ export class SrtSession implements SandboxSession {
         profile,
         journalFolder === null ? [folder] : [folder, journalFolder],
         await gitPathsToDeny(profile.workingFolder),
+        process.platform,
+        sharedFolders,
       );
       await writeFile(settingsPath, JSON.stringify(config), { mode: 0o600 });
       const fence = await proveFence({

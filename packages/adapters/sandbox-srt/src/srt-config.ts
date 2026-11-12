@@ -230,6 +230,16 @@ export type SrtConfig = SandboxRuntimeConfig & {
  * found in the working folder at start (see `gitPathsToDeny`), relative to it,
  * denied for writing like the tool settings.
  *
+ * `sharedFolders` are folders other sessions work in too, such as the WSL
+ * distro's home with every project (`WSL_SHARED_FOLDERS`). Each is denied for
+ * reading as a whole, and the session's own folders (working, temp, settings
+ * and read-only paths) become `allowRead`, which srt re-allows inside a
+ * denied folder: on Linux it mounts an empty folder over the shared one and
+ * binds those back, so a folder made there later stays out of the session's
+ * sight. They are not denied for writing: srt allows writes only where the
+ * settings say, and a write deny on a folder around the working folder would
+ * take its write access away.
+ *
  * Only the bridge and the allowed sites are reachable, and an allowed site is
  * refused when its name resolves to a local or private address (such as
  * `127.0.0.1.nip.io`). The bridge is an address with its port, so a name that
@@ -245,6 +255,7 @@ export function buildSrtConfig(
   hiddenPaths: string[] = [],
   gitPaths: string[] = [],
   platform: NodeJS.Platform = process.platform,
+  sharedFolders: readonly string[] = [],
 ): SrtConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
   const toolSettings = [
@@ -261,6 +272,7 @@ export function buildSrtConfig(
   const readable = [
     ...(platform === "win32" ? profile.readOnlyPaths : []),
     ...(profile.reopenedPaths ?? []),
+    ...(sharedFolders.length > 0 ? [...writableFolders, ...profile.readOnlyPaths] : []),
   ];
   const { bridge, allowedSites } = profile.network;
   const bridgeDomains = bridge === null ? [] : [bridgeDomain(bridge.host, bridge.port)];
@@ -273,7 +285,7 @@ export function buildSrtConfig(
       ...(profile.keyStore === "denied" ? { denyMachLookup: [...keychainMachServices] } : {}),
     },
     filesystem: {
-      denyRead: withResolved(hidden).map(literalPath),
+      denyRead: withResolved([...hidden, ...sharedFolders]).map(literalPath),
       ...(readable.length > 0 ? { allowRead: withResolved(readable).map(literalPath) } : {}),
       allowWrite: withResolved(writableFolders).map(literalPath),
       denyWrite: withResolved([
