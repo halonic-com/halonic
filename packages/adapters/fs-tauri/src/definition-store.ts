@@ -129,7 +129,7 @@ export class TauriDefinitionStore implements DefinitionStore {
 
   /** Reports changes from outside Halonic, as the port says, from the shell's `fs_watch`. */
   async watch(listener: DefinitionWatchListener): Promise<DefinitionWatch> {
-    // The watch adds itself to `#watches` once open and takes itself out when it closes or fails.
+    // The watch is in `#watches` from before it first reads the workspace until it closes or fails.
     return await ShellWatch.open(
       {
         files: this,
