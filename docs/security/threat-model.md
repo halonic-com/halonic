@@ -129,7 +129,7 @@ rule is that a steered model must not be able to do more than you approved.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once | Planned (HAL-998 for listed tools; see 4.3) |
+| Injected text makes the model call a risky tool | Tools have a risk: `read`, `write` or `send`. Every risk above `read` needs approval in the engine (`checkToolCall`), not in the model's prompt; only `read` runs at once. A run stops before such a call and waits for a person; a chat turn, which can't wait, refuses it. Listed tools: see 4.3 | **On `main`** (`packages/core/engine/src/agent/check-run-tool-call.ts`, `check-chat-tool-call.ts`; `engine.run-tool-calls`, `engine.turn-approval-stop`) |
 | A tool result carries instructions | Results from tools marked untrusted reach the model only inside a fence | **On `main`**: every result of a server's tool, in chat turns and runs (HAL-5205) |
 | Knowledge or documents carry instructions | Knowledge reaches a model only through the engine's `knowledge_search` and `knowledge_read` tools, which fence the titles, snippets and texts of any source not marked `untrusted: false` (`ports.untrusted-knowledge`, `engine.knowledge-tools`). The ref the model sends back stays unfenced, so a hit or a document whose ref is longer than 512 characters is dropped (`knowledgeHitForModel`, `knowledgeDocForModel`). Agents don't get these tools in runs yet (HAL-4174) | **On `main`** |
 | A run is changed after the fact | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). `FolderRunStore` keeps it as `<runId>.jsonl` in the workspace's `runs` folder in your profile, one event per line, and only adds to it. An append names the last event it expects (`expectedSeq`), holds `<runId>.lock` so the CLI and the Studio shell can't both write, and counts as stored only once flushed to disk; a failed append is cut back and stores none of its events, though one cut off by a crash of the program may leave the first events of its batch stored. The folder is private to you (`700`, files `600`), and a log that is a link or has a second name is refused. The CLI uses it for every run; the Studio shell's run store reads and writes the same files under the same lock | **On `main`** (`packages/adapters/fs-node/src/run-store.ts`; `fs-node.run-store-files`, `run-store-lock`, `run-store-recovery`, `run-store-private-files`) |
@@ -156,7 +156,7 @@ Its text is attacker text. The rules are the requirement
 | A listed tool lowers its own risk or marks itself trusted | Its `risk` and `untrusted` are ignored; it counts as `write` unless a trusted workspace sets another risk (`read`, `write` or `send`) | **On `main`** |
 | Two tools share a name | Every clashing listed tool is refused | **On `main`** |
 | The description reaches the model as an instruction | Descriptions and titles come back as `UntrustedText`, whose `toJSON` throws, so they can't be serialised to JSON without the fence. `toString` doesn't throw: a template string gives `[object Object]`, which doesn't leak the text. `structuredClone` or IPC turns it into a plain object and loses the guard. The fence itself is rendered when tools are assembled | **On `main`**: the engine fences every listed tool it offers (HAL-5205) |
-| A call uses arguments the listing never declared | Refused at call time; a listed tool is `write` unless a trusted workspace sets another risk, so it needs approval unless that risk is `read` | **On `main`** as functions; used once the engine puts turns together (HAL-998) |
+| A call uses arguments the listing never declared | Refused at call time; a listed tool is `write` unless a trusted workspace sets another risk, so it needs approval unless that risk is `read` | **On `main`**: the engine checks every call in runs and chat turns with `checkToolCall` (HAL-998) |
 | A server changes its tools after you looked | Pinning and approving listings | Planned (HAL-520) |
 
 **Known limit.** Unfenced strings (names, `enum` values) can still carry up to
@@ -182,11 +182,12 @@ Its text is attacker text. The rules are the requirement
 
 **Known limits.**
 
-- **Old copies stay on disk.** The record store only appends, so a replaced or
-  removed token stays in its history, still encrypted. If the key leaks, old
-  tokens can be read. Removing them for good needs compaction on the
-  `RecordStore` port: Planned (HAL-719). Until then, Halonic says it "deletes"
-  a secret and "stops using it", not that it is gone from disk.
+- **Old copies stay on disk.** After a replace or a remove, the token store
+  compacts `_tokens`, so the old sealed value is no longer in the record store
+  (`token-store.old-values-removed`, HAL-719). Backups, copies and freed disk
+  blocks are outside the record store and may still hold it, encrypted. If the
+  key leaks, those old tokens can be read. So Halonic says it "deletes" a
+  secret and "stops using it", not that it is gone from disk.
 - **The store must not be writable by agents or tools.** Anyone who can append
   to it can remove a token or roll it back. The encryption doesn't prevent
   that.

@@ -37,9 +37,9 @@ public.
 
 ## Supported versions
 
-Halonic is before version 1.0. We fix security problems in the **latest
-release** only, and on the `main` branch. Please update to the latest release
-before you report a problem, and check that it is still there.
+Halonic is before version 1.0. Until the first release, we fix security
+problems on the `main` branch. Please check that a problem is
+still there on the latest `main` before you report it.
 
 ## Scope
 
