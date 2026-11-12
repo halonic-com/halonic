@@ -31,8 +31,10 @@ runs:
         file="$RUNNER_TEMP/pull-request-event.json"
         # Many merge groups run at once, each with several jobs that read the
         # pull request, so the token's hourly API limit can run out (HAL-5146).
-        # Retry only a rate limit (403/429 with a rate-limit message); any other
-        # error fails at once. Never skip the read: the leak guard must see the
+        # Retry a rate limit (403/429 with a rate-limit message). Also retry a
+        # GitHub server error: a 5xx, or a reply that isn't JSON or is empty
+        # (HAL-7532), after 5 s, 15 s and 30 s. Any other error, such as a real
+        # 404 or 403, fails at once. Never skip the read: the leak guard must see the
         # pull request's current text. The total wait stays within BUDGET (the
         # calling jobs have 15 minutes), so a long limit fails with a clear
         # error instead of a job timeout. When the hourly limit is used up,
@@ -41,13 +43,36 @@ runs:
         BUDGET=600
         slept=0
         attempt=0
+        server_errors=0
         while true; do
           attempt=$((attempt + 1))
           if gh api "repos/$REPO/pulls/$NUMBER" \
             --jq '{pull_request: {title, body, head: {ref: .head.ref}, labels: [.labels[] | {name}]}}' > "$file" 2> "$RUNNER_TEMP/pull-request-read.err"; then
-            break
+            [ -s "$file" ] && break
+            echo "gh api returned an empty reply" >> "$RUNNER_TEMP/pull-request-read.err"
           fi
           cat "$RUNNER_TEMP/pull-request-read.err" >&2
+          if grep -qiE 'HTTP 5[0-9][0-9]|invalid character|looking for beginning of value|unexpected end of JSON|returned an empty reply' "$RUNNER_TEMP/pull-request-read.err" \
+            && ! grep -qiE 'HTTP 4[0-9][0-9]' "$RUNNER_TEMP/pull-request-read.err"; then
+            server_errors=$((server_errors + 1))
+            case "$server_errors" in
+              1) wait=5 ;;
+              2) wait=15 ;;
+              3) wait=30 ;;
+              *)
+                echo "::error::Couldn't read pull request #$NUMBER: GitHub returned a server error $server_errors times (attempt $attempt). Re-run the job later."
+                exit 1
+                ;;
+            esac
+            if [ $((slept + wait)) -gt "$BUDGET" ]; then
+              echo "::error::Couldn't read pull request #$NUMBER: GitHub returned a server error and the next wait (${wait}s) doesn't fit in ${BUDGET}s (waited ${slept}s). Re-run the job later."
+              exit 1
+            fi
+            echo "::warning::GitHub returned a server error; retrying in ${wait}s (attempt $attempt)."
+            sleep "$wait"
+            slept=$((slept + wait))
+            continue
+          fi
           if ! grep -qiE 'rate limit|HTTP 429|abuse detection|secondary' "$RUNNER_TEMP/pull-request-read.err"; then
             echo "::error::Couldn't read pull request #$NUMBER (attempt $attempt)."
             exit 1
