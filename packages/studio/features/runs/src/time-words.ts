@@ -88,6 +88,11 @@ export function clockTime(moment: Date): string {
   return `${hours}:${minutes}`;
 }
 
+/** The time of day with seconds, "09:05:12", for the run log's lines. */
+export function clockTimeWithSeconds(moment: Date): string {
+  return `${clockTime(moment)}:${String(moment.getSeconds()).padStart(2, "0")}`;
+}
+
 function sameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
