@@ -177,6 +177,7 @@ export {
   type PluginBackendStartOptions,
   type PluginBackendTrustReason,
   pluginBackendChoices,
+  PluginSecretNameMissingError,
   type StartTrustedBackend,
   type TrustedPluginBackend,
 } from "./plugin-backend.ts";

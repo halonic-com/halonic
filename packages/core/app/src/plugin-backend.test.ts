@@ -5,6 +5,7 @@ import {
   PluginBackendNotTrustedError,
   PluginBackendStart,
   pluginBackendChoices,
+  PluginSecretNameMissingError,
   type TrustedPluginBackend,
 } from "./plugin-backend.ts";
 import { readPluginFolder } from "./plugin-folder.ts";
@@ -307,6 +308,16 @@ ui:`,
         ),
       );
       expect(Object.keys(pluginBackendChoices(plugin, {}).secretNames)).toEqual(["radar-key"]);
+    });
+
+    it("says a secret without a stored name is Halonic's bug, by key", () => {
+      const error = new PluginSecretNameMissingError("Weather", "radar-key");
+      expect(error.key).toBe("plugin-secret-name-missing");
+      expect(error.plugin).toBe("Weather");
+      expect(error.secret).toBe("radar-key");
+      expect(error.message).toBe(
+        "Halonic can't find where the plugin Weather stores its secret radar-key. This is a bug in Halonic, not something you did.",
+      );
     });
   });
 });

@@ -186,16 +186,38 @@ export function pluginBackendChoices(
 ): PluginBackendChoices {
   const stored = pluginSecretNames(plugin);
   const secretNames = Object.fromEntries(
-    Object.keys(plugin.backend?.secrets ?? {}).map((name) => [name, storedName(stored, name)]),
+    Object.keys(plugin.backend?.secrets ?? {}).map((name) => [name, storedName(plugin, stored, name)]),
   );
   return { settings, secretNames };
 }
 
 /** Where the secret `name` is stored; a declared secret always has a name, so a missing one is a bug, never a fallback to the bare name. */
-function storedName(stored: Record<string, string>, name: string): string {
+function storedName(plugin: Plugin, stored: Record<string, string>, name: string): string {
   const storedAs = stored[name];
-  if (storedAs === undefined) throw new Error(`The plugin's secret ${name} has no stored name.`);
+  if (storedAs === undefined) throw new PluginSecretNameMissingError(plugin.name, name);
   return storedAs;
+}
+
+/**
+ * A secret the plugin's backend declares has no name to be stored under. This
+ * is a bug in Halonic, never something the person did. The command line says
+ * it with its `plugin-secret-name-missing` catalogue sentence (HAL-1709); the
+ * message is only the fallback for a host without the catalogue.
+ */
+export class PluginSecretNameMissingError extends Error {
+  override readonly name = "PluginSecretNameMissingError";
+  /** Key of the catalogue sentence the command line shows. */
+  readonly key = "plugin-secret-name-missing";
+  readonly plugin: string;
+  readonly secret: string;
+
+  constructor(plugin: string, secret: string) {
+    super(
+      `Halonic can't find where the plugin ${plugin} stores its secret ${secret}. This is a bug in Halonic, not something you did.`,
+    );
+    this.plugin = plugin;
+    this.secret = secret;
+  }
 }
 
 function readFailed(error: unknown): PluginProblem {
