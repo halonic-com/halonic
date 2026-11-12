@@ -1030,7 +1030,7 @@ jobs:
       # library it imports that isn't one of Windows' KnownDLLs, and the ones
       # Windows itself is known to look for, is planted there as a real
       # library that leaves a mark when loaded.
-      - name: Sandbox helper (set up, refuse a swapped srt-win, remove)
+      - name: Sandbox helper (set up, refuse a swapped srt-win, remove, leave a linked session folder)
         env:
           RUSTFLAGS: -C target-feature=+crt-static
         run: |
@@ -1156,6 +1156,36 @@ jobs:
           if ($LASTEXITCODE -eq 0) { throw 'remove left the srt-sandbox account' }
           if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'remove left srt-win.exe' }
 
+          # The user's own session folder is one any of their programs can
+          # change, so the elevated steps leave it alone: made a link to
+          # another folder, nothing in that folder changes, neither its
+          # files nor any access list.
+          $session = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'sandbox-runtime'
+          $kept = "$session-kept"
+          if (Test-Path $session) { Move-Item $session $kept }
+          $elsewhere = Join-Path $env:RUNNER_TEMP 'elsewhere'
+          New-Item -ItemType Directory -Force (Join-Path $elsewhere 'inside') | Out-Null
+          Set-Content (Join-Path $elsewhere 'inside\kept.txt') 'kept'
+          function Get-Folder([string]$path) {
+            @(Get-Item -Force $path) + @(Get-ChildItem -Force -Recurse $path) | ForEach-Object {
+              "$($_.FullName) $($_.Length) $($_.LastWriteTimeUtc.Ticks) $((Get-Acl -LiteralPath $_.FullName).Sddl)"
+            }
+          }
+          $before = Get-Folder $elsewhere
+          New-Item -ItemType Junction -Path $session -Target $elsewhere | Out-Null
+          try {
+            $code = Invoke-Helper $helper 'setup'
+            if ($code -ne 0) { throw "setup with a linked session folder exited $code" }
+            $code = Invoke-Helper $helper 'remove'
+            if ($code -ne 0) { throw "remove with a linked session folder exited $code" }
+          } finally {
+            # Deletes the link only, not the folder it points to.
+            [IO.Directory]::Delete($session)
+            if (Test-Path $kept) { Move-Item $kept $session }
+          }
+          $changed = Compare-Object $before (Get-Folder $elsewhere)
+          if ($changed) { throw "the elevated steps changed the linked folder: $($changed.InputObject -join '; ')" }
+
           # A release build checks the copy of itself it leaves for Installed
           # apps (HAL-7385, S-4). This build expects a publisher but isn't
           # signed, as a swapped helper wouldn't be: its copy is refused.
@@ -1174,6 +1204,7 @@ jobs:
           Write-Output "The helper loaded none of $($planted -join ', ') from its folder."
           Write-Output 'The helper refused a copy of itself without the publisher it expects.'
           Write-Output 'The helper set up, refused a swapped srt-win and removed the sandbox.'
+          Write-Output 'The helper left a linked session folder unchanged.'
           exit 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

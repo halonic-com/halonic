@@ -29,6 +29,12 @@ fn system() -> PathBuf {
     PathBuf::from("system32")
 }
 
+/// srt-win's arguments for a removal: the machine-wide half only, so the
+/// helper never runs the user's half with administrator rights.
+fn uninstall_step() -> Vec<String> {
+    vec!["uninstall".into(), "--elevated-step".into()]
+}
+
 struct Pretend {
     elevated: bool,
     own: PathBuf,
@@ -104,9 +110,6 @@ impl Machine for Pretend {
     }
     fn public(&self) -> io::Result<PathBuf> {
         Ok(PathBuf::from("public"))
-    }
-    fn local_app_data(&self) -> io::Result<PathBuf> {
-        Ok(PathBuf::from("local-app-data"))
     }
     fn windows_folder(&self) -> io::Result<PathBuf> {
         Ok(PathBuf::from("C:windows"))
@@ -239,7 +242,6 @@ fn sandbox_elevate_runs_srt_win_with_only_the_environment_windows_gives() {
         program_files: Path::new("program-files"),
         program_data: Path::new("program-data"),
         public: Path::new("public"),
-        local_app_data: Path::new("local-app-data"),
         temp: &temp,
     });
     assert_eq!(machine.environments.borrow().first(), expected.as_ref());
@@ -271,14 +273,12 @@ fn on_c(rest: &str) -> String {
 #[test]
 fn sandbox_elevate_builds_the_environment_from_windows_paths() {
     let temp = on_c(r"Program Files\Halonic Sandbox\tmp");
-    let local_app_data = on_c(r"Users\someone\AppData\Local");
     let environment = environment(&Folders {
         windows: Path::new(&on_c("Windows")),
         system: Path::new(&on_c(r"Windows\System32")),
         program_files: Path::new(&on_c("Program Files")),
         program_data: Path::new(&on_c("ProgramData")),
         public: Path::new(&on_c(r"Users\Public")),
-        local_app_data: Path::new(&local_app_data),
         temp: Path::new(&temp),
     })
     .expect("an environment");
@@ -290,7 +290,8 @@ fn sandbox_elevate_builds_the_environment_from_windows_paths() {
     };
     assert_eq!(value("SystemDrive").as_deref(), Some("C:"));
     assert_eq!(value("TEMP"), Some(temp));
-    assert_eq!(value("LOCALAPPDATA"), Some(local_app_data));
+    // Not the user's own: their programs can change that folder.
+    assert_eq!(value("LOCALAPPDATA"), Some(temp.clone()));
     assert!(
         value("PATH")
             .is_some_and(|path| path.starts_with(&on_c(r"Windows\System32")) && path.contains(';'))
@@ -303,7 +304,6 @@ fn sandbox_elevate_builds_the_environment_from_windows_paths() {
             program_files: Path::new("program-files"),
             program_data: Path::new("program-data"),
             public: Path::new("public"),
-            local_app_data: Path::new("local-app-data"),
             temp: Path::new("tmp"),
         }),
         None
@@ -371,7 +371,7 @@ fn sandbox_elevate_removes_from_installed_apps_with_the_copy_it_left() {
     assert_eq!(from_installed_apps.run(Verb::Remove), code::OK);
     assert_eq!(
         from_installed_apps.ran(),
-        vec![(folder().join(SRT_WIN), vec!["uninstall".into()], system())]
+        vec![(folder().join(SRT_WIN), uninstall_step(), system())]
     );
     assert_eq!(*from_installed_apps.entry.borrow(), None);
     assert_eq!(from_installed_apps.file(folder().join(SRT_WIN)), None);
@@ -467,7 +467,7 @@ fn sandbox_elevate_knows_its_folder_by_any_name() {
     assert_eq!(from_installed_apps.run(Verb::Remove), code::OK);
     assert_eq!(
         from_installed_apps.ran(),
-        vec![(folder().join(SRT_WIN), vec!["uninstall".into()], system())]
+        vec![(folder().join(SRT_WIN), uninstall_step(), system())]
     );
 }
 

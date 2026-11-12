@@ -33,7 +33,8 @@ pub const PROGRAM: &str = "halonic-sandbox-elevate.exe";
 pub const SRT_WIN: &str = "srt-win.exe";
 /// The admin-only folder under Program Files the helper runs srt-win from.
 pub const FOLDER: &str = "Halonic Sandbox";
-/// srt-win's `TEMP` and `TMP`: an admin-only folder inside [`FOLDER`].
+/// srt-win's `TEMP`, `TMP` and `LOCALAPPDATA`: an admin-only folder inside
+/// [`FOLDER`].
 pub const TEMP: &str = "tmp";
 /// The Installed apps entry, under `HKLM` (64-bit view).
 pub const UNINSTALL_KEY: &str =
@@ -138,10 +139,7 @@ pub struct Folders<'a> {
     pub program_data: &'a Path,
     /// The Public profile. srt-win denies the sandbox writes in it.
     pub public: &'a Path,
-    /// The local app data of the account the helper runs as. srt-win keeps
-    /// its state database there and reads it again on every sandboxed run,
-    /// so it must be the same folder those runs see.
-    pub local_app_data: &'a Path,
+    /// An admin-only folder, srt-win's `TEMP`, `TMP` and `LOCALAPPDATA`.
     pub temp: &'a Path,
 }
 
@@ -149,6 +147,12 @@ pub struct Folders<'a> {
 /// user's environment, which any program of theirs can change, so none of
 /// it comes through: every value here is a path Windows gave the helper
 /// (HAL-7385, S-1).
+///
+/// `LOCALAPPDATA` is the admin-only `temp` too, not the user's own: srt-win
+/// keeps the user's session store there and takes its lock there, by name.
+/// The steps the helper runs read nothing from that store, and a folder the
+/// user's programs can change is no place for an elevated process to open
+/// files in.
 pub fn environment(folders: &Folders) -> Option<Vec<(&'static str, OsString)>> {
     let Folders {
         windows,
@@ -156,7 +160,6 @@ pub fn environment(folders: &Folders) -> Option<Vec<(&'static str, OsString)>> {
         program_files,
         program_data,
         public,
-        local_app_data,
         temp,
     } = *folders;
     // The drive, such as `C:`, from the Windows folder. Written out, not
@@ -186,7 +189,7 @@ pub fn environment(folders: &Folders) -> Option<Vec<(&'static str, OsString)>> {
         ("ProgramData", program_data.into()),
         ("ProgramFiles", program_files.into()),
         ("PUBLIC", public.into()),
-        ("LOCALAPPDATA", local_app_data.into()),
+        ("LOCALAPPDATA", temp.into()),
         ("ComSpec", system.join("cmd.exe").into()),
         ("PATHEXT", ".COM;.EXE;.BAT;.CMD".into()),
         ("PATH", path),
@@ -206,8 +209,6 @@ pub trait Machine {
     fn program_data(&self) -> io::Result<PathBuf>;
     /// The Public profile.
     fn public(&self) -> io::Result<PathBuf>;
-    /// Local app data of the account this process runs as.
-    fn local_app_data(&self) -> io::Result<PathBuf>;
     /// The Windows folder.
     fn windows_folder(&self) -> io::Result<PathBuf>;
     /// System32.
@@ -282,7 +283,6 @@ fn steps(
         program_files: &program_files,
         program_data: &machine.program_data().map_err(didnt_start)?,
         public: &machine.public().map_err(didnt_start)?,
-        local_app_data: &machine.local_app_data().map_err(didnt_start)?,
         temp: &temp,
     })
     .ok_or(code::SRT_WIN_DIDNT_START)?;
@@ -347,8 +347,17 @@ fn steps(
             Ok(status)
         }
         Verb::Remove => {
+            // The machine-wide half of srt-win's uninstall only. The grants
+            // srt-win kept for the user are the user's to take back, in a
+            // process of their own without administrator rights: Halonic's
+            // removal does that after this step.
             let status = machine
-                .run(&srt_win, &["uninstall"], &system, &environment)
+                .run(
+                    &srt_win,
+                    &["uninstall", "--elevated-step"],
+                    &system,
+                    &environment,
+                )
                 .map_err(|_| code::SRT_WIN_DIDNT_START)?;
             if status != code::OK {
                 return Ok(status);
