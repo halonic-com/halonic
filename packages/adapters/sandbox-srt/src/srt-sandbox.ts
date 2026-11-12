@@ -6,6 +6,7 @@ import type {
   Sandbox,
   SandboxCapabilities,
   SandboxCheck,
+  SandboxFix,
   SandboxNetwork,
   SandboxProfile,
   SandboxSession,
@@ -13,15 +14,20 @@ import type {
 } from "@halonicjs/ports";
 import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
+import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
 import { assertSrtDeniesKeychain, bridgeNetwork } from "./srt-config.ts";
 import { type Runner, srtRunner } from "./srt-runner.ts";
 import { SrtSession } from "./srt-session.ts";
 
-/** One reason the sandbox can't start, with the sentence that says what is missing. */
+/**
+ * One reason the sandbox can't start, with the sentence that says what is
+ * missing and, when this machine has one, the fix as data.
+ */
 interface Unavailable {
   reason: SandboxUnavailableReason;
   missing: string;
+  fix?: SandboxFix;
 }
 
 /**
@@ -102,7 +108,8 @@ export class SrtSandbox implements Sandbox {
       unavailable = { reason: "other", missing: "the machine could not be examined" };
     }
     if (unavailable === null) return { ok: true, reason: null, missing: [] };
-    return { ok: false, reason: unavailable.reason, missing: [unavailable.missing] };
+    const { reason, missing, fix } = unavailable;
+    return { ok: false, reason, missing: [missing], ...(fix === undefined ? {} : { fix }) };
   }
 
   /**
@@ -242,9 +249,12 @@ export class SrtSandbox implements Sandbox {
       if (!(await machine.hasSeatbelt())) {
         return { reason: "other", missing: "sandbox-exec is not installed" };
       }
-      return (await machine.hasRipgrep())
-        ? null
-        : { reason: "ripgrep-missing", missing: "ripgrep is not installed" };
+      if (await machine.hasRipgrep()) return null;
+      return {
+        reason: "ripgrep-missing",
+        missing: "ripgrep is not installed",
+        fix: installFix(await machine.packageManager(), ["ripgrep"]),
+      };
     }
     if (machine.platform !== "linux") {
       return { reason: "other", missing: `${machine.platform} has no sandbox` };
@@ -269,14 +279,21 @@ export class SrtSandbox implements Sandbox {
     }
     if (!(await machine.hasBubblewrap())) {
       // Without bubblewrap, the AppArmor setting says nothing: Ubuntu 24.04's
-      // profile for bubblewrap lets it through once it is installed.
-      return { reason: "bubblewrap-missing", missing: "bubblewrap is not installed" };
+      // profile for bubblewrap lets it through once it is installed. The fix
+      // installs the helpers too, so one command does it.
+      const helpers = await machine.missingLinuxHelpers();
+      return {
+        reason: "bubblewrap-missing",
+        missing: "bubblewrap is not installed",
+        fix: installFix(await machine.packageManager(), ["bubblewrap", ...helpers]),
+      };
     }
     const bubblewrapError = await machine.bubblewrapUserNamespaceError();
     if (bubblewrapError !== null && (await machine.appArmorRestrictsUserNamespaces())) {
       return {
         reason: "user-namespaces-restricted",
         missing: "the system doesn't let programs create user namespaces",
+        fix: appArmorFix(),
       };
     }
     const helpers = await machine.missingLinuxHelpers();
@@ -284,6 +301,7 @@ export class SrtSandbox implements Sandbox {
       return {
         reason: "linux-tools-missing",
         missing: `${helpers.join(" and ")} ${helpers.length === 1 ? "is" : "are"} not installed`,
+        fix: installFix(await machine.packageManager(), helpers),
       };
     }
     if (bubblewrapError !== null) {

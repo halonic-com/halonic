@@ -22,6 +22,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     bubblewrapUserNamespaceError: async () => null,
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => true,
+    packageManager: async () => null,
     hasWindowsSandbox: async () => false,
     installWindowsSandbox: async () => "installed" as const,
     letSandboxReadParents: async () => undefined,
@@ -124,6 +125,11 @@ verifies("sandbox-srt.check", () => {
         ok: false,
         reason: "bubblewrap-missing",
         missing: ["bubblewrap is not installed"],
+        fix: {
+          kind: "install",
+          packageManager: null,
+          packages: ["bubblewrap", "socat", "ripgrep"],
+        },
       });
     });
 
@@ -241,6 +247,7 @@ verifies("sandbox-srt.check", () => {
         ok: false,
         reason: "ripgrep-missing",
         missing: ["ripgrep is not installed"],
+        fix: { kind: "install", packageManager: null, packages: ["ripgrep"] },
       });
     });
 

@@ -23,6 +23,7 @@ function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): M
     bubblewrapUserNamespaceError: async () => null,
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => false,
+    packageManager: async () => null,
     hasWindowsSandbox: async () => state.installed,
     installWindowsSandbox: async () => {
       if (cancelled) return "cancelled";

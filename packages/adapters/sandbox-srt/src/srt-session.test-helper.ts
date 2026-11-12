@@ -14,6 +14,7 @@ export const linux = {
   bubblewrapUserNamespaceError: async () => null,
   appArmorRestrictsUserNamespaces: async () => false,
   hasSeatbelt: async () => true,
+  packageManager: async () => null,
   hasWindowsSandbox: async () => false,
   installWindowsSandbox: async () => "installed" as const,
   letSandboxReadParents: async () => undefined,
