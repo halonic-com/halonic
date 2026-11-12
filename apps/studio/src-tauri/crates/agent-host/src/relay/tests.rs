@@ -3,6 +3,7 @@
 
 use std::io::{self, PipeReader, PipeWriter, Read, Write};
 use std::net::{Ipv4Addr, Shutdown, TcpListener, TcpStream};
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
@@ -289,6 +290,10 @@ fn relay_limits_leave_room_in_the_queue_while_one_client_sends_a_big_body() {
     wait_until(|| quota() == Some(QUEUED_FRAMES_PER_CONNECTION));
 
     let _small = connect(&relay);
+    // The host reads nothing until the small one's `open` is queued: reading
+    // earlier lets the big one refill its share ahead of it, however slowly
+    // the relay accepts the connection.
+    wait_until(|| relay.shared.opens_queued.load(Ordering::SeqCst) == 2);
 
     assert_eq!(read_frame(&mut input), Some((1, OPEN, Vec::new())));
     // Frames can be any size up to the limit, as the socket delivered them, so
