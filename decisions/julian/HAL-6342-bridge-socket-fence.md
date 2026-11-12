@@ -3,7 +3,6 @@
 - Task: HAL-6342
 - Approval: Liam approves this note in review on the review task for HAL-6342
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8xF9qQ4lx/ZNq253/lpIe9R6qrpzMsqcU7P86zcSWkOXsSR1cc7SX3ZP0nv8h2eKMu5PGtHOlBXxOySq5xUaAg==
 
 ## What changes
 
