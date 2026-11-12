@@ -284,6 +284,7 @@ verifies("studio.settings", () => {
     });
     const nav = document.querySelector("dialog[open] nav");
     expect([...(nav?.querySelectorAll("h3") ?? [])].map((h) => h.textContent)).toEqual([
+      "acme, Workspace settings",
       "On this computer",
     ]);
     expect(nav?.textContent).toContain("Agent sandbox");

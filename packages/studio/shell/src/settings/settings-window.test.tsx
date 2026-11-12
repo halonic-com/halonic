@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -50,6 +51,13 @@ function section(id: string, title: string, scope: SettingsScope, order: number)
 /** The sections the card's context listed when it last drew. */
 let cardSections: unknown;
 
+/** What the card's `runCommand` answered, and the commands that ran. */
+let ranCommand: boolean | undefined;
+const commandsRun: string[] = [];
+
+/** The toasts of the window drawn last. */
+let windowToasts: ToastStore | undefined;
+
 /** Home's card asks for a section, as the Harness page's **Open Settings ›** does. */
 function OpenSettingsCard({ context }: HomeCardProps) {
   cardSections = context.settingsSections;
@@ -65,6 +73,33 @@ function OpenSettingsCard({ context }: HomeCardProps) {
       >
         Assistant
       </button>
+      <button
+        type="button"
+        className="run-known"
+        onClick={() => {
+          ranCommand = context.runCommand?.("sections.ping");
+        }}
+      >
+        Ping
+      </button>
+      <button
+        type="button"
+        className="run-broken"
+        onClick={() => {
+          ranCommand = context.runCommand?.("sections.broken");
+        }}
+      >
+        Broken
+      </button>
+      <button
+        type="button"
+        className="run-unknown"
+        onClick={() => {
+          ranCommand = context.runCommand?.("nobody.adds-this");
+        }}
+      >
+        Unknown
+      </button>
     </>
   );
 }
@@ -76,6 +111,20 @@ const sectionsFeature = defineFeature({
     studio.settings.add(section("appearance", "Appearance", "display", 10));
     studio.settings.add(section("formats", "Formats", "display", 20));
     studio.settings.add(section("assistant", "Assistant", "host", 30));
+    studio.commands.add({
+      id: "sections.ping",
+      title: "Ping",
+      run: () => {
+        commandsRun.push("sections.ping");
+      },
+    });
+    studio.commands.add({
+      id: "sections.broken",
+      title: "Broken",
+      run: () => {
+        throw new Error("page failed to load");
+      },
+    });
     studio.home.addCard({
       id: "needs-you",
       view: "OpenSettingsCard",
@@ -88,6 +137,7 @@ async function renderWindow(host: StudioHost = "desktop-app") {
   const shell = createShell({ features: [sectionsFeature], timers: new FakeTimers() });
   const services = new MapTarget();
   shell.services.instantiate(services);
+  windowToasts = shell.toasts;
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name: "Acme" });
   const container = render(
     <StudioWindow
@@ -251,6 +301,30 @@ verifies("shell.settings-window", () => {
       { id: "appearance", title: "Appearance" },
       { id: "formats", title: "Formats" },
       { id: "assistant", title: "Assistant" },
+    ]);
+  });
+
+  it("runs a command by its id and says whether a feature added it", async () => {
+    commandsRun.length = 0;
+    const container = await renderWindow();
+
+    await click(container.querySelector(".run-known"));
+    expect(commandsRun).toEqual(["sections.ping"]);
+    expect(ranCommand).toBe(true);
+
+    await click(container.querySelector(".run-unknown"));
+    expect(commandsRun).toEqual(["sections.ping"]);
+    expect(ranCommand).toBe(false);
+  });
+
+  it("shows a danger toast when the command throws, as Ctrl K does", async () => {
+    const container = await renderWindow();
+
+    await click(container.querySelector(".run-broken"));
+    await settle();
+    expect(ranCommand).toBe(true);
+    expect(windowToasts?.list().map((toast) => [toast.tone, toast.title])).toEqual([
+      ["danger", "Couldn't run Broken."],
     ]);
   });
 });

@@ -165,6 +165,15 @@ export function runAction(
   if (command === undefined) {
     return;
   }
+  runWithToast(command, contextFor, toasts);
+}
+
+/** Runs one command as Ctrl K does, so Settings and the palette fail the same way. */
+export function runWithToast(
+  command: Registered<CommandContribution>,
+  contextFor: (featureId: string) => WorkspaceContext,
+  toasts: ToastStore,
+): void {
   const failed = (error: unknown) => {
     const message = errorMessageFor(error, { title: `Couldn't run ${command.title}.` });
     toasts.show({ tone: "danger", title: message.title, text: message.body });

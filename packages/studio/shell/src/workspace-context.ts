@@ -33,6 +33,13 @@ export interface WorkspaceContext {
    */
   readonly openSettings?: (sectionId?: string) => void;
   /**
+   * Runs the command with this id, any feature's, as Ctrl K runs it, and says whether a feature
+   * added it. A link in a view, such as Settings' **Open Models**, runs the command that opens
+   * the page, so the view needn't know the feature. The window gives it to the views and commands
+   * it draws; a context built without a window has none.
+   */
+  readonly runCommand?: (commandId: string) => boolean;
+  /**
    * The sections features added to Settings, which `openSettings` can show, in Settings' order, so
    * Ctrl K can offer a section by its name only when it is there. Given with `openSettings`.
    */
