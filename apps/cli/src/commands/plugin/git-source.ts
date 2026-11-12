@@ -57,12 +57,24 @@ export function gitSourceOf(source: string): GitSource | null {
 }
 
 /**
+ * Refuses an unsafe address or commit, as the export would, without
+ * starting anything. `plugin add` runs it before it shows the address on
+ * the live line, so a refused address, which may hold a password, is never
+ * printed.
+ *
+ * @throws Error saying what was refused, never echoing a password
+ */
+export function checkGitSource(source: GitSource): void {
+  checkGitExport(source.address, source.commit);
+}
+
+/**
  * The CLI's {@link GitExporter}: the git on the `PATH`, hardened, closed
  * when done. An unsafe address or commit is refused before git is even
  * looked for.
  */
 export const exportWithGit: GitExporter = async (source, destination) => {
-  checkGitExport(source.address, source.commit);
+  checkGitSource(source);
   const runner = await GitRunner.create();
   try {
     return await exportCommit(runner, source.address, destination, source.commit);

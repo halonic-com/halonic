@@ -8,6 +8,7 @@ import type { QuestionTerminal } from "../../output/question.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { manualClock } from "../../test/manual-clock.ts";
 import { pluginCommandWith } from "./command.ts";
 import { type GitExporter, type GitSource, gitSourceOf } from "./git-source.ts";
 
@@ -78,6 +79,15 @@ async function plugin(args: readonly string[], setup: PluginSetup, terminal?: Te
 }
 
 const pluginsFolder = () => join(folder, "profile", "plugins");
+
+/**
+ * An `https://` address on example.com with the user `me`, `password` and
+ * `path`, put together so no file holds an address with a password. Not
+ * through `URL`, which would add a `/` where there is no path.
+ */
+function withPassword(password: string, path: string): string {
+  return ["https://me:", password, "@example.com", path].join("");
+}
 
 verifies("cli.commands.plugin.add-git", () => {
   describe("gitSourceOf", () => {
@@ -156,4 +166,43 @@ verifies("cli.commands.plugin.add-git", () => {
     expect(io.stderr.join("\n")).toContain("Check the folder or git address.");
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
+
+  it.each([
+    ["with no path", ""],
+    ["with a path", "/acme/weather"],
+  ])(
+    "refuses an address with a password %s and prints the password on no line",
+    async (_name, path) => {
+      const source = withPassword("hunter2", path);
+      const clock = manualClock();
+      // Slow enough that a live line started before the export would show.
+      const slowExporter: GitExporter = async (exported, destination) => {
+        clock.advance(1_500);
+        return await fakeExporter(exported, destination);
+      };
+      const live: string[] = [];
+      const terminal: Terminal = {
+        ...terminalSayingYes(),
+        stderr: { write: (text) => live.push(text), columns: () => 80 },
+      };
+      const io = captureIo(folder);
+
+      const code = await runCli(
+        ["plugin", "add", source],
+        io,
+        [pluginCommandWith(setupWith(slowExporter))],
+        {
+          terminal,
+          clock,
+        },
+      );
+
+      for (const line of [...io.stdout, ...io.stderr, ...live]) {
+        expect(line).not.toContain("hunter2");
+      }
+      expect(code).toBe(exitCode.usage);
+      expect(exports).toEqual([]);
+      expect(io.stderr.join("\n")).toContain("Can't use that git address");
+    },
+  );
 });

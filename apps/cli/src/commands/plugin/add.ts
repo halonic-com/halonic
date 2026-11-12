@@ -31,6 +31,7 @@ import { printable } from "../../output/printable.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { askToTrustPlugin, type PluginTrustAnswer } from "../../plugin-trust-question.ts";
 import {
+  checkGitSource,
   exportToTemporaryFolder,
   exportWithGit,
   type GitSource,
@@ -132,6 +133,13 @@ async function exportGitSource(
   context: CommandContext,
   setup: PluginSetup,
 ): Promise<OpenedSource> {
+  // Checked before the live line shows any part of the address: a refused
+  // one may be cut in the wrong place and show a password as the name.
+  try {
+    checkGitSource(git);
+  } catch (error) {
+    throw exportRefusal(error);
+  }
   const progress = context.progress(
     pluginMessages.copying(printable(repositoryName(git.address)), git.commit).phrase,
   );
@@ -139,8 +147,7 @@ async function exportGitSource(
   try {
     exported = await exportToTemporaryFolder(git, setup.exportGit ?? exportWithGit);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw refusal("invalid_input", phrase`${printable(reason)}`);
+    throw exportRefusal(error);
   } finally {
     progress.end();
   }
@@ -158,6 +165,12 @@ async function exportGitSource(
     printedAhead,
     close: () => exported.remove(),
   };
+}
+
+/** A refused or failed export as the refusal `plugin add` ends with. */
+function exportRefusal(error: unknown): KindedError {
+  const reason = error instanceof Error ? error.message : String(error);
+  return refusal("invalid_input", phrase`${printable(reason)}`);
 }
 
 /** The last part of a git address without `.git`, such as `weather`, for the live line. */
