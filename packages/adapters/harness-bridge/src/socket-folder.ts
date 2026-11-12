@@ -49,6 +49,12 @@ export interface RunSocketFolderOptions {
  */
 export const emptyRunFolderMinAgeMs = 60_000;
 
+/**
+ * How long a sweep waits for a socket to accept or refuse a connection. A
+ * socket that does neither in time counts as live, so it stays.
+ */
+const socketProbeTimeoutMs = 1_000;
+
 /** One run's own folder and the socket path in it. */
 export interface RunSocketFolder {
   folder: string;
@@ -165,29 +171,43 @@ async function removeIfLeftOver(folder: string, now: number): Promise<boolean> {
   if (!isOwnFolder(stats, isPrivate)) return false;
   const run: RunSocketFolder = { folder, socketPath: join(folder, socketFileName) };
   const entries = await readdir(folder);
+  if (entries.length === 0) {
+    if (now - stats.mtimeMs < emptyRunFolderMinAgeMs) return false;
+    // Only the folder: a bridge that started listening in it since it was read
+    // keeps its socket, as `rmdir` fails on a folder that isn't empty.
+    await rmdir(folder);
+    return true;
+  }
   const leftOver =
-    entries.length === 0
-      ? now - stats.mtimeMs >= emptyRunFolderMinAgeMs
-      : entries.length === 1 &&
-        entries[0] === socketFileName &&
-        (await isDeadSocket(run.socketPath));
+    entries.length === 1 && entries[0] === socketFileName && (await isDeadSocket(run.socketPath));
   if (!leftOver) return false;
   // Fails, and so leaves the folder, when something was added to it since it was read.
   await removeRunSocketFolder(run);
   return true;
 }
 
-/** Whether `socketPath` is a socket that nothing listens on: a connection to it is refused. */
+/**
+ * Whether `socketPath` is a socket that nothing listens on: a connection to
+ * it is refused. One that doesn't answer within {@link socketProbeTimeoutMs}
+ * counts as live.
+ */
 async function isDeadSocket(socketPath: string): Promise<boolean> {
   if (!(await lstat(socketPath)).isSocket()) return false;
   return new Promise((resolve) => {
     const probe = connect(socketPath);
-    probe.once("connect", () => {
+    const finish = (dead: boolean) => {
+      clearTimeout(timer);
       probe.destroy();
-      resolve(false);
-    });
+      resolve(dead);
+    };
+    const timer = setTimeout(() => finish(false), socketProbeTimeoutMs);
+    probe.once("connect", () => finish(false));
     probe.once("error", (error: NodeJS.ErrnoException) => {
-      resolve(error.code === "ECONNREFUSED");
+      // macOS also refuses a connection when a live socket's listen backlog is
+      // full, so a host serving a burst of connections could lose a live run
+      // here. The sweep runs once, when the host starts, and a bridge serves
+      // one run's agent, so a full backlog then is not expected.
+      finish(error.code === "ECONNREFUSED");
     });
   });
 }
