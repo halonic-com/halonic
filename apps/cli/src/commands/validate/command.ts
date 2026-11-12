@@ -1,5 +1,6 @@
 import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
+import { defaultModelProblems } from "../../default-model-problems.ts";
 import { exitCode } from "../../exit-code.ts";
 import { validateMessages } from "../../messages/validate.ts";
 import {
@@ -28,7 +29,11 @@ export const validateCommand: CliCommand = {
   async run(input, context) {
     const workspace = await openWorkspaceDir(input, context);
     const strict = input.options["strict"] === true;
-    const report = validateReport(await loadWorkspace(workspace.store));
+    const loaded = await loadWorkspace(workspace.store);
+    const report = validateReport({
+      ...loaded,
+      issues: [...loaded.issues, ...defaultModelProblems(loaded)],
+    });
     const dir = givenDir(input, workspace);
     return {
       exitCode: validateFails(report, strict) ? exitCode.failed : exitCode.ok,

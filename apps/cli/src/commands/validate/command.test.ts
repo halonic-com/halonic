@@ -94,6 +94,27 @@ verifies("cli.commands.validate.check-workspace", () => {
       expect(strict.io.stdout.at(-1)).toBe("✕ 1 warning in 1 file. Checked 4 files.");
     });
 
+    it("warns when an agent without a model would call a default alias no file has", async () => {
+      writeFiles(acme, {
+        "hubs/notes/hub.yaml": "id: notes\nname: Notes\n",
+        "hubs/notes/agents/clerk.agent.yaml": "id: clerk\nname: Clerk\ninstructions: Take notes.\n",
+      });
+
+      const loose = await validateIn(acme);
+      expect(loose.code).toBe(exitCode.ok);
+      expect(loose.io.stdout[0]).toBe(`hubs${sep}notes${sep}agents${sep}clerk.agent.yaml`);
+      expect(loose.io.stdout[1]).toMatch(/^ {2}1:1 +! Hub "notes" has no model alias "default", /);
+      expect(loose.io.stdout[1]).toMatch(/ {2}\(unknown-default-model\)$/);
+      expect((await validateIn(acme, "--strict")).code).toBe(exitCode.failed);
+
+      writeFiles(acme, {
+        "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+      });
+      expect((await validateIn(acme)).io.stdout).toEqual([
+        "✓ Checked 5 files in acme. No problems.",
+      ]);
+    });
+
     it("shows at most 20 problems, errors first, and says how to see them all", async () => {
       for (let index = 1; index <= 25; index += 1) {
         writeFiles(acme, agent(`agent-${String(index).padStart(2, "0")}`, "missing"));
