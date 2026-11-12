@@ -92,7 +92,12 @@ export class LocalExecutor implements RunExecutor {
     this.runConnectors =
       runs === undefined
         ? undefined
-        : new RunsConnectors(runs.store, runs.runConnectors, connectors, options.localOnly === true);
+        : new RunsConnectors(
+            runs.store,
+            runs.runConnectors,
+            connectors,
+            options.localOnly === true,
+          );
     this.runs =
       runs === undefined
         ? undefined

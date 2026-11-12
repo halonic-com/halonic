@@ -133,7 +133,13 @@ verifies("engine.run-connectors", () => {
     await scheduler.runDue();
 
     expect(connectors.started).toEqual([
-      { runId: "run_1", hubId: "acme", workflowId: "reply", version: liveVersion, localOnly: false },
+      {
+        runId: "run_1",
+        hubId: "acme",
+        workflowId: "reply",
+        version: liveVersion,
+        localOnly: false,
+      },
     ]);
     expect(model.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["send_mail"]);
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
@@ -214,7 +220,13 @@ verifies("engine.run-connectors", () => {
     await restarted.scheduler.runDue();
 
     expect(after.started).toEqual([
-      { runId: "run_1", hubId: "acme", workflowId: "reply", version: liveVersion, localOnly: false },
+      {
+        runId: "run_1",
+        hubId: "acme",
+        workflowId: "reply",
+        version: liveVersion,
+        localOnly: false,
+      },
     ]);
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
     const results = (runs.logs.get("run_1") ?? []).filter((event) => event.type === "tool.result");
@@ -294,6 +306,7 @@ verifies("engine.run-connectors", () => {
     const connectors = new NotingConnectors(files);
     const { executor, scheduler, runs, model } = runsOn([textAnswer("Hi")], new KernelRuns(), {
       agents: agentsUsing(["mail", "files"], "writer"),
+      connectorTools: { mail: { approve: [] }, files: { approve: [] } },
       connectorCalls,
       runConnectors: connectors,
       localOnly: true,
@@ -307,7 +320,7 @@ verifies("engine.run-connectors", () => {
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 
-  it("in a local-only workspace, doesn't make a recorded call to a connector that isn't local", async () => {
+  it("in a local-only workspace, refuses an approved call to a connector that isn't local, and makes none", async () => {
     const before = new NotingConnectors();
     const { runs, blobs } = await waitingForOk(before);
 
@@ -323,8 +336,11 @@ verifies("engine.run-connectors", () => {
     await restarted.scheduler.runDue();
 
     expect(after.mail.get("run_1")?.calls ?? []).toEqual([]);
-    const results = (runs.logs.get("run_1") ?? []).filter((event) => event.type === "tool.result");
-    expect(results).toMatchObject([{ outcome: "error" }]);
+    const log = runs.logs.get("run_1") ?? [];
+    expect(log.filter((event) => event.type === "tool.result")).toEqual([]);
+    expect(log.filter((event) => event.type === "tool.refused")).toMatchObject([
+      { reason: "not-offered" },
+    ]);
   });
 
   it("calls the executor's connectors when the host gives no connectors of runs", async () => {
