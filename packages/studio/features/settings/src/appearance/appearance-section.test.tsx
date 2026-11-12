@@ -144,6 +144,7 @@ describe("a failed save", () => {
     verifies("settings.failed-save", () => {
       it("says the line in a toast, not the dialog's live region", async () => {
         const prefs = new MemoryDisplayPrefs();
+        prefs.stored.set(panelOpacityPref.key, 0.6);
         const settings = new DisplaySettings(prefs);
         const announce = vi.fn();
         const toasts = createToastStore();
@@ -158,8 +159,8 @@ describe("a failed save", () => {
         unmountAll();
         await act(async () => prefs.release(0));
         expect(announce).not.toHaveBeenCalled();
-        expect(toasts.list().map((toast) => toast.title)).toEqual([
-          "Couldn't save the panel opacity on this computer. Panel opacity is back to 80%.",
+        expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
+          ["Couldn't save the panel opacity on this computer.", "Panel opacity is back to 60%."],
         ]);
       });
     });

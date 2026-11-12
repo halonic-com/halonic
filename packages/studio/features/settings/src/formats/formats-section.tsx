@@ -49,7 +49,8 @@ export interface FormatsViewProps {
 export function FormatsView({ settings, announce, place, followTag }: FormatsViewProps) {
   const format = useDisplaySetting(settings, formatPref);
   const options = useMemo(() => formatOptions({ followTag, place }), [followTag, place]);
-  const save = saveSetting(settings, announce);
+  // The dialog's live region says the one sentence; the title + line split is for toasts.
+  const save = saveSetting(settings, (text) => announce(text));
   const nameOf = (choice: FormatChoice) =>
     options.find((option) => option.value === choice)?.label ?? choice;
 
