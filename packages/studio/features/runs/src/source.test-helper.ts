@@ -1,22 +1,31 @@
-import type { RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { RunRoutine, RunsSource, RunWorkflow } from "./api.ts";
 
 const supportReply: RunWorkflow = { name: "Support reply", stepDescription: () => undefined };
 const morningBrief: RunRoutine = { name: "Morning brief", schedule: "Weekdays at 08:00" };
 
 /**
- * A source whose runs and failures a test sets; every run is in Support
- * reply, made no tool call and costs euros. Its one routine is
+ * A source whose runs, logs and failures a test sets; every run is in
+ * Support reply, made no tool call and costs euros. A run without a log
+ * in `initialLogs` has an empty one. Its one routine is
  * `acme/morning-brief`, Morning brief, on weekdays at 08:00.
  */
-export function fakeSource(initial: readonly RunSummary[]) {
+export function fakeSource(
+  initial: readonly RunSummary[],
+  initialLogs: Readonly<Record<string, readonly RunEvent[]>> = {},
+) {
   let summaries = initial;
+  let logs = initialLogs;
   let failure: unknown;
   const listeners = new Set<() => void>();
   const source: RunsSource = {
     list: async () => {
       if (failure !== undefined) throw failure;
       return summaries.map((summary) => ({ summary, madeToolCalls: false }));
+    },
+    log: async (runId) => {
+      if (failure !== undefined) throw failure;
+      return [...(logs[runId] ?? [])];
     },
     workflow: () => supportReply,
     routine: (key) => (key === "acme/morning-brief" ? morningBrief : undefined),
@@ -34,8 +43,12 @@ export function fakeSource(initial: readonly RunSummary[]) {
     answer: () => {
       failure = undefined;
     },
-    change: (next: readonly RunSummary[]) => {
+    change: (
+      next: readonly RunSummary[],
+      nextLogs: Readonly<Record<string, readonly RunEvent[]>> = logs,
+    ) => {
       summaries = next;
+      logs = nextLogs;
       for (const listener of listeners) listener();
     },
   };

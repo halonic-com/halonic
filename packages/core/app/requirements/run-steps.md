@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1301 (T8); cli-output revision 31, 3.4; ux-checklists-t8-t9 revision 10, 1.10 (HAL-1360)
 
-The app shall read the steps a run reached from its run log, in the order it reached them: each step's state, the agent the step ran, and how the step ended or where it is now. The command line's step lines and the Studio's Every step shall both read them from the app, so the two say the same about a run.
+The app shall read the steps a run reached from its run log, in the order it reached them: each step's state, when the run entered it, the agent the step ran, and how the step ended or where it is now. The command line's step lines and the Studio's Every step shall both read them from the app, so the two say the same about a run.
 
 A step shall be done or failed with how long it took, or answered with the event the user sent and when. Only a step the workflow itself entered shall be a step: the events of a parallel branch or a for-each item shall belong to their step. The end state the run finished in shall not be a step.
 
