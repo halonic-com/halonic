@@ -1,7 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
+import { runCli } from "../../run-cli.ts";
+import { captureIo } from "../../test/capture-io.ts";
 import { toolsKit } from "../../test/tools-kit.spec.ts";
+import { toolsCommandWith } from "./command.ts";
+import type { ToolsMachine } from "./source.ts";
 
 const kit = toolsKit();
 
@@ -29,6 +33,22 @@ verifies("cli.commands.tools.revoke", () => {
       "archive",
     ]);
     expect(run.noColour.exit).toBe(exitCode.notFound);
+  });
+
+  it("removes none when one of the tools isn't approved", async () => {
+    const run = await kit.tools(["revoke", "notes-mcp", "send", "archive", "--json"]);
+    expect(run.code).toBe(exitCode.notFound);
+    const notes = kit.notes();
+    expect(await notes.approvals.get(await notes.key("send"))).not.toBeNull();
+  });
+
+  it("says what it was doing when an error it didn't word stops it", async () => {
+    // `revoke` reads only the approvals, so the rest of the machine is never used.
+    const approvals = { get: () => Promise.reject(new Error("The disk is full.")) };
+    const io = captureIo(kit.notes().acme);
+    const revoke = toolsCommandWith(() => ({ approvals }) as unknown as ToolsMachine);
+    await runCli(["tools", "revoke", "notes-mcp", "send"], io, [revoke]);
+    expect(io.stderr[0]).toMatch(/^✕ Couldn't remove your approvals in notes-mcp/u);
   });
 
   it("needs the tools to remove", async () => {

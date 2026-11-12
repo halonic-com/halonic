@@ -21,7 +21,7 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
         name: "revoke",
         usage: "<source> <tool>... [--dir <folder>]",
         summary: toolsMessages.revokeSummary(),
-        action: listAction,
+        action: revokeAction,
         options: { dir: dirOption },
         run: (input, context) => revokeTools(input, context, machine()),
       },
@@ -29,10 +29,10 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
   };
 }
 
-/** "list the tools from notes-mcp", for line 1 of an error the command didn't word itself. */
-function listAction(input: CommandInput) {
+/** "remove your approvals in notes-mcp", for line 1 of an error the command didn't word itself. */
+function revokeAction(input: CommandInput) {
   const [source] = input.positionals;
-  return toolsMessages.action(source === undefined ? undefined : printable(source));
+  return toolsMessages.revokeAction(source === undefined ? undefined : printable(source));
 }
 
 /** `halonic tools`: review, approve and remove the approvals of a connector's listed tools (HAL-2827). */

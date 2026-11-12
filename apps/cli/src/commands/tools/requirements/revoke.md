@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2827 (HAL-850 step 5); cli-output 3.10 (revision 33)
 
-The `halonic tools revoke <source> <tool>…` command shall remove the approval of each tool named, in order, one line each, an approval that can't be read included, so the tool is Not approved again. It shall stop at the first tool that isn't approved, with exit 4. It reads only the approvals, so it shall start no connector. With `--json` it shall give the tools whose approval it removed.
+The `halonic tools revoke <source> <tool>…` command shall remove the approval of each tool named, in order, one line each, an approval that can't be read included, so the tool is Not approved again. It shall check every name first: when one of them isn't approved, it shall remove none and stop with that tool's error, exit 4. It reads only the approvals, so it shall start no connector. With `--json` it shall give the tools whose approval it removed.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The `halonic tools revoke <source> <tool>…` command shall remove the approval 
 - Given `archive` not approved,
   when its approval is revoked,
   then it stops with "Couldn't remove the approval for archive: it isn't approved in notes-mcp.", exit 4.
+- Given `send` approved and `archive` not approved,
+  when `halonic tools revoke notes-mcp send archive` runs,
+  then it stops with the error for archive, exit 4, and send is still approved.
