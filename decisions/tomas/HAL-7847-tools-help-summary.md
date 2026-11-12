@@ -4,6 +4,7 @@
   HAL-7823), small wording on approved CLI output, a team decision with no board card (HAL-2282
   rule); Liam approves this note in his review of this pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2KeAW658Eex6qY/BF/PuA6nQxbL+XPn3AiSSky3nKiKsLhd7V55HonmcBVLP8ylNpdUfpYns6qYnSpXZZ8snCA==
 - Task: HAL-7847
 
 ## What changes
