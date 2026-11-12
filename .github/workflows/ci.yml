@@ -1169,7 +1169,7 @@ jobs:
           # Windows updates a folder's write time a moment after a file in
           # it is created, so the snapshot could catch the old one. Pinned
           # to a fixed date, any write by the elevated steps still shows.
-          $pinned = [datetime]::new(2000, 1, 1, 0, 0, 0, 'Utc')
+          $pinned = [datetime]::new(2000, 1, 1, 0, 0, 0, [DateTimeKind]::Utc)
           @(Get-ChildItem -Force -Recurse $elsewhere) + @(Get-Item -Force $elsewhere) | ForEach-Object {
             $_.LastWriteTimeUtc = $pinned
           }
