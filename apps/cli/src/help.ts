@@ -9,6 +9,25 @@ const blank: Phrase = [];
 /** How wide a help line may be, for an 80-column terminal. */
 const helpWidth = 80;
 
+/**
+ * The order `halonic --help` lists the commands in (cli-output 1.9): the order
+ * people meet them, not their folders'. A command not named here goes last.
+ */
+export const commandOrder: readonly string[] = [
+  "init",
+  "validate",
+  "test",
+  "run",
+  "runs",
+  "routines",
+  "trust",
+  "plugin",
+  "tools",
+  "extract",
+  "doctor",
+  "schema",
+];
+
 /** The help for `halonic` on its own (cli-output 1.9): what it is, the commands, the options, the exit codes. */
 export function overallHelp(commands: readonly CliCommand[]): Phrase[] {
   return [
@@ -16,7 +35,7 @@ export function overallHelp(commands: readonly CliCommand[]): Phrase[] {
     blank,
     helpMessages.usage().phrase,
     blank,
-    ...commandList(commands),
+    ...commandList(inHelpOrder(commands)),
     blank,
     ...globalOptionLines(globalOptionFlags),
     blank,
@@ -72,6 +91,15 @@ export function commandWords(path: CommandPath): string {
 /** The command that runs: the last word of the path. */
 export function lastOf(path: CommandPath): CliCommand {
   return path[path.length - 1] ?? path[0];
+}
+
+/** The commands in {@link commandOrder}; the ones it doesn't name keep their order, at the end. */
+function inHelpOrder(commands: readonly CliCommand[]): CliCommand[] {
+  const rank = (command: CliCommand) => {
+    const index = commandOrder.indexOf(command.name);
+    return index === -1 ? commandOrder.length : index;
+  };
+  return [...commands].sort((a, b) => rank(a) - rank(b));
 }
 
 /** "Commands:" and one line per command with its summary, the names in one column. */

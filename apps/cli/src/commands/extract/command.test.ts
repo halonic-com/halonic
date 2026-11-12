@@ -70,7 +70,7 @@ verifies("cli.commands.extract.extract-hub", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        `✓ Extracted the hub Family affairs to .${sep}family. home is unchanged.`,
+        `✓ Extracted the hub Family affairs to .${sep}family. The workspace home is unchanged.`,
         "  2 hub files · 1 shared file · 4 workspace files",
         "  Shared items: skills: tone",
         "",
@@ -180,8 +180,8 @@ verifies("cli.commands.extract.extract-hub", () => {
 
       expect(code).toBe(exitCode.conflict);
       expect(io.stderr.slice(0, 2)).toEqual([
-        `✕ Couldn't extract the hub family to .${sep}family: the workspace has 1 error, and a copy would keep them.`,
-        "  Run halonic validate to see them, fix them, then extract again.",
+        `✕ Couldn't extract the hub family to .${sep}family: the workspace has 1 error, which the copy would keep.`,
+        `  Run halonic validate --dir .${sep}home to see what to fix, then extract again.`,
       ]);
       expect(existsSync(join(folder, "family"))).toBe(false);
     });
@@ -216,7 +216,7 @@ verifies("cli.commands.extract.extract-hub", () => {
       expect(code).toBe(exitCode.usage);
       expect(io.stderr).toEqual([
         "✕ halonic extract takes a hub and a new folder.",
-        "  Usage: halonic extract <hub> <folder> [--dir <workspace>] [--dry-run]",
+        "  Usage: halonic extract <hub> <new-folder> [--dir <folder>] [--dry-run]",
       ]);
     });
   });

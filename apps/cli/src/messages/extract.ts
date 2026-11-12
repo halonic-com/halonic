@@ -1,6 +1,7 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { bold, dim, markPart, type Phrase, phrase } from "./phrase.ts";
+import { suggestedCommand } from "./suggested-command.ts";
 
 /** How many files of each part a new workspace got, for the dimmed line under the ✓ line. */
 export interface ExtractCounts {
@@ -18,7 +19,7 @@ export interface ExtractUses {
 }
 
 /**
- * The sentences of `halonic extract <hub> <folder>` (HAL-4845, in the style
+ * The sentences of `halonic extract <hub> <new-folder>` (HAL-4845, in the style
  * of `init`, cli-output 3.1). The ✓ and ✕ marks, the `Next:` block's columns
  * and the indent are the printer's; these are the words.
  */
@@ -28,7 +29,7 @@ export const extractMessages = defineMessages("extract", {
   action: (hub: string, folder: string) => phrase`extract the hub ${hub} to ${folder}`,
 
   extracted: (name: string, folder: string, source: string) =>
-    phrase`Extracted the hub ${name} to ${bold(folder)}. ${source} is unchanged.`,
+    phrase`Extracted the hub ${name} to ${bold(folder)}. The workspace ${source} is unchanged.`,
   /** The dimmed line under the ✓ line. */
   counts: (counts: ExtractCounts) => countsLine(counts),
   /** The dimmed line with the shared items taken along, when there are any. */
@@ -73,8 +74,10 @@ export const extractMessages = defineMessages("extract", {
 
   /** The reason when the workspace has errors (`conflict`, exit 5). */
   hasErrors: (errors: number) =>
-    phrase`the workspace has ${counted(errors, "error", "errors")}, and a copy would keep them.`,
-  hasErrorsFix: () => phrase`Run halonic validate to see them, fix them, then extract again.`,
+    phrase`the workspace has ${counted(errors, "error", "errors")}, which the copy would keep.`,
+  /** With the user's own `--dir`, so the command works where they typed it. */
+  hasErrorsFix: (dir: string | undefined) =>
+    phrase`Run ${suggestedCommand("validate", dir)} to see what to fix, then extract again.`,
   /** The reason when the new folder has files in it (`conflict`, exit 5). */
   notEmpty: () => phrase`the folder isn't empty.`,
   notEmptyFix: () => phrase`Pick a new folder name.`,

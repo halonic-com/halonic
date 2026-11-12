@@ -12,13 +12,18 @@ import { exitCode } from "../../exit-code.ts";
 import { extractMessages } from "../../messages/extract.ts";
 import { printable } from "../../output/printable.ts";
 import { shownPath } from "../../shown-path.ts";
-import { dirOption, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import {
+  dirOption,
+  givenDir,
+  type OpenWorkspaceDir,
+  openWorkspaceDir,
+} from "../../workspace-dir.ts";
 import { writeFailure } from "../../write-failure.ts";
 import { ExtractFolderNotEmptyError, noHubError, WorkspaceHasErrorsError } from "./errors.ts";
 import { type ExtractFolder, extractedLines, type FileOfPart, partsOf } from "./lines.ts";
 
 /**
- * `halonic extract <hub> <folder> [--dir <workspace>] [--dry-run]`: moves one
+ * `halonic extract <hub> <new-folder> [--dir <folder>] [--dry-run]`: moves one
  * hub, and the shared items it uses, into a new workspace of its own in an
  * empty folder (the old `studio extract`, HAL-4845). The workspace it comes
  * from is left as it is. It starts nothing, so it needs no trust; the new
@@ -26,7 +31,7 @@ import { type ExtractFolder, extractedLines, type FileOfPart, partsOf } from "./
  */
 export const extractCommand: CliCommand = {
   name: "extract",
-  usage: "<hub> <folder> [--dir <workspace>] [--dry-run]",
+  usage: "<hub> <new-folder> [--dir <folder>] [--dry-run]",
   summary: extractMessages.summary(),
   action: (input, context) => {
     const [hub = "", folder = ""] = input.positionals;
@@ -53,7 +58,7 @@ export const extractCommand: CliCommand = {
       },
     );
     if (!result.ok) {
-      throw refusal(result.error, workspace.name);
+      throw refusal(result.error, workspace.name, givenDir(input, workspace));
     }
 
     const files = partsOf(result.value);
@@ -87,12 +92,12 @@ function refuseInside(folder: ExtractFolder, workspace: OpenWorkspaceDir): void 
 }
 
 /** The error a plan or write that didn't happen ends the command with. */
-function refusal(error: ExtractHubError, workspaceName: string): Error {
+function refusal(error: ExtractHubError, workspaceName: string, dir: string | undefined): Error {
   switch (error.kind) {
     case "unknown_hub":
       return noHubError(error.hub, error.hubs, printable(workspaceName));
     case "has_errors":
-      return new WorkspaceHasErrorsError(error.errors);
+      return new WorkspaceHasErrorsError(error.errors, dir);
     case "not_empty":
       return new ExtractFolderNotEmptyError();
   }

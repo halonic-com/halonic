@@ -1,7 +1,7 @@
 ## colour: halonic extract family family --dir home
 exit 0
 stdout:
-  \e[32m✓\e[39m Extracted the hub Family affairs to \e[1m./family\e[22m. home is unchanged.
+  \e[32m✓\e[39m Extracted the hub Family affairs to \e[1m./family\e[22m. The workspace home is unchanged.
     \e[2m2 hub files\e[22m \e[2m·\e[22m \e[2m1 shared file\e[22m \e[2m·\e[22m \e[2m4 workspace files\e[22m
     \e[2mShared items: skills: tone\e[22m
   
@@ -15,7 +15,7 @@ stderr:
 ## NO_COLOR: halonic extract family family --dir home
 exit 0
 stdout:
-  ✓ Extracted the hub Family affairs to ./family. home is unchanged.
+  ✓ Extracted the hub Family affairs to ./family. The workspace home is unchanged.
     2 hub files · 1 shared file · 4 workspace files
     Shared items: skills: tone
   

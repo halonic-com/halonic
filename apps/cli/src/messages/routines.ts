@@ -18,7 +18,7 @@ import {
  * Studio writes them.
  */
 export const routinesMessages = defineMessages("routines", {
-  summary: () => phrase`List the workspace's routines`,
+  summary: () => phrase`List the workspace's routines, or start them on time`,
   /** What the list was doing, for "✕ Couldn't list the routines in acme: …". */
   action: (place: string) => phrase`list the routines in ${place}`,
 

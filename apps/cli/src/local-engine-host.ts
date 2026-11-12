@@ -58,6 +58,8 @@ import {
   type LoadedWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import { plainText } from "./messages/phrase.ts";
+import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import { workspaceModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
@@ -346,9 +348,9 @@ async function holdEngineLock(
     if (!(error instanceof LockHeldError)) {
       throw error;
     }
-    const who = error.holder === null ? "" : ` (process ${error.holder.pid})`;
-    throw new KindedError("conflict", `Another Halonic engine is open on this workspace${who}.`, {
-      fix: "Wait until it has finished or stop it, then run again.",
+    const message = workspaceMessages.engineOpen(error.holder?.pid);
+    throw new KindedError("conflict", plainText(message.phrase), {
+      fix: plainText(workspaceMessages.engineOpenFix().phrase),
       cause: error,
     });
   }

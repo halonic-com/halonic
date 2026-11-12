@@ -18,4 +18,14 @@ export const workspaceMessages = defineMessages("workspace", {
   fileUnreadableFix: () => phrase`Check the file's permissions, or move it out of the workspace.`,
   noWorkspaceFix: () =>
     phrase`Run it inside a workspace, create one with halonic init, or copy the example with halonic init --example acme.`,
+  /**
+   * The reason when another command already has the workspace's engine open,
+   * such as a `halonic routines watch` in a second window: "Another Halonic
+   * engine is open on this workspace (process 4242)."
+   */
+  engineOpen: (pid: number | undefined) =>
+    pid === undefined
+      ? phrase`Another Halonic engine is open on this workspace.`
+      : phrase`Another Halonic engine is open on this workspace (process ${String(pid)}).`,
+  engineOpenFix: () => phrase`Wait until it has finished or stop it, then run again.`,
 });

@@ -41,9 +41,13 @@ export class WorkspaceHasErrorsError extends KindedError {
   /** The detailed code on line 3 and in `--json`. */
   readonly code = "workspace-has-errors";
 
-  constructor(errors: number) {
+  /**
+   * @param errors - how many errors the workspace has
+   * @param dir - the user's own `--dir`, for the fix's command, if they gave one
+   */
+  constructor(errors: number, dir: string | undefined) {
     super("conflict", plainText(extractMessages.hasErrors(errors).phrase), {
-      fix: plainText(extractMessages.hasErrorsFix().phrase),
+      fix: plainText(extractMessages.hasErrorsFix(dir).phrase),
     });
   }
 }

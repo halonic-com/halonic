@@ -241,6 +241,18 @@ verifies("cli.help", () => {
     ]);
   });
 
+  it("lists the commands in cli-output 1.9's order, the ones it doesn't name last", async () => {
+    const named = (name: string): CliCommand => ({ ...greetCommand, name });
+    const io = captureIo("/work");
+    await runCli(["--help"], io, [named("doctor"), greetCommand, named("extract"), named("init")]);
+    expect(io.stdout.slice(5, 9).map((line) => line.trim().split(" ")[0])).toEqual([
+      "init",
+      "extract",
+      "doctor",
+      "greet",
+    ]);
+  });
+
   it("prints the same help for help and -h", async () => {
     for (const flag of ["help", "-h"]) {
       const io = captureIo("/work");
