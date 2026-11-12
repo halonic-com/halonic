@@ -2,6 +2,7 @@
 
 - Approval: the board-approved settings flow ([flow-settings](/HAL/issues/HAL-646)) built in [HAL-7331](/HAL/issues/HAL-7331); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fTOsZfoVb8tYMFhZociSqtWr3sAla3olQ+7spkKkW+zy0zMNJ0XK0axH2g+rA+RXo5oDjEI9CpiaiaUcmx08AA==
 
 ## What changes
 
