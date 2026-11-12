@@ -2,6 +2,7 @@
 
 - Approval: option A on HAL-6852 (the GitHub release ships the APK Play signed); the CTO (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oVW7vjiUM/Xp5NiuOvAjwHtqIIJ2CFKHCh5EePlwQnuLVvXO0nnrmZnd0ZcKZ8toN4IgvWahrfqsg0efW8WrBQ==
 - Task: HAL-1203
 
 ## What changes
