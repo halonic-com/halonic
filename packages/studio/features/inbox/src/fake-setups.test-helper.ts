@@ -1,12 +1,16 @@
 import type { InboxSetupSource, SetupEntry } from "./inbox.ts";
 
-/** A setup source whose accounts a test sets, telling the Inbox as a provider does. */
+/** A setup source whose accounts and failures a test sets, telling the Inbox as a provider does. */
 export function fakeSetups(provider: string, initial: readonly SetupEntry[]) {
   let entries = initial;
+  let failure: unknown;
   const listeners = new Set<() => void>();
   const source: InboxSetupSource = {
     provider,
-    list: async () => entries,
+    list: async () => {
+      if (failure !== undefined) throw failure;
+      return entries;
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -15,6 +19,12 @@ export function fakeSetups(provider: string, initial: readonly SetupEntry[]) {
   return {
     source,
     listeners,
+    fail: (error: unknown) => {
+      failure = error;
+    },
+    answer: () => {
+      failure = undefined;
+    },
     change: (next: readonly SetupEntry[]) => {
       entries = next;
       for (const listener of [...listeners]) listener();

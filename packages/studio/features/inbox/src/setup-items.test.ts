@@ -90,20 +90,60 @@ verifies("inbox.setup-items", () => {
     expect(google.listeners.size).toBe(0);
   });
 
-  it("keeps its items through a source that fails to load, and says why", async () => {
+  it("keeps a failing source's last items, says why, and still updates the other sources", async () => {
     const google = fakeSetups("google", [setupEntry("acct-1", "2026-11-10T10:00:00.000Z")]);
+    const other = fakeSetups("other", [setupEntry("acct-9", "2026-11-10T09:00:00.000Z")]);
     const inbox = new Inbox(fakeRuns([]).runs);
+    inbox.addSetupSource(google.source);
+    inbox.addSetupSource(other.source);
+    await settled();
+
+    const failure = new Error("setup records unreadable");
+    other.fail(failure);
+    google.change([
+      setupEntry("acct-1", "2026-11-10T10:00:00.000Z"),
+      setupEntry("acct-2", "2026-11-10T11:00:00.000Z"),
+    ]);
+    await settled();
+    expect(inbox.state.items.map((item) => item.key)).toEqual([
+      "setup:google:acct-2",
+      "setup:google:acct-1",
+      "setup:other:acct-9",
+    ]);
+    expect(inbox.state.error).toBe(failure);
+
+    other.answer();
+    await inbox.refresh();
+    expect(inbox.state.error).toBeUndefined();
+  });
+
+  it("lists a run that starts waiting while a source fails", async () => {
+    const google = fakeSetups("google", []);
+    const runs = fakeRuns([]);
+    const inbox = new Inbox(runs.runs);
     inbox.addSetupSource(google.source);
     await settled();
 
     const failure = new Error("setup records unreadable");
-    inbox.addSetupSource({
-      ...google.source,
-      provider: "other",
-      list: () => Promise.reject(failure),
-    });
+    google.fail(failure);
+    runs.change([notes]);
     await settled();
-    expect(inbox.state.items.map((item) => item.key)).toEqual(["setup:google:acct-1"]);
+    expect(inbox.state.items.map((item) => item.key)).toEqual(["r1:call-1"]);
     expect(inbox.state.error).toBe(failure);
+  });
+
+  it("takes one source per provider, so no two items share a key", async () => {
+    const google = fakeSetups("google", [setupEntry("acct-1", "2026-11-10T10:00:00.000Z")]);
+    const second = fakeSetups("google", [setupEntry("acct-1", "2026-11-10T11:00:00.000Z")]);
+    const inbox = new Inbox(fakeRuns([]).runs);
+    inbox.addSetupSource(google.source);
+    const remove = inbox.addSetupSource(second.source);
+    await settled();
+
+    expect(inbox.state.items.map((item) => item.key)).toEqual(["setup:google:acct-1"]);
+    expect(second.listeners.size).toBe(0);
+    remove();
+    await settled();
+    expect(inbox.state.items).toHaveLength(1);
   });
 });
