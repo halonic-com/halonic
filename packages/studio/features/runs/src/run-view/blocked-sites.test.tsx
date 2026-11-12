@@ -151,7 +151,7 @@ verifies("runs.run-view.blocked-sites", () => {
     expect(container.querySelector("a")).toBeNull();
   });
 
-  it("shows a site's name as plain text, its registrable domain apart (J)", () => {
+  it("shows a site's name as plain text, its registrable domain apart (J, A2)", () => {
     const step = stepOf(
       runLog(
         ["registry.npmjs.org.evil.example", 3],
@@ -168,6 +168,17 @@ verifies("runs.run-view.blocked-sites", () => {
     expect(bold).toEqual(["evil.example", "xn--pple-43d.com", "evil.example"]);
     expect(container.querySelector("li .text-fg-muted")?.textContent).toBe("registry.npmjs.org.");
     expect(container.querySelector("li:last-child")?.textContent).toContain("…");
+  });
+
+  it("shows the look-alike of an allowed host with its main domain clear and no path (A2)", () => {
+    const step = stepOf(runLog(["api.example.com.example.net", 1]));
+    const container = render(
+      <BlockedSitesPanel step={step} agent="Writer" noConnectionProven place="phone" />,
+    );
+
+    expect(texts(container, "li .font-medium")).toEqual(["example.net"]);
+    expect(container.querySelector("li .text-fg-muted")?.textContent).toBe("api.example.com.");
+    expect(container.querySelector("li")?.textContent).not.toContain("/");
   });
 
   it("gives the hint and one action that opens the agent's allowed sites, never adding a site itself", () => {

@@ -42,6 +42,7 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
 
 The tests include attack cases: a runner that sends malformed, oversize or out-of-order frames
 must be stopped with exactly one block, or answered without stopping, and never make Halonic throw.
+[attack-cases.md](attack-cases.md) maps each attack case A1 to A40 of the design to its tests.
 
 - **Starting it, `startRunner`:** it opens a `Sandbox` session of the runner's own with the
   untrusted profile (`runnerProfile`), starts Node in it and connects. The profile has no network
