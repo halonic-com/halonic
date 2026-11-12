@@ -35,6 +35,8 @@ export interface RepositoryCall {
   indexFile?: string;
   /** A worktree to run in, in place of the workspace; see {@link WorktreeLocation}. */
   worktree?: WorktreeLocation;
+  /** What git reads as its input. */
+  input?: Buffer;
 }
 
 /**
@@ -110,6 +112,7 @@ export class Repository {
       config: [...neutralising, ...(call.config ?? [])],
       network: call.network === true,
       ...(call.indexFile === undefined ? {} : { indexFile: call.indexFile }),
+      ...(call.input === undefined ? {} : { input: call.input }),
     });
   }
 

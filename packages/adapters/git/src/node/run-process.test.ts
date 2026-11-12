@@ -78,6 +78,21 @@ verifies("git.hardened", () => {
       expect(JSON.parse(result.stdout.toString())).toEqual(["$HOME", "a b;c", "*"]);
     });
 
+    it("gives it the input the call has, and otherwise an input that ends at once", async () => {
+      const echo = "process.stdin.pipe(process.stdout)";
+      const call = {
+        program: process.execPath,
+        args: ["-e", echo],
+        cwd: process.cwd(),
+        env: {},
+        timeoutMs: 30_000,
+        maxOutputBytes: 1024,
+      };
+      const given = await runProcess({ ...call, input: Buffer.from("a\nb\n") });
+      expect(given.stdout.toString()).toBe("a\nb\n");
+      expect((await runProcess(call)).stdout.toString()).toBe("");
+    });
+
     it("gives it only the environment it is given", async () => {
       const result = await runProcess({
         program: process.execPath,

@@ -162,6 +162,58 @@ verifies("git.vcs-versions", () => {
         run.mockRestore();
       }
     });
+
+    it("read the stored bytes of a file whose attributes would convert it", async () => {
+      // `eol=crlf` and `ident` convert without any program; `--batch` must not apply them.
+      const stored = "$Id$\nx\n";
+      const { vcs } = await repoWith({
+        ".gitattributes": "a.yaml text eol=crlf ident filter=upper\n",
+        "a.yaml": stored,
+      });
+      expect(await vcs.readAt(await headOf(vcs), "a.yaml")).toBe(stored);
+    });
+
+    it("read a file with one cat-file call and no ls-tree", async () => {
+      const { vcs } = await repoWith({ "agents/a.agent.yaml": "x\n" });
+      const head = await headOf(vcs);
+      const run = vi.spyOn(await runner(), "run");
+      try {
+        expect(await vcs.readAt(head, "agents/a.agent.yaml")).toBe("x\n");
+        const subcommands = run.mock.calls
+          .map(([call]) => call.args.find((arg) => !arg.startsWith("--")))
+          .filter((subcommand) => subcommand === "cat-file" || subcommand === "ls-tree");
+        expect(subcommands).toEqual(["cat-file"]);
+      } finally {
+        run.mockRestore();
+      }
+    });
+
+    it("give null for a path under a file, and a refused version for a tree id", async () => {
+      const { vcs, folder } = await repoWith({ "a.yaml": "1\n" });
+      expect(await vcs.readAt(await headOf(vcs), "a.yaml/b.yaml")).toBeNull();
+      const tree = (await plainGit(folder, ["rev-parse", "HEAD^{tree}"])).trim();
+      await expect(vcs.readAt(tree, "a.yaml")).rejects.toThrow("it names a tree, not a commit");
+    });
+
+    it("read a file whose name has a line break, which can't go on a --batch line", async () => {
+      const { vcs, folder } = await repoWith({ a: "no\n", "content.yaml": "n\n" });
+      // Recorded straight in the index, as Windows allows no such name on disk.
+      const blob = (await plainGit(folder, ["hash-object", "-w", "content.yaml"])).trim();
+      const anyName = ["-c", "core.protectNTFS=false"];
+      for (const path of ["a\nb.yaml", "c\r.yaml"])
+        await plainGit(folder, [
+          ...anyName,
+          "update-index",
+          "--add",
+          "--cacheinfo",
+          `100644,${blob},${path}`,
+        ]);
+      await plainGit(folder, [...anyName, "commit", "--quiet", "--message=Line breaks"]);
+      const head = await headOf(vcs);
+      expect(await vcs.readAt(head, "a\nb.yaml")).toBe("n\n");
+      expect(await vcs.readAt(head, "c\r.yaml")).toBe("n\n");
+      expect(await vcs.readAt(head, "a\nmissing.yaml")).toBeNull();
+    });
   });
 
   describe("rename", () => {
