@@ -4,6 +4,7 @@
 - Task: HAL-6159 (PR 7c of the settings host API), with the review changes from HAL-6216
 - Approval: Liam approved the design on [HAL-6216](/HAL/issues/HAL-6216) and approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wXbLXZ1uC9Njt1F6ksVsCJFwAe4hca4QBc4a5Wg/r8sH4faqhC2VPIcVz+yk8yJUnBIha4tNQiZ/uHCsvLHWCg==
 
 ## What changes
 
