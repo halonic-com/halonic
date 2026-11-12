@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CliRecording, Recording, RunLogs } from "../recording.ts";
 import { fakeOldRepo } from "../test/fake-old-repo.ts";
 import { TestFolders } from "../test-folders.ts";
@@ -11,6 +11,33 @@ vi.setConfig({ testTimeout: 30_000 });
 
 const folders = new TestFolders();
 afterEach(() => folders.cleanUp());
+
+/**
+ * One recording of every case with no CLI calls, made once for the tests that
+ * only read what it wrote. Each run starts a Node process through the command
+ * interpreter, which takes seconds on a Windows runner (HAL-7975).
+ */
+const shared = new TestFolders();
+afterAll(() => shared.cleanUp());
+let full: { fixtureFolder: string; exitCode: number; printed: string[] };
+beforeAll(() => {
+  const { clone, head } = fakeOldRepo(shared);
+  const fixtureFolder = shared.make();
+  shared.write(fixtureFolder, fixtureFiles);
+  const lines: string[] = [];
+  const keep = (...args: unknown[]): void => {
+    lines.push(args.join(" "));
+  };
+  const log = vi.spyOn(console, "log").mockImplementation(keep);
+  const error = vi.spyOn(console, "error").mockImplementation(keep);
+  try {
+    const exitCode = main(["--old", clone], { fixtures: fixtureFolder, reference: head });
+    full = { fixtureFolder, exitCode, printed: lines };
+  } finally {
+    log.mockRestore();
+    error.mockRestore();
+  }
+}, 120_000);
 
 let printed: string[];
 beforeEach(() => {
@@ -26,28 +53,30 @@ beforeEach(() => {
  * A base of two files and two cases: an agent whose bad key the old loader
  * puts on another line than the fixture says, and a missing workspace file.
  */
+const fixtureFiles: Readonly<Record<string, string>> = {
+  "base/case.json": JSON.stringify({ about: "base", kind: "workspace", fault: "valid" }),
+  "base/files/workspace.yaml": "id: acme\n",
+  "base/files/agent.yaml": "name: helper\n",
+  "base/files/tests.yaml": "plain\n",
+  "cases/agent/bad-name/case.json": JSON.stringify({
+    about: "a name that is no number",
+    kind: "agent",
+    fault: "wrong-type",
+    expect: { file: "agent.yaml", path: "name", line: 2 },
+  }),
+  "cases/agent/bad-name/files/agent.yaml": "name: BAD\n",
+  "cases/workspace/gone/case.json": JSON.stringify({
+    about: "no workspace file",
+    kind: "workspace",
+    fault: "missing-required",
+    remove: ["workspace.yaml"],
+    expect: { file: "workspace.yaml", path: "", line: null },
+  }),
+};
+
 function fixtures(): string {
   const folder = folders.make();
-  folders.write(folder, {
-    "base/case.json": JSON.stringify({ about: "base", kind: "workspace", fault: "valid" }),
-    "base/files/workspace.yaml": "id: acme\n",
-    "base/files/agent.yaml": "name: helper\n",
-    "base/files/tests.yaml": "plain\n",
-    "cases/agent/bad-name/case.json": JSON.stringify({
-      about: "a name that is no number",
-      kind: "agent",
-      fault: "wrong-type",
-      expect: { file: "agent.yaml", path: "name", line: 2 },
-    }),
-    "cases/agent/bad-name/files/agent.yaml": "name: BAD\n",
-    "cases/workspace/gone/case.json": JSON.stringify({
-      about: "no workspace file",
-      kind: "workspace",
-      fault: "missing-required",
-      remove: ["workspace.yaml"],
-      expect: { file: "workspace.yaml", path: "", line: null },
-    }),
-  });
+  folders.write(folder, fixtureFiles);
   return folder;
 }
 
@@ -57,10 +86,9 @@ function recording(folder: string): Recording {
 
 describe("parity.recording-is-machine-free", () => {
   it("writes a recording for every case, with the scratch folder replaced", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
-    expect(printed).toContain("Recorded 3 case(s) from the old repo.");
+    const { fixtureFolder } = full;
+    expect(full.exitCode).toBe(0);
+    expect(full.printed).toContain("Recorded 3 case(s) from the old repo.");
 
     const base = recording(join(fixtureFolder, "base"));
     expect(base.reference).toBe("784f78d");
@@ -93,9 +121,8 @@ describe("parity.recording-is-machine-free", () => {
 
 describe("parity.runner-records-test-run-logs", () => {
   it("writes run logs for the base's workflow tests, and for no case", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+    const { fixtureFolder } = full;
+    expect(full.exitCode).toBe(0);
     const text = readFileSync(join(fixtureFolder, "base/run-logs.json"), "utf8");
     const runLogs = JSON.parse(text) as RunLogs;
     expect(text).toBe(`${JSON.stringify(runLogs, null, 2)}\n`);
@@ -129,18 +156,16 @@ describe("parity.runner-records-cli-output", () => {
   });
 
   it("writes no CLI recording when no calls are given", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+    const { fixtureFolder } = full;
+    expect(full.exitCode).toBe(0);
     expect(existsSync(join(fixtureFolder, "base/cli.json"))).toBe(false);
   });
 });
 
 describe("parity.line-verdict", () => {
   it("records each case's verdict and lists only the differing lines in the notes", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+    const { fixtureFolder } = full;
+    expect(full.exitCode).toBe(0);
 
     const badName = recording(join(fixtureFolder, "cases/agent/bad-name"));
     expect(badName.valid).toBe(false);
