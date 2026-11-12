@@ -67,6 +67,7 @@ const contrastPairs: ContrastPair[] = [
   onFill("on-primary", "primary-hover"),
   onFill("on-danger", "danger"),
   onFill("on-danger", "danger-hover"),
+  onFill("on-success", "success"),
   ...["running", "warning", "danger", "success"].flatMap((status) => [
     ...onSurfaces(status, text),
     ...onSoftFill(status, `${status}-soft`),

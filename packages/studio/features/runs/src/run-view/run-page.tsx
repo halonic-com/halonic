@@ -58,8 +58,8 @@ export interface RunViewProps {
  *
  * Under them, Every step, from the run's log.
  *
- * Not here yet: the receipt and Details (the next pull requests), Started by, the header's ⋮, Run again (T7) and the failed banners by cause
- * (HAL-1845).
+ * Not here yet: the receipt and Details (the next pull requests), Started by,
+ * the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
  */
 export function RunView({
   list,
@@ -72,7 +72,7 @@ export function RunView({
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
-  const log = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0);
+  const log = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 
