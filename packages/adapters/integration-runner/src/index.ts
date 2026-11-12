@@ -7,6 +7,10 @@ export {
   type RunnerConnection,
 } from "./halonic/connect-runner.ts";
 export {
+  type IntegrationConnectorClientOptions,
+  integrationConnectorClient,
+} from "./halonic/integration-connector-client.ts";
+export {
   type FileIdentity,
   type FolderEntry,
   folderLinkProblems,
