@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-cloudflare-storage",
+  "private": true,
+  "type": "module",
+  "description": "The storage ports over Cloudflare's storage products, for the Worker: the BlobStore over R2.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@halonicjs/target-cloudflare-testing": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "priya",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "workers"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "//": "The Node side: the tests that start workerd, and the unit test. The Worker's code and the *.workerd.test.ts suites use workerd's types and are checked in tsconfig.json.",
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "include": [
+    "src",
+    "vitest.config.ts"
+  ],
+  "exclude": [
+    "src/**/*.workerd.test.ts"
+  ]
+}
