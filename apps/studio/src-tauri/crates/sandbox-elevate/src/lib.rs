@@ -29,6 +29,8 @@ pub const PROGRAM: &str = "halonic-sandbox-elevate.exe";
 pub const SRT_WIN: &str = "srt-win.exe";
 /// The admin-only folder under Program Files the helper runs srt-win from.
 pub const FOLDER: &str = "Halonic Sandbox";
+/// srt-win's `TEMP` and `TMP`: an admin-only folder inside [`FOLDER`].
+pub const TEMP: &str = "tmp";
 /// The Installed apps entry, under `HKLM` (64-bit view).
 pub const UNINSTALL_KEY: &str =
     r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HalonicAgentSandbox";
@@ -109,6 +111,51 @@ pub fn uninstall_entry(folder: &Path) -> Vec<(&'static str, Value)> {
     ]
 }
 
+/// The whole environment srt-win runs with. An elevated process gets the
+/// user's environment, which any program of theirs can change, so none of
+/// it comes through: every value here is a path Windows gave the helper
+/// (HAL-7385, S-1).
+pub fn environment(
+    windows: &Path,
+    system: &Path,
+    program_files: &Path,
+    program_data: &Path,
+    temp: &Path,
+) -> Option<Vec<(&'static str, OsString)>> {
+    // The drive, such as `C:`, from the Windows folder. Written out, not
+    // with `Path`, so the tests read Windows paths on any computer.
+    let drive = windows
+        .to_str()?
+        .get(..2)
+        .filter(|drive| drive.ends_with(':'))?;
+    let mut path = OsString::new();
+    for (index, entry) in [
+        system.to_path_buf(),
+        system.join("Wbem"),
+        system.join("WindowsPowerShell").join("v1.0"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        if index > 0 {
+            path.push(";");
+        }
+        path.push(entry);
+    }
+    Some(vec![
+        ("SystemRoot", windows.into()),
+        ("windir", windows.into()),
+        ("SystemDrive", drive.into()),
+        ("ProgramData", program_data.into()),
+        ("ProgramFiles", program_files.into()),
+        ("ComSpec", system.join("cmd.exe").into()),
+        ("PATHEXT", ".COM;.EXE;.BAT;.CMD".into()),
+        ("PATH", path),
+        ("TEMP", temp.into()),
+        ("TMP", temp.into()),
+    ])
+}
+
 /// What the helper needs from Windows. Paths come from Windows itself,
 /// never from the environment, which the user controls.
 pub trait Machine {
@@ -116,6 +163,10 @@ pub trait Machine {
     fn elevated(&self) -> bool;
     /// The 64-bit Program Files folder.
     fn program_files(&self) -> io::Result<PathBuf>;
+    /// ProgramData.
+    fn program_data(&self) -> io::Result<PathBuf>;
+    /// The Windows folder.
+    fn windows_folder(&self) -> io::Result<PathBuf>;
     /// System32.
     fn system_folder(&self) -> io::Result<PathBuf>;
     /// This program's own file.
@@ -129,13 +180,20 @@ pub trait Machine {
     fn replace_file(&self, from: &Path, to: &Path) -> io::Result<()>;
     fn read(&self, file: &Path) -> io::Result<Vec<u8>>;
     fn exists(&self, file: &Path) -> bool;
-    /// Runs `program` with `args` in `folder` and waits for its exit code.
-    fn run(&self, program: &Path, args: &[&str], folder: &Path) -> io::Result<i32>;
+    /// Runs `program` with `args` in `folder`, with `environment` and nothing
+    /// else, and waits for its exit code.
+    fn run(
+        &self,
+        program: &Path,
+        args: &[&str],
+        folder: &Path,
+        environment: &[(&'static str, OsString)],
+    ) -> io::Result<i32>;
     fn write_entry(&self, values: &[(&'static str, Value)]) -> io::Result<()>;
     /// Deletes the Installed apps entry; done when it isn't there.
     fn delete_entry(&self) -> io::Result<()>;
-    /// Deletes a file or an empty folder now, or when Windows next starts
-    /// if it's in use (the helper's own copy).
+    /// Deletes a file, or a folder and what's in it, now, or when Windows
+    /// next starts if it's in use (the helper's own copy).
     fn delete(&self, path: &Path);
 }
 
@@ -153,16 +211,28 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
     }
     let own = machine.own_path().map_err(|_| code::FOLDER)?;
     let from = own.parent().ok_or(code::FOLDER)?.to_path_buf();
-    let folder = machine
-        .program_files()
-        .map_err(|_| code::FOLDER)?
-        .join(FOLDER);
+    let program_files = machine.program_files().map_err(|_| code::FOLDER)?;
+    let folder = program_files.join(FOLDER);
     let system = machine
         .system_folder()
         .map_err(|_| code::SRT_WIN_DIDNT_START)?;
+    let temp = folder.join(TEMP);
+    let environment = environment(
+        &machine
+            .windows_folder()
+            .map_err(|_| code::SRT_WIN_DIDNT_START)?,
+        &system,
+        &program_files,
+        &machine
+            .program_data()
+            .map_err(|_| code::SRT_WIN_DIDNT_START)?,
+        &temp,
+    )
+    .ok_or(code::SRT_WIN_DIDNT_START)?;
     // From Installed apps the helper already runs from the folder.
     let in_folder = from == folder;
     machine.protect_folder(&folder).map_err(|_| code::FOLDER)?;
+    machine.protect_folder(&temp).map_err(|_| code::FOLDER)?;
     let srt_win = folder.join(SRT_WIN);
     if !in_folder {
         if !machine.exists(&from.join(SRT_WIN)) {
@@ -191,7 +261,7 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
                     .map_err(|_| code::FOLDER)?;
             }
             let status = machine
-                .run(&srt_win, &["install"], &system)
+                .run(&srt_win, &["install"], &system, &environment)
                 .map_err(|_| code::SRT_WIN_DIDNT_START)?;
             if status == code::OK {
                 machine
@@ -202,13 +272,14 @@ fn steps(verb: Verb, machine: &impl Machine, srt_win_sha256: &str) -> Result<i32
         }
         Verb::Remove => {
             let status = machine
-                .run(&srt_win, &["uninstall"], &system)
+                .run(&srt_win, &["uninstall"], &system, &environment)
                 .map_err(|_| code::SRT_WIN_DIDNT_START)?;
             if status != code::OK {
                 return Ok(status);
             }
             machine.delete_entry().map_err(|_| code::ENTRY)?;
             machine.delete(&srt_win);
+            machine.delete(&temp);
             machine.delete(&folder.join(PROGRAM));
             machine.delete(&folder);
             Ok(status)

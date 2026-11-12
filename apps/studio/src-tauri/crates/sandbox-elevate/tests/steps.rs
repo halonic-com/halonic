@@ -2,7 +2,8 @@
 //! with the requirement it proves (`sandbox_elevate_`).
 
 use halonic_sandbox_elevate::{
-    FOLDER, Machine, PROGRAM, SRT_WIN, Value, Verb, code, run, sha256_hex, uninstall_entry, verb,
+    FOLDER, Machine, PROGRAM, SRT_WIN, TEMP, Value, Verb, code, environment, run, sha256_hex,
+    uninstall_entry, verb,
 };
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -32,6 +33,9 @@ struct Pretend {
     exit: i32,
     files: RefCell<BTreeMap<PathBuf, Vec<u8>>>,
     runs: RefCell<Vec<(PathBuf, Vec<String>, PathBuf)>>,
+    environments: RefCell<Vec<Vec<(&'static str, OsString)>>>,
+    protected: RefCell<Vec<PathBuf>>,
+    deleted: RefCell<Vec<PathBuf>>,
     entry: RefCell<Option<Vec<(&'static str, Value)>>>,
 }
 
@@ -50,6 +54,9 @@ impl Pretend {
             exit: 0,
             files: RefCell::new(files),
             runs: RefCell::new(Vec::new()),
+            environments: RefCell::new(Vec::new()),
+            protected: RefCell::new(Vec::new()),
+            deleted: RefCell::new(Vec::new()),
             entry: RefCell::new(None),
         }
     }
@@ -74,16 +81,23 @@ impl Machine for Pretend {
     fn program_files(&self) -> io::Result<PathBuf> {
         Ok(PathBuf::from("program-files"))
     }
+    fn program_data(&self) -> io::Result<PathBuf> {
+        Ok(PathBuf::from("program-data"))
+    }
+    fn windows_folder(&self) -> io::Result<PathBuf> {
+        Ok(PathBuf::from("C:windows"))
+    }
     fn system_folder(&self) -> io::Result<PathBuf> {
         Ok(system())
     }
     fn own_path(&self) -> io::Result<PathBuf> {
         Ok(self.own.clone())
     }
-    fn protect_folder(&self, _folder: &Path) -> io::Result<()> {
+    fn protect_folder(&self, folder: &Path) -> io::Result<()> {
         if self.folder_fails {
             Err(io::Error::other("denied"))
         } else {
+            self.protected.borrow_mut().push(folder.to_path_buf());
             Ok(())
         }
     }
@@ -101,7 +115,14 @@ impl Machine for Pretend {
     fn exists(&self, file: &Path) -> bool {
         self.files.borrow().contains_key(file)
     }
-    fn run(&self, program: &Path, args: &[&str], folder: &Path) -> io::Result<i32> {
+    fn run(
+        &self,
+        program: &Path,
+        args: &[&str],
+        folder: &Path,
+        environment: &[(&'static str, OsString)],
+    ) -> io::Result<i32> {
+        self.environments.borrow_mut().push(environment.to_vec());
         let args = args.iter().map(|arg| (*arg).to_string()).collect();
         self.runs
             .borrow_mut()
@@ -117,6 +138,7 @@ impl Machine for Pretend {
         Ok(())
     }
     fn delete(&self, path: &Path) {
+        self.deleted.borrow_mut().push(path.to_path_buf());
         self.files.borrow_mut().remove(path);
     }
 }
@@ -153,6 +175,80 @@ fn sandbox_elevate_sets_up_from_the_checked_copy_in_the_admin_only_folder() {
     assert_eq!(
         machine.entry.borrow().clone(),
         Some(uninstall_entry(&folder()))
+    );
+}
+
+#[test]
+fn sandbox_elevate_runs_srt_win_with_only_the_environment_windows_gives() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    let temp = folder().join(TEMP);
+    // srt-win's temporary files go to an admin-only folder of its own.
+    assert_eq!(*machine.protected.borrow(), vec![folder(), temp.clone()]);
+    let expected = environment(
+        Path::new("C:windows"),
+        &system(),
+        Path::new("program-files"),
+        Path::new("program-data"),
+        &temp,
+    );
+    assert_eq!(machine.environments.borrow().first(), expected.as_ref());
+    let names: Vec<&str> = expected.iter().flatten().map(|(name, _)| *name).collect();
+    assert_eq!(
+        names,
+        [
+            "SystemRoot",
+            "windir",
+            "SystemDrive",
+            "ProgramData",
+            "ProgramFiles",
+            "ComSpec",
+            "PATHEXT",
+            "PATH",
+            "TEMP",
+            "TMP"
+        ]
+    );
+}
+
+/// `rest` on drive C:, as Windows writes it.
+fn on_c(rest: &str) -> String {
+    format!(r"C:\{rest}") // leak-guard: allow absolute-path Windows' own folders for the environment test
+}
+
+#[test]
+fn sandbox_elevate_builds_the_environment_from_windows_paths() {
+    let temp = on_c(r"Program Files\Halonic Sandbox\tmp");
+    let environment = environment(
+        Path::new(&on_c("Windows")),
+        Path::new(&on_c(r"Windows\System32")),
+        Path::new(&on_c("Program Files")),
+        Path::new(&on_c("ProgramData")),
+        Path::new(&temp),
+    )
+    .expect("an environment");
+    let value = |name: &str| {
+        environment
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|(_, value)| value.to_string_lossy().into_owned())
+    };
+    assert_eq!(value("SystemDrive").as_deref(), Some("C:"));
+    assert_eq!(value("TEMP"), Some(temp));
+    assert!(
+        value("PATH")
+            .is_some_and(|path| path.starts_with(&on_c(r"Windows\System32")) && path.contains(';'))
+    );
+    // No drive, no environment: srt-win doesn't start.
+    assert_eq!(
+        halonic_sandbox_elevate::environment(
+            Path::new("windows"),
+            &system(),
+            Path::new("program-files"),
+            Path::new("program-data"),
+            Path::new("tmp"),
+        ),
+        None
     );
 }
 
@@ -208,6 +304,12 @@ fn sandbox_elevate_removes_from_installed_apps_with_the_copy_it_left() {
     assert_eq!(*from_installed_apps.entry.borrow(), None);
     assert_eq!(from_installed_apps.file(folder().join(SRT_WIN)), None);
     assert_eq!(from_installed_apps.file(folder().join(PROGRAM)), None);
+    assert!(
+        from_installed_apps
+            .deleted
+            .borrow()
+            .contains(&folder().join(TEMP))
+    );
 }
 
 #[test]

@@ -26,18 +26,20 @@ use windows_sys::Win32::System::Registry::{
     HKEY, HKEY_LOCAL_MACHINE, KEY_SET_VALUE, KEY_WOW64_64KEY, REG_DWORD, REG_OPTION_NON_VOLATILE,
     REG_SZ, RegCloseKey, RegCreateKeyExW, RegDeleteKeyExW, RegSetValueExW,
 };
-use windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW;
+use windows_sys::Win32::System::SystemInformation::{
+    GetSystemDirectoryW, GetSystemWindowsDirectoryW,
+};
 use windows_sys::Win32::System::Threading::{
     CREATE_NO_WINDOW, GetCurrentProcess, OpenProcessToken,
 };
-use windows_sys::Win32::UI::Shell::{FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+use windows_sys::Win32::UI::Shell::{
+    FOLDERID_ProgramData, FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, SHGetKnownFolderPath,
+};
+use windows_sys::core::GUID;
 
 /// Owner Administrators; Administrators and SYSTEM full control, Users read
 /// and run, for the folder and everything in it; nothing inherited.
 const FOLDER_ACCESS: &str = "O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)";
-
-/// srt-win runs with this `PATH`, never the user's.
-const SEARCH_PATH: &[&str] = &["", "\\Wbem", "\\WindowsPowerShell\\v1.0"];
 
 /// The real computer.
 pub struct Windows;
@@ -69,34 +71,22 @@ impl Machine for Windows {
     }
 
     fn program_files(&self) -> io::Result<PathBuf> {
-        let mut path = ptr::null_mut();
-        // SAFETY: the folder id is a constant, and `path` outlives the call.
-        // On success it holds a string this code frees below.
-        let result = unsafe {
-            SHGetKnownFolderPath(
-                &FOLDERID_ProgramFiles,
-                KF_FLAG_DEFAULT as u32,
-                ptr::null_mut(),
-                &mut path,
-            )
-        };
-        let folder = if result >= 0 {
-            let mut length = 0;
-            // SAFETY: on success `path` is a NUL-terminated wide string, and
-            // this stops at its NUL.
-            while unsafe { *path.add(length) } != 0 {
-                length += 1;
-            }
-            // SAFETY: `path` holds `length` units before the NUL.
-            let units = unsafe { std::slice::from_raw_parts(path, length) };
-            Ok(PathBuf::from(OsString::from_wide(units)))
-        } else {
-            Err(io::Error::from_raw_os_error(result))
-        };
-        // SAFETY: Windows asks the caller to free `path` whatever the result;
-        // null is allowed.
-        unsafe { CoTaskMemFree(path.cast::<c_void>()) };
-        folder
+        known_folder(&FOLDERID_ProgramFiles)
+    }
+
+    fn program_data(&self) -> io::Result<PathBuf> {
+        known_folder(&FOLDERID_ProgramData)
+    }
+
+    fn windows_folder(&self) -> io::Result<PathBuf> {
+        let mut buffer = [0u16; 260];
+        // SAFETY: `buffer` and its length in units outlive the call.
+        let length = unsafe { GetSystemWindowsDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) }
+            as usize;
+        if length == 0 || length >= buffer.len() {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(PathBuf::from(OsString::from_wide(&buffer[..length])))
     }
 
     fn system_folder(&self) -> io::Result<PathBuf> {
@@ -171,35 +161,24 @@ impl Machine for Windows {
         file.is_file()
     }
 
-    fn run(&self, program: &Path, args: &[&str], folder: &Path) -> io::Result<i32> {
-        let search: Vec<OsString> = SEARCH_PATH
-            .iter()
-            .map(|tail| {
-                let mut entry = folder.as_os_str().to_owned();
-                entry.push(tail);
-                entry
-            })
-            .collect();
-        let mut command = Command::new(program);
-        command
+    fn run(
+        &self,
+        program: &Path,
+        args: &[&str],
+        folder: &Path,
+        environment: &[(&'static str, OsString)],
+    ) -> io::Result<i32> {
+        let status = Command::new(program)
             .args(args)
             .current_dir(folder)
-            .env(
-                "PATH",
-                std::env::join_paths(search).map_err(io::Error::other)?,
-            )
+            .env_clear()
+            .envs(environment.iter().map(|(name, value)| (name, value)))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .creation_flags(CREATE_NO_WINDOW);
-        // Nothing of Halonic's or srt's own settings reaches the elevated copy.
-        for (name, _) in std::env::vars_os() {
-            let upper = name.to_string_lossy().to_uppercase();
-            if upper.starts_with("HALONIC_") || upper.starts_with("SRT_") {
-                command.env_remove(name);
-            }
-        }
-        Ok(command.status()?.code().unwrap_or(1))
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()?;
+        Ok(status.code().unwrap_or(1))
     }
 
     fn write_entry(&self, values: &[(&'static str, Value)]) -> io::Result<()> {
@@ -270,7 +249,7 @@ impl Machine for Windows {
 
     fn delete(&self, path: &Path) {
         let gone = if path.is_dir() {
-            std::fs::remove_dir(path)
+            std::fs::remove_dir_all(path)
         } else {
             std::fs::remove_file(path)
         };
@@ -280,6 +259,32 @@ impl Machine for Windows {
             unsafe { MoveFileExW(path.as_ptr(), ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT) };
         }
     }
+}
+
+/// A folder Windows knows by `id`, from Windows rather than the environment.
+fn known_folder(id: &GUID) -> io::Result<PathBuf> {
+    let mut path = ptr::null_mut();
+    // SAFETY: `id` and `path` outlive the call.
+    // On success it holds a string this code frees below.
+    let result =
+        unsafe { SHGetKnownFolderPath(id, KF_FLAG_DEFAULT as u32, ptr::null_mut(), &mut path) };
+    let folder = if result >= 0 {
+        let mut length = 0;
+        // SAFETY: on success `path` is a NUL-terminated wide string, and
+        // this stops at its NUL.
+        while unsafe { *path.add(length) } != 0 {
+            length += 1;
+        }
+        // SAFETY: `path` holds `length` units before the NUL.
+        let units = unsafe { std::slice::from_raw_parts(path, length) };
+        Ok(PathBuf::from(OsString::from_wide(units)))
+    } else {
+        Err(io::Error::from_raw_os_error(result))
+    };
+    // SAFETY: Windows asks the caller to free `path` whatever the result;
+    // null is allowed.
+    unsafe { CoTaskMemFree(path.cast::<c_void>()) };
+    folder
 }
 
 /// `text` as a NUL-terminated wide string.
