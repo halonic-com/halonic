@@ -6,8 +6,7 @@
 import { type RunStep, runSteps, type StepEnd, shortRunId } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { RunWorkflow } from "../api.ts";
-import { stepName } from "../list/run-row.ts";
-import { everyStepWords } from "../run-words.ts";
+import { everyStepWords, stepName } from "../run-words.ts";
 import { clockTime, dueWords, tookWords } from "../time-words.ts";
 
 /** The 16px dot's mark (component specs 23.5); the run page has no "not reached" entries yet. */
