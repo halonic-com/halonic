@@ -24,7 +24,12 @@ export type { Collection, CollectionField, CollectionView } from "./kinds/collec
 export { FIELD_TYPES } from "./kinds/collection/schema.ts";
 export { connectorIsLocal } from "./kinds/connector/is-local.ts";
 export { approveAll, type Connector, marksRead, needsApproval } from "./kinds/connector/schema.ts";
-export type { Deployment, Deployments } from "./kinds/deployments/schema.ts";
+export type {
+  CloudflareSettings,
+  Deployment,
+  DeploymentLimits,
+  Deployments,
+} from "./kinds/deployments/schema.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export { checkIntegrationSheet } from "./kinds/integration/kind.ts";
 export { parseIntegrationSheet, type SheetProblem } from "./kinds/integration/parse-sheet.ts";
