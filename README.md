@@ -1,8 +1,7 @@
 # Halonic
 
-> **Status: pre-1.0, not yet usable.** This repository is being built. There
-> are no releases yet, and nothing here is a stable interface. The full README
-> follows before the first public release.
+> **0.1.0 is the command line, from source. No packaged release yet.** Nothing
+> here is a stable interface yet.
 
 Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
