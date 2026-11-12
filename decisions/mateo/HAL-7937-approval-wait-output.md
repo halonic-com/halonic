@@ -3,6 +3,7 @@
 - Task: HAL-7937, found by Maya while running the Examples recipes (HAL-971)
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YWtQqUTLPWzZupOHjTqILmkdBkisATh1wtUDzTXPOorb9wbyZujOSXlBDDYEIu5gjrI77kRe/ExtlDukHlhECg==
 
 ## What changes
 
