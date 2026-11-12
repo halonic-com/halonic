@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The headless app kernel: command bus, event bus, service registry, workspace-wide undo and the routine scheduler service. No React.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./listed-tools": "./src/listed-tools.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

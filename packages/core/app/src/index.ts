@@ -1,4 +1,5 @@
-// The public API of @halonicjs/app. Everything else in src/ is internal.
+// The public API of @halonicjs/app. Everything else in src/ is internal,
+// except `listed-tools.ts`, the `@halonicjs/app/listed-tools` entry point.
 export {
   AgentPlacement,
   type AgentPlacementOptions,
@@ -10,20 +11,6 @@ export {
   type PlacementSubject,
   type SandboxReason,
 } from "./agent-placement.ts";
-export {
-  type ApproveAllResult,
-  approveAllShown,
-  approveListedTools,
-  approveWaitingTool,
-  changesBeforeQuiet,
-  changeWindowMs,
-  keepsChanging,
-  type ListedToolApprovalCheck,
-  type ListedToolApprovalInput,
-  NotShownToolError,
-  type UnreadableApproval,
-  type WaitingTool,
-} from "./approve-listed-tools.ts";
 export { joinLinesThatNeedEachOther } from "./changes/change-needs.ts";
 export { describeAgentChange } from "./changes/describe-agent.ts";
 export { describeItemChange } from "./changes/describe-item.ts";
@@ -147,22 +134,6 @@ export {
   knowledgeHitForModel,
   maxKnowledgeRefLength,
 } from "./knowledge-for-model.ts";
-export {
-  type KeptListedTool,
-  type RefusedListedTool,
-  readListedTool,
-} from "./listed-tool.ts";
-export {
-  httpToolServer,
-  listedToolFingerprint,
-  listedToolFingerprintPrefix,
-  listedToolText,
-  sameToolServer,
-  stdioToolServer,
-  strictCanonicalJson,
-  writtenDigest,
-} from "./listed-tool-fingerprint.ts";
-export { escapeListedText, UntrustedText } from "./listed-tool-rules.ts";
 export { LiveRoutines, type LiveRoutinesOptions } from "./live-routines.ts";
 export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
 export {

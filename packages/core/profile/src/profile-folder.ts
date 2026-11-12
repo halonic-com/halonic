@@ -29,6 +29,9 @@ const pluginRecordsFolderName = "plugin-records";
 /** The name of the folder in the profile that holds the settings kept where Halonic runs. */
 const settingsFolderName = "settings";
 
+/** The name of the folder in the profile that holds the approvals of listed tools. */
+const toolApprovalFolderName = "tool-approvals";
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -115,6 +118,22 @@ export function trustFolder(profile: ProfileFolder): string {
  */
 export function sandboxJournalFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, sandboxJournalFolderName);
+}
+
+/**
+ * The folder for the approvals of listed tools, `tool-approvals` in the
+ * profile folder. The CLI's `halonic tools` and Studio's review screen both
+ * keep them there, so a tool approved in one is on in the other.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the approval folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * toolApprovalFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/tool-approvals"
+ */
+export function toolApprovalFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, toolApprovalFolderName);
 }
 
 /** The system's folder for a person's application data. */

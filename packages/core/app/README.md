@@ -4,7 +4,9 @@ The headless app kernel: command bus, event bus, service registry, workspace-wid
 
 - **Layer:** core
 - **Owner:** liam
-- **Public API:** `@halonicjs/app`
+- **Public API:** `@halonicjs/app`, and `@halonicjs/app/listed-tools` for the tools a server
+  lists: `readListedTool`, the fingerprint and rules, review and approval, and
+  `checkConnectorTools`
 
 Everything belongs to **one open workspace** (`WorkspaceScope`) and is
 disposed with it, because one window can hold several workspaces.
