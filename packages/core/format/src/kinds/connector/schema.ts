@@ -59,6 +59,15 @@ const GoogleTransport = s
   })
   .strict();
 
+/**
+ * A local integration: a folder under `integrations/` whose code runs in the
+ * I5 runner. The tools offered are the ones its permission sheet names.
+ */
+const IntegrationTransport = s.object({ integration: s.object({ folder: id }).strict() }).strict();
+
+/** A plugin's backend, started in the I5 runner. Same rules as a local integration. */
+const PluginTransport = s.object({ plugin: s.object({ id }).strict() }).strict();
+
 /** The `tools.approve` value that makes every tool of the connector ask a person first. */
 export const approveAll = "all";
 
@@ -75,7 +84,13 @@ export const Connector = s
     id,
     name: s.string().optional(),
     description: s.string().optional(),
-    transport: s.union([HttpTransport, StdioTransport, GoogleTransport]),
+    transport: s.union([
+      HttpTransport,
+      StdioTransport,
+      GoogleTransport,
+      IntegrationTransport,
+      PluginTransport,
+    ]),
     /**
      * HTTP: the secret sent as a bearer token. Google: kept so older files
      * still read, but it names no secret: the account's Google setup keeps
@@ -103,7 +118,7 @@ export const Connector = s
       })
       .strict()
       .default({ approve: [] }),
-    /** Runs on this machine or your own network. Default: true for stdio and localhost URLs. */
+    /** Runs on this machine or your own network. Default: true for stdio and localhost URLs, false for integrations and plugins, whose sheet can name outside sites. */
     local: s.boolean().optional(),
   })
   .strict();

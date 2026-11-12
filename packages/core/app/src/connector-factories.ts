@@ -113,6 +113,20 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
       secretEnv: secretEnv ?? {},
     };
   }
+  if ("integration" in transport) {
+    return {
+      id: connector.id,
+      transport: { kind: "integration", folder: transport.integration.folder },
+      secretEnv: {},
+    };
+  }
+  if ("plugin" in transport) {
+    return {
+      id: connector.id,
+      transport: { kind: "plugin", id: transport.plugin.id },
+      secretEnv: {},
+    };
+  }
   const { account, client } = transport.google;
   return { id: connector.id, transport: { kind: "google", account, client }, secretEnv: {} };
 }

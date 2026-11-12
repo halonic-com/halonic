@@ -121,6 +121,9 @@ export async function connectorToolServer(
       ),
     );
   }
+  if ("integration" in transport || "plugin" in transport) {
+    return err("its tools come from its permission sheet, so it lists none to approve");
+  }
   return err("its tools are built into Halonic, so it lists none to approve");
 }
 
