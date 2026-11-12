@@ -63,6 +63,37 @@ verifies("sandbox-mxc.box-folders", () => {
       expect(await readdir(base)).toContain(first.path.slice(base.length + 1));
     });
 
+    it("skips a leftover a program still holds open, and removes the others", async () => {
+      await mkdir(join(base, "box-111-held"), { recursive: true });
+      await mkdir(join(base, "box-333-crashed"), { recursive: true });
+      const held: BoxDisk = {
+        ...diskWith([]),
+        remove: async (path) => {
+          if (path.endsWith("box-111-held")) {
+            throw Object.assign(new Error("acme orphan holds a file"), { code: "EBUSY" });
+          }
+          await diskOnThisMachine.remove(path);
+        },
+      };
+      const box = await new BoxFolders(dataFolder, 4242, held).create();
+      expect((await readdir(base)).sort()).toEqual(
+        ["box-111-held", box.path.slice(base.length + 1)].sort(),
+      );
+    });
+
+    it("still fails a box when removing a leftover fails for another reason", async () => {
+      await mkdir(join(base, "box-111-crashed"), { recursive: true });
+      const broken: BoxDisk = {
+        ...diskWith([]),
+        remove: async () => {
+          throw Object.assign(new Error("acme disk is gone"), { code: "EIO" });
+        },
+      };
+      await expect(new BoxFolders(dataFolder, 4242, broken).create()).rejects.toThrow(
+        "acme disk is gone",
+      );
+    });
+
     it("tries the clean-up again when it failed, instead of failing every box after it", async () => {
       let failures = 1;
       const flaky: BoxDisk = {

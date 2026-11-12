@@ -18,15 +18,25 @@ const startsWithDrive = /^[A-Za-z]:\\/;
 const isDriveRoot = /^[A-Z]:$/;
 
 /**
+ * A path part Windows reads as another name: Win32 drops a part's trailing
+ * dots and spaces, so `...` names the folder above and `acme. ` names `acme`.
+ */
+const endsInDotOrSpace = /[. ]$/;
+
+/**
  * A path in the one form the adapter hands MXC (rule 2): absolute, with a
  * drive letter in capitals, backslashes only, `.` and `..` resolved, and no
  * trailing backslash. Every form worked on Windows 11 in HAL-3503; one form
  * keeps logs and tests simple.
  *
+ * A path that Windows would read as a different one is refused, not
+ * repaired: MXC only ever gets a path that names what it says.
+ *
  * @example
  * grantPath("c:/acme/project/"); // "C:\\acme\\project" (leak-guard: allow absolute-path made-up example path)
  *
  * @throws when the path has no drive letter, such as a relative path or a `\\server\share` path
+ * @throws when a part ends in a dot or a space, or a `:` follows the drive letter (an alternate stream such as `::$DATA`)
  * @throws when the path is a drive root (rule 4): granting it opens every file name on the drive
  */
 export function grantPath(path: string): string {
@@ -37,11 +47,31 @@ export function grantPath(path: string): string {
     );
   }
   const normal = win32.normalize(withBackslashes).replace(/\\+$/, "");
+  refuseWhatWindowsRenames(normal, path);
   const plain = normal.charAt(0).toUpperCase() + normal.slice(1);
   if (isDriveRoot.test(plain)) {
     throw new Error(`MXC never grants a drive root, and "${path}" is one.`);
   }
   return plain;
+}
+
+/**
+ * Refuses a normalized path that Windows would resolve to another path.
+ * `win32.normalize` treats `...` and ` ` as ordinary names, so without this
+ * `C:\acme\..\...` would pass as `C:\...`, which Windows reads as `C:\`. (leak-guard: allow absolute-path made-up example path)
+ */
+function refuseWhatWindowsRenames(normal: string, path: string): void {
+  const [, ...parts] = normal.split("\\");
+  if (parts.some((part) => endsInDotOrSpace.test(part))) {
+    throw new Error(
+      `MXC gets only paths Windows reads as written, and a part of "${path}" ends in a dot or a space, which Windows drops.`,
+    );
+  }
+  if (parts.some((part) => part.includes(":"))) {
+    throw new Error(
+      `MXC gets only paths Windows reads as written, and "${path}" has a ":" after the drive letter, which names a stream inside a file.`,
+    );
+  }
 }
 
 /**

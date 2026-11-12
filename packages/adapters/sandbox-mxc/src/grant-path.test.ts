@@ -33,6 +33,18 @@ verifies("sandbox-mxc.grant-paths", () => {
       expect(() => grantPath(path)).toThrow(/never grants a drive root/);
     });
 
+    // Windows drops a part's trailing dots and spaces: the first two are the
+    // drive root in disguise, the third is `C:\acme`. // leak-guard: allow absolute-path made-up Windows path for a test
+    const endsInDotOrSpace = ["C:\\acme\\..\\...", "C:\\ ", "C:\\acme. ", "C:\\acme.\\tools"]; // leak-guard: allow absolute-path made-up Windows path for a test
+    it.each(endsInDotOrSpace)("refuses %s, whose name Windows would change", (path) => {
+      expect(() => grantPath(path)).toThrow(/ends in a dot or a space/);
+    });
+
+    const streams = ["C:\\acme\\notes.txt::$DATA", "C:\\acme:hidden"]; // leak-guard: allow absolute-path made-up Windows path for a test
+    it.each(streams)("refuses %s, which names a stream inside a file", (path) => {
+      expect(() => grantPath(path)).toThrow(/":" after the drive letter/);
+    });
+
     // `C:` alone means the current folder on drive C, so it isn't absolute either.
     const notAbsolute = [
       "acme\\project",

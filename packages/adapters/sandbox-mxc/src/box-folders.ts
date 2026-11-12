@@ -70,7 +70,7 @@ export class BoxFolders {
    * A new, empty box folder, never one used before. The first call also
    * removes the folders of processes that no longer run, such as after a crash.
    *
-   * @throws when the folder can't be created, or a leftover can't be removed
+   * @throws when the folder can't be created, or removing a leftover fails for a reason other than a program holding it
    */
   async create(): Promise<BoxFolder> {
     // A failed clean-up is tried again by the next call, not remembered.
@@ -99,10 +99,27 @@ export class BoxFolders {
       // each removes its own when it closes.
       const processId = Number(owner);
       if (processId === this.#processId || this.#disk.isRunning(processId)) continue;
-      await this.#disk.remove(join(this.#base, name));
+      await this.#removeLeftover(join(this.#base, name));
+    }
+  }
+
+  /**
+   * Removes one leftover, skipping it while Windows holds it: a boxed program
+   * can outlive the Halonic that started it and keep files open in its folder.
+   * New boxes don't need that folder, so it is tried again the next time a
+   * process clears leftovers. Any other failure still stops the box.
+   */
+  async #removeLeftover(path: string): Promise<void> {
+    try {
+      await this.#disk.remove(path);
+    } catch (error) {
+      if (!heldOpenCodes.has(String(codeOf(error)))) throw error;
     }
   }
 }
+
+/** What Windows reports for a folder it can't remove while a program holds files in it. */
+const heldOpenCodes = new Set(["EBUSY", "EPERM", "EACCES", "ENOTEMPTY"]);
 
 /** The real disk and process table. */
 export const diskOnThisMachine: BoxDisk = {
