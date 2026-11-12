@@ -2,7 +2,6 @@
 
 - Approval: a change under `.github/` and a new skip need Liam's review (docs/guides/checks.md, requirement guard); Liam approves this note in review of the fenced attack PR on [HAL-983](/HAL/issues/HAL-983)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hvBH/En3iWg3FFFzGAmRSIa3C4AhPLcrk+156F3owLMV1mFO7ikEqqonF/AgFkGEy5nDII5XKJkCXeZy4YDTDw==
 - Task: HAL-983
 
 ## What changes
@@ -36,11 +35,11 @@ home folder, so the file fence refused it and securityd was never asked, and any
 as a refusal. The cases below pass because they expect what happens today, so a fix in either
 direction fails them and the gap stays written down.
 
-- **A36, macOS, Node's layer off:** asked by name, without a path, securityd hands the keychain
-  item out inside the fence. srt 0.0.81 always allows `com.apple.SecurityServer` and
-  `com.apple.securityd.xpc` and can't be told not to. The case expects `allowed` until
-  `sandbox-srt` denies those services ([HAL-6346](/HAL/issues/HAL-6346)), which must land
-  before I5 ships.
+- **A36, macOS, Node's layer off (closed):** asked by name, without a path, securityd handed
+  the keychain item out inside the fence, because srt 0.0.81 always allows
+  `com.apple.SecurityServer` and `com.apple.securityd.xpc`. `sandbox-srt` now denies those
+  services to a profile that denies the key store, as the runner's does
+  ([HAL-6346](/HAL/issues/HAL-6346)), so the case expects `refused`.
 - **A12, Node's layer off:** srt leaves reads open apart from the hidden folders, so a file
   outside the home and socket folders is readable, although the design says it must be refused.
   The case expects `allowed` with the layer off.

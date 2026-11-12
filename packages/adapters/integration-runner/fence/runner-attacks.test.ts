@@ -333,8 +333,8 @@ describe.each(["on", "off"] as const)("an integration in the fence, Node's layer
 // A36 on macOS: the system's `security` tool asks securityd over Mach for a
 // keychain item, so the file fence alone doesn't cover it. The design says:
 // if this gets through, `sandbox-srt` must deny those Mach services before I5
-// ships. It does get through today, so the case is written as a known gap
-// (HAL-6346). On Linux the Secret Service is a D-Bus socket in a socket
+// ships. The runner's profile denies the key store, and `sandbox-srt` denies
+// those services for it (HAL-6346). On Linux the Secret Service is a D-Bus socket in a socket
 // folder, covered by A35 and by the environment holding no bus address (A17).
 describe.skipIf(!isMac)("an integration in the fence on macOS, Node's layer off", () => {
   const service = "halonic-fence-attack";
@@ -376,7 +376,7 @@ describe.skipIf(!isMac)("an integration in the fence on macOS, Node's layer off"
     if (keychain) execFileSync("security", ["delete-keychain", keychain]);
   });
 
-  it("A36, known gap: without Node's layer, gets a keychain item through securityd", async () => {
+  it("A36: gets no keychain item through securityd", async () => {
     // Outside the fence the item comes back, so a refusal inside is the
     // fence's doing.
     const outside = execFileSync("security", ["find-generic-password", "-w", "-s", service], {
@@ -397,12 +397,10 @@ describe.skipIf(!isMac)("an integration in the fence on macOS, Node's layer off"
       `,
       folders,
     );
-    // srt's Seatbelt profile always allows `com.apple.SecurityServer` and
-    // `com.apple.securityd.xpc`, so the item comes back. Only Node's layer
-    // stops this today: it starts no process and loads no add-on (A14, A15).
-    // Once `sandbox-srt` denies those services (HAL-6346), this is `refused`
-    // and the canary must not come back.
-    expect(attempts["keychain item"]).toEqual({ outcome: "allowed", detail: `${canary}\n` });
+    // `com.apple.SecurityServer` and `com.apple.securityd.xpc` are denied, so
+    // `security` finds no item (exit 44) even without Node's layer.
+    expect(attempts["keychain item"]?.outcome).toBe("refused");
+    expect(attempts["keychain item"]?.detail).not.toContain(canary);
   });
 });
 
