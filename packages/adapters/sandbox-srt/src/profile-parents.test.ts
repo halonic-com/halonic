@@ -126,6 +126,44 @@ describe("letSandboxReadParents", () => {
       }),
     ).rejects.toThrow("icacls failed");
   });
+
+  // HAL-7431: the grant on AppData ran past the time limit while Windows walked the temp folder.
+  it("goes on when icacls fails after the folder's access list has the entry", async () => {
+    const sddl: Record<string, string> = {};
+    const { grants, start } = icacls(sddl);
+    await letSandboxReadParents([appData, local], sid, async (file, args) => {
+      if (args[1] === "/grant") {
+        sddl[args[0] ?? ""] = `D:AI(A;;LO;;;${sid})`;
+        throw new Error("icacls.exe was stopped after 15 s");
+      }
+      return start(file, args);
+    });
+    expect(grants).toEqual([]);
+    expect(Object.keys(sddl)).toEqual([appData, local]);
+  });
+
+  it("throws the grant's failure when the folder's access list still lacks the entry", async () => {
+    const { start } = icacls({});
+    await expect(
+      letSandboxReadParents([appData], sid, async (file, args) => {
+        if (args[1] === "/grant") throw new Error("icacls.exe ended with exit code 5");
+        return start(file, args);
+      }),
+    ).rejects.toThrow("exit code 5");
+  });
+
+  it("throws the grant's failure when the folder's access list can't be read again", async () => {
+    let saves = 0;
+    const { start } = icacls({});
+    await expect(
+      letSandboxReadParents([appData], sid, async (file, args) => {
+        if (args[1] === "/grant") throw new Error("icacls.exe was stopped after 15 s");
+        saves += 1;
+        if (saves > 1) throw new Error("icacls.exe /save failed");
+        return start(file, args);
+      }),
+    ).rejects.toThrow("stopped after 15 s");
+  });
 });
 
 describe("forgetSandboxParents", () => {
