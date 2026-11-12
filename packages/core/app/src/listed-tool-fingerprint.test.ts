@@ -1,4 +1,4 @@
-import type { Digest, ListedToolText } from "@halonicjs/ports";
+import type { ListedToolText } from "@halonicjs/ports";
 import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -13,13 +13,7 @@ import {
 } from "./listed-tool-fingerprint.ts";
 import { UntrustedText } from "./listed-tool-rules.ts";
 import type { OfferedListedTool } from "./tool-listing.ts";
-
-/** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
-const digest: Digest = {
-  async sha256(data) {
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};
+import { digest } from "./web-crypto-digest.test-helper.ts";
 
 const lookup: ListedToolText = {
   name: "notes__lookup",

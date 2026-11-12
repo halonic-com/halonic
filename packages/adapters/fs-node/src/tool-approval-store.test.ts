@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ToolApprovalKey } from "@halonicjs/ports";
@@ -11,23 +10,10 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
+import { fileFor, folderFor, hash } from "./tool-approval-files.test-helper.ts";
 import { FileToolApprovalStore } from "./tool-approval-store.ts";
 
 afterAll(removeTempFolders);
-
-function hash(text: string): string {
-  return createHash("sha256").update(text, "utf16le").digest("hex");
-}
-
-/** The folder `FileToolApprovalStore` keeps one source's files in. */
-function folderFor(root: string, key: Omit<ToolApprovalKey, "name">): string {
-  return join(root, hash(JSON.stringify([key.location, key.source])));
-}
-
-/** The file `FileToolApprovalStore` keeps the approval for `key` in. */
-function fileFor(root: string, key: ToolApprovalKey): string {
-  return join(folderFor(root, key), `${hash(key.name)}.json`);
-}
 
 const lookup: ToolApprovalKey = { location: "/workspaces/acme", source: "notes", name: "lookup" };
 
