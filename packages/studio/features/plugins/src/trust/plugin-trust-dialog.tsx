@@ -1,3 +1,4 @@
+import { type PluginTrustSection, pluginTrustContent, pluginTrustSections } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
@@ -53,7 +54,9 @@ export interface PluginTrustDialogProps {
 /**
  * A plugin's trust check (design section 5, UX checklist 4, T16-F5 to F8): the kit Dialog md
  * without ✕, **Not now** focused, Escape is Not now. Title, source line and the summary in risk
- * order, then the sections that have something, then the last line. Every word that acts is
+ * order, then the sections that have something, then the last line. Which sections show, and in
+ * which order, comes from core's `pluginTrustSections`, as `halonic plugin add` reads them
+ * (`app.plugin-trust-sections`). Every word that acts is
  * Halonic's; the plugin's names, descriptions and titles are plain text, and no secret's value is
  * ever on it.
  *
@@ -80,7 +83,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
       <div className="flex flex-col gap-3">
         <SourceLine version={manifest.version} origin={props.origin} />
         {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
-        <Sections content={content} name={manifest.name} />
+        <Sections content={content} shown={shownSections(manifest)} name={manifest.name} />
         {/* The kit has no slot between the body and the buttons yet, so it ends the body. */}
         <p className="text-small text-fg-muted">{TRUST_CHECK_LAST_LINE}</p>
       </div>
@@ -117,23 +120,42 @@ function SourceLine({
   );
 }
 
+/** The sections the check shows, in order. Which sections show doesn't depend on the files. */
+function shownSections(manifest: Plugin): PluginTrustSection[] {
+  return pluginTrustSections(pluginTrustContent({ plugin: manifest, files: [] }));
+}
+
 function Sections({
+  content,
+  shown,
+  name,
+}: {
+  readonly content: TrustCheckContent;
+  readonly shown: readonly PluginTrustSection[];
+  readonly name: string;
+}) {
+  return (
+    <div className="flex flex-col">
+      {shown.map((section) => (
+        <Section key={section} section={section} content={content} name={name} />
+      ))}
+    </div>
+  );
+}
+
+function Section({
+  section,
   content,
   name,
 }: {
+  readonly section: PluginTrustSection;
   readonly content: TrustCheckContent;
   readonly name: string;
 }) {
   const { tools, programs, secrets, addresses, inStudio, counts } = content;
-  const studioRow = inStudioRow({
-    settings: inStudio.settings,
-    commands: inStudio.commands.length,
-    cards: inStudio.cards.length,
-    panel: inStudio.panel !== undefined,
-  });
-  return (
-    <div className="flex flex-col">
-      {tools.length === 0 ? null : (
+  switch (section) {
+    case "tools":
+      return (
         <Disclosure
           summary={sectionRow(TOOLS_SECTION, tools.length)}
           defaultOpen={counts.writes + counts.sends > 0}
@@ -155,8 +177,9 @@ function Sections({
             ))}
           </Items>
         </Disclosure>
-      )}
-      {programs.length === 0 ? null : (
+      );
+    case "programs":
+      return (
         <Disclosure summary={sectionRow(PROGRAMS_SECTION, programs.length)}>
           <Items>
             {programs.map((program) => (
@@ -173,8 +196,9 @@ function Sections({
             ))}
           </Items>
         </Disclosure>
-      )}
-      {secrets.length === 0 ? null : (
+      );
+    case "secrets":
+      return (
         <Disclosure summary={sectionRow(SECRETS_SECTION, secrets.length)}>
           <Items>
             {secrets.map((secret, index) => (
@@ -187,8 +211,9 @@ function Sections({
           </Items>
           <p className="text-small text-fg-muted">{secretValueLine(name)}</p>
         </Disclosure>
-      )}
-      {addresses.length === 0 ? null : (
+      );
+    case "addresses":
+      return (
         <Disclosure summary={sectionRow(ADDRESSES_SECTION, addresses.length)}>
           <Items>
             {addresses.map((address) => (
@@ -199,9 +224,19 @@ function Sections({
             ))}
           </Items>
         </Disclosure>
-      )}
-      {studioRow === "" ? null : (
-        <Disclosure label={IN_STUDIO_SECTION} summary={studioRow} tone="value">
+      );
+    case "in-studio":
+      return (
+        <Disclosure
+          label={IN_STUDIO_SECTION}
+          summary={inStudioRow({
+            settings: inStudio.settings,
+            commands: inStudio.commands.length,
+            cards: inStudio.cards.length,
+            panel: inStudio.panel !== undefined,
+          })}
+          tone="value"
+        >
           <p className="text-small text-fg-muted">{IN_STUDIO_LINE}</p>
           <Items>
             {[
@@ -215,9 +250,8 @@ function Sections({
             ))}
           </Items>
         </Disclosure>
-      )}
-    </div>
-  );
+      );
+  }
 }
 
 function Items({ children }: { readonly children: ReactNode }) {

@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",

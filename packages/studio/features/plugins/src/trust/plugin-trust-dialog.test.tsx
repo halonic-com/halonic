@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
 
+import {
+  pluginTrustContent,
+  pluginTrustSectionHeadings,
+  pluginTrustSectionOrder,
+  pluginTrustSections,
+} from "@halonicjs/app";
 import { type Plugin, parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -105,6 +111,18 @@ function sections(): [string, boolean][] {
   ]);
 }
 
+/**
+ * Each section's heading as the dialog shows it: the row without its count, "Tools for agents",
+ * or the caption above a row that is only a value, "In Studio".
+ */
+function headings(): string[] {
+  return [...dialog().querySelectorAll("details")].map((details) => {
+    const caption = details.previousElementSibling;
+    if (caption?.tagName === "P") return caption.textContent ?? "";
+    return (details.querySelector("summary")?.textContent ?? "").replace(/ \(\d+\)$/, "");
+  });
+}
+
 async function settle() {
   await act(async () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -208,5 +226,29 @@ verifies("plugins.plugin-trust-check", () => {
     expect(dialog().querySelector('[role="alert"]')?.textContent).toContain(
       "Couldn't save trust: the disk is full. Nothing was started.",
     );
+  });
+});
+
+// The Studio half of the P8 parity check (HAL-1741, HAL-7564): `halonic plugin add` runs the same
+// check against its words in apps/cli/src/output/plugin-trust-check.test.ts.
+verifies("app.plugin-trust-sections", () => {
+  it("shows the shared model's sections, in its order, each under its heading word for word", () => {
+    const content = pluginTrustContent({ plugin: weather, files: [] });
+    open(weather);
+
+    expect(pluginTrustSections(content)).toEqual(pluginTrustSectionOrder);
+    expect(headings()).toEqual(
+      pluginTrustSectionOrder.map((section) => pluginTrustSectionHeadings[section]),
+    );
+  });
+
+  it("leaves out the sections the shared model leaves out", () => {
+    const content = pluginTrustContent({ plugin: readOnly, files: [] });
+    open(readOnly);
+
+    expect(headings()).toEqual(
+      pluginTrustSections(content).map((section) => pluginTrustSectionHeadings[section]),
+    );
+    expect(headings()).toEqual(["Tools for agents"]);
   });
 });
