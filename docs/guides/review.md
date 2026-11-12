@@ -2,7 +2,9 @@
 
 What a reviewer checks, and how to write findings so they can be counted.
 Who reviews what is in the root `AGENTS.md` ("Review") and in
-[CONTRIBUTING.md](../../CONTRIBUTING.md#how-changes-are-reviewed).
+[CONTRIBUTING.md](../../CONTRIBUTING.md#how-changes-are-reviewed). The
+full review of the whole repository before every release is in
+[release-review.md](release-review.md).
 
 ## Tag every finding
 
