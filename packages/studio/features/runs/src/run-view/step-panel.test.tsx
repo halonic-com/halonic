@@ -2,7 +2,7 @@
 import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
@@ -36,6 +36,8 @@ const log = logOf(runId, [
   [2, refused("registry.npmjs.org", 1)],
   [2, refused("registry.npmjs.org", 12)],
   [2, refused("objects.githubusercontent.com", 1)],
+  [3, entered("check")],
+  [3, { type: "workflow.started", state: "check", workflow: "verify", childRunId: `${runId}.13` }],
 ]);
 
 /** A `sandbox.blocked` event of step Install; `count` is the site's running total. */
@@ -49,11 +51,18 @@ function refused(host: string, count: number): RunEventBody {
   };
 }
 
-async function openRun() {
+async function openRun(openOther?: (runId: string) => void) {
   const list = new RunsList(
     fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
   );
-  const root = render(<RunView list={list} runId={runId} now={() => mondayMorning} />);
+  const root = render(
+    <RunView
+      list={list}
+      runId={runId}
+      now={() => mondayMorning}
+      {...(openOther === undefined ? {} : { openRun: openOther })}
+    />,
+  );
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
@@ -148,5 +157,28 @@ verifies("runs.run-view.blocked-sites", () => {
     act(() => entry(root, 1).click());
 
     expect(root.querySelector("aside")?.textContent).not.toContain("Blocked sites");
+  });
+});
+
+verifies("runs.run-view.child-runs", () => {
+  it("names the child run a step started, and its button opens that run", async () => {
+    const openOther = vi.fn();
+    const root = await openRun(openOther);
+    act(() => entry(root, 3).click());
+
+    // The fake source names every workflow Support reply.
+    const child = root.querySelector("aside li");
+    expect(child?.textContent).toBe("Started Support reply→Run m9p.13");
+    act(() => child?.querySelector("button")?.click());
+    expect(openOther).toHaveBeenCalledWith(`${runId}.13`);
+    expect(root.querySelector("aside")?.textContent).not.toContain("made no model or tool calls");
+  });
+
+  it("names the child run without a button where the page can't open another run", async () => {
+    const root = await openRun();
+    act(() => entry(root, 3).click());
+
+    expect(root.querySelector("aside li")?.textContent).toBe("Started Support reply→Run m9p.13");
+    expect(root.querySelector("aside li button")).toBeNull();
   });
 });

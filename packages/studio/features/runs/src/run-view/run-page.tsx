@@ -105,7 +105,14 @@ export function RunView({
         </RunLayout>
         {open === undefined || log === undefined ? null : (
           // A new key for each entry, so its panel takes focus as it opens.
-          <StepPanel key={open.id} entry={open} log={log} onClose={() => setOpenEntry(undefined)} />
+          <StepPanel
+            key={open.id}
+            entry={open}
+            log={log}
+            workflowName={(workflowId) => workflowName(list, run, workflowId)}
+            openRun={openRun}
+            onClose={() => setOpenEntry(undefined)}
+          />
         )}
       </div>
     );
@@ -225,6 +232,11 @@ function bannerAction(
     return { label: action.label, onClick: () => openRun(runId) };
   }
   return undefined;
+}
+
+/** What a workflow of the run's workspace is called, by its id; its id when it isn't loaded. */
+function workflowName(list: RunsList, run: SourcedRun, workflowId: string): string {
+  return list.source.workflow(run.summary.hubId, workflowId)?.name ?? workflowId;
 }
 
 /** What the page's words need: the run's workflow, the child runs' workflows, the currency, the time. */

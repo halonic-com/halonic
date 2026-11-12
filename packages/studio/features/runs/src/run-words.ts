@@ -256,6 +256,8 @@ export const stepEventsWords = {
   cached: "cached, no model call",
   none: "This step made no model or tool calls.",
   close: (step: string) => `Close ${step}`,
+  /** Before the child run's link: "Started Verify → Run 7k2m9p" (checklist 1.10, RUNS 3). */
+  startedChild: (workflow: string) => `Started ${workflow}`,
 };
 
 /** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */

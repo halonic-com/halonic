@@ -18,8 +18,10 @@ const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time"
  * Enter or a click on an entry opens its events in the side panel; that
  * entry is the List's current row.
  *
- * Not here yet: child runs' links, branch and for-each groups, and Show on
- * canvas (T7).
+ * The child runs a step started are named, with their links, in its side
+ * panel, because a List row has no room for a link of its own yet.
+ *
+ * Not here yet: branch and for-each groups, and Show on canvas (T7).
  */
 export function EveryStep({
   entries,

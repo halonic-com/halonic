@@ -3,9 +3,10 @@
 // its tool calls with their arguments. The panel only draws what this
 // returns.
 
+import { shortRunId } from "@halonicjs/app";
 import { blockedSites, type RunEvent, type StepBlockedSites } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
-import { stepEventsWords, stepName } from "../run-words.ts";
+import { runPageWords, stepEventsWords, stepName } from "../run-words.ts";
 import { entrySiteLimit } from "./blocked-sites.tsx";
 
 /** One model call of a step. */
@@ -99,6 +100,43 @@ export function stepBlockedSites(
   return blockedSites(events, { limit: entrySiteLimit })
     .filter((sites) => inStep.has(sites.firstSeq))
     .map((sites) => ({ sites, agent: stepName(sites.agent, undefined) }));
+}
+
+/** A child run the step started, for "Started Verify → Run 7k2m9p". */
+export interface ChildRun {
+  /** The child's full id, to open its page. */
+  readonly runId: string;
+  /** "Started Verify". */
+  readonly started: string;
+  /** The link's words, "Run 7k2m9p". */
+  readonly link: string;
+}
+
+/**
+ * The child runs the step whose entry is `entryId` started, in the order it
+ * started them: one for a workflow step, one for each item of a for-each
+ * over a workflow. `workflowName` names what a child ran, from its id.
+ *
+ * @example
+ * stepChildRuns(events, "step-2", (id) => (id === "verify" ? "Verify" : id));
+ * // [{ runId: "run_a_01jd8q.4.0", started: "Started Verify", link: "Run 4.0" }]
+ */
+export function stepChildRuns(
+  events: readonly RunEvent[],
+  entryId: string,
+  workflowName: (workflowId: string) => string,
+): ChildRun[] {
+  return eventsOfStep(events, entryId).flatMap((event) =>
+    event.type === "workflow.started"
+      ? [
+          {
+            runId: event.childRunId,
+            started: stepEventsWords.startedChild(escapeHidden(workflowName(event.workflow))),
+            link: runPageWords.title(shortRunId(event.childRunId)),
+          },
+        ]
+      : [],
+  );
 }
 
 /**
