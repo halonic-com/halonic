@@ -39,7 +39,8 @@ ui:
     cards: ui?.cards ?? [],
     panel: ui?.panel,
     manifest,
-    trustedAt: status === "not-trusted" ? undefined : "2026-11-03T09:00:00.000Z",
+    // 9:00 on 3 Nov in the test's own time zone, the zone `trustedDay` reads it in.
+    trustedAt: status === "not-trusted" ? undefined : new Date(2026, 10, 3, 9).toISOString(),
     origin: {
       kind: "git",
       address: "https://github.com/example/halonic-weather.git",

@@ -108,7 +108,7 @@ verifies("plugins.plugin-page", () => {
   it("shows the heading, Open panel and the On status of a plugin that's on", async () => {
     const view = await showPage(weather());
 
-    expect(view.querySelector("h1")?.textContent).toBe("PluginWeather");
+    expect(view.querySelector("h1")?.textContent).toBe("Plugin Weather");
     expect(view.querySelector("h1 input")).toBeNull();
     expect(button(view, "Open panel")).toBeDefined();
     expect(view.textContent).toContain("On");
