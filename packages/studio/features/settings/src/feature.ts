@@ -14,6 +14,14 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     view: "AppearanceSection",
     load: () => import("./appearance/appearance-section.tsx"),
   },
+  {
+    id: "formats",
+    title: "Formats",
+    scope: "display",
+    order: 20,
+    view: "FormatsSection",
+    load: () => import("./formats/formats-section.tsx"),
+  },
 ];
 
 /**
