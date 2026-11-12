@@ -2,6 +2,7 @@
 
 - Approval: [HAL-5825](/HAL/issues/HAL-5825)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7ZiJnERzUAapgo/Hk56fsfUOmUHLLJgzdmy6KM2DeanKeIzQz08KupyZg6DOutfm3M/K6jeEXrv7ANLBBg05CQ==
 
 The runner's untrusted profile hid the home folder and the socket folders by
 listing every entry that wasn't on the way to a path the runner needs, once,
