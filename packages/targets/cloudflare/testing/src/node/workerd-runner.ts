@@ -25,6 +25,11 @@ const inMemoryStorage = {
 export interface WorkerdBindings {
   /** Names of R2 buckets, such as `"BLOBS"`, read as `env.BLOBS`. */
   r2Buckets?: readonly string[];
+  /**
+   * Durable Object bindings: the name the suites read from `env`, and the
+   * class a suite file exports for it.
+   */
+  durableObjects?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -58,6 +63,7 @@ export class WorkerdRunner {
       modules: true,
       script,
       compatibilityDate,
+      durableObjects: { ...bindings.durableObjects },
       ...inMemoryStorage,
       r2Buckets: [...(bindings.r2Buckets ?? [])],
     });

@@ -38,10 +38,10 @@ describe("the test Worker", () => {
 
   it("doesn't build when a suite calls a matcher the shim doesn't have", async () => {
     const file = await suiteFile(
-      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toMatchObject([1]));\n',
+      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toContain(1));\n',
     );
     await expect(buildTestWorker([file])).rejects.toThrow(
-      /lacks what a suite uses[\s\S]*suite\.ts uses toMatchObject/,
+      /lacks what a suite uses[\s\S]*suite\.ts uses toContain/,
     );
   });
 
@@ -49,11 +49,11 @@ describe("the test Worker", () => {
     const file = path.join(suitesFolder, `unsupported-matcher-${process.pid}.ts`);
     await writeFile(
       file,
-      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toMatchObject([1]));\n',
+      'import { expect, it } from "vitest";\nit("acme", () => expect([1]).toMatchSnapshot());\n',
     );
     try {
       await expect(buildTestWorker([file])).rejects.toThrow(
-        /lacks what a suite uses[\s\S]*unsupported-matcher-\d+\.ts uses toMatchObject/,
+        /lacks what a suite uses[\s\S]*unsupported-matcher-\d+\.ts uses toMatchSnapshot/,
       );
     } finally {
       await rm(file, { force: true });
@@ -87,6 +87,36 @@ describe("the test Worker", () => {
       });
       expect(new WorkerdCaseError(failed).stack).toContain("(inside workerd)");
       await expect(runner.run("3")).rejects.toThrow("answered POST /run with 500");
+    } finally {
+      await runner.stop();
+    }
+  });
+
+  it("binds a Durable Object class a suite exports, with the suite and the object in one isolate", async () => {
+    const file = await suiteFile(
+      [
+        'import { env } from "cloudflare:workers";',
+        'import { describe, expect, it } from "vitest";',
+        "// The object reads this on every call; the suite moves it. Coordination tests rely on that.",
+        "export const shared = { now: 1000 };",
+        "export class AcmeObject {",
+        "  async fetch() { return new Response(String(shared.now)); }",
+        "}",
+        'describe("acme", () => {',
+        '  it("reaches the object", async () => {',
+        '    const stub = env.ACME.get(env.ACME.idFromName("one"));',
+        '    expect(await (await stub.fetch("http://acme.invalid/")).text()).toBe("1000");',
+        "    shared.now = 2000;",
+        '    expect(await (await stub.fetch("http://acme.invalid/")).text()).toBe("2000");',
+        "  });",
+        "});",
+      ].join("\n"),
+    );
+    const runner = await WorkerdRunner.start(await buildTestWorker([file]), {
+      durableObjects: { ACME: "AcmeObject" },
+    });
+    try {
+      expect(await runner.run("1")).toEqual({ status: "passed", assertions: 2 });
     } finally {
       await runner.stop();
     }

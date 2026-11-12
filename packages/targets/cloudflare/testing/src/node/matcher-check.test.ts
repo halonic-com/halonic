@@ -14,13 +14,13 @@ describe("missingShimApis", () => {
 
   it("names each missing matcher and expect helper once, sorted", () => {
     const source = [
-      "expect(list).toHaveLength(2);",
+      "expect(list).toBeTruthy();",
       "expect(list).toEqual([expect.any(String)]);",
       "expect(other).toEqual([]);",
       "await expect(promise).rejects.toThrow();",
       "expect(text).toMatch(/x/);",
     ].join("\n");
-    expect(missingShimApis(source)).toEqual(["expect.any", "toHaveLength", "toMatch"]);
+    expect(missingShimApis(source)).toEqual(["expect.any", "toBeTruthy", "toMatch"]);
   });
 
   it("names .resolves even before a matcher the shim has, and allows .rejects", () => {
