@@ -3,6 +3,7 @@
 - Task: HAL-7143, part 1 (#2124); rebased for the README tracker-link fix on HAL-7194
 - Approval: Liam approved the change in review on HAL-7151 and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GwQG6uCSuZ/SDzb8v6UFzTEjY5tActD/dxs/iqgl8a1Yerux6RR641P5vn1uYBw1r2mCECs+d85tdV7zVbLoCg==
 
 ## What changes
 
