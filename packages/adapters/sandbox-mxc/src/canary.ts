@@ -22,7 +22,7 @@ import {
   victimText,
   writeFenceFiles,
 } from "./fence-files.ts";
-import { type LoopbackListener, listenOnLoopback } from "./loopback-listener.ts";
+import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
 import { MxcSession } from "./mxc-session.ts";
 import {
   type LeakReport,
@@ -231,14 +231,6 @@ function writesOf(files: FenceFiles): { create: string; existing: string }[] {
     { create: win32.join(files.hidden, "created.txt"), existing: files.victim },
     { create: win32.join(files.readable, "created.txt"), existing: files.control },
   ];
-}
-
-/** Listeners the box must not reach: on `127.0.0.1`, and on `::1` where this computer has it. */
-async function listenOnLoopbacks(): Promise<LoopbackListener[]> {
-  const v4 = await listenOnLoopback("127.0.0.1");
-  if (v4 === null) throw new Error("this computer can't listen on 127.0.0.1");
-  const v6 = await listenOnLoopback("::1");
-  return v6 === null ? [v4] : [v4, v6];
 }
 
 /** What leaked, and a sentence for each. */

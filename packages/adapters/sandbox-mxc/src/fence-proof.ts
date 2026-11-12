@@ -1,14 +1,14 @@
 // The fence proof at `open`, before any program of the caller starts: a probe
 // program runs in the box under the real policy and must find the hidden file
-// and the denied file inside the readable folder unreadable, the loopback port
-// of a listener on this computer unreachable, and the allowed folder's control
+// and the denied file inside the readable folder unreadable, the loopback ports
+// of listeners on this computer (`127.0.0.1` and `::1`) unreachable, and the allowed folder's control
 // file readable (without that control, "hidden" proves nothing). Anything
 // else, including a probe that couldn't run, is `not-fenced`.
 
 import type { SandboxCommand, SandboxFence, SandboxProcess } from "@halonicjs/ports";
 import type { MxcDisk } from "./disk.ts";
 import { type FenceFiles, writeFenceFiles } from "./fence-files.ts";
-import { listenOnLoopback } from "./loopback-listener.ts";
+import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
 import { parseLeakReport } from "./probe-scripts.ts";
 import { errorLine, runToEnd } from "./run-to-end.ts";
 
@@ -32,11 +32,11 @@ export interface FenceProofInput {
  */
 export async function proveFence(input: FenceProofInput): Promise<SandboxFence> {
   const { files } = input;
-  const listener = await listenOnLoopback("127.0.0.1");
+  let listeners: LoopbackListener[] = [];
   try {
-    if (listener === null) throw new Error("this computer can't listen on 127.0.0.1");
+    listeners = await listenOnLoopbacks();
     await writeFenceFiles(input.disk, files);
-    const ports = [{ host: listener.host, port: listener.port }];
+    const ports = listeners.map(({ host, port }) => ({ host, port }));
     const settings = { control: files.control, hidden: files.canary, denied: files.denied, ports };
     await input.disk.writeText(files.config, JSON.stringify(settings));
     const probe = await input.launch({
@@ -44,7 +44,7 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
       args: [files.script, files.config],
     });
     const { stdout, stderr, exit } = await runToEnd(probe, probeTimeoutMs);
-    if (listener.reached()) {
+    if (listeners.some((listener) => listener.reached())) {
       return notFenced("a program inside the fence reached a loopback port it should not reach");
     }
     const report = parseLeakReport(stdout);
@@ -80,7 +80,7 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
     const why = error instanceof Error ? error.message : String(error);
     return notFenced(`the fence probe could not run: ${why}`);
   } finally {
-    listener?.close();
+    for (const listener of listeners) listener.close();
   }
 }
 

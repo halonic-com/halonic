@@ -11,6 +11,7 @@ export class BoxProcess {
   readonly exited: Promise<SandboxExit>;
   readonly #process: MxcProcess;
   #stopped = false;
+  #ended = false;
   #timedOut = false;
 
   constructor(process: MxcProcess) {
@@ -25,12 +26,15 @@ export class BoxProcess {
 
   /**
    * Ends the program and everything it started, and resolves when they have
-   * ended. `timedOut` says the session's time limit did it.
+   * ended. `timedOut` says the session's time limit did it. Once the program
+   * has ended there is nothing to kill, and MXC's process is already disposed.
    */
   async stop(timedOut = false): Promise<void> {
-    this.#stopped = true;
-    this.#timedOut ||= timedOut;
-    await this.#process.kill();
+    if (!this.#ended) {
+      this.#stopped = true;
+      this.#timedOut ||= timedOut;
+      await this.#process.kill();
+    }
     await this.exited;
   }
 
@@ -60,6 +64,7 @@ export class BoxProcess {
     } catch {
       // MXC can't say how it ended: that is a failure, not a clean exit.
     } finally {
+      this.#ended = true;
       try {
         this.#process.dispose();
       } catch {

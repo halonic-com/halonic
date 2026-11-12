@@ -14,8 +14,11 @@ export const symlinkFlags = ["--preserve-symlinks", "--preserve-symlinks-main"] 
 /** The program is Node itself: `node` or `node.exe`, by name or path. */
 const isNode = /^node(\.exe)?$/i;
 
-/** A batch file: `cmd.exe` reads its arguments by rules no quoting can make safe. */
-const isBatchFile = /\.(bat|cmd)\s*$/i;
+/**
+ * A batch file: `cmd.exe` reads its arguments by rules no quoting can make safe.
+ * Windows drops trailing dots and spaces from a name, so `x.bat.` is one too.
+ */
+const isBatchFile = /\.(bat|cmd)[\s.]*$/i;
 
 /** An argument that needs no quotes. */
 const plainArgument = /^[^\s"]+$/;

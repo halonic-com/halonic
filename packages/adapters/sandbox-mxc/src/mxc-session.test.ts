@@ -104,6 +104,25 @@ verifies("sandbox-mxc.session", () => {
       expect(probe?.filesystem.deniedPaths).toEqual([keys, expect.stringMatching(/denied\.txt$/)]);
     });
 
+    it("probes the loopback ports of 127.0.0.1, and of ::1 where this computer has it", async () => {
+      const seen: string[][] = [];
+      const { sandbox } = setup((disk) => {
+        const healthy = healthyBox(disk);
+        return async (call) => {
+          if (call.settings?.ports !== undefined) {
+            seen.push(call.settings.ports.map(({ host }) => host));
+          }
+          return healthy(call);
+        };
+      });
+      const session = await open(sandbox);
+      expect(session.fence).toEqual({ state: "fenced" });
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.[0]).toBe("127.0.0.1");
+      expect(seen[0]?.length === 1 || seen[0]?.[1] === "::1").toBe(true);
+      await session.close();
+    });
+
     it.each<[string, Leaks, RegExp]>([
       ["the hidden file is readable", { hidden: true }, /could read a file the fence should hide/],
       ["the denied file is readable", { denied: true }, /denied file inside a folder it may read/],

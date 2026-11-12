@@ -37,3 +37,11 @@ export async function listenOnLoopback(
   }
   return { host, port: address.port, reached: () => reached, close: () => server.close() };
 }
+
+/** Listeners the box must not reach: on `127.0.0.1`, and on `::1` where this computer has it. */
+export async function listenOnLoopbacks(): Promise<LoopbackListener[]> {
+  const v4 = await listenOnLoopback("127.0.0.1");
+  if (v4 === null) throw new Error("this computer can't listen on 127.0.0.1");
+  const v6 = await listenOnLoopback("::1");
+  return v6 === null ? [v4] : [v4, v6];
+}

@@ -44,9 +44,12 @@ verifies("sandbox-mxc.box-request", () => {
       expect(windowsCommandLine("git", [])).toBe("git");
     });
 
-    it.each(["", "  ", "build.cmd", setupBat])("refuses the program %j", (program) => {
-      expect(() => windowsCommandLine(program, [])).toThrow();
-    });
+    it.each(["", "  ", "build.cmd", setupBat, "x.bat.", "x.cmd. .", "x.CMD  "])(
+      "refuses the program %j",
+      (program) => {
+        expect(() => windowsCommandLine(program, [])).toThrow();
+      },
+    );
 
     it("refuses a NUL character anywhere", () => {
       expect(() => windowsCommandLine("git", ["a\0b"])).toThrow("NUL");

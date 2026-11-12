@@ -139,16 +139,20 @@ export class FakeMxc {
     standardOutput.end(result.stdout ?? "");
     standardError.end(result.stderr ?? "");
     if (result.hang !== true) finish(result.exitCode ?? 0);
+    let disposed = false;
     return {
       standardInput: new PassThrough(),
       standardOutput,
       standardError,
       wait: async () => ({ exitCode: await ended, timedOut: false }),
       kill: () => {
+        // The real SDK may refuse a process it has freed.
+        if (disposed) throw new Error("the process is disposed");
         this.killed += 1;
         finish(1);
       },
       dispose: () => {
+        disposed = true;
         this.disposed += 1;
       },
     };
