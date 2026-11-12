@@ -148,6 +148,21 @@ verifies("cli.print-error", () => {
     ]);
   });
 
+  it("escapes control and bidi characters in an error's own text and causes with --debug", () => {
+    const cause = withStack(
+      new Error("provider said \u001b[31mfailed\u202e"),
+      "    at reply (provider.ts:3:1)",
+    );
+    const error = withStack(new Error("call failed", { cause }), "    at call (a.ts:2:3)");
+    expect(printed(error, { debug: true })).toEqual([
+      ...internalLines,
+      "Error: call failed",
+      "    at call (a.ts:2:3)",
+      "Caused by: Error: provider said \\u001b[31mfailed\\u202e",
+      "    at reply (provider.ts:3:1)",
+    ]);
+  });
+
   describe("scrubs the secrets the CLI loaded", () => {
     // Made-up values, not shaped like any real key.
     const token = "made-up-token-42";

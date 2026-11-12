@@ -5,6 +5,7 @@ import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import { outputVersion } from "./output/json.ts";
+import { printable } from "./output/printable.ts";
 import type { TrustChangesDocument } from "./output/trust-changes-json.ts";
 
 /** How deep `--debug` follows `cause`, so a cause that points back at itself still ends. */
@@ -264,10 +265,13 @@ function asReason(reason: Phrase): Phrase {
 /**
  * The error's own text for `--debug`: its stack (or its message when it has
  * none), then each error in its `cause` chain, starting with "Caused by:".
+ * That text is outside text, such as a provider's reply quoted in a message,
+ * so each line is escaped after the whole text is scrubbed and split
+ * (cli-output section 5).
  */
 function debugLines(error: unknown, scrub: Scrub): Phrase[] {
   return causeChain(error).flatMap((value, index) => {
-    const [first = "", ...rest] = scrub(ownText(value)).split(/\r?\n/);
+    const [first = "", ...rest] = scrub(ownText(value)).split(/\r?\n/).map(printable);
     const firstLine = index === 0 ? phrase`${first}` : errorMessages.causedBy(first).phrase;
     return [firstLine, ...rest.map((line) => phrase`${line}`)];
   });
