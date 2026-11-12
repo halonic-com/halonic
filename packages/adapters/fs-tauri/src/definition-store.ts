@@ -19,8 +19,8 @@ import {
 } from "./file-commands.ts";
 import { ShellWatch, type WatchId } from "./shell-watch.ts";
 
-/** The Web Crypto API the page has, as the {@link Digest} port. */
-const webCryptoDigest: Digest = {
+/** The Web Crypto API the page has, as the {@link Digest} port; `openWorkspace` needs one for the review records. */
+export const webCryptoDigest: Digest = {
   async sha256(data) {
     return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
   },

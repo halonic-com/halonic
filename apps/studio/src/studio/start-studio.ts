@@ -1,10 +1,12 @@
 import {
   TauriDefinitionStore,
+  type TauriFileShell,
   TauriPickedFolders,
   TauriRunStore,
+  webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
-import { ServiceRegistry } from "@halonicjs/app";
+import { openWorkspace, ServiceRegistry, type WorkspaceScope } from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
@@ -28,6 +30,7 @@ import {
   hostSettingsStoreKey,
   provideShellHostSettings,
   provideShellSecrets,
+  type TauriCallbacks,
   TauriChannel,
   type TauriIpc,
   tauriChannelIpc,
@@ -194,13 +197,16 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
 }
 
 /**
- * Opens the workspace in a folder with services of its own. The OS keychain becomes its secrets
- * and tokens before any feature's services are built, so no token lands in the data folder
- * (threat model 4.4, HAL-2952), and the profile's `settings/host.json` its host settings
- * (HAL-6261). In the shell, its runs are the run logs in the folder's run folder, the ones the
- * CLI writes (`studio.workspace-runs`). Its display settings are the window's `display`, the same
- * for every folder open in it. Its name is the folder's until the workspace's files are read
- * (HAL-3335).
+ * Opens the workspace in a folder with a scope of its own (`openWorkspace`): the folder's files
+ * through the shell's file commands, the assistant's changes to review kept in the profile, and
+ * the workspace's save, undo and redo. The OS keychain becomes its secrets and tokens before any
+ * feature's services are built, so no token lands in the data folder (threat model 4.4,
+ * HAL-2952), and the profile's `settings/host.json` its host settings (HAL-6261). In the shell,
+ * its runs are the run logs in the folder's run folder, the ones the CLI writes
+ * (`studio.workspace-runs`). Its display settings are the window's `display`, the same for every
+ * folder open in it. Its name is the folder's until the workspace's files are read for the trust
+ * check. Outside the shell there are no files to open, so the scope has only the services above.
+ * The workspace isn't trusted yet, so the assistant may write only Halonic items.
  */
 export function openFolder(
   shell: Shell,
@@ -209,27 +215,53 @@ export function openFolder(
   display: DisplaySettings,
 ): OpenedWorkspace {
   const name = folderName(location);
-  const services = new ServiceRegistry();
+  const ipc = tauriChannelIpc(window);
+  const files = ipc === undefined ? undefined : shellFiles(ipc);
+  const scope = files === undefined ? undefined : openFolderScope(files, location);
+  const services = scope?.services ?? new ServiceRegistry();
   services.provide(DisplaySettingsService, display);
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
-  provideWorkspaceRuns(services, window, location);
+  if (ipc !== undefined && files !== undefined) {
+    provideWorkspaceRuns(services, { ipc, files, window }, location);
+  }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
-  return { name, workspace, dispose: () => services.dispose() };
+  return {
+    name,
+    workspace,
+    dispose: () => (scope === undefined ? services.dispose() : scope.close()),
+  };
+}
+
+/** The shell's file commands and channels, as the desktop stores take them. */
+function shellFiles(ipc: TauriIpc & TauriCallbacks): TauriFileShell {
+  return {
+    invoke: (command, args) => ipc.invoke(command, args),
+    openChannel: (onMessage) => new TauriChannel(ipc, onMessage),
+  };
+}
+
+/** The workspace's scope over its folder and its review records, which live in the profile. */
+function openFolderScope(files: TauriFileShell, location: string): WorkspaceScope {
+  return openWorkspace({
+    store: new TauriDefinitionStore(files, location),
+    reviewRecords: new TauriDefinitionStore(files, location, { folder: "review" }),
+    digest: webCryptoDigest,
+    isTrusted: () => false,
+    onListenerError: (error) => console.error(error),
+  });
 }
 
 /**
  * Gives the workspace in `location` its runs, read through the shell, as both the Runs
- * feature's and the Inbox's source. Outside the shell it provides nothing.
+ * feature's and the Inbox's source.
  */
-function provideWorkspaceRuns(services: ServiceRegistry, window: object, location: string): void {
-  const ipc = tauriChannelIpc(window);
-  if (ipc === undefined) return;
-  const files = {
-    invoke: (command: string, args?: Record<string, unknown>) => ipc.invoke(command, args),
-    openChannel: (onMessage: (message: unknown) => void) => new TauriChannel(ipc, onMessage),
-  };
+function provideWorkspaceRuns(
+  services: ServiceRegistry,
+  { ipc, files, window }: { ipc: TauriIpc; files: TauriFileShell; window: object },
+  location: string,
+): void {
   const runs = new WorkspaceRuns({
     runs: new TauriRunStore(ipc, location),
     definitions: new TauriDefinitionStore(files, location),
