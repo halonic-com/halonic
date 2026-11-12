@@ -145,7 +145,44 @@ verifies("check.live-probe", () => {
     });
   });
 
+  describe("redaction", () => {
+    test("replaces the account ID in an error that repeats the request path", async () => {
+      const path = `/accounts/${accountId}/d1/database`;
+      const { get } = fakeApi({
+        [path]: {
+          status: 403,
+          body: { success: false, errors: [{ code: 10000, message: `GET ${path} is forbidden` }] },
+        },
+      });
+      const results = await probeAccount(get, accountId, accountToken);
+      const d1 = results.find(({ check }) => check === "GET /accounts/{id}/d1/database");
+      expect(d1?.detail).toBe(
+        "HTTP 403: 10000 GET /accounts/<account-id>/d1/database is forbidden",
+      );
+      expect(JSON.stringify(results)).not.toContain(accountId);
+    });
+
+    test("replaces the account ID in a thrown error too", async () => {
+      const get = async (path: string): Promise<ApiAnswer> => {
+        throw new Error(`fetch failed for ${path}`);
+      };
+      const results = await probeAccount(get, accountId, accountToken);
+      expect(JSON.stringify(results)).not.toContain(accountId);
+      expect(results[1]?.detail).toContain("<account-id>");
+    });
+  });
+
   describe("cloudflareGet", () => {
+    test("fails with a plain message when a request hangs past the timeout", async () => {
+      const hangingFetch = ((_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        })) as typeof fetch;
+      await expect(cloudflareGet(accountToken, hangingFetch, 20)("/accounts")).rejects.toThrow(
+        "the request timed out after 0.02 s.",
+      );
+    });
+
     test("sends the token as a bearer header and parses the body", async () => {
       const calls: { url: string; auth: string | null }[] = [];
       const fakeFetch = (async (url: string, init?: RequestInit) => {
