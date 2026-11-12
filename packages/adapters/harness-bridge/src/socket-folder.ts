@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { lstat, mkdir, rm, rmdir } from "node:fs/promises";
+import type { Stats } from "node:fs";
+import { lstat, mkdir, readdir, rm, rmdir } from "node:fs/promises";
+import { connect } from "node:net";
 import { isAbsolute, join } from "node:path";
 import { KindedError } from "@halonicjs/std";
 
@@ -39,6 +41,13 @@ export interface RunSocketFolderOptions {
   /** The system whose socket path limit applies; this computer's unless given. */
   platform?: NodeJS.Platform;
 }
+
+/**
+ * How old an empty run folder must be before a sweep removes it. A live
+ * bridge has its folder empty only for the moment between making it and
+ * listening in it, so an older empty one was left by a host that stopped.
+ */
+export const emptyRunFolderMinAgeMs = 60_000;
 
 /** One run's own folder and the socket path in it. */
 export interface RunSocketFolder {
@@ -110,6 +119,83 @@ export async function removeRunSocketFolder({ folder, socketPath }: RunSocketFol
   await rmdir(folder);
 }
 
+/**
+ * Removes the run folders in `parent` that a bridge left behind when its host
+ * stopped without closing it: it crashed, or was killed. Call it once, when
+ * the host starts, from the one host that holds the profile's lock.
+ *
+ * Another host may serve live bridges in the same `parent`, so it removes
+ * only what is certainly left over: a real folder of this user's with mode
+ * 0700 that holds nothing but a socket named like the bridge's, which refuses
+ * a connection because nothing listens on it any more, or that has been empty
+ * for {@link emptyRunFolderMinAgeMs}. Anything else stays where it is.
+ *
+ * @param now - the time, in milliseconds since the epoch; tests give one
+ * @returns the names of the run folders it removed
+ * @throws KindedError `unavailable` when `parent` exists but isn't a real folder of this user's that nobody else can write to
+ */
+export async function sweepRunSocketFolders(
+  parent: string,
+  now: number = Date.now(),
+): Promise<string[]> {
+  let names: string[];
+  try {
+    names = await readdir(parent);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw new KindedError("unavailable", "Halonic couldn't read the bridge's socket folder.", {
+      cause: error,
+    });
+  }
+  // As in `makeRunSocketFolder`: in a folder others could change, a removal could hit theirs.
+  await checkOwnFolder(parent, isWritableByUsAlone);
+  const removed: string[] = [];
+  for (const name of names) {
+    // One that went away meanwhile, as a live bridge closed, or that can't be read
+    // or removed, is left alone.
+    const gone = await removeIfLeftOver(join(parent, name), now).catch(() => false);
+    if (gone) removed.push(name);
+  }
+  return removed;
+}
+
+/** Removes one run folder in a sweep when it is certainly left over; see {@link sweepRunSocketFolders}. */
+async function removeIfLeftOver(folder: string, now: number): Promise<boolean> {
+  const stats = await lstat(folder);
+  if (!isOwnFolder(stats, isPrivate)) return false;
+  const run: RunSocketFolder = { folder, socketPath: join(folder, socketFileName) };
+  const entries = await readdir(folder);
+  const leftOver =
+    entries.length === 0
+      ? now - stats.mtimeMs >= emptyRunFolderMinAgeMs
+      : entries.length === 1 &&
+        entries[0] === socketFileName &&
+        (await isDeadSocket(run.socketPath));
+  if (!leftOver) return false;
+  // Fails, and so leaves the folder, when something was added to it since it was read.
+  await removeRunSocketFolder(run);
+  return true;
+}
+
+/** Whether `socketPath` is a socket that nothing listens on: a connection to it is refused. */
+async function isDeadSocket(socketPath: string): Promise<boolean> {
+  if (!(await lstat(socketPath)).isSocket()) return false;
+  return new Promise((resolve) => {
+    const probe = connect(socketPath);
+    probe.once("connect", () => {
+      probe.destroy();
+      resolve(false);
+    });
+    probe.once("error", (error: NodeJS.ErrnoException) => {
+      resolve(error.code === "ECONNREFUSED");
+    });
+  });
+}
+
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
 /** Whether only the owner may open the folder: mode 0700. */
 function isPrivate(mode: number): boolean {
   return (mode & 0o777) === privateMode;
@@ -130,11 +216,15 @@ async function checkOwnFolder(
   folder: string,
   modeIsSafe: (mode: number) => boolean,
 ): Promise<void> {
-  const stats = await lstat(folder);
-  const ownedByUs = process.getuid === undefined || stats.uid === process.getuid();
-  if (stats.isDirectory() && ownedByUs && modeIsSafe(stats.mode)) return;
+  if (isOwnFolder(await lstat(folder), modeIsSafe)) return;
   throw new KindedError(
     "unavailable",
     `The bridge's socket folder ${folder} isn't private to this user, so Halonic didn't use it.`,
   );
+}
+
+/** Whether `stats` are those of a real folder, not a link, of this user's whose mode passes `modeIsSafe`. */
+function isOwnFolder(stats: Stats, modeIsSafe: (mode: number) => boolean): boolean {
+  const ownedByUs = process.getuid === undefined || stats.uid === process.getuid();
+  return stats.isDirectory() && ownedByUs && modeIsSafe(stats.mode);
 }

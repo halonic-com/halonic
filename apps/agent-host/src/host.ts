@@ -6,7 +6,7 @@ import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { type SandboxSetup, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
-import { bridgeSocketFolder } from "./bridge/socket-folder.ts";
+import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
@@ -74,6 +74,8 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * the executable passes on). If it gets it, it sweeps the kept Windows grants
  * inside each `--sweep-root` the launcher gives (see {@link SrtSandbox.sweepOnce});
  * while another live host holds the lock, it serves without a sweep (HAL-6256).
+ * The holder also removes, before it serves, the bridges' run folders that a
+ * crashed host left in the profile (see {@link sweepLeftOverBridges}).
  *
  * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep; tests make one on a fake machine
  * @returns the exit code
@@ -124,7 +126,11 @@ export async function run(
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
   if (lock !== null) void sandbox.sweepOnce();
-  const host = hostServices(version, sandbox, bridgeSocketFolder(profileFolder));
+  const socketFolder = bridgeSocketFolder(profileFolder);
+  if (lock !== null && socketFolder !== undefined) {
+    await sweepLeftOverBridges(socketFolder, (text) => io.writeError(text));
+  }
+  const host = hostServices(version, sandbox, socketFolder);
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
     await serve(io, host);
