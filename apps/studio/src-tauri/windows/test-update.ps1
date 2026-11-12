@@ -194,7 +194,15 @@ try {
     Get-ChildItem $dir -ErrorAction SilentlyContinue | ForEach-Object { "$($_.Name)  $($_.LastWriteTime)" } | Write-Output
     throw
   }
-  Wait-Until { $saved = Get-Record; $saved.install.target -eq '0.1.2' -and $saved.install.failures -eq 1 } 60 "0.1.1 counting 0.1.2 as didn't install"
+  try {
+    Wait-Until { $saved = Get-Record; $saved.install.target -eq '0.1.2' -and $saved.install.failures -eq 1 } 60 "0.1.1 counting 0.1.2 as didn't install"
+  } catch {
+    Write-Output "installed: $(Get-InstalledVersion)"
+    Get-Content (Join-Path $updates 'updater.json') -ErrorAction SilentlyContinue | Write-Output
+    Get-Content (Join-Path $updates 'updates.log') -ErrorAction SilentlyContinue | Write-Output
+    Get-Process | Where-Object { $_.Name -match 'Halonic|setup|agent|whoami' } | Format-Table Id, Name, StartTime, Path -AutoSize | Out-String | Write-Output
+    throw
+  }
   $log = Get-Content (Join-Path $updates 'updates.log') -Raw
   if ($log -notmatch 'Installing 0\.1\.2 over 0\.1\.1\. If 0\.1\.2 doesn''t start, run .+Halonic-0\.1\.1-windows-x64-setup\.exe to go back') { throw "updates.log doesn't say how to go back: $log" }
   Assert-UserData $before
