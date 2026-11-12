@@ -8,8 +8,7 @@
 // Whether a start may come here at all is decided before, from the fenced
 // sandbox's check and the user's saved yes (`UnfencedRuns` in `core/app`).
 
-import { resolve, sep } from "node:path";
-import { findProgram } from "@halonicjs/adapter-system-node";
+import { findProgram, startFolder } from "@halonicjs/adapter-system-node";
 import { skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import type {
   Sandbox,
@@ -91,10 +90,7 @@ class HostSession implements SandboxSession {
 
   async start(command: SandboxCommand): Promise<SandboxProcess> {
     if (this.#closing !== null) throw new Error("the sandbox session is closed");
-    const cwd = resolve(this.profile.workingFolder, command.cwd ?? ".");
-    if (!isInsideOrSame(cwd, resolve(this.profile.workingFolder))) {
-      throw new Error(`the program must start inside the working folder, not in ${cwd}`);
-    }
+    const cwd = await startFolder(this.profile, command.cwd);
     // The profile's variables, which Halonic sets, are read too (HAL-4903).
     const start = { cwd, program: command.program, args: command.args, env: this.profile.env };
     if (await touchesSkillScripts(start, nodePaths)) {
@@ -155,8 +151,4 @@ class HostSession implements SandboxSession {
 function exitReason(started: Started): SandboxExit["reason"] {
   if (started.timedOut) return "timeout";
   return started.stopped ? "stopped" : "exited";
-}
-
-function isInsideOrSame(path: string, folder: string): boolean {
-  return path === folder || path.startsWith(folder.endsWith(sep) ? folder : folder + sep);
 }
