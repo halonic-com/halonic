@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, realpathSync } from "node:fs";
+import { chmodSync, cpSync, realpathSync } from "node:fs";
 import { basename } from "node:path";
 import { oldTsx } from "../old-repo.ts";
-import type { TestFolders } from "../test-folders.ts";
+import { TestFolders } from "../test-folders.ts";
 
 /** Every schema the old runner looks up, by its export name. */
 const schemaNames = [
@@ -258,15 +258,18 @@ export interface FakeOldRepo {
   readonly head: string;
 }
 
+/** The committed repos this process has built, by the schema exports left out of each. */
+const built = new Map<string, FakeOldRepo>();
+const templates = new TestFolders();
+process.once("exit", () => templates.cleanUp());
+
 /**
- * A committed git clone with the old repo's shape: a schema, a loader, a file
- * store and an installed tsx, small enough to read in one go.
- *
- * @param omit - schema exports to leave out, to make the runner fail
+ * Commits a new old-repo-shaped folder. Four git processes make it slow on a
+ * busy Windows runner, so `fakeOldRepo` builds each variant once and copies it.
  */
-export function fakeOldRepo(folders: TestFolders, omit: readonly string[] = []): FakeOldRepo {
-  const clone = realpathSync(folders.make());
-  folders.write(clone, {
+function buildOldRepo(omit: readonly string[]): FakeOldRepo {
+  const clone = realpathSync(templates.make());
+  templates.write(clone, {
     ".gitignore": "node_modules\n",
     "packages/core/schema/src/index.ts": schemaModule(omit),
     "packages/core/config/src/index.ts": configModule,
@@ -299,4 +302,23 @@ export function fakeOldRepo(folders: TestFolders, omit: readonly string[] = []):
   git("add", ".");
   git("commit", "-q", "-m", "old");
   return { clone, head: git("rev-parse", "HEAD") };
+}
+
+/**
+ * A committed git clone with the old repo's shape: a schema, a loader, a file
+ * store and an installed tsx, small enough to read in one go. Each call gets
+ * its own copy, so a test may change it.
+ *
+ * @param omit - schema exports to leave out, to make the runner fail
+ */
+export function fakeOldRepo(folders: TestFolders, omit: readonly string[] = []): FakeOldRepo {
+  const key = omit.join(",");
+  let template = built.get(key);
+  if (template === undefined) {
+    template = buildOldRepo(omit);
+    built.set(key, template);
+  }
+  const clone = realpathSync(folders.make());
+  cpSync(template.clone, clone, { recursive: true });
+  return { clone, head: template.head };
 }
