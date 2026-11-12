@@ -36,7 +36,7 @@ and passes the shared `DefinitionStore` contract suite.
   the file, so another program reads the old text or the new. On Windows a
   scanner, an editor or the search indexer can hold the file open for a
   moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
-  again five times over about a third of a second before the write fails.
+  again fifteen times over just under two seconds before the write fails.
   A file it replaces keeps its permissions, such as a script's execute bit.
   The temporary file is flushed to disk before the rename, so after a power
   cut the file holds the old text or the new one, never an empty or partial

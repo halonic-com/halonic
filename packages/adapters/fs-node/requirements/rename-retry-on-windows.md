@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-3369; Liam's review of PR #942 (HAL-3311); HAL-3548; HAL-4075
+- Source: HAL-3369; Liam's review of PR #942 (HAL-3311); HAL-3548; HAL-4075; HAL-6758
 
-When a store that writes through a temporary file renames it over a file on Windows (the folder definition store, the blob store, the trust store, the agent placement store, the connection settings store, the unfenced-run consent store, the record store when it compacts a log, and the folder run store for a run's snapshot) and the rename fails with `EPERM` or `EBUSY`, because another program such as an antivirus scanner, an editor or the search indexer briefly holds the file open, the store shall try the rename again up to five times, waiting 10, 20, 40, 80 and 160 milliseconds before each new try. When the last try fails too, the write shall fail with that error and remove its temporary file. Any other error, and every error on other systems, shall fail the write at once. A failed snapshot write doesn't fail the run store's append: as for any snapshot error, the events stay stored, the older snapshot stays and the error goes to `onSnapshotError`. A compact keeps the record store's write lock while it retries, so an append that waits on it lands on the compacted log, or on the old log when the compact fails.
+When a store that writes through a temporary file renames it over a file on Windows (the folder definition store, the blob store, the trust store, the agent placement store, the connection settings store, the unfenced-run consent store, the record store when it compacts a log, and the folder run store for a run's snapshot) and the rename fails with `EPERM` or `EBUSY`, because another program such as an antivirus scanner, an editor or the search indexer briefly holds the file open, or a program such as Studio keeps reading it, the store shall try the rename again up to fifteen times, waiting 10, 20, 40 and 80 milliseconds before the first four new tries and 160 milliseconds before each of the eleven after them, 1.91 seconds in all. When the last try fails too, the write shall fail with that error and remove its temporary file. Any other error, and every error on other systems, shall fail the write at once. A failed snapshot write doesn't fail the run store's append: as for any snapshot error, the events stay stored, the older snapshot stays and the error goes to `onSnapshotError`. A compact keeps the record store's write lock while it retries, so an append that waits on it lands on the compacted log, or on the old log when the compact fails.
 
 Moving a stale run lock aside is not such a rename and is not retried this way: a retry there could hide a live holder.
 
@@ -15,7 +15,7 @@ Moving a stale run lock aside is not such a rename and is not retried this way: 
   then it waits 10 and then 20 milliseconds and succeeds on the third try.
 - Given Windows and a file that stays held,
   when the rename runs,
-  then it tries six times, waits five times, and fails with the last `EBUSY`.
+  then it tries sixteen times, waits fifteen times, and fails with the last `EBUSY`.
 - Given Linux and a rename that fails with `EPERM`,
   when the rename runs,
   then it fails at once without waiting.

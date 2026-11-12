@@ -73,7 +73,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       const { root, store } = await folderWith({ "a.yaml": "1" });
       hooks.busyRenames = 100;
       await expect(store.write("a.yaml", "2")).rejects.toMatchObject({ code: "EBUSY" });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await readFile(join(root, "a.yaml"), "utf8")).toBe("1");
       expect(await readdir(root)).toEqual(["a.yaml"]);
     });

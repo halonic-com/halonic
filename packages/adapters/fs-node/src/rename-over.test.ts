@@ -46,12 +46,17 @@ verifies("fs-node.rename-retry-on-windows", () => {
     });
 
     it("gives up with the last error when the file stays held", async () => {
-      const system = fakeSystem("win32", Array(10).fill("EBUSY"));
+      const system = fakeSystem("win32", Array(100).fill("EBUSY"));
       await expect(renameOver("a.tmp", "a.yaml", system)).rejects.toMatchObject({
         code: "EBUSY",
       });
-      expect(system.renames).toBe(renameRetryDelaysMs.length + 1);
-      expect(system.waits).toEqual([10, 20, 40, 80, 160]);
+      expect(system.renames).toBe(16);
+      expect(system.waits).toEqual([10, 20, 40, 80, ...Array(11).fill(160)]);
+    });
+
+    it("keeps trying for under two seconds in all", () => {
+      const total = renameRetryDelaysMs.reduce((sum, delay) => sum + delay, 0);
+      expect(total).toBe(1_910);
     });
 
     it("fails at once on Windows for an error that isn't a held file", async () => {

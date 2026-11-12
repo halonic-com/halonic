@@ -116,7 +116,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       await expect(store.grant(trustRecord(location, "hfp1:bb"))).rejects.toMatchObject({
         code: "EBUSY",
       });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await store.get(location)).toEqual(trustRecord(location, "hfp1:aa"));
       await onlyFile(root);
     });
@@ -144,7 +144,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       await expect(
         store.save(agentPlacement(key.location, key.agent, "sha256:bb")),
       ).rejects.toMatchObject({ code: "EBUSY" });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await store.get(key)).toEqual(agentPlacement(key.location, key.agent, "sha256:aa"));
       await onlyFile(root);
     });
@@ -174,7 +174,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       await expect(store.save(connectionSettings(location, "mail", true))).rejects.toMatchObject({
         code: "EBUSY",
       });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await store.get({ location, connector: "mail" })).toEqual(
         connectionSettings(location, "mail", false),
       );
@@ -203,7 +203,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       const store = new FolderBlobStore(root);
       hooks.busyRenames = 100;
       await expect(store.put(hello, "text/plain")).rejects.toMatchObject({ code: "EBUSY" });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await store.get(helloHash)).toBeNull();
       expect(await readdir(join(root, "2c"))).toEqual([]);
     });
@@ -229,7 +229,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       await expect(store.save(unfencedRunConsent("linux"))).rejects.toMatchObject({
         code: "EBUSY",
       });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await store.get()).toEqual(unfencedRunConsent("windows"));
       await onlyFile(root);
     });
@@ -263,7 +263,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       ]);
       expect(compacted).toMatchObject({ status: "rejected", reason: { code: "EBUSY" } });
       expect(appended).toEqual({ status: "fulfilled", value: undefined });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(await store.changes("leads")).toEqual([
         lead("1", "add", "Ada", 1),
         lead("1", "update", "Ada L.", 2),
@@ -290,7 +290,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
       });
       hooks.busyRenames = 100;
       await store.append("r1", 1, [entered("r1", 2)], { snapshot: { step: 2 } });
-      expect(hooks.waits).toBe(5);
+      expect(hooks.waits).toBe(15);
       expect(failures).toEqual([["r1", expect.objectContaining({ code: "EBUSY" })]]);
       expect((await store.events("r1")).map((event) => event.seq)).toEqual([1, 2]);
       expect(JSON.parse(await readFile(join(root, "r1.snapshot.json"), "utf8"))).toEqual({

@@ -96,10 +96,15 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       const { root, store } = await folderWith({ "review.yaml": before });
       let writing = true;
       const writer = (async () => {
-        for (let round = 0; round < 40; round += 1) {
-          await store.write("review.yaml", round % 2 === 0 ? after : before);
+        try {
+          for (let round = 0; round < 40; round += 1) {
+            await store.write("review.yaml", round % 2 === 0 ? after : before);
+          }
+        } finally {
+          // A failed write ends the reads too, so its error shows at once
+          // instead of the test hanging until it times out.
+          writing = false;
         }
-        writing = false;
       })();
       let partialReads = 0;
       while (writing) {

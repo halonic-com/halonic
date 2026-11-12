@@ -3,11 +3,20 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 /**
  * How long to wait before each new try of a rename Windows refused, in
- * milliseconds: about a third of a second in all. A scanner or indexer
- * holds a file for a few milliseconds to a few hundred, so this covers the
- * usual case without making a save that keeps failing wait for long.
+ * milliseconds: 10, 20, 40 and 80, then 160 eleven times, under two seconds
+ * in all. A scanner or indexer holds a file for a few milliseconds to a few
+ * hundred. A program that keeps reading the file, such as Studio, holds it
+ * most of the time, so the rename only gets through in a gap between two
+ * reads; a third of a second was too few tries for that on a busy computer
+ * (HAL-6758). The limit matches `busyLimitMs`.
  */
-export const renameRetryDelaysMs: readonly number[] = [10, 20, 40, 80, 160];
+export const renameRetryDelaysMs: readonly number[] = [
+  10,
+  20,
+  40,
+  80,
+  ...Array<number>(11).fill(160),
+];
 
 /**
  * Error codes Windows gives when another program, such as an antivirus
