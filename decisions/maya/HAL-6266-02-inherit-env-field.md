@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-6266 (follow-up to Liam's decision on HAL-6257, option 2; design on HAL-6266)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2wHRP9+LRhITPwasi7t/Yfl0H5EaHgkz3ufeJe9lMOgWbxStdKra1msKhkKFXIFzKv8rfdgbB50zq3G7SrkhBA==
 
 HAL-6266 gives a local connector program only a small base of the app's environment (halonic#1971).
 Some servers need a variable that is neither in that base nor a secret, such as `AWS_PROFILE`,
