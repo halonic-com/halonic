@@ -19,7 +19,7 @@ import {
   removeAcmeRuns,
   writeFiles,
 } from "../../test/acme-runs.ts";
-import { captureIo } from "../../test/capture-io.ts";
+import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
@@ -86,8 +86,7 @@ const hourly = [
   "",
 ].join("\n");
 
-/** The watch's waits, and each test's, with git on a busy runner (HAL-5244). */
-const slowWatch = { timeout: 10_000 };
+/** Each test's time, with git on a busy runner (HAL-5244). */
 const gitWatchTimeout = 60_000;
 
 let acmeRuns: AcmeRuns;
@@ -152,6 +151,12 @@ function watchCommand(time: FakeTime, opener: OpenWorkspaceHistory, sandbox = sa
   });
 }
 
+/** A watch started by {@link startWatch}: what it printed, and its exit code once it stops. */
+interface StartedWatch {
+  io: CapturedIo;
+  watching: Promise<number>;
+}
+
 function startWatch(time: FakeTime, args: readonly string[] = [], sandbox = sandboxStarts) {
   const io = captureIo(acmeRuns.acme);
   const signals = fakeSignals();
@@ -167,12 +172,52 @@ function startWatch(time: FakeTime, args: readonly string[] = [], sandbox = sand
   return { io, signals, watching };
 }
 
+/**
+ * Waits until `ready`, for as long as the test may take, and stops as soon
+ * as the watch ends first. Its git reads take no fixed time: the watch
+ * starts about 300 git processes before its first line, as each call checks
+ * the repository again, and on a busy runner they took longer than a 10 s
+ * wait (HAL-7548).
+ *
+ * @throws Error with the watch's exit code and errors when it ends before `ready`
+ */
+async function watchUntil(watch: StartedWatch, ready: () => boolean): Promise<void> {
+  let ended: string | undefined;
+  watch.watching.then(
+    (code) => {
+      ended = `with exit code ${code}`;
+    },
+    (error: unknown) => {
+      ended = `by throwing ${String(error)}`;
+    },
+  );
+  let passed = false;
+  await waitUntil(
+    () => {
+      passed = ready();
+      return passed || ended !== undefined;
+    },
+    { timeout: gitWatchTimeout },
+  );
+  if (!passed) {
+    throw new Error(
+      `The watch ended ${ended} before the check passed:\n${watch.io.stderr.join("\n")}`,
+    );
+  }
+}
+
+/** Waits for the watch's first line: the one that says it is watching. */
+async function firstLine(watch: StartedWatch) {
+  await watchUntil(watch, () => watch.io.stdout.length === 1);
+}
+
 /** Moves the clock to `iso` and waits for the watch's next line. */
-async function nextLineAt(time: FakeTime, io: { stdout: string[] }, iso: string) {
-  const before = io.stdout.length;
+async function nextLineAt(time: FakeTime, watch: StartedWatch, iso: string) {
+  const { stdout } = watch.io;
+  const before = stdout.length;
   time.set(iso);
-  await waitUntil(() => wokenUp(time) && io.stdout.length > before, slowWatch);
-  return io.stdout[before];
+  await watchUntil(watch, () => wokenUp(time) && stdout.length > before);
+  return stdout[before];
 }
 
 async function storedRuns() {
@@ -213,11 +258,12 @@ verifies("cli.commands.routines.watch", () => {
         .replace("Hourly follow-up", "Saved only"),
     });
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time);
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    const watch = startWatch(time);
+    const { io, signals, watching } = watch;
+    await firstLine(watch);
     expect(io.stdout).toEqual(["Watching 1 routine in Acme. Stop with Ctrl C."]);
 
-    const line = await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
+    const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
     expect(line).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u);
     // The live version's 5 minutes, not the saved minute.
@@ -236,13 +282,14 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     await makeLive("First version");
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time);
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
-    await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
+    const watch = startWatch(time);
+    const { signals, watching } = watch;
+    await firstLine(watch);
+    await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
     await writeFiles(acmeRuns.acme, { [workflowFile]: followUp("10m") });
     const second = await makeLive("Wait longer");
-    await nextLineAt(time, io, "2026-11-10T16:00:10.000Z");
+    await nextLineAt(time, watch, "2026-11-10T16:00:10.000Z");
 
     expect(await runStartedAt("2026-11-10T16:00:00.000Z")).toMatchObject({
       version: { reads: "live-version", commit: second },
@@ -260,14 +307,15 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     await makeLive("First version");
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time, ["--debug"]);
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    const watch = startWatch(time, ["--debug"]);
+    const { io, signals, watching } = watch;
+    await firstLine(watch);
 
     await writeFiles(acmeRuns.acme, {
       "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",
     });
     await makeLive("Add Ollama");
-    const line = await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
+    const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
     expect(line).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("isn't trusted on this computer yet");
@@ -281,8 +329,9 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     await makeLive("First version");
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time, ["--debug"], bubblewrapMissing);
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    const watch = startWatch(time, ["--debug"], bubblewrapMissing);
+    const { io, signals, watching } = watch;
+    await firstLine(watch);
 
     await writeFiles(acmeRuns.acme, {
       [workflowFile]: followUpByWriter,
@@ -291,7 +340,7 @@ verifies("cli.commands.routines.watch", () => {
     await makeLive("Writer drafts in Claude Code");
     // Trusted as it is now, so only the sandbox check can stop the run.
     await trustAcme();
-    const line = await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
+    const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
     expect(line).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("the sandbox can't start on this computer");
@@ -305,14 +354,15 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     await makeLive("First version");
     const time = fakeTime(engineStart);
-    const { io, signals, watching } = startWatch(time, ["--debug"]);
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    const watch = startWatch(time, ["--debug"]);
+    const { io, signals, watching } = watch;
+    await firstLine(watch);
 
     await writeFiles(acmeRuns.acme, {
       "workspace.yaml": "id: acme\nname: Acme\nprivacy:\n  localOnly: true\n",
     });
     await makeLive("Local only");
-    const line = await nextLineAt(time, io, "2026-11-10T15:00:10.000Z");
+    const line = await nextLineAt(time, watch, "2026-11-10T15:00:10.000Z");
 
     expect(line).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain(

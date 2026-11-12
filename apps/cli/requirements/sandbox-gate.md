@@ -13,7 +13,7 @@ When `halonic run` (or `halonic runs send`) is about to start a run, the CLI sha
   then it refuses with "the sandbox can't start on this computer. Nothing ran.", "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again." and the docs link with `bubblewrap-missing`, and exit 9.
 - Given the same workflow on Windows, where the sandbox's one-time setup isn't done,
   when the check runs,
-  then it refuses with "The sandbox's one-time setup isn't done for this version of Halonic. Set up the sandbox with WSL in Halonic Studio, under Settings > Sandbox, or finish this sandbox's setup there, then run it again." and the docs link with `setup-needed`, and exit 9.
+  then it refuses with "The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again." and the docs link with `setup-needed`, and exit 9.
 - Given the same workflow in the WSL distro Ubuntu, which runs on WSL 1,
   when the check runs,
   then it refuses with "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version Ubuntu 2 in PowerShell on Windows, then run it again." and the docs link to the `#wsl1` section with `not-supported`, and exit 9.

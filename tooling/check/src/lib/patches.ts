@@ -5,8 +5,9 @@
  * with its package at the catalog version, its file, the SHA-256 of that
  * file, a reason and a condition for removing it. The hash means a changed
  * patch needs a changed list, and CI reads the list from the base commit, so
- * a pull request can't approve its own patch. Strict like the other config
- * files.
+ * a pull request can't approve its own patch. A changed patch is approved
+ * the same way, before it lands: its hash goes in `next-sha256` next to the
+ * one in use. Strict like the other config files.
  */
 import { createHash } from "node:crypto";
 import type { CatalogEntry } from "./catalog.ts";
@@ -19,12 +20,18 @@ export interface AllowedPatch {
   readonly file: string;
   /** The SHA-256 of the patch file, in lower-case hex. */
   readonly sha256: string;
+  /**
+   * The SHA-256 of a changed patch, approved before the change lands: the
+   * list is read from the base commit, so without it no pull request could
+   * change a listed patch. The change moves it to `sha256`.
+   */
+  readonly nextSha256?: string;
   readonly reason: string;
   /** What lets us delete the patch and the entry. */
   readonly removeWhen: string;
 }
 
-const known = ["package", "file", "sha256", "reason", "remove-when"];
+const known = ["package", "file", "sha256", "next-sha256", "reason", "remove-when"];
 const packageName = "(?:@[a-z0-9][\\w.-]*/)?[a-z0-9][\\w.-]*";
 /** `name@version` with an exact version: a range would patch whatever version comes next. */
 const exactPackage = new RegExp(`^(${packageName})@(\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?)$`);
@@ -109,6 +116,7 @@ function readEntry(raw: unknown, at: string, problems: string[]): AllowedPatch |
   if (sha256 !== "" && !sha256Hex.test(sha256)) {
     problems.push(`${at}.sha256 must be 64 lower-case hex digits`);
   }
+  const nextSha256 = readNextSha256(record["next-sha256"], sha256, at, problems);
   const reason = text("reason");
   if (reason !== "" && reason.trim().length < minReasonLength) {
     problems.push(
@@ -119,7 +127,35 @@ function readEntry(raw: unknown, at: string, problems: string[]): AllowedPatch |
   if (problems.length > before) {
     return undefined;
   }
-  return { package: pkg, file, sha256, reason, removeWhen };
+  return {
+    package: pkg,
+    file,
+    sha256,
+    ...(nextSha256 === undefined ? {} : { nextSha256 }),
+    reason,
+    removeWhen,
+  };
+}
+
+/** The optional `next-sha256` of an entry: a hash, and not the one in use. */
+function readNextSha256(
+  field: unknown,
+  sha256: string,
+  at: string,
+  problems: string[],
+): string | undefined {
+  if (field === undefined) {
+    return undefined;
+  }
+  if (typeof field !== "string" || !sha256Hex.test(field)) {
+    problems.push(`${at}.next-sha256 must be 64 lower-case hex digits`);
+    return undefined;
+  }
+  if (field === sha256) {
+    problems.push(`${at}.next-sha256 must differ from sha256`);
+    return undefined;
+  }
+  return field;
 }
 
 /**
@@ -130,12 +166,22 @@ export function patchHash(text: string): string {
   return createHash("sha256").update(text.replaceAll("\r\n", "\n")).digest("hex");
 }
 
+/** Which of the entry's hashes the patch file's text has. */
+function approvedAs(entry: AllowedPatch, text: string): "in use" | "next" | "not approved" {
+  const hash = patchHash(text);
+  if (hash === entry.sha256) {
+    return "in use";
+  }
+  return hash === entry.nextSha256 ? "next" : "not approved";
+}
+
 /**
  * Problems with the `patchedDependencies:` lines of the workspace file, each
  * with its line: a patch that isn't allowed, one for a version other than the
- * catalog's, another file than the listed one, and a file whose hash differs
- * from the listed one. `readPatch` returns a patch file's text, or `undefined`
- * when there is no such file. `unused` lists the allowed entries that no
+ * catalog's, another file than the listed one, and a file whose hash is
+ * neither the listed one nor the listed next one. `readPatch` returns a patch file's text, or `undefined`
+ * when there is no such file. `landed` lists the patches that are already the
+ * one an entry's `next-sha256` names. `unused` lists the allowed entries that no
  * patch uses any more.
  */
 export function patchProblems(
@@ -143,8 +189,9 @@ export function patchProblems(
   allowed: readonly AllowedPatch[],
   catalog: readonly CatalogEntry[],
   readPatch: (file: string) => string | undefined,
-): { problems: { message: string; line: number }[]; unused: string[] } {
+): { problems: { message: string; line: number }[]; unused: string[]; landed: string[] } {
   const problems: { message: string; line: number }[] = [];
+  const landed: string[] = [];
   const allowedByPackage = new Map(allowed.map((entry) => [entry.package, entry]));
   const versionOf = new Map(catalog.map((entry) => [entry.name, entry.version]));
   for (const patch of patches) {
@@ -173,11 +220,18 @@ export function patchProblems(
     const text = readPatch(entry.file);
     if (text === undefined) {
       problems.push({ message: `${entry.file} is missing.`, line: patch.line });
-    } else if (patchHash(text) !== entry.sha256) {
+      continue;
+    }
+    const approval = approvedAs(entry, text);
+    if (approval === "not approved") {
       problems.push({
-        message: `${entry.file} isn't the patch patches-allowed.json approved (its SHA-256 differs). A changed patch needs the new hash in the list, proposed in its own pull request.`,
+        message: `${entry.file} isn't the patch patches-allowed.json approved (its SHA-256 differs). A changed patch needs its hash in the entry's next-sha256 first, proposed in its own pull request.`,
         line: patch.line,
       });
+    } else if (approval === "next") {
+      landed.push(
+        `${entry.file} is the patch next-sha256 lists for "${entry.package}". Move that hash to sha256 and remove next-sha256.`,
+      );
     }
   }
   const used = new Set(patches.map((patch) => patch.name));
@@ -187,5 +241,5 @@ export function patchProblems(
       (entry) =>
         `"${entry.package}" is allowed but pnpm-workspace.yaml has no such patch. Remove the entry if it's no longer needed (remove-when: ${entry.removeWhen}).`,
     );
-  return { problems, unused };
+  return { problems, unused, landed };
 }

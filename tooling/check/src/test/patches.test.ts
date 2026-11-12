@@ -89,6 +89,52 @@ describe("tooling/check: allowed patches", () => {
     expect(errors.some((m) => m.includes("its SHA-256 differs"))).toBe(true);
   });
 
+  // HAL-7431: the list is read from the base commit, so a changed patch is approved first.
+  describe("a changed patch, approved with next-sha256", () => {
+    const changed = `${patchText}+more\n`;
+
+    it("passes the patch in use while the change is approved", () => {
+      const result = found({
+        workspaceYaml: patching(srt, file),
+        patchesAllowed: allowing({ "next-sha256": patchHash(changed) }),
+      });
+      expect(result).toEqual({ errors: [], warnings: [] });
+    });
+
+    it("passes the changed patch, with a warning to move its hash to sha256", () => {
+      const { errors, warnings } = found({
+        workspaceYaml: patching(srt, file),
+        patchesAllowed: allowing({ "next-sha256": patchHash(changed) }),
+        extraFiles: { [file]: changed },
+      });
+      expect(errors).toEqual([]);
+      expect(warnings).toEqual([
+        expect.stringContaining(`${file} is the patch next-sha256 lists for "${srt}"`),
+      ]);
+    });
+
+    it("refuses a patch that is neither", () => {
+      const { errors } = found({
+        workspaceYaml: patching(srt, file),
+        patchesAllowed: allowing({ "next-sha256": patchHash(changed) }),
+        extraFiles: { [file]: `${changed}+again\n` },
+      });
+      expect(errors.some((m) => m.includes("its SHA-256 differs"))).toBe(true);
+    });
+
+    it("refuses a next-sha256 that isn't a hash or is the same as sha256", () => {
+      const bad = (next: unknown, problem: string) =>
+        found({ patchesAllowed: allowing({ "next-sha256": next }) }).errors.some((m) =>
+          m.includes(problem),
+        );
+      expect(bad("ABC", "allowed[0].next-sha256 must be 64 lower-case hex digits")).toBe(true);
+      expect(bad(1, "allowed[0].next-sha256 must be 64 lower-case hex digits")).toBe(true);
+      expect(bad(patchHash(patchText), "allowed[0].next-sha256 must differ from sha256")).toBe(
+        true,
+      );
+    });
+  });
+
   it("gives a Windows checkout's line ends the same hash", () => {
     expect(patchHash(patchText.replaceAll("\n", "\r\n"))).toBe(patchHash(patchText));
   });

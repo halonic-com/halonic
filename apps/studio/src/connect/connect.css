@@ -287,3 +287,13 @@ button.link {
   text-align: center;
   line-height: 1.5;
 }
+
+/*
+ * The page moves the focus to the message so a screen reader reads it first
+ * (flow 7.3). It is not something to operate, so it gets no ring: Android's
+ * WebView would draw its orange one around the text (HAL-7122). The next Tab
+ * lands on the button, which keeps its ring.
+ */
+.message:focus {
+  outline: none;
+}
