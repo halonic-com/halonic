@@ -15,6 +15,10 @@
     "src/r2-definition-source.ts",
     "src/definition-snapshot.ts",
     "src/definition-snapshot-writer.ts",
+    "src/d1-database.ts",
+    "src/d1-migrations.ts",
+    "src/d1-record-store.ts",
+    "src/migrations/*.ts",
     "src/**/*.workerd.test.ts"
   ]
 }
