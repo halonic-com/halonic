@@ -159,6 +159,10 @@ localTools:
   `runner` (`npx` or `uvx`), a `name` and an exact `version`: no range and no
   tag. A script is a file in the plugin folder, run by a program the person
   already has (`{ program: node, path: tools/server.js }`).
+  A package may also set `registry`, the base address of the registry to fetch
+  it from (an `https://` address, without `/simple` for PyPI). Leave it out to
+  use the runner's public registry; set it only when the package is on a
+  private or mirror registry.
 - **`env`** maps a variable to a setting or to a secret this local tool
   declares in its own `secrets`. A literal value is not allowed, and a secret
   declared on another local tool or on the backend doesn't count. A secret
