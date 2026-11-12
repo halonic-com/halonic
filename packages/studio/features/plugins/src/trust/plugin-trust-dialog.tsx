@@ -74,6 +74,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
       size="md"
       closeButton={false}
       cancelLabel={NOT_NOW}
+      footnote={TRUST_CHECK_LAST_LINE}
       confirm={{ label: trustButton(reason), busyLabel: TRUSTING }}
       busy={props.busy ?? false}
       {...(props.failure === undefined ? {} : { error: trustNotSavedLine(props.failure) })}
@@ -84,8 +85,6 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
         <SourceLine version={manifest.version} origin={props.origin} />
         {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
         <Sections content={content} shown={shownSections(manifest)} name={manifest.name} />
-        {/* The kit has no slot between the body and the buttons yet, so it ends the body. */}
-        <p className="text-small text-fg-muted">{TRUST_CHECK_LAST_LINE}</p>
       </div>
     </Dialog>
   );

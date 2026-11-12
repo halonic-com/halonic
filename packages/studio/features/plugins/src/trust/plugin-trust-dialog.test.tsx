@@ -191,13 +191,18 @@ verifies("plugins.plugin-trust-check", () => {
     );
   });
 
-  it("ends with the last line", () => {
+  it("ends with the last line, outside the body and read with the description", () => {
     open(weather);
-    const lines = [...dialog().querySelectorAll("p")].map((line) => line.textContent);
+    const last =
+      "Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.";
+    const lines = [...dialog().querySelectorAll("p")];
+    const line = lines.at(-1);
+    const described = (dialog().getAttribute("aria-describedby") ?? "").split(" ");
 
-    expect(lines.at(-1)).toBe(
-      "Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.",
-    );
+    expect(line?.textContent).toBe(last);
+    expect(lines.filter((each) => each.textContent === last)).toHaveLength(1);
+    expect(described).toContain(line?.id);
+    expect(document.getElementById(described[0] ?? "")?.contains(line ?? null)).toBe(false);
   });
 
   it("shows the plugin's text as plain text", () => {
