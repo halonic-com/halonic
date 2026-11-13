@@ -5,10 +5,19 @@
 import { hostFromSetting } from "../settings/settings-text.ts";
 
 /** Why the trust check opens: right after Add, or from **Review** on the plugin's page. */
-export type TrustCheckReason = "add" | "review";
+export type TrustCheckReason = "add" | "review" | "changed";
 
 /** The dialog's title (T6). */
-export function trustTitle(reason: TrustCheckReason, name: string): string {
+export function trustTitle(
+  reason: TrustCheckReason,
+  name: string,
+  trustedOn?: string | undefined,
+): string {
+  if (reason === "changed") {
+    return trustedOn === undefined
+      ? `${name} changed since you trusted it`
+      : `${name} changed since you trusted it on ${trustedOn}`;
+  }
   return reason === "add" ? `Trust ${name} and turn it on?` : `Trust ${name}?`;
 }
 
@@ -49,8 +58,23 @@ export const NOT_NOW = "Not now";
  * says it: the button word isn't drawn (checklist 15, G1).
  */
 export function trustButton(reason: TrustCheckReason): string {
+  if (reason === "changed") return "Trust again and turn on";
   return reason === "add" ? "Trust and turn on" : "Trust";
 }
+
+/** The line over the change rows (design section 6): the plugin is off until it is trusted again. */
+export const CHANGED_INTRO = "It's off until you look at what changed.";
+
+/** When the record can't be compared with the plugin, so only the fact is shown. */
+export const CHANGED_UNREADABLE = "Something in this plugin changed. Halonic can't say what.";
+
+/** The closed list at the end of the change rows, "Unchanged (3)". */
+export function unchangedRow(count: number): string {
+  return `Unchanged (${count})`;
+}
+
+/** The arrow between an old value and its new one. */
+export const ARROW = " → ";
 
 /**
  * The trust check's last line, outside the scroll area (T9, CHECK P1). The one place it's
