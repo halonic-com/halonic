@@ -55,11 +55,15 @@ export function exampleFlow(options: { settings?: Record<string, unknown>; issue
     sheet: withIssuer(exampleSheet(), options.issuer),
     settings: options.settings ?? { clientId: "fake-client" },
   };
+  let revokeStatus = 200;
   let secret: string | null = fakeClientSecret;
   let counter = 0;
   const http: HttpClient = {
     async fetch(url, init) {
       seen.push({ url, body: String(init?.body) });
+      if (url.endsWith("/revoke")) {
+        return new Response("", { status: revokeStatus });
+      }
       if (answer === "unreachable") {
         throw new Error("fake network failure");
       }
@@ -98,6 +102,9 @@ export function exampleFlow(options: { settings?: Record<string, unknown>; issue
     values,
     answerWith(next: ExchangeAnswer) {
       answer = next;
+    },
+    answerRevokeWith(status: number) {
+      revokeStatus = status;
     },
     changeSettings(settings: Record<string, unknown>) {
       source = { ...source, settings };

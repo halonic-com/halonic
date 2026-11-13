@@ -34,7 +34,7 @@ export interface SignInFlowSettings {
   /** The integration, as its sheet names it. */
   readonly integration: string;
   /** Looks sign-ins up the way the trust check shows them, and so tells what the sheet says now. */
-  readonly signIns: Pick<IntegrationSignIns, "lookUp">;
+  readonly signIns: Pick<IntegrationSignIns, "lookUp" | "signOut">;
   readonly grants: SignInGrants;
   /** The server's `HttpClient`: https only, no redirects, a limited answer. */
   readonly http: HttpClient;
@@ -75,6 +75,12 @@ export type SignInOutcome =
       readonly missingScopes: readonly string[];
       /** Scopes the provider granted beyond the ones asked for. Usually none. */
       readonly extraScopes: readonly string[];
+      /**
+       * What became of the grant this sign-in replaced, when there was one. It
+       * is dropped in every case; `notConfirmed` and `noRevokeUrl` say the
+       * provider may still honour its refresh token.
+       */
+      readonly previousGrant?: "revoked" | "notConfirmed" | "noRevokeUrl";
     }
   | {
       readonly kind: "cancelled" | "incompleteCallback" | "linkNoLongerValid";
@@ -267,11 +273,19 @@ export function createSignInFlow(settings: SignInFlowSettings): SignInFlow {
     if (read.kind !== "refreshable") {
       return read;
     }
+    // The old grant is signed out first, at the URL its own approval named, so
+    // the provider is not left with a refresh token nobody holds.
+    const previous = await settings.signIns.signOut(signIn);
     await settings.grants.save(settings.integration, signIn, {
       refreshToken: read.refreshToken,
       approved,
     });
-    return { kind: "signedIn", signIn, ...scopeDifference(started.scopes, read.grantedScopes) };
+    return {
+      kind: "signedIn",
+      signIn,
+      ...scopeDifference(started.scopes, read.grantedScopes),
+      ...(previous.kind === "signedOut" ? { previousGrant: previous.revoke } : {}),
+    };
   }
 
   return { start, handleCallback, cancel: forget };
