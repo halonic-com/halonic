@@ -141,7 +141,9 @@ verifies("settings.agent-sandbox-section", () => {
     setCheck({ state: "restart-needed" });
     await end(null);
     expect(view.textContent).toContain("Restart needed");
-    expect(view.textContent).toContain("Windows needs to restart to finish setting up the sandbox.");
+    expect(view.textContent).toContain(
+      "Windows needs to restart to finish setting up the sandbox.",
+    );
     expect(view.textContent).not.toContain("Needs repair");
     expect(view.textContent).not.toContain("didn't pass its check");
     expect(() => button(view, "Repair the sandbox")).toThrow();
