@@ -3,11 +3,15 @@
 - Approval: HAL-8306 (Liam, CTO, MXC ship gate part 2)
 - Kind: internal
 - Task: HAL-8306
-- Covers: `sandbox-mxc.session`, `sandbox-mxc.canary`
 
 The probe program inside the MXC box now also tries the router's usual address and one other
 address in each private range the computer is on, so a box that could reach the home or office
 network no longer passes the fence proof or the canary. The interface of `core/app` doesn't change.
+
+## Covers
+
+- `sandbox-mxc.session`
+- `sandbox-mxc.canary`
 
 ## What changes
 
