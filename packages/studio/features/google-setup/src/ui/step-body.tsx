@@ -1,4 +1,5 @@
 import type {
+  AccountType,
   ApisStep,
   ConsentStep,
   ProjectStep,
@@ -17,12 +18,15 @@ import {
   useOpenExternal,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
+import { listNames } from "./account-labels.ts";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 
 /** Props for {@link StepBody}. */
 export interface StepBodyProps {
   readonly step: SetupStep;
+  /** Personal or Workspace, which decides what the scopes note may say. */
+  readonly accountType: AccountType | null;
   /** The "In production" tick as saved. */
   readonly inProduction: boolean;
   /** The project ID as typed in step 1, and what is wrong with it, if anything. */
@@ -52,7 +56,7 @@ export function StepBody(props: StepBodyProps) {
     case "consent":
       return <ConsentBody {...props} step={step} />;
     case "scopes":
-      return <ScopesBody step={step} />;
+      return <ScopesBody step={step} accountType={props.accountType} />;
     case "client":
       return <ClientBody step={step} />;
     case "credentials":
@@ -62,7 +66,8 @@ export function StepBody(props: StepBodyProps) {
 }
 
 function Actions({ children }: { readonly children: ReactNode }) {
-  return <ol className="flex list-decimal flex-col gap-2 pl-5 text-body">{children}</ol>;
+  // Lettered, so an action is never "3" under a step that is itself number 3.
+  return <ol className="flex list-[lower-alpha] flex-col gap-2 pl-5 text-body">{children}</ol>;
 }
 
 function ProjectBody({
@@ -77,13 +82,15 @@ function ProjectBody({
         <li>
           Open the <ConsoleLink step={step} page="new-project" />.
         </li>
-        <li>Name the project:</li>
+        <li className="flex flex-col gap-1">
+          Name the project:
+          <CopyLine step={step} id="project-name" />
+        </li>
         {step.location === "inside-organisation" ? (
           <li>Set Location to your organisation.</li>
         ) : null}
         <li>Click "Create".</li>
       </Actions>
-      <CopyLine step={step} id="project-name" />
       <Field
         label="Project ID"
         hint="Optional. With it, the links below open in this project."
@@ -119,7 +126,7 @@ function ApisBody({
             <span className="text-body-strong text-fg">{row.name}</span>
             <code className="text-small text-fg-muted">{row.api}</code>
             <span className="text-small text-fg-muted">
-              Needed by {row.neededBy.map(serviceName).join(" and ")}
+              Needed by {listNames(row.neededBy.map(serviceName))}
             </span>
             <ExternalLink href={row.enableUrl}>Enable</ExternalLink>
           </li>
@@ -144,7 +151,12 @@ function ConsentBody({
         <li>
           Open the <ConsoleLink step={step} page="branding" /> and start the wizard.
         </li>
-        <li>Give the app these values:</li>
+        <li className="flex flex-col gap-1">
+          Give the app these values:
+          <CopyLine step={step} id="app-name" />
+          <CopyLine step={step} id="support-email" />
+          <CopyLine step={step} id="contact-email" />
+        </li>
         <li>
           Choose the audience "{external ? "External" : "Internal"}". Check it on the{" "}
           <ConsoleLink step={step} page="audience" />.
@@ -156,11 +168,6 @@ function ConsentBody({
           </li>
         ) : null}
       </Actions>
-      <div className="flex flex-col gap-2">
-        <CopyLine step={step} id="app-name" />
-        <CopyLine step={step} id="support-email" />
-        <CopyLine step={step} id="contact-email" />
-      </div>
       {step.requiredTicks.includes("in-production") ? (
         <div className="flex flex-col gap-1">
           <Checkbox
@@ -197,8 +204,15 @@ function ConsentBody({
   );
 }
 
-function ScopesBody({ step }: { readonly step: ScopesStep }) {
-  const anyRestricted = step.scopes.some((row) => row.restricted);
+function ScopesBody({
+  step,
+  accountType,
+}: {
+  readonly step: ScopesStep;
+  readonly accountType: AccountType | null;
+}) {
+  // A Workspace app set to Internal gets no Google warning, so the note is for personal accounts.
+  const showNote = accountType === "personal" && step.scopes.some((row) => row.restricted);
   return (
     <div className="flex flex-col gap-3">
       <Actions>
@@ -224,7 +238,7 @@ function ScopesBody({ step }: { readonly step: ScopesStep }) {
         ))}
       </ul>
       <CopyLine step={step} id="all-scopes" />
-      {anyRestricted ? (
+      {showNote ? (
         <Callout tone="info">
           Some of these scopes are ones Google calls <em>restricted</em>. Your own app can use them
           without Google's review, but Google shows a warning when you sign in. Step 7 shows what to
@@ -247,10 +261,12 @@ function ClientBody({ step }: { readonly step: SetupStep }) {
           Open the <ConsoleLink step={step} page="create-client" />.
         </li>
         <li>Choose the application type "Desktop app".</li>
-        <li>Name the client:</li>
+        <li className="flex flex-col gap-1">
+          Name the client:
+          <CopyLine step={step} id="client-name" />
+        </li>
         <li>Click "Create".</li>
       </Actions>
-      <CopyLine step={step} id="client-name" />
     </div>
   );
 }

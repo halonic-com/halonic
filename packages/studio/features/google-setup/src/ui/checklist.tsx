@@ -223,6 +223,7 @@ function OpenStep(props: OpenStepProps) {
       <p className="text-body">{stepWhy(step)}</p>
       <StepBody
         step={step}
+        accountType={account.record.accountType}
         inProduction={account.record.inProductionTickedAt !== null}
         projectId={props.projectId}
         projectIdError={props.projectIdError}

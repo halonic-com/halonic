@@ -184,6 +184,44 @@ verifies("google-setup.step-bodies", () => {
     expect(container.textContent).toContain("Google shows a warning when you sign in");
   });
 
+  it("shows the restricted note for a personal account only, but keeps the tag for both", async () => {
+    const vault = {
+      ...ledger,
+      id: "vault",
+      label: "Vault",
+      googleScopes: [
+        {
+          scope: "https://www.googleapis.com/auth/vault",
+          reason: "Opens the vault",
+          restricted: true,
+        },
+      ],
+    };
+    const { container } = await open(
+      account(
+        record(["project", "apis", "consent"], {
+          inProductionTickedAt: ticked,
+          accountType: "workspace",
+        }),
+        { services: [ledger, vault] },
+      ),
+    );
+    expect(container.textContent?.match(/Restricted/g)).toHaveLength(1);
+    expect(container.textContent).not.toContain("Google shows a warning when you sign in");
+  });
+
+  it("puts each value to copy inside its action, lettered", async () => {
+    const { container } = await open(account(record([])));
+    const list = container.querySelector("ol.list-\\[lower-alpha\\]");
+    expect(list).not.toBeNull();
+    const named = [...(list?.querySelectorAll("li") ?? [])].find((li) =>
+      li.textContent?.startsWith("Name the project"),
+    );
+    expect(named?.querySelector("button")?.getAttribute("aria-label")).toBe(
+      "Copy the project name",
+    );
+  });
+
   it("warns before the actions in step 5 that the secret is shown once, and has no Done, next", async () => {
     const { container } = await open(
       account(record(["project", "apis", "consent", "scopes"], { inProductionTickedAt: ticked })),
