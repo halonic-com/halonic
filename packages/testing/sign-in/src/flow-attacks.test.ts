@@ -272,9 +272,7 @@ verifies("sign-in.flow-attacks", () => {
       }
     });
 
-    // Open gap, tracked as finding 1 of the attack-test task. `it.fails` turns red when the code closes it,
-    // so this test is then changed to `it`.
-    it.fails("saves nothing for an answer over 64 KiB", async () => {
+    it("saves nothing for an answer over 64 KiB", async () => {
       const rig = createSignInRig();
       rig.server.behavior.padTokenAnswerBytes = 70 * 1024;
       const { outcome } = await rig.signIn();
@@ -282,7 +280,7 @@ verifies("sign-in.flow-attacks", () => {
       expect(isSignedIn(rig)).toBe(false);
     });
 
-    it.fails("saves no refresh token of a megabyte", async () => {
+    it("saves no refresh token of a megabyte", async () => {
       const rig = createSignInRig();
       rig.server.behavior.answerFields = { refresh_token: "r".repeat(1024 * 1024) };
       const { outcome } = await rig.signIn();
