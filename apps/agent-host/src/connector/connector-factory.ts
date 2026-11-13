@@ -81,12 +81,14 @@ export function hostConnectorFactory(options: HostConnectorOptions): ConnectorFa
  *
  * @param workspaceRoots - the folders the launcher named as workspaces
  * @param trustStore - the profile's trust records, or `undefined` without a profile folder (nothing opens)
+ * @param log - where a failed request's detail goes (the host's standard error)
  */
 export function hostConnectorRoutes(
   options: HostConnectorOptions,
   workspaceRoots: readonly string[],
   trustStore: TrustStore | undefined,
   connectors: ConnectorTable = new ConnectorTable(),
+  log?: (text: string) => void,
 ): ConnectorRouteDeps {
   const http: HttpClient = createNodeHttpClient({ hostClass: () => "public" });
   // A `stdio` connector reads no sign-in token.
@@ -98,5 +100,6 @@ export function hostConnectorRoutes(
     http,
     tokens,
     trustStore,
+    ...(log === undefined ? {} : { log }),
   };
 }

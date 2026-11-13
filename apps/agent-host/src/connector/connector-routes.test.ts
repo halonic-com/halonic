@@ -61,15 +61,35 @@ verifies("agent-host.connector-routes", () => {
       expect((await post(url, "/v1/connectors/tools", { connector })).status).toBe(404);
     });
 
-    it("answers a failed start or call with the reason, 502", async () => {
+    it("answers a failed start or call with a fixed reason, 502, and logs the detail", async () => {
       const connector = await opened();
       const failing = setup?.made[0];
-      if (failing) failing.failWith = new Error("The sandbox didn't start.");
+      if (failing) failing.failWith = new Error("The sandbox didn't start in /some/folder.");
       const response = await post(setup?.url ?? "", "/v1/connectors/tools", { connector });
       expect(response.status).toBe(502);
-      expect(await response.json()).toEqual({
-        error: { kind: "connector_failed", message: "The sandbox didn't start." },
+      const answer = await response.text();
+      expect(JSON.parse(answer)).toEqual({
+        error: {
+          kind: "connector_failed",
+          message: "The connector couldn't finish this request. The agent host's log has the detail.",
+        },
       });
+      expect(answer).not.toContain("/some/folder");
+      expect(setup?.logged.join("")).toContain("The sandbox didn't start in /some/folder.");
+    });
+
+    it("leaves the request's secret values out of the log when a start fails", async () => {
+      setup = await startRoutes({
+        whileCreating: () => {
+          throw new Error("Start failed with fake-value-for-test in the command.");
+        },
+      });
+      const response = await post(setup.url, "/v1/connectors/open", openBody(setup.folders));
+      expect(response.status).toBe(502);
+      expect(await response.text()).not.toContain("fake-value-for-test");
+      const logged = setup.logged.join("");
+      expect(logged).toContain("Start failed with [secret value] in the command.");
+      expect(logged).not.toContain("fake-value-for-test");
     });
 
     it("gives the factory the workspace and the agents' folders as real paths", async () => {

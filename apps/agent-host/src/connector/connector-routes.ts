@@ -39,7 +39,12 @@ export interface ConnectorRouteDeps {
    * folder: nothing is trusted then, and no connector opens.
    */
   trustStore: TrustStore | undefined;
+  /** Where the host writes what it keeps from a failure; the answer never carries it. */
+  log?: (text: string) => void;
 }
+
+const connectorFailedMessage =
+  "The connector couldn't finish this request. The agent host's log has the detail.";
 
 const unknownConnectorMessage = "The agent host has no open connector with this id.";
 
@@ -61,7 +66,9 @@ const unknownConnectorMessage = "The agent host has no open connector with this 
  * - `POST /v1/connectors/call` with `{ connector, tool, args, idempotencyKey? }` answers `{ text }`;
  * - `POST /v1/connectors/close` with `{ connector }` stops the program and closes its session.
  *
- * A failed start or call answers 502 `connector_failed` with the reason.
+ * A failed start or call answers 502 `connector_failed` with a fixed message:
+ * the error's own text can hold paths or secret values, so it goes only to the
+ * host's own log (`deps.log`), with the connector's secret values left out.
  */
 export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
   const { connectors } = deps;
@@ -75,7 +82,9 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
         if (body === undefined) return;
         const client = connectors.get(body.connector);
         if (client === undefined) return sendUnknown(response);
-        await answering(response, async () => sendJson(response, 200, await client.listTools()));
+        await answering(deps, response, async () =>
+          sendJson(response, 200, await client.listTools()),
+        );
       },
     },
     {
@@ -88,7 +97,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
         if (client === undefined) return sendUnknown(response);
         const options: ConnectorCallOptions =
           body.idempotencyKey === undefined ? {} : { idempotencyKey: body.idempotencyKey };
-        await answering(response, async () => {
+        await answering(deps, response, async () => {
           const text = await client.callTool(body.tool, body.args, options);
           sendJson(response, 200, { text });
         });
@@ -100,7 +109,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
       handle: async (request, response) => {
         const body = await readCheckedBody(request, response, connectorBody);
         if (body === undefined) return;
-        await answering(response, async () => {
+        await answering(deps, response, async () => {
           if (await connectors.close(body.connector)) sendJson(response, 200, { closed: true });
           else sendUnknown(response);
         });
@@ -158,7 +167,7 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
       }
       sendJson(response, 200, { connector: id });
     } catch (error) {
-      sendError(response, 502, "connector_failed", messageOf(error));
+      failed(deps, response, error, Object.values(body.secrets));
     } finally {
       release();
     }
@@ -207,14 +216,39 @@ function memorySecrets(values: Readonly<Record<string, string>>): Secrets {
 
 /** Runs `answer`, and answers 502 `connector_failed` when it throws. */
 async function answering(
+  deps: ConnectorRouteDeps,
   response: Parameters<typeof sendError>[0],
   answer: () => Promise<void>,
 ): Promise<void> {
   try {
     await answer();
   } catch (error) {
-    sendError(response, 502, "connector_failed", messageOf(error));
+    failed(deps, response, error, []);
   }
+}
+
+/**
+ * Answers 502 with the fixed reason and keeps the detail in the host's log.
+ *
+ * @param secretValues - values to leave out of the log line (the open request's own secrets)
+ */
+function failed(
+  deps: ConnectorRouteDeps,
+  response: Parameters<typeof sendError>[0],
+  error: unknown,
+  secretValues: readonly string[],
+): void {
+  const name = error instanceof Error ? error.name : "Error";
+  deps.log?.(
+    `A connector request failed (${name}): ${withoutValues(messageOf(error), secretValues)}\n`,
+  );
+  sendError(response, 502, "connector_failed", connectorFailedMessage);
+}
+
+function withoutValues(text: string, values: readonly string[]): string {
+  return values
+    .filter((value) => value !== "")
+    .reduce((kept, value) => kept.split(value).join("[secret value]"), text);
 }
 
 function sendHostStopping(response: Parameters<typeof sendError>[0]): void {
