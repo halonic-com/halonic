@@ -4,11 +4,12 @@
 // the user, and its estimated cost.
 
 import { runStanding, runWait } from "@halonicjs/app";
-import type { RunEvent, RunSends, SendGroup } from "@halonicjs/events";
+import type { ApprovalResolver, RunEvent, RunSends, SendGroup } from "@halonicjs/events";
 import { sendsOf } from "@halonicjs/events";
 import type { SourcedRun } from "../api.ts";
 import { costParts, currentStepName, needsYouLine, took, waitingLine } from "../list/run-row.ts";
-import { lineSeparator, rowLineWords, summaryWords } from "../run-words.ts";
+import { lineSeparator, receiptWords, rowLineWords, summaryWords } from "../run-words.ts";
+import { clockTime } from "../time-words.ts";
 import type { RunPageContext } from "./run-page-model.ts";
 
 /**
@@ -100,4 +101,50 @@ function groupInWords(group: SendGroup): string {
   const list =
     counts.length <= 1 ? counts.join("") : `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}`;
   return `${group.verb} ${list}`;
+}
+
+/** One approval the run asked for, as a line of the receipt's Approvals section. */
+export interface ApprovalLine {
+  readonly callId: string;
+  readonly text: string;
+}
+
+/**
+ * The receipt's Approvals section (RCPT-2.4): each approval the run asked
+ * for in the order asked, with the answer, who gave it and when; one still
+ * waiting says so. Empty when the run asked for none, which hides the section.
+ *
+ * @example
+ * approvalLines(events);
+ * // [{ callId: "call-1", text: "gmail_send: approved by you at 10:42" }]
+ */
+export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
+  const answers = new Map<string, Extract<RunEvent, { type: "approval.resolved" }>>();
+  for (const event of events) {
+    if (event.type === "approval.resolved") answers.set(event.callId, event);
+  }
+  const lines: ApprovalLine[] = [];
+  for (const event of events) {
+    if (event.type !== "approval.requested") continue;
+    const answer = answers.get(event.callId);
+    lines.push({
+      callId: event.callId,
+      text:
+        answer === undefined
+          ? receiptWords.approvalWaiting(event.tool)
+          : receiptWords.approvalLine(
+              event.tool,
+              answer.approved ? "approved" : "rejected",
+              resolver(answer.by),
+              clockTime(new Date(answer.at)),
+            ),
+    });
+  }
+  return lines;
+}
+
+/** Who answered; an older log doesn't say, so no "by". */
+function resolver(by: ApprovalResolver | undefined): string {
+  if (by === undefined) return "";
+  return by === "rule" ? receiptWords.approvalByRule : receiptWords.approvalByPerson;
 }
