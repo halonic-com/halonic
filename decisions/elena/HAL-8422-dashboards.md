@@ -2,6 +2,7 @@
 
 - Approval: the board's design decisions of 13 Nov on HAL-8416 (Noah's spec for one label style: uppercase, 12/16, weight 600, 0.04em); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6GkjAi6Rq9XXRT/wByOav21O7WD/XKOe+ctLCD7vN+fi/8+Z9N5gMKHhi3zdWowsMaTdI9wRb+af2atuFbZ3Aw==
 - Task: HAL-8422
 
 Users see this change, and the board approved it on HAL-8416. The note is
