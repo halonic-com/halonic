@@ -76,7 +76,7 @@ export interface SettingsDialogProps {
   readonly onClose: () => void;
   /**
    * Where the focus goes on close when the opener is gone or hidden, such as the Settings row of
-   * the narrow window's closed Places drawer: the toolbar's Places button.
+   * the narrow window's closed Places drawer: the title bar's Places button.
    */
   readonly returnFocus?: (() => HTMLElement | null) | undefined;
 }

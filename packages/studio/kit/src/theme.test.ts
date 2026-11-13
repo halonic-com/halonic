@@ -330,7 +330,6 @@ describe("theme.css scales", () => {
       "--spacing-icon-sm",
       "--spacing-icon-md",
       "--spacing-titlebar",
-      "--spacing-toolbar",
       "--spacing-statusbar",
       "--spacing-sidebar",
       "--spacing-panel",
@@ -351,7 +350,6 @@ describe("theme.css scales", () => {
 
   it("keeps the sizes the shell's layout is built on", () => {
     expect(themeTokens.get("--spacing-titlebar")).toBe("40px");
-    expect(themeTokens.get("--spacing-toolbar")).toBe("44px");
     expect(themeTokens.get("--spacing-statusbar")).toBe("24px");
     expect(themeTokens.get("--spacing-sidebar")).toBe("264px");
     expect(themeTokens.get("--spacing-panel")).toBe("360px");

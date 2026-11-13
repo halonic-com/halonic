@@ -16,7 +16,7 @@ export interface PlacesListProps {
   /** The window's announcer, for "Opened … in a new tab." after a Ctrl-click. */
   readonly announcer: Announcer;
   /**
-   * The places above a tab's place, outermost first, as the toolbar's path shows them. An item's
+   * The places above a tab's place, outermost first, as the tab's tooltip shows them. An item's
    * place is the first of them: on the workflow "Support reply", you are in Workflows.
    */
   readonly parentsOf?: ((location: TabLocation) => readonly TabLocation[]) | undefined;
@@ -32,7 +32,7 @@ export interface PlacesListProps {
  * after the name ("Inbox, 2 waiting").
  *
  * A click opens the place in the active tab and moves focus to the page's `h1`. A Ctrl-click or a
- * middle-click opens it in a new tab next to it and says so, as the toolbar's path does.
+ * middle-click opens it in a new tab next to it and says so.
  *
  * Settings comes last, under a divider (`shell.sidebar-settings`). It is a button, not a link: it
  * opens the Settings dialog over the page, so it is never where you are.

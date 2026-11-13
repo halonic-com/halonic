@@ -57,7 +57,7 @@ verifies("shell.phone-bars", () => {
         engine={createShellEngine(announcer, timers)}
         toasts={createToastStore()}
         language="en"
-        toolbar={<button type="button">Forward</button>}
+        titleBar={<button type="button">Forward</button>}
         phoneTopBar={<PhoneTopBar title="Inbox" />}
         phoneNavigation={<BottomNavigation places={places} current="inbox" onSelect={() => {}} />}
       >

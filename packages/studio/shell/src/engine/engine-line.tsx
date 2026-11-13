@@ -9,8 +9,8 @@ export interface EngineLineProps {
 
 /**
  * The one line that says the engine stopped answering, "The engine isn't answering. Showing what
- * it said last.", worded for where the Studio runs (microcopy 2). The frame shows it once, under
- * the toolbar, never once per section, while `engine.stale`; pages keep what they showed. It isn't
+ * it said last.", worded for where the Studio runs (microcopy 2). The frame shows it once, at
+ * the top of the panel, never once per section, while `engine.stale`; pages keep what they showed. It isn't
  * a live region: the engine announces the change once (VK T2-F30, state coverage D1).
  */
 export function EngineLine({ engine }: EngineLineProps) {

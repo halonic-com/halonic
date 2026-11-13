@@ -24,7 +24,7 @@ export interface WindowTab {
 export interface TabSetState {
   readonly tabs: readonly WindowTab[];
   readonly activeId: string;
-  /** Whether the active tab has a place behind it, so the toolbar can show Back as unavailable. */
+  /** Whether the active tab has a place behind it, so the title bar can show Back as unavailable. */
   readonly canGoBack: boolean;
   /** Whether the active tab has a place ahead of it. */
   readonly canGoForward: boolean;

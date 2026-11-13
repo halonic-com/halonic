@@ -13,7 +13,7 @@ async function mutationsSeen() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-verifies("shell.toolbar", () => {
+verifies("shell.title-bar", () => {
   describe("focusPageHeading", () => {
     it("focuses the page's h1 without making it a Tab stop", () => {
       document.body.innerHTML = "<h1>Studio</h1><main><h1>Workflows</h1></main>";

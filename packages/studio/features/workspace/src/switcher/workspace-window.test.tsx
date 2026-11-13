@@ -121,7 +121,7 @@ verifies("workspace.workspace-window", () => {
     await act(() => switcher.openLocation("/work/acme"));
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
     expect(switcherButton()?.textContent).toContain("/work/acme");
-    expect(element.textContent).not.toContain("Halonic Studio");
+    expect(element.querySelector("h1")?.textContent).not.toBe("Halonic Studio");
   });
 
   it("opens the picked folder from Welcome's Open folder", async () => {

@@ -112,11 +112,14 @@ async function settle() {
 }
 
 verifies("shell.studio-window", () => {
-  it("shows the window tabs, the toolbar, the sidebar and Home in a new workspace", () => {
+  it("shows the title bar with its mark, Back and Forward and the window tabs, the sidebar and Home in a new workspace", () => {
     const { container, link } = renderWindow();
 
     expect(container.querySelector('[role="tablist"][aria-label="Open tabs"]')).not.toBeNull();
-    expect(container.querySelector('nav[aria-label="Location"]')).not.toBeNull();
+    expect(container.querySelector("header")?.textContent).toContain("Halonic Studio");
+    expect(container.querySelector('button[aria-label="Back"]')).not.toBeNull();
+    expect(container.querySelector('nav[aria-label="Location"]')).toBeNull();
+    expect(container.querySelector("footer")?.lastElementChild?.textContent).toContain("Saved");
     expect(container.querySelector('nav[aria-label="Places"]')).not.toBeNull();
     expect(container.querySelector("main h1")?.textContent).toBe("Home");
     expect(link("Home")?.getAttribute("aria-current")).toBe("page");

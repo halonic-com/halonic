@@ -1,4 +1,4 @@
-import { Button, MenuIcon } from "@halonicjs/studio-kit";
+import { Button, MenuIcon, Tooltip } from "@halonicjs/studio-kit";
 import {
   type FocusEvent,
   type MouseEvent,
@@ -6,6 +6,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -23,6 +24,8 @@ export interface PlacesDrawerState {
   readonly close: () => void;
   /** The Places button, for giving focus back to it. */
   readonly button: RefObject<HTMLButtonElement | null>;
+  /** The drawer's `id`, which the Places button names in `aria-controls`. */
+  readonly drawerId: string;
 }
 
 /** Whether the sidebar is the Places drawer now, and whether that drawer is open. */
@@ -33,6 +36,7 @@ export function usePlacesDrawer(
   const narrow = useNarrowWindow() && hasSidebar;
   const [open, setOpen] = useState(false);
   const ownButton = useRef<HTMLButtonElement>(null);
+  const drawerId = useId();
   const button = buttonRef ?? ownButton;
   const toggle = useCallback(() => setOpen((wasOpen) => !wasOpen), []);
   const close = useCallback(() => setOpen(false), []);
@@ -40,32 +44,40 @@ export function usePlacesDrawer(
     // Widened past 900px: the sidebar docks again, and the next narrow window starts closed.
     setOpen(false);
   }
-  return { narrow, open: narrow && open, toggle, close, button };
+  return { narrow, open: narrow && open, toggle, close, button, drawerId };
 }
 
 /** Props for {@link PlacesButton}. */
 export interface PlacesButtonProps {
   readonly open: boolean;
+  /** The drawer's `id`. */
+  readonly controls: string;
   readonly onToggle: () => void;
   readonly ref: RefObject<HTMLButtonElement | null>;
 }
 
 /**
- * The narrow window's menu button at the toolbar's left (component specs 24.4, VK T2-F44): a `md`
- * ghost icon Button named "Places", with `aria-expanded`. It stays in view while the drawer is
+ * The narrow window's menu button at the title bar's far left (component specs 24.4, VK T2-F44): a
+ * `md` ghost icon Button named "Places", with `aria-expanded` and `aria-controls`. It stays in view while the drawer is
  * open, on the `surface-muted` fill, and a click on it closes the drawer again.
  */
-export function PlacesButton({ open, onToggle, ref }: PlacesButtonProps) {
+export function PlacesButton({ open, controls, onToggle, ref }: PlacesButtonProps) {
   return (
     <span className={open ? "rounded-sm bg-surface-muted" : undefined}>
-      <Button
-        ref={ref}
-        variant="ghost"
-        icon={<MenuIcon />}
-        label="Places"
-        aria-expanded={open}
-        onClick={onToggle}
-      />
+      <Tooltip text="Places" isName>
+        {(tooltip) => (
+          <Button
+            {...tooltip}
+            ref={ref}
+            variant="ghost"
+            icon={<MenuIcon />}
+            label="Places"
+            aria-expanded={open}
+            aria-controls={controls}
+            onClick={onToggle}
+          />
+        )}
+      </Tooltip>
     </span>
   );
 }
@@ -85,6 +97,8 @@ export interface SidebarSlotProps {
   readonly onClose: () => void;
   /** The Places button, where focus goes back when the drawer closes and nothing else took it. */
   readonly button: RefObject<HTMLButtonElement | null>;
+  /** The drawer's `id`, for the Places button's `aria-controls`. */
+  readonly id: string;
   /** The sidebar. */
   readonly children: ReactNode;
 }
@@ -94,7 +108,7 @@ export interface SidebarSlotProps {
  * window crosses 900px. On a wide window it docks beside the page and adds no box of its own.
  *
  * The narrow window's sidebar (600 to 899px, component specs 24.4 S4, VK T2-F45 to F47): the same
- * sidebar as a 264px drawer from the left, under the toolbar and over the status bar, on
+ * sidebar as a 264px drawer from the left, under the title bar and over the status bar, on
  * `surface-subtle` with `shadow-3`. The `--stack-scrim` covers only the page beside it, and the
  * page is inert while it's open. There's no close button and no slide.
  *
@@ -104,7 +118,7 @@ export interface SidebarSlotProps {
  * something else outside it closes it and leaves the focus there.
  */
 export function SidebarSlot(props: SidebarSlotProps) {
-  const { narrow, open, closeStack, onClose, button, children } = props;
+  const { narrow, open, closeStack, onClose, button, id, children } = props;
   const drawer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,6 +157,7 @@ export function SidebarSlot(props: SidebarSlotProps) {
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: a link's Enter is a click, so the keyboard is covered. */}
       <div
         ref={drawer}
+        id={id}
         hidden={narrow && !open}
         className={narrow ? drawerClasses : "contents"}
         onClick={narrow ? onClick : undefined}

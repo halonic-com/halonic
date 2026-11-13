@@ -4,6 +4,7 @@ import type { StudioHost } from "../engine/engine-words.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
+import { StatusBarSaveNote } from "../frame/status-bar-save-note.tsx";
 import { itemLocation } from "../palette/palette-groups.ts";
 import { usePaletteOpening } from "../palette/palette-opening.ts";
 import { runWithToast, ShellPalette } from "../palette/shell-palette.tsx";
@@ -27,8 +28,8 @@ import { TabPages } from "../tabs/tab-pages.tsx";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import { useWindowKeys } from "../tabs/use-window-keys.ts";
 import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
-import { Toolbar } from "../toolbar/toolbar.tsx";
-import { ToolbarSaveNote } from "../toolbar/toolbar-save-note.tsx";
+import { HistoryButtons } from "../title-bar/history-buttons.tsx";
+import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { shownPlaces } from "./shown-places.ts";
@@ -58,9 +59,9 @@ export interface StudioWindowProps {
 
 /**
  * The whole Studio window, put together from the shell's parts. On the desktop
- * (`shell.studio-window`): the window tabs in the title bar, the toolbar with Back, Forward, the
- * path and the save note, the sidebar, the active tab's page with the last five kept mounted, the
- * status bar items, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
+ * (`shell.studio-window`): the Halonic Studio mark, Back, Forward and the window tabs in the title
+ * bar, the sidebar, the active tab's page with the last five kept mounted, the
+ * status bar items with the save note at its right end, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
  * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
  * sidebar's Settings row and, in the desktop app, Mod ,.
  *
@@ -190,15 +191,15 @@ export function StudioWindow(props: StudioWindowProps) {
       toasts={shell.toasts}
       language={props.language}
       titleBar={
-        <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
+        <>
+          <span className="flex items-center gap-1 self-center">
+            <TitleBarBrand />
+            <HistoryButtons tabs={tabs} />
+          </span>
+          <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
+        </>
       }
-      toolbar={
-        <Toolbar
-          tabs={tabs}
-          announcer={announcer}
-          saveState={<ToolbarSaveNote saving={workspace.saving} />}
-        />
-      }
+      saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       sidebar={
         <StudioSidebar
           places={places}

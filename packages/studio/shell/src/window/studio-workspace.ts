@@ -30,7 +30,7 @@ export class StudioWorkspace {
   readonly tabs = new TabSet();
   /** The places the tabs showed, newest first, for Ctrl K. */
   readonly recent: RecentPlaces;
-  /** Saves the workspace's items and holds the toolbar's save note. */
+  /** Saves the workspace's items and holds the save note. */
   readonly saving: SaveState;
   /** The workspace's services, for `shell.services.contextFor`. */
   readonly services: ServiceTarget;

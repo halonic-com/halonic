@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SaveState, type SavingItem } from "../save/save-state.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { SAVING_AFTER_MS, ToolbarSaveNote } from "./toolbar-save-note.tsx";
+import { SAVING_AFTER_MS, StatusBarSaveNote } from "./status-bar-save-note.tsx";
 
 const supportReply: SavingItem = { key: "workflow/acme/support-reply", title: "Support reply" };
 const sorter: SavingItem = { key: "agent/acme/sorter", title: "Sorter" };
@@ -19,7 +19,7 @@ let note: HTMLElement;
 beforeEach(() => {
   saving = new SaveState(createToastStore());
   timers = new FakeTimers();
-  note = render(<ToolbarSaveNote saving={saving} timers={timers} />);
+  note = render(<StatusBarSaveNote saving={saving} timers={timers} />);
 });
 
 afterEach(unmountAll);

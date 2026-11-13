@@ -12,7 +12,7 @@ import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { ShellFrame } from "./shell-frame.tsx";
+import { ShellFrame, type ShellFrameProps } from "./shell-frame.tsx";
 
 let media: FakeMediaQueries;
 let uninstall: () => void;
@@ -35,7 +35,7 @@ function ShowPresentation() {
   return <p>{usePresentation()}</p>;
 }
 
-function renderFrame(page = <ShowPresentation />) {
+function renderFrame(page = <ShowPresentation />, slots: Partial<ShellFrameProps> = {}) {
   const timers = new FakeTimers();
   const announcer = createAnnouncer({ timers });
   const closeStack = createCloseStack();
@@ -48,8 +48,11 @@ function renderFrame(page = <ShowPresentation />) {
       engine={engine}
       toasts={toasts}
       language="en"
-      toolbar={<button type="button">Back</button>}
+      titleBar={<button type="button">Back</button>}
+      badges={<span>Not trusted yet</span>}
       statusBar="1 error"
+      saveNote={<span>✓ Saved</span>}
+      {...slots}
     >
       {page}
     </ShellFrame>,
@@ -70,20 +73,27 @@ function nextFrame(): Promise<void> {
 }
 
 verifies("shell.frame", () => {
-  it("shows the title bar on the halo and the panel with the toolbar, the page and the status bar on the desktop", () => {
+  it("shows the title bar on the halo and the panel with the page and the status bar on the desktop, and no toolbar row", () => {
     const { container } = renderFrame();
     const frame = container.querySelector('[data-layout="desktop"]') as HTMLElement;
     const [titleBar, panel] = Array.from(frame.children);
     expect(titleBar?.tagName).toBe("HEADER");
     expect(titleBar?.className).toContain("h-titlebar");
     expect(panel?.className).toContain("rounded-md");
-    expect(panel?.firstElementChild?.textContent).toBe("Back");
-    expect(panel?.firstElementChild?.className).toContain("h-toolbar");
+    expect(titleBar?.textContent).toBe("Back");
+    expect(panel?.firstElementChild?.querySelector("main")).not.toBeNull();
     expect(panel?.querySelector("main")?.textContent).toBe("desktop");
     const statusBar = panel?.lastElementChild;
     expect(statusBar?.tagName).toBe("FOOTER");
     expect(statusBar?.className).toContain("h-statusbar");
-    expect(statusBar?.textContent).toBe("1 error");
+    // Not trusted yet first, the other items, then Saved at the right end.
+    expect(statusBar?.textContent).toBe("Not trusted yet1 error✓ Saved");
+    expect(statusBar?.lastElementChild?.className).toContain("ms-auto");
+  });
+
+  it("leaves the badge and save note slots out of the status bar when they are empty", () => {
+    const { container } = renderFrame(undefined, { badges: null, saveNote: null, statusBar: null });
+    expect(container.querySelector("footer")?.children).toHaveLength(0);
   });
 
   it("shows only the page on a phone, and follows the width without a reload", () => {
@@ -318,7 +328,7 @@ function handMovedConnection(initial: EngineConnectionState) {
 verifies("shell.engine-line", () => {
   const lineText = "The engine isn't answering. Showing what it said last.";
 
-  it("shows one line under the toolbar while the engine isn't answering, and drops it when it's back", () => {
+  it("shows one line at the top of the panel while the engine isn't answering, and drops it when it's back", () => {
     const { container, engine } = renderFrame();
     const connection = handMovedConnection("connected");
     act(() => {
@@ -326,8 +336,7 @@ verifies("shell.engine-line", () => {
     });
     expect(container.textContent).not.toContain(lineText);
     act(() => connection.set("lost"));
-    const toolbar = container.querySelector('[data-layout="desktop"] > div')?.firstElementChild;
-    const line = toolbar?.nextElementSibling;
+    const line = container.querySelector('[data-layout="desktop"] > div')?.firstElementChild;
     expect(line?.textContent).toBe(lineText);
     expect(line?.closest("[aria-live]")).toBeNull();
     expect(line?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");

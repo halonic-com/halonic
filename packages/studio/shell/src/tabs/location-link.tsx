@@ -21,7 +21,7 @@ export interface LocationLinkProps {
 }
 
 /**
- * A place the user can go to, as the toolbar's path and the sidebar show it. It is a real link, so
+ * A place the user can go to, as the sidebar shows it. It is a real link, so
  * a screen reader lists it with the page's links; the shell opens it itself, so the browser never
  * follows the address.
  */

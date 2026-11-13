@@ -48,6 +48,8 @@ interface ButtonBase {
   readonly popoverTarget?: string;
   readonly "aria-haspopup"?: "menu";
   readonly "aria-expanded"?: boolean;
+  /** The element this button opens or closes, such as the Places drawer. */
+  readonly "aria-controls"?: string;
   /** Set by a Tooltip on its button, through the props its `children` get. */
   readonly "aria-describedby"?: string;
   readonly "aria-keyshortcuts"?: string;
@@ -215,6 +217,7 @@ export function Button(props: ButtonProps) {
       aria-disabled={unavailable === undefined ? undefined : true}
       aria-haspopup={props["aria-haspopup"]}
       aria-expanded={props["aria-expanded"]}
+      aria-controls={props["aria-controls"]}
       popoverTarget={props.popoverTarget}
       aria-describedby={describedBy(unavailable?.reason, props["aria-describedby"])}
       aria-keyshortcuts={props["aria-keyshortcuts"]}

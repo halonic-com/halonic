@@ -32,7 +32,7 @@ export interface WindowTabStripProps {
   /** The 16px icon for a tab's place or item kind. */
   readonly iconFor?: ((location: TabLocation) => ReactNode) | undefined;
   /**
-   * The places above a tab's place, outermost first, as the toolbar's path shows them. A tab's
+   * The places above a tab's place, outermost first, as the tab's tooltip shows them. A tab's
    * tooltip is its full path: "Workflows / Support reply".
    */
   readonly parentsOf?: ((location: TabLocation) => readonly TabLocation[]) | undefined;

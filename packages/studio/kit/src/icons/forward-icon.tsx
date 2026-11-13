@@ -1,6 +1,6 @@
 /**
  * The forward mark: an arrow pointing right, outline style, in the text colour. Used by the
- * toolbar's Forward button, beside Back.
+ * title bar's Forward button, beside Back.
  */
 export function ForwardIcon() {
   return (

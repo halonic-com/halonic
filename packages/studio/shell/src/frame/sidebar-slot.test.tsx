@@ -9,21 +9,25 @@ import { createCloseStack } from "../close-stack/close-stack.ts";
 import { createShellEngine } from "../engine/engine-connection.ts";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
+import { installFakePopover } from "../test-support/fake-popover.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ShellFrame } from "./shell-frame.tsx";
 
 let media: FakeMediaQueries;
 let uninstall: () => void;
+let uninstallPopover: () => void;
 
 beforeEach(() => {
   media = new FakeMediaQueries(800);
   uninstall = media.install();
+  uninstallPopover = installFakePopover();
 });
 
 afterEach(() => {
   unmountAll();
   uninstall();
+  uninstallPopover();
 });
 
 /**
@@ -69,7 +73,7 @@ function renderFrame(
       engine={createShellEngine(announcer, timers)}
       toasts={createToastStore()}
       language="en"
-      toolbar={<button type="button">Back</button>}
+      titleBar={<button type="button">Back</button>}
       sidebar={
         options.sidebar === false ? undefined : (
           <Sidebar current={options.current ?? "home"} width={options.width ?? 264} />
@@ -106,10 +110,11 @@ verifies("shell.places-drawer", () => {
     expect(container.querySelector("main")?.hasAttribute("inert")).toBe(false);
   });
 
-  it("folds the sidebar into a Places button at the toolbar's left in a narrow window", () => {
+  it("folds the sidebar into a Places button at the title bar's far left in a narrow window", () => {
     const { container, placesButton, drawer } = renderFrame();
-    const toolbar = container.querySelector(".h-toolbar") as HTMLElement;
-    expect(toolbar.firstElementChild?.querySelector("button")).toBe(placesButton());
+    const titleBar = container.querySelector("header") as HTMLElement;
+    expect(titleBar.firstElementChild?.querySelector("button")).toBe(placesButton());
+    expect(placesButton()?.getAttribute("aria-label")).toBe("Places");
     expect(placesButton()?.getAttribute("aria-expanded")).toBe("false");
     expect(drawer().hidden).toBe(true);
   });
@@ -119,7 +124,7 @@ verifies("shell.places-drawer", () => {
     openDrawer();
 
     expect(placesButton()?.getAttribute("aria-expanded")).toBe("true");
-    expect(placesButton()?.parentElement?.className).toContain("bg-surface-muted");
+    expect(placesButton()?.closest(".bg-surface-muted")).not.toBeNull();
     expect(drawer().hidden).toBe(false);
     expect(drawer().className).toContain("w-sidebar bg-surface-subtle shadow-3");
     expect(drawer().nextElementSibling?.className).toContain("start-sidebar");
