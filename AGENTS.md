@@ -80,7 +80,8 @@ whose owner matches `package.json`; `pnpm check` fails otherwise.
   worktree, run `git config user.name halonic-dev` and
   `git config user.email 353861737+halonic-dev@users.noreply.github.com` before your first commit.
   Never add a `Signed-off-by` line: the `dco` check fails a `halonic-dev` pull request that holds a
-  commit by any other author, signed off or not.
+  commit by any other author, signed off or not. The one exception is a pull request the product
+  owner opened (see Product owner's pull requests).
 
 ## Plan first
 
@@ -184,7 +185,32 @@ Stacks stay short, so a closed pull request never strands work above it:
   [docs/guides/review.md](docs/guides/review.md).
 - Agents record approvals in Paperclip, not on GitHub. Outside contributors get a normal GitHub
   review.
-- Agents never add a `Signed-off-by` line; the `halonic-dev` account's signed statement covers them.
+- Agents never add a `Signed-off-by` line; the `halonic-dev` account's signed statement covers them,
+  except in a pull request the product owner opened (below).
+
+## Product owner's pull requests
+
+A pull request opened by the product owner's own GitHub account is the owner's decision. That
+account is the required reviewer of the `release` environment (GitHub user ID `348154030`). Every
+agent pushes as `halonic-dev`, so the account that opened the pull request is the only signal; a
+label, a trailer or a commit author doesn't count. Check it by ID, not by name, since a freed name
+can be registered by anyone: `gh api repos/{owner}/{repo}/pulls/<n> -q .user.id`.
+
+- Review it like any other pull request: code quality, tests, CI, accessibility and these rules.
+  Ask for technical fixes, or push them yourself in a follow-up commit.
+- Don't reject or rework the choice itself. If you think it's a real problem, such as a security
+  or accessibility failure, say so on the pull request and on the linked Paperclip task; the board
+  supervisor takes it to the owner.
+- The owner approves nothing on GitHub. Once it's reviewed and `ci-ok` is green, queue it as usual.
+- It carries its rule in words: a decision note saying what changed, the rule, why, and "Product
+  owner's decision". If the note is missing, add it in your review commit rather than block the
+  pull request. The guard's rules don't change: the maintainer signs the note, and a trust-root
+  change needs both guardians.
+- The owner's account isn't covered by the standing statement, so their commits carry a
+  `Signed-off-by` line, and so does any commit you push into their pull request
+  (`git commit -s`): the `dco` check waives the sign-off only in pull requests `halonic-dev` opened.
+- A merge alone wakes nobody. When it merges, the board supervisor posts one Paperclip task saying
+  who applies the new rule where. Agents follow the docs and the kit, not the diff.
 
 ## Security and privacy
 
