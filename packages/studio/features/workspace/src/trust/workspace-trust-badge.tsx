@@ -1,5 +1,6 @@
-import { HeaderBadge, type ToastStore, Tooltip } from "@halonicjs/studio-kit";
-import { useRef, useSyncExternalStore } from "react";
+import type { ToastStore } from "@halonicjs/studio-kit";
+import { type BadgeRegistry, trustBadgePriority } from "@halonicjs/studio-shell";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useTrustCheck } from "./use-trust-check.tsx";
 import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
@@ -18,6 +19,8 @@ export interface WorkspaceTrustBadgeProps {
   readonly name: string;
   /** The window's toasts. */
   readonly toasts: ToastStore;
+  /** The window's header badges; the badge is added while the workspace isn't trusted. */
+  readonly badges: BadgeRegistry;
 }
 
 /**
@@ -28,41 +31,36 @@ export interface WorkspaceTrustBadgeProps {
  * **Trust** saves the person's trust in exactly the fingerprint shown and says "Acme can run now".
  *
  * @example
- * <WorkspaceTrustBadge trust={opened.trust} name="Acme" toasts={shell.toasts} />
+ * <WorkspaceTrustBadge trust={opened.trust} name="Acme" toasts={shell.toasts} badges={shell.badges} />
  */
-export function WorkspaceTrustBadge({ trust, name, toasts }: WorkspaceTrustBadgeProps) {
+export function WorkspaceTrustBadge({ trust, name, toasts, badges }: WorkspaceTrustBadgeProps) {
   const badge = useSyncExternalStore(
     (onChange) => trust.subscribe(onChange),
     () => trust.badge,
   );
   const opener = useRef<HTMLElement | null>(null);
   const check = useTrustCheck(trust, name, toasts, () => opener.current);
+  // The badge is added once per state, not once per render, so it reads the latest `open` here.
+  const open = useRef(check.open);
+  open.current = check.open;
 
-  if (badge === "none") {
-    return null;
-  }
-  return (
-    <>
-      <Tooltip text={badge === "list-unreadable" ? unreadableTooltip : notTrustedTooltip}>
-        {() => (
-          <span
-            ref={(element) => {
-              opener.current = element?.querySelector("button") ?? null;
-            }}
-            className="inline-flex"
-          >
-            <HeaderBadge
-              as="button"
-              action="Review"
-              label="Not trusted yet. Review"
-              onClick={check.open}
-            >
-              Not trusted yet
-            </HeaderBadge>
-          </span>
-        )}
-      </Tooltip>
-      {check.dialog}
-    </>
-  );
+  useEffect(() => {
+    if (badge === "none") {
+      return undefined;
+    }
+    return badges.add({
+      id: "workspace-trust",
+      label: "Not trusted yet",
+      tone: "neutral",
+      priority: trustBadgePriority,
+      action: "Review",
+      tooltip: badge === "list-unreadable" ? unreadableTooltip : notTrustedTooltip,
+      onSelect: (button) => {
+        opener.current = button;
+        open.current();
+      },
+    });
+  }, [badge, badges]);
+
+  return check.dialog;
 }

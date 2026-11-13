@@ -120,6 +120,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
               trust={shown.value.trust}
               name={shown.value.name}
               toasts={shell.toasts}
+              badges={shell.badges}
             />
           )
         }
