@@ -76,7 +76,20 @@ export const secretFields = {
 /** An HTTP header name. */
 const headerName = s.string().regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/, "use an HTTP header name");
 
-/** One secret and where the kit puts it, as `SecretPlacement` in the ports says. */
+/**
+ * A sign-in's client secret. It has no `hosts` and no `as`: the sign-in that
+ * names it in `clientSecret` gives it its hosts (its `tokenUrl` and
+ * `revokeUrl`), and the integration can't place it at all.
+ */
+const ClientSecret = s
+  .object({ purpose: s.string().min(1), as: s.literal(undefined).optional() })
+  .strict();
+
+/**
+ * One entry of `secrets`, told apart by `as`: a secret the integration
+ * places and where the kit puts it, as `SecretPlacement` in the ports says
+ * (`bearer`, `header` or `form`), or, with no `as`, a client secret.
+ */
 const Secret = s.discriminatedUnion("as", [
   s.object({ ...secretFields, as: s.literal("bearer") }).strict(),
   s
@@ -88,10 +101,134 @@ const Secret = s.discriminatedUnion("as", [
     })
     .strict(),
   s.object({ ...secretFields, as: s.literal("form"), field: s.string().min(1) }).strict(),
+  ClientSecret,
 ]);
 
-/** A secret, with `optional` filled in. */
-export type IntegrationSecret = Infer<typeof Secret>;
+/** One entry of `secrets`, with `optional` filled in. */
+export type IntegrationSecretEntry = Infer<typeof Secret>;
+
+/** A secret the integration places. */
+export type IntegrationSecret = Extract<IntegrationSecretEntry, { as: string }>;
+
+/** A sign-in's client secret, as the sheet writes it. */
+export type IntegrationClientSecret = Exclude<IntegrationSecretEntry, IntegrationSecret>;
+
+/**
+ * Whether a `secrets` entry is one the integration places. The other kind is
+ * a client secret, which only Halonic's sign-in code reads.
+ */
+export function isPlacedSecret(entry: IntegrationSecretEntry): entry is IntegrationSecret {
+  return entry.as !== undefined;
+}
+
+/**
+ * The secrets of a sheet the integration places, by name: `secrets` without
+ * the client secrets, which have no hosts or placement to show.
+ */
+export function placedSecrets(
+  secrets: Readonly<Record<string, IntegrationSecretEntry>>,
+): [string, IntegrationSecret][] {
+  return Object.entries(secrets).flatMap(([name, entry]): [string, IntegrationSecret][] =>
+    isPlacedSecret(entry) ? [[name, entry]] : [],
+  );
+}
+
+/** One OAuth scope: a token of visible ASCII without a space, `"` or `\\` (RFC 6749, section 3.3). */
+const SCOPE_PATTERN = /^[\x21\x23-\x5b\x5d-\x7e]+$/;
+
+/** A path inside a sign-in URL's host: `/`, then anything but a space, `?` or `#`. */
+const urlPath = s.string().regex(/^\/[^\s?#]*$/, "start the path with '/', such as '/oauth/token'");
+
+/** Visible ASCII, so a client ID can't carry a line break or a space. */
+const CLIENT_ID_PATTERN = /^[\x21-\x7e]{1,256}$/;
+
+/**
+ * An `https` URL for a sign-in: `https://host[:port]/path?query` with an
+ * exact host, no user name, password or `#fragment`. The host is the first
+ * group, so the sheet's checks can hold it against `hosts`. Plain `http` is
+ * never allowed, not even to this machine.
+ */
+export const SIGN_IN_URL_PATTERN = new RegExp(
+  `^https://(${HOST_PATTERN.source.slice(1, -1)})(?:/[^\\s?#]*)?(?:\\?[^\\s#]*)?$`,
+);
+
+/**
+ * Where a sign-in endpoint is: a fixed `https` URL, or the host of the URL in
+ * one of the integration's settings plus a fixed path, for a self-hosted
+ * service such as GitLab. That setting must be a `public` host in `hosts`.
+ */
+const SignInUrl = s.union([
+  s
+    .string()
+    .regex(
+      SIGN_IN_URL_PATTERN,
+      "use an https URL with an exact host, such as 'https://auth.example.com/oauth/token'",
+    ),
+  s.object({ fromSetting: s.string().min(1), path: urlPath.optional() }).strict(),
+]);
+
+/** A sign-in endpoint as the sheet writes it. */
+export type IntegrationSignInUrl = Infer<typeof SignInUrl>;
+
+/** One scope the sign-in asks for, and why, in words the user reads. */
+const SignInScope = s
+  .object({
+    scope: s.string().regex(SCOPE_PATTERN, "use one OAuth scope, without spaces"),
+    /** Shown to the user as it is. */
+    reason: s.string().regex(/\S/, "say why the integration needs the scope"),
+  })
+  .strict();
+
+/** Where the sign-in's access token goes: the hosts, and how the kit puts it in. */
+const SignInAccess = s.discriminatedUnion("as", [
+  s.object({ hosts: s.array(SecretHost).min(1), as: s.literal("bearer") }).strict(),
+  s
+    .object({
+      hosts: s.array(SecretHost).min(1),
+      as: s.literal("header"),
+      header: headerName,
+      prefix: s.string().optional(),
+    })
+    .strict(),
+]);
+
+/** Where a sign-in's access token goes, as the sheet writes it. */
+export type IntegrationSignInAccess = Infer<typeof SignInAccess>;
+
+/**
+ * A sign-in: an OAuth 2.0 flow that Halonic's own code runs, and where the
+ * access token may go. The integration can use the token (`{ signIn }` in
+ * `auth`) but never read it. Needs `kit: 2`.
+ */
+const SignIn = s
+  .object({
+    /** What the sign-in is for, in words the user understands. */
+    purpose: s.string().min(1),
+    /** Authorization code with PKCE (S256) and a loopback redirect: the only flow so far. */
+    flow: s.literal("oauth-code"),
+    /** May carry extra query parameters; the ones Halonic sets itself are refused by the sheet check. */
+    authorizeUrl: SignInUrl,
+    tokenUrl: SignInUrl,
+    /** RFC 7009. Without it, signing out only forgets the tokens. */
+    revokeUrl: SignInUrl.optional(),
+    /** Checked against the `iss` of the redirect (RFC 9207). */
+    issuer: SignInUrl.optional(),
+    /** A fixed ID, or a setting: never a secret, since OAuth sends it in the browser's address bar. */
+    clientId: s.union([
+      s.string().regex(CLIENT_ID_PATTERN, "use the client ID without spaces"),
+      s.object({ fromSetting: s.string().min(1) }).strict(),
+    ]),
+    /** A secret of this sheet without `hosts`; a public client leaves it out and uses PKCE only. */
+    clientSecret: name.optional(),
+    /** How the client authenticates at the token endpoint: in the body, or HTTP Basic. */
+    clientAuth: s.enum(["post", "basic"]).default("post"),
+    scopes: s.array(SignInScope).default([]),
+    access: SignInAccess,
+  })
+  .strict();
+
+/** A sign-in, with defaults filled in. */
+export type IntegrationSignIn = Infer<typeof SignIn>;
 
 const Token = s.object({ name, purpose: s.string().min(1) }).strict();
 
@@ -297,8 +434,13 @@ export const IntegrationSheet = s
     kit: s.number().int().positive(),
     provides: s.array(s.enum(["connector", "llm", "knowledge"])).min(1),
     hosts: s.array(Host),
-    /** Secret name → why, where it may go and how the kit puts it in. */
+    /**
+     * Secret name → why, where it may go and how the kit puts it in; or, for
+     * a sign-in's client secret, only why.
+     */
     secrets: s.record(name, Secret).default({}),
+    /** Sign-in name → how Halonic signs in, and where the access token may go. Needs `kit: 2`. */
+    signIns: s.record(name, SignIn).default({}),
     // Studio builds the Google setup steps from the three Google fields
     // (`@halonicjs/google-setup`). Only a sheet with the `google-account`
     // secret may have them.

@@ -67,7 +67,9 @@ function lengthProblems(plugin: Plugin): KindCheckProblem[] {
 /**
  * The backend's own sheet checks, with their paths moved under `backend`.
  * A backend may not start a program: that is what local tools are for, and
- * only they run in the sandbox.
+ * only they run in the sandbox. It may not declare `signIns` yet either:
+ * the trust check and the trust content don't show a sign-in, so the user
+ * couldn't approve one.
  */
 function backendProblems(plugin: Plugin): KindCheckProblem[] {
   const sheet = backendSheet(plugin);
@@ -78,6 +80,10 @@ function backendProblems(plugin: Plugin): KindCheckProblem[] {
     ...found,
     path: ["backend", ...found.path],
   }));
+  for (const name of Object.keys(sheet.signIns)) {
+    const message = `a backend can't declare the sign-in ${name} yet: the trust check doesn't show sign-ins`;
+    problems.push(problem(plugin, "backend-sign-in", ["backend", "signIns", name], message));
+  }
   sheet.needs.forEach((need, index) => {
     if (need === "process") {
       const message = "a backend can't start a program; declare it under localTools instead";

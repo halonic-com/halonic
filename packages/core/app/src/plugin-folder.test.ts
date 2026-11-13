@@ -101,9 +101,9 @@ verifies("app.plugin-folder", () => {
     ]);
   });
 
-  it("refuses another SDK version and a backend with tokens, with the ADR's sentence", async () => {
+  it("refuses a newer SDK version and a backend with tokens, with the ADR's sentence", async () => {
     const manifest = weatherManifest
-      .replace("sdk: 1", "sdk: 2")
+      .replace("sdk: 1", "sdk: 3")
       .replace("backend:\n", "backend:\n  tokens: [{ name: refresh, purpose: Stays signed in }]\n");
     const problems = await problemsOf(
       weatherFolder().putFiles({ "weather/plugin.yaml": manifest }),
@@ -119,7 +119,7 @@ verifies("app.plugin-folder", () => {
 
   it("points a check's problem at the integration.yaml's own keys", async () => {
     const sheet = integrationSheet
-      .replace("kit: 1", "kit: 2")
+      .replace("kit: 1", "kit: 3")
       .replace("tools:", "tokens: [{ name: refresh, purpose: Stays signed in }]\ntools:");
     const reader = new TestFolderReader().putFiles({ "radar/integration.yaml": sheet });
     const problems = await problemsOf(reader, "radar");
@@ -128,6 +128,28 @@ verifies("app.plugin-folder", () => {
       ["integration.yaml", "backend-tokens", ["tokens"]],
       ["integration.yaml", "file-missing", []],
     ]);
+  });
+
+  it("refuses a sign-in in an integration.yaml, which the plugin check never sees", async () => {
+    const sheet = integrationSheet.replace("kit: 1", "kit: 2").replace(
+      "tools:",
+      `signIns:
+  example-account:
+    purpose: Access to your Example account.
+    flow: oauth-code
+    authorizeUrl: https://auth.example.com/authorize
+    tokenUrl: https://auth.example.com/token
+    clientId: example-app-id
+    access: { hosts: [radar.example.com], as: bearer }
+tools:`,
+    );
+    const reader = new TestFolderReader().putFiles({ "radar/integration.yaml": sheet });
+    const problems = await problemsOf(reader, "radar");
+    expect(
+      problems
+        .filter((problem) => problem.code === "backend-sign-in")
+        .map((problem) => [problem.file, problem.path]),
+    ).toEqual([["integration.yaml", ["signIns", "example-account"]]]);
   });
 
   it("needs the backend's entry and every script to be files in the folder", async () => {

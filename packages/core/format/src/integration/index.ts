@@ -5,6 +5,9 @@
 export { checkIntegrationSheet } from "../kinds/integration/kind.ts";
 export { parseIntegrationSheet, type SheetProblem } from "../kinds/integration/parse-sheet.ts";
 export {
+  type DeclaredClientSecret,
+  type DeclaredSignIn,
+  type DeclaredSignInPlacement,
   type IntegrationLimits,
   type IntegrationPolicy,
   integrationPolicy,
@@ -17,13 +20,18 @@ export {
   CONTENT_PATH_PATTERN,
   HOST_PATTERN,
   INTEGRATION_NAME_PATTERN,
+  type IntegrationClientSecret,
   type IntegrationHost,
   type IntegrationSecret,
+  type IntegrationSecretEntry,
   type IntegrationSecretHost,
   IntegrationSheet,
+  type IntegrationSignIn,
   type IntegrationTool,
+  isPlacedSecret,
   MAX_RESPONSE_BYTES,
   MAX_TIMEOUT_MS,
+  placedSecrets,
 } from "../kinds/integration/schema.ts";
 export { backendSheet, pluginFromIntegrationSheet } from "../kinds/plugin/backend.ts";
 export { Plugin } from "../kinds/plugin/schema.ts";

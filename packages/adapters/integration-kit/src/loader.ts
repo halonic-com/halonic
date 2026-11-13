@@ -3,6 +3,7 @@ import {
   type IntegrationSecret,
   type IntegrationSheet,
   integrationPolicy,
+  isPlacedSecret,
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
 import {
@@ -161,6 +162,7 @@ function prepare(
   const problems = [
     ...approvalProblems(source, sheet),
     ...localTokenProblems(source, sheet),
+    ...localSignInProblems(source, sheet),
     ...codeProblems(sheet),
     ...needProblems(sheet, options.capabilities ?? []),
     ...secretChoiceProblems(sheet, secretNames),
@@ -279,6 +281,27 @@ function localTokenProblems(
   ];
 }
 
+/**
+ * A local integration can't declare `signIns` until the trust content shows
+ * them: the client secret leaves `secrets`, and the token, revoke and
+ * authorize hosts needn't be in `hosts`, so the person approving would never
+ * see where the code and the client secret go.
+ */
+function localSignInProblems(
+  source: PrepareIntegrationOptions["source"],
+  sheet: IntegrationSheet,
+): LoadProblem[] {
+  if (source.origin !== "local") {
+    return [];
+  }
+  return Object.keys(sheet.signIns).map((name) => ({
+    code: "sign-ins-not-allowed",
+    path: ["signIns", name],
+    message: `${sheet.id}: an integration you build or change can't declare the sign-in ${name} yet`,
+    fix: "Remove signIns from its sheet and use an API key, or ask for sign-in support.",
+  }));
+}
+
 function needProblems(sheet: IntegrationSheet, capabilities: readonly string[]): LoadProblem[] {
   return sheet.needs.flatMap((need, index) =>
     capabilities.includes(need)
@@ -349,7 +372,8 @@ async function secretsOnWire(sheet: IntegrationSheet, secrets: Secrets): Promise
     const value = await secrets.get(name);
     if (value === null) return [];
     checkSecretLength(sheet.id, name, value);
-    return [{ value, placements: [placementOf(name, declared)] }];
+    // A client secret is never placed by the integration, but a server could still echo it.
+    return [{ value, placements: isPlacedSecret(declared) ? [placementOf(name, declared)] : [] }];
   });
   return (await Promise.all(read)).flat();
 }

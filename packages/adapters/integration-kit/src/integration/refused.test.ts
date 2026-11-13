@@ -14,6 +14,7 @@ const expectedKinds: Record<RefusalCode, ErrorKind> = {
   "host-not-allowed": "denied",
   "secret-not-declared": "denied",
   "placement-not-in-sheet": "denied",
+  "sign-in-not-placed-yet": "denied",
   "secret-not-allowed-for-host": "denied",
   "secret-over-plain-http": "denied",
   "secret-not-configured": "denied",

@@ -1,12 +1,13 @@
 import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
+import { hostKey } from "./host-key.ts";
 import {
   GOOGLE_CHECK_URL_PATTERN,
   GOOGLE_SECRET,
-  type IntegrationHost,
-  type IntegrationSecretHost,
   IntegrationSheet,
+  isPlacedSecret,
 } from "./schema.ts";
+import { checkSignIns } from "./sign-in-checks.ts";
 
 /**
  * `integration.yaml`, next to an integration's code. It isn't a workspace
@@ -24,8 +25,9 @@ export const integrationKind: FileKind<IntegrationSheet> = {
 
 /**
  * The rules over several fields: no list names a thing twice, a secret goes
- * only to hosts the sheet declares, a send tool has a noun, a verb comes
- * with a noun, and the Google fields fit the sheet.
+ * only to hosts the sheet declares, the sign-ins fit the sheet and its `kit`
+ * (`checkSignIns`), a send tool has a noun, a verb comes with a noun, and
+ * the Google fields fit the sheet.
  *
  * @example
  * checkIntegrationSheet(sheet); // [] for the weather example in the guide
@@ -68,6 +70,9 @@ export function checkIntegrationSheet(sheet: IntegrationSheet): KindCheckProblem
 
   const declared = new Set(sheet.hosts.map(hostKey));
   for (const [name, secret] of Object.entries(sheet.secrets)) {
+    if (!isPlacedSecret(secret)) {
+      continue; // a client secret has no hosts of its own; `checkSignIns` checks it
+    }
     duplicates(secret.hosts.map(hostKey), ["secrets", name, "hosts"], "host");
     secret.hosts.forEach((host, index) => {
       if (!declared.has(hostKey(host))) {
@@ -80,6 +85,7 @@ export function checkIntegrationSheet(sheet: IntegrationSheet): KindCheckProblem
       }
     });
   }
+  problems.push(...checkSignIns(sheet));
   problems.push(...checkSendNouns(sheet));
   problems.push(...checkToolVerbs(sheet));
   problems.push(...checkGoogleFields(sheet));
@@ -134,9 +140,11 @@ const googleFields = ["googleScopes", "googleApis", "googleCheck"] as const;
  * The same rules as the `google-sheet` check in halonic-com/integrations.
  */
 function checkGoogleFields(sheet: IntegrationSheet): KindCheckProblem[] {
-  const secret = Object.hasOwn(sheet.secrets, GOOGLE_SECRET)
+  const entry = Object.hasOwn(sheet.secrets, GOOGLE_SECRET)
     ? sheet.secrets[GOOGLE_SECRET]
     : undefined;
+  // The Google secret is one the integration places; a client secret of that name has no token to send.
+  const secret = entry !== undefined && isPlacedSecret(entry) ? entry : undefined;
   if (secret === undefined) {
     return googleFields
       .filter((field) => sheet[field] !== undefined)
@@ -171,13 +179,4 @@ function checkGoogleFields(sheet: IntegrationSheet): KindCheckProblem[] {
     }
   }
   return problems;
-}
-
-/**
- * A host as one text, to compare: `api.example.com`, or `fromSetting url`.
- * A secret names a `{ fromSetting }` host by its setting alone, so the class
- * isn't part of it.
- */
-function hostKey(host: IntegrationHost | IntegrationSecretHost): string {
-  return typeof host === "string" ? host : `fromSetting ${host.fromSetting}`;
 }

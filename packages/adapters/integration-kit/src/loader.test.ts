@@ -103,11 +103,20 @@ verifies("integration-kit.loader", () => {
       expect(codes(loaded)).toEqual([{ code: "secret-not-declared", path: ["secrets"] }]);
     });
 
-    it("refuses a sheet that fails its schema, or another kit version", () => {
+    it("loads a sheet built for an older kit, and says a newer one needs a newer Halonic", () => {
+      expect(load({}, { ...sheet(), kit: 1 }).loaded.ok).toBe(true);
+      expect(load({}, { ...sheet(), kit: 2 }).loaded.ok).toBe(true);
+      const { loaded } = load({}, { ...sheet(), kit: 3 });
+      expect(loaded.ok ? [] : loaded.error.map((problem) => problem.message)).toEqual([
+        "weather: this integration needs a newer version of Halonic (it is built against kit 3, and this Halonic offers kit 2)",
+      ]);
+    });
+
+    it("refuses a sheet that fails its schema, or a kit newer than this Halonic's", () => {
       expect(codes(load({}, { ...sheet(), network: "any" }).loaded)).toEqual([
         { code: "unrecognized_keys", path: [] },
       ]);
-      expect(codes(load({}, { ...sheet(), kit: 2 }).loaded)).toEqual([
+      expect(codes(load({}, { ...sheet(), kit: 3 }).loaded)).toEqual([
         { code: "kit-version", path: ["kit"] },
       ]);
     });
@@ -178,10 +187,48 @@ verifies("integration-kit.loader", () => {
     });
   });
 
+  describe("a sign-in in a local integration", () => {
+    it("is refused until the trust content shows it, which a built-in one may declare", () => {
+      const withSignIn = {
+        ...sheet(),
+        kit: 2,
+        signIns: {
+          "example-account": {
+            purpose: "Access to your Example account.",
+            flow: "oauth-code",
+            authorizeUrl: "https://auth.example.com/authorize",
+            tokenUrl: "https://auth.example.com/token",
+            clientId: "example-app-id",
+            access: { hosts: ["api.example.com"], as: "bearer" },
+          },
+        },
+      };
+      const integration = weather();
+      const refused = load({
+        source: { origin: "local", sheet: withSignIn, integration, approvedSheet: withSignIn },
+      }).loaded;
+      expect(codes(refused)).toEqual([
+        { code: "sign-ins-not-allowed", path: ["signIns", "example-account"] },
+      ]);
+      expect(refused.ok ? undefined : refused.error[0]?.fix).toBe(
+        "Remove signIns from its sheet and use an API key, or ask for sign-in support.",
+      );
+      const builtIn = load({ source: { origin: "built-in", sheet: withSignIn, integration } });
+      expect(builtIn.loaded.ok).toBe(true);
+    });
+  });
+
   describe("prepared without its code, as the runner needs it", () => {
-    const prepare = (choices: WorkspaceChoices, data = sheet()) =>
+    const prepare = (
+      choices: WorkspaceChoices,
+      data = sheet(),
+      origin: "built-in" | "local" = "local",
+    ) =>
       prepareIntegration({
-        source: { origin: "local", sheet: data, approvedSheet: data },
+        source:
+          origin === "local"
+            ? { origin, sheet: data, approvedSheet: data }
+            : { origin, sheet: data },
         choices,
         transport: fakeTransport().transport,
         secrets,
@@ -198,6 +245,36 @@ verifies("integration-kit.loader", () => {
           value: canary["example-key"],
           placements: [{ secret: "weather-key", as: "bearer" }],
         },
+      ]);
+    });
+
+    it("reads a sign-in's client secret for the filter, with no placement: the code can't place it", async () => {
+      const signIns = {
+        kit: 2,
+        secrets: { "example-client": { purpose: "The client secret of your Example app." } },
+        signIns: {
+          "example-account": {
+            purpose: "Access to your Example account.",
+            flow: "oauth-code",
+            authorizeUrl: "https://auth.example.com/authorize",
+            tokenUrl: "https://auth.example.com/token",
+            clientId: "example-app-id",
+            clientSecret: "example-client",
+            access: { hosts: ["api.example.com"], as: "bearer" },
+          },
+        },
+      };
+      const prepared = prepare(
+        { secretNames: { "example-client": "example-key" } },
+        {
+          ...sheet(),
+          ...signIns,
+        },
+        "built-in",
+      );
+      if (!prepared.ok) expect.fail(JSON.stringify(prepared.error));
+      expect(await prepared.value.readSecrets()).toEqual([
+        { value: canary["example-key"], placements: [] },
       ]);
     });
 

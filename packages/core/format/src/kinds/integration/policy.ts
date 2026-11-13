@@ -1,12 +1,15 @@
 import type { Path } from "@halonicjs/schema-kit";
 import { err, ok, type Result } from "@halonicjs/std";
-import type {
-  AddressClass,
-  IntegrationHost,
-  IntegrationSecret,
-  IntegrationSecretHost,
-  IntegrationSheet,
+import {
+  type AddressClass,
+  type IntegrationHost,
+  type IntegrationSecret,
+  type IntegrationSecretHost,
+  type IntegrationSheet,
+  type IntegrationSignInAccess,
+  isPlacedSecret,
 } from "./schema.ts";
+import { fixedSignInUrl } from "./sign-in-urls.ts";
 
 /**
  * What one integration may do, in the shape of the kit's `IntegrationPolicy`
@@ -21,6 +24,8 @@ export interface IntegrationPolicy {
   readonly localHosts?: readonly string[];
   /** Each secret, the hosts it may go to, whether a request may go without it, and where it goes. */
   readonly secrets: Readonly<Record<string, DeclaredSecret>>;
+  /** Each sign-in, and where its access token may go and how it is put in. */
+  readonly signIns: Readonly<Record<string, DeclaredSignIn>>;
   readonly tokens: readonly string[];
 }
 
@@ -37,6 +42,31 @@ export type DeclaredPlacement =
   | { readonly as: "bearer" }
   | { readonly as: "header"; readonly header: string; readonly prefix?: string }
   | { readonly as: "form"; readonly field: string };
+
+/**
+ * One sign-in as the kit takes it: the hosts its access token may go to, and
+ * where the sheet puts it (`as`, and `header` and `prefix` for a header). The
+ * kit refuses any other placement.
+ */
+export type DeclaredSignIn = DeclaredSignInPlacement & {
+  readonly hosts: readonly string[];
+  /** The client secret, when the sign-in has one. Only Halonic's sign-in code uses it. */
+  readonly clientSecret?: DeclaredClientSecret;
+};
+
+/** Where the sheet puts a sign-in's access token. There is no `form`. */
+export type DeclaredSignInPlacement =
+  | { readonly as: "bearer" }
+  | { readonly as: "header"; readonly header: string; readonly prefix?: string };
+
+/**
+ * A sign-in's client secret. Its hosts are the sign-in's token and revoke
+ * hosts and nothing else, and the integration can't place it.
+ */
+export interface DeclaredClientSecret {
+  readonly name: string;
+  readonly hosts: readonly string[];
+}
 
 /** The kit's request limits, as the sheet gives them. */
 export type IntegrationLimits = NonNullable<IntegrationSheet["limits"]>;
@@ -93,6 +123,9 @@ export function integrationPolicy(
 
   const secrets: Record<string, DeclaredSecret> = {};
   for (const [name, secret] of Object.entries(sheet.secrets)) {
+    if (!isPlacedSecret(secret)) {
+      continue; // a client secret: `resolveSignIns` gives it its hosts
+    }
     const secretHosts: string[] = [];
     secret.hosts.forEach((host, index) => {
       const path = ["secrets", name, "hosts", index];
@@ -116,6 +149,7 @@ export function integrationPolicy(
       ? { hosts: resolved, optional: true, placement }
       : { hosts: resolved, placement };
   }
+  const signIns = resolveSignIns(sheet, classes, settings, problems);
   if (problems.length > 0) {
     return err(problems);
   }
@@ -125,9 +159,75 @@ export function integrationPolicy(
     hosts: unique(hosts),
     ...(localHosts.length > 0 ? { localHosts: unique(localHosts) } : {}),
     secrets,
+    signIns,
     tokens: sheet.tokens.map((token) => token.name),
   };
   return ok(sheet.limits === undefined ? { policy } : { policy, limits: sheet.limits });
+}
+
+/**
+ * Each sign-in's access hosts and placement, and its client secret with the
+ * hosts of the sign-in's token and revoke URLs. The other sign-in URLs read
+ * settings that `hosts` already resolves, so they need no check here.
+ */
+function resolveSignIns(
+  sheet: IntegrationSheet,
+  classes: ReadonlyMap<string, AddressClass>,
+  settings: Readonly<Record<string, unknown>>,
+  problems: PolicyProblem[],
+): Record<string, DeclaredSignIn> {
+  const signIns: Record<string, DeclaredSignIn> = {};
+  const hostsOf = (hosts: readonly SignInHost[], path: Path): string[] =>
+    unique(
+      hosts.flatMap((host, index) => {
+        const found = resolveHost(sheet, host, classes, settings, [...path, index], problems);
+        return found === undefined ? [] : [found.host];
+      }),
+    );
+  for (const [name, signIn] of Object.entries(sheet.signIns)) {
+    const path = ["signIns", name];
+    const base = {
+      hosts: hostsOf(signIn.access.hosts, [...path, "access", "hosts"]),
+      ...signInPlacement(signIn.access),
+    };
+    if (signIn.clientSecret === undefined) {
+      signIns[name] = base;
+      continue;
+    }
+    const endpoints: SignInHost[] = [];
+    for (const field of ["tokenUrl", "revokeUrl"] as const) {
+      const url = signIn[field];
+      const fixed = url === undefined ? undefined : fixedSignInUrl(url);
+      if (typeof url === "object") {
+        endpoints.push({ fromSetting: url.fromSetting });
+      } else if (fixed !== undefined) {
+        endpoints.push(withoutDefaultPort(fixed.host));
+      }
+    }
+    signIns[name] = {
+      ...base,
+      clientSecret: { name: signIn.clientSecret, hosts: hostsOf(endpoints, [...path, "tokenUrl"]) },
+    };
+  }
+  return signIns;
+}
+
+/** A host a sign-in names: a fixed host, or a `{ fromSetting }` host of the sheet's `hosts`. */
+type SignInHost = IntegrationHost | IntegrationSecretHost;
+
+/** `host:443` as `URL.host` gives it, which drops the scheme's default port. */
+function withoutDefaultPort(host: string): string {
+  return host.endsWith(":443") ? host.slice(0, -4) : host;
+}
+
+/** The placement part of a sign-in's `access`, without its hosts. */
+function signInPlacement(access: IntegrationSignInAccess): DeclaredSignInPlacement {
+  if (access.as === "bearer") {
+    return { as: "bearer" };
+  }
+  return access.prefix === undefined
+    ? { as: "header", header: access.header }
+    : { as: "header", header: access.header, prefix: access.prefix };
 }
 
 /** The placement part of a sheet's secret, without its purpose and hosts. */

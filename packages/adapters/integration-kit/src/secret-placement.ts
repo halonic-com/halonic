@@ -26,6 +26,7 @@ export function copyPlacements(
 /** A placement as the integration's code may give it, with nothing trusted. */
 interface GivenPlacement {
   readonly secret?: unknown;
+  readonly signIn?: unknown;
   readonly as?: unknown;
   readonly header?: unknown;
   readonly prefix?: unknown;
@@ -37,6 +38,13 @@ function copyPlacement(policy: IntegrationPolicy, placement: unknown): SecretPla
     throw notText(policy, "a secret placement");
   }
   const given: GivenPlacement = placement;
+  // The types allow `{ signIn, as }`, but the kit doesn't place a token yet; refusing any `signIn` key means `{ secret, signIn }` can't place the secret either.
+  if ("signIn" in given) {
+    throw new IntegrationRefusedError(
+      "sign-in-not-placed-yet",
+      `${policy.name}: the kit doesn't place a sign-in's token yet`,
+    );
+  }
   const secret = given.secret;
   const as = given.as;
   if (typeof secret !== "string") throw notText(policy, "the secret's name");

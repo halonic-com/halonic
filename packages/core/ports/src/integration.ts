@@ -6,11 +6,13 @@ import type { TokenStore } from "./token-store.ts";
 
 /**
  * Version of the {@link Integration} and {@link IntegrationHost} ports. A
- * breaking change bumps it and comes with an ADR. An integration's permission
- * sheet names the version it was built against (`kit`), and the loader
- * refuses one built against another version.
+ * change bumps it and comes with an ADR. An integration's permission sheet
+ * names the version it was built against (`kit`), and the loader refuses one
+ * built against a newer version than this. Version 2 adds the sheet's
+ * `signIns` and {@link SignInPlacement}; an integration built for version 1
+ * runs unchanged.
  */
-export const integrationVersion = 1;
+export const integrationVersion = 2;
 
 /**
  * The longest {@link IntegrationHost.wait} waits, in milliseconds (30 s). The
@@ -43,10 +45,52 @@ export type SecretPlacement =
   /** A field in a form body (`application/x-www-form-urlencoded`), such as an OAuth `client_secret`. */
   | { secret: string; as: "form"; field: string };
 
-/** A request as an integration sends it: a Web `RequestInit`, plus where to put a secret. */
+/**
+ * Puts the access token of one sign-in the permission sheet declares into a
+ * request. Like a secret, the integration names the sign-in and the host
+ * places the token, only on the hosts the sheet lists for that sign-in. The
+ * integration can use the token but never read it. Only the access token can
+ * be placed: there is no `form` form.
+ */
+export type SignInPlacement =
+  /** `Authorization: Bearer <value>`. */
+  | { signIn: string; as: "bearer" }
+  /** `<header>: <prefix><value>`. */
+  | { signIn: string; as: "header"; header: string; prefix?: string };
+
+/** A secret or a sign-in's access token, placed by the host. `secret` and `signIn` never appear together. */
+export type AuthPlacement = SecretPlacement | SignInPlacement;
+
+/** A request as an integration sends it: a Web `RequestInit`, plus where to put a secret or token. */
 export interface IntegrationRequestInit extends RequestInit {
-  /** The secrets to place in this request. Each must be declared and allowed for the host. */
-  auth?: SecretPlacement | readonly SecretPlacement[];
+  /** The secrets and sign-in tokens to place in this request. Each must be declared and allowed for the host. */
+  auth?: AuthPlacement | readonly AuthPlacement[];
+}
+
+/**
+ * Fresh access tokens for one integration's sign-ins, on Halonic's side of
+ * the line. The kit asks it for a token to place; it is never given to an
+ * integration, so a token can't be read, only used.
+ */
+export interface SignInTokens {
+  /**
+   * A token valid for at least 60 more seconds, refreshed if needed.
+   *
+   * @throws when the sign-in isn't signed in, or the refresh fails
+   */
+  access(signIn: string, signal?: AbortSignal): Promise<string>;
+  /**
+   * The server answered 401 to `value`. Counts only if `value` is the
+   * current token of that sign-in.
+   */
+  rejected(signIn: string, value: string): void;
+  /**
+   * Every value the secret filter must remove: access tokens not yet
+   * expired, the refresh token and the client secret. Synchronous, so it
+   * holds only what has been loaded: before the first `access` for a
+   * sign-in it holds nothing for it, and nothing has been placed yet.
+   */
+  filterValues(): readonly string[];
 }
 
 /**

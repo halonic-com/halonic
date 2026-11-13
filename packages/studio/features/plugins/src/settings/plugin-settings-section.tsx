@@ -338,7 +338,11 @@ export function secretHosts(plugin: Plugin, secret: string): string {
   const hosts = new Set<string>();
   for (const secrets of declared) {
     if (secrets === undefined || !Object.hasOwn(secrets, secret)) continue;
-    for (const host of secrets[secret]?.hosts ?? []) {
+    const declaredSecret = secrets[secret];
+    // A client secret has no hosts of its own: Halonic's sign-in code sends it.
+    const secretHostList =
+      declaredSecret !== undefined && "hosts" in declaredSecret ? declaredSecret.hosts : [];
+    for (const host of secretHostList) {
       if (typeof host === "string") {
         hosts.add(host);
       } else {

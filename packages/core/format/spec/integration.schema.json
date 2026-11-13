@@ -226,8 +226,297 @@
               "field"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "as": {}
+            },
+            "required": [
+              "purpose"
+            ],
+            "additionalProperties": false
           }
         ]
+      }
+    },
+    "signIns": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          },
+          "flow": {
+            "type": "string",
+            "const": "oauth-code"
+          },
+          "authorizeUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https:\\/\\/((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))?)(?:\\/[^\\s?#]*)?(?:\\?[^\\s#]*)?$"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "fromSetting": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^\\/[^\\s?#]*$"
+                  }
+                },
+                "required": [
+                  "fromSetting"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "tokenUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https:\\/\\/((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))?)(?:\\/[^\\s?#]*)?(?:\\?[^\\s#]*)?$"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "fromSetting": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^\\/[^\\s?#]*$"
+                  }
+                },
+                "required": [
+                  "fromSetting"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "revokeUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https:\\/\\/((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))?)(?:\\/[^\\s?#]*)?(?:\\?[^\\s#]*)?$"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "fromSetting": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^\\/[^\\s?#]*$"
+                  }
+                },
+                "required": [
+                  "fromSetting"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "issuer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https:\\/\\/((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))?)(?:\\/[^\\s?#]*)?(?:\\?[^\\s#]*)?$"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "fromSetting": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^\\/[^\\s?#]*$"
+                  }
+                },
+                "required": [
+                  "fromSetting"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "clientId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[\\x21-\\x7e]{1,256}$"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "fromSetting": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "fromSetting"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "clientSecret": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          },
+          "clientAuth": {
+            "default": "post",
+            "type": "string",
+            "enum": [
+              "post",
+              "basic"
+            ]
+          },
+          "scopes": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "string",
+                  "pattern": "^[\\x21\\x23-\\x5b\\x5d-\\x7e]+$"
+                },
+                "reason": {
+                  "type": "string",
+                  "pattern": "\\S"
+                }
+              },
+              "required": [
+                "scope",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "access": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "hosts": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))?$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "fromSetting": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "fromSetting"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "as": {
+                    "type": "string",
+                    "const": "bearer"
+                  }
+                },
+                "required": [
+                  "hosts",
+                  "as"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "hosts": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))?$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "fromSetting": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "fromSetting"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "as": {
+                    "type": "string",
+                    "const": "header"
+                  },
+                  "header": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9!#$%&'*+.^_`|~-]+$"
+                  },
+                  "prefix": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "hosts",
+                  "as",
+                  "header"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "purpose",
+          "flow",
+          "authorizeUrl",
+          "tokenUrl",
+          "clientId",
+          "access"
+        ],
+        "additionalProperties": false
       }
     },
     "googleScopes": {

@@ -9,6 +9,7 @@ export type RefusalCode =
   | "host-not-allowed"
   | "secret-not-declared"
   | "placement-not-in-sheet"
+  | "sign-in-not-placed-yet"
   | "secret-not-allowed-for-host"
   | "secret-over-plain-http"
   | "secret-not-configured"
@@ -34,6 +35,7 @@ const refusalKinds: Readonly<Record<RefusalCode, ErrorKind>> = {
   "host-not-allowed": "denied",
   "secret-not-declared": "denied",
   "placement-not-in-sheet": "denied",
+  "sign-in-not-placed-yet": "denied",
   "secret-not-allowed-for-host": "denied",
   "secret-over-plain-http": "denied",
   "secret-not-configured": "denied",
