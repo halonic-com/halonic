@@ -178,7 +178,12 @@ describe("a harness run in the real srt sandbox", () => {
       // The run's folders end just after its last event: closing waits for them.
       await engine.close();
 
-      expect(run.summary).toMatchObject({ status: "completed" });
+      // A failed run says why, so a first run on a real machine can be read from the log.
+      expect({ status: run.summary.status, error: run.summary.error, reported: reported.map(String) }).toEqual({
+        status: "completed",
+        error: null,
+        reported: [],
+      });
       // Not 0 means the fence refused it; only the program's own three folders let it write.
       const attempts = seen.attempts;
       expect(attempts).not.toBeNull();
