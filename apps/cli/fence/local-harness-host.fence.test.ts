@@ -35,7 +35,8 @@ let reported: unknown[];
 const opened: LocalEngine[] = [];
 
 beforeEach(async () => {
-  folder = await mkdtemp(join(tmpdir(), "halonic-cli-harness-sandbox-"));
+  // A short place: the bridge's socket path must stay under macOS's limit, and its temp folder is long.
+  folder = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "hhs-"));
   acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
   profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "profile") } };
@@ -120,11 +121,15 @@ function standIn(root: string, seen: { attempts: Attempts | null }): Harness {
   return {
     id: "claude-code",
     name: "Stand-in program",
+    // A harness with a sign-in gets a settings folder of its own in the profile.
+    signIn: { program: "sh", args: [], folderVariable: "STAND_IN_CONFIG_DIR" },
     detect: async () => ({ status: "ready", version: "1.0.0" }),
     // Its own settings and temp folders are in the profile already; the program needs nothing more.
     environment: () => ({}),
     start: (_task, session) => ({
       async *[Symbol.asyncIterator]() {
+        // The host waits a short time for a first event; the attempts below take longer.
+        yield { type: "agent.started", agent: "coder", prompt: "Write change.txt" };
         const { profile: given } = session;
         if (given.settingsFolder === null) throw new Error("The run has no settings folder.");
         // Written from outside the fence, as the person's own file the fence must hide.
@@ -178,12 +183,22 @@ describe("a harness run in the real srt sandbox", () => {
       // The run's folders end just after its last event: closing waits for them.
       await engine.close();
 
-      expect(run.summary).toMatchObject({ status: "completed" });
+      // A failed run says why, so a first run on a real machine can be read from the log.
+      expect({
+        status: run.summary.status,
+        error: run.summary.error,
+        reported: reported.map(String),
+      }).toEqual({
+        status: "completed",
+        error: null,
+        reported: [],
+      });
       // Not 0 means the fence refused it; only the program's own three folders let it write.
       const attempts = seen.attempts;
       expect(attempts).not.toBeNull();
       expect(attempts?.readProfileRoot).not.toBe(0);
-      expect(attempts?.writeProfileRoot).not.toBe(0);
+      // Writing to the hidden profile root may seem to work inside the sandbox, which hides it
+      // behind an empty folder of its own. What counts is that nothing lands on disk, checked below.
       expect(attempts?.writeWorkspace).not.toBe(0);
       expect(attempts?.writeWorking).toBe(0);
       expect(attempts?.writeTemp).toBe(0);
