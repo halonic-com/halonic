@@ -56,7 +56,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
     return `session:${await sha256Hex(token)}`;
   }
 
-  async function startSession(context: RequestContext, request: Request): Promise<Response> {
+  async function startSession(request: Request, context: RequestContext): Promise<Response> {
     const token = newSessionToken();
     const expiresAt = new Date(clock.now().getTime() + sessionLifetimeMs);
     const stored = await coordination.compareAndSet(
@@ -81,7 +81,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
     if (context.clientAddress === undefined) {
       return coordination.countInWindow(loginAttemptsKey, loginWindowMs, loginAttemptsPerWindow);
     }
-    const key = `${loginAddressKeyPrefix}${await sha256Hex(context.clientAddress)}`;
+    const key = `${loginAddressKeyPrefix}${await sha256Hex(addressGroup(context.clientAddress))}`;
     const own = await coordination.countInWindow(key, loginWindowMs, loginAttemptsPerWindow);
     if (!own.allowed) {
       return own;
@@ -112,7 +112,7 @@ export function createSignIn(ports: SignInPorts): SignIn {
       if (!(await passwordHasher.verify(password, hash))) {
         return errorResponse(serverErrors.wrongPassword);
       }
-      return startSession(context, request);
+      return startSession(request, context);
     },
 
     async logout(request, context) {
@@ -149,6 +149,70 @@ export function createSignIn(ports: SignInPorts): SignIn {
       return true;
     },
   };
+}
+
+/**
+ * What one client address is counted as. An IPv6 client usually owns a whole /64, so those
+ * are counted by their first 64 bits; an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`, which a
+ * dual-stack socket reports) counts as its IPv4 address. Anything that doesn't parse is kept as it is.
+ */
+export function addressGroup(address: string): string {
+  const bare = address.split("%", 1)[0] ?? address;
+  const words = parseIpv6(bare);
+  if (words === null) {
+    return address;
+  }
+  const isMapped = words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff;
+  if (isMapped) {
+    const [high = 0, low = 0] = words.slice(6);
+    return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+  }
+  return `${words
+    .slice(0, 4)
+    .map((word) => word.toString(16))
+    .join(":")}::/64`;
+}
+
+/** The text of an IPv6 address with a dotted IPv4 tail (`::ffff:1.2.3.4`) rewritten as two hex groups. */
+function withHexTail(text: string): string | null {
+  const dotted = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(text);
+  if (dotted === null) {
+    return text;
+  }
+  const [a = 0, b = 0, c = 0, d = 0] = dotted.slice(1).map(Number);
+  if ([a, b, c, d].some((part) => part > 255)) {
+    return null;
+  }
+  const hex = (high: number, low: number) => ((high << 8) | low).toString(16);
+  return `${text.slice(0, dotted.index)}${hex(a, b)}:${hex(c, d)}`;
+}
+
+/** The groups of one side of a `::`, or `null` when one is not 1 to 4 hex digits. */
+function readGroups(part: string): number[] | null {
+  if (part === "") {
+    return [];
+  }
+  const groups = part.split(":");
+  if (!groups.every((group) => /^[0-9a-fA-F]{1,4}$/.test(group))) {
+    return null;
+  }
+  return groups.map((group) => Number.parseInt(group, 16));
+}
+
+/** The eight 16-bit words of an IPv6 address, or `null` when the text is not one. */
+function parseIpv6(text: string): number[] | null {
+  const hexText = text.includes(":") ? withHexTail(text) : null;
+  const halves = hexText?.split("::") ?? [];
+  const first = readGroups(halves[0] ?? "");
+  const second = readGroups(halves[1] ?? "");
+  if (halves.length === 0 || halves.length > 2 || first === null || second === null) {
+    return null;
+  }
+  if (halves.length === 1) {
+    return first.length === 8 ? first : null;
+  }
+  const missing = 8 - first.length - second.length;
+  return missing < 1 ? null : [...first, ...new Array<number>(missing).fill(0), ...second];
 }
 
 async function sha256Hex(text: string): Promise<string> {

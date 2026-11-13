@@ -16,10 +16,11 @@ import type {
 export interface Server {
   /**
    * Answers one request. `context` is what the host knows about the
-   * connection and can vouch for; the server never reads it from a header. It never throws for a request it can't serve: a
-   * refused or failed request gets a {@link ServerErrorBody} with the right
-   * status. A request that goes over the daily ceiling is refused here,
-   * before routing, and never starts a run.
+   * connection and can vouch for; the server never reads it from a header.
+   * It never throws for a request it can't serve: a refused or failed
+   * request gets a {@link ServerErrorBody} with the right status. A request
+   * that goes over the daily ceiling is refused here, before routing, and
+   * never starts a run.
    */
   handle(request: Request, context?: RequestContext): Promise<Response>;
 }

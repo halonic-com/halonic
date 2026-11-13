@@ -2,6 +2,7 @@ import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RequestContext, Server } from "./api.ts";
+import { addressGroup } from "./sign-in.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const host = "halonic.acme.example";
@@ -307,6 +308,47 @@ describe("sign-in", () => {
         from("203.0.113.2"),
       );
       expect(other.status).toBe(200);
+    });
+
+    it("counts an IPv6 client by its /64 and a mapped IPv4 address as IPv4", async () => {
+      const { server } = setup();
+      await guess(server, 10, "2001:db8:1:2::1");
+      const sameBlock = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("2001:DB8:1:2:ffff::9"),
+      );
+      expect(sameBlock.status).toBe(429);
+      const otherBlock = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("2001:db8:1:3::1"),
+      );
+      expect(otherBlock.status).toBe(200);
+      await guess(server, 10, "::ffff:203.0.113.1");
+      const mapped = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.1"),
+      );
+      expect(mapped.status).toBe(429);
+    });
+
+    it("groups addresses the same way however they are written", () => {
+      expect(addressGroup("2001:db8:0:0:1:2:3:4")).toBe(addressGroup("2001:db8::9"));
+      expect(addressGroup("fe80::1%eth0")).toBe(addressGroup("fe80::2"));
+      expect(addressGroup("::ffff:cb00:7101")).toBe("203.0.113.1");
+      expect(addressGroup("::1")).toBe("0:0:0:0::/64");
+      expect(addressGroup("203.0.113.1")).toBe("203.0.113.1");
+      expect(addressGroup("not an address")).toBe("not an address");
+      expect(addressGroup("1:2:3:4:5:6:7:8:9")).toBe("1:2:3:4:5:6:7:8:9");
+      expect(addressGroup("1::2::3")).toBe("1::2::3");
     });
 
     it("ignores a forwarded address the client sets", async () => {
