@@ -27,6 +27,10 @@ SHA-256 and timeout come from the host that calls it (the `RandomBytes` and
 | `createPkcePair`, `pkceChallenge` | a new PKCE verifier (32 random bytes, 43 base64url characters) and its S256 challenge (RFC 7636); the challenge for a verifier. They take the `RandomBytes` and `Digest` ports |
 | `createState`, `stateMatches` | a new `state` from the `RandomBytes` port (32 bytes, 43 base64url characters); compares a returned `state` with the expected one in constant time, and a missing one never matches |
 | `exchangeAuthorizationCode` | sends the code, the client, the redirect URI and the verifier to a token endpoint |
+| `refreshAccessToken`, `readRefreshAnswer` | asks a token endpoint for a new access token with the refresh token, and says what the answer means: `refreshed` (with a rotated refresh token if there is one), `grantRefused` (`invalid_grant`: sign in again), `clientRefused` or an error code |
+| `revokeToken` | asks a revoke endpoint (RFC 7009) to revoke a refresh token; `revoked` only for a 200 |
+| `withClientAuth`, `OAuthClient` | adds the client's ID and secret to a request as `clientAuth` says: in the body (`post`) or as HTTP Basic (`basic`) |
+| `isUsableToken` | whether a token is fit to keep: visible ASCII, no space or line break, at least 16 characters |
 | `postTokenForm`, `formBody` | sends one form to a token endpoint: refuses redirects, stops when the caller's signal aborts (`tokenRequestTimeoutMs` is the limit it should have) and drops the `HttpClient`'s error, which can carry the request; writes a form body |
 
 The caller gives the token endpoint, from the sign-in's own settings. It is

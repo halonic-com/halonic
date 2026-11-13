@@ -239,8 +239,7 @@ function exchangeCode(
   return exchangeAuthorizationCode(http, {
     tokenEndpoint: googleTokenEndpoint,
     code,
-    clientId: pending.clientId,
-    clientSecret,
+    client: { clientId: pending.clientId, clientSecret, clientAuth: "post" },
     redirectUri: pending.redirectUri,
     codeVerifier: pending.codeVerifier,
     signal: AbortSignal.timeout(tokenRequestTimeoutMs),

@@ -1,7 +1,7 @@
-import type { HttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { exchangeAuthorizationCode } from "./exchange-code.ts";
+import { fakeProvider } from "./fake-provider.test-helper.ts";
 import { formBody } from "./form-body.ts";
 import { postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
 
@@ -16,30 +16,15 @@ const tokenEndpoint = "https://auth.example.com/oauth/token";
 const exchange = {
   tokenEndpoint,
   code: fakeCode,
-  clientId: "fake-client.apps.example.com",
-  clientSecret: fakeSecret,
+  client: {
+    clientId: "fake-client.apps.example.com",
+    clientSecret: fakeSecret,
+    clientAuth: "post",
+  },
   redirectUri: "http://127.0.0.1:8787/oauth/callback",
   codeVerifier: "fake-verifier-0000000000000000000000000000",
   signal: new AbortController().signal,
 } as const;
-
-/** One request the fake provider received. */
-interface Received {
-  readonly url: string;
-  readonly init: RequestInit;
-}
-
-/** A fake `HttpClient` that records its requests and answers with `answer`, which may throw. */
-function fakeProvider(answer: () => Response): HttpClient & { readonly received: Received[] } {
-  const received: Received[] = [];
-  return {
-    received,
-    async fetch(url: string, init: RequestInit = {}): Promise<Response> {
-      received.push({ url, init });
-      return answer();
-    },
-  };
-}
 
 verifies("oauth-sign-in.exchange-code", () => {
   it("sends one POST to the named endpoint with the code exchange's fields in the body only", async () => {
@@ -56,7 +41,7 @@ verifies("oauth-sign-in.exchange-code", () => {
     expect(Object.fromEntries(new URLSearchParams(String(request?.init.body)))).toEqual({
       grant_type: "authorization_code",
       code: fakeCode,
-      client_id: exchange.clientId,
+      client_id: exchange.client.clientId,
       client_secret: fakeSecret,
       redirect_uri: exchange.redirectUri,
       code_verifier: exchange.codeVerifier,
