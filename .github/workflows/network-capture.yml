@@ -5,6 +5,11 @@
 # control isn't in the capture, and uploads the capture and a report. WSL2 has
 # no hosted runner; it uses the Linux kernel's network stack, so the Linux leg
 # covers it. It runs by hand only (HAL-6494).
+#
+# The Windows job builds the installer of one commit (HAL-8688), installs it
+# silently, starts the app and captures with pktmon through the install, first
+# start, the update-check window and the idle time; see
+# .github/probes/network-capture/windows.
 name: Network capture
 
 on:
@@ -13,6 +18,9 @@ on:
       idle_minutes:
         description: Minutes to keep listening after the session (0 to 30)
         default: "10"
+      windows_ref:
+        description: Commit the Windows job builds the installer from
+        default: f73c4ea99beb47070e4713a0098bf4d35b60bce1
 
 permissions:
   contents: read
@@ -41,5 +49,62 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: network-capture-${{ matrix.os }}
+          path: ${{ runner.temp }}/network-capture-artifacts
+          if-no-files-found: error
+
+  windows:
+    name: Network capture (windows-2025)
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      ARTIFACTS: ${{ runner.temp }}/network-capture-artifacts
+    steps:
+      # The app at the commit under test, then this branch's probe scripts
+      # beside it (in that order: checkout cleans what it doesn't track).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.windows_ref }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: probes
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Install the pinned Rust toolchain
+        working-directory: apps/studio/src-tauri
+        run: rustup toolchain install
+      - name: Build the installer
+        working-directory: apps/studio/src-tauri
+        run: pwsh windows/build-installer.ps1
+      - name: Capture install, first start, update check and idle
+        env:
+          IDLE_MINUTES: ${{ inputs.idle_minutes || '10' }}
+        run: |
+          $setup = (Resolve-Path "dist/Halonic-*-windows-x64-setup.exe").Path
+          Add-Content $env:GITHUB_ENV "SETUP=$setup"
+          pwsh probes/.github/probes/network-capture/windows/capture.ps1 -Setup $setup -Artifacts $env:ARTIFACTS -IdleMinutes ([int]$env:IDLE_MINUTES)
+      - name: Report
+        if: always()
+        run: |
+          node probes/.github/probes/network-capture/windows/report.mjs $env:ARTIFACTS | Tee-Object (Join-Path $env:ARTIFACTS 'report.md') | Add-Content $env:GITHUB_STEP_SUMMARY
+          if ($LASTEXITCODE -ne 0) { throw 'The report found traffic from Halonic that is not the update check, or a problem with the capture or the control.' }
+      - name: Checksums
+        if: always()
+        run: |
+          $lines = Get-ChildItem $env:ARTIFACTS -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
+          if ($env:SETUP -and (Test-Path $env:SETUP)) { $lines += "$((Get-FileHash $env:SETUP -Algorithm SHA256).Hash.ToLower())  $(Split-Path -Leaf $env:SETUP) (the installer under test, not uploaded)" }
+          $lines | Set-Content (Join-Path $env:ARTIFACTS 'SHA256SUMS.txt') -Encoding utf8
+          $lines
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: network-capture-windows-2025
           path: ${{ runner.temp }}/network-capture-artifacts
           if-no-files-found: error
