@@ -582,6 +582,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 5.20260730.1
+      '@halonicjs/adapter-cloudflare-storage':
+        specifier: workspace:*
+        version: link:../cloudflare-storage
       '@halonicjs/target-cloudflare-testing':
         specifier: workspace:*
         version: link:../../targets/cloudflare/testing

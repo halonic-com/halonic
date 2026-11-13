@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@halonicjs/adapter-cloudflare-storage": "workspace:*",
     "@halonicjs/target-cloudflare-testing": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",

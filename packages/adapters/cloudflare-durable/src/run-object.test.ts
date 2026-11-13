@@ -33,6 +33,13 @@ class TestRunObject extends RunObject {
   readonly delivered: ScheduledTimer[] = [];
   protected override clock = this.clockForTest;
   protected override nap = async () => {};
+  readonly published: [string, number][] = [];
+  protected override runList() {
+    return {
+      publish: async (summary: { id: string }, seq: number) =>
+        void this.published.push([summary.id, seq]),
+    };
+  }
   protected override timerListener() {
     return { onTimer: async (timer: ScheduledTimer) => void this.delivered.push(timer) };
   }
@@ -50,6 +57,10 @@ verifies("cloudflare-durable.run-log", () => {
       });
       expect(await object.events(1)).toEqual([events[1]]);
       expect(await object.snapshot()).toEqual({ seq: 2, state: { step: 2 } });
+      expect((await object.summary())?.id).toBe("r1");
+      expect(alarm.at).toBe(object.clockForTest.now().getTime());
+      await object.alarm();
+      expect(object.published).toEqual([["r1", 2]]);
 
       const at = new Date(object.clockForTest.now().getTime() + second).toISOString();
       await object.schedule("r1", "wait", at);
@@ -62,6 +73,14 @@ verifies("cloudflare-durable.run-log", () => {
       await object.schedule("r1", "again", at);
       await object.cancel("r1", "again");
       expect(await object.pending("r1")).toEqual([]);
+    });
+
+    it("has no run list until the Worker's subclass gives one", async () => {
+      const { ctx } = fakeState();
+      const object = new RunObject(ctx, {});
+      await object.append("r1", 0, [started("r1")]);
+      await expect(object.alarm()).resolves.toBeUndefined();
+      expect((await object.summary())?.id).toBe("r1");
     });
 
     it("keeps a timer that is due, with the alarm set again, while no listener is given", async () => {

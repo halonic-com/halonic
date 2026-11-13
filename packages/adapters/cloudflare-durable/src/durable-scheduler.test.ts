@@ -27,6 +27,7 @@ function fakeNamespace() {
         clock: () => clock,
         nap: async () => {},
         listener: () => ({ onTimer: async () => {} }),
+        runList: () => ({ publish: async () => {} }),
       });
       objects.set(id, created);
       return created;

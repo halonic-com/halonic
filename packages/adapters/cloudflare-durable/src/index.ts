@@ -25,3 +25,4 @@ export {
 } from "./durable-scheduler.ts";
 export { RunObject } from "./run-object.ts";
 export type { RunObjectApi } from "./run-object-api.ts";
+export type { RunListSink } from "./run-state.ts";
