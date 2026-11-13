@@ -22,3 +22,4 @@ No check is removed or weakened.
 ## Covers
 
 - apps/studio/requirements/
+- studio.installer-third-party-notices
