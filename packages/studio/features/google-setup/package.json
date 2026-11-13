@@ -33,6 +33,7 @@
   "dependencies": {
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
+    "@halonicjs/studio-feature-library": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
