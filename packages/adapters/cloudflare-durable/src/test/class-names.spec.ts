@@ -10,17 +10,23 @@ import { describe, expect, it } from "vitest";
 import * as adapter from "../index.ts";
 
 export { CoordinationObject } from "../coordination-object.ts";
+export { RoutinesObject } from "../routines-object.ts";
 export { RunObject } from "../run-object.ts";
 
 /** What the runner binds for this suite (see `class-names.test.ts`). */
 interface TestEnv {
   DEPLOYED: DurableObjectNamespace<adapter.CoordinationObject>;
   RUN_DEPLOYED: DurableObjectNamespace<adapter.RunObject>;
+  ROUTINES_DEPLOYED: DurableObjectNamespace<adapter.RoutinesObject>;
 }
 
 describe("Durable Object class names", () => {
   it("are the ones already deployed", () => {
-    expect(adapter.durableObjectClassNames).toEqual(["CoordinationObject", "RunObject"]);
+    expect(adapter.durableObjectClassNames).toEqual([
+      "CoordinationObject",
+      "RunObject",
+      "RoutinesObject",
+    ]);
   });
 
   it("are all still exported as classes under their names", () => {
@@ -46,5 +52,13 @@ describe("Durable Object class names", () => {
     await scheduler.schedule("run_1", "wait", at);
     expect(await scheduler.pending("run_1")).toEqual([{ key: "run_1", timerId: "wait", at }]);
     await scheduler.cancel("run_1", "wait");
+  });
+
+  it("run the routines object under its own name, refusing a tick until the Worker gives it a listener", async () => {
+    const { ROUTINES_DEPLOYED } = env as TestEnv;
+    const routines = ROUTINES_DEPLOYED.get(
+      ROUTINES_DEPLOYED.idFromName(adapter.defaultRoutinesObjectName),
+    );
+    await expect(routines.tick(new Date().toISOString())).rejects.toThrow(/tick listener/);
   });
 });

@@ -7,6 +7,7 @@
 
 import type { SchedulerListener } from "@halonicjs/ports";
 import type { Clock } from "@halonicjs/std";
+import { RoutinesObject } from "../routines-object.ts";
 import { RunObject } from "../run-object.ts";
 import type { RunListSink } from "../run-state.ts";
 
@@ -49,6 +50,21 @@ export interface Case {
 const caseIdLength = 36; // the length of a UUID
 export const cases = new Map<string, Case>();
 
+/** The case an object's name belongs to; the name starts with the case's id. */
+function caseOfName(name: string | undefined): Case {
+  const found = cases.get((name ?? "").slice(0, caseIdLength));
+  if (found === undefined) throw new Error("This test object was not made through make().");
+  return found;
+}
+
+/** `RoutinesObject` reading the time and the listener of the case its name is. */
+export class TestRoutinesObject extends RoutinesObject {
+  protected override clock = { now: (): Date => caseOfName(this.ctx.id.name).clock.now() };
+  protected override tickListener(): SchedulerListener {
+    return caseOfName(this.ctx.id.name).listener;
+  }
+}
+
 /** `RunObject` reading the time and the listener of the case its name belongs to. */
 export class TestRunObject extends RunObject {
   #alarmRunning: Promise<void> = Promise.resolve();
@@ -60,8 +76,7 @@ export class TestRunObject extends RunObject {
 
   #case(): Case {
     const name = this.ctx.id.name ?? "";
-    const found = cases.get(name.slice(0, caseIdLength));
-    if (found === undefined) throw new Error("This test object was not made through make().");
+    const found = caseOfName(name);
     found.objectNames.add(name);
     return found;
   }

@@ -22,6 +22,7 @@ from the first deploy and must not change:
 | --- | --- |
 | `CoordinationObject` | leases, values, counters and windows of one deployment |
 | `RunObject` | one run's event log and timers (HAL-6796) |
+| `RoutinesObject` | the routine tick and its backup alarm (HAL-6797) |
 
 `durableObjectClassNames` lists them, and `src/test/class-names.spec.ts` (run
 inside workerd by `class-names.test.ts`) fails when the list changes or a
@@ -77,7 +78,25 @@ port over it.
   `get` comes from the log (always current), `list` from D1 (may lag).
 - **The listener and the run list.** The platform wakes the object, not the client, so the
   Worker subclasses `RunObject` and overrides `timerListener()` and `runList()`.
-- **The tick** is the cron's (part 7), not the object's.
+
+## The routines object
+
+`RoutinesObject` (HAL-197 part 7) owns the routine tick. The Worker's cron
+calls its `tick(at)` every minute and the object passes the tick to its
+listener, one at a time; a tick that arrives while another runs shares it.
+`RoutinesState` is the logic, over an alarm slot, as `RunState` is for runs.
+
+- **`lastTick` and the fire ids are the routine scheduler's.** `RoutineScheduler`
+  (`@halonicjs/app`) keeps `lastTick` in `Coordination` and gives each fire a
+  fixed id (workspace, routine, due time), and `dueWithSkips` applies the
+  catch-up policy of each routine. The object keeps no copy of them: it makes
+  sure the scheduler is called by one owner, one tick at a time. The Worker
+  subclasses the object and overrides `tickListener()` to return it.
+- **The backup alarm.** After every tick, worked or not, the object sets its
+  alarm three minutes ahead. Each cron tick moves it on, so it fires only when the
+  cron has stopped; it then ticks at the clock's time and sets itself again.
+  A failed backup tick is not thrown, because Cloudflare would retry the alarm
+  and a tick is never retried: the next one catches up.
 
 ## Tests
 

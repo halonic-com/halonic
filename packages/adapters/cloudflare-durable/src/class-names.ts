@@ -5,4 +5,8 @@
  * migration entry in the Worker's configuration; never change or remove one.
  * `class-names.test.ts` fails when one disappears from the package's exports.
  */
-export const durableObjectClassNames = ["CoordinationObject", "RunObject"] as const;
+export const durableObjectClassNames = [
+  "CoordinationObject",
+  "RunObject",
+  "RoutinesObject",
+] as const;
