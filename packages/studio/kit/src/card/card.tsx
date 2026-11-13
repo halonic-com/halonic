@@ -162,7 +162,7 @@ function cardHeader(props: StaticCard, id: string, faded: boolean): ReactNode {
     return (
       <p
         id={id}
-        className={`min-w-0 text-caption font-medium uppercase tracking-label ${faded ? fadedClasses : "text-fg-muted"}`}
+        className={`min-w-0 text-label uppercase ${faded ? fadedClasses : "text-fg-muted"}`}
       >
         {props.label}
       </p>

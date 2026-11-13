@@ -58,7 +58,7 @@ verifies("kit.menu-groups", () => {
     const group = menu.querySelector("[role=group]") as HTMLElement;
     const heading = document.getElementById(group.getAttribute("aria-labelledby") ?? "");
     expect(heading?.textContent).toBe("Recent");
-    expect(heading?.className).toContain("text-caption uppercase tracking-label text-fg-subtle");
+    expect(heading?.className).toContain("text-label uppercase text-fg-subtle");
     expect(group.contains(items[0] ?? null)).toBe(true);
     expect(group.contains(items[1] ?? null)).toBe(true);
     expect(group.contains(items[2] ?? null)).toBe(false);

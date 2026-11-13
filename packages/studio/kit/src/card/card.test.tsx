@@ -60,9 +60,7 @@ verifies("kit.card", () => {
     const section = container.querySelector("section") as HTMLElement;
     const label = section.querySelector("p") as HTMLElement;
     expect(nameOf(section)).toBe("When");
-    expect(label.className).toContain(
-      "text-caption font-medium uppercase tracking-label text-fg-muted",
-    );
+    expect(label.className).toContain("text-label uppercase text-fg-muted");
     expect(section.querySelector("h1, h2, h3, h4")).toBeNull();
   });
 

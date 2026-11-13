@@ -52,7 +52,7 @@ export function PluginPanel(props: PluginPanelProps) {
     <div className="flex flex-col gap-4 p-4">
       <header className="flex items-start gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-caption uppercase tracking-label text-fg-subtle">{PLUGIN_PANEL}</p>
+          <p className="text-label uppercase text-fg-subtle">{PLUGIN_PANEL}</p>
           <h1 tabIndex={-1} className="text-title outline-none wrap-anywhere">
             {title}
           </h1>

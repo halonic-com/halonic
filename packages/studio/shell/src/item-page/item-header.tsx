@@ -104,4 +104,4 @@ const headerClasses = [
 ].join(" ");
 
 // The kind label of the step cards and the run receipt (component specs 24.1).
-const kindClasses = "shrink-0 text-caption uppercase tracking-label text-fg-subtle";
+const kindClasses = "shrink-0 text-label uppercase text-fg-subtle";

@@ -72,9 +72,7 @@ export function PluginPage({
     <div className="flex flex-col">
       <header className="sticky top-0 z-(--layer-sticky) flex min-h-13 items-center gap-4 border-b border-border bg-surface px-4">
         <h1 tabIndex={-1} className="flex min-w-0 flex-1 items-center gap-1.5 outline-none">
-          <span className="shrink-0 text-caption uppercase tracking-label text-fg-subtle">
-            {PLUGIN}
-          </span>
+          <span className="shrink-0 text-label uppercase text-fg-subtle">{PLUGIN}</span>
           {/* A space for screen readers, so the heading reads "Plugin Weather". */}
           <span className="sr-only"> </span>
           <span className="truncate text-body-strong" title={plugin.name}>

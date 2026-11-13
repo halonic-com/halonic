@@ -98,7 +98,7 @@ function Swatches({ presets, value, label, onPick }: SwatchesProps) {
   const name = useId();
   return (
     <>
-      <p id={headingId} className="pb-2 text-caption uppercase tracking-label text-fg-muted">
+      <p id={headingId} className="pb-2 text-label uppercase text-fg-muted">
         {label}
       </p>
       <div

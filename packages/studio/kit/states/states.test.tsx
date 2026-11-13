@@ -154,7 +154,7 @@ describe("the states page", () => {
     const markup = renderToStaticMarkup(<StatesPage only="form-rows" />);
     expect(markup).toContain("Light, then dark");
     // Each cell says which theme it is, as on a phone.
-    expect(markup.match(/<p class="mb-2 text-caption[^"]*">(Light|Dark)<\/p>/g)).toHaveLength(6);
+    expect(markup.match(/<p class="mb-2 text-label[^"]*">(Light|Dark)<\/p>/g)).toHaveLength(6);
     expect(markup).toContain("flex min-w-0 flex-1 phone:flex-col flex-col");
     expect(markup).toMatch(/border-t scheme-dark/);
 
