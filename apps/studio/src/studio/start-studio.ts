@@ -42,7 +42,10 @@ import {
   WorkspaceSwitcher,
   workspaceFeature,
 } from "@halonicjs/studio-feature-workspace";
-import { WorkspacePageService } from "@halonicjs/studio-feature-workspace/api";
+import {
+  TrustedSourcesService,
+  WorkspacePageService,
+} from "@halonicjs/studio-feature-workspace/api";
 import {
   hostSettingsStoreKey,
   provideShellHostSettings,
@@ -65,6 +68,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { trustedSourcesOf } from "./trusted-sources.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -163,7 +167,13 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [inboxFeature, runsFeature, settingsFeature, workspaceFeature],
-  hostServices: [InboxRunsService, RunsSourceService, DisplaySettingsService, WorkspacePageService],
+  hostServices: [
+    InboxRunsService,
+    RunsSourceService,
+    DisplaySettingsService,
+    WorkspacePageService,
+    TrustedSourcesService,
+  ],
 };
 
 /**
@@ -240,6 +250,8 @@ export async function openFolder(
   const files = ipc === undefined ? undefined : shellFiles(ipc);
   const trust = ipc === undefined ? undefined : workspaceTrustOf(ipc, location);
   await trust?.refresh();
+  const open = openTrustsOf(shell);
+  if (trust !== undefined) open.add(trust);
   const name = trust?.name ?? folderName(location);
   const scope =
     files === undefined || trust === undefined
@@ -249,6 +261,14 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
+  services.provide(
+    TrustedSourcesService,
+    ipc === undefined
+      ? { list: async () => [], remove: async () => undefined }
+      : trustedSourcesOf(new TauriTrustStore(ipc), async () => {
+          await Promise.all([...open].map((each) => each.refresh()));
+        }),
+  );
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   provideAgentSandbox(services, window);
@@ -262,8 +282,23 @@ export async function openFolder(
     workspace,
     saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
     trust: trustView,
-    dispose: () => (scope === undefined ? services.dispose() : scope.close()),
+    dispose: () => {
+      if (trust !== undefined) open.delete(trust);
+      return scope === undefined ? services.dispose() : scope.close();
+    },
   };
+}
+
+/** The trust of every folder open in a window, so removing a trusted source reaches all of them. */
+const openTrusts = new WeakMap<Shell, Set<WorkspaceTrust>>();
+
+function openTrustsOf(shell: Shell): Set<WorkspaceTrust> {
+  let open = openTrusts.get(shell);
+  if (open === undefined) {
+    open = new Set();
+    openTrusts.set(shell, open);
+  }
+  return open;
 }
 
 /** The version written into the trust records the Studio saves, the one the CLI writes. */
