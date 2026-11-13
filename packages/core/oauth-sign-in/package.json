@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/oauth-sign-in",
+  "private": true,
+  "type": "module",
+  "description": "An OAuth 2.0 sign-in with PKCE and a loopback redirect: the rules (pending sign-ins, the callback, the token answer, the redirect URI) and the flow's requests, on ports only.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
