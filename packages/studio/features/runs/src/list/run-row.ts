@@ -195,7 +195,7 @@ function rowLine(run: SourcedRun, standing: RunStanding, context: RowContext): s
 }
 
 /** A tool approval, several approvals, or a wait step by its description. */
-function needsYouLine(wait: RunWait, step: string): string {
+export function needsYouLine(wait: RunWait, step: string): string {
   if (wait.kind === "approvals") {
     return wait.count === 1
       ? rowLineWords.waitingForApproval(step)
@@ -208,7 +208,7 @@ function needsYouLine(wait: RunWait, step: string): string {
 }
 
 /** A wait that isn't the user's: a child run or a timer. */
-function waitingLine(wait: RunWait, step: string, now: Date): string {
+export function waitingLine(wait: RunWait, step: string, now: Date): string {
   if (wait.kind === "child-run") {
     return rowLineWords.waitingForChildRun(shortRunId(wait.runId));
   }
@@ -254,7 +254,7 @@ export function costParts(summary: RunSummary, currency: string): string[] {
   return summary.unpricedCalls > 0 ? [costWords.withoutPrice(summary.unpricedCalls)] : [];
 }
 
-function took(summary: RunSummary): string {
+export function took(summary: RunSummary): string {
   const ended = summary.endedAt ?? summary.updatedAt;
   return tookWords(Date.parse(ended) - Date.parse(summary.startedAt));
 }

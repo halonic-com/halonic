@@ -11,6 +11,8 @@ import { Details } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { everyStep } from "./every-step-model.ts";
+import { Receipt } from "./receipt.tsx";
+import { summaryLine } from "./receipt-model.ts";
 import {
   type BannerAction,
   type RunBanner,
@@ -61,7 +63,9 @@ export interface RunViewProps {
  *
  * Under them, Every step, from the run's log.
  *
- * Not here yet: the receipt (the next pull request), the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
+ * Above them, the receipt's summary line; its sections come in the next pull requests.
+ *
+ * Not here yet: the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
  */
 export function RunView({
   list,
@@ -98,12 +102,15 @@ export function RunView({
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
               {log === undefined ? null : (
-                <EveryStep
-                  log={log}
-                  entries={entries}
-                  openEntry={open?.id}
-                  onOpenEntry={setOpenEntry}
-                />
+                <>
+                  <Receipt summary={summaryLine(run, log, context)} />
+                  <EveryStep
+                    log={log}
+                    entries={entries}
+                    openEntry={open?.id}
+                    onOpenEntry={setOpenEntry}
+                  />
+                </>
               )}
             </div>
             <Details
