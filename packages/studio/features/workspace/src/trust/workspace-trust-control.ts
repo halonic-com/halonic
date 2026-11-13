@@ -66,10 +66,20 @@ export interface WorkspaceTrustControl {
    * "Not trusted yet" badge, whose tooltip changes when the list of trusted workspaces can't be read.
    */
   readonly badge: "none" | "not-trusted" | "list-unreadable";
+  /**
+   * Where the workspace stands, for the workspace page: `trusted`, `not-trusted` (never, or after
+   * **Remove trust**), `changed` since the person trusted it, `list-unreadable`, or `unknown`
+   * before the first answer.
+   */
+  readonly status: "unknown" | "trusted" | "not-trusted" | "changed" | "list-unreadable";
+  /** When the person trusted it, as ISO text, while `status` is `trusted` or `changed`. */
+  readonly trustedAt: string | undefined;
   /** The check to show now, `undefined` until the first answer or when the workspace is trusted. */
   review(): TrustReview | undefined;
   /** Saves the person's trust in exactly the check with this fingerprint. Never rejects. */
   grant(fingerprint: string): Promise<TrustGrantResult>;
+  /** Forgets the person's trust, so the workspace asks again. Never rejects. */
+  remove(): Promise<TrustGrantResult>;
   /** Calls `listener` after every change of the badge or the check; returns the way to stop. */
   subscribe(listener: () => void): () => void;
 }

@@ -33,6 +33,18 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     return check.status === "unreadable" ? "list-unreadable" : "not-trusted";
   }
 
+  get status(): WorkspaceTrustControl["status"] {
+    const status = this.#trust.check?.status;
+    if (status === undefined) return "unknown";
+    if (status === "trusted" || status === "changed") return status;
+    return status === "unreadable" ? "list-unreadable" : "not-trusted";
+  }
+
+  get trustedAt(): string | undefined {
+    const check = this.#trust.check;
+    return check?.status === "trusted" || check?.status === "changed" ? check.trustedAt : undefined;
+  }
+
   review(): TrustReview | undefined {
     const check = this.#trust.check;
     if (check !== this.#builtFor) {
@@ -50,6 +62,10 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
 
   grant(fingerprint: string): Promise<TrustGrantResult> {
     return this.#trust.grant(fingerprint);
+  }
+
+  remove(): Promise<TrustGrantResult> {
+    return this.#trust.remove();
   }
 
   subscribe(listener: () => void): () => void {
